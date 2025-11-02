@@ -1,5 +1,55 @@
 #pragma once
 
+/**
+ * @file platform/windows_errno.h
+ * @ingroup platform
+ * @brief Windows errno compatibility definitions
+ *
+ * This header provides POSIX-style errno constant definitions for Windows
+ * compatibility. Windows headers do not define these constants by default,
+ * so this header fills the gap to enable cross-platform code.
+ *
+ * CORE FEATURES:
+ * ==============
+ * - POSIX errno constants (EINVAL, ERANGE, ETIMEDOUT, etc.)
+ * - Windows errno variable declaration
+ * - Safe redefinition guards (only defines if not already defined)
+ * - Header inclusion order safety (must be included before Windows headers)
+ *
+ * WINDOWS COMPATIBILITY:
+ * ======================
+ * Windows uses WSA errors for socket operations, but many functions
+ * also use standard errno. This header ensures standard errno constants
+ * are available on Windows for consistent error handling.
+ *
+ * DEFINED CONSTANTS:
+ * ==================
+ * This header defines the following errno constants:
+ * - EINVAL: Invalid argument
+ * - ERANGE: Result out of range
+ * - ETIMEDOUT: Operation timed out
+ * - EINTR: Interrupted system call
+ * - EBADF: Bad file descriptor
+ * - EAGAIN: Resource temporarily unavailable
+ * - EWOULDBLOCK: Operation would block (alias for EAGAIN on Windows)
+ * - EPIPE: Broken pipe
+ * - ECONNREFUSED: Connection refused
+ * - ENETUNREACH: Network unreachable
+ * - EHOSTUNREACH: Host unreachable
+ * - ECONNRESET: Connection reset by peer
+ * - ENOTSOCK: Socket operation on non-socket
+ *
+ * @note This header must be included before any Windows headers that
+ *       might define or use these constants.
+ * @note All constants are protected with #ifndef guards to prevent
+ *       redefinition errors.
+ * @note On POSIX systems, these constants are typically defined in
+ *       <errno.h>, but this header can still be included safely.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ */
+
 // Windows errno compatibility definitions
 // These constants are not defined in Windows headers by default
 // This header must be included before any Windows headers

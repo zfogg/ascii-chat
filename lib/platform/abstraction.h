@@ -2,6 +2,8 @@
 
 /**
  * @file abstraction.h
+ * @defgroup platform Platform Abstraction Layer
+ * @ingroup platform
  * @brief Cross-platform abstraction layer for ASCII-Chat
  *
  * This header provides a comprehensive abstraction layer that enables ASCII-Chat

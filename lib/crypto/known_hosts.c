@@ -38,17 +38,32 @@ static char *g_known_hosts_path_cache = NULL;
 
 const char *get_known_hosts_path(void) {
   if (!g_known_hosts_path_cache) {
-    g_known_hosts_path_cache = expand_path(KNOWN_HOSTS_PATH);
-    // If expand_path fails, fall back to a default path
-    if (!g_known_hosts_path_cache) {
-      // Use /tmp/.ascii-chat/known_hosts as fallback if HOME expansion fails
-      const char *fallback = "/tmp/.ascii-chat/known_hosts";
-      size_t len = strlen(fallback) + 1;
+    // Get config directory with XDG support
+    char *config_dir = get_config_dir();
+    if (config_dir) {
+      // Build known_hosts path in config directory
+      size_t len = strlen(config_dir) + strlen("known_hosts") + 1;
       g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
       if (g_known_hosts_path_cache) {
-        // Use memcpy instead of SAFE_STRNCPY for safety
-        memcpy(g_known_hosts_path_cache, fallback, len);
-        g_known_hosts_path_cache[len - 1] = '\0'; // Ensure null termination
+        safe_snprintf(g_known_hosts_path_cache, len, "%sknown_hosts", config_dir);
+      }
+      SAFE_FREE(config_dir);
+    }
+
+    // Fallback if config_dir failed
+    if (!g_known_hosts_path_cache) {
+      g_known_hosts_path_cache = expand_path(KNOWN_HOSTS_PATH);
+      // If expand_path fails, fall back to a default path
+      if (!g_known_hosts_path_cache) {
+        // Use /tmp/.ascii-chat/known_hosts as fallback if HOME expansion fails
+        const char *fallback = "/tmp/.ascii-chat/known_hosts";
+        size_t len = strlen(fallback) + 1;
+        g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
+        if (g_known_hosts_path_cache) {
+          // Use memcpy instead of SAFE_STRNCPY for safety
+          memcpy(g_known_hosts_path_cache, fallback, len);
+          g_known_hosts_path_cache[len - 1] = '\0'; // Ensure null termination
+        }
       }
     }
   }

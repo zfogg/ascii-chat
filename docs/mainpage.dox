@@ -1,0 +1,548 @@
+/**
+ * @mainpage ASCII-Chat API Documentation
+ *
+ * @section intro_sec Introduction
+ *
+ * ASCII-Chat is a real-time terminal-based video chat application that converts
+ * video streams to ASCII art for display in terminals. It supports multiple clients,
+ * audio streaming, and end-to-end encryption.
+ *
+ * This documentation provides comprehensive API reference and architectural guidance
+ * for developers working with ASCII-Chat. Whether you're integrating ASCII-Chat into
+ * your application, extending its functionality, or contributing to the project, this
+ * documentation will help you understand the codebase structure and implementation
+ * details.
+ *
+ * @note **Getting Started?** We recommend starting with the @ref topic_build "Build System" topic
+ *       to understand how to compile ASCII-Chat on Windows, Linux, and macOS, configure
+ *       the build system, and set up your development environment.
+ *
+ * @section exploring_docs Exploring the Documentation
+ *
+ * This documentation is organized into several sections accessible from the navigation
+ * menu on the left:
+ *
+ * @subsection mainpage_this_page Main Page (This Page)
+ *
+ * You're currently viewing the main landing page. This provides:
+ * - Project overview and introduction
+ * - Quick navigation guide
+ * - Links to major modules and subsystems
+ * - Getting started examples
+ *
+ * @subsection topics_page Topics (Detailed Guides)
+ *
+ * For in-depth architectural documentation and implementation details, visit the
+ * **@ref topic_categories "Topic Categories"** page. This section provides comprehensive
+ * guides organized by subsystem:
+ *
+ * - **@ref topic_build "Build System"**: CMake configuration, cross-platform compilation, build types,
+ *   platform-specific gotchas, static builds, and build optimizations (start here!)
+ * - **Core Modules**: Cryptography, handshake protocol, key management
+ * - **Data Structures**: Buffer pools, ring buffers, packet queues, hash tables
+ * - **Media Processing**: Audio system, image-to-ASCII conversion, palette management
+ * - **Platform Support**: Cross-platform abstractions, OS-specific functionality
+ * - **Network Layer**: Socket operations, packet protocol, audio/video networking
+ * - **Core Libraries**: Common definitions, configuration
+ * - **Debugging**: Error handling, lock debugging, memory leak detection
+ *
+ * @subsubsection how_to_use_topics How to Use Topics
+ *
+ * Each topic page provides:
+ * - **Overview**: High-level description of the subsystem
+ * - **Architecture**: Design decisions and structural details
+ * - **API Reference**: Function signatures and usage patterns
+ * - **Examples**: Code samples showing how to use the APIs
+ * - **Integration**: How the module fits into the larger system
+ * - **Performance**: Benchmarks and optimization notes
+ * - **Best Practices**: Recommended usage patterns and common pitfalls
+ *
+ * @subsection modules_page Modules (Code Organization)
+ *
+ * The **Modules** section groups related code elements together:
+ * - Functions, structures, and constants are organized by functionality
+ * - Each module represents a logical subsystem (e.g., Audio System, Crypto Module)
+ * - Module pages automatically include all documented code elements with `@ingroup`
+ * - Use this for quick API reference and browsing related functionality
+ *
+ * @subsection pages_page Related Pages
+ *
+ * The **Related Pages** section contains:
+ * - **Topics**: Topic Categories and individual topic guides
+ * - Topic pages merge module documentation with detailed explanations
+ * - Links from topic pages to related code elements
+ *
+ * @subsection files_page Files (Source Code)
+ *
+ * The **Files** section lists all source files in the project:
+ * - Header files (`.h`) with file-level documentation
+ * - Implementation files (`.c`) for implementation details
+ * - Organized by directory structure
+ * - Each file's documentation describes its purpose and key features
+ *
+ * @subsection class_page Data Structures
+ *
+ * The **Data Structures** section shows all `struct` and `typedef` definitions:
+ * - Structures organized by module
+ * - Member documentation with types and descriptions
+ * - Links to related functions and usage examples
+ *
+ * @section navigation_tips Navigation Tips
+ *
+ * @subsection quick_start Quick Start
+ *
+ * **New to ASCII-Chat?** Start here:
+ *
+ * 1. **Set up your build environment**: Read @ref topic_build "Build System" to learn how to
+ *    compile ASCII-Chat on your platform (Windows, Linux, or macOS) and understand the
+ *    CMake configuration, build types, and platform-specific considerations
+ * 2. Read this main page to understand the project overview
+ * 3. Visit @ref topic_categories "Topic Categories" to browse detailed guides
+ * 4. Check out @ref getting_started "Getting Started" section below for code examples
+ * 5. Explore the **Modules** section for API reference organized by functionality
+ *
+ * @subsection finding_code Finding Code Elements
+ *
+ * **Looking for a specific function or structure?**
+ *
+ * - **Use the search bar** at the top of the page (Ctrl+F / Cmd+F in browser)
+ * - **Browse Modules** to find related code grouped together
+ * - **Check Files** to see all functions in a particular header
+ * - **Review Data Structures** to understand type definitions
+ *
+ * @subsection understanding_system Understanding the System
+ *
+ * **Want to understand how things work together?**
+ *
+ * - Read @ref topic_categories "Topic Pages" for architectural overviews and design explanations
+ * - Follow cross-references in documentation to navigate between related concepts
+ *   (like @ref topic_build "Build System" or @ref topic_crypto "Cryptography")
+ * - Review "See also" references at the bottom of documentation blocks
+ * - Check Integration sections in topic pages for how modules interact
+ *
+ * @subsection contribution_guide Contributing to the Project
+ *
+ * **Planning to contribute code?**
+ *
+ * - **Set up your build environment**: Read @ref topic_build "Build System" to configure your
+ *   development environment and understand build types, CMake presets, and testing setup
+ * - **Read Topic Pages** to understand the architecture before making changes
+ * - **Review Best Practices** sections for coding standards and patterns
+ * - **Check** @note \@note tags that look like this and @warning \@warning tags that look like this in documentation for important details
+ * - **Follow the existing documentation style** when adding new code and format with clang-format
+ *
+ * @section library_structure Library Structure
+ *
+ * The library is organized into several major modules:
+ *
+ * @subsection core_module Core Library
+ * - @ref common "Common Definitions" - Error codes, macros, core types
+ * - @ref logging "Logging System" - Logging API and utilities
+ * - @ref options "Configuration" - Command-line options and configuration
+ *
+ * @subsection platform_module Platform Abstractions
+ * - @ref platform "Platform Layer" - Cross-platform abstractions for threads, mutexes, sockets, system calls
+ * - @ref os "OS Abstractions" - Operating system specific functionality (webcam, etc.)
+ *
+ * @subsection core_libs_module Core Libraries
+ * - @ref buffer_pool "Buffer Pool" - Memory management with pre-allocated buffers
+ * - @ref ringbuffer "Ring Buffer" - Circular buffer implementation
+ * - @ref packet_queue "Packet Queue" - Queue management for network packets
+ *
+ * @subsection network_module Network Layer
+ * - @ref network "Network I/O" - Socket operations, timeouts, connections
+ * - @ref packet "Packet Types" - Network packet structures and definitions
+ * - @ref av "Audio/Video Networking" - Network APIs for audio/video streaming
+ *
+ * @subsection crypto_module Cryptography
+ * - @ref crypto "Crypto Core" - Core cryptographic operations
+ * - @ref handshake "Handshake Protocol" - Cryptographic handshake implementation
+ * - @ref keys "Key Management" - SSH key, GPG key, and key validation APIs
+ *
+ * @subsection media_module Media Processing
+ * - @ref audio "Audio System" - Audio capture and playback
+ * - @ref palette "Palette Management" - ASCII palette configuration and UTF-8 support
+ * - @ref image2ascii "Image to ASCII" - Image conversion and ASCII rendering
+ * - @ref video_frame "Video Frames" - Video frame buffer management
+ *
+ * @subsection util_module Utilities
+ * - @ref util "Utilities" - String manipulation, path handling, IP parsing, math utilities, UTF-8 support
+ *
+ * @section getting_started Getting Started
+ *
+ * @note Before diving into the code, make sure you've read the @ref topic_build "Build System" topic
+ *       to understand how to compile and configure ASCII-Chat for your platform.
+ *
+ * This section provides a quick overview of how to use the ASCII-Chat library.
+ * For detailed documentation on each component, see the @ref topic_categories "Topic Categories" page.
+ *
+ * @subsection typical_workflow Typical Workflow
+ *
+ * The typical workflow for using the ASCII-Chat library:
+ *
+ * 1. Initialize the logging system with log_init()
+ * 2. Initialize common subsystems with asciichat_common_init()
+ * 3. Initialize platform-specific components (audio, video, network)
+ * 4. Set up cryptographic context and perform handshake
+ * 5. Start audio/video capture and network streaming
+ * 6. Handle incoming packets and render to terminal
+ *
+ * @subsection example_client Client Example
+ *
+ * This example shows a complete client setup with encryption, compression, and capabilities:
+ *
+ * @code{.c}
+ * #include "audio.h"
+ * #include "crypto/handshake.h"
+ * #include "network/av.h"
+ * #include "network/packet_types.h"
+ * #include "common.h"
+ * #include "logging.h"
+ *
+ * // Client setup with encryption and compression
+ * int setup_client(socket_t sockfd) {
+ *     asciichat_error_t err;
+ *
+ *     // 1. Initialize logging
+ *     log_init("client.log", LOG_INFO);
+ *
+ *     // 2. Initialize common subsystems (memory, error handling, etc.)
+ *     err = asciichat_common_init("client.log");
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to initialize common subsystems: %d", err);
+ *         return -1;
+ *     }
+ *
+ *     // 3. Initialize crypto context
+ *     crypto_context_t crypto_ctx;
+ *     err = crypto_init(&crypto_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to initialize crypto: %d", err);
+ *         return -1;
+ *     }
+ *
+ *     // 4. Perform cryptographic handshake with server
+ *     uint8_t client_public_key[32], client_secret_key[32];
+ *     crypto_generate_keypair(client_public_key, client_secret_key);
+ *
+ *     err = crypto_handshake_client(&crypto_ctx, sockfd,
+ *                                   client_public_key, client_secret_key, NULL);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Crypto handshake failed: %d", err);
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *     log_info("Crypto handshake complete - encryption enabled");
+ *
+ *     // 5. Send client capabilities
+ *     terminal_capabilities_packet_t caps;
+ *     SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
+ *     caps.width = htons(160);
+ *     caps.height = htons(45);
+ *     caps.capabilities = htonl(CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR);
+ *     caps.color_level = htonl(TERM_COLOR_24BIT);
+ *     caps.color_count = htonl(16777216);
+ *     caps.render_mode = htonl(RENDER_MODE_FOREGROUND);
+ *     caps.desired_fps = 30;
+ *     SAFE_STRNCPY(caps.term_type, "xterm-256color", sizeof(caps.term_type));
+ *
+ *     // Send capabilities (encrypted automatically by threaded_send_packet)
+ *     int result = threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES,
+ *                                       &caps, sizeof(caps));
+ *     if (result < 0) {
+ *         log_error("Failed to send client capabilities");
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *
+ *     // 6. Initialize audio for capture/playback
+ *     audio_context_t audio_ctx;
+ *     err = audio_init(&audio_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to initialize audio: %d", err);
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *
+ *     err = audio_start_capture(&audio_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to start audio capture");
+ *         audio_destroy(&audio_ctx);
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *
+ *     err = audio_start_playback(&audio_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to start audio playback");
+ *         audio_destroy(&audio_ctx);
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *
+ *     // 7. Main loop: capture audio and send with encryption/compression
+ *     float audio_samples[256];
+ *     while (running) {
+ *         // Capture audio samples
+ *         size_t frames = audio_read_capture(&audio_ctx, audio_samples, 256);
+ *         if (frames > 0) {
+ *             // Send audio packet (encrypted and compressed automatically)
+ *             // threaded_send_packet handles encryption via crypto_ctx
+ *             // Compression is applied automatically for large packets
+ *             result = av_send_audio_batch(sockfd, audio_samples, frames, 44100);
+ *             if (result < 0) {
+ *                 log_warn("Failed to send audio packet");
+ *             }
+ *         }
+ *
+ *         // Receive and process incoming packets
+ *         packet_envelope_t envelope;
+ *         packet_recv_result_t recv_result = receive_packet_secure(
+ *             sockfd, &crypto_ctx, true, &envelope);
+ *
+ *         if (recv_result == PACKET_RECV_SUCCESS) {
+ *             // Process packet based on type
+ *             switch (envelope.type) {
+ *                 case PACKET_TYPE_ASCII_FRAME:
+ *                     // Render ASCII frame to terminal
+ *                     render_ascii_frame(envelope.data, envelope.len);
+ *                     break;
+ *                 case PACKET_TYPE_AUDIO_BATCH:
+ *                     // Play back audio
+ *                     audio_write_playback(&audio_ctx, envelope.data, envelope.len);
+ *                     break;
+ *                 // ... handle other packet types
+ *             }
+ *
+ *             // Free packet buffer
+ *             if (envelope.allocated_buffer) {
+ *                 buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+ *             }
+ *         }
+ *     }
+ *
+ *     // 8. Cleanup
+ *     audio_stop_capture(&audio_ctx);
+ *     audio_stop_playback(&audio_ctx);
+ *     audio_destroy(&audio_ctx);
+ *     crypto_destroy(&crypto_ctx);  // Zeros all keys
+ *     log_destroy();
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * @subsection example_server Server Example
+ *
+ * This example shows a server setup with encryption, compression, and multi-client support:
+ *
+ * @code{.c}
+ * #include "crypto/handshake.h"
+ * #include "network/av.h"
+ * #include "network/packet_types.h"
+ * #include "common.h"
+ * #include "logging.h"
+ * #include "server/client.h"
+ *
+ * // Server-side client handling with encryption
+ * int handle_client_connection(socket_t client_sock, client_info_t *client) {
+ *     asciichat_error_t err;
+ *
+ *     // 1. Initialize crypto context for this client
+ *     crypto_context_t crypto_ctx;
+ *     err = crypto_init(&crypto_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to initialize crypto for client: %d", err);
+ *         return -1;
+ *     }
+ *
+ *     // 2. Perform cryptographic handshake (server side)
+ *     uint8_t server_public_key[32], server_secret_key[32];
+ *     crypto_generate_keypair(server_public_key, server_secret_key);
+ *
+ *     // Load server identity key (for authentication)
+ *     ed25519_key_t server_identity_key;
+ *     err = load_ssh_key("~/.ssh/ascii-chat-server", &server_identity_key, NULL);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Failed to load server identity key");
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *
+ *     err = crypto_handshake_server(&crypto_ctx, client_sock,
+ *                                   server_public_key, server_secret_key,
+ *                                   &server_identity_key, NULL);
+ *     if (err != ASCIICHAT_OK) {
+ *         log_error("Crypto handshake failed: %d", err);
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *     log_info("Crypto handshake complete - encryption enabled for client");
+ *
+ *     // Zero identity key after use
+ *     sodium_memzero(&server_identity_key, sizeof(server_identity_key));
+ *
+ *     // 3. Receive client capabilities
+ *     packet_envelope_t envelope;
+ *     packet_recv_result_t result = receive_packet_secure(
+ *         client_sock, &crypto_ctx, true, &envelope);
+ *
+ *     if (result != PACKET_RECV_SUCCESS ||
+ *         envelope.type != PACKET_TYPE_CLIENT_CAPABILITIES) {
+ *         log_error("Failed to receive client capabilities");
+ *         crypto_destroy(&crypto_ctx);
+ *         return -1;
+ *     }
+ *
+ *     // Process capabilities and configure client
+ *     terminal_capabilities_packet_t *caps = (terminal_capabilities_packet_t *)envelope.data;
+ *     client->width = ntohs(caps->width);
+ *     client->height = ntohs(caps->height);
+ *     client->terminal_caps.color_level = ntohl(caps->color_level);
+ *     client->terminal_caps.capabilities = ntohl(caps->capabilities);
+ *     // ... configure client based on capabilities
+ *
+ *     if (envelope.allocated_buffer) {
+ *         buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+ *     }
+ *
+ *     // 4. Store crypto context in client structure
+ *     client->crypto_ctx = crypto_ctx;
+ *     client->crypto_initialized = true;
+ *
+ *     // 5. Main loop: receive and send packets with encryption/compression
+ *     while (client_connected(client)) {
+ *         // Receive packet (automatically decrypted)
+ *         result = receive_packet_secure(client_sock, &crypto_ctx, true, &envelope);
+ *
+ *         if (result == PACKET_RECV_SUCCESS) {
+ *             // Process packet based on type
+ *             switch (envelope.type) {
+ *                 case PACKET_TYPE_AUDIO_BATCH:
+ *                     // Broadcast to other clients (with encryption/compression)
+ *                     broadcast_audio_to_others(client, envelope.data, envelope.len);
+ *                     break;
+ *                 case PACKET_TYPE_IMAGE_FRAME:
+ *                     // Process video frame and generate ASCII
+ *                     process_video_frame(client, envelope.data, envelope.len);
+ *                     break;
+ *                 // ... handle other packet types
+ *             }
+ *
+ *             if (envelope.allocated_buffer) {
+ *                 buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+ *             }
+ *         }
+ *
+ *         // Send ASCII frame to client (encrypted and compressed automatically)
+ *         if (has_pending_frame(client)) {
+ *             char *ascii_frame = generate_ascii_frame(client);
+ *             size_t frame_size = strlen(ascii_frame);
+ *
+ *             // threaded_send_packet handles:
+ *             // - Encryption (via crypto_ctx)
+ *             // - Compression (automatic for large packets)
+ *             // - Packet formatting
+ *             result = threaded_send_packet_to_client(client, PACKET_TYPE_ASCII_FRAME,
+ *                                                      ascii_frame, frame_size);
+ *             if (result < 0) {
+ *                 log_warn("Failed to send frame to client");
+ *             }
+ *         }
+ *     }
+ *
+ *     // 6. Cleanup
+ *     crypto_destroy(&crypto_ctx);
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * @subsection example_notes Important Notes
+ *
+ * **Encryption**:
+ * - All packets are automatically encrypted after the crypto handshake
+ * - Use `threaded_send_packet()` or `receive_packet_secure()` for encrypted I/O
+ * - Crypto context is per-connection (client or server)
+ * - Keys are automatically zeroed on `crypto_destroy()`
+ *
+ * **Compression**:
+ * - Large packets (>100KB) are automatically compressed
+ * - Compression is transparent - handled by packet I/O functions
+ * - Use `av_send_*()` functions for media packets with compression
+ *
+ * **Client Capabilities**:
+ * - Sent once after crypto handshake
+ * - Includes terminal size, color support, palette preferences
+ * - Server uses this to format output appropriately
+ *
+ * **Thread Safety**:
+ * - `threaded_send_packet()` is thread-safe for concurrent sending
+ * - `receive_packet_secure()` should be called from dedicated receive thread
+ * - Crypto context is per-connection (not thread-safe for concurrent access)
+ *
+ * For more details, see the @ref topic_categories "Topic Categories" page:
+ * - @ref topic_build "Build System" for compilation and build configuration
+ * - @ref topic_crypto "Cryptography Module" for encryption details
+ * - @ref topic_handshake "Handshake Protocol" for authentication
+ * - @ref topic_keys "Key Management" for SSH/GPG key handling
+ * - @ref topic_av "Audio/Video Networking" for media packet APIs
+ * - @ref topic_network "Network I/O" for packet I/O operations
+ *
+ * @section building Building Documentation
+ *
+ * To build this documentation, you'll need Doxygen configured. See @ref topic_build "Build System"
+ * for information on configuring the project with CMake, including documentation generation.
+ *
+ * To build this documentation:
+ *
+ * @code{.bash}
+ * cmake --build build --target docs
+ * @endcode
+ *
+ * The documentation will be generated in `build/docs/html/index.html`.
+ *
+ * To open the documentation in your browser:
+ *
+ * @code{.bash}
+ * cmake --build build --target docs-open
+ * @endcode
+ *
+ * For more information on the build system, including CMake configuration, build types, and
+ * platform-specific considerations, see @ref topic_build "Build System".
+ *
+ * @section modules Modules
+ *
+ * @note Most module groups are defined in their respective header files.
+ *       See @ref build "Build System", @ref testing "Testing", @ref common
+ *       "Common Definitions", @ref logging "Logging System", @ref options
+ *       "Options", @ref platform "Platform Abstractions", @ref os "OS
+ *       Abstractions", @ref buffer_pool "Buffer Pool", @ref ringbuffer "Ring
+ *       Buffer", @ref packet_queue "Packet Queue", @ref network "Network I/O",
+ *       @ref packet "Packet Types", @ref av "Audio/Video Networking", @ref
+ *       crypto "Cryptography", @ref handshake "Handshake Protocol", @ref keys
+ *       "Key Management", @ref audio "Audio System", @ref palette "Palette
+ *       Management", @ref image2ascii "Image to ASCII", @ref video_frame "Video
+ *       Frames", and @ref util "Utilities" for detailed documentation.
+ *
+ * @section license License
+ *
+ * See the LICENSE file for license information.
+ *
+ * @section links Links
+ *
+ * - Project Homepage: https://github.com/zfogg/ascii-chat
+ * - Issues: https://github.com/zfogg/ascii-chat/issues
+ * - Releases: https://github.com/zfogg/ascii-chat/releases
+ *
+ * @defgroup dev Development
+ * @brief Real hacker hours
+ *
+ * @defgroup debug Debugging
+ * @ingroup dev
+
+ * @brief Debugging utilities to help you when you're struggling.  We've got timers and stack traces and more!
+ * @defgroup debug_util Debugging Utilities
+ * @ingroup debug
+ *
+ *
+ */
+

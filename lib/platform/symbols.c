@@ -64,9 +64,46 @@ static atomic_bool g_symbolizer_detected = false;
 // Cache State
 // ============================================================================
 
+/**
+ * @brief Symbol cache entry structure for address-to-symbol mapping
+ *
+ * Represents a single cached symbol resolution in the symbol cache hashtable.
+ * Maps a memory address (key) to a resolved symbol name (value) to avoid
+ * expensive addr2line subprocess spawns for the same addresses.
+ *
+ * CORE FIELDS:
+ * ============
+ * - addr: Memory address key (used for hashtable lookup)
+ * - symbol: Resolved symbol string (allocated, owned by cache)
+ *
+ * USAGE:
+ * ======
+ * This structure is used internally by the symbol cache hashtable:
+ * - Key: Memory address (void*) from backtrace
+ * - Value: Symbol name string (e.g., "main", "process_packet", etc.)
+ *
+ * CACHE OPERATIONS:
+ * ================
+ * - Lookup: Fast O(1) hashtable lookup by address
+ * - Insertion: Cached after first addr2line resolution
+ * - Lifetime: Owned by cache, freed on cache cleanup
+ *
+ * MEMORY MANAGEMENT:
+ * ==================
+ * - symbol string is allocated and owned by the cache
+ * - Do not free symbol strings manually (cache manages them)
+ * - Entries are stored in hashtable (pre-allocated pool)
+ *
+ * @note This structure is used internally by the symbol cache implementation.
+ *       Users should interact with the cache via symbol_cache_* functions.
+ *
+ * @ingroup platform
+ */
 typedef struct {
-  void *addr;   // Address key
-  char *symbol; // Resolved symbol string (owned by this entry)
+  /** @brief Memory address key (used for hashtable lookup) */
+  void *addr;
+  /** @brief Resolved symbol string (allocated, owned by cache) */
+  char *symbol;
 } symbol_entry_t;
 
 static hashtable_t *g_symbol_cache = NULL;
@@ -104,7 +141,9 @@ static void cleanup_symbol_entry_callback(uint32_t key, void *value, void *user_
   symbol_entry_t *entry = (symbol_entry_t *)value;
   if (entry) {
     if (entry->symbol) {
-      SAFE_FREE(entry->symbol);
+      // Use regular free() instead of SAFE_FREE() because entry->symbol was allocated
+      // with strdup() (standard C library), not tracked by debug memory system
+      free(entry->symbol);
     }
     SAFE_FREE(entry);
   }

@@ -177,11 +177,53 @@ static void cleanup_current_frame_data(multi_source_frame_t *frame) {
   }
 }
 
-// Structure for image sources
+/**
+ * @brief Image source structure for multi-client video mixing
+ *
+ * Represents a single video source (client) in the video mixing pipeline.
+ * This structure is used to collect video frames from all active clients
+ * before creating composite layouts for multi-user display.
+ *
+ * CORE FIELDS:
+ * ============
+ * - image: Pointer to the client's current video frame (image_t structure)
+ * - client_id: Unique identifier for this client
+ * - has_video: Whether this client is actively sending video
+ *
+ * USAGE PATTERN:
+ * ==============
+ * 1. Collect video sources: collect_video_sources() fills array with active clients
+ * 2. Filter sources: Only sources with has_video=true are used in composite
+ * 3. Create composite: generate_composite_frame() uses sources to create layout
+ * 4. Free sources: Sources are automatically cleaned up after composite generation
+ *
+ * VIDEO MIXING:
+ * =============
+ * This structure is central to the multi-client video mixing system:
+ * - Single client: One source, full-screen display
+ * - Multiple clients: Multiple sources, grid layout (2x2, 3x3, etc.)
+ * - Grid layout: Each source occupies one cell in the grid
+ * - Aspect ratio: Each source maintains its aspect ratio within cell
+ *
+ * MEMORY MANAGEMENT:
+ * ==================
+ * - image pointer points to frame data managed by video_frame_buffer_t
+ * - Frame data is owned by the double-buffer system, not this structure
+ * - No manual memory management needed (automatic via buffer system)
+ *
+ * @note image pointer is valid only when has_video is true.
+ * @note image pointer may be NULL if client stopped sending video.
+ * @note client_id is used to identify which client this source represents.
+ *
+ * @ingroup server
+ */
 typedef struct {
+  /** @brief Pointer to client's current video frame (owned by buffer system) */
   image_t *image;
+  /** @brief Unique client identifier for this source */
   uint32_t client_id;
-  bool has_video; // Whether this client has video or is just a placeholder
+  /** @brief Whether this client has active video stream */
+  bool has_video;
 } image_source_t;
 
 // Collect video frames from all active clients

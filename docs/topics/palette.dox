@@ -1,0 +1,693 @@
+/**
+ * @page topic_palette Palette Management
+ * @ingroup palette
+ *
+ * @section palette_overview Overview
+ *
+ * The Palette Management module provides comprehensive ASCII character palette
+ * management for converting video frames to ASCII art in ASCII-Chat. The system
+ * supports multiple built-in palettes, custom user-defined palettes, and full
+ * UTF-8 support for enhanced visual effects.
+ *
+ * **Implementation**: lib/palette.h
+ *
+ * **Key Features**:
+ * - Five built-in palette types (standard, blocks, digital, minimal, cool)
+ * - Custom user-defined palettes via command-line options
+ * - UTF-8 character support with proper encoding handling
+ * - Automatic UTF-8 capability detection and compatibility checking
+ * - Palette validation to ensure proper character ordering
+ * - Luminance mapping for optimal brightness-to-character conversion
+ * - Client compatibility checking and automatic fallback
+ *
+ * @section palette_builtin Built-in Palettes
+ *
+ * ASCII-Chat provides five built-in palette types, each optimized for different
+ * visual styles and terminal capabilities:
+ *
+ * @subsection palette_standard Standard Palette
+ *
+ * **Characters**: `"   ...',;:clodxkO0KXNWM"`
+ *
+ * Classic ASCII art palette with varying character density. The standard palette
+ * uses traditional ASCII characters ordered from darkest (spaces) to lightest
+ * (capital letters) for optimal brightness mapping.
+ *
+ * **Characteristics**:
+ * - Pure ASCII (no UTF-8 required)
+ * - 23 characters total
+ * - Wide compatibility (works in all terminals)
+ * - Classic ASCII art aesthetic
+ *
+ * @subsection palette_blocks Blocks Palette
+ *
+ * **Characters**: `"   ░░▒▒▓▓██"`
+ *
+ * Unicode block characters providing solid rendering with smooth gradients.
+ * The blocks palette uses Unicode half-block and full-block characters for
+ * high-quality visual output.
+ *
+ * **Characteristics**:
+ * - Requires UTF-8 support
+ * - 10 characters (spaces + 4 block pairs)
+ * - Smooth gradient effect
+ * - Best visual quality for UTF-8 terminals
+ *
+ * @subsection palette_digital Digital Palette
+ *
+ * **Characters**: `"   -=≡≣▰▱◼"`
+ *
+ * Digital/glitch aesthetic palette with mathematical and geometric characters.
+ * The digital palette provides a unique visual style suitable for modern,
+ * technical terminal environments.
+ *
+ * **Characteristics**:
+ * - Requires UTF-8 support
+ * - 10 characters total
+ * - Unique glitch/digital aesthetic
+ * - Technical appearance
+ *
+ * @subsection palette_minimal Minimal Palette
+ *
+ * **Characters**: `"   .-+*#"`
+ *
+ * Simple ASCII palette with minimal character set. The minimal palette
+ * provides basic rendering with just seven characters for maximum compatibility
+ * and simplicity.
+ *
+ * **Characteristics**:
+ * - Pure ASCII (no UTF-8 required)
+ * - 7 characters total
+ * - Maximum simplicity
+ * - Fast rendering
+ *
+ * @subsection palette_cool Cool Palette
+ *
+ * **Characters**: `"   ▁▂▃▄▅▆▇█"`
+ *
+ * Unicode ascending blocks palette providing smooth gradient effect. The cool
+ * palette uses Unicode ascending block characters to create a visually appealing
+ * gradient from dark to light.
+ *
+ * **Characteristics**:
+ * - Requires UTF-8 support
+ * - 10 characters (spaces + ascending blocks)
+ * - Smooth gradient effect
+ * - Modern visual style
+ *
+ * @section palette_utf8 UTF-8 Support
+ *
+ * @subsection palette_utf8_detection UTF-8 Capability Detection
+ *
+ * The system automatically detects client UTF-8 support using multiple methods:
+ *
+ * **Detection Methods**:
+ * - `$TERM` environment variable analysis
+ * - Locale encoding detection (checks `LC_ALL`, `LC_CTYPE`, `LANG`)
+ * - Terminal type compatibility checking
+ * - User override via `--utf8` flag
+ *
+ * **Detection Logic**:
+ * @code{.c}
+ * utf8_capabilities_t caps;
+ * if (detect_client_utf8_support(&caps)) {
+ *     if (caps.utf8_support) {
+ *         // Client supports UTF-8, can use UTF-8 palettes
+ *         palette = select_compatible_palette(PALETTE_BLOCKS, true);
+ *     } else {
+ *         // Client doesn't support UTF-8, use ASCII palette
+ *         palette = select_compatible_palette(PALETTE_STANDARD, false);
+ *     }
+ * }
+ * @endcode
+ *
+ * @subsection palette_utf8_encoding UTF-8 Character Encoding
+ *
+ * UTF-8 palettes properly handle multi-byte characters:
+ *
+ * **Character Information**:
+ * - **Byte Sequence**: Up to 4 bytes per character
+ * - **Byte Length**: 1-4 bytes depending on character
+ * - **Display Width**: 1-2 character cells (for full-width characters)
+ *
+ * **UTF-8 Palette Structure**:
+ * @code{.c}
+ * utf8_palette_t *palette = utf8_palette_create("   ░░▒▒▓▓██");
+ * size_t char_count = utf8_palette_get_char_count(palette);  // 10 characters
+ *
+ * // Get character at index
+ * const utf8_char_info_t *char_info = utf8_palette_get_char(palette, 3);
+ * // char_info->bytes = "░"
+ * // char_info->byte_len = 3
+ * // char_info->display_width = 1
+ *
+ * utf8_palette_destroy(palette);
+ * @endcode
+ *
+ * **Important Notes**:
+ * - Character count (not byte count) is used for palette indexing
+ * - Display width ensures proper terminal rendering
+ * - Multi-byte characters are handled transparently
+ *
+ * @subsection palette_utf8_compatibility Compatibility Checking
+ *
+ * The system automatically selects compatible palettes based on client capabilities:
+ *
+ * @code{.c}
+ * // Request UTF-8 palette
+ * palette_type_t requested = PALETTE_BLOCKS;
+ *
+ * // Check client UTF-8 support
+ * utf8_capabilities_t caps;
+ * detect_client_utf8_support(&caps);
+ *
+ * // Select compatible palette
+ * palette_type_t compatible = select_compatible_palette(
+ *     requested,
+ *     caps.utf8_support
+ * );
+ *
+ * // compatible will be PALETTE_BLOCKS if UTF-8 supported,
+ * // otherwise falls back to PALETTE_STANDARD
+ * @endcode
+ *
+ * **Automatic Fallback**:
+ * - UTF-8 palettes (BLOCKS, DIGITAL, COOL) require UTF-8 support
+ * - If client doesn't support UTF-8, automatically falls back to STANDARD
+ * - ASCII palettes (STANDARD, MINIMAL) always work
+ * - Custom palettes are validated for compatibility
+ *
+ * @section palette_custom Custom Palettes
+ *
+ * @subsection palette_custom_defining Defining Custom Palettes
+ *
+ * Users can define custom palettes via command-line options:
+ *
+ * **Command-Line Usage**:
+ * @code{.bash}
+ * # Use custom palette characters
+ * asciichat-client --palette-chars "   .:;+=xX$&"
+ *
+ * # Or specify custom palette in config file
+ * palette_type = "custom"
+ * palette_chars = "   ░▒▓█"
+ * @endcode
+ *
+ * **Programmatic Usage**:
+ * @code{.c}
+ * // Apply custom palette
+ * const char *custom_chars = "   .:;+=xX$&";
+ * asciichat_error_t err = apply_palette_config(
+ *     PALETTE_CUSTOM,
+ *     custom_chars
+ * );
+ *
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to apply custom palette");
+ *     return err;
+ * }
+ * @endcode
+ *
+ * @subsection palette_custom_validation Custom Palette Validation
+ *
+ * Custom palettes are validated to ensure proper formatting:
+ *
+ * **Validation Rules**:
+ * - Non-empty character sequence
+ * - Proper character ordering (if applicable)
+ * - Valid UTF-8 encoding (for multi-byte characters)
+ * - Compatible with client capabilities
+ *
+ * **Validation Example**:
+ * @code{.c}
+ * const char *custom_chars = "   .:;+=xX$&";
+ * size_t len = strlen(custom_chars);
+ *
+ * // Validate palette
+ * if (!validate_palette_chars(custom_chars, len)) {
+ *     log_error("Invalid custom palette");
+ *     return ERROR_INVALID_PALETTE;
+ * }
+ *
+ * // Check UTF-8 requirements
+ * if (palette_requires_utf8_encoding(custom_chars, len)) {
+ *     // Check client UTF-8 support before using
+ *     utf8_capabilities_t caps;
+ *     detect_client_utf8_support(&caps);
+ *     if (!caps.utf8_support) {
+ *         log_warn("Custom palette requires UTF-8 but client doesn't support it");
+ *         return ERROR_PALETTE_INCOMPATIBLE;
+ *     }
+ * }
+ * @endcode
+ *
+ * **Palette Ordering**:
+ * - Palettes should be ordered from darkest to lightest character
+ * - First character = darkest (for low brightness pixels)
+ * - Last character = lightest (for high brightness pixels)
+ * - Ordering affects luminance mapping quality
+ *
+ * @section palette_luminance Luminance Mapping
+ *
+ * @subsection palette_luminance_overview Luminance Mapping Overview
+ *
+ * Luminance mapping converts pixel brightness values (0-255) directly to
+ * palette character indices using a pre-computed lookup table. This eliminates
+ * the need for searching or calculation during video-to-ASCII conversion,
+ * significantly improving performance.
+ *
+ * **Mapping Process**:
+ * 1. Pixel brightness extracted (0-255 range)
+ * 2. Direct lookup in luminance mapping table (256 entries)
+ * 3. Character index retrieved (0 to palette_length-1)
+ * 4. Character selected from palette
+ * 5. Character rendered to terminal
+ *
+ * @subsection palette_luminance_building Building Luminance Maps
+ *
+ * Luminance mapping tables are built from palette character sequences:
+ *
+ * @code{.c}
+ * // Get palette characters
+ * const palette_def_t *palette = get_builtin_palette(PALETTE_STANDARD);
+ *
+ * // Build luminance mapping
+ * char luminance_mapping[256];
+ * asciichat_error_t err = build_client_luminance_palette(
+ *     palette->chars,
+ *     palette->length,
+ *     luminance_mapping
+ * );
+ *
+ * // luminance_mapping[0] = 0 (darkest character)
+ * // luminance_mapping[128] = palette->length / 2 (mid-tone character)
+ * // luminance_mapping[255] = palette->length - 1 (lightest character)
+ * @endcode
+ *
+ * **Mapping Distribution**:
+ * - Brightness 0 → Character index 0 (darkest)
+ * - Brightness 128 → Character index length/2 (mid-tone)
+ * - Brightness 255 → Character index length-1 (lightest)
+ * - Mapping is proportional across the full brightness range
+ *
+ * **Performance Benefits**:
+ * - O(1) lookup time (constant time)
+ * - No calculation required during rendering
+ * - Pre-computed for optimal performance
+ * - Single array access per pixel
+ *
+ * @subsection palette_luminance_usage Using Luminance Maps
+ *
+ * Luminance maps are used during video-to-ASCII conversion:
+ *
+ * @code{.c}
+ * // During video frame conversion
+ * for (int y = 0; y < height; y++) {
+ *     for (int x = 0; x < width; x++) {
+ *         // Get pixel brightness (0-255)
+ *         uint8_t brightness = calculate_pixel_brightness(pixels, x, y);
+ *
+ *         // Direct lookup in luminance mapping
+ *         char char_index = luminance_mapping[brightness];
+ *
+ *         // Select character from palette
+ *         char ascii_char = palette_chars[char_index];
+ *
+ *         // Render to terminal
+ *         render_char(ascii_char);
+ *     }
+ * }
+ * @endcode
+ *
+ * @section palette_initialization Initialization and Configuration
+ *
+ * @subsection palette_initialization_client Client Palette Initialization
+ *
+ * Complete client palette initialization combines palette selection, validation,
+ * and luminance mapping creation:
+ *
+ * @code{.c}
+ * // Initialize client palette with full configuration
+ * char client_palette_chars[256];
+ * size_t client_palette_len;
+ * char client_luminance_palette[256];
+ *
+ * asciichat_error_t err = initialize_client_palette(
+ *     PALETTE_BLOCKS,           // Palette type
+ *     NULL,                     // Custom chars (NULL for built-in)
+ *     client_palette_chars,     // Output: palette characters
+ *     &client_palette_len,      // Output: palette length
+ *     client_luminance_palette  // Output: luminance mapping
+ * );
+ *
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to initialize client palette");
+ *     return err;
+ * }
+ *
+ * // Use palette for video conversion
+ * // client_palette_chars contains character sequence
+ * // client_luminance_palette contains brightness-to-index mapping
+ * @endcode
+ *
+ * @subsection palette_initialization_apply Applying Palette Configuration
+ *
+ * Global palette configuration is applied using `apply_palette_config()`:
+ *
+ * @code{.c}
+ * // Apply built-in palette globally
+ * asciichat_error_t err = apply_palette_config(
+ *     PALETTE_STANDARD,
+ *     NULL  // NULL for built-in palettes
+ * );
+ *
+ * // Apply custom palette globally
+ * err = apply_palette_config(
+ *     PALETTE_CUSTOM,
+ *     "   .:;+=xX$&"  // Custom character sequence
+ * );
+ * @endcode
+ *
+ * **Configuration Steps**:
+ * 1. Validate palette (if custom)
+ * 2. Check UTF-8 requirements
+ * 3. Verify client compatibility
+ * 4. Apply palette globally
+ * 5. Build luminance mapping
+ * 6. Make available for rendering
+ *
+ * @section palette_architecture Architecture
+ *
+ * @subsection palette_data_structures Data Structures
+ *
+ * **Palette Definition**:
+ * @code{.c}
+ * typedef struct {
+ *     const char *name;           // Human-readable name
+ *     const char *chars;          // Character sequence
+ *     size_t length;              // Number of characters
+ *     bool requires_utf8;         // UTF-8 requirement flag
+ *     bool is_validated;          // Validation status
+ * } palette_def_t;
+ * @endcode
+ *
+ * **UTF-8 Character Information**:
+ * @code{.c}
+ * typedef struct {
+ *     char bytes[4];              // UTF-8 byte sequence (max 4 bytes)
+ *     uint8_t byte_len;           // Number of bytes (1-4)
+ *     uint8_t display_width;      // Terminal display width (1-2)
+ * } utf8_char_info_t;
+ * @endcode
+ *
+ * **UTF-8 Palette**:
+ * @code{.c}
+ * typedef struct {
+ *     utf8_char_info_t *chars;    // Array of character info
+ *     size_t char_count;          // Number of characters (not bytes!)
+ *     size_t total_bytes;         // Total byte length of string
+ *     char *raw_string;           // Original palette string
+ * } utf8_palette_t;
+ * @endcode
+ *
+ * **UTF-8 Capabilities**:
+ * @code{.c}
+ * typedef struct {
+ *     bool utf8_support;          // Detected UTF-8 support
+ *     bool forced_utf8;           // User-forced UTF-8 flag
+ *     char terminal_type[32];     // $TERM value
+ *     char locale_encoding[16];   // Locale encoding (e.g., "UTF-8")
+ * } utf8_capabilities_t;
+ * @endcode
+ *
+ * @subsection palette_api API Functions
+ *
+ * **Palette Management**:
+ * - `get_builtin_palette()`: Get built-in palette definition
+ * - `validate_palette_chars()`: Validate palette character sequence
+ * - `palette_requires_utf8_encoding()`: Check UTF-8 requirements
+ * - `select_compatible_palette()`: Select compatible palette
+ * - `apply_palette_config()`: Apply global palette configuration
+ * - `build_client_luminance_palette()`: Build luminance mapping
+ * - `initialize_client_palette()`: Initialize complete palette config
+ *
+ * **UTF-8 Palette Functions**:
+ * - `utf8_palette_create()`: Create UTF-8 palette from string
+ * - `utf8_palette_destroy()`: Destroy UTF-8 palette
+ * - `utf8_palette_get_char()`: Get character info at index
+ * - `utf8_palette_get_char_count()`: Get number of characters
+ * - `utf8_palette_contains_char()`: Check if character exists
+ * - `utf8_palette_find_char_index()`: Find character index
+ * - `utf8_palette_find_all_char_indices()`: Find all occurrences
+ *
+ * **UTF-8 Detection**:
+ * - `detect_client_utf8_support()`: Detect terminal UTF-8 capabilities
+ *
+ * @section palette_usage Usage Examples
+ *
+ * @subsection palette_usage_basic Basic Palette Usage
+ *
+ * **Using Built-in Palette**:
+ * @code{.c}
+ * #include "palette.h"
+ *
+ * // Get built-in palette
+ * const palette_def_t *palette = get_builtin_palette(PALETTE_STANDARD);
+ *
+ * // Check UTF-8 requirements
+ * if (palette->requires_utf8) {
+ *     utf8_capabilities_t caps;
+ *     if (!detect_client_utf8_support(&caps) || !caps.utf8_support) {
+ *         log_error("Palette requires UTF-8 but terminal doesn't support it");
+ *         return ERROR_PALETTE_INCOMPATIBLE;
+ *     }
+ * }
+ *
+ * // Apply palette globally
+ * asciichat_error_t err = apply_palette_config(PALETTE_STANDARD, NULL);
+ * @endcode
+ *
+ * @subsection palette_usage_custom Custom Palette Usage
+ *
+ * **Defining and Using Custom Palette**:
+ * @code{.c}
+ * // Define custom palette
+ * const char *custom_chars = "   .:-=+*#%@";
+ *
+ * // Validate palette
+ * if (!validate_palette_chars(custom_chars, strlen(custom_chars))) {
+ *     log_error("Invalid custom palette");
+ *     return ERROR_INVALID_PALETTE;
+ * }
+ *
+ * // Apply custom palette
+ * asciichat_error_t err = apply_palette_config(
+ *     PALETTE_CUSTOM,
+ *     custom_chars
+ * );
+ *
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to apply custom palette");
+ *     return err;
+ * }
+ * @endcode
+ *
+ * @subsection palette_usage_utf8 UTF-8 Palette Usage
+ *
+ * **Working with UTF-8 Palettes**:
+ * @code{.c}
+ * // Create UTF-8 palette
+ * utf8_palette_t *palette = utf8_palette_create("   ░░▒▒▓▓██");
+ *
+ * // Get character count (not byte count!)
+ * size_t char_count = utf8_palette_get_char_count(palette);
+ * // char_count = 10 (characters, not bytes)
+ *
+ * // Get character at index
+ * const utf8_char_info_t *char_info = utf8_palette_get_char(palette, 3);
+ * // char_info->bytes = "░"
+ * // char_info->byte_len = 3
+ * // char_info->display_width = 1
+ *
+ * // Find character index
+ * size_t index = utf8_palette_find_char_index(palette, "▒", 3);
+ * // index = 5 (5th character in palette)
+ *
+ * // Clean up
+ * utf8_palette_destroy(palette);
+ * @endcode
+ *
+ * @subsection palette_usage_client Client Palette Initialization
+ *
+ * **Complete Client Palette Setup**:
+ * @code{.c}
+ * // Detect client UTF-8 support
+ * utf8_capabilities_t caps;
+ * detect_client_utf8_support(&caps);
+ *
+ * // Select compatible palette
+ * palette_type_t palette_type = select_compatible_palette(
+ *     PALETTE_BLOCKS,  // Requested
+ *     caps.utf8_support
+ * );
+ *
+ * // Initialize complete palette configuration
+ * char client_palette_chars[256];
+ * size_t client_palette_len;
+ * char client_luminance_palette[256];
+ *
+ * asciichat_error_t err = initialize_client_palette(
+ *     palette_type,
+ *     NULL,  // Built-in palette
+ *     client_palette_chars,
+ *     &client_palette_len,
+ *     client_luminance_palette
+ * );
+ *
+ * // Use palette for rendering
+ * // client_palette_chars: character sequence
+ * // client_luminance_palette: brightness-to-index mapping
+ * @endcode
+ *
+ * @section palette_best_practices Best Practices
+ *
+ * @subsection palette_best_ordering Character Ordering
+ *
+ * **Always Order from Dark to Light**:
+ * - First character = darkest (for black/low brightness)
+ * - Last character = lightest (for white/high brightness)
+ * - Proper ordering ensures accurate luminance mapping
+ * - Incorrect ordering produces inverted or incorrect output
+ *
+ * **Example Ordering**:
+ * @code{.c}
+ * // ✅ CORRECT: Dark to light
+ * "   .:-=+*#"  // spaces (dark) → # (light)
+ *
+ * // ❌ WRONG: Light to dark
+ * "#*+=:-.   "  // Inverted order
+ * @endcode
+ *
+ * @subsection palette_best_utf8 UTF-8 Compatibility
+ *
+ * **Always Check UTF-8 Requirements**:
+ * - Check if palette requires UTF-8 before using
+ * - Verify client UTF-8 support for UTF-8 palettes
+ * - Provide fallback to ASCII palettes
+ * - Use `select_compatible_palette()` for automatic selection
+ *
+ * **Example**:
+ * @code{.c}
+ * // Check UTF-8 requirements
+ * if (palette_requires_utf8_encoding(chars, len)) {
+ *     utf8_capabilities_t caps;
+ *     detect_client_utf8_support(&caps);
+ *     if (!caps.utf8_support) {
+ *         log_warn("UTF-8 palette incompatible with client");
+ *         // Fall back to ASCII palette
+ *         palette = get_builtin_palette(PALETTE_STANDARD);
+ *     }
+ * }
+ * @endcode
+ *
+ * @subsection palette_best_validation Always Validate Custom Palettes
+ *
+ * **Validate Before Use**:
+ * - Always validate custom palettes
+ * - Check for empty or invalid sequences
+ * - Verify UTF-8 encoding for multi-byte characters
+ * - Ensure proper character ordering
+ *
+ * **Example**:
+ * @code{.c}
+ * // Validate before applying
+ * if (!validate_palette_chars(custom_chars, len)) {
+ *     log_error("Invalid custom palette");
+ *     return ERROR_INVALID_PALETTE;
+ * }
+ *
+ * // Apply only if valid
+ * apply_palette_config(PALETTE_CUSTOM, custom_chars);
+ * @endcode
+ *
+ * @subsection palette_best_performance Performance Optimization
+ *
+ * **Use Luminance Mapping**:
+ * - Always build luminance mapping for performance
+ * - Use direct lookup instead of calculation
+ * - Pre-compute mappings during initialization
+ * - Cache mappings for repeated use
+ *
+ * **Example**:
+ * @code{.c}
+ * // Build mapping once during initialization
+ * char luminance_mapping[256];
+ * build_client_luminance_palette(palette_chars, palette_len, luminance_mapping);
+ *
+ * // Use direct lookup during rendering (fast!)
+ * char char_index = luminance_mapping[pixel_brightness];
+ * char ascii_char = palette_chars[char_index];
+ * @endcode
+ *
+ * @section palette_performance Performance Characteristics
+ *
+ * **Palette Lookup**:
+ * - Luminance mapping: O(1) constant time lookup
+ * - No calculation required during rendering
+ * - Single array access per pixel
+ * - Optimal for real-time video conversion
+ *
+ * **UTF-8 Processing**:
+ * - UTF-8 palette creation: O(n) where n is byte length
+ * - Character index lookup: O(1) with pre-computed structure
+ * - UTF-8 detection: O(1) environment variable checks
+ *
+ * **Memory Usage**:
+ * - ASCII palette: ~23 bytes (STANDARD)
+ * - UTF-8 palette: ~40-100 bytes depending on character count
+ * - Luminance mapping: 256 bytes (fixed size)
+ * - UTF-8 character info: ~8 bytes per character
+ *
+ * @section palette_integration Integration with Video-to-ASCII
+ *
+ * The palette module integrates with the image2ascii conversion pipeline:
+ *
+ * **Conversion Pipeline**:
+ * 1. Video frame captured (RGB pixels)
+ * 2. Pixel brightness calculated (0-255)
+ * 3. Luminance mapping lookup (brightness → char index)
+ * 4. Character selected from palette
+ * 5. Character rendered to terminal
+ *
+ * **Example Integration**:
+ * @code{.c}
+ * // Initialize palette
+ * char palette_chars[256];
+ * size_t palette_len;
+ * char luminance_mapping[256];
+ * initialize_client_palette(PALETTE_STANDARD, NULL,
+ *                            palette_chars, &palette_len, luminance_mapping);
+ *
+ * // Convert frame to ASCII
+ * for (int y = 0; y < frame_height; y++) {
+ *     for (int x = 0; x < frame_width; x++) {
+ *         // Get pixel brightness
+ *         uint8_t brightness = get_pixel_brightness(frame, x, y);
+ *
+ *         // Lookup character index
+ *         size_t char_index = luminance_mapping[brightness];
+ *
+ *         // Select character
+ *         char ascii_char = palette_chars[char_index];
+ *
+ *         // Render
+ *         render_char(ascii_char);
+ *     }
+ * }
+ * @endcode
+ *
+ * @see palette.h
+ * @see image2ascii
+ * @see video_frame
+ */
+

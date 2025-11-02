@@ -1,0 +1,268 @@
+/**
+ * @page topic_network Network I/O
+ * @ingroup network
+ *
+ * @section network_overview Overview
+ *
+ * The Network I/O module provides fundamental network operations including socket
+ * management, timeout handling, and basic send/receive operations. All operations
+ * support configurable timeouts to prevent indefinite blocking, critical for
+ * real-time video streaming applications.
+ *
+ * **Implementation**: lib/network/network.h, lib/network/packet.h
+ *
+ * **Key Features**:
+ * - Socket I/O operations with timeout support
+ * - Connection management (connect, accept) with timeouts
+ * - Socket configuration (keepalive, non-blocking, timeouts)
+ * - Chunked transmission for large data transfers
+ * - Packet protocol with encryption and compression support
+ * - Error reporting and diagnostics
+ *
+ * @section network_architecture Architecture
+ *
+ * @subsection network_timeout_system Timeout System
+ *
+ * All I/O operations support configurable timeouts:
+ * - Connection timeout: 3 seconds (CONNECT_TIMEOUT)
+ * - Send timeout: 5 seconds (SEND_TIMEOUT)
+ * - Receive timeout: 15 seconds (RECV_TIMEOUT)
+ * - Accept timeout: 3 seconds (ACCEPT_TIMEOUT)
+ *
+ * Timeouts are tuned for real-time video streaming requirements. Chunked
+ * transmission prevents large data from blocking indefinitely.
+ *
+ * @subsection network_socket_configuration Socket Configuration
+ *
+ * Socket configuration options:
+ * - TCP keepalive: Detects dead connections (KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT)
+ * - Non-blocking mode: Enables asynchronous I/O patterns
+ * - Socket-level timeouts: SO_SNDTIMEO and SO_RCVTIMEO options
+ * - Platform abstraction: Cross-platform compatibility
+ *
+ * @subsection network_packet_protocol Packet Protocol
+ *
+ * The packet protocol provides:
+ * - Packet header validation with magic number and CRC32 checksum
+ * - Secure packet transmission with encryption support
+ * - Secure packet reception with decryption and validation
+ * - Automatic compression for large packets
+ * - Protocol compliance checking
+ *
+ * **Packet Structure**:
+ * - Header: Magic number, type, length, CRC32, client ID
+ * - Payload: Variable-length data (may be encrypted/compressed)
+ * - Validation: CRC32 checksum for integrity verification
+ *
+ * @section network_operations Operations
+ *
+ * @subsection network_io_operations Socket I/O Operations
+ *
+ * **Send/Receive Operations**:
+ * @code{.c}
+ * // Send data with timeout
+ * ssize_t sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
+ * if (sent < 0) {
+ *     log_error("Send failed: %s", network_error_string());
+ * }
+ *
+ * // Receive data with timeout
+ * ssize_t received = recv_with_timeout(sockfd, buffer, len, RECV_TIMEOUT);
+ * if (received < 0) {
+ *     log_error("Receive failed: %s", network_error_string());
+ * }
+ * @endcode
+ *
+ * **Connection Operations**:
+ * @code{.c}
+ * // Connect to server with timeout
+ * if (!connect_with_timeout(sockfd, &addr, addrlen, CONNECT_TIMEOUT)) {
+ *     log_error("Connection failed: %s", network_error_string());
+ * }
+ *
+ * // Accept connection with timeout
+ * int client_fd = accept_with_timeout(listenfd, NULL, NULL, ACCEPT_TIMEOUT);
+ * if (client_fd < 0) {
+ *     log_error("Accept failed: %s", network_error_string());
+ * }
+ * @endcode
+ *
+ * @subsection network_packet_operations Packet Operations
+ *
+ * **Basic Packet I/O**:
+ * @code{.c}
+ * // Send a packet
+ * asciichat_error_t err = packet_send(sockfd, PACKET_TYPE_PING, NULL, 0);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Packet send failed");
+ * }
+ *
+ * // Receive a packet
+ * packet_type_t type;
+ * void *data;
+ * size_t len;
+ * err = packet_receive(sockfd, &type, &data, &len);
+ * if (err == ASCIICHAT_OK) {
+ *     // Process packet
+ *     process_packet(type, data, len);
+ *     free(data);  // Free allocated buffer
+ * }
+ * @endcode
+ *
+ * **Secure Packet I/O**:
+ * @code{.c}
+ * // Send encrypted packet
+ * int result = send_packet_secure(sockfd, PACKET_TYPE_ASCII_FRAME,
+ *                                  frame_data, frame_size, crypto_ctx);
+ * if (result < 0) {
+ *     log_error("Secure send failed");
+ * }
+ *
+ * // Receive and decrypt packet
+ * packet_envelope_t envelope;
+ * packet_recv_result_t result = receive_packet_secure(sockfd, crypto_ctx,
+ *                                                      true, &envelope);
+ * if (result == PACKET_RECV_SUCCESS) {
+ *     // Process decrypted packet
+ *     process_packet(envelope.type, envelope.data, envelope.len);
+ *     free(envelope.allocated_buffer);  // Free allocated buffer
+ * }
+ * @endcode
+ *
+ * @subsection network_socket_config Socket Configuration
+ *
+ * **Socket Setup**:
+ * @code{.c}
+ * // Set socket timeout
+ * if (set_socket_timeout(sockfd, SEND_TIMEOUT) < 0) {
+ *     log_error("Failed to set socket timeout");
+ * }
+ *
+ * // Enable TCP keepalive
+ * if (set_socket_keepalive(sockfd) < 0) {
+ *     log_error("Failed to enable keepalive");
+ * }
+ *
+ * // Set non-blocking mode
+ * if (set_socket_nonblocking(sockfd) < 0) {
+ *     log_error("Failed to set non-blocking mode");
+ * }
+ * @endcode
+ *
+ * @section network_integration Integration
+ *
+ * The Network I/O module integrates with:
+ * - **platform/socket.h**: Uses platform socket abstraction
+ * - **network/packet_types.h**: Packet type definitions
+ * - **crypto/crypto.h**: Encryption/decryption operations
+ * - **compression.h**: Compression/decompression support
+ * - **network/av.h**: Media packet sending
+ * - **crypto/handshake.h**: Crypto handshake operations
+ *
+ * @section network_performance Performance
+ *
+ * **Chunked Transmission**:
+ * - Enables progressive sending of large frames
+ * - Prevents timeout issues with large data
+ * - Allows progress tracking
+ *
+ * **Timeout Handling**:
+ * - Prevents indefinite blocking
+ * - Tuned for real-time video streaming
+ * - Platform-specific optimizations (select/poll/epoll)
+ *
+ * **Keepalive Settings**:
+ * - Efficiently detects dead connections
+ * - No application-level heartbeats required
+ * - Configurable idle time and probe count
+ *
+ * @section network_error_handling Error Handling
+ *
+ * **Error Reporting**:
+ * @code{.c}
+ * // Get human-readable error string
+ * const char *error_msg = network_error_string();
+ * log_error("Network error: %s", error_msg);
+ * @endcode
+ *
+ * **Error Codes**:
+ * - Function return values: -1 indicates error
+ * - asciichat_error_t codes: ASCIICHAT_OK on success, error codes on failure
+ * - packet_recv_result_t codes: PACKET_RECV_SUCCESS, PACKET_RECV_EOF, etc.
+ *
+ * @section network_timeouts Timeout Configuration
+ *
+ * Timeout values are tuned for real-time video streaming:
+ *
+ * - **CONNECT_TIMEOUT** (3 seconds): Reduced from default for faster connection attempts
+ * - **SEND_TIMEOUT** (5 seconds): Timely delivery for video frames
+ * - **RECV_TIMEOUT** (15 seconds): Longer timeout to accommodate slow networks
+ * - **ACCEPT_TIMEOUT** (3 seconds): Balanced between responsiveness and CPU usage
+ *
+ * @warning Timeout values that are too short may cause false positives
+ *          on slow networks. Values that are too long may delay error
+ *          detection unnecessarily.
+ *
+ * @section network_chunked_transmission Chunked Transmission
+ *
+ * Large data transfers are automatically chunked:
+ * - Prevents timeout issues with large frames
+ * - Enables progress tracking
+ * - Handles partial sends automatically
+ * - Retries until all data is sent or timeout occurs
+ *
+ * @note Chunked transmission is used automatically for large data to
+ *       prevent timeouts and enable progress tracking.
+ *
+ * @section network_packet_security Packet Security
+ *
+ * The packet protocol supports:
+ * - **Encryption**: Automatic encryption/decryption when crypto context provided
+ * - **Compression**: Automatic compression for large packets
+ * - **Validation**: Magic number and CRC32 checksum verification
+ * - **Policy Enforcement**: Encryption requirement enforcement
+ *
+ * **Handshake Packets**:
+ * - Always sent unencrypted (plaintext)
+ * - Use `packet_is_handshake_type()` to check before encryption
+ * - Required for crypto handshake establishment
+ *
+ * @section network_best_practices Best Practices
+ *
+ * 1. **Always check return values**:
+ *    @code{.c}
+ *    if (send_with_timeout(sockfd, data, len, timeout) < 0) {
+ *        // Handle error
+ *    }
+ *    @endcode
+ *
+ * 2. **Free allocated packet buffers**:
+ *    @code{.c}
+ *    void *data;
+ *    size_t len;
+ *    packet_receive(sockfd, &type, &data, &len);
+ *    // ... use data ...
+ *    free(data);  // Always free
+ *    @endcode
+ *
+ * 3. **Use secure packet functions for encryption**:
+ *    @code{.c}
+ *    send_packet_secure(sockfd, type, data, len, crypto_ctx);
+ *    receive_packet_secure(sockfd, crypto_ctx, true, &envelope);
+ *    @endcode
+ *
+ * 4. **Enable keepalive for long-lived connections**:
+ *    @code{.c}
+ *    set_socket_keepalive(sockfd);
+ *    @endcode
+ *
+ * 5. **Configure timeouts appropriately**:
+ *    @code{.c}
+ *    set_socket_timeout(sockfd, SEND_TIMEOUT);
+ *    @endcode
+ *
+ * @see network/network.h
+ * @see network/packet.h
+ * @see network/packet_types.h
+ */
+

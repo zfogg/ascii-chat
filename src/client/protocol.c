@@ -129,11 +129,43 @@ static atomic_bool g_data_thread_exited = false;
  * Multi-User Client State
  * ============================================================================ */
 
-/** Remote client tracking (up to MAX_CLIENTS) */
+/**
+ * @brief Remote client information structure for multi-user client tracking
+ *
+ * Tracks information about other clients connected to the server. Used by
+ * the client to maintain awareness of other participants in the chat session.
+ *
+ * CORE FIELDS:
+ * ============
+ * - client_id: Unique identifier for this remote client
+ * - display_name: User-friendly display name for the client
+ * - is_active: Whether this client is currently active (sending video/audio)
+ * - last_seen: Timestamp when this client was last seen (for timeout detection)
+ *
+ * USAGE:
+ * ======
+ * The client maintains an array of remote_client_info_t structures to track
+ * all other clients. This information is used for:
+ * - Multi-user display coordination
+ * - Client list display
+ * - Connection state awareness
+ * - Timeout detection
+ *
+ * @note The client_id matches the server's assigned client identifier.
+ * @note display_name is received from server in CLIENT_JOIN packets.
+ * @note is_active indicates whether client is sending media (video/audio).
+ * @note last_seen is updated when receiving packets from this client.
+ *
+ * @ingroup client
+ */
 typedef struct {
+  /** @brief Unique client identifier assigned by server */
   uint32_t client_id;
+  /** @brief User-friendly display name (null-terminated) */
   char display_name[MAX_DISPLAY_NAME_LEN];
+  /** @brief Whether client is currently active (sending video/audio) */
   bool is_active;
+  /** @brief Timestamp when client was last seen (for timeout detection) */
   time_t last_seen;
 } remote_client_info_t;
 

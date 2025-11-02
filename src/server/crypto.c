@@ -1,10 +1,139 @@
 /**
  * @file crypto.c
- * @brief Server-side crypto handshake and encryption management
+ * @brief Server-Side Cryptographic Handshake and Encryption Management
  *
- * This module handles the server-side crypto handshake process and provides
- * encryption/decryption functions for secure communication with clients.
- * Each client has its own crypto context for secure communication.
+ * This module implements the server-side cryptographic handshake process and
+ * provides per-client encryption/decryption functions for secure communication.
+ * It was extracted from the original monolithic server.c to provide clean
+ * separation between cryptographic operations and other server concerns.
+ *
+ * CORE RESPONSIBILITIES:
+ * ======================
+ * 1. Initialize server crypto system and validate encryption configuration
+ * 2. Perform cryptographic handshake with each connecting client
+ * 3. Manage per-client crypto contexts stored in client_info_t structures
+ * 4. Provide encryption/decryption functions for secure packet transmission
+ * 5. Support multiple authentication modes (password, SSH key, passwordless)
+ * 6. Integrate with client whitelist for authenticated access control
+ *
+ * CRYPTOGRAPHIC HANDSHAKE ARCHITECTURE:
+ * ======================================
+ * The handshake follows a multi-phase protocol:
+ *
+ * PHASE 0: PROTOCOL NEGOTIATION:
+ * - Step 0a: Receive client protocol version
+ * - Step 0b: Send server protocol version
+ * - Step 0c: Receive client crypto capabilities
+ * - Step 0d: Select algorithms and send crypto parameters
+ *
+ * PHASE 1: KEY EXCHANGE:
+ * - Step 1: Send server's ephemeral public key (X25519)
+ * - Server generates ephemeral key pair for this client session
+ * - Both sides derive shared secret using X25519 key exchange
+ *
+ * PHASE 2: AUTHENTICATION:
+ * - Step 2: Receive client's public key and send auth challenge
+ * - Server verifies client identity (if whitelist enabled)
+ * - Server signs challenge with identity key (if server has identity key)
+ * - Step 3: Receive auth response and complete handshake
+ *
+ * SUPPORTED AUTHENTICATION MODES:
+ * ================================
+ * The server supports three authentication modes:
+ *
+ * 1. PASSWORD AUTHENTICATION:
+ *    - Uses Argon2id key derivation from shared password
+ *    - Both server and client derive same key from password
+ *    - No identity keys required (password-only mode)
+ *
+ * 2. SSH KEY AUTHENTICATION:
+ *    - Server uses Ed25519 private key for identity verification
+ *    - Client provides Ed25519 public key for authentication
+ *    - Identity verification via known_hosts and whitelist
+ *
+ * 3. PASSWORDLESS MODE:
+ *    - Ephemeral keys only (no long-term identity)
+ *    - Key exchange provides confidentiality but not authentication
+ *    - Suitable for trusted networks or testing
+ *
+ * PER-CLIENT CRYPTO CONTEXTS:
+ * ===========================
+ * Each client has an independent crypto context stored in client_info_t:
+ * - crypto_handshake_ctx: Handshake state machine and cryptographic operations
+ * - crypto_initialized: Flag indicating handshake completion
+ * - Context is created during connection and cleaned up on disconnect
+ *
+ * INTEGRATION WITH CLIENT WHITELIST:
+ * ==================================
+ * When client whitelist is enabled:
+ * - Server requires client authentication during handshake
+ * - Client public key must be in whitelist array
+ * - Verification happens in crypto_handshake_server_auth_challenge()
+ * - Clients not in whitelist are rejected during handshake
+ *
+ * ENCRYPTION/DECRYPTION OPERATIONS:
+ * ==================================
+ * After handshake completion:
+ * - crypto_server_encrypt_packet(): Encrypts packets before transmission
+ * - crypto_server_decrypt_packet(): Decrypts received packets
+ * - Both functions use per-client crypto contexts
+ * - Automatic passthrough when encryption disabled (--no-encrypt)
+ *
+ * ALGORITHM SUPPORT:
+ * ==================
+ * The server currently supports:
+ * - Key Exchange: X25519 (Elliptic Curve Diffie-Hellman)
+ * - Cipher: XSalsa20-Poly1305 (Authenticated Encryption)
+ * - Authentication: Ed25519 (when server has identity key)
+ * - Key Derivation: Argon2id (for password-based authentication)
+ * - HMAC: HMAC-SHA256 (for additional integrity protection)
+ *
+ * ERROR HANDLING:
+ * ==============
+ * Handshake errors are handled gracefully:
+ * - Client disconnection during handshake: Log and return error
+ * - Protocol mismatch: Log detailed error and disconnect client
+ * - Authentication failure: Log and disconnect client (whitelist rejection)
+ * - Network errors: Detect and handle gracefully (don't crash server)
+ * - Invalid packets: Validate size and format before processing
+ *
+ * THREAD SAFETY:
+ * ==============
+ * Crypto operations are thread-safe:
+ * - Each client has independent crypto context (no shared state)
+ * - Socket access protected by client_state_mutex
+ * - Per-client encryption/decryption operations are isolated
+ * - Global server crypto state (g_server_private_key) read-only after init
+ *
+ * INTEGRATION WITH OTHER MODULES:
+ * ===============================
+ * - main.c: Calls server_crypto_init() during server startup
+ * - client.c: Calls server_crypto_handshake() for each new client
+ * - protocol.c: Uses encryption functions for secure packet transmission
+ * - crypto/handshake.h: Core handshake protocol implementation
+ * - crypto/keys/keys.h: Key management and parsing functions
+ *
+ * WHY THIS MODULAR DESIGN:
+ * =========================
+ * The original server.c mixed cryptographic operations with connection
+ * management and packet processing, making it difficult to:
+ * - Add new authentication methods
+ * - Modify handshake protocol
+ * - Debug cryptographic issues
+ * - Test encryption/decryption independently
+ *
+ * This separation provides:
+ * - Clear cryptographic interface
+ * - Easier handshake protocol evolution
+ * - Better error isolation
+ * - Improved security auditing
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ * @version 2.0 (Post-Modularization)
+ * @see client.c For client lifecycle management and crypto context storage
+ * @see crypto/handshake.h For handshake protocol implementation
+ * @see crypto/keys/keys.h For key parsing and management
  */
 
 #include "client.h"

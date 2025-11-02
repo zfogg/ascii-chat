@@ -1,5 +1,44 @@
 #pragma once
 
+/**
+ * @file tests/common.h
+ * @ingroup platform
+ * @brief Common test utilities and environment detection
+ *
+ * This header provides common utilities and helpers for writing ASCII-Chat tests.
+ * It includes standard test headers, platform detection, and environment checks
+ * to help tests run reliably across different environments (CI, Docker, WSL).
+ *
+ * CORE FEATURES:
+ * ==============
+ * - Test environment detection (CI, Docker, WSL)
+ * - Standard test framework includes (Criterion)
+ * - Common project headers and utilities
+ * - Platform-specific includes (POSIX/Windows)
+ * - Headless environment detection for webcam tests
+ *
+ * TEST ENVIRONMENT:
+ * ================
+ * This header automatically includes:
+ * - Criterion test framework
+ * - Project common headers
+ * - Test logging utilities
+ * - Platform-specific system headers
+ *
+ * HEADLESS ENVIRONMENT DETECTION:
+ * ===============================
+ * Tests that require hardware (like webcam) can use
+ * test_is_in_headless_environment() to skip when running in CI/Docker/WSL.
+ *
+ * @note This header must be included before any test code that uses
+ *       the test environment detection functions.
+ * @note All test files should include this header for consistent
+ *       test infrastructure.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date August 2025
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -26,10 +65,34 @@
 // =============================================================================
 
 /**
- * Check if we're running in an environment without webcam support
- * (CI, Docker, or WSL)
+ * @brief Check if running in a headless environment without hardware support
  *
- * @return true if running in CI/Docker/WSL, false otherwise
+ * Detects if tests are running in an environment without access to hardware
+ * devices like webcams. This is useful for skipping hardware-dependent tests
+ * in CI, Docker, or WSL environments.
+ *
+ * Checks for:
+ * - CI environment variables (CI=1)
+ * - Docker container (/.dockerenv file)
+ * - WSL (microsoft/WSL in /proc/version)
+ *
+ * @return true if running in CI/Docker/WSL (headless), false otherwise
+ *
+ * @note This function is safe to call on both POSIX and Windows systems.
+ *       On Windows, Docker and CI checks still work, but WSL detection
+ *       is POSIX-only.
+ *
+ * @ingroup platform
+ *
+ * @par Example
+ * @code
+ * Test(my_suite, webcam_test) {
+ *   if (test_is_in_headless_environment()) {
+ *     cr_skip_test("Skipping webcam test in headless environment");
+ *   }
+ *   // ... perform webcam test ...
+ * }
+ * @endcode
  */
 static inline bool test_is_in_headless_environment(void) {
   // Check for CI environment

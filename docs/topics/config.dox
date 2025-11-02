@@ -1,0 +1,388 @@
+/**
+ * @page topic_config Configuration
+ * @ingroup options
+ *
+ * Command-line argument parsing and TOML-based configuration file management for flexible
+ * server and client setup.
+ *
+ * @section config_overview Overview
+ *
+ * ASCII-Chat supports two configuration methods:
+ * 1. **Command-line arguments**: Quick configuration for ad-hoc usage
+ * 2. **TOML configuration files**: Persistent, structured configuration
+ *
+ * Command-line arguments override configuration file settings, allowing:
+ * - Default configuration in `~/.config/ascii-chat/config.toml`
+ * - Per-session overrides via command-line flags
+ * - Easy scripting and automation
+ *
+ * @section config_toml TOML Configuration Files
+ *
+ * ASCII-Chat uses TOML (Tom's Obvious, Minimal Language) for configuration files,
+ * parsed by the tomlc17 library.
+ *
+ * @subsection config_toml_format File Format
+ *
+ * **Complete example configuration**:
+ * @code{.toml}
+ * # ASCII-Chat Configuration File
+ * # Location: ~/.config/ascii-chat/config.toml
+ *
+ * [server]
+ * # Bind address ("::" for all IPv6/IPv4, "0.0.0.0" for IPv4 only)
+ * address = "::"
+ *
+ * # Server port (default: 27224)
+ * port = 27224
+ *
+ * # Maximum simultaneous clients (1-9)
+ * max_clients = 9
+ *
+ * # Server identity key (SSH Ed25519 format)
+ * key_file = "~/.ssh/ascii-chat-server"
+ *
+ * # Authorized client public keys (SSH format or github:username)
+ * # Leave empty to allow all clients (less secure)
+ * client_keys = [
+ *     "github:alice",
+ *     "github:bob",
+ *     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... charlie@example.com"
+ * ]
+ *
+ * [client]
+ * # Server address to connect to
+ * address = "localhost"
+ *
+ * # Server port
+ * port = 27224
+ *
+ * # Expected server public key (for TOFU verification)
+ * # Leave empty to accept any server (prompts for confirmation)
+ * server_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+ *
+ * # Client identity key
+ * key_file = "~/.ssh/id_ed25519"
+ *
+ * # Connection timeout (seconds)
+ * timeout = 10
+ *
+ * [video]
+ * # Terminal width (auto-detected if not specified)
+ * width = 160
+ *
+ * # Terminal height (auto-detected if not specified)
+ * height = 45
+ *
+ * # Enable color output (true/false)
+ * color = true
+ *
+ * # Use half-block characters for 2x vertical resolution
+ * half_blocks = true
+ *
+ * # ASCII palette (characters from dark to bright)
+ * palette = " .:-=+*#%@"
+ *
+ * # Webcam device index (0 = first camera)
+ * webcam_device = 0
+ *
+ * # Capture resolution (before scaling to terminal size)
+ * capture_width = 1920
+ * capture_height = 1080
+ *
+ * # Target framerate
+ * fps = 30
+ *
+ * [audio]
+ * # Enable audio capture/playback
+ * enabled = true
+ *
+ * # Sample rate (Hz)
+ * sample_rate = 48000
+ *
+ * # Audio channels (1=mono, 2=stereo)
+ * channels = 1
+ *
+ * # PortAudio buffer size (frames)
+ * buffer_size = 512
+ *
+ * # Audio input device (-1 = default)
+ * input_device = -1
+ *
+ * # Audio output device (-1 = default)
+ * output_device = -1
+ *
+ * [logging]
+ * # Log file path (empty = stderr only)
+ * file = "/tmp/ascii-chat.log"
+ *
+ * # Log level (debug, info, warn, error, fatal)
+ * level = "info"
+ *
+ * # Enable color in log output
+ * color = true
+ * @endcode
+ *
+ * @subsection config_toml_loading Loading Configuration
+ *
+ * @code{.c}
+ * #include "config.h"
+ * #include "options.h"
+ *
+ * // Parse configuration file
+ * options_t opts;
+ * asciichat_error_t err = config_load(&opts, "~/.config/ascii-chat/config.toml");
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to load config file");
+ *     return err;
+ * }
+ *
+ * // Configuration is now available in opts structure
+ * log_info("Server address: %s:%d", opts.address, opts.port);
+ * log_info("Max clients: %d", opts.max_clients);
+ * log_info("Video: %dx%d @ %d FPS", opts.width, opts.height, opts.fps);
+ *
+ * // Cleanup
+ * options_destroy(&opts);
+ * @endcode
+ *
+ * @section config_cmdline Command-Line Options
+ *
+ * @subsection config_cmdline_server Server Options
+ *
+ * @code{.bash}
+ * # Start server with defaults
+ * ./ascii-chat server
+ *
+ * # Bind to specific address and port
+ * ./ascii-chat server --address :: --port 27224
+ *
+ * # Bind to IPv4 only
+ * ./ascii-chat server --address 0.0.0.0 --port 27224
+ *
+ * # Use server identity key
+ * ./ascii-chat server --key ~/.ssh/ascii-chat-server
+ *
+ * # Authorize specific clients
+ * ./ascii-chat server --client-keys github:alice,github:bob
+ *
+ * # Limit maximum clients
+ * ./ascii-chat server --max-clients 4
+ *
+ * # Enable color and set log file
+ * ./ascii-chat server --color --log-file /tmp/server.log
+ *
+ * # Use configuration file
+ * ./ascii-chat server --config ~/.config/ascii-chat/server.toml
+ * @endcode
+ *
+ * Server-specific flags:
+ * - `--address, -a ADDRESS`: Bind address (default: "::")
+ * - `--port, -p PORT`: Listen port (default: 27224)
+ * - `--key KEY_FILE`: Server identity key (SSH Ed25519)
+ * - `--client-keys KEYS`: Comma-separated authorized client keys
+ * - `--max-clients N`: Maximum simultaneous clients (1-9, default: 9)
+ *
+ * @subsection config_cmdline_client Client Options
+ *
+ * @code{.bash}
+ * # Connect to localhost (default)
+ * ./ascii-chat client
+ *
+ * # Connect to specific server
+ * ./ascii-chat client --address example.com --port 27224
+ *
+ * # Specify terminal dimensions
+ * ./ascii-chat client --width 160 --height 45
+ *
+ * # Enable color and half-blocks
+ * ./ascii-chat client --color --half-blocks
+ *
+ * # Use custom ASCII palette
+ * ./ascii-chat client --palette " .:-=+*#%@"
+ *
+ * # Enable audio
+ * ./ascii-chat client --audio
+ *
+ * # Verify server identity
+ * ./ascii-chat client --server-key ~/.ssh/server_key.pub
+ *
+ * # Use client identity key
+ * ./ascii-chat client --key ~/.ssh/id_ed25519
+ *
+ * # Snapshot mode (capture and exit)
+ * ./ascii-chat client --snapshot --snapshot-delay 10
+ *
+ * # Use configuration file
+ * ./ascii-chat client --config ~/.config/ascii-chat/client.toml
+ * @endcode
+ *
+ * Client-specific flags:
+ * - `--address, -a ADDRESS`: Server address (default: "localhost")
+ * - `--port, -p PORT`: Server port (default: 27224)
+ * - `--width, -w WIDTH`: Terminal width (default: auto-detect)
+ * - `--height, -h HEIGHT`: Terminal height (default: auto-detect)
+ * - `--color, -c`: Enable color output
+ * - `--half-blocks`: Use half-block characters (2x vertical resolution)
+ * - \c --palette, \c -P \c PALETTE: ASCII %palette type (standard, blocks, digital, minimal, cool, custom)
+ * - \c --palette-chars, \c -C \c CHARS: Custom %palette characters string
+ * - \c --audio, \c -A: Enable %audio capture/playback
+ * - `--server-key KEY`: Expected server public key (TOFU)
+ * - `--key KEY_FILE`: Client identity key
+ * - `--snapshot`: Snapshot mode (capture once and exit)
+ * - `--snapshot-delay SECONDS`: Snapshot duration before exit
+ *
+ * @subsection config_cmdline_common Common Options
+ *
+ * Available for both server and client:
+ * - `--config FILE`: Configuration file path
+ * - `--log-file FILE`: Log file path
+ * - `--help, -?`: Show help message
+ * - `--version, -v`: Show version information
+ *
+ * @section config_precedence Configuration Precedence
+ *
+ * Settings are applied in this order (later overrides earlier):
+ * 1. Built-in defaults
+ * 2. Configuration file (if specified with --config)
+ * 3. Environment variables (e.g., $LOG_LEVEL)
+ * 4. Command-line arguments
+ *
+ * Example:
+ * @code{.bash}
+ * # config.toml specifies port = 27224
+ * # Command-line overrides to port 8080
+ * ./ascii-chat server --config config.toml --port 8080
+ * # Result: Server listens on port 8080
+ * @endcode
+ *
+ * @section config_validation Configuration Validation
+ *
+ * The configuration system validates all settings:
+ *
+ * **Port numbers**:
+ * - Must be 1-65535
+ * - Ports < 1024 may require root/admin privileges
+ *
+ * **Dimensions**:
+ * - Width: 20-500 (practical terminal limits)
+ * - Height: 10-200
+ * - Must be positive integers
+ *
+ * **Client limits**:
+ * - max_clients: 1-9 (grid layout constraint)
+ *
+ * **File paths**:
+ * - Tilde expansion for home directory (~/)
+ * - Validation of file existence and permissions
+ * - SSH keys must be Ed25519 format
+ *
+ * **Palette strings**:
+ * - Must have at least 2 characters
+ * - Characters ordered dark → bright
+ * - UTF-8 validation for multi-byte characters
+ *
+ * Example validation:
+ * @code{.c}
+ * asciichat_error_t validate_config(const options_t *opts) {
+ *     if (opts->port < 1 || opts->port > 65535) {
+ *         return SET_ERRNO(ERROR_CONFIG_INVALID,
+ *                           "Port must be 1-65535 (got %d)", opts->port);
+ *     }
+ *
+ *     if (opts->max_clients < 1 || opts->max_clients > 9) {
+ *         return SET_ERRNO(ERROR_CONFIG_INVALID,
+ *                           "max_clients must be 1-9 (got %d)", opts->max_clients);
+ *     }
+ *
+ *     if (opts->palette && strlen(opts->palette) < 2) {
+ *         return SET_ERRNO(ERROR_CONFIG_INVALID,
+ *                           "Palette must have at least 2 characters");
+ *     }
+ *
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * @section config_usage Usage Examples
+ *
+ * @subsection config_usage_parse Parsing Command-Line and Config File
+ * @code{.c}
+ * int main(int argc, char **argv) {
+ *     options_t opts;
+ *     asciichat_error_t err;
+ *
+ *     // Parse command-line arguments
+ *     err = options_parse(&opts, argc, argv);
+ *     if (err != ASCIICHAT_OK) {
+ *         fprintf(stderr, "Usage: %s [server|client] [OPTIONS]\n", argv[0]);
+ *         return 1;
+ *     }
+ *
+ *     // Load configuration file if specified
+ *     if (opts.config_file) {
+ *         err = config_load(&opts, opts.config_file);
+ *         if (err != ASCIICHAT_OK) {
+ *             log_error("Failed to load config: %s", opts.config_file);
+ *             options_destroy(&opts);
+ *             return 1;
+ *         }
+ *     }
+ *
+ *     // Validate configuration
+ *     err = validate_config(&opts);
+ *     if (err != ASCIICHAT_OK) {
+ *         asciichat_error_context_t ctx;
+ *         if (HAS_ERRNO(&ctx)) {
+ *             log_error("Invalid configuration: %s", ctx.context_message);
+ *         }
+ *         options_destroy(&opts);
+ *         return 1;
+ *     }
+ *
+ *     // Use configuration...
+ *     if (opts.mode == MODE_SERVER) {
+ *         run_server(&opts);
+ *     } else {
+ *         run_client(&opts);
+ *     }
+ *
+ *     // Cleanup
+ *     options_destroy(&opts);
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * @subsection config_usage_defaults Setting Defaults
+ * @code{.c}
+ * void options_set_defaults(options_t *opts) {
+ *     memset(opts, 0, sizeof(*opts));
+ *
+ *     // Network defaults
+ *     opts->port = DEFAULT_PORT;  // 27224
+ *     opts->address = strdup("::");  // Dual-stack IPv6/IPv4
+ *
+ *     // Video defaults
+ *     opts->width = DEFAULT_WIDTH;   // 80 (or auto-detect)
+ *     opts->height = DEFAULT_HEIGHT; // 24 (or auto-detect)
+ *     opts->fps = DEFAULT_FPS;       // 30
+ *     opts->color = true;
+ *     opts->half_blocks = false;
+ *     opts->palette = strdup(" .:-=+*#%@");
+ *
+ *     // Audio defaults
+ *     opts->audio = false;  // Disabled by default for client
+ *     opts->sample_rate = SAMPLE_RATE;  // 48000
+ *     opts->audio_channels = AUDIO_CHANNELS;  // 1 (mono)
+ *
+ *     // Server defaults
+ *     opts->max_clients = MAX_CLIENTS;  // 9
+ *
+ *     // Logging defaults
+ *     opts->log_level = LOG_INFO;
+ *     opts->log_color = true;
+ * }
+ * @endcode
+ *
+ * @see options.h
+ * @see config.h
+ */

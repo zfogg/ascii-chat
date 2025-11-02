@@ -1,28 +1,99 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+/**
+ * @file tests/logging.h
+ * @ingroup platform
+ * @brief Test logging control utilities
+ *
+ * This header provides utilities for controlling logging output during tests.
+ * It enables tests to temporarily disable or redirect stdout/stderr for quiet
+ * test execution, and provides convenient macros for test suite setup and teardown.
+ *
+ * CORE FEATURES:
+ * ==============
+ * - stdout/stderr redirection to /dev/null
+ * - Log level control during tests
+ * - Test suite setup/teardown macros
+ * - Per-test logging control macros
+ * - Debug logging mode for test development
+ *
+ * TEST LOGGING MACROS:
+ * ===================
+ * - TEST_LOGGING_SETUP_AND_TEARDOWN(): Simple quiet logging setup
+ * - TEST_SUITE_WITH_QUIET_LOGGING(): Complete test suite with quiet logging
+ * - TEST_SUITE_WITH_DEBUG_LOGGING(): Test suite with debug logging enabled
+ * - TEST_LOGGING_TEMPORARILY_DISABLE(): Disable logging within a test
+ *
+ * USAGE:
+ * =====
+ * @code
+ * // Simple test suite with quiet logging
+ * TEST_SUITE_WITH_QUIET_LOGGING(my_suite);
+ *
+ * Test(my_suite, my_test) {
+ *   // Test code runs quietly
+ * }
+ *
+ * // Test suite with custom log levels
+ * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(
+ *   my_suite, LOG_FATAL, LOG_DEBUG, true, true
+ * );
+ *
+ * // Debug mode for test development
+ * TEST_SUITE_WITH_DEBUG_LOGGING(debug_suite);
+ * @endcode
+ *
+ * @note Logging redirection is automatically restored when tests complete.
+ * @note All logging control functions are thread-safe for use in parallel tests.
+ * @note This header should be included via tests/common.h for consistency.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ */
+
 #include <stdbool.h>
 
 /**
  * @brief Redirect stdout and/or stderr to /dev/null for quiet testing
- *
  * @param disable_stdout If true, redirect stdout to /dev/null
  * @param disable_stderr If true, redirect stderr to /dev/null
  * @return 0 on success, -1 on failure
+ *
+ * Redirects stdout and/or stderr to /dev/null to suppress output during tests.
+ * This is useful for tests that produce noisy output or test error handling
+ * without cluttering the test output.
+ *
+ * @note The original file descriptors are saved and can be restored with
+ *       test_logging_restore().
+ * @note This function can be called multiple times safely.
+ *
+ * @ingroup platform
  */
 int test_logging_disable(bool disable_stdout, bool disable_stderr);
 
 /**
  * @brief Restore stdout and/or stderr to their original state
- *
  * @return 0 on success, -1 on failure
+ *
+ * Restores stdout and/or stderr to their original file descriptors that were
+ * saved when test_logging_disable() was called.
+ *
+ * @note This function should be called in test teardown to ensure proper
+ *       cleanup, though the test macros handle this automatically.
+ *
+ * @ingroup platform
  */
 int test_logging_restore(void);
 
 /**
  * @brief Check if logging is currently disabled
- *
  * @return true if logging is disabled, false otherwise
+ *
+ * Checks whether stdout and/or stderr have been redirected to /dev/null.
+ * Useful for conditional logging control or debugging test setup.
+ *
+ * @ingroup platform
  */
 bool test_logging_is_disabled(void);
 
