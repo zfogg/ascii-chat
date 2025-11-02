@@ -1961,6 +1961,12 @@ target_link_libraries(ascii-chat-audio
     ${PORTAUDIO_LIBRARIES}
 )
 
+# Link JACK on Linux (system PortAudio is built with JACK support)
+# macOS uses CoreAudio, Windows uses WASAPI/DirectSound
+if(UNIX AND NOT APPLE)
+    target_link_libraries(ascii-chat-audio jack)
+endif()
+
 # -----------------------------------------------------------------------------
 # Module 7: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
