@@ -198,9 +198,15 @@ set(CORE_SRCS
     lib/asciichat_errno.c
     lib/logging.c
     lib/options.c
+    lib/config.c
     lib/lock_debug.c
     lib/version.c
     lib/palette.c
+)
+
+# Add tomlc17 parser source
+list(APPEND CORE_SRCS
+    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
 
 # =============================================================================

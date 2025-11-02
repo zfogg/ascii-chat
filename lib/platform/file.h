@@ -2,17 +2,23 @@
 
 /**
  * @file file.h
+ * @ingroup platform
  * @brief Cross-platform file I/O interface for ASCII-Chat
  *
  * This header provides unified file operations with consistent behavior
  * across Windows and POSIX platforms.
+ *
+ * The interface provides:
+ * - Platform-specific file mode constants
+ * - Cross-platform file operations (declared in internal.h)
+ *
+ * @note File operations are declared in internal.h for internal use.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025
  */
 
 #include <sys/types.h>
-#include "internal.h" // For ssize_t definition on Windows
 
 // ============================================================================
 // File Operations

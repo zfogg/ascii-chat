@@ -1,3 +1,14 @@
+/**
+ * @file crypto/crypto.c
+ * @defgroup crypto Cryptography Module
+ * @ingroup crypto
+ * @brief Core cryptographic operations for ASCII-Chat
+ *
+ * This module implements the core cryptographic operations for secure communication
+ * in ASCII-Chat, including key exchange, encryption/decryption, authentication,
+ * and session rekeying.
+ */
+
 #include "crypto.h"
 #include "common.h"
 #include "asciichat_errno.h"

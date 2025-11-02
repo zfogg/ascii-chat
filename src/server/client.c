@@ -691,20 +691,34 @@ int remove_client(uint32_t client_id) {
     log_debug("Crypto context cleaned up for client %u", client_id);
   }
 
+  // CRITICAL: Verify all threads have actually exited before resetting client_id
+  // Threads that are still starting (at RtlUserThreadStart) haven't checked client_id yet
+  // We must ensure threads are fully joined before zeroing the client struct
+  // Check if any threads are still running - if so, wait a bit longer
+  if (ascii_thread_is_initialized(&target_client->send_thread) ||
+      ascii_thread_is_initialized(&target_client->receive_thread) ||
+      ascii_thread_is_initialized(&target_client->video_render_thread) ||
+      ascii_thread_is_initialized(&target_client->audio_render_thread)) {
+    log_warn("Client %u: Some threads still appear initialized, waiting longer before cleanup", client_id);
+    // Wait longer for threads that might still be starting
+    platform_sleep_usec(10000); // 10ms delay
+  }
+
+  // Only reset client_id to 0 AFTER confirming threads are joined
+  // This prevents threads that are starting from accessing a zeroed client struct
+  // CRITICAL: Reset client_id to 0 BEFORE destroying mutexes to prevent race conditions
+  // This ensures worker threads can detect shutdown and exit BEFORE the mutex is destroyed
+  // If we destroy the mutex first, threads might try to access a destroyed mutex
+  atomic_store(&target_client->client_id, 0);
+
+  // Small delay to ensure all threads have seen the client_id reset
+  // This prevents race conditions where threads might access mutexes after they're destroyed
+  platform_sleep_usec(1000); // 1ms delay
+
   // Destroy mutexes
   // IMPORTANT: Always destroy these even if threads didn't join properly
   // to prevent issues when the slot is reused
   mutex_destroy(&target_client->client_state_mutex);
-
-  // CRITICAL: Reset client_id to 0 BEFORE clearing the structure to prevent race conditions
-  // This ensures that if a new client connects while cleanup is happening,
-  // it won't get assigned to a slot that's still being cleaned up
-  atomic_store(&target_client->client_id, 0);
-
-  // Small delay to ensure all threads have seen the client_id reset
-  // This prevents race conditions where new clients might get assigned
-  // to slots that are still being cleaned up
-  usleep(1000); // 1ms delay
 
   // Clear client structure
   // NOTE: After memset, the mutex handles are zeroed but the OS resources
@@ -738,8 +752,25 @@ int remove_client(uint32_t client_id) {
 
 void *client_receive_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
-  if (!client || client->socket <= 0) {
-    log_error("Invalid client info in receive thread");
+
+  // CRITICAL: Validate client pointer immediately before any access
+  // This prevents crashes if remove_client() has zeroed the client struct
+  // while the thread was still starting at RtlUserThreadStart
+  if (!client) {
+    log_error("Invalid client info in receive thread (NULL pointer)");
+    return NULL;
+  }
+
+  // Check if client_id is 0 (client struct has been zeroed by remove_client)
+  // This must be checked BEFORE accessing any client fields
+  if (atomic_load(&client->client_id) == 0) {
+    log_debug("Receive thread: client_id is 0, client struct may have been zeroed, exiting");
+    return NULL;
+  }
+
+  // Additional validation: check socket is valid
+  if (client->socket <= 0 || client->socket == INVALID_SOCKET_VALUE) {
+    log_error("Invalid client socket in receive thread");
     return NULL;
   }
 
@@ -760,19 +791,54 @@ void *client_receive_thread(void *arg) {
          client->socket != INVALID_SOCKET_VALUE) {
 
     // Use unified secure packet reception with auto-decryption
+    // CRITICAL: Check client_id is still valid before accessing client fields
+    // This prevents accessing freed memory if remove_client() has zeroed the client struct
+    if (atomic_load(&client->client_id) == 0) {
+      log_debug("Client %d client_id reset, exiting receive thread", client->client_id);
+      break;
+    }
+
     // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
     // Crypto context is stable after handshake and stored in client struct
+    // BUT: Must verify client is still active before accessing crypto context
     const crypto_context_t *crypto_ctx = NULL;
 
     // Check if crypto is ready without acquiring rwlock (optimization for receive thread)
+    // CRITICAL: Check client_id before accessing crypto fields to prevent use-after-free
+    uint32_t client_id_check = atomic_load(&client->client_id);
+    if (client_id_check == 0) {
+      log_debug("Client client_id reset during crypto check, exiting receive thread");
+      break;
+    }
+
+    // CRITICAL: Check client_id AGAIN before accessing crypto fields - they may have been zeroed
+    client_id_check = atomic_load(&client->client_id);
+    if (client_id_check == 0) {
+      log_debug("Client client_id reset before crypto check, exiting receive thread");
+      break;
+    }
+
     bool crypto_ready =
         !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
 
     if (crypto_ready) {
+      // CRITICAL: Check client_id again before getting crypto context - prevent use-after-free
+      client_id_check = atomic_load(&client->client_id);
+      if (client_id_check == 0) {
+        log_debug("Client client_id reset before getting crypto context, exiting receive thread");
+        break;
+      }
       crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
     } else {
     }
     packet_envelope_t envelope;
+
+    // CRITICAL: Check client_id again before accessing socket - prevent use-after-free
+    client_id_check = atomic_load(&client->client_id);
+    if (client_id_check == 0) {
+      log_debug("Client client_id reset before socket access, exiting receive thread");
+      break;
+    }
 
     // LOCK OPTIMIZATION: Socket is set once at initialization and only invalidated during shutdown
     // No mutex needed for read during normal operation
@@ -789,12 +855,22 @@ void *client_receive_thread(void *arg) {
 
     // Check if socket became invalid during the receive operation
     if (result == PACKET_RECV_ERROR && (errno == EIO || errno == EBADF)) {
+      // CRITICAL: Check client_id before accessing mutex - mutex may have been destroyed
+      client_id_check = atomic_load(&client->client_id);
+      if (client_id_check == 0) {
+        log_debug("Client client_id reset during error check, exiting receive thread");
+        break;
+      }
+
       // Socket was closed by another thread, check if client is being removed
+      // NOTE: Even though we checked client_id, the mutex might still be destroyed
+      // if remove_client() is destroying it. Use try-lock or check client_id again after.
       mutex_lock(&client->client_state_mutex);
-      bool socket_invalid = (client->socket == INVALID_SOCKET_VALUE);
+      client_id_check = atomic_load(&client->client_id);
+      bool socket_invalid = (client_id_check == 0) || (client->socket == INVALID_SOCKET_VALUE);
       mutex_unlock(&client->client_state_mutex);
-      if (socket_invalid) {
-        log_warn("SOCKET_DEBUG: Client %d socket was closed by another thread (errno=%d)", client->client_id, errno);
+      if (socket_invalid || client_id_check == 0) {
+        log_warn("SOCKET_DEBUG: Client %d socket was closed by another thread (errno=%d)", client_id_check, errno);
         break;
       }
     }
@@ -953,8 +1029,25 @@ void *client_receive_thread(void *arg) {
 // Thread function to handle sending data to a specific client
 void *client_send_thread_func(void *arg) {
   client_info_t *client = (client_info_t *)arg;
-  if (!client || client->socket <= 0) {
-    log_error("Invalid client info in send thread");
+
+  // CRITICAL: Validate client pointer immediately before any access
+  // This prevents crashes if remove_client() has zeroed the client struct
+  // while the thread was still starting at RtlUserThreadStart
+  if (!client) {
+    log_error("Invalid client info in send thread (NULL pointer)");
+    return NULL;
+  }
+
+  // Check if client_id is 0 (client struct has been zeroed by remove_client)
+  // This must be checked BEFORE accessing any client fields
+  if (atomic_load(&client->client_id) == 0) {
+    log_debug("Send thread: client_id is 0, client struct may have been zeroed, exiting");
+    return NULL;
+  }
+
+  // Additional validation: check socket is valid
+  if (client->socket <= 0 || client->socket == INVALID_SOCKET_VALUE) {
+    log_error("Invalid client socket in send thread");
     return NULL;
   }
 

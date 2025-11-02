@@ -1,0 +1,443 @@
+/**
+ * @page topic_hashtable Hash Table
+ * @ingroup hashtable
+ *
+ * @section hashtable_overview Overview
+ *
+ * The Hash Table module provides a high-performance hash table implementation
+ * optimized for client ID lookup in ASCII-Chat's multi-client server architecture.
+ * The implementation uses separate chaining with reader-writer locks for optimal
+ * concurrent access performance.
+ *
+ * **Implementation**: lib/hashtable.h
+ *
+ * **Key Features**:
+ * - Separate chaining for collision resolution
+ * - Power-of-2 bucket count for fast modulo via bit masking
+ * - Reader-writer locks for improved concurrent read performance
+ * - Pre-allocated entry pool to eliminate malloc overhead
+ * - Thread-safe operations for concurrent access
+ * - Comprehensive statistics tracking (lookups, hits, collisions)
+ *
+ * @section hashtable_architecture Architecture
+ *
+ * @subsection hashtable_structure Hash Table Structure
+ *
+ * The hash table uses separate chaining:
+ * - **Buckets**: Array of 1024 bucket heads (power-of-2 for bit masking)
+ * - **Entry Pool**: Pre-allocated array of 2048 entries (eliminates malloc)
+ * - **Free List**: Stack of unused entries (LIFO for cache locality)
+ * - **Locking**: Reader-writer lock for thread-safe operations
+ *
+ * **Hash Function**:
+ * - Optimized for 32-bit client IDs
+ * - Uses bit masking instead of modulo (power-of-2 buckets)
+ * - Fast collision resolution via linked lists
+ *
+ * @subsection hashtable_optimizations Optimizations
+ *
+ * **Performance Optimizations**:
+ * - Power-of-2 bucket count enables bit masking instead of modulo
+ * - Pre-allocated entry pool eliminates runtime allocations
+ * - Free list stack provides O(1) allocation/deallocation
+ * - Reader-writer locks allow concurrent read operations
+ * - Hash function optimized for 32-bit client IDs
+ *
+ * **Memory Optimizations**:
+ * - Single large allocation for entry pool (better cache locality)
+ * - LIFO free list (cache-friendly allocation order)
+ * - No malloc overhead during normal operation
+ *
+ * @subsection hashtable_configuration Configuration
+ *
+ * **Hash Table Parameters**:
+ * - **Bucket Count**: 1024 (must be power of 2)
+ * - **Max Entries**: 2048 (pool size for pre-allocated entries)
+ * - **Load Factor**: Optimal range 0.5-1.0 for balanced performance
+ *
+ * @section hashtable_operations Operations
+ *
+ * @subsection hashtable_lifecycle Lifecycle Operations
+ *
+ * **Create Hash Table**:
+ * @code{.c}
+ * // Create a new hash table
+ * hashtable_t *ht = hashtable_create();
+ * if (ht == NULL) {
+ *     log_error("Failed to create hash table");
+ *     return;
+ * }
+ * @endcode
+ *
+ * **Destroy Hash Table**:
+ * @code{.c}
+ * // Destroy hash table (frees all resources)
+ * hashtable_destroy(ht);
+ * ht = NULL;  // Prevent use-after-free
+ * @endcode
+ *
+ * @subsection hashtable_basic_operations Basic Operations
+ *
+ * **Insert Key-Value Pair**:
+ * @code{.c}
+ * // Insert client information
+ * if (!hashtable_insert(ht, client_id, client_info)) {
+ *     log_error("Failed to insert client %u (duplicate key or pool exhausted)", client_id);
+ * }
+ * @endcode
+ *
+ * **Lookup Value**:
+ * @code{.c}
+ * // Lookup client information
+ * client_info_t *info = (client_info_t *)hashtable_lookup(ht, client_id);
+ * if (info == NULL) {
+ *     log_error("Client %u not found", client_id);
+ * } else {
+ *     // Use client information
+ *     process_client(info);
+ * }
+ * @endcode
+ *
+ * **Remove Key-Value Pair**:
+ * @code{.c}
+ * // Remove client
+ * if (hashtable_remove(ht, client_id)) {
+ *     log_info("Client %u removed", client_id);
+ * } else {
+ *     log_warn("Client %u not found for removal", client_id);
+ * }
+ * @endcode
+ *
+ * **Check Key Existence**:
+ * @code{.c}
+ * // Check if client exists
+ * if (hashtable_contains(ht, client_id)) {
+ *     log_info("Client %u exists", client_id);
+ * }
+ * @endcode
+ *
+ * @subsection hashtable_iteration Iteration Operations
+ *
+ * **Iterate Over All Entries**:
+ * @code{.c}
+ * // Callback function for iteration
+ * void print_client(uint32_t key, void *value, void *user_data) {
+ *     client_info_t *info = (client_info_t *)value;
+ *     printf("Client %u: %s\n", key, info->display_name);
+ * }
+ *
+ * // Iterate over all clients
+ * hashtable_foreach(ht, print_client, NULL);
+ * @endcode
+ *
+ * **Iteration with User Data**:
+ * @code{.c}
+ * typedef struct {
+ *     int count;
+ *     uint32_t *client_ids;
+ * } client_collector_t;
+ *
+ * void collect_client(uint32_t key, void *value, void *user_data) {
+ *     client_collector_t *collector = (client_collector_t *)user_data;
+ *     collector->client_ids[collector->count++] = key;
+ * }
+ *
+ * // Collect all client IDs
+ * uint32_t client_ids[256];
+ * client_collector_t collector = {0, client_ids};
+ * hashtable_foreach(ht, collect_client, &collector);
+ * @endcode
+ *
+ * @subsection hashtable_statistics Statistics Operations
+ *
+ * **Get Hash Table Size**:
+ * @code{.c}
+ * // Get current number of entries
+ * size_t size = hashtable_size(ht);
+ * log_info("Hash table contains %zu entries", size);
+ * @endcode
+ *
+ * **Calculate Load Factor**:
+ * @code{.c}
+ * // Get load factor (entries / buckets)
+ * double load_factor = hashtable_load_factor(ht);
+ * if (load_factor > 1.0) {
+ *     log_warn("High load factor: %.2f (consider expanding table)", load_factor);
+ * }
+ * @endcode
+ *
+ * **Print Statistics**:
+ * @code{.c}
+ * // Print comprehensive statistics
+ * hashtable_print_stats(ht, "client_hashtable");
+ * @endcode
+ *
+ * @subsection hashtable_external_locking External Locking
+ *
+ * **Read Locking (Concurrent Reads)**:
+ * @code{.c}
+ * // Acquire read lock for multiple operations
+ * hashtable_read_lock(ht);
+ * 
+ * client_info_t *info1 = hashtable_lookup(ht, client_id1);
+ * client_info_t *info2 = hashtable_lookup(ht, client_id2);
+ * bool exists = hashtable_contains(ht, client_id3);
+ * 
+ * // Release read lock
+ * hashtable_read_unlock(ht);
+ * @endcode
+ *
+ * **Write Locking (Exclusive Access)**:
+ * @code{.c}
+ * // Acquire write lock for batch modifications
+ * hashtable_write_lock(ht);
+ * 
+ * // Perform multiple insertions/removals atomically
+ * hashtable_insert(ht, id1, info1);
+ * hashtable_insert(ht, id2, info2);
+ * hashtable_remove(ht, id3);
+ * 
+ * // Release write lock
+ * hashtable_write_unlock(ht);
+ * @endcode
+ *
+ * @section hashtable_thread_safety Thread Safety
+ *
+ * **Thread-Safe Operations**:
+ * - All operations (insert, lookup, remove, contains) are thread-safe
+ * - Reader-writer locks enable concurrent read operations
+ * - Write operations are serialized (exclusive access)
+ * - Statistics are updated atomically
+ *
+ * **Locking Model**:
+ * - **Read Lock**: Acquired automatically for lookup/contains operations
+ * - **Write Lock**: Acquired automatically for insert/remove operations
+ * - **External Locking**: Use hashtable_read_lock/write_lock for manual control
+ *
+ * **Concurrent Access Patterns**:
+ * - Multiple readers can access table simultaneously
+ * - Writers block all readers and other writers
+ * - Iteration requires read lock (or external locking)
+ *
+ * @warning Hash table must be locked externally during iteration if you need
+ *          to ensure atomicity across multiple operations. Use hashtable_read_lock()
+ *          for iteration that doesn't modify the table.
+ *
+ * @section hashtable_statistics Statistics
+ *
+ * The hash table tracks comprehensive statistics:
+ *
+ * **Performance Metrics**:
+ * - **lookups**: Total lookup operations (successful and unsuccessful)
+ * - **hits**: Successful lookups (key found)
+ * - **insertions**: Total key-value pairs inserted
+ * - **deletions**: Total key-value pairs removed
+ * - **collisions**: Number of hash collisions encountered
+ *
+ * **Derived Metrics**:
+ * - **Hit Rate**: hits / lookups (success rate)
+ * - **Load Factor**: entry_count / bucket_count (table fullness)
+ * - **Collision Rate**: collisions / insertions (collision frequency)
+ *
+ * **Usage Example**:
+ * @code{.c}
+ * // Print statistics periodically
+ * hashtable_print_stats(ht, "client_hashtable");
+ * 
+ * // Output example:
+ * // client_hashtable statistics:
+ * //   Entries: 150 / 2048 (pool size)
+ * //   Load Factor: 0.15
+ * //   Lookups: 50000, Hits: 48500, Hit Rate: 97.0%
+ * //   Insertions: 200, Deletions: 50
+ * //   Collisions: 25
+ * @endcode
+ *
+ * @section hashtable_performance Performance Characteristics
+ *
+ * **Time Complexity**:
+ * - **Lookup**: O(1) average, O(n) worst case (all entries in same bucket)
+ * - **Insert**: O(1) average, O(n) worst case
+ * - **Remove**: O(1) average, O(n) worst case
+ * - **Iteration**: O(n) where n is number of entries
+ *
+ * **Space Complexity**:
+ * - **Fixed Overhead**: O(buckets) for bucket array
+ * - **Entry Pool**: O(max_entries) for pre-allocated entries
+ * - **Total**: O(buckets + max_entries) = O(1024 + 2048) = O(3072)
+ *
+ * **Performance Optimizations**:
+ * - Bit masking instead of modulo (power-of-2 buckets)
+ * - Pre-allocated pool eliminates malloc overhead
+ * - Free list provides O(1) allocation
+ * - Reader-writer locks allow concurrent reads
+ *
+ * **Load Factor Guidelines**:
+ * - **Optimal**: 0.5 - 1.0 (balanced performance)
+ * - **Low** (< 0.5): Wasted space, but excellent performance
+ * - **High** (> 1.5): Increased collisions, degraded performance
+ * - **Current**: Monitored via hashtable_load_factor()
+ *
+ * @section hashtable_memory_management Memory Management
+ *
+ * **Entry Pool Management**:
+ * - All entries pre-allocated at creation time
+ * - No malloc/free during normal operation
+ * - Free list tracks unused entries (LIFO stack)
+ * - Pool exhaustion handled gracefully (insertion fails)
+ *
+ * **Memory Layout**:
+ * - Entry pool: Single large allocation (better cache locality)
+ * - Bucket array: Array of pointers (fixed size)
+ * - Free list: Linked list using entry.next pointers
+ *
+ * **Value Pointer Management**:
+ * - Hash table does NOT free value pointers
+ * - Caller responsible for value cleanup if needed
+ * - Remove operation only unlinks entry (doesn't free value)
+ *
+ * @section hashtable_collision_resolution Collision Resolution
+ *
+ * **Separate Chaining**:
+ * - Each bucket contains a linked list of entries
+ * - Entries with same hash (collision) are chained together
+ * - Lookup traverses chain to find matching key
+ *
+ * **Collision Handling**:
+ * @code{.c}
+ * // Hash function maps key to bucket index
+ * uint32_t bucket_index = key & (HASHTABLE_BUCKET_COUNT - 1);  // Bit masking
+ * 
+ * // Traverse collision chain
+ * hashtable_entry_t *entry = ht->buckets[bucket_index];
+ * while (entry != NULL) {
+ *     if (entry->key == key) {
+ *         // Found matching key
+ *         return entry->value;
+ *     }
+ *     entry = entry->next;  // Next entry in chain
+ * }
+ * @endcode
+ *
+ * **Collision Statistics**:
+ * - Tracked via collisions counter
+ * - Can be monitored via hashtable_print_stats()
+ * - Low collision rate indicates good hash function
+ *
+ * @section hashtable_usage_patterns Usage Patterns
+ *
+ * **Client Management Pattern**:
+ * @code{.c}
+ * // Server-side client management
+ * hashtable_t *clients = hashtable_create();
+ * 
+ * // Add new client
+ * client_info_t *new_client = create_client(client_id);
+ * hashtable_insert(clients, client_id, new_client);
+ * 
+ * // Lookup client
+ * client_info_t *client = (client_info_t *)hashtable_lookup(clients, client_id);
+ * if (client != NULL) {
+ *     send_message(client, message);
+ * }
+ * 
+ * // Remove client
+ * client_info_t *client = (client_info_t *)hashtable_lookup(clients, client_id);
+ * if (client != NULL) {
+ *     destroy_client(client);  // Cleanup client resources
+ *     hashtable_remove(clients, client_id);  // Remove from table
+ * }
+ * 
+ * // Cleanup
+ * hashtable_destroy(clients);
+ * @endcode
+ *
+ * **Batch Operations Pattern**:
+ * @code{.c}
+ * // Batch insertions with write lock
+ * hashtable_write_lock(ht);
+ * for (int i = 0; i < num_clients; i++) {
+ *     hashtable_insert(ht, client_ids[i], client_infos[i]);
+ * }
+ * hashtable_write_unlock(ht);
+ * @endcode
+ *
+ * @section hashtable_best_practices Best Practices
+ *
+ * 1. **Monitor Load Factor**:
+ *    @code{.c}
+ *    double load_factor = hashtable_load_factor(ht);
+ *    if (load_factor > 1.0) {
+ *        log_warn("High load factor detected: %.2f", load_factor);
+ *        // Consider expanding table or adjusting configuration
+ *    }
+ *    @endcode
+ *
+ * 2. **Check Pool Exhaustion**:
+ *    @code{.c}
+ *    if (!hashtable_insert(ht, key, value)) {
+ *        log_error("Insertion failed - pool exhausted or duplicate key");
+ *        // Handle error appropriately
+ *    }
+ *    @endcode
+ *
+ * 3. **Use Statistics for Tuning**:
+ *    @code{.c}
+ *    // Periodically check statistics
+ *    hashtable_print_stats(ht, "client_table");
+ *    
+ *    // Analyze hit rate, collision rate, load factor
+ *    // Adjust configuration if needed
+ *    @endcode
+ *
+ * 4. **Cleanup Value Pointers**:
+ *    @code{.c}
+ *    // Before removing, cleanup value if needed
+ *    client_info_t *client = (client_info_t *)hashtable_lookup(ht, client_id);
+ *     if (client != NULL) {
+ *         destroy_client(client);  // Cleanup client resources
+ *         hashtable_remove(ht, client_id);  // Remove from table
+ *     }
+ *    @endcode
+ *
+ * 5. **Use Appropriate Locking**:
+ *    @code{.c}
+ *    // For multiple read operations, use external read lock
+ *    hashtable_read_lock(ht);
+ *     bool exists1 = hashtable_contains(ht, key1);
+ *     bool exists2 = hashtable_contains(ht, key2);
+ *     hashtable_read_unlock(ht);
+ *     
+ *     // For batch modifications, use external write lock
+ *     hashtable_write_lock(ht);
+ *     hashtable_insert(ht, key1, value1);
+ *     hashtable_insert(ht, key2, value2);
+ *     hashtable_write_unlock(ht);
+ *    @endcode
+ *
+ * @section hashtable_limitations Limitations
+ *
+ * **Key Type**:
+ * - Only supports `uint32_t` keys (designed for client IDs)
+ * - Not a generic hash table for arbitrary key types
+ *
+ * **Entry Pool**:
+ * - Fixed size (2048 entries)
+ * - Pool exhaustion causes insertion failures
+ * - No automatic expansion or fallback to malloc
+ *
+ * **Memory Usage**:
+ * - Fixed memory footprint (pre-allocated pool)
+ * - Cannot dynamically resize based on load
+ * - Allocates full pool even if unused
+ *
+ * @note The hash table is optimized for client ID (uint32_t) keys with
+ *       void* values. It's specifically designed for the server's client
+ *       management needs but can be used for other uint32_t key scenarios.
+ *
+ * @note When the entry pool is exhausted, operations will fail gracefully.
+ *       Monitor statistics to determine if pool size needs adjustment.
+ *
+ * @see lib/hashtable.h
+ */
+

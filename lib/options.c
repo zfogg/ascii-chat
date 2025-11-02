@@ -22,6 +22,7 @@
 
 #include "image2ascii/ascii.h"
 #include "options.h"
+#include "config.h"
 #include "common.h"
 #include "util/ip.h"
 #include "platform/system.h"
@@ -83,7 +84,8 @@ static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
 bool auto_width = true, auto_height = true;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_port[OPTIONS_BUFF_SIZE] = "27224";
+char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
+     opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -187,11 +189,14 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"server-key", required_argument, NULL, 1006},
+                                         {"config", required_argument, NULL, 1010},
+                                         {"config-create", optional_argument, NULL, 1011},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
 // Server-only options
 static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"address6", required_argument, NULL, 1012},
                                          {"port", required_argument, NULL, 'p'},
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
@@ -202,6 +207,8 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"keyfile", required_argument, NULL, 'F'},
                                          {"no-encrypt", no_argument, NULL, 1005},
                                          {"client-keys", required_argument, NULL, 1008},
+                                         {"config", required_argument, NULL, 1010},
+                                         {"config-create", optional_argument, NULL, 1011},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -248,6 +255,282 @@ void update_dimensions_to_terminal_size(void) {
     log_debug("Failed to get terminal size in update_dimensions_to_terminal_size");
   }
 }
+
+// ============================================================================
+// Validation Helper Functions (shared between options.c and config.c)
+// ============================================================================
+
+/**
+ * Validate port number (1-65535)
+ * Returns 0 on success, non-zero on error
+ */
+int validate_port(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Port value is required");
+    }
+    return -1;
+  }
+
+  char *endptr;
+  long port_num = strtol(value_str, &endptr, 10);
+  if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid port value '%s'. Port must be a number between 1 and 65535.",
+                    value_str);
+    }
+    return -1;
+  }
+  return 0;
+}
+
+/**
+ * Validate positive integer
+ * Returns parsed value on success, -1 on error
+ */
+int validate_positive_int(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
+    }
+    return -1;
+  }
+
+  int val = strtoint_safe(value_str);
+  if (val == INT_MIN || val <= 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a positive integer.", value_str);
+    }
+    return -1;
+  }
+  return val;
+}
+
+/**
+ * Validate non-negative integer
+ * Returns parsed value on success, -1 on error
+ */
+int validate_non_negative_int(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
+    }
+    return -1;
+  }
+
+  int val = strtoint_safe(value_str);
+  if (val == INT_MIN || val < 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a non-negative integer.", value_str);
+    }
+    return -1;
+  }
+  return val;
+}
+
+/**
+ * Validate color mode string
+ * Returns parsed color mode on success, -1 on error
+ */
+int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Color mode value is required");
+    }
+    return -1;
+  }
+
+  if (strcmp(value_str, "auto") == 0) {
+    return COLOR_MODE_AUTO;
+  }
+  if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
+    return COLOR_MODE_MONO;
+  }
+  if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
+    return COLOR_MODE_16_COLOR;
+  }
+  if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
+    return COLOR_MODE_256_COLOR;
+  }
+  if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
+    return COLOR_MODE_TRUECOLOR;
+  }
+  if (error_msg) {
+    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor",
+                  value_str);
+  }
+  return -1;
+}
+
+/**
+ * Validate render mode string
+ * Returns parsed render mode on success, -1 on error
+ */
+int validate_render_mode(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Render mode value is required");
+    }
+    return -1;
+  }
+
+  if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
+    return RENDER_MODE_FOREGROUND;
+  }
+  if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
+    return RENDER_MODE_BACKGROUND;
+  }
+  if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
+    return RENDER_MODE_HALF_BLOCK;
+  }
+  if (error_msg) {
+    SAFE_SNPRINTF(error_msg, error_msg_size,
+                  "Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
+  }
+  return -1;
+}
+
+/**
+ * Validate palette type string
+ * Returns parsed palette type on success, -1 on error
+ */
+int validate_palette(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Palette value is required");
+    }
+    return -1;
+  }
+
+  if (strcmp(value_str, "standard") == 0) {
+    return PALETTE_STANDARD;
+  } else if (strcmp(value_str, "blocks") == 0) {
+    return PALETTE_BLOCKS;
+  } else if (strcmp(value_str, "digital") == 0) {
+    return PALETTE_DIGITAL;
+  } else if (strcmp(value_str, "minimal") == 0) {
+    return PALETTE_MINIMAL;
+  } else if (strcmp(value_str, "cool") == 0) {
+    return PALETTE_COOL;
+  } else if (strcmp(value_str, "custom") == 0) {
+    return PALETTE_CUSTOM;
+  } else {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size,
+                    "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom",
+                    value_str);
+    }
+    return -1;
+  }
+}
+
+/**
+ * Validate IP address or hostname
+ * Returns 0 on success, -1 on error
+ * Sets parsed_address on success (resolved if hostname)
+ */
+int validate_ip_address(const char *value_str, char *parsed_address, size_t address_size, bool is_client,
+                        char *error_msg, size_t error_msg_size) {
+  (void)is_client; // Parameter not used but kept for API consistency
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Address value is required");
+    }
+    return -1;
+  }
+
+  // Parse IPv6 address (remove brackets if present)
+  char parsed_addr[OPTIONS_BUFF_SIZE];
+  if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
+    value_str = parsed_addr;
+  }
+
+  // Check if it's a valid IPv4 address
+  if (is_valid_ipv4(value_str)) {
+    SAFE_SNPRINTF(parsed_address, address_size, "%s", value_str);
+    return 0;
+  }
+  // Check if it's a valid IPv6 address
+  if (is_valid_ipv6(value_str)) {
+    SAFE_SNPRINTF(parsed_address, address_size, "%s", value_str);
+    return 0;
+  }
+  // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
+  if (strchr(value_str, '.') != NULL) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size,
+                    "Invalid IP address format '%s'. IPv4 addresses must have exactly 4 octets.", value_str);
+    }
+    return -1;
+  }
+
+  // Otherwise, try to resolve as hostname
+  char resolved_ip[OPTIONS_BUFF_SIZE];
+  if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
+    SAFE_SNPRINTF(parsed_address, address_size, "%s", resolved_ip);
+    return 0;
+  } else {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Failed to resolve hostname '%s' to IP address.", value_str);
+    }
+    return -1;
+  }
+}
+
+/**
+ * Validate float value (non-negative)
+ * Returns parsed value on success, returns -1.0f on error (caller must check)
+ */
+float validate_float_non_negative(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
+    }
+    return -1.0f;
+  }
+
+  char *endptr;
+  float val = strtof(value_str, &endptr);
+  if (*endptr != '\0' || value_str == endptr) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid float value '%s'. Must be a number.", value_str);
+    }
+    return -1.0f;
+  }
+  if (val < 0.0f) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Value must be non-negative (got %.2f)", val);
+    }
+    return -1.0f;
+  }
+  return val;
+}
+
+/**
+ * Validate FPS value (1-144)
+ * Returns parsed value on success, -1 on error
+ */
+int validate_fps(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "FPS value is required");
+    }
+    return -1;
+  }
+
+  int fps_val = strtoint_safe(value_str);
+  if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid FPS value '%s'. FPS must be between 1 and 144.", value_str);
+    }
+    return -1;
+  }
+  return fps_val;
+}
+
+// ============================================================================
+// Helper Functions (internal to options.c)
+// ============================================================================
 
 // Helper function to strip equals sign from optarg if present
 static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer_size) {
@@ -312,16 +595,103 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
   }
 
-  // Parse arguments first, then update dimensions (moved below)
-
-  // Set different default addresses for client vs server
+  // Set different default addresses for client vs server (before config load)
   if (is_client) {
     // Client connects to localhost by default (IPv6-first with IPv4 fallback)
     SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "localhost");
+    opt_address6[0] = '\0'; // Client doesn't use opt_address6
   } else {
-    // Server binds to all interfaces by default (dual-stack IPv6 with IPv4-mapped support)
-    // "::" binds to all IPv6 addresses and IPv4-mapped addresses (::ffff:x.x.x.x)
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "::");
+    // Server binds to 127.0.0.1 (IPv4) and ::1 (IPv6) by default
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+    SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "::1");
+  }
+
+  // Track config file path from --config option (if provided)
+  const char *custom_config_path = NULL;
+
+  // Pre-pass: Check for --config-create before parsing (it creates file and exits)
+  for (int i = 1; i < argc; i++) {
+    if (argv[i] == NULL)
+      break;
+    if (strncmp(argv[i], "--config-create=", 16) == 0) {
+      // Format: --config-create=path
+      const char *create_path = argv[i] + 16; // Skip "--config-create=" (16 characters including =)
+      if (create_path[0] == '\0') {
+        create_path = NULL;
+      }
+      (void)fprintf(stderr, "[DEBUG] options_init: Found --config-create=%s\n", create_path ? create_path : "(empty)");
+      asciichat_error_t create_result = config_create_default(create_path);
+      if (create_result != ASCIICHAT_OK) {
+        (void)fprintf(stderr, "Failed to create config file: %s\n", asciichat_error_string(create_result));
+        return create_result;
+      }
+      const char *final_path = create_path ? create_path : "default location";
+      (void)fprintf(stdout, "Created default config file at %s\n", final_path);
+      (void)fflush(stdout);
+      return ASCIICHAT_OK; // Exit successfully
+    } else if (strcmp(argv[i], "--config-create") == 0) {
+      // Format: --config-create [path] (space-separated, path optional)
+      // Check if next argument is a mode (server/client) or a path
+      const char *create_path = NULL;
+      if (i + 1 < argc && argv[i + 1] != NULL) {
+        // If next arg is "server" or "client", it's the mode, not a path
+        if (strcmp(argv[i + 1], "server") != 0 && strcmp(argv[i + 1], "client") != 0) {
+          create_path = argv[i + 1];
+        }
+      }
+      (void)fprintf(stderr, "[DEBUG] options_init: Found --config-create with path=%s\n",
+                    create_path ? create_path : "(NULL - using default location)");
+      asciichat_error_t create_result = config_create_default(create_path);
+      if (create_result != ASCIICHAT_OK) {
+        (void)fprintf(stderr, "Failed to create config file: %s\n", asciichat_error_string(create_result));
+        return create_result;
+      }
+      const char *final_path = create_path ? create_path : "default location";
+      (void)fprintf(stdout, "Created default config file at %s\n", final_path);
+      (void)fflush(stdout);
+      return ASCIICHAT_OK; // Exit successfully
+    }
+  }
+
+  // Pre-pass: Check for --config option (must load before other options are parsed)
+  for (int i = 1; i < argc; i++) {
+    if (argv[i] == NULL)
+      break;
+    if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
+      custom_config_path = argv[i + 1];
+      break;
+    } else if (strncmp(argv[i], "--config=", 9) == 0) {
+      custom_config_path = argv[i] + 9;
+      break;
+    }
+  }
+
+  // Load configuration from TOML file (if it exists)
+  // This happens BEFORE CLI parsing so CLI arguments can override config values
+  // Use strict=true if custom path provided (errors are fatal), strict=false for default (non-fatal)
+  bool strict_config = (custom_config_path != NULL);
+  asciichat_error_t config_result = config_load_and_apply(is_client, custom_config_path, strict_config);
+  if (config_result != ASCIICHAT_OK) {
+    if (strict_config) {
+      // Custom config file errors are fatal - show detailed error message
+      const char *config_file_path = custom_config_path ? custom_config_path : "default location";
+
+      // Get error context to retrieve the detailed message
+      asciichat_error_context_t err_ctx;
+      if (asciichat_has_errno(&err_ctx) && err_ctx.context_message && strlen(err_ctx.context_message) > 0) {
+        // Use the detailed context message from SET_ERRNO
+        (void)fprintf(stderr, "%s\n", err_ctx.context_message);
+      } else {
+        // Fallback to generic error message
+        const char *error_msg = asciichat_error_string(config_result);
+        (void)fprintf(stderr, "Failed to load config file '%s': %s (error code: %d)\n", config_file_path, error_msg,
+                      config_result);
+        (void)fprintf(stderr, "Please check that the file exists, is readable, and contains valid TOML syntax.\n");
+      }
+      return config_result;
+    }
+    // Config load errors are non-fatal for default location (logged as warnings)
+    // Continue with defaults and CLI parsing
   }
 
   // Use different option sets for client vs server
@@ -366,6 +736,13 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     char argbuf[1024];
     switch (c) {
     case 0:
+      // Handle long-only options that return 0
+      if (options[longindex].name) {
+        // Skip --config and --config-create (already handled in pre-pass)
+        if (strcmp(options[longindex].name, "config") == 0 || strcmp(options[longindex].name, "config-create") == 0) {
+          break;
+        }
+      }
       break;
 
     case 'a': {
@@ -414,6 +791,31 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           (void)fprintf(stderr, "  Hostname: example.com\n");
           return ERROR_USAGE;
         }
+      }
+      break;
+    }
+
+    case 1012: { // --address6 (server only)
+      if (is_client) {
+        (void)fprintf(stderr, "Error: --address6 is only available for server mode.\n");
+        return ERROR_USAGE;
+      }
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address6", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+
+      // Parse IPv6 address (remove brackets if present)
+      char parsed_addr[OPTIONS_BUFF_SIZE];
+      if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
+        value_str = parsed_addr;
+      }
+
+      // Check if it's a valid IPv6 address
+      if (is_valid_ipv6(value_str)) {
+        SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "%s", value_str);
+      } else {
+        (void)fprintf(stderr, "Error: Invalid IPv6 address '%s'.\n", value_str);
+        return ERROR_USAGE;
       }
       break;
     }
@@ -622,7 +1024,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     case 1007: // --audio-device
       opt_audio_device = strtoint_safe(optarg);
       if (opt_audio_device < 0) {
-        fprintf(stderr, "Error: Invalid audio device index '%s'\n", optarg);
+        safe_fprintf(stderr, "Error: Invalid audio device index '%s'\n", optarg);
         return -1;
       }
       break;
@@ -824,7 +1226,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
             if (matched_option && strlen(matched_option) != user_opt_len) {
               char abbreviated_opt[256];
               safe_snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
-              fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
+              safe_fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
               usage(stderr, is_client);
               return ERROR_USAGE;
             }
@@ -1009,7 +1411,9 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
   (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 127.0.0.1)\n");
+  (void)fprintf(desc, USAGE_INDENT "    --address6 ADDR6 " USAGE_INDENT "IPv6 address to bind to (default: ::1)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");

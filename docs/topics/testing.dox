@@ -1,0 +1,780 @@
+/**
+ * @subpage topic_testing Tests and Testing Framework
+ * @defgroup testing Tests and Testing Framework
+ * @ingroup dev
+ * @brief Criterion tests that only work on UNIX systems like Linux and macOS.
+ *
+ * @tableofcontents
+ *
+ * @section testing_overview Overview
+ *
+ * ASCII-Chat uses the Criterion test framework for unit, integration, and performance tests.
+ * The test suite is designed to run reliably across multiple platforms (Linux, macOS, Windows)
+ * using Docker containers when native Criterion support is unavailable.
+ *
+ * TEST CATEGORIES:
+ * ===============
+ * - **Unit Tests**: Test individual components in isolation
+ * - **Integration Tests**: Test component interactions and system behavior
+ * - **Performance Tests**: Benchmark critical code paths and validate performance requirements
+ *
+ * TEST INFRASTRUCTURE:
+ * ===================
+ * - Criterion test framework (https://github.com/Snaipe/Criterion)
+ * - Docker-based testing for Windows compatibility
+ * - Automated test runner scripts (`run_tests.sh`, `run-docker-tests.ps1`)
+ * - Code coverage reporting with Codecov
+ * - CI/CD integration with GitHub Actions
+ *
+ * @section testing_framework Criterion Test Framework
+ *
+ * ASCII-Chat uses Criterion (https://github.com/Snaipe/Criterion), a modern C testing
+ * framework that provides comprehensive testing features including assertions, fixtures,
+ * parameterized tests, and theory-based property testing.
+ *
+ * CRITERION DOCUMENTATION:
+ * =======================
+ * - Official Documentation: https://criterion.readthedocs.io/
+ * - GitHub Repository: https://github.com/Snaipe/Criterion
+ * - Getting Started: https://criterion.readthedocs.io/en/latest/gettingstarted.html
+ *
+ * FEATURES USED:
+ * =============
+ * - Standard tests: `Test(suite, name)`
+ * - Parameterized tests: `ParameterizedTest`, `ParameterizedTestParameters`
+ * - Theory-based tests: `Theory`, `TheoryDataPoints`
+ * - Test fixtures: `TestSuite`, `.init`, `.fini`
+ * - Assertions: `cr_assert`, `cr_assert_eq`, `cr_assert_not_null`, etc.
+ * - Test timeout: `.timeout = N` (seconds)
+ * - Test parallelization: Built-in support for parallel test execution
+ *
+ * @subsection testing_windows Windows Compatibility
+ *
+ * **IMPORTANT**: Criterion barely works on Windows. The framework has limited
+ * Windows support and many features don't work correctly on native Windows builds.
+ * To ensure reliable test execution on Windows:
+ *
+ * - **Use Docker**: All Windows developers should use Docker to run tests
+ * - **Docker Script**: Use `tests/scripts/run-docker-tests.ps1` for Windows testing
+ * - **Native Testing**: Only use native Windows builds if absolutely necessary
+ *   and be prepared for limitations and failures
+ *
+ * Docker provides a consistent Linux environment where Criterion works perfectly,
+ * ensuring all tests pass reliably regardless of the host operating system.
+ *
+ * @section testing_test_types Test Types
+ *
+ * @subsection testing_unit Unit Tests
+ *
+ * Unit tests verify individual components in isolation. They should:
+ * - Test a single function or module
+ * - Use mocks or stubs for external dependencies
+ * - Run quickly (milliseconds per test)
+ * - Be deterministic and isolated
+ *
+ * LOCATION: `tests/unit/`
+ *
+ * EXAMPLES:
+ * - `tests/unit/ascii_test.c`: ASCII conversion functions
+ * - `tests/unit/buffer_pool_test.c`: Buffer pool allocation
+ * - `tests/unit/crypto_test.c`: Cryptographic operations
+ * - `tests/unit/palette_test.c`: Palette management
+ *
+ * @subsection testing_integration Integration Tests
+ *
+ * Integration tests verify component interactions and system behavior. They:
+ * - Test multiple components working together
+ * - May use real resources (network, filesystem)
+ * - Can take longer to run (seconds per test)
+ * - Test realistic scenarios and workflows
+ *
+ * LOCATION: `tests/integration/`
+ *
+ * EXAMPLES:
+ * - `tests/integration/crypto_handshake_integration_test.c`: Full handshake flow
+ * - `tests/integration/crypto_network_integration_test.c`: Network encryption
+ * - `tests/integration/ascii_simd_integration_test.c`: SIMD optimization verification
+ *
+ * @subsection testing_performance Performance Tests
+ *
+ * Performance tests benchmark critical code paths and validate performance requirements.
+ * They:
+ * - Measure execution time and throughput
+ * - Verify optimization effectiveness
+ * - Detect performance regressions
+ * - Use real workloads and data sizes
+ *
+ * LOCATION: `tests/performance/`
+ *
+ * EXAMPLES:
+ * - `tests/performance/ascii_performance_test.c`: ASCII conversion performance
+ * - `tests/performance/crypto_performance_test.c`: Encryption/decryption speed
+ *
+ * @section testing_env_vars Environment Variables
+ *
+ * ASCII-Chat uses several environment variables to control test behavior and
+ * enable test-specific optimizations:
+ *
+ * TESTING VARIABLES:
+ * =================
+ *
+ * - **TESTING=1**: General test mode flag
+ *   - Used by code to detect test environment
+ *   - Enables test-specific behavior (shorter timeouts, reduced memory usage)
+ *   - Automatically set by test runners
+ *
+ * - **CRITERION_TEST=1**: Criterion-specific test flag
+ *   - Explicitly identifies Criterion test execution
+ *   - Used by network code to shorten timeouts for faster tests
+ *   - Automatically set by test runners
+ *
+ * TEST ENVIRONMENT DETECTION:
+ * ===========================
+ *
+ * Code detects test environment using:
+ * ```c
+ * static int is_test_environment(void) {
+ *   return SAFE_GETENV("CRITERION_TEST") != NULL || 
+ *          SAFE_GETENV("TESTING") != NULL;
+ * }
+ * ```
+ *
+ * This enables test-specific optimizations:
+ * - Network timeouts reduced from 5-30 seconds to 1 second
+ * - Memory allocation limits for faster test execution
+ * - Skipping expensive initialization in tests
+ *
+ * EXAMPLES:
+ * ========
+ *
+ * Network timeout reduction (from `lib/network/packet.c`):
+ * ```c
+ * static int calculate_packet_timeout(size_t packet_size) {
+ *   int base_timeout = is_test_environment() ? 1 : SEND_TIMEOUT;
+ *   // ... rest of calculation ...
+ * }
+ * ```
+ *
+ * Memory limit adjustment (from `tests/unit/compression_test.c`):
+ * ```c
+ * size_t max_size = (getenv("TESTING") || getenv("CRITERION_TEST")) 
+ *                   ? 1000 
+ *                   : 1000000;
+ * ```
+ *
+ * @section testing_network_timeouts Network Timeouts
+ *
+ * Network operations use shorter timeouts during testing to enable faster test
+ * execution. When `TESTING=1` or `CRITERION_TEST=1` is set:
+ *
+ * TIMEOUT REDUCTIONS:
+ * ==================
+ * - **Connection timeouts**: Reduced from 3 seconds to 1 second
+ * - **Send timeouts**: Reduced from 5 seconds to 1 second
+ * - **Receive timeouts**: Reduced from 15 seconds to 1 second
+ * - **Accept timeouts**: Reduced from 3 seconds to 1 second
+ *
+ * IMPLEMENTATION:
+ * ==============
+ * Timeout detection is implemented in network functions:
+ * - `lib/network/network.c`: `send_with_timeout()`, `recv_with_timeout()`
+ * - `lib/network/packet.c`: `calculate_packet_timeout()`
+ *
+ * These functions check for test environment and automatically use shorter timeouts:
+ * ```c
+ * timeout.tv_sec = is_test_environment() ? 1 : timeout_seconds;
+ * ```
+ *
+ * This allows integration tests to complete in seconds rather than minutes while
+ * still testing real network behavior.
+ *
+ * @section testing_docker Docker-Based Testing
+ *
+ * ASCII-Chat provides Docker-based testing infrastructure for consistent test
+ * execution across all platforms, especially Windows where Criterion has limited support.
+ *
+ * @subsection testing_dockerfile Dockerfile
+ *
+ * The test Dockerfile (`tests/Dockerfile`) uses Arch Linux as the base image
+ * for a lightweight container with full Criterion compatibility.
+ *
+ * FEATURES:
+ * ========
+ * - **Arch Linux base**: Lightweight, up-to-date packages
+ * - **Criterion installed**: Full test framework support
+ * - **All dependencies**: Clang, CMake, Ninja, ccache, libraries
+ * - **Pre-built BearSSL**: Dependencies compiled during image build
+ * - **ccache configured**: Docker volume for compilation caching
+ *
+ * DOCKERFILE STRUCTURE:
+ * ====================
+ * ```dockerfile
+ * FROM archlinux:latest
+ * # Install compiler, build tools, and dependencies
+ * # Pre-build BearSSL from submodule
+ * # Configure ccache for persistent caching
+ * # Set environment variables (TESTING=1, etc.)
+ * WORKDIR /app
+ * CMD ["./tests/scripts/run_tests.sh"]
+ * ```
+ *
+ * @subsection testing_docker_compose docker-compose.yml
+ *
+ * The Docker Compose configuration (`tests/docker-compose.yml`) provides:
+ *
+ * SERVICES:
+ * ========
+ * - **ascii-chat-tests**: Main test container
+ *   - Builds from `tests/Dockerfile`
+ *   - Mounts source code for live editing
+ *   - Configures ccache volume for persistence
+ *   - Sets test environment variables
+ *
+ * VOLUMES:
+ * =======
+ * - **ccache-data**: Persistent compilation cache between runs
+ * - **Source code**: Mounted read-write for build artifacts
+ *
+ * ENVIRONMENT VARIABLES:
+ * ====================
+ * - `TESTING=1`: Test mode flag
+ * - `CRITERION_TEST=1`: Criterion test flag
+ * - `CCACHE_DIR=/ccache`: ccache cache directory
+ * - `ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer`: AddressSanitizer support
+ *
+ * @subsection testing_docker_usage Using Docker for Testing
+ *
+ * USAGE WITH POWERSHELL SCRIPT:
+ * =============================
+ *
+ * On Windows, use `tests/scripts/run-docker-tests.ps1`:
+ * ```powershell
+ * # Run all tests
+ * ./tests/scripts/run-docker-tests.ps1
+ *
+ * # Run specific test suite
+ * ./tests/scripts/run-docker-tests.ps1 unit
+ * ./tests/scripts/run-docker-tests.ps1 integration
+ * ./tests/scripts/run-docker-tests.ps1 performance
+ *
+ * # Run specific test
+ * ./tests/scripts/run-docker-tests.ps1 unit options
+ * ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect
+ *
+ * # Run tests matching a filter pattern
+ * ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation"
+ *
+ * # Run clang-tidy analysis
+ * ./tests/scripts/run-docker-tests.ps1 -ClangTidy
+ * ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+ *
+ * # Interactive shell for debugging
+ * ./tests/scripts/run-docker-tests.ps1 -Interactive
+ *
+ * # Clean rebuild
+ * ./tests/scripts/run-docker-tests.ps1 -Clean
+ * ```
+ *
+ * USAGE WITH DOCKER COMPOSE:
+ * ==========================
+ * ```bash
+ * # Build and run tests
+ * docker-compose -f tests/docker-compose.yml up --build
+ *
+ * # Run tests in existing container
+ * docker-compose -f tests/docker-compose.yml run ascii-chat-tests
+ *
+ * # Interactive shell
+ * docker-compose -f tests/docker-compose.yml run ascii-chat-tests /bin/bash
+ *
+ * # Clean rebuild
+ * docker-compose -f tests/docker-compose.yml build --no-cache
+ * ```
+ *
+ * BENEFITS:
+ * ========
+ * - Consistent test environment across all platforms
+ * - Full Criterion support (all features work)
+ * - Isolated test execution (no host system dependencies)
+ * - Reproducible test results
+ * - Fast compilation with ccache persistence
+ *
+ * @section testing_runner Test Runner Script (run_tests.sh)
+ *
+ * The main test runner script (`tests/scripts/run_tests.sh`) is a comprehensive
+ * bash script that handles test discovery, building, execution, and reporting.
+ *
+ * @subsection testing_runner_features Features
+ *
+ * CORE CAPABILITIES:
+ * ================
+ * - Automatic test discovery from source files
+ * - Incremental builds with CMake and Ninja
+ * - Parallel test execution (auto-detects CPU cores)
+ * - Sequential mode for debugging
+ * - Test timeout handling (default 25 seconds)
+ * - JUnit XML output generation
+ * - Coverage build support
+ * - Verbose mode for debugging
+ * - Test filtering by pattern
+ *
+ * @subsection testing_runner_usage Usage
+ *
+ * BASIC USAGE:
+ * ===========
+ * ```bash
+ * # Run all tests (default: debug build)
+ * ./tests/scripts/run_tests.sh
+ *
+ * # Run specific test category
+ * ./tests/scripts/run_tests.sh unit
+ * ./tests/scripts/run_tests.sh integration
+ * ./tests/scripts/run_tests.sh performance
+ *
+ * # Run specific test by name
+ * ./tests/scripts/run_tests.sh test_unit_ascii
+ * ./tests/scripts/run_tests.sh unit_ascii
+ * ./tests/scripts/run_tests.sh bin/test_unit_ascii
+ *
+ * # Run specific test by type and name
+ * ./tests/scripts/run_tests.sh unit options
+ * ./tests/scripts/run_tests.sh integration crypto_network
+ * ```
+ *
+ * OPTIONS:
+ * =======
+ * ```bash
+ * # Build type selection
+ * ./tests/scripts/run_tests.sh -b debug      # Debug with AddressSanitizer (default)
+ * ./tests/scripts/run_tests.sh -b dev        # Debug without sanitizers
+ * ./tests/scripts/run_tests.sh -b release   # Release with optimizations
+ * ./tests/scripts/run_tests.sh -b coverage  # Coverage instrumentation
+ * ./tests/scripts/run_tests.sh -b tsan      # ThreadSanitizer
+ *
+ * # Parallel execution control
+ * ./tests/scripts/run_tests.sh -j 4         # Use 4 parallel test executables
+ * ./tests/scripts/run_tests.sh --no-parallel # Run sequentially
+ *
+ * # Output and reporting
+ * ./tests/scripts/run_tests.sh -v           # Verbose output
+ * ./tests/scripts/run_tests.sh -J           # Generate JUnit XML
+ * ./tests/scripts/run_tests.sh -l /tmp/log  # Custom log file
+ *
+ * # Test filtering (single test binary only)
+ * ./tests/scripts/run_tests.sh test_unit_ascii -f "basic"
+ * ./tests/scripts/run_tests.sh test_unit_ascii -f "*basic*"
+ * ```
+ *
+ * ADVANCED USAGE:
+ * ==============
+ * ```bash
+ * # Run multiple specific tests
+ * ./tests/scripts/run_tests.sh unit options audio buffer_pool
+ *
+ * # Coverage with JUnit output
+ * ./tests/scripts/run_tests.sh -c -J
+ *
+ * # Custom build directory (for Docker)
+ * DOCKER_BUILD=1 ./tests/scripts/run_tests.sh
+ * ```
+ *
+ * @subsection testing_runner_architecture Architecture
+ *
+ * TEST DISCOVERY:
+ * =============
+ * The script discovers tests by scanning source files:
+ * - Unit tests: `tests/unit/*_test.c`
+ * - Integration tests: `tests/integration/*_test.c`
+ * - Performance tests: `tests/performance/*_test.c`
+ *
+ * Test executables are named: `test_{category}_{name}`
+ *
+ * BUILD MANAGEMENT:
+ * ===============
+ * - Uses CMake for configuration and building
+ * - Supports multiple build directories (build, build_docker, build_clang)
+ * - Incremental builds with Ninja (only rebuilds changed files)
+ * - Automatic dependency tracking
+ *
+ * EXECUTION MODES:
+ * ===============
+ * - **Parallel mode** (default): Runs multiple test executables concurrently
+ *   - Auto-detects CPU cores
+ *   - Uses cores/2 parallel tests (optimal CPU utilization)
+ *   - Can be controlled with `-j N` option
+ *
+ * - **Sequential mode**: Runs tests one at a time
+ *   - Use `--no-parallel` flag
+ *   - Useful for debugging or resource-constrained environments
+ *
+ * SIGNAL HANDLING:
+ * ===============
+ * - Handles Ctrl-C (SIGINT) gracefully
+ * - Kills running tests on interruption
+ * - Reports cancellation status
+ * - Cleans up temporary files
+ *
+ * @subsection testing_runner_internals Internal Details
+ *
+ * TEST SPAWNING:
+ * =============
+ * Tests are spawned with environment variables:
+ * ```bash
+ * TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+ * ```
+ *
+ * TEST ARGUMENTS:
+ * ==============
+ * Default arguments passed to Criterion:
+ * - `--jobs 0`: Auto-detect optimal parallelism
+ * - `--timeout 25`: 25 second timeout per test
+ * - `--color=always`: Colored output
+ * - `--short-filename`: Short file names in output
+ * - `--verbose`: If verbose mode enabled
+ *
+ * RESOURCE ALLOCATION:
+ * ===================
+ * The script calculates optimal parallelism:
+ * ```bash
+ * max_parallel_tests = (CPU_CORES / 2)
+ * ```
+ * This balances CPU utilization with memory usage for optimal performance.
+ *
+ * @section testing_parameterized Parameterized Tests
+ *
+ * Parameterized tests allow running the same test logic with different input values.
+ * Criterion provides `ParameterizedTest` and `ParameterizedTestParameters` for this.
+ *
+ * BASIC SYNTAX:
+ * ============
+ * ```c
+ * // Define test data points
+ * ParameterizedTestParameters(suite_name, test_name) {
+ *   static TestCase cases[] = {
+ *     { .input = 1, .expected = 2 },
+ *     { .input = 2, .expected = 4 },
+ *     { .input = 3, .expected = 6 },
+ *   };
+ *   return cr_make_param_array(TestCase, cases, sizeof(cases) / sizeof(cases[0]));
+ * }
+ *
+ * // Define parameterized test
+ * ParameterizedTest(TestCase *tc, suite_name, test_name) {
+ *   cr_assert_eq(process_input(tc->input), tc->expected);
+ * }
+ * ```
+ *
+ * MEMORY ALLOCATION WARNING:
+ * =========================
+ * **CRITICAL**: When using dynamic memory in parameterized test data, you must use
+ * Criterion's special memory allocation functions. Regular `malloc()` allocations
+ * won't be properly tracked or freed by Criterion's test framework.
+ *
+ * Criterion provides these functions:
+ * - `cr_malloc()`: Allocate memory (tracked by Criterion)
+ * - `cr_calloc()`: Allocate zero-initialized memory
+ * - `cr_realloc()`: Reallocate memory
+ * - `cr_free()`: Free memory allocated with Criterion functions
+ *
+ * RECOMMENDATION:
+ * ==============
+ * **Use static arrays instead of dynamic allocation** when possible:
+ * ```c
+ * // GOOD: Static array (no allocation issues)
+ * ParameterizedTestParameters(palette, utf8_boundary_property) {
+ *   static const char *palettes[] = {
+ *     " ░▒▓█",
+ *     " .:-=+*#%@",
+ *     " 0123456789",
+ *   };
+ *   return cr_make_param_array(const char *, palettes, 
+ *                              sizeof(palettes) / sizeof(palettes[0]));
+ * }
+ *
+ * // AVOID: Dynamic allocation (requires Criterion functions)
+ * ParameterizedTestParameters(palette, utf8_boundary_property) {
+ *   char **palettes = cr_malloc(3 * sizeof(char*));
+ *   palettes[0] = cr_strdup(" ░▒▓█");
+ *   palettes[1] = cr_strdup(" .:-=+*#%@");
+ *   palettes[2] = cr_strdup(" 0123456789");
+ *   // ... memory management ...
+ * }
+ * ```
+ *
+ * EXAMPLES IN CODEBASE:
+ * ====================
+ * - `tests/unit/terminal_detect_test.c`: COLORTERM and TERM variable detection
+ * - `tests/unit/webcam_test.c`: Different webcam indices
+ * - `tests/unit/simd_scalar_comparison_test.c`: Different palettes
+ *
+ * @section testing_theorized Theorized Tests
+ *
+ * Theorized tests use Criterion's theory-based testing feature to test properties
+ * across a range of input values. Theories verify that a property holds for all
+ * inputs in a data set.
+ *
+ * BASIC SYNTAX:
+ * ============
+ * ```c
+ * // Define theory data points
+ * TheoryDataPoints(suite_name, property_name) = {
+ *   TheoryPointsFromRange(0, 100, 1),      // Integer range
+ *   TheoryPointsFromRange(0.0, 1.0, 0.1),  // Float range
+ * };
+ *
+ * // Define theory test
+ * Theory((size_t data_size), suite_name, property_name) {
+ *   // Test that property holds for all data_size values
+ *   void *data = malloc(data_size);
+ *   cr_assert_not_null(data);
+ *   free(data);
+ * }
+ * ```
+ *
+ * THEORY DATA SOURCES:
+ * ===================
+ * - `TheoryPointsFromRange(min, max, step)`: Generate range of values
+ * - `TheoryPointsFromArray(array, count)`: Use explicit array
+ * - `TheoryPointsFromBitfield(bits)`: Generate bit combinations
+ *
+ * PROPERTY TESTING:
+ * ================
+ * Theories are useful for testing mathematical properties:
+ * - Roundtrip properties: `decompress(compress(x)) == x`
+ * - Boundary conditions: Values at limits
+ * - Invariant properties: Properties that must always hold
+ *
+ * EXAMPLES IN CODEBASE:
+ * ====================
+ * - `tests/unit/compression_test.c`: Compression roundtrip property
+ * - `tests/unit/crypto_test.c`: Encryption roundtrip and nonce uniqueness
+ * - `tests/unit/palette_test.c`: Palette length and UTF-8 boundary properties
+ * - `tests/unit/ringbuffer_test.c`: FIFO ordering property
+ * - `tests/unit/mixer_test.c`: Audio bounds property
+ * - `tests/unit/ascii_test.c`: Image size property
+ * - `tests/unit/buffer_pool_test.c`: Allocation roundtrip and pool reuse
+ * - `tests/unit/aspect_ratio_test.c`: Aspect ratio preservation
+ *
+ * @section testing_logging Test Logging Macros
+ *
+ * ASCII-Chat provides comprehensive logging control macros in `lib/tests/logging.h`
+ * (included via `lib/tests/common.h`) for managing test output and log levels.
+ *
+ * @subsection testing_logging_suite_macros Test Suite Macros
+ *
+ * COMPLETE SUITE WITH QUIET LOGGING:
+ * ==================================
+ * ```c
+ * #include "tests/common.h"
+ *
+ * TEST_SUITE_WITH_QUIET_LOGGING(my_suite);
+ *
+ * Test(my_suite, my_test) {
+ *   // Logging is automatically disabled (redirected to /dev/null)
+ *   // Log level set to LOG_FATAL (only fatal errors)
+ * }
+ * ```
+ *
+ * SUITE WITH CUSTOM LOG LEVELS:
+ * ============================
+ * ```c
+ * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(
+ *   my_suite, 
+ *   LOG_FATAL,    // Setup log level
+ *   LOG_DEBUG,    // Restore log level
+ *   true,         // Disable stdout
+ *   true          // Disable stderr
+ * );
+ * ```
+ *
+ * SUITE WITH DEBUG LOGGING:
+ * ========================
+ * ```c
+ * TEST_SUITE_WITH_DEBUG_LOGGING(debug_suite);
+ *
+ * Test(debug_suite, debug_test) {
+ *   // Logging enabled with LOG_DEBUG level
+ *   // stdout/stderr available for debug output
+ * }
+ * ```
+ *
+ * SUITE WITH TIMEOUT:
+ * ==================
+ * ```c
+ * TEST_SUITE_WITH_QUIET_LOGGING(my_suite, .timeout = 10);
+ * ```
+ *
+ * @subsection testing_logging_test_macros Per-Test Logging Macros
+ *
+ * TEMPORARILY DISABLE LOGGING:
+ * ===========================
+ * ```c
+ * Test(my_suite, my_test) {
+ *   TEST_LOGGING_TEMPORARILY_DISABLE();
+ *   // ... code that should be quiet ...
+ *   // Logging automatically restored when test ends
+ * }
+ * ```
+ *
+ * DISABLE STDOUT ONLY:
+ * ===================
+ * ```c
+ * Test(my_suite, my_test) {
+ *   TEST_LOGGING_TEMPORARILY_DISABLE_STDOUT();
+ *   // stdout disabled, stderr still available
+ * }
+ * ```
+ *
+ * DISABLE STDERR ONLY:
+ * ===================
+ * ```c
+ * Test(my_suite, my_test) {
+ *   TEST_LOGGING_TEMPORARILY_DISABLE_STDERR();
+ *   // stderr disabled, stdout still available
+ * }
+ * ```
+ *
+ * @subsection testing_logging_manual Manual Setup/Teardown
+ *
+ * For more control, use manual setup/teardown:
+ * ```c
+ * TEST_LOGGING_SETUP_AND_TEARDOWN();
+ *
+ * TestSuite(my_suite, 
+ *           .init = setup_quiet_test_logging,
+ *           .fini = restore_test_logging);
+ * ```
+ *
+ * @subsection testing_logging_functions Low-Level Functions
+ *
+ * Direct function calls for fine-grained control:
+ * ```c
+ * // Disable logging
+ * test_logging_disable(true, true);  // stdout, stderr
+ *
+ * // Restore logging
+ * test_logging_restore();
+ *
+ * // Check if disabled
+ * bool is_disabled = test_logging_is_disabled();
+ * ```
+ *
+ * @section testing_coverage Code Coverage
+ *
+ * ASCII-Chat uses Codecov (https://codecov.io/) for code coverage reporting and
+ * analysis. Coverage reports are automatically generated during CI builds and
+ * uploaded to Codecov.
+ *
+ * CODECOV PROJECT:
+ * ===============
+ * - Project URL: https://codecov.io/gh/zfogg/ascii-chat
+ * - Coverage reports: Automatically generated for all commits and PRs
+ * - Component-based coverage: Organized by subsystem (crypto, network, audio, etc.)
+ *
+ * COVERAGE CONFIGURATION:
+ * ======================
+ * Configuration is in `codecov.yml`:
+ * - Component targets: Different coverage targets for different subsystems
+ * - Path-based organization: Coverage grouped by functionality
+ * - PR comments: Automatic coverage reports in pull requests
+ * - Status checks: Coverage thresholds enforced per component
+ *
+ * GENERATING COVERAGE:
+ * ==================
+ * Build and run tests with coverage instrumentation:
+ * ```bash
+ * # Build with coverage
+ * ./tests/scripts/run_tests.sh -b coverage
+ *
+ * # Or use coverage flag
+ * ./tests/scripts/run_tests.sh -c
+ *
+ * # Coverage files are generated as .gcov files
+ * # Upload to Codecov (automatically done in CI)
+ * ```
+ *
+ * COVERAGE FLAGS:
+ * ==============
+ * Coverage is organized by test type and platform:
+ * - `ascii-chat-tests-ubuntu-debug`: Unit tests on Ubuntu (debug)
+ * - `ascii-chat-tests-macos-debug`: Unit tests on macOS (debug)
+ * - `ascii-chat-integration-ubuntu`: Integration tests on Ubuntu
+ * - `ascii-chat-performance-ubuntu`: Performance tests on Ubuntu
+ *
+ * COVERAGE TARGETS:
+ * ================
+ * Different subsystems have different coverage targets:
+ * - Core server/client: 75% target
+ * - ASCII engine: 80% target (main feature)
+ * - Audio/video systems: 70% target
+ * - Platform-specific code: 60% target (informational)
+ *
+ * @section testing_best_practices Best Practices
+ *
+ * WRITING TESTS:
+ * =============
+ * - Use `lib/tests/common.h` for all test includes
+ * - Use quiet logging macros to reduce test output noise
+ * - Test both success and failure paths
+ * - Use theorized tests for property verification
+ * - Use parameterized tests for similar test cases
+ * - Keep tests isolated and independent
+ * - Use meaningful test names
+ *
+ * TEST ORGANIZATION:
+ * ================
+ * - One test file per module: `tests/unit/{module}_test.c`
+ * - Group related tests in test suites
+ * - Use fixtures for common setup/teardown
+ * - Document complex test logic
+ *
+ * PERFORMANCE:
+ * ===========
+ * - Unit tests should run in milliseconds
+ * - Integration tests should run in seconds
+ * - Use test environment variables for faster execution
+ * - Skip expensive operations in test mode
+ *
+ * DEBUGGING:
+ * =========
+ * - Use `-v` flag for verbose output
+ * - Use `--no-parallel` for sequential execution
+ * - Use debug logging suite for development
+ * - Use interactive Docker shell for investigation
+ *
+ * @section testing_ci_cd CI/CD Integration
+ *
+ * ASCII-Chat's test suite is fully integrated with GitHub Actions:
+ * - Automatic test execution on every push and PR
+ * - Multi-platform testing (Linux, macOS)
+ * - Coverage reporting to Codecov
+ * - JUnit XML output for test result tracking
+ * - Docker-based testing for consistency
+ *
+ * CI WORKFLOWS:
+ * ============
+ * - `.github/workflows/test.yml`: Main test workflow
+ * - Automatic test discovery and execution
+ * - Parallel test execution in CI
+ * - Coverage upload to Codecov
+ * - Test result artifacts
+ *
+ * @section testing_resources Additional Resources
+ *
+ * DOCUMENTATION:
+ * =============
+ * - Criterion Documentation: https://criterion.readthedocs.io/
+ * - Codecov Documentation: https://docs.codecov.com/
+ * - Docker Documentation: https://docs.docker.com/
+ *
+ * CODE REFERENCES:
+ * ===============
+ * - Test scripts: `tests/scripts/`
+ * - Test source: `tests/unit/`, `tests/integration/`, `tests/performance/`
+ * - Test utilities: `lib/tests/`
+ * - Docker config: `tests/Dockerfile`, `tests/docker-compose.yml`
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ */
+

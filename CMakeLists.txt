@@ -133,6 +133,12 @@ endif()
 include(${CMAKE_SOURCE_DIR}/cmake/Dependencies.cmake)
 
 # =============================================================================
+# tomlc17 Patch Application
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/Tomlc17.cmake)
+configure_tomlc17()
+
+# =============================================================================
 # Include Directories Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/Include.cmake)
@@ -182,6 +188,11 @@ include(${CMAKE_SOURCE_DIR}/cmake/Tests.cmake)
 install(TARGETS ascii-chat
     RUNTIME DESTINATION bin
 )
+
+# =============================================================================
+# Documentation
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/Documentation.cmake)
 
 # =============================================================================
 # Custom Targets

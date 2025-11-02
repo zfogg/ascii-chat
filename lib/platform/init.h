@@ -2,6 +2,7 @@
 
 /**
  * @file init.h
+ * @ingroup platform
  * @brief Platform initialization and static synchronization helpers
  *
  * This header provides platform initialization functions and static initialization
@@ -21,30 +22,75 @@
 // primitives the same way POSIX does, we need a different approach.
 // We'll use a combination of static initialization and lazy initialization.
 
-// For global mutexes/locks that need static initialization
+/**
+ * @brief Static mutex structure for global mutexes requiring static initialization
+ *
+ * Provides lazy initialization for mutexes that need to work before main().
+ * Windows doesn't support static initialization of synchronization primitives
+ * the same way POSIX does, so this structure enables lazy initialization with
+ * thread-safe detection.
+ *
+ * @note The initialized flag is checked atomically before first use to ensure
+ *       the mutex is initialized exactly once.
+ *
+ * @ingroup platform
+ */
 typedef struct {
+  /** @brief The actual mutex */
   mutex_t mutex;
 #if PLATFORM_WINDOWS
+  /** @brief Thread-safe initialization flag (Windows: LONG for InterlockedCompareExchange) */
   volatile LONG initialized;
 #else
+  /** @brief Thread-safe initialization flag (POSIX: int for atomic operations) */
   volatile int initialized;
 #endif
 } static_mutex_t;
 
+/**
+ * @brief Static reader-writer lock structure for global rwlocks requiring static initialization
+ *
+ * Provides lazy initialization for reader-writer locks that need to work before main().
+ * Uses the same lazy initialization pattern as static_mutex_t for cross-platform
+ * compatibility.
+ *
+ * @note The initialized flag is checked atomically before first use to ensure
+ *       the rwlock is initialized exactly once.
+ *
+ * @ingroup platform
+ */
 typedef struct {
+  /** @brief The actual reader-writer lock */
   rwlock_t lock;
 #if PLATFORM_WINDOWS
+  /** @brief Thread-safe initialization flag (Windows: LONG for InterlockedCompareExchange) */
   volatile LONG initialized;
 #else
+  /** @brief Thread-safe initialization flag (POSIX: int for atomic operations) */
   volatile int initialized;
 #endif
 } static_rwlock_t;
 
+/**
+ * @brief Static condition variable structure for global condition variables requiring static initialization
+ *
+ * Provides lazy initialization for condition variables that need to work before main().
+ * Uses the same lazy initialization pattern as static_mutex_t for cross-platform
+ * compatibility.
+ *
+ * @note The initialized flag is checked atomically before first use to ensure
+ *       the condition variable is initialized exactly once.
+ *
+ * @ingroup platform
+ */
 typedef struct {
+  /** @brief The actual condition variable */
   cond_t cond;
 #if PLATFORM_WINDOWS
+  /** @brief Thread-safe initialization flag (Windows: LONG for InterlockedCompareExchange) */
   volatile LONG initialized;
 #else
+  /** @brief Thread-safe initialization flag (POSIX: int for atomic operations) */
   volatile int initialized;
 #endif
 } static_cond_t;

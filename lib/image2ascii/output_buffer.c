@@ -1,4 +1,5 @@
 #include "image2ascii/output_buffer.h"
+#include "common.h"
 
 /*****************************************************************************/
 // char* output buffer helpers

@@ -19,6 +19,7 @@ function(configure_include_directories)
     include_directories(
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/deps/tomlc17/src
     )
 
     # Add dependency include directories (matching pkg-config approach)

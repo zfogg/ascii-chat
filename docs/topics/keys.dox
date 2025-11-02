@@ -1,0 +1,669 @@
+/**
+ * @page topic_keys Key Management
+ * @ingroup keys
+ *
+ * @section keys_overview Overview
+ *
+ * The Key Management module provides comprehensive support for parsing, validating, and managing
+ * cryptographic keys from multiple sources and formats. It serves as the foundation for secure
+ * authentication and key exchange in ASCII-Chat.
+ *
+ * **Implementation**: lib/crypto/keys/
+ *
+ * **Key Features**:
+ * - Unified key parsing from multiple sources (SSH, GPG, raw formats)
+ * - Support for multiple key sources (files, GitHub, GitLab, raw hex/base64)
+ * - Automatic key format detection and conversion
+ * - Key validation and security checks
+ * - SSH agent integration for secure signing
+ * - Ed25519 to X25519 conversion for key exchange
+ *
+ * @section keys_supported_formats Supported Key Formats
+ *
+ * @subsection keys_ssh SSH Ed25519 Keys
+ *
+ * **Format**: OpenSSH Ed25519 public and private keys
+ *
+ * **Public Key Format**:
+ * ```
+ * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... comment
+ * ```
+ *
+ * **Private Key Format**:
+ * ```
+ * -----BEGIN OPENSSH PRIVATE KEY-----
+ * ...
+ * -----END OPENSSH PRIVATE KEY-----
+ * ```
+ *
+ * **Supported Operations**:
+ * - Parse SSH public key from string
+ * - Parse SSH private key from file
+ * - Validate key file permissions
+ * - Support for encrypted private keys (with password prompt)
+ * - Convert Ed25519 to X25519 for key exchange
+ *
+ * **Example**:
+ * @code{.c}
+ * // Parse SSH public key from string
+ * public_key_t pubkey;
+ * asciichat_error_t err = parse_public_key(
+ *     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... alice@example.com",
+ *     &pubkey
+ * );
+ *
+ * // Parse SSH private key from file
+ * private_key_t privkey;
+ * err = parse_private_key("~/.ssh/id_ed25519", &privkey);
+ * @endcode
+ *
+ * @subsection keys_gpg GPG Keys
+ *
+ * **Format**: OpenPGP armored format (PEM-style)
+ *
+ * **Key Format**:
+ * ```
+ * -----BEGIN PGP PUBLIC KEY BLOCK-----
+ * ...
+ * -----END PGP PUBLIC KEY BLOCK-----
+ * ```
+ *
+ * **Supported Operations**:
+ * - Parse GPG public key from armored text
+ * - Extract Ed25519 subkeys from GPG keys
+ * - Convert GPG Ed25519 keys to X25519 for key exchange
+ *
+ * **Limitations**:
+ * - Currently only Ed25519 GPG keys are supported
+ * - GPG support may be disabled (check build configuration)
+ * - GPG agent support exists but may not be enabled
+ *
+ * **Example**:
+ * @code{.c}
+ * // Parse GPG key from armored text
+ * public_key_t pubkey;
+ * asciichat_error_t err = parse_public_key(
+ *     "-----BEGIN PGP PUBLIC KEY BLOCK-----\n...\n-----END PGP PUBLIC KEY BLOCK-----",
+ *     &pubkey
+ * );
+ * @endcode
+ *
+ * @subsection keys_x25519 Raw X25519 Keys
+ *
+ * **Format**: 64 hex characters or base64-encoded 32-byte key
+ *
+ * **Supported Formats**:
+ * - Hex: `1234567890abcdef...` (64 hex chars for 32 bytes)
+ * - Base64: Base64-encoded 32-byte key
+ *
+ * **Example**:
+ * @code{.c}
+ * // Parse raw X25519 key from hex
+ * public_key_t pubkey;
+ * asciichat_error_t err = parse_public_key(
+ *     "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+ *     &pubkey
+ * );
+ * @endcode
+ *
+ * @section keys_sources Key Sources
+ *
+ * @subsection keys_files Local Files
+ *
+ * Keys can be loaded from local files:
+ *
+ * **Public Keys**:
+ * @code{.c}
+ * // Load from file path
+ * public_key_t pubkey;
+ * asciichat_error_t err = parse_public_key("~/.ssh/id_ed25519.pub", &pubkey);
+ *
+ * // Or read first line and parse
+ * FILE *f = fopen("~/.ssh/id_ed25519.pub", "r");
+ * char line[1024];
+ * fgets(line, sizeof(line), f);
+ * err = parse_public_key(line, &pubkey);
+ * fclose(f);
+ * @endcode
+ *
+ * **Private Keys**:
+ * @code{.c}
+ * // Load private key from file
+ * private_key_t privkey;
+ * asciichat_error_t err = parse_private_key("~/.ssh/id_ed25519", &privkey);
+ *
+ * // File permissions are validated (warns if overly permissive)
+ * // Encrypted keys prompt for password automatically
+ * @endcode
+ *
+ * @subsection keys_github_gitlab GitHub and GitLab Integration
+ *
+ * Keys can be fetched directly from GitHub or GitLab using HTTPS:
+ *
+ * **SSH Keys**:
+ * @code{.c}
+ * // Fetch SSH keys from GitHub
+ * char **keys;
+ * size_t num_keys;
+ * asciichat_error_t err = fetch_github_ssh_keys("username", &keys, &num_keys);
+ *
+ * if (err == ASCIICHAT_OK && num_keys > 0) {
+ *     // Parse first Ed25519 key
+ *     public_key_t pubkey;
+ *     parse_public_key(keys[0], &pubkey);
+ *
+ *     // Free keys array
+ *     for (size_t i = 0; i < num_keys; i++) {
+ *         free(keys[i]);
+ *     }
+ *     free(keys);
+ * }
+ * @endcode
+ *
+ * **GPG Keys**:
+ * @code{.c}
+ * // Fetch GPG keys from GitHub
+ * char **keys;
+ * size_t num_keys;
+ * asciichat_error_t err = fetch_github_gpg_keys("username", &keys, &num_keys);
+ * @endcode
+ *
+ * **GitLab Support**:
+ * @code{.c}
+ * // Fetch SSH keys from GitLab
+ * err = fetch_gitlab_ssh_keys("username", &keys, &num_keys);
+ *
+ * // Fetch GPG keys from GitLab
+ * err = fetch_gitlab_gpg_keys("username", &keys, &num_keys);
+ * @endcode
+ *
+ * **Unified Parsing**:
+ * @code{.c}
+ * // Parse key from GitHub using unified interface
+ * public_key_t pubkey;
+ * asciichat_error_t err = parse_public_key("github:username", &pubkey);
+ * // Automatically fetches from https://github.com/username.keys
+ * // Uses first Ed25519 key found
+ *
+ * // Parse GPG key from GitHub
+ * err = parse_public_key("github:username.gpg", &pubkey);
+ *
+ * // Parse from GitLab
+ * err = parse_public_key("gitlab:username", &pubkey);
+ * err = parse_public_key("gitlab:username.gpg", &pubkey);
+ * @endcode
+ *
+ * @subsection keys_unified_parsing Unified Key Parsing
+ *
+ * The `parse_public_key()` function supports multiple input formats automatically:
+ *
+ * @code{.c}
+ * public_key_t pubkey;
+ * asciichat_error_t err;
+ *
+ * // SSH Ed25519 format
+ * err = parse_public_key("ssh-ed25519 AAAAC3... comment", &pubkey);
+ *
+ * // GitHub SSH keys
+ * err = parse_public_key("github:username", &pubkey);
+ *
+ * // GitLab SSH keys
+ * err = parse_public_key("gitlab:username", &pubkey);
+ *
+ * // GitHub GPG keys
+ * err = parse_public_key("github:username.gpg", &pubkey);
+ *
+ * // File path
+ * err = parse_public_key("~/.ssh/id_ed25519.pub", &pubkey);
+ *
+ * // Raw hex
+ * err = parse_public_key("1234567890abcdef...", &pubkey);
+ * @endcode
+ *
+ * @section keys_validation Key Validation
+ *
+ * @subsection keys_validation_public Public Key Validation
+ *
+ * All public keys are validated before use:
+ *
+ * @code{.c}
+ * public_key_t pubkey;
+ * asciichat_error_t err = parse_public_key(input, &pubkey);
+ *
+ * // Validate key structure
+ * err = validate_public_key(&pubkey);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Invalid public key");
+ *     return err;
+ * }
+ * @endcode
+ *
+ * **Validation Checks**:
+ * - Key type is valid (Ed25519, X25519, or GPG)
+ * - Key data is not all zeros
+ * - Comment length is within limits (< 256 chars)
+ * - Key size matches type (32 bytes for Ed25519/X25519)
+ *
+ * @subsection keys_validation_private Private Key Validation
+ *
+ * Private keys are validated similarly:
+ *
+ * @code{.c}
+ * private_key_t privkey;
+ * asciichat_error_t err = parse_private_key("~/.ssh/id_ed25519", &privkey);
+ *
+ * // Validate key structure
+ * err = validate_private_key(&privkey);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Invalid private key");
+ *     return err;
+ * }
+ * @endcode
+ *
+ * **Validation Checks**:
+ * - Key type is valid (Ed25519 or X25519)
+ * - Key data is not all zeros
+ * - Key size matches type (32 bytes for X25519, 64 bytes for Ed25519)
+ * - Comment length is within limits
+ *
+ * @subsection keys_validation_file File Permission Validation
+ *
+ * Private key files are checked for appropriate permissions:
+ *
+ * @code{.c}
+ * // Validate SSH key file before parsing
+ * asciichat_error_t err = validate_ssh_key_file("~/.ssh/id_ed25519");
+ *
+ * // Checks:
+ * // - File exists and is readable
+ * // - File has valid SSH private key header
+ * // - File permissions are appropriate (warns if overly permissive)
+ * @endcode
+ *
+ * **Permission Recommendations**:
+ * - Private keys should have restrictive permissions (0600 on Unix)
+ * - Function warns if file has world-readable permissions
+ * - Permission checking is Unix-specific (Windows doesn't have Unix-style permissions)
+ *
+ * @section keys_conversion Key Conversion
+ *
+ * @subsection keys_conversion_ed25519_to_x25519 Ed25519 to X25519 Conversion
+ *
+ * Ed25519 keys are converted to X25519 format for Diffie-Hellman key exchange:
+ *
+ * **Public Key Conversion**:
+ * @code{.c}
+ * // Parse Ed25519 public key
+ * public_key_t ed25519_pubkey;
+ * parse_public_key("ssh-ed25519 AAAAC3...", &ed25519_pubkey);
+ *
+ * // Convert to X25519 for key exchange
+ * uint8_t x25519_pk[32];
+ * asciichat_error_t err = public_key_to_x25519(&ed25519_pubkey, x25519_pk);
+ *
+ * // Use x25519_pk for Diffie-Hellman key exchange
+ * @endcode
+ *
+ * **Private Key Conversion**:
+ * @code{.c}
+ * // Parse Ed25519 private key
+ * private_key_t ed25519_privkey;
+ * parse_private_key("~/.ssh/id_ed25519", &ed25519_privkey);
+ *
+ * // Convert to X25519 for key exchange
+ * uint8_t x25519_sk[32];
+ * asciichat_error_t err = private_key_to_x25519(&ed25519_privkey, x25519_sk);
+ *
+ * // Use x25519_sk for Diffie-Hellman key exchange
+ * @endcode
+ *
+ * **Conversion Details**:
+ * - Uses libsodium's conversion functions (crypto_sign_ed25519_pk_to_curve25519)
+ * - Mathematically safe (same curve, different representation)
+ * - Both Ed25519 and X25519 keys are 32 bytes
+ * - Ed25519 private keys are 64 bytes (seed + public), extracts 32-byte seed for conversion
+ *
+ * @subsection keys_conversion_direct Direct Conversion Functions
+ *
+ * Lower-level conversion functions are also available:
+ *
+ * @code{.c}
+ * // Direct Ed25519 public key conversion
+ * uint8_t ed25519_pk[32] = {...};
+ * uint8_t x25519_pk[32];
+ * asciichat_error_t err = ed25519_to_x25519_public(ed25519_pk, x25519_pk);
+ *
+ * // Direct Ed25519 private key conversion
+ * uint8_t ed25519_sk[64] = {...};  // seed + public
+ * uint8_t x25519_sk[32];
+ * asciichat_error_t err = ed25519_to_x25519_private(ed25519_sk, x25519_sk);
+ * @endcode
+ *
+ * @section keys_signing Signing and Verification
+ *
+ * @subsection keys_signing_message Signing Messages
+ *
+ * Messages can be signed with Ed25519 private keys:
+ *
+ * @code{.c}
+ * // Load private key
+ * private_key_t privkey;
+ * parse_private_key("~/.ssh/id_ed25519", &privkey);
+ *
+ * // Sign message
+ * const uint8_t message[] = "Hello, secure world!";
+ * uint8_t signature[64];
+ * asciichat_error_t err = ed25519_sign_message(
+ *     &privkey,
+ *     message,
+ *     sizeof(message) - 1,  // Length without null terminator
+ *     signature
+ * );
+ *
+ * // Use signature...
+ * @endcode
+ *
+ * **SSH Agent Support**:
+ * @code{.c}
+ * // If SSH agent is available, signing uses agent
+ * // Key stays in agent (not loaded into memory)
+ * // More secure - private key never touches application memory
+ *
+ * // Configure key to use SSH agent
+ * privkey.use_ssh_agent = true;
+ *
+ * // Signing now uses SSH agent protocol
+ * ed25519_sign_message(&privkey, message, message_len, signature);
+ * @endcode
+ *
+ * @subsection keys_verification Verifying Signatures
+ *
+ * Signatures can be verified with Ed25519 public keys:
+ *
+ * @code{.c}
+ * // Load public key
+ * public_key_t pubkey;
+ * parse_public_key("ssh-ed25519 AAAAC3...", &pubkey);
+ *
+ * // Convert to raw Ed25519 public key
+ * uint8_t ed25519_pk[32];
+ * // ... extract from pubkey ...
+ *
+ * // Verify signature
+ * const uint8_t message[] = "Hello, secure world!";
+ * uint8_t signature[64] = {...};  // From signing
+ *
+ * asciichat_error_t err = ed25519_verify_signature(
+ *     ed25519_pk,
+ *     message,
+ *     sizeof(message) - 1,
+ *     signature
+ * );
+ *
+ * if (err == ASCIICHAT_OK) {
+ *     log_info("Signature is valid!");
+ * } else {
+ *     log_error("Signature verification failed");
+ * }
+ * @endcode
+ *
+ * **Security Features**:
+ * - Constant-time signature verification (prevents timing attacks)
+ * - Automatic validation of signature format (must be 64 bytes)
+ * - Returns error immediately if signature is invalid
+ *
+ * @section keys_architecture Architecture
+ *
+ * @subsection keys_module_structure Module Structure
+ *
+ * The key management module is organized into specialized submodules:
+ *
+ * **Core Modules**:
+ * - `keys.h`: Unified key parsing interface
+ * - `types.h`: Key type definitions and structures
+ * - `validation.h`: Key validation and security functions
+ *
+ * **Format-Specific Modules**:
+ * - `ssh_keys.h`: SSH Ed25519 key parsing
+ * - `gpg_keys.h`: GPG key parsing (may be disabled)
+ * - `https_keys.h`: HTTPS key fetching from GitHub/GitLab
+ *
+ * **Support Modules**:
+ * - `pem_utils.h`: PEM encoding/decoding utilities
+ * - `http_client.h`: BearSSL HTTPS client for key fetching
+ *
+ * @subsection keys_data_structures Data Structures
+ *
+ * **Public Key Structure**:
+ * @code{.c}
+ * typedef struct {
+ *     key_type_t type;        // KEY_TYPE_ED25519, KEY_TYPE_X25519, or KEY_TYPE_GPG
+ *     uint8_t data[32];       // 32-byte public key
+ *     char comment[256];     // Optional comment/label
+ * } public_key_t;
+ * @endcode
+ *
+ * **Private Key Structure**:
+ * @code{.c}
+ * typedef struct {
+ *     key_type_t type;        // KEY_TYPE_ED25519 or KEY_TYPE_X25519
+ *     union {
+ *         uint8_t x25519[32]; // X25519 private key (32 bytes)
+ *         uint8_t ed25519[64]; // Ed25519 private key (seed + public, 64 bytes)
+ *     } key;
+ *     char comment[256];      // Optional comment/label
+ *     bool use_ssh_agent;     // Use SSH agent for signing
+ *     bool use_gpg_agent;     // Use GPG agent for signing (may be disabled)
+ * } private_key_t;
+ * @endcode
+ *
+ * @section keys_usage Usage Examples
+ *
+ * @subsection keys_usage_basic Basic Key Loading
+ *
+ * @code{.c}
+ * #include "crypto/keys/keys.h"
+ *
+ * // Load server public key
+ * public_key_t server_pubkey;
+ * asciichat_error_t err = parse_public_key(
+ *     "github:server-username",
+ *     &server_pubkey
+ * );
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to load server public key");
+ *     return err;
+ * }
+ *
+ * // Validate key
+ * err = validate_public_key(&server_pubkey);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Invalid server public key");
+ *     return err;
+ * }
+ *
+ * // Convert to X25519 for key exchange
+ * uint8_t x25519_pk[32];
+ * err = public_key_to_x25519(&server_pubkey, x25519_pk);
+ * @endcode
+ *
+ * @subsection keys_usage_client Client Authentication
+ *
+ * @code{.c}
+ * // Load client private key
+ * private_key_t client_privkey;
+ * asciichat_error_t err = parse_private_key("~/.ssh/id_ed25519", &client_privkey);
+ *
+ * // Try to use SSH agent if available
+ * client_privkey.use_ssh_agent = true;
+ *
+ * // Sign handshake challenge
+ * uint8_t challenge[] = {...};  // From server
+ * uint8_t signature[64];
+ * err = ed25519_sign_message(
+ *     &client_privkey,
+ *     challenge,
+ *     sizeof(challenge),
+ *     signature
+ * );
+ *
+ * // Send signature to server
+ * send_signature_to_server(signature);
+ * @endcode
+ *
+ * @subsection keys_usage_server Server Key Whitelist
+ *
+ * @code{.c}
+ * // Server: Load authorized client keys
+ * const char *authorized_clients[] = {
+ *     "github:alice",
+ *     "github:bob",
+ *     "ssh-ed25519 AAAAC3... charlie@example.com"
+ * };
+ *
+ * public_key_t client_keys[MAX_CLIENTS];
+ * size_t num_authorized = 0;
+ *
+ * for (size_t i = 0; i < sizeof(authorized_clients) / sizeof(authorized_clients[0]); i++) {
+ *     if (parse_public_key(authorized_clients[i], &client_keys[num_authorized]) == ASCIICHAT_OK) {
+ *         if (validate_public_key(&client_keys[num_authorized]) == ASCIICHAT_OK) {
+ *             num_authorized++;
+ *         }
+ *     }
+ * }
+ *
+ * // Verify incoming client signatures against whitelist
+ * bool is_authorized = false;
+ * for (size_t i = 0; i < num_authorized; i++) {
+ *     if (ed25519_verify_signature(
+ *             client_keys[i].data,
+ *             challenge,
+ *             sizeof(challenge),
+ *             signature
+ *         ) == ASCIICHAT_OK) {
+ *         is_authorized = true;
+ *         break;
+ *     }
+ * }
+ * @endcode
+ *
+ * @section keys_security Security Considerations
+ *
+ * @subsection keys_security_file_permissions File Permissions
+ *
+ * **Private Keys**:
+ * - Should have restrictive permissions (0600 on Unix)
+ * - Function validates and warns if permissions are too permissive
+ * - Never share private keys
+ *
+ * **Public Keys**:
+ * - Can be world-readable (no sensitive data)
+ * - Still validate format before use
+ *
+ * @subsection keys_security_key_storage Key Storage
+ *
+ * **In-Memory Keys**:
+ * - Private keys in memory should be zeroed after use
+ * - Use `sodium_memzero()` for secure memory clearing
+ * - Avoid leaving keys in memory longer than necessary
+ *
+ * **SSH Agent**:
+ * - More secure: keys stay in agent process (isolated)
+ * - Private keys never loaded into application memory
+ * - Recommended for production use
+ *
+ * **GPG Agent**:
+ * - Similar security benefits to SSH agent
+ * - Currently may be disabled (check build configuration)
+ *
+ * @subsection keys_security_validation Validation
+ *
+ * **Always Validate Keys**:
+ * - Check return values from parsing functions
+ * - Explicitly validate keys before use
+ * - Reject keys with all-zero data
+ * - Verify key sizes match expected values
+ *
+ * **Zero Key Detection**:
+ * - Validation functions reject all-zero keys
+ * - Zero keys are mathematically invalid
+ * - Protects against accidentally using uninitialized keys
+ *
+ * @section keys_limitations Limitations and Restrictions
+ *
+ * @subsection keys_limitations_supported_formats Supported Key Types
+ *
+ * **Currently Supported**:
+ * - Ed25519 public and private keys (SSH format)
+ * - X25519 keys (raw hex or base64)
+ * - GPG Ed25519 keys (may be disabled)
+ *
+ * **Not Supported**:
+ * - RSA keys (any size)
+ * - ECDSA keys (any curve)
+ * - GPG RSA/ECDSA keys
+ * - Other key formats
+ *
+ * **Rationale**:
+ * - libsodium only supports Ed25519/X25519
+ * - Protocol assumes fixed-size keys (32 bytes public, 32/64 bytes private)
+ * - RSA/ECDSA would require OpenSSL and protocol changes
+ *
+ * @subsection keys_limitations_gpg GPG Support Status
+ *
+ * **Current Status**:
+ * - GPG key parsing code exists
+ * - GPG support may be disabled in build configuration
+ * - GPG agent support exists but may not be enabled
+ *
+ * **Workaround**:
+ * - Use SSH keys instead of GPG keys
+ * - SSH keys provide equivalent functionality
+ * - SSH agent support is fully functional
+ *
+ * @section keys_api API Reference
+ *
+ * **Unified Key Parsing**:
+ * @code{.c}
+ * asciichat_error_t parse_public_key(const char *input, public_key_t *key_out);
+ * asciichat_error_t parse_private_key(const char *path, private_key_t *key_out);
+ * @endcode
+ *
+ * **Key Validation**:
+ * @code{.c}
+ * asciichat_error_t validate_public_key(const public_key_t *key);
+ * asciichat_error_t validate_private_key(const private_key_t *key);
+ * asciichat_error_t validate_ssh_key_file(const char *key_path);
+ * @endcode
+ *
+ * **Key Conversion**:
+ * @code{.c}
+ * asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]);
+ * asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]);
+ * asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t x25519_pk[32]);
+ * asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_t x25519_sk[32]);
+ * @endcode
+ *
+ * **Signing and Verification**:
+ * @code{.c}
+ * asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message,
+ *                                        size_t message_len, uint8_t signature[64]);
+ * asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message,
+ *                                            size_t message_len, const uint8_t signature[64]);
+ * @endcode
+ *
+ * **HTTPS Key Fetching**:
+ * @code{.c}
+ * asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys);
+ * asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys);
+ * asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys);
+ * asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys);
+ * @endcode
+ *
+ * @see crypto/keys/keys.h
+ * @see crypto/keys/types.h
+ * @see crypto/keys/validation.h
+ * @see crypto/keys/ssh_keys.h
+ * @see crypto/keys/gpg_keys.h
+ * @see crypto/keys/https_keys.h
+ */

@@ -1,0 +1,215 @@
+/**
+ * @page topic_audio Audio System
+ * @ingroup audio
+ *
+ * @section audio_overview Overview
+ *
+ * The Audio System provides real-time audio capture and playback functionality for
+ * ASCII-Chat video chat sessions. It uses PortAudio for cross-platform audio I/O,
+ * enabling low-latency audio streaming with thread-safe ring buffers.
+ *
+ * **Implementation**: lib/audio.h
+ *
+ * **Key Features**:
+ * - Real-time audio capture from microphone/input devices
+ * - Real-time audio playback to speakers/output devices
+ * - Thread-safe ring buffers for audio data
+ * - Low-latency audio processing
+ * - Platform-specific real-time priority scheduling
+ * - Configurable audio parameters (sample rate, buffer size)
+ * - Automatic device enumeration and selection
+ *
+ * @section audio_architecture Architecture
+ *
+ * The audio system uses PortAudio for cross-platform audio I/O:
+ *
+ * **Audio Streams**:
+ * - Separate input and output streams for full-duplex audio
+ * - Independent capture and playback threads
+ * - Automatic stream management and lifecycle
+ *
+ * **Ring Buffers**:
+ * - Efficient producer-consumer audio data transfer
+ * - Lock-free or mutex-protected buffers depending on platform
+ * - Jitter buffering to smooth out network timing variations
+ * - Configurable buffer sizes for latency/quality trade-offs
+ *
+ * **Thread Safety**:
+ * - Audio context state protected by mutex
+ * - Ring buffers provide thread-safe audio data transfer
+ * - Real-time priority scheduling on supported platforms
+ *
+ * @section audio_parameters Audio Parameters
+ *
+ * **Default Configuration**:
+ * - Sample Rate: 44.1kHz (CD quality)
+ * - Channels: Mono (1 channel)
+ * - Buffer Size: 256 frames per buffer (low latency)
+ * - Format: 32-bit floating point samples
+ *
+ * **Configurable Options**:
+ * - Custom sample rates (8kHz to 192kHz)
+ * - Stereo support (2 channels)
+ * - Variable buffer sizes (128-1024 frames)
+ * - Device selection (input/output)
+ *
+ * @section audio_operations Operations
+ *
+ * @subsection audio_initialization Initialization
+ *
+ * **Create Audio Context**:
+ * @code{.c}
+ * audio_context_t audio_ctx;
+ * asciichat_error_t err = audio_init(&audio_ctx);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to initialize audio: %d", err);
+ *     return err;
+ * }
+ * @endcode
+ *
+ * **Configure Audio Parameters**:
+ * @code{.c}
+ * // Set custom sample rate and buffer size
+ * audio_ctx.sample_rate = 48000;
+ * audio_ctx.buffer_size = 512;
+ * audio_ctx.channels = 1; // Mono
+ * @endcode
+ *
+ * @subsection audio_capture Audio Capture
+ *
+ * **Start Capture**:
+ * @code{.c}
+ * err = audio_start_capture(&audio_ctx);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to start audio capture");
+ *     return err;
+ * }
+ * @endcode
+ *
+ * **Read Captured Samples**:
+ * @code{.c}
+ * float samples[256];
+ * size_t num_frames = audio_read_capture(&audio_ctx, samples, 256);
+ * if (num_frames > 0) {
+ *     // Send samples to network
+ *     send_audio_packet(sockfd, samples, num_frames);
+ * }
+ * @endcode
+ *
+ * @subsection audio_playback Audio Playback
+ *
+ * **Start Playback**:
+ * @code{.c}
+ * err = audio_start_playback(&audio_ctx);
+ * if (err != ASCIICHAT_OK) {
+ *     log_error("Failed to start audio playback");
+ *     return err;
+ * }
+ * @endcode
+ *
+ * **Write Playback Samples**:
+ * @code{.c}
+ * float samples[256];
+ * // Receive samples from network
+ * receive_audio_packet(sockfd, samples, 256);
+ *
+ * // Write to playback buffer
+ * size_t written = audio_write_playback(&audio_ctx, samples, 256);
+ * if (written < 256) {
+ *     log_warn("Audio buffer full, dropped %zu frames", 256 - written);
+ * }
+ * @endcode
+ *
+ * @subsection audio_cleanup Cleanup
+ *
+ * **Stop Audio**:
+ * @code{.c}
+ * audio_stop_capture(&audio_ctx);
+ * audio_stop_playback(&audio_ctx);
+ * @endcode
+ *
+ * **Destroy Audio Context**:
+ * @code{.c}
+ * audio_destroy(&audio_ctx);
+ * @endcode
+ *
+ * @section audio_platform_support Platform Support
+ *
+ * **Windows**:
+ * - DirectSound backend (legacy)
+ * - WASAPI backend (modern, recommended)
+ * - ASIO backend (low-latency professional audio)
+ *
+ * **Linux**:
+ * - ALSA backend (standard Linux audio)
+ * - JACK backend (professional audio, low latency)
+ * - PulseAudio support via ALSA
+ *
+ * **macOS**:
+ * - CoreAudio backend (native macOS audio)
+ * - Automatic device selection
+ * - Low-latency support
+ *
+ * @section audio_performance Performance
+ *
+ * **Latency**:
+ * - Buffer size: 256 frames @ 44.1kHz = ~5.8ms latency
+ * - Network jitter buffering: +46ms (8 packets)
+ * - Total end-to-end latency: ~50-60ms
+ *
+ * **CPU Usage**:
+ * - Audio capture: ~1-2% CPU (single thread)
+ * - Audio playback: ~1-2% CPU (single thread)
+ * - Total audio overhead: ~2-4% CPU
+ *
+ * **Bandwidth**:
+ * - 44.1kHz mono: ~176 KB/s
+ * - 48kHz mono: ~192 KB/s
+ * - 48kHz stereo: ~384 KB/s
+ *
+ * @section audio_ring_buffers Ring Buffers
+ *
+ * The audio system uses ring buffers for efficient producer-consumer audio transfer:
+ *
+ * **Capture Ring Buffer**:
+ * - Producer: PortAudio capture callback
+ * - Consumer: Network send thread
+ * - Size: 8192 samples (~186ms @ 44.1kHz)
+ * - Thread-safe: Mutex-protected on all platforms
+ *
+ * **Playback Ring Buffer**:
+ * - Producer: Network receive thread
+ * - Consumer: PortAudio playback callback
+ * - Size: 8192 samples (~186ms @ 44.1kHz)
+ * - Jitter buffer threshold: 2048 samples (~46ms)
+ * - Thread-safe: Mutex-protected on all platforms
+ *
+ * @section audio_threading Threading
+ *
+ * **Audio Threads**:
+ * - Capture thread: PortAudio callback (real-time priority)
+ * - Playback thread: PortAudio callback (real-time priority)
+ * - Network threads: User threads (normal priority)
+ *
+ * **Priority Scheduling**:
+ * - Windows: THREAD_PRIORITY_TIME_CRITICAL for audio threads
+ * - Linux: SCHED_FIFO with priority 50 (requires capabilities)
+ * - macOS: Real-time thread priority
+ *
+ * @section audio_integration Integration
+ *
+ * **Network Integration**:
+ * - Audio samples sent via PACKET_TYPE_AUDIO_BATCH
+ * - Compression enabled for large batches
+ * - Encryption via crypto context (if enabled)
+ *
+ * **Ring Buffer Integration**:
+ * - Uses specialized audio ring buffer (audio_ring_buffer_t)
+ * - Jitter buffering for network latency compensation
+ * - Thread-safe operations with mutex protection
+ *
+ * @see audio.h
+ * @see ringbuffer.h
+ * @see network/av.h
+ */
+

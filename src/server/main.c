@@ -62,6 +62,7 @@
 #include <io.h>
 #include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
 #include <winsock2.h>
+#include <mmsystem.h> // For timeEndPeriod()
 #else
 #include <unistd.h>
 #include <netdb.h>     // For getaddrinfo(), gai_strerror()
@@ -102,6 +103,8 @@
 #include "stream.h"
 #include "stats.h"
 #include "platform/string.h"
+#include "platform/symbols.h"
+#include "platform/system.h"
 #include "crypto/keys/keys.h"
 #include "crypto/known_hosts.h"
 
@@ -167,6 +170,7 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
  */
 static _Atomic socket_t listenfd = INVALID_SOCKET_VALUE;
+static _Atomic socket_t listenfd6 = INVALID_SOCKET_VALUE;
 
 /**
  * @brief Global client manager for signal handler access
@@ -264,17 +268,20 @@ static void sigint_handler(int sigint) {
   atomic_store(&g_server_should_exit, true);
 
   // STEP 2: Use printf for output (signal-safe)
-  printf("\nSIGINT received - shutting down server...\n");
+  printf("SIGINT received - shutting down server...\n");
   (void)fflush(stdout);
 
   // STEP 3: Close listening socket to interrupt accept() in main loop
   // This is signal-safe on Windows and necessary to wake up blocked accept()
   socket_t current_listenfd = atomic_load(&listenfd);
   if (current_listenfd != INVALID_SOCKET_VALUE) {
-    printf("DEBUG: Signal handler closing listening socket %d\n", (int)current_listenfd);
-    (void)fflush(stdout);
     socket_close(current_listenfd);
     atomic_store(&listenfd, INVALID_SOCKET_VALUE);
+  }
+  socket_t current_listenfd6 = atomic_load(&listenfd6);
+  if (current_listenfd6 != INVALID_SOCKET_VALUE) {
+    socket_close(current_listenfd6);
+    atomic_store(&listenfd6, INVALID_SOCKET_VALUE);
   }
 
   // STEP 4: DO NOT access client data structures in signal handler
@@ -287,12 +294,87 @@ static void sigint_handler(int sigint) {
   // SOLUTION: The listening socket closure above is sufficient to unblock accept_with_timeout()
   // The main thread will detect g_server_should_exit and properly close client sockets with timeouts
 
-  // Debug message to see if handler completes
-  printf("DEBUG: Signal handler completed\n");
-  (void)fflush(stdout);
-
   // NOTE: Do NOT call log_destroy() here - it's not async-signal-safe
   // The main thread will handle cleanup when it detects g_server_should_exit
+}
+
+/**
+ * @brief Helper function to create, bind, and listen on a socket
+ * @param address Address to bind to (e.g., "127.0.0.1" or "::1")
+ * @param family Address family (AF_INET or AF_INET6)
+ * @param port Port number to bind to
+ * @return Socket descriptor on success, INVALID_SOCKET_VALUE on failure (calls FATAL on error)
+ *
+ * This function handles the complete socket setup sequence:
+ * 1. Resolve the address using getaddrinfo
+ * 2. Create a socket with the specified family
+ * 3. Set socket options (SO_REUSEADDR, IPV6_V6ONLY for IPv6, keep-alive)
+ * 4. Bind to the address and port
+ * 5. Listen for connections
+ *
+ * For IPv6 sockets, IPV6_V6ONLY is set to 1 to ensure separate binding from IPv4.
+ */
+static socket_t bind_and_listen(const char *address, int family, int port) {
+  struct addrinfo hints, *res = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = family;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
+
+  char port_str[16];
+  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
+
+  log_debug("Resolving bind address '%s' port %s...", address, port_str);
+  int getaddr_result = getaddrinfo(address, port_str, &hints, &res);
+  if (getaddr_result != 0) {
+    FATAL(ERROR_NETWORK, "Failed to resolve bind address '%s': %s", address, gai_strerror(getaddr_result));
+  }
+
+  struct sockaddr_storage serv_addr;
+  if (res->ai_addrlen > sizeof(serv_addr)) {
+    freeaddrinfo(res);
+    FATAL(ERROR_NETWORK, "Address size too large: %zu bytes", (size_t)res->ai_addrlen);
+  }
+  memcpy(&serv_addr, res->ai_addr, res->ai_addrlen);
+  int address_family = res->ai_family;
+  socklen_t addrlen = res->ai_addrlen;
+  freeaddrinfo(res);
+
+  socket_t listenfd = socket_create(address_family, SOCK_STREAM, 0);
+  if (listenfd == INVALID_SOCKET_VALUE) {
+    FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
+  }
+
+  // Set socket options
+  int yes = 1;
+  if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+    FATAL(ERROR_NETWORK, "setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
+  }
+
+  // For IPv6 sockets, set IPV6_V6ONLY=1 to bind separately from IPv4
+  if (address_family == AF_INET6) {
+    int ipv6only = 1; // 1 = IPv6 only (don't accept IPv4-mapped)
+    if (socket_setsockopt(listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
+      log_warn("Failed to set IPV6_V6ONLY=1: %s", SAFE_STRERROR(errno));
+    } else {
+      log_debug("IPv6-only mode enabled (separate from IPv4)");
+    }
+  }
+
+  if (set_socket_keepalive(listenfd) < 0) {
+    log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
+  }
+
+  log_info("Server binding to %s:%d", address, port);
+  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
+    FATAL(ERROR_NETWORK_BIND, "Socket bind failed: %s", SAFE_STRERROR(errno));
+  }
+
+  if (socket_listen(listenfd, 10) < 0) {
+    FATAL(ERROR_NETWORK, "Connection listen failed: %s", SAFE_STRERROR(errno));
+  }
+
+  return listenfd;
 }
 
 /**
@@ -562,86 +644,82 @@ int server_main(int argc, char *argv[]) {
     log_info("Statistics logger thread started");
   }
 
-  // Network setup - Dual-stack IPv6 with IPv4 support
-  struct sockaddr_storage serv_addr; // Address-family-agnostic storage
+  // Network setup - Support dual-stack IPv4 and IPv6 binding
+  // Logic:
+  // - Default: bind to both 127.0.0.1 (IPv4) and ::1 (IPv6) for dual-stack on localhost
+  // - If only opt_address is set: bind only to that IPv4 address
+  // - If only opt_address6 is set: bind only to that IPv6 address
+  // - If both are set: bind to both (dual-stack)
+
+  bool bind_ipv4 = false;
+  bool bind_ipv6 = false;
+  const char *ipv4_address = NULL;
+  const char *ipv6_address = NULL;
+
+  // Determine which addresses to bind to
+  // Check if addresses were explicitly set (non-empty and not default values)
+  // Defaults set in options_init: opt_address="127.0.0.1", opt_address6="::1" (for server)
+  // We need to detect if user explicitly provided --address or --address6
+  // Since defaults are set before config/CLI parsing, we check if values differ from defaults
+
+  log_debug("Config check: opt_address='%s', opt_address6='%s'", opt_address, opt_address6);
+
+  bool ipv4_has_value = (strlen(opt_address) > 0);
+  bool ipv6_has_value = (strlen(opt_address6) > 0);
+  bool ipv4_is_default = (strcmp(opt_address, "127.0.0.1") == 0);
+  bool ipv6_is_default = (strcmp(opt_address6, "::1") == 0);
+
+  log_debug("Binding decision: ipv4_has_value=%d, ipv6_has_value=%d, ipv4_is_default=%d, ipv6_is_default=%d",
+            ipv4_has_value, ipv6_has_value, ipv4_is_default, ipv6_is_default);
+
+  // Logic:
+  // - If both are defaults (or empty): bind to both defaults (dual-stack)
+  // - If only IPv4 was explicitly set (non-default value): bind only IPv4
+  // - If only IPv6 was explicitly set (non-default value): bind only IPv6
+  // - If both were explicitly set: bind both (dual-stack)
+
+  if (ipv4_has_value && ipv6_has_value && ipv4_is_default && ipv6_is_default) {
+    // Both are defaults: dual-stack with default localhost addresses
+    bind_ipv4 = true;
+    bind_ipv6 = true;
+    ipv4_address = "127.0.0.1";
+    ipv6_address = "::1";
+    log_info("Default dual-stack: binding to 127.0.0.1 (IPv4) and ::1 (IPv6)");
+  } else if (ipv4_has_value && !ipv4_is_default && (!ipv6_has_value || ipv6_is_default)) {
+    // IPv4 explicitly set, IPv6 is default or empty: bind only IPv4
+    bind_ipv4 = true;
+    bind_ipv6 = false;
+    ipv4_address = opt_address;
+    log_info("Binding only to IPv4 address: %s", ipv4_address);
+  } else if (ipv6_has_value && !ipv6_is_default && (ipv4_is_default || !ipv4_has_value)) {
+    // IPv6 explicitly set, IPv4 is default or empty: bind only IPv6
+    bind_ipv4 = false;
+    bind_ipv6 = true;
+    ipv6_address = opt_address6;
+    log_info("Binding only to IPv6 address: %s", ipv6_address);
+  } else {
+    // Both explicitly set or one explicit + one default: dual-stack
+    bind_ipv4 = true;
+    bind_ipv6 = true;
+    ipv4_address = ipv4_has_value ? opt_address : "127.0.0.1";
+    ipv6_address = ipv6_has_value ? opt_address6 : "::1";
+    log_info("Dual-stack binding: IPv4=%s, IPv6=%s", ipv4_address, ipv6_address);
+  }
+
+  // Bind IPv4 socket if needed
+  if (bind_ipv4) {
+    socket_t new_listenfd = bind_and_listen(ipv4_address, AF_INET, port);
+    atomic_store(&listenfd, new_listenfd);
+  }
+
+  // Bind IPv6 socket if needed
+  if (bind_ipv6) {
+    socket_t new_listenfd6 = bind_and_listen(ipv6_address, AF_INET6, port);
+    atomic_store(&listenfd6, new_listenfd6);
+  }
+
   struct sockaddr_storage client_addr;
   socklen_t client_len = sizeof(client_addr);
-
-  // Parse bind address from opt_address
-  // Default is "::" (dual-stack: all IPv6 + IPv4-mapped)
-  struct addrinfo hints, *res = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET6; // IPv6 socket (with IPV6_V6ONLY=0 for dual-stack)
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST; // For bind() + numeric address
-
-  char port_str[16];
-  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
-
-  log_debug("Resolving bind address '%s' port %s...", opt_address, port_str);
-  int getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
-  if (getaddr_result != 0) {
-    // Try IPv4 fallback if IPv6 resolution fails
-    hints.ai_family = AF_INET;
-    getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
-    if (getaddr_result != 0) {
-      FATAL(ERROR_NETWORK, "Failed to resolve bind address '%s': %s", opt_address, gai_strerror(getaddr_result));
-    }
-    log_debug("Using IPv4 binding (address family: AF_INET)");
-  } else {
-    log_debug("Using dual-stack IPv6 binding (address family: AF_INET6)");
-  }
-
-  // Copy resolved address to serv_addr
-  if (res->ai_addrlen > sizeof(serv_addr)) {
-    freeaddrinfo(res);
-    FATAL(ERROR_NETWORK, "Address size too large: %zu bytes", (size_t)res->ai_addrlen);
-  }
-  memcpy(&serv_addr, res->ai_addr, res->ai_addrlen);
-  int address_family = res->ai_family;
-  socklen_t addrlen = res->ai_addrlen;
-  freeaddrinfo(res);
-
-  socket_t new_listenfd = socket_create(address_family, SOCK_STREAM, 0);
-  if (new_listenfd == INVALID_SOCKET_VALUE) {
-    FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
-  }
-
-  // Set socket options
-  int yes = 1;
-  if (socket_setsockopt(new_listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-    FATAL(ERROR_NETWORK, "setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
-  }
-
-  // Enable dual-stack mode for IPv6 sockets (allow IPv4-mapped addresses)
-  if (address_family == AF_INET6) {
-    int ipv6only = 0; // 0 = dual-stack (accept both IPv6 and IPv4-mapped)
-    if (socket_setsockopt(new_listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
-      log_warn("Failed to set IPV6_V6ONLY=0 (dual-stack mode): %s", SAFE_STRERROR(errno));
-      log_warn("Server may only accept IPv6 connections");
-    } else {
-      log_debug("Dual-stack mode enabled (IPv6 + IPv4-mapped addresses)");
-    }
-  }
-
-  // If we Set keep-alive on the listener before accept(), connfd will inherit it.
-  if (set_socket_keepalive(new_listenfd) < 0) {
-    log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
-  }
-
-  // Bind socket
-  log_info("Server binding to %s:%d", opt_address, port);
-  if (socket_bind(new_listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
-    FATAL(ERROR_NETWORK_BIND, "Socket bind failed: %s", SAFE_STRERROR(errno));
-  }
-
-  // Listen for connections
-  if (socket_listen(new_listenfd, 10) < 0) {
-    FATAL(ERROR_NETWORK, "Connection listen failed: %s", SAFE_STRERROR(errno));
-  }
-
-  // Store the socket in the atomic variable
-  atomic_store(&listenfd, new_listenfd);
 
   struct timespec last_stats_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
@@ -786,36 +864,81 @@ main_loop:
       (void)remove_client(cleanup_tasks[i].client_id);
     }
 
-    // Check if listening socket was closed by signal handler
-    if (atomic_load(&listenfd) == INVALID_SOCKET_VALUE) {
-      break;
+    // Check if listening sockets were closed by signal handler
+    socket_t current_listenfd = atomic_load(&listenfd);
+    socket_t current_listenfd6 = atomic_load(&listenfd6);
+    if (current_listenfd == INVALID_SOCKET_VALUE && current_listenfd6 == INVALID_SOCKET_VALUE) {
+      break; // Both sockets closed, exit
     }
 
     // Accept network connection with timeout
+    // Use select() to check both IPv4 and IPv6 sockets when both are bound
 
     // Check g_server_should_exit right before accept
     if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
-    // Check if listenfd is still valid before calling accept_with_timeout
-    socket_t current_listenfd = atomic_load(&listenfd);
-    if (current_listenfd == INVALID_SOCKET_VALUE) {
-      log_debug("Main loop: listenfd is invalid, breaking accept loop");
-      break;
+    // Build fd_set for select() if we have multiple sockets
+    fd_set read_fds;
+    socket_fd_zero(&read_fds);
+    socket_t max_fd = 0;
+
+    if (current_listenfd != INVALID_SOCKET_VALUE) {
+      socket_fd_set(current_listenfd, &read_fds);
+      max_fd = (current_listenfd > max_fd) ? current_listenfd : max_fd;
+    }
+    if (current_listenfd6 != INVALID_SOCKET_VALUE) {
+      socket_fd_set(current_listenfd6, &read_fds);
+      max_fd = (current_listenfd6 > max_fd) ? current_listenfd6 : max_fd;
+    }
+
+    // Use select() with timeout to check both sockets
+    struct timeval timeout;
+    timeout.tv_sec = ACCEPT_TIMEOUT;
+    timeout.tv_usec = 0;
+
+    int select_result = socket_select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+
+    if (select_result <= 0) {
+      if (select_result == 0) {
+        // Timeout - expected, continue loop
+        continue;
+      }
+      // Error - check if socket was closed
+      if (atomic_load(&listenfd) == INVALID_SOCKET_VALUE && atomic_load(&listenfd6) == INVALID_SOCKET_VALUE) {
+        break;
+      }
+      continue;
+    }
+
+    // Determine which socket has a connection ready
+    socket_t accept_listenfd = INVALID_SOCKET_VALUE;
+    if (current_listenfd != INVALID_SOCKET_VALUE && socket_fd_isset(current_listenfd, &read_fds)) {
+      accept_listenfd = current_listenfd;
+    } else if (current_listenfd6 != INVALID_SOCKET_VALUE && socket_fd_isset(current_listenfd6, &read_fds)) {
+      accept_listenfd = current_listenfd6;
+    } else {
+      // Neither socket ready (shouldn't happen if select() returned > 0)
+      continue;
     }
 
     // CRITICAL: Final check right before accept to prevent race condition
     // The signal handler could close the socket between atomic_load() and accept()
-    socket_t final_listenfd = atomic_load(&listenfd);
-    if (final_listenfd == INVALID_SOCKET_VALUE) {
+    socket_t final_listenfd = INVALID_SOCKET_VALUE;
+    if (accept_listenfd == current_listenfd) {
+      final_listenfd = atomic_load(&listenfd);
+    } else {
+      final_listenfd = atomic_load(&listenfd6);
+    }
+    if (final_listenfd == INVALID_SOCKET_VALUE || final_listenfd != accept_listenfd) {
       log_debug("Main loop: listenfd was closed by signal handler, breaking accept loop");
       break;
     }
 
     ASSERT_NO_ERRNO();
 
-    int client_sock = accept_with_timeout(final_listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
+    int client_sock = accept_with_timeout(accept_listenfd, (struct sockaddr *)&client_addr, &client_len, 0);
 
     // Get the error code from asciichat_errno_context (which accept_with_timeout sets)
     int saved_errno = asciichat_errno_context.system_errno;
@@ -1013,14 +1136,41 @@ main_loop:
   lock_debug_cleanup();
 #endif
 
-  // Close listen socket
+  // Close listen sockets (both IPv4 and IPv6)
   socket_t current_listenfd = atomic_load(&listenfd);
   if (current_listenfd != INVALID_SOCKET_VALUE) {
     socket_close(current_listenfd);
   }
+  socket_t current_listenfd6 = atomic_load(&listenfd6);
+  if (current_listenfd6 != INVALID_SOCKET_VALUE) {
+    socket_close(current_listenfd6);
+  }
 
   // Clean up SIMD caches
   simd_caches_destroy_all();
+
+  // Clean up symbol cache (Windows doesn't call this in platform_cleanup, only POSIX does)
+  // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
+  // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
+  symbol_cache_cleanup();
+
+  // Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
+  // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
+  // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
+  data_buffer_pool_cleanup_global();
+
+  // Clean up binary path cache explicitly
+  // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent
+  // (checks g_cache_initialized and sets it to false, sets g_bin_path_cache to NULL)
+  // Safe to call even if atexit() runs later
+  platform_cleanup_binary_path_cache();
+
+  // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
+  // POSIX: minimal cleanup (symbol cache already handled above on Windows)
+#ifdef _WIN32
+  socket_cleanup();
+  timeEndPeriod(1); // Restore Windows timer resolution
+#endif
 
   // Join the lock debug thread as one of the very last things before exit
   lock_debug_cleanup_thread();
@@ -1030,5 +1180,9 @@ main_loop:
   asciichat_error_stats_print();
 
   log_destroy();
-  return 0;
+
+  // Use _exit() instead of return/exit() to bypass atexit() handlers
+  // We've already explicitly called all cleanup functions above
+  // _exit() doesn't call atexit() handlers, preventing double-free issues
+  exit(0);
 }
