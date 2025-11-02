@@ -38,6 +38,9 @@ services:
       - TESTING=1
       - CRITERION_TEST=1
 
+      # AddressSanitizer configuration
+      - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+
 # Named volume for ccache persistence
 volumes:
   ccache-data:

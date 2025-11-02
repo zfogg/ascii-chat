@@ -12,15 +12,16 @@
 #   ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect # Run unit tests: options and terminal_detect
 #   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation" # Run specific test case
 
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding=$false)]
 param(
+    [Parameter(Position=0)]
     [string]$Suite = "",
+    [Parameter(Position=1)]
     [string]$Test = "",
     [string]$Filter = "",
     [switch]$Build,
     [switch]$NoBuild,
     [switch]$Interactive,
-    [switch]$VerboseOutput,
     [switch]$Clean,
     [string]$BuildType = "debug",
     [int]$ScanPort = 8080,
@@ -39,12 +40,19 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $TestsDir = Split-Path -Parent $ScriptDir
 $RepoRoot = Split-Path -Parent $TestsDir
 
+# Helper function to normalize paths for Docker (forward slashes)
+function ConvertTo-DockerPath {
+    param([string]$Path)
+    return $Path -replace '\\', '/'
+}
+
 # Docker image name
 $ImageName = "ascii-chat-tests"
 $ContainerName = "ascii-chat-test-runner"
 
-# ccache volume name for persistent caching
+# Volume names for persistent caching
 $CcacheVolume = "ascii-chat-ccache"
+$DepsCacheVolume = "ascii-chat-deps-cache"
 
 # Check if Docker is running
 Write-Host "Checking Docker..." -ForegroundColor Cyan
@@ -65,7 +73,9 @@ if (-not $NoBuild) {
         Write-Host "(This may take a few minutes on first run)" -ForegroundColor Gray
 
         # Build from the tests directory context, but include parent directory
-        docker build -t $ImageName -f "$TestsDir\Dockerfile" "$RepoRoot"
+        $DockerfilePath = ConvertTo-DockerPath "$TestsDir/Dockerfile"
+        $DockerContext = ConvertTo-DockerPath $RepoRoot
+        docker build -t $ImageName -f "$DockerfilePath" "$DockerContext"
 
         if ($LASTEXITCODE -ne 0) {
             Write-Host "ERROR: Failed to build Docker image!" -ForegroundColor Red
@@ -89,7 +99,7 @@ if ($IsClangTidy) {
     Write-Host ""
 
     # Create a temporary script file with clang-tidy implementation
-    $TempScript = "${RepoRoot}\temp-clang-tidy.sh"
+    $TempScript = Join-Path $RepoRoot "temp-clang-tidy.sh"
     $ScriptContent = @'
 #!/bin/bash
 set -e
@@ -112,7 +122,7 @@ if [ ! -d "build_tidy" ] || [ ! -f "build_tidy/compile_commands.json" ] || \
         -DBUILD_TESTS=OFF
 
     echo 'Building project to ensure compilation database is complete...'
-    cmake --build build_tidy --target ascii-chat-server ascii-chat-client
+    cmake --build build_tidy --target ascii-chat ascii-chat
 else
     echo 'Using cached build (build_tidy exists and is up to date)'
 fi
@@ -186,7 +196,10 @@ echo ""
                     # It's a directory - find all .c files in it
                     Write-Host "Finding .c files in directory: $Item" -ForegroundColor Gray
                     $DirCFiles = Get-ChildItem -Path $TestPath -Filter "*.c" -Recurse |
-                                 ForEach-Object { $_.FullName.Replace("$RepoRoot\", "").Replace("\", "/") }
+                                 ForEach-Object {
+                                     $relativePath = $_.FullName.Replace($RepoRoot, "").TrimStart('\', '/')
+                                     $relativePath -replace '\\', '/'
+                                 }
                     if ($DirCFiles) {
                         $ProcessedFiles += $DirCFiles
                     } else {
@@ -208,12 +221,15 @@ echo ""
         }
     }
 
+    $DockerRepoRoot = ConvertTo-DockerPath $RepoRoot
     docker run `
         --rm `
         --name $ContainerName `
-        -v "${RepoRoot}:/app" `
+        -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
+        -v "${DepsCacheVolume}:/deps-cache" `
         -e CCACHE_DIR=/ccache `
+        -e DEPS_CACHE_BASE=/deps-cache `
         -w /app `
         $ImageName `
         bash -c "/app/temp-clang-tidy.sh$ScriptArgs"
@@ -247,7 +263,9 @@ if ($Interactive) {
         $TestCommand += " -b $BuildType"
     }
 
-    if ($VerboseOutput) {
+    # Use PowerShell's built-in -Verbose parameter (from [CmdletBinding()])
+    # $VerbosePreference is set to 'Continue' when -Verbose is used
+    if ($PSBoundParameters.ContainsKey('Verbose') -or $VerbosePreference -eq 'Continue') {
         $TestCommand += " --verbose"
     }
 
@@ -265,6 +283,7 @@ if ($Interactive) {
         # Fall back to positional arguments for backward compatibility
         $TestCommand += " " + ($TestTargets -join " ")
     }
+    # If neither Suite nor TestTargets are provided, run_tests.sh will default to "all"
 
     # Configure CMake if build_docker doesn't exist or -Clean is specified
     # Let run_tests.sh handle building only the specific test executables needed
@@ -273,15 +292,15 @@ if ($Interactive) {
         $BuildCommand = @"
 echo 'Clean rebuild - removing build_docker directory...'
 rm -rf build_docker
-echo 'Configuring CMake...'
-CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+    echo 'Configuring CMake with Docker-specific deps cache...'
+    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=17 -DCMAKE_C_FLAGS='-std=c17' -DUSE_MIMALLOC=OFF -DDEBUG_MEMORY=OFF -DENABLE_AUDIO=OFF -DENABLE_VIDEO=OFF -DBUILD_TESTS=ON
 echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 "@
     } else {
         $BuildCommand = @"
 if [ ! -d build_docker ]; then
-    echo 'First time setup - configuring CMake...'
-    CC=clang CXX=clang++ cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+    echo 'First time setup - configuring CMake with Docker-specific deps cache...'
+    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=17 -DCMAKE_C_FLAGS='-std=c17' -DUSE_MIMALLOC=OFF -DDEBUG_MEMORY=OFF -DENABLE_AUDIO=OFF -DENABLE_VIDEO=OFF -DBUILD_TESTS=ON
     echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 else
     echo 'Using existing build_docker directory (run_tests.sh will build only the test executables needed)'
@@ -293,7 +312,9 @@ fi
     $DockerFlags = "-t"
 
     Write-Host "Running tests in Docker container..." -ForegroundColor Cyan
-    if ($TestTargets.Count -gt 0) {
+    if ($Suite) {
+        Write-Host "Running $Suite tests" -ForegroundColor Gray
+    } elseif ($TestTargets.Count -gt 0) {
         Write-Host "Test targets: $($TestTargets -join ', ')" -ForegroundColor Gray
     } else {
         Write-Host "Running all tests" -ForegroundColor Gray
@@ -308,14 +329,17 @@ fi
 
 # Run the container
 # Mount the source code as a volume so we can test local changes without rebuilding
+$DockerRepoRoot = ConvertTo-DockerPath $RepoRoot
 if ($Interactive) {
     docker run `
         $DockerFlags `
         --rm `
         --name $ContainerName `
-        -v "${RepoRoot}:/app" `
+        -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
+        -v "${DepsCacheVolume}:/deps-cache" `
         -e CCACHE_DIR=/ccache `
+        -e DEPS_CACHE_BASE=/deps-cache `
         -w /app `
         $ImageName `
         /bin/bash
@@ -324,9 +348,11 @@ if ($Interactive) {
         $DockerFlags `
         --rm `
         --name $ContainerName `
-        -v "${RepoRoot}:/app" `
+        -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
+        -v "${DepsCacheVolume}:/deps-cache" `
         -e CCACHE_DIR=/ccache `
+        -e DEPS_CACHE_BASE=/deps-cache `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"

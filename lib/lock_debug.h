@@ -30,7 +30,7 @@
  * 5. Cleanup: lock_debug_cleanup()
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date September 2025
  */
 
 #include <stdatomic.h>
@@ -151,6 +151,7 @@ typedef struct {
   // Debug thread management
   asciithread_t debug_thread;       ///< Debug thread handle
   atomic_bool debug_thread_running; ///< Debug thread running flag
+  atomic_bool debug_thread_created; ///< Track if thread was ever created (for proper cleanup)
   atomic_bool should_print_locks;   ///< Flag to trigger lock printing
 
   // Initialization state
@@ -326,25 +327,17 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
  * @brief Convenience macro for tracked mutex lock
  * @param mutex Pointer to mutex to lock
  */
+#ifdef NDEBUG
+#define DEBUG_MUTEX_LOCK(mutex) debug_mutex_lock(mutex, NULL, 0, NULL)
+#define DEBUG_MUTEX_UNLOCK(mutex) debug_mutex_unlock(mutex, NULL, 0, NULL)
+#define DEBUG_RWLOCK_RDLOCK(rwlock) debug_rwlock_rdlock(rwlock, NULL, 0, NULL)
+#define DEBUG_RWLOCK_WRLOCK(rwlock) debug_rwlock_wrlock(rwlock, NULL, 0, NULL)
+#else
 #define DEBUG_MUTEX_LOCK(mutex) debug_mutex_lock(mutex, __FILE__, __LINE__, __func__)
-
-/**
- * @brief Convenience macro for tracked mutex unlock
- * @param mutex Pointer to mutex to unlock
- */
 #define DEBUG_MUTEX_UNLOCK(mutex) debug_mutex_unlock(mutex, __FILE__, __LINE__, __func__)
-
-/**
- * @brief Convenience macro for tracked rwlock read lock
- * @param rwlock Pointer to rwlock to lock for reading
- */
 #define DEBUG_RWLOCK_RDLOCK(rwlock) debug_rwlock_rdlock(rwlock, __FILE__, __LINE__, __func__)
-
-/**
- * @brief Convenience macro for tracked rwlock write lock
- * @param rwlock Pointer to rwlock to lock for writing
- */
 #define DEBUG_RWLOCK_WRLOCK(rwlock) debug_rwlock_wrlock(rwlock, __FILE__, __LINE__, __func__)
+#endif
 
 /**
  * @brief Convenience macro for tracked rwlock unlock

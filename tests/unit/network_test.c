@@ -10,12 +10,41 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include "network.h"
 #include "tests/common.h"
 #include "tests/logging.h"
+#include "network/network.h"
+#include "network/packet.h"
+#include "network/packet_types.h"
+#include "network/av.h"
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(network, LOG_DEBUG, LOG_DEBUG, false, false);
+
+// Stub implementations for client-specific functions
+int send_audio_data(int sockfd, const float *samples, int num_samples) {
+  (void)sockfd;
+  (void)samples;
+  (void)num_samples;
+  return -1; // Stub - not implemented in library
+}
+
+int receive_audio_data(int sockfd, float *samples, int num_samples) {
+  (void)sockfd;
+  (void)samples;
+  (void)num_samples;
+  return -1; // Stub - not implemented in library
+}
+
+int send_client_join_packet(int sockfd, const char *username, uint32_t capabilities) {
+  (void)sockfd;
+  (void)username;
+  (void)capabilities;
+  return -1; // Stub - client-specific function
+}
+
+int parse_size_message(const char *message, unsigned short *width, unsigned short *height) {
+  return av_parse_size_message(message, width, height);
+}
 
 static int create_test_socket(void) {
   return socket(AF_INET, SOCK_STREAM, 0);
@@ -253,14 +282,8 @@ ParameterizedTest(parse_size_message_test_case_t *tc, network, parse_size_messag
 // Replaced by parameterized test: invalid_socket_operations
 
 Test(network, network_error_string_valid_codes) {
-  const char *error1 = network_error_string(0);
-  cr_assert_not_null(error1);
-
-  const char *error2 = network_error_string(-1);
-  cr_assert_not_null(error2);
-
-  const char *error3 = network_error_string(100);
-  cr_assert_not_null(error3);
+  const char *error = network_error_string();
+  cr_assert_not_null(error);
 }
 
 Test(network, random_size_messages) {
@@ -275,7 +298,7 @@ Test(network, random_size_messages) {
     unsigned short height = (rand() % 1000) + 1;
 
     char message[64];
-    snprintf(message, sizeof(message), "SIZE:%u,%u\n", width, height);
+    safe_snprintf(message, sizeof(message), "SIZE:%u,%u\n", width, height);
 
     unsigned short parsed_width, parsed_height;
     int result = parse_size_message(message, &parsed_width, &parsed_height);

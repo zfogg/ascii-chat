@@ -1,11 +1,12 @@
 #pragma once
 
 #include "client.h"
-#include "network.h"
+#include "network/network.h"
+#include "network/packet.h"
 #include <stdatomic.h>
 
 // Global shutdown flag
-extern atomic_bool g_should_exit;
+extern atomic_bool g_server_should_exit;
 
 // Stream mixing and sending functions
 char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned short width, unsigned short height,

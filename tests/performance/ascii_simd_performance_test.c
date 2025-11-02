@@ -134,7 +134,7 @@ Test(ascii_simd_performance, monochrome_and_color_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Scalar monochrome should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double scalar_mono_time = get_time_seconds() - start_time;
 
@@ -143,7 +143,7 @@ Test(ascii_simd_performance, monochrome_and_color_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "SIMD monochrome should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double simd_mono_time = get_time_seconds() - start_time;
 
@@ -165,7 +165,7 @@ Test(ascii_simd_performance, monochrome_and_color_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_color(test_image, ascii_palette);
     cr_assert_not_null(result, "Scalar color should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double scalar_color_time = get_time_seconds() - start_time;
 
@@ -174,7 +174,7 @@ Test(ascii_simd_performance, monochrome_and_color_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_color_simd(test_image, false, false, ascii_palette);
     cr_assert_not_null(result, "SIMD color should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double simd_color_time = get_time_seconds() - start_time;
 
@@ -224,7 +224,7 @@ Test(ascii_simd_performance, utf8_palette_performance_impact) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "ASCII SIMD should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double ascii_time = get_time_seconds() - start_time;
 
@@ -233,7 +233,7 @@ Test(ascii_simd_performance, utf8_palette_performance_impact) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, utf8_palette);
     cr_assert_not_null(result, "UTF-8 SIMD should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double utf8_time = get_time_seconds() - start_time;
 
@@ -295,7 +295,7 @@ ParameterizedTest(image_size_perf_test_case_t *tc, ascii_simd_performance, vario
   for (int i = 0; i < iterations; i++) {
     char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Scalar should produce output for %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double scalar_time = get_time_seconds() - start_time;
 
@@ -304,7 +304,7 @@ ParameterizedTest(image_size_perf_test_case_t *tc, ascii_simd_performance, vario
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "SIMD should produce output for %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double simd_time = get_time_seconds() - start_time;
 
@@ -394,6 +394,8 @@ Test(ascii_simd_performance, simd_architecture_benchmarks) {
              color_bench.scalar_time / color_bench.sve_time);
   }
   log_info("  Winner:  %s", color_bench.best_method);
+
+  image_destroy(test_image);
 
 // Performance assertions - each SIMD implementation should be at least as fast as scalar
 #ifdef SIMD_SUPPORT_SSE2
@@ -498,14 +500,14 @@ Test(ascii_simd_performance, cache_system_efficiency) {
   // First call (cache warming)
   char *warmup = image_print_simd(test_image, ascii_palette);
   cr_assert_not_null(warmup, "Cache warmup should succeed");
-  free(warmup);
+  SAFE_FREE(warmup);
 
   // Benchmark with warmed cache
   double start_time = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "Cached call %d should succeed", i);
-    free(result);
+    SAFE_FREE(result);
   }
   double cached_time = get_time_seconds() - start_time;
 
@@ -557,7 +559,7 @@ Test(ascii_simd_performance, mixed_utf8_palette_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print(test_image, palette);
       cr_assert_not_null(result, "Scalar should work with %s", mixed_palettes[p].name);
-      free(result);
+      SAFE_FREE(result);
     }
     double scalar_time = get_time_seconds() - start_time;
 
@@ -566,7 +568,7 @@ Test(ascii_simd_performance, mixed_utf8_palette_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print_simd(test_image, palette);
       cr_assert_not_null(result, "SIMD should work with %s", mixed_palettes[p].name);
-      free(result);
+      SAFE_FREE(result);
     }
     double simd_time = get_time_seconds() - start_time;
 
@@ -632,7 +634,7 @@ ParameterizedTest(palette_byte_length_test_case_t *tc, ascii_simd_performance, p
   for (int i = 0; i < iterations; i++) {
     char *result = image_print(test_image, palette);
     cr_assert_not_null(result, "Scalar should work with %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double scalar_time = get_time_seconds() - start_time;
 
@@ -641,7 +643,7 @@ ParameterizedTest(palette_byte_length_test_case_t *tc, ascii_simd_performance, p
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, palette);
     cr_assert_not_null(result, "SIMD should work with %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double simd_time = get_time_seconds() - start_time;
 
@@ -699,7 +701,7 @@ ParameterizedTest(palette_length_test_case_t *tc, ascii_simd_performance, palett
   for (int i = 0; i < iterations; i++) {
     char *result = image_print(test_image, palette);
     cr_assert_not_null(result, "Scalar should work with %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double scalar_time = get_time_seconds() - start_time;
 
@@ -708,7 +710,7 @@ ParameterizedTest(palette_length_test_case_t *tc, ascii_simd_performance, palett
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, palette);
     cr_assert_not_null(result, "SIMD should work with %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double simd_time = get_time_seconds() - start_time;
 
@@ -763,7 +765,7 @@ ParameterizedTest(image_type_perf_test_case_t *tc, ascii_simd_performance, synth
   for (int i = 0; i < iterations; i++) {
     char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Scalar should work with %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double scalar_time = get_time_seconds() - start_time;
 
@@ -772,7 +774,7 @@ ParameterizedTest(image_type_perf_test_case_t *tc, ascii_simd_performance, synth
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, ascii_palette);
     cr_assert_not_null(result, "SIMD should work with %s", tc->name);
-    free(result);
+    SAFE_FREE(result);
   }
   double simd_time = get_time_seconds() - start_time;
 
@@ -832,7 +834,7 @@ Test(ascii_simd_performance, all_image_types_comprehensive_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print(test_image, ascii_palette);
       cr_assert_not_null(result, "Scalar monochrome should work with %s", image_types[t].name);
-      free(result);
+      SAFE_FREE(result);
     }
     double scalar_mono_time = get_time_seconds() - start_time;
 
@@ -841,7 +843,7 @@ Test(ascii_simd_performance, all_image_types_comprehensive_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print_simd(test_image, ascii_palette);
       cr_assert_not_null(result, "SIMD monochrome should work with %s", image_types[t].name);
-      free(result);
+      SAFE_FREE(result);
     }
     double simd_mono_time = get_time_seconds() - start_time;
 
@@ -858,7 +860,7 @@ Test(ascii_simd_performance, all_image_types_comprehensive_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print_color(test_image, ascii_palette);
       cr_assert_not_null(result, "Scalar color should work with %s", image_types[t].name);
-      free(result);
+      SAFE_FREE(result);
     }
     double scalar_color_time = get_time_seconds() - start_time;
 
@@ -867,7 +869,7 @@ Test(ascii_simd_performance, all_image_types_comprehensive_performance) {
     for (int i = 0; i < iterations; i++) {
       char *result = image_print_color_simd(test_image, false, false, ascii_palette);
       cr_assert_not_null(result, "SIMD color should work with %s", image_types[t].name);
-      free(result);
+      SAFE_FREE(result);
     }
     double simd_color_time = get_time_seconds() - start_time;
 
@@ -928,7 +930,7 @@ Test(ascii_simd_performance, full_pipeline_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_with_capabilities(test_image, &caps, ascii_palette, luminance_palette);
     cr_assert_not_null(result, "Full pipeline should produce output");
-    free(result);
+    SAFE_FREE(result);
   }
   double pipeline_time = get_time_seconds() - start_time;
 

@@ -325,7 +325,7 @@ Theory((int palette_len), palette, palette_length_property) {
   cr_assume(palette_len >= 2 && palette_len <= 70);
 
   char luminance_mapping[256];
-  char *test_palette = malloc(palette_len + 1);
+  char *test_palette = SAFE_MALLOC(palette_len + 1, void *);
   cr_assume(test_palette != NULL);
 
   // Create a palette of increasing complexity
@@ -343,7 +343,7 @@ Theory((int palette_len), palette, palette_length_property) {
   cr_assert_eq(luminance_mapping[255], test_palette[palette_len - 1], "Brightest should map to last char for length %d",
                palette_len);
 
-  free(test_palette);
+  SAFE_FREE(test_palette);
 }
 
 // Test case structure for luminance palette error handling

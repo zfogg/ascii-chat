@@ -1,32 +1,37 @@
-#include "aspect_ratio.h"
+#include "platform/system.h"
+#include "asciichat_errno.h"
 #ifdef _WIN32
 #include "platform/windows/getopt.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <io.h>
+#define S_ISREG(m) (((m) & S_IFMT) == S_IFREG)
 #else
 #include <getopt.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
 #endif
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifndef _WIN32
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <unistd.h>
-#endif
+#include <sys/stat.h>
 
 #include "image2ascii/ascii.h"
 #include "options.h"
 #include "common.h"
+#include "util/ip.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
+#include "platform/password.h"
 #include "version.h"
+#include "crypto/crypto.h"
 
 // Safely parse string to integer with validation
-int strtoint_safe(const char *str) {
+asciichat_error_t strtoint_safe(const char *str) {
   if (!str || *str == '\0') {
     return INT_MIN; // Error: NULL or empty string
   }
@@ -45,10 +50,40 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
+// Detect default SSH key path for the current user
+static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
+  const char *home_dir = platform_getenv("HOME");
+  if (!home_dir) {
+    // Fallback for Windows
+    home_dir = platform_getenv("USERPROFILE");
+  }
+
+  if (!home_dir) {
+    return SET_ERRNO(ERROR_CONFIG, "Could not determine user home directory");
+  }
+
+  // Only support Ed25519 keys (modern, secure, fast)
+  char full_path[PLATFORM_MAX_PATH_LENGTH];
+  SAFE_SNPRINTF(full_path, sizeof(full_path), "%s/.ssh/id_ed25519", home_dir);
+
+  // Check if the Ed25519 private key file exists
+  struct stat st;
+  if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode)) {
+    SAFE_SNPRINTF(key_path, path_size, "%s", full_path);
+    log_debug("Found default SSH key: %s", full_path);
+    return ASCIICHAT_OK;
+  }
+
+  (void)fprintf(stderr, "No Ed25519 SSH key found at %s\n", full_path);
+  return SET_ERRNO(
+      ERROR_CRYPTO_KEY,
+      "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
+}
+
 unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
 bool auto_width = true, auto_height = true;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "127.0.0.1", opt_port[OPTIONS_BUFF_SIZE] = "27224";
+char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 unsigned short int opt_webcam_index = 0;
 
@@ -63,6 +98,7 @@ unsigned short int opt_show_capabilities = 0;           // Don't show capabiliti
 unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
 
 unsigned short int opt_audio_enabled = 0;
+int opt_audio_device = -1; // -1 means use default device
 
 // Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
 unsigned short int opt_stretch = 0;
@@ -87,17 +123,19 @@ char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
 // Encryption options
 unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
-char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // Encryption key from --key
+char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // SSH/GPG key file from --key (file-based only)
+char opt_password[OPTIONS_BUFF_SIZE] = "";        // Password string from --password
 char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
+
+// New crypto options (Phase 2)
+unsigned short int opt_no_encrypt = 0;        // Disable encryption (opt-out)
+char opt_server_key[OPTIONS_BUFF_SIZE] = "";  // Expected server public key (client only)
+char opt_client_keys[OPTIONS_BUFF_SIZE] = ""; // Allowed client keys (server only)
 
 // Palette options
 palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
 char opt_palette_custom[256] = "";                  // Custom palette characters
 bool opt_palette_custom_set = false;                // True if custom palette was set
-
-// Global variables to store last known image dimensions for aspect ratio
-// recalculation
-unsigned short int last_image_width = 0, last_image_height = 0;
 
 // Default weights; must add up to 1.0
 const float weight_red = 0.2989f;
@@ -137,6 +175,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
                                          {"audio", no_argument, NULL, 'A'},
+                                         {"audio-device", required_argument, NULL, 1007},
                                          {"stretch", no_argument, NULL, 's'},
                                          {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
@@ -144,28 +183,36 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
+                                         {"password", optional_argument, NULL, 1009},
                                          {"keyfile", required_argument, NULL, 'F'},
-                                         {"version", no_argument, NULL, 'v'},
+                                         {"no-encrypt", no_argument, NULL, 1005},
+                                         {"server-key", required_argument, NULL, 1006},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
 // Server-only options
-static struct option server_options[] = {
-    {"address", required_argument, NULL, 'a'}, {"port", required_argument, NULL, 'p'},
-    {"palette", required_argument, NULL, 'P'}, {"palette-chars", required_argument, NULL, 'C'},
-    {"audio", no_argument, NULL, 'A'},         {"log-file", required_argument, NULL, 'L'},
-    {"encrypt", no_argument, NULL, 'E'},       {"key", required_argument, NULL, 'K'},
-    {"keyfile", required_argument, NULL, 'F'}, {"version", no_argument, NULL, 'v'},
-    {"help", optional_argument, NULL, 'h'},    {0, 0, 0, 0}};
+static struct option server_options[] = {{"address", required_argument, NULL, 'a'},
+                                         {"port", required_argument, NULL, 'p'},
+                                         {"palette", required_argument, NULL, 'P'},
+                                         {"palette-chars", required_argument, NULL, 'C'},
+                                         {"log-file", required_argument, NULL, 'L'},
+                                         {"encrypt", no_argument, NULL, 'E'},
+                                         {"key", required_argument, NULL, 'K'},
+                                         {"password", optional_argument, NULL, 1009},
+                                         {"keyfile", required_argument, NULL, 'F'},
+                                         {"no-encrypt", no_argument, NULL, 1005},
+                                         {"client-keys", required_argument, NULL, 1008},
+                                         {"help", optional_argument, NULL, 'h'},
+                                         {0, 0, 0, 0}};
 
 // Terminal size detection functions moved to terminal_detect.c
 
 void update_dimensions_for_full_height(void) {
   unsigned short int term_width, term_height;
 
-  if (get_terminal_size(&term_width, &term_height) == 0) {
-    log_debug("Terminal size detected: %dx%d, auto_width=%d, auto_height=%d", term_width, term_height, (int)auto_width,
-              (int)auto_height);
+  // Note: Logging is not available during options_init, so we can't use log_debug here
+  asciichat_error_t result = get_terminal_size(&term_width, &term_height);
+  if (result == ASCIICHAT_OK) {
     // If both dimensions are auto, set height to terminal height and let
     // aspect_ratio calculate width
     if (auto_height && auto_width) {
@@ -181,14 +228,15 @@ void update_dimensions_for_full_height(void) {
       opt_width = term_width;
     }
   } else {
+    // Terminal size detection failed, but we can still continue with defaults
   }
 }
 
 void update_dimensions_to_terminal_size(void) {
   unsigned short int term_width, term_height;
   // Get current terminal size (get_terminal_size already handles ioctl first, then $COLUMNS/$LINES fallback)
-  int terminal_result = get_terminal_size(&term_width, &term_height);
-  if (terminal_result == 0) {
+  asciichat_error_t terminal_result = get_terminal_size(&term_width, &term_height);
+  if (terminal_result == ASCIICHAT_OK) {
     if (auto_width) {
       opt_width = term_width;
     }
@@ -221,6 +269,7 @@ static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer
 }
 
 // Helper function to handle required arguments with consistent error messages
+// Returns NULL on error (caller should check and return error code)
 static char *get_required_argument(const char *optarg, char *buffer, size_t buffer_size, const char *option_name,
                                    bool is_client) {
   // Check if optarg is NULL or empty
@@ -245,121 +294,34 @@ static char *get_required_argument(const char *optarg, char *buffer, size_t buff
 error:
   (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", is_client ? "client" : "server", option_name);
   (void)fflush(stderr);
-  _exit(EXIT_FAILURE);
+  return NULL; // Signal error to caller
 }
 
-// Helper function to validate IPv4 address format
-static int is_valid_ipv4(const char *ip) {
-  if (!ip)
-    return 0;
-
-  // Check for leading or trailing dots
-  if (ip[0] == '.' || ip[strlen(ip) - 1] == '.')
-    return 0;
-
-  // Check for consecutive dots
-  for (size_t i = 0; i < strlen(ip) - 1; i++) {
-    if (ip[i] == '.' && ip[i + 1] == '.')
-      return 0;
+asciichat_error_t options_init(int argc, char **argv, bool is_client) {
+  // Validate arguments (safety check for tests)
+  if (argc < 0 || argc > 1000) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
+  }
+  if (argv == NULL) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "argv is NULL");
+  }
+  // Validate all argv elements are non-NULL up to argc
+  for (int i = 0; i < argc; i++) {
+    if (argv[i] == NULL) {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "argv[%d] is NULL (argc=%d)", i, argc);
+    }
   }
 
-  // int octets[4];
-  int count = 0;
-  char temp[15 + 1]; // Maximum IPv4 length is 15 characters + null terminator
-
-  // Copy to temp buffer to avoid modifying original
-  if (strlen(ip) >= sizeof(temp))
-    return 0;
-  SAFE_STRNCPY(temp, ip, sizeof(temp));
-  temp[sizeof(temp) - 1] = '\0';
-
-  char *saveptr;
-  char *token = platform_strtok_r(temp, ".", &saveptr);
-  while (token != NULL && count < 4) {
-    char *endptr;
-    long octet = strtol(token, &endptr, 10);
-
-    // Check if conversion was successful and entire token was consumed
-    if (*endptr != '\0' || token == endptr)
-      return 0;
-
-    // Check octet range (0-255)
-    if (octet < 0 || octet > 255)
-      return 0;
-
-    // octets[count] = (int)octet;
-    token = platform_strtok_r(NULL, ".", &saveptr);
-    count++; // Increment count for each valid octet
-  }
-
-  // Must have exactly 4 octets and no remaining tokens
-  return (count == 4 && token == NULL);
-}
-
-// Helper function to resolve hostname to IPv4 address
-static int resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
-  if (!hostname || !ipv4_out || ipv4_out_size == 0)
-    return -1;
-
-#ifdef _WIN32
-  // Initialize Winsock on Windows (required for getaddrinfo)
-  WSADATA wsaData;
-  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-    return -1;
-  }
-#endif
-
-  struct addrinfo hints, *result = NULL;
-  memset(&hints, 0, sizeof(hints));
-  hints.ai_family = AF_INET;       // IPv4 only
-  hints.ai_socktype = SOCK_STREAM; // TCP
-  hints.ai_flags = 0;
-  hints.ai_protocol = 0;
-
-  int ret = getaddrinfo(hostname, NULL, &hints, &result);
-  if (ret != 0) {
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return -1;
-  }
-
-  if (!result) {
-    freeaddrinfo(result);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return -1;
-  }
-
-  // Extract IPv4 address from first result
-  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
-  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
-    freeaddrinfo(result);
-#ifdef _WIN32
-    WSACleanup();
-#endif
-    return -1;
-  }
-
-  freeaddrinfo(result);
-#ifdef _WIN32
-  WSACleanup();
-#endif
-
-  return 0;
-}
-
-void options_init(int argc, char **argv, bool is_client) {
   // Parse arguments first, then update dimensions (moved below)
 
   // Set different default addresses for client vs server
   if (is_client) {
-    // Client connects to localhost by default
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "127.0.0.1");
+    // Client connects to localhost by default (IPv6-first with IPv4 fallback)
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "localhost");
   } else {
-    // Server binds to all interfaces by default
-    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "0.0.0.0");
+    // Server binds to all interfaces by default (dual-stack IPv6 with IPv4-mapped support)
+    // "::" binds to all IPv6 addresses and IPv4-mapped addresses (::ffff:x.x.x.x)
+    SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "::");
   }
 
   // Use different option sets for client vs server
@@ -367,11 +329,31 @@ void options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:hv"; // Leading ':' for error reporting
+    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:h"; // Leading ':' for error reporting
     options = client_options;
   } else {
-    optstring = ":a:p:P:C:AL:EK:F:hv"; // Leading ':' for error reporting
+    optstring = ":a:p:P:C:L:EK:F:h"; // Leading ':' for error reporting (removed A for audio)
     options = server_options;
+  }
+
+  // Pre-pass: Check for --help or --version first (they have priority over everything)
+  // This ensures help/version are shown without triggering password prompts or other side effects
+  for (int i = 1; i < argc; i++) {
+    if (argv[i] == NULL) {
+      break; // Stop if we hit a NULL element (safety check for tests with malformed argv)
+    }
+    if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
+      usage(stdout, is_client);
+      (void)fflush(stdout);
+      _exit(0);
+    }
+    if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+      const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
+      printf("%s v%d.%d.%d-%s (%s, %s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_DATE, ASCII_CHAT_BUILD_TYPE);
+      (void)fflush(stdout);
+      _exit(0);
+    }
   }
 
   int longindex = 0; // Move outside loop so ':' case can access it
@@ -388,26 +370,63 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'a': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "address", is_client);
-      if (!is_valid_ipv4(value_str)) {
-        (void)fprintf(stderr, "Invalid IPv4 address '%s'. Address must be in format X.X.X.X where X is 0-255.\n",
-                      value_str);
-        _exit(EXIT_FAILURE);
+      if (!value_str)
+        return ERROR_USAGE;
+
+      // Parse IPv6 address (remove brackets if present)
+      char parsed_addr[OPTIONS_BUFF_SIZE];
+      if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
+        value_str = parsed_addr;
       }
-      SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+
+      // Check if it's a valid IPv4 address
+      if (is_valid_ipv4(value_str)) {
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+      }
+      // Check if it's a valid IPv6 address
+      else if (is_valid_ipv6(value_str)) {
+        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
+      }
+      // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
+      // This prevents trying to resolve malformed IPs like "192.168.1" as hostnames
+      else if (strchr(value_str, '.') != NULL) {
+        // Has dots but not valid IPv4 - reject immediately
+        (void)fprintf(stderr, "Invalid IP address format '%s'.\n", value_str);
+        (void)fprintf(stderr, "IPv4 addresses must have exactly 4 octets (e.g., 192.0.2.1).\n");
+        (void)fprintf(stderr, "Supported formats:\n");
+        (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
+        (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
+        (void)fprintf(stderr, "  Hostname: example.com\n");
+        return ERROR_USAGE;
+      }
+      // Otherwise, try to resolve as hostname
+      else {
+        // Try to resolve hostname to IPv4 first (for backward compatibility)
+        char resolved_ip[OPTIONS_BUFF_SIZE];
+        if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
+          SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
+        } else {
+          (void)fprintf(stderr, "Failed to resolve hostname '%s' to IP address.\n", value_str);
+          (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
+          (void)fprintf(stderr, "Supported formats:\n");
+          (void)fprintf(stderr, "  IPv4: 192.0.2.1\n");
+          (void)fprintf(stderr, "  IPv6: 2001:db8::1 or [2001:db8::1]\n");
+          (void)fprintf(stderr, "  Hostname: example.com\n");
+          return ERROR_USAGE;
+        }
+      }
       break;
     }
 
     case 'H': { // --host (DNS lookup)
-      if (!is_client) {
-        (void)fprintf(stderr, "Error: --host is a client-only option.\n");
-        _exit(EXIT_FAILURE);
-      }
       char *hostname = get_required_argument(optarg, argbuf, sizeof(argbuf), "host", is_client);
+      if (!hostname)
+        return ERROR_USAGE;
       char resolved_ip[OPTIONS_BUFF_SIZE];
-      if (resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
+      if (platform_resolve_hostname_to_ipv4(hostname, resolved_ip, sizeof(resolved_ip)) != 0) {
         (void)fprintf(stderr, "Failed to resolve hostname '%s' to IPv4 address.\n", hostname);
         (void)fprintf(stderr, "Check that the hostname is valid and your DNS is working.\n");
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", resolved_ip);
       break;
@@ -415,12 +434,14 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'p': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "port", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       // Validate port is a number between 1 and 65535
       char *endptr;
       long port_num = strtol(value_str, &endptr, 10);
       if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
         (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
@@ -428,10 +449,12 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'x': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "width", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       int width_val = strtoint_safe(value_str);
       if (width_val == INT_MIN || width_val <= 0) {
         (void)fprintf(stderr, "Invalid width value '%s'. Width must be a positive integer.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       opt_width = (unsigned short int)width_val;
       auto_width = false; // Mark as manually set
@@ -440,10 +463,12 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'y': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "height", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       int height_val = strtoint_safe(value_str);
       if (height_val == INT_MIN || height_val <= 0) {
         (void)fprintf(stderr, "Invalid height value '%s'. Height must be a positive integer.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       opt_height = (unsigned short int)height_val;
       auto_height = false; // Mark as manually set
@@ -452,11 +477,13 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'c': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "webcam-index", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       int parsed_index = strtoint_safe(value_str);
       if (parsed_index == INT_MIN || parsed_index < 0) {
         (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       opt_webcam_index = (unsigned short int)parsed_index;
       break;
@@ -470,6 +497,8 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 1000: { // --color-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-mode", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       if (strcmp(value_str, "auto") == 0) {
         opt_color_mode = COLOR_MODE_AUTO;
       } else if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
@@ -483,7 +512,7 @@ void options_init(int argc, char **argv, bool is_client) {
       } else {
         (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       break;
     }
@@ -498,14 +527,16 @@ void options_init(int argc, char **argv, bool is_client) {
     case 1003: { // --fps (client only - sets client's desired frame rate)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --fps is a client-only option.\n");
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       extern int g_max_fps; // From common.c
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "fps", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       int fps_val = strtoint_safe(value_str);
       if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
         (void)fprintf(stderr, "Invalid FPS value '%s'. FPS must be between 1 and 144.\n", value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       g_max_fps = fps_val;
       break;
@@ -514,7 +545,7 @@ void options_init(int argc, char **argv, bool is_client) {
     case 1004: { // --test-pattern (client only - use test pattern instead of webcam)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --test-pattern is a client-only option.\n");
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       opt_test_pattern = true;
       log_info("Using test pattern mode - webcam will not be opened");
@@ -523,6 +554,8 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'M': { // --render-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
         opt_render_mode = RENDER_MODE_FOREGROUND;
       } else if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
@@ -532,13 +565,15 @@ void options_init(int argc, char **argv, bool is_client) {
       } else {
         (void)fprintf(stderr, "Error: Invalid render mode '%s'. Valid modes: foreground, background, half-block\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       break;
     }
 
     case 'P': { // --palette
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       if (strcmp(value_str, "standard") == 0) {
         opt_palette_type = PALETTE_STANDARD;
       } else if (strcmp(value_str, "blocks") == 0) {
@@ -555,17 +590,19 @@ void options_init(int argc, char **argv, bool is_client) {
         (void)fprintf(stderr,
                       "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom\n",
                       value_str);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       break;
     }
 
     case 'C': { // --palette-chars
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "palette-chars", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       if (strlen(value_str) >= sizeof(opt_palette_custom)) {
         (void)fprintf(stderr, "Invalid palette-chars: too long (%zu chars, max %zu)\n", strlen(value_str),
                       sizeof(opt_palette_custom) - 1);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       SAFE_STRNCPY(opt_palette_custom, value_str, sizeof(opt_palette_custom));
       opt_palette_custom[sizeof(opt_palette_custom) - 1] = '\0';
@@ -582,6 +619,14 @@ void options_init(int argc, char **argv, bool is_client) {
       opt_audio_enabled = 1;
       break;
 
+    case 1007: // --audio-device
+      opt_audio_device = strtoint_safe(optarg);
+      if (opt_audio_device < 0) {
+        fprintf(stderr, "Error: Invalid audio device index '%s'\n", optarg);
+        return -1;
+      }
+      break;
+
     case 'q':
       opt_quiet = 1;
       break;
@@ -592,23 +637,27 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'D': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       char *endptr;
       opt_snapshot_delay = strtof(value_str, &endptr);
       if (*endptr != '\0' || value_str == endptr) {
         (void)fprintf(stderr, "Invalid snapshot delay value '%s'. Snapshot delay must be a number.\n", value_str);
         (void)fflush(stderr);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       if (opt_snapshot_delay < 0.0f) {
         (void)fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
         (void)fflush(stderr);
-        _exit(EXIT_FAILURE);
+        return ERROR_USAGE;
       }
       break;
     }
 
     case 'L': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
     }
@@ -619,22 +668,170 @@ void options_init(int argc, char **argv, bool is_client) {
 
     case 'K': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "key", is_client);
-      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-      opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
+      if (!value_str)
+        return ERROR_USAGE;
+
+      // --key is for file-based authentication only (SSH keys, GPG keys, GitHub/GitLab)
+      // For password-based encryption, use --password instead
+
+      // Check if it's a GPG key (gpg:keyid format)
+      if (strncmp(value_str, "gpg:", 4) == 0) {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1;
+      }
+      // Check if it's a GitHub key (github:username format)
+      else if (strncmp(value_str, "github:", 7) == 0) {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1;
+      }
+      // Check if it's a GitLab key (gitlab:username format)
+      else if (strncmp(value_str, "gitlab:", 7) == 0) {
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1;
+      }
+      // Check if it's "ssh" or "ssh:" to auto-detect SSH key
+      else if (strcmp(value_str, "ssh") == 0 || strcmp(value_str, "ssh:") == 0) {
+        char default_key[OPTIONS_BUFF_SIZE];
+        if (detect_default_ssh_key(default_key, sizeof(default_key)) == ASCIICHAT_OK) {
+          SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", default_key);
+          opt_encrypt_enabled = 1;
+        } else {
+          (void)fprintf(stderr, "No Ed25519 SSH key found for auto-detection\n");
+          (void)fprintf(stderr, "Please specify a key with --key /path/to/key\n");
+          (void)fprintf(stderr, "Or generate a new key with: ssh-keygen -t ed25519\n");
+          return ERROR_USAGE;
+        }
+      }
+      // Otherwise, treat as a file path - will be validated later for existence/permissions
+      else {
+        // Treat as SSH key file path - will be validated later for existence/permissions
+        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+        opt_encrypt_enabled = 1;
+      }
       break;
     }
 
     case 'F': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "keyfile", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
       SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", value_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
+      break;
+    }
+
+    case 1005: { // --no-encrypt (disable encryption)
+      opt_no_encrypt = 1;
+      opt_encrypt_enabled = 0; // Disable encryption
+      break;
+    }
+
+    case 1006: { // --server-key (client only)
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "server-key", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+      SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", value_str);
+      break;
+    }
+
+    case 1008: { // --client-keys (server only)
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "client-keys", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+      SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", value_str);
+      break;
+    }
+
+    case 1009: { // --password (password-based encryption)
+      char *value_str = NULL;
+
+      // Check if password was provided as argument
+      if (optarg && strlen(optarg) > 0) {
+        // Password provided with --password=value format
+        value_str = strip_equals_prefix(optarg, argbuf, sizeof(argbuf));
+      }
+      // Check if next argument exists and doesn't start with '-' (space-separated format)
+      else if (optind < argc && argv[optind] && argv[optind][0] != '-') {
+        // Password provided with --password value format (space-separated)
+        SAFE_SNPRINTF(argbuf, sizeof(argbuf), "%s", argv[optind]);
+        value_str = argbuf;
+        optind++; // Consume this argument
+      }
+
+      // If no password argument provided, prompt the user
+      if (!value_str) {
+        char prompted_password[OPTIONS_BUFF_SIZE];
+        if (platform_prompt_password("Enter password for encryption:", prompted_password, sizeof(prompted_password)) !=
+            0) {
+          (void)fprintf(stderr, "Error: Failed to read password\n");
+          return ERROR_USAGE;
+        }
+        value_str = prompted_password;
+        // Copy to argbuf so it persists beyond this scope
+        SAFE_SNPRINTF(argbuf, sizeof(argbuf), "%s", prompted_password);
+        value_str = argbuf;
+        // Clear the prompted_password buffer for security
+        memset(prompted_password, 0, sizeof(prompted_password));
+      }
+
+      // Validate password length requirements
+      size_t password_len = strlen(value_str);
+      if (password_len < MIN_PASSWORD_LENGTH) {
+        (void)fprintf(stderr, "Error: Password too short (minimum %d characters, got %zu)\n", MIN_PASSWORD_LENGTH,
+                      password_len);
+        return ERROR_USAGE;
+      }
+      if (password_len > MAX_PASSWORD_LENGTH) {
+        (void)fprintf(stderr, "Error: Password too long (maximum %d characters, got %zu)\n", MAX_PASSWORD_LENGTH,
+                      password_len);
+        return ERROR_USAGE;
+      }
+
+      SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", value_str);
+      opt_encrypt_enabled = 1; // Auto-enable encryption when password provided
+
+      // Clear the temporary buffer for security
+      memset(argbuf, 0, sizeof(argbuf));
       break;
     }
 
     case ':':
       // Missing argument for option
       if (optopt == 0 || optopt > 127) {
-        // Long option - safely extract the option name
+        // Long option - check if it was abbreviated first
+        if (optind > 0 && optind <= argc && argv && argv[optind - 1]) {
+          const char *user_input = argv[optind - 1];
+          if (user_input && strlen(user_input) > 2 && strncmp(user_input, "--", 2) == 0) {
+            // Extract the option name from user input (skip "--")
+            const char *user_opt = user_input + 2;
+            // Handle --option=value format
+            const char *eq_pos = strchr(user_opt, '=');
+            size_t user_opt_len = eq_pos ? (size_t)(eq_pos - user_opt) : strlen(user_opt);
+
+            // Find which option was matched by searching for a prefix match
+            const char *matched_option = NULL;
+            for (int i = 0; options[i].name != NULL; i++) {
+              const char *opt_name = options[i].name;
+              size_t opt_len = strlen(opt_name);
+              // Check if user's input is a prefix of this option name
+              if (opt_len > user_opt_len && strncmp(user_opt, opt_name, user_opt_len) == 0) {
+                matched_option = opt_name;
+                break;
+              }
+            }
+
+            // If we found a match and it's not exact, treat as unknown option
+            if (matched_option && strlen(matched_option) != user_opt_len) {
+              char abbreviated_opt[256];
+              safe_snprintf(abbreviated_opt, sizeof(abbreviated_opt), "%.*s", (int)user_opt_len, user_opt);
+              fprintf(stderr, "Unknown option '--%s'\n", abbreviated_opt);
+              usage(stderr, is_client);
+              return ERROR_USAGE;
+            }
+          }
+        }
+
+        // If we get here, it's a valid option name but missing argument
         const char *opt_name = "unknown";
         if (optind > 0 && optind <= argc && argv && argv[optind - 1]) {
           const char *arg = argv[optind - 1];
@@ -671,24 +868,58 @@ void options_init(int argc, char **argv, bool is_client) {
           (void)fprintf(stderr, "%s: option '-%c' requires an argument\n", is_client ? "client" : "server", optopt);
         }
       }
-      _exit(EXIT_FAILURE);
+      return ERROR_USAGE;
 
     case '?':
-      (void)fprintf(stderr, "Unknown option %c\n", optopt);
+      // Handle unknown options - extract the actual option name from argv
+      if (optopt == 0 || optopt > 127) {
+        // Long option - extract from argv
+        const char *user_input = NULL;
+        if (optind > 0 && optind <= argc && argv && argv[optind - 1]) {
+          user_input = argv[optind - 1];
+        }
+
+        // Extract option name for long options
+        const char *option_name = "[unknown option name] (this is invalid and an error. this should never be printed)";
+        if (user_input && strlen(user_input) > 2 && strncmp(user_input, "--", 2) == 0) {
+          const char *user_opt = user_input + 2;
+          // Handle --option=value format
+          const char *eq_pos = strchr(user_opt, '=');
+          if (eq_pos) {
+            size_t user_opt_len = eq_pos - user_opt;
+            if (user_opt_len > 0 && user_opt_len < 256) {
+              char unsupported_opt[256];
+              SAFE_STRNCPY(unsupported_opt, user_opt, sizeof(unsupported_opt));
+              unsupported_opt[user_opt_len] = '\0';
+              option_name = unsupported_opt;
+            } else {
+              option_name = user_opt;
+            }
+          } else {
+            option_name = user_opt;
+          }
+        } else if (user_input) {
+          option_name = user_input;
+        }
+        safe_fprintf(stderr, "Unknown option '--%s'\n", option_name);
+      } else {
+        // Short option
+        safe_fprintf(stderr, "Unknown option '-%c'\n", optopt);
+      }
       usage(stderr, is_client);
-      _exit(EXIT_FAILURE);
+      return ERROR_USAGE;
 
     case 'h':
       usage(stdout, is_client);
-      exit(EXIT_SUCCESS);
-      break;
+      (void)fflush(stdout);
+      _exit(0);
 
     case 'v': {
-      const char *binary_name = is_client ? "ascii-chat-client" : "ascii-chat-server";
-      printf("%s v%d.%d.%d-dev-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
-      exit(EXIT_SUCCESS);
-      break;
+      const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
+      printf("%s v%d.%d.%d-%s (%s, %s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_DATE, ASCII_CHAT_BUILD_TYPE);
+      (void)fflush(stdout);
+      _exit(0);
     }
 
     default:
@@ -700,15 +931,18 @@ void options_init(int argc, char **argv, bool is_client) {
   // First set any auto dimensions to terminal size, then apply full height logic
   update_dimensions_to_terminal_size();
   update_dimensions_for_full_height();
+
+  return ASCIICHAT_OK;
 }
 
-#define USAGE_INDENT "    "
+#define USAGE_INDENT "        "
 
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
+  (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-v --version                 " USAGE_INDENT "show version information\n");
-  (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "IPv4 address (default: 127.0.0.1)\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
   (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
                                    "hostname for DNS lookup (alternative to --address)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
@@ -732,14 +966,14 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                              "(default: auto)\n");
   (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
                                    "show detected terminal capabilities and exit\n");
-  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT "force enable UTF-8/Unicode support\n");
+  (void)fprintf(desc, USAGE_INDENT "   --utf8                    " USAGE_INDENT
+                                   "force enable UTF-8/Unicode support (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-M --render-mode MODE        " USAGE_INDENT "Rendering modes: "
                                    "foreground, background, half-block (default: foreground)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE         " USAGE_INDENT "ASCII character palette: "
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
-                                   "Custom palette characters for --palette=custom "
-                                   "(implies --palette=custom)\n");
+                                   "Custom palette characters (implies --palette=custom) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
                                    "enable audio capture and playback (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
@@ -755,32 +989,48 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT
                                    "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key PASSWORD            " USAGE_INDENT
-                                   "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-K --key KEY                  " USAGE_INDENT
+                                   "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, "
+                                   "gitlab:user, or 'ssh' for auto-detect "
+                                   "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(
+      desc, USAGE_INDENT
+      "   --password [PASS]          " USAGE_INDENT
+      "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE            " USAGE_INDENT "read encryption key from FILE "
                                    "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "   --no-encrypt               " USAGE_INDENT "disable encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --server-key KEY           " USAGE_INDENT
+                                   "expected server public key for verification (default: [unset])\n");
 }
 
 void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
+  (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
-  (void)fprintf(desc, USAGE_INDENT "-v --version         " USAGE_INDENT "show version information\n");
   (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");
   (void)fprintf(desc, USAGE_INDENT "-P --palette PALETTE " USAGE_INDENT "ASCII character palette: "
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
-  (void)fprintf(desc,
-                USAGE_INDENT "-C --palette-chars CHARS " USAGE_INDENT "Custom palette characters for --palette=custom "
-                             "(implies --palette=custom)\n");
-  (void)fprintf(desc, USAGE_INDENT "-A --audio           " USAGE_INDENT
-                                   "enable audio streaming to clients (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     "
+                                   "Custom palette characters for --palette=custom (implies --palette=custom)\n");
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "-K --key PASSWORD    " USAGE_INDENT
-                                   "encryption passphrase (implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT
+                "-K --key KEY         " USAGE_INDENT
+                "SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' "
+                "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(
+      desc, USAGE_INDENT
+      "   --password [PASS] " USAGE_INDENT
+      "password for connection encryption (prompts if not provided) (implies --encrypt) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-F --keyfile FILE    " USAGE_INDENT "read encryption key from file "
                                    "(implies --encrypt) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --no-encrypt      " USAGE_INDENT "disable encryption (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE" USAGE_INDENT
+                                   "allowed client keys file for authentication (default: [unset])\n");
 }
 
 void usage(FILE *desc /* stdout|stderr*/, bool is_client) {

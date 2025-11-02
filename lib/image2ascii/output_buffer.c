@@ -19,14 +19,15 @@ void ob_reserve(outbuf_t *ob, size_t need) {
     size_t ncap = 4096;
     while (ncap < ob->len + need)
       ncap = (ncap * 3) / 2;
-    SAFE_REALLOC(ob->buf, ncap, char *);
+    // SAFE_REALLOC handles NULL ptr as malloc - this is safe
+    ob->buf = SAFE_REALLOC(ob->buf, ncap, char *);
     ob->cap = ncap;
   } else if (ob->len + need > ob->cap) {
     // Expand existing buffer
     size_t ncap = ob->cap;
     while (ncap < ob->len + need)
       ncap = (ncap * 3) / 2;
-    SAFE_REALLOC(ob->buf, ncap, char *);
+    ob->buf = SAFE_REALLOC(ob->buf, ncap, char *);
     ob->cap = ncap;
   }
 }
@@ -39,7 +40,7 @@ void ob_putc(outbuf_t *ob, char c) {
 }
 
 void ob_write(outbuf_t *ob, const char *s, size_t n) {
-  if (!ob)
+  if (!ob || n == 0)
     return;
   ob_reserve(ob, n);
   SAFE_MEMCPY(ob->buf + ob->len, ob->cap - ob->len, s, n);

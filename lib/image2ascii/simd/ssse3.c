@@ -7,7 +7,7 @@
 #include "common.h"
 #include "../output_buffer.h"
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
 #include <tmmintrin.h>
 
 //=============================================================================
@@ -39,7 +39,7 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *asci
   const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   char *output;
-  SAFE_MALLOC(output, len, char *);
+  output = SAFE_MALLOC(len, char *);
 
   char *pos = output;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
@@ -160,7 +160,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
 
   if (width <= 0 || height <= 0) {
     char *empty;
-    SAFE_MALLOC(empty, 1, char *);
+    empty = SAFE_MALLOC(1, char *);
     empty[0] = '\0';
     return empty;
   }
@@ -176,7 +176,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
   // Estimate buffer size based on mode (copied from NEON)
   size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
   ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 64u;
-  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;
 

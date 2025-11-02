@@ -58,15 +58,14 @@
  * @version 2.0 (Post-Modularization)
  */
 
-#include "hashtable.h"
-#include "platform/abstraction.h"
-#include "platform/socket.h"
-#include "platform/init.h"
-
 #ifdef _WIN32
 #include <io.h>
+#include <ws2tcpip.h> // For getaddrinfo(), gai_strerror(), inet_ntop()
+#include <winsock2.h>
 #else
 #include <unistd.h>
+#include <netdb.h>     // For getaddrinfo(), gai_strerror()
+#include <arpa/inet.h> // For inet_ntop()
 #endif
 
 #include <errno.h>
@@ -78,24 +77,33 @@
 #include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <stdatomic.h>
 
+#include "main.h"
+#include "common.h"
+#include "hashtable.h"
+#include "platform/abstraction.h"
+#include "platform/socket.h"
+#include "platform/init.h"
+#include "errno.h"
 #include "image2ascii/image.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
-#include "common.h"
-#include "network.h"
+#include "asciichat_errno.h"
+#include "network/network.h"
 #include "options.h"
 #include "buffer_pool.h"
 #include "mixer.h"
 #include "palette.h"
 #include "audio.h"
-
 #include "client.h"
 #include "stream.h"
 #include "stats.h"
 #include "platform/string.h"
+#include "crypto/keys/keys.h"
+#include "crypto/known_hosts.h"
 
 /* ============================================================================
  * Global State
@@ -114,7 +122,18 @@
  * - Checked by all worker threads to know when to exit gracefully
  * - Must be atomic to prevent race conditions during shutdown cascade
  */
-atomic_bool g_should_exit = false;
+atomic_bool g_server_should_exit = false;
+
+/**
+ * @brief Shutdown check callback for library code
+ *
+ * Provides clean separation between application state and library code.
+ * Registered with shutdown_register_callback() so library code can check
+ * shutdown status without directly accessing g_server_should_exit.
+ */
+static bool check_shutdown(void) {
+  return atomic_load(&g_server_should_exit);
+}
 
 /**
  * @brief Global audio mixer instance for multi-client audio processing
@@ -147,7 +166,7 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  * PLATFORM NOTE: Uses platform-abstracted socket_t type (SOCKET on Windows,
  * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
  */
-static volatile socket_t listenfd = INVALID_SOCKET_VALUE;
+static _Atomic socket_t listenfd = INVALID_SOCKET_VALUE;
 
 /**
  * @brief Global client manager for signal handler access
@@ -177,6 +196,17 @@ static asciithread_t g_stats_logger_thread;
 static bool g_stats_logger_thread_created = false;
 
 /* ============================================================================
+ * Server Crypto State
+ * ============================================================================
+ */
+
+/** Global server crypto state */
+bool g_server_encryption_enabled = false;
+private_key_t g_server_private_key = {0};
+public_key_t g_client_whitelist[MAX_CLIENTS] = {0};
+size_t g_num_whitelisted_clients = 0;
+
+/* ============================================================================
  * Signal Handlers
  * ============================================================================
  */
@@ -193,12 +223,12 @@ static bool g_stats_logger_thread_created = false;
  * Signal handlers are severely restricted in what they can safely do:
  * - Only async-signal-safe functions are allowed
  * - No mutex operations (can deadlock if main thread holds mutex)
- * - No malloc/free (heap corruption if interrupted during allocation)
+ * - No malloc/SAFE_FREE(heap corruption if interrupted during allocation)
  * - No non-reentrant library calls (logging, printf, etc. are dangerous)
  *
  * SHUTDOWN PROCESS:
  * =================
- * 1. Set atomic g_should_exit flag (signal-safe, checked by all threads)
+ * 1. Set atomic g_server_should_exit flag (signal-safe, checked by all threads)
  * 2. Use raw write() for immediate user feedback (async-signal-safe)
  * 3. Broadcast shutdown condition to wake sleeping threads
  * 4. Close all sockets to interrupt blocking I/O operations
@@ -212,7 +242,7 @@ static bool g_stats_logger_thread_created = false;
  * - send() in client send threads (if network is slow)
  *
  * Closing sockets causes these functions to return with error codes,
- * allowing threads to check g_should_exit and exit gracefully.
+ * allowing threads to check g_server_should_exit and exit gracefully.
  *
  * PLATFORM CONSIDERATIONS:
  * ========================
@@ -224,21 +254,27 @@ static bool g_stats_logger_thread_created = false;
  */
 static void sigint_handler(int sigint) {
   (void)(sigint);
+  static int sigint_count = 0;
+  sigint_count++;
+  if (sigint_count > 1) {
+    _exit(1);
+  }
 
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_server_should_exit, true);
 
-  // STEP 2: Use printf for output (user says it's fine)
+  // STEP 2: Use printf for output (signal-safe)
   printf("\nSIGINT received - shutting down server...\n");
   (void)fflush(stdout);
 
   // STEP 3: Close listening socket to interrupt accept() in main loop
   // This is signal-safe on Windows and necessary to wake up blocked accept()
-  if (listenfd != INVALID_SOCKET_VALUE) {
-    printf("DEBUG: Signal handler closing listening socket %d\n", (int)listenfd);
+  socket_t current_listenfd = atomic_load(&listenfd);
+  if (current_listenfd != INVALID_SOCKET_VALUE) {
+    printf("DEBUG: Signal handler closing listening socket %d\n", (int)current_listenfd);
     (void)fflush(stdout);
-    socket_close(listenfd);
-    listenfd = INVALID_SOCKET_VALUE;
+    socket_close(current_listenfd);
+    atomic_store(&listenfd, INVALID_SOCKET_VALUE);
   }
 
   // STEP 4: DO NOT access client data structures in signal handler
@@ -249,14 +285,14 @@ static void sigint_handler(int sigint) {
   // 3. Client array might be in an inconsistent state during modification
   //
   // SOLUTION: The listening socket closure above is sufficient to unblock accept_with_timeout()
-  // The main thread will detect g_should_exit and properly close client sockets with timeouts
+  // The main thread will detect g_server_should_exit and properly close client sockets with timeouts
 
   // Debug message to see if handler completes
   printf("DEBUG: Signal handler completed\n");
   (void)fflush(stdout);
 
   // NOTE: Do NOT call log_destroy() here - it's not async-signal-safe
-  // The main thread will handle cleanup when it detects g_should_exit
+  // The main thread will handle cleanup when it detects g_server_should_exit
 }
 
 /**
@@ -283,12 +319,12 @@ static void sigint_handler(int sigint) {
  */
 static void sigterm_handler(int sigterm) {
   (void)(sigterm);
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_server_should_exit, true);
 
   printf("SIGTERM received - shutting down server...\n");
   (void)fflush(stdout);
   // Return immediately - signal handlers must be minimal
-  // Main thread will detect g_should_exit and perform complete shutdown
+  // Main thread will detect g_server_should_exit and perform complete shutdown
 }
 
 /**
@@ -357,7 +393,7 @@ static void sigusr1_handler(int sigusr1) {
  * CLEANUP GUARANTEES:
  * ===================
  * The shutdown sequence ensures:
- * 1. Signal handlers set g_should_exit atomically
+ * 1. Signal handlers set g_server_should_exit atomically
  * 2. All worker threads check flag and exit gracefully
  * 3. Main thread waits for all threads to finish
  * 4. Resources cleaned up in reverse dependency order
@@ -368,82 +404,129 @@ static void sigusr1_handler(int sigusr1) {
  * @return Exit code: 0 for success, non-zero for failure
  */
 
-#ifdef USE_MIMALLOC_DEBUG
-// Wrapper function for mi_stats_print to use with atexit()
-// mi_stats_print takes a parameter, but atexit requires void(void)
-extern void mi_stats_print(void *out);
-static void print_mimalloc_stats(void) {
-  mi_stats_print(NULL); // NULL = print to stderr
-}
-#endif
-
-int main(int argc, char *argv[]) {
-
-  // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != 0) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "FATAL: Failed to initialize platform\n"));
-    return 1;
+/**
+ * Initialize crypto for server
+ * @return 0 on success, -1 on error
+ */
+static int init_server_crypto(void) {
+  // Check if encryption is disabled
+  if (opt_no_encrypt) {
+    log_info("Encryption: DISABLED (--no-encrypt)");
+    g_server_encryption_enabled = false;
+    return 0;
   }
-  (void)atexit(platform_cleanup);
 
-#ifdef USE_MIMALLOC_DEBUG
-  // Register mimalloc stats printer at exit
-  (void)atexit(print_mimalloc_stats);
-#endif
+  // Load server private key if provided via --key
+  if (strlen(opt_encrypt_key) > 0) {
+    // --key requires signing capabilities (SSH key files or GPG keys with gpg-agent)
 
-  options_init(argc, argv, false);
+    // Validate SSH key file (skip validation for special prefixes - they have their own validation)
+    bool is_special_key = (strncmp(opt_encrypt_key, "gpg:", 4) == 0 || strncmp(opt_encrypt_key, "github:", 7) == 0 ||
+                           strncmp(opt_encrypt_key, "gitlab:", 7) == 0);
 
-  // Initialize logging - use specified log file or default
+    if (!is_special_key) {
+      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
+        SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key file: %s", opt_encrypt_key);
+        return -1;
+      }
+    }
+
+    // Parse key (handles SSH files and gpg: prefix, rejects github:/gitlab:)
+    log_info("Loading key for authentication: %s", opt_encrypt_key);
+    if (parse_private_key(opt_encrypt_key, &g_server_private_key) == ASCIICHAT_OK) {
+      log_info("Successfully loaded server key: %s", opt_encrypt_key);
+    } else {
+      log_error("Failed to parse key: %s\n"
+                "This may be due to:\n"
+                "  - Wrong password for encrypted key\n"
+                "  - Unsupported key type (only Ed25519 is currently supported)\n"
+                "  - Corrupted key file\n"
+                "\n"
+                "Note: RSA and ECDSA keys are not yet supported\n"
+                "To generate an Ed25519 key: ssh-keygen -t ed25519\n",
+                opt_encrypt_key);
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Key parsing failed: %s", opt_encrypt_key);
+      return -1;
+    }
+  } else if (strlen(opt_password) == 0) {
+    // No identity key provided - server will run in simple mode
+    // The server will still generate ephemeral keys for encryption, but no identity key
+    g_server_private_key.type = KEY_TYPE_UNKNOWN;
+    log_info("Server running without identity key (simple mode)");
+  }
+
+  // Load client whitelist if provided
+  if (strlen(opt_client_keys) > 0) {
+    if (parse_client_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+      SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", opt_client_keys);
+      return -1;
+    }
+    log_debug("Loaded %zu whitelisted clients", g_num_whitelisted_clients);
+    log_info("Server will only accept %zu whitelisted clients", g_num_whitelisted_clients);
+  }
+
+  g_server_encryption_enabled = true;
+  return 0;
+}
+
+int server_main(int argc, char *argv[]) {
+  // Parse options FIRST so --help and --version can exit immediately
+  // Note: --help and --version will exit(0) directly within options_init
+  int options_result = options_init(argc, argv, false);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ERROR_USAGE for invalid options (after printing error)
+    // Just exit with the returned error code
+    return options_result;
+  }
+
+  // Register shutdown check callback for library code
+  shutdown_register_callback(check_shutdown);
+
+  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
-  log_init(log_filename, LOG_DEBUG);
+  safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
+  asciichat_error_t init_result = asciichat_shared_init("server.log");
+  if (init_result != ASCIICHAT_OK) {
+    return init_result;
+  }
+  log_info("Logging initialized to %s", log_filename);
+
+  // Initialize crypto after logging is ready
+  log_info("Initializing crypto...");
+  if (init_server_crypto() != 0) {
+    // Print detailed error context if available
+    LOG_ERRNO_IF_SET("Crypto initialization failed");
+    FATAL(ERROR_CRYPTO, "Crypto initialization failed");
+  }
+  log_info("Crypto initialized successfully");
 
   // Initialize lock debugging system after logging is fully set up
-  log_info("SERVER: Initializing lock debug system...");
+  log_debug("Initializing lock debug system...");
   int lock_debug_result = lock_debug_init();
   if (lock_debug_result != 0) {
-    log_fatal("Failed to initialize lock debug system");
-    exit(1);
+    // Print detailed error context if available
+    LOG_ERRNO_IF_SET("Lock debug system initialization failed");
+    FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
   }
-  log_info("SERVER: Lock debug system initialized successfully");
-
-  // Initialize palette based on command line options
-  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
-  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
-    log_error("Failed to apply palette configuration");
-    return 1;
-  }
+  log_debug("Lock debug system initialized successfully");
 
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
   log_set_terminal_output(!opt_quiet);
-#ifdef DEBUG_MEMORY
-  debug_memory_set_quiet_mode(opt_quiet);
-#endif
 
-#ifdef DEBUG_MEMORY
-  (void)atexit(debug_memory_report);
-#endif
-
-  // Initialize global shared buffer pool
-  data_buffer_pool_init_global();
-  (void)atexit(data_buffer_pool_cleanup_global);
-  log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
   int port = strtoint_safe(opt_port);
   if (port == INT_MIN) {
     log_error("Invalid port configuration: %s", opt_port);
-    exit(EXIT_FAILURE);
+    FATAL(ERROR_CONFIG, "Invalid port configuration: %s", opt_port);
   }
-  log_info("SERVER: Port set to %d", port);
 
-  log_info("SERVER: Initializing luminance palette...");
   ascii_simd_init();
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
-  log_info("SERVER: RGB palettes precalculated");
 
   // Simple signal handling (temporarily disable complex threading signal handling)
-  log_info("SERVER: Setting up simple signal handlers...");
+  log_debug("Setting up simple signal handlers...");
 
   // Handle Ctrl+C for cleanup
   platform_signal(SIGINT, sigint_handler);
@@ -459,84 +542,121 @@ int main(int argc, char *argv[]) {
   // SIGPIPE not supported on Windows
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
-  log_info("SERVER: Signal handling setup complete");
 
+#ifdef NDEBUG
   // Start the lock debug thread (system already initialized earlier)
-  log_info("SERVER: Starting lock debug thread...");
-  int thread_result = lock_debug_start_thread();
-  if (thread_result == 0) {
-    log_info("SERVER: Lock debug thread started - press '?' to print held locks");
-  } else {
-    log_error("Failed to start lock debug thread");
+  if (lock_debug_start_thread() != 0) {
+    FATAL(ERROR_THREAD, "Failed to start lock debug thread");
   }
+  // Initialize statistics system
+  if (stats_init() != 0) {
+    FATAL(ERROR_THREAD, "Statistics system initialization failed");
+  }
+#endif
+
   // Start statistics logging thread for periodic performance monitoring
-  log_info("SERVER: Creating statistics logger thread...");
   if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL) != 0) {
-    log_error("Failed to create statistics logger thread");
+    LOG_ERRNO_IF_SET("Statistics logger thread creation failed");
   } else {
     g_stats_logger_thread_created = true;
     log_info("Statistics logger thread started");
   }
 
-  // Network setup
-  log_info("SERVER: Setting up network sockets...");
-  struct sockaddr_in serv_addr;
-  struct sockaddr_in client_addr;
+  // Network setup - Dual-stack IPv6 with IPv4 support
+  struct sockaddr_storage serv_addr; // Address-family-agnostic storage
+  struct sockaddr_storage client_addr;
   socklen_t client_len = sizeof(client_addr);
 
-  log_info("SERVER: Creating listen socket...");
-  listenfd = socket_create(AF_INET, SOCK_STREAM, 0);
-  if (listenfd == INVALID_SOCKET_VALUE) {
-    log_fatal("Failed to create socket: %s", SAFE_STRERROR(errno));
-    exit(1);
+  // Parse bind address from opt_address
+  // Default is "::" (dual-stack: all IPv6 + IPv4-mapped)
+  struct addrinfo hints, *res = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET6; // IPv6 socket (with IPV6_V6ONLY=0 for dual-stack)
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST; // For bind() + numeric address
+
+  char port_str[16];
+  SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
+
+  log_debug("Resolving bind address '%s' port %s...", opt_address, port_str);
+  int getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
+  if (getaddr_result != 0) {
+    // Try IPv4 fallback if IPv6 resolution fails
+    hints.ai_family = AF_INET;
+    getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
+    if (getaddr_result != 0) {
+      FATAL(ERROR_NETWORK, "Failed to resolve bind address '%s': %s", opt_address, gai_strerror(getaddr_result));
+    }
+    log_debug("Using IPv4 binding (address family: AF_INET)");
+  } else {
+    log_debug("Using dual-stack IPv6 binding (address family: AF_INET6)");
   }
-  log_info("SERVER: Listen socket created (fd=%d)", listenfd);
 
-  log_info("Server listening on port %d", port);
+  // Copy resolved address to serv_addr
+  if (res->ai_addrlen > sizeof(serv_addr)) {
+    freeaddrinfo(res);
+    FATAL(ERROR_NETWORK, "Address size too large: %zu bytes", (size_t)res->ai_addrlen);
+  }
+  memcpy(&serv_addr, res->ai_addr, res->ai_addrlen);
+  int address_family = res->ai_family;
+  socklen_t addrlen = res->ai_addrlen;
+  freeaddrinfo(res);
 
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-  serv_addr.sin_port = htons(port);
+  socket_t new_listenfd = socket_create(address_family, SOCK_STREAM, 0);
+  if (new_listenfd == INVALID_SOCKET_VALUE) {
+    FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
+  }
 
   // Set socket options
   int yes = 1;
-  if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
-    log_fatal("setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
-    exit(ASCIICHAT_ERR_NETWORK);
+  if (socket_setsockopt(new_listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+    FATAL(ERROR_NETWORK, "setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
+  }
+
+  // Enable dual-stack mode for IPv6 sockets (allow IPv4-mapped addresses)
+  if (address_family == AF_INET6) {
+    int ipv6only = 0; // 0 = dual-stack (accept both IPv6 and IPv4-mapped)
+    if (socket_setsockopt(new_listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
+      log_warn("Failed to set IPV6_V6ONLY=0 (dual-stack mode): %s", SAFE_STRERROR(errno));
+      log_warn("Server may only accept IPv6 connections");
+    } else {
+      log_debug("Dual-stack mode enabled (IPv6 + IPv4-mapped addresses)");
+    }
   }
 
   // If we Set keep-alive on the listener before accept(), connfd will inherit it.
-  if (set_socket_keepalive(listenfd) < 0) {
+  if (set_socket_keepalive(new_listenfd) < 0) {
     log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
   }
 
   // Bind socket
-  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    log_fatal("Socket bind failed: %s", SAFE_STRERROR(errno));
-    exit(1);
+  log_info("Server binding to %s:%d", opt_address, port);
+  if (socket_bind(new_listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
+    FATAL(ERROR_NETWORK_BIND, "Socket bind failed: %s", SAFE_STRERROR(errno));
   }
 
   // Listen for connections
-  if (socket_listen(listenfd, 10) < 0) {
-    log_fatal("Connection listen failed: %s", SAFE_STRERROR(errno));
-    exit(1);
+  if (socket_listen(new_listenfd, 10) < 0) {
+    FATAL(ERROR_NETWORK, "Connection listen failed: %s", SAFE_STRERROR(errno));
   }
+
+  // Store the socket in the atomic variable
+  atomic_store(&listenfd, new_listenfd);
 
   struct timespec last_stats_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_stats_time);
 
   // Initialize synchronization primitives
   if (rwlock_init(&g_client_manager_rwlock) != 0) {
-    log_fatal("Failed to initialize client manager rwlock");
-    exit(1);
+    FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
 
   // Lock debug system already initialized earlier in main()
 
   // Check if SIGINT was received during initialization
-  if (atomic_load(&g_should_exit)) {
+  if (atomic_load(&g_server_should_exit)) {
     // Skip rest of initialization and go straight to main loop
-    // which will detect g_should_exit and exit cleanly
+    // which will detect g_server_should_exit and exit cleanly
     goto main_loop;
   }
 
@@ -544,44 +664,28 @@ int main(int argc, char *argv[]) {
 
   // NOTE: g_client_manager is already zero-initialized in client.c with = {0}
   // We only need to initialize the mutex
-  if (!atomic_load(&g_should_exit)) {
-    log_info("DEBUG: About to init client manager mutex");
-  }
   mutex_init(&g_client_manager.mutex);
-  if (!atomic_load(&g_should_exit)) {
-    log_info("DEBUG: Client manager mutex initialized");
-  }
 
-  if (!atomic_load(&g_should_exit)) {
-    log_info("DEBUG: About to create client hashtable");
-  }
   // Initialize client hash table for O(1) lookup
   g_client_manager.client_hashtable = hashtable_create();
-  if (!atomic_load(&g_should_exit)) {
-    log_info("DEBUG: Client hashtable created");
-  }
   if (!g_client_manager.client_hashtable) {
-    if (!atomic_load(&g_should_exit)) {
-      log_fatal("Failed to create client hash table");
-    }
-    exit(1);
+    FATAL(ERROR_MEMORY, "Failed to create client hash table");
   }
 
-  // Initialize audio mixer if audio is enabled
-  if (opt_audio_enabled && !atomic_load(&g_should_exit)) {
-    log_info("SERVER: Initializing audio mixer for per-client audio rendering...");
+  // Initialize audio mixer (always enabled on server)
+  if (!atomic_load(&g_server_should_exit)) {
+    log_debug("Initializing audio mixer for per-client audio rendering...");
     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
     if (!g_audio_mixer) {
-      if (!atomic_load(&g_should_exit)) {
-        log_error("Failed to initialize audio mixer");
+      LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
+      if (!atomic_load(&g_server_should_exit)) {
+        FATAL(ERROR_AUDIO, "Failed to initialize audio mixer");
       }
     } else {
-      if (!atomic_load(&g_should_exit)) {
-        log_info("SERVER: Audio mixer initialized successfully for per-client audio rendering");
+      if (!atomic_load(&g_server_should_exit)) {
+        log_debug("Audio mixer initialized successfully for per-client audio rendering");
       }
     }
-  } else if (!atomic_load(&g_should_exit)) {
-    log_info("SERVER: Audio disabled, skipping audio mixer initialization");
   }
 
   // ========================================================================
@@ -599,10 +703,10 @@ int main(int argc, char *argv[]) {
   // by dead connections, eventually preventing new clients from joining.
 
 main_loop:
-  while (!atomic_load(&g_should_exit)) {
+  while (!atomic_load(&g_server_should_exit)) {
     // Debug: Log loop iteration
     // Check if we received a shutdown signal
-    if (atomic_load(&g_should_exit)) {
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
@@ -610,7 +714,7 @@ main_loop:
     // This prevents log spam while maintaining visibility into server state
     static int last_logged_count = -1;
     if (g_client_manager.client_count != last_logged_count) {
-      log_info("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
+      log_debug("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
       last_logged_count = g_client_manager.client_count;
     }
 
@@ -666,15 +770,9 @@ main_loop:
 
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
-      log_info("DEBUG_CLEANUP: Cleaning up disconnected client %u", cleanup_tasks[i].client_id);
-      // Wait for receive thread to finish - use timeout during shutdown since sockets are closed
-      log_info("DEBUG_CLEANUP: Joining receive thread for client %u", cleanup_tasks[i].client_id);
-
-      bool is_shutting_down = atomic_load(&g_should_exit);
+      bool is_shutting_down = atomic_load(&g_server_should_exit);
       if (is_shutting_down) {
         // During shutdown, give receive thread a brief chance to exit cleanly with timeout
-        log_info("DEBUG_CLEANUP: Shutdown mode: joining receive thread for client %u with 200ms timeout",
-                 cleanup_tasks[i].client_id);
         int join_result = ascii_thread_join_timeout(&cleanup_tasks[i].receive_thread, NULL, 200);
         if (join_result == -2) {
           log_warn("Receive thread for client %u timed out during shutdown (continuing)", cleanup_tasks[i].client_id);
@@ -685,60 +783,69 @@ main_loop:
         ascii_thread_join(&cleanup_tasks[i].receive_thread, NULL);
       }
 
-      log_info("DEBUG_CLEANUP: Receive thread joined for client %u, calling remove_client", cleanup_tasks[i].client_id);
-      // Remove the client and clean up resources
       (void)remove_client(cleanup_tasks[i].client_id);
-      log_info("DEBUG_CLEANUP: Client %u removed successfully", cleanup_tasks[i].client_id);
     }
 
     // Check if listening socket was closed by signal handler
-    log_info("DEBUG: Checking listenfd - value=%d, INVALID=%d", (int)listenfd, INVALID_SOCKET_VALUE);
-    if (listenfd == INVALID_SOCKET_VALUE) {
-      log_info("DEBUG: Listening socket closed by signal handler, breaking loop");
+    if (atomic_load(&listenfd) == INVALID_SOCKET_VALUE) {
       break;
     }
 
     // Accept network connection with timeout
 
-    // Check g_should_exit right before accept
-    if (atomic_load(&g_should_exit)) {
+    // Check g_server_should_exit right before accept
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
-    int client_sock = accept_with_timeout(listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
+    // Check if listenfd is still valid before calling accept_with_timeout
+    socket_t current_listenfd = atomic_load(&listenfd);
+    if (current_listenfd == INVALID_SOCKET_VALUE) {
+      log_debug("Main loop: listenfd is invalid, breaking accept loop");
+      break;
+    }
 
-#ifdef _WIN32
-    int saved_errno = (client_sock < 0) ? WSAGetLastError() : 0; // Windows socket error
-#else
-    int saved_errno = errno; // POSIX errno
-#endif
-#ifdef DEBUG_NETWORK
-    log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
-              client_sock < 0 ? strerror(saved_errno) : "success");
-#endif
+    // CRITICAL: Final check right before accept to prevent race condition
+    // The signal handler could close the socket between atomic_load() and accept()
+    socket_t final_listenfd = atomic_load(&listenfd);
+    if (final_listenfd == INVALID_SOCKET_VALUE) {
+      log_debug("Main loop: listenfd was closed by signal handler, breaking accept loop");
+      break;
+    }
+
+    ASSERT_NO_ERRNO();
+
+    int client_sock = accept_with_timeout(final_listenfd, (struct sockaddr *)&client_addr, &client_len, ACCEPT_TIMEOUT);
+
+    // Get the error code from asciichat_errno_context (which accept_with_timeout sets)
+    int saved_errno = asciichat_errno_context.system_errno;
     if (client_sock < 0) {
-      // Always log the error for debugging
-      log_info("accept_with_timeout failed: errno=%d, g_should_exit=%d, listenfd=%d", saved_errno,
-               atomic_load(&g_should_exit), listenfd);
-
-      if (saved_errno == ETIMEDOUT
-#ifdef _WIN32
-          || saved_errno == WSAETIMEDOUT
-#endif
-      ) {
+      if (saved_errno == ETIMEDOUT || saved_errno == EAGAIN || saved_errno == EWOULDBLOCK) {
 #ifdef DEBUG_NETWORK
-        log_debug("Main loop: Accept timed out, checking g_should_exit=%d", atomic_load(&g_should_exit));
+        log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
+                  client_sock < 0 ? socket_get_error_string() : "success");
 #endif
-        // Timeout is normal, just continue
+
 #ifdef DEBUG_MEMORY
+        // Hot loop memory reporting for bug detection and sanity.
         // debug_memory_report();
 #endif
+        // Clear asciichat_errno for timeouts (expected behavior)
+        if (HAS_ERRNO(&asciichat_errno_context)) {
+          if (asciichat_errno_context.system_errno == ETIMEDOUT) {
+            asciichat_clear_errno();
+          } else {
+            PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+          }
+        }
+        ASSERT_NO_ERRNO();
+
         continue;
       }
       if (saved_errno == EINTR) {
         // Interrupted by signal - check if we should exit
         log_debug("accept() interrupted by signal");
-        if (atomic_load(&g_should_exit)) {
+        if (atomic_load(&g_server_should_exit)) {
           break;
         }
         continue;
@@ -758,38 +865,67 @@ main_loop:
 #endif
         break;
       }
-      // log_error("Network accept failed: %s", network_error_string(saved_errno));
+      // This point in code isn't an actual error and a simple TCP timeout happened. Loop.
       continue;
     }
 
-    // Log client connection
-    char client_ip[INET_ADDRSTRLEN];
-    inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, sizeof(client_ip));
-    int client_port = ntohs(client_addr.sin_port);
-    log_info("New client connected from %s:%d", client_ip, client_port);
+    // Log client connection - handle both IPv4 and IPv6
+    char client_ip[INET6_ADDRSTRLEN]; // Large enough for both IPv4 and IPv6
+    int client_port = 0;
+
+    if (((struct sockaddr *)&client_addr)->sa_family == AF_INET) {
+      // IPv4 address
+      struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
+      inet_ntop(AF_INET, &addr_in->sin_addr, client_ip, sizeof(client_ip));
+      client_port = ntohs(addr_in->sin_port);
+      log_debug("New client connected from %s:%d (IPv4)", client_ip, client_port);
+    } else if (((struct sockaddr *)&client_addr)->sa_family == AF_INET6) {
+      // IPv6 address
+      struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
+      inet_ntop(AF_INET6, &addr_in6->sin6_addr, client_ip, sizeof(client_ip));
+      client_port = ntohs(addr_in6->sin6_port);
+
+      // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
+      if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
+        log_debug("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
+      } else {
+        log_debug("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
+      }
+    } else {
+      safe_snprintf(client_ip, sizeof(client_ip), "unknown");
+      log_warn("New client connected with unknown address family %d", ((struct sockaddr *)&client_addr)->sa_family);
+    }
 
     // Add client to multi-client manager
     int client_id = add_client(client_sock, client_ip, client_port);
     if (client_id < 0) {
       log_error("Failed to add client, rejecting connection");
-      close(client_sock);
+      // Print error context if available (helps debug crypto/network failures)
+      if (HAS_ERRNO(&asciichat_errno_context)) {
+        PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+        // Clear the error so ASSERT_NO_ERRNO() doesn't abort on next iteration
+        CLEAR_ERRNO();
+      }
+      socket_close(client_sock);
       continue;
     }
 
-    log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
+    log_debug("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
 
     // Check if we should exit after processing this client
-    if (atomic_load(&g_should_exit)) {
-      log_info("DEBUG: Breaking loop due to g_should_exit=true at end of iteration");
+    if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
-    log_info("DEBUG: End of main loop iteration - g_should_exit=%d", atomic_load(&g_should_exit));
+    if (HAS_ERRNO(&asciichat_errno_context)) {
+      PRINT_ERRNO_CONTEXT(&asciichat_errno_context);
+    }
+    ASSERT_NO_ERRNO();
   }
 
   // Cleanup
   log_info("Server shutting down...");
-  atomic_store(&g_should_exit, true);
+  atomic_store(&g_server_should_exit, true);
 
   // Wake up any threads that might be blocked on condition variables
   // (like packet queues) to ensure responsive shutdown
@@ -806,20 +942,17 @@ main_loop:
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (atomic_load(&client->client_id) != 0 && client->socket != INVALID_SOCKET_VALUE) {
-      log_info("DEBUG_SHUTDOWN: Closing socket %d for client %u", (int)client->socket, atomic_load(&client->client_id));
       socket_close(client->socket);
       client->socket = INVALID_SOCKET_VALUE;
     }
   }
   rwlock_rdunlock(&g_client_manager_rwlock);
 
-  log_info("Signaling all clients to stop (sockets closed, g_should_exit set)...");
+  log_info("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
 
   // Wait for stats logger thread to finish
   if (g_stats_logger_thread_created) {
-    log_info("DEBUG_SHUTDOWN: Waiting for stats logger thread to finish...");
     ascii_thread_join(&g_stats_logger_thread, NULL);
-    log_info("DEBUG_SHUTDOWN: ascii_thread_join(&g_stats_logger_thread) completed");
     g_stats_logger_thread_created = false;
   }
 
@@ -851,56 +984,50 @@ main_loop:
   rwlock_rdunlock(&g_client_manager_rwlock);
 
   // Remove all clients without holding any locks
-  log_info("DEBUG_SHUTDOWN: Found %d clients to remove", client_count);
   for (int i = 0; i < client_count; i++) {
-    log_info("DEBUG_SHUTDOWN: Removing client %u", clients_to_remove[i]);
     (void)remove_client(clients_to_remove[i]);
-    log_info("DEBUG_SHUTDOWN: Client %u removed successfully", clients_to_remove[i]);
   }
-  log_info("DEBUG_SHUTDOWN: All clients removed, proceeding to cleanup");
 
   // Clean up hash table
-  log_info("DEBUG_SHUTDOWN: Destroying client hashtable...");
   if (g_client_manager.client_hashtable) {
     hashtable_destroy(g_client_manager.client_hashtable);
     g_client_manager.client_hashtable = NULL;
   }
-  log_info("DEBUG_SHUTDOWN: Client hashtable destroyed");
 
   // Clean up audio mixer
-  log_info("DEBUG_SHUTDOWN: Destroying audio mixer...");
   if (g_audio_mixer) {
     mixer_destroy(g_audio_mixer);
     g_audio_mixer = NULL;
   }
-  log_info("DEBUG_SHUTDOWN: Audio mixer destroyed");
 
   // Clean up synchronization primitives
-  log_info("DEBUG_SHUTDOWN: Destroying synchronization primitives...");
   rwlock_destroy(&g_client_manager_rwlock);
   mutex_destroy(&g_client_manager.mutex);
-  log_info("DEBUG_SHUTDOWN: Synchronization primitives destroyed");
+
+#ifdef NDEBUG
+  // Clean up statistics system
+  stats_cleanup();
 
   // Clean up lock debugging system
-  log_info("DEBUG_SHUTDOWN: Cleaning up lock debug system...");
   lock_debug_print_state();
   lock_debug_cleanup();
-  log_info("DEBUG_SHUTDOWN: Lock debug system cleaned up");
+#endif
 
   // Close listen socket
-  if (listenfd != INVALID_SOCKET_VALUE) {
-    socket_close(listenfd);
+  socket_t current_listenfd = atomic_load(&listenfd);
+  if (current_listenfd != INVALID_SOCKET_VALUE) {
+    socket_close(current_listenfd);
   }
 
   // Clean up SIMD caches
   simd_caches_destroy_all();
 
   // Join the lock debug thread as one of the very last things before exit
-  log_info("DEBUG_SHUTDOWN: Joining lock debug thread...");
   lock_debug_cleanup_thread();
-  log_info("DEBUG_SHUTDOWN: Lock debug thread joined");
 
   log_info("Server shutdown complete");
+
+  asciichat_error_stats_print();
 
   log_destroy();
   return 0;

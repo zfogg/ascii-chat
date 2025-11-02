@@ -7,13 +7,23 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "ansi_fast.h"
-#include "tests/common.h"
-#include "image2ascii/simd/ascii_simd.h"
+#include "image2ascii/ansi_fast.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with basic quiet logging
-TEST_SUITE_WITH_QUIET_LOGGING(ansi_fast);
+// Custom init function - must initialize ansi_fast before any tests use append_truecolor_fg/bg
+void setup_quiet_test_logging_ansi_fast(void) {
+  // Initialize ansi_fast (which initializes dec3 cache) before logging setup
+  ansi_fast_init();
+  test_logging_disable(true, true);
+}
+
+// Custom fini function
+void restore_test_logging_ansi_fast(void) {
+  test_logging_restore();
+}
+
+// Use TestSuite with custom init to ensure ansi_fast is initialized
+TestSuite(ansi_fast, .init = setup_quiet_test_logging_ansi_fast, .fini = restore_test_logging_ansi_fast);
 
 /* ============================================================================
  * Initialization Tests

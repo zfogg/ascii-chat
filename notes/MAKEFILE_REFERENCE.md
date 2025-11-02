@@ -79,7 +79,7 @@ ascii-chat/
 ### Daily Development
 ```bash
 make                    # Build fast iteration
-./build-fast/bin/ascii-chat-server
+./build-fast/bin/ascii-chat server
 # Make changes...
 make                    # Rebuild quickly
 ```
@@ -87,7 +87,7 @@ make                    # Rebuild quickly
 ### Debugging a Crash
 ```bash
 make development        # Full sanitizers
-./build-dev/bin/ascii-chat-server
+./build-dev/bin/ascii-chat server
 # Sanitizers catch the bug with full stack trace
 ```
 
@@ -106,13 +106,13 @@ make development        # Build in build-dev/
 make fast              # Build in build-fast/
 
 # Test production performance
-./build-production/bin/ascii-chat-server
+./build-production/bin/ascii-chat server
 
 # Debug with sanitizers
-./build-dev/bin/ascii-chat-server
+./build-dev/bin/ascii-chat server
 
 # Quick iteration
-./build-fast/bin/ascii-chat-server
+./build-fast/bin/ascii-chat server
 ```
 
 ## Legacy Compatibility
@@ -153,7 +153,7 @@ GitHub Actions example:
 - name: Test with Sanitizers
   run: |
     make development
-    ./build-dev/bin/ascii-chat-server --help
+    ./build-dev/bin/ascii-chat server --help
 
 - name: Create Release
   run: make release VERSION=${{ github.ref_name }}

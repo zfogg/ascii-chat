@@ -5,6 +5,7 @@
 
 // Compression settings
 #define COMPRESSION_RATIO_THRESHOLD 0.8f // Only use compression if <80% original size
+#define COMPRESSION_MIN_SIZE 1024        // Only attempt compression for packets larger than 1KB
 
 // Pure compression/decompression utilities
 int compress_data(const void *input, size_t input_size, void **output, size_t *output_size);

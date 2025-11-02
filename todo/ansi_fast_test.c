@@ -16,11 +16,9 @@
 #include <time.h>
 #include <unistd.h>
 #include <math.h>
-#include "../lib/ansi_fast.h"
+#include "../lib/image2ascii/ansi_fast.h"
 #include "../lib/common.h"
-#include "../lib/image2ascii/image.h"
 #include "../lib/image2ascii/simd/ascii_simd.h"
-#include "../lib/palette.h"
 
 // Test image dimensions
 #define TEST_WIDTH 203 // User's terminal width
@@ -73,7 +71,7 @@ void generate_test_rgb(uint8_t *rgb_data, int width, int height, int frame_num) 
 double benchmark_old_snprintf(const uint8_t *rgb_data, int width, int height, int iterations) {
   const int pixel_count = width * height;
   char *output_buffer;
-  SAFE_MALLOC(output_buffer, pixel_count * 32, char *); // Generous size for ANSI codes
+  output_buffer = SAFE_MALLOC(pixel_count * 32, char *); // Generous size for ANSI codes
 
   double start = (double)clock() / CLOCKS_PER_SEC;
 
@@ -203,10 +201,10 @@ void benchmark_complete_optimizations(void) {
 
   const int iterations = 100;
   uint8_t *test_rgb;
-  SAFE_MALLOC(test_rgb, TEST_PIXELS * 3, uint8_t *);
+  test_rgb = SAFE_MALLOC(TEST_PIXELS * 3, uint8_t *);
 
   char *output_buffer;
-  SAFE_MALLOC(output_buffer, TEST_PIXELS * 32, char *); // Generous buffer
+  output_buffer = SAFE_MALLOC(TEST_PIXELS * 32, char *); // Generous buffer
 
   // Generate test data
   srand(42); // Consistent results

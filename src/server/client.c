@@ -119,9 +119,15 @@
 #include "protocol.h"
 #include "render.h"
 #include "stream.h"
+#include "crypto.h"
+#include "crypto/handshake.h"
+#include "crypto/crypto.h"
 #include "common.h"
+#include "asciichat_errno.h"
+#include "options.h"
 #include "buffer_pool.h"
-#include "network.h"
+#include "network/network.h"
+#include "network/packet.h"
 #include "packet_queue.h"
 #include "audio.h"
 #include "mixer.h"
@@ -130,7 +136,7 @@
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
-#include "crc32_hw.h"
+#include "crc32.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -171,8 +177,8 @@ client_manager_t g_client_manager = {0};
 rwlock_t g_client_manager_rwlock = {0};
 
 // External globals from main.c
-extern atomic_bool g_should_exit; ///< Global shutdown flag from main.c
-extern mixer_t *g_audio_mixer;    ///< Global audio mixer from main.c
+extern atomic_bool g_server_should_exit; ///< Global shutdown flag from main.c
+extern mixer_t *g_audio_mixer;           ///< Global audio mixer from main.c
 
 // Forward declarations for internal functions
 // client_receive_thread is implemented below
@@ -209,10 +215,20 @@ void broadcast_server_state_to_all_clients(void); ///< Notify all clients of sta
  */
 client_info_t *find_client_by_id(uint32_t client_id) {
   if (client_id == 0 || !g_client_manager.client_hashtable) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client ID or client hashtable not initialized");
     return NULL;
   }
 
-  return (client_info_t *)hashtable_lookup(g_client_manager.client_hashtable, client_id);
+  // Protect hashtable lookup with read lock to prevent concurrent access issues
+  rwlock_rdlock(&g_client_manager_rwlock);
+  client_info_t *result = (client_info_t *)hashtable_lookup(g_client_manager.client_hashtable, client_id);
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  if (!result) {
+    log_warn("Client not found for ID %u", client_id);
+  }
+
+  return result;
 }
 
 /**
@@ -265,17 +281,18 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   int slot = -1;
   int existing_count = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (atomic_load(&g_client_manager.clients[i].client_id) == 0) {
-      if (slot == -1) {
-        slot = i; // Take first available slot
-      }
-    } else {
+    if (slot == -1 && atomic_load(&g_client_manager.clients[i].client_id) == 0) {
+      slot = i; // Take first available slot
+    }
+    // Count only active clients
+    if (atomic_load(&g_client_manager.clients[i].client_id) != 0 && atomic_load(&g_client_manager.clients[i].active)) {
       existing_count++;
     }
   }
 
   if (slot == -1) {
     rwlock_wrunlock(&g_client_manager_rwlock);
+    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "No available client slots (all %d slots are in use)", MAX_CLIENTS);
     log_error("No available client slots (all %d slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
@@ -293,21 +310,26 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   memset(client, 0, sizeof(client_info_t));
 
   client->socket = socket;
-  atomic_store(&client->client_id, ++g_client_manager.next_client_id);
+  log_debug("SOCKET_DEBUG: Client socket set to %d", socket);
+  atomic_store(&client->client_id, atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   atomic_store(&client->active, true);
   atomic_store(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
   atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
-  log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
-           socket);
+  log_debug("Client slot assigned: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
+            socket);
   client->connected_at = time(NULL);
+
+  // Initialize crypto context for this client
+  memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
+  client->crypto_initialized = false;
 
   // Configure socket options for optimal performance
   if (set_socket_keepalive(socket) < 0) {
     log_warn("Failed to set socket keepalive for client %u: %s", atomic_load(&client->client_id),
-             network_error_string(errno));
+             network_error_string());
   }
 
   // Set socket buffer sizes for large data transmission
@@ -316,28 +338,26 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 
   if (socket_setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
     log_warn("Failed to set send buffer size for client %u: %s", atomic_load(&client->client_id),
-             network_error_string(errno));
+             network_error_string());
   }
 
   if (socket_setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
     log_warn("Failed to set receive buffer size for client %u: %s", atomic_load(&client->client_id),
-             network_error_string(errno));
+             network_error_string());
   }
 
   // Enable TCP_NODELAY to reduce latency for large packets
   int nodelay = 1;
   if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
-    log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id),
-             network_error_string(errno));
+    log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id), network_error_string());
   }
-  SAFE_IGNORE_PRINTF_RESULT(
-      safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id)));
 
-  log_info("DEBUG: About to create incoming video buffer for client %u", atomic_load(&client->client_id));
+  safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id));
+
   // Create individual video buffer for this client using modern double-buffering
   client->incoming_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
-  log_info("DEBUG: Created incoming video buffer for client %u", atomic_load(&client->client_id));
   if (!client->incoming_video_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %u", atomic_load(&client->client_id));
     log_error("Failed to create video buffer for client %u", atomic_load(&client->client_id));
     rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
@@ -346,6 +366,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   // Create individual audio buffer for this client
   client->incoming_audio_buffer = audio_ring_buffer_create();
   if (!client->incoming_audio_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %u", atomic_load(&client->client_id));
     log_error("Failed to create audio buffer for client %u", atomic_load(&client->client_id));
     video_frame_buffer_destroy(client->incoming_video_buffer);
     client->incoming_video_buffer = NULL;
@@ -358,7 +379,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   client->audio_queue =
       packet_queue_create_with_pools(100, 200, false); // Max 100 audio packets, 200 nodes, NO local buffer pool
   if (!client->audio_queue) {
-    log_error("Failed to create audio queue for client %u", atomic_load(&client->client_id));
+    LOG_ERRNO_IF_SET("Failed to create audio queue for client");
     video_frame_buffer_destroy(client->incoming_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     client->incoming_video_buffer = NULL;
@@ -370,7 +391,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
   client->outgoing_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
   if (!client->outgoing_video_buffer) {
-    log_error("Failed to create outgoing video buffer for client %u", atomic_load(&client->client_id));
+    LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
     video_frame_buffer_destroy(client->incoming_video_buffer);
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     packet_queue_destroy(client->audio_queue);
@@ -383,7 +404,8 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
   client->send_buffer_size = 2 * 1024 * 1024; // 2MB should handle largest frames
-  SAFE_MALLOC(client->send_buffer, client->send_buffer_size, void *);
+  // 64-byte cache-line alignment improves performance for large network buffers
+  client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
   if (!client->send_buffer) {
     log_error("Failed to allocate send buffer for client %u", atomic_load(&client->client_id));
     video_frame_buffer_destroy(client->incoming_video_buffer);
@@ -399,8 +421,8 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
-  log_info("CLIENT COUNT UPDATED: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
-           atomic_load(&client->client_id), slot);
+  log_debug("Client count updated: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
+            atomic_load(&client->client_id), slot);
 
   // Add client to hash table for O(1) lookup
   if (!hashtable_insert(g_client_manager.client_hashtable, atomic_load(&client->client_id), client)) {
@@ -427,18 +449,90 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     return -1;
   }
 
-  if (rwlock_init(&client->video_buffer_rwlock) != 0) {
-    log_error("Failed to initialize video buffer rwlock for client %u", atomic_load(&client->client_id));
-    mutex_destroy(&client->client_state_mutex);
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
-  }
-
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  // Start threads for this client
+  // CRITICAL: Perform crypto handshake BEFORE starting threads
+  // This ensures the handshake uses the socket directly without interference from receive thread
+  if (server_crypto_init() == 0) {
+    // Set timeout for crypto handshake to prevent indefinite blocking
+    // This prevents clients from connecting but never completing the handshake
+    const int HANDSHAKE_TIMEOUT_SECONDS = 30;
+    if (set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS) < 0) {
+      log_warn("Failed to set handshake timeout for client %u: %s", atomic_load(&client->client_id),
+               network_error_string());
+      // Continue anyway - timeout is a safety feature, not critical
+    }
+
+    int crypto_result = server_crypto_handshake(client);
+    if (crypto_result != 0) {
+      log_error("Crypto handshake failed for client %u: %s", atomic_load(&client->client_id), network_error_string());
+      (void)remove_client(atomic_load(&client->client_id));
+      return -1;
+    }
+
+    // Clear socket timeout after handshake completes successfully
+    // This allows normal operation without timeouts on data transfer
+    if (set_socket_timeout(socket, 0) < 0) {
+      log_warn("Failed to clear handshake timeout for client %u: %s", atomic_load(&client->client_id),
+               network_error_string());
+      // Continue anyway - we can still communicate even with timeout set
+    }
+
+    log_debug("Crypto handshake completed successfully for client %u", atomic_load(&client->client_id));
+
+    // CRITICAL FIX: After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
+    // We must read and process this packet BEFORE starting the receive thread to avoid a race condition
+    // where the packet arrives but no thread is listening for it.
+    log_debug("Waiting for initial capabilities packet from client %u", atomic_load(&client->client_id));
+
+    // Protect crypto context access with client state mutex
+    mutex_lock(&client->client_state_mutex);
+    const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
+
+    // FIX: Use per-client crypto state to determine enforcement
+    // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
+    bool enforce_encryption =
+        !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+
+    packet_envelope_t envelope;
+    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, enforce_encryption, &envelope);
+    mutex_unlock(&client->client_state_mutex);
+
+    if (result != PACKET_RECV_SUCCESS) {
+      log_error("Failed to receive initial capabilities packet from client %u: result=%d",
+                atomic_load(&client->client_id), result);
+      if (envelope.allocated_buffer) {
+        buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+      }
+      (void)remove_client(atomic_load(&client->client_id));
+      return -1;
+    }
+
+    if (envelope.type != PACKET_TYPE_CLIENT_CAPABILITIES) {
+      log_error("Expected PACKET_TYPE_CLIENT_CAPABILITIES but got packet type %d from client %u", envelope.type,
+                atomic_load(&client->client_id));
+      if (envelope.allocated_buffer) {
+        buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+      }
+      (void)remove_client(atomic_load(&client->client_id));
+      return -1;
+    }
+
+    // Process the capabilities packet directly
+    log_debug("Processing initial capabilities packet from client %u", atomic_load(&client->client_id));
+    handle_client_capabilities_packet(client, envelope.data, envelope.len);
+
+    // Free the packet data
+    if (envelope.allocated_buffer) {
+      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+    }
+    log_debug("Successfully received and processed initial capabilities for client %u",
+              atomic_load(&client->client_id));
+  }
+
+  // Start threads for this client (AFTER crypto handshake AND initial capabilities)
   if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
-    log_error("Failed to create receive thread for client %u", atomic_load(&client->client_id));
+    LOG_ERRNO_IF_SET("Client receive thread creation failed");
     // Don't destroy mutexes here - remove_client() will handle it
     (void)remove_client(atomic_load(&client->client_id));
     return -1;
@@ -446,7 +540,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 
   // Start send thread for this client
   if (ascii_thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
-    log_error("Failed to create send thread for client %u", atomic_load(&client->client_id));
+    LOG_ERRNO_IF_SET("Client send thread creation failed");
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
@@ -474,11 +568,13 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 #endif
 
   // NEW: Create per-client rendering threads
+  log_debug("Creating render threads for client %u", client->client_id);
   if (create_client_render_threads(client) != 0) {
     log_error("Failed to create render threads for client %u", client->client_id);
     (void)remove_client(client->client_id);
     return -1;
   }
+  log_debug("Successfully created render threads for client %u", client->client_id);
 
   // Broadcast server state to ALL clients AFTER the new client is fully set up
   // This notifies all clients (including the new one) about the updated grid
@@ -492,12 +588,14 @@ int remove_client(uint32_t client_id) {
   client_info_t *target_client = NULL;
   char display_name_copy[MAX_DISPLAY_NAME_LEN];
 
+  log_debug("SOCKET_DEBUG: Attempting to remove client %d", client_id);
   rwlock_wrlock(&g_client_manager_rwlock);
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->client_id == client_id && client->client_id != 0) {
       // Mark as shutting down and inactive immediately to stop new operations
+      log_debug("SOCKET_DEBUG: Found client %d to remove, socket=%d", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
       atomic_store(&client->active, false);
       target_client = client;
@@ -506,12 +604,16 @@ int remove_client(uint32_t client_id) {
       SAFE_STRNCPY(display_name_copy, client->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
       // Shutdown socket to unblock I/O operations, then close
+      mutex_lock(&client->client_state_mutex);
       if (client->socket != INVALID_SOCKET_VALUE) {
+        log_debug("SOCKET_DEBUG: Client %d closing socket %d", client->client_id, client->socket);
         // Shutdown both send and receive operations to unblock any pending I/O
         socket_shutdown(client->socket, 2); // 2 = SHUT_RDWR on POSIX, SD_BOTH on Windows
         socket_close(client->socket);
         client->socket = INVALID_SOCKET_VALUE;
+        log_debug("SOCKET_DEBUG: Client %d socket set to INVALID", client->client_id);
       }
+      mutex_unlock(&client->client_state_mutex);
 
       // Shutdown packet queues to unblock send thread
       if (client->audio_queue) {
@@ -538,25 +640,21 @@ int remove_client(uint32_t client_id) {
 
   // Wait for send thread to exit
   if (ascii_thread_is_initialized(&target_client->send_thread)) {
-    bool is_shutting_down = atomic_load(&g_should_exit);
+    bool is_shutting_down = atomic_load(&g_server_should_exit);
     int join_result;
 
     if (is_shutting_down) {
-      log_info("DEBUG_REMOVE_CLIENT: Shutdown mode: joining send thread for client %u with 100ms timeout", client_id);
       join_result = ascii_thread_join_timeout(&target_client->send_thread, NULL, 100);
       if (join_result == -2) {
         log_warn("Send thread for client %u timed out during shutdown (continuing)", client_id);
         // Clear thread handle using platform abstraction
         ascii_thread_init(&target_client->send_thread);
       }
-      log_info("DEBUG_REMOVE_CLIENT: Send thread join completed for client %u", client_id);
     } else {
-      log_info("DEBUG_REMOVE_CLIENT: Joining send thread for client %u", client_id);
       join_result = ascii_thread_join(&target_client->send_thread, NULL);
       if (join_result != 0) {
         log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
       }
-      log_info("DEBUG_REMOVE_CLIENT: Send thread join completed for client %u", client_id);
     }
   }
 
@@ -564,9 +662,7 @@ int remove_client(uint32_t client_id) {
   log_debug("Receive thread for client %u was already joined by main thread", client_id);
 
   // Stop render threads (this joins them)
-  log_info("DEBUG_REMOVE_CLIENT: Stopping render threads for client %u", client_id);
   stop_client_render_threads(target_client);
-  log_info("DEBUG_REMOVE_CLIENT: Render threads stopped for client %u", client_id);
 
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -588,11 +684,27 @@ int remove_client(uint32_t client_id) {
     log_warn("Failed to remove client %u from hash table", client_id);
   }
 
-  // Destroy mutexes and rwlocks
+  // Cleanup crypto context for this client
+  if (target_client->crypto_initialized) {
+    crypto_handshake_cleanup(&target_client->crypto_handshake_ctx);
+    target_client->crypto_initialized = false;
+    log_debug("Crypto context cleaned up for client %u", client_id);
+  }
+
+  // Destroy mutexes
   // IMPORTANT: Always destroy these even if threads didn't join properly
   // to prevent issues when the slot is reused
-  rwlock_destroy(&target_client->video_buffer_rwlock);
   mutex_destroy(&target_client->client_state_mutex);
+
+  // CRITICAL: Reset client_id to 0 BEFORE clearing the structure to prevent race conditions
+  // This ensures that if a new client connects while cleanup is happening,
+  // it won't get assigned to a slot that's still being cleaned up
+  atomic_store(&target_client->client_id, 0);
+
+  // Small delay to ensure all threads have seen the client_id reset
+  // This prevents race conditions where new clients might get assigned
+  // to slots that are still being cleaned up
+  usleep(1000); // 1ms delay
 
   // Clear client structure
   // NOTE: After memset, the mutex handles are zeroed but the OS resources
@@ -608,8 +720,8 @@ int remove_client(uint32_t client_id) {
   }
   g_client_manager.client_count = remaining_count;
 
-  log_info("CLIENT REMOVED: client_id=%u (%s) removed, remaining clients: %d", client_id, display_name_copy,
-           remaining_count);
+  log_debug("Client removed: client_id=%u (%s) removed, remaining clients: %d", client_id, display_name_copy,
+            remaining_count);
 
   rwlock_wrunlock(&g_client_manager_rwlock);
 
@@ -633,100 +745,193 @@ void *client_receive_thread(void *arg) {
 
   // Enable thread cancellation for clean shutdown
   // Thread cancellation not available in platform abstraction
-  // Threads should exit when g_should_exit is set
+  // Threads should exit when g_server_should_exit is set
 
-  log_info("Started receive thread for client %u (%s)", client->client_id, client->display_name);
+  log_debug("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
-  packet_type_t type;
-  uint32_t sender_id;
-  void *data = NULL; // Initialize to prevent static analyzer warning about uninitialized use
-  size_t len;
+  // DEBUG: Check loop entry conditions
+  bool should_exit = atomic_load(&g_server_should_exit);
+  bool is_active = atomic_load(&client->active);
+  socket_t sock = client->socket;
+  log_debug("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d)",
+            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE);
 
-  while (!atomic_load(&g_should_exit) && atomic_load(&client->active) && client->socket != INVALID_SOCKET_VALUE) {
-    // Receive packet from this client
-    int result = receive_packet_with_client(client->socket, &type, &sender_id, &data, &len);
+  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
+         client->socket != INVALID_SOCKET_VALUE) {
+
+    // Use unified secure packet reception with auto-decryption
+    // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
+    // Crypto context is stable after handshake and stored in client struct
+    const crypto_context_t *crypto_ctx = NULL;
+
+    // Check if crypto is ready without acquiring rwlock (optimization for receive thread)
+    bool crypto_ready =
+        !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+
+    if (crypto_ready) {
+      crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    } else {
+    }
+    packet_envelope_t envelope;
+
+    // LOCK OPTIMIZATION: Socket is set once at initialization and only invalidated during shutdown
+    // No mutex needed for read during normal operation
+    socket_t socket = client->socket;
+
+    if (socket == INVALID_SOCKET_VALUE) {
+      log_warn("SOCKET_DEBUG: Client %d socket is INVALID, client may be disconnecting", client->client_id);
+      break;
+    }
+
+    // FIX: Use per-client crypto_ready state instead of global opt_no_encrypt
+    // This ensures encryption is only enforced AFTER this specific client completes the handshake
+    packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, crypto_ready, &envelope);
+
+    // Check if socket became invalid during the receive operation
+    if (result == PACKET_RECV_ERROR && (errno == EIO || errno == EBADF)) {
+      // Socket was closed by another thread, check if client is being removed
+      mutex_lock(&client->client_state_mutex);
+      bool socket_invalid = (client->socket == INVALID_SOCKET_VALUE);
+      mutex_unlock(&client->client_state_mutex);
+      if (socket_invalid) {
+        log_warn("SOCKET_DEBUG: Client %d socket was closed by another thread (errno=%d)", client->client_id, errno);
+        break;
+      }
+    }
 
     // Check if shutdown was requested during the network call
-    if (atomic_load(&g_should_exit)) {
+    if (atomic_load(&g_server_should_exit)) {
       // Free any data that might have been allocated
-      if (data) {
-        buffer_pool_free(data, len);
-        data = NULL;
+      if (envelope.allocated_buffer) {
+        buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
       }
       break;
     }
 
-    if (result <= 0) {
-      if (result == 0) {
-        log_info("DISCONNECT: Client %u disconnected (clean close, result=0)", client->client_id);
-      } else {
-        log_error("DISCONNECT: Error receiving from client %u (result=%d): %s", client->client_id, result,
-                  SAFE_STRERROR(errno));
-      }
-      // Free any data that might have been allocated before the error
-      if (data) {
-        buffer_pool_free(data, len);
-        data = NULL;
-      }
-      // Don't just mark inactive - properly remove the client
-      // This will be done after the loop exits
+    // Handle different result codes
+    if (result == PACKET_RECV_EOF) {
+      log_debug("Client %u disconnected (clean close)", client->client_id);
       break;
     }
+
+    if (result == PACKET_RECV_ERROR) {
+      // Check if this is a timeout error
+      if (errno == ETIMEDOUT) {
+        log_debug("Client %u receive timeout (normal behavior)", client->client_id);
+        // Timeout is normal - just continue the loop
+        continue;
+      }
+      log_error("DISCONNECT: Error receiving from client %u: %s", client->client_id, SAFE_STRERROR(errno));
+      break;
+    }
+
+    if (result == PACKET_RECV_SECURITY_VIOLATION) {
+      log_error("SECURITY: Client %u violated encryption policy - terminating server", client->client_id);
+      // Exit the server as a security measure
+      atomic_store(&g_server_should_exit, true);
+      break;
+    }
+
+    // Extract packet details from envelope
+    packet_type_t type = envelope.type;
+    void *data = envelope.data;
+    size_t len = envelope.len;
+    // Note: sender_id removed - client_id already validated by crypto handshake
 
     // Handle different packet types from client
+    // NOTE: PACKET_TYPE_ENCRYPTED is now handled automatically by receive_packet_secure()
     switch (type) {
     case PACKET_TYPE_CLIENT_JOIN:
-      handle_client_join_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_STREAM_START:
-      handle_stream_start_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_STREAM_STOP:
-      handle_stream_stop_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_IMAGE_FRAME:
-      handle_image_frame_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_AUDIO:
-      handle_audio_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_AUDIO_BATCH:
-      handle_audio_batch_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_CLIENT_CAPABILITIES:
-      handle_client_capabilities_packet(client, data, len);
-      break;
-
     case PACKET_TYPE_PING:
-      handle_ping_packet(client);
+    case PACKET_TYPE_PONG:
+      // Process all packet types using the unified function
+      process_decrypted_packet(client, type, data, len);
       break;
 
-    case PACKET_TYPE_PONG:
-      // Handle pong from client - just log it
-      log_debug("Received PONG from client %u", client->client_id);
+    // Session rekeying packets
+    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
+      log_debug("Received REKEY_REQUEST from client %u", client->client_id);
+
+      // Process the client's rekey request
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_process_rekey_request(&client->crypto_handshake_ctx, data, len);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_REQUEST from client %u: %d", client->client_id, result);
+        break;
+      }
+
+      // Send REKEY_RESPONSE
+      mutex_lock(&client->client_state_mutex);
+      result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, result);
+      } else {
+        log_debug("Sent REKEY_RESPONSE to client %u", client->client_id);
+      }
       break;
+    }
+
+    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
+      log_debug("Received REKEY_RESPONSE from client %u", client->client_id);
+
+      // Process the client's rekey response
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_process_rekey_response(&client->crypto_handshake_ctx, data, len);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, result);
+        break;
+      }
+
+      // Send REKEY_COMPLETE to confirm and activate new key
+      mutex_lock(&client->client_state_mutex);
+      result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, result);
+      } else {
+        log_debug("Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
+      }
+      break;
+    }
+
+    case PACKET_TYPE_CRYPTO_REKEY_COMPLETE: {
+      log_debug("Received REKEY_COMPLETE from client %u", client->client_id);
+
+      // Process and commit to new key
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_process_rekey_complete(&client->crypto_handshake_ctx, data, len);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, result);
+      } else {
+        log_debug("Session rekeying completed successfully with client %u", client->client_id);
+      }
+      break;
+    }
 
     default:
-      log_debug("Received unhandled packet type %d from client %u", type, client->client_id);
+      log_warn("Received unhandled packet type %d from client %u", type, client->client_id);
       break;
     }
 
-    if (data) {
-      buffer_pool_free(data, len);
-      data = NULL;
+    // Free the allocated buffer (not the data pointer which may be offset into it)
+    if (envelope.allocated_buffer) {
+      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
     }
-  }
-
-  // CRITICAL: Cleanup any remaining allocated packet data if thread exited loop early during shutdown
-  if (data) {
-    buffer_pool_free(data, len);
-    data = NULL;
   }
 
   // Mark client as inactive and stop all threads
@@ -741,7 +946,7 @@ void *client_receive_thread(void *arg) {
   // because main thread may be trying to join this thread via remove_client()
   // The main cleanup code will handle client removal after threads exit
 
-  log_info("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
+  log_debug("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
   return NULL;
 }
 
@@ -753,7 +958,7 @@ void *client_send_thread_func(void *arg) {
     return NULL;
   }
 
-  log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
+  log_debug("Started send thread for client %u (%s)", client->client_id, client->display_name);
 
   // Mark thread as running
   atomic_store(&client->send_thread_running, true);
@@ -762,9 +967,30 @@ void *client_send_thread_func(void *arg) {
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
 
-  while (!atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
+  while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     bool sent_something = false;
+
+    // Check if session rekeying should be triggered
+    mutex_lock(&client->client_state_mutex);
+    bool should_rekey = !opt_no_encrypt && client->crypto_initialized &&
+                        crypto_handshake_is_ready(&client->crypto_handshake_ctx) &&
+                        crypto_handshake_should_rekey(&client->crypto_handshake_ctx);
+    mutex_unlock(&client->client_state_mutex);
+
+    if (should_rekey) {
+      log_debug("Rekey threshold reached for client %u, initiating session rekey", client->client_id);
+      mutex_lock(&client->client_state_mutex);
+      asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
+        // Don't break - continue with packet sending, rekey will be retried
+      } else {
+        log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
+      }
+    }
 
     // Try to get audio packet first (higher priority for low latency)
     queued_packet_t *audio_packet = NULL;
@@ -774,40 +1000,52 @@ void *client_send_thread_func(void *arg) {
 
     // Send audio packet if we have one
     if (audio_packet) {
-      // Send header
-      ssize_t sent =
-          send_with_timeout(client->socket, &audio_packet->header, sizeof(audio_packet->header), SEND_TIMEOUT);
-      if (sent != sizeof(audio_packet->header)) {
-        if (!atomic_load(&g_should_exit)) {
-          log_error("Failed to send audio packet header to client %u: %zd/%zu bytes", client->client_id, sent,
-                    sizeof(audio_packet->header));
+      // FIX: Use send_packet_secure() to encrypt audio packets
+      // Get crypto context for this client
+      const crypto_context_t *crypto_ctx = NULL;
+      bool crypto_ready =
+          !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
+      if (crypto_ready) {
+        crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+      }
+
+      // Extract packet type from header
+      packet_type_t pkt_type = (packet_type_t)ntohs(audio_packet->header.type);
+
+      // Send using secure packet function
+      int result = send_packet_secure(client->socket, pkt_type, audio_packet->data, audio_packet->data_len,
+                                      (crypto_context_t *)crypto_ctx);
+      if (result != 0) {
+        if (!atomic_load(&g_server_should_exit)) {
+          log_error("Failed to send audio packet to client %u", client->client_id);
         }
         packet_queue_free_packet(audio_packet);
         break; // Socket error, exit thread
-      }
-
-      // Send payload
-      if (audio_packet->data_len > 0 && audio_packet->data) {
-        sent = send_with_timeout(client->socket, audio_packet->data, audio_packet->data_len, SEND_TIMEOUT);
-        if (sent != (ssize_t)audio_packet->data_len) {
-          if (!atomic_load(&g_should_exit)) {
-            log_error("Failed to send audio packet payload to client %u: %zd/%zu bytes", client->client_id, sent,
-                      audio_packet->data_len);
-          }
-          packet_queue_free_packet(audio_packet);
-          break; // Socket error, exit thread
-        }
       }
 
       packet_queue_free_packet(audio_packet);
       sent_something = true;
     }
 
+    // Always consume frames from the buffer to prevent accumulation
+    // Rate-limit the actual sending, but always mark frames as consumed
+    if (!client->outgoing_video_buffer) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no outgoing video buffer", client->client_id);
+      break;
+    }
+
+    // Get latest frame from double buffer (lock-free operation)
+    // This marks the frame as consumed even if we don't send it yet
+    const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
+
     // Check if it's time to send a video frame (60fps rate limiting)
-    struct timespec ts;
+    // Only rate-limit the SEND operation, not frame consumption
+    struct timespec ts, frame_start, frame_end, step1, step2, step3, step4, step5;
     (void)clock_gettime(CLOCK_MONOTONIC, &ts);
     uint64_t current_time = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
     if (current_time - last_video_send_time >= video_send_interval_us) {
+      (void)clock_gettime(CLOCK_MONOTONIC, &frame_start);
+
       // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
       // If so, send CLEAR_CONSOLE before sending the new frame
       int rendered_sources = atomic_load(&client->last_rendered_grid_sources);
@@ -815,105 +1053,117 @@ void *client_send_thread_func(void *arg) {
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame
-        packet_header_t clear_header = {.magic = htonl(PACKET_MAGIC),
-                                        .type = htons(PACKET_TYPE_CLEAR_CONSOLE),
-                                        .length = htonl(0),
-                                        .crc32 = htonl(0),
-                                        .client_id = htonl(0)};
-
-        ssize_t sent = send_with_timeout(client->socket, &clear_header, sizeof(clear_header), SEND_TIMEOUT);
-        if (sent == sizeof(clear_header)) {
-          log_info("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
-                   rendered_sources);
-          atomic_store(&client->last_sent_grid_sources, rendered_sources);
-          sent_something = true;
-        } else {
-          if (!atomic_load(&g_should_exit)) {
-            log_error("Client %u: Failed to send CLEAR_CONSOLE: %zd/%zu bytes", client->client_id, sent,
-                      sizeof(clear_header));
-          }
-          break; // Socket error
-        }
+        // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
+        // Crypto context is stable after handshake and stored in client struct
+        const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+        send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
+        log_debug("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
+                  rendered_sources);
+        atomic_store(&client->last_sent_grid_sources, rendered_sources);
+        sent_something = true;
       }
 
-      // Try to get latest video frame from double buffer
-      // CRITICAL: Protect video buffer access with read lock to prevent use-after-free
-      rwlock_rdlock(&client->video_buffer_rwlock);
-      if (client->outgoing_video_buffer) {
-        const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
-
-        if (frame && frame->data && frame->size > 0) {
-          // Build ASCII frame packet
-          ascii_frame_packet_t frame_header = {
-              .width = htonl(atomic_load(&client->width)),
-              .height = htonl(atomic_load(&client->height)),
-              .original_size = htonl((uint32_t)frame->size),
-              .compressed_size = htonl(0), // No compression
-              .checksum = htonl(asciichat_crc32(frame->data, frame->size)),
-              .flags = htonl((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
-
-          // Build packet header
-          packet_header_t header = {.magic = htonl(PACKET_MAGIC),
-                                    .type = htons(PACKET_TYPE_ASCII_FRAME),
-                                    .length = htonl((uint32_t)(sizeof(ascii_frame_packet_t) + frame->size)),
-                                    .crc32 = 0,             // Will be calculated below
-                                    .client_id = htonl(0)}; // Server sends as client_id 0
-
-          // Use pre-allocated buffer to avoid malloc/free (prevents deadlocks)
-          size_t payload_size = sizeof(ascii_frame_packet_t) + frame->size;
-          if (payload_size <= client->send_buffer_size) {
-            uint8_t *payload = (uint8_t *)client->send_buffer;
-            memcpy(payload, &frame_header, sizeof(ascii_frame_packet_t));
-            memcpy(payload + sizeof(ascii_frame_packet_t), frame->data, frame->size);
-            header.crc32 = htonl(asciichat_crc32(payload, payload_size));
-
-            // Send packet header
-            ssize_t sent = send_with_timeout(client->socket, &header, sizeof(header), SEND_TIMEOUT);
-            if (sent == sizeof(header)) {
-              // Send payload
-              sent = send_with_timeout(client->socket, payload, payload_size, SEND_TIMEOUT);
-              if (sent != (ssize_t)payload_size) {
-                if (!atomic_load(&g_should_exit)) {
-                  log_error("Failed to send video frame payload to client %u: %zd/%zu bytes", client->client_id, sent,
-                            payload_size);
-                }
-                rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
-                break;                                         // Socket error
-              }
-              sent_something = true;
-              last_video_send_time = current_time;
-            } else {
-              if (!atomic_load(&g_should_exit)) {
-                log_error("Failed to send video frame header to client %u: %zd/%zu bytes", client->client_id, sent,
-                          sizeof(header));
-              }
-              rwlock_rdunlock(&client->video_buffer_rwlock); // CRITICAL: Unlock before break
-              break;                                         // Socket error
-            }
-          } else {
-            log_warn("Video frame too large for send buffer: %zu > %zu", payload_size, client->send_buffer_size);
-          }
-        }
+      if (!frame || !frame->data) {
+        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame or frame->data: frame=%p, data=%p",
+                  client->client_id, frame, frame->data);
+        continue;
       }
-      rwlock_rdunlock(&client->video_buffer_rwlock);
+
+      if (frame && frame->data && frame->size == 0) {
+        // NOTE: This means the we're not ready to send ascii to the client and
+        // should wait a little bit.
+        log_warn_every(1000000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
+        platform_sleep_usec(1000); // 1ms sleep
+        continue;
+      }
+
+      // Snapshot frame metadata (safe with double-buffer system)
+      size_t frame_size = frame->size;
+      const void *frame_data = frame->data; // Pointer snapshot - data is stable in front buffer
+      (void)clock_gettime(CLOCK_MONOTONIC, &step1);
+
+      // Validate buffer size after releasing lock (fast check)
+      size_t payload_size = sizeof(ascii_frame_packet_t) + frame_size;
+      if (payload_size > client->send_buffer_size) {
+        SET_ERRNO(ERROR_NETWORK_SIZE, "Video frame too large for send buffer: %zu > %zu", payload_size,
+                  client->send_buffer_size);
+        break;
+      }
+
+      // Copy frame data to send buffer WITHOUT holding lock (safe with double-buffer)
+      uint8_t *payload = (uint8_t *)client->send_buffer;
+      memcpy(payload + sizeof(ascii_frame_packet_t), frame_data, frame_size);
+      (void)clock_gettime(CLOCK_MONOTONIC, &step2);
+
+      // Calculate CRC32 on the copied data (NOT while holding lock!)
+      // This was the bottleneck - CRC32 takes 12-18ms and was blocking render thread
+      uint32_t frame_checksum = asciichat_crc32(payload + sizeof(ascii_frame_packet_t), frame_size);
+      (void)clock_gettime(CLOCK_MONOTONIC, &step3);
+
+      // Build ASCII frame packet header (after lock released, with computed CRC)
+      ascii_frame_packet_t frame_header = {
+          .width = htonl(atomic_load(&client->width)),
+          .height = htonl(atomic_load(&client->height)),
+          .original_size = htonl((uint32_t)frame_size),
+          .compressed_size = htonl(0), // No compression
+          .checksum = htonl(frame_checksum),
+          .flags = htonl((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
+
+      // Copy header into payload buffer
+      memcpy(payload, &frame_header, sizeof(ascii_frame_packet_t));
+      (void)clock_gettime(CLOCK_MONOTONIC, &step4);
+
+      // Now perform network I/O without holding video buffer lock
+      // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
+      // Crypto context is stable after handshake and stored in client struct
+      const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+
+      // Send packet without holding any locks (crypto_ctx is safe to use)
+      int send_result = send_packet_secure(client->socket, PACKET_TYPE_ASCII_FRAME, payload, payload_size,
+                                           (crypto_context_t *)crypto_ctx);
+      (void)clock_gettime(CLOCK_MONOTONIC, &step5);
+
+      if (send_result != 0) {
+        if (!atomic_load(&g_server_should_exit)) {
+          SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %u", client->client_id);
+        }
+        break;
+      }
+
+      sent_something = true;
+      last_video_send_time = current_time;
+
+      (void)clock_gettime(CLOCK_MONOTONIC, &frame_end);
+      uint64_t frame_time_us = ((uint64_t)frame_end.tv_sec * 1000000 + (uint64_t)frame_end.tv_nsec / 1000) -
+                               ((uint64_t)frame_start.tv_sec * 1000000 + (uint64_t)frame_start.tv_nsec / 1000);
+      if (frame_time_us > 15000) { // Log if sending a frame takes > 15ms (encryption adds ~5-6ms)
+        uint64_t step1_us = ((uint64_t)step1.tv_sec * 1000000 + (uint64_t)step1.tv_nsec / 1000) -
+                            ((uint64_t)frame_start.tv_sec * 1000000 + (uint64_t)frame_start.tv_nsec / 1000);
+        uint64_t step2_us = ((uint64_t)step2.tv_sec * 1000000 + (uint64_t)step2.tv_nsec / 1000) -
+                            ((uint64_t)step1.tv_sec * 1000000 + (uint64_t)step1.tv_nsec / 1000);
+        uint64_t step3_us = ((uint64_t)step3.tv_sec * 1000000 + (uint64_t)step3.tv_nsec / 1000) -
+                            ((uint64_t)step2.tv_sec * 1000000 + (uint64_t)step2.tv_nsec / 1000);
+        uint64_t step4_us = ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000) -
+                            ((uint64_t)step3.tv_sec * 1000000 + (uint64_t)step3.tv_nsec / 1000);
+        uint64_t step5_us = ((uint64_t)step5.tv_sec * 1000000 + (uint64_t)step5.tv_nsec / 1000) -
+                            ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000);
+        log_warn(
+            "SEND_THREAD: Frame send took %.2fms for client %u | Snapshot: %.2fms | Memcpy: %.2fms | CRC32: %.2fms | "
+            "Header: %.2fms | send_packet_secure: %.2fms",
+            frame_time_us / 1000.0, client->client_id, step1_us / 1000.0, step2_us / 1000.0, step3_us / 1000.0,
+            step4_us / 1000.0, step5_us / 1000.0);
+      }
     }
 
     // If we didn't send anything, sleep briefly to prevent busy waiting
     if (!sent_something) {
-      // DEBUG: Track when we're waiting between frame send intervals (FPS limiting)
-      static uint64_t idle_count = 0;
-      idle_count++;
-      if (idle_count % 3000 == 0) { // Log every 3000 occurrences (rare - only for debugging)
-        log_debug("DEBUG_SEND_IDLE: [%llu] Waiting for next frame interval for client %u (FPS limiting)", idle_count,
-                  client->client_id);
-      }
       platform_sleep_usec(1000); // 1ms sleep
     }
   }
 
   // Mark thread as stopped
   atomic_store(&client->send_thread_running, false);
-  log_info("Send thread for client %u terminated", client->client_id);
+  log_debug("Send thread for client %u terminated", client->client_id);
   return NULL;
 }
 
@@ -924,17 +1174,51 @@ void *client_send_thread_func(void *arg) {
 
 // Broadcast server state to all connected clients
 void broadcast_server_state_to_all_clients(void) {
-  // Count active clients with video
+  // SNAPSHOT PATTERN: Collect client data while holding lock, then release before network I/O
+  typedef struct {
+    socket_t socket;
+    uint32_t client_id;
+    const crypto_context_t *crypto_ctx;
+  } client_snapshot_t;
+
+  client_snapshot_t client_snapshots[MAX_CLIENTS];
+  int snapshot_count = 0;
   int active_video_count = 0;
 
+  struct timespec lock_start, lock_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &lock_start);
   rwlock_rdlock(&g_client_manager_rwlock);
+  (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
+  uint64_t lock_time_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
+                          ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
+  if (lock_time_us > 1000) { // Log if > 1ms
+    log_warn("broadcast_server_state: rwlock_rdlock took %.2fms", lock_time_us / 1000.0);
+  }
+
+  // Count active clients and snapshot client data while holding lock
   for (int i = 0; i < MAX_CLIENTS; i++) {
     if (g_client_manager.clients[i].active && atomic_load(&g_client_manager.clients[i].is_sending_video)) {
       active_video_count++;
     }
+    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
+      // Get crypto context and skip if not ready (handshake still in progress)
+      const crypto_context_t *crypto_ctx =
+          crypto_handshake_get_context(&g_client_manager.clients[i].crypto_handshake_ctx);
+      if (!crypto_ctx) {
+        // Skip clients that haven't completed crypto handshake yet
+        log_debug("Skipping server_state broadcast to client %u: crypto handshake not ready",
+                  g_client_manager.clients[i].client_id);
+        continue;
+      }
+
+      client_snapshots[snapshot_count].socket = g_client_manager.clients[i].socket;
+      client_snapshots[snapshot_count].client_id = g_client_manager.clients[i].client_id;
+      client_snapshots[snapshot_count].crypto_ctx = crypto_ctx;
+      snapshot_count++;
+    }
   }
 
-  // Prepare server state packet
+  // Prepare server state packet while still holding lock (fast operation)
   server_state_packet_t state;
   state.connected_client_count = g_client_manager.client_count;
   state.active_client_count = active_video_count;
@@ -946,17 +1230,30 @@ void broadcast_server_state_to_all_clients(void) {
   net_state.active_client_count = htonl(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  // Send to all active clients
-  for (int i = 0; i < MAX_CLIENTS; i++) {
-    // TODO: Send server state updates directly via socket
-    // client_info_t *client = &g_client_manager.clients[i];
-    (void)i;         // Suppress unused variable warning for now
-    (void)net_state; // Suppress unused variable warning
+  // Send to all clients WHILE HOLDING THE LOCK
+  // This ensures crypto contexts remain valid during transmission
+  for (int i = 0; i < snapshot_count; i++) {
+    log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
+              client_snapshots[i].client_id, client_snapshots[i].socket, (void *)client_snapshots[i].crypto_ctx);
+    int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                    (crypto_context_t *)client_snapshots[i].crypto_ctx);
+
+    if (result != 0) {
+      log_error("Failed to send server state to client %u", client_snapshots[i].client_id);
+    } else {
+      log_debug("Sent server state to client %u: %u connected, %u active", client_snapshots[i].client_id,
+                state.connected_client_count, state.active_client_count);
+    }
   }
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
+  uint64_t lock_held_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
+                          ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
   rwlock_rdunlock(&g_client_manager_rwlock);
 
-  log_info("Broadcast server state to all clients: %d connected, %d active with video", state.connected_client_count,
-           active_video_count);
+  if (lock_held_us > 1000) { // Log if held > 1ms (should be very rare now with optimized send)
+    log_warn("broadcast_server_state: rwlock held for %.2fms (includes network I/O)", lock_held_us / 1000.0);
+  }
 }
 
 /* ============================================================================
@@ -965,8 +1262,10 @@ void broadcast_server_state_to_all_clients(void) {
  */
 
 void stop_client_threads(client_info_t *client) {
-  if (!client)
+  if (!client) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
     return;
+  }
 
   // Signal threads to stop
   atomic_store(&client->active, false);
@@ -982,8 +1281,10 @@ void stop_client_threads(client_info_t *client) {
 }
 
 void cleanup_client_media_buffers(client_info_t *client) {
-  if (!client)
+  if (!client) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
     return;
+  }
 
   if (client->incoming_video_buffer) {
     video_frame_buffer_destroy(client->incoming_video_buffer);
@@ -991,16 +1292,14 @@ void cleanup_client_media_buffers(client_info_t *client) {
   }
 
   // Clean up outgoing video buffer (for ASCII frames)
-  rwlock_wrlock(&client->video_buffer_rwlock);
   if (client->outgoing_video_buffer) {
     video_frame_buffer_destroy(client->outgoing_video_buffer);
     client->outgoing_video_buffer = NULL;
   }
-  rwlock_wrunlock(&client->video_buffer_rwlock);
 
   // Clean up pre-allocated send buffer
   if (client->send_buffer) {
-    free(client->send_buffer);
+    SAFE_FREE(client->send_buffer);
     client->send_buffer = NULL;
     client->send_buffer_size = 0;
   }
@@ -1021,4 +1320,117 @@ void cleanup_client_packet_queues(client_info_t *client) {
   }
 
   // Video now uses double buffer, cleaned up in cleanup_client_media_buffers
+}
+
+/**
+ * Process an encrypted packet from a client
+ *
+ * @param client Client info structure
+ * @param type Pointer to packet type (will be updated with decrypted type)
+ * @param data Pointer to packet data (will be updated with decrypted data)
+ * @param len Pointer to packet length (will be updated with decrypted length)
+ * @param sender_id Pointer to sender ID (will be updated with decrypted sender ID)
+ * @return 0 on success, -1 on error
+ */
+int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **data, size_t *len,
+                             uint32_t *sender_id) {
+  if (!crypto_server_is_ready(client->client_id)) {
+    log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
+    buffer_pool_free(*data, *len);
+    *data = NULL;
+    return -1;
+  }
+
+  void *decrypted_data = buffer_pool_alloc(*len);
+  size_t decrypted_len;
+  int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t *)*data, *len,
+                                                    (uint8_t *)decrypted_data, *len, &decrypted_len);
+
+  if (decrypt_result != 0) {
+    SET_ERRNO(ERROR_CRYPTO, "Failed to process encrypted packet from client %u (result=%d)", client->client_id,
+              decrypt_result);
+    buffer_pool_free(*data, *len);
+    buffer_pool_free(decrypted_data, *len);
+    *data = NULL;
+    return -1;
+  }
+
+  // Replace encrypted data with decrypted data
+  buffer_pool_free(*data, *len);
+
+  *data = decrypted_data;
+  *len = decrypted_len;
+
+  // Now process the decrypted packet by parsing its header
+  if (*len < sizeof(packet_header_t)) {
+    SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small for header from client %u", client->client_id);
+    buffer_pool_free(*data, *len);
+    *data = NULL;
+    return -1;
+  }
+
+  packet_header_t *header = (packet_header_t *)*data;
+  *type = (packet_type_t)ntohs(header->type);
+  *sender_id = ntohl(header->client_id);
+
+  // Adjust data pointer to skip header
+  *data = (uint8_t *)*data + sizeof(packet_header_t);
+  *len -= sizeof(packet_header_t);
+
+  return 0;
+}
+
+/**
+ * Process a decrypted packet from a client
+ *
+ * @param client Client info structure
+ * @param type Packet type
+ * @param data Packet data
+ * @param len Packet length
+ */
+void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
+  switch (type) {
+  case PACKET_TYPE_IMAGE_FRAME:
+    handle_image_frame_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_AUDIO:
+    handle_audio_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_AUDIO_BATCH:
+    handle_audio_batch_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_CLIENT_JOIN:
+    handle_client_join_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_STREAM_START:
+    handle_stream_start_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_STREAM_STOP:
+    handle_stream_stop_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_CLIENT_CAPABILITIES:
+    handle_client_capabilities_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_PING:
+    // Respond with PONG
+    if (send_pong_packet(client->socket) < 0) {
+      SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u", client->client_id);
+    }
+    break;
+
+  case PACKET_TYPE_PONG:
+    // Client acknowledged our PING - no action needed
+    break;
+
+  default:
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown decrypted packet type: %d from client %u", type, client->client_id);
+    break;
+  }
 }

@@ -25,15 +25,15 @@ void convert_yuy2_to_rgb_optimized(const uint8_t *yuy2, rgb_t *rgb, int width, i
 // Individual implementations (for testing/benchmarking)
 void convert_yuy2_to_rgb_scalar(const uint8_t *yuy2, rgb_t *rgb, int width, int height);
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
 void convert_yuy2_to_rgb_sse2(const uint8_t *yuy2, rgb_t *rgb, int width, int height);
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
 void convert_yuy2_to_rgb_ssse3(const uint8_t *yuy2, rgb_t *rgb, int width, int height);
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
 void convert_yuy2_to_rgb_avx2(const uint8_t *yuy2, rgb_t *rgb, int width, int height);
 #endif
 

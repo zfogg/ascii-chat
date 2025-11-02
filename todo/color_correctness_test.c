@@ -127,7 +127,7 @@ int main() {
     int pixel_count = test_width * test_height;
 
     rgb_pixel_t *test_pixels;
-    SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
+    test_pixels = SAFE_MALLOC(pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
     printf("Generating synthetic run-length test pattern with %d pixels...\n", pixel_count);
 
@@ -155,8 +155,8 @@ int main() {
 
     char *scalar_output;
     char *simd_output;
-    SAFE_MALLOC(scalar_output, buffer_size, char *);
-    SAFE_MALLOC(simd_output, buffer_size, char *);
+    scalar_output = buffer_size = SAFE_MALLOC(char *);
+    simd_output = SAFE_MALLOC(buffer_size, char *);
 
     // Run test with synthetic data
     run_color_test(test_pixels, test_width, test_height, scalar_output, simd_output, buffer_size);
@@ -176,7 +176,7 @@ int main() {
   // Convert to rgb_pixel_t format for test functions
   int pixel_count = webcam_image->w * webcam_image->h;
   rgb_pixel_t *test_pixels;
-  SAFE_MALLOC(test_pixels, pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
+  test_pixels = SAFE_MALLOC(pixel_count * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
   for (int i = 0; i < pixel_count; i++) {
     test_pixels[i].r = webcam_image->pixels[i].r;
@@ -191,8 +191,8 @@ int main() {
 
   char *scalar_output;
   char *simd_output;
-  SAFE_MALLOC(scalar_output, buffer_size, char *);
-  SAFE_MALLOC(simd_output, buffer_size, char *);
+  scalar_output = buffer_size = SAFE_MALLOC(char *);
+  simd_output = SAFE_MALLOC(buffer_size, char *);
 
   // Run test with real webcam data
   run_color_test(test_pixels, webcam_image->w, webcam_image->h, scalar_output, simd_output, buffer_size);

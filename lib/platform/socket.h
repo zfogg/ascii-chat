@@ -31,12 +31,14 @@ typedef int socket_t;
 #define INVALID_SOCKET_VALUE (-1)
 #endif
 
+#include "../common.h"
+
 // ============================================================================
 // Socket Functions
 // ============================================================================
 
 // Initialization (required on Windows)
-int socket_init(void);
+asciichat_error_t socket_init(void);
 void socket_cleanup(void);
 
 // Basic socket operations
@@ -84,7 +86,7 @@ void socket_fd_zero(fd_set *set);
 void socket_fd_set(socket_t sock, fd_set *set);
 int socket_fd_isset(socket_t sock, fd_set *set);
 int socket_get_fd(socket_t sock);
-int socket_is_valid(socket_t sock);
+bool socket_is_valid(socket_t sock);
 
 // Platform-specific error codes
 #ifdef _WIN32

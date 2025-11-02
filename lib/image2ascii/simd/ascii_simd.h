@@ -6,28 +6,35 @@
 #include "common.h"
 
 // Check for SIMD support and include architecture-specific headers
+// CMake explicitly controls which SIMD levels to enable via ENABLE_SIMD_* options
+// and defines SIMD_SUPPORT_* to 1 (enabled) or 0 (disabled).
+//
+// Only auto-detect from compiler macros if CMake hasn't already defined them.
+// This ensures CMake's explicit choices (e.g., AVX2-only, no SSE2/SSSE3) are respected.
+//
 // Disable SIMD on Windows with Clang due to intrinsics compatibility issues
 #if defined(_WIN32) && defined(__clang__) && __clang_major__ >= 20
 // Windows with Clang 20+ has issues with MMX intrinsics
 // Keep SIMD disabled until fixed
 #else
-#ifdef __ARM_FEATURE_SVE
+// Only auto-detect if CMake hasn't already defined the macro
+#if defined(__ARM_FEATURE_SVE) && !defined(SIMD_SUPPORT_SVE)
 #define SIMD_SUPPORT_SVE 1
 #endif
 
-#ifdef __AVX2__
+#if defined(__AVX2__) && !defined(SIMD_SUPPORT_AVX2)
 #define SIMD_SUPPORT_AVX2 1
 #endif
 
-#ifdef __SSE2__
+#if defined(__SSE2__) && !defined(SIMD_SUPPORT_SSE2)
 #define SIMD_SUPPORT_SSE2 1
 #endif
 
-#ifdef __SSSE3__
+#if defined(__SSSE3__) && !defined(SIMD_SUPPORT_SSSE3)
 #define SIMD_SUPPORT_SSSE3 1
 #endif
 
-#ifdef __ARM_NEON
+#if defined(__ARM_NEON) && !defined(SIMD_SUPPORT_NEON)
 #define SIMD_SUPPORT_NEON 1
 #endif
 #endif
@@ -150,18 +157,18 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           int width, char *dst, size_t cap, bool is_truecolor);
 
 // Include architecture-specific implementations
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
 #include "image2ascii/simd/sse2.h"
 #endif
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
 #include "image2ascii/simd/ssse3.h"
 #endif
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
 #include "image2ascii/simd/avx2.h"
 #endif
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
 #include "image2ascii/simd/sve.h"
 #endif
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
 #include "image2ascii/simd/neon.h"
 #endif

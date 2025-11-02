@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "tests/common.h"
-#include "crypto.h"
+#include "crypto/crypto.h"
 
 // Test fixture setup and teardown
 static crypto_context_t ctx1, ctx2;
@@ -158,8 +158,7 @@ Theory((size_t data_size), crypto, encryption_roundtrip_property) {
   crypto_result_t result = crypto_init_with_password(&ctx, "test-password-for-theory");
   cr_assert_eq(result, CRYPTO_OK, "Context init should succeed for size %zu", data_size);
 
-  uint8_t *plaintext;
-  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = (uint8_t)(i % 256);
   }
@@ -179,7 +178,7 @@ Theory((size_t data_size), crypto, encryption_roundtrip_property) {
   cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0,
                "Decrypted data must match plaintext for size %zu (roundtrip property)", data_size);
 
-  free(plaintext);
+  SAFE_FREE(plaintext);
   crypto_cleanup(&ctx);
 }
 
@@ -206,8 +205,7 @@ Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
   crypto_set_peer_public_key(&ctx1, pub_key2);
   crypto_set_peer_public_key(&ctx2, pub_key1);
 
-  uint8_t *plaintext;
-  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = (uint8_t)((i * 7) % 256);
   }
@@ -226,7 +224,7 @@ Theory((size_t data_size), crypto, key_exchange_roundtrip_property) {
   cr_assert_eq(memcmp(decrypted, plaintext, data_size), 0, "Key exchange roundtrip must preserve data for size %zu",
                data_size);
 
-  free(plaintext);
+  SAFE_FREE(plaintext);
   crypto_cleanup(&ctx1);
   crypto_cleanup(&ctx2);
 }
@@ -411,8 +409,7 @@ Theory((size_t data_size), crypto, nonce_uniqueness_property) {
   memset(&ctx, 0, sizeof(ctx));
   crypto_init_with_password(&ctx, "nonce-test-password");
 
-  uint8_t *plaintext;
-  SAFE_MALLOC(plaintext, data_size, uint8_t *);
+  uint8_t *plaintext = SAFE_MALLOC(data_size, uint8_t *);
   for (size_t i = 0; i < data_size; i++) {
     plaintext[i] = 0xAA;
   }
@@ -427,7 +424,7 @@ Theory((size_t data_size), crypto, nonce_uniqueness_property) {
   cr_assert_neq(memcmp(ciphertext1, ciphertext2, min_len), 0,
                 "Nonce uniqueness property: same plaintext size %zu must produce different ciphertext", data_size);
 
-  free(plaintext);
+  SAFE_FREE(plaintext);
   crypto_cleanup(&ctx);
 }
 
@@ -654,4 +651,393 @@ ParameterizedTestParameters(crypto, result_strings) {
 ParameterizedTest(crypto_result_string_test_case_t *tc, crypto, result_strings) {
   const char *result_str = crypto_result_to_string(tc->result);
   cr_assert_str_eq(result_str, tc->expected_string, "Result string should match for %s", tc->description);
+}
+
+// =============================================================================
+// Session Rekeying Tests
+// =============================================================================
+
+Test(crypto, rekey_initialization) {
+  // Initialize context with key exchange
+  crypto_init(&ctx1);
+  crypto_init(&ctx2);
+
+  uint8_t pub_key1[CRYPTO_PUBLIC_KEY_SIZE];
+  uint8_t pub_key2[CRYPTO_PUBLIC_KEY_SIZE];
+
+  crypto_get_public_key(&ctx1, pub_key1);
+  crypto_get_public_key(&ctx2, pub_key2);
+
+  crypto_set_peer_public_key(&ctx1, pub_key2);
+  crypto_set_peer_public_key(&ctx2, pub_key1);
+
+  cr_assert(crypto_is_ready(&ctx1), "ctx1 should be ready");
+  cr_assert(crypto_is_ready(&ctx2), "ctx2 should be ready");
+
+  // Check initial rekey state
+  cr_assert_eq(ctx1.rekey_packet_count, 0, "Initial packet count should be 0");
+  cr_assert_eq(ctx1.rekey_count, 0, "Initial rekey count should be 0");
+  cr_assert_eq(ctx1.rekey_in_progress, false, "No rekey should be in progress");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key");
+  cr_assert_eq(ctx1.rekey_failure_count, 0, "Initial failure count should be 0");
+
+  // Check default thresholds
+  // Note: crypto_init() uses test thresholds when CRITERION_TEST or TESTING env vars are set
+  // The test environment sets these, so we expect test thresholds, not default thresholds
+  cr_assert_eq(ctx1.rekey_packet_threshold, REKEY_TEST_PACKET_THRESHOLD, "Test packet threshold should be 1000");
+  cr_assert_eq(ctx1.rekey_time_threshold, REKEY_TEST_TIME_THRESHOLD, "Test time threshold should be 30s");
+}
+
+Test(crypto, rekey_should_trigger_on_packet_count) {
+  // Initialize with test thresholds
+  crypto_init(&ctx1);
+  ctx1.rekey_packet_threshold = 100; // Low threshold for testing
+  ctx1.rekey_time_threshold = 3600;
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+
+  // Should not trigger initially
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not rekey initially");
+
+  // Simulate packet encryption
+  ctx1.rekey_packet_count = 99;
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not rekey before threshold");
+
+  ctx1.rekey_packet_count = 100;
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey at threshold");
+
+  ctx1.rekey_packet_count = 101;
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey after threshold");
+}
+
+Test(crypto, rekey_should_trigger_on_time) {
+  // Initialize with test thresholds
+  crypto_init(&ctx1);
+  ctx1.rekey_packet_threshold = 1000000;
+  ctx1.rekey_time_threshold = 10; // 10 seconds for testing
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+
+  time_t now = time(NULL);
+  ctx1.rekey_last_time = now - 5; // 5 seconds ago
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not rekey before time threshold");
+
+  ctx1.rekey_last_time = now - 10; // 10 seconds ago
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey at time threshold");
+
+  ctx1.rekey_last_time = now - 15; // 15 seconds ago
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should rekey after time threshold");
+}
+
+Test(crypto, rekey_should_not_trigger_during_rekey) {
+  crypto_init(&ctx1);
+  ctx1.rekey_packet_threshold = 100;
+  ctx1.rekey_time_threshold = 3600;
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+  ctx1.rekey_packet_count = 200; // Above threshold
+
+  // Should trigger normally
+  cr_assert_eq(crypto_should_rekey(&ctx1), true, "Should trigger with high packet count");
+
+  // But not when rekey is in progress
+  ctx1.rekey_in_progress = true;
+  cr_assert_eq(crypto_should_rekey(&ctx1), false, "Should not trigger during rekey");
+}
+
+Test(crypto, rekey_init_basic) {
+  // Set up context
+  crypto_init(&ctx1);
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+  ctx1.rekey_last_time = time(NULL) - 100; // 100 seconds ago (past min interval)
+
+  crypto_result_t result = crypto_rekey_init(&ctx1);
+  cr_assert_eq(result, CRYPTO_OK, "Rekey init should succeed");
+  cr_assert_eq(ctx1.rekey_in_progress, true, "Rekey should be in progress");
+  cr_assert_eq(ctx1.has_temp_key, true, "Should have temp key");
+
+  // Check that temp keys are non-zero
+  uint8_t zero_key[CRYPTO_PUBLIC_KEY_SIZE] = {0};
+  cr_assert_neq(memcmp(ctx1.temp_public_key, zero_key, CRYPTO_PUBLIC_KEY_SIZE), 0, "Temp public key should be set");
+  cr_assert_neq(memcmp(ctx1.temp_private_key, zero_key, CRYPTO_PRIVATE_KEY_SIZE), 0, "Temp private key should be set");
+}
+
+Test(crypto, rekey_init_rate_limiting) {
+  crypto_init(&ctx1);
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+
+  // Set last rekey time to 1 second ago (less than REKEY_MIN_INTERVAL which is 3 seconds)
+  ctx1.rekey_last_time = time(NULL) - 1;
+
+  crypto_result_t result = crypto_rekey_init(&ctx1);
+  cr_assert_eq(result, CRYPTO_ERROR_REKEY_RATE_LIMITED, "Should be rate limited");
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should not start");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key");
+}
+
+Test(crypto, rekey_init_failure_limit) {
+  crypto_init(&ctx1);
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+  ctx1.rekey_last_time = time(NULL) - 100;
+
+  // Set failure count to max
+  ctx1.rekey_failure_count = REKEY_MAX_FAILURE_COUNT;
+
+  crypto_result_t result = crypto_rekey_init(&ctx1);
+  cr_assert_eq(result, CRYPTO_ERROR_REKEY_FAILED, "Should fail after max failures");
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should not start");
+}
+
+Test(crypto, rekey_process_request) {
+  // Initialize both contexts
+  crypto_init(&ctx1);
+  crypto_init(&ctx2);
+
+  // Complete initial key exchange
+  uint8_t pub_key1[CRYPTO_PUBLIC_KEY_SIZE];
+  uint8_t pub_key2[CRYPTO_PUBLIC_KEY_SIZE];
+  crypto_get_public_key(&ctx1, pub_key1);
+  crypto_get_public_key(&ctx2, pub_key2);
+  crypto_set_peer_public_key(&ctx1, pub_key2);
+  crypto_set_peer_public_key(&ctx2, pub_key1);
+
+  // Initiator (ctx1) starts rekey
+  ctx1.rekey_last_time = time(NULL) - 100;
+  crypto_result_t result = crypto_rekey_init(&ctx1);
+  cr_assert_eq(result, CRYPTO_OK, "Initiator rekey init should succeed");
+
+  // Responder (ctx2) processes request
+  ctx2.rekey_last_time = time(NULL) - 100;
+  result = crypto_rekey_init(&ctx2);
+  cr_assert_eq(result, CRYPTO_OK, "Responder rekey init should succeed");
+
+  result = crypto_rekey_process_request(&ctx2, ctx1.temp_public_key);
+  cr_assert_eq(result, CRYPTO_OK, "Process request should succeed");
+  cr_assert_eq(ctx2.has_temp_key, true, "Responder should have temp shared key");
+
+  // Check that temp shared key is non-zero
+  uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
+  cr_assert_neq(memcmp(ctx2.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared key should be set");
+}
+
+Test(crypto, rekey_process_response) {
+  // Initialize both contexts with key exchange
+  crypto_init(&ctx1);
+  crypto_init(&ctx2);
+
+  uint8_t pub_key1[CRYPTO_PUBLIC_KEY_SIZE];
+  uint8_t pub_key2[CRYPTO_PUBLIC_KEY_SIZE];
+  crypto_get_public_key(&ctx1, pub_key1);
+  crypto_get_public_key(&ctx2, pub_key2);
+  crypto_set_peer_public_key(&ctx1, pub_key2);
+  crypto_set_peer_public_key(&ctx2, pub_key1);
+
+  // Both sides init rekey
+  ctx1.rekey_last_time = time(NULL) - 100;
+  ctx2.rekey_last_time = time(NULL) - 100;
+  crypto_rekey_init(&ctx1);
+  crypto_rekey_init(&ctx2);
+
+  // Responder processes request
+  crypto_rekey_process_request(&ctx2, ctx1.temp_public_key);
+
+  // Initiator processes response
+  crypto_result_t result = crypto_rekey_process_response(&ctx1, ctx2.temp_public_key);
+  cr_assert_eq(result, CRYPTO_OK, "Process response should succeed");
+
+  // Both should have computed the same shared secret
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0,
+               "Both sides should compute same shared secret");
+}
+
+Test(crypto, rekey_commit) {
+  // Set up context with temp keys
+  crypto_init(&ctx1);
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+  ctx1.rekey_last_time = time(NULL) - 100;
+
+  // Save old shared key
+  uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
+  memcpy(old_shared_key, ctx1.shared_key, CRYPTO_SHARED_KEY_SIZE);
+
+  // Initialize rekey
+  crypto_rekey_init(&ctx1);
+
+  // Set up temp shared key (simulate completed exchange)
+  randombytes_buf(ctx1.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
+  uint8_t temp_shared_key_copy[CRYPTO_SHARED_KEY_SIZE];
+  memcpy(temp_shared_key_copy, ctx1.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
+
+  uint64_t old_packet_count = ctx1.rekey_packet_count;
+  uint64_t old_rekey_count = ctx1.rekey_count;
+
+  // Commit
+  crypto_result_t result = crypto_rekey_commit(&ctx1);
+  cr_assert_eq(result, CRYPTO_OK, "Commit should succeed");
+
+  // Check state after commit
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should no longer be in progress");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key after commit");
+  cr_assert_eq(ctx1.rekey_packet_count, 0, "Packet count should reset");
+  cr_assert_eq(ctx1.rekey_count, old_rekey_count + 1, "Rekey count should increment");
+  cr_assert_eq(ctx1.nonce_counter, 1, "Nonce counter should reset to 1");
+  cr_assert_eq(ctx1.rekey_failure_count, 0, "Failure count should reset");
+
+  // Check that shared key was updated
+  cr_assert_eq(memcmp(ctx1.shared_key, temp_shared_key_copy, CRYPTO_SHARED_KEY_SIZE), 0,
+               "Shared key should be updated to temp key");
+  cr_assert_neq(memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE), 0,
+                "Shared key should differ from old key");
+
+  // Check that temp keys are wiped
+  uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared key should be wiped");
+}
+
+Test(crypto, rekey_abort) {
+  // Set up context with rekey in progress
+  crypto_init(&ctx1);
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+  ctx1.rekey_last_time = time(NULL) - 100;
+
+  // Save old shared key
+  uint8_t old_shared_key[CRYPTO_SHARED_KEY_SIZE];
+  memcpy(old_shared_key, ctx1.shared_key, CRYPTO_SHARED_KEY_SIZE);
+
+  uint8_t old_failure_count = ctx1.rekey_failure_count;
+
+  // Initialize rekey
+  crypto_rekey_init(&ctx1);
+  cr_assert_eq(ctx1.rekey_in_progress, true, "Rekey should be in progress");
+
+  // Abort
+  crypto_rekey_abort(&ctx1);
+
+  // Check state after abort
+  cr_assert_eq(ctx1.rekey_in_progress, false, "Rekey should no longer be in progress");
+  cr_assert_eq(ctx1.has_temp_key, false, "Should not have temp key");
+  cr_assert_eq(ctx1.rekey_failure_count, old_failure_count + 1, "Failure count should increment");
+
+  // Check that shared key is unchanged
+  cr_assert_eq(memcmp(ctx1.shared_key, old_shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "Shared key should be unchanged");
+
+  // Check that temp keys are wiped
+  uint8_t zero_key[CRYPTO_SHARED_KEY_SIZE] = {0};
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, zero_key, CRYPTO_SHARED_KEY_SIZE), 0, "Temp shared key should be wiped");
+}
+
+Test(crypto, rekey_full_exchange) {
+  // Initialize both contexts
+  crypto_init(&ctx1);
+  crypto_init(&ctx2);
+
+  // Complete initial key exchange
+  uint8_t pub_key1[CRYPTO_PUBLIC_KEY_SIZE];
+  uint8_t pub_key2[CRYPTO_PUBLIC_KEY_SIZE];
+  crypto_get_public_key(&ctx1, pub_key1);
+  crypto_get_public_key(&ctx2, pub_key2);
+  crypto_set_peer_public_key(&ctx1, pub_key2);
+  crypto_set_peer_public_key(&ctx2, pub_key1);
+
+  // Encrypt test data with original key
+  const char *test_data = "Hello before rekey";
+  uint8_t ciphertext_before[256];
+  size_t ciphertext_before_len;
+  crypto_encrypt(&ctx1, (const uint8_t *)test_data, strlen(test_data), ciphertext_before, sizeof(ciphertext_before),
+                 &ciphertext_before_len);
+
+  uint8_t decrypted_before[256];
+  size_t decrypted_before_len;
+  crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_before, sizeof(decrypted_before),
+                 &decrypted_before_len);
+  cr_assert_eq(memcmp(decrypted_before, test_data, strlen(test_data)), 0, "Original encryption should work");
+
+  // Save original shared keys
+  uint8_t old_shared_key1[CRYPTO_SHARED_KEY_SIZE];
+  uint8_t old_shared_key2[CRYPTO_SHARED_KEY_SIZE];
+  memcpy(old_shared_key1, ctx1.shared_key, CRYPTO_SHARED_KEY_SIZE);
+  memcpy(old_shared_key2, ctx2.shared_key, CRYPTO_SHARED_KEY_SIZE);
+
+  // Perform full rekey exchange
+  ctx1.rekey_last_time = time(NULL) - 100;
+  ctx2.rekey_last_time = time(NULL) - 100;
+
+  // Step 1: Initiator (ctx1) sends REKEY_REQUEST
+  crypto_result_t result = crypto_rekey_init(&ctx1);
+  cr_assert_eq(result, CRYPTO_OK, "Initiator init should succeed");
+
+  // Step 2: Responder (ctx2) processes request and generates response
+  result = crypto_rekey_init(&ctx2);
+  cr_assert_eq(result, CRYPTO_OK, "Responder init should succeed");
+  result = crypto_rekey_process_request(&ctx2, ctx1.temp_public_key);
+  cr_assert_eq(result, CRYPTO_OK, "Process request should succeed");
+
+  // Step 3: Initiator processes response
+  result = crypto_rekey_process_response(&ctx1, ctx2.temp_public_key);
+  cr_assert_eq(result, CRYPTO_OK, "Process response should succeed");
+
+  // Both should have same temp shared key
+  cr_assert_eq(memcmp(ctx1.temp_shared_key, ctx2.temp_shared_key, CRYPTO_SHARED_KEY_SIZE), 0,
+               "Temp shared keys should match");
+
+  // Step 4: Both commit to new key
+  result = crypto_rekey_commit(&ctx1);
+  cr_assert_eq(result, CRYPTO_OK, "Initiator commit should succeed");
+  result = crypto_rekey_commit(&ctx2);
+  cr_assert_eq(result, CRYPTO_OK, "Responder commit should succeed");
+
+  // Check that shared keys changed
+  cr_assert_neq(memcmp(ctx1.shared_key, old_shared_key1, CRYPTO_SHARED_KEY_SIZE), 0, "ctx1 shared key should change");
+  cr_assert_neq(memcmp(ctx2.shared_key, old_shared_key2, CRYPTO_SHARED_KEY_SIZE), 0, "ctx2 shared key should change");
+
+  // Check that both have the same new key
+  cr_assert_eq(memcmp(ctx1.shared_key, ctx2.shared_key, CRYPTO_SHARED_KEY_SIZE), 0, "New shared keys should match");
+
+  // Test encryption with new key
+  const char *test_data_after = "Hello after rekey";
+  uint8_t ciphertext_after[256];
+  size_t ciphertext_after_len;
+  result = crypto_encrypt(&ctx1, (const uint8_t *)test_data_after, strlen(test_data_after), ciphertext_after,
+                          sizeof(ciphertext_after), &ciphertext_after_len);
+  cr_assert_eq(result, CRYPTO_OK, "Encryption with new key should work");
+
+  uint8_t decrypted_after[256];
+  size_t decrypted_after_len;
+  result = crypto_decrypt(&ctx2, ciphertext_after, ciphertext_after_len, decrypted_after, sizeof(decrypted_after),
+                          &decrypted_after_len);
+  cr_assert_eq(result, CRYPTO_OK, "Decryption with new key should work");
+  cr_assert_eq(memcmp(decrypted_after, test_data_after, strlen(test_data_after)), 0,
+               "Decrypted data should match with new key");
+
+  // Verify old ciphertext cannot be decrypted with new key
+  uint8_t decrypted_old_with_new[256];
+  size_t decrypted_old_with_new_len;
+  result = crypto_decrypt(&ctx2, ciphertext_before, ciphertext_before_len, decrypted_old_with_new,
+                          sizeof(decrypted_old_with_new), &decrypted_old_with_new_len);
+  cr_assert_neq(result, CRYPTO_OK, "Old ciphertext should not decrypt with new key");
+}
+
+Test(crypto, rekey_packet_counter_increments) {
+  // Initialize context
+  crypto_init(&ctx1);
+  ctx1.key_exchange_complete = true;
+  ctx1.handshake_complete = true;
+
+  cr_assert_eq(ctx1.rekey_packet_count, 0, "Initial packet count should be 0");
+
+  // Encrypt some data
+  const char *data = "test data";
+  uint8_t ciphertext[256];
+  size_t ciphertext_len;
+
+  for (int i = 0; i < 10; i++) {
+    crypto_encrypt(&ctx1, (const uint8_t *)data, strlen(data), ciphertext, sizeof(ciphertext), &ciphertext_len);
+  }
+
+  cr_assert_eq(ctx1.rekey_packet_count, 10, "Packet count should increment on each encryption");
 }

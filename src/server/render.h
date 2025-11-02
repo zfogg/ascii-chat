@@ -12,7 +12,7 @@ void stop_client_render_threads(client_info_t *client);
 
 // Render timing control - match platform-specific client FPS for optimal performance
 #ifdef _WIN32
-#define VIDEO_RENDER_FPS 30 // Match Windows client FPS to prevent frame buildup
+#define VIDEO_RENDER_FPS 60 // Windows with timeBeginPeriod(1) can handle 60 FPS
 #else
 #define VIDEO_RENDER_FPS 60 // Linux/macOS can handle higher rates
 #endif

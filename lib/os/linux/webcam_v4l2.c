@@ -78,7 +78,7 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
   ctx->buffer_count = req.count;
 
   // Allocate buffer array
-  SAFE_MALLOC(ctx->buffers, sizeof(webcam_buffer_t) * ctx->buffer_count, webcam_buffer_t *);
+  ctx->buffers = SAFE_MALLOC(sizeof(webcam_buffer_t) * ctx->buffer_count, webcam_buffer_t *);
   if (!ctx->buffers) {
     log_error("Failed to allocate buffer array");
     return -1;
@@ -134,62 +134,79 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
   return 0;
 }
 
-int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
+asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   webcam_context_t *context;
-  SAFE_MALLOC(context, sizeof(webcam_context_t), webcam_context_t *);
+  context = SAFE_MALLOC(sizeof(webcam_context_t), webcam_context_t *);
   if (!context) {
-    log_error("Failed to allocate webcam context");
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate webcam context");
   }
 
   memset(context, 0, sizeof(webcam_context_t));
 
   // Validate device index
   if (device_index > WEBCAM_DEVICE_INDEX_MAX) {
-    log_error("Invalid device index: %d (max: %d)", device_index, WEBCAM_DEVICE_INDEX_MAX);
-    free(context);
-    return -1;
+    SAFE_FREE(context);
+    return SET_ERRNO(ERROR_WEBCAM, "Invalid device index: %d (max: %d)", device_index, WEBCAM_DEVICE_INDEX_MAX);
   }
 
   // Open V4L2 device
   char device_path[32];
   SAFE_SNPRINTF(device_path, sizeof(device_path), "/dev/video%d", device_index);
 
+  // Check if device file exists before trying to open it
   context->fd = platform_open(device_path, PLATFORM_O_RDWR | O_NONBLOCK);
   if (context->fd == -1) {
-    log_error("Failed to open V4L2 device %s: %s", device_path, strerror(errno));
-    free(context);
-    return -1;
+    // Provide more helpful error messages based on errno
+    if (errno == ENOENT) {
+      SAFE_FREE(context);
+      return SET_ERRNO(ERROR_WEBCAM,
+                       "V4L2 device %s does not exist.\n"
+                       "No webcam found. Try:\n"
+                       "  1. Check if camera is connected: ls /dev/video*\n"
+                       "  2. Use test pattern instead: --test-pattern",
+                       device_path);
+    } else if (errno == EACCES) {
+      SAFE_FREE(context);
+      return SET_ERRNO(ERROR_WEBCAM_PERMISSION,
+                       "Permission denied accessing %s.\n"
+                       "Try: sudo usermod -a -G video $USER\n"
+                       "Then log out and log back in.",
+                       device_path);
+    } else if (errno == EBUSY) {
+      SAFE_FREE(context);
+      return SET_ERRNO(ERROR_WEBCAM_IN_USE, "V4L2 device %s is already in use by another application.", device_path);
+    } else {
+      SAFE_FREE(context);
+      return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to open V4L2 device %s", device_path);
+    }
   }
 
   // Check if it's a video capture device
   struct v4l2_capability cap;
   if (ioctl(context->fd, VIDIOC_QUERYCAP, &cap) == -1) {
-    log_error("Failed to query V4L2 capabilities: %s", strerror(errno));
     close(context->fd);
-    free(context);
-    return -1;
+    SAFE_FREE(context);
+    return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to query V4L2 capabilities");
   }
 
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-    log_error("Device is not a video capture device");
     close(context->fd);
-    free(context);
-    return -1;
+    SAFE_FREE(context);
+    return SET_ERRNO(ERROR_WEBCAM, "Device is not a video capture device");
   }
 
   // Set format (try 640x480 first, fallback to whatever the device supports)
   if (webcam_v4l2_set_format(context, 640, 480) != 0) {
     close(context->fd);
-    free(context);
-    return -1;
+    SAFE_FREE(context);
+    return ERROR_WEBCAM;
   }
 
   // Initialize buffers
   if (webcam_v4l2_init_buffers(context) != 0) {
     close(context->fd);
-    free(context);
-    return -1;
+    SAFE_FREE(context);
+    return ERROR_WEBCAM;
   }
 
   // Start streaming
@@ -200,9 +217,9 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
         munmap(context->buffers[i].start, context->buffers[i].length);
       }
     }
-    free(context->buffers);
+    SAFE_FREE(context->buffers);
     close(context->fd);
-    free(context);
+    SAFE_FREE(context);
     return -1;
   }
 
@@ -226,11 +243,11 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
         munmap(ctx->buffers[i].start, ctx->buffers[i].length);
       }
     }
-    free(ctx->buffers);
+    SAFE_FREE(ctx->buffers);
   }
 
   close(ctx->fd);
-  free(ctx);
+  SAFE_FREE(ctx);
   log_info("V4L2 webcam cleaned up");
 }
 
@@ -262,12 +279,27 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     usleep(1000); // 1ms
   }
 
+  // Validate buffer index to prevent crashes
+  if (buf.index >= (unsigned int)ctx->buffer_count) {
+    log_error("V4L2 returned invalid buffer index %u (max: %d)", buf.index, ctx->buffer_count - 1);
+    return NULL;
+  }
+
+  // Validate buffer pointer
+  if (!ctx->buffers || !ctx->buffers[buf.index].start) {
+    log_error("V4L2 buffer %u not initialized (start=%p, buffers=%p)", buf.index,
+              ctx->buffers ? ctx->buffers[buf.index].start : NULL, ctx->buffers);
+    return NULL;
+  }
+
   // Create image_t structure
   image_t *img = image_new(ctx->width, ctx->height);
   if (!img) {
     log_error("Failed to allocate image buffer");
-    // Re-queue the buffer
-    ioctl(ctx->fd, VIDIOC_QBUF, &buf);
+    // Re-queue the buffer - use safe error handling
+    if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
+      log_error("Failed to re-queue buffer after image allocation failure: %s", strerror(errno));
+    }
     return NULL;
   }
 
@@ -275,21 +307,23 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   const size_t frame_size = (size_t)ctx->width * ctx->height * 3;
   memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
 
-  // Re-queue the buffer
+  // Re-queue the buffer for future use
   if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-    log_error("Failed to re-queue V4L2 buffer: %s", strerror(errno));
+    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, strerror(errno), ctx->fd,
+              buf.type, buf.memory);
+    // Still return the image - the frame data was already copied
   }
 
   return img;
 }
 
-int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)
-    return -1;
+    return ERROR_INVALID_PARAM;
 
   *width = ctx->width;
   *height = ctx->height;
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 #endif // __linux__

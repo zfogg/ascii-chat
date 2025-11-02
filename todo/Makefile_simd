@@ -125,7 +125,7 @@ all: ensure-main-objects ascii_simd_test ansi_fast_test color_correctness_test
 
 
 # Compile ansi_fast.c
-../build/lib/ansi_fast.o: ../lib/ansi_fast.c ../lib/ansi_fast.h
+../build/lib/ansi_fast.o: ../lib/ansi_fast.c ../lib/image2ascii/ansi_fast.h
 	@echo "Compiling ansi_fast.c..."
 	$(CC) $(CFLAGS) -flto -c ../lib/ansi_fast.c -o ../build/lib/ansi_fast.o
 

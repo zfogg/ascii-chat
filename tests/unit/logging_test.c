@@ -232,17 +232,17 @@ Test(logging, log_with_extreme_formats) {
 Test(logging, log_memory_operations) {
   // Test logging during memory operations
   void *ptr;
-  SAFE_MALLOC(ptr, 1024, void *);
+  ptr = SAFE_MALLOC(1024, void *);
   log_debug("Allocated memory at %p", ptr);
 
   if (ptr) {
     memset(ptr, 0xAB, 1024);
     log_info("Filled memory with pattern 0xAB");
 
-    SAFE_REALLOC(ptr, 2048, void *);
+    ptr = SAFE_REALLOC(ptr, 2048, void *);
     log_info("Reallocated memory to 2048 bytes at %p", ptr);
 
-    free(ptr);
+    SAFE_FREE(ptr);
     log_debug("Freed memory");
   }
 
@@ -251,10 +251,10 @@ Test(logging, log_memory_operations) {
 
 Test(logging, log_error_codes) {
   // Test logging with common error codes
-  log_error("Network error: %d", ASCIICHAT_ERR_NETWORK);
-  log_error("Memory error: %d", ASCIICHAT_ERR_MALLOC);
-  log_error("Invalid param error: %d", ASCIICHAT_ERR_INVALID_PARAM);
-  log_warn("Buffer full error: %d", ASCIICHAT_ERR_BUFFER_FULL);
+  log_error("Network error: %d", ERROR_NETWORK);
+  log_error("Memory error: %d", ERROR_MEMORY);
+  log_error("Invalid param error: %d", ERROR_INVALID_PARAM);
+  log_warn("Buffer full error: %d", ERROR_BUFFER_FULL);
   log_info("Test numeric value: %d", 42);
 
   cr_assert(true, "Error code logging should work");
@@ -680,6 +680,9 @@ ParameterizedTest(log_init_test_case_t *tc, logging, log_initialization_variatio
   case LOG_DEBUG:
     log_debug("%s message after init", tc->level_name);
     break;
+  case LOG_DEV:
+    log_debug("%s message after init", tc->level_name);
+    break;
   case LOG_INFO:
     log_info("%s message after init", tc->level_name);
     break;
@@ -762,7 +765,7 @@ static void safe_setenv(const char *name, const char *value) {
 
 Test(logging, log_level_env_string_values) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_strings_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_strings_%d.log", getpid());
 
   // Test DEBUG
   safe_setenv("LOG_LEVEL", "DEBUG");
@@ -856,7 +859,7 @@ Test(logging, log_level_env_string_values) {
 
 Test(logging, log_level_env_case_insensitive) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_case_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_case_%d.log", getpid());
 
   // Test lowercase "debug"
   safe_setenv("LOG_LEVEL", "debug");
@@ -907,7 +910,7 @@ Test(logging, log_level_env_case_insensitive) {
 
 Test(logging, log_level_env_numeric_values) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_numeric_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_numeric_%d.log", getpid());
 
   // Test "0" (DEBUG)
   safe_setenv("LOG_LEVEL", "0");
@@ -963,7 +966,7 @@ Test(logging, log_level_env_numeric_values) {
 
 Test(logging, log_level_env_unset_uses_default) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_unset_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_unset_%d.log", getpid());
 
   // Ensure LOG_LEVEL is not set
   safe_setenv("LOG_LEVEL", NULL);
@@ -997,7 +1000,7 @@ Test(logging, log_level_env_unset_uses_default) {
 
 Test(logging, log_level_env_invalid_uses_default) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_invalid_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_invalid_%d.log", getpid());
 
   // Set invalid LOG_LEVEL values
   safe_setenv("LOG_LEVEL", "INVALID_VALUE");
@@ -1025,8 +1028,14 @@ Test(logging, log_level_env_invalid_uses_default) {
   fclose(f);
   unlink(test_log_file);
 
-  cr_assert(found_info, "Invalid LOG_LEVEL should use default INFO level");
-  cr_assert_not(found_debug, "Invalid LOG_LEVEL should not log DEBUG");
+  // In debug builds, default is DEBUG. In release builds, default is INFO.
+#ifdef NDEBUG
+  cr_assert(found_info, "Invalid LOG_LEVEL should use default INFO level (release build)");
+  cr_assert_not(found_debug, "Invalid LOG_LEVEL should not log DEBUG (release build)");
+#else
+  cr_assert(found_info, "Invalid LOG_LEVEL should use default DEBUG level (debug build)");
+  cr_assert(found_debug, "Invalid LOG_LEVEL should log DEBUG (debug build)");
+#endif
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -1034,7 +1043,7 @@ Test(logging, log_level_env_invalid_uses_default) {
 
 Test(logging, log_level_env_dos_protection) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_dos_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_dos_%d.log", getpid());
 
   // Create a very large string (1000 characters)
   char large_value[1001];
@@ -1067,8 +1076,14 @@ Test(logging, log_level_env_dos_protection) {
   fclose(f);
   unlink(test_log_file);
 
-  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO");
-  cr_assert_not(found_debug, "Large LOG_LEVEL should not change default behavior");
+  // In debug builds, default is DEBUG. In release builds, default is INFO.
+#ifdef NDEBUG
+  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default INFO (release build)");
+  cr_assert_not(found_debug, "Large LOG_LEVEL should use default INFO (release build)");
+#else
+  cr_assert(found_info, "Large LOG_LEVEL (64+ chars) should use default DEBUG (debug build)");
+  cr_assert(found_debug, "Large LOG_LEVEL should use default DEBUG (debug build)");
+#endif
 
   // Cleanup
   safe_setenv("LOG_LEVEL", NULL);
@@ -1076,7 +1091,7 @@ Test(logging, log_level_env_dos_protection) {
 
 Test(logging, log_level_env_boundary_64_chars) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_boundary_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_boundary_%d.log", getpid());
 
   // Test exactly 64 characters (should trigger protection)
   char exactly_64[65];
@@ -1135,7 +1150,7 @@ Test(logging, log_level_env_boundary_64_chars) {
 
 Test(logging, log_level_env_before_init) {
   char test_log_file[256];
-  snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_before_init_%d.log", getpid());
+  safe_snprintf(test_log_file, sizeof(test_log_file), "/tmp/test_log_env_before_init_%d.log", getpid());
 
   // Set LOG_LEVEL before any log_init call
   safe_setenv("LOG_LEVEL", "DEBUG");
