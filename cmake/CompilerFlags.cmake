@@ -125,8 +125,13 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     endif()
 
     if(NOT WIN32)
-        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fno-plt -fno-semantic-interposition -fmerge-all-constants)
-        add_link_options(-flto -fno-plt)
+        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+        add_link_options(-flto)
+        # Linux-specific flags (not supported on macOS clang)
+        if(PLATFORM_LINUX)
+            add_compile_options(-fno-plt -fno-semantic-interposition)
+            add_link_options(-fno-plt)
+        endif()
     endif()
 endfunction()
 
