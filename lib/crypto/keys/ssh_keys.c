@@ -4,6 +4,7 @@
 #include "asciichat_errno.h"
 #include "platform/password.h"
 #include "platform/internal.h"
+#include "util/string.h"
 #include <sodium.h>
 #include <string.h>
 #include <stdio.h>
@@ -14,10 +15,20 @@
 #include <io.h>
 #include <sys/stat.h>
 #define unlink _unlink
+#define SAFE_POPEN _popen
+#define SAFE_PCLOSE _pclose
 #else
+#include <sys/wait.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#define SAFE_POPEN popen
+#define SAFE_PCLOSE pclose
 #endif
+
+// Helper macro to read 32-bit big-endian values safely (avoids UB from shifting signed ints)
+#define READ_BE32(buf, offset)                                                                                         \
+  (((uint32_t)(buf)[(offset)] << 24) | ((uint32_t)(buf)[(offset) + 1] << 16) | ((uint32_t)(buf)[(offset) + 2] << 8) | \
+   (uint32_t)(buf)[(offset) + 3])
 
 // =============================================================================
 // Helper Functions
@@ -106,7 +117,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t ciphername_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + ciphername_len > key_blob_len) {
@@ -127,7 +138,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t kdfname_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
   offset += kdfname_len;
 
@@ -136,7 +147,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t kdfoptions_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
   offset += kdfoptions_len;
 
@@ -146,7 +157,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t num_keys =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   log_debug("DEBUG: Decrypted key has %u keys", num_keys);
@@ -161,7 +172,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t pubkey_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + pubkey_len > key_blob_len) {
@@ -176,7 +187,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   log_debug("DEBUG: Public key length: %u, offset: %zu", pubkey_len, offset);
 
   uint32_t key_type_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   log_debug("DEBUG: Key type length: %u", key_type_len);
@@ -193,7 +204,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t pubkey_data_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (pubkey_data_len != 32) {
@@ -216,7 +227,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t private_key_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + private_key_len > key_blob_len) {
@@ -246,10 +257,8 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   // Read and verify checkints
-  uint32_t checkint1 =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
-  uint32_t checkint2 =
-      (key_blob[offset + 4] << 24) | (key_blob[offset + 5] << 16) | (key_blob[offset + 6] << 8) | key_blob[offset + 7];
+  uint32_t checkint1 = READ_BE32(key_blob, offset);
+  uint32_t checkint2 = READ_BE32(key_blob, offset + 4);
   offset += 8;
 
   if (checkint1 != checkint2) {
@@ -264,7 +273,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t privkey_keytype_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + privkey_keytype_len - privkey_section_start > private_key_len) {
@@ -281,7 +290,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t privkey_pubkey_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + privkey_pubkey_len - privkey_section_start > private_key_len) {
@@ -298,7 +307,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
   }
 
   uint32_t privkey_data_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   log_debug("DEBUG: Private key data length: %u", privkey_data_len);
@@ -534,7 +543,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t ciphername_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + ciphername_len > key_blob_len) {
@@ -563,7 +572,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t kdfname_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   // Store the position of kdfname for later use
@@ -578,7 +587,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t kdfoptions_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4 + kdfoptions_len;
 
   // Handle encrypted keys
@@ -693,9 +702,28 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to derive key from passphrase: %s", key_path);
     }
 
+    // SECURITY: Validate key_path to prevent path injection and ensure it's safe for file operations
+    // Key paths should only contain alphanumeric, path separators, dots, dashes, underscores
+    if (!validate_shell_safe(key_path, ".-/\\:")) {
+      sodium_memzero(password, strlen(password));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid key path - contains unsafe characters: %s", key_path);
+    }
+
     // Use ssh-keygen to decrypt to a temporary file (safer approach)
     char temp_key_path[PLATFORM_MAX_PATH_LENGTH];
     safe_snprintf(temp_key_path, sizeof(temp_key_path), "%s_temp_decrypted", key_path);
+
+    // SECURITY: Validate temp_key_path (should be safe since key_path is validated, but check anyway)
+    if (strlen(temp_key_path) >= PLATFORM_MAX_PATH_LENGTH - 1) {
+      sodium_memzero(password, strlen(password));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Temporary key path too long: %s", temp_key_path);
+    }
 
     // Copy the encrypted key file to temp location using C file operations (more reliable than batch copy)
     FILE *src_file = platform_fopen(key_path, "rb");
@@ -737,50 +765,224 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
     log_debug("DEBUG: Copied encrypted key to temp file: %s", temp_key_path);
 
-    // Create a batch script that decrypts the temporary file
-    char script_path[PLATFORM_MAX_PATH_LENGTH];
-    safe_snprintf(script_path, sizeof(script_path), "%s_script.bat", key_path);
-
-    FILE *script_file = platform_fopen(script_path, "w");
-    if (!script_file) {
+    // SECURITY: Use popen() with stdin to pass password securely (not visible in process list)
+    // Escape path for safe use in shell command
+    // Use platform-appropriate quoting: double quotes on Windows, single quotes on Unix
+    char escaped_temp_path[PLATFORM_MAX_PATH_LENGTH * 2];
+#ifdef _WIN32
+    if (!escape_shell_double_quotes(temp_key_path, escaped_temp_path, sizeof(escaped_temp_path))) {
       unlink(temp_key_path);
       sodium_memzero(password, strlen(password));
       SAFE_FREE(decrypted_data);
       SAFE_FREE(key_blob);
       SAFE_FREE(file_content);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to create script file: %s", script_path);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to escape temporary key path for shell command");
     }
-
-    safe_fprintf(script_file, "@echo off\n");
-    safe_fprintf(script_file, "ssh-keygen -p -f \"%s\" -N \"\" -P \"%s\"\n", temp_key_path, password);
-    (void)fclose(script_file);
-
-    if (strlen(password) > 0) {
-      sodium_memzero(password, strlen(password));
-    }
-
-    char decrypt_cmd[2048];
-    safe_snprintf(decrypt_cmd, sizeof(decrypt_cmd), "call \"%s\"", script_path);
-
-    // Execute ssh-keygen to decrypt the temporary key
-    int result = system(decrypt_cmd);
-    if (result != 0) {
+#else
+    if (!escape_shell_single_quotes(temp_key_path, escaped_temp_path, sizeof(escaped_temp_path))) {
       unlink(temp_key_path);
-      unlink(script_path);
+      sodium_memzero(password, strlen(password));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to escape temporary key path for shell command");
+    }
+#endif
+
+    // Build command: ssh-keygen -q -p -f <path> -N "" -P <password>
+    // -q quiet mode (suppresses prompts and non-error output)
+    // -p change passphrase
+    // -N "" sets new passphrase to empty (decrypt)
+    // -P <password> provides old passphrase directly
+    // NOTE: On Windows, -P - (read from stdin) doesn't work reliably with popen()
+    // So we use -P <password> with proper escaping as a workaround
+    // Redirect stderr to capture errors (use temporary file to see what ssh-keygen says)
+    char decrypt_cmd[PLATFORM_MAX_PATH_LENGTH * 2 + 1024];
+    char stderr_file[PLATFORM_MAX_PATH_LENGTH + 64];
+    safe_snprintf(stderr_file, sizeof(stderr_file), "%s_stderr", temp_key_path);
+
+    // Escape password for safe use in command line
+    char escaped_password[1024 + 128]; // password + escaping overhead
+#ifdef _WIN32
+    // On Windows, check if password needs quoting
+    // If password contains only safe characters, use it without quotes
+    // Otherwise, escape it with double quotes
+    if (validate_shell_safe(password, NULL)) {
+      // Password is safe - use it directly without quotes
+      safe_snprintf(escaped_password, sizeof(escaped_password), "%s", password);
+    } else {
+      // Password contains unsafe characters - escape with double quotes
+      if (!escape_shell_double_quotes(password, escaped_password, sizeof(escaped_password))) {
+        unlink(temp_key_path);
+        sodium_memzero(password, strlen(password));
+        SAFE_FREE(decrypted_data);
+        SAFE_FREE(key_blob);
+        SAFE_FREE(file_content);
+        return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to escape password for shell command");
+      }
+    }
+    // Use -P <password> directly (escaped) instead of -P - (stdin doesn't work on Windows)
+    safe_snprintf(decrypt_cmd, sizeof(decrypt_cmd), "ssh-keygen -q -p -f %s -N \"\" -P %s 2>%s",
+                  escaped_temp_path, escaped_password, stderr_file);
+#else
+    // On Unix, try -P - first (stdin works on Unix)
+    // Escape password for single quotes as fallback
+    if (!escape_shell_single_quotes(password, escaped_password, sizeof(escaped_password))) {
+      unlink(temp_key_path);
+      sodium_memzero(password, strlen(password));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to escape password for shell command");
+    }
+    // Use -P - (read from stdin) on Unix - this works reliably
+    safe_snprintf(decrypt_cmd, sizeof(decrypt_cmd), "ssh-keygen -q -p -f %s -N '' -P - 2>%s",
+                  escaped_temp_path, stderr_file);
+#endif
+
+    // On Windows, we use -P <password> (password in command line)
+    // On Unix, we use -P - and write password to stdin via popen()
+    FILE *ssh_keygen = NULL;
+#ifdef _WIN32
+    // On Windows: -P <password> means we don't need to write to stdin
+    // Just execute the command and check exit status
+    ssh_keygen = SAFE_POPEN(decrypt_cmd, "r"); // Use "r" mode since we're not writing
+#else
+    // On Unix: use -P - and write password to stdin
+    ssh_keygen = SAFE_POPEN(decrypt_cmd, "w"); // Use "w" mode to write password
+#endif
+    if (!ssh_keygen) {
+      unlink(temp_key_path);
+      sodium_memzero(password, strlen(password));
       SAFE_FREE(decrypted_data);
       SAFE_FREE(key_blob);
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY,
-                       "Failed to decrypt SSH key using ssh-keygen: %s\n"
-                       "Make sure ssh-keygen is available and the passphrase is correct",
+                       "Failed to execute ssh-keygen: %s\n"
+                       "Make sure ssh-keygen is available",
                        key_path);
     }
+
+    // On Windows: password is already in command line via -P <password>, no stdin needed
+    // On Unix: write password to stdin for -P -
+#ifndef _WIN32
+    // Write old passphrase to stdin immediately (Unix only)
+    // -P - explicitly tells ssh-keygen to read from stdin and disables interactive prompting
+    size_t password_len = strlen(password);
+    char password_with_newline[1024 + 2]; // password + newline + null
+    if (password_len >= sizeof(password_with_newline) - 2) {
+      SAFE_PCLOSE(ssh_keygen);
+      unlink(temp_key_path);
+      sodium_memzero(password, strlen(password));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Password too long for ssh-keygen");
+    }
+
+    memcpy(password_with_newline, password, password_len);
+    password_with_newline[password_len] = '\n';
+    password_with_newline[password_len + 1] = '\0';
+
+    // Write password + newline to stdin
+    if (fwrite(password_with_newline, 1, password_len + 1, ssh_keygen) != password_len + 1) {
+      SAFE_PCLOSE(ssh_keygen);
+      unlink(temp_key_path);
+      sodium_memzero(password, strlen(password));
+      sodium_memzero(password_with_newline, sizeof(password_with_newline));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to write password to ssh-keygen stdin");
+    }
+
+    // Flush to ensure password is sent immediately
+    if (fflush(ssh_keygen) != 0) {
+      SAFE_PCLOSE(ssh_keygen);
+      unlink(temp_key_path);
+      sodium_memzero(password, strlen(password));
+      sodium_memzero(password_with_newline, sizeof(password_with_newline));
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to flush password to ssh-keygen stdin");
+    }
+
+    // Clear password buffers immediately after writing
+    sodium_memzero(password_with_newline, sizeof(password_with_newline));
+#endif
+
+    // Immediately zero password from memory after writing
+    // On Windows, password was already used in command line, so clear it
+    // On Unix, password was written to stdin, so clear it
+    sodium_memzero(password, strlen(password));
+    // Also clear escaped_password
+    sodium_memzero(escaped_password, sizeof(escaped_password));
+
+    // Close the pipe and check exit status
+    // pclose() closes the pipe and returns the exit status of the process (0 = success)
+    // On Windows, _pclose() returns the exit code directly
+    // On Unix, pclose() returns the exit status (need to check with WIFEXITED and WEXITSTATUS)
+    // Closing the pipe signals EOF to ssh-keygen, indicating password input is complete
+    int result = SAFE_PCLOSE(ssh_keygen);
+    if (password) {
+      SAFE_FREE(password);
+    }
+
+    // Check if ssh-keygen succeeded (exit status 0 = success)
+    // On Windows, _pclose returns exit code directly
+    // On Unix, pclose returns exit status (need to check with WIFEXITED and WEXITSTATUS)
+    bool ssh_keygen_failed = false;
+#ifdef _WIN32
+    if (result != 0) {
+      ssh_keygen_failed = true;
+#else
+    // On Unix, check if process exited normally and get exit code
+    int exit_status = -1;
+    if (WIFEXITED(result)) {
+      exit_status = WEXITSTATUS(result);
+    }
+    if (exit_status != 0) {
+      ssh_keygen_failed = true;
+#endif
+    }
+
+    if (ssh_keygen_failed) {
+      // Try to read stderr output to see what went wrong
+      char error_msg[512] = "";
+      FILE *stderr_fp = platform_fopen(stderr_file, "r");
+      if (stderr_fp) {
+        if (fgets(error_msg, sizeof(error_msg) - 1, stderr_fp)) {
+          // Remove trailing newline
+          size_t len = strlen(error_msg);
+          if (len > 0 && error_msg[len - 1] == '\n') {
+            error_msg[len - 1] = '\0';
+          }
+        }
+        (void)fclose(stderr_fp);
+      }
+      unlink(stderr_file); // Clean up stderr file
+      unlink(temp_key_path);
+      SAFE_FREE(decrypted_data);
+      SAFE_FREE(key_blob);
+      SAFE_FREE(file_content);
+      if (strlen(error_msg) > 0) {
+        log_error("ssh-keygen error: %s", error_msg);
+      }
+      return SET_ERRNO(ERROR_CRYPTO_KEY,
+                       "Failed to decrypt SSH key using ssh-keygen: %s\n"
+                       "Make sure ssh-keygen is available and the passphrase is correct%s%s",
+                       key_path, strlen(error_msg) > 0 ? "\nssh-keygen said: " : "",
+                       error_msg);
+    }
+
+    // Clean up stderr file on success
+    unlink(stderr_file);
 
     // Read the decrypted temporary key file
     FILE *temp_file = platform_fopen(temp_key_path, "rb");
     if (!temp_file) {
       unlink(temp_key_path);
-      unlink(script_path);
       SAFE_FREE(decrypted_data);
       SAFE_FREE(key_blob);
       SAFE_FREE(file_content);
@@ -796,7 +998,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     if (!temp_file_content) {
       (void)fclose(temp_file);
       unlink(temp_key_path);
-      unlink(script_path);
       SAFE_FREE(decrypted_data);
       SAFE_FREE(key_blob);
       SAFE_FREE(file_content);
@@ -809,7 +1010,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
     // Clean up temporary files
     unlink(temp_key_path);
-    unlink(script_path);
 
     // The decrypted key file is in OpenSSH format, not binary blob format
     // We need to parse it as a regular OpenSSH key file
@@ -839,7 +1039,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t num_keys =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   log_debug("DEBUG: num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, offset, key_blob_len);
@@ -864,7 +1064,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
             key_blob[offset + 1], key_blob[offset + 2], key_blob[offset + 3]);
 
   uint32_t pubkey_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   log_debug("DEBUG: pubkey_len=%u, offset=%zu", pubkey_len, offset);
@@ -883,7 +1083,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t key_type_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   // Check if it's an Ed25519 key
@@ -904,7 +1104,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t pubkey_data_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
   log_debug("DEBUG: Public key data length: %u, offset=%zu", pubkey_data_len, offset);
 
@@ -962,7 +1162,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
             key_blob[offset + 1], key_blob[offset + 2], key_blob[offset + 3]);
 
   uint32_t privkey_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   log_debug("DEBUG: privkey_len=%u, offset=%zu, key_blob_len=%zu", privkey_len, offset, key_blob_len);
@@ -986,7 +1186,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // Verify checkints (should be equal)
   uint32_t checkint1 =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   uint32_t checkint2 =
       (key_blob[offset + 4] << 24) | (key_blob[offset + 5] << 16) | (key_blob[offset + 6] << 8) | key_blob[offset + 7];
   offset += 8;
@@ -1005,7 +1205,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t key_type_len_priv =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4 + key_type_len_priv;
 
   // Skip public key
@@ -1016,7 +1216,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t pubkey_len_priv =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4 + pubkey_len_priv;
 
   // Read private key
@@ -1027,7 +1227,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t privkey_data_len =
-      (key_blob[offset] << 24) | (key_blob[offset + 1] << 16) | (key_blob[offset + 2] << 8) | key_blob[offset + 3];
+      READ_BE32(key_blob, offset);
   offset += 4;
 
   if (offset + privkey_data_len > key_blob_len) {

@@ -16,12 +16,14 @@
 /**
  * Extract relative path from an absolute path
  *
- * Searches for PROJECT_SOURCE_ROOT and returns the path relative to it.
+ * Searches for common project directories (lib/, src/, tests/, include/)
+ * and returns the path relative from that directory.
  * Handles both Unix (/) and Windows (\) path separators.
- * Falls back to just the filename if source root not found.
+ * Falls back to just the filename if no project directory found.
  *
  * @param file Absolute file path (typically from __FILE__)
- * @return Relative path from project root, or filename if not found
+ * @return Relative path from project directory (e.g., lib/platform/symbols.c),
+ *         or filename if no project directory found
  */
 const char *extract_project_relative_path(const char *file);
 

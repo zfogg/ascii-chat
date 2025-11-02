@@ -12,6 +12,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Set up CMake dependency cache (All platforms)
+      uses: actions/cache@v4
+      with:
+        path: |
+          .deps-cache
+          .deps-cache-musl
+          deps/bearssl/build
+        key: ${{ runner.os }}-cmake-deps-v1-${{ hashFiles('CMakeLists.txt', 'cmake/MuslDependencies.cmake', 'deps/bearssl/**') }}
+        restore-keys: |
+          ${{ runner.os }}-cmake-deps-v1-
+          ${{ runner.os }}-cmake-deps-
+
     - name: Set up Homebrew cache (macOS)
       if: inputs.os == 'macos'
       uses: actions/cache@v4

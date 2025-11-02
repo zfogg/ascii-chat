@@ -1840,9 +1840,6 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # Include paths
     target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_BINARY_DIR}/generated)
 
-    # Project source root for logging
-    target_compile_definitions(${MODULE_NAME} PRIVATE PROJECT_SOURCE_ROOT="${CMAKE_SOURCE_DIR}")
-
     # Build directory for llvm-symbolizer --debug-file-directory
     target_compile_definitions(${MODULE_NAME} PRIVATE BUILD_DIR="${CMAKE_BINARY_DIR}")
 

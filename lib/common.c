@@ -17,11 +17,11 @@ extern size_t malloc_usable_size(void *ptr);
 #include "common.h"
 #include "platform/abstraction.h"
 #include "platform/system.h"
-#include "util/util.h"
+#include "util/path.h"
+#include "util/format.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -159,7 +159,9 @@ void *debug_malloc(size_t size, const char *file, int line) {
   if (block) {
     block->ptr = ptr;
     block->size = size;
-    SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+    // Normalize file path to resolve .. components and extract relative path
+    const char *normalized_file = extract_project_relative_path(file);
+    SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
     block->line = line;
     block->next = g_mem.head;
     g_mem.head = block;
