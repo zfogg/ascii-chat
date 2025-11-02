@@ -245,6 +245,61 @@ void *debug_malloc(size_t size, const char *file, int line) {
   return ptr;
 }
 
+/* Register an aligned allocation with the debug tracker (called after aligned_alloc/posix_memalign/mi_malloc_aligned)
+ */
+void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
+  if (!ptr)
+    return;
+
+  // Skip tracking if we're already inside debug memory code (prevents recursion)
+  if (g_in_debug_memory) {
+    return;
+  }
+
+  g_in_debug_memory = true;
+
+  /* Update statistics with atomic operations - no locks needed */
+  atomic_fetch_add(&g_mem.malloc_calls, 1);
+  atomic_fetch_add(&g_mem.total_allocated, size);
+  size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
+
+  /* Update peak usage if needed */
+  size_t peak = atomic_load(&g_mem.peak_usage);
+  while (new_usage > peak) {
+    if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+      break;
+  }
+
+  /* Track individual allocations for detailed leak reporting */
+  ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
+  mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
+
+  // Use raw malloc here to avoid recursion
+  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+  if (block) {
+    block->ptr = ptr;
+    block->size = size;
+    // Normalize file path to resolve .. components and extract relative path
+    const char *normalized_file = extract_project_relative_path(file);
+    SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
+    block->line = line;
+    block->next = g_mem.head;
+    g_mem.head = block;
+  }
+
+#if PLATFORM_WINDOWS
+  mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
+
+  g_in_debug_memory = false;
+}
+
 void debug_free(void *ptr, const char *file, int line) {
   if (!ptr)
     return;
