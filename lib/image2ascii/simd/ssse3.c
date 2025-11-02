@@ -7,7 +7,7 @@
 #include "common.h"
 #include "../output_buffer.h"
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
 #include <tmmintrin.h>
 
 //=============================================================================

@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
 #include <arm_sve.h>
 
 // NEW: Image-based API (matching NEON architecture)

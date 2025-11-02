@@ -116,7 +116,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   if (color) {
     // Check for half-block mode first (requires NEON)
     if (opt_render_mode == RENDER_MODE_HALF_BLOCK) {
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
       ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);

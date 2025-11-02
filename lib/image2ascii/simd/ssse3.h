@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
 #ifdef _WIN32
 // Windows: Use immintrin.h with proper feature detection
 // MSVC doesn't define __SSSE3__ but x64 always has it

@@ -8,7 +8,7 @@
 #include "../output_buffer.h"
 #include "../ansi_fast.h"
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
 #include <immintrin.h>
 
 // Simple emission functions for direct buffer writing

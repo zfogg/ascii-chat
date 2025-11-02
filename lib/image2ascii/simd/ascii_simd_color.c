@@ -381,7 +381,7 @@ static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g,
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
   (void)use_256color; // Suppress unused parameter warning when SIMD not available
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   (void)use_background_mode; // Suppress unused parameter warning when SIMD not available
   return image_print_color(image, ascii_chars);
   // FIXME: AVX2 is dim and has vertical stripe artifacts. Use scalar until we fix it.

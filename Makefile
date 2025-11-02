@@ -486,32 +486,6 @@ clean_all/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/clean_all.dir/build.make CMakeFiles/clean_all.dir/build
 .PHONY : clean_all/fast
 
-#=============================================================================
-# Target rules for targets named deps
-
-# Build rule for target.
-deps: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 deps
-.PHONY : deps
-
-# fast build rule for target.
-deps/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/deps.dir/build.make CMakeFiles/deps.dir/build
-.PHONY : deps/fast
-
-#=============================================================================
-# Target rules for targets named deps-test
-
-# Build rule for target.
-deps-test: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 deps-test
-.PHONY : deps-test
-
-# fast build rule for target.
-deps-test/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/deps-test.dir/build.make CMakeFiles/deps-test.dir/build
-.PHONY : deps-test/fast
-
 empty.o: empty.c.o
 .PHONY : empty.o
 
@@ -1183,54 +1157,6 @@ lib/image2ascii/simd/common.s: lib/image2ascii/simd/common.c.s
 lib/image2ascii/simd/common.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/common.c.s
 .PHONY : lib/image2ascii/simd/common.c.s
-
-lib/image2ascii/simd/sse2.o: lib/image2ascii/simd/sse2.c.o
-.PHONY : lib/image2ascii/simd/sse2.o
-
-# target to build an object file
-lib/image2ascii/simd/sse2.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/sse2.c.o
-.PHONY : lib/image2ascii/simd/sse2.c.o
-
-lib/image2ascii/simd/sse2.i: lib/image2ascii/simd/sse2.c.i
-.PHONY : lib/image2ascii/simd/sse2.i
-
-# target to preprocess a source file
-lib/image2ascii/simd/sse2.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/sse2.c.i
-.PHONY : lib/image2ascii/simd/sse2.c.i
-
-lib/image2ascii/simd/sse2.s: lib/image2ascii/simd/sse2.c.s
-.PHONY : lib/image2ascii/simd/sse2.s
-
-# target to generate assembly for a file
-lib/image2ascii/simd/sse2.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/sse2.c.s
-.PHONY : lib/image2ascii/simd/sse2.c.s
-
-lib/image2ascii/simd/ssse3.o: lib/image2ascii/simd/ssse3.c.o
-.PHONY : lib/image2ascii/simd/ssse3.o
-
-# target to build an object file
-lib/image2ascii/simd/ssse3.c.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/ssse3.c.o
-.PHONY : lib/image2ascii/simd/ssse3.c.o
-
-lib/image2ascii/simd/ssse3.i: lib/image2ascii/simd/ssse3.c.i
-.PHONY : lib/image2ascii/simd/ssse3.i
-
-# target to preprocess a source file
-lib/image2ascii/simd/ssse3.c.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/ssse3.c.i
-.PHONY : lib/image2ascii/simd/ssse3.c.i
-
-lib/image2ascii/simd/ssse3.s: lib/image2ascii/simd/ssse3.c.s
-.PHONY : lib/image2ascii/simd/ssse3.s
-
-# target to generate assembly for a file
-lib/image2ascii/simd/ssse3.c.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/ascii-chat-simd.dir/build.make CMakeFiles/ascii-chat-simd.dir/lib/image2ascii/simd/ssse3.c.s
-.PHONY : lib/image2ascii/simd/ssse3.c.s
 
 lib/lock_debug.o: lib/lock_debug.c.o
 .PHONY : lib/lock_debug.o
@@ -2450,8 +2376,6 @@ help:
 	@echo "... clang-format"
 	@echo "... clang-tidy"
 	@echo "... clean_all"
-	@echo "... deps"
-	@echo "... deps-test"
 	@echo "... format"
 	@echo "... format-check"
 	@echo "... generate_version"
@@ -2555,12 +2479,6 @@ help:
 	@echo "... lib/image2ascii/simd/common.o"
 	@echo "... lib/image2ascii/simd/common.i"
 	@echo "... lib/image2ascii/simd/common.s"
-	@echo "... lib/image2ascii/simd/sse2.o"
-	@echo "... lib/image2ascii/simd/sse2.i"
-	@echo "... lib/image2ascii/simd/sse2.s"
-	@echo "... lib/image2ascii/simd/ssse3.o"
-	@echo "... lib/image2ascii/simd/ssse3.i"
-	@echo "... lib/image2ascii/simd/ssse3.s"
 	@echo "... lib/lock_debug.o"
 	@echo "... lib/lock_debug.i"
 	@echo "... lib/lock_debug.s"

@@ -251,34 +251,40 @@ endif()
 
 # Apply specific SIMD flags
 if(ENABLE_SIMD_SSE2)
-    add_definitions(-DSIMD_SUPPORT_SSE2)
+    add_definitions(-DSIMD_SUPPORT_SSE2=1)
     if(WIN32)
         add_compile_options(-msse2 -mno-mmx)  # Disable MMX on Windows
     else()
         add_compile_options(-msse2)
     endif()
+else()
+    add_definitions(-DSIMD_SUPPORT_SSE2=0)
 endif()
 
 if(ENABLE_SIMD_SSSE3)
-    add_definitions(-DSIMD_SUPPORT_SSSE3)
+    add_definitions(-DSIMD_SUPPORT_SSSE3=1)
     if(WIN32)
         add_compile_options(-mssse3 -mno-mmx)  # Disable MMX on Windows
     else()
         add_compile_options(-mssse3)
     endif()
+else()
+    add_definitions(-DSIMD_SUPPORT_SSSE3=0)
 endif()
 
 if(ENABLE_SIMD_AVX2)
-    add_definitions(-DSIMD_SUPPORT_AVX2)
+    add_definitions(-DSIMD_SUPPORT_AVX2=1)
     if(WIN32)
         add_compile_options(-mavx2 -mno-mmx)  # Disable MMX on Windows
     else()
         add_compile_options(-mavx2)
     endif()
+else()
+    add_definitions(-DSIMD_SUPPORT_AVX2=0)
 endif()
 
 if(ENABLE_SIMD_NEON)
-    add_definitions(-DSIMD_SUPPORT_NEON)
+    add_definitions(-DSIMD_SUPPORT_NEON=1)
     # Windows ARM64 with Clang needs proper arch flags
     if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64")
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
@@ -286,11 +292,15 @@ if(ENABLE_SIMD_NEON)
             add_compile_options(-march=armv8-a+simd)
         endif()
     endif()
+else()
+    add_definitions(-DSIMD_SUPPORT_NEON=0)
 endif()
 
 if(ENABLE_SIMD_SVE)
-    add_definitions(-DSIMD_SUPPORT_SVE)
+    add_definitions(-DSIMD_SUPPORT_SVE=1)
     add_compile_options(-march=armv8-a+sve)
+else()
+    add_definitions(-DSIMD_SUPPORT_SVE=0)
 endif()
 
 # =============================================================================
