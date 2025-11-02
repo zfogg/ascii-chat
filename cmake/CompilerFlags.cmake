@@ -2,7 +2,54 @@
 # Compiler Flags Configuration Module
 # =============================================================================
 # This module provides platform-specific compiler flags and debug mode setup
+#
+# Functions:
+#   - configure_base_compiler_flags(): Sets base warning flags and frame pointer options
+#   - configure_debug_memory(): Configures DEBUG_MEMORY based on mimalloc, musl, sanitizers
+#   - configure_debug_build_flags(): Sets debug build flags
+#   - configure_release_flags(): Sets release build optimization flags
+#   - configure_coverage_flags(): Sets coverage build flags
+#
+# Prerequisites:
+#   - configure_base_compiler_flags() should be called after project() but before build type config
+#   - Other functions called based on build type
+# =============================================================================
 
+# =============================================================================
+# Base Compiler Flags
+# =============================================================================
+# Configure base warning flags and frame pointer options that apply to all builds
+#
+# Prerequisites:
+#   - Must run after project()
+# =============================================================================
+
+function(configure_base_compiler_flags)
+    # Base warning flags for Clang/GCC compilers
+    # -Wall: Enable common warnings
+    # -Wextra: Enable extra warnings
+    add_compile_options(-Wall -Wextra)
+
+    # Enable frame pointers for better backtraces (required for musl + libexecinfo)
+    # Frame pointers help with stack traces and debugging, but disable in Release for performance
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        add_compile_options(-fno-omit-frame-pointer)
+        message(STATUS "Frame pointers enabled for backtraces")
+    endif()
+
+    # =============================================================================
+    # Future compiler flags can be added here
+    # =============================================================================
+    # Examples:
+    #   - Additional warning flags: -Wpedantic, -Werror, etc.
+    #   - Language standard enforcement: -Wconversion, -Wsign-conversion
+    #   - Platform-specific flags
+    # =============================================================================
+endfunction()
+
+# =============================================================================
+# DEBUG_MEMORY Configuration
+# =============================================================================
 # Configure DEBUG_MEMORY based on mimalloc, musl, and sanitizer settings
 # Args:
 #   USE_MIMALLOC_ARG - Whether mimalloc is enabled
@@ -42,7 +89,7 @@ endfunction()
 
 # Configure debug build flags (Debug or Dev mode)
 # Args:
-#   BUILD_TYPE - "Debug" or "Dev"
+#   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
     add_compile_options(-g -O0 -DDEBUG)
 
@@ -52,17 +99,12 @@ function(configure_debug_build_flags BUILD_TYPE)
             if(BUILD_TYPE STREQUAL "Debug")
                 # CodeView debug format for Debug mode
                 add_compile_options(-gcodeview)
-            else()
+            elseif(BUILD_TYPE STREQUAL "Dev" OR BUILD_TYPE STREQUAL "Sanitize")
                 # Dev mode: Use -g2 for full debug info and ensure PDB generation
                 add_compile_options(-g2 -gcodeview)
                 add_link_options(-Wl,/DEBUG:FULL)
                 message(STATUS "Dev build: Enabled PDB generation with full debug info")
             endif()
-        elseif(MSVC)
-            # For MSVC, explicitly enable PDB generation
-            add_compile_options(/Zi)
-            add_link_options(/DEBUG:FULL)
-            message(STATUS "${BUILD_TYPE} build: Enabled MSVC PDB generation")
         endif()
     endif()
 endfunction()
@@ -74,18 +116,28 @@ endfunction()
 #   IS_ROSETTA - Whether running under Rosetta
 #   IS_APPLE_SILICON - Whether running on Apple Silicon
 #   ENABLE_CRC32_HW - Whether CRC32 hardware acceleration is enabled
+#   WITH_DEBUG_INFO - Optional: If true, keep debug symbols (for RelWithDebInfo), default false
 function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ENABLE_CRC32_HW)
+    # Handle optional WITH_DEBUG_INFO parameter
+    set(WITH_DEBUG_INFO FALSE)
+    if(ARGC GREATER 5)
+        set(WITH_DEBUG_INFO ${ARGV5})
+    endif()
+
     add_definitions(-DNDEBUG)
 
     # Disable debug info generation in release builds to prevent path embedding
     # This ensures no debug symbols or paths are embedded in release binaries
+    # But keep debug info for RelWithDebInfo builds
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        add_compile_options(-g0)  # No debug info
-        
-        # Remove function names from release binaries by defining __func__ as empty string
-        # This prevents function name string literals from being embedded in the binary
-        # Note: __func__ is a compile-time string literal, not a debug symbol, so strip won't remove it
-        add_compile_options(-D__func__="")
+        if(WITH_DEBUG_INFO)
+            # RelWithDebInfo: Keep debug symbols but still optimize
+            add_compile_options(-g)
+            message(STATUS "Release build with debug info: keeping debug symbols")
+        else()
+            # Release: No debug info
+            add_compile_options(-g0)
+        endif()
     endif()
 
     # Remove absolute file paths from __FILE__ macro expansions
@@ -94,36 +146,22 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         # Get the source directory and normalize paths for Windows
         get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 
-        # On Windows, we need to map both forward slashes and backslashes
-        # because __FILE__ may use either depending on how paths are expanded
-        # Note: -fmacro-prefix-map flag syntax requires forward slashes, but
-        # the actual __FILE__ on Windows contains backslashes. Clang should
-        # normalize internally, but we explicitly map both formats to be safe.
-        if(WIN32)
-            # Normalize source directory to forward slashes (required for flag syntax)
-            string(REPLACE "\\" "/" SOURCE_DIR_FORWARD "${SOURCE_DIR}")
-
-            # SOURCE_DIR already has backslashes on Windows from CMake
-            # We need to map it with forward slashes (flag requirement), but
-            # Clang will match both backslash and forward slash paths internally
-            # Map forward slash version (what flag syntax requires)
-            add_compile_options(-fmacro-prefix-map="${SOURCE_DIR_FORWARD}/=")
-
-            # Also map debug info paths
-            add_compile_options(-fdebug-prefix-map="${SOURCE_DIR_FORWARD}/=")
-
-            # Note: Clang should normalize paths internally when matching,
-            # so the forward-slash flag should match both forward and backslash
-            # paths in __FILE__. However, if that doesn't work, we may need
-            # to use a post-processing step or ensure CMake passes relative paths.
-        else()
-            # Unix: just map forward slashes
-            add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
-        endif()
+        # NOTE: On Windows, this doesn't work. We have a certain powershell
+        # script "cmake/remove_paths.ps1" that edits strings with paths from the
+        # builder's machine in them found in the release binary for after it's
+        # built.
+        add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
     endif()
 
     # CPU-aware optimization flags
-    add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
+    # For RelWithDebInfo, use -O2 instead of -O3 to maintain better debug info quality
+    if(WITH_DEBUG_INFO)
+        add_compile_options(-O2 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
+        # Keep frame pointers in RelWithDebInfo for better backtraces
+        add_compile_options(-fno-omit-frame-pointer)
+    else()
+        add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
+    endif()
 
     if(PLATFORM_DARWIN)
         if(IS_ROSETTA EQUAL 1)

@@ -319,7 +319,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
   atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
   log_debug("Client slot assigned: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
-           socket);
+            socket);
   client->connected_at = time(NULL);
 
   // Initialize crypto context for this client
@@ -422,7 +422,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
   log_debug("Client count updated: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
-           atomic_load(&client->client_id), slot);
+            atomic_load(&client->client_id), slot);
 
   // Add client to hash table for O(1) lookup
   if (!hashtable_insert(g_client_manager.client_hashtable, atomic_load(&client->client_id), client)) {
@@ -526,7 +526,8 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     if (envelope.allocated_buffer) {
       buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
     }
-    log_debug("Successfully received and processed initial capabilities for client %u", atomic_load(&client->client_id));
+    log_debug("Successfully received and processed initial capabilities for client %u",
+              atomic_load(&client->client_id));
   }
 
   // Start threads for this client (AFTER crypto handshake AND initial capabilities)
@@ -720,7 +721,7 @@ int remove_client(uint32_t client_id) {
   g_client_manager.client_count = remaining_count;
 
   log_debug("Client removed: client_id=%u (%s) removed, remaining clients: %d", client_id, display_name_copy,
-           remaining_count);
+            remaining_count);
 
   rwlock_wrunlock(&g_client_manager_rwlock);
 
@@ -753,7 +754,7 @@ void *client_receive_thread(void *arg) {
   bool is_active = atomic_load(&client->active);
   socket_t sock = client->socket;
   log_debug("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d)",
-           atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE);
+            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE);
 
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
          client->socket != INVALID_SOCKET_VALUE) {
@@ -1057,7 +1058,7 @@ void *client_send_thread_func(void *arg) {
         const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
         log_debug("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
-                 rendered_sources);
+                  rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
       }

@@ -524,14 +524,6 @@ static const char *strip_project_path(const char *full_path) {
   return extract_project_relative_path(full_path);
 }
 
-#ifdef USE_MIMALLOC_DEBUG
-// Wrapper function for mi_stats_print to use with atexit()
-// mi_stats_print takes a parameter, but atexit requires void(void)
-static void print_mimalloc_stats(void) {
-  mi_stats_print(NULL); // NULL = print to stderr
-}
-#endif
-
 void debug_memory_report(void) {
   // Free any pending errno context before reporting memory
   // This catches any errors that occurred during other cleanup functions
@@ -601,4 +593,10 @@ void debug_memory_report(void) {
   }
 }
 
-#endif /* DEBUG_MEMORY */
+#elif defined(USE_MIMALLOC_DEBUG)
+// Wrapper function for mi_stats_print to use with atexit()
+// mi_stats_print takes a parameter, but atexit requires void(void)
+static void print_mimalloc_stats(void) {
+  mi_stats_print(NULL); // NULL = print to stderr
+}
+#endif

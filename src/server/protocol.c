@@ -637,7 +637,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   batch_count++;
   if (batch_count % 10 == 0) {
     log_debug("Received audio batch packet #%d from client %u (len=%zu, is_sending_audio=%d)", batch_count,
-             atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
+              atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
   }
 
   // Handles batched audio samples from client (new efficient format)
@@ -790,8 +790,8 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     atomic_store(&client->width, ntohs(caps->width));
     atomic_store(&client->height, ntohs(caps->height));
 
-    log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id),
-             client->width, client->height, caps->desired_fps);
+    log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
+              client->height, caps->desired_fps);
 
     // Store terminal capabilities
     client->terminal_caps.capabilities = ntohl(caps->capabilities);

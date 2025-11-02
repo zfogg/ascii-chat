@@ -1,0 +1,95 @@
+# =============================================================================
+# Initialization Module
+# =============================================================================
+# This module handles early initialization that must happen before project():
+# - Policy settings
+# - Dependency cache configuration
+# - Build system generator setup
+# - Compiler testing configuration
+#
+# Prerequisites: None (runs before project())
+# Note: cmake_minimum_required must be in CMakeLists.txt before this include
+# =============================================================================
+
+# Set policy for ExternalProject timestamp handling (CMP0135)
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
+# =============================================================================
+# Dependency Cache Configuration (persistent across build/ deletions)
+# =============================================================================
+# Cache FetchContent dependencies outside build/ directory to avoid recompiling
+# them every time build/ is deleted. Dependencies are compiled once and reused.
+#
+# Separate cache directories for different build configurations:
+# - .deps-cache/<BuildType>/      : Normal glibc/system libc builds (per build type)
+# - .deps-cache-musl/<BuildType>/ : musl libc builds (different ABI, per build type)
+#
+# Build types need separate caches because dependencies like mimalloc have different
+# configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)
+#
+# To force rebuild dependencies: rm -rf .deps-cache*
+
+# Determine cache directory based on build configuration and build type
+# Allow override via DEPS_CACHE_BASE environment variable (useful for Docker)
+# Note: USE_MUSL may not be set yet, so we check if it's defined and ON
+if(DEFINED ENV{DEPS_CACHE_BASE})
+    set(DEPS_CACHE_BASE_DIR "$ENV{DEPS_CACHE_BASE}")
+    message(STATUS "Using custom dependency cache base from environment: ${DEPS_CACHE_BASE_DIR}")
+elseif(DEFINED USE_MUSL AND USE_MUSL)
+    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl")
+else()
+    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache")
+endif()
+
+# For musl, don't use per-build-type subdirectories since dependencies are static libs
+# For non-musl, use build-type-specific directories for mimalloc debug/release builds
+# Note: USE_MUSL may not be set yet, so we check if it's defined and ON
+if(DEFINED USE_MUSL AND USE_MUSL)
+    set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}" CACHE PATH "FetchContent cache directory")
+else()
+    set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
+endif()
+message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
+
+# =============================================================================
+# vcpkg Toolchain Setup
+# =============================================================================
+# Set up vcpkg toolchain if available (must be before project())
+if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+    if(DEFINED ENV{VCPKG_ROOT})
+        set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+        message(STATUS "Using vcpkg toolchain from environment: $ENV{VCPKG_ROOT}")
+    endif()
+endif()
+
+# =============================================================================
+# Build System Generator Configuration
+# =============================================================================
+
+# Use Ninja generator by default on all platforms for faster builds
+# Only set Ninja if no generator was explicitly specified via -G flag
+if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
+    find_program(NINJA_EXECUTABLE ninja)
+    if(NINJA_EXECUTABLE)
+        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
+        message(STATUS "Using Ninja generator for faster builds")
+    endif()
+endif()
+
+# On macOS, prefer gmake over make when using Unix Makefiles generator
+if(APPLE AND CMAKE_GENERATOR MATCHES "Unix Makefiles")
+    find_program(GMAKE_EXECUTABLE gmake)
+    if(GMAKE_EXECUTABLE)
+        set(CMAKE_MAKE_PROGRAM "${GMAKE_EXECUTABLE}" CACHE FILEPATH "Make program" FORCE)
+        message(STATUS "Using gmake: ${GMAKE_EXECUTABLE}")
+    endif()
+endif()
+
+# =============================================================================
+# Compiler Testing Configuration
+# =============================================================================
+# Speed up CMake's compiler tests by avoiding linking issues
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+

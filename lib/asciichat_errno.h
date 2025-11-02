@@ -206,7 +206,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
  * ============================================================================
  */
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(ENABLE_ERRNO_BACKTRACES)
 /**
  * @brief Print full error context including stack trace
  * @param context Error context to print
@@ -237,6 +237,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
       asciichat_print_error_context(&ctx);                                                                             \
     }                                                                                                                  \
   } while (0)
+
 #else
 // No-op versions for Release builds
 #define PRINT_ERRNO_CONTEXT(context) ((void)(context))

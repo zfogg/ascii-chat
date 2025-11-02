@@ -232,7 +232,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (elapsed_us >= 5000000) { // 5 seconds
     float actual_fps = (float)frame_count / ((float)elapsed_us / 1000000.0f);
     log_debug("CLIENT FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, frame_count,
-             (float)elapsed_us / 1000000.0f);
+              (float)elapsed_us / 1000000.0f);
 
     // Reset counters for next interval
     frame_count = 0;

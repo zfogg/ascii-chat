@@ -1,141 +1,141 @@
 {
-    "version": 3,
-    "configurePresets": [
-        {
-            "name": "base",
-            "hidden": true,
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {
-                "CMAKE_C_COMPILER": "clang",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            },
-            "environment": {
-                "CC": "clang"
-            }
-        },
-        {
-            "name": "default",
-            "displayName": "Default (Debug)",
-            "description": "Default configuration - Debug build with system libc, clang, and all compatible sanitizers (ASan+UBSan+LSan+Integer+Nullability)",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "debug",
-            "displayName": "Debug",
-            "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
-            }
-        },
-        {
-            "name": "debug-musl",
-            "displayName": "Debug (musl - Linux only)",
-            "description": "Debug build with musl - static linked, no sanitizers (incompatible with musl)",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "USE_MUSL": "ON"
-            }
-        },
-        {
-            "name": "release-musl",
-            "displayName": "Release (musl)",
-            "description": "Optimized static release build with musl (mimalloc disabled for musl)",
-            "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "USE_MUSL": "ON",
-                "USE_MIMALLOC": "OFF",
-                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-            }
-        },
-        {
-            "name": "release-clang",
-            "displayName": "Release (clang)",
-            "description": "Optimized dynamic release build with clang and mimalloc",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "USE_MIMALLOC": "ON"
-            }
-        },
-        {
-            "name": "release",
-            "displayName": "Release (default: musl)",
-            "description": "Alias for release-musl",
-            "inherits": "release-musl"
-        },
-        {
-            "name": "relwithdebinfo",
-            "displayName": "RelWithDebInfo",
-            "description": "Optimized build with debug symbols (for profiling/debugging production issues)",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "USE_MIMALLOC": "ON"
-            }
-        },
-        {
-            "name": "dev",
-            "displayName": "Dev",
-            "description": "Debug without sanitizers (faster)",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Dev"
-            }
-        },
-        {
-            "name": "coverage",
-            "displayName": "Coverage",
-            "description": "Coverage instrumentation build",
-            "inherits": "base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Coverage"
-            }
-        }
-    ],
-    "buildPresets": [
-        {
-            "name": "default",
-            "configurePreset": "default"
-        },
-        {
-            "name": "debug",
-            "configurePreset": "debug"
-        },
-        {
-            "name": "debug-musl",
-            "configurePreset": "debug-musl"
-        },
-        {
-            "name": "release-musl",
-            "configurePreset": "release-musl"
-        },
-        {
-            "name": "release-clang",
-            "configurePreset": "release-clang"
-        },
-        {
-            "name": "release",
-            "configurePreset": "release"
-        },
-        {
-            "name": "relwithdebinfo",
-            "configurePreset": "relwithdebinfo"
-        },
-        {
-            "name": "dev",
-            "configurePreset": "dev"
-        },
-        {
-            "name": "coverage",
-            "configurePreset": "coverage"
-        }
-    ]
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "environment": {
+        "CC": "clang"
+      }
+    },
+    {
+      "name": "default",
+      "displayName": "Default (Debug)",
+      "description": "Default configuration - Debug build with system libc, clang, and all compatible sanitizers (ASan+UBSan+LSan+Integer+Nullability)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "debug-musl",
+      "displayName": "Debug (musl - Linux only)",
+      "description": "Debug build with musl - static linked, no sanitizers (incompatible with musl)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "USE_MUSL": "ON"
+      }
+    },
+    {
+      "name": "release-musl",
+      "displayName": "Release (musl)",
+      "description": "Optimized static release build with musl (mimalloc disabled for musl)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_MUSL": "ON",
+        "USE_MIMALLOC": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "release-clang",
+      "displayName": "Release (clang)",
+      "description": "Optimized dynamic release build with clang and mimalloc",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_MIMALLOC": "ON"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (default: musl)",
+      "description": "Alias for release-musl",
+      "inherits": "release-musl"
+    },
+    {
+      "name": "relwithdebinfo",
+      "displayName": "RelWithDebInfo",
+      "description": "Optimized build with debug symbols (for profiling/debugging production issues)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "USE_MIMALLOC": "ON"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Dev",
+      "description": "Debug without sanitizers (faster)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Dev"
+      }
+    },
+    {
+      "name": "coverage",
+      "displayName": "Coverage",
+      "description": "Coverage instrumentation build",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Coverage"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "default",
+      "configurePreset": "default"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "debug-musl",
+      "configurePreset": "debug-musl"
+    },
+    {
+      "name": "release-musl",
+      "configurePreset": "release-musl"
+    },
+    {
+      "name": "release-clang",
+      "configurePreset": "release-clang"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "relwithdebinfo",
+      "configurePreset": "relwithdebinfo"
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "coverage",
+      "configurePreset": "coverage"
+    }
+  ]
 }

@@ -299,8 +299,7 @@ int client_crypto_handshake(socket_t socket) {
            "secret_size=%u, verification=%u)",
            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
            auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
-  log_debug("Raw server_params.kex_public_key_size = %u (network byte order)",
-           server_params.kex_public_key_size);
+  log_debug("Raw server_params.kex_public_key_size = %u (network byte order)", server_params.kex_public_key_size);
 
   // Set the crypto parameters in the handshake context
   result = crypto_handshake_set_parameters(&g_crypto_ctx, &server_params);

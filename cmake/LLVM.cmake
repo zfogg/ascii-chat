@@ -1,17 +1,28 @@
 # =============================================================================
-# HomebrewLLVM.cmake - Homebrew LLVM toolchain configuration for macOS
+# LLVM Toolchain Configuration Module
 # =============================================================================
 # Auto-detects and configures Homebrew LLVM (if installed) as the compiler
 # toolchain on macOS, providing full LLVM/Clang features and tools.
+# Also provides LLVM tools (llvm-ar, llvm-ranlib, llvm-config) for any platform.
 #
 # This module handles:
 # - Compiler detection and selection
 # - Clang resource directory configuration
 # - macOS SDK path configuration
 # - LLVM library paths and linking
-# - LLVM tools (llvm-ar, llvm-ranlib, etc.)
+# - LLVM tools (llvm-ar, llvm-ranlib, llvm-config)
+# - LLVM ranlib fix for archive handling
 #
-# Must be included BEFORE project() to set compiler variables.
+# Functions:
+#   - configure_llvm_pre_project(): Sets up compiler before project()
+#   - configure_llvm_post_project(): Sets up library paths after project()
+#   - find_llvm_tools(): Finds llvm-ar and llvm-ranlib using llvm-config
+#   - fix_llvm_ranlib(): Fixes LLVM ranlib not being called automatically (after project())
+#
+# Prerequisites:
+#   - configure_llvm_pre_project() must run before project()
+#   - configure_llvm_post_project() must run after project()
+#   - fix_llvm_ranlib() must run after project()
 # =============================================================================
 
 # =============================================================================
@@ -20,7 +31,7 @@
 # This section must run before project() to set CMAKE_C_COMPILER
 # =============================================================================
 
-function(configure_homebrew_llvm_pre_project)
+function(configure_llvm_pre_project)
     if(NOT APPLE)
         return()
     endif()
@@ -138,7 +149,7 @@ endfunction()
 # This section must run after project() to configure linking
 # =============================================================================
 
-function(configure_homebrew_llvm_post_project)
+function(configure_llvm_post_project)
     if(NOT APPLE)
         return()
     endif()
@@ -200,3 +211,89 @@ function(configure_homebrew_llvm_post_project)
         endif()
     endif()
 endfunction()
+
+# =============================================================================
+# Helper Function: Find LLVM Tools (llvm-ar, llvm-ranlib)
+# =============================================================================
+# This function finds llvm-ar and llvm-ranlib using llvm-config or common paths.
+# Can be called from any module that needs LLVM tools.
+#
+# Outputs:
+#   - CMAKE_AR set to llvm-ar if found
+#   - CMAKE_RANLIB set to llvm-ranlib if found
+# =============================================================================
+
+function(find_llvm_tools)
+    # Use llvm-config to find the correct LLVM installation
+    find_program(LLVM_CONFIG
+        NAMES llvm-config-20 llvm-config-19 llvm-config-18 llvm-config
+        DOC "Path to llvm-config"
+    )
+
+    if(LLVM_CONFIG)
+        # Get LLVM binary directory from llvm-config
+        execute_process(
+            COMMAND ${LLVM_CONFIG} --bindir
+            OUTPUT_VARIABLE LLVM_BINDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        message(STATUS "Found LLVM via llvm-config: ${LLVM_CONFIG}")
+        message(STATUS "LLVM binary directory: ${LLVM_BINDIR}")
+
+        # Find llvm-ar and llvm-ranlib in LLVM's binary directory
+        find_program(LLVM_AR
+            NAMES llvm-ar
+            PATHS ${LLVM_BINDIR}
+            NO_DEFAULT_PATH
+        )
+        find_program(LLVM_RANLIB
+            NAMES llvm-ranlib
+            PATHS ${LLVM_BINDIR}
+            NO_DEFAULT_PATH
+        )
+    else()
+        # Fallback: search in common LLVM installation directories
+        message(STATUS "llvm-config not found, searching common paths")
+        find_program(LLVM_AR
+            NAMES llvm-ar
+            PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
+            NO_DEFAULT_PATH
+        )
+        find_program(LLVM_RANLIB
+            NAMES llvm-ranlib
+            PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
+            NO_DEFAULT_PATH
+        )
+    endif()
+
+    if(LLVM_AR)
+        set(CMAKE_AR "${LLVM_AR}" CACHE FILEPATH "Archiver" FORCE)
+        message(STATUS "Using LLVM archiver: ${LLVM_AR}")
+    endif()
+    if(LLVM_RANLIB)
+        set(CMAKE_RANLIB "${LLVM_RANLIB}" CACHE FILEPATH "Ranlib" FORCE)
+        message(STATUS "Using LLVM ranlib: ${LLVM_RANLIB}")
+    endif()
+endfunction()
+
+# =============================================================================
+# Helper Function: Fix LLVM Ranlib Not Being Called Automatically
+# =============================================================================
+# This function fixes LLVM ranlib not being called automatically (must be after project()).
+# This prevents "archive has no index" link errors.
+#
+# Prerequisites:
+#   - Must run after project()
+# =============================================================================
+
+function(fix_llvm_ranlib)
+    if(CMAKE_RANLIB)
+        set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_C_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+        set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qc <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> q <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
+    endif()
+endfunction()
+
