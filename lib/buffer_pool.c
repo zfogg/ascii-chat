@@ -23,8 +23,9 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
   // Allocate array of buffer nodes
   pool->nodes = SAFE_MALLOC(sizeof(buffer_node_t) * pool_size, buffer_node_t *);
 
-  // Allocate single memory block for all buffers
-  pool->memory_block = SAFE_MALLOC(buffer_size * pool_size, void *);
+  // Allocate single memory block for all buffers with cache-line alignment
+  // 64-byte alignment improves cache performance and reduces false sharing
+  pool->memory_block = SAFE_MALLOC_ALIGNED(buffer_size * pool_size, 64, void *);
 
   // Initialize each buffer node
   uint8_t *current_buffer = (uint8_t *)pool->memory_block;

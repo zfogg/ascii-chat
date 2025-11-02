@@ -262,7 +262,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
           current_frame.data = data_buffer_pool_alloc(pool, frame->size);
         }
         if (!current_frame.data) {
-          current_frame.data = SAFE_MALLOC(frame->size, void *);
+          // 64-byte cache-line alignment improves performance for large video frames
+          current_frame.data = SAFE_MALLOC_ALIGNED(frame->size, 64, void *);
         }
 
         if (current_frame.data) {

@@ -44,7 +44,7 @@ static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob
 static asciichat_error_t parse_openssh_key_file(const char *key_content, size_t key_size, private_key_t *key_out) {
   (void)key_size; // Suppress unused parameter warning
   if (!key_content || !key_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_openssh_key_file");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for OpenSSH key file parsing");
   }
 
   // Find the base64 data
@@ -101,7 +101,7 @@ static asciichat_error_t parse_openssh_key_file(const char *key_content, size_t 
 static asciichat_error_t parse_ssh_private_key_structure(const uint8_t *key_blob, size_t key_blob_len,
                                                          private_key_t *key_out) {
   if (!key_blob || !key_out || key_blob_len < 15) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_ssh_private_key_structure");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for key structure parsing");
   }
 
   // Check magic number

@@ -23,7 +23,7 @@
 
 asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
   if (!input || !key_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_public_key");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for public key parsing");
   }
 
   // Clear output structure
@@ -132,7 +132,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
 asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out) {
   if (!key_path || !key_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_private_key");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for private key parsing");
   }
 
   // Clear output structure
@@ -144,7 +144,7 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
 
 asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys, size_t max_keys) {
   if (!keys_file || !keys_out || !num_keys) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_client_keys");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for client key parsing");
   }
 
   *num_keys = 0;
@@ -305,7 +305,7 @@ asciichat_error_t fetch_gitlab_keys(const char *username, char ***keys_out, size
 
 asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys) {
   if (!path || !keys || !num_keys) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for parse_keys_from_file");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for key file parsing");
   }
 
   *num_keys = 0;

@@ -270,7 +270,11 @@ static int initialize_client_systems() {
 
   // Initialize logging EARLY - palette validation may need it for error reporting
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
-  log_init(log_filename, LOG_DEBUG);
+#ifdef NDEBUG
+  log_init(log_filename, LOG_INFO); /* Release build: INFO level */
+#else
+  log_init(log_filename, LOG_DEBUG); /* Debug build: DEBUG level */
+#endif
 
   // Initialize palette based on command line options
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;

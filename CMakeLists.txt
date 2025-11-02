@@ -1840,8 +1840,12 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     # Include paths
     target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_BINARY_DIR}/generated)
 
-    # Build directory for llvm-symbolizer --debug-file-directory
-    target_compile_definitions(${MODULE_NAME} PRIVATE BUILD_DIR="${CMAKE_BINARY_DIR}")
+    # Build directory for llvm-symbolizer --debug-file-directory (debug builds only)
+    # Only include BUILD_DIR in debug builds to avoid embedding build paths in release binaries
+    # Note: Release builds will not have BUILD_DIR defined, so llvm-symbolizer will work without it
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+        target_compile_definitions(${MODULE_NAME} PRIVATE BUILD_DIR="${CMAKE_BINARY_DIR}")
+    endif()
 
     # MI_DEBUG for mimalloc
     if(DEFINED MIMALLOC_DEBUG_LEVEL)
@@ -2265,21 +2269,60 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
 endif()
 
 # Strip symbols in Release builds and clean .comment section
+# Note: .comment section is ELF-specific (Linux only)
+# Windows uses PE format (no .comment section)
+# macOS uses Mach-O format (no .comment section)
+# Also ensure no debug info paths are embedded
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     find_program(STRIP_EXECUTABLE strip)
     find_program(OBJCOPY_EXECUTABLE objcopy)
     if(STRIP_EXECUTABLE AND OBJCOPY_EXECUTABLE)
-        add_custom_command(TARGET ascii-chat POST_BUILD
-            # Strip all symbols
-            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
-            # Clean .comment section (remove duplicates, keep version string)
-            COMMAND ${CMAKE_SOURCE_DIR}/cmake/clean_comment.sh $<TARGET_FILE:ascii-chat>
-            COMMENT "Stripping symbols and deduplicating .comment section"
-        )
+        # Only run .comment cleaning on Linux (ELF format)
+        # Windows (PE) and macOS (Mach-O) don't have .comment sections
+        if(UNIX AND NOT APPLE AND NOT WIN32)
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                # Strip all symbols (removes debug info and paths)
+                COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                # Clean .comment section (remove duplicates, keep version string)
+                COMMAND ${CMAKE_SOURCE_DIR}/cmake/clean_comment.sh $<TARGET_FILE:ascii-chat>
+                COMMENT "Stripping symbols and deduplicating .comment section"
+            )
+        else()
+            # On Windows, use strip to remove debug info and paths
+            # Note: Windows PE format doesn't have .comment sections
+            if(WIN32)
+                # Strip symbols first
+                add_custom_command(TARGET ascii-chat POST_BUILD
+                    COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                    COMMENT "Stripping symbols and debug info from ascii-chat"
+                )
+                # Then remove embedded file paths from binary
+                find_program(POWERSHELL_EXECUTABLE pwsh powershell)
+                if(POWERSHELL_EXECUTABLE)
+                    add_custom_command(TARGET ascii-chat POST_BUILD
+                        COMMAND ${POWERSHELL_EXECUTABLE} -ExecutionPolicy Bypass -File
+                            "${CMAKE_SOURCE_DIR}/cmake/remove_paths.ps1"
+                            "$<TARGET_FILE:ascii-chat>"
+                            "${CMAKE_SOURCE_DIR}"
+                            "${CMAKE_BINARY_DIR}"
+                        COMMENT "Removing embedded file paths from ascii-chat"
+                        DEPENDS "${CMAKE_SOURCE_DIR}/cmake/remove_paths.ps1"
+                    )
+                else()
+                    message(WARNING "PowerShell not found - cannot remove embedded paths from binary")
+                endif()
+            else()
+                # macOS: strip symbols
+                add_custom_command(TARGET ascii-chat POST_BUILD
+                    COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                    COMMENT "Stripping symbols from ascii-chat"
+                )
+            endif()
+        endif()
     elseif(STRIP_EXECUTABLE)
         # Fallback: just strip symbols if objcopy not available
         add_custom_command(TARGET ascii-chat POST_BUILD
-            COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+            COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
             COMMENT "Stripping symbols from ascii-chat"
         )
     endif()

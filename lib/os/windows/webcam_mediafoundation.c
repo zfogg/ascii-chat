@@ -465,7 +465,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
   img->w = width;
   img->h = height;
-  img->pixels = SAFE_MALLOC(width * height * sizeof(rgb_t), rgb_t *);
+  // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
+  img->pixels = SAFE_MALLOC_SIMD(width * height * sizeof(rgb_t), rgb_t *);
 
   // Copy RGB32 data (BGRA order in Media Foundation)
   // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline
