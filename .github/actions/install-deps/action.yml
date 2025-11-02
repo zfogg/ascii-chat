@@ -33,7 +33,7 @@ runs:
         brew update
 
         # Install packages
-        PACKAGES="pkg-config llvm cmake make ninja portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}"
+        PACKAGES="pkg-config llvm cmake make ninja zstd portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}"
 
         echo "Installing Homebrew packages: $PACKAGES"
         for pkg in $PACKAGES; do
