@@ -565,7 +565,7 @@ static void *debug_thread_func(void *arg) {
   }
 #endif
 
-  log_info("Lock debug thread started - press '?' to print held locks");
+  log_debug("Lock debug thread started - press '?' to print held locks");
 
   while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
     // Allow external trigger via flag (non-blocking)
@@ -675,6 +675,7 @@ int lock_debug_init(void) {
   atomic_store(&g_lock_debug_manager.total_locks_released, 0);
   atomic_store(&g_lock_debug_manager.current_locks_held, 0);
   atomic_store(&g_lock_debug_manager.debug_thread_running, false);
+  atomic_store(&g_lock_debug_manager.debug_thread_created, false);
   atomic_store(&g_lock_debug_manager.should_print_locks, false);
 
   // Initialize thread handle to invalid value
@@ -727,9 +728,12 @@ int lock_debug_start_thread(void) {
   if (thread_result != 0) {
     log_error("Failed to create lock debug thread: %d", thread_result);
     atomic_store(&g_lock_debug_manager.debug_thread_running, false);
+    atomic_store(&g_lock_debug_manager.debug_thread_created, false);
     return -1;
   }
 
+  // Thread was successfully created
+  atomic_store(&g_lock_debug_manager.debug_thread_created, true);
   return 0;
 }
 
@@ -942,14 +946,23 @@ void lock_debug_cleanup_thread(void) {
 #endif
   }
 #else
-  // On POSIX, always attempt join if we have a thread
+  // On POSIX, only attempt join if thread was actually created
+  // Use the debug_thread_created flag to reliably track if the thread exists
+  if (atomic_load(&g_lock_debug_manager.debug_thread_created)) {
 #ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - joining debug thread...");
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - joining debug thread...");
 #endif
-  ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
+    ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
 #ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
 #endif
+    // Clear the flag after joining
+    atomic_store(&g_lock_debug_manager.debug_thread_created, false);
+  } else {
+#ifdef DEBUG_LOCKS
+    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - thread was never created, skipping join");
+#endif
+  }
 
   // Restore terminal to original mode if it was changed
   if (g_termios_saved) {

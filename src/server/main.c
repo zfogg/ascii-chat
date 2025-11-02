@@ -494,7 +494,11 @@ int server_main(int argc, char *argv[]) {
   // Initialize logging first so errors are properly logged
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
-  log_init(log_filename, LOG_DEBUG);
+#ifdef NDEBUG
+  log_init(log_filename, LOG_INFO); /* Release build: INFO level */
+#else
+  log_init(log_filename, LOG_DEBUG); /* Debug build: DEBUG level */
+#endif
   log_info("Logging initialized to %s", log_filename);
 
   // Initialize platform-specific functionality (Winsock, etc)
@@ -591,17 +595,16 @@ int server_main(int argc, char *argv[]) {
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
+#ifdef NDEBUG
   // Start the lock debug thread (system already initialized earlier)
-  int thread_result = lock_debug_start_thread();
-  if (thread_result == 0) {
-    log_info("SERVER: Lock debug thread started - press '?' to print held locks");
-  } else {
-    log_error("Failed to start lock debug thread");
+  if (lock_debug_start_thread() != 0) {
+    FATAL(ERROR_THREAD, "Failed to start lock debug thread");
   }
   // Initialize statistics system
   if (stats_init() != 0) {
     FATAL(ERROR_THREAD, "Statistics system initialization failed");
   }
+#endif
 
   // Start statistics logging thread for periodic performance monitoring
   if (ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL) != 0) {

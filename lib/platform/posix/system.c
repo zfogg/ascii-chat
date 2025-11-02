@@ -458,20 +458,6 @@ static inline int safe_backtrace(void **buffer, int size) {
 }
 
 /**
- * @brief Safe wrapper for backtrace_symbols() with weak symbol check
- */
-static inline char **safe_backtrace_symbols(void *const *buffer, int size) {
-#ifdef USE_MUSL
-  if (backtrace_symbols != NULL) {
-    return backtrace_symbols(buffer, size);
-  }
-  return NULL;
-#else
-  return backtrace_symbols(buffer, size);
-#endif
-}
-
-/**
  * @brief Get stack trace
  * @param buffer Array to store trace addresses
  * @param size Maximum number of addresses to retrieve

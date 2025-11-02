@@ -62,7 +62,8 @@ image_t *image_new(size_t width, size_t height) {
     return NULL;
   }
 
-  p->pixels = SAFE_MALLOC(pixels_size, rgb_t *);
+  // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
+  p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_t *);
 
   p->w = width;
   p->h = height;

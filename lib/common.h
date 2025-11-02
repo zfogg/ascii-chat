@@ -243,7 +243,11 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
  * Usage:
  *   FATAL(ERROR_NETWORK_BIND, "Cannot bind to port %d", port_number);
  */
+#ifdef NDEBUG
+#define FATAL(code, ...) asciichat_fatal_with_context(code, NULL, 0, NULL, ##__VA_ARGS__)
+#else
 #define FATAL(code, ...) asciichat_fatal_with_context(code, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
+#endif
 
 // =============================================================================
 // Protocol Version Constants
@@ -292,12 +296,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 #define MAX_DISPLAY_NAME_LEN 32 // Maximum display name length
 #define MAX_CLIENTS 10          // Maximum number of clients
 
-// Frame rate configuration - With 1ms timer resolution enabled, Windows can now handle 60 FPS
-#ifdef _WIN32
-#define DEFAULT_MAX_FPS 60 // Windows with timeBeginPeriod(1) can handle 60 FPS
-#else
-#define DEFAULT_MAX_FPS 60 // macOS/Linux terminals can handle higher rates
-#endif
+// Frame rate configuration
+#define DEFAULT_MAX_FPS 60
 
 // Allow runtime override via environment variable or command line
 extern int g_max_fps;
@@ -363,10 +363,17 @@ bool shutdown_is_requested(void);
 #define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
 #define ALLOC_FREE(ptr) mi_free(ptr)
 #elif defined(DEBUG_MEMORY)
+#ifdef NDEBUG
+#define ALLOC_MALLOC(size) debug_malloc(size, NULL, 0)
+#define ALLOC_CALLOC(count, size) debug_calloc((count), (size), NULL, 0)
+#define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), NULL, 0)
+#define ALLOC_FREE(ptr) debug_free(ptr, NULL, 0)
+#else
 #define ALLOC_MALLOC(size) debug_malloc(size, __FILE__, __LINE__)
 #define ALLOC_CALLOC(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 #define ALLOC_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
+#endif
 #else
 #define ALLOC_MALLOC(size) malloc(size)
 #define ALLOC_CALLOC(count, size) calloc((count), (size))

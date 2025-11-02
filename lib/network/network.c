@@ -389,7 +389,11 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
     } else {
       // Save Windows socket error to WSA error field for debugging
       errno = EIO; // Set a generic errno
+#ifdef NDEBUG
+      asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, NULL, 0, NULL, error_code);
+#else
       asciichat_set_errno_with_wsa_error(ERROR_NETWORK_BIND, __FILE__, __LINE__, __func__, error_code);
+#endif
     }
 #else
     // POSIX error codes for closed/invalid sockets

@@ -39,11 +39,12 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   }
 
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
-    // Fallback to malloc if pool is exhausted or not available
+    // Fallback to aligned malloc if pool is exhausted or not available
+    // 64-byte cache-line alignment improves performance for large video frames
     if (!vfb->frames[0].data)
-      vfb->frames[0].data = SAFE_MALLOC(frame_size, void *);
+      vfb->frames[0].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
     if (!vfb->frames[1].data)
-      vfb->frames[1].data = SAFE_MALLOC(frame_size, void *);
+      vfb->frames[1].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
   }
 
   // Initialize synchronization

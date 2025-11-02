@@ -86,9 +86,9 @@ else()
                 " HAS_AVX2_RUNTIME)
 
                 if(HAS_AVX2_RUNTIME)
+                    # Only enable AVX2 - it includes all lower instruction sets
                     set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
+                    # Don't enable SSSE3/SSE2 source files - AVX2 handles it
                 else()
                     # Check for SSSE3
                     check_c_source_runs("
@@ -103,8 +103,9 @@ else()
                     " HAS_SSSE3_RUNTIME)
 
                     if(HAS_SSSE3_RUNTIME)
+                        # Only enable SSSE3 - it includes SSE2
                         set(ENABLE_SIMD_SSSE3 TRUE)
-                        set(ENABLE_SIMD_SSE2 TRUE)
+                        # Don't enable SSE2 source file - SSSE3 handles it
                     else()
                         # Check for SSE2 (baseline for x86_64)
                         check_c_source_runs("
@@ -125,42 +126,48 @@ else()
                 endif()
             else()
                 # Cross-compiling or Clang on Windows, use compile-time checks with appropriate flags
+                # Only enable the HIGHEST available instruction set to minimize binary size
+                # Higher instruction sets include lower ones, so we only need the highest
                 # Save current flags
                 set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
 
-                # Test AVX2 with required flags
+                # Test AVX2 with required flags (highest priority)
                 set(CMAKE_REQUIRED_FLAGS "-mavx2")
                 check_c_source_compiles("
                     #include <immintrin.h>
                     int main() { __m256i a = _mm256_setzero_si256(); return 0; }
                 " CAN_COMPILE_AVX2)
 
-                # Test SSSE3 with required flags
-                set(CMAKE_REQUIRED_FLAGS "-mssse3")
-                check_c_source_compiles("
-                    #include <tmmintrin.h>
-                    int main() { __m128i a = _mm_setzero_si128(); a = _mm_abs_epi8(a); return 0; }
-                " CAN_COMPILE_SSSE3)
+                # Only check SSSE3 if AVX2 is not available
+                if(NOT CAN_COMPILE_AVX2)
+                    set(CMAKE_REQUIRED_FLAGS "-mssse3")
+                    check_c_source_compiles("
+                        #include <tmmintrin.h>
+                        int main() { __m128i a = _mm_setzero_si128(); a = _mm_abs_epi8(a); return 0; }
+                    " CAN_COMPILE_SSSE3)
+                endif()
 
-                # Test SSE2 with required flags
-                set(CMAKE_REQUIRED_FLAGS "-msse2")
-                check_c_source_compiles("
-                    #include <emmintrin.h>
-                    int main() { __m128i a = _mm_setzero_si128(); return 0; }
-                " CAN_COMPILE_SSE2)
+                # Only check SSE2 if neither AVX2 nor SSSE3 are available
+                if(NOT CAN_COMPILE_AVX2 AND NOT CAN_COMPILE_SSSE3)
+                    set(CMAKE_REQUIRED_FLAGS "-msse2")
+                    check_c_source_compiles("
+                        #include <emmintrin.h>
+                        int main() { __m128i a = _mm_setzero_si128(); return 0; }
+                    " CAN_COMPILE_SSE2)
+                endif()
 
                 # Restore flags
                 set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
 
-                # Enable all instruction sets that can be compiled
-                # Note: Higher SIMD levels include lower ones
+                # Enable only the HIGHEST instruction set available
+                # Higher SIMD levels include lower ones at runtime, so we only compile the highest
+                # Note: We still set the lower flags for compiler compatibility, but only compile one source file
                 if(CAN_COMPILE_AVX2)
                     set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)  # AVX2 includes SSSE3
-                    set(ENABLE_SIMD_SSE2 TRUE)   # AVX2 includes SSE2
+                    # Don't enable SSSE3/SSE2 source files - AVX2 handles it
                 elseif(CAN_COMPILE_SSSE3)
                     set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)   # SSSE3 includes SSE2
+                    # Don't enable SSE2 source file - SSSE3 handles it
                 elseif(CAN_COMPILE_SSE2)
                     set(ENABLE_SIMD_SSE2 TRUE)
                 endif()
@@ -172,8 +179,8 @@ else()
         if(IS_APPLE_SILICON EQUAL 1)
             set(ENABLE_SIMD_NEON TRUE)
         elseif(IS_ROSETTA EQUAL 1)
+            # Only enable SSSE3 - it includes SSE2
             set(ENABLE_SIMD_SSSE3 TRUE)
-            set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
         else()
             # Intel Mac - check for AVX2 support
             execute_process(
@@ -183,12 +190,11 @@ else()
                 ERROR_QUIET
             )
             if(HAS_AVX2_MAC EQUAL 1)
+                # Only enable AVX2 - it includes all lower instruction sets
                 set(ENABLE_SIMD_AVX2 TRUE)
-                set(ENABLE_SIMD_SSSE3 TRUE)  # AVX2 includes SSSE3
-                set(ENABLE_SIMD_SSE2 TRUE)   # AVX2 includes SSE2
             else()
+                # Only enable SSSE3 - it includes SSE2
                 set(ENABLE_SIMD_SSSE3 TRUE)
-                set(ENABLE_SIMD_SSE2 TRUE)  # SSSE3 includes SSE2
             endif()
         endif()
 
@@ -217,14 +223,14 @@ else()
             # Linux x86_64 - use /proc/cpuinfo
             if(EXISTS "/proc/cpuinfo")
                 file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                # Check from highest to lowest, set all implied instruction sets
+                # Check from highest to lowest, only enable the highest available
+                # Higher instruction sets include lower ones, so we only compile the highest
                 if(CPUINFO_CONTENT MATCHES "avx2")
+                    # Only enable AVX2 - it includes all lower instruction sets
                     set(ENABLE_SIMD_AVX2 TRUE)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
                 elseif(CPUINFO_CONTENT MATCHES "ssse3")
+                    # Only enable SSSE3 - it includes SSE2
                     set(ENABLE_SIMD_SSSE3 TRUE)
-                    set(ENABLE_SIMD_SSE2 TRUE)
                 elseif(CPUINFO_CONTENT MATCHES "sse2")
                     set(ENABLE_SIMD_SSE2 TRUE)
                 endif()

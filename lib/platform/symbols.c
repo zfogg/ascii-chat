@@ -401,7 +401,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   // SECURITY: Validate executable path to prevent command injection
   // Paths from system APIs should be safe, but validate to be thorough
   if (!validate_shell_safe(exe_path, ".-/\\:")) {
-    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid executable path - contains unsafe characters: %s", exe_path);
     return NULL;
   }
 
@@ -420,12 +420,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
+      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
+      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
       return NULL;
     }
 #endif
@@ -440,7 +440,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 #ifdef BUILD_DIR
   // SECURITY: Validate BUILD_DIR (compile-time constant, but validate to be thorough)
   if (!validate_shell_safe(BUILD_DIR, ".-/\\:")) {
-    log_error("Invalid BUILD_DIR - contains unsafe characters: %s", BUILD_DIR);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid BUILD_DIR - contains unsafe characters: %s", BUILD_DIR);
     return NULL;
   }
 
@@ -458,12 +458,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (build_dir_needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      log_error("Failed to escape BUILD_DIR for shell command");
+      SET_ERRNO(ERROR_STRING, "Failed to escape BUILD_DIR for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      log_error("Failed to escape BUILD_DIR for shell command");
+      SET_ERRNO(ERROR_STRING, "Failed to escape BUILD_DIR for shell command");
       return NULL;
     }
 #endif
@@ -598,6 +598,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
  */
 static char **run_addr2line_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
     return NULL;
   }
 
@@ -610,7 +611,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   // SECURITY: Validate executable path to prevent command injection
   // Paths from system APIs should be safe, but validate to be thorough
   if (!validate_shell_safe(exe_path, ".-/\\:")) {
-    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid executable path - contains unsafe characters: %s", exe_path);
     return NULL;
   }
 
@@ -629,12 +630,12 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   if (needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
+      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
+      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
       return NULL;
     }
 #endif
@@ -660,6 +661,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   // Execute addr2line
   FILE *fp = popen(cmd, "r");
   if (!fp) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to execute addr2line command");
     return NULL;
   }
 
@@ -721,6 +723,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
 char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
     return NULL;
   }
 

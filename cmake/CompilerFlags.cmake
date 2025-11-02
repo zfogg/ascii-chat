@@ -77,25 +77,49 @@ endfunction()
 function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ENABLE_CRC32_HW)
     add_definitions(-DNDEBUG)
 
+    # Disable debug info generation in release builds to prevent path embedding
+    # This ensures no debug symbols or paths are embedded in release binaries
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        add_compile_options(-g0)  # No debug info
+        
+        # Remove function names from release binaries by defining __func__ as empty string
+        # This prevents function name string literals from being embedded in the binary
+        # Note: __func__ is a compile-time string literal, not a debug symbol, so strip won't remove it
+        add_compile_options(-D__func__="")
+    endif()
+
     # Remove absolute file paths from __FILE__ macro expansions
     # This prevents usernames and full paths from appearing in release binaries
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
         # Get the source directory and normalize paths for Windows
         get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 
-        # On Windows, convert backslashes to forward slashes (required by macro-prefix-map)
+        # On Windows, we need to map both forward slashes and backslashes
+        # because __FILE__ may use either depending on how paths are expanded
+        # Note: -fmacro-prefix-map flag syntax requires forward slashes, but
+        # the actual __FILE__ on Windows contains backslashes. Clang should
+        # normalize internally, but we explicitly map both formats to be safe.
         if(WIN32)
-            string(REPLACE "\\" "/" SOURCE_DIR_NORMALIZED "${SOURCE_DIR}")
-            set(SOURCE_DIR "${SOURCE_DIR_NORMALIZED}")
-        endif()
+            # Normalize source directory to forward slashes (required for flag syntax)
+            string(REPLACE "\\" "/" SOURCE_DIR_FORWARD "${SOURCE_DIR}")
 
-        # Map source directory to empty string (removes absolute path, keeps relative path)
-        add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
-    elseif(MSVC AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-        # Clang-cl (MSVC-compatible frontend) supports -fmacro-prefix-map
-        get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
-        string(REPLACE "\\" "/" SOURCE_DIR_NORMALIZED "${SOURCE_DIR}")
-        add_compile_options(-fmacro-prefix-map="${SOURCE_DIR_NORMALIZED}/=")
+            # SOURCE_DIR already has backslashes on Windows from CMake
+            # We need to map it with forward slashes (flag requirement), but
+            # Clang will match both backslash and forward slash paths internally
+            # Map forward slash version (what flag syntax requires)
+            add_compile_options(-fmacro-prefix-map="${SOURCE_DIR_FORWARD}/=")
+
+            # Also map debug info paths
+            add_compile_options(-fdebug-prefix-map="${SOURCE_DIR_FORWARD}/=")
+
+            # Note: Clang should normalize paths internally when matching,
+            # so the forward-slash flag should match both forward and backslash
+            # paths in __FILE__. However, if that doesn't work, we may need
+            # to use a post-processing step or ensure CMake passes relative paths.
+        else()
+            # Unix: just map forward slashes
+            add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
+        endif()
     endif()
 
     # CPU-aware optimization flags

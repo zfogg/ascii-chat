@@ -115,11 +115,21 @@ char *format_message(const char *format, va_list args);
 size_t get_current_time_formatted(char *time_buf);
 
 /* Logging macros */
+#ifdef NDEBUG
+/* Release builds: Don't pass file/line/function to prevent string literals in binary */
+#define log_debug(...) log_msg(LOG_DEBUG, NULL, 0, NULL, __VA_ARGS__)
+#define log_info(...) log_msg(LOG_INFO, NULL, 0, NULL, __VA_ARGS__)
+#define log_warn(...) log_msg(LOG_WARN, NULL, 0, NULL, __VA_ARGS__)
+#define log_error(...) log_msg(LOG_ERROR, NULL, 0, NULL, __VA_ARGS__)
+#define log_fatal(...) log_msg(LOG_FATAL, NULL, 0, NULL, __VA_ARGS__)
+#else
+/* Debug builds: Include file/line/function for better debugging */
 #define log_debug(...) log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_info(...) log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_warn(...) log_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #define log_fatal(...) log_msg(LOG_FATAL, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#endif
 
 /* Plain logging - writes to both log file and stderr without timestamps or log levels */
 #define log_plain(...) log_plain_msg(__VA_ARGS__)
@@ -130,6 +140,7 @@ size_t get_current_time_formatted(char *time_buf);
 /* Rate-limited debug logging - logs at most once per specified time interval.
  * Useful for threads that have an FPS and functions they call to prevent spammy logs.
  * interval_us: minimum microseconds between log messages for this name. */
+#ifdef NDEBUG
 #define log_every(log_level, interval_us, fmt, ...)                                                                    \
   do {                                                                                                                 \
     static uint64_t last_log_time = 0;                                                                                 \
@@ -140,9 +151,24 @@ size_t get_current_time_formatted(char *time_buf);
     }                                                                                                                  \
     if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
       last_log_time = now_us;                                                                                          \
-      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
+      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                       \
     }                                                                                                                  \
   } while (0)
+#else
+#define log_every(log_level, interval_us, fmt, ...)                                                                    \
+  do {                                                                                                                 \
+    static uint64_t last_log_time = 0;                                                                                 \
+    uint64_t now_us = 0;                                                                                               \
+    struct timespec ts;                                                                                                \
+    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {                                                                    \
+      now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;                                      \
+    }                                                                                                                  \
+    if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
+      last_log_time = now_us;                                                                                          \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                       \
+    }                                                                                                                  \
+  } while (0)
+#endif
 
 #define log_dev_every(interval_us, fmt, ...) log_every(DEV, interval_us, fmt, ##__VA_ARGS__)
 #define log_debug_every(interval_us, fmt, ...) log_every(DEBUG, interval_us, fmt, ##__VA_ARGS__)
@@ -152,9 +178,10 @@ size_t get_current_time_formatted(char *time_buf);
 #define log_fatal_every(interval_us, fmt, ...) log_every(FATAL, interval_us, fmt, ##__VA_ARGS__)
 
 // Don't use the logging functions to log errors about the logging system itself to avoid recursion.
+#ifdef NDEBUG
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
   do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                      \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
                  log_level_color(LOGGING_COLOR_RESET), message);                                                       \
@@ -163,3 +190,16 @@ size_t get_current_time_formatted(char *time_buf);
     platform_write(g_log.file, "\n", 1);                                                                               \
     platform_print_backtrace(0);                                                                                       \
   } while (0)
+#else
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
+  do {                                                                                                                 \
+    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                       \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
+                 log_level_color(LOGGING_COLOR_RESET), message);                                                       \
+    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
+    platform_write(g_log.file, message, strlen(message));                                                              \
+    platform_write(g_log.file, "\n", 1);                                                                               \
+    platform_print_backtrace(0);                                                                                       \
+  } while (0)
+#endif
