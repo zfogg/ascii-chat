@@ -1975,7 +1975,8 @@ target_link_libraries(ascii-chat-audio
 
 # Link JACK on Linux (system PortAudio is built with JACK support)
 # macOS uses CoreAudio, Windows uses WASAPI/DirectSound
-if(UNIX AND NOT APPLE)
+# Note: musl builds use PortAudio with ALSA only (no JACK) to avoid static lib dependency
+if(UNIX AND NOT APPLE AND NOT USE_MUSL)
     target_link_libraries(ascii-chat-audio jack)
 endif()
 
