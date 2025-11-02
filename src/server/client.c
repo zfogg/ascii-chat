@@ -318,7 +318,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   atomic_store(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
   atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
-  log_info("CLIENT SLOT ASSIGNED: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
+  log_debug("Client slot assigned: client_id=%u assigned to slot %d, socket=%d", atomic_load(&client->client_id), slot,
            socket);
   client->connected_at = time(NULL);
 
@@ -421,7 +421,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
-  log_info("CLIENT COUNT UPDATED: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
+  log_debug("Client count updated: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
            atomic_load(&client->client_id), slot);
 
   // Add client to hash table for O(1) lookup
@@ -478,7 +478,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
       // Continue anyway - we can still communicate even with timeout set
     }
 
-    log_info("Crypto handshake completed successfully for client %u", atomic_load(&client->client_id));
+    log_debug("Crypto handshake completed successfully for client %u", atomic_load(&client->client_id));
 
     // CRITICAL FIX: After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
     // We must read and process this packet BEFORE starting the receive thread to avoid a race condition
@@ -526,7 +526,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
     if (envelope.allocated_buffer) {
       buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
     }
-    log_info("Successfully received and processed initial capabilities for client %u", atomic_load(&client->client_id));
+    log_debug("Successfully received and processed initial capabilities for client %u", atomic_load(&client->client_id));
   }
 
   // Start threads for this client (AFTER crypto handshake AND initial capabilities)
@@ -719,7 +719,7 @@ int remove_client(uint32_t client_id) {
   }
   g_client_manager.client_count = remaining_count;
 
-  log_info("CLIENT REMOVED: client_id=%u (%s) removed, remaining clients: %d", client_id, display_name_copy,
+  log_debug("Client removed: client_id=%u (%s) removed, remaining clients: %d", client_id, display_name_copy,
            remaining_count);
 
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -746,13 +746,13 @@ void *client_receive_thread(void *arg) {
   // Thread cancellation not available in platform abstraction
   // Threads should exit when g_server_should_exit is set
 
-  log_info("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
+  log_debug("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
   // DEBUG: Check loop entry conditions
   bool should_exit = atomic_load(&g_server_should_exit);
   bool is_active = atomic_load(&client->active);
   socket_t sock = client->socket;
-  log_info("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d)",
+  log_debug("RECV_THREAD_START: Client %u conditions: should_exit=%d, active=%d, socket=%d (INVALID=%d)",
            atomic_load(&client->client_id), should_exit, is_active, sock, INVALID_SOCKET_VALUE);
 
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active) &&
@@ -809,7 +809,7 @@ void *client_receive_thread(void *arg) {
 
     // Handle different result codes
     if (result == PACKET_RECV_EOF) {
-      log_info("DISCONNECT: Client %u disconnected (clean close)", client->client_id);
+      log_debug("Client %u disconnected (clean close)", client->client_id);
       break;
     }
 
@@ -855,7 +855,7 @@ void *client_receive_thread(void *arg) {
 
     // Session rekeying packets
     case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
-      log_info("SERVER: Received REKEY_REQUEST from client %u", client->client_id);
+      log_debug("Received REKEY_REQUEST from client %u", client->client_id);
 
       // Process the client's rekey request
       mutex_lock(&client->client_state_mutex);
@@ -863,7 +863,7 @@ void *client_receive_thread(void *arg) {
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
-        log_error("SERVER: Failed to process REKEY_REQUEST from client %u: %d", client->client_id, result);
+        log_error("Failed to process REKEY_REQUEST from client %u: %d", client->client_id, result);
         break;
       }
 
@@ -873,15 +873,15 @@ void *client_receive_thread(void *arg) {
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
-        log_error("SERVER: Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, result);
+        log_error("Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, result);
       } else {
-        log_info("SERVER: Sent REKEY_RESPONSE to client %u", client->client_id);
+        log_debug("Sent REKEY_RESPONSE to client %u", client->client_id);
       }
       break;
     }
 
     case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
-      log_info("SERVER: Received REKEY_RESPONSE from client %u", client->client_id);
+      log_debug("Received REKEY_RESPONSE from client %u", client->client_id);
 
       // Process the client's rekey response
       mutex_lock(&client->client_state_mutex);
@@ -889,7 +889,7 @@ void *client_receive_thread(void *arg) {
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
-        log_error("SERVER: Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, result);
+        log_error("Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, result);
         break;
       }
 
@@ -899,15 +899,15 @@ void *client_receive_thread(void *arg) {
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
-        log_error("SERVER: Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, result);
+        log_error("Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, result);
       } else {
-        log_info("SERVER: Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
+        log_debug("Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
       }
       break;
     }
 
     case PACKET_TYPE_CRYPTO_REKEY_COMPLETE: {
-      log_info("SERVER: Received REKEY_COMPLETE from client %u", client->client_id);
+      log_debug("Received REKEY_COMPLETE from client %u", client->client_id);
 
       // Process and commit to new key
       mutex_lock(&client->client_state_mutex);
@@ -915,9 +915,9 @@ void *client_receive_thread(void *arg) {
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
-        log_error("SERVER: Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, result);
+        log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, result);
       } else {
-        log_info("SERVER: Session rekeying completed successfully with client %u", client->client_id);
+        log_debug("Session rekeying completed successfully with client %u", client->client_id);
       }
       break;
     }
@@ -945,7 +945,7 @@ void *client_receive_thread(void *arg) {
   // because main thread may be trying to join this thread via remove_client()
   // The main cleanup code will handle client removal after threads exit
 
-  log_info("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
+  log_debug("Receive thread for client %u terminated, signaled all threads to stop", client->client_id);
   return NULL;
 }
 
@@ -957,7 +957,7 @@ void *client_send_thread_func(void *arg) {
     return NULL;
   }
 
-  log_info("Started send thread for client %u (%s)", client->client_id, client->display_name);
+  log_debug("Started send thread for client %u (%s)", client->client_id, client->display_name);
 
   // Mark thread as running
   atomic_store(&client->send_thread_running, true);
@@ -978,16 +978,16 @@ void *client_send_thread_func(void *arg) {
     mutex_unlock(&client->client_state_mutex);
 
     if (should_rekey) {
-      log_info("SERVER: Rekey threshold reached for client %u, initiating session rekey", client->client_id);
+      log_debug("Rekey threshold reached for client %u, initiating session rekey", client->client_id);
       mutex_lock(&client->client_state_mutex);
       asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
-        log_error("SERVER: Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
+        log_error("Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
         // Don't break - continue with packet sending, rekey will be retried
       } else {
-        log_info("SERVER: Sent REKEY_REQUEST to client %u", client->client_id);
+        log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
       }
     }
 
@@ -1056,7 +1056,7 @@ void *client_send_thread_func(void *arg) {
         // Crypto context is stable after handshake and stored in client struct
         const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
-        log_info("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
+        log_debug("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
                  rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
@@ -1162,7 +1162,7 @@ void *client_send_thread_func(void *arg) {
 
   // Mark thread as stopped
   atomic_store(&client->send_thread_running, false);
-  log_info("Send thread for client %u terminated", client->client_id);
+  log_debug("Send thread for client %u terminated", client->client_id);
   return NULL;
 }
 

@@ -636,7 +636,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   static int batch_count = 0;
   batch_count++;
   if (batch_count % 10 == 0) {
-    log_info("SERVER: Received audio batch packet #%d from client %u (len=%zu, is_sending_audio=%d)", batch_count,
+    log_debug("Received audio batch packet #%d from client %u (len=%zu, is_sending_audio=%d)", batch_count,
              atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
   }
 
@@ -779,22 +779,18 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
   // Handle terminal capabilities from client
-  log_info("CAPS_HANDLER: Client %u starting capabilities processing", client->client_id);
-
   if (len == sizeof(terminal_capabilities_packet_t)) {
     const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
     // LOCK OPTIMIZATION: Only need client_state_mutex for non-atomic fields
     // We already have a stable client pointer from receive thread
-    log_info("CAPS_HANDLER: Client %u attempting to acquire client_state_mutex", client->client_id);
     mutex_lock(&client->client_state_mutex);
-    log_info("CAPS_HANDLER: Client %u acquired client_state_mutex", client->client_id);
 
     // Convert from network byte order and store dimensions
     atomic_store(&client->width, ntohs(caps->width));
     atomic_store(&client->height, ntohs(caps->height));
 
-    log_info("CAPS_RECEIVED: Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id),
+    log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id),
              client->width, client->height, caps->desired_fps);
 
     // Store terminal capabilities
@@ -850,9 +846,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
              client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
 
     // Release lock acquired at function start
-    log_info("CAPS_HANDLER: Client %u releasing client_state_mutex", client->client_id);
     mutex_unlock(&client->client_state_mutex);
-    log_info("CAPS_HANDLER: Client %u released client_state_mutex", client->client_id);
 
   } else {
     log_error("Invalid client capabilities packet size: %zu, expected %zu", len,

@@ -420,7 +420,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       safe_snprintf(hex_id + i * 2, 3, "%02x", server_identity_key[i]);
     }
     hex_id[HEX_STRING_SIZE_32 - 1] = '\0';
-    log_info("CLIENT: Received identity key: %s", hex_id);
+    log_debug("Received identity key: %s", hex_id);
 
     // DEBUG: Print ephemeral key and signature
     char hex_eph[HEX_STRING_SIZE_32];
@@ -428,14 +428,14 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       safe_snprintf(hex_eph + i * 2, 3, "%02x", server_ephemeral_key[i]);
     }
     hex_eph[HEX_STRING_SIZE_32 - 1] = '\0';
-    log_info("CLIENT: Received ephemeral key: %s", hex_eph);
+    log_debug("Received ephemeral key: %s", hex_eph);
 
     char hex_sig[HEX_STRING_SIZE_64];
     for (int i = 0; i < ED25519_SIGNATURE_SIZE; i++) {
       safe_snprintf(hex_sig + i * 2, 3, "%02x", server_signature[i]);
     }
     hex_sig[HEX_STRING_SIZE_64 - 1] = '\0';
-    log_info("CLIENT: Received signature: %s", hex_sig);
+    log_debug("Received signature: %s", hex_sig);
 
     // Verify signature: server identity signed the ephemeral key
     log_debug("Verifying server's signature over ephemeral key");
@@ -598,7 +598,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // Server is not using client authentication in simple mode
     ctx->server_uses_client_auth = false;
 
-    log_info("CLIENT: Received ephemeral key (simple format)");
+    log_debug("Received ephemeral key (simple format)");
 
     // SECURITY: For servers without identity keys, we implement a different security model:
     // 1. Verify IP address matches known_hosts entry

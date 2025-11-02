@@ -262,26 +262,19 @@ static void shutdown_client() {
  * @return 0 on success, non-zero error code on failure
  */
 static int initialize_client_systems() {
-  // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != ASCIICHAT_OK) {
-    FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
+  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
+  asciichat_error_t init_result = asciichat_shared_init("client.log");
+  if (init_result != ASCIICHAT_OK) {
+    return init_result;
   }
-  (void)atexit(platform_cleanup);
 
-  // Initialize logging EARLY - palette validation may need it for error reporting
-  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
-#ifdef NDEBUG
-  log_init(log_filename, LOG_INFO); /* Release build: INFO level */
-#else
-  log_init(log_filename, LOG_DEBUG); /* Debug build: DEBUG level */
+  // Initialize memory debugging if enabled (client-specific: handles opt_snapshot_mode)
+#ifdef DEBUG_MEMORY
+  debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
+  if (!opt_snapshot_mode) {
+    (void)atexit(debug_memory_report);
+  }
 #endif
-
-  // Initialize palette based on command line options
-  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
-  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
-    log_error("Failed to apply palette configuration");
-    FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
-  }
 
   // Initialize display subsystem
   if (display_init() != 0) {
@@ -294,25 +287,6 @@ static int initialize_client_systems() {
   // Start with terminal output disabled for clean ASCII display
   // It will be enabled only for initial connection attempts and errors
   log_set_terminal_output(true);
-  log_truncate_if_large();
-
-  // Initialize memory debugging if enabled
-#ifdef DEBUG_MEMORY
-  debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
-  if (!opt_snapshot_mode) {
-    (void)atexit(debug_memory_report);
-  }
-#endif
-
-  // Initialize global shared buffer pool
-  data_buffer_pool_init_global();
-  (void)atexit(data_buffer_pool_cleanup_global);
-
-  // Register errno cleanup
-  (void)atexit(asciichat_errno_cleanup);
-
-  // Register known_hosts cleanup
-  (void)atexit(known_hosts_cleanup);
 
   // Initialize server connection management
   if (server_connection_init() != 0) {
@@ -364,15 +338,6 @@ static int initialize_client_systems() {
 
   return 0;
 }
-
-#ifdef USE_MIMALLOC_DEBUG
-// Wrapper function for mi_stats_print to use with atexit()
-// mi_stats_print takes a parameter, but atexit requires void(void)
-extern void mi_stats_print(void *out);
-static void print_mimalloc_stats(void) {
-  mi_stats_print(NULL); // NULL = print to stderr
-}
-#endif
 
 /**
  * Main application entry point
@@ -428,15 +393,6 @@ int client_main(int argc, char *argv[]) {
 
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
-
-#if defined(USE_MIMALLOC_DEBUG)
-#if !defined(_WIN32)
-  // Register mimalloc stats printer at exit
-  (void)atexit(print_mimalloc_stats);
-#else
-  UNUSED(print_mimalloc_stats);
-#endif
-#endif
 
   // Install signal handlers for graceful shutdown and terminal resize
   platform_signal(SIGINT, sigint_handler);
@@ -514,7 +470,7 @@ int client_main(int argc, char *argv[]) {
       log_info("Connected successfully, starting worker threads");
       has_ever_connected = true;
     } else {
-      log_info("Reconnected successfully, starting worker threads");
+      log_debug("Reconnected successfully, starting worker threads");
     }
 
     // Start all worker threads for this connection
