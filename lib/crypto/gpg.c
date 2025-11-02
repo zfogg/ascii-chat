@@ -1,9 +1,9 @@
 #include "gpg.h"
 #include "keys/keys.h"
 #include "common.h"
-#include "platform/socket.h"
+#include "util/string.h"
 
-#include <errno.h>
+#include <ctype.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -549,12 +549,34 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     return -1;
   }
 
+  // SECURITY: Validate key_id to prevent command injection
+  // GPG key IDs should be hexadecimal (0-9, a-f, A-F)
+  if (!validate_shell_safe(key_id, NULL)) {
+    log_error("Invalid GPG key ID format - contains unsafe characters: %s", key_id);
+    return -1;
+  }
+
+  // Additional validation: ensure key_id is hex alphanumeric
+  for (size_t i = 0; key_id[i] != '\0'; i++) {
+    if (!isxdigit((unsigned char)key_id[i])) {
+      log_error("Invalid GPG key ID format - must be hexadecimal: %s", key_id);
+      return -1;
+    }
+  }
+
+  // Escape key_id for safe use in shell command (single quotes)
+  char escaped_key_id[512];
+  if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
+    log_error("Failed to escape GPG key ID for shell command");
+    return -1;
+  }
+
   // Use gpg to list the key and get the keygrip
-  char cmd[512];
+  char cmd[1024];
 #ifdef _WIN32
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", escaped_key_id);
 #else
-  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>/dev/null", escaped_key_id);
 #endif
   FILE *fp = SAFE_POPEN(cmd, "r");
   if (!fp) {
@@ -626,10 +648,11 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   log_debug("Found keygrip for key %s: %s", key_id, found_keygrip);
 
   // Export the public key in ASCII armor format and parse it with existing parse_gpg_key()
+  // Use escaped_key_id (already validated and escaped above)
 #ifdef _WIN32
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>nul", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>nul", escaped_key_id);
 #else
-  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>/dev/null", key_id);
+  safe_snprintf(cmd, sizeof(cmd), "gpg --export --armor 0x%s 2>/dev/null", escaped_key_id);
 #endif
   fp = SAFE_POPEN(cmd, "r");
   if (!fp) {

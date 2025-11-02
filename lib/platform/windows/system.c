@@ -340,6 +340,11 @@ static void init_windows_symbols(void) {
   g_process_handle = GetCurrentProcess();
 
   // Set symbol options for better debugging
+  // SYMOPT_UNDNAME: Demangle C++ names
+  // SYMOPT_DEFERRED_LOADS: Load symbols on demand
+  // SYMOPT_LOAD_LINES: Load line information
+  // SYMOPT_AUTO_PUBLICS: Automatically load public symbols
+  // Note: CRT symbols with $fo_rvas$ are linker-optimized symbols that can't be easily demangled
   SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_AUTO_PUBLICS);
 
   // Configure symbol search path to include current directory and build directory
@@ -484,8 +489,29 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     // Ensure symbol name is null-terminated within our buffer
     symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
 
+    // Try to clean up mangled CRT symbols (e.g., memcpy_$fo_rvas$ -> memcpy)
+    char cleaned_name[4096];
+    const char *symbol_name = symbol_info->Name;
+
+    // Check if it's a CRT mangled symbol (contains $fo_rvas$ or similar patterns)
+    char *dollar_pos = strchr(symbol_info->Name, '$');
+    if (dollar_pos) {
+      // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
+      // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
+      size_t base_len = dollar_pos - symbol_info->Name;
+      if (base_len > 0 && base_len < sizeof(cleaned_name)) {
+        // Remove trailing underscore if present
+        if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
+          base_len--;
+        }
+        memcpy(cleaned_name, symbol_info->Name, base_len);
+        cleaned_name[base_len] = '\0';
+        symbol_name = cleaned_name;
+      }
+    }
+
     // Calculate required space and truncate symbol name if needed
-    size_t symbol_len = strlen(symbol_info->Name);
+    size_t symbol_len = strlen(symbol_name);
     size_t filename_len = strlen(filename);
     size_t required = symbol_len + filename_len + 32; // extra space for " (:%lu)"
 
@@ -493,20 +519,41 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
       // Truncate symbol name to fit
       size_t max_symbol_len = buffer_size - filename_len - 32;
       if (max_symbol_len > 0) {
-        safe_snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_info->Name, filename,
+        safe_snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_name, filename,
                       line_info.LineNumber);
       } else {
         safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
-      safe_snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_info->Name, filename, line_info.LineNumber);
+      safe_snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_name, filename, line_info.LineNumber);
     }
   } else if (got_symbol) {
     // Ensure symbol name is null-terminated within our buffer
     symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
 
+    // Try to clean up mangled CRT symbols (e.g., memcpy_$fo_rvas$ -> memcpy)
+    char cleaned_name[4096];
+    const char *symbol_name = symbol_info->Name;
+
+    // Check if it's a CRT mangled symbol (contains $fo_rvas$ or similar patterns)
+    char *dollar_pos = strchr(symbol_info->Name, '$');
+    if (dollar_pos) {
+      // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
+      // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
+      size_t base_len = dollar_pos - symbol_info->Name;
+      if (base_len > 0 && base_len < sizeof(cleaned_name)) {
+        // Remove trailing underscore if present
+        if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
+          base_len--;
+        }
+        memcpy(cleaned_name, symbol_info->Name, base_len);
+        cleaned_name[base_len] = '\0';
+        symbol_name = cleaned_name;
+      }
+    }
+
     // Calculate required space and truncate if needed
-    size_t symbol_len = strlen(symbol_info->Name);
+    size_t symbol_len = strlen(symbol_name);
     size_t required = symbol_len + 32; // extra space for "+0x%llx"
 
     if (required > buffer_size) {
@@ -515,10 +562,10 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
         size_t max_symbol_len = buffer_size - 32;
         // Check for underflow before subtraction
         if (address >= symbol_info->Address) {
-          safe_snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+          safe_snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_name,
                         address - symbol_info->Address);
         } else {
-          safe_snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
+          safe_snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_name,
                         symbol_info->Address - address);
         }
       } else {
@@ -527,9 +574,9 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     } else {
       // Check for underflow before subtraction
       if (address >= symbol_info->Address) {
-        safe_snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
+        safe_snprintf(buffer, buffer_size, "%s+0x%llx", symbol_name, address - symbol_info->Address);
       } else {
-        safe_snprintf(buffer, buffer_size, "%s-0x%llx", symbol_info->Name, symbol_info->Address - address);
+        safe_snprintf(buffer, buffer_size, "%s-0x%llx", symbol_name, symbol_info->Address - address);
       }
     }
   } else {
@@ -588,8 +635,58 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
       // Check if cache actually resolved the symbol (not just "0x..." or "??")
       const char *sym = cache_symbols[i];
       if (sym[0] != '0' && sym[0] != '?' && sym[0] != '\0') {
-        SAFE_STRNCPY(symbols[i], sym, 1024);
-        cache_success = true;
+        // Check if this is a CRT mangled symbol without file info - likely a failed resolution
+        // CRT mangled symbols like memcpy_$fo_rvas$() are often fallbacks when real symbols aren't available
+        // Only accept them if they have file location info (real resolution), otherwise treat as failed
+        char *dollar_pos = strchr(sym, '$');
+        // Check for file info - look for patterns like " at 0x...", " in file:line", or "() at file:line"
+        bool has_file_info = (strstr(sym, " at 0x") != NULL || strstr(sym, " in ") != NULL ||
+                              (strstr(sym, "() at ") != NULL && strstr(sym, ":") != NULL));
+
+        if (dollar_pos && !has_file_info) {
+          // CRT mangled symbol without file info - likely a failed resolution, skip it
+          // This prevents all stack frames from showing the same mangled symbol
+          // Fall through to try Windows DbgHelp or show raw address
+          cache_success = false;
+        } else {
+          // Clean up mangled CRT symbols from cache (e.g., memcpy_$fo_rvas$() -> memcpy())
+          char cleaned_sym[1024];
+          if (dollar_pos) {
+            // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
+            size_t base_len = dollar_pos - sym;
+            if (base_len > 0 && base_len < sizeof(cleaned_sym)) {
+              // Remove trailing underscore if present
+              if (base_len > 1 && sym[base_len - 1] == '_') {
+                base_len--;
+              }
+              memcpy(cleaned_sym, sym, base_len);
+              cleaned_sym[base_len] = '\0';
+              // Find what comes after the mangled part (could be "()" or "() at ...")
+              const char *rest = dollar_pos;
+              // Skip past $fo_rvas$ (everything between $ and the next meaningful char)
+              while (*rest && *rest != '(' && *rest != ' ' && *rest != '\0') {
+                rest++; // Skip past $fo_rvas$
+              }
+              // Append any remaining content (e.g., "()" or "() at ...")
+              if (*rest) {
+                safe_snprintf(symbols[i], 1024, "%s%s", cleaned_sym, rest);
+              } else {
+                // No rest, but might need to add () if original had it
+                if (strstr(sym, "()") != NULL) {
+                  safe_snprintf(symbols[i], 1024, "%s()", cleaned_sym);
+                } else {
+                  SAFE_STRNCPY(symbols[i], cleaned_sym, 1024);
+                }
+              }
+            } else {
+              SAFE_STRNCPY(symbols[i], sym, 1024);
+            }
+          } else {
+            // No mangling - use as-is
+            SAFE_STRNCPY(symbols[i], sym, 1024);
+          }
+          cache_success = true;
+        }
       }
     }
 

@@ -38,6 +38,7 @@
 #include "../common.h"
 #include "../hashtable.h"
 #include "../util/path.h"
+#include "../util/string.h"
 
 // ============================================================================
 // Constants
@@ -397,21 +398,86 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
+  // SECURITY: Validate executable path to prevent command injection
+  // Paths from system APIs should be safe, but validate to be thorough
+  if (!validate_shell_safe(exe_path, ".-/\\:")) {
+    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
+    return NULL;
+  }
+
+  // Conditionally escape exe_path only if it needs quoting (has spaces or special chars)
+  // llvm-symbolizer handles unquoted paths correctly, so only quote when necessary
+  const char *escaped_exe_path = exe_path;
+  char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
+  bool needs_quoting = false;
+  for (size_t i = 0; exe_path[i] != '\0'; i++) {
+    if (exe_path[i] == ' ' || exe_path[i] == '\t' || exe_path[i] == '"' || exe_path[i] == '\'') {
+      needs_quoting = true;
+      break;
+    }
+  }
+
+  if (needs_quoting) {
+#ifdef _WIN32
+    if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+      log_error("Failed to escape executable path for shell command");
+      return NULL;
+    }
+#else
+    if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+      log_error("Failed to escape executable path for shell command");
+      return NULL;
+    }
+#endif
+    escaped_exe_path = escaped_exe_path_buf;
+  }
+
   // Build llvm-symbolizer command with --demangle, --output-style=LLVM, --relativenames, --inlining,
   // and --debug-file-directory
   char cmd[8192];
   int offset;
 
 #ifdef BUILD_DIR
-  // Note: On Windows, use double quotes for paths with spaces. On Unix, single quotes work fine.
-  // Since this is cross-platform, use double quotes which work on both.
+  // SECURITY: Validate BUILD_DIR (compile-time constant, but validate to be thorough)
+  if (!validate_shell_safe(BUILD_DIR, ".-/\\:")) {
+    log_error("Invalid BUILD_DIR - contains unsafe characters: %s", BUILD_DIR);
+    return NULL;
+  }
+
+  // Conditionally escape BUILD_DIR only if it needs quoting (has spaces or special chars)
+  const char *escaped_build_dir = BUILD_DIR;
+  char escaped_build_dir_buf[PLATFORM_MAX_PATH_LENGTH * 2];
+  bool build_dir_needs_quoting = false;
+  for (size_t i = 0; BUILD_DIR[i] != '\0'; i++) {
+    if (BUILD_DIR[i] == ' ' || BUILD_DIR[i] == '\t' || BUILD_DIR[i] == '"' || BUILD_DIR[i] == '\'') {
+      build_dir_needs_quoting = true;
+      break;
+    }
+  }
+
+  if (build_dir_needs_quoting) {
+#ifdef _WIN32
+    if (!escape_shell_double_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
+      log_error("Failed to escape BUILD_DIR for shell command");
+      return NULL;
+    }
+#else
+    if (!escape_shell_single_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
+      log_error("Failed to escape BUILD_DIR for shell command");
+      return NULL;
+    }
+#endif
+    escaped_build_dir = escaped_build_dir_buf;
+  }
+
   offset = snprintf(cmd, sizeof(cmd),
                     "%s --demangle --output-style=LLVM --relativenames --inlining "
-                    "--debug-file-directory=\"%s\" -e \"%s\" ",
-                    LLVM_SYMBOLIZER_BIN, BUILD_DIR, exe_path);
+                    "--debug-file-directory=%s -e %s ",
+                    LLVM_SYMBOLIZER_BIN, escaped_build_dir, escaped_exe_path);
 #else
-  offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames --inlining -e \"%s\" ",
-                    LLVM_SYMBOLIZER_BIN, exe_path);
+  // Note: Use platform-appropriate quotes (already escaped)
+  offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames --inlining -e %s ",
+                    LLVM_SYMBOLIZER_BIN, escaped_exe_path);
 #endif
 
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
@@ -541,10 +607,43 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     return NULL;
   }
 
+  // SECURITY: Validate executable path to prevent command injection
+  // Paths from system APIs should be safe, but validate to be thorough
+  if (!validate_shell_safe(exe_path, ".-/\\:")) {
+    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
+    return NULL;
+  }
+
+  // Conditionally escape exe_path only if it needs quoting (has spaces or special chars)
+  // addr2line handles unquoted paths correctly, so only quote when necessary
+  const char *escaped_exe_path = exe_path;
+  char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
+  bool needs_quoting = false;
+  for (size_t i = 0; exe_path[i] != '\0'; i++) {
+    if (exe_path[i] == ' ' || exe_path[i] == '\t' || exe_path[i] == '"' || exe_path[i] == '\'') {
+      needs_quoting = true;
+      break;
+    }
+  }
+
+  if (needs_quoting) {
+#ifdef _WIN32
+    if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+      log_error("Failed to escape executable path for shell command");
+      return NULL;
+    }
+#else
+    if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+      log_error("Failed to escape executable path for shell command");
+      return NULL;
+    }
+#endif
+    escaped_exe_path = escaped_exe_path_buf;
+  }
+
   // Build addr2line command
-  // Note: Use double quotes for paths with spaces (works on both Windows and Unix)
   char cmd[4096];
-  int offset = snprintf(cmd, sizeof(cmd), "%s -e \"%s\" -f -C -i ", ADDR2LINE_BIN, exe_path);
+  int offset = snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", ADDR2LINE_BIN, escaped_exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     return NULL;
   }
