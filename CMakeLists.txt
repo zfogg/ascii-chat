@@ -129,6 +129,12 @@ if(USE_MUSL)
                             "  Ubuntu/Debian: sudo apt install clang")
     endif()
 
+    find_program(CLANGXX_COMPILER clang++)
+    if(NOT CLANGXX_COMPILER)
+        message(FATAL_ERROR "clang++ not found. Install clang for musl static-PIE support:\n"
+                            "  Ubuntu/Debian: sudo apt install clang")
+    endif()
+
     # Verify musl development files are installed
     if(NOT EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
         message(FATAL_ERROR "musl development files not found. Install musl-dev:\n"
@@ -138,7 +144,7 @@ if(USE_MUSL)
 
     # Set compiler to clang BEFORE project()
     set(CMAKE_C_COMPILER "${CLANG_COMPILER}" CACHE FILEPATH "C compiler" FORCE)
-    set(CMAKE_CXX_COMPILER "clang++" CACHE FILEPATH "CXX compiler" FORCE)
+    set(CMAKE_CXX_COMPILER "${CLANGXX_COMPILER}" CACHE FILEPATH "CXX compiler" FORCE)
 
     # Set LLVM archiver and ranlib for proper archive handling
     # Use llvm-config to find the correct LLVM installation
