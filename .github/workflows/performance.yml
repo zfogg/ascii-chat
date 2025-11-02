@@ -25,6 +25,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        submodules: true
 
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
@@ -70,6 +73,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        submodules: true
 
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
@@ -117,6 +123,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        submodules: true
 
     - name: Install tools
       run: |

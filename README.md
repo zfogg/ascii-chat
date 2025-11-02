@@ -167,6 +167,8 @@ CMake supports several configuration options:
 - `-DCMAKE_C_COMPILER=clang` - Set compiler (default: auto-detected)
 - `-DSIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
 - `-DCRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
+- `-DUSE_MUSL=ON` - Build a static binary with musl libc.
+- `-DUSE_MIMALLOC=ON` - Build with Microsoft's mimalloc memory allocator (overrides malloc()/free() unless USE_MUSL is ON)
 - Ninja automatically uses all available CPU cores for parallel builds
 
 

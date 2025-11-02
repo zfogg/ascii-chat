@@ -77,6 +77,27 @@ endfunction()
 function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ENABLE_CRC32_HW)
     add_definitions(-DNDEBUG)
 
+    # Remove absolute file paths from __FILE__ macro expansions
+    # This prevents usernames and full paths from appearing in release binaries
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        # Get the source directory and normalize paths for Windows
+        get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
+
+        # On Windows, convert backslashes to forward slashes (required by macro-prefix-map)
+        if(WIN32)
+            string(REPLACE "\\" "/" SOURCE_DIR_NORMALIZED "${SOURCE_DIR}")
+            set(SOURCE_DIR "${SOURCE_DIR_NORMALIZED}")
+        endif()
+
+        # Map source directory to empty string (removes absolute path, keeps relative path)
+        add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
+    elseif(MSVC AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+        # Clang-cl (MSVC-compatible frontend) supports -fmacro-prefix-map
+        get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
+        string(REPLACE "\\" "/" SOURCE_DIR_NORMALIZED "${SOURCE_DIR}")
+        add_compile_options(-fmacro-prefix-map="${SOURCE_DIR_NORMALIZED}/=")
+    endif()
+
     # CPU-aware optimization flags
     add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
 

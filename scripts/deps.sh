@@ -70,10 +70,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         echo "Detected pacman package manager"
         echo "Installing dependencies..."
         sudo pacman -S --needed \
-            zstd \
-            libsodium \
-            portaudio \
-            pkg-config
+            pkg-config \
+            clang llvm lldb ccache \
+            cmake ninja make \
+            musl mimalloc \
+            zstd libsodium portaudio
 
     else
         echo "ERROR: No supported package manager found (apt-get, yum, or pacman)"

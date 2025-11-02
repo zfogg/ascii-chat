@@ -31,6 +31,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        submodules: true
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
@@ -63,6 +66,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        submodules: true
 
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
@@ -127,6 +133,9 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        submodules: true
 
     - name: Install dependencies with caching
       uses: ./.github/actions/install-deps
