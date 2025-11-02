@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file sve.h
+ * @file image2ascii/simd/sve.h
  * @ingroup image2ascii
  * @brief SVE-optimized ASCII rendering functions
  *
@@ -10,10 +10,13 @@
  * with SVE support.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
+ * @date August 2025
  */
 
 #if SIMD_SUPPORT_SVE
+#if (defined(__aarch64__) && !defined(__ARM_FEATURE_SVE))
+#error "SVE support required for ARM64"
+#endif
 #include <arm_sve.h>
 
 /**

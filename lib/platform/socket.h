@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file socket.h
+ * @file platform/socket.h
  * @ingroup platform
  * @brief Cross-platform socket interface for ASCII-Chat
  *

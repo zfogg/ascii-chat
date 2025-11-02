@@ -1,14 +1,15 @@
+#if SIMD_SUPPORT_SSE2
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+
+#include <emmintrin.h>
+
 #include "sse2.h"
 #include "ascii_simd.h"
 #include "common.h"
 #include "../output_buffer.h"
-
-#if SIMD_SUPPORT_SSE2
-#include <emmintrin.h>
 
 //=============================================================================
 // Image-based API (matches NEON architecture)

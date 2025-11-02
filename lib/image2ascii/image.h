@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file image.h
+ * @file image2ascii/image.h
  * @ingroup image2ascii
  * @brief Image Data Structures and Operations
  *

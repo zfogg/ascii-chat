@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file cond.h
+ * @file platform/cond.h
  * @ingroup platform
  * @brief Cross-platform condition variable interface for ASCII-Chat
  *

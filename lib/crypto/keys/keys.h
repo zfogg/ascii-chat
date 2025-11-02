@@ -3,6 +3,7 @@
 /**
  * @file crypto/keys/keys.h
  * @defgroup keys Key Management
+ * @ingroup keys
  * @ingroup crypto
  * @brief SSH key, GPG key, and key validation APIs
  *
@@ -50,14 +51,20 @@
  * Parses public key from various input formats:
  *
  * Supported formats:
- * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment"
+ * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment" (direct key string)
  * - GitHub SSH: "github:username" (fetches from https://github.com/username.keys, uses first Ed25519 key)
  * - GitLab SSH: "gitlab:username" (fetches from https://gitlab.com/username.keys, uses first Ed25519 key)
  * - GitHub GPG: "github:username.gpg" (fetches GPG key from https://github.com/username.gpg)
  * - GitLab GPG: "gitlab:username.gpg" (fetches GPG key from https://gitlab.com/username.gpg)
  * - GPG keyring: "gpg:0xKEYID" (shells out to `gpg --export KEYID`)
- * - File path: Path to key file (reads first line and parses)
+ * - File path: Path to `.pub` file or any file containing key (reads first line)
  * - Raw hex: 64 hex chars for X25519 key
+ *
+ * **File support**:
+ * When a file path is provided, the file is read and the first line is parsed
+ * as an SSH public key. Common formats:
+ * - `.pub` file: Standard SSH public key file (one key per file, reads first line)
+ * - Any text file: First line containing SSH key format is used
  *
  * @note Key normalization: All keys are converted to X25519 format for key exchange.
  *       Ed25519 keys are converted using libsodium conversion function.
@@ -69,7 +76,8 @@
  *       Only first Ed25519 key is used for SSH format (multiple keys may be returned).
  *
  * @note File path: Reads first line of file and parses as SSH key format.
- *       File must exist and be readable.
+ *       File must exist and be readable. For files with multiple keys (one per line),
+ *       use `parse_keys_from_file()` instead.
  *
  * @warning Network operations: GitHub/GitLab fetching requires network connectivity.
  *          May fail if network is unavailable or endpoints are blocked.
@@ -380,14 +388,25 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out)
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * Parses multiple SSH keys from file. Supports:
- * - authorized_keys format: One key per line (ssh-ed25519 AAAAC3... comment)
- * - known_hosts format: Multiple keys per line (hostname ssh-ed25519 AAAAC3... comment)
+ * - **authorized_keys format**: One key per line (ssh-ed25519 AAAAC3... comment)
+ * - **.pub file with multiple entries**: File containing multiple SSH public key
+ *   entries, one per line (each line in `ssh-ed25519 AAAAC3... comment` format).
+ *   This format is similar to `authorized_keys` and can contain any number of keys.
+ * - **known_hosts format**: Multiple keys per line (hostname ssh-ed25519 AAAAC3... comment)
+ *
+ * **File format examples**:
+ * ```
+ * # authorized_keys format or .pub file with multiple entries
+ * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... alice@example.com
+ * ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
+ * ```
  *
  * @note Key filtering: Only Ed25519 and X25519 keys are parsed.
  *       RSA/ECDSA keys are skipped (not supported).
  *
  * @note File format: Automatically detects file format based on content.
- *       Supports both authorized_keys and known_hosts formats.
+ *       Supports both `authorized_keys` format (one key per line) and `known_hosts` format.
+ *       Also supports `.pub` files containing multiple key entries (one per line).
  *
  * @note Maximum keys: Stops parsing after max_keys keys are found.
  *       Function returns ASCIICHAT_OK even if more keys exist in file.
@@ -407,11 +426,20 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
  * @return ASCIICHAT_OK on success, error code on failure
  *
  * Parses client keys from various input formats:
- * - File path: Path to key file (authorized_keys, known_hosts, or bare base64)
- * - Comma-separated list: "key1,key2,key3" (parses each key)
- * - Single key: Direct key string (ssh-ed25519 format or raw hex)
+ * - **File path**: Path to file containing SSH public keys (one per line)
+ * - **Comma-separated list**: "key1,key2,key3" (parses each key)
+ * - **Single key**: Direct key string (ssh-ed25519 format or raw hex)
  *
- * @note Supported formats: authorized_keys, known_hosts, bare base64, SSH Ed25519 format
+ * **File support**:
+ * When a file path is provided, the file is read and parsed for SSH public keys.
+ * The file can contain multiple public keys, one per line. Supported file formats:
+ * - **authorized_keys format**: Standard SSH authorized_keys file format (one key per line)
+ * - **.pub file with multiple entries**: File containing multiple SSH public key
+ *   entries, one per line (each line in `ssh-ed25519 AAAAC3... comment` format)
+ * - **known_hosts format**: SSH known_hosts file format (all keys from file)
+ *
+ * @note Supported formats: authorized_keys (one key per line), .pub files with multiple
+ *       entries (one per line), known_hosts, bare base64, SSH Ed25519 format
  *
  * @note Comma-separated list: Splits by comma and parses each key separately.
  *       Skips invalid keys and continues parsing.

@@ -1,7 +1,8 @@
 #pragma once
 
 /**
- * @file ip.h
+ * @file util/ip.h
+ * @ingroup util
  * @brief IP Address Parsing and Formatting Utilities
  *
  * This header provides utilities for validating, parsing, and formatting IPv4

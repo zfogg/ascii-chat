@@ -1,7 +1,8 @@
 #pragma once
 
 /**
- * @file format.h
+ * @file util/format.h
+ * @ingroup util
  * @brief String Formatting Utilities
  *
  * This header provides utilities for formatting various data types into

@@ -3,6 +3,7 @@
 /**
  * @file network/av.h
  * @defgroup av Audio/Video Networking
+ * @ingroup av
  * @brief Audio/Video/ASCII Packet Network Protocol Implementation
  *
  * This header provides the network protocol implementation for audio, video,

@@ -148,7 +148,23 @@
  * - Uses BearSSL for HTTPS connections
  * - Validates TLS certificates
  * - Parses SSH authorized_keys format
- * - Example: --client-keys github:alice
+ * - Example: `--client-keys github:alice`
+ *
+ * **File-based Key Loading**:
+ * - **`--server-key`**: Accepts `.pub` files or any file containing SSH key
+ *   - Reads first line of file and parses as SSH public key format
+ *   - Common format: Standard SSH `.pub` file (one key per file)
+ *   - Example: `--server-key ~/.ssh/server_key.pub`
+ * - **`--client-keys`**: Accepts files with multiple SSH public keys (one per line)
+ *   - Supports `authorized_keys` format (one key per line)
+ *   - Supports `.pub` files with multiple entries (one per line)
+ *   - Supports `known_hosts` format (all keys from file)
+ *   - File format example:
+ *     ```
+ *     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... alice@example.com
+ *     ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... bob@example.com
+ *     ```
+ *   - Example: `--client-keys ~/.ssh/authorized_keys` (read all keys from file)
  *
  * **GPG Support** (lib/crypto/keys/gpg_keys.c):
  * - Loads GPG public keys

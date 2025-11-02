@@ -1,0 +1,200 @@
+/**
+ * @page topic_errno Error Handling System
+ * @ingroup errno
+ *
+ * @section errno_overview Overview
+ *
+ * The Error Handling System provides comprehensive error tracking and reporting
+ * for ASCII-Chat. It uses typed error codes, error context capture, and thread-local
+ * storage for safe multi-threaded error handling.
+ *
+ * **Implementation**: lib/asciichat_errno.h
+ *
+ * **Key Features**:
+ * - Typed error codes via asciichat_error_t enum
+ * - Thread-local error context storage
+ * - Automatic file/line/function capture
+ * - System error integration (errno capture)
+ * - Error context stack traces (debug builds)
+ * - Comprehensive error messages with context
+ *
+ * @section errno_architecture Architecture
+ *
+ * **Error Code System**:
+ * - All functions return `asciichat_error_t` instead of int
+ * - ASCIICHAT_OK (0) indicates success
+ * - Negative values indicate specific error types
+ * - Error codes are categorized by subsystem
+ *
+ * **Thread-Local Storage**:
+ * - Each thread has its own error context
+ * - No cross-thread error contamination
+ * - Safe for concurrent error handling
+ *
+ * **Error Context Capture**:
+ * - File name and line number where error occurred
+ * - Function name where error was set
+ * - Custom error message with printf-style formatting
+ * - System errno value (when applicable)
+ * - Stack trace (debug builds only)
+ *
+ * @section errno_usage Usage Patterns
+ *
+ * @subsection errno_setting Setting Errors
+ *
+ * **SET_ERRNO Macro** (preferred):
+ * @code{.c}
+ * // Set error with custom message
+ * if (socket_fd < 0) {
+ *     return SET_ERRNO(ERROR_NETWORK_SOCKET, "Failed to create socket");
+ * }
+ *
+ * // Set error with formatted message
+ * if (bind(sockfd, &addr, sizeof(addr)) < 0) {
+ *     return SET_ERRNO(ERROR_NETWORK_BIND, "Cannot bind to port %d", port);
+ * }
+ * @endcode
+ *
+ * **SET_ERRNO_SYS Macro** (captures system errno):
+ * @code{.c}
+ * // Capture both error code and system errno
+ * int fd = open(path, O_RDONLY);
+ * if (fd < 0) {
+ *     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open config: %s", path);
+ * }
+ * @endcode
+ *
+ * @subsection errno_checking Checking Errors
+ *
+ * **Check for Error**:
+ * @code{.c}
+ * asciichat_error_context_t err_ctx;
+ * if (HAS_ERRNO(&err_ctx)) {
+ *     log_error("Error: %s", err_ctx.context_message);
+ *     log_error("  at %s:%d in %s()", err_ctx.file, err_ctx.line, err_ctx.function);
+ * }
+ * @endcode
+ *
+ * **Get Current Error Code**:
+ * @code{.c}
+ * asciichat_error_t current_error = GET_ERRNO();
+ * if (current_error != ASCIICHAT_OK) {
+ *     // Handle error
+ * }
+ * @endcode
+ *
+ * **Clear Error State**:
+ * @code{.c}
+ * CLEAR_ERRNO();  // Reset error state for this thread
+ * @endcode
+ *
+ * @subsection errno_debugging Debug Output
+ *
+ * **Print Error Context** (debug builds only):
+ * @code{.c}
+ * asciichat_error_context_t err_ctx;
+ * if (HAS_ERRNO(&err_ctx)) {
+ *     PRINT_ERRNO_CONTEXT(&err_ctx);  // Prints full context including stack trace
+ * }
+ * @endcode
+ *
+ * @section errno_codes Error Code Categories
+ *
+ * **General Errors**:
+ * - ASCIICHAT_OK (0) - Success
+ * - ERROR_UNKNOWN (-1) - Unknown error
+ * - ERROR_INVALID_PARAM (-2) - Invalid parameter
+ * - ERROR_OUT_OF_MEMORY (-3) - Memory allocation failed
+ *
+ * **Network Errors**:
+ * - ERROR_NETWORK_SOCKET - Socket creation failed
+ * - ERROR_NETWORK_BIND - Socket bind failed
+ * - ERROR_NETWORK_LISTEN - Socket listen failed
+ * - ERROR_NETWORK_CONNECT - Connection failed
+ * - ERROR_NETWORK_SEND - Send operation failed
+ * - ERROR_NETWORK_RECV - Receive operation failed
+ *
+ * **Crypto Errors**:
+ * - ERROR_CRYPTO_INIT - Crypto initialization failed
+ * - ERROR_CRYPTO_KEY - Key loading/parsing failed
+ * - ERROR_CRYPTO_HANDSHAKE - Handshake failed
+ * - ERROR_CRYPTO_ENCRYPT - Encryption failed
+ * - ERROR_CRYPTO_DECRYPT - Decryption failed
+ *
+ * **Platform Errors**:
+ * - ERROR_PLATFORM_THREAD - Thread operation failed
+ * - ERROR_PLATFORM_MUTEX - Mutex operation failed
+ * - ERROR_PLATFORM_SOCKET - Platform-specific socket error
+ *
+ * **Configuration Errors**:
+ * - ERROR_CONFIG - Configuration loading failed
+ * - ERROR_CONFIG_PARSE - Configuration parsing failed
+ * - ERROR_CONFIG_INVALID - Invalid configuration value
+ *
+ * @section errno_integration Integration with Logging
+ *
+ * **Automatic Logging**:
+ * - SET_ERRNO() automatically logs errors at ERROR level
+ * - SET_ERRNO_SYS() logs with system error details
+ * - Error messages include context automatically
+ *
+ * **Example Integration**:
+ * @code{.c}
+ * asciichat_error_t process_client(client_t *client) {
+ *     if (!client) {
+ *         return SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
+ *         // Automatically logged: "ERROR: Client is NULL"
+ *     }
+ *
+ *     int result = some_operation();
+ *     if (result < 0) {
+ *         return SET_ERRNO_SYS(ERROR_OPERATION_FAILED, "Operation failed");
+ *         // Automatically logged with errno details
+ *     }
+ *
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * @section errno_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always use asciichat_error_t for return types
+ * - Use SET_ERRNO() for all error conditions
+ * - Use SET_ERRNO_SYS() when capturing system errors
+ * - Provide descriptive error messages
+ * - Check return values and propagate errors
+ *
+ * **DON'T**:
+ * - Don't use int return values with -1 for errors
+ * - Don't ignore return values
+ * - Don't use generic error messages
+ * - Don't access errno directly (use SET_ERRNO_SYS)
+ * - Don't forget to check errors from called functions
+ *
+ * @section errno_thread_safety Thread Safety
+ *
+ * **Thread-Local Storage**:
+ * - Each thread maintains its own error context
+ * - No locks needed for error operations
+ * - Safe for concurrent error handling
+ * - Thread ID captured in error context
+ *
+ * **Example Multi-threaded Usage**:
+ * @code{.c}
+ * void* worker_thread(void *arg) {
+ *     // This thread's error context is independent
+ *     asciichat_error_t err = do_work();
+ *     if (err != ASCIICHAT_OK) {
+ *         asciichat_error_context_t ctx;
+ *         if (HAS_ERRNO(&ctx)) {
+ *             log_error("Worker failed: %s", ctx.context_message);
+ *         }
+ *     }
+ *     return NULL;
+ * }
+ * @endcode
+ *
+ * @see asciichat_errno.h
+ * @see logging.h
+ */

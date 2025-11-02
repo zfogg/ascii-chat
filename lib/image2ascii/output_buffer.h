@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file output_buffer.h
+ * @file image2ascii/output_buffer.h
  * @ingroup image2ascii
  * @brief Dynamic Output Buffer with ANSI Sequence Support
  *

@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file sse2.h
+ * @file image2ascii/simd/sse2.h
  * @ingroup image2ascii
  * @brief SSE2-optimized ASCII rendering functions
  *
@@ -9,18 +9,16 @@
  * functions for converting images to ASCII art on x86-64 CPUs.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
+ * @date August 2025
  */
 
-#include "common.h"
-
 #if SIMD_SUPPORT_SSE2
+#if (!defined(__SSE2__) && !defined(_M_X64) && !(defined(_M_IX86_FP) && _M_IX86_FP >= 2))
+#error "SSE2 support required"
+#endif
 #ifdef _WIN32
 // Windows: Use immintrin.h with proper feature detection
 // MSVC defines _M_X64 for x64 (which always has SSE2) or _M_IX86_FP >= 2 for x86 with SSE2
-#if !defined(__SSE2__) && !defined(_M_X64) && !(defined(_M_IX86_FP) && _M_IX86_FP >= 2)
-#error "SSE2 support required"
-#endif
 #include <immintrin.h>
 #else
 #include <emmintrin.h>

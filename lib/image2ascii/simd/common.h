@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file common.h
+ * @file image2ascii/simd/common.h
  * @ingroup image2ascii
  * @brief Common SIMD utilities and structures
  *
