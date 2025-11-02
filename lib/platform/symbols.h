@@ -6,7 +6,7 @@
  * subprocess spawns on every backtrace. Uses hashtable for O(1) lookups.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @date October 2025
  */
 
 #pragma once
