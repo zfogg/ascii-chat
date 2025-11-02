@@ -2413,6 +2413,15 @@ if(BUILD_TESTS AND CRITERION_FOUND)
                 message(WARNING "pcre2-8 not found - some git features may not work")
             endif()
 
+            # libgit2 also requires zlib for compression
+            find_library(ZLIB_LIB z HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
+            if(ZLIB_LIB)
+                list(APPEND TEST_LDFLAGS z)
+                message(STATUS "Added zlib for tests (libgit2 dependency)")
+            else()
+                message(WARNING "zlib not found - libgit2 compression may not work")
+            endif()
+
             if(NOT SSH2_LIB AND NOT HTTP_PARSER_LIB AND NOT PCRE2_LIB)
                 message(WARNING "No libgit2 dependencies found - git features will be disabled")
             endif()
