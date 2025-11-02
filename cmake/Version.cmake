@@ -37,9 +37,16 @@ if(GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)-([0-9]+)-g([0-9a
     # Add -dev- prefix if commits > 0 (development version, like neovim)
     if(NOT \"\${GIT_COMMITS_SINCE_TAG}\" STREQUAL \"0\")
         set(GIT_VERSION_STRING \"dev-\${GIT_COMMITS_SINCE_TAG}+g\${GIT_COMMIT_HASH}\${GIT_DIRTY_SUFFIX}\")
+        set(GIT_VERSION_SUFFIX \"-\")  # Separator for non-release versions
     else()
         # Exactly on tag (0 commits) - release version
-        set(GIT_VERSION_STRING \"\${GIT_DIRTY_SUFFIX}\")
+        if(\"\${GIT_DIRTY_SUFFIX}\" STREQUAL \"-dirty\")
+            set(GIT_VERSION_STRING \"dirty\")
+            set(GIT_VERSION_SUFFIX \"-\")  # Separator for dirty releases
+        else()
+            set(GIT_VERSION_STRING \"\")
+            set(GIT_VERSION_SUFFIX \"\")  # No separator for clean releases
+        endif()
     endif()
     # Override PROJECT_VERSION with tag version
     set(PROJECT_VERSION_MAJOR \"\${TAG_VERSION_MAJOR}\")
@@ -52,7 +59,13 @@ elseif(GIT_DESCRIBE MATCHES \"^v?([0-9]+)\\\\.([0-9]+)\\\\.([0-9]+)(-dirty)?\\\$
     set(TAG_VERSION_MINOR \"\${CMAKE_MATCH_2}\")
     set(TAG_VERSION_PATCH \"\${CMAKE_MATCH_3}\")
     set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_4}\")
-    set(GIT_VERSION_STRING \"\${GIT_DIRTY_SUFFIX}\")
+    if(\"\${GIT_DIRTY_SUFFIX}\" STREQUAL \"-dirty\")
+        set(GIT_VERSION_STRING \"dirty\")
+        set(GIT_VERSION_SUFFIX \"-\")  # Separator for dirty releases
+    else()
+        set(GIT_VERSION_STRING \"\")
+        set(GIT_VERSION_SUFFIX \"\")  # No separator for clean releases
+    endif()
     # Override PROJECT_VERSION with tag version
     set(PROJECT_VERSION_MAJOR \"\${TAG_VERSION_MAJOR}\")
     set(PROJECT_VERSION_MINOR \"\${TAG_VERSION_MINOR}\")
@@ -63,6 +76,7 @@ elseif(GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)?\\\$\")
     set(GIT_COMMIT_HASH \"\${CMAKE_MATCH_1}\")
     set(GIT_DIRTY_SUFFIX \"\${CMAKE_MATCH_2}\")
     set(GIT_VERSION_STRING \"dev-g\${GIT_COMMIT_HASH}\${GIT_DIRTY_SUFFIX}\")
+    set(GIT_VERSION_SUFFIX \"-\")  # Separator for development versions
     set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
     set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
     set(PROJECT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
@@ -70,6 +84,7 @@ elseif(GIT_DESCRIBE MATCHES \"^([0-9a-f]+)(-dirty)?\\\$\")
 else()
     # Fallback - use version from project()
     set(GIT_VERSION_STRING \"unknown\")
+    set(GIT_VERSION_SUFFIX \"-\")  # Separator for unknown versions
     set(PROJECT_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
     set(PROJECT_VERSION_MINOR ${PROJECT_VERSION_MINOR})
     set(PROJECT_VERSION_PATCH ${PROJECT_VERSION_PATCH})
