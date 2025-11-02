@@ -299,7 +299,7 @@ int client_crypto_handshake(socket_t socket) {
            "secret_size=%u, verification=%u)",
            server_params.selected_kex, server_params.selected_auth, server_params.selected_cipher, kex_pubkey_size,
            auth_pubkey_size, signature_size, shared_secret_size, server_params.verification_enabled);
-  log_info("CLIENT_CRYPTO_DEBUG: Raw server_params.kex_public_key_size = %u (network byte order)",
+  log_debug("Raw server_params.kex_public_key_size = %u (network byte order)",
            server_params.kex_public_key_size);
 
   // Set the crypto parameters in the handshake context
@@ -514,14 +514,14 @@ int crypto_client_initiate_rekey(void) {
     return -1;
   }
 
-  log_info("CLIENT: Initiating session rekey");
+  log_debug("Initiating session rekey");
   asciichat_error_t result = crypto_handshake_rekey_request(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
-    log_error("CLIENT: Failed to send REKEY_REQUEST: %d", result);
+    log_error("Failed to send REKEY_REQUEST: %d", result);
     return -1;
   }
 
-  log_info("CLIENT: Sent REKEY_REQUEST to server");
+  log_debug("Sent REKEY_REQUEST to server");
   return 0;
 }
 
@@ -540,7 +540,7 @@ int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len
 
   asciichat_error_t result = crypto_handshake_process_rekey_request(&g_crypto_ctx, packet, packet_len);
   if (result != ASCIICHAT_OK) {
-    log_error("CLIENT: Failed to process REKEY_REQUEST: %d", result);
+    log_error("Failed to process REKEY_REQUEST: %d", result);
     return -1;
   }
 
@@ -566,7 +566,7 @@ int crypto_client_send_rekey_response(void) {
 
   asciichat_error_t result = crypto_handshake_rekey_response(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
-    log_error("CLIENT: Failed to send REKEY_RESPONSE: %d", result);
+    log_error("Failed to send REKEY_RESPONSE: %d", result);
     return -1;
   }
 
@@ -588,7 +588,7 @@ int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_le
 
   asciichat_error_t result = crypto_handshake_process_rekey_response(&g_crypto_ctx, packet, packet_len);
   if (result != ASCIICHAT_OK) {
-    log_error("CLIENT: Failed to process REKEY_RESPONSE: %d", result);
+    log_error("Failed to process REKEY_RESPONSE: %d", result);
     return -1;
   }
 
@@ -614,7 +614,7 @@ int crypto_client_send_rekey_complete(void) {
 
   asciichat_error_t result = crypto_handshake_rekey_complete(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
-    log_error("CLIENT: Failed to send REKEY_COMPLETE: %d", result);
+    log_error("Failed to send REKEY_COMPLETE: %d", result);
     return -1;
   }
 

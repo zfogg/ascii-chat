@@ -197,7 +197,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       expected_fps = 60; // Fallback
 #endif
     }
-    log_info("CLIENT FPS TRACKING: Expecting %d fps (client's requested rate)", expected_fps);
+    log_debug("CLIENT FPS TRACKING: Expecting %d fps (client's requested rate)", expected_fps);
   }
 
   // Initialize on first frame
@@ -231,7 +231,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   if (elapsed_us >= 5000000) { // 5 seconds
     float actual_fps = (float)frame_count / ((float)elapsed_us / 1000000.0f);
-    log_info("CLIENT FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, frame_count,
+    log_debug("CLIENT FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, frame_count,
              (float)elapsed_us / 1000000.0f);
 
     // Reset counters for next interval
@@ -341,7 +341,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!first_frame_rendered) {
     // Always clear display and disable logging before rendering the first frame
     // This ensures clean ASCII display regardless of packet arrival order
-    log_info("CLIENT_DISPLAY: First frame - clearing display and disabling terminal logging");
+    log_info("First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
     display_full_reset();
     first_frame_rendered = true;
@@ -528,7 +528,7 @@ static void *data_reception_thread_func(void *arg) {
     socket_t sockfd = server_connection_get_socket();
 
     if (sockfd == INVALID_SOCKET_VALUE || !server_connection_is_active()) {
-      log_debug("CLIENT: Waiting for socket connection");
+      log_debug("Waiting for socket connection");
       platform_sleep_usec(10 * 1000);
       continue;
     }
@@ -543,13 +543,13 @@ static void *data_reception_thread_func(void *arg) {
 
     // Handle different result codes
     if (result == PACKET_RECV_EOF) {
-      log_info("CLIENT: Server closed connection");
+      log_debug("Server closed connection");
       server_connection_lost();
       break;
     }
 
     if (result == PACKET_RECV_ERROR) {
-      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, SAFE_STRERROR(errno));
+      log_error("Failed to receive packet, errno=%d (%s)", errno, SAFE_STRERROR(errno));
       server_connection_lost();
       break;
     }
@@ -597,41 +597,41 @@ static void *data_reception_thread_func(void *arg) {
 
     // Session rekeying packets
     case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
-      log_info("CLIENT: Received REKEY_REQUEST from server");
+      log_debug("Received REKEY_REQUEST from server");
 
       // Process the server's rekey request
       asciichat_error_t result = crypto_client_process_rekey_request(data, len);
       if (result != ASCIICHAT_OK) {
-        log_error("CLIENT: Failed to process REKEY_REQUEST: %d", result);
+        log_error("Failed to process REKEY_REQUEST: %d", result);
         break;
       }
 
       // Send REKEY_RESPONSE
       result = crypto_client_send_rekey_response();
       if (result != ASCIICHAT_OK) {
-        log_error("CLIENT: Failed to send REKEY_RESPONSE: %d", result);
+        log_error("Failed to send REKEY_RESPONSE: %d", result);
       } else {
-        log_info("CLIENT: Sent REKEY_RESPONSE to server");
+        log_debug("Sent REKEY_RESPONSE to server");
       }
       break;
     }
 
     case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
-      log_info("CLIENT: Received REKEY_RESPONSE from server");
+      log_debug("Received REKEY_RESPONSE from server");
 
       // Process server's response
       asciichat_error_t result = crypto_client_process_rekey_response(data, len);
       if (result != ASCIICHAT_OK) {
-        log_error("CLIENT: Failed to process REKEY_RESPONSE: %d", result);
+        log_error("Failed to process REKEY_RESPONSE: %d", result);
         break;
       }
 
       // Send REKEY_COMPLETE
       result = crypto_client_send_rekey_complete();
       if (result != ASCIICHAT_OK) {
-        log_error("CLIENT: Failed to send REKEY_COMPLETE: %d", result);
+        log_error("Failed to send REKEY_COMPLETE: %d", result);
       } else {
-        log_info("CLIENT: Session rekeying completed successfully");
+        log_debug("Session rekeying completed successfully");
       }
       break;
     }

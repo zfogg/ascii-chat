@@ -98,6 +98,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "options.h"
+#include <dbghelp.h>
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
@@ -243,16 +244,12 @@ static void *webcam_capture_thread_func(void *arg) {
   (void)arg;
   struct timespec last_capture_time = {0, 0};
 
-  log_info("CAPTURE_DEBUG: Webcam capture thread started, entering main loop");
-
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
     if (!server_connection_is_active()) {
-      log_info("CAPTURE_DEBUG: Connection not active, waiting...");
       platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
-    log_info("CAPTURE_DEBUG: Connection active, about to capture frame");
 
     // Frame rate limiting using monotonic clock
     // Always capture at 144fps to support high-refresh displays, regardless of client's rendering FPS
@@ -266,34 +263,18 @@ static void *webcam_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Capture frame from webcam
-    struct timespec t1, t2, t3, t4, t5;
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-
-    log_info("CAPTURE_DEBUG: Calling webcam_read()");
     image_t *image = webcam_read();
-    clock_gettime(CLOCK_MONOTONIC, &t2);
-    long read_ms = (t2.tv_sec - t1.tv_sec) * 1000 + (t2.tv_nsec - t1.tv_nsec) / 1000000;
-    log_info("CAPTURE_DEBUG: webcam_read() took %ld ms, returned %p", read_ms, (void *)image);
 
     if (!image) {
-      log_info("CAPTURE_DEBUG: Image is NULL, continuing");
       log_info("No frame available from webcam yet (webcam_read returned NULL)");
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
 
-    log_info("CAPTURE_DEBUG: Image is NOT NULL (%dx%d), about to process frame", image->w, image->h);
-
     // Process frame for network transmission
-    clock_gettime(CLOCK_MONOTONIC, &t3);
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
-    clock_gettime(CLOCK_MONOTONIC, &t4);
-    long process_ms = (t4.tv_sec - t3.tv_sec) * 1000 + (t4.tv_nsec - t3.tv_nsec) / 1000000;
-    log_info("CAPTURE_DEBUG: process_frame_for_transmission took %ld ms, returned %p", process_ms,
-             (void *)processed_image);
     if (!processed_image) {
-      log_error("Failed to process frame for transmission");
+      SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
       if (image) {
         image_destroy(image);
       }
@@ -309,7 +290,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Check packet size limits
     if (packet_size > MAX_PACKET_SIZE) {
-      log_error("Packet too large: %zu bytes (max %d)", packet_size, MAX_PACKET_SIZE);
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu bytes (max %d)", packet_size, MAX_PACKET_SIZE);
       image_destroy(processed_image);
       continue;
     }
@@ -317,7 +298,7 @@ static void *webcam_capture_thread_func(void *arg) {
     // Allocate packet buffer
     uint8_t *packet_data = SAFE_MALLOC(packet_size, void *);
     if (!packet_data) {
-      log_error("Failed to allocate packet buffer of size %zu", packet_size);
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer of size %zu", packet_size);
       image_destroy(processed_image);
       continue;
     }
@@ -333,29 +314,25 @@ static void *webcam_capture_thread_func(void *arg) {
     memcpy(packet_data + header_size, processed_image->pixels, pixel_size);
     // Check connection before sending
     if (!server_connection_is_active()) {
-      log_debug("CAPTURE_DEBUG: Connection lost before sending, stopping video transmission");
+      log_warn("Connection lost before sending, stopping video transmission");
       SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
 
-    log_info("CAPTURE_DEBUG: About to send IMAGE_FRAME packet, size=%zu", packet_size);
     // Send frame packet to server
-    clock_gettime(CLOCK_MONOTONIC, &t5);
     int send_result = threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
     struct timespec t6;
-    clock_gettime(CLOCK_MONOTONIC, &t6);
     long send_ms = (t6.tv_sec - t5.tv_sec) * 1000 + (t6.tv_nsec - t5.tv_nsec) / 1000000;
-    log_info("CAPTURE_DEBUG: threaded_send_packet took %ld ms, returned %d", send_ms, send_result);
 
     if (send_result < 0) {
-      log_error("CAPTURE_DEBUG: Failed to send video frame to server: %s", SAFE_STRERROR(errno));
       // Signal connection loss for reconnection
       server_connection_lost();
       SAFE_FREE(packet_data);
       image_destroy(processed_image);
       break;
     }
+
     // Update capture timing
     last_capture_time = current_time;
     // Clean up resources
@@ -386,7 +363,7 @@ int capture_init() {
   int webcam_index = opt_webcam_index;
   int result = webcam_init(webcam_index);
   if (result != 0) {
-    log_error("Failed to initialize webcam (error code: %d)", result);
+    SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam (error code: %d)", result);
     // Preserve specific error code (e.g., WEBCAM vs WEBCAM_IN_USE)
     return result;
   }

@@ -142,9 +142,9 @@ static void *ping_thread_func(void *arg) {
 
     // Check if session rekeying should be triggered
     if (crypto_client_should_rekey()) {
-      log_info("CLIENT: Rekey threshold reached, initiating session rekey");
+      log_debug("Rekey threshold reached, initiating session rekey");
       if (crypto_client_initiate_rekey() < 0) {
-        log_error("CLIENT: Failed to initiate rekey");
+        log_error("Failed to initiate rekey");
         // Don't break - continue with keepalive, rekey will be retried
       }
     }

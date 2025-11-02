@@ -470,9 +470,9 @@ connection_success:
   // Turn OFF terminal logging when successfully connected to server
   // First connection - we'll disable logging after main.c shows the "Connected successfully" message
   if (!opt_snapshot_mode) {
-    log_info("Connected to server - terminal logging will be disabled after initial setup");
+    log_debug("Connected to server - terminal logging will be disabled after initial setup");
   } else {
-    log_info("Connected to server - terminal logging kept enabled for snapshot mode");
+    log_debug("Connected to server - terminal logging kept enabled for snapshot mode");
   }
 
   // Configure socket options for optimal performance
@@ -510,7 +510,7 @@ connection_success:
   // Now disable terminal logging after capabilities are sent (for reconnections)
   if (!opt_snapshot_mode && has_ever_connected) {
     log_set_terminal_output(false);
-    log_info("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
+    log_debug("Reconnected to server - terminal logging disabled to prevent interference with ASCII display");
   }
 
   // Send client join packet for multi-user support

@@ -314,7 +314,7 @@ int server_crypto_handshake(client_info_t *client) {
   }
 
   // Step 1: Send our public key to client
-  log_info("SERVER_CRYPTO_HANDSHAKE: About to call crypto_handshake_server_start");
+  log_debug("About to call crypto_handshake_server_start");
   result = crypto_handshake_server_start(&client->crypto_handshake_ctx, socket);
   if (result != ASCIICHAT_OK) {
     FATAL(result, "Failed to send server public key to client %u", atomic_load(&client->client_id));

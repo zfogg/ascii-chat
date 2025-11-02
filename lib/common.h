@@ -525,3 +525,31 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 void debug_memory_report(void);
 void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
 #endif                                        /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
+
+/* ============================================================================
+ * Shared Initialization
+ * ============================================================================
+ * Common initialization code shared between client and server modes.
+ * This function handles platform setup, logging, buffer pools, cleanup
+ * registration, and other shared initialization tasks.
+ */
+
+/**
+ * @brief Initialize common subsystems shared by client and server
+ *
+ * This function performs initialization that is common to both client and
+ * server modes:
+ * - Platform initialization (Winsock, etc.)
+ * - Logging setup with default filename
+ * - Palette configuration
+ * - Buffer pool initialization
+ * - Cleanup registration (errno, known_hosts, platform, buffer pool)
+ * - Mimalloc debug registration (if enabled)
+ *
+ * Note: Memory debugging setup is handled separately by each mode due to
+ * different requirements (client has snapshot mode, server doesn't).
+ *
+ * @param default_log_filename Default log filename (e.g., "client.log" or "server.log")
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t asciichat_shared_init(const char *default_log_filename);

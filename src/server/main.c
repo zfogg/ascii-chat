@@ -404,15 +404,6 @@ static void sigusr1_handler(int sigusr1) {
  * @return Exit code: 0 for success, non-zero for failure
  */
 
-#ifdef USE_MIMALLOC_DEBUG
-// Wrapper function for mi_stats_print to use with atexit()
-// mi_stats_print takes a parameter, but atexit requires void(void)
-extern void mi_stats_print(void *out);
-static void print_mimalloc_stats(void) {
-  mi_stats_print(NULL); // NULL = print to stderr
-}
-#endif
-
 /**
  * Initialize crypto for server
  * @return 0 on success, -1 on error
@@ -491,30 +482,14 @@ int server_main(int argc, char *argv[]) {
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
 
-  // Initialize logging first so errors are properly logged
+  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
   safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
-#ifdef NDEBUG
-  log_init(log_filename, LOG_INFO); /* Release build: INFO level */
-#else
-  log_init(log_filename, LOG_DEBUG); /* Debug build: DEBUG level */
-#endif
-  log_info("Logging initialized to %s", log_filename);
-
-  // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != ASCIICHAT_OK) {
-    FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
+  asciichat_error_t init_result = asciichat_shared_init("server.log");
+  if (init_result != ASCIICHAT_OK) {
+    return init_result;
   }
-  (void)atexit(platform_cleanup);
-
-#if defined(USE_MIMALLOC_DEBUG)
-#if !defined(_WIN32)
-  // Register mimalloc stats printer at exit
-  (void)atexit(print_mimalloc_stats);
-#else
-  UNUSED(print_mimalloc_stats);
-#endif
-#endif
+  log_info("Logging initialized to %s", log_filename);
 
   // Initialize crypto after logging is ready
   log_info("Initializing crypto...");
@@ -526,45 +501,18 @@ int server_main(int argc, char *argv[]) {
   log_info("Crypto initialized successfully");
 
   // Initialize lock debugging system after logging is fully set up
-  log_info("SERVER: Initializing lock debug system...");
+  log_debug("Initializing lock debug system...");
   int lock_debug_result = lock_debug_init();
   if (lock_debug_result != 0) {
     // Print detailed error context if available
     LOG_ERRNO_IF_SET("Lock debug system initialization failed");
     FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
   }
-  log_info("SERVER: Lock debug system initialized successfully");
-
-  // Initialize palette based on command line options
-  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
-  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
-    log_error("Failed to apply palette configuration");
-    // Print detailed error context if available
-    LOG_ERRNO_IF_SET("Palette configuration failed");
-    return 1;
-  }
+  log_debug("Lock debug system initialized successfully");
 
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
   log_set_terminal_output(!opt_quiet);
-#ifdef DEBUG_MEMORY
-  debug_memory_set_quiet_mode(opt_quiet);
-#endif
 
-#ifdef DEBUG_MEMORY
-  (void)atexit(debug_memory_report);
-#endif
-
-  // Initialize global shared buffer pool
-  data_buffer_pool_init_global();
-  (void)atexit(data_buffer_pool_cleanup_global);
-
-  // Register errno cleanup
-  (void)atexit(asciichat_errno_cleanup);
-
-  // Register known_hosts cleanup
-  (void)atexit(known_hosts_cleanup);
-
-  log_truncate_if_large(); /* Truncate if log is already too large */
   log_info("ASCII Chat server starting...");
 
   // log_info("SERVER: Options initialized, using log file: %s", log_filename);
@@ -578,7 +526,7 @@ int server_main(int argc, char *argv[]) {
   precalc_rgb_palettes(weight_red, weight_green, weight_blue);
 
   // Simple signal handling (temporarily disable complex threading signal handling)
-  log_info("SERVER: Setting up simple signal handlers...");
+  log_debug("Setting up simple signal handlers...");
 
   // Handle Ctrl+C for cleanup
   platform_signal(SIGINT, sigint_handler);
@@ -630,7 +578,7 @@ int server_main(int argc, char *argv[]) {
   char port_str[16];
   SAFE_SNPRINTF(port_str, sizeof(port_str), "%d", port);
 
-  log_info("SERVER: Resolving bind address '%s' port %s...", opt_address, port_str);
+  log_debug("Resolving bind address '%s' port %s...", opt_address, port_str);
   int getaddr_result = getaddrinfo(opt_address, port_str, &hints, &res);
   if (getaddr_result != 0) {
     // Try IPv4 fallback if IPv6 resolution fails
@@ -639,9 +587,9 @@ int server_main(int argc, char *argv[]) {
     if (getaddr_result != 0) {
       FATAL(ERROR_NETWORK, "Failed to resolve bind address '%s': %s", opt_address, gai_strerror(getaddr_result));
     }
-    log_info("SERVER: Using IPv4 binding (address family: AF_INET)");
+    log_debug("Using IPv4 binding (address family: AF_INET)");
   } else {
-    log_info("SERVER: Using dual-stack IPv6 binding (address family: AF_INET6)");
+    log_debug("Using dual-stack IPv6 binding (address family: AF_INET6)");
   }
 
   // Copy resolved address to serv_addr
@@ -672,7 +620,7 @@ int server_main(int argc, char *argv[]) {
       log_warn("Failed to set IPV6_V6ONLY=0 (dual-stack mode): %s", SAFE_STRERROR(errno));
       log_warn("Server may only accept IPv6 connections");
     } else {
-      log_info("SERVER: Dual-stack mode enabled (IPv6 + IPv4-mapped addresses)");
+      log_debug("Dual-stack mode enabled (IPv6 + IPv4-mapped addresses)");
     }
   }
 
@@ -721,22 +669,21 @@ int server_main(int argc, char *argv[]) {
   // Initialize client hash table for O(1) lookup
   g_client_manager.client_hashtable = hashtable_create();
   if (!g_client_manager.client_hashtable) {
-    LOG_ERRNO_IF_SET("Failed to create client hash table");
     FATAL(ERROR_MEMORY, "Failed to create client hash table");
   }
 
   // Initialize audio mixer (always enabled on server)
   if (!atomic_load(&g_server_should_exit)) {
-    log_info("SERVER: Initializing audio mixer for per-client audio rendering...");
+    log_debug("Initializing audio mixer for per-client audio rendering...");
     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
     if (!g_audio_mixer) {
       LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
       if (!atomic_load(&g_server_should_exit)) {
-        log_error("Failed to initialize audio mixer");
+        FATAL(ERROR_AUDIO, "Failed to initialize audio mixer");
       }
     } else {
       if (!atomic_load(&g_server_should_exit)) {
-        log_info("SERVER: Audio mixer initialized successfully for per-client audio rendering");
+        log_debug("Audio mixer initialized successfully for per-client audio rendering");
       }
     }
   }
@@ -767,7 +714,7 @@ main_loop:
     // This prevents log spam while maintaining visibility into server state
     static int last_logged_count = -1;
     if (g_client_manager.client_count != last_logged_count) {
-      log_info("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
+      log_debug("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
       last_logged_count = g_client_manager.client_count;
     }
 
@@ -878,7 +825,9 @@ main_loop:
         log_debug("Main loop: accept_with_timeout returned: client_sock=%d, errno=%d (%s)", client_sock, saved_errno,
                   client_sock < 0 ? socket_get_error_string() : "success");
 #endif
+
 #ifdef DEBUG_MEMORY
+        // Hot loop memory reporting for bug detection and sanity.
         // debug_memory_report();
 #endif
         // Clear asciichat_errno for timeouts (expected behavior)
@@ -916,7 +865,7 @@ main_loop:
 #endif
         break;
       }
-      // log_error("Network accept failed: %s", network_error_string(saved_errno));
+      // This point in code isn't an actual error and a simple TCP timeout happened. Loop.
       continue;
     }
 
@@ -929,7 +878,7 @@ main_loop:
       struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
       inet_ntop(AF_INET, &addr_in->sin_addr, client_ip, sizeof(client_ip));
       client_port = ntohs(addr_in->sin_port);
-      log_info("New client connected from %s:%d (IPv4)", client_ip, client_port);
+      log_debug("New client connected from %s:%d (IPv4)", client_ip, client_port);
     } else if (((struct sockaddr *)&client_addr)->sa_family == AF_INET6) {
       // IPv6 address
       struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
@@ -938,9 +887,9 @@ main_loop:
 
       // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
       if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
-        log_info("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
+        log_debug("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
       } else {
-        log_info("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
+        log_debug("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
       }
     } else {
       safe_snprintf(client_ip, sizeof(client_ip), "unknown");
@@ -961,7 +910,7 @@ main_loop:
       continue;
     }
 
-    log_info("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
+    log_debug("Client %d added successfully, total clients: %d", client_id, g_client_manager.client_count);
 
     // Check if we should exit after processing this client
     if (atomic_load(&g_server_should_exit)) {
@@ -1055,12 +1004,14 @@ main_loop:
   rwlock_destroy(&g_client_manager_rwlock);
   mutex_destroy(&g_client_manager.mutex);
 
+#ifdef NDEBUG
   // Clean up statistics system
   stats_cleanup();
 
   // Clean up lock debugging system
   lock_debug_print_state();
   lock_debug_cleanup();
+#endif
 
   // Close listen socket
   socket_t current_listenfd = atomic_load(&listenfd);

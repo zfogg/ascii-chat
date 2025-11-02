@@ -366,7 +366,7 @@ void *client_video_render_thread(void *arg) {
   uint32_t thread_client_id = client->client_id;
   int thread_socket = client->socket;
 
-  log_info("Video render thread: client_id=%u, socket=%d", thread_client_id, thread_socket);
+  log_debug("Video render thread: client_id=%u, socket=%d", thread_client_id, thread_socket);
 
   if (thread_socket <= 0) {
     log_error("Invalid socket (%d) in video render thread for client %u", thread_socket, thread_client_id);
@@ -380,15 +380,15 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_info("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+    log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
              desired_fps);
   } else {
-    log_info("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+    log_debug("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
              desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
-  log_info("Client %u render interval: %dms (%d FPS)", client->client_id, base_frame_interval_ms, client_fps);
+  log_debug("Client %u render interval: %dms (%d FPS)", client->client_id, base_frame_interval_ms, client_fps);
   struct timespec last_render_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
@@ -404,7 +404,7 @@ void *client_video_render_thread(void *arg) {
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
-      log_info("Video render thread stopping for client %u (g_server_should_exit)", thread_client_id);
+      log_debug("Video render thread stopping for client %u (g_server_should_exit)", thread_client_id);
       break;
     }
 
@@ -415,7 +415,7 @@ void *client_video_render_thread(void *arg) {
     should_continue = video_running && active && !shutting_down;
 
     if (!should_continue) {
-      log_info("Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, "
+      log_debug("Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, "
                "shutting_down=%d)",
                thread_client_id, video_running, active, shutting_down);
       break;
@@ -578,7 +578,7 @@ void *client_video_render_thread(void *arg) {
 
           if (elapsed_us >= 5000000) { // 5 seconds
             float actual_fps = (float)video_frame_count / ((float)elapsed_us / 1000000.0f);
-            log_info("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
+            log_debug("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
                      actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
             // Reset counters for next interval
             video_frame_count = 0;
@@ -619,7 +619,7 @@ void *client_video_render_thread(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Video render thread stopped for client %u", thread_client_id);
+  log_debug("Video render thread stopped for client %u", thread_client_id);
 #endif
 
   return NULL;
@@ -755,7 +755,7 @@ void *client_audio_render_thread(void *arg) {
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_info("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
+  log_debug("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
 #endif
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
@@ -774,7 +774,7 @@ void *client_audio_render_thread(void *arg) {
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
-      log_info("Audio render thread stopping for client %u (g_server_should_exit)", thread_client_id);
+      log_debug("Audio render thread stopping for client %u (g_server_should_exit)", thread_client_id);
       break;
     }
 
@@ -784,7 +784,7 @@ void *client_audio_render_thread(void *arg) {
                        ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
 
     if (!should_continue) {
-      log_info("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
+      log_debug("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
       break;
     }
 
@@ -861,7 +861,7 @@ void *client_audio_render_thread(void *arg) {
 
         if (elapsed_us >= 5000000) { // 5 seconds
           float actual_fps = (float)audio_packet_count / ((float)elapsed_us / 1000000.0f);
-          log_info("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id, actual_fps,
+          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id, actual_fps,
                    audio_packet_count, (float)elapsed_us / 1000000.0f);
 
           // Reset counters for next interval
@@ -891,7 +891,7 @@ void *client_audio_render_thread(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Audio render thread stopped for client %u", thread_client_id);
+  log_debug("Audio render thread stopped for client %u", thread_client_id);
 #endif
   return NULL;
 }
@@ -978,7 +978,7 @@ int create_client_render_threads(client_info_t *client) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Creating render threads for client %u", client->client_id);
+  log_debug("Creating render threads for client %u", client->client_id);
 #endif
 
   // NOTE: Mutexes are already initialized in add_client() before any threads start
@@ -1013,10 +1013,10 @@ int create_client_render_threads(client_info_t *client) {
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
-  log_info("Created audio render thread for client %u", client->client_id);
+  log_debug("Created audio render thread for client %u", client->client_id);
 
 #ifdef DEBUG_THREADS
-  log_info("Created render threads for client %u", client->client_id);
+  log_debug("Created render threads for client %u", client->client_id);
 #endif
 
   return 0;
@@ -1105,11 +1105,11 @@ int create_client_render_threads(client_info_t *client) {
  */
 void stop_client_render_threads(client_info_t *client) {
   if (!client) {
-    log_error("Cannot destroy render threads for NULL client");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
     return;
   }
 
-  log_info("stop_client_render_threads: Starting for client %u", client->client_id);
+  log_debug("Starting render thread for client %u", client->client_id);
 
   // Signal threads to stop (atomic operations, no mutex needed)
   atomic_store(&client->video_render_thread_running, false);
@@ -1120,7 +1120,7 @@ void stop_client_render_threads(client_info_t *client) {
   bool is_shutting_down = atomic_load(&g_server_should_exit);
 
   if (ascii_thread_is_initialized(&client->video_render_thread)) {
-    log_info("stop_client_render_threads: Joining video render thread for client %u", client->client_id);
+    log_debug("Joining video render thread for client %u", client->client_id);
     int result;
     if (is_shutting_down) {
       // During shutdown, give thread a brief chance to exit cleanly with timeout
@@ -1134,10 +1134,10 @@ void stop_client_render_threads(client_info_t *client) {
         // Continue with audio thread join and cleanup instead of returning early
       }
     } else {
-      log_info("stop_client_render_threads: Calling ascii_thread_join for video thread of client %u",
+      log_debug("Calling ascii_thread_join for video thread of client %u",
                client->client_id);
       result = ascii_thread_join(&client->video_render_thread, NULL);
-      log_info("stop_client_render_threads: ascii_thread_join returned %d for video thread of client %u", result,
+      log_debug("ascii_thread_join returned %d for video thread of client %u", result,
                client->client_id);
     }
 
@@ -1192,6 +1192,6 @@ void stop_client_render_threads(client_info_t *client) {
   // mutex_destroy(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_info("Successfully destroyed render threads for client %u", client->client_id);
+  log_debug("Successfully destroyed render threads for client %u", client->client_id);
 #endif
 }
