@@ -553,8 +553,7 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
   const size_t max_char_bytes = 4; // Max UTF-8 character size
   const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
-  char *output;
-  output = len = SAFE_MALLOC(char *);
+  char *output = SAFE_MALLOC(len, char *);
 
   char *pos = output;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
