@@ -2288,6 +2288,15 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 COMMAND ${CMAKE_SOURCE_DIR}/cmake/clean_comment.sh $<TARGET_FILE:ascii-chat>
                 COMMENT "Stripping symbols and deduplicating .comment section"
             )
+            # Remove embedded file paths from binary using bash script (much faster than PowerShell)
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
+                    "$<TARGET_FILE:ascii-chat>"
+                    "${CMAKE_SOURCE_DIR}"
+                    "${CMAKE_BINARY_DIR}"
+                COMMENT "Removing embedded file paths from ascii-chat binary"
+                DEPENDS "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
+            )
         else()
             # On Windows, use strip to remove debug info and paths
             # Note: Windows PE format doesn't have .comment sections
