@@ -169,7 +169,7 @@ if(NOT EXISTS "${MUSL_PREFIX}/lib/libasound.a")
         STAMP_DIR ${FETCHCONTENT_BASE_DIR}/alsa-lib-musl/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
+        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libasound.a
