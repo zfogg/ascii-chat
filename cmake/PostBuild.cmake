@@ -31,11 +31,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Windows (PE) and macOS (Mach-O) don't have .comment sections
         if(UNIX AND NOT APPLE AND NOT WIN32)
             add_custom_command(TARGET ascii-chat POST_BUILD
-                # Strip all symbols (removes debug info and paths)
-                COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
-                # Clean .comment section (remove duplicates, keep version string)
+                # Clean .comment section BEFORE stripping (remove duplicates, keep version string)
                 COMMAND ${CMAKE_SOURCE_DIR}/cmake/clean_comment.sh $<TARGET_FILE:ascii-chat>
-                COMMENT "Stripping symbols and deduplicating .comment section"
+                # Strip symbols but keep custom sections
+                # Use --strip-debug instead of --strip-unneeded to preserve custom sections
+                COMMAND ${STRIP_EXECUTABLE} --strip-debug --keep-section=.comment --keep-section=.ascii_chat --keep-section=.version $<TARGET_FILE:ascii-chat>
+                COMMENT "Deduplicating .comment section and stripping debug symbols"
             )
             # Remove embedded file paths from binary using bash script (much faster than PowerShell)
             # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND

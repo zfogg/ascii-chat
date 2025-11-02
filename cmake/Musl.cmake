@@ -124,10 +124,12 @@ function(configure_musl_post_project)
 
     # Linker flags for static linking with musl
     # Use crt1.o for regular static (not rcrt1.o which is for static-PIE)
+    # Force retention of custom sections with -Wl,--undefined to prevent LTO from removing them
     set(CMAKE_EXE_LINKER_FLAGS
-        "-target x86_64-linux-musl -static -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/crt1.o ${MUSL_LIBDIR}/crti.o"
+        "-target x86_64-linux-musl -static -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/crt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section"
+        CACHE STRING "Linker flags for musl static linking" FORCE
     )
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" CACHE STRING "Shared linker flags for musl" FORCE)
 
     # Link with musl libc and libgcc at the end
     link_libraries(c "${GCC_LIBDIR}/libgcc.a")
