@@ -2,7 +2,7 @@
 
 /**
  * @file tests/common.h
- * @ingroup platform
+ * @ingroup testing
  * @brief Common test utilities and environment detection
  *
  * This header provides common utilities and helpers for writing ASCII-Chat tests.

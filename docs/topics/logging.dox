@@ -1,0 +1,261 @@
+/**
+ * @page topic_logging Logging System
+ * @ingroup logging
+ *
+ * @section logging_overview Overview
+ *
+ * The Logging System provides structured, level-based logging with rate limiting,
+ * file output, and thread-safe operation for ASCII-Chat. It supports both console
+ * and file logging with configurable log levels.
+ *
+ * **Implementation**: lib/logging.h
+ *
+ * **Key Features**:
+ * - Five log levels (DEBUG, INFO, WARN, ERROR, FATAL)
+ * - Rate-limited logging for high-frequency messages
+ * - File and console output support
+ * - Thread-safe logging with mutex protection
+ * - Automatic timestamp and source location tracking
+ * - Colored console output (when supported)
+ * - Runtime log level configuration
+ *
+ * @section logging_levels Log Levels
+ *
+ * **DEBUG (0)**:
+ * - Detailed diagnostic information
+ * - Only compiled in debug builds
+ * - Use for verbose debugging output
+ *
+ * **INFO (1)**:
+ * - General informational messages
+ * - Normal operation events
+ * - User-facing status updates
+ *
+ * **WARN (2)**:
+ * - Warning conditions
+ * - Non-critical issues
+ * - Potential problems
+ *
+ * **ERROR (3)**:
+ * - Error conditions
+ * - Operation failures
+ * - Recoverable errors
+ *
+ * **FATAL (4)**:
+ * - Fatal errors
+ * - Unrecoverable conditions
+ * - Application termination
+ *
+ * @section logging_usage Basic Usage
+ *
+ * @subsection logging_basic Basic Logging
+ *
+ * **Log Messages**:
+ * @code{.c}
+ * log_debug("Processing frame %d", frame_number);
+ * log_info("Client connected: %s:%d", ip, port);
+ * log_warn("Buffer nearly full: %zu/%zu", used, capacity);
+ * log_error("Failed to send packet: %s", error_msg);
+ * log_fatal("Cannot initialize crypto: %s", reason);
+ * @endcode
+ *
+ * **Format Specifiers**:
+ * @code{.c}
+ * log_info("Integer: %d", 42);
+ * log_info("String: %s", "hello");
+ * log_info("Pointer: %p", ptr);
+ * log_info("Size: %zu bytes", size);
+ * log_info("Hex: 0x%08x", value);
+ * @endcode
+ *
+ * @subsection logging_rate_limiting Rate-Limited Logging
+ *
+ * **Rate Limiting** (prevents log spam in tight loops):
+ * @code{.c}
+ * // Log at most once per second (1,000,000 microseconds)
+ * for (int i = 0; i < 1000000; i++) {
+ *     log_debug_every(1000000, "Processing item %d", i);
+ * }
+ *
+ * // Log at most once per 5 seconds
+ * while (video_running) {
+ *     log_info_every(5000000, "Video frames processed: %d", frame_count);
+ *     process_frame();
+ * }
+ * @endcode
+ *
+ * **Available Rate-Limited Macros**:
+ * - log_debug_every(usec, ...)
+ * - log_info_every(usec, ...)
+ * - log_warn_every(usec, ...)
+ * - log_error_every(usec, ...)
+ *
+ * @section logging_configuration Configuration
+ *
+ * @subsection logging_level Setting Log Level
+ *
+ * **Runtime Configuration**:
+ * @code{.c}
+ * // Set log level to DEBUG
+ * set_log_level(LOG_LEVEL_DEBUG);
+ *
+ * // Set log level to INFO (hide debug messages)
+ * set_log_level(LOG_LEVEL_INFO);
+ *
+ * // Set log level to ERROR (only errors and fatal)
+ * set_log_level(LOG_LEVEL_ERROR);
+ * @endcode
+ *
+ * **Environment Variable**:
+ * @code{.sh}
+ * # Set log level via environment
+ * export LOG_LEVEL=0  # DEBUG
+ * export LOG_LEVEL=1  # INFO
+ * export LOG_LEVEL=2  # WARN
+ * export LOG_LEVEL=3  # ERROR
+ * export LOG_LEVEL=4  # FATAL
+ *
+ * # Run with debug logging
+ * LOG_LEVEL=0 ./bin/ascii-chat server
+ * @endcode
+ *
+ * @subsection logging_file_output File Output
+ *
+ * **Configure File Logging**:
+ * @code{.c}
+ * // Enable logging to file
+ * set_log_file("/tmp/ascii-chat-server.log");
+ *
+ * // Logs now go to both console and file
+ * log_info("This appears in both console and file");
+ *
+ * // Close log file
+ * close_log_file();
+ * @endcode
+ *
+ * **Command-line Option**:
+ * @code{.sh}
+ * # Log to file via command line
+ * ./bin/ascii-chat server --log-file=/tmp/server.log
+ * ./bin/ascii-chat client --log-file=/tmp/client.log
+ * @endcode
+ *
+ * @section logging_format Output Format
+ *
+ * **Log Message Format**:
+ * ```
+ * [TIMESTAMP] LEVEL [file:line] message
+ * ```
+ *
+ * **Example Output**:
+ * ```
+ * [2025-01-15 14:23:45] DEBUG [server.c:234] Starting video capture thread
+ * [2025-01-15 14:23:45] INFO  [network.c:456] Client connected: 192.168.1.100:54321
+ * [2025-01-15 14:23:46] WARN  [audio.c:123] Audio buffer 80% full
+ * [2025-01-15 14:23:47] ERROR [crypto.c:789] Handshake failed: invalid signature
+ * ```
+ *
+ * **Console Colors** (ANSI terminals):
+ * - DEBUG: Gray
+ * - INFO: White
+ * - WARN: Yellow
+ * - ERROR: Red
+ * - FATAL: Bold Red
+ *
+ * @section logging_threading Thread Safety
+ *
+ * **Mutex Protection**:
+ * - All logging operations are protected by a global mutex
+ * - Safe for concurrent logging from multiple threads
+ * - No output interleaving
+ *
+ * **Thread Identification**:
+ * - Thread ID automatically captured (debug builds)
+ * - Helps trace multi-threaded execution
+ *
+ * **Example Multi-threaded Logging**:
+ * @code{.c}
+ * void* worker_thread(void *arg) {
+ *     log_info("Worker thread started");  // Thread-safe
+ *
+ *     for (int i = 0; i < 1000; i++) {
+ *         // Rate-limited, thread-safe
+ *         log_debug_every(1000000, "Processing item %d", i);
+ *     }
+ *
+ *     log_info("Worker thread finished");
+ *     return NULL;
+ * }
+ * @endcode
+ *
+ * @section logging_performance Performance Considerations
+ *
+ * **Rate Limiting**:
+ * - Use log_*_every() in high-frequency code paths
+ * - Prevents log spam and performance degradation
+ * - Minimal overhead when rate limit is active
+ *
+ * **File I/O**:
+ * - File logging adds I/O overhead
+ * - Consider async file writing for high-throughput
+ * - Use buffered output for better performance
+ *
+ * **String Formatting**:
+ * - Avoid expensive formatting in hot paths
+ * - Use rate limiting for frequent messages
+ * - Consider conditional compilation for debug logs
+ *
+ * @section logging_best_practices Best Practices
+ *
+ * **DO**:
+ * - Use appropriate log levels
+ * - Use rate limiting in tight loops
+ * - Include relevant context (IDs, values)
+ * - Use structured messages
+ * - Log errors with error codes
+ *
+ * **DON'T**:
+ * - Don't use printf() directly (use log_*() instead)
+ * - Don't log in tight loops without rate limiting
+ * - Don't log sensitive data (passwords, keys)
+ * - Don't use DEBUG level for production
+ * - Don't log every iteration of a loop
+ *
+ * **Examples**:
+ * @code{.c}
+ * // ✅ GOOD - Rate limited
+ * for (int i = 0; i < 1000000; i++) {
+ *     log_debug_every(1000000, "Processed %d items", i);
+ * }
+ *
+ * // ❌ BAD - Logs 1 million times!
+ * for (int i = 0; i < 1000000; i++) {
+ *     log_debug("Processing item %d", i);
+ * }
+ *
+ * // ✅ GOOD - Contextual error message
+ * log_error("Failed to send packet to client %u: %s", client_id, error_msg);
+ *
+ * // ❌ BAD - Generic message
+ * log_error("Send failed");
+ * @endcode
+ *
+ * @section logging_integration Integration with Error System
+ *
+ * **Automatic Error Logging**:
+ * - SET_ERRNO() macros automatically log errors
+ * - Error context included in log messages
+ * - File/line/function captured automatically
+ *
+ * **Example**:
+ * @code{.c}
+ * if (socket_fd < 0) {
+ *     // Automatically logs: "ERROR: Failed to create socket"
+ *     return SET_ERRNO(ERROR_NETWORK_SOCKET, "Failed to create socket");
+ * }
+ * @endcode
+ *
+ * @see logging.h
+ * @see asciichat_errno.h
+ * @see common.h
+ */

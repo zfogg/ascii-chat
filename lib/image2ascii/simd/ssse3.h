@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file ssse3.h
+ * @file image2ascii/simd/ssse3.h
  * @ingroup image2ascii
  * @brief SSSE3-optimized ASCII rendering functions
  *
@@ -9,18 +9,16 @@
  * optimized functions for converting images to ASCII art on x86-64 CPUs.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
+ * @date August 2025
  */
 
-#include "common.h"
-
 #if SIMD_SUPPORT_SSSE3
+#if (!defined(__SSSE3__) && !defined(_M_X64) && !defined(_M_AMD64))
+#error "SSSE3 support required"
+#endif
 #ifdef _WIN32
 // Windows: Use immintrin.h with proper feature detection
 // MSVC doesn't define __SSSE3__ but x64 always has it
-#if !defined(__SSSE3__) && !defined(_M_X64) && !defined(_M_AMD64)
-#error "SSSE3 support required"
-#endif
 #include <immintrin.h>
 #else
 #include <tmmintrin.h>

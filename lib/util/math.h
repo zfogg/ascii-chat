@@ -1,7 +1,8 @@
 #pragma once
 
 /**
- * @file math.h
+ * @file util/math.h
+ * @ingroup util
  * @brief Mathematical Utility Functions
  *
  * This header provides mathematical utilities for image processing, including

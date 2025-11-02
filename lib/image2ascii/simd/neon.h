@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file neon.h
+ * @file image2ascii/simd/neon.h
  * @ingroup image2ascii
  * @brief NEON-optimized ASCII rendering functions
  *
@@ -9,25 +9,17 @@
  * converting images to ASCII art on ARM processors.
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
+ * @date August 2025
  */
 
 #include <stdint.h>
 #include <stddef.h>
 
-#include "../image.h"
-
-#if (defined(SIMD_SUPPORT_NEON) || defined(__ARM_NEON) || defined(__aarch64__))
-#include <arm_neon.h>
-#endif // SIMD_SUPPORT_NEON || __ARM_NEON || __aarch64__
-
-#if (defined(__ARM_NEON) || defined(__aarch64__))
-#ifndef SIMD_SUPPORT_NEON
-#define SIMD_SUPPORT_NEON 1
-#endif
-#endif // __ARM_NEON || __aarch64__
-
 #if SIMD_SUPPORT_NEON
+#if (!defined(__ARM_NEON) && !defined(__aarch64__))
+#error "NEON support required"
+#endif
+#include <arm_neon.h>
 
 /**
  * @brief Quantize RGB to 256-color palette with dithering (NEON)

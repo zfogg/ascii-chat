@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file rwlock.h
+ * @file platform/rwlock.h
  * @ingroup platform
  * @brief Cross-platform read-write lock interface for ASCII-Chat
  *

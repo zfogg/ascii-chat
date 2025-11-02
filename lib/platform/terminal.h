@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file terminal.h
+ * @file platform/terminal.h
  * @ingroup platform
  * @brief Cross-platform terminal interface for ASCII-Chat
  *

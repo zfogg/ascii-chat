@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file password.h
+ * @file platform/password.h
  * @ingroup platform
  * @brief Cross-platform password prompting utilities
  *

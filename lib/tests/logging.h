@@ -3,7 +3,7 @@
 
 /**
  * @file tests/logging.h
- * @ingroup platform
+ * @ingroup testing
  * @brief Test logging control utilities
  *
  * This header provides utilities for controlling logging output during tests.

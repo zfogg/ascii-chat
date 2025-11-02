@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file util.h
+ * @file util/util.h
  * @defgroup util Utilities
  * @ingroup util
  * @brief Master Utility Header

@@ -1,7 +1,8 @@
 #pragma once
 
 /**
- * @file parsing.h
+ * @file util/parsing.h
+ * @ingroup util
  * @brief Safe Parsing Utilities
  *
  * This header provides safe, validated parsing utilities for protocol message

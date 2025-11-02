@@ -2,548 +2,1490 @@
  * @page topic_platform Platform Abstraction Layer
  * @ingroup platform
  *
- * The platform abstraction layer provides a unified cross-platform API for threading,
- * synchronization, networking, terminal I/O, and system operations across Windows, Linux,
- * and macOS.
- *
  * @section platform_overview Overview
  *
- * ASCII-Chat runs on three major platforms with different native APIs:
- * - **Windows**: Win32 API, Winsock2, Console API
- * - **Linux**: POSIX pthreads, Berkeley sockets, termios
- * - **macOS**: POSIX pthreads, Berkeley sockets, termios, AVFoundation
+ * The Platform Abstraction Layer is a comprehensive cross-platform abstraction module
+ * that enables ASCII-Chat to run seamlessly on Windows, Linux, and macOS. This module
+ * provides a unified API for platform-specific functionality, allowing application code
+ * to remain completely platform-independent.
  *
- * The platform layer (lib/platform/) provides:
- * - Single unified API for all platforms
- * - No #ifdef in application code
- * - Platform-specific optimizations where beneficial
- * - Consistent error handling across platforms
- * - Thread-safe operations with proper synchronization
+ * @section platform_philosophy Design Philosophy
  *
- * Architecture:
- * @code
- * Application Code (src/client.c, src/server.c)
- *         ↓
- * Platform API (lib/platform/abstraction.h)
- *         ↓
- *    ┌────┴────┬────────────┐
- *    ↓         ↓            ↓
- * Windows   Linux       macOS
- * (Win32)   (POSIX)     (POSIX + Darwin)
- * @endcode
+ * The platform abstraction layer embodies a comprehensive philosophy focused on clean
+ * separation of concerns, performance, safety, and developer experience. This philosophy
+ * drives all design decisions in the platform module.
  *
- * @section platform_threads Threading API
+ * @subsection platform_philosophy_unity Unified API, Zero #ifdefs
  *
- * Cross-platform thread creation and management with consistent semantics:
+ * **No platform conditionals in application code**: The entire application codebase
+ * (src/client.c, src/server.c, and all library code) uses the platform abstraction API
+ * exclusively. There are no `#ifdef _WIN32` or `#ifdef __linux__` conditionals anywhere
+ * in application code—all platform differences are hidden behind the abstraction layer.
  *
- * **Thread Types**:
- * - ascii_thread_t: Platform-specific thread handle
- *   - Windows: HANDLE (from CreateThread)
- *   - POSIX: pthread_t (from pthread_create)
+ * This approach provides:
+ * - **Clean separation of concerns**: Platform-specific code is isolated to lib/platform/
+ * - **Improved readability**: Application code focuses on business logic, not platform quirks
+ * - **Easier maintenance**: Platform-specific bugs are fixed in one location
+ * - **Better testability**: Platform abstraction can be mocked for unit tests
  *
- * **Thread Creation**:
+ * **Example of the philosophy**:
  * @code{.c}
- * typedef void* (*ascii_thread_func_t)(void *arg);
- *
- * asciichat_error_t ascii_thread_create(
- *     ascii_thread_t *thread,
- *     ascii_thread_func_t func,
- *     void *arg
- * );
+ * // Application code - NO #ifdefs needed!
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * if (sock == INVALID_SOCKET_VALUE) {
+ *     // Handle error - works identically on all platforms
+ * }
  * @endcode
  *
- * Implementation details:
- * - **Windows**: Uses CreateThread with default stack size (1 MB)
- * - **POSIX**: Uses pthread_create with PTHREAD_CREATE_JOINABLE
- * - Both: Thread function signature normalized to void* (*)(void*)
- * - Both: Error checking on all platform calls
- *
- * **Thread Joining**:
+ * Instead of scattered platform-specific code like:
  * @code{.c}
- * asciichat_error_t ascii_thread_join(ascii_thread_t thread, void **retval);
+ * // BAD: Platform-specific code scattered everywhere
+ * #ifdef _WIN32
+ * SOCKET sock = WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, 0);
+ * if (sock == INVALID_SOCKET) { ... }
+ * #else
+ * int sock = socket(AF_INET, SOCK_STREAM, 0);
+ * if (sock == -1) { ... }
+ * #endif
  * @endcode
  *
- * - **Windows**: WaitForSingleObject(thread, INFINITE) + GetExitCodeThread
- * - **POSIX**: pthread_join(thread, retval)
- * - Blocks until thread terminates
- * - Returns thread's return value via retval pointer
+ * @subsection platform_philosophy_performance Performance-First Abstraction
  *
- * **Thread Detaching**:
+ * **Platform-specific optimizations preserved**: Unlike many abstraction layers that
+ * prioritize consistency over performance, ASCII-Chat's platform layer chooses the
+ * best primitive for each platform:
+ *
+ * - **Windows**: Uses CRITICAL_SECTION (fastest user-mode mutex, ~100ns overhead)
+ *   and SRWLOCK (zero-overhead read-write lock) for optimal performance
+ * - **POSIX**: Uses pthread_mutex_t and pthread_rwlock_t (standard, well-optimized
+ *   implementations) for maximum compatibility and good performance
+ *
+ * The abstraction provides a unified interface but doesn't compromise on performance.
+ * Each platform uses its native, optimized synchronization primitive rather than
+ * emulating one platform's primitives on another (which would add overhead).
+ *
+ * **Performance characteristics**:
+ * - **Zero overhead in release builds**: Debug tracking disabled, direct function calls
+ * - **Minimal abstraction overhead**: No virtual dispatch, no indirection layers
+ * - **Platform-optimized**: Uses fastest primitive for each operation on each platform
+ *
+ * @subsection platform_philosophy_safety Safety by Default
+ *
+ * **Thread-safe, bounds-checked operations**: All platform functions are designed with
+ * safety in mind:
+ *
+ * - **String operations** (`SAFE_STRERROR`, `SAFE_SSCANF`, `SAFE_STRNCPY`) ensure null
+ *   termination and buffer bounds checking, preventing entire classes of vulnerabilities
+ * - **Thread-safe error messages**: No static buffer races, uses thread-local storage
+ *   where needed (Windows) or reentrant functions (POSIX)
+ * - **Consistent error handling**: Unified `asciichat_error_t` return codes across all
+ *   platforms, eliminating platform-specific error code mapping in application code
+ * - **Resource cleanup helpers**: Prevents leaks through consistent cleanup patterns
+ *
+ * The platform layer takes responsibility for safety, so application code doesn't need
+ * to constantly check for platform-specific pitfalls (e.g., Windows' non-thread-safe
+ * `strerror()` vs POSIX's thread-safe `strerror_r()`).
+ *
+ * **Safety guarantees**:
+ * - All string operations guarantee null termination
+ * - All buffer operations are bounds-checked
+ * - All synchronization primitives are thread-safe
+ * - All error handling is thread-safe
+ *
+ * @subsection platform_philosophy_consistency Consistent Semantics
+ *
+ * **Unified behavior across platforms**: The platform layer normalizes differences
+ * that don't matter to the application:
+ *
+ * - **Type unification**: Socket handles are `socket_t` (typedef'd to `SOCKET` on Windows,
+ *   `int` on POSIX), eliminating type confusion
+ * - **Error code normalization**: Error codes use `errno` convention everywhere
+ *   (Windows errno mapping in windows_errno.h), making error handling consistent
+ * - **Function signature normalization**: Thread function signature normalized to
+ *   `void* (*)(void*)` on all platforms, eliminating signature mismatches
+ * - **Flag normalization**: File operations use POSIX-style flags (`O_RDONLY`, `O_CREAT`)
+ *   with Windows translation, maintaining familiar POSIX semantics
+ *
+ * Application code can assume consistent semantics without worrying about platform
+ * differences in function signatures, error handling, or data types.
+ *
+ * @subsection platform_philosophy_minimalism Minimal Abstraction Surface
+ *
+ * **Expose only what's needed**: The platform layer doesn't try to abstract everything.
+ * Instead, it provides a focused API that covers only what ASCII-Chat needs:
+ *
+ * - Threading (thread creation, joining, detaching)
+ * - Synchronization (mutexes, rwlocks, condition variables)
+ * - Networking (sockets with dual-stack IPv6/IPv4 support)
+ * - Terminal I/O (raw mode, cursor control, size detection)
+ * - System utilities (environment variables, safe string functions, error handling)
+ * - Debugging support (backtraces, symbol resolution)
+ *
+ * Complex platform features that ASCII-Chat doesn't use (e.g., Windows COM, macOS
+ * CoreFoundation, Linux-specific ioctls) are left out entirely. This keeps the
+ * abstraction layer small, maintainable, and focused.
+ *
+ * **Benefits of minimalism**:
+ * - **Faster compilation**: Fewer headers, smaller API surface
+ * - **Easier maintenance**: Less code to maintain, fewer edge cases
+ * - **Better focus**: API designed for ASCII-Chat's specific needs
+ *
+ * @subsection platform_philosophy_future_proofing Future Platform Support
+ *
+ * **Designed for extensibility**: The architecture makes it straightforward to add
+ * support for new platforms:
+ *
+ * 1. Implement platform-specific code in `lib/platform/newplatform/`
+ * 2. Add platform detection macros in `abstraction.h`
+ * 3. Wire up the implementations (most functions have the same signature)
+ *
+ * The abstraction layer's clean separation means adding FreeBSD, OpenBSD, or other
+ * POSIX-like platforms requires minimal changes to existing code. For non-POSIX platforms,
+ * the modular structure makes it clear what needs to be implemented.
+ *
+ * @subsection platform_philosophy_summary Philosophy Summary
+ *
+ * The platform abstraction layer prioritizes:
+ *
+ * 1. **Developer Experience**: Zero #ifdefs in application code, consistent API
+ * 2. **Performance**: Platform-optimized implementations, zero overhead in release builds
+ * 3. **Safety**: Bounds-checked operations, thread-safe by default
+ * 4. **Maintainability**: Clear separation of concerns, minimal API surface
+ * 5. **Portability**: Easy to add new platforms, consistent semantics
+ *
+ * This philosophy ensures that ASCII-Chat can run efficiently on multiple platforms
+ * while maintaining clean, readable, and maintainable application code.
+ *
+ * **Supported Platforms**:
+ *
+ * - **Windows**: Windows 10+ (uses Win32 API, Winsock2, Critical Sections, SRW Locks)
+ * - **Linux**: POSIX-compliant systems (uses pthreads, BSD sockets, termios)
+ * - **macOS**: POSIX-compliant (uses pthreads, BSD sockets, termios)
+ *
+ * @section platform_architecture Architecture
+ *
+ * @subsection platform_structure File Structure
+ *
+ * The platform abstraction layer is organized into a modular structure:
+ *
+ * ```
+ * lib/platform/
+ * ├── abstraction.h          # Main header - includes all component headers
+ * ├── abstraction.c          # Common implementation (minimal)
+ * ├── init.h                 # Platform initialization and static init helpers
+ * ├── internal.h             # Internal helpers for implementation files
+ * ├── thread.h               # Thread management interface
+ * ├── mutex.h                # Mutex interface
+ * ├── rwlock.h               # Read-write lock interface
+ * ├── cond.h                 # Condition variable interface
+ * ├── socket.h               # Socket operations interface
+ * ├── terminal.h             # Terminal I/O interface
+ * ├── system.h               # System functions interface
+ * ├── string.h               # String manipulation interface
+ * ├── file.h                 # File I/O interface
+ * ├── password.h             # Password input interface
+ * ├── symbols.h/c            # Symbol resolution for backtraces
+ * ├── posix/                 # POSIX implementation (Linux/macOS)
+ * │   ├── thread.c           # POSIX pthread implementation
+ * │   ├── mutex.c            # POSIX mutex implementation
+ * │   ├── rwlock.c           # POSIX read-write lock implementation
+ * │   ├── cond.c             # POSIX condition variable implementation
+ * │   ├── terminal.c         # POSIX terminal I/O (termios) implementation
+ * │   ├── system.c           # POSIX system functions implementation
+ * │   ├── socket.c           # POSIX socket (BSD) implementation
+ * │   ├── string.c           # POSIX string functions
+ * │   └── symbols.c          # POSIX backtrace (execinfo.h) implementation
+ * └── windows/               # Windows implementation
+ *     ├── thread.c           # Windows thread (CreateThread) implementation
+ *     ├── mutex.c            # Windows mutex (Critical Section) implementation
+ *     ├── rwlock.c           # Windows read-write lock (SRW Lock) implementation
+ *     ├── cond.c             # Windows condition variable implementation
+ *     ├── terminal.c         # Windows terminal (Console API) implementation
+ *     ├── system.c           # Windows system functions implementation
+ *     ├── socket.c           # Windows socket (Winsock2) implementation
+ *     ├── string.c           # Windows string functions (strsafe.h)
+ *     ├── symbols.c          # Windows backtrace (StackWalk64) implementation
+ *     ├── getopt.c/h         # Windows getopt implementation
+ *     └── password.c         # Windows password input (secure input)
+ * ```
+ *
+ * @subsection platform_modular_design Modular Design
+ *
+ * The platform abstraction uses a modular header design where each component has its
+ * own header file:
+ *
+ * - **abstraction.h**: Main umbrella header that includes all component headers
+ * - **Individual headers**: Each component (thread, mutex, socket, etc.) has its own
+ *   header for fine-grained inclusion
+ * - **Platform directories**: `posix/` and `windows/` contain platform-specific
+ *   implementations that are compiled based on the target platform
+ *
+ * This modular design allows:
+ *
+ * - Selective inclusion: Include only what you need
+ * - Clear organization: Each component is self-contained
+ * - Easy maintenance: Changes to one component don't affect others
+ * - Better compile times: Only compile platform-specific files for the target OS
+ *
+ * @section platform_components Components
+ *
+ * The platform abstraction layer provides comprehensive APIs for:
+ *
+ * @subsection platform_threading Threading Primitives
+ *
+ * **Thread Management** (`thread.h`):
+ *
+ * Provides cross-platform thread creation, management, and lifecycle operations.
+ *
  * @code{.c}
- * asciichat_error_t ascii_thread_detach(ascii_thread_t thread);
+ * // Create a thread
+ * asciithread_t thread;
+ * int result = ascii_thread_create(&thread, worker_function, arg);
+ *
+ * // Wait for thread completion
+ * ascii_thread_join(&thread, NULL);
+ *
+ * // Get current thread ID
+ * uint64_t thread_id = ascii_thread_current_id();
  * @endcode
  *
- * - Marks thread as detached (resources freed automatically on exit)
- * - Cannot join a detached thread
- * - Used for fire-and-forget background tasks
+ * **Key Features**:
+ * - Thread creation with function arguments
+ * - Thread joining with optional return value retrieval
+ * - Thread ID operations (equality, current ID)
+ * - Thread initialization state checking
  *
- * **Thread Identification**:
- * @code{.c}
- * ascii_thread_t ascii_thread_self(void);
- * int ascii_thread_equal(ascii_thread_t t1, ascii_thread_t t2);
- * @endcode
+ * **Platform Implementations**:
+ * - **POSIX**: Uses `pthread_create()`, `pthread_join()`, `pthread_self()`
+ * - **Windows**: Uses `CreateThread()`, `WaitForSingleObject()`, `GetThreadId()`
  *
- * - Get current thread ID
- * - Compare two thread IDs for equality
+ * @subsection platform_synchronization Synchronization Primitives
  *
- * @section platform_sync Synchronization Primitives
+ * **Mutexes** (`mutex.h`):
  *
- * @subsection platform_mutex Mutexes
+ * Provides mutual exclusion locks for protecting shared resources.
  *
- * Mutual exclusion locks with consistent semantics:
- *
- * **Mutex Types**:
- * - mutex_t: Platform-specific mutex type
- *   - Windows: CRITICAL_SECTION (user-mode, fastest)
- *   - POSIX: pthread_mutex_t (PTHREAD_MUTEX_DEFAULT)
- *
- * **Initialization**:
  * @code{.c}
  * mutex_t mutex;
- * asciichat_error_t mutex_init(mutex_t *mutex);
+ * mutex_init(&mutex);
+ *
+ * mutex_lock(&mutex);
+ * // Critical section
+ * mutex_unlock(&mutex);
+ *
+ * mutex_destroy(&mutex);
  * @endcode
  *
- * - **Windows**: InitializeCriticalSection
- * - **POSIX**: pthread_mutex_init with NULL attributes (default)
- * - Default: Non-recursive (deadlock if same thread locks twice)
+ * **Key Features**:
+ * - Blocking and non-blocking lock acquisition
+ * - Debug-enabled macros with lock tracking (in debug builds)
+ * - Zero-overhead in release builds (calls implementation directly)
  *
- * **Locking Operations**:
- * @code{.c}
- * asciichat_error_t mutex_lock(mutex_t *mutex);    // Blocking
- * asciichat_error_t mutex_trylock(mutex_t *mutex); // Non-blocking
- * asciichat_error_t mutex_unlock(mutex_t *mutex);
- * @endcode
+ * **Platform Implementations**:
+ * - **POSIX**: Uses `pthread_mutex_t` with `pthread_mutex_lock()`
+ * - **Windows**: Uses `CRITICAL_SECTION` with `EnterCriticalSection()`
  *
- * - mutex_lock: Blocks until lock acquired
- * - mutex_trylock: Returns immediately (ERROR_BUSY if already locked)
- * - mutex_unlock: Must be called by lock owner
+ * **Read-Write Locks** (`rwlock.h`):
  *
- * **Cleanup**:
- * @code{.c}
- * asciichat_error_t mutex_destroy(mutex_t *mutex);
- * @endcode
+ * Provides reader-writer locks for concurrent read access with exclusive write access.
  *
- * - **Windows**: DeleteCriticalSection
- * - **POSIX**: pthread_mutex_destroy
- * - Must not be locked when destroyed
- *
- * @subsection platform_rwlock Read-Write Locks
- *
- * Allows multiple readers OR single writer:
- *
- * **RWLock Types**:
- * - rwlock_t: Platform-specific read-write lock
- *   - Windows: SRWLOCK (Slim Reader/Writer Lock)
- *   - POSIX: pthread_rwlock_t
- *
- * **Operations**:
  * @code{.c}
  * rwlock_t rwlock;
  * rwlock_init(&rwlock);
  *
- * // Reader
- * rwlock_rdlock(&rwlock);  // Multiple readers allowed
- * // ... read shared data ...
+ * // Multiple readers can acquire simultaneously
+ * rwlock_rdlock(&rwlock);
+ * // Read shared data
  * rwlock_unlock(&rwlock);
  *
- * // Writer
- * rwlock_wrlock(&rwlock);  // Exclusive access
- * // ... modify shared data ...
+ * // Exclusive writer access
+ * rwlock_wrlock(&rwlock);
+ * // Modify shared data
  * rwlock_unlock(&rwlock);
  *
  * rwlock_destroy(&rwlock);
  * @endcode
  *
- * Properties:
- * - Multiple readers can hold lock simultaneously
- * - Writer has exclusive access (blocks all readers and writers)
- * - Unlock is same for readers and writers
- * - Writer-preferring: Writers get priority over new readers (prevents writer starvation)
+ * **Key Features**:
+ * - Shared read locks (multiple readers allowed)
+ * - Exclusive write locks (single writer)
+ * - Separate unlock operations for read and write locks
+ * - Debug-enabled macros with lock tracking
  *
- * @subsection platform_cond Condition Variables
+ * **Platform Implementations**:
+ * - **POSIX**: Uses `pthread_rwlock_t` with `pthread_rwlock_rdlock()`
+ * - **Windows**: Uses `SRWLOCK` with `AcquireSRWLockShared()`
  *
- * Efficient thread signaling for producer-consumer patterns:
+ * **Condition Variables** (`cond.h`):
  *
- * **Cond Types**:
- * - cond_t: Platform-specific condition variable
- *   - Windows: CONDITION_VARIABLE
- *   - POSIX: pthread_cond_t
+ * Provides condition variables for thread synchronization and waiting.
  *
- * **Usage Pattern**:
  * @code{.c}
- * mutex_t mutex;
  * cond_t cond;
- * bool data_ready = false;
- *
- * mutex_init(&mutex);
+ * mutex_t mutex;
  * cond_init(&cond);
+ * mutex_init(&mutex);
  *
- * // Producer thread
+ * // Thread waiting for condition
  * mutex_lock(&mutex);
- * // ... produce data ...
- * data_ready = true;
- * cond_signal(&cond);  // Wake one waiting thread
+ * while (!condition_met) {
+ *     cond_wait(&cond, &mutex);
+ * }
+ * // Process condition
  * mutex_unlock(&mutex);
  *
- * // Consumer thread
+ * // Thread signaling condition
  * mutex_lock(&mutex);
- * while (!data_ready) {
- *     cond_wait(&cond, &mutex);  // Atomically unlock and wait
- * }
- * // ... consume data ...
+ * condition_met = true;
+ * cond_signal(&cond);  // or cond_broadcast(&cond)
  * mutex_unlock(&mutex);
  * @endcode
  *
- * **Operations**:
- * - cond_wait: Atomically unlocks mutex and waits for signal
- * - cond_signal: Wakes one waiting thread
- * - cond_broadcast: Wakes all waiting threads
- * - cond_timedwait: Waits with timeout (not yet implemented)
+ * **Key Features**:
+ * - Blocking wait with associated mutex
+ * - Timed wait with timeout support
+ * - Signal (wake one) and broadcast (wake all) operations
+ * - Must be used with a mutex for proper synchronization
  *
- * @section platform_sockets Socket Abstraction
+ * **Platform Implementations**:
+ * - **POSIX**: Uses `pthread_cond_t` with `pthread_cond_wait()`
+ * - **Windows**: Uses `CONDITION_VARIABLE` with `SleepConditionVariableCS()`
  *
- * Unified Berkeley sockets API across platforms:
+ * @subsection platform_networking Network Sockets
  *
- * **Socket Types**:
- * - socket_t: Platform-specific socket handle
- *   - Windows: SOCKET (unsigned int)
- *   - POSIX: int (file descriptor)
- * - INVALID_SOCKET_VALUE: Platform-specific invalid value
- *   - Windows: INVALID_SOCKET (~0)
- *   - POSIX: -1
+ * **Socket Operations** (`socket.h`):
  *
- * **Socket Creation**:
+ * Provides comprehensive cross-platform socket API for network communication.
+ *
  * @code{.c}
- * socket_t sockfd = socket(AF_INET6, SOCK_STREAM, 0);
- * if (sockfd == INVALID_SOCKET_VALUE) {
- *     log_error("socket() failed: %s", SAFE_STRERROR(errno));
- *     return ERROR_NETWORK_SOCKET;
+ * // Initialize sockets (required on Windows)
+ * socket_init();
+ *
+ * // Create and bind a server socket
+ * socket_t server = socket_create(AF_INET, SOCK_STREAM, 0);
+ * socket_set_reuseaddr(server, true);
+ * socket_set_nodelay(server, true);
+ *
+ * struct sockaddr_in addr = {0};
+ * addr.sin_family = AF_INET;
+ * addr.sin_addr.s_addr = INADDR_ANY;
+ * addr.sin_port = htons(8080);
+ * socket_bind(server, (struct sockaddr*)&addr, sizeof(addr));
+ * socket_listen(server, 10);
+ *
+ * // Accept a connection
+ * socket_t client = socket_accept(server, NULL, NULL);
+ *
+ * // Send/receive data
+ * socket_send(client, data, len, 0);
+ * ssize_t received = socket_recv(client, buffer, sizeof(buffer), 0);
+ *
+ * // Cleanup
+ * socket_close(client);
+ * socket_close(server);
+ * socket_cleanup();
+ * @endcode
+ *
+ * **Key Features**:
+ * - Socket creation, binding, listening, accepting
+ * - Connection management (connect, close, shutdown)
+ * - Data I/O (send, recv, sendto, recvfrom)
+ * - Socket configuration (non-blocking, reuseaddr, nodelay, keepalive)
+ * - Polling and event handling (poll, select)
+ * - Error handling utilities (get error, get error string)
+ *
+ * **Platform Implementations**:
+ * - **POSIX**: Uses standard BSD sockets (`socket()`, `bind()`, `listen()`, etc.)
+ * - **Windows**: Uses Winsock2 API (`WSASocket()`, `bind()`, `listen()`, etc.)
+ *
+ * **Important Notes**:
+ * - On Windows, `socket_init()` must be called before any socket operations
+ * - On POSIX, socket operations work without initialization
+ * - Socket handles are type-safe (`socket_t` is `SOCKET` on Windows, `int` on POSIX)
+ * - Always use `INVALID_SOCKET_VALUE` to check for invalid sockets
+ *
+ * @subsection platform_terminal Terminal I/O
+ *
+ * **Terminal Operations** (`terminal.h`):
+ *
+ * Provides cross-platform terminal control including size detection, cursor control,
+ * and terminal mode configuration.
+ *
+ * @code{.c}
+ * // Get terminal size
+ * terminal_size_t size;
+ * terminal_get_size(&size);
+ * printf("Terminal: %dx%d\n", size.cols, size.rows);
+ *
+ * // Terminal mode control
+ * terminal_set_raw_mode(true);   // Enable raw mode
+ * terminal_set_echo(false);      // Disable echo
+ *
+ * // Cursor control
+ * terminal_clear_screen();
+ * terminal_move_cursor(10, 20);
+ * terminal_hide_cursor(true);
+ *
+ * // Terminal capabilities
+ * if (terminal_supports_color()) {
+ *     printf("Color support enabled\n");
+ * }
+ *
+ * // Restore terminal
+ * terminal_set_raw_mode(false);
+ * terminal_set_echo(true);
+ * @endcode
+ *
+ * **Key Features**:
+ * - Terminal size detection (rows and columns)
+ * - Terminal mode control (raw mode, echo, buffering)
+ * - Cursor control (position, visibility, save/restore)
+ * - Screen management (clear, scroll region, title)
+ * - Terminal capability detection (color, unicode, UTF-8)
+ * - ANSI escape sequence support (automatic on Windows 10+)
+ *
+ * **Platform Implementations**:
+ * - **POSIX**: Uses `termios` for terminal control, `ioctl()` for size detection
+ * - **Windows**: Uses Console API (`GetConsoleScreenBufferInfo()`, `SetConsoleMode()`)
+ *   with automatic ANSI enablement on Windows 10+
+ *
+ * @subsection platform_system System Functions
+ *
+ * **System Operations** (`system.h`):
+ *
+ * Provides cross-platform system functions including process management, time operations,
+ * environment variables, TTY operations, and crash handling.
+ *
+ * @code{.c}
+ * // Platform initialization (required on Windows)
+ * platform_init();
+ *
+ * // Time and sleep
+ * platform_sleep_ms(1000);  // Sleep 1 second
+ *
+ * // Process information
+ * int pid = platform_get_pid();
+ * const char *username = platform_get_username();
+ *
+ * // Environment variables
+ * const char *home = platform_getenv("HOME");
+ * platform_setenv("MY_VAR", "value", 1);
+ *
+ * // TTY operations
+ * if (platform_isatty(STDOUT_FILENO)) {
+ *     const char *tty = platform_ttyname(STDOUT_FILENO);
+ *     printf("Running in terminal: %s\n", tty);
+ * }
+ *
+ * // Signal handling (thread-safe)
+ * platform_signal(SIGWINCH, resize_handler);
+ *
+ * // Crash handling (automatic backtrace on crash)
+ * platform_install_crash_handler();
+ *
+ * // Backtrace utilities
+ * void *bt[32];
+ * int frames = platform_backtrace(bt, 32);
+ * char **symbols = platform_backtrace_symbols(bt, frames);
+ * // ... use symbols ...
+ * platform_backtrace_symbols_free(symbols);
+ *
+ * // Network utilities
+ * char ipv4[16];
+ * platform_resolve_hostname_to_ipv4("example.com", ipv4, sizeof(ipv4));
+ *
+ * char *pem_data;
+ * size_t pem_size;
+ * platform_load_system_ca_certs(&pem_data, &pem_size);
+ * // ... use CA certs ...
+ * SAFE_FREE(pem_data);
+ *
+ * // Binary path checking
+ * if (platform_is_binary_in_path("ssh-keygen")) {
+ *     // Use ssh-keygen
+ * }
+ *
+ * // Cleanup
+ * platform_cleanup();
+ * @endcode
+ *
+ * **Key Features**:
+ * - Platform initialization and cleanup (Windows: Winsock init)
+ * - Time operations (sleep, localtime)
+ * - Process information (PID, username)
+ * - Environment variable operations (get, set)
+ * - TTY operations (isatty, ttyname, fsync)
+ * - Signal handling (thread-safe on all platforms)
+ * - Crash handling (automatic backtrace on crash)
+ * - Stack trace utilities (backtrace, symbol resolution)
+ * - Network utilities (DNS resolution, CA certificate loading)
+ * - Binary path checking (check if binary is in PATH)
+ * - Safe memory functions (memcpy, memset, strcpy with bounds checking)
+ *
+ * **Platform Implementations**:
+ * - **POSIX**: Uses standard POSIX functions (`getpid()`, `getenv()`, `isatty()`, etc.)
+ *   with `execinfo.h` for backtraces
+ * - **Windows**: Uses Win32 API (`GetCurrentProcessId()`, `GetEnvironmentVariable()`, etc.)
+ *   with `StackWalk64()` for backtraces
+ *
+ * @subsection platform_strings String Operations
+ *
+ * **String Functions** (`string.h`):
+ *
+ * Provides safe, cross-platform string manipulation functions.
+ *
+ * @code{.c}
+ * char buffer[256];
+ *
+ * // Safe string formatting
+ * int len = platform_snprintf(buffer, sizeof(buffer), "Value: %d", value);
+ *
+ * // Safe string copying
+ * size_t copied = platform_strlcpy(buffer, source, sizeof(buffer));
+ * size_t appended = platform_strlcat(buffer, suffix, sizeof(buffer));
+ *
+ * // String comparison (case-insensitive)
+ * int cmp = platform_strcasecmp(str1, str2);
+ * int ncmp = platform_strncasecmp(str1, str2, n);
+ *
+ * // String duplication
+ * char *dup = platform_strdup(source);
+ * char *ndup = platform_strndup(source, n);
+ * SAFE_FREE(dup);
+ * SAFE_FREE(ndup);
+ *
+ * // String tokenization (reentrant)
+ * char *saveptr;
+ * char *token = platform_strtok_r(buffer, " \t", &saveptr);
+ * while (token) {
+ *     // Process token
+ *     token = platform_strtok_r(NULL, " \t", &saveptr);
  * }
  * @endcode
  *
- * **Dual-Stack IPv6 Support**:
- * @code{.c}
- * // Enable dual-stack IPv6/IPv4
- * int ipv6only = 0;
- * setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only));
+ * **Key Features**:
+ * - Safe string formatting (`platform_snprintf()`, `platform_vsnprintf()`)
+ * - Safe string copying (`platform_strlcpy()`, `platform_strlcat()`)
+ * - Case-insensitive string comparison
+ * - String duplication (`platform_strdup()`, `platform_strndup()`)
+ * - Reentrant string tokenization (`platform_strtok_r()`)
  *
- * // Bind to :: (all interfaces, IPv6 and IPv4)
- * struct sockaddr_in6 addr = {0};
- * addr.sin6_family = AF_INET6;
- * addr.sin6_addr = in6addr_any;  // ::
- * addr.sin6_port = htons(27224);
- * bind(sockfd, (struct sockaddr*)&addr, sizeof(addr));
+ * **Platform Implementations**:
+ * - **POSIX**: Uses standard functions (`strlcpy()`, `strdup()`, etc.)
+ * - **Windows**: Uses `strsafe.h` functions when available, otherwise POSIX-style
+ *   implementations
+ *
+ * @subsection platform_files File I/O
+ *
+ * **File Operations** (`file.h`):
+ *
+ * Provides cross-platform file I/O operations.
+ *
+ * @code{.c}
+ * // Open a file
+ * int fd = platform_open("file.txt", O_RDWR | O_CREAT, 0600);
+ *
+ * // Read/write data
+ * ssize_t bytes_read = platform_read(fd, buffer, sizeof(buffer));
+ * ssize_t bytes_written = platform_write(fd, data, len);
+ *
+ * // Close file
+ * platform_close(fd);
  * @endcode
  *
- * **Socket Options**:
+ * **Key Features**:
+ * - File open, read, write, close operations
+ * - Platform-safe file descriptors
+ *
+ * **Platform Implementations**:
+ * - **POSIX**: Uses standard POSIX functions (`open()`, `read()`, `write()`, `close()`)
+ * - **Windows**: Uses `_open()`, `_read()`, `_write()`, `_close()` with path conversion
+ *
+ * @subsection platform_initialization Static Initialization
+ *
+ * **Static Initialization** (`init.h`):
+ *
+ * Provides static initialization helpers for global synchronization primitives that
+ * need to work before `main()`.
+ *
  * @code{.c}
- * // Reuse address (allows immediate restart)
- * int optval = 1;
- * setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+ * // Global mutex with static initialization
+ * static_mutex_t g_mutex = STATIC_MUTEX_INIT;
  *
- * // TCP keepalive
- * optval = 1;
- * setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval));
- *
- * // Disable Nagle's algorithm (low latency)
- * optval = 1;
- * setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &optval, sizeof(optval));
- * @endcode
- *
- * **Socket I/O**:
- * @code{.c}
- * // Send data
- * ssize_t sent = send(sockfd, buffer, length, 0);
- * if (sent < 0) {
- *     if (socket_errno() == SOCKET_EWOULDBLOCK) {
- *         // Non-blocking socket, try again later
- *     } else {
- *         // Real error
- *     }
+ * void critical_function() {
+ *     static_mutex_lock(&g_mutex);
+ *     // Critical section
+ *     static_mutex_unlock(&g_mutex);
  * }
  *
- * // Receive data
- * ssize_t received = recv(sockfd, buffer, bufsize, 0);
- * if (received == 0) {
- *     // Connection closed by peer
- * } else if (received < 0) {
- *     // Error
+ * // Global read-write lock
+ * static_rwlock_t g_rwlock = STATIC_RWLOCK_INIT;
+ *
+ * void reader_function() {
+ *     static_rwlock_rdlock(&g_rwlock);
+ *     // Read data
+ *     static_rwlock_unlock(&g_rwlock);
+ * }
+ *
+ * // Global condition variable
+ * static_cond_t g_cond = STATIC_COND_INIT;
+ * static_mutex_t g_cond_mutex = STATIC_MUTEX_INIT;
+ *
+ * void wait_for_signal() {
+ *     static_mutex_lock(&g_cond_mutex);
+ *     static_cond_wait(&g_cond, &g_cond_mutex);
+ *     static_mutex_unlock(&g_cond_mutex);
  * }
  * @endcode
  *
- * **Socket Cleanup**:
+ * **Key Features**:
+ * - Static initialization macros (`STATIC_MUTEX_INIT`, `STATIC_RWLOCK_INIT`, etc.)
+ * - Lazy initialization on first use (thread-safe)
+ * - Works before `main()` is called
+ *
+ * **Platform Implementations**:
+ * - **POSIX**: Uses `PTHREAD_MUTEX_INITIALIZER` for static initialization
+ * - **Windows**: Uses lazy initialization with `InterlockedCompareExchange()` for
+ *   thread-safe initialization
+ *
+ * @section platform_usage Usage Patterns
+ *
+ * @subsection platform_basic_usage Basic Usage
+ *
+ * **Including the Platform Abstraction**:
+ *
  * @code{.c}
- * asciichat_error_t socket_close(socket_t sockfd);
+ * #include "platform/abstraction.h"
  * @endcode
  *
- * - **Windows**: closesocket(sockfd)
- * - **POSIX**: close(sockfd)
- * - Shutdown is automatic (no lingering data)
+ * The main header includes all platform components. For fine-grained control, you
+ * can include individual component headers:
+ *
+ * @code{.c}
+ * #include "platform/thread.h"
+ * #include "platform/mutex.h"
+ * @endcode
  *
  * **Platform Initialization**:
- * - **Windows**: Must call WSAStartup before using sockets
- * - **POSIX**: No initialization needed
- * - ASCII-Chat handles this in platform_init()
  *
- * @section platform_terminal Terminal I/O
+ * Always initialize the platform layer before using platform functions:
  *
- * Cross-platform terminal control:
- *
- * **Raw Mode**:
  * @code{.c}
- * // Save current terminal state and enter raw mode
- * terminal_state_t saved_state;
- * terminal_set_raw(&saved_state);
+ * int main() {
+ *     // Initialize platform (required on Windows for Winsock)
+ *     if (platform_init() != ASCIICHAT_OK) {
+ *         log_error("Failed to initialize platform");
+ *         return 1;
+ *     }
  *
- * // Terminal is now in raw mode:
- * // - No line buffering (read characters immediately)
- * // - No echo (input not displayed)
- * // - No signal generation (Ctrl+C doesn't send SIGINT)
- * // - No canonical processing
+ *     // ... use platform functions ...
  *
- * // ... use terminal ...
- *
- * // Restore original state
- * terminal_restore(&saved_state);
- * @endcode
- *
- * Implementation:
- * - **POSIX**: tcgetattr/tcsetattr with custom termios flags
- * - **Windows**: GetConsoleMode/SetConsoleMode with custom flags
- *
- * **Terminal Size**:
- * @code{.c}
- * int width, height;
- * asciichat_error_t err = terminal_get_size(&width, &height);
- * // Typical values: 80x24, 120x40, 160x60
- * @endcode
- *
- * - **POSIX**: TIOCGWINSZ ioctl on stdout
- * - **Windows**: GetConsoleScreenBufferInfo
- * - Falls back to $COLUMNS, $LINES environment variables
- *
- * **Cursor Control**:
- * @code{.c}
- * terminal_hide_cursor();    // \x1b[?25l
- * terminal_show_cursor();    // \x1b[?25h
- * terminal_clear();          // \x1b[2J (clear screen)
- * terminal_home_cursor();    // \x1b[H (move to 1,1)
- * @endcode
- *
- * **Color Support Detection**:
- * @code{.c}
- * bool has_color = terminal_has_color();
- * // Checks:
- * // - $COLORTERM env var
- * // - $TERM env var (xterm-256color, etc.)
- * // - Windows: Console supports ANSI sequences (Windows 10+)
- * @endcode
- *
- * @section platform_system System Functions
- *
- * Platform-safe utility functions:
- *
- * **Environment Variables**:
- * @code{.c}
- * char *home = SAFE_GETENV("HOME");
- * if (home) {
- *     // Use home directory
+ *     // Cleanup platform (required on Windows)
+ *     platform_cleanup();
+ *     return 0;
  * }
  * @endcode
  *
- * - Thread-safe on all platforms
- * - **Windows**: Uses thread-local buffer for getenv
- * - **POSIX**: getenv is implementation-defined (ASCII-Chat assumes thread-safe)
+ * @subsection platform_threading_patterns Threading Patterns
  *
- * **String Parsing**:
+ * **Creating Worker Threads**:
+ *
  * @code{.c}
- * int x, y;
- * int parsed = SAFE_SSCANF(input, "%d %d", &x, &y);
- * @endcode
+ * void* worker_thread(void* arg) {
+ *     int worker_id = *(int*)arg;
+ *     log_info("Worker %d started", worker_id);
  *
- * - **Windows**: Uses sscanf_s (bounds checking)
- * - **POSIX**: Uses sscanf
- * - Returns number of items successfully parsed
+ *     // Do work
+ *     for (int i = 0; i < 100; i++) {
+ *         platform_sleep_ms(100);
+ *         // Process work item
+ *     }
  *
- * **Error Strings**:
- * @code{.c}
- * const char *error = SAFE_STRERROR(errno);
- * log_error("Operation failed: %s", error);
- * @endcode
- *
- * - Thread-safe error message formatting
- * - **Windows**: Uses thread-local buffer for strerror
- * - **POSIX**: Uses strerror_r (GNU or XSI version detected)
- *
- * **File Operations**:
- * @code{.c}
- * int fd = platform_open(filename, O_RDWR | O_CREAT, 0600);
- * @endcode
- *
- * - **Windows**: Translates flags to Windows equivalents (_open)
- * - **POSIX**: Direct passthrough to open()
- * - Handles O_CREAT, O_RDONLY, O_WRONLY, O_RDWR, O_TRUNC, O_APPEND
- *
- * **String Copying**:
- * @code{.c}
- * char dest[256];
- * SAFE_STRNCPY(dest, source, sizeof(dest));
- * @endcode
- *
- * - Always null-terminates destination
- * - Prevents buffer overflows
- * - **Windows**: Uses strncpy_s
- * - **POSIX**: Uses strncpy + manual null termination
- *
- * @section platform_usage Usage Examples
- *
- * @subsection platform_usage_thread Creating a Worker Thread
- * @code{.c}
- * typedef struct {
- *     int client_id;
- *     socket_t sockfd;
- * } worker_args_t;
- *
- * void* worker_func(void *arg) {
- *     worker_args_t *args = (worker_args_t*)arg;
- *
- *     log_info("Worker thread started for client %d", args->client_id);
- *
- *     // Process client...
- *
- *     SAFE_FREE(args);
+ *     log_info("Worker %d finished", worker_id);
  *     return NULL;
  * }
  *
- * // Create thread
- * ascii_thread_t thread;
- * worker_args_t *args = SAFE_MALLOC(sizeof(worker_args_t), worker_args_t*);
- * args->client_id = 42;
- * args->sockfd = sockfd;
+ * int main() {
+ *     platform_init();
  *
- * asciichat_error_t err = ascii_thread_create(&thread, worker_func, args);
- * if (err != ASCIICHAT_OK) {
- *     log_error("Failed to create thread");
- *     SAFE_FREE(args);
- *     return err;
+ *     // Create multiple worker threads
+ *     asciithread_t threads[4];
+ *     int worker_ids[4] = {0, 1, 2, 3};
+ *
+ *     for (int i = 0; i < 4; i++) {
+ *         ascii_thread_create(&threads[i], worker_thread, &worker_ids[i]);
+ *     }
+ *
+ *     // Wait for all threads
+ *     for (int i = 0; i < 4; i++) {
+ *         ascii_thread_join(&threads[i], NULL);
+ *     }
+ *
+ *     platform_cleanup();
+ *     return 0;
  * }
- *
- * // Later: wait for thread
- * ascii_thread_join(thread, NULL);
  * @endcode
  *
- * @subsection platform_usage_rwlock Protecting Shared Data
+ * **Synchronization with Mutexes**:
+ *
  * @code{.c}
- * // Global client list
+ * static int shared_counter = 0;
+ * static mutex_t counter_mutex;
+ *
+ * void* increment_thread(void* arg) {
+ *     for (int i = 0; i < 1000; i++) {
+ *         mutex_lock(&counter_mutex);
+ *         shared_counter++;
+ *         mutex_unlock(&counter_mutex);
+ *     }
+ *     return NULL;
+ * }
+ *
+ * int main() {
+ *     platform_init();
+ *     mutex_init(&counter_mutex);
+ *
+ *     asciithread_t t1, t2;
+ *     ascii_thread_create(&t1, increment_thread, NULL);
+ *     ascii_thread_create(&t2, increment_thread, NULL);
+ *
+ *     ascii_thread_join(&t1, NULL);
+ *     ascii_thread_join(&t2, NULL);
+ *
+ *     printf("Final counter: %d\n", shared_counter);  // Should be 2000
+ *
+ *     mutex_destroy(&counter_mutex);
+ *     platform_cleanup();
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * **Read-Write Locks for Concurrent Access**:
+ *
+ * @code{.c}
+ * static rwlock_t data_lock;
+ * static void* shared_data = NULL;
+ *
+ * void* reader_thread(void* arg) {
+ *     for (int i = 0; i < 100; i++) {
+ *         rwlock_rdlock(&data_lock);
+ *         // Read shared_data (multiple readers can do this simultaneously)
+ *         void* data = shared_data;
+ *         rwlock_unlock(&data_lock);
+ *         platform_sleep_ms(10);
+ *     }
+ *     return NULL;
+ * }
+ *
+ * void* writer_thread(void* arg) {
+ *     for (int i = 0; i < 10; i++) {
+ *         rwlock_wrlock(&data_lock);
+ *         // Modify shared_data (exclusive access)
+ *         shared_data = malloc(1024);
+ *         rwlock_unlock(&data_lock);
+ *         platform_sleep_ms(100);
+ *     }
+ *     return NULL;
+ * }
+ * @endcode
+ *
+ * **Condition Variables for Signaling**:
+ *
+ * @code{.c}
+ * static cond_t work_cond;
+ * static mutex_t work_mutex;
+ * static bool work_ready = false;
+ *
+ * void* worker_thread(void* arg) {
+ *     mutex_lock(&work_mutex);
+ *     while (!work_ready) {
+ *         cond_wait(&work_cond, &work_mutex);
+ *     }
+ *     // Process work
+ *     mutex_unlock(&work_mutex);
+ *     return NULL;
+ * }
+ *
+ * void signal_work() {
+ *     mutex_lock(&work_mutex);
+ *     work_ready = true;
+ *     cond_signal(&work_cond);
+ *     mutex_unlock(&work_mutex);
+ * }
+ * @endcode
+ *
+ * @subsection platform_networking_patterns Networking Patterns
+ *
+ * **Server Socket Pattern**:
+ *
+ * @code{.c}
+ * socket_t create_server_socket(int port) {
+ *     socket_init();  // Required on Windows
+ *
+ *     socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ *     if (sock == INVALID_SOCKET_VALUE) {
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     // Configure socket
+ *     socket_set_reuseaddr(sock, true);
+ *     socket_set_nodelay(sock, true);
+ *     socket_set_keepalive(sock, true);
+ *
+ *     // Bind and listen
+ *     struct sockaddr_in addr = {0};
+ *     addr.sin_family = AF_INET;
+ *     addr.sin_addr.s_addr = INADDR_ANY;
+ *     addr.sin_port = htons(port);
+ *
+ *     if (socket_bind(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+ *         socket_close(sock);
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     if (socket_listen(sock, 10) != 0) {
+ *         socket_close(sock);
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     return sock;
+ * }
+ * @endcode
+ *
+ * **Client Socket Pattern**:
+ *
+ * @code{.c}
+ * socket_t connect_to_server(const char* host, int port) {
+ *     socket_init();  // Required on Windows
+ *
+ *     socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ *     if (sock == INVALID_SOCKET_VALUE) {
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     // Configure socket
+ *     socket_set_nodelay(sock, true);
+ *
+ *     // Connect
+ *     struct sockaddr_in addr = {0};
+ *     addr.sin_family = AF_INET;
+ *     inet_pton(AF_INET, host, &addr.sin_addr);
+ *     addr.sin_port = htons(port);
+ *
+ *     if (socket_connect(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+ *         socket_close(sock);
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     return sock;
+ * }
+ * @endcode
+ *
+ * **Non-Blocking Socket Pattern**:
+ *
+ * @code{.c}
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * socket_set_nonblocking(sock, true);
+ *
+ * // Attempt connection (may fail with EAGAIN/EWOULDBLOCK)
+ * int result = socket_connect(sock, &addr, sizeof(addr));
+ * if (result != 0) {
+ *     int err = socket_get_last_error();
+ *     if (err == SOCKET_ERROR_INPROGRESS || err == SOCKET_ERROR_WOULDBLOCK) {
+ *         // Connection in progress, use select/poll to wait
+ *         struct pollfd pfd = {sock, POLLOUT, 0};
+ *         socket_poll(&pfd, 1, 5000);  // Wait up to 5 seconds
+ *     }
+ * }
+ * @endcode
+ *
+ * @subsection platform_terminal_patterns Terminal Patterns
+ *
+ * **Terminal Size Detection**:
+ *
+ * @code{.c}
+ * terminal_size_t get_terminal_size() {
+ *     terminal_size_t size = {0, 0};
+ *     if (terminal_get_size(&size) == ASCIICHAT_OK) {
+ *         log_info("Terminal size: %dx%d", size.cols, size.rows);
+ *     }
+ *     return size;
+ * }
+ * @endcode
+ *
+ * **Raw Mode for Interactive Input**:
+ *
+ * @code{.c}
+ * void handle_keyboard_input() {
+ *     // Enable raw mode (character-by-character input)
+ *     terminal_set_raw_mode(true);
+ *     terminal_set_echo(false);
+ *
+ *     char c;
+ *     while (read(STDIN_FILENO, &c, 1) == 1) {
+ *         if (c == 'q') {
+ *             break;
+ *         }
+ *         // Process key press
+ *         process_key(c);
+ *     }
+ *
+ *     // Restore normal terminal mode
+ *     terminal_set_raw_mode(false);
+ *     terminal_set_echo(true);
+ * }
+ * @endcode
+ *
+ * **Terminal Capability Detection**:
+ *
+ * @code{.c}
+ * void setup_output() {
+ *     if (terminal_supports_color()) {
+ *         printf("\033[31mRed text\033[0m\n");
+ *     }
+ *
+ *     if (terminal_supports_unicode()) {
+ *         printf("Unicode: ♠ ♥ ♦ ♣\n");
+ *     }
+ * }
+ * @endcode
+ *
+ * @section platform_best_practices Best Practices
+ *
+ * @subsection platform_initialization Initialization
+ *
+ * 1. **Always Initialize the Platform**:
+ *    @code{.c}
+ *    // At program startup
+ *    if (platform_init() != ASCIICHAT_OK) {
+ *        log_fatal("Platform initialization failed");
+ *        return 1;
+ *    }
+ *    @endcode
+ *
+ * 2. **Always Cleanup the Platform**:
+ *    @code{.c}
+ *    // At program shutdown
+ *    platform_cleanup();
+ *    @endcode
+ *
+ * 3. **Initialize Synchronization Primitives Before Use**:
+ *    @code{.c}
+ *    mutex_t mutex;
+ *    mutex_init(&mutex);  // Must call before mutex_lock()
+ *    @endcode
+ *
+ * 4. **Use Static Initialization for Global Locks**:
+ *    @code{.c}
+ *    static_mutex_t g_global_mutex = STATIC_MUTEX_INIT;
+ *    // No need to call mutex_init() - lazy initialization handles it
+ *    @endcode
+ *
+ * @subsection platform_error_handling Error Handling
+ *
+ * 1. **Check Return Values**:
+ *    @code{.c}
+ *    socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ *    if (sock == INVALID_SOCKET_VALUE) {
+ *        log_error("Socket creation failed: %s", socket_get_error_string());
+ *        return ERROR_NETWORK;
+ *     }
+ *    @endcode
+ *
+ * 2. **Use Platform-Specific Error Codes**:
+ *    @code{.c}
+ *    int err = socket_get_last_error();
+ *    if (err == SOCKET_ERROR_WOULDBLOCK) {
+ *        // Handle non-blocking operation
+ *    }
+ *    @endcode
+ *
+ * 3. **Check Thread Creation**:
+ *    @code{.c}
+ *    asciithread_t thread;
+ *    if (ascii_thread_create(&thread, func, arg) != 0) {
+ *        log_error("Thread creation failed");
+ *        return ERROR_THREAD;
+ *    }
+ *    @endcode
+ *
+ * @subsection platform_thread_safety Thread Safety
+ *
+ * 1. **Use Mutexes for Shared Data**:
+ *    @code{.c}
+ *    static mutex_t data_mutex;
+ *    static int shared_data;
+ *
+ *    void update_data(int value) {
+ *        mutex_lock(&data_mutex);
+ *        shared_data = value;
+ *        mutex_unlock(&data_mutex);
+ *    }
+ *    @endcode
+ *
+ * 2. **Use Read-Write Locks for Read-Heavy Workloads**:
+ *    @code{.c}
+ *    static rwlock_t cache_lock;
+ *    static void* cache_data;
+ *
+ *    void* read_cache() {
+ *        rwlock_rdlock(&cache_lock);  // Multiple readers allowed
+ *        void* data = cache_data;
+ *        rwlock_unlock(&cache_lock);
+ *        return data;
+ *    }
+ *
+ *    void update_cache(void* new_data) {
+ *        rwlock_wrlock(&cache_lock);  // Exclusive write access
+ *        cache_data = new_data;
+ *        rwlock_unlock(&cache_lock);
+ *    }
+ *    @endcode
+ *
+ * 3. **Always Unlock Mutexes**:
+ *    @code{.c}
+ *    mutex_lock(&mutex);
+ *     // ... code that might return early ...
+ *    if (error_condition) {
+ *        mutex_unlock(&mutex);  // Must unlock before returning
+ *        return ERROR;
+ *    }
+ *    mutex_unlock(&mutex);
+ *    @endcode
+ *
+ * @subsection platform_resource_management Resource Management
+ *
+ * 1. **Always Close Sockets**:
+ *    @code{.c}
+ *    socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ *    // ... use socket ...
+ *    socket_close(sock);  // Always close when done
+ *    @endcode
+ *
+ * 2. **Always Destroy Synchronization Primitives**:
+ *    @code{.c}
+ *    mutex_t mutex;
+ *    mutex_init(&mutex);
+ *    // ... use mutex ...
+ *    mutex_destroy(&mutex);  // Always destroy when done
+ *    @endcode
+ *
+ * 3. **Join Threads Before Cleanup**:
+ *    @code{.c}
+ *    asciithread_t thread;
+ *    ascii_thread_create(&thread, worker, arg);
+ *    // ... work ...
+ *    ascii_thread_join(&thread, NULL);  // Wait for thread before cleanup
+ *    @endcode
+ *
+ * @subsection platform_portability Portability
+ *
+ * 1. **Use Platform Types, Not Native Types**:
+ *    @code{.c}
+ *    // Good: Platform-independent
+ *    socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ *
+ *    // Bad: Platform-specific
+ *    #ifdef _WIN32
+ *    SOCKET sock = socket(...);
+ *    #else
+ *    int sock = socket(...);
+ *    #endif
+ *    @endcode
+ *
+ * 2. **Use Platform Macros and Constants**:
+ *    @code{.c}
+ *    // Good: Platform-independent
+ *    if (sock == INVALID_SOCKET_VALUE) { ... }
+ *
+ *    // Bad: Platform-specific
+ *    #ifdef _WIN32
+ *    if (sock == INVALID_SOCKET) { ... }
+ *    #else
+ *    if (sock == -1) { ... }
+ *    #endif
+ *    @endcode
+ *
+ * 3. **Use Platform-Safe Functions**:
+ *    @code{.c}
+ *    // Good: Platform-safe
+ *    const char* home = platform_getenv("HOME");
+ *
+ *    // Bad: Platform-specific (Windows uses different env var names)
+ *    const char* home = getenv("HOME");
+ *    @endcode
+ *
+ * @section platform_platform_specifics Platform-Specific Details
+ *
+ * @subsection platform_windows Windows-Specific
+ *
+ * **Windows Features**:
+ *
+ * - **Winsock Initialization**: Must call `socket_init()` before any socket operations
+ * - **ANSI Escape Sequences**: Automatically enabled on Windows 10+ via `terminal_enable_ansi()`
+ * - **SRW Locks**: Lightweight read-write locks (more efficient than Critical Sections)
+ * - **Console API**: Full terminal control including colors and cursor positioning
+ * - **Signal Limitations**: `SIGWINCH` and `SIGTERM` are defined but non-functional
+ * - **Backtrace**: Full stack trace support using `StackWalk64()` API
+ *
+ * **Windows Initialization**:
+ *
+ * @code{.c}
+ * // Windows requires Winsock initialization
+ * if (platform_init() != ASCIICHAT_OK) {
+ *     // Failed to initialize Winsock
+ * }
+ *
+ * // ... use sockets ...
+ *
+ * // Windows requires Winsock cleanup
+ * platform_cleanup();
+ * @endcode
+ *
+ * **Windows Console Colors**:
+ *
+ * On Windows 10+, ANSI escape sequences are automatically enabled. For older Windows
+ * versions, use the Console API directly (though the platform abstraction handles this).
+ *
+ * @subsection platform_posix POSIX-Specific (Linux/macOS)
+ *
+ * **POSIX Features**:
+ *
+ * - **pthreads**: Full pthread implementation for all threading primitives
+ * - **BSD Sockets**: Standard socket API, no initialization needed
+ * - **termios**: Complete terminal control for raw mode, echo, etc.
+ * - **Signal Handling**: Full support for `SIGWINCH` (terminal resize) and `SIGTERM`
+ * - **Backtrace**: Full stack trace support via `execinfo.h`
+ *
+ * **POSIX Signal Handling**:
+ *
+ * @code{.c}
+ * void resize_handler(int sig) {
+ *     (void)sig;
+ *     terminal_size_t size;
+ *     terminal_get_size(&size);
+ *     // Handle resize
+ * }
+ *
+ * // Thread-safe signal handling
+ * platform_signal(SIGWINCH, resize_handler);
+ * @endcode
+ *
+ * @section platform_performance Performance Considerations
+ *
+ * @subsection platform_overhead Overhead
+ *
+ * The platform abstraction layer has minimal overhead:
+ *
+ * - **Function Calls**: Direct function calls (no virtual dispatch)
+ * - **Release Builds**: Debug tracking disabled (zero overhead)
+ * - **Platform Optimizations**: Uses platform-specific optimized implementations:
+ *   - Windows: Critical Sections (user-space spinlocks) for mutexes
+ *   - POSIX: pthread mutexes (kernel-supported) for mutexes
+ *
+ * @subsection platform_threading_performance Threading Performance
+ *
+ * **Mutex Performance**:
+ * - Windows `CRITICAL_SECTION`: Fast user-space spinlock, ~100ns overhead
+ * - POSIX `pthread_mutex_t`: Kernel-supported, ~500ns overhead
+ *
+ * **Read-Write Lock Performance**:
+ * - Windows `SRWLOCK`: Very lightweight, supports multiple readers efficiently
+ * - POSIX `pthread_rwlock_t`: Kernel-supported, good for read-heavy workloads
+ *
+ * @subsection platform_socket_performance Socket Performance
+ *
+ * **Socket Operations**:
+ * - Windows Winsock2: Similar performance to POSIX sockets
+ * - POSIX sockets: Standard BSD socket implementation
+ *
+ * **Non-Blocking I/O**:
+ * - Both platforms support efficient non-blocking socket I/O
+ * - Use `socket_poll()` or `socket_select()` for event-driven I/O
+ *
+ * @section platform_debugging Debugging
+ *
+ * @subsection platform_lock_debugging Lock Debugging
+ *
+ * The platform abstraction integrates with the lock debugging system (see @ref topic_debug).
+ * In debug builds, lock operations are automatically tracked:
+ *
+ * @code{.c}
+ * // Initialize lock debugging
+ * lock_debug_init();
+ *
+ * // Mutex operations are automatically tracked
+ * mutex_lock(&my_mutex);  // Tracked with file/line/function
+ * // ... critical section ...
+ * mutex_unlock(&my_mutex);  // Tracked with release
+ * @endcode
+ *
+ * @subsection platform_error_diagnostics Error Diagnostics
+ *
+ * **Socket Errors**:
+ *
+ * @code{.c}
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * if (sock == INVALID_SOCKET_VALUE) {
+ *     log_error("Socket creation failed: %s", socket_get_error_string());
+ *     log_error("Error code: %d", socket_get_last_error());
+ * }
+ * @endcode
+ *
+ * **Thread Errors**:
+ *
+ * @code{.c}
+ * asciithread_t thread;
+ * if (ascii_thread_create(&thread, func, arg) != 0) {
+ *     log_error("Thread creation failed");
+ *     // Check errno on POSIX, GetLastError() on Windows
+ * }
+ * @endcode
+ *
+ * @subsection platform_crash_handling Crash Handling
+ *
+ * The platform abstraction automatically installs crash handlers that print backtraces:
+ *
+ * @code{.c}
+ * // Automatically installed by platform_init()
+ * platform_install_crash_handler();
+ *
+ * // On crash, automatically prints:
+ * // *** CRASH DETECTED ***
+ * // Signal: SIGSEGV (Segmentation fault)
+ * // === BACKTRACE ===
+ * //  0: main
+ * //  1: process_data
+ * //  2: handle_packet
+ * // ...
+ * @endcode
+ *
+ * @section platform_migration Migration Guide
+ *
+ * @subsection platform_migrating_from_direct_calls Migrating from Direct Platform Calls
+ *
+ * When migrating existing code to use the platform abstraction:
+ *
+ * **1. Replace Direct Includes**:
+ * @code{.c}
+ * // Old:
+ * #include <pthread.h>
+ * #include <sys/socket.h>
+ *
+ * // New:
+ * #include "platform/abstraction.h"
+ * @endcode
+ *
+ * **2. Replace Function Calls**:
+ * @code{.c}
+ * // Old:
+ * pthread_t thread;
+ * pthread_create(&thread, NULL, func, arg);
+ *
+ * // New:
+ * asciithread_t thread;
+ * ascii_thread_create(&thread, func, arg);
+ * @endcode
+ *
+ * **3. Replace Types**:
+ * @code{.c}
+ * // Old:
+ * #ifdef _WIN32
+ * SOCKET sock = socket(...);
+ * #else
+ * int sock = socket(...);
+ * #endif
+ *
+ * // New:
+ * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+ * @endcode
+ *
+ * **4. Replace Constants**:
+ * @code{.c}
+ * // Old:
+ * #ifdef _WIN32
+ * if (sock == INVALID_SOCKET) { ... }
+ * #else
+ * if (sock == -1) { ... }
+ * #endif
+ *
+ * // New:
+ * if (sock == INVALID_SOCKET_VALUE) { ... }
+ * @endcode
+ *
+ * **5. Replace Signal Handling**:
+ * @code{.c}
+ * // Old:
+ * #ifndef _WIN32
+ * signal(SIGWINCH, handler);
+ * #endif
+ *
+ * // New:
+ * platform_signal(SIGWINCH, handler);  // Thread-safe, cross-platform
+ * @endcode
+ *
+ * @section platform_limitations Known Limitations
+ *
+ * @subsection platform_windows_limitations Windows Limitations
+ *
+ * - **SRW Lock Unlock**: Windows `SRWLOCK` doesn't distinguish between read/write unlock
+ *   operations (both use `ReleaseSRWLockShared()` or `ReleaseSRWLockExclusive()`). The
+ *   platform abstraction tracks lock type internally to provide the correct unlock semantics.
+ *
+ * - **Sleep Precision**: Windows `Sleep()` has a minimum resolution of ~15ms. For
+ *   microsecond-precision sleep, use `platform_sleep_usec()`.
+ *
+ * - **Signal Support**: `SIGWINCH` and `SIGTERM` are defined but non-functional on Windows.
+ *   Use Windows-specific APIs for window resize detection and termination handling.
+ *
+ * @subsection platform_posix_limitations POSIX Limitations
+ *
+ * - **macOS System Header Conflicts**: On macOS, `thread_t` conflicts with system headers,
+ *   so the platform abstraction uses `asciithread_t` instead.
+ *
+ * @section platform_examples Complete Examples
+ *
+ * @subsection platform_example_thread_pool Thread Pool Example
+ *
+ * @code{.c}
+ * #include "platform/abstraction.h"
+ * #include "common.h"
+ *
  * typedef struct {
- *     rwlock_t lock;
- *     client_t *clients[MAX_CLIENTS];
- *     int num_clients;
- * } client_manager_t;
+ *     asciithread_t* threads;
+ *     int num_threads;
+ *     cond_t work_cond;
+ *     mutex_t work_mutex;
+ *     bool shutdown;
+ * } thread_pool_t;
  *
- * client_manager_t g_clients;
+ * void* worker_thread(void* arg) {
+ *     thread_pool_t* pool = (thread_pool_t*)arg;
  *
- * // Initialize
- * rwlock_init(&g_clients.lock);
- *
- * // Add client (writer)
- * void add_client(client_t *client) {
- *     rwlock_wrlock(&g_clients.lock);
- *     g_clients.clients[g_clients.num_clients++] = client;
- *     rwlock_unlock(&g_clients.lock);
+ *     mutex_lock(&pool->work_mutex);
+ *     while (!pool->shutdown) {
+ *         // Wait for work
+ *         cond_wait(&pool->work_cond, &pool->work_mutex);
+ *         // Process work item
+ *     }
+ *     mutex_unlock(&pool->work_mutex);
+ *     return NULL;
  * }
  *
- * // Iterate clients (reader)
- * void broadcast_message(const char *msg) {
- *     rwlock_rdlock(&g_clients.lock);  // Multiple broadcast threads OK
- *     for (int i = 0; i < g_clients.num_clients; i++) {
- *         send_message(g_clients.clients[i], msg);
+ * int thread_pool_init(thread_pool_t* pool, int num_threads) {
+ *     pool->num_threads = num_threads;
+ *     pool->threads = SAFE_MALLOC(num_threads * sizeof(asciithread_t), asciithread_t*);
+ *     pool->shutdown = false;
+ *
+ *     mutex_init(&pool->work_mutex);
+ *     cond_init(&pool->work_cond);
+ *
+ *     for (int i = 0; i < num_threads; i++) {
+ *         ascii_thread_create(&pool->threads[i], worker_thread, pool);
  *     }
- *     rwlock_unlock(&g_clients.lock);
+ *
+ *     return 0;
+ * }
+ *
+ * void thread_pool_shutdown(thread_pool_t* pool) {
+ *     mutex_lock(&pool->work_mutex);
+ *     pool->shutdown = true;
+ *     cond_broadcast(&pool->work_cond);
+ *     mutex_unlock(&pool->work_mutex);
+ *
+ *     for (int i = 0; i < pool->num_threads; i++) {
+ *         ascii_thread_join(&pool->threads[i], NULL);
+ *     }
+ *
+ *     cond_destroy(&pool->work_cond);
+ *     mutex_destroy(&pool->work_mutex);
+ *     SAFE_FREE(pool->threads);
  * }
  * @endcode
  *
- * @subsection platform_usage_socket Cross-Platform Server Socket
+ * @subsection platform_example_tcp_server TCP Server Example
+ *
  * @code{.c}
- * // Create dual-stack IPv6/IPv4 server
- * socket_t listen_sockfd = socket(AF_INET6, SOCK_STREAM, 0);
- * if (listen_sockfd == INVALID_SOCKET_VALUE) {
- *     log_error("socket() failed");
- *     return ERROR_NETWORK_SOCKET;
- * }
+ * #include "platform/abstraction.h"
+ * #include "common.h"
  *
- * // Set socket options
- * int optval = 1;
- * setsockopt(listen_sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+ * socket_t create_tcp_server(int port) {
+ *     socket_init();
  *
- * // Enable dual-stack
- * int ipv6only = 0;
- * setsockopt(listen_sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only));
- *
- * // Bind to all interfaces
- * struct sockaddr_in6 addr = {0};
- * addr.sin6_family = AF_INET6;
- * addr.sin6_addr = in6addr_any;
- * addr.sin6_port = htons(27224);
- *
- * if (bind(listen_sockfd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
- *     log_error("bind() failed: %s", SAFE_STRERROR(errno));
- *     socket_close(listen_sockfd);
- *     return ERROR_NETWORK_BIND;
- * }
- *
- * // Listen
- * if (listen(listen_sockfd, 10) < 0) {
- *     log_error("listen() failed");
- *     socket_close(listen_sockfd);
- *     return ERROR_NETWORK_LISTEN;
- * }
- *
- * // Accept connections
- * while (running) {
- *     struct sockaddr_storage client_addr;
- *     socklen_t addr_len = sizeof(client_addr);
- *     socket_t client_sockfd = accept(listen_sockfd,
- *                                       (struct sockaddr*)&client_addr,
- *                                       &addr_len);
- *     if (client_sockfd != INVALID_SOCKET_VALUE) {
- *         handle_client(client_sockfd);
+ *     socket_t server = socket_create(AF_INET, SOCK_STREAM, 0);
+ *     if (server == INVALID_SOCKET_VALUE) {
+ *         return INVALID_SOCKET_VALUE;
  *     }
+ *
+ *     socket_set_reuseaddr(server, true);
+ *     socket_set_nodelay(server, true);
+ *
+ *     struct sockaddr_in addr = {0};
+ *     addr.sin_family = AF_INET;
+ *     addr.sin_addr.s_addr = INADDR_ANY;
+ *     addr.sin_port = htons(port);
+ *
+ *     if (socket_bind(server, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+ *         socket_close(server);
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     if (socket_listen(server, 10) != 0) {
+ *         socket_close(server);
+ *         return INVALID_SOCKET_VALUE;
+ *     }
+ *
+ *     return server;
  * }
  *
- * socket_close(listen_sockfd);
+ * void* client_handler(void* arg) {
+ *     socket_t client = *(socket_t*)arg;
+ *
+ *     char buffer[1024];
+ *     while (1) {
+ *         ssize_t received = socket_recv(client, buffer, sizeof(buffer), 0);
+ *         if (received <= 0) {
+ *             break;
+ *         }
+ *         // Process data
+ *         socket_send(client, buffer, received, 0);
+ *     }
+ *
+ *     socket_close(client);
+ *     return NULL;
+ * }
+ *
+ * int main() {
+ *     platform_init();
+ *
+ *     socket_t server = create_tcp_server(8080);
+ *     if (server == INVALID_SOCKET_VALUE) {
+ *         log_fatal("Failed to create server socket");
+ *         return 1;
+ *     }
+ *
+ *     while (1) {
+ *         socket_t client = socket_accept(server, NULL, NULL);
+ *         if (client == INVALID_SOCKET_VALUE) {
+ *             continue;
+ *         }
+ *
+ *         asciithread_t thread;
+ *         ascii_thread_create(&thread, client_handler, &client);
+ *         // Note: In production, track threads and join them on shutdown
+ *     }
+ *
+ *     socket_close(server);
+ *     socket_cleanup();
+ *     platform_cleanup();
+ *     return 0;
+ * }
  * @endcode
  *
- * @section platform_safety Thread Safety and Best Practices
+ * @note All platform code is grouped under the @ref platform "platform" group
+ *       and appears on this topic page automatically.
  *
- * **Lock Ordering**:
- * Always acquire locks in the same order to prevent deadlocks:
- * 1. Global rwlock (g_client_manager_rwlock)
- * 2. Per-client mutex (client_state_mutex)
- * 3. Specialized mutexes (g_stats_mutex, etc.)
- *
- * **Error Handling**:
- * - Always check return values from platform functions
- * - Use SAFE_STRERROR for platform-agnostic error messages
- * - Log errors with context using SET_ERRNO macros
- *
- * **Resource Cleanup**:
- * - Destroy mutexes/rwlocks/conds when done
- * - Close sockets explicitly (don't rely on process exit)
- * - Join or detach all threads before exit
- *
- * **Platform Differences**:
- * - Windows: Must call WSAStartup/WSACleanup
- * - Windows: Socket handles are SOCKET type (not int)
- * - Windows: Use INVALID_SOCKET, not -1
- * - POSIX: Signals can interrupt blocking calls (handle EINTR)
- *
- * @see platform/abstraction.h
- * @see platform/thread.h
- * @see platform/mutex.h
- * @see platform/rwlock.h
- * @see platform/cond.h
- * @see platform/socket.h
- * @see platform/terminal.h
- * @see platform/system.h
+ * @see @ref topic_debug "Debugging Utilities" for lock debugging integration
+ * @see @ref topic_os "OS Abstractions" for platform-specific functionality (webcam, etc.)
+ * @see lib/platform/README.md for additional platform documentation
  */

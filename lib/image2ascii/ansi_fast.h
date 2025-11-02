@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file ansi_fast.h
+ * @file image2ascii/ansi_fast.h
  * @ingroup image2ascii
  * @brief Fast ANSI escape sequence generation
  *

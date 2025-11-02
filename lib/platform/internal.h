@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file internal.h
+ * @file platform/internal.h
  * @ingroup platform
  * @brief Internal implementation helpers for platform abstraction layer
  *

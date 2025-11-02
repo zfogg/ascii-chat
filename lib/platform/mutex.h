@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file mutex.h
+ * @file platform/mutex.h
  * @ingroup platform
  * @brief Cross-platform mutex interface for ASCII-Chat
  *

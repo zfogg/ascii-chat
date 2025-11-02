@@ -2,6 +2,7 @@
 
 /**
  * @file aspect_ratio.h
+ * @ingroup util
  * @brief Aspect Ratio Calculation Functions
  *
  * This header provides functions for calculating image dimensions while
@@ -44,8 +45,11 @@
  * @date October 2025
  */
 
-#include "platform/abstraction.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include <stdarg.h>
+
+#include "platform/internal.h" // for ssize_t
 
 /* ============================================================================
  * Aspect Ratio Calculation Functions

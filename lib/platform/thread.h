@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file thread.h
+ * @file platform/thread.h
  * @ingroup platform
  * @brief Cross-platform thread interface for ASCII-Chat
  *

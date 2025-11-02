@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file ascii.h
+ * @file image2ascii/ascii.h
  * @defgroup image2ascii Image to ASCII Conversion
  * @ingroup image2ascii
  * @brief ASCII Art Conversion and Output Interface

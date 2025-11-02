@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file ascii_simd.h
+ * @file image2ascii/simd/ascii_simd.h
  * @ingroup image2ascii
  * @brief SIMD-optimized ASCII conversion interface
  *

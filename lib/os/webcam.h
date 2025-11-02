@@ -3,6 +3,7 @@
 /**
  * @file os/webcam.h
  * @defgroup os OS Abstractions
+ * @ingroup os
  * @brief Operating system specific functionality (webcam capture, etc.)
  *
  * This header provides a cross-platform webcam capture interface for ASCII-Chat.

@@ -1,7 +1,8 @@
 #pragma once
 
 /**
- * @file string.h
+ * @file util/string.h
+ * @ingroup util
  * @brief String Manipulation and Shell Escaping Utilities
  *
  * This header provides utilities for string manipulation, shell command

@@ -114,16 +114,24 @@
  *
  * **Public Keys**:
  * @code{.c}
- * // Load from file path
+ * // Load from .pub file (reads first line)
  * public_key_t pubkey;
  * asciichat_error_t err = parse_public_key("~/.ssh/id_ed25519.pub", &pubkey);
  *
- * // Or read first line and parse
+ * // Or read first line and parse manually
  * FILE *f = fopen("~/.ssh/id_ed25519.pub", "r");
  * char line[1024];
  * fgets(line, sizeof(line), f);
  * err = parse_public_key(line, &pubkey);
  * fclose(f);
+ *
+ * // Load multiple keys from file (one per line)
+ * public_key_t keys[10];
+ * size_t num_keys;
+ * err = parse_keys_from_file("~/.ssh/authorized_keys", keys, &num_keys, 10);
+ * // File can contain multiple keys, one per line:
+ * // ssh-ed25519 AAAAC3... alice@example.com
+ * // ssh-ed25519 AAAAC3... bob@example.com
  * @endcode
  *
  * **Private Keys**:
@@ -513,8 +521,27 @@
  *
  * @subsection keys_usage_server Server Key Whitelist
  *
+ * **Loading from file (recommended)**:
  * @code{.c}
- * // Server: Load authorized client keys
+ * // Server: Load authorized client keys from file
+ * // File can be authorized_keys format or .pub file with multiple entries (one per line)
+ * public_key_t client_keys[MAX_CLIENTS];
+ * size_t num_authorized = 0;
+ *
+ * asciichat_error_t err = parse_client_keys(
+ *     "~/.ssh/authorized_keys",  // File with multiple keys, one per line
+ *     client_keys,
+ *     &num_authorized,
+ *     MAX_CLIENTS
+ * );
+ * // File format (one key per line):
+ * // ssh-ed25519 AAAAC3... alice@example.com
+ * // ssh-ed25519 AAAAC3... bob@example.com
+ * @endcode
+ *
+ * **Loading from array**:
+ * @code{.c}
+ * // Server: Load authorized client keys from array
  * const char *authorized_clients[] = {
  *     "github:alice",
  *     "github:bob",
@@ -531,6 +558,7 @@
  *         }
  *     }
  * }
+ * @endcode
  *
  * // Verify incoming client signatures against whitelist
  * bool is_authorized = false;
