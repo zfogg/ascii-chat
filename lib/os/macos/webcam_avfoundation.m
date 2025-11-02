@@ -133,7 +133,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     context->session = [[AVCaptureSession alloc] init];
     if (!context->session) {
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to create AVCaptureSession");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to create AVCaptureSession");
     }
 
     // Set session preset for quality
@@ -171,7 +171,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_error("No camera device found at index %d", device_index);
       [context->session release];
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
 
     // Create device input
@@ -181,7 +181,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       log_error("Failed to create device input: %s", [[error localizedDescription] UTF8String]);
       [context->session release];
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
 
     // Add input to session
@@ -192,7 +192,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       [context->input release];
       [context->session release];
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
 
     // Create video output
@@ -202,7 +202,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       [context->input release];
       [context->session release];
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
 
     // Configure video output for RGB format
@@ -226,7 +226,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       [context->session release];
       dispatch_release(context->queue);
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
 
     // Start the session
@@ -242,7 +242,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       [context->session release];
       dispatch_release(context->queue);
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
     log_info("Capture session started successfully");
 
@@ -262,7 +262,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       [context->session release];
       dispatch_release(context->queue);
       SAFE_FREE(context);
-      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
+      return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
     }
   }
 
