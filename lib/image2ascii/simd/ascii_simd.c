@@ -244,7 +244,7 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
 // --------------------------------------
 // SIMD-convert an image into ASCII characters and return it with newlines
 char *image_print_simd(image_t *image, const char *ascii_chars) {
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   return render_ascii_image_monochrome_avx2(image, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSSE3)
   return render_ascii_image_monochrome_ssse3(image, ascii_chars);
@@ -267,19 +267,19 @@ char *image_print_simd(image_t *image, const char *ascii_chars) {
 
 void print_simd_capabilities(void) {
   printf("SIMD Support:\n");
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   printf("  ✓ AVX2 (32 pixels/cycle)\n");
 #endif
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   printf("  ✓ ARM NEON (16 pixels/cycle)\n");
 #endif
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   printf("  ✓ ARM SVE (scalable pixels/cycle)\n");
 #endif
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   printf("  ✓ SSSE3 (16 pixels/cycle)\n");
 #endif
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   printf("  ✓ SSE2 (16 pixels/cycle)\n");
 #endif
   printf("  ✓ Scalar fallback (1 pixel/cycle)\n");
@@ -381,7 +381,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   }
   result.scalar_time = (get_time_seconds() - start_mono) / adaptive_iterations;
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using new image-based timing function
   // Benchmark SSE2 monochrome rendering
   double start_sse2 = get_time_seconds();
@@ -393,7 +393,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   result.sse2_time = (get_time_seconds() - start_sse2) / adaptive_iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using new image-based timing function
   // Benchmark SSSE3 monochrome rendering
   double start_ssse3 = get_time_seconds();
@@ -405,7 +405,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   result.ssse3_time = (get_time_seconds() - start_ssse3) / adaptive_iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using optimized single-pass implementation
   // Benchmark AVX2 monochrome rendering
   double start_avx2 = get_time_seconds();
@@ -417,7 +417,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   result.avx2_time = (get_time_seconds() - start_avx2) / adaptive_iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   // Benchmark NEON using new image-based timing function
   // TODO: Update benchmark to use custom palette testing
   // Benchmark NEON monochrome rendering
@@ -430,7 +430,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   result.neon_time = (get_time_seconds() - start_neon) / adaptive_iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   // SVE benchmarking disabled - function removed
   result.sve_time = 0.0;
 #endif
@@ -439,28 +439,28 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   double best_time = result.scalar_time;
   result.best_method = "scalar";
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
     best_time = result.sse2_time;
     result.best_method = "SSE2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
     best_time = result.ssse3_time;
     result.best_method = "SSSE3";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time) {
     best_time = result.avx2_time;
     result.best_method = "AVX2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
     best_time = result.neon_time;
     result.best_method = "NEON";
@@ -469,7 +469,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   result.speedup_best = result.scalar_time / best_time;
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   if (result.sve_time > 0 && result.sve_time < best_time) {
     best_time = result.sve_time;
     result.best_method = "SVE";
@@ -544,7 +544,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   }
   result.scalar_time = get_time_seconds() - start;
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   // Benchmark SSE2 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
@@ -555,7 +555,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   result.sse2_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
@@ -566,7 +566,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   result.ssse3_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   // Benchmark AVX2 color using unified function
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
@@ -577,7 +577,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   result.avx2_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   // Benchmark NEON color
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
@@ -594,28 +594,28 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   double best_time = result.scalar_time;
   result.best_method = "scalar";
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
     best_time = result.sse2_time;
     result.best_method = "SSE2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
     best_time = result.ssse3_time;
     result.best_method = "SSSE3";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time) {
     best_time = result.avx2_time;
     result.best_method = "AVX2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
     best_time = result.neon_time;
     result.best_method = "NEON";
@@ -718,7 +718,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   }
   result.scalar_time = (get_time_seconds() - start_scalar) / iterations;
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   // Benchmark SSE2 using unified optimized renderer
   // Benchmark SSE2 color rendering
   ensure_default_palette_ready();
@@ -731,7 +731,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   result.sse2_time = (get_time_seconds() - start_sse2_color) / iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   // Benchmark SSSE3 using unified optimized renderer
   // Benchmark SSSE3 color rendering
   ensure_default_palette_ready();
@@ -745,7 +745,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   result.ssse3_time = (get_time_seconds() - start_ssse3_color) / iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   // Benchmark AVX2 using unified optimized renderer
   // Benchmark AVX2 color rendering
   ensure_default_palette_ready();
@@ -758,7 +758,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   result.avx2_time = (get_time_seconds() - start_avx2_color) / iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   // Benchmark NEON using unified optimized renderer
   // Benchmark NEON color rendering
   ensure_default_palette_ready();
@@ -771,7 +771,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   result.neon_time = (get_time_seconds() - start_neon_color) / iterations;
 #endif
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   // Benchmark SVE using unified optimized renderer
   // Benchmark SVE color rendering
   ensure_default_palette_ready();
@@ -788,28 +788,28 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   double best_time = result.scalar_time;
   result.best_method = "scalar";
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
     best_time = result.sse2_time;
     result.best_method = "SSE2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
     best_time = result.ssse3_time;
     result.best_method = "SSSE3";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time) {
     best_time = result.avx2_time;
     result.best_method = "AVX2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
     best_time = result.neon_time;
     result.best_method = "NEON";
@@ -818,7 +818,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
   result.speedup_best = result.scalar_time / best_time;
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   if (result.sve_time > 0 && result.sve_time < best_time) {
     best_time = result.sve_time;
     result.best_method = "SVE";
@@ -944,7 +944,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   double best_time = result.scalar_time;
   result.best_method = "scalar";
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
@@ -960,7 +960,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   result.sse2_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
@@ -976,7 +976,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   result.ssse3_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     image_t *test_image = image_new(width, height);
@@ -992,7 +992,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   result.avx2_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
@@ -1005,7 +1005,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   result.neon_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
@@ -1017,28 +1017,28 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   result.sve_time = get_time_seconds() - start;
 #endif
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time) {
     best_time = result.sse2_time;
     result.best_method = "SSE2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   if (result.ssse3_time > 0 && result.ssse3_time < best_time) {
     best_time = result.ssse3_time;
     result.best_method = "SSSE3";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time) {
     best_time = result.avx2_time;
     result.best_method = "AVX2";
   }
 #endif
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time) {
     best_time = result.neon_time;
     result.best_method = "NEON";
@@ -1058,23 +1058,23 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   // Recalculate best time after normalization
   best_time = result.scalar_time;
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   if (result.sse2_time > 0 && result.sse2_time < best_time)
     best_time = result.sse2_time;
 #endif
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   if (result.ssse3_time > 0 && result.ssse3_time < best_time)
     best_time = result.ssse3_time;
 #endif
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   if (result.avx2_time > 0 && result.avx2_time < best_time)
     best_time = result.avx2_time;
 #endif
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
   if (result.neon_time > 0 && result.neon_time < best_time)
     best_time = result.neon_time;
 #endif
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
   if (result.sve_time > 0 && result.sve_time < best_time)
     best_time = result.sve_time;
 #endif

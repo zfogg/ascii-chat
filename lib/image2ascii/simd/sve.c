@@ -5,7 +5,7 @@
 #include "sve.h"
 #include "common.h"
 
-#ifdef SIMD_SUPPORT_SVE
+#if SIMD_SUPPORT_SVE
 #include <arm_sve.h>
 
 //=============================================================================

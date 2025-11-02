@@ -95,7 +95,7 @@ static void convert_yuy2_to_rgb_scalar(const uint8_t *yuy2, rgb_t *rgb, int widt
   }
 }
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
 #include <emmintrin.h>
 
 // SSE2 implementation - process 8 pixels at once
@@ -192,7 +192,7 @@ static void convert_yuy2_to_rgb_sse2(const uint8_t *yuy2, rgb_t *rgb, int width,
 }
 #endif // SIMD_SUPPORT_SSE2
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
 #include <tmmintrin.h>
 
 // SSSE3 implementation with better shuffle operations
@@ -260,7 +260,7 @@ static void convert_yuy2_to_rgb_ssse3(const uint8_t *yuy2, rgb_t *rgb, int width
 }
 #endif // SIMD_SUPPORT_SSSE3
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
 #include <immintrin.h>
 
 // AVX2 implementation - process 16 pixels at once
@@ -317,21 +317,21 @@ static void convert_yuy2_to_rgb_avx2(const uint8_t *yuy2, rgb_t *rgb, int width,
 void convert_yuy2_to_rgb_optimized(const uint8_t *yuy2, rgb_t *rgb, int width, int height) {
   detect_cpu_features();
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
   if (cpu_has_avx2) {
     convert_yuy2_to_rgb_avx2(yuy2, rgb, width, height);
     return;
   }
 #endif
 
-#ifdef SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   if (cpu_has_ssse3) {
     convert_yuy2_to_rgb_ssse3(yuy2, rgb, width, height);
     return;
   }
 #endif
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
   if (cpu_has_sse2) {
     convert_yuy2_to_rgb_sse2(yuy2, rgb, width, height);
     return;

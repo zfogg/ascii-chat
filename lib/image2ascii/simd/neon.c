@@ -17,7 +17,7 @@
 #include "image2ascii/simd/common.h"
 #include "image2ascii/output_buffer.h"
 
-#ifdef SIMD_SUPPORT_NEON // main block of code ifdef
+#if SIMD_SUPPORT_NEON // main block of code ifdef
 #include <arm_neon.h>
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)

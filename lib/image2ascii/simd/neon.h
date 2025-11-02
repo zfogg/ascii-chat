@@ -15,7 +15,7 @@
 #endif
 #endif // __ARM_NEON || __aarch64__
 
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
 
 // NEON palette quantization with ordered dithering
 uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);

@@ -2,7 +2,7 @@
 
 #include "../image.h"
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
 
 // Optimized single-pass AVX2 implementations with buffer pools
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars);

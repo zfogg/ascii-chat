@@ -511,7 +511,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 
   // Handle half-block mode first (requires NEON)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
     // Use NEON half-block renderer
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
     return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
