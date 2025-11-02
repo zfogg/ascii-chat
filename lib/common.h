@@ -411,6 +411,19 @@ bool shutdown_is_requested(void);
     (cast)(tmp_ptr);                                                                                                   \
   })
 
+/* Helper macro to track aligned allocations when DEBUG_MEMORY is enabled */
+#if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
+#ifdef NDEBUG
+/* Production build: don't include file/line info */
+#define TRACK_ALIGNED_ALLOC(ptr, size, file, line) debug_track_aligned((void *)(ptr), (size_t)(size), NULL, 0)
+#else
+/* Debug build: include file/line info */
+#define TRACK_ALIGNED_ALLOC(ptr, size, file, line) debug_track_aligned((void *)(ptr), (size_t)(size), (file), (line))
+#endif
+#else
+#define TRACK_ALIGNED_ALLOC(ptr, size, file, line) ((void)0)
+#endif
+
 /* SIMD-aligned memory allocation macros for optimal NEON/AVX performance */
 #ifdef USE_MIMALLOC
 /* Use mimalloc's aligned allocation (works on all platforms) */
@@ -421,11 +434,25 @@ bool shutdown_is_requested(void);
       FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                             \
     _ptr;                                                                                                              \
   })
 #else
 /* Fall back to platform-specific aligned allocation when mimalloc is disabled */
-#ifdef __APPLE__
+#ifdef _WIN32
+/* Windows uses _aligned_malloc() for aligned allocation */
+#include <malloc.h>
+#define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
+  ({                                                                                                                   \
+    cast _ptr = (cast)_aligned_malloc((size), (alignment));                                                            \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
+            (size_t)(alignment));                                                                                      \
+    }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                             \
+    _ptr;                                                                                                              \
+  })
+#elif defined(__APPLE__)
 /* macOS uses posix_memalign() for aligned allocation */
 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
   ({                                                                                                                   \
@@ -435,6 +462,7 @@ bool shutdown_is_requested(void);
       FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", (size_t)(size),                \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, (size), __FILE__, __LINE__);                                                             \
     _ptr;                                                                                                              \
   })
 #else
@@ -447,6 +475,7 @@ bool shutdown_is_requested(void);
       FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,                  \
             (size_t)(alignment));                                                                                      \
     }                                                                                                                  \
+    TRACK_ALIGNED_ALLOC(_ptr, aligned_size, __FILE__, __LINE__);                                                       \
     _ptr;                                                                                                              \
   })
 #endif
@@ -521,6 +550,7 @@ void *debug_malloc(size_t size, const char *file, int line);
 void debug_free(void *ptr, const char *file, int line);
 void *debug_calloc(size_t count, size_t size, const char *file, int line);
 void *debug_realloc(void *ptr, size_t size, const char *file, int line);
+void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
 
 void debug_memory_report(void);
 void debug_memory_set_quiet_mode(bool quiet); /* Control stderr output for memory report */
