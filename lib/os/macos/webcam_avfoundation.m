@@ -119,12 +119,11 @@ static NSArray *getSupportedDeviceTypes(void) {
   return [deviceTypes copy];
 }
 
-int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
+asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
   webcam_context_t *context;
   context = SAFE_MALLOC(sizeof(webcam_context_t), webcam_context_t *);
   if (!context) {
-    log_error("Failed to allocate webcam context");
-    return -1;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate webcam context");
   }
 
   memset(context, 0, sizeof(webcam_context_t));
@@ -133,9 +132,8 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
     // Create capture session
     context->session = [[AVCaptureSession alloc] init];
     if (!context->session) {
-      log_error("Failed to create AVCaptureSession");
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to create AVCaptureSession");
     }
 
     // Set session preset for quality
@@ -173,7 +171,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       log_error("No camera device found at index %d", device_index);
       [context->session release];
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
 
     // Create device input
@@ -183,7 +181,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       log_error("Failed to create device input: %s", [[error localizedDescription] UTF8String]);
       [context->session release];
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
 
     // Add input to session
@@ -194,7 +192,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->input release];
       [context->session release];
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
 
     // Create video output
@@ -204,7 +202,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->input release];
       [context->session release];
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
 
     // Configure video output for RGB format
@@ -228,7 +226,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->session release];
       dispatch_release(context->queue);
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
 
     // Start the session
@@ -244,7 +242,7 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->session release];
       dispatch_release(context->queue);
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
     log_info("Capture session started successfully");
 
@@ -264,12 +262,12 @@ int webcam_init_context(webcam_context_t **ctx, unsigned short int device_index)
       [context->session release];
       dispatch_release(context->queue);
       SAFE_FREE(context);
-      return -1;
+      return SET_ERRNO(ERROR_VIDEO, "Failed to initialize webcam");
     }
   }
 
   *ctx = context;
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void webcam_cleanup_context(webcam_context_t *ctx) {
@@ -412,13 +410,13 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 }
 
-int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
   if (!ctx || !width || !height)
-    return -1;
+    return ERROR_INVALID_PARAM;
 
   *width = ctx->width;
   *height = ctx->height;
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 #endif // __APPLE__
