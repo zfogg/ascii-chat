@@ -6,10 +6,11 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "ringbuffer.h"
-#include "audio.h"
 #include "tests/common.h"
 #include "tests/logging.h"
+#include "ringbuffer.h"
+#include "audio.h"
+#include "buffer_pool.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels
 TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(ringbuffer, LOG_FATAL, LOG_DEBUG, true, true);
@@ -303,7 +304,7 @@ Test(framebuffer, write_and_read_frame) {
   cr_assert_eq(strcmp(frame.data, test_frame), 0);
 
   // Clean up the frame data
-  SAFE_FREE(frame.data);
+  buffer_pool_free(frame.data, frame.size);
 
   framebuffer_destroy(fb);
 }
@@ -361,12 +362,12 @@ Test(framebuffer, buffer_overflow) {
   result = framebuffer_read_frame(fb, &frame);
   cr_assert(result);
   cr_assert_eq(strcmp(frame.data, "frame2"), 0);
-  SAFE_FREE(frame.data);
+  buffer_pool_free(frame.data, frame.size);
 
   result = framebuffer_read_frame(fb, &frame);
   cr_assert(result);
   cr_assert_eq(strcmp(frame.data, "frame3"), 0);
-  SAFE_FREE(frame.data);
+  buffer_pool_free(frame.data, frame.size);
 
   // Should be empty now
   result = framebuffer_read_frame(fb, &frame);
@@ -427,7 +428,7 @@ Test(framebuffer, multi_source_write_and_read) {
   cr_assert_eq(memcmp(frame.data, test_frame, frame_size), 0);
 
   // Clean up the frame data
-  SAFE_FREE(frame.data);
+  buffer_pool_free(frame.data, frame.size);
 
   framebuffer_destroy(fb);
 }
@@ -454,8 +455,8 @@ Test(framebuffer, multi_source_peek) {
   cr_assert_eq(memcmp(frame2.data, test_frame, frame_size), 0);
 
   // Clean up
-  SAFE_FREE(frame.data);
-  SAFE_FREE(frame2.data);
+  buffer_pool_free(frame.data, frame.size);
+  buffer_pool_free(frame2.data, frame2.size);
 
   framebuffer_destroy(fb);
 }
@@ -511,10 +512,24 @@ Test(audio_ring_buffer, basic_write_read) {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   cr_assert_not_null(arb);
 
+  // Fill jitter buffer threshold first (2048 samples)
+  float dummy_samples[2048];
+  for (int i = 0; i < 2048; i++) {
+    dummy_samples[i] = 0.0f;
+  }
+  asciichat_error_t result = audio_ring_buffer_write(arb, dummy_samples, 2048);
+  cr_assert_eq(result, ASCIICHAT_OK);
+
+  // Read the dummy samples to fill jitter buffer
+  float dummy_read[2048];
+  int dummy_read_count = audio_ring_buffer_read(arb, dummy_read, 2048);
+  cr_assert_eq(dummy_read_count, 2048);
+
+  // Now test actual samples
   float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
 
-  int written = audio_ring_buffer_write(arb, test_samples, 4);
-  cr_assert_eq(written, 4);
+  result = audio_ring_buffer_write(arb, test_samples, 4);
+  cr_assert_eq(result, ASCIICHAT_OK);
 
   float read_samples[4];
   int read = audio_ring_buffer_read(arb, read_samples, 4);
@@ -531,11 +546,25 @@ Test(audio_ring_buffer, partial_read_write) {
   audio_ring_buffer_t *arb = audio_ring_buffer_create();
   cr_assert_not_null(arb);
 
+  // Fill jitter buffer threshold first (2048 samples)
+  float dummy_samples[2048];
+  for (int i = 0; i < 2048; i++) {
+    dummy_samples[i] = 0.0f;
+  }
+  asciichat_error_t result = audio_ring_buffer_write(arb, dummy_samples, 2048);
+  cr_assert_eq(result, ASCIICHAT_OK);
+
+  // Read the dummy samples to fill jitter buffer
+  float dummy_read[2048];
+  int dummy_read_count = audio_ring_buffer_read(arb, dummy_read, 2048);
+  cr_assert_eq(dummy_read_count, 2048);
+
+  // Now test actual samples
   float test_samples[8] = {0.1f, 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f};
 
   // Write all samples
-  int written = audio_ring_buffer_write(arb, test_samples, 8);
-  cr_assert_eq(written, 8);
+  result = audio_ring_buffer_write(arb, test_samples, 8);
+  cr_assert_eq(result, ASCIICHAT_OK);
 
   // Read only 3 samples
   float read_samples[3];
@@ -567,16 +596,16 @@ Test(audio_ring_buffer, buffer_overflow) {
   for (int i = 0; i < AUDIO_RING_BUFFER_SIZE + 100; i++) {
     oversized_samples[i] = (float)i * 0.001f;
   }
-  int written = audio_ring_buffer_write(arb, oversized_samples, AUDIO_RING_BUFFER_SIZE + 100);
-  cr_assert_eq(written, 0); // Should fail when trying to write more than buffer size
+  asciichat_error_t result = audio_ring_buffer_write(arb, oversized_samples, AUDIO_RING_BUFFER_SIZE + 100);
+  cr_assert_neq(result, ASCIICHAT_OK); // Should fail when trying to write more than buffer size
 
   // Second test: Write a small amount first, then try to overflow
   float initial_samples[10];
   for (int i = 0; i < 10; i++) {
     initial_samples[i] = (float)i * 0.1f;
   }
-  written = audio_ring_buffer_write(arb, initial_samples, 10);
-  cr_assert_eq(written, 10);
+  result = audio_ring_buffer_write(arb, initial_samples, 10);
+  cr_assert_eq(result, ASCIICHAT_OK);
 
   // Now try to write enough to cause overflow (this should drop the old samples)
   // We need to write enough samples to exceed the available space
@@ -586,8 +615,8 @@ Test(audio_ring_buffer, buffer_overflow) {
   for (int i = 0; i < AUDIO_RING_BUFFER_SIZE - 1; i++) {
     overflow_samples[i] = (float)(i + 1000) * 0.001f;
   }
-  written = audio_ring_buffer_write(arb, overflow_samples, AUDIO_RING_BUFFER_SIZE - 1);
-  cr_assert_eq(written, AUDIO_RING_BUFFER_SIZE - 1);
+  result = audio_ring_buffer_write(arb, overflow_samples, AUDIO_RING_BUFFER_SIZE - 1);
+  cr_assert_eq(result, ASCIICHAT_OK);
 
   // Read back samples - should get the newer samples (overflow_samples)
   float read_samples[AUDIO_RING_BUFFER_SIZE];
@@ -620,11 +649,11 @@ Test(audio_ring_buffer, null_parameters) {
   float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
 
   // Test with NULL buffer
-  int written = audio_ring_buffer_write(NULL, test_samples, 4);
-  cr_assert_eq(written, 0);
+  asciichat_error_t result = audio_ring_buffer_write(NULL, test_samples, 4);
+  cr_assert_neq(result, ASCIICHAT_OK);
 
-  written = audio_ring_buffer_write(arb, NULL, 4);
-  cr_assert_eq(written, 0);
+  result = audio_ring_buffer_write(arb, NULL, 4);
+  cr_assert_neq(result, ASCIICHAT_OK);
 
   // Test with NULL buffer
   int read = audio_ring_buffer_read(NULL, test_samples, 4);
@@ -643,8 +672,8 @@ Test(audio_ring_buffer, zero_samples) {
   float test_samples[4] = {0.1f, 0.2f, 0.3f, 0.4f};
 
   // Test with zero samples
-  int written = audio_ring_buffer_write(arb, test_samples, 0);
-  cr_assert_eq(written, 0);
+  asciichat_error_t result = audio_ring_buffer_write(arb, test_samples, 0);
+  cr_assert_neq(result, ASCIICHAT_OK); // Zero samples should be invalid
 
   int read = audio_ring_buffer_read(arb, test_samples, 0);
   cr_assert_eq(read, 0);
@@ -846,7 +875,7 @@ Theory((size_t capacity, size_t num_ops), ringbuffer, fifo_ordering_property) {
 
   // PROPERTY: Write sequence of integers
   int *written_values;
-  SAFE_MALLOC(written_values, num_ops * sizeof(int), int *);
+  written_values = SAFE_MALLOC(num_ops * sizeof(int), int *);
   cr_assume(written_values != NULL);
 
   for (size_t i = 0; i < num_ops; i++) {

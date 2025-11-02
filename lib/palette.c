@@ -35,7 +35,6 @@ static int wcwidth(wchar_t wc) {
 #endif
 #include "palette.h"
 #include "common.h"
-#include "image2ascii/simd/ascii_simd.h"
 #include "platform/terminal.h"
 
 /* Default palette constants for legacy functions */
@@ -87,12 +86,12 @@ bool palette_requires_utf8_encoding(const char *chars, size_t len) {
 // Validate UTF-8 character sequences and terminal width
 bool validate_palette_chars(const char *chars, size_t len) {
   if (!chars || len == 0) {
-    log_error("Palette validation failed: empty or NULL palette");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: empty or NULL palette");
     return false;
   }
 
   if (len > 256) {
-    log_error("Palette validation failed: palette too long (%zu chars, max 256)", len);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: palette too long (%zu chars, max 256)", len);
     return false;
   }
 
@@ -116,7 +115,7 @@ bool validate_palette_chars(const char *chars, size_t len) {
     int bytes = mbtowc(&wc, p, len - byte_count);
 
     if (bytes <= 0) {
-      log_error("Palette validation failed: invalid UTF-8 sequence at position %zu", char_count);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: invalid UTF-8 sequence at position %zu", char_count);
       // Restore old locale
       if (old_locale) {
         (void)setlocale(LC_CTYPE, old_locale);
@@ -128,7 +127,8 @@ bool validate_palette_chars(const char *chars, size_t len) {
     // Check character width - allow width 1 and 2 (for emoji and wide characters)
     int width = wcwidth(wc);
     if (width < 0 || width > 2) {
-      log_error("Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)",
+      SET_ERRNO(ERROR_INVALID_PARAM,
+                "Palette validation failed: character at position %zu has invalid width %d (must be 1 or 2)",
                 char_count, width);
       // Restore old locale
       if (old_locale) {
@@ -140,7 +140,7 @@ bool validate_palette_chars(const char *chars, size_t len) {
 
     // Check for control characters (except tab)
     if (wc < 32 && wc != '\t') {
-      log_error("Palette validation failed: control character at position %zu", char_count);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: control character at position %zu", char_count);
       // Restore old locale
       if (old_locale) {
         (void)setlocale(LC_CTYPE, old_locale);
@@ -276,18 +276,18 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
   // Just validate the palette - no global state changes
   if (type == PALETTE_CUSTOM) {
     if (!custom_chars || strlen(custom_chars) == 0) {
-      log_error("Custom palette requested but no characters provided");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Custom palette requested but no characters provided");
       return -1;
     }
 
     if (!validate_palette_chars(custom_chars, strlen(custom_chars))) {
-      log_error("Custom palette validation failed");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Custom palette validation failed");
       return -1;
     }
   } else {
     const palette_def_t *palette = get_builtin_palette(type);
     if (!palette) {
-      log_error("Invalid palette type: %d", type);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid palette type: %d", type);
       return -1;
     }
   }
@@ -298,7 +298,7 @@ int apply_palette_config(palette_type_t type, const char *custom_chars) {
 // Build a per-client luminance palette without affecting global cache
 int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]) {
   if (!palette_chars || palette_len == 0 || !luminance_mapping) {
-    log_error("Invalid parameters for client luminance palette");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for client luminance palette");
     return -1;
   }
 
@@ -324,23 +324,23 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
 
   if (palette_type == PALETTE_CUSTOM) {
     if (!custom_chars) {
-      log_error("Client requested custom palette but custom_chars is NULL");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client requested custom palette but custom_chars is NULL");
       return -1;
     }
 
     len_to_use = strlen(custom_chars);
     if (len_to_use == 0) {
-      log_error("Client requested custom palette but custom_chars is empty");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client requested custom palette but custom_chars is empty");
       return -1;
     }
     if (len_to_use >= 256) {
-      log_error("Client custom palette too long: %zu chars", len_to_use);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client custom palette too long: %zu chars", len_to_use);
       return -1;
     }
 
     // Validate custom palette
     if (!validate_palette_chars(custom_chars, len_to_use)) {
-      log_error("Client custom palette validation failed");
+      SET_ERRNO(ERROR_INVALID_PARAM, "Client custom palette validation failed");
       return -1;
     }
 
@@ -348,7 +348,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
   } else {
     palette = get_builtin_palette(palette_type);
     if (!palette) {
-      log_error("Invalid client palette type: %d", palette_type);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client palette type: %d", palette_type);
       return -1;
     }
 
@@ -367,7 +367,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
 
   // Build client-specific luminance mapping
   if (build_client_luminance_palette(chars_to_use, len_to_use, client_luminance_palette) != 0) {
-    log_error("Failed to build client luminance palette");
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to build client luminance palette");
     return -1;
   }
 
@@ -386,7 +386,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   }
 
   utf8_palette_t *palette;
-  SAFE_MALLOC(palette, sizeof(utf8_palette_t), utf8_palette_t *);
+  palette = SAFE_MALLOC(sizeof(utf8_palette_t), utf8_palette_t *);
 
   // Count UTF-8 characters (not bytes)
   size_t char_count = 0;
@@ -421,14 +421,14 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
 
   // Validate we got at least one character
   if (char_count == 0) {
-    log_error("Palette string contains no valid UTF-8 characters");
-    free(palette);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Palette string contains no valid UTF-8 characters");
+    SAFE_FREE(palette);
     return NULL;
   }
 
   // Allocate character array
-  SAFE_MALLOC(palette->chars, char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
-  SAFE_MALLOC(palette->raw_string, total_bytes + 1, char *);
+  palette->chars = SAFE_MALLOC(char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
+  palette->raw_string = SAFE_MALLOC(total_bytes + 1, char *);
 
   SAFE_MEMCPY(palette->raw_string, total_bytes + 1, palette_string, total_bytes + 1);
   palette->char_count = char_count;

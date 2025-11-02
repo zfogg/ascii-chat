@@ -2,7 +2,7 @@
 #include <criterion/new/assert.h>
 #include <string.h>
 
-#include "crypto.h"
+#include "crypto/crypto.h"
 #include "tests/common.h"
 
 void setup_crypto_network_quiet_logging(void);
@@ -214,7 +214,7 @@ Test(crypto_network_integration, multiple_messages_same_session) {
 
     // Server acknowledgment back to client
     char ack_message[256];
-    snprintf(ack_message, sizeof(ack_message), "ACK: Received message %d", i + 1);
+    safe_snprintf(ack_message, sizeof(ack_message), "ACK: Received message %d", i + 1);
 
     result = crypto_create_encrypted_packet(&server_ctx, (const uint8_t *)ack_message, strlen(ack_message),
                                             encrypted_packet, sizeof(encrypted_packet), &packet_len);
@@ -248,7 +248,7 @@ Test(crypto_network_integration, large_message_handling) {
   // Create large message (simulating video frame data)
   size_t large_message_size = 64 * 1024; // 64KB
   uint8_t *large_message;
-  SAFE_MALLOC(large_message, large_message_size, uint8_t *);
+  large_message = SAFE_MALLOC(large_message_size, uint8_t *);
 
   // Fill with pattern
   for (size_t i = 0; i < large_message_size; i++) {
@@ -257,7 +257,7 @@ Test(crypto_network_integration, large_message_handling) {
 
   // Encrypt large message
   uint8_t *encrypted_packet;
-  SAFE_MALLOC(encrypted_packet, large_message_size + 1024, uint8_t *); // Extra space for crypto overhead
+  encrypted_packet = SAFE_MALLOC(large_message_size + 1024, uint8_t *); // Extra space for crypto overhead
   size_t packet_len;
 
   crypto_result_t result = crypto_create_encrypted_packet(&ctx1, large_message, large_message_size, encrypted_packet,
@@ -267,7 +267,7 @@ Test(crypto_network_integration, large_message_handling) {
 
   // Decrypt large message
   uint8_t *decrypted_message;
-  SAFE_MALLOC(decrypted_message, large_message_size, uint8_t *);
+  decrypted_message = SAFE_MALLOC(large_message_size, uint8_t *);
   size_t decrypted_len;
 
   result = crypto_process_encrypted_packet(&ctx2, encrypted_packet, packet_len, decrypted_message, large_message_size,
@@ -277,9 +277,9 @@ Test(crypto_network_integration, large_message_handling) {
   cr_assert_eq(memcmp(decrypted_message, large_message, large_message_size), 0,
                "Decrypted content should match original");
 
-  free(large_message);
-  free(encrypted_packet);
-  free(decrypted_message);
+  SAFE_FREE(large_message);
+  SAFE_FREE(encrypted_packet);
+  SAFE_FREE(decrypted_message);
   crypto_cleanup(&ctx1);
   crypto_cleanup(&ctx2);
 }

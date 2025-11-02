@@ -2,7 +2,7 @@
 
 #include "common.h"
 
-#ifdef SIMD_SUPPORT_SSE2
+#if SIMD_SUPPORT_SSE2
 #ifdef _WIN32
 // Windows: Use immintrin.h with proper feature detection
 // MSVC defines _M_X64 for x64 (which always has SSE2) or _M_IX86_FP >= 2 for x86 with SSE2

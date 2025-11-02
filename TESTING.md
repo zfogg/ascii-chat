@@ -44,6 +44,82 @@ Test(your_module_name, test_function_name) {
 }
 ```
 
+### Parameterized Test Requirements (CRITICAL)
+
+**⚠️ WARNING**: Parameterized tests have special memory requirements!
+
+When using Criterion's parameterized tests (`ParameterizedTest`), any **pointers** in your test parameter structures require special Criterion allocators (`cr_malloc`, `cr_calloc`, `cr_realloc`, `cr_free`). Using regular `malloc`/`free` or string literals is **undefined behavior** and will crash.
+
+**Best Practice for This Project**: Use fixed-size char arrays instead of pointers to avoid needing allocation code:
+
+```c
+// ✅ RECOMMENDED - Use char arrays (no allocation needed)
+typedef struct {
+  char input[256];           // Fixed-size array
+  char expected[256];        // Fixed-size array
+  int expected_result;
+  char description[64];      // Fixed-size array
+} test_case_t;
+
+static test_case_t test_cases[] = {
+    {"input1", "expected1", 0, "test case 1"},
+    {"input2", "expected2", 0, "test case 2"},
+};
+
+ParameterizedTestParameters(suite, test_name) {
+  return cr_make_param_array(test_case_t, test_cases,
+                             sizeof(test_cases) / sizeof(test_cases[0]));
+}
+
+ParameterizedTest(test_case_t *tc, suite, test_name) {
+  // Test code using tc->input, tc->expected, etc.
+}
+```
+
+```c
+// ⚠️ ALTERNATIVE - Pointers with cr_malloc (more code, rarely needed)
+typedef struct {
+  const char *input;
+  const char *expected;
+  int expected_result;
+  const char *description;
+} test_case_t;
+
+ParameterizedTestParameters(suite, test_name) {
+  static test_case_t *cases = NULL;
+  if (!cases) {
+    size_t count = 2;
+    cases = cr_malloc(count * sizeof(test_case_t));
+    cases[0] = (test_case_t){
+      .input = cr_strdup("input1"),
+      .expected = cr_strdup("expected1"),
+      .expected_result = 0,
+      .description = cr_strdup("test case 1")
+    };
+    // ... more cases
+  }
+  return cr_make_param_array(test_case_t, cases, 2);
+}
+```
+
+```c
+// ❌ WRONG - String literals with pointers will crash!
+typedef struct {
+  const char *input;         // Pointer to string literal - CRASHES!
+  const char *expected;      // Pointer to string literal - CRASHES!
+  int expected_result;
+  const char *description;   // Pointer to string literal - CRASHES!
+} test_case_t;
+
+static test_case_t test_cases[] = {
+    {"input1", "expected1", 0, "test"},  // String literals - UNDEFINED BEHAVIOR!
+};
+```
+
+**Why**: Criterion copies parameter arrays and requires all dynamic memory to use its allocators. String literals and regular heap allocations violate this requirement.
+
+**Reference**: [Criterion Parameterized Tests Docs](https://criterion.readthedocs.io/en/master/parameterized.html)
+
 ### Important Patterns
 
 #### Memory Allocation

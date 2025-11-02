@@ -4,13 +4,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "network.h"
+#include "network/network.h"
+#include "network/packet.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
 #include "video_frame.h"
 #include "platform/terminal.h"
 #include "palette.h"
 #include "hashtable.h"
+#include "crypto/handshake.h"
 
 // Use definitions from network.h (MAX_CLIENTS, MAX_DISPLAY_NAME_LEN)
 
@@ -72,9 +74,13 @@ typedef struct {
   atomic_int last_rendered_grid_sources; // Render thread: source count in buffered frame
   atomic_int last_sent_grid_sources;     // Send thread: source count in last sent frame
 
-  // Pre-allocated buffers to avoid malloc/free in send thread (prevents deadlocks)
+  // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer pool contention)
   void *send_buffer;
   size_t send_buffer_size;
+  void *crypto_plaintext_buffer; // For encryption plaintext (frame + header)
+  size_t crypto_plaintext_size;
+  void *crypto_ciphertext_buffer; // For encryption ciphertext (encrypted result)
+  size_t crypto_ciphertext_size;
 
   // Per-client rendering threads
   asciithread_t video_render_thread;
@@ -88,8 +94,10 @@ typedef struct {
 
   // Per-client synchronization
   mutex_t client_state_mutex;
-  // THREAD-SAFE FRAMEBUFFER: Per-client video buffer rwlock for concurrent reads
-  rwlock_t video_buffer_rwlock;
+
+  // Per-client crypto context for secure communication
+  crypto_handshake_context_t crypto_handshake_ctx;
+  bool crypto_initialized;
 } client_info_t;
 
 /* ============================================================================
@@ -101,7 +109,7 @@ typedef struct {
   hashtable_t *client_hashtable;      // Hash table for O(1) lookup by client_id
   int client_count;
   mutex_t mutex;
-  uint32_t next_client_id; // For assigning unique IDs
+  _Atomic uint32_t next_client_id; // For assigning unique IDs
 } client_manager_t;
 
 // Global client manager
@@ -119,6 +127,10 @@ void cleanup_client_packet_queues(client_info_t *client);
 // Client thread functions
 void *client_receive_thread(void *arg);
 void stop_client_threads(client_info_t *client);
+
+// Packet processing functions
+int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **data, size_t *len, uint32_t *sender_id);
+void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len);
 
 // Client initialization
 void initialize_client_info(client_info_t *client);

@@ -170,6 +170,7 @@
 #include "packet_queue.h"
 #include "mixer.h"
 #include "audio.h"
+#include "util/format.h"
 
 // Global client manager lock for thread-safe access
 extern rwlock_t g_client_manager_rwlock;
@@ -181,7 +182,7 @@ extern rwlock_t g_client_manager_rwlock;
  * their processing loops gracefully. This prevents resource leaks and ensures
  * clean shutdown behavior.
  */
-extern atomic_bool g_should_exit;
+extern atomic_bool g_server_should_exit;
 
 /**
  * @brief Global audio mixer from main.c - provides multi-client audio mixing
@@ -190,19 +191,6 @@ extern atomic_bool g_should_exit;
  * while excluding the target client's own audio (prevents echo/feedback).
  */
 extern mixer_t *g_audio_mixer;
-
-// REMOVED: Unused shutdown synchronization primitives
-// All threads now use atomic g_should_exit checks for lock-free shutdown coordination
-
-/**
- * @brief Global counter for blank frames sent across all clients
- *
- * Tracks the total number of blank/empty frames sent when no video sources
- * are available. Used for debugging and performance monitoring.
- *
- * @note This counter is not thread-safe - used for approximate statistics only
- */
-uint64_t g_blank_frames_sent = 0;
 
 /* ============================================================================
  * Cross-Platform Utility Functions
@@ -320,7 +308,7 @@ uint64_t g_blank_frames_sent = 0;
  * - Safe concurrent access to client data
  *
  * SHUTDOWN COORDINATION:
- * - Monitors global g_should_exit flag
+ * - Monitors global g_server_should_exit flag
  * - Checks per-client running flags with mutex protection
  * - Responds to shutdown within one frame interval (16.67ms)
  *
@@ -378,7 +366,7 @@ void *client_video_render_thread(void *arg) {
   uint32_t thread_client_id = client->client_id;
   int thread_socket = client->socket;
 
-  log_info("Video render thread: client_id=%u, socket=%d", thread_client_id, thread_socket);
+  log_debug("Video render thread: client_id=%u, socket=%d", thread_client_id, thread_socket);
 
   if (thread_socket <= 0) {
     log_error("Invalid socket (%d) in video render thread for client %u", thread_socket, thread_client_id);
@@ -392,10 +380,15 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_info("Client %u using FPS %d", client->client_id, client_fps);
+    log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+              desired_fps);
+  } else {
+    log_debug("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+              desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
+  log_debug("Client %u render interval: %dms (%d FPS)", client->client_id, base_frame_interval_ms, client_fps);
   struct timespec last_render_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
@@ -407,18 +400,24 @@ void *client_video_render_thread(void *arg) {
   int expected_video_fps = client_fps;
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+
     // Check for immediate shutdown
-    if (atomic_load(&g_should_exit)) {
-      log_info("Video render thread stopping for client %u (g_should_exit)", thread_client_id);
+    if (atomic_load(&g_server_should_exit)) {
+      log_debug("Video render thread stopping for client %u (g_server_should_exit)", thread_client_id);
       break;
     }
 
-    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
-                      !atomic_load(&client->shutting_down);
+    bool video_running = atomic_load(&client->video_render_thread_running);
+    bool active = atomic_load(&client->active);
+    bool shutting_down = atomic_load(&client->shutting_down);
+
+    should_continue = video_running && active && !shutting_down;
 
     if (!should_continue) {
-      log_info("Video render thread stopping for client %u (should_continue=false)", thread_client_id);
+      log_debug("Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, "
+                "shutting_down=%d)",
+                thread_client_id, video_running, active, shutting_down);
       break;
     }
 
@@ -426,27 +425,29 @@ void *client_video_render_thread(void *arg) {
     struct timespec current_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    long elapsed_ms = ((current_time.tv_sec - last_render_time.tv_sec) * 1000) +
-                      ((current_time.tv_nsec - last_render_time.tv_nsec) / 1000000);
+    // Use microseconds for precision - avoid integer division precision loss
+    int64_t elapsed_us = ((int64_t)(current_time.tv_sec - last_render_time.tv_sec) * 1000000LL) +
+                         ((int64_t)(current_time.tv_nsec - last_render_time.tv_nsec) / 1000);
+    int64_t base_frame_interval_us = (int64_t)base_frame_interval_ms * 1000;
 
-    if (elapsed_ms < base_frame_interval_ms) {
-      long sleep_us = (base_frame_interval_ms - elapsed_ms) * 1000;
+    if (elapsed_us < base_frame_interval_us) {
+      long sleep_us = (long)(base_frame_interval_us - elapsed_us);
       // Sleep in small chunks for reasonable shutdown response (balance performance vs responsiveness)
       const long max_sleep_chunk = 5000; // 5ms chunks for good shutdown response without destroying performance
-      while (sleep_us > 0 && !atomic_load(&g_should_exit)) {
+      while (sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
         long chunk = sleep_us > max_sleep_chunk ? max_sleep_chunk : sleep_us;
         platform_sleep_usec(chunk);
         sleep_us -= chunk;
 
         // Check all shutdown conditions after each tiny sleep
-        if (atomic_load(&g_should_exit))
+        if (atomic_load(&g_server_should_exit))
           break;
 
         bool still_running = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active);
         if (!still_running)
           break;
       }
-      continue;
+      // Fall through to render frame after sleeping
     }
 
     // PROFILING: Mark start of frame generation
@@ -455,19 +456,21 @@ void *client_video_render_thread(void *arg) {
 
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_start);
 
-    // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
-    // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
-    rwlock_rdlock(&g_client_manager_rwlock);
-    mutex_lock(&client->client_state_mutex);
+    // CRITICAL: Check thread state again BEFORE acquiring locks (client might have been destroyed during sleep)
+    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
+                      !atomic_load(&client->shutting_down);
+    if (!should_continue) {
+      break;
+    }
 
-    // Snapshot client state while holding both locks
-    uint32_t client_id_snapshot = client->client_id;
-    unsigned short width_snapshot = client->width;   // Direct read under mutex protection
-    unsigned short height_snapshot = client->height; // Direct read under mutex protection
-    bool active_snapshot = client->active;           // Direct read under mutex protection
-
-    mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
+    // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
+    // client_id: Set once at initialization, never changes
+    // width/height: atomic_ushort - use atomic_load
+    // active: atomic_bool - use atomic_load
+    uint32_t client_id_snapshot = client->client_id;               // Stable after init
+    unsigned short width_snapshot = atomic_load(&client->width);   // Atomic read
+    unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
+    bool active_snapshot = atomic_load(&client->active);           // Atomic read
 
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_lock_end);
 
@@ -475,10 +478,6 @@ void *client_video_render_thread(void *arg) {
     if (!active_snapshot) {
       break;
     }
-
-#ifdef DEBUG_THREADS
-    LOG_DEBUG_EVERY(video_render_thread, 100, "Video render thread: %s", client->display_name);
-#endif
 
     // Phase 2 IMPLEMENTED: Generate frame specifically for THIS client using snapshot data
     size_t frame_size = 0;
@@ -491,10 +490,11 @@ void *client_video_render_thread(void *arg) {
     (void)clock_gettime(CLOCK_MONOTONIC, &profile_video_check_end);
 
     if (!has_video_sources) {
-      // No video sources - skip frame generation and continue loop
-      // The frame timing at the top of the loop will handle the sleep
-      last_render_time = current_time;
-      continue;
+      // No video sources - skip frame generation but DON'T update last_render_time
+      // This ensures the next iteration still maintains proper frame timing
+      // DON'T continue here - let the loop update last_render_time at the bottom
+      // Fall through to update last_render_time at bottom of loop
+      goto skip_frame_generation;
     }
 
     int sources_count = 0; // Track number of video sources in this frame
@@ -518,32 +518,29 @@ void *client_video_render_thread(void *arg) {
       // Send thread will compare this with last sent count to detect grid changes
       atomic_store(&client->last_rendered_grid_sources, sources_count);
 
-      // Write to outgoing video buffer - this is a double buffer that never drops frames
-      // CRITICAL: Protect video buffer access with write lock to prevent use-after-free
-      rwlock_wrlock(&client->video_buffer_rwlock);
-      if (client->outgoing_video_buffer) {
-        video_frame_t *write_frame = video_frame_begin_write(client->outgoing_video_buffer);
+      // Use double-buffer system which has its own internal swap_mutex
+      // No external locking needed - the double-buffer is thread-safe by design
+      video_frame_buffer_t *vfb_snapshot = client->outgoing_video_buffer;
+
+      if (vfb_snapshot) {
+        video_frame_t *write_frame = video_frame_begin_write(vfb_snapshot);
         if (write_frame) {
-          // Copy ASCII frame data to the back buffer
-          if (write_frame->data && frame_size <= client->outgoing_video_buffer->allocated_buffer_size) {
+          // Copy ASCII frame data to the back buffer (NOT holding rwlock - just double-buffer's internal lock)
+          if (write_frame->data && frame_size <= vfb_snapshot->allocated_buffer_size) {
             memcpy(write_frame->data, ascii_frame, frame_size);
             write_frame->size = frame_size;
             write_frame->capture_timestamp_us =
                 (uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000;
 
-            // Commit the frame (swaps buffers atomically)
-            video_frame_commit(client->outgoing_video_buffer);
+            // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
+            video_frame_commit(vfb_snapshot);
 
             // Log occasionally for monitoring
             char pretty_size[64];
             format_bytes_pretty(frame_size, pretty_size, sizeof(pretty_size));
 
-            LOG_DEBUG_EVERY(queue_count, 30 * 60,
-                            "Per-client render: [%d] Written ASCII frame to double buffer for client %u (%ux%u, %s)",
-                            queue_count_counter, client_id_snapshot, width_snapshot, height_snapshot, pretty_size);
           } else {
-            log_warn("Frame too large for buffer: %zu > %zu", frame_size,
-                     client->outgoing_video_buffer->allocated_buffer_size);
+            log_warn("Frame too large for buffer: %zu > %zu", frame_size, vfb_snapshot->allocated_buffer_size);
           }
 
           // FPS tracking - frame successfully generated
@@ -564,11 +561,13 @@ void *client_video_render_thread(void *arg) {
           if (video_frame_count > 1 && frame_interval_us > lag_threshold_us) {
             lag_counter++;
             if (lag_counter % 10 == 0) {
-              log_error("SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
-                        "fps: %.1f)",
-                        thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
-                        (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
-                        1000000.0f / frame_interval_us);
+              log_warn_every(
+                  1000000,
+                  "SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
+                  "fps: %.1f)",
+                  thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
+                  (float)expected_interval_us / 1000.0f, (float)frame_interval_us / 1000.0f,
+                  1000000.0f / frame_interval_us);
             }
           }
 
@@ -579,50 +578,48 @@ void *client_video_render_thread(void *arg) {
 
           if (elapsed_us >= 5000000) { // 5 seconds
             float actual_fps = (float)video_frame_count / ((float)elapsed_us / 1000000.0f);
-            log_info("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
-                     actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
-
+            log_debug("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
+                      actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
             // Reset counters for next interval
             video_frame_count = 0;
             last_video_fps_report_time = current_time;
           }
         }
       }
-      rwlock_wrunlock(&client->video_buffer_rwlock);
 
       (void)clock_gettime(CLOCK_MONOTONIC, &profile_write_end);
 
-      free(ascii_frame);
+      SAFE_FREE(ascii_frame);
 
-      // PROFILING: Calculate and log timing breakdown
-      static uint64_t profile_count = 0;
-      profile_count++;
-      if (profile_count % (60 * 5) == 0) {
-        uint64_t lock_time_us =
-            ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
-            ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
-        uint64_t video_check_time_us =
-            ((uint64_t)profile_video_check_end.tv_sec * 1000000 + (uint64_t)profile_video_check_end.tv_nsec / 1000) -
-            ((uint64_t)profile_video_check_start.tv_sec * 1000000 + (uint64_t)profile_video_check_start.tv_nsec / 1000);
-        uint64_t write_time_us =
-            ((uint64_t)profile_write_end.tv_sec * 1000000 + (uint64_t)profile_write_end.tv_nsec / 1000) -
-            ((uint64_t)profile_write_start.tv_sec * 1000000 + (uint64_t)profile_write_start.tv_nsec / 1000);
-
-        log_info("FRAME TIMING BREAKDOWN: Lock=%.2fms, VideoCheck=%.2fms, ASCII=%.2fms, Write=%.2fms, TOTAL=%.2fms",
-                 lock_time_us / 1000.0, video_check_time_us / 1000.0, gen_time_us / 1000.0, write_time_us / 1000.0,
-                 (lock_time_us + video_check_time_us + gen_time_us + write_time_us) / 1000.0);
-      }
+      // PROFILING: Calculate and log timing breakdown on EVERY frame during debugging
+      uint64_t lock_time_us =
+          ((uint64_t)profile_lock_end.tv_sec * 1000000 + (uint64_t)profile_lock_end.tv_nsec / 1000) -
+          ((uint64_t)profile_lock_start.tv_sec * 1000000 + (uint64_t)profile_lock_start.tv_nsec / 1000);
+      uint64_t video_check_time_us =
+          ((uint64_t)profile_video_check_end.tv_sec * 1000000 + (uint64_t)profile_video_check_end.tv_nsec / 1000) -
+          ((uint64_t)profile_video_check_start.tv_sec * 1000000 + (uint64_t)profile_video_check_start.tv_nsec / 1000);
+      uint64_t write_time_us =
+          ((uint64_t)profile_write_end.tv_sec * 1000000 + (uint64_t)profile_write_end.tv_nsec / 1000) -
+          ((uint64_t)profile_write_start.tv_sec * 1000000 + (uint64_t)profile_write_start.tv_nsec / 1000);
+      (void)lock_time_us;
+      (void)video_check_time_us;
+      (void)gen_time_us;
+      (void)write_time_us;
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
-      LOG_DEBUG_EVERY(no_frame_count, 300, "Per-client render: No video sources available for client %u (%d attempts)",
-                      client_id_snapshot, no_frame_count_counter);
+      log_debug_every(3000000, "Per-client render: No video sources available for client %u", client_id_snapshot);
     }
 
+  skip_frame_generation:
+    // Update last_render_time to maintain consistent frame timing
+    // CRITICAL: Use the current_time captured at the START of this iteration for rate limiting.
+    // This ensures we maintain the target frame rate based on when we STARTED processing,
+    // not when we FINISHED. This prevents timing drift from frame generation overhead.
     last_render_time = current_time;
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Video render thread stopped for client %u", thread_client_id);
+  log_debug("Video render thread stopped for client %u", thread_client_id);
 #endif
 
   return NULL;
@@ -741,6 +738,7 @@ void *client_video_render_thread(void *arg) {
 
 void *client_audio_render_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
+
   if (!client || client->socket <= 0) {
     log_error("Invalid client info in audio render thread");
     return NULL;
@@ -749,12 +747,15 @@ void *client_audio_render_thread(void *arg) {
   // Take snapshot of client ID and display name at start to avoid race conditions
   uint32_t thread_client_id = client->client_id;
   char thread_display_name[64];
+
+  // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
+  // We already have a stable client pointer
   mutex_lock(&client->client_state_mutex);
   SAFE_STRNCPY(thread_display_name, client->display_name, sizeof(thread_display_name));
   mutex_unlock(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_info("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
+  log_debug("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
 #endif
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
@@ -768,62 +769,56 @@ void *client_audio_render_thread(void *arg) {
   int expected_audio_fps = 172; // 1000000us / 5800us ≈ 172 fps
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+    log_debug_every(10000000, "Audio render loop iteration for client %u", thread_client_id);
+
     // Check for immediate shutdown
-    if (atomic_load(&g_should_exit)) {
-      log_info("Audio render thread stopping for client %u (g_should_exit)", thread_client_id);
+    if (atomic_load(&g_server_should_exit)) {
+      log_debug("Audio render thread stopping for client %u (g_server_should_exit)", thread_client_id);
       break;
     }
 
-    // Check thread state including shutting_down flag
+    // CRITICAL: Check thread state BEFORE acquiring any locks to prevent use-after-destroy
+    // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
     should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) &&
                        ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
 
     if (!should_continue) {
+      log_debug("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
       break;
     }
 
     if (!g_audio_mixer) {
+      log_info_every(1000000, "Audio render waiting for mixer (client %u)", thread_client_id);
       // Check shutdown flag while waiting
-      if (atomic_load(&g_should_exit))
+      if (atomic_load(&g_server_should_exit))
         break;
       platform_sleep_usec(10000);
       continue;
     }
 
-    // CRITICAL FIX: Follow lock ordering protocol to prevent deadlocks
-    // Always acquire g_client_manager_rwlock BEFORE client_state_mutex
-    rwlock_rdlock(&g_client_manager_rwlock);
+    // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
+    // We already have a stable client pointer, no need for g_client_manager_rwlock
     mutex_lock(&client->client_state_mutex);
 
-    // Snapshot client state while holding both locks
+    // Snapshot client state while holding mutex
     uint32_t client_id_snapshot = client->client_id;            // client_id is set once and never changed
     bool active_snapshot = client->active;                      // Direct read under mutex protection
     packet_queue_t *audio_queue_snapshot = client->audio_queue; // audio_queue is set once and never changed
 
     mutex_unlock(&client->client_state_mutex);
-    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
       break;
     }
 
-#ifdef DEBUG_THREADS
-    LOG_DEBUG_EVERY(mixer_process_excluding_source_calling, 100,
-                    "Audio render thread: Mixer process excluding source being called %d times",
-                    mixer_process_excluding_source_calling_counter);
-#endif
-
     // Create mix excluding THIS client's audio using snapshot data
     int samples_mixed =
         mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
 
-#if defined(DEBUG_AUDIO) || defined(DEBUG_THREADS)
-    LOG_DEBUG_EVERY(mixer_process_excluding_source_called, 100,
-                    "Audio render thread: Mixer process excluding source called %d times",
-                    mixer_process_excluding_source_called_counter);
-#endif
+    // Debug logging every 100 iterations
+    log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Queue audio directly for this specific client using snapshot data
     if (samples_mixed > 0) {
@@ -832,11 +827,6 @@ void *client_audio_render_thread(void *arg) {
       if (result < 0) {
         log_debug("Failed to queue audio for client %u", client_id_snapshot);
       } else {
-#ifdef DEBUG_AUDIO
-        LOG_DEBUG_EVERY(queue_count, 100, "Audio render thread: Successfully queued %d audio samples for client %u",
-                        samples_mixed, client_id_snapshot);
-#endif
-
         // FPS tracking - audio packet successfully queued
         audio_packet_count++;
 
@@ -853,13 +843,15 @@ void *client_audio_render_thread(void *arg) {
         uint64_t expected_interval_us = 1000000 / expected_audio_fps;
         uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
 
-        // Log error if packet took too long to process
+        // Log warning if packet took too long to process
         if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
-          log_error("SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
-                    "fps: %.1f)",
-                    thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
-                    (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
-                    1000000.0f / packet_interval_us);
+          log_warn_every(
+              1000000,
+              "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
+              "fps: %.1f)",
+              thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
+              (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
+              1000000.0f / packet_interval_us);
         }
 
         // Report FPS every 5 seconds
@@ -869,8 +861,8 @@ void *client_audio_render_thread(void *arg) {
 
         if (elapsed_us >= 5000000) { // 5 seconds
           float actual_fps = (float)audio_packet_count / ((float)elapsed_us / 1000000.0f);
-          log_info("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id, actual_fps,
-                   audio_packet_count, (float)elapsed_us / 1000000.0f);
+          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id,
+                    actual_fps, audio_packet_count, (float)elapsed_us / 1000000.0f);
 
           // Reset counters for next interval
           audio_packet_count = 0;
@@ -883,13 +875,13 @@ void *client_audio_render_thread(void *arg) {
     // Sleep in small chunks for better shutdown responsiveness
     long remaining_sleep_us = 5800;
     const long sleep_chunk = 1000; // 1ms chunks for reasonable shutdown response
-    while (remaining_sleep_us > 0 && !atomic_load(&g_should_exit)) {
+    while (remaining_sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
       long chunk = remaining_sleep_us > sleep_chunk ? sleep_chunk : remaining_sleep_us;
       platform_sleep_usec(chunk);
       remaining_sleep_us -= chunk;
 
       // Check all shutdown conditions
-      if (atomic_load(&g_should_exit))
+      if (atomic_load(&g_server_should_exit))
         break;
 
       bool still_running = atomic_load(&client->audio_render_thread_running) && atomic_load(&client->active);
@@ -899,7 +891,7 @@ void *client_audio_render_thread(void *arg) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Audio render thread stopped for client %u", thread_client_id);
+  log_debug("Audio render thread stopped for client %u", thread_client_id);
 #endif
   return NULL;
 }
@@ -922,7 +914,6 @@ void *client_audio_render_thread(void *arg) {
  *
  * 1. MUTEX INITIALIZATION:
  *    - client_state_mutex: Protects client state variables
- *    - video_buffer_rwlock: Protects video buffer access (allows concurrent reads)
  *
  * 2. THREAD CREATION:
  *    - Create video rendering thread (60fps)
@@ -987,7 +978,7 @@ int create_client_render_threads(client_info_t *client) {
   }
 
 #ifdef DEBUG_THREADS
-  log_info("Creating render threads for client %u", client->client_id);
+  log_debug("Creating render threads for client %u", client->client_id);
 #endif
 
   // NOTE: Mutexes are already initialized in add_client() before any threads start
@@ -1000,6 +991,7 @@ int create_client_render_threads(client_info_t *client) {
   atomic_store(&client->audio_render_thread_running, true);
 
   // Create video rendering thread
+  log_debug("Creating video render thread for client %u", client->client_id);
   if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
     log_error("Failed to create video render thread for client %u", client->client_id);
     // Reset flag since thread creation failed
@@ -1007,7 +999,7 @@ int create_client_render_threads(client_info_t *client) {
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
-  log_info("Created video render thread for client %u", client->client_id);
+  log_debug("Successfully created video render thread for client %u", client->client_id);
 
   // Create audio rendering thread
   if (ascii_thread_create(&client->audio_render_thread, client_audio_render_thread, client) != 0) {
@@ -1021,10 +1013,10 @@ int create_client_render_threads(client_info_t *client) {
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
-  log_info("Created audio render thread for client %u", client->client_id);
+  log_debug("Created audio render thread for client %u", client->client_id);
 
 #ifdef DEBUG_THREADS
-  log_info("Created render threads for client %u", client->client_id);
+  log_debug("Created render threads for client %u", client->client_id);
 #endif
 
   return 0;
@@ -1113,11 +1105,11 @@ int create_client_render_threads(client_info_t *client) {
  */
 void stop_client_render_threads(client_info_t *client) {
   if (!client) {
-    log_error("Cannot destroy render threads for NULL client");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Client is NULL");
     return;
   }
 
-  log_info("stop_client_render_threads: Starting for client %u", client->client_id);
+  log_debug("Starting render thread for client %u", client->client_id);
 
   // Signal threads to stop (atomic operations, no mutex needed)
   atomic_store(&client->video_render_thread_running, false);
@@ -1125,10 +1117,10 @@ void stop_client_render_threads(client_info_t *client) {
 
   // Wait for threads to finish (deterministic cleanup)
   // During shutdown, don't wait forever for threads to join
-  bool is_shutting_down = atomic_load(&g_should_exit);
+  bool is_shutting_down = atomic_load(&g_server_should_exit);
 
   if (ascii_thread_is_initialized(&client->video_render_thread)) {
-    log_info("stop_client_render_threads: Joining video render thread for client %u", client->client_id);
+    log_debug("Joining video render thread for client %u", client->client_id);
     int result;
     if (is_shutting_down) {
       // During shutdown, give thread a brief chance to exit cleanly with timeout
@@ -1142,11 +1134,9 @@ void stop_client_render_threads(client_info_t *client) {
         // Continue with audio thread join and cleanup instead of returning early
       }
     } else {
-      log_info("stop_client_render_threads: Calling ascii_thread_join for video thread of client %u",
-               client->client_id);
+      log_debug("Calling ascii_thread_join for video thread of client %u", client->client_id);
       result = ascii_thread_join(&client->video_render_thread, NULL);
-      log_info("stop_client_render_threads: ascii_thread_join returned %d for video thread of client %u", result,
-               client->client_id);
+      log_debug("ascii_thread_join returned %d for video thread of client %u", result, client->client_id);
     }
 
     if (result == 0) {
@@ -1200,6 +1190,6 @@ void stop_client_render_threads(client_info_t *client) {
   // mutex_destroy(&client->client_state_mutex);
 
 #ifdef DEBUG_THREADS
-  log_info("Successfully destroyed render threads for client %u", client->client_id);
+  log_debug("Successfully destroyed render threads for client %u", client->client_id);
 #endif
 }

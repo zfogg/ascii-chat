@@ -71,7 +71,7 @@ Test(simd_caches, utf8_cache_capacity_limits) {
   const int test_palettes = 40; // Exceed capacity
   char **results = NULL;
 
-  SAFE_MALLOC(results, test_palettes * sizeof(char *), char **);
+  results = SAFE_MALLOC(test_palettes * sizeof(char *), char **);
   if (!results) {
     log_error("[ERROR] Failed to allocate results array");
     fflush(stdout);
@@ -82,7 +82,7 @@ Test(simd_caches, utf8_cache_capacity_limits) {
   // Generate unique palettes
   for (int i = 0; i < test_palettes; i++) {
     char palette[32];
-    snprintf(palette, sizeof(palette), "   .:-=+*#%%@%d", i); // Unique per iteration
+    safe_snprintf(palette, sizeof(palette), "   .:-=+*#%%@%d", i); // Unique per iteration
 
     log_debug("Testing palette %d: '%s'", i, palette);
 
@@ -100,7 +100,7 @@ Test(simd_caches, utf8_cache_capacity_limits) {
   }
 
   log_debug("[TEST END] utf8_cache_capacity_limits - Completed successfully");
-  free(results);
+  SAFE_FREE(results);
 }
 
 Test(simd_caches, cache_collision_handling) {
@@ -345,7 +345,7 @@ Test(simd_caches, neon_cache_performance) {
   for (int i = 0; i < iterations; i++) {
     char *result = image_print_simd(test_image, test_palette);
     cr_assert_not_null(result, "NEON iteration %d should succeed", i);
-    free(result);
+    SAFE_FREE(result);
   }
 
   clock_gettime(CLOCK_MONOTONIC, &end);
@@ -379,7 +379,7 @@ Test(simd_caches, extreme_palette_cycling_60fps) {
 
   for (int frame = 0; frame < total_frames; frame++) {
     char unique_palette[64];
-    snprintf(unique_palette, sizeof(unique_palette), "frame_%03d_unique_🌑🌒🌓", frame);
+    safe_snprintf(unique_palette, sizeof(unique_palette), "frame_%03d_unique_🌑🌒🌓", frame);
 
     clock_gettime(CLOCK_MONOTONIC, &frame_start);
     utf8_palette_cache_t *cache = get_utf8_palette_cache(unique_palette);
@@ -440,7 +440,7 @@ Test(simd_caches, frequency_based_cache_persistence) {
 
   for (int i = 0; i < 40; i++) {
     char pressure_palette[64];
-    snprintf(pressure_palette, sizeof(pressure_palette), "pressure_%03d_🔥💧⚡", i);
+    safe_snprintf(pressure_palette, sizeof(pressure_palette), "pressure_%03d_🔥💧⚡", i);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(pressure_palette);
     cr_assert_not_null(cache, "Pressure palette %d should be cached", i);
@@ -509,7 +509,7 @@ Test(simd_caches, eviction_fairness_algorithm) {
 
   for (int pressure = 0; pressure < 30; pressure++) {
     char pressure_palette[64];
-    snprintf(pressure_palette, sizeof(pressure_palette), "eviction_pressure_%03d", pressure);
+    safe_snprintf(pressure_palette, sizeof(pressure_palette), "eviction_pressure_%03d", pressure);
 
     utf8_palette_cache_t *pressure_cache = get_utf8_palette_cache(pressure_palette);
     cr_assert_not_null(pressure_cache, "Pressure palette %d should be cached", pressure);
@@ -584,7 +584,7 @@ Test(simd_caches, animation_palette_cycling_realistic) {
 
   for (int pressure = 0; pressure < 35; pressure++) {
     char oneoff_palette[64];
-    snprintf(oneoff_palette, sizeof(oneoff_palette), "oneoff_%03d_experimental", pressure);
+    safe_snprintf(oneoff_palette, sizeof(oneoff_palette), "oneoff_%03d_experimental", pressure);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(oneoff_palette);
     cr_assert_not_null(cache, "One-off palette %d should be cached", pressure);
@@ -643,7 +643,7 @@ Test(simd_caches, old_frequent_palette_persistence) {
   const int new_palettes = 50;
   for (int i = 0; i < new_palettes; i++) {
     char new_palette[64];
-    snprintf(new_palette, sizeof(new_palette), "new_palette_%03d_recent", i);
+    safe_snprintf(new_palette, sizeof(new_palette), "new_palette_%03d_recent", i);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(new_palette);
     cr_assert_not_null(cache, "New palette %d should be cached", i);
@@ -685,7 +685,7 @@ Test(simd_caches, eviction_ordering_verification) {
   log_debug("Phase 1: Filling cache to 30/32 entries");
   for (int i = 0; i < HASHTABLE_MAX_ENTRIES - 2; i++) {
     char baseline[64];
-    snprintf(baseline, sizeof(baseline), "baseline_%02d", i);
+    safe_snprintf(baseline, sizeof(baseline), "baseline_%02d", i);
     utf8_palette_cache_t *cache = get_utf8_palette_cache(baseline);
     cr_assert_not_null(cache, "Baseline palette %d should be cached", i);
   }
@@ -805,7 +805,7 @@ Test(simd_caches, min_heap_ordering_verification) {
   // Create enough pressure to force multiple evictions
   for (int pressure = 0; pressure < 10; pressure++) {
     char pressure_palette[64];
-    snprintf(pressure_palette, sizeof(pressure_palette), "heap_pressure_%03d", pressure);
+    safe_snprintf(pressure_palette, sizeof(pressure_palette), "heap_pressure_%03d", pressure);
 
     // Before creating pressure, check which entries are about to be evicted
     utf8_palette_cache_t *pressure_cache = get_utf8_palette_cache(pressure_palette);
@@ -852,7 +852,7 @@ Test(simd_caches, heap_score_updates_and_rebalancing) {
   // Fill some cache slots to establish heap structure
   for (int filler = 0; filler < 10; filler++) {
     char filler_palette[64];
-    snprintf(filler_palette, sizeof(filler_palette), "filler_%03d", filler);
+    safe_snprintf(filler_palette, sizeof(filler_palette), "filler_%03d", filler);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(filler_palette);
     cr_assert_not_null(cache, "Filler cache %d should be created", filler);
@@ -876,7 +876,7 @@ Test(simd_caches, heap_score_updates_and_rebalancing) {
   // Create eviction pressure to test where rising star ended up in heap
   for (int pressure = 0; pressure < 20; pressure++) {
     char pressure_palette[64];
-    snprintf(pressure_palette, sizeof(pressure_palette), "heap_pressure_%03d", pressure);
+    safe_snprintf(pressure_palette, sizeof(pressure_palette), "heap_pressure_%03d", pressure);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(pressure_palette);
     cr_assert_not_null(cache, "Heap pressure %d should be cached", pressure);
@@ -907,7 +907,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
 
   for (int i = 0; i < initial_population; i++) {
     char palette[64];
-    snprintf(palette, sizeof(palette), "initial_%03d_stable", i);
+    safe_snprintf(palette, sizeof(palette), "initial_%03d_stable", i);
 
     // Vary access patterns to create different scores
     int accesses = 1 + (i % 10); // 1-10 accesses
@@ -929,7 +929,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
 
   for (int cycle = 0; cycle < rapid_cycles; cycle++) {
     char cycle_palette[64];
-    snprintf(cycle_palette, sizeof(cycle_palette), "rapid_cycle_%03d", cycle);
+    safe_snprintf(cycle_palette, sizeof(cycle_palette), "rapid_cycle_%03d", cycle);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(cycle_palette);
     cr_assert_not_null(cache, "Rapid cycle %d should be cached", cycle);
@@ -954,7 +954,7 @@ Test(simd_caches, heap_extraction_and_insertion_cycles) {
   int heap_integrity_survivors = 0;
   for (int i = 0; i < initial_population; i += 3) { // Check every 3rd entry
     char palette[64];
-    snprintf(palette, sizeof(palette), "initial_%03d_stable", i);
+    safe_snprintf(palette, sizeof(palette), "initial_%03d_stable", i);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(palette);
     if (cache != NULL) {
@@ -1028,7 +1028,7 @@ Test(simd_caches, heap_score_calculation_accuracy) {
 
   for (int round = 0; round < eviction_rounds; round++) {
     char pressure[64];
-    snprintf(pressure, sizeof(pressure), "score_pressure_%03d", round);
+    safe_snprintf(pressure, sizeof(pressure), "score_pressure_%03d", round);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(pressure);
     cr_assert_not_null(cache, "Score pressure %d should be cached", round);
@@ -1080,7 +1080,7 @@ Test(simd_caches, heap_memory_management) {
 
   for (int i = 0; i < capacity_test; i++) {
     char capacity_palette[64];
-    snprintf(capacity_palette, sizeof(capacity_palette), "capacity_test_%03d", i);
+    safe_snprintf(capacity_palette, sizeof(capacity_palette), "capacity_test_%03d", i);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(capacity_palette);
     cr_assert_not_null(cache, "Capacity test %d should be cached", i);
@@ -1100,7 +1100,7 @@ Test(simd_caches, heap_memory_management) {
 
   for (int post = 0; post < 5; post++) {
     char post_cleanup[64];
-    snprintf(post_cleanup, sizeof(post_cleanup), "post_cleanup_%d", post);
+    safe_snprintf(post_cleanup, sizeof(post_cleanup), "post_cleanup_%d", post);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(post_cleanup);
     cr_assert_not_null(cache, "Post-cleanup cache %d should work", post);
@@ -1213,7 +1213,7 @@ Test(simd_caches, extreme_palette_stress_test) {
 
   for (int i = 0; i < stress_palette_count; i++) {
     char stress_palette[64];
-    snprintf(stress_palette, sizeof(stress_palette), "stress_test_palette_%03d_abcdefghijk", i);
+    safe_snprintf(stress_palette, sizeof(stress_palette), "stress_test_palette_%03d_abcdefghijk", i);
 
     utf8_palette_cache_t *cache = get_utf8_palette_cache(stress_palette);
     if (cache != NULL) {

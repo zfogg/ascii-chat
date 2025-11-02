@@ -6,10 +6,9 @@
 #include "avx2.h"
 #include "common.h"
 #include "../output_buffer.h"
-#include "../../buffer_pool.h"
-#include "../../ansi_fast.h"
+#include "../ansi_fast.h"
 
-#ifdef SIMD_SUPPORT_AVX2
+#if SIMD_SUPPORT_AVX2
 #include <immintrin.h>
 
 // Simple emission functions for direct buffer writing
@@ -259,7 +258,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
   // Plus 1 newline per row
   size_t output_size = (size_t)h * ((size_t)w * 12 + 1);
 
-  char *output = (char *)malloc(output_size);
+  char *output = SAFE_MALLOC(output_size, char *);
   if (!output) {
     log_error("Failed to allocate output buffer for AVX2 rendering");
     return NULL;
@@ -373,7 +372,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   if (width <= 0 || height <= 0) {
     char *empty;
-    SAFE_MALLOC(empty, 1, char *);
+    empty = SAFE_MALLOC(1, char *);
     empty[0] = '\0';
     return empty;
   }
@@ -389,7 +388,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   size_t bytes_per_pixel = use_256color ? 10u : 25u; // Conservative estimates
   size_t output_size = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 1024u;
 
-  char *output = (char *)malloc(output_size);
+  char *output = SAFE_MALLOC(output_size, char *);
   if (!output) {
     log_error("Failed to allocate output buffer for AVX2 color rendering");
     return NULL;
@@ -403,12 +402,14 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   int cur_color_idx = -1;
 
   // Generate output row by row with single-pass processing
+
   for (int y = 0; y < height; y++) {
     const rgb_pixel_t *row_pixels = &pixels_data[y * width];
     int x = 0;
 
     // AVX2 fast path: process 32 pixels at a time
     while (x + 31 < width) {
+
       // Process 32 pixels with AVX2 using thread-local buffers
       avx2_load_rgb32_optimized(&row_pixels[x], avx2_r_buffer, avx2_g_buffer, avx2_b_buffer);
       avx2_compute_luminance_32(avx2_r_buffer, avx2_g_buffer, avx2_b_buffer, avx2_luminance_buffer);

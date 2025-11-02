@@ -331,30 +331,56 @@ function get_test_executables() {
       ;;
     esac
   else
-    # Regular builds use standard naming
+    # Regular builds discover from source files (same as coverage builds)
+    # This ensures we discover all tests, not just ones already built
     case "$category" in
     unit)
-      # Use simple shell globbing instead of find
-      for f in "$bin_dir"/test_unit_*; do
-        [[ -f "$f" ]] && echo "$f"
+      # Discover test source files and build executables
+      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          executable_name="test_unit_${test_name}"
+          echo "$bin_dir/$executable_name"
+        fi
       done | sort
       ;;
     integration)
-      # Use simple shell globbing instead of find
-      for f in "$bin_dir"/test_integration_*; do
-        [[ -f "$f" ]] && echo "$f"
+      # Discover test source files and build executables
+      for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          executable_name="test_integration_${test_name}"
+          echo "$bin_dir/$executable_name"
+        fi
       done | sort
       ;;
     performance)
-      # Use simple shell globbing instead of find
-      for f in "$bin_dir"/test_performance_*; do
-        [[ -f "$f" ]] && echo "$f"
+      # Discover test source files and build executables
+      for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          executable_name="test_performance_${test_name}"
+          echo "$bin_dir/$executable_name"
+        fi
       done | sort
       ;;
     all)
-      # Use simple shell globbing instead of find
-      for f in "$bin_dir"/test_*; do
-        [[ -f "$f" ]] && echo "$f"
+      # For "all", discover all test source files
+      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c "$PROJECT_ROOT/tests/integration"/*_test.c "$PROJECT_ROOT/tests/performance"/*_test.c; do
+        if [[ -f "$test_file" ]]; then
+          test_name=$(basename "$test_file" _test.c)
+          # Determine category from path
+          if [[ "$test_file" == */unit/* ]]; then
+            executable_name="test_unit_${test_name}"
+          elif [[ "$test_file" == */integration/* ]]; then
+            executable_name="test_integration_${test_name}"
+          elif [[ "$test_file" == */performance/* ]]; then
+            executable_name="test_performance_${test_name}"
+          else
+            continue
+          fi
+          echo "$bin_dir/$executable_name"
+        fi
       done | sort
       ;;
     *)
@@ -446,7 +472,7 @@ function ensure_tests_built() {
     # For integration tests, also build server and client binaries
     if [[ "$test_type" == "integration" ]] || [[ "$test_type" == "all" ]]; then
       log_info "🔨 Building server and client binaries for integration tests..."
-      cmake_build "$cmake_build_dir" --target ascii-chat-server ascii-chat-client
+      cmake_build "$cmake_build_dir" --target ascii-chat ascii-chat
     fi
   fi
 }
@@ -1349,9 +1375,10 @@ function main() {
   if [[ ${#test_targets[@]} -gt 0 ]]; then
     log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
     # Build all test targets in one command - ninja will parallelize and handle dependencies
+    # Use ninja directly instead of cmake --build for faster execution
     local build_output
     local build_exit_code
-    build_output=$(cmake --build "$cmake_build_dir" --target "${test_targets[@]}" 2>&1)
+    build_output=$(cd "$cmake_build_dir" && ninja "${test_targets[@]}" 2>&1)
     build_exit_code=$?
     if [[ "$build_output" != *"ninja: no work to do"* ]] || [[ -n "$VERBOSE" ]]; then
       echo "$build_output"

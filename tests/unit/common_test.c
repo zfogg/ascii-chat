@@ -17,7 +17,7 @@ TEST_SUITE_WITH_QUIET_LOGGING(common);
 
 Test(common, safe_malloc_basic) {
   void *ptr;
-  SAFE_MALLOC(ptr, 1024, void *);
+  ptr = SAFE_MALLOC(1024, void *);
   cr_assert_not_null(ptr, "SAFE_MALLOC should return valid pointer");
 
   // Write to memory to ensure it's accessible
@@ -26,7 +26,7 @@ Test(common, safe_malloc_basic) {
   cr_assert_eq(byte_ptr[0], 0xAA, "Memory should be writable");
   cr_assert_eq(byte_ptr[1023], 0xAA, "All allocated memory should be accessible");
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 // =============================================================================
@@ -38,7 +38,7 @@ Test(common, safe_calloc_basic) {
   size_t count = 256;
   size_t size = sizeof(int);
 
-  SAFE_CALLOC(ptr, count, size, int *);
+  ptr = SAFE_CALLOC(count, size, int *);
   cr_assert_not_null(ptr, "SAFE_CALLOC should return valid pointer");
 
   // Verify memory is zeroed
@@ -46,7 +46,7 @@ Test(common, safe_calloc_basic) {
     cr_assert_eq(ptr[i], 0, "CALLOC memory should be zeroed at index %zu", i);
   }
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 // =============================================================================
@@ -56,14 +56,14 @@ Test(common, safe_calloc_basic) {
 Test(common, safe_realloc_basic) {
   void *ptr;
   // Initial allocation
-  SAFE_MALLOC(ptr, 512, void *);
+  ptr = SAFE_MALLOC(512, void *);
   cr_assert_not_null(ptr, "Initial malloc should succeed");
 
   // Write pattern to memory
   memset(ptr, 0xBB, 512);
 
   // Realloc to larger size
-  SAFE_REALLOC(ptr, 1024, void *);
+  ptr = SAFE_REALLOC(ptr, 1024, void *);
   cr_assert_not_null(ptr, "SAFE_REALLOC should return valid pointer");
 
   // Verify original data is preserved
@@ -72,7 +72,7 @@ Test(common, safe_realloc_basic) {
     cr_assert_eq(byte_ptr[i], 0xBB, "Original data should be preserved at index %d", i);
   }
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 // =============================================================================
@@ -87,10 +87,10 @@ typedef struct {
 
 static error_code_test_case_t error_code_cases[] = {
     {ASCIICHAT_OK, "ASCIICHAT_OK", "Success code"},
-    {ASCIICHAT_ERR_NETWORK, "ASCIICHAT_ERR_NETWORK", "Network error code"},
-    {ASCIICHAT_ERR_MALLOC, "ASCIICHAT_ERR_MALLOC", "Memory allocation error code"},
-    {ASCIICHAT_ERR_INVALID_PARAM, "ASCIICHAT_ERR_INVALID_PARAM", "Invalid parameter error code"},
-    {ASCIICHAT_ERR_BUFFER_FULL, "ASCIICHAT_ERR_BUFFER_FULL", "Buffer full error code"},
+    {ERROR_NETWORK, "ERROR_NETWORK", "Network error code"},
+    {ERROR_MEMORY, "ERROR_MEMORY", "Memory allocation error code"},
+    {ERROR_INVALID_PARAM, "ERROR_INVALID_PARAM", "Invalid parameter error code"},
+    {ERROR_BUFFER_FULL, "ERROR_BUFFER_FULL", "Buffer full error code"},
 };
 
 ParameterizedTestParameters(common, error_code_definitions) {
@@ -110,8 +110,7 @@ ParameterizedTest(error_code_test_case_t *tc, common, error_code_definitions) {
 
 Test(common, error_codes_are_distinct) {
   // Test that all error codes are distinct from each other
-  int codes[] = {ASCIICHAT_OK, ASCIICHAT_ERR_NETWORK, ASCIICHAT_ERR_MALLOC, ASCIICHAT_ERR_INVALID_PARAM,
-                 ASCIICHAT_ERR_BUFFER_FULL};
+  int codes[] = {ASCIICHAT_OK, ERROR_NETWORK, ERROR_MEMORY, ERROR_INVALID_PARAM, ERROR_BUFFER_FULL};
   size_t count = sizeof(codes) / sizeof(codes[0]);
 
   for (size_t i = 0; i < count; i++) {
@@ -195,7 +194,7 @@ Test(common, concurrent_allocations) {
 
   // Allocate multiple blocks
   for (int i = 0; i < 10; i++) {
-    SAFE_MALLOC(ptrs[i], 1024 * (i + 1), void *);
+    ptrs[i] = SAFE_MALLOC(1024 * (i + 1), void *);
     cr_assert_not_null(ptrs[i], "Allocation %d should succeed", i);
 
     // Write unique pattern to each block
@@ -211,7 +210,7 @@ Test(common, concurrent_allocations) {
 
   // Free all blocks
   for (int i = 0; i < 10; i++) {
-    free(ptrs[i]);
+    SAFE_FREE(ptrs[i]);
   }
 }
 
@@ -223,7 +222,7 @@ Test(common, large_allocations) {
   void *ptr;
   // Test reasonably large allocation (1MB)
   size_t large_size = 1024 * 1024;
-  SAFE_MALLOC(ptr, large_size, void *);
+  ptr = SAFE_MALLOC(large_size, void *);
 
   // Write to first and last bytes to ensure it's really allocated
   uint8_t *byte_ptr = (uint8_t *)ptr;
@@ -233,16 +232,16 @@ Test(common, large_allocations) {
   cr_assert_eq(byte_ptr[0], 0xFF, "First byte should be writable");
   cr_assert_eq(byte_ptr[large_size - 1], 0xEE, "Last byte should be writable");
 
-  free(ptr);
+  SAFE_FREE(ptr);
 }
 
 Test(common, alignment_checks) {
   void *ptr1, *ptr2, *ptr3;
 
   // Test that allocated memory is properly aligned
-  SAFE_MALLOC(ptr1, 1, void *);
-  SAFE_MALLOC(ptr2, 3, void *);
-  SAFE_MALLOC(ptr3, 7, void *);
+  ptr1 = SAFE_MALLOC(1, void *);
+  ptr2 = SAFE_MALLOC(3, void *);
+  ptr3 = SAFE_MALLOC(7, void *);
 
   cr_assert_not_null(ptr1, "Small allocation should succeed");
   cr_assert_not_null(ptr2, "Small allocation should succeed");
@@ -257,9 +256,9 @@ Test(common, alignment_checks) {
   cr_assert_eq(addr2 % sizeof(void *), 0, "Memory should be pointer-aligned");
   cr_assert_eq(addr3 % sizeof(void *), 0, "Memory should be pointer-aligned");
 
-  free(ptr1);
-  free(ptr2);
-  free(ptr3);
+  SAFE_FREE(ptr1);
+  SAFE_FREE(ptr2);
+  SAFE_FREE(ptr3);
 }
 
 // =============================================================================
@@ -270,17 +269,17 @@ Test(common, log_memory_operations) {
   void *ptr;
 
   // Test logging during memory operations
-  SAFE_MALLOC(ptr, 1024, void *);
+  ptr = SAFE_MALLOC(1024, void *);
   log_debug("Allocated memory at %p", ptr);
 
   if (ptr) {
     memset(ptr, 0xAB, 1024);
     log_info("Filled memory with pattern 0xAB");
 
-    SAFE_REALLOC(ptr, 2048, void *);
+    ptr = SAFE_REALLOC(ptr, 2048, void *);
     log_info("Reallocated memory to 2048 bytes at %p", ptr);
 
-    free(ptr);
+    SAFE_FREE(ptr);
     log_debug("Freed memory");
   }
 

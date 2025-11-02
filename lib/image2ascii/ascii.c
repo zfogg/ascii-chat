@@ -13,7 +13,7 @@
 #include "ascii.h"
 #include "common.h"
 #include "image.h"
-#include "aspect_ratio.h"
+#include "util/aspect_ratio.h"
 #include "os/webcam.h"
 #include "options.h"
 #include "simd/ascii_simd.h"
@@ -33,7 +33,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   // Validate file descriptor
   if (fd < 0) {
     log_error("Invalid file descriptor %d", fd);
-    return ASCIICHAT_ERR_INVALID_PARAM;
+    return ERROR_INVALID_PARAM;
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
@@ -44,7 +44,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     // Disable echo using platform abstraction
     if (terminal_set_echo(false) != 0) {
       log_error("Failed to disable echo for fd %d", fd);
-      return ASCIICHAT_ERR_TERMINAL;
+      return ERROR_TERMINAL;
     }
     // Hide cursor using platform abstraction
     if (terminal_hide_cursor(fd, true) != 0) {
@@ -116,7 +116,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   if (color) {
     // Check for half-block mode first (requires NEON)
     if (opt_render_mode == RENDER_MODE_HALF_BLOCK) {
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer
       const uint8_t *rgb_data = (const uint8_t *)resized->pixels;
       ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
@@ -152,16 +152,16 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   size_t ascii_len = strlen(ascii);
   if (ascii_len == 0) {
     log_error("ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w, resized->h);
-    free(ascii);
+    SAFE_FREE(ascii);
     image_destroy(resized);
     return NULL;
   }
 
   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-  free(ascii);
+  SAFE_FREE(ascii);
 
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-  free(ascii_width_padded);
+  SAFE_FREE(ascii_width_padded);
 
   // Only destroy resized if we allocated it (not when using original directly)
   image_destroy(resized);
@@ -174,6 +174,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                       const bool stretch, const char *palette_chars,
                                       const char luminance_palette[256]) {
+
   if (original == NULL || caps == NULL) {
     log_error("Invalid parameters for ascii_convert_with_capabilities");
     return NULL;
@@ -210,6 +211,10 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
+  // PROFILING: Time image allocation and resize
+  struct timespec prof_alloc_start, prof_alloc_end, prof_resize_start, prof_resize_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_start);
+
   image_t *resized = image_new((int)resized_width, (int)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
@@ -217,10 +222,33 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   }
 
   image_clear(resized);
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_end);
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_resize_start);
+
   image_resize(original, resized);
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_resize_end);
+
+  // PROFILING: Time ASCII print
+  struct timespec prof_print_start, prof_print_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_start);
 
   // Use the capability-aware image printing function with client's palette
   char *ascii = image_print_with_capabilities(resized, caps, palette_chars, luminance_palette);
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_print_end);
+
+  uint64_t alloc_time_us = ((uint64_t)prof_alloc_end.tv_sec * 1000000 + (uint64_t)prof_alloc_end.tv_nsec / 1000) -
+                           ((uint64_t)prof_alloc_start.tv_sec * 1000000 + (uint64_t)prof_alloc_start.tv_nsec / 1000);
+  uint64_t resize_time_us = ((uint64_t)prof_resize_end.tv_sec * 1000000 + (uint64_t)prof_resize_end.tv_nsec / 1000) -
+                            ((uint64_t)prof_resize_start.tv_sec * 1000000 + (uint64_t)prof_resize_start.tv_nsec / 1000);
+  uint64_t print_time_us = ((uint64_t)prof_print_end.tv_sec * 1000000 + (uint64_t)prof_print_end.tv_nsec / 1000) -
+                           ((uint64_t)prof_print_start.tv_sec * 1000000 + (uint64_t)prof_print_start.tv_nsec / 1000);
+
+  // PROFILING: Time padding
+  struct timespec prof_pad_start, prof_pad_end;
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_pad_start);
 
   if (!ascii) {
     log_error("Failed to convert image to ASCII using terminal capabilities");
@@ -232,16 +260,25 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   if (ascii_len == 0) {
     log_error("Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)", resized->w,
               resized->h);
-    free(ascii);
+    SAFE_FREE(ascii);
     image_destroy(resized);
     return NULL;
   }
 
   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
-  free(ascii);
+  SAFE_FREE(ascii);
 
   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
-  free(ascii_width_padded);
+  SAFE_FREE(ascii_width_padded);
+
+  (void)clock_gettime(CLOCK_MONOTONIC, &prof_pad_end);
+
+  uint64_t pad_time_us = ((uint64_t)prof_pad_end.tv_sec * 1000000 + (uint64_t)prof_pad_end.tv_nsec / 1000) -
+                         ((uint64_t)prof_pad_start.tv_sec * 1000000 + (uint64_t)prof_pad_start.tv_nsec / 1000);
+  (void)alloc_time_us;
+  (void)resize_time_us;
+  (void)print_time_us;
+  (void)pad_time_us;
 
   image_destroy(resized);
 
@@ -254,7 +291,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
 asciichat_error_t ascii_write(const char *frame) {
   if (frame == NULL) {
     log_warn("Attempted to write NULL frame");
-    return ASCIICHAT_ERR_INVALID_PARAM;
+    return ERROR_INVALID_PARAM;
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
@@ -266,7 +303,7 @@ asciichat_error_t ascii_write(const char *frame) {
   size_t written = fwrite(frame, 1, frame_len, stdout);
   if (written != frame_len) {
     log_error("Failed to write ASCII frame");
-    return ASCIICHAT_ERR_TERMINAL;
+    return ERROR_TERMINAL;
   }
 
   return ASCIICHAT_OK;
@@ -323,7 +360,7 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
     // worrying about the original allocation strategy.
     size_t orig_len = strlen(frame);
     char *copy;
-    SAFE_MALLOC(copy, orig_len + 1, char *);
+    copy = SAFE_MALLOC(orig_len + 1, char *);
     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
     return copy;
   }
@@ -345,7 +382,7 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   const size_t total_len = frame_len + left_padding_len;
 
   char *buffer;
-  SAFE_MALLOC(buffer, total_len + 1, char *);
+  buffer = SAFE_MALLOC(total_len + 1, char *);
 
   // Build the padded frame.
   bool at_line_start = true;
@@ -400,7 +437,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     // Create a frame of the target size filled with spaces
     size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
     char *result;
-    SAFE_MALLOC(result, target_size, char *);
+    result = SAFE_MALLOC(target_size, char *);
     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
     result[target_size - 1] = '\0';
 
@@ -541,7 +578,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   if (cell_width < 10 || cell_height < 3) {
     // Too small for grid layout, just use first source
     char *result;
-    SAFE_MALLOC(result, sources[0].frame_size + 1, char *);
+    result = SAFE_MALLOC(sources[0].frame_size + 1, char *);
     if (sources[0].frame_data && sources[0].frame_size > 0) {
       SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
       result[sources[0].frame_size] = '\0';
@@ -557,7 +594,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   // Allocate mixed frame buffer
   size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
   char *mixed_frame;
-  SAFE_MALLOC(mixed_frame, mixed_size, char *);
+  mixed_frame = SAFE_MALLOC(mixed_size, char *);
 
   // Initialize mixed frame with spaces
   SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
@@ -648,7 +685,7 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
     // Nothing to do; return a copy because the caller knows to free() the value.
     size_t orig_len = strlen(frame);
     char *copy;
-    SAFE_MALLOC(copy, orig_len + 1, char *);
+    copy = SAFE_MALLOC(orig_len + 1, char *);
     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
     return copy;
   }
@@ -659,7 +696,7 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
   size_t total_len = top_padding_len + frame_len;
 
   char *buffer;
-  SAFE_MALLOC(buffer, total_len + 1, char *);
+  buffer = SAFE_MALLOC(total_len + 1, char *);
 
   char *position = buffer;
 

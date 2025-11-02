@@ -1,50 +1,64 @@
 // compression.c - Pure compression/decompression utilities
 // Network functions have been moved to network.c
 
-#include <zlib.h>
+#include <zstd.h>
 #include <string.h>
 #include "compression.h"
 #include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 
-// Compress data using zlib deflate
+// Compression level - level 1 provides best balance of speed and compression ratio
+#define ZSTD_COMPRESSION_LEVEL 1
+
+// Compress data using zstd level 1
 int compress_data(const void *input, size_t input_size, void **output, size_t *output_size) {
   if (!input || input_size == 0 || !output || !output_size) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p", input,
+              input_size, output, output_size);
     return -1;
   }
 
   // Calculate maximum compressed size
-  uLongf compressed_size = compressBound(input_size);
+  size_t compressed_size = ZSTD_compressBound(input_size);
   unsigned char *compressed_data = NULL;
-  SAFE_MALLOC(compressed_data, compressed_size, unsigned char *);
+  compressed_data = SAFE_MALLOC(compressed_size, unsigned char *);
 
   if (!compressed_data) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate compressed data buffer");
     return -1;
   }
 
-  // Compress using zlib
-  int ret = compress2(compressed_data, &compressed_size, (const Bytef *)input, input_size, Z_DEFAULT_COMPRESSION);
+  // Compress using zstd level 1 for optimal speed/compression balance
+  size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, ZSTD_COMPRESSION_LEVEL);
 
-  if (ret != Z_OK) {
-    free(compressed_data);
+  if (ZSTD_isError(ret)) {
+    SET_ERRNO(ERROR_GENERAL, "zstd compression failed: %s", ZSTD_getErrorName(ret));
+    SAFE_FREE(compressed_data);
     return -1;
   }
 
   *output = compressed_data;
-  *output_size = compressed_size;
+  *output_size = ret;
 
   return 0;
 }
 
-// Decompress data using zlib inflate
+// Decompress data using zstd
 int decompress_data(const void *input, size_t input_size, void *output, size_t output_size) {
   if (!input || input_size == 0 || !output || output_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%zu", input,
+              input_size, output, output_size);
     return -1;
   }
 
-  uLongf dest_len = output_size;
-  int ret = uncompress((Bytef *)output, &dest_len, (const Bytef *)input, input_size);
+  size_t ret = ZSTD_decompress(output, output_size, input, input_size);
 
-  return (ret == Z_OK) ? 0 : -1;
+  if (ZSTD_isError(ret)) {
+    SET_ERRNO(ERROR_GENERAL, "zstd decompression failed: %s", ZSTD_getErrorName(ret));
+    return -1;
+  }
+
+  return 0;
 }
 
 // Check if compression is worthwhile based on ratio

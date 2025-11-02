@@ -12,7 +12,9 @@
 #include <stdio.h>
 
 #include "tests/common.h"
-#include "network.h"
+#include "network/av.h"
+#include "network/packet.h"
+#include "network/packet_types.h"
 #include "image2ascii/simd/common.h"
 
 void setup_server_quiet_logging(void);
@@ -37,7 +39,7 @@ static pid_t start_test_server(int port) {
   if (pid == 0) {
     // Child process - start server
     char port_str[16];
-    snprintf(port_str, sizeof(port_str), "%d", port);
+    safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
     // Redirect server output to log file for debugging
     FILE *log_file = fopen("/tmp/test_server_startup.log", "w");
@@ -55,13 +57,13 @@ static pid_t start_test_server(int port) {
 
     // Use BUILD_DIR if set, otherwise use appropriate default
     if (build_dir) {
-      snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat-server", build_dir);
+      safe_snprintf(server_path, sizeof(server_path), "./%s/bin/ascii-chat", build_dir);
     } else if (in_docker) {
-      // In Docker, use docker_build directory
-      snprintf(server_path, sizeof(server_path), "./docker_build/bin/ascii-chat-server");
+      // In Docker, use build_docker directory (matches docker-compose.yml)
+      safe_snprintf(server_path, sizeof(server_path), "./build_docker/bin/ascii-chat");
     } else {
       // Local testing, use build directory
-      snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat-server");
+      safe_snprintf(server_path, sizeof(server_path), "./build/bin/ascii-chat");
     }
 
     // Check if the server binary exists and is executable
@@ -73,7 +75,7 @@ static pid_t start_test_server(int port) {
       fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
     }
 
-    execl(server_path, "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
+    execl(server_path, "ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
 
     // If execl fails, print error
     fprintf(stderr, "Failed to execute server at: %s\n", server_path);
@@ -115,22 +117,22 @@ static int connect_to_server(const char *address, int port) {
 static int send_test_frame(int socket, int frame_id) {
   // Create test ASCII frame
   char ascii_data[1000];
-  snprintf(ascii_data, sizeof(ascii_data),
-           "Test Frame %d\n"
-           "████████████\n"
-           "██  %04d  ██\n"
-           "████████████\n",
-           frame_id, frame_id);
+  safe_snprintf(ascii_data, sizeof(ascii_data),
+                "Test Frame %d\n"
+                "████████████\n"
+                "██  %04d  ██\n"
+                "████████████\n",
+                frame_id, frame_id);
 
-  // Use the send_ascii_frame_packet function from network.h
-  return send_ascii_frame_packet(socket, ascii_data, strlen(ascii_data), 80, 24);
+  // Use the av_send_ascii_frame function from av.h
+  return av_send_ascii_frame(socket, ascii_data, strlen(ascii_data));
 }
 
 static int send_image_frame(int socket, int width, int height, int client_id) {
   (void)client_id; // Unused parameter
   // Create test RGB image
   rgb_pixel_t *image_data;
-  SAFE_MALLOC(image_data, width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
+  image_data = SAFE_MALLOC(width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
 
   // Fill with test pattern
   for (int y = 0; y < height; y++) {
@@ -141,10 +143,10 @@ static int send_image_frame(int socket, int width, int height, int client_id) {
     }
   }
 
-  // Use the send_image_frame_packet function from network.h
+  // Use the av_send_image_frame function from av.h
   // Just use 0 for pixel_format since IMAGE_FORMAT_RGB24 doesn't exist
-  int result = send_image_frame_packet(socket, image_data, width * height * sizeof(rgb_pixel_t), width, height, 0);
-  free(image_data);
+  int result = av_send_image_frame(socket, image_data, width, height, 0);
+  SAFE_FREE(image_data);
   return result;
 }
 

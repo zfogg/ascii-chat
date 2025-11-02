@@ -1,5 +1,6 @@
 #include "hashtable.h"
 #include "common.h"
+#include "asciichat_errno.h" // For asciichat_errno system
 #include <stdlib.h>
 #include <string.h>
 
@@ -45,14 +46,14 @@ static inline uint32_t hash_uint32(uint32_t key) {
 
 hashtable_t *hashtable_create(void) {
   hashtable_t *ht;
-  SAFE_MALLOC(ht, sizeof(hashtable_t), hashtable_t *);
+  ht = SAFE_MALLOC(sizeof(hashtable_t), hashtable_t *);
 
   // Initialize buckets to NULL
   SAFE_MEMSET((void *)ht->buckets, sizeof(ht->buckets), 0, sizeof(ht->buckets));
 
   // Pre-allocate entry pool
   ht->pool_size = HASHTABLE_MAX_ENTRIES;
-  SAFE_MALLOC(ht->entry_pool, sizeof(hashtable_entry_t) * ht->pool_size, hashtable_entry_t *);
+  ht->entry_pool = SAFE_MALLOC(sizeof(hashtable_entry_t) * ht->pool_size, hashtable_entry_t *);
 
   // Initialize free list (stack of free entries)
   ht->free_list = NULL;
@@ -67,9 +68,9 @@ hashtable_t *hashtable_create(void) {
 
   // Initialize reader-writer lock
   if (rwlock_init(&ht->rwlock) != 0) {
-    log_error("Failed to initialize hashtable rwlock");
-    free(ht->entry_pool);
-    free(ht);
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize hashtable rwlock");
+    SAFE_FREE(ht->entry_pool);
+    SAFE_FREE(ht);
     return NULL;
   }
 
@@ -91,8 +92,8 @@ void hashtable_destroy(hashtable_t *ht) {
   hashtable_print_stats(ht, "Final");
 
   rwlock_destroy(&ht->rwlock);
-  free(ht->entry_pool);
-  free(ht);
+  SAFE_FREE(ht->entry_pool);
+  SAFE_FREE(ht);
 }
 
 // Get a free entry from the pool (must be called with write lock held)
@@ -142,7 +143,7 @@ bool hashtable_insert(hashtable_t *ht, uint32_t key, void *value) {
   // Get a free entry from pool
   hashtable_entry_t *entry = get_free_entry(ht);
   if (!entry) {
-    log_error("Hashtable entry pool exhausted");
+    SET_ERRNO(ERROR_MEMORY, "Hashtable entry pool exhausted");
     rwlock_wrunlock(&ht->rwlock);
     return false;
   }
@@ -280,19 +281,24 @@ void hashtable_print_stats(hashtable_t *ht, const char *name) {
     return;
   }
 
+  // In Release builds, skip all hashtable stats printing
+#ifdef NDEBUG
+  return;
+#endif
+
   rwlock_rdlock(&ht->rwlock);
 
   double hit_rate = (ht->lookups > 0) ? ((double)ht->hits * 100.0 / (double)ht->lookups) : 0.0;
   double load_factor = (double)ht->entry_count / (double)HASHTABLE_BUCKET_COUNT;
   size_t free_entries = ht->pool_size - ht->entry_count;
 
-  log_info("=== Hashtable Stats: %s ===", name ? name : "Unknown");
-  log_info("Size: %zu/%zu entries, Load factor: %.2f, Free: %zu", ht->entry_count, ht->pool_size, load_factor,
-           free_entries);
-  log_info("Operations: %llu lookups (%.1f%% hit rate), %llu insertions, %llu deletions",
+  log_info("=== Hashtable Stats: %s ===\n"
+           "Size: %zu/%zu entries, Load factor: %.2f, Free: %zu\n"
+           "Operations: %llu lookups (%.1f%% hit rate), %llu insertions, %llu deletions\n"
+           "Collisions: %llu",
+           name ? name : "Unknown", ht->entry_count, ht->pool_size, load_factor, free_entries,
            (unsigned long long)ht->lookups, hit_rate, (unsigned long long)ht->insertions,
-           (unsigned long long)ht->deletions);
-  log_info("Collisions: %llu", (unsigned long long)ht->collisions);
+           (unsigned long long)ht->deletions, (unsigned long long)ht->collisions);
 
   rwlock_rdunlock(&ht->rwlock);
 }

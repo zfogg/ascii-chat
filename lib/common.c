@@ -17,115 +17,105 @@ extern size_t malloc_usable_size(void *ptr);
 #include "common.h"
 #include "platform/abstraction.h"
 #include "platform/system.h"
+#include "platform/init.h"
+#include "util/path.h"
+#include "util/format.h"
+#include "logging.h"
+#include "buffer_pool.h"
+#include "palette.h"
+#include "asciichat_errno.h"
+#include "crypto/known_hosts.h"
+#include "options.h"
 #include <string.h>
-#include <stdio.h>
 #include <stdatomic.h>
-#include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
+
+#ifndef _WIN32
+#include <pthread.h> // For PTHREAD_MUTEX_INITIALIZER on POSIX
+#endif
 
 // Global frame rate variable - can be set via command line
 int g_max_fps = 0; // 0 means use default
 
-void format_bytes_pretty(size_t bytes, char *out, size_t out_capacity) {
-  const double MB = 1024.0 * 1024.0;
-  const double GB = MB * 1024.0;
-  const double TB = GB * 1024.0;
-
-  if ((double)bytes < MB) {
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%zu B", bytes));
-  } else if ((double)bytes < GB) {
-    double value = (double)bytes / MB;
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f MB", value));
-  } else if ((double)bytes < TB) {
-    double value = (double)bytes / GB;
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f GB", value));
-  } else {
-    double value = (double)bytes / TB;
-    SAFE_IGNORE_PRINTF_RESULT(safe_snprintf(out, out_capacity, "%.2f TB", value));
-  }
-}
-
 /* ============================================================================
- * Safe Parsing Functions using strtoul
+ * Shutdown Check System Implementation
  * ============================================================================
  */
 
-int safe_parse_size_message(const char *message, unsigned int *width, unsigned int *height) {
-  if (!message || !width || !height) {
-    return -1;
-  }
+static shutdown_check_fn g_shutdown_callback = NULL;
 
-  // Check if message starts with "SIZE:"
-  if (strncmp(message, "SIZE:", 5) != 0) {
-    return -1;
-  }
-
-  const char *ptr = message + 5; // Skip "SIZE:"
-  char *endptr;
-
-  // Parse first number (width)
-  errno = 0;
-  unsigned long w = strtoul(ptr, &endptr, 10);
-  if (errno != 0 || endptr == ptr || w > UINT_MAX || w == 0) {
-    return -1;
-  }
-
-  // Check for comma separator
-  if (*endptr != ',') {
-    return -1;
-  }
-  ptr = endptr + 1;
-
-  // Parse second number (height)
-  errno = 0;
-  unsigned long h = strtoul(ptr, &endptr, 10);
-  if (errno != 0 || endptr == ptr || h > UINT_MAX || h == 0) {
-    return -1;
-  }
-
-  // Should end with newline or null terminator
-  if (*endptr != '\n' && *endptr != '\0') {
-    return -1;
-  }
-
-  // Additional bounds checking
-  if (w > 65535 || h > 65535) {
-    return -1;
-  }
-
-  *width = (unsigned int)w;
-  *height = (unsigned int)h;
-  return 0;
+void shutdown_register_callback(shutdown_check_fn callback) {
+  g_shutdown_callback = callback;
 }
 
-int safe_parse_audio_message(const char *message, unsigned int *num_samples) {
-  if (!message || !num_samples) {
-    return -1;
+bool shutdown_is_requested(void) {
+  if (g_shutdown_callback == NULL) {
+    return false; // No callback registered, assume not shutting down
+  }
+  return g_shutdown_callback();
+}
+
+/* ============================================================================
+ * Shared Initialization Implementation
+ * ============================================================================
+ */
+
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG)
+void debug_memory_report(void);
+void debug_memory_set_quiet_mode(bool quiet);
+#elif defined(USE_MIMALLOC_DEBUG)
+static void print_mimalloc_stats(void);
+#endif
+
+asciichat_error_t asciichat_shared_init(const char *default_log_filename) {
+  // Initialize platform-specific functionality (Winsock, etc)
+  if (platform_init() != ASCIICHAT_OK) {
+    FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
+  }
+  (void)atexit(platform_cleanup);
+
+  // Initialize logging with default filename
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;
+#ifdef NDEBUG
+  log_init(log_filename, LOG_INFO); /* Release build: INFO level */
+#else
+  log_init(log_filename, LOG_DEBUG); /* Debug build: DEBUG level */
+#endif
+
+  // Initialize palette based on command line options
+  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
+  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
+    FATAL(ERROR_CONFIG, "Failed to apply palette configuration");
   }
 
-  // Check if message starts with "AUDIO:"
-  if (strncmp(message, "AUDIO:", 6) != 0) {
-    return -1;
-  }
+  // Initialize global shared buffer pool
+  data_buffer_pool_init_global();
+  (void)atexit(data_buffer_pool_cleanup_global);
 
-  const char *ptr = message + 6; // Skip "AUDIO:"
-  char *endptr;
+  // Register errno cleanup
+  (void)atexit(asciichat_errno_cleanup);
 
-  // Parse number
-  errno = 0;
-  unsigned long samples = strtoul(ptr, &endptr, 10);
-  if (errno != 0 || endptr == ptr || samples > UINT_MAX || samples == 0) {
-    return -1;
-  }
+  // Register known_hosts cleanup
+  (void)atexit(known_hosts_cleanup);
 
-  // Should end with newline or null terminator
-  if (*endptr != '\n' && *endptr != '\0') {
-    return -1;
-  }
+  // Truncate log if it's already too large
+  log_truncate_if_large();
 
-  *num_samples = (unsigned int)samples;
-  return 0;
+  // Print memory debugging stats at exit
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG)
+  debug_memory_set_quiet_mode(opt_quiet);
+  (void)atexit(debug_memory_report);
+#elif defined(USE_MIMALLOC_DEBUG)
+#ifndef _WIN32
+  // Register mimalloc stats printer at exit
+  (void)atexit(print_mimalloc_stats);
+#else
+  UNUSED(print_mimalloc_stats);
+#endif
+#endif
+
+  return ASCIICHAT_OK;
 }
 
 /* ============================================================================
@@ -143,6 +133,9 @@ typedef struct mem_block {
   struct mem_block *next;
 } mem_block_t;
 
+// Thread-local flag to prevent recursion when calling backtrace from debug_free
+static __thread bool g_in_debug_memory = false;
+
 static struct {
   mem_block_t *head;
   atomic_size_t total_allocated;
@@ -153,8 +146,13 @@ static struct {
   atomic_size_t free_calls;
   atomic_size_t calloc_calls;
   atomic_size_t realloc_calls;
+#if PLATFORM_WINDOWS
   mutex_t mutex; /* Only for linked list operations */
   bool mutex_initialized;
+#else
+  // On POSIX, use static initialization to avoid malloc during debug_malloc
+  pthread_mutex_t mutex;
+#endif
   bool quiet_mode; /* Control stderr output for memory report */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
@@ -165,7 +163,11 @@ static struct {
            .free_calls = 0,
            .calloc_calls = 0,
            .realloc_calls = 0,
+#if PLATFORM_WINDOWS
            .mutex_initialized = false,
+#else
+           .mutex = PTHREAD_MUTEX_INITIALIZER,
+#endif
            .quiet_mode = false};
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
@@ -174,17 +176,31 @@ static struct {
 #undef calloc
 #undef realloc
 
+#if PLATFORM_WINDOWS
 static void ensure_mutex_initialized(void) {
   if (!g_mem.mutex_initialized) {
     mutex_init(&g_mem.mutex);
     g_mem.mutex_initialized = true;
   }
 }
+#else
+// On POSIX, mutex is statically initialized, no lazy init needed
+static inline void ensure_mutex_initialized(void) {
+  // No-op on POSIX - already initialized
+}
+#endif
 
 void *debug_malloc(size_t size, const char *file, int line) {
-  void *ptr = malloc(size);
+  void *ptr = (void *)malloc(size);
   if (!ptr)
     return NULL;
+
+  // Skip tracking if we're already inside debug memory code (prevents recursion)
+  if (g_in_debug_memory) {
+    return ptr;
+  }
+
+  g_in_debug_memory = true;
 
   /* Update statistics with atomic operations - no locks needed */
   atomic_fetch_add(&g_mem.malloc_calls, 1);
@@ -200,26 +216,46 @@ void *debug_malloc(size_t size, const char *file, int line) {
 
   /* Track individual allocations for detailed leak reporting */
   ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
 
+  // Use raw malloc here to avoid recursion - we're already inside debug_malloc!
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
   if (block) {
     block->ptr = ptr;
     block->size = size;
-    SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+    // Normalize file path to resolve .. components and extract relative path
+    const char *normalized_file = extract_project_relative_path(file);
+    SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
     block->line = line;
     block->next = g_mem.head;
     g_mem.head = block;
   }
 
+#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
 
+  g_in_debug_memory = false;
   return ptr;
 }
 
 void debug_free(void *ptr, const char *file, int line) {
   if (!ptr)
     return;
+
+  // Skip tracking if we're already inside debug memory code (prevents recursion from backtrace)
+  if (g_in_debug_memory) {
+    free(ptr);
+    return;
+  }
+
+  g_in_debug_memory = true;
 
   atomic_fetch_add(&g_mem.free_calls, 1);
 
@@ -228,7 +264,11 @@ void debug_free(void *ptr, const char *file, int line) {
 
   /* Search for allocation in linked list */
   ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
 
   mem_block_t *prev = NULL;
   mem_block_t *curr = g_mem.head;
@@ -243,7 +283,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
       freed_size = curr->size;
       found = true;
-      free(curr);
+      free(curr); // Use raw free to avoid recursion
       break;
     }
     prev = curr;
@@ -251,10 +291,17 @@ void debug_free(void *ptr, const char *file, int line) {
   }
 
   if (!found) {
-    log_warn("Freeing untracked pointer %p at %s:%d", ptr, file, line);
+    // NOTE: Backtrace disabled - it's EXTREMELY expensive (20-30ms per call) and destroys FPS
+    // Only log once per second to avoid spam
+    log_warn_every(1000000, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
+    platform_print_backtrace(1);
   }
 
+#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
 
   /* Update freed stats - use exact size from tracking or platform function */
   if (found) {
@@ -281,7 +328,9 @@ void debug_free(void *ptr, const char *file, int line) {
     }
   }
 
-  free(ptr);
+  // Keep flag set until AFTER the actual free() to prevent recursion
+  SAFE_FREE(ptr);
+  g_in_debug_memory = false;
 }
 
 void *debug_calloc(size_t count, size_t size, const char *file, int line) {
@@ -289,6 +338,13 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   void *ptr = calloc(count, size);
   if (!ptr)
     return NULL;
+
+  // Skip tracking if we're already inside debug memory code
+  if (g_in_debug_memory) {
+    return ptr;
+  }
+
+  g_in_debug_memory = true;
 
   /* Update statistics atomically */
   atomic_fetch_add(&g_mem.calloc_calls, 1);
@@ -304,8 +360,13 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
   /* Track individual allocations for detailed leak reporting */
   ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
 
+  // Use raw malloc to avoid recursion
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
   if (block) {
     block->ptr = ptr;
@@ -316,19 +377,33 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
     g_mem.head = block;
   }
 
+#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
 
+  g_in_debug_memory = false;
   return ptr;
 }
 
 void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
+  // Skip tracking if we're already inside debug memory code
+  if (g_in_debug_memory) {
+    return realloc(ptr, size);
+  }
+
+  g_in_debug_memory = true;
+
   // Count the realloc call even if it delegates to malloc or free
   atomic_fetch_add(&g_mem.realloc_calls, 1);
 
   if (ptr == NULL) {
+    g_in_debug_memory = false;
     return debug_malloc(size, file, line);
   }
   if (size == 0) {
+    g_in_debug_memory = false;
     debug_free(ptr, file, line);
     return NULL;
   }
@@ -338,7 +413,11 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
 
   /* Find the old allocation */
   ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
 
   mem_block_t *prev = NULL;
   curr = g_mem.head;
@@ -350,10 +429,15 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     old_size = curr->size;
   }
   (void)prev; // Unused variable (for now 🤔 what could i do with this...)
+#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
 
-  void *new_ptr = realloc(ptr, size);
+  void *new_ptr = SAFE_REALLOC(ptr, size, void *);
   if (!new_ptr) {
+    g_in_debug_memory = false;
     return NULL;
   }
 
@@ -390,7 +474,11 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
 
   /* Update the linked list */
   ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
 
   /* Find the block again (it might have changed) */
   curr = g_mem.head;
@@ -405,6 +493,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     curr->file[sizeof(curr->file) - 1] = '\0';
     curr->line = line;
   } else {
+    // Use raw malloc to avoid recursion
     mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
     if (block) {
       block->ptr = new_ptr;
@@ -416,8 +505,13 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     }
   }
 
+#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
 
+  g_in_debug_memory = false;
   return new_ptr;
 }
 
@@ -431,6 +525,12 @@ static const char *strip_project_path(const char *full_path) {
 }
 
 void debug_memory_report(void) {
+  // Free any pending errno context before reporting memory
+  // This catches any errors that occurred during other cleanup functions
+  // Note: cleanup also enables suppression to prevent further allocations
+  extern void asciichat_errno_cleanup(void);
+  asciichat_errno_cleanup();
+
   bool quiet = g_mem.quiet_mode;
   if (!quiet) {
     // NOTE: Write directly to stderr in case logging is already destroyed at exit
@@ -468,7 +568,11 @@ void debug_memory_report(void) {
     /* Show current allocations if any exist */
     if (g_mem.head) {
       ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
       mutex_lock(&g_mem.mutex);
+#else
+      pthread_mutex_lock(&g_mem.mutex);
+#endif
 
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\nCurrent allocations:\n"));
       mem_block_t *curr = g_mem.head;
@@ -480,89 +584,19 @@ void debug_memory_report(void) {
         curr = curr->next;
       }
 
+#if PLATFORM_WINDOWS
       mutex_unlock(&g_mem.mutex);
-    }
-  }
-}
-
-#endif /* DEBUG_MEMORY */
-
-/* ============================================================================
- * Path Utilities (shared between logging, backtraces, debugging, etc.)
- * ============================================================================ */
-
-/* Helper function for slash-agnostic path matching (handles Windows/Unix path separators) */
-static bool path_char_match(char a, char b) {
-  /* Treat both / and \ as equivalent */
-  if ((a == '/' || a == '\\') && (b == '/' || b == '\\'))
-    return true;
-  return a == b;
-}
-
-/* Helper function to find source root in path (slash-agnostic for Windows compatibility) */
-static const char *find_source_root(const char *file, const char *source_root) {
-  if (!file || !source_root)
-    return NULL;
-
-  size_t root_len = strlen(source_root);
-  const char *file_pos = file;
-
-  /* Search for source_root in file path, treating / and \ as equivalent */
-  while (*file_pos) {
-    size_t i;
-    for (i = 0; i < root_len && file_pos[i]; i++) {
-      if (!path_char_match(file_pos[i], source_root[i]))
-        break;
-    }
-
-    /* Found a match if we compared all characters of source_root */
-    if (i == root_len) {
-      /* Verify it's followed by a path separator or end of string */
-      char next = file_pos[i];
-      if (next == '\0' || next == '/' || next == '\\')
-        return file_pos;
-    }
-
-    file_pos++;
-  }
-
-  return NULL;
-}
-
-const char *extract_project_relative_path(const char *file) {
-  if (!file)
-    return "unknown";
-
-#ifdef PROJECT_SOURCE_ROOT
-  /* Use the dynamically defined source root */
-  const char *source_root = PROJECT_SOURCE_ROOT;
-  const char *root_pos = find_source_root(file, source_root);
-
-  if (root_pos) {
-    /* Move past the source root */
-    const char *after_root = root_pos + strlen(source_root);
-
-    /* Skip the path separator if present */
-    if (*after_root == '/' || *after_root == '\\') {
-      after_root++;
-    }
-
-    /* Return the path relative to repo root */
-    if (*after_root != '\0') {
-      return after_root;
-    }
-  }
+#else
+      pthread_mutex_unlock(&g_mem.mutex);
 #endif
-
-  /* Fallback: try to find just the filename */
-  const char *last_slash = strrchr(file, '/');
-  const char *last_backslash = strrchr(file, '\\');
-  const char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
-
-  if (last_sep) {
-    return last_sep + 1;
+    }
   }
-
-  /* Last resort: return the original path */
-  return file;
 }
+
+#elif defined(USE_MIMALLOC_DEBUG)
+// Wrapper function for mi_stats_print to use with atexit()
+// mi_stats_print takes a parameter, but atexit requires void(void)
+static void print_mimalloc_stats(void) {
+  mi_stats_print(NULL); // NULL = print to stderr
+}
+#endif

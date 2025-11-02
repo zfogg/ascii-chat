@@ -11,8 +11,13 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../../common.h"
-#include "../windows_compat.h"
+#include "../../asciichat_errno.h"
+#include "../socket.h"
+#include "../../util/path.h"
+#include "../symbols.h"
+
 #include <dbghelp.h>
+#include <wincrypt.h>
 #include <io.h>
 #include <fcntl.h>
 #include <process.h>
@@ -24,25 +29,33 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-#include <errno.h>
-
+#include <mmsystem.h> // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
 #include <stdatomic.h>
+
+#pragma comment(lib, "winmm.lib") // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
 
 /**
  * @brief Get username from environment variables
  * @return Username string or "unknown" if not found
  */
 const char *get_username_env(void) {
-  static char username[256];
-  const char *user = getenv("USERNAME");
-  if (!user) {
-    user = getenv("USER");
-  }
-  if (user) {
-    strncpy(username, user, sizeof(username) - 1);
-    username[sizeof(username) - 1] = '\0';
+  static char username[256] = {'\0'};
+  if (username[0] != '\0') {
+    log_debug("Username already cached: %s", username);
     return username;
   }
+  const char *user = platform_getenv("USERNAME");
+  if (!user) {
+    user = platform_getenv("USER");
+  }
+  if (user) {
+    if (platform_strncpy(username, sizeof(username), user, sizeof(username) - 1) != 0) {
+      SET_ERRNO(ERROR_STRING, "Failed to copy username");
+      return "unknown";
+    }
+    return username;
+  }
+  SET_ERRNO(ERROR_STRING, "Failed to get username");
   return "unknown";
 }
 
@@ -50,24 +63,48 @@ const char *get_username_env(void) {
  * @brief Initialize platform-specific functionality
  * @return 0 on success, error code on failure
  */
-int platform_init(void) {
+asciichat_error_t platform_init(void) {
   // Set binary mode for stdin/stdout to handle raw data
   _setmode(_fileno(stdin), _O_BINARY);
   _setmode(_fileno(stdout), _O_BINARY);
   _setmode(_fileno(stderr), _O_BINARY);
 
+  // Set Windows timer resolution to 1ms for high-precision sleep
+  // This is required for multimedia applications that need accurate timing
+  // Without this, Sleep(1) can sleep up to 15.6ms (default Windows timer resolution)
+  // With timeBeginPeriod(1), Sleep(1) sleeps 1-2ms which is acceptable for 144 FPS capture
+  timeBeginPeriod(1);
+
+  get_username_env();
+  get_username_env();
+  get_username_env();
+
   // Install crash handlers for automatic backtrace on crashes
   platform_install_crash_handler();
 
-  // Initialize Winsock will be done in socket_windows.c
-  return 0;
+  if (symbol_cache_init() != ASCIICHAT_OK) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Symbol cache initialization failed");
+  }
+
+  // Initialize Winsock (required before getaddrinfo and socket operations)
+  if (socket_init() != ASCIICHAT_OK) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Network operation failed");
+  }
+
+  return ASCIICHAT_OK;
 }
 
 /**
  * @brief Clean up platform-specific functionality
  */
 void platform_cleanup(void) {
-  // Cleanup will be done in socket_windows.c for Winsock
+  // Cleanup binary PATH cache
+  platform_cleanup_binary_path_cache();
+
+  socket_cleanup();
+
+  // Restore original Windows timer resolution
+  timeEndPeriod(1);
 }
 
 /**
@@ -78,36 +115,13 @@ void platform_sleep_ms(unsigned int ms) {
   Sleep(ms);
 }
 
-int platform_localtime(const time_t *timer, struct tm *result) {
-  if (!timer || !result) {
-    return EINVAL;
-  }
-  errno_t err = localtime_s(result, timer);
-  return err;
-}
-
-/**
- * @brief POSIX-compatible usleep function for Windows
- * @param usec Number of microseconds to sleep
- * @return 0 on success
- */
-int usleep(unsigned int usec) {
-  // Convert microseconds to milliseconds, minimum 1ms
-  int timeout_ms = (int)(usec / 1000);
-  if (timeout_ms == 0 && usec > 0) {
-    timeout_ms = 1; // Minimum 1ms on Windows
-  }
-  Sleep(timeout_ms);
-  return 0;
-}
-
 /**
  * @brief Cross-platform high-precision sleep function with shutdown support
  * @param usec Number of microseconds to sleep
  *
- * On Windows, uses Sleep() with millisecond precision.
- * Simple implementation due to Windows timer characteristics.
- * Sleep(1) may sleep up to 15.6ms due to timer resolution.
+ * On Windows, uses Sleep() with millisecond precision after calling timeBeginPeriod(1).
+ * With 1ms timer resolution enabled in platform_init(), Sleep(1) sleeps 1-2ms
+ * instead of the default 15.6ms, enabling proper frame rate limiting for 144 FPS capture.
  */
 void platform_sleep_usec(unsigned int usec) {
   // Convert microseconds to milliseconds, minimum 1ms
@@ -116,6 +130,23 @@ void platform_sleep_usec(unsigned int usec) {
     timeout_ms = 1;
 
   Sleep(timeout_ms);
+}
+
+/**
+ * @brief Convert time_t to local time
+ * @param timer Pointer to time_t value
+ * @param result Pointer to struct tm to receive result
+ * @return 0 on success, non-zero on error
+ */
+asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
+  if (!timer || !result) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for localtime");
+  }
+  errno_t err = localtime_s(result, timer);
+  if (err != 0) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to convert time to local time");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -226,7 +257,7 @@ int platform_backtrace(void **buffer, int size) {
   HANDLE process = GetCurrentProcess();
   if (!SymInitialize(process, NULL, TRUE)) {
     DWORD error = GetLastError();
-    fprintf(stderr, "[ERROR] platform_backtrace: SymInitialize failed with error %lu\n", error);
+    log_error("[ERROR] platform_backtrace: SymInitialize failed with error %lu", error);
     return 0;
   }
 
@@ -267,7 +298,7 @@ int platform_backtrace(void **buffer, int size) {
     if (!result) {
       DWORD error = GetLastError();
       if (count == 0) {
-        fprintf(stderr, "[ERROR] platform_backtrace: StackWalk64 failed with error %lu\n", error);
+        log_error("[ERROR] platform_backtrace: StackWalk64 failed with error %lu", error);
       }
       break;
     }
@@ -296,16 +327,112 @@ static void init_windows_symbols(void) {
     return; // Already initialized
   }
 
+  // Use a simple mutex to prevent race conditions
+  static volatile LONG init_lock = 0;
+  if (InterlockedCompareExchange(&init_lock, 1, 0) != 0) {
+    // Another thread is initializing, wait for it to complete
+    while (!atomic_load(&g_symbols_initialized)) {
+      Sleep(1);
+    }
+    return;
+  }
+
   g_process_handle = GetCurrentProcess();
 
   // Set symbol options for better debugging
-  SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES);
+  // SYMOPT_UNDNAME: Demangle C++ names
+  // SYMOPT_DEFERRED_LOADS: Load symbols on demand
+  // SYMOPT_LOAD_LINES: Load line information
+  // SYMOPT_AUTO_PUBLICS: Automatically load public symbols
+  // Note: CRT symbols with $fo_rvas$ are linker-optimized symbols that can't be easily demangled
+  SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_AUTO_PUBLICS);
 
-  if (SymInitialize(g_process_handle, NULL, TRUE)) {
-    atomic_store(&g_symbols_initialized, true);
-    // Register cleanup function to be called on exit
-    atexit(cleanup_windows_symbols);
+  // Configure symbol search path to include current directory and build directory
+  char symbol_path[MAX_PATH * 3];
+  char module_path[MAX_PATH];
+  char project_root[MAX_PATH];
+  DWORD path_len = GetModuleFileNameA(NULL, module_path, MAX_PATH);
+
+  if (path_len > 0) {
+    // Get directory of executable
+    char *last_slash = strrchr(module_path, '\\');
+    if (last_slash) {
+      *last_slash = '\0'; // Truncate to directory path
+    }
+
+    // Copy the directory path to project_root before further modifications
+    strncpy(project_root, module_path, sizeof(project_root) - 1);
+    project_root[sizeof(project_root) - 1] = '\0';
+
+    // If we're in build/bin, go up two levels to get to project root
+    if (strstr(module_path, "\\build\\bin") != NULL) {
+      // Remove \build\bin from the path to get project root
+      char *build_bin = strstr(project_root, "\\build\\bin");
+      if (build_bin) {
+        *build_bin = '\0';
+      }
+    }
+
+    // Set up symbol search path: current dir, build dir, and system paths
+    safe_snprintf(symbol_path, sizeof(symbol_path), "%s;%s\\build\\bin;%s\\build;%s", module_path, project_root,
+                  project_root, getenv("_NT_SYMBOL_PATH") ? getenv("_NT_SYMBOL_PATH") : "");
   }
+
+  // Try to initialize with custom search path
+  if (!SymInitialize(g_process_handle, symbol_path, TRUE)) {
+    // If initialization failed, try to cleanup and retry with default path
+    SymCleanup(g_process_handle);
+    if (!SymInitialize(g_process_handle, NULL, TRUE)) {
+      DWORD error = GetLastError();
+      log_error("Failed to initialize Windows symbol system, error: %lu", error);
+      return;
+    }
+  }
+
+  // Load symbols for the current module
+  path_len = GetModuleFileNameA(NULL, module_path, MAX_PATH);
+  if (path_len > 0) {
+    DWORD64 base_addr = SymLoadModule64(g_process_handle, NULL, module_path, NULL, 0, 0);
+    if (base_addr == 0) {
+      DWORD error = GetLastError();
+      log_error("Failed to load symbols for module %s, error: %lu", module_path, error);
+    } else {
+      log_debug("Successfully loaded symbols for module %s at base 0x%llx", module_path, base_addr);
+    }
+
+    // Also try to load symbols from the build directory where PDB files are located
+    char build_pdb_path[MAX_PATH];
+    char *last_slash = strrchr(module_path, '\\');
+    if (last_slash) {
+      size_t dir_len = last_slash - module_path;
+      if (dir_len < MAX_PATH - 20) { // Leave room for "\build\bin\*.pdb"
+        strncpy(build_pdb_path, module_path, dir_len);
+        build_pdb_path[dir_len] = '\0';
+        strcat(build_pdb_path, "\\build\\bin");
+
+        // Try to load PDB files from build directory
+        WIN32_FIND_DATAA find_data;
+        char search_pattern[MAX_PATH];
+        safe_snprintf(search_pattern, sizeof(search_pattern), "%s\\*.pdb", build_pdb_path);
+
+        HANDLE find_handle = FindFirstFileA(search_pattern, &find_data);
+        if (find_handle != INVALID_HANDLE_VALUE) {
+          do {
+            char full_pdb_path[MAX_PATH];
+            safe_snprintf(full_pdb_path, sizeof(full_pdb_path), "%s\\%s", build_pdb_path, find_data.cFileName);
+            log_debug("Attempting to load PDB: %s", full_pdb_path);
+            // Note: SymLoadModule64 expects executable files, not PDB files directly
+            // The PDB should be automatically found by the symbol system
+          } while (FindNextFileA(find_handle, &find_data));
+          FindClose(find_handle);
+        }
+      }
+    }
+  }
+
+  atomic_store(&g_symbols_initialized, true);
+  // Register cleanup function to be called on exit
+  (void)atexit(cleanup_windows_symbols);
 }
 
 // Function to cleanup Windows symbol resolution
@@ -317,19 +444,18 @@ static void cleanup_windows_symbols(void) {
   }
 }
 
-// Function to resolve a single symbol
 static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size) {
   if (!atomic_load(&g_symbols_initialized)) {
-    snprintf(buffer, buffer_size, "0x%llx", (DWORD64)(uintptr_t)addr);
+    safe_snprintf(buffer, buffer_size, "0x%llx", (DWORD64)(uintptr_t)addr);
     return;
   }
 
   DWORD64 address = (DWORD64)(uintptr_t)addr;
 
   // Allocate symbol info structure with space for name (large buffer for very long C++ symbols)
-  PSYMBOL_INFO symbol_info = (PSYMBOL_INFO)malloc(sizeof(SYMBOL_INFO) + 4096);
+  PSYMBOL_INFO symbol_info = SAFE_MALLOC(sizeof(SYMBOL_INFO) + 4096, PSYMBOL_INFO);
   if (!symbol_info) {
-    snprintf(buffer, buffer_size, "0x%llx", address);
+    safe_snprintf(buffer, buffer_size, "0x%llx", address);
     return;
   }
   symbol_info->SizeOfStruct = sizeof(SYMBOL_INFO);
@@ -344,21 +470,48 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
   bool got_symbol = SymFromAddr(g_process_handle, address, NULL, symbol_info);
   bool got_line = SymGetLineFromAddr64(g_process_handle, address, &displacement, &line_info);
 
+  /**
+  // Debug logging for symbol resolution
+  if (!got_symbol) {
+    DWORD error = GetLastError();
+    log_debug("SymFromAddr failed for address 0x%llx, error: %lu", address, error);
+  }
+  if (!got_line) {
+    DWORD error = GetLastError();
+    log_debug("SymGetLineFromAddr64 failed for address 0x%llx, error: %lu", address, error);
+  }
+  */
+
   if (got_symbol && got_line) {
-    // Get just the filename without path
-    char *filename = strrchr(line_info.FileName, '\\');
-    if (!filename)
-      filename = strrchr(line_info.FileName, '/');
-    if (!filename)
-      filename = line_info.FileName;
-    else
-      filename++;
+    // Use the existing project relative path extraction function
+    const char *filename = extract_project_relative_path(line_info.FileName);
 
     // Ensure symbol name is null-terminated within our buffer
     symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
 
+    // Try to clean up mangled CRT symbols (e.g., memcpy_$fo_rvas$ -> memcpy)
+    char cleaned_name[4096];
+    const char *symbol_name = symbol_info->Name;
+
+    // Check if it's a CRT mangled symbol (contains $fo_rvas$ or similar patterns)
+    char *dollar_pos = strchr(symbol_info->Name, '$');
+    if (dollar_pos) {
+      // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
+      // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
+      size_t base_len = dollar_pos - symbol_info->Name;
+      if (base_len > 0 && base_len < sizeof(cleaned_name)) {
+        // Remove trailing underscore if present
+        if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
+          base_len--;
+        }
+        memcpy(cleaned_name, symbol_info->Name, base_len);
+        cleaned_name[base_len] = '\0';
+        symbol_name = cleaned_name;
+      }
+    }
+
     // Calculate required space and truncate symbol name if needed
-    size_t symbol_len = strlen(symbol_info->Name);
+    size_t symbol_len = strlen(symbol_name);
     size_t filename_len = strlen(filename);
     size_t required = symbol_len + filename_len + 32; // extra space for " (:%lu)"
 
@@ -366,20 +519,41 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
       // Truncate symbol name to fit
       size_t max_symbol_len = buffer_size - filename_len - 32;
       if (max_symbol_len > 0) {
-        snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_info->Name, filename,
-                 line_info.LineNumber);
+        safe_snprintf(buffer, buffer_size, "%.*s... (%s:%lu)", (int)(max_symbol_len - 3), symbol_name, filename,
+                      line_info.LineNumber);
       } else {
-        snprintf(buffer, buffer_size, "0x%llx", address);
+        safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
-      snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_info->Name, filename, line_info.LineNumber);
+      safe_snprintf(buffer, buffer_size, "%s (%s:%lu)", symbol_name, filename, line_info.LineNumber);
     }
   } else if (got_symbol) {
     // Ensure symbol name is null-terminated within our buffer
     symbol_info->Name[symbol_info->MaxNameLen - 1] = '\0';
 
+    // Try to clean up mangled CRT symbols (e.g., memcpy_$fo_rvas$ -> memcpy)
+    char cleaned_name[4096];
+    const char *symbol_name = symbol_info->Name;
+
+    // Check if it's a CRT mangled symbol (contains $fo_rvas$ or similar patterns)
+    char *dollar_pos = strchr(symbol_info->Name, '$');
+    if (dollar_pos) {
+      // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
+      // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
+      size_t base_len = dollar_pos - symbol_info->Name;
+      if (base_len > 0 && base_len < sizeof(cleaned_name)) {
+        // Remove trailing underscore if present
+        if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
+          base_len--;
+        }
+        memcpy(cleaned_name, symbol_info->Name, base_len);
+        cleaned_name[base_len] = '\0';
+        symbol_name = cleaned_name;
+      }
+    }
+
     // Calculate required space and truncate if needed
-    size_t symbol_len = strlen(symbol_info->Name);
+    size_t symbol_len = strlen(symbol_name);
     size_t required = symbol_len + 32; // extra space for "+0x%llx"
 
     if (required > buffer_size) {
@@ -388,47 +562,58 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
         size_t max_symbol_len = buffer_size - 32;
         // Check for underflow before subtraction
         if (address >= symbol_info->Address) {
-          snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
-                   address - symbol_info->Address);
+          safe_snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_name,
+                        address - symbol_info->Address);
         } else {
-          snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_info->Name,
-                   symbol_info->Address - address);
+          safe_snprintf(buffer, buffer_size, "%.*s...-0x%llx", (int)(max_symbol_len - 3), symbol_name,
+                        symbol_info->Address - address);
         }
       } else {
-        snprintf(buffer, buffer_size, "0x%llx", address);
+        safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
       // Check for underflow before subtraction
       if (address >= symbol_info->Address) {
-        snprintf(buffer, buffer_size, "%s+0x%llx", symbol_info->Name, address - symbol_info->Address);
+        safe_snprintf(buffer, buffer_size, "%s+0x%llx", symbol_name, address - symbol_info->Address);
       } else {
-        snprintf(buffer, buffer_size, "%s-0x%llx", symbol_info->Name, symbol_info->Address - address);
+        safe_snprintf(buffer, buffer_size, "%s-0x%llx", symbol_name, symbol_info->Address - address);
       }
     }
   } else {
-    snprintf(buffer, buffer_size, "0x%llx", address);
+    safe_snprintf(buffer, buffer_size, "0x%llx", address);
   }
 
-  free(symbol_info);
+  SAFE_FREE(symbol_info);
 }
 
 /**
- * @brief Convert stack trace addresses to symbols using Windows SymFromAddr
+ * @brief Convert stack trace addresses to symbols using llvm-symbolizer/addr2line + Windows SymFromAddr
  * @param buffer Array of addresses from platform_backtrace
  * @param size Number of addresses in buffer
  * @return Array of strings with symbol names (must be freed with platform_backtrace_symbols_free)
+ *
+ * Uses multi-layered symbol resolution strategy:
+ * 1. Try llvm-symbolizer/addr2line cache first (works in all build modes)
+ * 2. Fall back to Windows DbgHelp (SymFromAddr/SymGetLineFromAddr64) if cache fails
+ * 3. Last resort: display raw address
  */
 char **platform_backtrace_symbols(void *const *buffer, int size) {
   if (!buffer || size <= 0) {
     return NULL;
   }
 
-  // Initialize Windows symbols once
+  // Initialize Windows symbols once (for fallback)
   init_windows_symbols();
 
+  // Try using the symbol cache (llvm-symbolizer/addr2line) in batch mode FIRST
+  char **cache_symbols = symbol_cache_resolve_batch(buffer, size);
+
   // Allocate array of strings (size + 1 for NULL terminator)
-  char **symbols = (char **)malloc((size + 1) * sizeof(char *));
+  char **symbols = SAFE_MALLOC((size + 1) * sizeof(char *), char **);
   if (!symbols) {
+    if (cache_symbols) {
+      symbol_cache_free_symbols(cache_symbols);
+    }
     return NULL;
   }
 
@@ -437,12 +622,95 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
     symbols[i] = NULL;
   }
 
-  // Resolve each symbol
+  // Resolve each symbol, preferring cache results
   for (int i = 0; i < size; i++) {
-    symbols[i] = (char *)malloc(1024); // Increased buffer size for longer symbol names
-    if (symbols[i]) {
-      resolve_windows_symbol(buffer[i], symbols[i], 1024);
+    symbols[i] = (char *)SAFE_MALLOC(1024, void *); // Increased buffer size for longer symbol names
+    if (!symbols[i]) {
+      continue;
     }
+
+    // Try llvm-symbolizer/addr2line cache FIRST
+    bool cache_success = false;
+    if (cache_symbols && cache_symbols[i]) {
+      // Check if cache actually resolved the symbol (not just "0x..." or "??")
+      const char *sym = cache_symbols[i];
+      if (sym[0] != '0' && sym[0] != '?' && sym[0] != '\0') {
+        // Check if this is a CRT mangled symbol without file info - likely a failed resolution
+        // CRT mangled symbols like memcpy_$fo_rvas$() are often fallbacks when real symbols aren't available
+        // Only accept them if they have file location info (real resolution), otherwise treat as failed
+        char *dollar_pos = strchr(sym, '$');
+        // Check for file info - look for patterns like " at 0x...", " in file:line", or "() at file:line"
+        bool has_file_info = (strstr(sym, " at 0x") != NULL || strstr(sym, " in ") != NULL ||
+                              (strstr(sym, "() at ") != NULL && strstr(sym, ":") != NULL));
+
+        if (dollar_pos && !has_file_info) {
+          // CRT mangled symbol without file info - likely a failed resolution, skip it
+          // This prevents all stack frames from showing the same mangled symbol
+          // Fall through to try Windows DbgHelp or show raw address
+          cache_success = false;
+        } else {
+          // Clean up mangled CRT symbols from cache (e.g., memcpy_$fo_rvas$() -> memcpy())
+          char cleaned_sym[1024];
+          if (dollar_pos) {
+            // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
+            size_t base_len = dollar_pos - sym;
+            if (base_len > 0 && base_len < sizeof(cleaned_sym)) {
+              // Remove trailing underscore if present
+              if (base_len > 1 && sym[base_len - 1] == '_') {
+                base_len--;
+              }
+              memcpy(cleaned_sym, sym, base_len);
+              cleaned_sym[base_len] = '\0';
+              // Find what comes after the mangled part (could be "()" or "() at ...")
+              const char *rest = dollar_pos;
+              // Skip past $fo_rvas$ (everything between $ and the next meaningful char)
+              while (*rest && *rest != '(' && *rest != ' ' && *rest != '\0') {
+                rest++; // Skip past $fo_rvas$
+              }
+              // Append any remaining content (e.g., "()" or "() at ...")
+              if (*rest) {
+                safe_snprintf(symbols[i], 1024, "%s%s", cleaned_sym, rest);
+              } else {
+                // No rest, but might need to add () if original had it
+                if (strstr(sym, "()") != NULL) {
+                  safe_snprintf(symbols[i], 1024, "%s()", cleaned_sym);
+                } else {
+                  SAFE_STRNCPY(symbols[i], cleaned_sym, 1024);
+                }
+              }
+            } else {
+              SAFE_STRNCPY(symbols[i], sym, 1024);
+            }
+          } else {
+            // No mangling - use as-is
+            SAFE_STRNCPY(symbols[i], sym, 1024);
+          }
+          cache_success = true;
+        }
+      }
+    }
+
+    // Fall back to DbgHelp if cache failed
+    if (!cache_success && atomic_load(&g_symbols_initialized)) {
+      char temp_buffer[1024];
+      resolve_windows_symbol(buffer[i], temp_buffer, sizeof(temp_buffer));
+
+      // Check if DbgHelp actually resolved the symbol (not just "0x...")
+      if (temp_buffer[0] != '0' || temp_buffer[1] != 'x') {
+        SAFE_STRNCPY(symbols[i], temp_buffer, 1024);
+        cache_success = true; // Mark as resolved
+      }
+    }
+
+    // Last resort: just print the address
+    if (!cache_success) {
+      safe_snprintf(symbols[i], 1024, "%p", buffer[i]);
+    }
+  }
+
+  // Clean up cache symbols
+  if (cache_symbols) {
+    symbol_cache_free_symbols(cache_symbols);
   }
 
   return symbols;
@@ -459,11 +727,11 @@ void platform_backtrace_symbols_free(char **strings) {
 
   // Free each individual string
   for (int i = 0; strings[i] != NULL; i++) {
-    free(strings[i]);
+    SAFE_FREE(strings[i]);
   }
 
   // Free the array itself
-  free(strings);
+  SAFE_FREE(strings);
 }
 
 // ============================================================================
@@ -472,21 +740,26 @@ void platform_backtrace_symbols_free(char **strings) {
 
 /**
  * @brief Print backtrace to stderr
+ * @param skip_frames Number of additional frames to skip (beyond platform_print_backtrace itself)
  */
-void platform_print_backtrace(void) {
+void platform_print_backtrace(int skip_frames) {
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    fprintf(stderr, "\n=== BACKTRACE ===\n");
+    safe_fprintf(stderr, "=== BACKTRACE ===\n");
     char **symbols = platform_backtrace_symbols(buffer, size);
 
-    for (int i = 0; i < size; i++) {
-      fprintf(stderr, "%2d: %s\n", i, symbols ? symbols[i] : "???");
+    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
+    int start_frame = 1 + skip_frames;
+    const char **colors = log_get_color_array();
+    for (int i = start_frame; i < size; i++) {
+      safe_fprintf(stderr, "%[s%2d%s] %s\n", colors[LOGGING_COLOR_DEBUG], i - start_frame, LOGGING_COLOR_RESET,
+                   symbols ? symbols[i] : "???");
     }
+    safe_fprintf(stderr, "================\n");
 
     platform_backtrace_symbols_free(symbols);
-    fprintf(stderr, "================\n\n");
   }
 }
 
@@ -494,42 +767,42 @@ void platform_print_backtrace(void) {
  * @brief Windows structured exception handler for crashes
  */
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
-  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
-  fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
+  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  safe_fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
 
   switch (exception_info->ExceptionRecord->ExceptionCode) {
   case EXCEPTION_ACCESS_VIOLATION:
-    fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
+    safe_fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
     break;
   case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-    fprintf(stderr, "Exception: Array Bounds Exceeded\n");
+    safe_fprintf(stderr, "Exception: Array Bounds Exceeded\n");
     break;
   case EXCEPTION_DATATYPE_MISALIGNMENT:
-    fprintf(stderr, "Exception: Data Type Misalignment\n");
+    safe_fprintf(stderr, "Exception: Data Type Misalignment\n");
     break;
   case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-    fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
+    safe_fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
     break;
   case EXCEPTION_FLT_INVALID_OPERATION:
-    fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
+    safe_fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
     break;
   case EXCEPTION_ILLEGAL_INSTRUCTION:
-    fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
+    safe_fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
     break;
   case EXCEPTION_INT_DIVIDE_BY_ZERO:
-    fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
+    safe_fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
     break;
   case EXCEPTION_STACK_OVERFLOW:
-    fprintf(stderr, "Exception: Stack Overflow\n");
+    safe_fprintf(stderr, "Exception: Stack Overflow\n");
     break;
   default:
-    fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
+    safe_fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
-  platform_print_backtrace();
+  platform_print_backtrace(0);
 #else
   fprintf(stderr, "Backtrace disabled in Release builds\n");
 #endif
@@ -542,25 +815,25 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
  * @brief Signal handler for Windows C runtime exceptions
  */
 static void windows_signal_handler(int sig) {
-  fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
   switch (sig) {
   case SIGABRT:
-    fprintf(stderr, "Signal: SIGABRT (Abort)\n");
+    safe_fprintf(stderr, "Signal: SIGABRT (Abort)\n");
     break;
   case SIGFPE:
-    fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
+    safe_fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
     break;
   case SIGILL:
-    fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
+    safe_fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
     break;
   default:
-    fprintf(stderr, "Signal: %d (Unknown)\n", sig);
+    safe_fprintf(stderr, "Signal: %d (Unknown)\n", sig);
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
-  platform_print_backtrace();
+  platform_print_backtrace(0);
 #else
   fprintf(stderr, "Backtrace disabled in Release builds\n");
 #endif
@@ -589,7 +862,7 @@ void platform_install_crash_handler(void) {
  */
 int clock_gettime(int clk_id, struct timespec *tp) {
   if (!tp) {
-    return -1;
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid timespec pointer");
   }
 
   if (clk_id == CLOCK_REALTIME) {
@@ -615,7 +888,7 @@ int clock_gettime(int clk_id, struct timespec *tp) {
     LARGE_INTEGER freq, counter;
 
     if (!QueryPerformanceFrequency(&freq) || !QueryPerformanceCounter(&counter)) {
-      return -1;
+      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Platform initialization failed");
     }
 
     // Convert to seconds and nanoseconds
@@ -648,125 +921,6 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result) {
     return NULL;
   }
   return result;
-}
-
-// ============================================================================
-// String Safety Functions
-// ============================================================================
-
-/**
- * @brief Platform-safe snprintf implementation
- * @param str Destination buffer
- * @param size Buffer size
- * @param format Format string
- * @return Number of characters written (excluding null terminator)
- */
-int platform_snprintf(char *str, size_t size, const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-  int result = vsnprintf_s(str, size, _TRUNCATE, format, args);
-  va_end(args);
-  return result;
-}
-
-/**
- * @brief Platform-safe vsnprintf implementation
- * @param str Destination buffer
- * @param size Buffer size
- * @param format Format string
- * @param ap Variable argument list
- * @return Number of characters written (excluding null terminator)
- */
-int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
-  return vsnprintf_s(str, size, _TRUNCATE, format, ap);
-}
-
-/**
- * @brief Duplicate a string
- * @param s Source string
- * @return Allocated copy of string, or NULL on failure
- */
-char *platform_strdup(const char *s) {
-  return _strdup(s);
-}
-
-/**
- * @brief Duplicate up to n characters of a string
- * @param s Source string
- * @param n Maximum number of characters to copy
- * @return Allocated copy of string, or NULL on failure
- */
-char *platform_strndup(const char *s, size_t n) {
-  size_t len = strnlen(s, n);
-  char *result = (char *)malloc(len + 1);
-  if (result) {
-    memcpy(result, s, len);
-    result[len] = '\0';
-  }
-  return result;
-}
-
-/**
- * @brief Case-insensitive string comparison
- * @param s1 First string
- * @param s2 Second string
- * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
- */
-int platform_strcasecmp(const char *s1, const char *s2) {
-  return _stricmp(s1, s2);
-}
-
-/**
- * @brief Case-insensitive string comparison with length limit
- * @param s1 First string
- * @param s2 Second string
- * @param n Maximum number of characters to compare
- * @return 0 if equal, <0 if s1<s2, >0 if s1>s2
- */
-int platform_strncasecmp(const char *s1, const char *s2, size_t n) {
-  return _strnicmp(s1, s2, n);
-}
-
-/**
- * @brief Thread-safe string tokenization
- * @param str String to tokenize (NULL for continuation)
- * @param delim Delimiter string
- * @param saveptr Pointer to save state between calls
- * @return Pointer to next token, or NULL if no more tokens
- */
-char *platform_strtok_r(char *str, const char *delim, char **saveptr) {
-  return strtok_s(str, delim, saveptr);
-}
-
-/**
- * @brief Safe string copy with size limit
- * @param dst Destination buffer
- * @param src Source string
- * @param size Destination buffer size
- * @return Length of source string (excluding null terminator)
- */
-size_t platform_strlcpy(char *dst, const char *src, size_t size) {
-  if (size == 0)
-    return strlen(src);
-
-  strncpy_s(dst, size, src, _TRUNCATE);
-  return strlen(src);
-}
-
-/**
- * @brief Safe string concatenation with size limit
- * @param dst Destination buffer
- * @param src Source string
- * @param size Destination buffer size
- * @return Total length of resulting string
- */
-size_t platform_strlcat(char *dst, const char *src, size_t size) {
-  size_t dst_len = strnlen(dst, size);
-  if (dst_len == size)
-    return size + strlen(src);
-
-  strncat_s(dst, size, src, _TRUNCATE);
-  return dst_len + strlen(src);
 }
 
 // ============================================================================
@@ -811,7 +965,7 @@ static __declspec(thread) char error_buffer[256];
  * @return Error string (thread-local storage)
  */
 const char *platform_strerror(int errnum) {
-  strerror_s(error_buffer, sizeof(error_buffer), errnum);
+  (void)strerror_s(error_buffer, sizeof(error_buffer), errnum);
   return error_buffer;
 }
 
@@ -860,6 +1014,16 @@ int platform_open(const char *pathname, int flags, ...) {
 }
 
 /**
+ * @brief Open file descriptor with platform-safe mode
+ * @param fd File descriptor
+ * @param mode File mode
+ * @return File pointer on success, NULL on failure
+ */
+FILE *platform_fdopen(int fd, const char *mode) {
+  return _fdopen(fd, mode);
+}
+
+/**
  * @brief Read from file descriptor
  * @param fd File descriptor
  * @param buf Buffer to read into
@@ -879,8 +1043,18 @@ ssize_t platform_read(int fd, void *buf, size_t count) {
  * @return Number of bytes written, or -1 on error
  */
 ssize_t platform_write(int fd, const void *buf, size_t count) {
-  // Windows _write returns int, convert to ssize_t
-  return (ssize_t)_write(fd, buf, (unsigned int)count);
+  // Use Windows WriteFile API to avoid deprecated _write
+  HANDLE handle = (HANDLE)_get_osfhandle(fd);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return -1;
+  }
+
+  DWORD bytes_written = 0;
+  if (WriteFile(handle, buf, (DWORD)count, &bytes_written, NULL)) {
+    return (ssize_t)bytes_written;
+  }
+
+  return -1;
 }
 
 /**
@@ -892,78 +1066,73 @@ int platform_close(int fd) {
   return _close(fd);
 }
 
-// ============================================================================
-// Safe String Functions
-// ============================================================================
-
-int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...) {
-  if (!buffer || buffer_size == 0 || !format) {
-    return -1;
-  }
-
-  va_list args;
-  va_start(args, format);
-
-  // Use Windows _vsnprintf_s for enhanced security
-  int result = _vsnprintf_s(buffer, buffer_size, _TRUNCATE, format, args);
-
-  va_end(args);
-
-  // Ensure null termination even if truncated
-  buffer[buffer_size - 1] = '\0';
-
-  return result;
+/**
+ * @brief Open file with platform-safe mode
+ * @param filename File path
+ * @param mode File mode (e.g., "r", "w", "a", "rb", "wb")
+ * @return File pointer on success, NULL on failure
+ */
+FILE *platform_fopen(const char *filename, const char *mode) {
+  return fopen(filename, mode);
 }
 
-int safe_fprintf(FILE *stream, const char *format, ...) {
-  if (!stream || !format) {
-    return -1;
-  }
+/**
+ * @brief Delete file
+ * @param pathname File path
+ * @return 0 on success, -1 on failure
+ */
+int platform_unlink(const char *pathname) {
+  return _unlink(pathname);
+}
 
-  va_list args;
-  va_start(args, format);
-
-  // Use Windows vfprintf_s for enhanced security
-  int result = vfprintf_s(stream, format, args);
-
-  va_end(args);
-
-  return result;
+/**
+ * @brief Change file permissions
+ * @param pathname File path
+ * @param mode Permission mode (e.g., _S_IREAD, _S_IWRITE, _S_IREAD | _S_IWRITE)
+ * @return 0 on success, -1 on failure
+ * @note Windows has limited permission support compared to POSIX
+ */
+int platform_chmod(const char *pathname, int mode) {
+  return _chmod(pathname, mode);
 }
 
 // ============================================================================
 // Safe Memory Functions
 // ============================================================================
 
-int platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
+asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
-    return -1; // Invalid pointers
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memcpy");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
 #ifdef __STDC_LIB_EXT1__
   // Use memcpy_s if available (C11 Annex K)
   errno_t err = memcpy_s(dest, dest_size, src, count);
-  return err; // Returns 0 on success, non-zero on error
+  if (err != 0) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Platform initialization failed");
+  }
+  return ASCIICHAT_OK;
 #else
   // Fallback to standard memcpy with bounds already checked
   memcpy(dest, src, count);
-  return 0; // Success
+  return ASCIICHAT_OK;
 #endif
 }
 
-int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
+asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
   // Validate parameters
   if (!dest) {
-    return -1; // Invalid pointer
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointer for memset");
+    return ERROR_INVALID_PARAM;
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
 #ifdef __STDC_LIB_EXT1__
@@ -980,11 +1149,11 @@ int platform_memset(void *dest, size_t dest_size, int ch, size_t count) {
 int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
-    return -1; // Invalid pointers
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memmove");
   }
 
   if (count > dest_size) {
-    return -1; // Buffer overflow protection
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Buffer overflow protection: count=%zu > dest_size=%zu", count, dest_size);
   }
 
 #ifdef __STDC_LIB_EXT1__
@@ -999,39 +1168,149 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
 }
 
 /**
- * Platform-safe strcpy wrapper
+ * Resolve hostname to IPv4 address (Windows implementation)
  *
- * Uses strcpy_s on Windows when available (C11) and strncpy with bounds checking on POSIX.
- * Always null-terminates the destination string.
+ * Performs DNS resolution to convert a hostname to an IPv4 address string.
+ * Handles Windows-specific Winsock initialization and cleanup.
  *
- * @param dest Destination buffer
- * @param dest_size Size of destination buffer
- * @param src Source string
- * @return 0 on success, non-zero on error
+ * @param hostname Hostname to resolve (e.g., "example.com")
+ * @param ipv4_out Buffer to store the resolved IPv4 address (e.g., "192.168.1.1")
+ * @param ipv4_out_size Size of the output buffer
+ * @return 0 on success, -1 on failure
  */
-int platform_strcpy(char *dest, size_t dest_size, const char *src) {
-  if (!dest || !src) {
-    return -1;
-  }
-  if (dest_size == 0) {
-    return -1;
+int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
+  if (!hostname || !ipv4_out || ipv4_out_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
 
-  size_t src_len = strlen(src);
-  if (src_len >= dest_size) {
-    return -1; // Not enough space including null terminator
+  // Initialize Winsock on Windows (required for getaddrinfo)
+  WSADATA wsaData;
+  if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
   }
 
-#ifdef __STDC_LIB_EXT1__
-  // Use strcpy_s if available (C11 Annex K)
-  errno_t err = strcpy_s(dest, dest_size, src);
-  return err; // Returns 0 on success, non-zero on error
-#else
-  // Fallback to strncpy with bounds checking
-  strncpy(dest, src, dest_size - 1);
-  dest[dest_size - 1] = '\0'; // Ensure null termination
-  return 0;                   // Success
-#endif
+  struct addrinfo hints, *result = NULL;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;       // IPv4 only
+  hints.ai_socktype = SOCK_STREAM; // TCP
+  hints.ai_flags = 0;
+  hints.ai_protocol = 0;
+
+  int ret = getaddrinfo(hostname, NULL, &hints, &result);
+  if (ret != 0) {
+    WSACleanup();
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
+  }
+
+  if (!result) {
+    freeaddrinfo(result);
+    WSACleanup();
+    return SET_ERRNO(ERROR_NETWORK, "No address found for hostname: %s", hostname);
+  }
+
+  // Extract IPv4 address from first result
+  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
+  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
+    freeaddrinfo(result);
+    WSACleanup();
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
+  }
+
+  freeaddrinfo(result);
+  WSACleanup();
+
+  return 0;
 }
+
+/**
+ * Load system CA certificates for TLS/HTTPS (Windows implementation)
+ *
+ * Uses Windows CryptoAPI to extract root CA certificates from the system store
+ * and converts them to PEM format for use with BearSSL or other TLS libraries.
+ *
+ * @param pem_data_out Pointer to receive allocated PEM data (caller must free)
+ * @param pem_size_out Pointer to receive size of PEM data
+ * @return 0 on success, -1 on failure
+ */
+asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out) {
+  if (!pem_data_out || !pem_size_out) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for CA cert loading");
+  }
+
+  // Open the Windows system root certificate store
+  HCERTSTORE hStore = CertOpenSystemStoreA(0, "ROOT");
+  if (!hStore) {
+    return SET_ERRNO_SYS(ERROR_CRYPTO, "Crypto operation failed");
+  }
+
+  // Allocate buffer for PEM data (start with 256KB, can grow)
+  size_t pem_capacity = 256 * 1024;
+  size_t pem_size = 0;
+  char *pem_data = SAFE_MALLOC(pem_capacity, char *);
+  if (!pem_data) {
+    CertCloseStore(hStore, 0);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for CA certificates");
+  }
+
+  // Enumerate all certificates in the store
+  PCCERT_CONTEXT pCertContext = NULL;
+  while ((pCertContext = CertEnumCertificatesInStore(hStore, pCertContext)) != NULL) {
+    // Convert DER to PEM format (Base64 with headers)
+    // Certificate is in pCertContext->pbCertEncoded (DER format)
+
+    // Calculate Base64 size needed (4/3 of input + padding)
+    DWORD base64_size = 0;
+    if (!CryptBinaryToStringA(pCertContext->pbCertEncoded, pCertContext->cbCertEncoded, CRYPT_STRING_BASE64HEADER, NULL,
+                              &base64_size)) {
+      continue; // Skip this cert
+    }
+
+    // Ensure we have enough space in PEM buffer
+    while (pem_size + base64_size + 100 > pem_capacity) {
+      pem_capacity *= 2;
+      char *new_pem_data = SAFE_REALLOC(pem_data, pem_capacity, char *);
+      if (!new_pem_data) {
+        SAFE_FREE(pem_data);
+        CertFreeCertificateContext(pCertContext);
+        CertCloseStore(hStore, 0);
+        return SET_ERRNO(ERROR_CRYPTO, "Failed to convert certificate to PEM format");
+      }
+      pem_data = new_pem_data;
+    }
+
+    // Convert DER to Base64 with "-----BEGIN CERTIFICATE-----" header
+    DWORD written = (DWORD)(pem_capacity - pem_size);
+    if (CryptBinaryToStringA(pCertContext->pbCertEncoded, pCertContext->cbCertEncoded, CRYPT_STRING_BASE64HEADER,
+                             pem_data + pem_size, &written)) {
+      pem_size += written - 1; // -1 to exclude null terminator added by CryptBinaryToStringA
+
+      // Add newline separator between certificates for proper PEM parsing
+      // CryptBinaryToStringA might not always include a trailing newline
+      if (pem_size > 0 && pem_data[pem_size - 1] != '\n') {
+        pem_data[pem_size++] = '\n';
+      }
+    }
+  }
+
+  CertCloseStore(hStore, 0);
+
+  if (pem_size == 0) {
+    SAFE_FREE(pem_data);
+    return SET_ERRNO(ERROR_CRYPTO, "No CA certificates found in system store");
+  }
+
+  // Null-terminate the PEM data
+  pem_data[pem_size] = '\0';
+
+  *pem_data_out = pem_data;
+  *pem_size_out = pem_size;
+  return 0;
+}
+
+// Include hashtable.h for binary PATH detection cache
+#include "../../hashtable.h"
+
+// Include cross-platform system utilities (binary PATH detection)
+#include "../system.c"
 
 #endif // !!_WIN32

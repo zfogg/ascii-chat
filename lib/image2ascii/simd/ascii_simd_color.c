@@ -30,132 +30,84 @@
 #endif
 
 /* ============================================================================
- * OPTIMIZATION #4: 256-Color Mode with Precomputed FG+BG Strings (~1.5MB cache)
+ * 256-Color ANSI Escape Sequence Generation (inline, no cache)
  * ============================================================================
+ * Generates ANSI sequences on-demand. Modern CPUs execute this in ~10-20ns,
+ * which is negligible compared to terminal I/O (microseconds).
  */
 
-// Precomputed 256-color SGR strings - ~1.5-2MB total but HUGE speed win
-typedef struct {
-  char str[32]; // Max: "\e[38;5;255;48;5;255m" = 20 chars
-  uint8_t len;
-} sgr256_t;
-
-static sgr256_t g_sgr256_fgbg[256][256]; // 65,536 combinations
-static bool g_sgr256_initialized = false;
-
-static void init_sgr256_cache(void) {
-  if (g_sgr256_initialized)
-    return;
-
-  // Precompute all 65,536 FG+BG combinations
-  for (int fg = 0; fg < 256; fg++) {
-    for (int bg = 0; bg < 256; bg++) {
-      char *p = g_sgr256_fgbg[fg][bg].str;
-      *p++ = '\033';
-      *p++ = '[';
-      *p++ = '3';
-      *p++ = '8';
-      *p++ = ';';
-      *p++ = '5';
-      *p++ = ';';
-
-      // FG color
-      if (fg < 10) {
-        *p++ = '0' + fg;
-      } else if (fg < 100) {
-        *p++ = '0' + (fg / 10);
-        *p++ = '0' + (fg % 10);
-      } else {
-        *p++ = '0' + (fg / 100);
-        *p++ = '0' + ((fg / 10) % 10);
-        *p++ = '0' + (fg % 10);
-      }
-
-      *p++ = ';';
-      *p++ = '4';
-      *p++ = '8';
-      *p++ = ';';
-      *p++ = '5';
-      *p++ = ';';
-
-      // BG color
-      if (bg < 10) {
-        *p++ = '0' + bg;
-      } else if (bg < 100) {
-        *p++ = '0' + (bg / 10);
-        *p++ = '0' + (bg % 10);
-      } else {
-        *p++ = '0' + (bg / 100);
-        *p++ = '0' + ((bg / 10) % 10);
-        *p++ = '0' + (bg % 10);
-      }
-
-      *p++ = 'm';
-      g_sgr256_fgbg[fg][bg].len = (uint8_t)(p - g_sgr256_fgbg[fg][bg].str);
-    }
+// Helper: write uint8 to string (1-3 digits)
+static inline char *write_u8(char *p, uint8_t n) {
+  if (n < 10) {
+    *p++ = '0' + n;
+  } else if (n < 100) {
+    *p++ = '0' + (n / 10);
+    *p++ = '0' + (n % 10);
+  } else {
+    *p++ = '0' + (n / 100);
+    *p++ = '0' + ((n / 10) % 10);
+    *p++ = '0' + (n % 10);
   }
-
-  g_sgr256_initialized = true;
+  return p;
 }
 
-// Fast 256-color FG-only sequences
-static sgr256_t g_sgr256_fg[256];
-static bool g_sgr256_fg_initialized = false;
-
-static void init_sgr256_fg_cache(void) {
-  if (g_sgr256_fg_initialized)
-    return;
-
-  for (int fg = 0; fg < 256; fg++) {
-    char *p = g_sgr256_fg[fg].str;
-    *p++ = '\033';
-    *p++ = '[';
-    *p++ = '3';
-    *p++ = '8';
-    *p++ = ';';
-    *p++ = '5';
-    *p++ = ';';
-
-    if (fg < 10) {
-      *p++ = '0' + fg;
-    } else if (fg < 100) {
-      *p++ = '0' + (fg / 10);
-      *p++ = '0' + (fg % 10);
-    } else {
-      *p++ = '0' + (fg / 100);
-      *p++ = '0' + ((fg / 10) % 10);
-      *p++ = '0' + (fg % 10);
-    }
-
-    *p++ = 'm';
-    g_sgr256_fg[fg].len = (uint8_t)(p - g_sgr256_fg[fg].str);
-  }
-
-  g_sgr256_fg_initialized = true;
+// Generate "\e[38;5;NNNm" (foreground only)
+static inline char *build_sgr256_fg(char *buf, uint8_t fg, uint8_t *len_out) {
+  char *p = buf;
+  *p++ = '\033';
+  *p++ = '[';
+  *p++ = '3';
+  *p++ = '8';
+  *p++ = ';';
+  *p++ = '5';
+  *p++ = ';';
+  p = write_u8(p, fg);
+  *p++ = 'm';
+  *len_out = (uint8_t)(p - buf);
+  return buf;
 }
 
-// FIX #5: Public cache prewarming functions for benchmarks
+// Generate "\e[38;5;NNN;48;5;NNNm" (foreground + background)
+static inline char *build_sgr256_fgbg(char *buf, uint8_t fg, uint8_t bg, uint8_t *len_out) {
+  char *p = buf;
+  *p++ = '\033';
+  *p++ = '[';
+  *p++ = '3';
+  *p++ = '8';
+  *p++ = ';';
+  *p++ = '5';
+  *p++ = ';';
+  p = write_u8(p, fg);
+  *p++ = ';';
+  *p++ = '4';
+  *p++ = '8';
+  *p++ = ';';
+  *p++ = '5';
+  *p++ = ';';
+  p = write_u8(p, bg);
+  *p++ = 'm';
+  *len_out = (uint8_t)(p - buf);
+  return buf;
+}
+
+// Public API wrappers
 void prewarm_sgr256_fg_cache(void) {
-  init_sgr256_fg_cache();
+  // No-op: cache removed
 }
 
 void prewarm_sgr256_cache(void) {
-  init_sgr256_cache();
+  // No-op: cache removed
 }
 
-// Fast SGR cache wrappers for SIMD implementations
+// Fast SGR generation for SIMD implementations
 char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out) {
-  init_sgr256_fg_cache();
-  const sgr256_t *sgr = &g_sgr256_fg[fg];
-  *len_out = sgr->len;
-  return (char *)sgr->str;
+  static __thread char buf[16]; // Thread-local buffer
+  return build_sgr256_fg(buf, fg, len_out);
 }
 
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out) {
-  init_sgr256_cache();
-  const sgr256_t *sgr = &g_sgr256_fgbg[fg][bg];
-  *len_out = sgr->len;
-  return (char *)sgr->str;
+  static __thread char buf[32]; // Thread-local buffer
+  return build_sgr256_fgbg(buf, fg, bg, len_out);
 }
 
 inline char *append_sgr_reset(char *dst) {
@@ -428,15 +380,23 @@ static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g,
 
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars) {
   (void)use_256color; // Suppress unused parameter warning when SIMD not available
-#ifdef SIMD_SUPPORT_AVX2
-  return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
+
+#if SIMD_SUPPORT_AVX2
+  (void)use_background_mode; // Suppress unused parameter warning when SIMD not available
+  return image_print_color(image, ascii_chars);
+  // FIXME: AVX2 is dim and has vertical stripe artifacts. Use scalar until we fix it.
+  // return render_ascii_avx2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSSE3)
+  log_info("DEBUG: Using SSSE3 SIMD path");
   return render_ascii_ssse3_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_SSE2)
+  log_info("DEBUG: Using SSE2 SIMD path");
   return render_ascii_sse2_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #elif defined(SIMD_SUPPORT_NEON)
+  log_info("DEBUG: Using NEON SIMD path");
   return render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #else
+  log_info("DEBUG: Using scalar fallback path");
   // Fallback implementation for non-NEON platforms
   // Calculate exact maximum buffer size with precise per-pixel bounds
   const int h = image->h;

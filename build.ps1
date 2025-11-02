@@ -1,13 +1,13 @@
 #!/usr/bin/env pwsh
 # PowerShell build script for ASCII-Chat on Windows
-# Usage: 
+# Usage:
 #   .\build.ps1                    # Build using default/debug preset
 #   .\build.ps1 -Config Release    # Build using release preset
 #   .\build.ps1 -Config Dev        # Build using dev preset (debug without sanitizers)
 #   .\build.ps1 -Config Coverage   # Build using coverage preset
 #   .\build.ps1 -Clean             # Clean and reconfigure from scratch
-#   .\build.ps1 -MinGW             # Use custom config with GCC/Clang in MinGW mode
 #   .\build.ps1 -VSWithClang       # Use custom config with Visual Studio + ClangCL
+#   .\build.ps1 -NoMimalloc        # Disable mimalloc allocator (use system malloc)
 #   .\build.ps1 -BuildDir mybuild  # Use custom build directory (disables presets)
 #   .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"  # Add compiler flags (disables presets)
 #
@@ -18,9 +18,9 @@ param(
   [switch]$Clean,
   [string]$Config = "Debug",
   [string]$BuildDir = "build",
-  [switch]$MinGW,
   [switch]$Verbose,
   [switch]$VSWithClang,
+  [switch]$NoMimalloc,
   [string[]]$CFlags = @()
 )
 
@@ -29,7 +29,7 @@ Write-Host ""
 
 # Kill any running server/client processes before building
 Write-Host "Checking for running ASCII-Chat processes..." -ForegroundColor Cyan
-$processes = @("ascii-chat-server", "ascii-chat-client", "server", "client")
+$processes = @("ascii-chat", "ascii-chat", "server", "client")
 $killed = $false
 
 foreach ($proc in $processes) {
@@ -67,10 +67,18 @@ if ($needsConfigure) {
   Write-Host "Configuring project ($Config build) in $BuildDir..." -ForegroundColor Cyan
 
   # Map Config parameter to preset name
-  $presetName = $Config.ToLower()
+  $presetName = switch ($Config.ToLower()) {
+    "debug" { "debug" }
+    "release" { "release-clang" }
+    "release-clang" { "release-clang" }
+    "dev" { "dev" }
+    "coverage" { "coverage" }
+    "relwithdebinfo" { "relwithdebinfo" }
+    default { "default" }
+  }
     
   # Check if using special modes that require custom configuration
-  $useCustomConfig = $MinGW -or $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build")
+  $useCustomConfig = $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
     
   if ($useCustomConfig) {
     Write-Host "Using custom configuration (preset not applicable with current flags)" -ForegroundColor Yellow
@@ -139,6 +147,12 @@ if ($needsConfigure) {
       Write-Host "Using C flags: $flagString" -ForegroundColor Yellow
     }
 
+    # Disable mimalloc if requested
+    if ($NoMimalloc) {
+      $cmakeArgs += "-DUSE_MIMALLOC=OFF"
+      Write-Host "Disabling mimalloc allocator (using system malloc)" -ForegroundColor Yellow
+    }
+
     if ($Verbose) {
       Write-Host "CMake arguments: $($cmakeArgs -join ' ')" -ForegroundColor DarkGray
     }
@@ -169,7 +183,7 @@ else {
 # Build the project
 Write-Host ""
 Write-Host "Building project..." -ForegroundColor Cyan
-& cmake --build build --config $Config --parallel
+& cmake --build $BuildDir --config $Config --parallel
 if ($LASTEXITCODE -ne 0) {
   Write-Host ""
   Write-Host "ERROR: Build failed!" -ForegroundColor Red
@@ -183,10 +197,9 @@ Write-Host "Copying build outputs to bin/ directory..." -ForegroundColor Cyan
 if (!(Test-Path "bin")) {
   New-Item -ItemType Directory -Path "bin" | Out-Null
 }
-# Copy everything from build/bin to bin
-Copy-Item "build\bin\*" "bin\" -Force -Recurse
+# Copy everything from $BuildDir/bin to bin
+Copy-Item "$BuildDir\bin\*" "bin\" -Force -Recurse
 Write-Host "Build complete!" -ForegroundColor Green
 
 Write-Host ""
-Write-Host "Run the server:  bin\ascii-chat-server.exe" -ForegroundColor White
-Write-Host "Run the client:  bin\ascii-chat-client.exe" -ForegroundColor White
+Write-Host "Run it:  bin\ascii-chat.exe [--help|--version] [server|client] [options...]" -ForegroundColor White

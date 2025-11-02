@@ -17,9 +17,7 @@
 #include "image2ascii/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
-#include "round.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
-#include "palette.h"
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 
@@ -28,22 +26,22 @@
 image_t *image_new(size_t width, size_t height) {
   image_t *p;
 
-  SAFE_MALLOC(p, sizeof(image_t), image_t *);
+  p = SAFE_MALLOC(sizeof(image_t), image_t *);
 
   const unsigned long w_ul = (unsigned long)width;
   const unsigned long h_ul = (unsigned long)height;
 
   // Validate dimensions are non-zero
   if (w_ul == 0 || h_ul == 0) {
-    log_error("Image dimensions must be non-zero: %zu x %zu", width, height);
-    free(p);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions must be non-zero: %zu x %zu", width, height);
+    SAFE_FREE(p);
     return NULL;
   }
 
   // Check if multiplication would overflow
   if (h_ul > ULONG_MAX / w_ul) {
-    log_error("Image dimensions too large (would overflow): %zu x %zu", width, height);
-    free(p);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large (would overflow): %zu x %zu", width, height);
+    SAFE_FREE(p);
     return NULL;
   }
 
@@ -51,19 +49,21 @@ image_t *image_new(size_t width, size_t height) {
 
   // Check if final size calculation would overflow
   if (total_pixels > ULONG_MAX / sizeof(rgb_t)) {
-    log_error("Image pixel count too large: %lu pixels", total_pixels);
-    free(p);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel count too large: %lu pixels", total_pixels);
+    SAFE_FREE(p);
     return NULL;
   }
 
   const size_t pixels_size = total_pixels * sizeof(rgb_t);
   if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
-    log_error("Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height, pixels_size);
-    free(p);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height,
+              pixels_size);
+    SAFE_FREE(p);
     return NULL;
   }
 
-  SAFE_MALLOC(p->pixels, pixels_size, rgb_t *);
+  // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
+  p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_t *);
 
   p->w = width;
   p->h = height;
@@ -72,24 +72,24 @@ image_t *image_new(size_t width, size_t height) {
 
 void image_destroy(image_t *p) {
   if (!p) {
-    log_error("image_destroy: p is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy: p is NULL");
     return;
   }
 
-  free(p->pixels);
-  free(p);
+  SAFE_FREE(p->pixels);
+  SAFE_FREE(p);
 }
 
 // Buffer pool allocation for video pipeline (consistent memory management)
 image_t *image_new_from_pool(size_t width, size_t height) {
   if (width == 0 || height == 0) {
-    log_error("image_new_from_pool: invalid dimensions %zux%zu", width, height);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: invalid dimensions %zux%zu", width, height);
     return NULL;
   }
 
   if (width > IMAGE_MAX_WIDTH || height > IMAGE_MAX_HEIGHT) {
-    log_error("image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u", width, height, IMAGE_MAX_WIDTH,
-              IMAGE_MAX_HEIGHT);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u", width, height,
+              IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
     return NULL;
   }
 
@@ -101,7 +101,8 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   // Allocate from buffer pool as single contiguous block
   void *buffer = buffer_pool_alloc(total_size);
   if (!buffer) {
-    log_error("image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size, width, height);
+    SET_ERRNO(ERROR_MEMORY, "image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size,
+              width, height);
     return NULL;
   }
 
@@ -117,7 +118,7 @@ image_t *image_new_from_pool(size_t width, size_t height) {
 
 void image_destroy_to_pool(image_t *image) {
   if (!image) {
-    log_error("image_destroy_to_pool: image is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy_to_pool: image is NULL");
     return;
   }
 
@@ -133,7 +134,7 @@ void image_destroy_to_pool(image_t *image) {
 
 void image_clear(image_t *p) {
   if (!p || !p->pixels) {
-    log_error("image_clear: p or p->pixels is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: p or p->pixels is NULL");
     return;
   }
   SAFE_MEMSET(p->pixels, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t), 0,
@@ -146,7 +147,7 @@ inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
 
 void image_resize(const image_t *s, image_t *d) {
   if (!s || !d) {
-    log_error("image_resize: s or d is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_resize: s or d is NULL");
     return;
   }
 
@@ -157,7 +158,7 @@ void image_resize(const image_t *s, image_t *d) {
 // access
 void image_resize_interpolation(const image_t *source, image_t *dest) {
   if (!source || !dest || !source->pixels || !dest->pixels) {
-    log_error("Invalid parameters to image_resize_interpolation");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to image_resize_interpolation");
     return;
   }
 
@@ -168,7 +169,7 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
   // Handle edge cases
   if (src_w <= 0 || src_h <= 0 || dst_w <= 0 || dst_h <= 0) {
-    log_error("Invalid image dimensions for resize");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid image dimensions for resize");
     return;
   }
 
@@ -207,9 +208,12 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
 
 // Optimized image printing with better memory access patterns
 char *image_print(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    log_error("image_print: p or p->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+  if (!p || !palette) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_print: p=%p or palette=%p is NULL", p, palette);
+    return NULL;
+  }
+  if (!p->pixels) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_print: p->pixels is NULL");
     return NULL;
   }
 
@@ -217,14 +221,14 @@ char *image_print(const image_t *p, const char *palette) {
   const int w = p->w;
 
   if (h <= 0 || w <= 0) {
-    log_error("image_print: invalid dimensions h=%d, w=%d", h, w);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_print: invalid dimensions h=%d, w=%d", h, w);
     return NULL;
   }
 
   // Get UTF-8 character cache for proper multi-byte character support
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
   if (!utf8_cache) {
-    log_error("Failed to get UTF-8 palette cache for scalar rendering");
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 palette cache for scalar rendering");
     return NULL;
   }
 
@@ -237,15 +241,15 @@ char *image_print(const image_t *p, const char *palette) {
   const rgb_t *pix = p->pixels;
 
   char *lines;
-  SAFE_MALLOC(lines, len * sizeof(char), char *);
+  lines = SAFE_MALLOC(len * sizeof(char), char *);
 
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
   ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
-  ob.buf = (char *)malloc(ob.cap ? ob.cap : 1);
+  ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf) {
-    free(lines);
-    log_error("Failed to allocate output buffer for scalar rendering");
+    SAFE_FREE(lines);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate output buffer for scalar rendering");
     return NULL;
   }
 
@@ -299,19 +303,19 @@ char *image_print(const image_t *p, const char *palette) {
   }
 
   ob_term(&ob);
-  free(lines); // Free the old buffer
+  SAFE_FREE(lines); // Free the old buffer
   return ob.buf;
 }
 
 // Color quantization to reduce frame size and improve performance
 void quantize_color(int *r, int *g, int *b, int levels) {
   if (!r || !g || !b) {
-    log_error("quantize_color: r, g, or b is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "quantize_color: r, g, or b is NULL");
     return;
   }
 
   if (levels <= 0) {
-    log_error("quantize_color: levels must be positive, got %d", levels);
+    SET_ERRNO(ERROR_INVALID_PARAM, "quantize_color: levels must be positive, got %d", levels);
     return;
   }
 
@@ -352,20 +356,23 @@ void quantize_color(int *r, int *g, int *b, int levels) {
  * @note The function performs overflow checks to prevent integer overflow when
  *       calculating buffer sizes for very large images.
  * @note Uses global opt_background_color to determine color mode.
- * @note Exits with ASCIICHAT_ERR_BUFFER_ACCESS if buffer overflow is detected
+ * @note Exits with ERROR_BUFFER if buffer overflow is detected
  *       during string construction (should never happen with correct calculation).
  */
 char *image_print_color(const image_t *p, const char *palette) {
-  if (!p || !p->pixels || !palette) {
-    log_error("p or p->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+  if (!p || !palette) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "p=%p or palette=%p is NULL", p, palette);
+    return NULL;
+  }
+  if (!p->pixels) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "p->pixels is NULL");
     return NULL;
   }
 
   // Get UTF-8 character cache for proper multi-byte character support
   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
   if (!utf8_cache) {
-    log_error("Failed to get UTF-8 palette cache for scalar color rendering");
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 palette cache for scalar color rendering");
     return NULL;
   }
 
@@ -382,7 +389,7 @@ char *image_print_color(const image_t *p, const char *palette) {
 
   // Ensure h * w won't overflow
   if (h_sz > 0 && w_sz > SIZE_MAX / h_sz) {
-    log_error("Image dimensions too large: %d x %d", h, w);
+    SET_ERRNO(ERROR_INVALID_STATE, "Image dimensions too large: %d x %d", h, w);
     return NULL;
   }
 
@@ -391,7 +398,7 @@ char *image_print_color(const image_t *p, const char *palette) {
 
   // Ensure total_pixels * bytes_per_pixel won't overflow
   if (total_pixels > SIZE_MAX / bytes_per_pixel) {
-    log_error("Pixel data too large for buffer: %d x %d", h, w);
+    SET_ERRNO(ERROR_INVALID_STATE, "Pixel data too large for buffer: %d x %d", h, w);
     return NULL;
   }
 
@@ -405,13 +412,13 @@ char *image_print_color(const image_t *p, const char *palette) {
   const size_t extra_bytes = total_resets + total_newlines + 1;
 
   if (pixel_bytes > SIZE_MAX - extra_bytes) {
-    log_error("Final buffer size would overflow: %d x %d", h, w);
+    SET_ERRNO(ERROR_INVALID_STATE, "Final buffer size would overflow: %d x %d", h, w);
     return NULL;
   }
 
   const size_t lines_size = pixel_bytes + extra_bytes;
   char *lines;
-  SAFE_MALLOC(lines, lines_size, char *);
+  lines = SAFE_MALLOC(lines_size, char *);
 
   const rgb_t *pix = p->pixels;
   // char *current_pos = lines;
@@ -440,20 +447,15 @@ char *image_print_color(const image_t *p, const char *palette) {
       // Note: RLE system may need updates for full UTF-8 support
       const char ascii_char = char_info->utf8_bytes[0];
 
-      // Legacy function - always use foreground mode with RLE optimization
-      // For proper per-client background support, use image_print_with_capabilities() instead
       ansi_rle_add_pixel(&rle_ctx, r, g, b, ascii_char);
     }
 
     // Add newline between rows (except last row)
-    if (y != h - 1) {
-      if (rle_ctx.length < rle_ctx.capacity - 1) {
-        rle_ctx.buffer[rle_ctx.length++] = '\n';
-      }
+    if (y != h - 1 && rle_ctx.length < rle_ctx.capacity - 1) {
+      rle_ctx.buffer[rle_ctx.length++] = '\n';
     }
   }
 
-  // Finalize the RLE output with reset sequence
   ansi_rle_finish(&rle_ctx);
   return lines;
 }
@@ -473,7 +475,7 @@ char *rgb_to_ansi_bg(int r, int g, int b) {
 
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
   if (!fg_code || !bg_code) {
-    log_error("rgb_to_ansi_8bit: fg_code or bg_code is NULL");
+    SET_ERRNO(ERROR_INVALID_PARAM, "rgb_to_ansi_8bit: fg_code or bg_code is NULL");
     return;
   }
 
@@ -500,20 +502,21 @@ void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code) {
 // Capability-aware image printing function
 char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
                                     const char luminance_palette[256] __attribute__((unused))) {
+
   if (!image || !image->pixels || !caps || !palette) {
-    log_error("Invalid parameters for image_print_with_capabilities");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or caps=%p or palette=%p is NULL", image,
+              image->pixels, caps, palette);
     return NULL;
   }
 
   // Handle half-block mode first (requires NEON)
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
-#ifdef SIMD_SUPPORT_NEON
+#if SIMD_SUPPORT_NEON
     // Use NEON half-block renderer
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
     return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
 #else
-    log_error("Half-block mode requires NEON support (ARM architecture)");
+    SET_ERRNO(ERROR_INVALID_STATE, "Half-block mode requires NEON support (ARM architecture)");
     return NULL;
 #endif
   }
@@ -566,8 +569,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 // 256-color image printing function using existing SIMD optimized code
 char *image_print_256color(const image_t *image, const char *palette) {
   if (!image || !image->pixels || !palette) {
-    log_error("image_print_256color: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or palette=%p is NULL", image, image->pixels, palette);
     return NULL;
   }
 
@@ -584,8 +586,7 @@ char *image_print_256color(const image_t *image, const char *palette) {
 // 16-color image printing function using ansi_fast color conversion
 char *image_print_16color(const image_t *image, const char *palette) {
   if (!image || !image->pixels || !palette) {
-    log_error("image_print_16color: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or palette=%p is NULL", image, image->pixels, palette);
     return NULL;
   }
 
@@ -593,7 +594,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
   int w = image->w;
 
   if (h <= 0 || w <= 0) {
-    log_error("image_print_16color: invalid dimensions h=%d, w=%d", h, w);
+    SET_ERRNO(ERROR_INVALID_STATE, "image_print_16color: invalid dimensions h=%d, w=%d", h, w);
     return NULL;
   }
 
@@ -603,11 +604,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
   // Calculate buffer size (smaller than 256-color due to shorter ANSI sequences)
   size_t buffer_size = (size_t)h * (size_t)w * 12 + (size_t)h; // Space for ANSI codes + newlines
   char *buffer;
-  SAFE_MALLOC(buffer, buffer_size, char *);
-  if (!buffer) {
-    log_error("image_print_16color: failed to allocate buffer");
-    return NULL;
-  }
+  buffer = SAFE_MALLOC(buffer_size, char *);
 
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
@@ -626,7 +623,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
       // Use UTF-8 cache which contains character index ramp
       utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
       if (!utf8_cache) {
-        log_error("Failed to get UTF-8 cache");
+        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
         return NULL;
       }
 
@@ -667,8 +664,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
 // 16-color image printing with Floyd-Steinberg dithering
 char *image_print_16color_dithered(const image_t *image, const char *palette) {
   if (!image || !image->pixels || !palette) {
-    log_error("image_print_16color_dithered: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or palette=%p is NULL", image, image->pixels, palette);
     return NULL;
   }
 
@@ -676,7 +672,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
   int w = image->w;
 
   if (h <= 0 || w <= 0) {
-    log_error("image_print_16color_dithered: invalid dimensions h=%d, w=%d", h, w);
+    SET_ERRNO(ERROR_INVALID_STATE, "image_print_16color_dithered: invalid dimensions h=%d, w=%d", h, w);
     return NULL;
   }
 
@@ -686,21 +682,12 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
   // Allocate error buffer for Floyd-Steinberg dithering
   size_t pixel_count = (size_t)h * (size_t)w;
   rgb_error_t *error_buffer;
-  SAFE_CALLOC(error_buffer, pixel_count, sizeof(rgb_error_t), rgb_error_t *);
-  if (!error_buffer) {
-    log_error("image_print_16color_dithered: failed to allocate error buffer");
-    return NULL;
-  }
+  error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
 
   // Calculate buffer size (same as non-dithered version)
   size_t buffer_size = (size_t)h * (size_t)w * 12 + (size_t)h; // Space for ANSI codes + newlines
   char *buffer;
-  SAFE_MALLOC(buffer, buffer_size, char *);
-  if (!buffer) {
-    log_error("image_print_16color_dithered: failed to allocate buffer");
-    free(error_buffer);
-    return NULL;
-  }
+  buffer = SAFE_MALLOC(buffer_size, char *);
 
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
@@ -719,7 +706,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
       // Use UTF-8 cache which contains character index ramp
       utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
       if (!utf8_cache) {
-        log_error("Failed to get UTF-8 cache");
+        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
         return NULL;
       }
 
@@ -754,15 +741,14 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
   }
 
   *ptr = '\0';
-  free(error_buffer); // Clean up error buffer
+  SAFE_FREE(error_buffer); // Clean up error buffer
   return buffer;
 }
 
 // 16-color image printing with Floyd-Steinberg dithering and background mode support
 char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette) {
   if (!image || !image->pixels || !palette) {
-    log_error("image_print_16color_dithered_with_background: image or image->pixels or palette is NULL");
-    // exit(ASCIICHAT_ERR_INVALID_PARAM);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image=%p or image->pixels=%p or palette=%p is NULL", image, image->pixels, palette);
     return NULL;
   }
 
@@ -770,7 +756,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
   int w = image->w;
 
   if (h <= 0 || w <= 0) {
-    log_error("image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d", h, w);
+    SET_ERRNO(ERROR_INVALID_STATE, "image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d", h, w);
     return NULL;
   }
 
@@ -780,22 +766,13 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
   // Allocate error buffer for Floyd-Steinberg dithering
   size_t pixel_count = (size_t)h * (size_t)w;
   rgb_error_t *error_buffer;
-  SAFE_CALLOC(error_buffer, pixel_count, sizeof(rgb_error_t), rgb_error_t *);
-  if (!error_buffer) {
-    log_error("image_print_16color_dithered_with_background: failed to allocate error buffer");
-    return NULL;
-  }
+  error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
 
   // Calculate buffer size (larger for background mode due to more ANSI sequences)
   size_t buffer_size =
       (size_t)h * (size_t)w * (use_background ? 24 : 12) + (size_t)h; // Space for ANSI codes + newlines
   char *buffer;
-  SAFE_MALLOC(buffer, buffer_size, char *);
-  if (!buffer) {
-    log_error("image_print_16color_dithered_with_background: failed to allocate buffer");
-    free(error_buffer);
-    return NULL;
-  }
+  buffer = SAFE_MALLOC(buffer_size, char *);
 
   char *ptr = buffer;
   const char *reset_code = "\033[0m";
@@ -829,7 +806,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
       // Use UTF-8 cache which contains character index ramp
       utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
       if (!utf8_cache) {
-        log_error("Failed to get UTF-8 cache");
+        SET_ERRNO(ERROR_INVALID_STATE, "Failed to get UTF-8 cache");
         return NULL;
       }
 
@@ -864,6 +841,6 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
   }
 
   *ptr = '\0';
-  free(error_buffer); // Clean up error buffer
+  SAFE_FREE(error_buffer); // Clean up error buffer
   return buffer;
 }

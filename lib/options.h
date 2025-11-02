@@ -13,7 +13,7 @@
 
 // Safely parse string to integer with validation
 // Returns the integer value, or INT_MIN on error
-int strtoint_safe(const char *str);
+asciichat_error_t strtoint_safe(const char *str);
 
 extern unsigned short int opt_width, opt_height;
 extern bool auto_width, auto_height;
@@ -43,6 +43,7 @@ extern unsigned short int opt_show_capabilities; // Show detected capabilities a
 extern unsigned short int opt_force_utf8;        // Force enable UTF-8 support via --utf8
 
 extern unsigned short int opt_audio_enabled;
+extern int opt_audio_device; // Audio input device index (-1 = use default)
 
 // If non-zero, allow image to stretch or shrink without preserving aspect ratio
 extern unsigned short int opt_stretch;
@@ -61,8 +62,14 @@ extern char opt_log_file[OPTIONS_BUFF_SIZE];
 
 // Encryption options
 extern unsigned short int opt_encrypt_enabled;      // Enable AES encryption
-extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // Encryption key from --key
+extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];     // SSH/GPG key file from --key (file-based only)
+extern char opt_password[OPTIONS_BUFF_SIZE];        // Password string from --password
 extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE]; // Key file path from --keyfile
+
+// New crypto options (Phase 2)
+extern unsigned short int opt_no_encrypt;       // Disable encryption (opt-out)
+extern char opt_server_key[OPTIONS_BUFF_SIZE];  // Expected server public key (client only)
+extern char opt_client_keys[OPTIONS_BUFF_SIZE]; // Allowed client keys (server only)
 
 // Palette options
 extern palette_type_t opt_palette_type; // Selected palette type
@@ -75,7 +82,9 @@ extern const float weight_blue;
 
 extern unsigned short int RED[], GREEN[], BLUE[], GRAY[];
 
-void options_init(int argc, char **argv, bool is_client);
+// Returns ASCIICHAT_OK (0) on success, ERROR_USAGE on parse errors
+// Note: --help and --version also return ASCIICHAT_OK after printing info
+asciichat_error_t options_init(int argc, char **argv, bool is_client);
 
 void usage(FILE *desc, bool is_client);
 void usage_client(FILE *desc);

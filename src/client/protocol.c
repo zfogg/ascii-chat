@@ -87,19 +87,30 @@
 #include "audio.h"
 #include "audio.h"
 
-#include "network.h"
+#include "network/packet.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "options.h"
+#include "crc32.h"
+#include "crypto/crypto.h"
+
+// Forward declaration for client crypto functions
+bool crypto_client_is_ready(void);
+const crypto_context_t *crypto_client_get_context(void);
+int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
+                                 size_t plaintext_size, size_t *plaintext_len);
+
+#include "crypto.h"
 
 #include <stdatomic.h>
 #include <string.h>
 #include <time.h>
-#include <zlib.h>
 
 #ifdef _WIN32
 #include "platform/windows_compat.h"
 #endif
+
+#include "compression.h"
 
 /* ============================================================================
  * Thread State Management
@@ -186,7 +197,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       expected_fps = 60; // Fallback
 #endif
     }
-    log_info("CLIENT FPS TRACKING: Expecting %d fps (client's requested rate)", expected_fps);
+    log_debug("CLIENT FPS TRACKING: Expecting %d fps (client's requested rate)", expected_fps);
   }
 
   // Initialize on first frame
@@ -220,8 +231,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   if (elapsed_us >= 5000000) { // 5 seconds
     float actual_fps = (float)frame_count / ((float)elapsed_us / 1000000.0f);
-    log_info("CLIENT FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, frame_count,
-             (float)elapsed_us / 1000000.0f);
+    log_debug("CLIENT FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, frame_count,
+              (float)elapsed_us / 1000000.0f);
 
     // Reset counters for next interval
     frame_count = 0;
@@ -254,16 +265,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    SAFE_MALLOC(frame_data, header.original_size + 1, char *);
+    frame_data = SAFE_MALLOC(header.original_size + 1, char *);
 
-    // Decompress using zlib
-    uLongf decompressed_size = header.original_size;
-    int result = uncompress((Bytef *)frame_data, &decompressed_size, (const Bytef *)frame_data_ptr, frame_data_len);
+    // Decompress using compression API
+    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, header.original_size);
 
-    if (result != Z_OK || decompressed_size != header.original_size) {
-      log_error("Decompression failed: zlib error %d, size %lu vs expected %u", result, decompressed_size,
-                header.original_size);
-      free(frame_data);
+    if (result != 0) {
+      log_error("Decompression failed for expected size %u", header.original_size);
+      SAFE_FREE(frame_data);
       return;
     }
 
@@ -280,7 +289,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
     // Ensure we don't have buffer overflow - use the actual header size for allocation
     size_t alloc_size = header.original_size + 1;
-    SAFE_MALLOC(frame_data, alloc_size, char *);
+    frame_data = SAFE_MALLOC(alloc_size, char *);
 
     // Only copy the actual amount of data we received
     size_t copy_size = (frame_data_len > header.original_size) ? header.original_size : frame_data_len;
@@ -292,7 +301,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   uint32_t actual_crc = asciichat_crc32(frame_data, header.original_size);
   if (actual_crc != header.checksum) {
     log_error("Frame checksum mismatch: got 0x%x, expected 0x%x", actual_crc, header.checksum);
-    free(frame_data);
+    SAFE_FREE(frame_data);
     return;
   }
 
@@ -332,7 +341,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!first_frame_rendered) {
     // Always clear display and disable logging before rendering the first frame
     // This ensures clean ASCII display regardless of packet arrival order
-    log_info("CLIENT_DISPLAY: First frame - clearing display and disabling terminal logging");
+    log_info("First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
     display_full_reset();
     first_frame_rendered = true;
@@ -351,7 +360,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!frame_data || header.original_size == 0) {
     log_error("Invalid frame data for rendering: frame_data=%p, size=%u", frame_data, header.original_size);
     if (frame_data) {
-      free(frame_data);
+      SAFE_FREE(frame_data);
     }
     return;
   }
@@ -364,34 +373,48 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (!take_snapshot) {
     // Get the client's desired FPS (what we told the server we can display)
     int client_display_fps = MAX_FPS; // This respects the --fps command line flag
-    long render_interval_ms = 1000 / client_display_fps;
+    // Use microseconds for precision - avoid integer division loss
+    uint64_t render_interval_us = 1000000 / client_display_fps;
 
     struct timespec current_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-    // Calculate elapsed time since last render
-    long elapsed_ms = 0;
+    // Calculate elapsed time since last render in microseconds (high precision)
+    uint64_t elapsed_us = 0;
     if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
-      elapsed_ms = (current_time.tv_sec - last_render_time.tv_sec) * 1000 +
-                   (current_time.tv_nsec - last_render_time.tv_nsec) / 1000000;
+      int64_t sec_diff = (int64_t)current_time.tv_sec - (int64_t)last_render_time.tv_sec;
+      int64_t nsec_diff = (int64_t)current_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
+
+      // Handle nanosecond underflow by borrowing from seconds
+      if (nsec_diff < 0) {
+        sec_diff -= 1;
+        nsec_diff += 1000000000LL; // Add 1 second worth of nanoseconds
+      }
+
+      // Convert to microseconds (now both values are properly normalized)
+      // sec_diff should be >= 0 for forward time progression
+      if (sec_diff >= 0) {
+        elapsed_us = (uint64_t)sec_diff * 1000000ULL + (uint64_t)(nsec_diff / 1000);
+      }
+      // If sec_diff is negative, time went backwards - treat as 0 elapsed
     }
 
     // Skip rendering if not enough time has passed (frame rate limiting)
-    if (elapsed_ms > 0 && elapsed_ms < render_interval_ms) {
-      // Drop this frame to maintain display FPS limit
-      free(frame_data);
-      return;
+    if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
+      if (elapsed_us > 0 && elapsed_us < render_interval_us) {
+        // Drop this frame to maintain display FPS limit
+        SAFE_FREE(frame_data);
+        return;
+      }
     }
 
     // Update last render time
     last_render_time = current_time;
   }
 
-  log_debug("CLIENT_RENDER: Calling display_render_frame with %u bytes", header.original_size);
   display_render_frame(frame_data, take_snapshot);
-  log_debug("CLIENT_RENDER: Frame rendered successfully");
 
-  free(frame_data);
+  SAFE_FREE(frame_data);
 }
 
 /**
@@ -505,34 +528,45 @@ static void *data_reception_thread_func(void *arg) {
     socket_t sockfd = server_connection_get_socket();
 
     if (sockfd == INVALID_SOCKET_VALUE || !server_connection_is_active()) {
-      log_debug("CLIENT: Waiting for socket connection");
+      log_debug("Waiting for socket connection");
       platform_sleep_usec(10 * 1000);
       continue;
     }
 
-    packet_type_t type;
-    void *data;
-    size_t len;
+    // Use unified secure packet reception with auto-decryption
+    // FIX: Use per-client crypto ready state instead of global opt_no_encrypt
+    // Encryption is enforced only AFTER this client completes the handshake
+    bool crypto_ready = crypto_client_is_ready();
+    const crypto_context_t *crypto_ctx = crypto_ready ? crypto_client_get_context() : NULL;
+    packet_envelope_t envelope;
+    packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx, crypto_ready, &envelope);
 
-    int result = receive_packet(sockfd, &type, &data, &len);
-
-    if (result < 0) {
-      log_error("CLIENT: Failed to receive packet, errno=%d (%s)", errno, strerror(errno));
+    // Handle different result codes
+    if (result == PACKET_RECV_EOF) {
+      log_debug("Server closed connection");
       server_connection_lost();
       break;
     }
-    if (result == 0) {
-      log_info("CLIENT: Server closed connection");
+
+    if (result == PACKET_RECV_ERROR) {
+      log_error("Failed to receive packet, errno=%d (%s)", errno, SAFE_STRERROR(errno));
       server_connection_lost();
       break;
     }
 
-    // DEBUG: Log all packet types received
-    log_debug("CLIENT_RECV: Received packet type=%d, len=%zu", type, len);
+    if (result == PACKET_RECV_SECURITY_VIOLATION) {
+      log_error("SECURITY: Server violated encryption policy");
+      log_error("SECURITY: This is a critical security violation - exiting immediately");
+      exit(1); // Exit immediately on security violation
+    }
+
+    // Extract packet details from envelope
+    packet_type_t type = envelope.type;
+    void *data = envelope.data;
+    size_t len = envelope.len;
 
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
-      log_debug("CLIENT_RECV: Processing ASCII_FRAME packet, len=%zu", len);
       handle_ascii_frame_packet(data, len);
       break;
 
@@ -561,14 +595,56 @@ static void *data_reception_thread_func(void *arg) {
       handle_server_state_packet(data, len);
       break;
 
+    // Session rekeying packets
+    case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
+      log_debug("Received REKEY_REQUEST from server");
+
+      // Process the server's rekey request
+      asciichat_error_t result = crypto_client_process_rekey_request(data, len);
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_REQUEST: %d", result);
+        break;
+      }
+
+      // Send REKEY_RESPONSE
+      result = crypto_client_send_rekey_response();
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_RESPONSE: %d", result);
+      } else {
+        log_debug("Sent REKEY_RESPONSE to server");
+      }
+      break;
+    }
+
+    case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
+      log_debug("Received REKEY_RESPONSE from server");
+
+      // Process server's response
+      asciichat_error_t result = crypto_client_process_rekey_response(data, len);
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_RESPONSE: %d", result);
+        break;
+      }
+
+      // Send REKEY_COMPLETE
+      result = crypto_client_send_rekey_complete();
+      if (result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_COMPLETE: %d", result);
+      } else {
+        log_debug("Session rekeying completed successfully");
+      }
+      break;
+    }
+
     default:
       log_warn("Unknown packet type: %d", type);
       break;
     }
 
-    // Clean up packet buffer (only if we actually allocated one)
-    if (data && len > 0) {
-      buffer_pool_free(data, len);
+    // Clean up packet buffer using the allocated_buffer pointer, not the data pointer
+    // The data pointer is offset into the buffer, but we need to free the actual allocated buffer
+    if (envelope.allocated_buffer && envelope.allocated_size > 0) {
+      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
     }
   }
 
@@ -601,28 +677,28 @@ int protocol_start_connection() {
   // Reset display state for new connection
   display_reset_for_new_connection();
 
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Starting protocol connection - creating threads");
-#endif
-
   // Start data reception thread
   atomic_store(&g_data_thread_exited, false);
   if (ascii_thread_create(&g_data_thread, data_reception_thread_func, NULL) != 0) {
     log_error("Failed to create data reception thread");
     return -1;
   }
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Data reception thread created successfully");
-#endif
 
   // Start webcam capture thread
+  log_info("Starting webcam capture thread...");
   if (capture_start_thread() != 0) {
     log_error("Failed to start webcam capture thread");
     return -1;
   }
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Webcam capture thread started successfully");
-#endif
+  log_info("Webcam capture thread started successfully");
+
+  // Start audio capture thread if audio is enabled
+  log_info("Starting audio capture thread...");
+  if (audio_start_thread() != 0) {
+    log_error("Failed to start audio capture thread");
+    return -1;
+  }
+  log_info("Audio capture thread started successfully (or skipped if audio disabled)");
 
   g_data_thread_created = true;
   return 0;
@@ -639,10 +715,6 @@ void protocol_stop_connection() {
     return;
   }
 
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Stopping protocol connection - stopping threads");
-#endif
-
   // Don't call signal_exit() here - that's for global shutdown only!
   // We just want to stop threads for this connection, not exit the entire client
 
@@ -651,9 +723,6 @@ void protocol_stop_connection() {
 
   // Stop webcam capture thread
   capture_stop_thread();
-#ifdef DEBUG_THREADS
-  log_info("DEBUG: Webcam capture thread stopped");
-#endif
 
   // Wait for thread to exit gracefully with timeout
   int wait_count = 0;

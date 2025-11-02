@@ -8,19 +8,16 @@
 #include <stdatomic.h>
 
 // Include SIMD architecture headers for cleanup functions
-#ifdef SIMD_SUPPORT_NEON
+// Note: Only ONE SIMD implementation is compiled based on highest available instruction set
+#if SIMD_SUPPORT_NEON
 #include "neon.h"
-#endif
-#ifdef SIMD_SUPPORT_SSE2
-#include "sse2.h"
-#endif
-#ifdef SIMD_SUPPORT_SSSE3
-#include "ssse3.h"
-#endif
-#ifdef SIMD_SUPPORT_AVX2
+#elif defined(SIMD_SUPPORT_AVX2)
 #include "avx2.h"
-#endif
-#ifdef SIMD_SUPPORT_SVE
+#elif defined(SIMD_SUPPORT_SSSE3)
+#include "ssse3.h"
+#elif defined(SIMD_SUPPORT_SSE2)
+#include "sse2.h"
+#elif defined(SIMD_SUPPORT_SVE)
 #include "sve.h"
 #endif
 
@@ -128,6 +125,7 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
 // UTF-8 palette cache system with min-heap eviction
 static hashtable_t *g_utf8_cache_table = NULL;
 static rwlock_t g_utf8_cache_rwlock = {0};
+static _Atomic(bool) g_utf8_cache_initialized = false;
 
 // Min-heap for O(log n) intelligent eviction
 static utf8_palette_cache_t **g_utf8_heap = NULL;                 // Min-heap array
@@ -136,22 +134,40 @@ static const size_t g_utf8_heap_capacity = HASHTABLE_MAX_ENTRIES; // Max heap si
 
 // char_index_ramp_cache removed - data is already stored in utf8_palette_cache_t.char_index_ramp[64]
 
-// Initialize UTF-8 cache system with min-heap
+// Initialize UTF-8 cache system with min-heap (thread-safe)
 static void init_utf8_cache_system(void) {
-  static bool initialized = false;
-  if (!initialized) {
-    // Initialize the rwlock first
+  // Fast path: already initialized
+  if (atomic_load(&g_utf8_cache_initialized)) {
+    return;
+  }
+
+  // Slow path: need to initialize
+  static mutex_t init_mutex = {0};
+  static bool init_mutex_initialized = false;
+
+  // Initialize the init mutex itself (safe because it's the first thing that runs)
+  if (!init_mutex_initialized) {
+    mutex_init(&init_mutex);
+    init_mutex_initialized = true;
+  }
+
+  mutex_lock(&init_mutex);
+
+  // Double-check after acquiring lock
+  if (!atomic_load(&g_utf8_cache_initialized)) {
+    // Initialize the cache rwlock
     rwlock_init(&g_utf8_cache_rwlock);
-    initialized = true;
-  }
 
-  if (!g_utf8_cache_table) {
+    // Initialize hashtable and heap
     g_utf8_cache_table = hashtable_create();
-
-    // Initialize min-heap for eviction
-    SAFE_MALLOC(g_utf8_heap, g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
+    g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
     g_utf8_heap_size = 0;
+
+    // Mark as initialized
+    atomic_store(&g_utf8_cache_initialized, true);
   }
+
+  mutex_unlock(&init_mutex);
 }
 
 // Min-heap management functions for UTF-8 cache
@@ -319,82 +335,83 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   // Create hash of palette for cache key
   uint32_t palette_hash = hash_palette_string(ascii_chars);
 
-  // Ensure the cache system is initialized (including the rwlock)
-  static _Atomic(bool) ensure_init = false;
-  if (!atomic_load(&ensure_init)) {
-    init_utf8_cache_system();
-    atomic_store(&ensure_init, true);
-  }
-
-  // Fast path: Try read-only lookup first (most common case)
-  rwlock_rdlock(&g_utf8_cache_rwlock);
-  if (g_utf8_cache_table) {
-    utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
-    if (cache) {
-      // ATOMIC: Update access tracking without lock upgrade
-      uint64_t current_time = get_current_time_ns();
-      atomic_store(&cache->last_access_time, current_time);
-      uint32_t new_access_count = atomic_fetch_add(&cache->access_count, 1) + 1;
-
-      // Every 10th access: Update heap position (amortized O(log n))
-      if (new_access_count % 10 == 0) {
-        // Need to upgrade to write lock for heap updates
-        rwlock_rdunlock(&g_utf8_cache_rwlock);
-        rwlock_wrlock(&g_utf8_cache_rwlock);
-
-        // Recalculate score and update heap position
-        uint64_t last_access = atomic_load(&cache->last_access_time);
-        uint32_t access_count = atomic_load(&cache->access_count);
-        double new_score =
-            calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
-        utf8_heap_update_score(cache, new_score);
-
-        rwlock_wrunlock(&g_utf8_cache_rwlock);
-        return cache;
-      }
-
-      rwlock_rdunlock(&g_utf8_cache_rwlock);
-      return cache;
-    }
-  }
-  rwlock_rdunlock(&g_utf8_cache_rwlock);
-
-  // Slow path: Need to create cache entry, acquire write lock
-  rwlock_wrlock(&g_utf8_cache_rwlock);
-
+  // Ensure the cache system is initialized
   init_utf8_cache_system();
 
-  // Double-check: another thread might have created the cache
+  // First try: read lock for cache lookup (allows multiple concurrent readers)
+  rwlock_rdlock(&g_utf8_cache_rwlock);
+
+  // Check if cache exists
   utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
-  if (!cache) {
-    // Create new cache
-    SAFE_MALLOC(cache, sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
-    memset(cache, 0, sizeof(utf8_palette_cache_t));
-
-    // Build both cache types
-    build_utf8_luminance_cache(ascii_chars, cache->cache);
-    build_utf8_ramp64_cache(ascii_chars, cache->cache64, cache->char_index_ramp);
-
-    // Store palette hash for validation
-    SAFE_STRNCPY(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash));
-    cache->is_valid = true;
-
-    // Initialize eviction tracking
+  if (cache) {
+    // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
     uint64_t current_time = get_current_time_ns();
     atomic_store(&cache->last_access_time, current_time);
-    atomic_store(&cache->access_count, 1); // First access
-    cache->creation_time = current_time;
+    uint32_t new_access_count = atomic_fetch_add(&cache->access_count, 1) + 1;
 
-    // Store in hashtable with guaranteed eviction support
-    if (!try_insert_with_eviction_utf8(palette_hash, cache)) {
-      log_error("UTF8_CACHE_CRITICAL: Failed to insert cache even after eviction - system overloaded");
-      SAFE_FREE(cache);
+    // Every 10th access: Update heap position (requires write lock)
+    if (new_access_count % 10 == 0) {
+      // Release read lock and upgrade to write lock
+      rwlock_rdunlock(&g_utf8_cache_rwlock);
+      rwlock_wrlock(&g_utf8_cache_rwlock);
+
+      // Update heap position (modifies heap structure)
+      uint64_t last_access = atomic_load(&cache->last_access_time);
+      uint32_t access_count = atomic_load(&cache->access_count);
+      double new_score = calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
+      utf8_heap_update_score(cache, new_score);
+
       rwlock_wrunlock(&g_utf8_cache_rwlock);
-      return NULL;
+    } else {
+      rwlock_rdunlock(&g_utf8_cache_rwlock);
     }
 
-    log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
+    return cache;
   }
+
+  // Cache miss: Need to create new entry
+  // Release read lock and acquire write lock
+  rwlock_rdunlock(&g_utf8_cache_rwlock);
+  rwlock_wrlock(&g_utf8_cache_rwlock);
+
+  // Double-check: another thread might have created it while we upgraded locks
+  cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
+  if (cache) {
+    // Found it! Just update access tracking and return
+    uint64_t current_time = get_current_time_ns();
+    atomic_store(&cache->last_access_time, current_time);
+    atomic_fetch_add(&cache->access_count, 1);
+    rwlock_wrunlock(&g_utf8_cache_rwlock);
+    return cache;
+  }
+
+  // Create new cache entry (holding write lock)
+  cache = SAFE_MALLOC(sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
+  memset(cache, 0, sizeof(utf8_palette_cache_t));
+
+  // Build both cache types
+  build_utf8_luminance_cache(ascii_chars, cache->cache);
+  build_utf8_ramp64_cache(ascii_chars, cache->cache64, cache->char_index_ramp);
+
+  // Store palette hash for validation
+  SAFE_STRNCPY(cache->palette_hash, ascii_chars, sizeof(cache->palette_hash));
+  cache->is_valid = true;
+
+  // Initialize eviction tracking
+  uint64_t current_time = get_current_time_ns();
+  atomic_store(&cache->last_access_time, current_time);
+  atomic_store(&cache->access_count, 1); // First access
+  cache->creation_time = current_time;
+
+  // Store in hashtable with guaranteed eviction support
+  if (!try_insert_with_eviction_utf8(palette_hash, cache)) {
+    log_error("UTF8_CACHE_CRITICAL: Failed to insert cache even after eviction - system overloaded");
+    SAFE_FREE(cache);
+    rwlock_wrunlock(&g_utf8_cache_rwlock);
+    return NULL;
+  }
+
+  log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
 
   rwlock_wrunlock(&g_utf8_cache_rwlock);
   return cache;
@@ -522,7 +539,7 @@ static void free_utf8_cache_entry(uint32_t key, void *value, void *user_data) {
 void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
-  // Destroy shared UTF-8 palette cache
+  // Destroy shared UTF-8 palette cache (write lock for cleanup)
   rwlock_wrlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
     // Free all UTF-8 cache entries before destroying hashtable
@@ -533,26 +550,26 @@ void simd_caches_destroy_all(void) {
   }
   // Clean up heap arrays
   if (g_utf8_heap) {
-    free((void *)g_utf8_heap);
+    SAFE_FREE(g_utf8_heap);
     g_utf8_heap = NULL;
     g_utf8_heap_size = 0;
   }
+  // Reset initialization flag so system can be reinitialized
+  atomic_store(&g_utf8_cache_initialized, false);
   rwlock_wrunlock(&g_utf8_cache_rwlock);
 
   // Call architecture-specific cache cleanup functions
-#ifdef SIMD_SUPPORT_NEON
+  // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
+  // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
+#if SIMD_SUPPORT_NEON
   neon_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_SSE2
-  sse2_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_SSSE3
-  ssse3_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_AVX2
+#elif defined(SIMD_SUPPORT_AVX2)
   avx2_caches_destroy();
-#endif
-#ifdef SIMD_SUPPORT_SVE
+#elif defined(SIMD_SUPPORT_SSSE3)
+  ssse3_caches_destroy();
+#elif defined(SIMD_SUPPORT_SSE2)
+  sse2_caches_destroy();
+#elif defined(SIMD_SUPPORT_SVE)
   sve_caches_destroy();
 #endif
 
