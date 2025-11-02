@@ -99,6 +99,7 @@ foreach ($replacement in $replacements) {
     
     # Find and replace byte sequences in-place
     $patternMatches = 0
+    $removedPaths = @()  # Track unique paths being removed
     for ($i = 0; $i -le $bytes.Length - $oldBytes.Length; $i++) {
         $byteMatch = $true
         for ($j = 0; $j -lt $oldBytes.Length; $j++) {
@@ -109,6 +110,43 @@ foreach ($replacement in $replacements) {
         }
         
         if ($byteMatch) {
+            # Extract path context for printing (look for null terminator or reasonable limit)
+            $contextStart = [Math]::Max(0, $i - 64)  # Look back up to 64 bytes
+            $contextEnd = [Math]::Min($bytes.Length, $i + $oldBytes.Length + 256)  # Look forward
+            
+            # Find null terminator before pattern to get path start
+            $pathStart = $i
+            for ($k = $i - 1; $k -ge $contextStart; $k--) {
+                if ($bytes[$k] -eq 0) {
+                    $pathStart = $k + 1
+                    break
+                }
+            }
+            
+            # Find null terminator after pattern to get path end
+            $pathEnd = $i + $oldBytes.Length
+            for ($k = $i + $oldBytes.Length; $k -lt $contextEnd; $k++) {
+                if ($bytes[$k] -eq 0) {
+                    $pathEnd = $k
+                    break
+                }
+            }
+            
+            # Extract and display the path
+            $pathBytes = $bytes[$pathStart..($pathEnd - 1)]
+            try {
+                $extractedPath = [System.Text.Encoding]::UTF8.GetString($pathBytes)
+                # Clean up the path string (remove nulls and non-printable chars for display)
+                $cleanPath = $extractedPath -replace "`0", '' -replace '[^\x20-\x7E]', ''
+                if ($cleanPath.Length -gt 0 -and -not $removedPaths.Contains($cleanPath)) {
+                    Write-Host "  Removing: $cleanPath" -ForegroundColor Yellow
+                    $removedPaths += $cleanPath
+                }
+            } catch {
+                # If UTF-8 decode fails, just show the pattern being replaced
+                Write-Host "  Removing pattern at offset $i (pattern: $oldStr)" -ForegroundColor Yellow
+            }
+            
             # Found match - replace bytes
             if ($newBytes.Length -le $oldBytes.Length) {
                 # New path fits within old path length - pad with nulls

@@ -181,7 +181,9 @@ void data_buffer_pool_destroy(data_buffer_pool_t *pool) {
 void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
   if (!pool) {
     // No pool, fallback to malloc
-    log_warn("MALLOC FALLBACK (no pool): size=%zu at %s:%d", size, __FILE__, __LINE__);
+    // In release builds, log_warn macro already strips file/line info to avoid embedding paths
+    // In debug builds, file/line info is handled by the logging system (which uses extract_project_relative_path)
+    log_warn("MALLOC FALLBACK (no pool): size=%zu", size);
     void *data;
     data = SAFE_MALLOC(size, void *);
     return data;
@@ -244,7 +246,9 @@ void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
 
   if (!pool) {
     // No pool, must have been malloc'd directly
-    log_warn("MALLOC FALLBACK FREE (no pool): size=%zu at %s:%d", size, __FILE__, __LINE__);
+    // In release builds, log_warn macro already strips file/line info to avoid embedding paths
+    // In debug builds, file/line info is handled by the logging system (which uses extract_project_relative_path)
+    log_warn("MALLOC FALLBACK FREE (no pool): size=%zu", size);
     SAFE_FREE(data);
     return;
   }
