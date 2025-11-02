@@ -349,8 +349,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
     if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
       const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
-      printf("%s v%d.%d.%d-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
+      printf("%s v%d.%d.%d-%s (%s, %s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_DATE, ASCII_CHAT_BUILD_TYPE);
       (void)fflush(stdout);
       _exit(0);
     }
@@ -916,8 +916,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
     case 'v': {
       const char *binary_name = is_client ? "ascii-chat client" : "ascii-chat server";
-      printf("%s v%d.%d.%d-%s (%s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_TYPE);
+      printf("%s v%d.%d.%d-%s (%s, %s)\n", binary_name, ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+             ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION, ASCII_CHAT_BUILD_DATE, ASCII_CHAT_BUILD_TYPE);
       (void)fflush(stdout);
       _exit(0);
     }
@@ -939,6 +939,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
+  (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
@@ -1006,6 +1007,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
 
 void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
+  (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
   (void)fprintf(desc, USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 0.0.0.0)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT       " USAGE_INDENT "TCP port to listen on (default: 27224)\n");

@@ -166,7 +166,7 @@ static void print_usage(const char *program_name) {
   const char *binary_name = "ascii-chat";
 #endif
 
-  printf("ASCII-Chat - Real-time terminal video chat\n");
+  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT, ASCII_CHAT_DESCRIPTION_EMOJI_R);
   printf("\n");
   printf("USAGE:\n");
   printf("  %s <mode> [options...]\n", binary_name);
@@ -174,18 +174,14 @@ static void print_usage(const char *program_name) {
   printf("  %s --version\n", binary_name);
   printf("\n");
   printf("MODES:\n");
-
-  // Iterate mode table and print each mode's description
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
-    printf("  %-10s  %s\n", mode->name, mode->description);
+    printf("  %-6s  %s\n", mode->name, mode->description);
   }
-
   printf("\n");
   printf("MODE-SPECIFIC HELP:\n");
-  printf("  %s server --help     Show server options\n", binary_name);
-  printf("  %s client --help     Show client options\n", binary_name);
+  printf("  %s <mode> --help     Show mode-specific options\n", binary_name);
   printf("\n");
-  printf("https://github.com/zfogg/ascii-chat\n");
+  printf("️🔗 https://github.com/zfogg/ascii-chat\n");
 }
 
 /**

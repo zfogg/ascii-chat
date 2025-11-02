@@ -14,21 +14,21 @@ __attribute__((used, section("__TEXT,__version"))) const char ascii_chat_version
 
 // macOS doesn't have .comment section, use __TEXT,__info_plist or custom section
 __attribute__((used, section("__TEXT,__comment"))) const char ascii_chat_comment_string[] =
-    "ascii-chat: " ASCII_CHAT_VERSION_FULL " (" ASCII_CHAT_OS ")";
+    ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION;
 
 __attribute__((used, section("__TEXT,__build_info"))) const char ascii_chat_build_info[] =
-    "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_TYPE ")";
+    ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION;
 #else
 // Linux ELF format: standard .section_name format
 __attribute__((used, section(".ascii_chat_version"))) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
 
 // Program name + version + OS in .comment section (visible in standard tooling)
 __attribute__((used, section(".comment"))) const char ascii_chat_comment_string[] =
-    "ascii-chat: " ASCII_CHAT_VERSION_FULL " (" ASCII_CHAT_OS ")";
+    ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION;
 
 // Custom section with all build info
 __attribute__((used, section(".ascii_chat_comment"))) const char ascii_chat_build_info[] =
-    "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_TYPE ")";
+    ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION;
 #endif
 
 #elif defined(_MSC_VER)
@@ -39,7 +39,7 @@ __declspec(allocate(".rdata$ascii_chat_version")) const char ascii_chat_version_
 
 #pragma section(".rdata$ascii_chat_comment", read)
 __declspec(allocate(".rdata$ascii_chat_comment")) const char ascii_chat_build_info[] =
-    "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_TYPE ")";
+    ASCII_CHAT_BUILD_INFO_STRING "\n" ASCII_CHAT_DESCRIPTION;
 
 #endif
 

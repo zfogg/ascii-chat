@@ -80,6 +80,9 @@ endif()
 set(VERSION_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\")
 set(VERSION_OS \"${CMAKE_SYSTEM_NAME}\")
 
+# Get current date in yyyy-mm-dd format
+string(TIMESTAMP BUILD_DATE \"%Y-%m-%d\" UTC)
+
 # Generate version header
 configure_file(
     \"${CMAKE_SOURCE_DIR}/lib/version.h.in\"

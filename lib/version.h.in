@@ -10,9 +10,19 @@
 #define ASCII_CHAT_GIT_VERSION "@GIT_VERSION_STRING@"
 #define ASCII_CHAT_BUILD_TYPE "@VERSION_BUILD_TYPE@"
 #define ASCII_CHAT_OS "@VERSION_OS@"
+#define ASCII_CHAT_BUILD_DATE "@BUILD_DATE@"
 
 // Full version string like "v0.2.0-42+gf811525" (nvim-style)
 #define ASCII_CHAT_VERSION_FULL "v" ASCII_CHAT_VERSION_STRING "-" ASCII_CHAT_GIT_VERSION
+
+// Description tagline
+#define ASCII_CHAT_DESCRIPTION_EMOJI_L "💻📸"
+#define ASCII_CHAT_DESCRIPTION_EMOJI_R "🔡💬"
+#define ASCII_CHAT_DESCRIPTION_TEXT "video chat in your terminal"
+#define ASCII_CHAT_DESCRIPTION ASCII_CHAT_DESCRIPTION_EMOJI_L " " ASCII_CHAT_DESCRIPTION_TEXT " " ASCII_CHAT_DESCRIPTION_EMOJI_R
+
+// Full build info string used everywhere: "ascii-chat v0.2.0-... built on OS (yyyy-mm-dd, BuildType)"
+#define ASCII_CHAT_BUILD_INFO_STRING "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_DATE ", " ASCII_CHAT_BUILD_TYPE ")"
 
 // Runtime version accessors
 const char *ascii_chat_get_version(void);
