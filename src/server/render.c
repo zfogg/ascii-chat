@@ -381,10 +381,10 @@ void *client_video_render_thread(void *arg) {
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
     log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
-             desired_fps);
+              desired_fps);
   } else {
     log_debug("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
-             desired_fps);
+              desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
@@ -416,8 +416,8 @@ void *client_video_render_thread(void *arg) {
 
     if (!should_continue) {
       log_debug("Video render thread stopping for client %u (should_continue=false: video_running=%d, active=%d, "
-               "shutting_down=%d)",
-               thread_client_id, video_running, active, shutting_down);
+                "shutting_down=%d)",
+                thread_client_id, video_running, active, shutting_down);
       break;
     }
 
@@ -579,7 +579,7 @@ void *client_video_render_thread(void *arg) {
           if (elapsed_us >= 5000000) { // 5 seconds
             float actual_fps = (float)video_frame_count / ((float)elapsed_us / 1000000.0f);
             log_debug("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
-                     actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
+                      actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
             // Reset counters for next interval
             video_frame_count = 0;
             last_video_fps_report_time = current_time;
@@ -861,8 +861,8 @@ void *client_audio_render_thread(void *arg) {
 
         if (elapsed_us >= 5000000) { // 5 seconds
           float actual_fps = (float)audio_packet_count / ((float)elapsed_us / 1000000.0f);
-          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id, actual_fps,
-                   audio_packet_count, (float)elapsed_us / 1000000.0f);
+          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id,
+                    actual_fps, audio_packet_count, (float)elapsed_us / 1000000.0f);
 
           // Reset counters for next interval
           audio_packet_count = 0;
@@ -1134,11 +1134,9 @@ void stop_client_render_threads(client_info_t *client) {
         // Continue with audio thread join and cleanup instead of returning early
       }
     } else {
-      log_debug("Calling ascii_thread_join for video thread of client %u",
-               client->client_id);
+      log_debug("Calling ascii_thread_join for video thread of client %u", client->client_id);
       result = ascii_thread_join(&client->video_render_thread, NULL);
-      log_debug("ascii_thread_join returned %d for video thread of client %u", result,
-               client->client_id);
+      log_debug("ascii_thread_join returned %d for video thread of client %u", result, client->client_id);
     }
 
     if (result == 0) {

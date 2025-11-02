@@ -166,7 +166,8 @@ static void print_usage(const char *program_name) {
   const char *binary_name = "ascii-chat";
 #endif
 
-  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT, ASCII_CHAT_DESCRIPTION_EMOJI_R);
+  printf("%s ascii-chat - %s %s\n", ASCII_CHAT_DESCRIPTION_EMOJI_L, ASCII_CHAT_DESCRIPTION_TEXT,
+         ASCII_CHAT_DESCRIPTION_EMOJI_R);
   printf("\n");
   printf("USAGE:\n");
   printf("  %s <mode> [options...]\n", binary_name);

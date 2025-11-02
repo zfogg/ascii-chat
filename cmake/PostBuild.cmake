@@ -38,13 +38,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 COMMENT "Stripping symbols and deduplicating .comment section"
             )
             # Remove embedded file paths from binary using bash script (much faster than PowerShell)
+            # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND
             add_custom_command(TARGET ascii-chat POST_BUILD
                 COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
                     "$<TARGET_FILE:ascii-chat>"
                     "${CMAKE_SOURCE_DIR}"
                     "${CMAKE_BINARY_DIR}"
                 COMMENT "Removing embedded file paths from ascii-chat binary"
-                DEPENDS "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
             )
         else()
             # On Windows, use strip to remove debug info and paths
@@ -58,6 +58,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 # Then remove embedded file paths from binary
                 find_program(POWERSHELL_EXECUTABLE pwsh powershell)
                 if(POWERSHELL_EXECUTABLE)
+                    # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND
                     add_custom_command(TARGET ascii-chat POST_BUILD
                         COMMAND ${POWERSHELL_EXECUTABLE} -ExecutionPolicy Bypass -File
                             "${CMAKE_SOURCE_DIR}/cmake/remove_paths.ps1"
@@ -65,7 +66,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                             "${CMAKE_SOURCE_DIR}"
                             "${CMAKE_BINARY_DIR}"
                         COMMENT "Removing embedded file paths from ascii-chat"
-                        DEPENDS "${CMAKE_SOURCE_DIR}/cmake/remove_paths.ps1"
                     )
                 else()
                     message(WARNING "PowerShell not found - cannot remove embedded paths from binary")
