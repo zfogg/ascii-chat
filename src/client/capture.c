@@ -98,15 +98,10 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "options.h"
-#include <dbghelp.h>
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
 #include "platform/abstraction.h"
-
-#ifdef _WIN32
-#include "platform/windows_compat.h"
-#endif
 
 /* ============================================================================
  * Capture Thread Management
@@ -322,8 +317,6 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Send frame packet to server
     int send_result = threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, packet_data, packet_size);
-    struct timespec t6;
-    long send_ms = (t6.tv_sec - t5.tv_sec) * 1000 + (t6.tv_nsec - t5.tv_nsec) / 1000000;
 
     if (send_result < 0) {
       // Signal connection loss for reconnection
