@@ -151,7 +151,7 @@ size_t get_current_time_formatted(char *time_buf);
     }                                                                                                                  \
     if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
       last_log_time = now_us;                                                                                          \
-      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                       \
+      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
     }                                                                                                                  \
   } while (0)
 #else
@@ -165,7 +165,7 @@ size_t get_current_time_formatted(char *time_buf);
     }                                                                                                                  \
     if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
       last_log_time = now_us;                                                                                          \
-      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                       \
+      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
     }                                                                                                                  \
   } while (0)
 #endif
@@ -181,7 +181,7 @@ size_t get_current_time_formatted(char *time_buf);
 #ifdef NDEBUG
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
   do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                      \
+    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
                  log_level_color(LOGGING_COLOR_RESET), message);                                                       \
@@ -193,7 +193,7 @@ size_t get_current_time_formatted(char *time_buf);
 #else
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
   do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                       \
+    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
                  log_level_color(LOGGING_COLOR_RESET), message);                                                       \
