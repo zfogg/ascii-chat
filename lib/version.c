@@ -3,11 +3,23 @@
 
 #include "version.h"
 
-// GCC/Clang: Use __attribute__((section)) to place string in custom ELF section
-// The "aSM" flags mean: 'a' = allocatable, 'S' = string section, 'M' = mergeable
+// GCC/Clang: Use __attribute__((section)) to place string in custom section
+// ELF (Linux): .section_name format
+// Mach-O (macOS): __SEGMENT,__section format
 #if defined(__GNUC__) || defined(__clang__)
 
-// Just version in .ascii_chat_version section
+#ifdef __APPLE__
+// macOS Mach-O format: use __TEXT segment for read-only data
+__attribute__((used, section("__TEXT,__version"))) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
+
+// macOS doesn't have .comment section, use __TEXT,__info_plist or custom section
+__attribute__((used, section("__TEXT,__comment"))) const char ascii_chat_comment_string[] =
+    "ascii-chat: " ASCII_CHAT_VERSION_FULL " (" ASCII_CHAT_OS ")";
+
+__attribute__((used, section("__TEXT,__build_info"))) const char ascii_chat_build_info[] =
+    "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_TYPE ")";
+#else
+// Linux ELF format: standard .section_name format
 __attribute__((used, section(".ascii_chat_version"))) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
 
 // Program name + version + OS in .comment section (visible in standard tooling)
@@ -17,6 +29,7 @@ __attribute__((used, section(".comment"))) const char ascii_chat_comment_string[
 // Custom section with all build info
 __attribute__((used, section(".ascii_chat_comment"))) const char ascii_chat_build_info[] =
     "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_TYPE ")";
+#endif
 
 #elif defined(_MSC_VER)
 
