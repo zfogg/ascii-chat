@@ -320,8 +320,8 @@
  * - Server loads Ed25519 private key (via `--server-key`)
  * - Server verifies client public keys against whitelist (via `--client-keys`)
  * - Keys must be Ed25519 format (modern, secure, fast)
- * - **Technical Dependency**: Requires `ssh-keygen` for encrypted key decryption
- *   (currently uses `ssh-keygen -q -p` to decrypt passphrase-protected keys)
+ * - **Native Decryption**: Encrypted keys are decrypted using bcrypt_pbkdf (libsodium-bcrypt-pbkdf)
+ *   + BearSSL AES-256-CTR. No external tools required.
  *
  * **Password Authentication**:
  * - Both server and client derive same key from shared password
@@ -476,22 +476,27 @@
  *
  * @subsection server_ssh_keygen_dependency SSH Keygen Dependency
  *
- * **The situation**: If you're using encrypted SSH keys for server authentication, the
- * server needs `ssh-keygen` to be available in your system PATH.
+ * **Native Encrypted Key Support**: The server supports native decryption of encrypted
+ * Ed25519 private keys without requiring any external tools.
  *
- * **Why this is necessary**: When you load an encrypted Ed25519 private key (via `--server-key`),
- * we need to decrypt it. OpenSSH's private key format is... let's say "intricate." Rather than
- * writing our own parser (which could introduce security bugs), we lean on `ssh-keygen -q -p`
- * to do the decryption. It's battle-tested, secure, and handles edge cases we might miss.
+ * **How it works**: When you load an encrypted Ed25519 private key (via `--server-key`),
+ * ascii-chat decrypts it using the same algorithms as OpenSSH:
+ * - **bcrypt_pbkdf**: Key derivation function (via libsodium-bcrypt-pbkdf library)
+ * - **AES-256-CTR**: Symmetric encryption (via BearSSL)
+ * - **OpenSSH format**: Full support for openssh-key-v1 format
  *
- * **How to work around it**:
- * - **Use passwordless keys**: Generate without a passphrase: `ssh-keygen -t ed25519 -N ""`
- * - **Install ssh-keygen**: Usually comes with SSH installations (OpenSSH on Linux/Mac, Git Bash on Windows)
- * - **Testing only**: Use `--no-encrypt` to disable encryption (don't use in production!)
+ * **Supported encryption**:
+ * - Cipher: `aes256-ctr`, `aes256-cbc` (OpenSSH defaults for Ed25519 keys)
+ * - KDF: `bcrypt` (bcrypt_pbkdf with configurable rounds)
+ * - Key types: Ed25519 only (RSA/ECDSA not supported)
  *
- * **The future**: We might implement native OpenSSH key parsing eventually, but for now,
- * `ssh-keygen` is our friend. Check out `lib/crypto/keys/ssh_keys.c:707-1022` if you're
- * curious about the implementation.
+ * **Password input methods**:
+ * - Interactive prompt (default, uses platform_get_password())
+ * - Environment variable: `$ASCII_CHAT_SSH_PASSWORD` (for automation)
+ * - SSH agent: `$SSH_AUTH_SOCK` for password-free operation
+ *
+ * **Implementation**: See `lib/crypto/keys/ssh_keys.c:59-134` for the native decryption code
+ * and `cmake/LibsodiumBcryptPbkdf.cmake` for the bcrypt_pbkdf library integration.
  *
  * @subsection server_stats_thread_behavior Stats Logger Thread Behavior
  *

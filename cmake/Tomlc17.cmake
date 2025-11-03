@@ -15,7 +15,7 @@ function(configure_tomlc17)
     set(TOMLC17_DIR "${CMAKE_SOURCE_DIR}/deps/tomlc17")
     set(TOMLC17_PATCH "${CMAKE_SOURCE_DIR}/deps/tomlc17-fix-align8-overflow.patch")
     set(TOMLC17_SOURCE "${TOMLC17_DIR}/src/tomlc17.c")
-    set(PATCH_MARKER "${TOMLC17_DIR}/.patch_applied")
+    set(PATCH_MARKER "${CMAKE_SOURCE_DIR}/.deps-cache/tomlc17.patch_applied")
 
     # Check if patch needs to be applied
     if(NOT EXISTS "${PATCH_MARKER}")

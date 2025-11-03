@@ -18,12 +18,19 @@ if(DOXYGEN_EXECUTABLE)
     message(STATUS "Doxygen found: ${DOXYGEN_EXECUTABLE}")
 
     # Configure Doxyfile from template
-    set(DOXYFILE_IN "${CMAKE_SOURCE_DIR}/Doxyfile.in")
+    set(DOXYFILE_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
     set(DOXYFILE_OUT "${CMAKE_BINARY_DIR}/Doxyfile")
+    set(DOXYLAYOUTFILE_IN "${CMAKE_SOURCE_DIR}/docs/DoxygenLayout.xml.in")
+    set(DOXYLAYOUTFILE_OUT "${CMAKE_BINARY_DIR}/DoxygenLayout.xml")
 
     configure_file(
         ${DOXYFILE_IN}
         ${DOXYFILE_OUT}
+        @ONLY
+    )
+    configure_file(
+        ${DOXYLAYOUTFILE_IN}
+        ${DOXYLAYOUTFILE_OUT}
         @ONLY
     )
 

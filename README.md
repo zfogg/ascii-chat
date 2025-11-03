@@ -314,7 +314,7 @@ ascii-chat client --no-encrypt
 
 # Server key verification (client verifies server identity)
 ascii-chat client --key ~/.ssh/id_ed25519 --server-key ~/.ssh/server1.pub
-# This .pub file format is the same one ssh-keygen generates for any ed25519 keys it creates.
+# This .pub file format is standard OpenSSH public key format (ssh-ed25519).
 
 # Client key whitelisting (server only accepts specific clients)
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt

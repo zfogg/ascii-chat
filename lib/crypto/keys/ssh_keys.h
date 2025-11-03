@@ -69,8 +69,9 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32
  * @note Key format: Supports OpenSSH private key format (openssh-key-v1).
  *       Format: "-----BEGIN OPENSSH PRIVATE KEY-----" ... "-----END OPENSSH PRIVATE KEY-----"
  *
- * @note Encrypted keys: If key is encrypted, prompts for password and decrypts it.
- *       Uses platform-specific password prompt.
+ * @note Encrypted keys: If key is encrypted, prompts for password and decrypts it natively.
+ *       Uses bcrypt_pbkdf (from libsodium-bcrypt-pbkdf) + BearSSL AES (aes256-ctr/aes256-cbc) for OpenSSH format decryption.
+ *       No external tools (ssh-keygen) required.
  *
  * @note Key structure: Parses OpenSSH key structure:
  *       - Magic: "openssh-key-v1\0"
@@ -92,8 +93,9 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32
  * @warning File permissions: Private key files should have restrictive permissions (0600).
  *          Function warns but does not fail on overly permissive permissions.
  *
- * @warning Password: Encrypted keys require password prompt.
- *          May fail if password is incorrect or password prompt fails.
+ * @warning Password: Encrypted keys require password for native decryption.
+ *          Decryption is done using bcrypt_pbkdf + BearSSL AES (supports aes256-ctr and aes256-cbc).
+ *          May fail if password is incorrect, KDF parameters are unsupported, or unsupported encryption cipher.
  *
  * @ingroup keys
  */

@@ -6,3 +6,6 @@
 	url = https://github.com/cktan/tomlc17
 	# NOTE: deps/tomlc17-fix-align8-overflow.patch is automatically applied during CMake configuration
 	# to fix integer overflow and sanitizer warnings in the align8() function
+[submodule "deps/libsodium-bcrypt-pbkdf"]
+	path = deps/libsodium-bcrypt-pbkdf
+	url = https://github.com/imaami/libsodium-bcrypt-pbkdf.git

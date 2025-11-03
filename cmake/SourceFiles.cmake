@@ -54,6 +54,10 @@ set(CRYPTO_SRCS
     lib/crypto/keys/gpg_keys.c
     lib/crypto/keys/https_keys.c
     lib/crypto/keys/validation.c
+    # libsodium-bcrypt-pbkdf (OpenBSD implementation)
+    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
 )
 
 # =============================================================================

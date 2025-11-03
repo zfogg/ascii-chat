@@ -483,10 +483,10 @@
  * - SSH agent integration via `$SSH_AUTH_SOCK` (Unix only)
  * - Password support via `$ASCII_CHAT_SSH_PASSWORD` environment variable
  *
- * @note **SSH Key Dependencies**: The client currently requires `ssh-keygen` to
- *       decrypt encrypted SSH keys, or `$SSH_AUTH_SOCK` for agent-based
- *       authentication. Native key decryption is planned for future releases
- *       (see lib/crypto/keys/ for infrastructure).
+ * @note **SSH Key Support**: The client supports native encrypted SSH key decryption
+ *       using bcrypt_pbkdf (libsodium-bcrypt-pbkdf) + BearSSL AES-256-CTR. No external
+ *       tools required. Alternatively, use `$SSH_AUTH_SOCK` for agent-based
+ *       password-free authentication (see lib/crypto/keys/ for implementation).
  *
  * @section client_command_line Command-Line Options
  *
@@ -674,9 +674,9 @@
  * @section client_known_issues Known Issues and Limitations
  *
  * **SSH Key Decryption**:
- * - Encrypted SSH keys require `ssh-keygen` or `$SSH_AUTH_SOCK`
- * - Native key decryption not yet implemented
- * - Workaround: Use unencrypted keys or ssh-agent
+ * - Native encrypted key support using bcrypt_pbkdf + BearSSL AES-256-CTR
+ * - No external tools (ssh-keygen) required
+ * - Alternative: Use `$SSH_AUTH_SOCK` (ssh-agent) for password-free authentication
  *
  * **IPv6 Connection Issues**:
  * - Some systems prioritize IPv6 but server only listens on IPv4

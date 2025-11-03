@@ -211,7 +211,7 @@
  *
  * **Key Loading**:
  * - Validates SSH key file format
- * - Supports encrypted SSH keys (requires ssh-keygen for decryption)
+ * - Native encrypted key support (bcrypt_pbkdf + BearSSL AES-256-CTR)
  * - Validates key type (Ed25519 required)
  * - Loads private key for signing operations
  *
