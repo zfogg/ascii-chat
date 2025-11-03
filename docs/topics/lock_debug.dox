@@ -1,7 +1,7 @@
 /**
  * @defgroup lock_debug Mutex and RWLock Debugging Utilities
  * @ingroup module_development
- *
+ * @brief Lock devel tools (deadlock detection! timing! stack traces!)
  */
 
 /**

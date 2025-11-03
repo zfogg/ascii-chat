@@ -1,0 +1,196 @@
+/**
+ * @page exit_codes Exit Codes
+ * @ingroup module_development
+ *
+ * @tableofcontents
+ *
+ * @section exit_codes_overview Overview
+ *
+ * ascii-chat uses a comprehensive exit code system to communicate detailed error information to users and scripts.
+ * Exit codes follow Unix conventions where **0 indicates success** and non-zero values indicate various types of failures.
+ *
+ * @section exit_codes_philosophy Exit Code Philosophy
+ *
+ * Exit codes are defined in the `asciichat_error_t` enum and serve as both function return values and process exit codes.
+ *
+ * @section exit_codes_summary Exit Code Reference
+ *
+ * @note The complete list of exit codes is defined in the asciichat_error_t enum.
+ * Click asciichat_error_t to see the full table with all error codes and their numeric values.
+ *
+ * @subsection exit_codes_design_principles Design Principles
+ *
+ * - Success (ASCIICHAT_OK)
+ * - General/unspecified error (ERROR_GENERAL)
+ * - Command line usage error (ERROR_USAGE)
+ * - Application-specific errors (grouped by category)
+ * - Reserved for signal-related exits (Unix convention)
+ *
+ * @section exit_codes_standard Standard Exit Codes
+ *
+ * - **ASCIICHAT_OK**: Success - Operation completed successfully
+ * - **ERROR_GENERAL**: General error - Unspecified error occurred
+ * - **ERROR_USAGE**: Invalid command line usage - Invalid arguments or options
+ *
+ * @section exit_codes_init Initialization Failures
+ *
+ * - **ERROR_MEMORY**: Memory allocation failed - Out of memory
+ * - **ERROR_CONFIG**: Configuration error - Configuration file or settings error
+ * - **ERROR_CRYPTO_INIT**: Cryptographic initialization failed - libsodium or key generation failed
+ * - **ERROR_LOGGING_INIT**: Logging initialization failed - Cannot open log file or initialize logging system
+ * - **ERROR_PLATFORM_INIT**: Platform initialization failed - Platform-specific subsystem initialization failed
+ *
+ * @section exit_codes_device Hardware/Device Errors
+ *
+ * - **ERROR_TERMINAL**: Terminal operation failed - TTY/terminal I/O error
+ * - **ERROR_PLATFORM**: Platform abstraction error - Cross-platform API failure
+ * - **ERROR_WEBCAM**: Webcam operation failed - Generic webcam error
+ * - **ERROR_WEBCAM_IN_USE**: Webcam in use - Device busy or already in use
+ * - **ERROR_AUDIO**: Audio device error - PortAudio or audio capture/playback failed
+ * - **ERROR_VIDEO**: Video processing error - Image processing or conversion failed
+ *
+ * @section exit_codes_network Network Errors
+ *
+ * - **ERROR_NETWORK**: Network operation failed - Generic network error
+ * - **ERROR_NETWORK_BIND**: Socket bind failed - Cannot bind to requested address/port
+ * - **ERROR_NETWORK_LISTEN**: Socket listen failed - Cannot listen on socket
+ * - **ERROR_NETWORK_ACCEPT**: Client accept failed - Cannot accept incoming connection
+ * - **ERROR_NETWORK_CONNECT**: Connection failed - Cannot connect to server
+ * - **ERROR_NETWORK_SEND**: Send failed - Cannot send data over network
+ * - **ERROR_NETWORK_RECV**: Receive failed - Cannot receive data from network
+ * - **ERROR_NETWORK_TIMEOUT**: Network timeout - Operation timed out
+ * - **ERROR_NETWORK_CLOSED**: Connection closed - Remote end closed connection
+ * - **ERROR_NETWORK_PROTO**: Protocol error - Packet protocol violation or invalid packet
+ *
+ * @section exit_codes_security Security/Crypto Errors
+ *
+ * - **ERROR_CRYPTO**: Cryptographic operation failed - Generic crypto error
+ * - **ERROR_CRYPTO_KEY**: Key operation failed - Key generation, loading, or validation failed
+ * - **ERROR_CRYPTO_HANDSHAKE**: Handshake failed - Cryptographic handshake error
+ * - **ERROR_CRYPTO_ENCRYPT**: Encryption failed - Cannot encrypt data
+ * - **ERROR_CRYPTO_DECRYPT**: Decryption failed - Cannot decrypt data or authentication tag invalid
+ * - **ERROR_CRYPTO_SIGNATURE**: Signature verification failed - Digital signature invalid
+ * - **ERROR_CRYPTO_PASSWORD**: Password error - Incorrect password or passphrase
+ * - **ERROR_CRYPTO_SSH_AGENT**: SSH agent error - Cannot connect to SSH agent or agent operation failed
+ * - **ERROR_AUTH**: Authentication failed - Client authentication rejected
+ * - **ERROR_UNAUTHORIZED**: Unauthorized - Operation not permitted for this client
+ *
+ * @section exit_codes_runtime Runtime Errors
+ *
+ * - **ERROR_THREAD**: Thread operation failed - Thread creation or management failed
+ * - **ERROR_MUTEX**: Mutex operation failed - Mutex initialization, lock, or unlock failed
+ * - **ERROR_COND**: Condition variable operation failed
+ * - **ERROR_DEADLOCK**: Deadlock detected - Lock ordering violation or deadlock
+ * - **ERROR_TIMEOUT**: Timeout - Operation timed out
+ * - **ERROR_COMPRESSION**: Compression error - zstd compression or decompression failed
+ * - **ERROR_DECOMPRESSION**: Decompression error - Decompression failed or corrupt data
+ * - **ERROR_ENCODING**: Encoding error - Data encoding failed
+ * - **ERROR_DECODING**: Decoding error - Data decoding failed
+ * - **ERROR_CRC**: CRC checksum error - Data corruption detected via CRC
+ *
+ * @section exit_codes_signal Signal/Crash Handlers
+ *
+ * - **ERROR_SIGNAL_INTERRUPT**: Interrupted by signal - Program interrupted by SIGINT or SIGTERM
+ * - **ERROR_SIGNAL_CRASH**: Fatal signal - Program terminated by fatal signal (SIGSEGV, SIGABRT, etc.)
+ * - **ERROR_ASSERTION_FAILED**: Assertion failed - Assertion or invariant violation
+ *
+ * @section exit_codes_reserved Reserved Exit Codes
+ *
+ * Exit codes for signal-related exits following Unix conventions where the shell adds the signal number.
+ * These codes are **set by the shell**, not by ascii-chat itself.
+ *
+ * @section exit_codes_usage Usage in Code
+ *
+ * @subsection exit_codes_c_example Check and Return Exit Code in C Code
+ *
+ * @code{.c}
+ * #include "common.h"
+ *
+ * int main(int argc, char **argv) {
+ *     // ... initialization ...
+ *
+ *     asciichat_error_t err_code = webcam_init(device_id, test_pattern);
+ *     if (err_code != ASCIICHAT_OK) {
+ *         fprintf(stderr, "Webcam error: %s\n", asciichat_error_string(err));
+ *         return err_code;
+ *     }
+ *
+ *     // continue program execution...
+ * }
+ * @endcode 
+ *
+ * @section exit_codes_fatal_macros Using FATAL Macros in Code
+ *
+ * ascii-chat provides convenient macros for fatal error handling that automatically:
+ * - Print a human-readable error message to stderr
+ * - Include the exit code and location (file:line:function)
+ * - Print a stack trace (debug builds only)
+ * - Exit with the appropriate exit code
+ *
+ * @subsection exit_codes_fatal FATAL(code, format, ...)
+ * Exit with an exit code and custom printf-style message.
+ *
+ * @code{.c}
+ * #include "common.h"
+ *
+ * int main(void) {
+ *     if (bind(sockfd, ...) < 0) {
+ *         FATAL(ERROR_NETWORK_BIND, "Cannot bind to port %d: %s", opt_port, strerror(errno));
+ *     }
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * @subsection exit_codes_best_practices Best Practices
+ *
+ * - **Use FATAL with error codes**: Pass `asciichat_error_t` values directly to `FATAL()`.
+ * - **Add custom messages**: Use the format string to explain what went wrong.
+ * - **Only use in src/ code**: Never use FATAL in lib/ code - library code should return error codes instead.
+ *
+ * @subsection exit_codes_complete_example Complete Example
+ *
+ * @code{.c}
+ * // src/server/main.c
+ * #include "common.h"
+ * #include "options.h"
+ * #include "network.h"
+ *
+ * int main(int argc, char **argv) {
+ *     // Initialize logging
+ *     log_init("server.log", LOG_INFO);
+ *
+ *     // Parse options - if this returns an error, it already exited
+ *     options_init(argc, argv, false);
+ *
+ *     // Initialize crypto
+ *     asciichat_error_t crypto_err = crypto_init();
+ *     if (crypto_err != ASCIICHAT_OK) {
+ *         FATAL(crypto_err, "Crypto initialization failed");
+ *     }
+ *
+ *     // Create socket
+ *     int sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+ *     if (sockfd < INVALID_SOCKET_VALUE) {
+ *         FATAL(ERROR_NETWORK, "Failed to create socket: %s", strerror(errno));
+ *     }
+ *
+ *     // Bind to port
+ *     if (bind(sockfd, ...) < 0) {
+ *         if (errno == EADDRINUSE) {
+ *             FATAL(ERROR_NETWORK_BIND,
+ *                   "Port %d is already in use. Try a different port or stop the other process.",
+ *                   opt_port);
+ *         } else {
+ *             FATAL(ERROR_NETWORK_BIND, "Cannot bind to port %d: %s", opt_port, strerror(errno));
+ *         }
+ *     }
+ *
+ *     // ... rest of server code ...
+ *
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * @see lib/common.h for asciichat_error_t enum definition and FATAL macro
+ * @see lib/asciichat_errno.h for error context system
+ */
