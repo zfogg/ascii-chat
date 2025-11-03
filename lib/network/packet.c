@@ -1,6 +1,6 @@
 /**
  * @file network/packet.c
- * @ingroup packet
+ * @ingroup network
  * @brief 📦 Packet protocol handler with CRC validation, encryption, and compression
  */
 

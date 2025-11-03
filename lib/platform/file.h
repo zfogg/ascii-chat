@@ -2,8 +2,8 @@
 
 /**
  * @file platform/file.h
- * @ingroup module_platform
- * @brief Cross-platform file I/O interface for ASCII-Chat
+ * @ingroup platform
+ * @brief Cross-platform file I/O interface for ascii-chat
  *
  * This header provides unified file operations with consistent behavior
  * across Windows and POSIX platforms.

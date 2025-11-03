@@ -1,7 +1,6 @@
 /**
  * @defgroup testing Tests
  * @ingroup module_development
- * @brief Criterion tests that only work on UNIX systems like Linux and macOS.
  */
 
 /**
@@ -12,7 +11,7 @@
  *
  * @section testing_overview Overview
  *
- * Welcome! This guide will help you get comfortable with the test suite in ASCII-Chat.
+ * Welcome! This guide will help you get comfortable with the test suite in ascii-chat.
  * We use Criterion, a modern C testing framework, to make sure everything works correctly.
  * Don't worry if you're new to testing—we'll walk you through everything you need to know.
  *
@@ -831,10 +830,28 @@
  * - **Test utilities**: `lib/tests/`
  * - **Docker config**: `tests/Dockerfile`, `tests/docker-compose.yml`
  *
+ * @section testing_utilities Test Utilities
+ *
+ * The test utilities in `lib/tests/` provide common functionality for writing tests:
+ *
+ * **Files**:
+ * - @ref tests/logging.h "test_logging.h" - Logging control utilities for quiet test execution
+ * - @ref tests/logging.c "test_logging.c" - Implementation of logging redirection
+ * - @ref tests/common.h "common.h" - Common test utilities and environment detection
+ * - @ref tests/globals.c "globals.c" - Global symbol stubs for linker dependencies
+ *
+ * These utilities help tests run reliably by providing logging control, environment
+ * detection, and common headers. See the individual file documentation for details.
+ *
  * Need help?
  * ----------
  * If you're stuck or have questions, feel free to ask! We're here to help. Check out
  * the examples in the codebase—seeing real tests is often the best way to learn.
+ *
+ * @see tests/logging.h
+ * @see tests/logging.c
+ * @see tests/common.h
+ * @see tests/globals.c
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025

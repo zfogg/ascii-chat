@@ -11,7 +11,7 @@
  * @section debug_overview Overview
  *
  * The Debugging Utilities module provides comprehensive debugging and diagnostic
- * tools for ASCII-Chat development and troubleshooting. This module includes
+ * tools for ascii-chat development and troubleshooting. This module includes
  * error tracking, lock debugging, memory leak detection, and diagnostic utilities
  * to help identify and resolve issues in the codebase.
  *

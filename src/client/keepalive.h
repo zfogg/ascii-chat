@@ -1,10 +1,10 @@
 /**
  * @file client/keepalive.h
  * @ingroup client_keepalive
- * @brief ASCII-Chat Client Connection Keepalive Management Interface
+ * @brief ascii-chat Client Connection Keepalive Management Interface
  *
  * Defines the interface for connection keepalive thread management
- * and ping/pong coordination in the ASCII-Chat client.
+ * and ping/pong coordination in the ascii-chat client.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025

@@ -1,10 +1,10 @@
 /**
  * @file client/capture.h
  * @ingroup client_capture
- * @brief ASCII-Chat Client Media Capture Management Interface
+ * @brief ascii-chat Client Media Capture Management Interface
  *
  * Defines the interface for webcam video capture and transmission
- * management in the ASCII-Chat client.
+ * management in the ascii-chat client.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025

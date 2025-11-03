@@ -1,7 +1,6 @@
 /**
  * @defgroup handshake Handshake Protocol
  * @ingroup module_crypto
- * @brief Cryptographic handshake protocol implementation for key exchange and authentication
  */
 
 /**
@@ -9,7 +8,7 @@
  * @ingroup handshake
  *
  * The cryptographic handshake protocol establishes secure, authenticated connections
- * between ASCII-Chat clients and servers. The handshake implements mutual authentication,
+ * between ascii-chat clients and servers. The handshake implements mutual authentication,
  * key exchange, and session establishment with perfect forward secrecy.
  *
  * @section handshake_overview Overview
@@ -302,7 +301,7 @@
  * @code{.c}
  * // Server/client both derive password_key from password
  * uint8_t password_key[32];
- * uint8_t salt[16] = ARGON2ID_SALT;  // Fixed salt for ASCII-Chat
+ * uint8_t salt[16] = ARGON2ID_SALT;  // Fixed salt for ascii-chat
  * 
  * argon2id_hash_raw(
  *     ARGON2ID_TIME_COST,    // 3 iterations
@@ -417,7 +416,7 @@
  *
  * @section handshake_rekeying Session Rekeying
  *
- * ASCII-Chat implements periodic session rekeying to provide forward secrecy
+ * ascii-chat implements periodic session rekeying to provide forward secrecy
  * within long-lived connections. After the initial handshake, the system performs
  * new Diffie-Hellman key exchanges to rotate encryption keys.
  *

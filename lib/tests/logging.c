@@ -1,6 +1,6 @@
 /**
  * @file tests/logging.c
- * @ingroup tests
+ * @ingroup testing
  * @brief 🧪 Test utilities for logging: stdout/stderr redirection and capture helpers
  */
 
@@ -24,6 +24,13 @@ static int original_stderr_fd = -1;
 static int dev_null_fd = -1;
 static bool logging_disabled = false;
 
+/**
+ * @brief Disable stdout/stderr output for quiet test execution
+ * @param disable_stdout If true, redirect stdout to /dev/null
+ * @param disable_stderr If true, redirect stderr to /dev/null
+ * @return 0 on success, -1 on error
+ * @ingroup testing
+ */
 int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   // If already disabled, return success
   if (logging_disabled) {
@@ -75,6 +82,11 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   return 0;
 }
 
+/**
+ * @brief Restore stdout/stderr output after test logging disable
+ * @return 0 on success, -1 on error
+ * @ingroup testing
+ */
 int test_logging_restore(void) {
   // If not disabled, return success
   if (!logging_disabled) {
@@ -113,22 +125,45 @@ int test_logging_restore(void) {
   return 0;
 }
 
+/**
+ * @brief Check if logging is currently disabled
+ * @return true if logging is disabled, false otherwise
+ * @ingroup testing
+ */
 bool test_logging_is_disabled(void) {
   return logging_disabled;
 }
 
 #else
 // Windows stub implementations
+
+/**
+ * @brief Disable stdout/stderr output (Windows stub - not implemented)
+ * @param disable_stdout Unused on Windows
+ * @param disable_stderr Unused on Windows
+ * @return 0 (always succeeds on Windows)
+ * @ingroup testing
+ */
 int test_logging_disable(bool disable_stdout, bool disable_stderr) {
   (void)disable_stdout;
   (void)disable_stderr;
   return 0; // Not implemented on Windows
 }
 
+/**
+ * @brief Restore stdout/stderr output (Windows stub - not implemented)
+ * @return 0 (always succeeds on Windows)
+ * @ingroup testing
+ */
 int test_logging_restore(void) {
   return 0; // Not implemented on Windows
 }
 
+/**
+ * @brief Check if logging is disabled (Windows stub - always returns false)
+ * @return false (always on Windows)
+ * @ingroup testing
+ */
 bool test_logging_is_disabled(void) {
   return false;
 }

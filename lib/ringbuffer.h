@@ -1,13 +1,15 @@
 #pragma once
 
 /**
- * @file ringbuffer.h
  * @defgroup ringbuffer Ring Buffer
+ * @ingroup module_data_structures
+ *
+ * @file ringbuffer.h
  * @ingroup ringbuffer
  * @brief Lock-Free Ring Buffer and Frame Buffer Management
  *
  * This header provides lock-free ring buffer implementations for high-performance
- * producer-consumer scenarios in ASCII-Chat. The system includes both generic
+ * producer-consumer scenarios in ascii-chat. The system includes both generic
  * lock-free ring buffers and specialized audio and frame buffers for media streaming.
  *
  * CORE FEATURES:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The OS abstraction layer provides unified, cross-platform APIs for webcam capture across Windows, Linux, and macOS. This layer abstracts platform-specific webcam APIs into a common interface, enabling ASCII-Chat to seamlessly capture video across all supported platforms.
+The OS abstraction layer provides unified, cross-platform APIs for webcam capture across Windows, Linux, and macOS. This layer abstracts platform-specific webcam APIs into a common interface, enabling ascii-chat to seamlessly capture video across all supported platforms.
 
 Unlike the platform abstraction layer which handles system primitives (threads, sockets, etc.), this OS layer focuses specifically on webcam hardware interaction and video capture.
 

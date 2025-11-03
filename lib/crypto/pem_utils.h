@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
- * Adapted for ASCII-Chat by Zachary Fogg <me@zfo.gg>
+ * Adapted for ascii-chat by Zachary Fogg <me@zfo.gg>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -45,7 +45,7 @@
  *       Must call free_ta_contents() for each anchor and free anchor_list.buf.
  *
  * @author Thomas Pornin (original BearSSL tools)
- * @author Zachary Fogg <me@zfo.gg> (adaptation for ASCII-Chat)
+ * @author Zachary Fogg <me@zfo.gg> (adaptation for ascii-chat)
  * @date October 2025
  */
 

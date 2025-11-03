@@ -1,4 +1,4 @@
-# YUY2 to RGB Hardware Acceleration Research for ASCII-Chat on Windows
+# YUY2 to RGB Hardware Acceleration Research for ascii-chat on Windows
 
 ## Current Implementation Analysis
 
@@ -16,10 +16,10 @@ for (int i = 0; i < bufferLength; i += 4) {
     int u  = bufferData[i + 1];
     int y1 = bufferData[i + 2];
     int v  = bufferData[i + 3];
-    
+
     int cb = u - 128;
     int cr = v - 128;
-    
+
     // ITU-R BT.601 conversion with fixed-point math
     r = y + ((351 * cr) >> 8);
     g = y - ((87 * cb) >> 8) - ((183 * cr) >> 8);
@@ -48,7 +48,7 @@ __m128i uv_vals = _mm_srli_epi16(yuy2_lo, 8);
 
 **Advantages:**
 - 4-8x speedup over scalar code
-- Already supported in ASCII-Chat's build system
+- Already supported in ascii-chat's build system
 - Works on all x86-64 Windows machines
 - Integrates with existing SIMD infrastructure
 
@@ -133,8 +133,8 @@ IDirectXVideoProcessor* pVideoProc;
 // Configure conversion
 DXVA2_VideoDesc desc = {0};
 desc.Format = D3DFMT_YUY2;
-pVPService->CreateVideoProcessor(&DXVA2_VideoProcProgressiveDevice, 
-                                 &desc, D3DFMT_X8R8G8B8, 
+pVPService->CreateVideoProcessor(&DXVA2_VideoProcProgressiveDevice,
+                                 &desc, D3DFMT_X8R8G8B8,
                                  D3DPOOL_DEFAULT, &pVideoProc);
 
 // Perform conversion
@@ -151,7 +151,7 @@ pVideoProc->VideoProcessBlt(pRGBSurface, &sample, 1, NULL);
 **Disadvantages:**
 - Requires GPU with DXVA support
 - Complex setup and resource management
-- Overkill for ASCII-Chat's frame sizes
+- Overkill for ascii-chat's frame sizes
 - Adds DirectX dependency
 
 ### 4. OpenCL/DirectCompute GPU Acceleration
@@ -164,23 +164,23 @@ __kernel void yuy2_to_rgb(__global uchar4* yuy2,
                           int width) {
     int gid = get_global_id(0);
     int pixel_pair = gid;
-    
+
     uchar4 yuy2_data = yuy2[pixel_pair];
     float y0 = yuy2_data.x;
     float u  = yuy2_data.y - 128.0f;
     float y1 = yuy2_data.z;
     float v  = yuy2_data.w - 128.0f;
-    
+
     // ITU-R BT.601 conversion
     float3 rgb0, rgb1;
     rgb0.x = y0 + 1.371f * v;
     rgb0.y = y0 - 0.336f * u - 0.698f * v;
     rgb0.z = y0 + 1.732f * u;
-    
+
     rgb1.x = y1 + 1.371f * v;
     rgb1.y = y1 - 0.336f * u - 0.698f * v;
     rgb1.z = y1 + 1.732f * u;
-    
+
     rgb[pixel_pair*2] = convert_uchar4(clamp(rgb0, 0.0f, 255.0f));
     rgb[pixel_pair*2+1] = convert_uchar4(clamp(rgb1, 0.0f, 255.0f));
 }
@@ -229,7 +229,7 @@ Based on typical YUY2 conversion benchmarks:
 
 *GPU times include transfer overhead, may be slower for small frames
 
-## Integration with ASCII-Chat
+## Integration with ascii-chat
 
 The project already has:
 - SIMD infrastructure in `lib/image2ascii/simd/`
@@ -253,49 +253,49 @@ Recommended integration points:
 void convert_yuy2_to_rgb_sse2(const uint8_t* yuy2, rgb_t* rgb, int pixel_count) {
     const __m128i zero = _mm_setzero_si128();
     const __m128i offset = _mm_set1_epi16(128);
-    
+
     // ITU-R BT.601 coefficients in 8.8 fixed point
     const __m128i coeff_rv = _mm_set1_epi16(351);  // 1.371 * 256
     const __m128i coeff_gu = _mm_set1_epi16(-87);  // -0.336 * 256
     const __m128i coeff_gv = _mm_set1_epi16(-183); // -0.698 * 256
     const __m128i coeff_bu = _mm_set1_epi16(444);  // 1.732 * 256
-    
+
     for (int i = 0; i < pixel_count; i += 8) {
         // Load 16 bytes (8 pixels in YUY2)
         __m128i yuy2_data = _mm_loadu_si128((__m128i*)&yuy2[i*2]);
-        
+
         // Extract Y values (even bytes)
         __m128i y_packed = _mm_and_si128(yuy2_data, _mm_set1_epi16(0x00FF));
-        
+
         // Extract U,V values (odd bytes) and expand
         __m128i uv_packed = _mm_srli_epi16(yuy2_data, 8);
-        
+
         // Separate U and V
         __m128i u_val = _mm_shufflelo_epi16(uv_packed, _MM_SHUFFLE(0,0,0,0));
         u_val = _mm_shufflehi_epi16(u_val, _MM_SHUFFLE(2,2,2,2));
-        
+
         __m128i v_val = _mm_shufflelo_epi16(uv_packed, _MM_SHUFFLE(1,1,1,1));
         v_val = _mm_shufflehi_epi16(v_val, _MM_SHUFFLE(3,3,3,3));
-        
+
         // Subtract 128 from U,V
         u_val = _mm_sub_epi16(u_val, offset);
         v_val = _mm_sub_epi16(v_val, offset);
-        
+
         // Calculate R = Y + 1.371*V
         __m128i r = _mm_add_epi16(y_packed, _mm_mulhi_epi16(v_val, coeff_rv));
-        
+
         // Calculate G = Y - 0.336*U - 0.698*V
         __m128i g = _mm_add_epi16(y_packed, _mm_mulhi_epi16(u_val, coeff_gu));
         g = _mm_add_epi16(g, _mm_mulhi_epi16(v_val, coeff_gv));
-        
+
         // Calculate B = Y + 1.732*U
         __m128i b = _mm_add_epi16(y_packed, _mm_mulhi_epi16(u_val, coeff_bu));
-        
+
         // Pack and saturate to uint8
         r = _mm_packus_epi16(r, zero);
         g = _mm_packus_epi16(g, zero);
         b = _mm_packus_epi16(b, zero);
-        
+
         // Store interleaved RGB
         // This part would need custom interleaving logic
         // ...
@@ -306,7 +306,7 @@ void convert_yuy2_to_rgb_sse2(const uint8_t* yuy2, rgb_t* rgb, int pixel_count) 
 
 ## Conclusion
 
-For ASCII-Chat on Windows, **SSE2 SIMD acceleration is the best immediate option**:
+For ascii-chat on Windows, **SSE2 SIMD acceleration is the best immediate option**:
 
 1. **8-16x speedup** over current scalar implementation
 2. **No additional dependencies** - uses existing SIMD infrastructure

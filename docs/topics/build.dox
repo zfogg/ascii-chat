@@ -10,7 +10,7 @@
  *
  * @section build_overview Overview
  *
- * ASCII-Chat uses a highly modular CMake build system designed for cross-platform
+ * ascii-chat uses a highly modular CMake build system designed for cross-platform
  * development across Linux, macOS, and Windows. The build system automatically
  * handles platform differences, dependency management, caching, and optimization
  * for both development and release builds.
@@ -381,7 +381,7 @@
  * @subsection build_musl_overview musl Overview
  *
  * musl libc is a lightweight C standard library implementation designed for
- * static linking. ASCII-Chat uses musl for Linux release builds to create
+ * static linking. ascii-chat uses musl for Linux release builds to create
  * fully static binaries with no runtime dependencies.
  *
  * **Performance Benefits**:
@@ -847,7 +847,7 @@
  * @subsection build_presets_overview Presets Overview
  *
  * CMake Presets provide a standardized way to configure and build the project
- * across different platforms and tools. ASCII-Chat defines presets in
+ * across different platforms and tools. ascii-chat defines presets in
  * `CMakePresets.json`.
  *
  * **Benefits**:

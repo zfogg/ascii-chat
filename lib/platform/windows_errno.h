@@ -2,7 +2,7 @@
 
 /**
  * @file platform/windows_errno.h
- * @ingroup module_platform
+ * @ingroup platform
  * @brief Windows errno compatibility definitions
  *
  * This header provides POSIX-style errno constant definitions for Windows

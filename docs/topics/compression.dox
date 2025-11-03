@@ -1,0 +1,162 @@
+/**
+ * @defgroup compression Compression Module
+ * @ingroup module_network
+ * @brief Network compression utilities for ascii-chat
+ */
+
+/**
+ * @page topic_compression Compression README
+ * @ingroup compression
+ *
+ * @section compression_overview Overview
+ *
+ * The compression module provides fast zstd compression/decompression utilities
+ * for optimizing network payload size in ascii-chat. Compression reduces bandwidth
+ * usage for large packets like video frames and audio batches, improving performance
+ * over low-bandwidth connections.
+ *
+ * **Implementation**: lib/compression.c, lib/compression.h
+ *
+ * **Key Features**:
+ * - zstd compression algorithm (level 1 for speed/ratio balance)
+ * - Automatic compression ratio checking (only compresses if beneficial)
+ * - Minimum size threshold to avoid overhead on small packets
+ * - Memory-efficient compression/decompression
+ * - Pure utility functions (no state management)
+ *
+ * @section compression_strategy Compression Strategy
+ *
+ * Compression is automatically applied when:
+ * - Packet size exceeds minimum threshold (1KB)
+ * - Compression achieves at least 20% size reduction (<80% of original size)
+ *
+ * This prevents:
+ * - Overhead of compressing already-compressed data
+ * - CPU waste on small packets that don't benefit
+ * - Compression expansion (when compressed data is larger than original)
+ *
+ * @subsection compression_algorithm Algorithm
+ *
+ * - Uses zstd level 1 compression for optimal speed/ratio balance
+ * - Compatible with standard zstd decompression
+ * - Provides good compression ratio for text/ASCII data
+ * - Reasonable CPU overhead for real-time streaming
+ *
+ * @section compression_api API Usage
+ *
+ * @subsection compression_basic Basic Compression
+ *
+ * @code{.c}
+ * void *compressed_data;
+ * size_t compressed_size;
+ *
+ * // Compress data (allocates output buffer)
+ * if (compress_data(input_data, input_size, &compressed_data, &compressed_size) == 0) {
+ *   // Check if compression is worthwhile (optional)
+ *   if (should_compress(input_size, compressed_size)) {
+ *     // Send compressed data
+ *     send_packet(compressed_data, compressed_size);
+ *   } else {
+ *     // Send original data (compression didn't help)
+ *     send_packet(input_data, input_size);
+ *   }
+ *   free(compressed_data);
+ * }
+ * @endcode
+ *
+ * @subsection compression_decompression Decompression
+ *
+ * @code{.c}
+ * void *decompressed_data;
+ * size_t decompressed_size;
+ *
+ * // Allocate output buffer (must know original size)
+ * decompressed_data = malloc(original_size);
+ *
+ * // Decompress data
+ * if (decompress_data(compressed_data, compressed_size,
+ *                     decompressed_data, original_size) == 0) {
+ *   // Use decompressed data
+ *   process_data(decompressed_data, original_size);
+ * }
+ *
+ * free(decompressed_data);
+ * @endcode
+ *
+ * @section compression_integration Network Integration
+ *
+ * Compression is automatically integrated into the packet protocol:
+ *
+ * @code{.c}
+ * // In packet send path
+ * if (data_size >= COMPRESSION_MIN_SIZE) {
+ *   void *compressed;
+ *   size_t compressed_size;
+ *   if (compress_data(data, data_size, &compressed, &compressed_size) == 0) {
+ *     if (should_compress(data_size, compressed_size)) {
+ *       send_packet_header(type, compressed_size, compressed_flags);
+ *       send_packet_data(compressed, compressed_size);
+ *       free(compressed);
+ *       return;
+ *     }
+ *     free(compressed);
+ *   }
+ * }
+ * // Fall back to uncompressed
+ * send_packet_header(type, data_size, flags);
+ * send_packet_data(data, data_size);
+ * @endcode
+ *
+ * @section compression_performance Performance Characteristics
+ *
+ * **Compression Speed**:
+ * - zstd level 1: ~200-500 MB/s compression (CPU-dependent)
+ * - Suitable for real-time video streaming (60fps)
+ * - Low CPU overhead compared to higher compression levels
+ *
+ * **Compression Ratio**:
+ * - ASCII text: 70-90% compression (significant bandwidth savings)
+ * - Binary data: 60-80% compression
+ * - Already-compressed: Often expands (detected and avoided)
+ *
+ * **Memory Usage**:
+ * - Output buffer allocated by compress_data() (must be freed by caller)
+ * - Input buffer must be provided by caller for decompress_data()
+ * - No persistent state (pure functions)
+ *
+ * @section compression_settings Configuration
+ *
+ * **Compression Thresholds**:
+ * - `COMPRESSION_MIN_SIZE` (1024 bytes): Minimum packet size to attempt compression
+ * - `COMPRESSION_RATIO_THRESHOLD` (0.8): Maximum acceptable compression ratio (80% of original)
+ *
+ * **Compression Level**:
+ * - Fixed at zstd level 1 for optimal speed/ratio balance
+ * - Higher levels provide better compression but slower performance
+ * - Level 1 is ideal for real-time streaming applications
+ *
+ * @section compression_error_handling Error Handling
+ *
+ * **Compression Errors**:
+ * - Returns negative error code on failure
+ * - Sets asciichat_errno for detailed error context
+ * - Output buffer not allocated on failure (safe to ignore)
+ *
+ * **Decompression Errors**:
+ * - Returns negative error code on failure
+ * - Sets asciichat_errno for detailed error context
+ * - Output buffer unchanged on failure
+ *
+ * @section compression_limitations Limitations
+ *
+ * - **zstd dependency**: Requires zstd library at compile time
+ * - **Memory allocation**: Compression allocates output buffer (must be freed)
+ * - **Size requirement**: Must know original size for decompression
+ * - **Compression expansion**: May expand small or already-compressed data
+ *
+ * @see lib/compression.h
+ * @see lib/compression.c
+ * @see topic_network
+ * @see topic_av
+ */
+

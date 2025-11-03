@@ -1,8 +1,12 @@
 /**
- * @page topic_grid_layout Grid Layout System
+ * @defgroup grid Grid Layout System
  * @ingroup module_video
+ * @brief ⏹️ Arranging the clients nicely
  *
- * The grid layout system provides dynamic multi-frame layout for ASCII-Chat video
+ * @page topic_grid_layout Square Packing
+ * @ingroup grid
+ *
+ * The grid layout system provides dynamic multi-frame layout for ascii-chat video
  * display. It arranges multiple ASCII frames (client video feeds) into an optimal
  * grid pattern that maximizes terminal space usage while maintaining readability.
  *

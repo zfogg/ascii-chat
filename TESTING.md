@@ -1,4 +1,4 @@
-# ASCII-Chat Testing Framework
+# ascii-chat Testing Framework
 
 This project uses [Criterion](https://github.com/Snaipe/Criterion) as its C testing framework. All tests are automatically built and can be run individually or as complete test suites.
 

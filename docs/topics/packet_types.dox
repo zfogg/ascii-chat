@@ -1,10 +1,16 @@
-/**
- * @page topic_packet_types Packet Types
+ /**
+ * @defgroup packet Packet Types
  * @ingroup module_network
+ * @brief Network protocol packet type definitions and structures
+ */
+
+/**
+ * @page topic_packet_types Packet Types README
+ * @ingroup packet
  *
  * @section packet_types_overview Overview
  *
- * The packet types system defines all network protocol messages used in ASCII-Chat.
+ * The packet types system defines all network protocol messages used in ascii-chat.
  * This includes protocol negotiation, media streaming (video/audio), control messages,
  * cryptographic handshake, and multi-user protocol extensions.
  *
@@ -547,7 +553,7 @@
  *
  * @section packet_types_protocol_versioning Protocol Versioning
  *
- * ASCII-Chat uses semantic versioning for protocol compatibility:
+ * ascii-chat uses semantic versioning for protocol compatibility:
  *
  * **Version Format**:
  * - Major version: Incompatible protocol changes (client/server must match)
@@ -612,7 +618,7 @@
  *
  * **Warning**: Packed structures may not be naturally aligned.
  * Accessing fields may cause unaligned memory access (slower on some CPUs).
- * ASCII-Chat structures are designed to avoid this issue.
+ * ascii-chat structures are designed to avoid this issue.
  *
  * @section packet_types_best_practices Best Practices
  *

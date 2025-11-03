@@ -2,11 +2,11 @@
 
 /**
  * @file image2ascii/image.h
- * @ingroup module_video
+ * @ingroup image2ascii
  * @brief Image Data Structures and Operations
  *
  * This header provides comprehensive image data structures and operations
- * for ASCII-Chat. Supports RGB images with standard and SIMD-optimized
+ * for ascii-chat. Supports RGB images with standard and SIMD-optimized
  * formats for efficient image processing and ASCII art conversion.
  *
  * CORE FEATURES:
@@ -73,7 +73,7 @@
  * @note Color components are in range 0-255.
  * @note Size: 3 bytes per pixel.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct rgb_t {
   uint8_t r; ///< Red color component (0-255)
@@ -93,7 +93,7 @@ typedef struct rgb_t {
  * @note Size: 4 bytes per pixel (includes padding).
  * @note Use this structure for SIMD-optimized image processing.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct rgb_pixel_simd_t {
   uint8_t r;       ///< Red color component (0-255)
@@ -119,7 +119,7 @@ typedef struct rgb_pixel_simd_t {
  * @note Image structure and pixels array can be freed separately if needed.
  * @note Compatible with webcam capture functions (webcam_read()).
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct image_t {
   int w;         ///< Image width in pixels (must be > 0)
@@ -141,7 +141,7 @@ typedef struct image_t {
  * @note Larger images may exceed memory limits.
  * @note Video pipeline may enforce lower limits for performance.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 #define IMAGE_MAX_WIDTH 3840
 
@@ -154,7 +154,7 @@ typedef struct image_t {
  * @note Larger images may exceed memory limits.
  * @note Video pipeline may enforce lower limits for performance.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 #define IMAGE_MAX_HEIGHT 2160
 
@@ -168,7 +168,7 @@ typedef struct image_t {
  * @note This is approximately 24.88 MB for 4K RGB images.
  * @note Actual memory usage may be higher due to alignment.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 #define IMAGE_MAX_PIXELS_SIZE (IMAGE_MAX_WIDTH * IMAGE_MAX_HEIGHT * sizeof(rgb_t))
 
@@ -200,7 +200,7 @@ typedef struct image_t {
  * }
  * @endcode
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 image_t *image_new(size_t width, size_t height);
 
@@ -216,7 +216,7 @@ image_t *image_new(size_t width, size_t height);
  * @note Must NOT be used for images allocated with image_new_from_pool().
  * @note Use image_destroy_to_pool() for pool-allocated images.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void image_destroy(image_t *p);
 
@@ -244,7 +244,7 @@ void image_destroy(image_t *p);
  * }
  * @endcode
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 image_t *image_new_from_pool(size_t width, size_t height);
 
@@ -260,7 +260,7 @@ image_t *image_new_from_pool(size_t width, size_t height);
  * @note Must NOT be used for images allocated with image_new().
  * @note Use image_destroy() for standard-allocated images.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void image_destroy_to_pool(image_t *image);
 
@@ -274,7 +274,7 @@ void image_destroy_to_pool(image_t *image);
  * @note Image dimensions are not modified (only pixel data is cleared).
  * @note This is equivalent to memset() of pixels array to zero.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void image_clear(image_t *p);
 
@@ -300,7 +300,7 @@ void image_clear(image_t *p);
  * @note Character palette is used to map luminance to characters.
  * @note ASCII output has width*height characters (one character per pixel).
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print(const image_t *p, const char *palette);
 
@@ -320,7 +320,7 @@ char *image_print(const image_t *p, const char *palette);
  * @note ANSI color codes are embedded in the output string.
  * @note Color output requires terminal color support for proper display.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_color(const image_t *p, const char *palette);
 
@@ -355,7 +355,7 @@ char *image_print_color(const image_t *p, const char *palette);
  * @note Color mode is selected automatically based on terminal capabilities.
  * @note This is the recommended function for capability-aware ASCII conversion.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette,
                                     const char luminance_palette[256]);
@@ -375,7 +375,7 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
  * @note Requires terminal 256-color support for proper display.
  * @note Colors are quantized to 256-color palette automatically.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_256color(const image_t *image, const char *palette);
 
@@ -394,7 +394,7 @@ char *image_print_256color(const image_t *image, const char *palette);
  * @note Requires terminal 16-color support for proper display.
  * @note Colors are quantized to 16-color palette automatically.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_16color(const image_t *image, const char *palette);
 
@@ -419,7 +419,7 @@ char *image_print_16color(const image_t *image, const char *palette);
  * @note Dithering improves color accuracy but may add noise.
  * @note Requires terminal 16-color support for proper display.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_16color_dithered(const image_t *image, const char *palette);
 
@@ -445,7 +445,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette);
  * @note Background colors require terminal background color support.
  * @note Dithering improves color accuracy but may add noise.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette);
 
@@ -477,7 +477,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
  * @note Quantization reduces color accuracy but enables palette mapping.
  * @note Typical values: 2 levels for 16-color, 6 levels for 256-color.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void quantize_color(int *r, int *g, int *b, int levels);
 
@@ -501,7 +501,7 @@ void quantize_color(int *r, int *g, int *b, int levels);
  * @note Color adjustment is applied during ASCII conversion.
  * @note Useful for brightness/contrast control.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void precalc_rgb_palettes(const float red, const float green, const float blue);
 
@@ -531,7 +531,7 @@ void precalc_rgb_palettes(const float red, const float green, const float blue);
  * @note Source and destination images must be valid (not NULL).
  * @note Fast algorithm suitable for real-time resizing.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void image_resize(const image_t *source, image_t *dest);
 
@@ -554,7 +554,7 @@ void image_resize(const image_t *source, image_t *dest);
  * @note Source and destination images must be valid (not NULL).
  * @note Slower algorithm but produces better quality.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void image_resize_interpolation(const image_t *source, image_t *dest);
 
@@ -581,7 +581,7 @@ void image_resize_interpolation(const image_t *source, image_t *dest);
  * @note ANSI sequence format: ESC[38;2;r;g;bm (truecolor mode).
  * @note Color components are clamped to 0-255 range automatically.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *rgb_to_ansi_fg(int r, int g, int b);
 
@@ -601,7 +601,7 @@ char *rgb_to_ansi_fg(int r, int g, int b);
  * @note ANSI sequence format: ESC[48;2;r;g;bm (truecolor mode).
  * @note Color components are clamped to 0-255 range automatically.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *rgb_to_ansi_bg(int r, int g, int b);
 
@@ -627,7 +627,7 @@ char *rgb_to_ansi_bg(int r, int g, int b);
  * @note Color codes are indices into 256-color ANSI palette.
  * @note Quantization reduces color accuracy but enables 256-color mode.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
 

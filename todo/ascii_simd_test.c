@@ -1,5 +1,5 @@
 /*
- * ASCII-Chat SIMD Test Suite
+ * ascii-chat SIMD Test Suite
  *
  * Comprehensive testing of:
  * 1. ASCII conversion correctness (ascii.h functions)
@@ -588,7 +588,7 @@ int main(int argc, char *argv[]) {
   }
 
   printf("=====================================\n");
-  printf("      ASCII-Chat SIMD Test Suite    \n");
+  printf("      ascii-chat SIMD Test Suite    \n");
   printf("=====================================\n\n");
 
   // Show configuration

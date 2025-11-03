@@ -1,10 +1,10 @@
 /**
  * @file client/server.h
  * @ingroup client_connection
- * @brief ASCII-Chat Client Server Connection Management Interface
+ * @brief ascii-chat Client Server Connection Management Interface
  *
  * Provides connection establishment, management, and thread-safe packet
- * transmission functions for communicating with ASCII-Chat servers.
+ * transmission functions for communicating with ascii-chat servers.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025
@@ -48,7 +48,7 @@ typedef enum {
 int server_connection_init();
 
 /**
- * @brief Establish connection to ASCII-Chat server
+ * @brief Establish connection to ascii-chat server
  * @param address Server IP address or hostname
  * @param port Server port number
  * @param reconnect_attempt Current reconnection attempt (0 for first)

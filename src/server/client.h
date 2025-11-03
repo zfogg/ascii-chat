@@ -24,7 +24,7 @@
 /**
  * @brief Per-client state structure for server-side client management
  *
- * Represents complete state for a single connected client in the ASCII-Chat server.
+ * Represents complete state for a single connected client in the ascii-chat server.
  * This structure stores all client-specific information including network connection,
  * media capabilities, terminal settings, threading state, and synchronization primitives.
  *
@@ -148,7 +148,7 @@ typedef struct {
 /**
  * @brief Global client manager structure for server-side client coordination
  *
- * Manages all connected clients in the ASCII-Chat server. Provides O(1) client
+ * Manages all connected clients in the ascii-chat server. Provides O(1) client
  * lookup via hashtable while maintaining array-based storage for iteration.
  * This structure serves as the central coordination point for client lifecycle
  * management.

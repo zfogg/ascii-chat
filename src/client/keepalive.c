@@ -75,13 +75,35 @@
  * Keepalive Thread Management
  * ============================================================================ */
 
-/** Ping/keepalive thread handle */
+/**
+ * @brief Ping/keepalive thread handle
+ *
+ * Thread handle for the background thread that sends periodic PING packets
+ * to detect connection health. Created during connection establishment,
+ * joined during shutdown.
+ *
+ * @ingroup client_keepalive
+ */
 static asciithread_t g_ping_thread;
 
-/** Flag indicating if ping thread was created */
+/**
+ * @brief Flag indicating if ping thread was successfully created
+ *
+ * Used during shutdown to determine whether the thread handle is valid and
+ * should be joined. Prevents attempting to join a thread that was never created.
+ *
+ * @ingroup client_keepalive
+ */
 static bool g_ping_thread_created = false;
 
-/** Atomic flag indicating ping thread has exited */
+/**
+ * @brief Atomic flag indicating ping thread has exited
+ *
+ * Set by the ping thread when it exits. Used by other threads to detect
+ * thread termination without blocking on thread join operations.
+ *
+ * @ingroup client_keepalive
+ */
 static atomic_bool g_ping_thread_exited = false;
 
 /* ============================================================================

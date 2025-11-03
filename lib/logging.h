@@ -1,6 +1,8 @@
 /**
- * @file logging.h
  * @defgroup logging Logging System
+ * @ingroup module_core
+ *
+ * @file logging.h
  * @ingroup logging
  * @brief Logging API with multiple log levels and terminal output control
  *
@@ -39,7 +41,7 @@
 
 /**
  * @brief Logging levels enumeration
- * @ingroup module_core
+ * @ingroup logging
  */
 typedef enum {
   LOG_DEV = 0, /**< Development messages (most verbose) */
@@ -117,7 +119,7 @@ static const char *level_colors_truecolor[] = {
 
 /**
  * @brief Color names enum for terminal output
- * @ingroup module_core
+ * @ingroup logging
  */
 typedef enum {
   COLOR_BLUE = 0, /**< Blue color */
@@ -131,7 +133,7 @@ typedef enum {
 
 /**
  * @brief Logging-specific color enum that maps to log levels
- * @ingroup module_core
+ * @ingroup logging
  */
 typedef enum {
   LOGGING_COLOR_DEBUG = COLOR_CYAN,    /**< Color for DEBUG messages */
@@ -147,41 +149,41 @@ typedef enum {
  * @brief Initialize the logging system
  * @param filename Log file path (or NULL for no file logging)
  * @param level Minimum log level to output
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_init(const char *filename, log_level_t level);
 
 /**
  * @brief Destroy the logging system and close log file
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_destroy(void);
 
 /**
  * @brief Set the minimum log level
  * @param level Minimum log level to output
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_set_level(log_level_t level);
 
 /**
  * @brief Get the current minimum log level
  * @return Current log level
- * @ingroup module_core
+ * @ingroup logging
  */
 log_level_t log_get_level(void);
 
 /**
  * @brief Control stderr output to terminal
  * @param enabled true to enable terminal output, false to disable
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_set_terminal_output(bool enabled);
 
 /**
  * @brief Get current terminal output setting
  * @return true if terminal output is enabled, false otherwise
- * @ingroup module_core
+ * @ingroup logging
  */
 bool log_get_terminal_output(void);
 
@@ -189,7 +191,7 @@ bool log_get_terminal_output(void);
  * @brief Manually truncate large log files
  *
  * Checks if the log file exceeds MAX_LOG_SIZE and truncates it if necessary.
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_truncate_if_large(void);
 
@@ -201,7 +203,7 @@ void log_truncate_if_large(void);
  * @param func Function name (or NULL to omit)
  * @param fmt Format string (printf-style)
  * @param ... Format arguments
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...);
 
@@ -211,7 +213,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
  * @param ... Format arguments
  *
  * Writes to both log file and stderr without timestamps or log levels.
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_plain_msg(const char *fmt, ...);
 
@@ -221,7 +223,7 @@ void log_plain_msg(const char *fmt, ...);
  * @param ... Format arguments
  *
  * Writes to log file only, without terminal output.
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_file_msg(const char *fmt, ...);
 
@@ -229,7 +231,7 @@ void log_file_msg(const char *fmt, ...);
  * @brief Get color string for a given color enum
  * @param color Color enum value
  * @return ANSI color code string
- * @ingroup module_core
+ * @ingroup logging
  */
 const char *log_level_color(logging_color_t color);
 
@@ -238,7 +240,7 @@ const char *log_level_color(logging_color_t color);
  * @return Pointer to color array (16-color, 256-color, or truecolor)
  *
  * Automatically detects terminal capabilities and returns the appropriate color array.
- * @ingroup module_core
+ * @ingroup logging
  */
 const char **log_get_color_array(void);
 
@@ -246,7 +248,7 @@ const char **log_get_color_array(void);
  * @brief Re-detect terminal capabilities after logging is initialized
  *
  * Useful when terminal capabilities change or need to be refreshed.
- * @ingroup module_core
+ * @ingroup logging
  */
 void log_redetect_terminal_capabilities(void);
 
@@ -255,7 +257,7 @@ void log_redetect_terminal_capabilities(void);
  * @param format Format string
  * @param args Variable arguments list
  * @return Formatted message string (must be freed by caller)
- * @ingroup module_core
+ * @ingroup logging
  */
 char *format_message(const char *format, va_list args);
 
@@ -263,7 +265,7 @@ char *format_message(const char *format, va_list args);
  * @brief Get current time as formatted string
  * @param time_buf Output buffer for formatted time
  * @return Number of characters written (excluding null terminator)
- * @ingroup module_core
+ * @ingroup logging
  */
 size_t get_current_time_formatted(char *time_buf);
 
@@ -277,7 +279,7 @@ size_t get_current_time_formatted(char *time_buf);
  * @param ... Format string and arguments (printf-style)
  *
  * @note In debug builds, includes file/line/function. In release builds, this information is omitted.
- * @ingroup module_core
+ * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_debug(...) log_msg(LOG_DEBUG, NULL, 0, NULL, __VA_ARGS__)
@@ -288,7 +290,7 @@ size_t get_current_time_formatted(char *time_buf);
 /**
  * @brief Log an INFO message
  * @param ... Format string and arguments (printf-style)
- * @ingroup module_core
+ * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_info(...) log_msg(LOG_INFO, NULL, 0, NULL, __VA_ARGS__)
@@ -299,7 +301,7 @@ size_t get_current_time_formatted(char *time_buf);
 /**
  * @brief Log a WARN message
  * @param ... Format string and arguments (printf-style)
- * @ingroup module_core
+ * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_warn(...) log_msg(LOG_WARN, NULL, 0, NULL, __VA_ARGS__)
@@ -310,7 +312,7 @@ size_t get_current_time_formatted(char *time_buf);
 /**
  * @brief Log an ERROR message
  * @param ... Format string and arguments (printf-style)
- * @ingroup module_core
+ * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_error(...) log_msg(LOG_ERROR, NULL, 0, NULL, __VA_ARGS__)
@@ -321,7 +323,7 @@ size_t get_current_time_formatted(char *time_buf);
 /**
  * @brief Log a FATAL message
  * @param ... Format string and arguments (printf-style)
- * @ingroup module_core
+ * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_fatal(...) log_msg(LOG_FATAL, NULL, 0, NULL, __VA_ARGS__)
@@ -332,14 +334,14 @@ size_t get_current_time_formatted(char *time_buf);
 /**
  * @brief Plain logging - writes to both log file and stderr without timestamps or log levels
  * @param ... Format string and arguments (printf-style)
- * @ingroup module_core
+ * @ingroup logging
  */
 #define log_plain(...) log_plain_msg(__VA_ARGS__)
 
 /**
  * @brief File-only logging - writes to log file only, no stderr output
  * @param ... Format string and arguments (printf-style)
- * @ingroup module_core
+ * @ingroup logging
  */
 #define log_file(...) log_file_msg(__VA_ARGS__)
 
@@ -359,7 +361,7 @@ size_t get_current_time_formatted(char *time_buf);
  * @note Each call site maintains its own static timer, so different call sites
  *       can log independently.
  *
- * @ingroup module_core
+ * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_every(log_level, interval_us, fmt, ...)                                                                    \

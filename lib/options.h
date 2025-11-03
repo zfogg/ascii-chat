@@ -1,11 +1,14 @@
 /**
+ * @defgroup options Options Module
+ * @ingroup module_core
+ * @brief The command-line flags available.
+ *
  * @file options.h
- * @defgroup options Options
  * @ingroup options
- * @brief Command-line options parsing and configuration management for ASCII-Chat
+ * @brief Command-line options parsing and configuration management for ascii-chat
  *
  * This header provides comprehensive functionality for parsing command-line arguments
- * and managing configuration settings for both client and server modes of ASCII-Chat.
+ * and managing configuration settings for both client and server modes of ascii-chat.
  * It serves as the central configuration system, parsing user preferences and providing
  * defaults for all application settings.
  *
@@ -151,7 +154,7 @@
  * Maximum size for string-based options (e.g., addresses, file paths, passwords).
  * Used for arrays that store option values.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 #define OPTIONS_BUFF_SIZE 256
 
@@ -162,7 +165,7 @@
  *
  * @note This is used as a fallback if `--width` is not specified and auto-detection fails.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 #define OPT_WIDTH_DEFAULT 110
 
@@ -173,7 +176,7 @@
  *
  * @note This is used as a fallback if `--height` is not specified and auto-detection fails.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 #define OPT_HEIGHT_DEFAULT 70
 
@@ -216,7 +219,7 @@
  * }
  * @endcode
  *
- * @ingroup module_core
+ * @ingroup options
  */
 asciichat_error_t strtoint_safe(const char *str);
 
@@ -243,7 +246,7 @@ asciichat_error_t strtoint_safe(const char *str);
  * @note This is a global variable - options are parsed once at startup.
  * @note Can be updated dynamically via `update_dimensions_to_terminal_size()`.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_width;
 
@@ -263,7 +266,7 @@ extern unsigned short int opt_width;
  * @note This is a global variable - options are parsed once at startup.
  * @note Can be updated dynamically via `update_dimensions_to_terminal_size()`.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_height;
 
@@ -281,7 +284,7 @@ extern unsigned short int opt_height;
  * **Command-line**: `--width` disables auto-detection and sets explicit width.
  * `--auto-width` enables auto-detection (default).
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern bool auto_width;
 
@@ -299,7 +302,7 @@ extern bool auto_width;
  * **Command-line**: `--height` disables auto-detection and sets explicit height.
  * `--auto-height` enables auto-detection (default).
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern bool auto_height;
 
@@ -331,7 +334,7 @@ extern bool auto_height;
  * @note Server mode: Use `"0.0.0.0"` to bind to all IPv4 interfaces
  * @note For IPv6 addresses, use `opt_address6` instead
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_address[];
 
@@ -355,7 +358,7 @@ extern char opt_address[];
  * @note Server mode only: Not used in client mode
  * @note Can be used with `opt_address` for dual-stack (IPv4 + IPv6)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_address6[];
 
@@ -365,7 +368,7 @@ extern char opt_address6[];
  * - **Client mode**: Port of the server to connect to
  * - **Server mode**: Port to listen on for incoming connections
  *
- * **Default**: `"27224"` (ASCII-Chat default port)
+ * **Default**: `"27224"` (ascii-chat default port)
  *
  * **Valid range**: 1-65535 (standard TCP port range)
  *
@@ -377,7 +380,7 @@ extern char opt_address6[];
  * @note Port must be a valid number in range 1-65535
  * @note Parser validates port number format and range
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_port[];
 
@@ -405,7 +408,7 @@ extern char opt_port[];
  * @note If specified device is not available, an error is returned
  * @note Use `--list-devices` to list available webcam devices
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_webcam_index;
 
@@ -423,7 +426,7 @@ extern unsigned short int opt_webcam_index;
  * @note Flip is applied after image capture, before ASCII conversion
  * @note Flip only affects horizontal axis (left-right mirror)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern bool opt_webcam_flip;
 
@@ -442,7 +445,7 @@ extern bool opt_webcam_flip;
  * @note Useful for development and testing without hardware
  * @note Client mode only: Test pattern is generated locally
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern bool opt_test_pattern;
 
@@ -509,7 +512,7 @@ extern bool opt_test_pattern;
  * }
  * @endcode
  *
- * @ingroup module_core
+ * @ingroup options
  */
 typedef enum {
   /** @brief Auto-detect terminal capabilities (default)
@@ -517,7 +520,7 @@ typedef enum {
    * Automatically detects terminal color capabilities and selects appropriate mode.
    * Uses terminal capability detection (see `platform/terminal.h`).
    *
-   * @ingroup module_core
+   * @ingroup options
    */
   COLOR_MODE_AUTO = 0,
 
@@ -526,7 +529,7 @@ typedef enum {
    * Disables all colors and uses only ASCII characters for rendering.
    * Useful for terminals without color support or for monochrome aesthetic.
    *
-   * @ingroup module_core
+   * @ingroup options
    */
   COLOR_MODE_MONO = 1,
 
@@ -535,7 +538,7 @@ typedef enum {
    * Forces basic 16-color ANSI mode. Uses standard ANSI color codes for
    * foreground colors only.
    *
-   * @ingroup module_core
+   * @ingroup options
    */
   COLOR_MODE_16_COLOR = 2,
 
@@ -544,7 +547,7 @@ typedef enum {
    * Forces extended 256-color ANSI palette mode. Provides more color choices
    * than 16-color mode while maintaining compatibility with most terminals.
    *
-   * @ingroup module_core
+   * @ingroup options
    */
   COLOR_MODE_256_COLOR = 3,
 
@@ -553,7 +556,7 @@ typedef enum {
    * Forces full 24-bit RGB truecolor mode. Provides maximum color quality
    * but requires terminal support for truecolor escape sequences.
    *
-   * @ingroup module_core
+   * @ingroup options
    */
   COLOR_MODE_TRUECOLOR = 4
 } terminal_color_mode_t;
@@ -583,7 +586,7 @@ typedef enum {
  * @note See `terminal_color_mode_t` for available modes
  * @note Overrides auto-detection when set to non-AUTO value
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern terminal_color_mode_t opt_color_mode;
 
@@ -607,7 +610,7 @@ extern terminal_color_mode_t opt_color_mode;
  * @note Half-block mode requires UTF-8 support and Unicode half-block characters
  * @note Background mode may not work on all terminals
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern render_mode_t opt_render_mode;
 
@@ -633,7 +636,7 @@ extern render_mode_t opt_render_mode;
  * @note Program exits after printing capabilities (does not start application)
  * @note Useful for debugging terminal detection issues
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_show_capabilities;
 
@@ -655,7 +658,7 @@ extern unsigned short int opt_show_capabilities;
  * @note Overrides terminal capability detection for UTF-8
  * @note Required for half-block render mode to work properly
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_force_utf8;
 
@@ -686,7 +689,7 @@ extern unsigned short int opt_force_utf8;
  * @note Audio device selection via `opt_audio_device`
  * @note Client mode only: Audio streaming is client-side only
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_audio_enabled;
 
@@ -707,7 +710,7 @@ extern unsigned short int opt_audio_enabled;
  * @note Device index is validated against available PortAudio devices
  * @note Use PortAudio device enumeration to list available devices
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern int opt_audio_device;
 
@@ -738,7 +741,7 @@ extern int opt_audio_device;
  * @note Aspect ratio preservation is generally preferred for quality
  * @note Stretching is useful when terminal size doesn't match image aspect ratio
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_stretch;
 
@@ -768,7 +771,7 @@ extern unsigned short int opt_stretch;
  * @note Errors are still displayed even in quiet mode
  * @note Useful for non-interactive usage (scripts, automation)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_quiet;
 
@@ -795,7 +798,7 @@ extern unsigned short int opt_quiet;
  * @note Does not connect to server (standalone mode)
  * @note Uses `opt_snapshot_delay` for warmup time before capture
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_snapshot_mode;
 
@@ -817,7 +820,7 @@ extern unsigned short int opt_snapshot_mode;
  * @note Delay is in floating-point seconds (can be fractional, e.g., 2.5)
  * @note Typical values: 2.0-5.0 seconds for good webcam warmup
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern float opt_snapshot_delay;
 
@@ -841,7 +844,7 @@ extern float opt_snapshot_delay;
  * @note File must be writable (permissions checked)
  * @note Empty string ("") means no file logging
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_log_file[OPTIONS_BUFF_SIZE];
 
@@ -872,7 +875,7 @@ extern char opt_log_file[OPTIONS_BUFF_SIZE];
  * @note See @ref topic_handshake "Handshake Protocol" for encryption details
  * @note Encryption requires key file or password for authentication
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_encrypt_enabled;
 
@@ -900,7 +903,7 @@ extern unsigned short int opt_encrypt_enabled;
  * @note If key is encrypted, user will be prompted for passphrase
  * @note Key is used for both encryption and authentication
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];
 
@@ -927,7 +930,7 @@ extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];
  * @note Password is never logged or printed (security sensitive)
  * @note Prefer SSH keys over passwords when possible (more secure)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_password[OPTIONS_BUFF_SIZE];
 
@@ -946,7 +949,7 @@ extern char opt_password[OPTIONS_BUFF_SIZE];
  * @note Maximum path length: `OPTIONS_BUFF_SIZE` (256 characters)
  * @note See `opt_encrypt_key` for key file format details
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE];
 
@@ -971,7 +974,7 @@ extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE];
  * @note Use with caution - disables security features
  * @note Not recommended for production use over untrusted networks
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int opt_no_encrypt;
 
@@ -1010,7 +1013,7 @@ extern unsigned short int opt_no_encrypt;
  * @note Overrides TOFU (known_hosts) verification when provided
  * @note Provides protection against MITM attacks
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_server_key[OPTIONS_BUFF_SIZE];
 
@@ -1064,7 +1067,7 @@ extern char opt_server_key[OPTIONS_BUFF_SIZE];
  * @note Only Ed25519 keys are supported (RSA/ECDSA keys in file are ignored)
  * @note Provides access control for server security
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_client_keys[OPTIONS_BUFF_SIZE];
 
@@ -1096,7 +1099,7 @@ extern char opt_client_keys[OPTIONS_BUFF_SIZE];
  * @note Some palettes require UTF-8 support (Unicode palettes)
  * @note See `palette.h` for available palette types
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern palette_type_t opt_palette_type;
 
@@ -1120,7 +1123,7 @@ extern palette_type_t opt_palette_type;
  * @note Custom palette is only used when `opt_palette_type` is custom
  * @note See `opt_palette_custom_set` to check if custom palette was provided
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern char opt_palette_custom[256];
 
@@ -1138,7 +1141,7 @@ extern char opt_palette_custom[256];
  * @note Set to true when `--custom-palette` option is provided
  * @note Used to distinguish empty custom palette from unset custom palette
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern bool opt_palette_custom_set;
 
@@ -1162,7 +1165,7 @@ extern bool opt_palette_custom_set;
  * @note Standard ITU-R BT.601 weights are used by default
  * @note These are read-only constants (not modified after initialization)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern const float weight_red;
 
@@ -1172,7 +1175,7 @@ extern const float weight_red;
  *
  * **Default**: Typically `0.587` (standard ITU-R BT.601 weights)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern const float weight_green;
 
@@ -1182,7 +1185,7 @@ extern const float weight_green;
  *
  * **Default**: Typically `0.114` (standard ITU-R BT.601 weights)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern const float weight_blue;
 
@@ -1198,7 +1201,7 @@ extern const float weight_blue;
  * @note Tables are precomputed based on palette and color mode
  * @note Access these tables via palette functions, not directly
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int RED[];
 
@@ -1206,7 +1209,7 @@ extern unsigned short int RED[];
  *
  * Lookup table for green channel values. See `RED[]` for details.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int GREEN[];
 
@@ -1214,7 +1217,7 @@ extern unsigned short int GREEN[];
  *
  * Lookup table for blue channel values. See `RED[]` for details.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int BLUE[];
 
@@ -1223,7 +1226,7 @@ extern unsigned short int BLUE[];
  * Lookup table for grayscale values. Used for monochrome ASCII conversion
  * when color information is not needed or available.
  *
- * @ingroup module_core
+ * @ingroup options
  */
 extern unsigned short int GRAY[];
 
@@ -1300,7 +1303,7 @@ extern unsigned short int GRAY[];
  * @note Returns `ERROR_USAGE` for invalid options (caller should print usage)
  * @note `--help` and `--version` cause early exit (function still returns ASCIICHAT_OK)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 asciichat_error_t options_init(int argc, char **argv, bool is_client);
 
@@ -1337,7 +1340,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client);
  * @note Output is mode-specific (different options for client vs server)
  * @note Includes all available options with descriptions
  *
- * @ingroup module_core
+ * @ingroup options
  */
 void usage(FILE *desc, bool is_client);
 
@@ -1357,7 +1360,7 @@ void usage(FILE *desc, bool is_client);
  * - Terminal dimension options
  * - Client-specific encryption options (server key verification)
  *
- * @ingroup module_core
+ * @ingroup options
  */
 void usage_client(FILE *desc);
 
@@ -1375,7 +1378,7 @@ void usage_client(FILE *desc);
  * - Server-specific encryption options (client keys whitelist)
  * - Server configuration options
  *
- * @ingroup module_core
+ * @ingroup options
  */
 void usage_server(FILE *desc);
 
@@ -1410,7 +1413,7 @@ void usage_server(FILE *desc);
  * @note Uses terminal size detection to get full height
  * @note Useful for dynamic terminal resizing
  *
- * @ingroup module_core
+ * @ingroup options
  */
 void update_dimensions_for_full_height(void);
 
@@ -1441,7 +1444,7 @@ void update_dimensions_for_full_height(void);
  * @note Handles detection failures gracefully (uses fallbacks)
  * @note Useful for terminal resize handling
  *
- * @ingroup module_core
+ * @ingroup options
  */
 void update_dimensions_to_terminal_size(void);
 

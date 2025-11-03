@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/simd/sve.h
- * @ingroup module_video
+ * @ingroup image2ascii
  * @brief SVE-optimized ASCII rendering functions
  *
  * This header provides SVE (Scalable Vector Extension) optimized

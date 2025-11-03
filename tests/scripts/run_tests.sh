@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============================================================================
-# ASCII-Chat Test Runner Script
+# ascii-chat Test Runner Script
 # =============================================================================
 # This script unifies all the common test running patterns from the Makefile
 # into a single, reusable script that can be called from various contexts.
@@ -155,7 +155,7 @@ function log_verbose() {
 
 function show_help() {
   cat <<EOF
-ASCII-Chat Test Runner
+ascii-chat Test Runner
 
 Usage: $0 [OPTIONS] [TEST_NAME]
 
@@ -1350,7 +1350,7 @@ function main() {
   # Initialize JUnit XML
     if [[ -n "$GENERATE_JUNIT" ]]; then
       echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
-    echo "<testsuites name=\"ASCII-Chat Tests\">" >>"$junit_file"
+    echo "<testsuites name=\"ascii-chat Tests\">" >>"$junit_file"
     fi
 
   # Ensure build directory is configured

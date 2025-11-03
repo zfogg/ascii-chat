@@ -1,13 +1,17 @@
 /**
- * @page topic_image2ascii Image to ASCII Conversion
+ * @defgroup image2ascii Image to ASCII Conversion
  * @ingroup module_video
+ * @brief 🖼️ Everything necessary to turn pixels into text art
+ *
+ * @page topic_image2ascii image2ascii README
+ * @ingroup image2ascii
  *
  * The image2ascii module converts RGB image data into ASCII art suitable for terminal display,
  * with SIMD-optimized processing for real-time video conversion at 60+ FPS.
  *
  * @section img2ascii_overview Overview
  *
- * ASCII-Chat renders live video as ASCII art in the terminal by:
+ * ascii-chat renders live video as ASCII art in the terminal by:
  * 1. Capturing RGB frames from webcam (1920x1080 or configured resolution)
  * 2. Scaling frames to terminal dimensions (typically 80x24 to 200x60)
  * 3. Converting RGB pixels to grayscale luminance
@@ -203,7 +207,7 @@
  *
  * @subsection img2ascii_simd_runtime Runtime CPU Detection
  *
- * ASCII-Chat automatically detects and uses the best SIMD level:
+ * ascii-chat automatically detects and uses the best SIMD level:
  * @code{.c}
  * // At startup, detect CPU capabilities
  * if (cpu_has_avx2()) {
@@ -314,7 +318,7 @@
  *
  * @section img2ascii_terminal Terminal Compatibility
  *
- * ASCII-Chat supports various terminal features:
+ * ascii-chat supports various terminal features:
  *
  * **True Color (24-bit RGB)**:
  * - Supported: iTerm2, Alacritty, Windows Terminal, GNOME Terminal 3.16+

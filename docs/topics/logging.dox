@@ -1,11 +1,11 @@
 /**
- * @page topic_logging Logging System
- * @ingroup module_core
+ * @page topic_logging Logging README
+ * @ingroup logging
  *
  * @section logging_overview Overview
  *
  * The Logging System provides structured, level-based logging with rate limiting,
- * file output, and thread-safe operation for ASCII-Chat. It supports both console
+ * file output, and thread-safe operation for ascii-chat. It supports both console
  * and file logging with configurable log levels.
  *
  * **Implementation**: lib/logging.h

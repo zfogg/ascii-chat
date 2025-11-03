@@ -2,7 +2,7 @@
 
 /**
  * @file platform/init.h
- * @ingroup module_platform
+ * @ingroup platform
  * @brief Platform initialization and static synchronization helpers
  *
  * This header provides platform initialization functions and static initialization
@@ -33,7 +33,7 @@
  * @note The initialized flag is checked atomically before first use to ensure
  *       the mutex is initialized exactly once.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef struct {
   /** @brief The actual mutex */
@@ -57,7 +57,7 @@ typedef struct {
  * @note The initialized flag is checked atomically before first use to ensure
  *       the rwlock is initialized exactly once.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef struct {
   /** @brief The actual reader-writer lock */
@@ -81,7 +81,7 @@ typedef struct {
  * @note The initialized flag is checked atomically before first use to ensure
  *       the condition variable is initialized exactly once.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef struct {
   /** @brief The actual condition variable */

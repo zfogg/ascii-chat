@@ -1,7 +1,7 @@
 /**
  * @file client/display.h
  * @ingroup client_display
- * @brief ASCII-Chat Client Display Management Interface
+ * @brief ascii-chat Client Display Management Interface
  *
  * Defines the display subsystem interface for terminal rendering,
  * TTY management, and frame output operations.

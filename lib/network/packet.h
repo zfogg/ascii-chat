@@ -1,12 +1,12 @@
 /**
  * @file network/packet.h
- * @ingroup module_network
+ * @ingroup network
  * @brief Packet protocol implementation with encryption and compression support
  *
  * This module provides comprehensive packet protocol implementation including
  * packet verification, CRC validation, protocol compliance checking, encryption
  * support, and compression integration. It serves as the core network protocol
- * layer for ASCII-Chat's communication system.
+ * layer for ascii-chat's communication system.
  *
  * CORE RESPONSIBILITIES:
  * ======================
@@ -96,7 +96,7 @@
  * @note allocated_buffer may be different from data if packet
  *       was encrypted/compressed (data points into allocated_buffer).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 typedef struct {
   /** @brief Packet type (from packet_types.h) */
@@ -119,7 +119,7 @@ typedef struct {
  * Result codes for packet reception operations. Negative values indicate
  * errors, zero indicates success.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 typedef enum {
   /** @brief Packet received successfully */
@@ -135,7 +135,7 @@ typedef enum {
 /**
  * @name Packet Validation Functions
  * @{
- * @ingroup module_network
+ * @ingroup network
  */
 
 /**
@@ -153,7 +153,7 @@ typedef enum {
  *
  * @note All output parameters must be non-NULL.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
                                          uint32_t *expected_crc);
@@ -174,7 +174,7 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
  * @note Uses hardware-accelerated CRC32 when available (automatic fallback
  *       to software implementation).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc);
 
@@ -183,7 +183,7 @@ asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t e
 /**
  * @name Basic Packet I/O Functions
  * @{
- * @ingroup module_network
+ * @ingroup network
  */
 
 /**
@@ -202,7 +202,7 @@ asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t e
  *
  * @note CRC32 is computed over payload data (or zero if data is NULL).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *data, size_t len);
 
@@ -223,7 +223,7 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
  *
  * @warning Allocated data buffer must be freed by caller to prevent memory leaks.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **data, size_t *len);
 
@@ -232,7 +232,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 /**
  * @name Secure Packet I/O Functions
  * @{
- * @ingroup module_network
+ * @ingroup network
  */
 
 /**
@@ -256,7 +256,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
  * @note Handshake packets (packet_is_handshake_type(type) == true) are
  *       always sent unencrypted, even when crypto_ctx is provided.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, size_t len, crypto_context_t *crypto_ctx);
 
@@ -282,7 +282,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
  * @warning Envelope's allocated_buffer must be freed by caller to prevent
  *          memory leaks.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bool enforce_encryption,
                                            packet_envelope_t *envelope);
@@ -292,7 +292,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 /**
  * @name Legacy Packet I/O Functions
  * @{
- * @ingroup module_network
+ * @ingroup network
  *
  * These functions provide basic packet I/O without encryption support.
  * Use send_packet_secure() and receive_packet_secure() for encryption support.
@@ -311,7 +311,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
  *
  * @note Use send_packet_secure() if encryption support is needed.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t len);
 
@@ -330,7 +330,7 @@ int send_packet(socket_t sockfd, packet_type_t type, const void *data, size_t le
  *
  * @warning Allocated data buffer must be freed by caller.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *len);
 
@@ -339,7 +339,7 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
 /**
  * @name Protocol Packet Functions
  * @{
- * @ingroup module_network
+ * @ingroup network
  *
  * Convenience functions for sending specific protocol packets.
  * These functions construct the appropriate packet structure and
@@ -356,7 +356,7 @@ int receive_packet(socket_t sockfd, packet_type_t *type, void **data, size_t *le
  *
  * @note Ping packets are always sent unencrypted (handshake packets).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_ping_packet(socket_t sockfd);
 
@@ -370,7 +370,7 @@ int send_ping_packet(socket_t sockfd);
  *
  * @note Pong packets are always sent unencrypted (handshake packets).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_pong_packet(socket_t sockfd);
 
@@ -382,7 +382,7 @@ int send_pong_packet(socket_t sockfd);
  * Sends a PACKET_TYPE_CLEAR_CONSOLE packet to request client
  * to clear terminal display.
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_clear_console_packet(socket_t sockfd);
 
@@ -397,7 +397,7 @@ int send_clear_console_packet(socket_t sockfd);
  *
  * @note Protocol version packets are always sent unencrypted (handshake packets).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_protocol_version_packet(socket_t sockfd, const protocol_version_packet_t *version);
 
@@ -412,7 +412,7 @@ int send_protocol_version_packet(socket_t sockfd, const protocol_version_packet_
  *
  * @note Crypto capabilities packets are always sent unencrypted (handshake packets).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_crypto_capabilities_packet(socket_t sockfd, const crypto_capabilities_packet_t *caps);
 
@@ -427,7 +427,7 @@ int send_crypto_capabilities_packet(socket_t sockfd, const crypto_capabilities_p
  *
  * @note Crypto parameters packets are always sent unencrypted (handshake packets).
  *
- * @ingroup module_network
+ * @ingroup network
  */
 int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packet_t *params);
 

@@ -87,5 +87,5 @@
  * @see src/client/crypto.h
  * @see lib/crypto/handshake.h
  * @see lib/crypto/keys/keys.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

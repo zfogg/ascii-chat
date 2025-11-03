@@ -1,6 +1,8 @@
 /**
- * @file packet_queue.h
  * @defgroup packet_queue Packet Queue
+ * @ingroup module_data_structures
+ *
+ * @file packet_queue.h
  * @ingroup packet_queue
  * @brief Thread-safe packet queue system for per-client send threads
  *

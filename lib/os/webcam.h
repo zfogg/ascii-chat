@@ -1,12 +1,19 @@
 #pragma once
 
 /**
- * @file os/webcam.h
  * @defgroup os OS Abstractions
+ *
+ * @defgroup webcam Webcam Capture
  * @ingroup os
+ * @brief Cross-platform webcam capture API
+ */
+
+/**
+ * @file os/webcam.h
+ * @ingroup webcam
  * @brief Operating system specific functionality (webcam capture, etc.)
  *
- * This header provides a cross-platform webcam capture interface for ASCII-Chat.
+ * This header provides a cross-platform webcam capture interface for ascii-chat.
  * The system abstracts platform-specific webcam APIs (Windows Media Foundation,
  * Linux V4L2, macOS AVFoundation) behind a unified interface for video frame capture.
  *
@@ -70,7 +77,7 @@
  * @note Use webcam_init_context() to create a new context.
  * @note Context must be cleaned up with webcam_cleanup_context().
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 typedef struct webcam_context_t webcam_context_t;
 
@@ -91,7 +98,7 @@ typedef struct webcam_context_t webcam_context_t;
  *
  * @warning On failure, use webcam_print_init_error_help() for diagnostics.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 asciichat_error_t webcam_init(unsigned short int webcam_index);
 
@@ -110,7 +117,7 @@ asciichat_error_t webcam_init(unsigned short int webcam_index);
  *
  * @note For context-based operations, use webcam_read_context() instead.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 image_t *webcam_read(void);
 
@@ -123,7 +130,7 @@ image_t *webcam_read(void);
  * @note Safe to call multiple times (no-op after first call).
  * @note After cleanup, webcam_read() will fail until webcam_init() is called again.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 void webcam_cleanup(void);
 
@@ -143,7 +150,7 @@ void webcam_cleanup(void);
  * @note This function prints to stderr with detailed diagnostics.
  * @note Useful for debugging webcam access issues.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 void webcam_print_init_error_help(asciichat_error_t error_code);
 
@@ -172,7 +179,7 @@ void webcam_print_init_error_help(asciichat_error_t error_code);
  *
  * @warning On failure, use webcam_print_init_error_help() for diagnostics.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index);
 
@@ -186,7 +193,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
  * @note Safe to call multiple times or with NULL pointer (no-op).
  * @note After cleanup, context pointer is invalid and must not be used.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 void webcam_cleanup_context(webcam_context_t *ctx);
 
@@ -204,7 +211,7 @@ void webcam_cleanup_context(webcam_context_t *ctx);
  * @note Subsequent calls reuse the same buffer (frame overwrites previous frame).
  * @note Frame rate is limited by webcam hardware and format negotiation.
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 image_t *webcam_read_context(webcam_context_t *ctx);
 
@@ -222,7 +229,7 @@ image_t *webcam_read_context(webcam_context_t *ctx);
  * @note Dimensions may change if webcam format is renegotiated.
  * @note Frame dimensions are set during webcam_init_context().
  *
- * @ingroup module_platform
+ * @ingroup webcam
  */
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 

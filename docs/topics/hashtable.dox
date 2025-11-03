@@ -11,7 +11,7 @@
  * @section hashtable_overview Overview
  *
  * The Hash Table module provides a high-performance hash table implementation
- * optimized for client ID lookup in ASCII-Chat's multi-client server architecture.
+ * optimized for client ID lookup in ascii-chat's multi-client server architecture.
  * The implementation uses separate chaining with reader-writer locks for optimal
  * concurrent access performance.
  *

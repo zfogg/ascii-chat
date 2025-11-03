@@ -2,12 +2,11 @@
 
 /**
  * @file palette.h
- * @defgroup palette Palette Management
  * @ingroup palette
  * @brief ASCII Palette Management for Video-to-ASCII Conversion
  *
  * This header provides ASCII palette management for converting video frames to
- * ASCII art in ASCII-Chat. The system supports multiple built-in palettes and
+ * ASCII art in ascii-chat. The system supports multiple built-in palettes and
  * custom user-defined palettes, with full UTF-8 support for enhanced visual effects.
  *
  * CORE FEATURES:
@@ -69,7 +68,7 @@
 /**
  * @name ASCII Palette Types
  * @{
- * @ingroup module_video
+ * @ingroup palette
  */
 
 /**
@@ -78,7 +77,7 @@
  * Defines the available built-in palette types. Palettes are ordered
  * from darkest to lightest character for optimal brightness mapping.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 typedef enum {
   /** @brief Standard ASCII palette: "   ...',;:clodxkO0KXNWM" */
@@ -108,7 +107,7 @@ typedef enum {
  * @note Character sequence must be ordered from darkest to lightest
  *       for proper luminance mapping.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 typedef struct {
   /** @brief Human-readable palette name */
@@ -129,7 +128,7 @@ typedef struct {
  * Stores information about terminal UTF-8 support, including detection
  * results and terminal environment information.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 typedef struct {
   /** @brief True if terminal supports UTF-8 (detected automatically) */
@@ -145,7 +144,7 @@ typedef struct {
 /**
  * @name Built-in Palette Character Strings
  * @{
- * @ingroup module_video
+ * @ingroup palette
  */
 
 /**
@@ -153,7 +152,7 @@ typedef struct {
  *
  * Classic ASCII palette with varying character density.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 #define PALETTE_CHARS_STANDARD "   ...',;:clodxkO0KXNWM"
 
@@ -162,7 +161,7 @@ typedef struct {
  *
  * Unicode block characters (half and full blocks) for solid rendering.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 #define PALETTE_CHARS_BLOCKS "   ░░▒▒▓▓██"
 
@@ -171,7 +170,7 @@ typedef struct {
  *
  * Digital aesthetic characters for unique visual style.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 #define PALETTE_CHARS_DIGITAL "   -=≡≣▰▱◼"
 
@@ -180,7 +179,7 @@ typedef struct {
  *
  * Simple ASCII characters for basic rendering.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 #define PALETTE_CHARS_MINIMAL "   .-+*#"
 
@@ -189,7 +188,7 @@ typedef struct {
  *
  * Unicode ascending blocks for smooth gradient effect.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 #define PALETTE_CHARS_COOL "   ▁▂▃▄▅▆▇█"
 
@@ -205,7 +204,7 @@ typedef struct {
  *
  * @note Display width can be 1 or 2 (for full-width characters).
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 typedef struct {
   /** @brief UTF-8 byte sequence (max 4 bytes per character) */
@@ -228,7 +227,7 @@ typedef struct {
  * @note total_bytes is the total byte length of the raw string, useful
  *       for memory management.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 typedef struct {
   /** @brief Array of UTF-8 character information */
@@ -244,7 +243,7 @@ typedef struct {
 /**
  * @name Default Palette Constants
  * @{
- * @ingroup module_video
+ * @ingroup palette
  */
 
 /**
@@ -252,7 +251,7 @@ typedef struct {
  *
  * Standard ASCII palette used as fallback for legacy code paths.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 extern const char DEFAULT_ASCII_PALETTE[];
 
@@ -261,7 +260,7 @@ extern const char DEFAULT_ASCII_PALETTE[];
  *
  * Number of characters in DEFAULT_ASCII_PALETTE.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 extern const size_t DEFAULT_ASCII_PALETTE_LEN;
 
@@ -270,7 +269,7 @@ extern const size_t DEFAULT_ASCII_PALETTE_LEN;
 /**
  * @name Palette Management Functions
  * @{
- * @ingroup module_video
+ * @ingroup palette
  */
 
 /**
@@ -286,7 +285,7 @@ extern const size_t DEFAULT_ASCII_PALETTE_LEN;
  * @note The palette definition includes character sequence, length, and
  *       UTF-8 requirement information.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 const palette_def_t *get_builtin_palette(palette_type_t type);
 
@@ -305,7 +304,7 @@ const palette_def_t *get_builtin_palette(palette_type_t type);
  * @note Validation rules may vary for ASCII vs UTF-8 palettes.
  * @note Empty palettes or invalid sequences return false.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 bool validate_palette_chars(const char *chars, size_t len);
 
@@ -321,7 +320,7 @@ bool validate_palette_chars(const char *chars, size_t len);
  * @note Single-byte ASCII characters (< 0x80) are not considered UTF-8.
  * @note This check determines if client must have UTF-8 support for palette.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 bool palette_requires_utf8_encoding(const char *chars, size_t len);
 
@@ -337,7 +336,7 @@ bool palette_requires_utf8_encoding(const char *chars, size_t len);
  * @note Detection checks $TERM environment variable and locale encoding.
  * @note User can force UTF-8 support via --utf8 flag (stored in forced_utf8).
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 bool detect_client_utf8_support(utf8_capabilities_t *caps);
 
@@ -355,7 +354,7 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps);
  * @note ASCII palettes (STANDARD, MINIMAL) work with any terminal.
  * @note Returns requested palette if compatible, otherwise returns STANDARD.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 palette_type_t select_compatible_palette(palette_type_t requested, bool client_utf8);
 
@@ -374,7 +373,7 @@ palette_type_t select_compatible_palette(palette_type_t requested, bool client_u
  *
  * @warning Custom palette characters must be ordered from darkest to lightest.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 int apply_palette_config(palette_type_t type, const char *custom_chars);
 
@@ -393,7 +392,7 @@ int apply_palette_config(palette_type_t type, const char *custom_chars);
  * @note Palette characters are mapped proportionally across the brightness range.
  * @note Resulting mapping provides optimal brightness-to-character conversion.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 int build_client_luminance_palette(const char *palette_chars, size_t palette_len, char luminance_mapping[256]);
 
@@ -415,7 +414,7 @@ int build_client_luminance_palette(const char *palette_chars, size_t palette_len
  * @note The function handles both built-in and custom palettes.
  * @note Luminance mapping is automatically generated from the character sequence.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 int initialize_client_palette(palette_type_t palette_type, const char *custom_chars, char client_palette_chars[256],
                               size_t *client_palette_len, char client_luminance_palette[256]);
@@ -423,7 +422,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
 /**
  * @name UTF-8 Palette Functions
  * @{
- * @ingroup module_video
+ * @ingroup palette
  */
 
 /**
@@ -441,7 +440,7 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
  *
  * @warning Must call utf8_palette_destroy() to free resources.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 utf8_palette_t *utf8_palette_create(const char *palette_string);
 
@@ -455,7 +454,7 @@ utf8_palette_t *utf8_palette_create(const char *palette_string);
  *
  * @note All memory allocated by utf8_palette_create() is freed.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 void utf8_palette_destroy(utf8_palette_t *palette);
 
@@ -473,7 +472,7 @@ void utf8_palette_destroy(utf8_palette_t *palette);
  * @note Returns NULL if index is out of range.
  * @note The returned structure contains bytes, byte_len, and display_width.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 const utf8_char_info_t *utf8_palette_get_char(const utf8_palette_t *palette, size_t index);
 
@@ -488,7 +487,7 @@ const utf8_char_info_t *utf8_palette_get_char(const utf8_palette_t *palette, siz
  * @note For multi-byte UTF-8 characters, char_count is less than total_bytes.
  * @note Use this for palette iteration and bounds checking.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 size_t utf8_palette_get_char_count(const utf8_palette_t *palette);
 
@@ -505,7 +504,7 @@ size_t utf8_palette_get_char_count(const utf8_palette_t *palette);
  * @note char_bytes must match the actual UTF-8 byte length of the character.
  * @note Character comparison is byte-accurate for multi-byte characters.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 bool utf8_palette_contains_char(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes);
 
@@ -523,7 +522,7 @@ bool utf8_palette_contains_char(const utf8_palette_t *palette, const char *utf8_
  * @note For multiple occurrences, use utf8_palette_find_all_char_indices().
  * @note Index is character-based, suitable for palette lookup operations.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes);
 
@@ -546,7 +545,7 @@ size_t utf8_palette_find_char_index(const utf8_palette_t *palette, const char *u
  *
  * @warning Indices array must be large enough to hold max_indices size_t values.
  *
- * @ingroup module_video
+ * @ingroup palette
  */
 size_t utf8_palette_find_all_char_indices(const utf8_palette_t *palette, const char *utf8_char, size_t char_bytes,
                                           size_t *indices, size_t max_indices);

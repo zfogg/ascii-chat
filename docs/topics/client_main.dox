@@ -144,5 +144,5 @@
  *
  * @see src/client/main.c
  * @see src/client/main.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

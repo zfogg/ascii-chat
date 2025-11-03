@@ -2,8 +2,8 @@
 
 /**
  * @file platform/terminal.h
- * @ingroup module_platform
- * @brief Cross-platform terminal interface for ASCII-Chat
+ * @ingroup platform
+ * @brief Cross-platform terminal interface for ascii-chat
  *
  * This header provides unified terminal I/O operations including
  * ANSI escape sequences, cursor control, and terminal configuration.
@@ -48,7 +48,7 @@
  * @note Rows represent height (vertical dimension).
  * @note Columns represent width (horizontal dimension).
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef struct {
   int rows; ///< Number of rows (height) in terminal
@@ -71,7 +71,7 @@ typedef struct {
  * @note On failure, size structure is not modified.
  * @note Terminal size may change if terminal is resized.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_get_size(terminal_size_t *size);
 
@@ -91,7 +91,7 @@ asciichat_error_t terminal_get_size(terminal_size_t *size);
  * @note Disabling raw mode restores normal terminal behavior.
  * @note Raw mode affects only the current terminal session.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_set_raw_mode(bool enable);
 
@@ -107,7 +107,7 @@ asciichat_error_t terminal_set_raw_mode(bool enable);
  * @note Echo mode works independently of raw mode.
  * @note Disabling echo is useful for password prompts.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_set_echo(bool enable);
 
@@ -122,7 +122,7 @@ asciichat_error_t terminal_set_echo(bool enable);
  * @note Returns true if ANY color support is detected (16, 256, or truecolor).
  * @note Use detect_terminal_capabilities() for detailed color level detection.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 bool terminal_supports_color(void);
 
@@ -136,7 +136,7 @@ bool terminal_supports_color(void);
  * @note Unicode support is broader than UTF-8 (includes UTF-16, etc.).
  * @note Use terminal_supports_utf8() for UTF-8 specific detection.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 bool terminal_supports_unicode(void);
 
@@ -150,7 +150,7 @@ bool terminal_supports_unicode(void);
  * @note UTF-8 support is required for Unicode palette characters.
  * @note Use detect_terminal_capabilities() for comprehensive capability detection.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 bool terminal_supports_utf8(void);
 
@@ -166,7 +166,7 @@ bool terminal_supports_utf8(void);
  * @note On Windows, uses Console API ClearScreen() function.
  * @note Screen clearing does not affect scrollback buffer.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_clear_screen(void);
 
@@ -184,7 +184,7 @@ asciichat_error_t terminal_clear_screen(void);
  * @note Column 1 is the leftmost column of the terminal.
  * @note Cursor position may be clamped to terminal bounds.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_move_cursor(int row, int col);
 
@@ -199,7 +199,7 @@ asciichat_error_t terminal_move_cursor(int row, int col);
  * @note On Windows, requires Windows 10 build 1511 or later.
  * @note ANSI support is enabled for the current console session.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void terminal_enable_ansi(void);
 
@@ -219,7 +219,7 @@ void terminal_enable_ansi(void);
  * @note Buffering mode affects stdout/stderr behavior.
  * @note Unbuffered mode may reduce performance for large outputs.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_set_buffering(bool line_buffered);
 
@@ -234,7 +234,7 @@ asciichat_error_t terminal_set_buffering(bool line_buffered);
  * @note This function calls fsync/flush operations on the file descriptor.
  * @note Useful for ensuring output is visible before blocking operations.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_flush(int fd);
 
@@ -251,7 +251,7 @@ asciichat_error_t terminal_flush(int fd);
  * @note On failure, output parameters are not modified.
  * @note Cursor position detection may not be available on all terminals.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_get_cursor_position(int *row, int *col);
 
@@ -266,7 +266,7 @@ asciichat_error_t terminal_get_cursor_position(int *row, int *col);
  * @note Saved position is terminal-specific and not stored in application.
  * @note Some terminals may not support cursor position save/restore.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_save_cursor(void);
 
@@ -280,7 +280,7 @@ asciichat_error_t terminal_save_cursor(void);
  * @note Only restores the most recently saved cursor position.
  * @note Some terminals may not support cursor position save/restore.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_restore_cursor(void);
 
@@ -296,7 +296,7 @@ asciichat_error_t terminal_restore_cursor(void);
  * @note Title is truncated to terminal-specific maximum length.
  * @note Some terminals may not support title setting.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_set_title(const char *title);
 
@@ -310,7 +310,7 @@ asciichat_error_t terminal_set_title(const char *title);
  * @note Bell sound depends on terminal/system sound settings.
  * @note Some terminals may have bell disabled or silent.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_ring_bell(void);
 
@@ -327,7 +327,7 @@ asciichat_error_t terminal_ring_bell(void);
  * @note Hidden cursor should be restored before program exit.
  * @note Cursor visibility change is immediate.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_hide_cursor(int fd, bool hide);
 
@@ -346,7 +346,7 @@ asciichat_error_t terminal_hide_cursor(int fd, bool hide);
  * @note Setting scroll region to entire terminal clears the restriction.
  * @note Some terminals may not support scroll regions.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_set_scroll_region(int top, int bottom);
 
@@ -366,7 +366,7 @@ asciichat_error_t terminal_set_scroll_region(int top, int bottom);
  * @note This function sends ANSI reset sequence (ESC[0m).
  * @note Terminal state is reset immediately.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_reset(int fd);
 
@@ -382,7 +382,7 @@ asciichat_error_t terminal_reset(int fd);
  * @note Home position is always row 1, column 1.
  * @note Useful for starting new frame rendering at top-left.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_cursor_home(int fd);
 
@@ -399,7 +399,7 @@ asciichat_error_t terminal_cursor_home(int fd);
  * @note Some terminals may not support scrollback clearing.
  * @note On Windows, clears console screen buffer.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t terminal_clear_scrollback(int fd);
 
@@ -417,7 +417,7 @@ asciichat_error_t terminal_clear_scrollback(int fd);
  * to full 24-bit truecolor support. Used for capability detection and
  * rendering mode selection.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef enum {
   /** @brief No color support (monochrome terminal) */
@@ -437,7 +437,7 @@ typedef enum {
  * combined to indicate support for various features. Used in terminal
  * capability detection and rendering optimization.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef enum {
   /** @brief 16-color support (TERM_CAP_COLOR_16) */
@@ -458,7 +458,7 @@ typedef enum {
  * Enumeration of rendering modes for ASCII art output. Different modes
  * provide different visual effects and require different terminal capabilities.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef enum {
   /** @brief Foreground colors only (text color) */
@@ -476,7 +476,7 @@ typedef enum {
  * terminal features, color support, encoding capabilities, and rendering
  * preferences. Used for optimal ASCII art rendering configuration.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef struct {
   /** @brief Detected color support level (terminal_color_level_t) */
@@ -514,7 +514,7 @@ typedef struct {
  * @note owns_fd indicates whether the file descriptor was opened by the
  *       function and should be closed when done.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef struct {
   /** @brief File descriptor for TTY access */
@@ -550,7 +550,7 @@ typedef struct {
  * @note Detection reliability is indicated by detection_reliable field.
  * @note Use apply_color_mode_override() to apply command-line overrides.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 terminal_capabilities_t detect_terminal_capabilities(void);
 
@@ -565,7 +565,7 @@ terminal_capabilities_t detect_terminal_capabilities(void);
  * @note File descriptor may need to be closed if owns_fd is true.
  * @note TTY path is platform-specific (Unix: /dev/tty, Windows: CON, etc.).
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 tty_info_t get_current_tty(void);
 
@@ -580,7 +580,7 @@ tty_info_t get_current_tty(void);
  * @note Returns false for non-TTY devices or invalid paths.
  * @note Useful for validating TTY paths before use.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 bool is_valid_tty_path(const char *path);
 
@@ -599,7 +599,7 @@ bool is_valid_tty_path(const char *path);
  * @note Terminal size may change if terminal is resized.
  * @note This function is more reliable than terminal_get_size() due to fallbacks.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height);
 
@@ -614,7 +614,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
  * @note Returns static string (do not free).
  * @note Returns "unknown" for invalid level values.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 const char *terminal_color_level_name(terminal_color_level_t level);
 
@@ -630,7 +630,7 @@ const char *terminal_color_level_name(terminal_color_level_t level);
  * @note Returns static string (do not free).
  * @note Summary format: "16-color, UTF-8, foreground mode" (example).
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps);
 
@@ -648,7 +648,7 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps);
  * @note Useful for debugging terminal capability detection.
  * @note Output is formatted for human readability.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void print_terminal_capabilities(const terminal_capabilities_t *caps);
 
@@ -662,7 +662,7 @@ void print_terminal_capabilities(const terminal_capabilities_t *caps);
  * @note This function outputs test patterns to stdout.
  * @note Useful for verifying terminal capability detection accuracy.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void test_terminal_output_modes(void);
 
@@ -681,7 +681,7 @@ void test_terminal_output_modes(void);
  * @note Returns a modified copy of the input structure.
  * @note Overrides take precedence over detected capabilities.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
 
@@ -709,7 +709,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
  * @note Callback is called asynchronously from resize detection thread.
  * @note Callback should perform operations quickly to avoid blocking.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 typedef void (*terminal_resize_callback_t)(int cols, int rows);
 
@@ -729,7 +729,7 @@ typedef void (*terminal_resize_callback_t)(int cols, int rows);
  *
  * @warning Callback is called from a separate thread - ensure thread-safety.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 int terminal_start_resize_detection(terminal_resize_callback_t callback);
 
@@ -742,7 +742,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback);
  * @note Safe to call multiple times (no-op after first call).
  * @note After stopping, resize events are no longer detected.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void terminal_stop_resize_detection(void);
 

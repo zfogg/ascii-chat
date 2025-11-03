@@ -110,13 +110,34 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
  * Thread State Management
  * ============================================================================ */
 
-/** Data reception thread handle */
+/**
+ * @brief Data reception thread handle
+ *
+ * Thread handle for the background thread that receives and processes packets
+ * from the server. Created during connection establishment, joined during shutdown.
+ *
+ * @ingroup client_protocol
+ */
 static asciithread_t g_data_thread;
 
-/** Flag indicating if data thread was created */
+/**
+ * @brief Flag indicating if data thread was successfully created
+ *
+ * Used during shutdown to determine whether the thread handle is valid and
+ * should be joined. Prevents attempting to join a thread that was never created.
+ *
+ * @ingroup client_protocol
+ */
 static bool g_data_thread_created = false;
 
-/** Atomic flag indicating data thread has exited */
+/**
+ * @brief Atomic flag indicating data thread has exited
+ *
+ * Set by the data reception thread when it exits. Used by other threads to
+ * detect thread termination without blocking on thread join operations.
+ *
+ * @ingroup client_protocol
+ */
 static atomic_bool g_data_thread_exited = false;
 
 /* ============================================================================
@@ -163,9 +184,36 @@ typedef struct {
   time_t last_seen;
 } remote_client_info_t;
 
-/** Server state tracking for console clear logic */
+/**
+ * @brief Last known active client count from server
+ *
+ * Tracks the previous active client count to detect changes in the number
+ * of active video sources. Used to trigger console clear operations when
+ * the active count changes significantly.
+ *
+ * @ingroup client_protocol
+ */
 static uint32_t g_last_active_count = 0;
+
+/**
+ * @brief Flag indicating if server state has been initialized
+ *
+ * Set to true after receiving the first SERVER_STATE packet from the server.
+ * Used to distinguish between initial state and state updates.
+ *
+ * @ingroup client_protocol
+ */
 static bool g_server_state_initialized = false;
+
+/**
+ * @brief Flag indicating console should be cleared before next frame
+ *
+ * Set to true when the active client count changes significantly or when
+ * console state needs to be reset. Display thread clears console on next
+ * frame render when this flag is set.
+ *
+ * @ingroup client_protocol
+ */
 static bool g_should_clear_before_next_frame = false;
 
 /* ============================================================================

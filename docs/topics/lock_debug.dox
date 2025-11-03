@@ -1,19 +1,19 @@
 /**
- * @defgroup lock_debug Lock Debugging Utilities
+ * @defgroup lock_debug Mutex and RWLock Debugging Utilities
  * @ingroup module_development
  *
  */
 
 /**
- * @page topic_lock_debug Lock Debugging Utilities
+ * @page topic_lock_debug Lock Debug
  * @ingroup lock_debug
  *
- * Lock debugging and deadlock detection system for ASCII-Chat.
+ * Lock debugging and deadlock detection system for ascii-chat.
  *
  * @section lock_debug_overview Overview
  *
  * The Lock Debugging module provides instrumentation and debugging facilities
- * for tracking mutex and lock usage in ASCII-Chat. It helps detect deadlocks,
+ * for tracking mutex and lock usage in ascii-chat. It helps detect deadlocks,
  * lock ordering violations, and performance bottlenecks in multi-threaded code.
  *
  * **Implementation**: lib/lock_debug.h

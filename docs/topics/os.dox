@@ -1,6 +1,6 @@
 /**
- * @page topic_os OS Abstractions
- * @ingroup module_platform
+ * @page topic_os Operating System
+ * @ingroup module_abstractions
  *
  * Operating system specific functionality including webcam capture, platform detection,
  * and OS-specific optimizations for Windows, Linux, and macOS.
@@ -265,7 +265,7 @@
  *
  * @subsection os_webcam_api Unified Webcam API
  *
- * ASCII-Chat provides a unified C API across all platforms:
+ * ascii-chat provides a unified C API across all platforms:
  *
  * @code{.c}
  * typedef struct webcam_context webcam_context_t;

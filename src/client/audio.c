@@ -91,20 +91,50 @@
  * Audio System State
  * ============================================================================ */
 
-/** Global audio context for PortAudio operations */
+/**
+ * @brief Global audio context for PortAudio operations
+ *
+ * Maintains the PortAudio stream state, audio format configuration, and
+ * device information. Initialized during audio subsystem startup, cleaned
+ * up during shutdown.
+ *
+ * @ingroup client_audio
+ */
 static audio_context_t g_audio_context = {0};
 
 /* ============================================================================
  * Audio Capture Thread Management
  * ============================================================================ */
 
-/** Audio capture thread handle */
+/**
+ * @brief Audio capture thread handle
+ *
+ * Thread handle for the background thread that captures audio samples from
+ * the audio input device. Created during connection establishment, joined
+ * during shutdown.
+ *
+ * @ingroup client_audio
+ */
 static asciithread_t g_audio_capture_thread;
 
-/** Flag indicating if audio capture thread was created */
+/**
+ * @brief Flag indicating if audio capture thread was successfully created
+ *
+ * Used during shutdown to determine whether the thread handle is valid and
+ * should be joined. Prevents attempting to join a thread that was never created.
+ *
+ * @ingroup client_audio
+ */
 static bool g_audio_capture_thread_created = false;
 
-/** Atomic flag indicating audio capture thread has exited */
+/**
+ * @brief Atomic flag indicating audio capture thread has exited
+ *
+ * Set by the audio capture thread when it exits. Used by other threads to
+ * detect thread termination without blocking on thread join operations.
+ *
+ * @ingroup client_audio
+ */
 static atomic_bool g_audio_capture_thread_exited = false;
 
 /* ============================================================================

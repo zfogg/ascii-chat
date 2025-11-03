@@ -1,10 +1,13 @@
 /**
- * @file common.h
  * @defgroup common Common Definitions
+ * @ingroup module_core
+ * @brief Code shared throughout the library
+ *
+ * @file common.h
  * @ingroup common
  * @brief Common definitions, error codes, macros, and types shared throughout the application
  *
- * This header provides core functionality used throughout ASCII-Chat:
+ * This header provides core functionality used throughout ascii-chat:
  * - Error and exit codes (unified status values)
  * - Memory allocation macros (with mimalloc support)
  * - Utility macros (MIN, MAX, ARRAY_SIZE)
@@ -104,7 +107,7 @@ typedef unsigned long long uint64_t;
  * - 100-127: Signal/Crash handlers
  * - 128-255: Reserved (128+N = terminated by signal N on Unix)
  *
- * @ingroup module_core
+ * @ingroup common
  */
 typedef enum {
   /* Standard codes (0-2) - Unix conventions */
@@ -177,7 +180,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @brief Get human-readable string for error/exit code
  * @param code Error code from asciichat_error_t enum
  * @return Human-readable error string, or "Unknown error" for invalid codes
- * @ingroup module_core
+ * @ingroup common
  */
 static inline const char *asciichat_error_string(asciichat_error_t code) {
   switch (code) {
@@ -292,7 +295,7 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
  * FATAL(ERROR_NETWORK_BIND, "Cannot bind to port %d", port_number);
  * @endcode
  *
- * @ingroup module_core
+ * @ingroup common
  */
 #ifdef NDEBUG
 #define FATAL(code, ...) asciichat_fatal_with_context(code, NULL, 0, NULL, ##__VA_ARGS__)
@@ -395,7 +398,7 @@ extern int g_max_fps;
 /**
  * @brief Shutdown check callback function type
  * @return true if shutdown has been requested, false otherwise
- * @ingroup module_core
+ * @ingroup common
  */
 typedef bool (*shutdown_check_fn)(void);
 
@@ -406,7 +409,7 @@ typedef bool (*shutdown_check_fn)(void);
  * @note Call this from main() to register the application's shutdown detection function.
  *       Library code should use shutdown_is_requested() instead of accessing application state directly.
  *
- * @ingroup module_core
+ * @ingroup common
  */
 void shutdown_register_callback(shutdown_check_fn callback);
 
@@ -418,7 +421,7 @@ void shutdown_register_callback(shutdown_check_fn callback);
  *       application state directly. The callback must be registered first with
  *       shutdown_register_callback().
  *
- * @ingroup module_core
+ * @ingroup common
  */
 bool shutdown_is_requested(void);
 
@@ -478,7 +481,7 @@ bool shutdown_is_requested(void);
 
 /**
  * @name Memory Debugging Macros
- * @ingroup module_development
+ * @ingroup common
  * @{
  */
 
@@ -653,7 +656,7 @@ bool shutdown_is_requested(void);
  * @param file Source file name (for leak tracking)
  * @param line Line number (for leak tracking)
  * @return Allocated pointer, or NULL on failure
- * @ingroup module_development
+ * @ingroup common
  */
 void *debug_malloc(size_t size, const char *file, int line);
 
@@ -662,7 +665,7 @@ void *debug_malloc(size_t size, const char *file, int line);
  * @param ptr Pointer to free
  * @param file Source file name (for leak tracking)
  * @param line Line number (for leak tracking)
- * @ingroup module_development
+ * @ingroup common
  */
 void debug_free(void *ptr, const char *file, int line);
 
@@ -673,7 +676,7 @@ void debug_free(void *ptr, const char *file, int line);
  * @param file Source file name (for leak tracking)
  * @param line Line number (for leak tracking)
  * @return Allocated pointer, or NULL on failure
- * @ingroup module_development
+ * @ingroup common
  */
 void *debug_calloc(size_t count, size_t size, const char *file, int line);
 
@@ -684,7 +687,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line);
  * @param file Source file name (for leak tracking)
  * @param line Line number (for leak tracking)
  * @return Reallocated pointer, or NULL on failure
- * @ingroup module_development
+ * @ingroup common
  */
 void *debug_realloc(void *ptr, size_t size, const char *file, int line);
 
@@ -694,7 +697,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line);
  * @param size Size in bytes
  * @param file Source file name (for leak tracking)
  * @param line Line number (for leak tracking)
- * @ingroup module_development
+ * @ingroup common
  */
 void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
 
@@ -704,14 +707,14 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
  * Prints comprehensive memory leak report including all unfreed allocations
  * with file, line, and size information.
  *
- * @ingroup module_development
+ * @ingroup common
  */
 void debug_memory_report(void);
 
 /**
  * @brief Control stderr output for memory report
  * @param quiet If true, suppress stderr output (still logs to file)
- * @ingroup module_development
+ * @ingroup common
  */
 void debug_memory_set_quiet_mode(bool quiet);
 #endif                                        /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */

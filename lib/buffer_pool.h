@@ -1,13 +1,15 @@
 #pragma once
 
 /**
- * @file buffer_pool.h
  * @defgroup buffer_pool Buffer Pool
+ * @ingroup module_data_structures
+ *
+ * @file buffer_pool.h
  * @ingroup buffer_pool
  * @brief Memory Buffer Pool System for High-Performance Allocation
  *
  * This header provides a pre-allocated memory buffer pool system optimized
- * for high-throughput scenarios in ASCII-Chat. The system uses multiple size
+ * for high-throughput scenarios in ascii-chat. The system uses multiple size
  * classes to reduce malloc/free overhead and improve performance.
  *
  * CORE FEATURES:

@@ -1,23 +1,21 @@
 /**
- * @page topic_options Options and Configuration
- * @ingroup module_core
+ * @page topic_options Options README
+ * @ingroup options
  *
  * @section options_overview Overview
  *
- * The Options and Configuration system provides command-line argument parsing
- * and configuration file support for ASCII-Chat. It handles server and client
- * options, validates settings, and manages application configuration.
+ * The Options system provides command-line argument parsing support for
+ * ascii-chat. It handles server and client options, validates settings, and
+ * manages application configuration.
  *
  * **Implementation**: lib/options.h, lib/config.h
  *
  * **Key Features**:
  * - Command-line argument parsing with getopt
- * - TOML configuration file support
  * - Server and client mode options
  * - Automatic help generation
  * - Configuration validation
  * - Default value management
- * - Platform-specific config paths
  *
  * @section options_modes Operation Modes
  *
@@ -127,91 +125,6 @@
  * ./ascii-chat client --server-key github:zfogg
  * @endcode
  *
- * @section options_config_files Configuration Files
- *
- * **TOML Format**:
- * @code{.toml}
- * # ASCII-Chat Configuration
- *
- * [network]
- * address = "localhost"
- * port = 27224
- * ipv6 = false
- *
- * [display]
- * width = 80
- * height = 24
- * color = true
- * stretch = false
- * half_block = true
- *
- * [video]
- * webcam_index = 0
- * webcam_flip = false
- * test_pattern = false
- * snapshot = false
- * snapshot_delay = 1.0
- *
- * [audio]
- * enabled = true
- *
- * [crypto]
- * key_path = "~/.ssh/id_ed25519"
- * server_key = "github:zfogg"
- * insecure = false
- *
- * [logging]
- * log_file = "/tmp/ascii-chat.log"
- * log_level = 1
- * @endcode
- *
- * **Create Default Config**:
- * @code{.sh}
- * ./ascii-chat client --config-create ~/.ascii-chat/config.toml
- * @endcode
- *
- * **Use Config File**:
- * @code{.sh}
- * ./ascii-chat client --config ~/.ascii-chat/config.toml
- * @endcode
- *
- * **Override Config with CLI**:
- * @code{.sh}
- * # Config file sets port=27224, but override it
- * ./ascii-chat client --config ~/.ascii-chat/config.toml --port 8080
- * @endcode
- *
- * @section options_default_locations Default Config Locations
- *
- * **Linux/macOS**:
- * - `~/.ascii-chat/config.toml`
- * - `~/.config/ascii-chat/config.toml`
- * - `/etc/ascii-chat/config.toml`
- *
- * **Windows**:
- * - `%APPDATA%\ascii-chat\config.toml`
- * - `%USERPROFILE%\.ascii-chat\config.toml`
- *
- * @section options_validation Configuration Validation
- *
- * **Automatic Validation**:
- * - Port range validation (1-65535)
- * - Webcam index validation
- * - File path validation (key files, config files)
- * - Log level validation (0-4)
- * - IP address format validation
- *
- * **Error Reporting**:
- * @code{.c}
- * asciichat_error_t err = parse_options(argc, argv, &opts);
- * if (err != ASCIICHAT_OK) {
- *     asciichat_error_context_t ctx;
- *     if (HAS_ERRNO(&ctx)) {
- *         log_error("Invalid options: %s", ctx.context_message);
- *     }
- *     return err;
- * }
- * @endcode
  *
  * @section options_api Programmatic API
  *
@@ -224,36 +137,16 @@
  * }
  * @endcode
  *
- * **Load Config File**:
+ * **Error Handling**:
  * @code{.c}
- * options_t opts;
- * err = load_config_file("~/.ascii-chat/config.toml", &opts);
+ * asciichat_error_t err = parse_options(argc, argv, &opts);
  * if (err != ASCIICHAT_OK) {
- *     log_warn("Failed to load config, using defaults");
+ *     asciichat_error_context_t ctx;
+ *     if (HAS_ERRNO(&ctx)) {
+ *         log_error("Invalid options: %s", ctx.context_message);
+ *     }
+ *     return err;
  * }
- * @endcode
- *
- * **Apply Defaults**:
- * @code{.c}
- * // Initialize with default values
- * options_t opts = {0};
- * apply_default_options(&opts);
- * @endcode
- *
- * @section options_priority Option Priority
- *
- * Options are applied in this order (later overrides earlier):
- * 1. **Built-in defaults** - Hardcoded default values
- * 2. **Config file** - Values from TOML configuration
- * 3. **Environment variables** - LOG_LEVEL, etc.
- * 4. **Command-line arguments** - Highest priority
- *
- * **Example**:
- * @code{.sh}
- * # Config file has port=27224
- * # Environment has LOG_LEVEL=1
- * # Command line has --port 8080
- * # Result: port=8080 (CLI wins), log_level=1 (from env)
  * @endcode
  *
  * @section options_help Help System
@@ -271,6 +164,7 @@
  * - Provides usage examples
  * - Displays mode-specific options
  *
+ * @see @ref topic_config "Configuration" for configuration files and precedence
  * @see options.h
  * @see config.h
  */

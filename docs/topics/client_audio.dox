@@ -92,5 +92,5 @@
  * @see src/client/audio.c
  * @see src/client/audio.h
  * @see lib/audio.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

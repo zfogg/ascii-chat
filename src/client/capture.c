@@ -101,10 +101,35 @@
 /* ============================================================================
  * Capture Thread Management
  * ============================================================================ */
+
+/**
+ * @brief Webcam capture thread handle
+ *
+ * Thread handle for the background thread that captures video frames from
+ * the webcam device. Created during connection establishment, joined during shutdown.
+ *
+ * @ingroup client_capture
+ */
 static asciithread_t g_capture_thread;
 
+/**
+ * @brief Flag indicating if capture thread was successfully created
+ *
+ * Used during shutdown to determine whether the thread handle is valid and
+ * should be joined. Prevents attempting to join a thread that was never created.
+ *
+ * @ingroup client_capture
+ */
 static bool g_capture_thread_created = false;
 
+/**
+ * @brief Atomic flag indicating capture thread has exited
+ *
+ * Set by the capture thread when it exits. Used by other threads to detect
+ * thread termination without blocking on thread join operations.
+ *
+ * @ingroup client_capture
+ */
 static atomic_bool g_capture_thread_exited = false;
 
 /* ============================================================================

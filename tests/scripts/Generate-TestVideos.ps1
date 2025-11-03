@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# PowerShell script to generate test videos for ASCII-Chat
+# PowerShell script to generate test videos for ascii-chat
 # Creates a simulated webcam video of a person at their computer
 
 param(
@@ -28,7 +28,7 @@ if (-not (Test-Path $FixturesDir)) {
 
 Set-Location $FixturesDir
 
-Write-Host "Generating test video for ASCII-Chat..." -ForegroundColor Cyan
+Write-Host "Generating test video for ascii-chat..." -ForegroundColor Cyan
 
 # Generate webcam simulation video
 Write-Host "Creating simulated webcam video..." -ForegroundColor Yellow
@@ -74,7 +74,7 @@ catch {
     $simpleArgs = @(
         "-f", "lavfi",
         "-i", "testsrc2=duration=5:size=${Resolution}:rate=$FPS",
-        "-vf", "drawtext=text='ASCII-Chat Test':x=(w-text_w)/2:y=(h-text_h)/2:fontcolor=white:fontsize=30",
+        "-vf", "drawtext=text='ascii-chat Test':x=(w-text_w)/2:y=(h-text_h)/2:fontcolor=white:fontsize=30",
         "-c:v", "libx264",
         "-preset", "ultrafast",
         "-crf", "28",

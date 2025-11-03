@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# PowerShell script to run ASCII-Chat tests via Docker
+# PowerShell script to run ascii-chat tests via Docker
 # Usage:
 #   ./tests/scripts/run-docker-tests.ps1                          # Run all tests
 #   ./tests/scripts/run-docker-tests.ps1 unit                     # Run all unit tests
@@ -32,7 +32,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "ASCII-Chat Docker Test Runner" -ForegroundColor Green
+Write-Host "ascii-chat Docker Test Runner" -ForegroundColor Green
 Write-Host ""
 
 # Get the repository root (script is in tests/scripts, so go up twice)
@@ -104,7 +104,7 @@ if ($IsClangTidy) {
 #!/bin/bash
 set -e
 
-echo '=== Starting ASCII-Chat clang-tidy Analysis ==='
+echo '=== Starting ascii-chat clang-tidy Analysis ==='
 echo ""
 
 # Check if build_tidy exists and is recent
@@ -164,7 +164,7 @@ fi
 echo ""
 echo "=== clang-tidy Analysis Complete ==="
 echo ""
-echo "Summary of analysis completed for ASCII-Chat source files."
+echo "Summary of analysis completed for ascii-chat source files."
 echo "Any issues found have been reported above."
 echo ""
 '@

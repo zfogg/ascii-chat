@@ -52,7 +52,7 @@
  *
  * @section client_overview Overview
  *
- * The ASCII-Chat client application connects to ASCII-Chat servers, captures
+ * The ascii-chat client application connects to ascii-chat servers, captures
  * video and audio from local devices, transmits media streams to the server,
  * and renders received ASCII frames to the terminal. It implements robust
  * reconnection logic, cryptographic authentication, and multi-threaded media

@@ -131,5 +131,5 @@
  * @see src/client/display.c
  * @see src/client/display.h
  * @see lib/platform/terminal.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

@@ -169,6 +169,15 @@
 // Global crypto handshake context for this client connection
 // NOTE: We use the crypto context from server.c to match the handshake
 extern crypto_handshake_context_t g_crypto_ctx;
+
+/**
+ * @brief Flag indicating if crypto subsystem has been initialized
+ *
+ * Set to true after successful initialization of cryptographic components.
+ * Used to prevent multiple initialization attempts and ensure proper cleanup.
+ *
+ * @ingroup client_crypto
+ */
 static bool g_crypto_initialized = false;
 
 /**

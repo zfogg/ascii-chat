@@ -2,7 +2,7 @@
  * @file server/crypto.c
  * @ingroup server_crypto
  * @brief 🔐 Server cryptography: per-client handshake, X25519 key exchange, and session encryption management
- * ======================
+ *
  * 1. Initialize server crypto system and validate encryption configuration
  * 2. Perform cryptographic handshake with each connecting client
  * 3. Manage per-client crypto contexts stored in client_info_t structures

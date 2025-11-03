@@ -1,7 +1,7 @@
 /**
  * @file client/protocol.h
  * @ingroup client_protocol
- * @brief ASCII-Chat Client Protocol Handler Interface
+ * @brief ascii-chat Client Protocol Handler Interface
  *
  * Defines the protocol handling interface for client-side packet
  * processing and data reception thread management.

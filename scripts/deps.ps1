@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Install dependencies for ASCII-Chat using vcpkg
+    Install dependencies for ascii-chat using vcpkg
 
 .DESCRIPTION
     This script installs all required vcpkg dependencies before CMake configuration.
@@ -28,7 +28,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "`n=== ASCII-Chat Dependency Installer ===`n" -ForegroundColor Cyan
+Write-Host "`n=== ascii-chat Dependency Installer ===`n" -ForegroundColor Cyan
 
 # Check if vcpkg is available
 if (-not $env:VCPKG_ROOT) {

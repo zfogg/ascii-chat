@@ -2,11 +2,11 @@
 
 /**
  * @file compression.h
- * @ingroup module_network
+ * @ingroup compression
  * @brief Network Packet Compression Utilities
  *
  * This header provides compression and decompression utilities for network
- * packets in ASCII-Chat. The system uses zlib deflate compression to reduce
+ * packets in ascii-chat. The system uses zlib deflate compression to reduce
  * bandwidth usage for large packets like video frames.
  *
  * CORE FEATURES:

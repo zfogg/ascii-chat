@@ -68,5 +68,5 @@
  *
  * @see src/client/keepalive.c
  * @see src/client/keepalive.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

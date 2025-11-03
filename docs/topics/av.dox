@@ -1,11 +1,11 @@
 /**
  * @page topic_av Audio/Video Networking
- * @ingroup module_network
+ * @ingroup av
  *
  * @section av_overview Overview
  *
  * The Audio/Video Networking module provides the network protocol implementation
- * for audio, video, and ASCII frame packets in ASCII-Chat. The system handles
+ * for audio, video, and ASCII frame packets in ascii-chat. The system handles
  * packet serialization, compression, encryption integration, and message formatting
  * for real-time media streaming over TCP.
  *

@@ -1,10 +1,10 @@
 /**
  * @file client/audio.h
  * @ingroup client_audio
- * @brief ASCII-Chat Client Audio Processing Management Interface
+ * @brief ascii-chat Client Audio Processing Management Interface
  *
  * Defines the interface for audio system initialization, capture thread
- * management, and audio sample processing in the ASCII-Chat client.
+ * management, and audio sample processing in the ascii-chat client.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025

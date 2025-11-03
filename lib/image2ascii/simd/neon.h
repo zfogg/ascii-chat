@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/simd/neon.h
- * @ingroup module_video
+ * @ingroup image2ascii
  * @brief NEON-optimized ASCII rendering functions
  *
  * This header provides NEON (Advanced SIMD) optimized functions for
@@ -29,7 +29,7 @@
  * @param pixel_offset Pixel offset for dithering
  * @return 256-color palette indices (16 pixels)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t b, int pixel_offset);
 
@@ -38,7 +38,7 @@ uint8x16_t palette256_index_dithered_neon(uint8x16_t r, uint8x16_t g, uint8x16_t
  *
  * Must be called once at startup before using NEON functions.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void init_neon_decimal_table(void);
 
@@ -50,7 +50,7 @@ void init_neon_decimal_table(void);
  *
  * Matches scalar image_print() interface for compatibility.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii_chars);
 
@@ -62,7 +62,7 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
@@ -77,14 +77,14 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
  *
  * Uses Unicode half-block characters (▀▄) for improved rendering.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes);
 
 /**
  * @brief Destroy NEON caches
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void neon_caches_destroy(void);
 #endif
