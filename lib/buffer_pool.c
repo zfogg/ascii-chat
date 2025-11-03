@@ -1,3 +1,9 @@
+/**
+ * @file buffer_pool.c
+ * @ingroup buffer_pool
+ * @brief 💾 High-performance memory pool allocator for zero-allocation packet handling
+ */
+
 #include "buffer_pool.h"
 #include "common.h"
 #include "asciichat_errno.h"

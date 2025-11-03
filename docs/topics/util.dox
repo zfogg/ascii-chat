@@ -1,6 +1,11 @@
 /**
- * @page topic_util Utility Functions
+ * @defgroup util Utility Functions
  * @ingroup module_utilities
+ * @brief String, path, IP, UTF-8, CRC32, and formatting utilities
+ */
+
+/**
+ * @page topic_util Utility Functions
  * @ingroup util
  *
  * @section util_overview Overview

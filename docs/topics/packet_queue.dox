@@ -1,4 +1,10 @@
 /**
+ * @defgroup packet_queue Packet Queue
+ * @ingroup module_data_structures
+ * @brief Thread-safe per-client packet queues
+ */
+
+/**
  * @page topic_packet_queue Packet Queue
  * @ingroup packet_queue
  *

@@ -1,6 +1,6 @@
 /**
  * @page topic_grid_layout Grid Layout System
- * @ingroup image2ascii
+ * @ingroup module_video
  *
  * The grid layout system provides dynamic multi-frame layout for ASCII-Chat video
  * display. It arranges multiple ASCII frames (client video feeds) into an optimal

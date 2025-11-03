@@ -1,3 +1,9 @@
+/**
+ * @file network/packet.c
+ * @ingroup packet
+ * @brief 📦 Packet protocol handler with CRC validation, encryption, and compression
+ */
+
 #include "packet.h"
 #include "network.h"
 #include "common.h"

@@ -1,9 +1,7 @@
 /**
- * @file terminal.c
- * @brief POSIX terminal I/O implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides POSIX terminal control wrappers for the platform abstraction layer,
- * enabling cross-platform terminal operations using a unified API.
+ * @file platform/posix/terminal.c
+ * @ingroup platform
+ * @brief 💻 POSIX terminal I/O with ANSI color detection and capability queries
  */
 
 #ifndef _WIN32

@@ -1,3 +1,9 @@
+/**
+ * @file crypto/known_hosts.c
+ * @ingroup crypto
+ * @brief 📜 SSH known_hosts file parser for host key verification and trust management
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

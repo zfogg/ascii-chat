@@ -2,7 +2,7 @@
 
 /**
  * @file platform/system.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Cross-platform system functions interface for ASCII-Chat
  *
  * This header provides unified system functions including process management,
@@ -33,7 +33,7 @@
  * @brief Signal handler function type
  * @param sig Signal number
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 typedef void (*signal_handler_t)(int);
 
@@ -48,7 +48,7 @@ typedef void (*signal_handler_t)(int);
  * Initializes platform-specific subsystems such as Winsock on Windows.
  * Must be called before using any platform-specific functions.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_init(void);
 
@@ -58,7 +58,7 @@ asciichat_error_t platform_init(void);
  * Performs cleanup for platform-specific subsystems.
  * Should be called during program shutdown.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_cleanup(void);
 
@@ -68,7 +68,7 @@ void platform_cleanup(void);
  *
  * Sleeps the current thread for the specified duration.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_sleep_ms(unsigned int ms);
 
@@ -86,7 +86,7 @@ void platform_sleep_ms(unsigned int ms);
  * @param result Pointer to struct tm to receive result
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
 
@@ -94,7 +94,7 @@ asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
  * @brief Get the current process ID
  * @return Process ID of the calling process
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int platform_get_pid(void);
 
@@ -106,7 +106,7 @@ int platform_get_pid(void);
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 const char *platform_get_username(void);
 
@@ -118,7 +118,7 @@ const char *platform_get_username(void);
  *
  * Registers a signal handler for the specified signal.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
 
@@ -131,7 +131,7 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler);
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 const char *platform_getenv(const char *name);
 
@@ -143,7 +143,7 @@ const char *platform_getenv(const char *name);
  *
  * Sets or unsets an environment variable.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int platform_setenv(const char *name, const char *value);
 
@@ -152,7 +152,7 @@ int platform_setenv(const char *name, const char *value);
  * @param fd File descriptor to check
  * @return Non-zero if fd is a terminal, 0 otherwise
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int platform_isatty(int fd);
 
@@ -165,7 +165,7 @@ int platform_isatty(int fd);
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 const char *platform_ttyname(int fd);
 
@@ -176,7 +176,7 @@ const char *platform_ttyname(int fd);
  *
  * Forces all buffered data for the file descriptor to be written to disk.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int platform_fsync(int fd);
 
@@ -189,7 +189,7 @@ int platform_fsync(int fd);
  * Captures the current call stack into the provided buffer.
  * Returns the number of frames actually captured.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int platform_backtrace(void **buffer, int size);
 
@@ -204,7 +204,7 @@ int platform_backtrace(void **buffer, int size);
  *
  * @note The returned array must be freed with platform_backtrace_symbols_free().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 char **platform_backtrace_symbols(void *const *buffer, int size);
 
@@ -214,7 +214,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size);
  *
  * Frees the memory allocated by platform_backtrace_symbols().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_backtrace_symbols_free(char **strings);
 
@@ -226,7 +226,7 @@ void platform_backtrace_symbols_free(char **strings);
  *
  * @note This should be called early in program initialization.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_install_crash_handler(void);
 
@@ -237,7 +237,7 @@ void platform_install_crash_handler(void);
  * Prints a backtrace of the current call stack to stderr.
  * Useful for debugging crashes or errors.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_print_backtrace(int skip_frames);
 
@@ -257,7 +257,7 @@ void platform_print_backtrace(int skip_frames);
  * @param ... Variable arguments
  * @return Number of characters written (excluding null terminator) or negative on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
 
@@ -271,7 +271,7 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
  * @param ... Variable arguments
  * @return Number of characters written or negative on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int safe_fprintf(FILE *stream, const char *format, ...);
 
@@ -299,7 +299,7 @@ int safe_fprintf(FILE *stream, const char *format, ...);
  * @param count Number of bytes to copy
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count);
 
@@ -315,7 +315,7 @@ asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src,
  * @param count Number of bytes to set
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t count);
 
@@ -331,7 +331,7 @@ asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t c
  * @param count Number of bytes to move
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src, size_t count);
 
@@ -346,7 +346,7 @@ asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src
  * @param src Source string
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src);
 
@@ -361,7 +361,7 @@ asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src)
  * @param ipv4_out_size Size of the output buffer
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size);
 
@@ -393,7 +393,7 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);
 
@@ -422,7 +422,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 bool platform_is_binary_in_path(const char *bin_name);
 
@@ -435,7 +435,7 @@ bool platform_is_binary_in_path(const char *bin_name);
  * @note Thread-safe: Uses internal locking
  * @note Safe to call even if cache was never initialized
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_cleanup_binary_path_cache(void);
 
@@ -450,7 +450,7 @@ void platform_cleanup_binary_path_cache(void);
  * @note Windows legacy MAX_PATH (260) is too restrictive for modern use.
  *       We use the extended-length limit instead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef _WIN32
 #define PLATFORM_MAX_PATH_LENGTH 32767
@@ -496,6 +496,6 @@ void platform_cleanup_binary_path_cache(void);
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 bool platform_get_executable_path(char *exe_path, size_t path_size);

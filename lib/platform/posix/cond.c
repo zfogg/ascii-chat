@@ -1,9 +1,7 @@
 /**
- * @file cond.c
- * @brief POSIX condition variable implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides POSIX pthread condition variable wrappers for the platform abstraction layer,
- * enabling cross-platform thread synchronization using a unified API.
+ * @file platform/posix/cond.c
+ * @ingroup platform
+ * @brief ⏰ POSIX pthread condition variable implementation for thread signaling and waiting
  */
 
 #ifndef _WIN32

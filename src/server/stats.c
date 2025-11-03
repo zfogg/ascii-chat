@@ -1,13 +1,7 @@
 /**
- * @file stats.c
- * @brief Server Performance Monitoring and Statistics Collection
- *
- * This module implements comprehensive performance monitoring for the ASCII-Chat
- * server, providing real-time insights into system health, resource utilization,
- * and client behavior. It was extracted from the monolithic server.c to provide
- * centralized statistics management.
- *
- * CORE RESPONSIBILITIES:
+ * @file server/stats.c
+ * @ingroup server_stats
+ * @brief 📊 Server performance monitoring: resource utilization tracking, client metrics, and health reporting
  * ======================
  * 1. Continuous monitoring of server performance metrics
  * 2. Per-client statistics collection and reporting

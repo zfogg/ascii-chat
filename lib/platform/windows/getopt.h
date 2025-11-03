@@ -4,7 +4,7 @@
 
 /**
  * @file platform/windows/getopt.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief POSIX getopt implementation for Windows
  *
  * This header provides a POSIX-compatible getopt and getopt_long implementation
@@ -76,7 +76,7 @@ extern "C" {
 
 /**
  * @name Getopt Variables
- * @ingroup platform
+ * @ingroup module_platform
  * @{
  */
 
@@ -99,7 +99,7 @@ extern int optopt;
  *
  * Used to define long options (e.g., --help, --version) for getopt_long().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 struct option {
   const char *name; /**< Long option name (without -- prefix) */
@@ -110,7 +110,7 @@ struct option {
 
 /**
  * @name Option Argument Requirements
- * @ingroup platform
+ * @ingroup module_platform
  * @{
  */
 
@@ -136,7 +136,7 @@ struct option {
  * preceded by a single dash (e.g., -h, -v). Options requiring arguments are followed
  * by a colon in optstring (e.g., "v:" means -v requires an argument).
  *
- * @ingroup platform
+ * @ingroup module_platform
  *
  * @par Example
  * @code
@@ -164,7 +164,7 @@ int getopt(int argc, char *const argv[], const char *optstring);
  * Parses both short options (e.g., -h) and long options (e.g., --help). Short options
  * are parsed the same way as getopt(). Long options are matched from the longopts array.
  *
- * @ingroup platform
+ * @ingroup module_platform
  *
  * @par Example
  * @code

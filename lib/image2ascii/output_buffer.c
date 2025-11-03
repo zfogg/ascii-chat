@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/output_buffer.c
+ * @ingroup image2ascii
+ * @brief 📝 Output buffer helpers for efficient string building in ASCII rendering pipeline
+ */
+
 #include "image2ascii/output_buffer.h"
 #include "common.h"
 

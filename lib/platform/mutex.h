@@ -2,7 +2,7 @@
 
 /**
  * @file platform/mutex.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Cross-platform mutex interface for ASCII-Chat
  *
  * This header provides a unified mutex interface that abstracts platform-specific
@@ -47,7 +47,7 @@ typedef pthread_mutex_t mutex_t;
  *
  * Initializes the mutex for use. Must be called before any other mutex operations.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int mutex_init(mutex_t *mutex);
 
@@ -59,7 +59,7 @@ int mutex_init(mutex_t *mutex);
  * Destroys the mutex and frees any associated resources.
  * The mutex must not be locked when this is called.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int mutex_destroy(mutex_t *mutex);
 
@@ -71,7 +71,7 @@ int mutex_destroy(mutex_t *mutex);
  * @note This is the implementation function. Use mutex_lock() macro instead,
  *       which includes debug tracking in debug builds.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int mutex_lock_impl(mutex_t *mutex);
 
@@ -83,7 +83,7 @@ int mutex_lock_impl(mutex_t *mutex);
  * Attempts to acquire the mutex lock without blocking. Returns immediately
  * whether the lock was acquired or not.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int mutex_trylock(mutex_t *mutex);
 
@@ -95,7 +95,7 @@ int mutex_trylock(mutex_t *mutex);
  * @note This is the implementation function. Use mutex_unlock() macro instead,
  *       which includes debug tracking in debug builds.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int mutex_unlock_impl(mutex_t *mutex);
 
@@ -113,7 +113,7 @@ int mutex_unlock_impl(mutex_t *mutex);
  * @note In debug builds, this macro includes lock debugging if initialized.
  *       In release builds, calls the implementation directly for zero overhead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef NDEBUG
 #define mutex_lock(mutex) mutex_lock_impl(mutex)
@@ -131,7 +131,7 @@ int mutex_unlock_impl(mutex_t *mutex);
  * @note In debug builds, this macro includes lock debugging if initialized.
  *       In release builds, calls the implementation directly for zero overhead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef NDEBUG
 #define mutex_unlock(mutex) mutex_unlock_impl(mutex)

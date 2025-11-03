@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/ssse3.c
+ * @ingroup image2ascii
+ * @brief 🚀 SSSE3-accelerated ASCII rendering with advanced shuffle operations for x86
+ */
+
 #if SIMD_SUPPORT_SSSE3
 #include <stdio.h>
 #include <stdlib.h>

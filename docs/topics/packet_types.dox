@@ -1,6 +1,6 @@
 /**
  * @page topic_packet_types Packet Types
- * @ingroup packet
+ * @ingroup module_network
  *
  * @section packet_types_overview Overview
  *

@@ -1,6 +1,6 @@
 /**
  * @file platform/string.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Platform-independent safe string functions
  *
  * This header provides safe string formatting and manipulation functions that
@@ -79,7 +79,7 @@
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
 
@@ -104,7 +104,7 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
  *
  * @warning Always check return value. Negative values indicate errors.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int safe_fprintf(FILE *stream, const char *format, ...);
 
@@ -140,7 +140,7 @@ int safe_fprintf(FILE *stream, const char *format, ...);
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 char *platform_strcat(char *dest, size_t dest_size, const char *src);
 
@@ -175,7 +175,7 @@ char *platform_strcat(char *dest, size_t dest_size, const char *src);
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int safe_sscanf(const char *str, const char *format, ...);
 

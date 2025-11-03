@@ -1,3 +1,9 @@
+/**
+ * @file crypto/keys/ssh_keys.c
+ * @ingroup keys
+ * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
+ */
+
 #include "crypto/crypto.h"
 #include "ssh_keys.h"
 #include "common.h"

@@ -1,3 +1,10 @@
+
+/**
+ * @file image2ascii/ascii.c
+ * @ingroup image2ascii
+ * @brief 🖼️ Image-to-ASCII conversion with SIMD acceleration, color matching, and terminal optimization
+ */
+
 #include <stdint.h>
 #include <sys/types.h>
 #include <stdio.h>

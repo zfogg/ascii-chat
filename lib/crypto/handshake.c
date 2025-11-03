@@ -1,3 +1,9 @@
+/**
+ * @file crypto/handshake.c
+ * @ingroup handshake
+ * @brief 🤝 Cryptographic handshake protocol: X25519 key exchange, authentication, and secure session establishment
+ */
+
 #include "handshake.h"
 #include "asciichat_errno.h"
 #include "buffer_pool.h"

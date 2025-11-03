@@ -1,13 +1,7 @@
 /**
- * @file symbols.c
- * @brief Symbol resolution cache implementation (cross-platform)
- *
- * Caches llvm-symbolizer/addr2line results to avoid expensive subprocess spawns.
- * Uses hashtable for O(1) lookups of previously resolved addresses.
- * Supports both Windows (llvm-symbolizer.exe/addr2line.exe) and POSIX (llvm-symbolizer/addr2line).
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date October 2025
+ * @file platform/symbols.c
+ * @ingroup platform
+ * @brief 🔍 Symbol resolution cache: llvm-symbolizer/addr2line wrapper with hashtable-backed caching
  */
 
 // Platform-specific binary names

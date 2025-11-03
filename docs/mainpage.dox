@@ -533,16 +533,5 @@
  * - Issues: https://github.com/zfogg/ascii-chat/issues
  * - Releases: https://github.com/zfogg/ascii-chat/releases
  *
- * @defgroup dev Development
- * @brief Real hacker hours
- *
- * @defgroup debug Debugging
- * @ingroup dev
-
- * @brief Debugging utilities to help you when you're struggling.  We've got timers and stack traces and more!
- * @defgroup debug_util Debugging Utilities
- * @ingroup debug
- *
- *
  */
 

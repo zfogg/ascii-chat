@@ -1,3 +1,9 @@
+/**
+ * @file logging.c
+ * @ingroup logging
+ * @brief 📝 Multi-level logging with terminal color support, file rotation, and async output
+ */
+
 #include "common.h"
 #include "platform/abstraction.h"
 #include "util/path.h"

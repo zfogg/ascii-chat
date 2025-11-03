@@ -103,7 +103,7 @@
  * @note Sequence numbers are used to detect dropped frames (gaps in sequence).
  * @note Timestamps are in microseconds for high precision timing.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 typedef struct {
   /** @name Frame Data
@@ -164,7 +164,7 @@ typedef struct {
  * @note Latest-frame-wins semantics (old frames are dropped, not queued).
  * @note Thread-safe: Writer and reader can operate concurrently.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 typedef struct {
   /** @name Double Buffering
@@ -222,7 +222,7 @@ typedef struct {
  * Contains aggregated statistics for video frame quality monitoring.
  * Used for adaptive streaming quality control based on performance metrics.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 typedef struct {
   /** @brief Total frames received since creation */
@@ -249,7 +249,7 @@ typedef struct {
  * @note Uses two pre-allocated frames that alternate on each update.
  * @note Atomic pointer swap enables lock-free operation.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 typedef struct {
   atomic_uintptr_t current_frame; ///< Atomic pointer to current frame
@@ -278,7 +278,7 @@ typedef struct {
  *
  * @warning Must call video_frame_buffer_destroy() to free resources.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id);
 
@@ -291,7 +291,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id);
  *
  * @note All frame data and statistics are lost after destruction.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 void video_frame_buffer_destroy(video_frame_buffer_t *vfb);
 
@@ -310,7 +310,7 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb);
  *
  * @warning Must call video_frame_commit() after writing to make frame available.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 video_frame_t *video_frame_begin_write(video_frame_buffer_t *vfb);
 
@@ -329,7 +329,7 @@ video_frame_t *video_frame_begin_write(video_frame_buffer_t *vfb);
  *
  * @note Thread-safe: Writer can commit while reader is reading (no blocking).
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 void video_frame_commit(video_frame_buffer_t *vfb);
 
@@ -348,7 +348,7 @@ void video_frame_commit(video_frame_buffer_t *vfb);
  *
  * @note Thread-safe: Reader can read while writer is writing (no blocking).
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb);
 
@@ -364,7 +364,7 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb);
  * @note All statistics are calculated atomically from atomic counters.
  * @note Drop rate is calculated as dropped_frames / total_frames.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats);
 
@@ -388,7 +388,7 @@ void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats
  *
  * @warning Must call simple_frame_swap_destroy() to free resources.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 simple_frame_swap_t *simple_frame_swap_create(void);
 
@@ -399,7 +399,7 @@ simple_frame_swap_t *simple_frame_swap_create(void);
  * Destroys the simple frame swap and frees all associated resources. Safe to
  * call multiple times or with NULL pointer.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 void simple_frame_swap_destroy(simple_frame_swap_t *sfs);
 
@@ -419,7 +419,7 @@ void simple_frame_swap_destroy(simple_frame_swap_t *sfs);
  *
  * @warning Frame data pointer must remain valid until next update.
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t size);
 
@@ -434,7 +434,7 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
  * @note Frame pointer is valid until next simple_frame_swap_update() call.
  * @note Lock-free operation (uses atomic pointer read).
  *
- * @ingroup video_frame
+ * @ingroup module_video
  */
 const video_frame_t *simple_frame_swap_get(simple_frame_swap_t *sfs);
 

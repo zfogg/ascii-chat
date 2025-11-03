@@ -1,0 +1,114 @@
+/**
+ * @defgroup client_capture Media Capture
+ * @ingroup module_client
+ * @brief Webcam video capture and transmission to server
+ */
+
+/**
+ * @page topic_client_capture Media Capture
+ * @ingroup client_capture
+ *
+ * @section client_capture_overview Overview
+ *
+ * The media capture subsystem manages webcam video capture, frame compression,
+ * and transmission to the server. Supports platform-specific webcam backends
+ * and test pattern mode for testing without hardware.
+ *
+ * **Implementation**: src/client/capture.c, src/client/capture.h
+ *
+ * @section client_capture_platforms Platform Support
+ *
+ * **Webcam Backends**:
+ * - **macOS**: AVFoundation (lib/os/webcam_avfoundation.m)
+ * - **Linux**: Video4Linux2 (lib/os/webcam_v4l2.c)
+ * - **Windows**: Test pattern only (lib/os/webcam_windows.c) - real capture TODO
+ *
+ * @section client_capture_thread Capture Thread
+ *
+ * @code{.c}
+ * static void *capture_thread_func(void *arg)
+ * {
+ *   (void)arg;
+ *
+ *   // Calculate frame interval for target FPS
+ *   uint64_t frame_interval_usec = 1000000 / VIDEO_CAPTURE_FPS;
+ *   uint64_t start_time = get_monotonic_time_usec();
+ *
+ *   while (!should_exit() && server_connection_is_active()) {
+ *     // Capture frame from webcam
+ *     video_frame_t *frame = webcam_capture();
+ *     if (!frame) {
+ *       platform_sleep_usec(frame_interval_usec);
+ *       continue;
+ *     }
+ *
+ *     // Optional compression
+ *     void *send_data = frame->data;
+ *     size_t send_size = frame->data_size;
+ *     void *compressed_data = NULL;
+ *
+ *     if (opt_compress) {
+ *       compressed_data = compress_frame(frame->data, frame->data_size, &send_size);
+ *       if (compressed_data) {
+ *         send_data = compressed_data;
+ *       }
+ *     }
+ *
+ *     // Send frame to server
+ *     send_packet_to_server(PACKET_TYPE_IMAGE_FRAME, send_data, send_size,
+ *                          server_connection_get_client_id());
+ *
+ *     if (compressed_data) free(compressed_data);
+ *     if (frame->owns_data && frame->data) free(frame->data);
+ *     free(frame);
+ *
+ *     // Rate limiting
+ *     platform_sleep_usec(frame_interval_usec);
+ *
+ *     // Snapshot mode: exit after delay
+ *     if (opt_snapshot) {
+ *       uint64_t elapsed = (get_monotonic_time_usec() - start_time) / 1000000;
+ *       if (elapsed >= opt_snapshot_delay) {
+ *         signal_exit();
+ *         break;
+ *       }
+ *     }
+ *   }
+ *
+ *   atomic_store(&g_capture_thread_exited, true);
+ *   return NULL;
+ * }
+ * @endcode
+ *
+ * @section client_capture_snapshot Snapshot Mode
+ *
+ * **Snapshot mode** (`--snapshot`, `--snapshot-delay <seconds>`):
+ * - Useful for testing without continuous streaming
+ * - `--snapshot`: Capture single frame and exit
+ * - `--snapshot-delay N`: Capture for N seconds then exit
+ *
+ * @code{.bash}
+ * # Single frame test
+ * ./bin/ascii-chat client --snapshot
+ *
+ * # 5-second test
+ * ./bin/ascii-chat client --snapshot --snapshot-delay 5
+ * @endcode
+ *
+ * @section client_capture_test_pattern Test Pattern Mode
+ *
+ * **Test pattern mode** (`--test-pattern`):
+ * - Generates synthetic video frames without webcam hardware
+ * - Useful for testing on Windows or systems without webcam
+ * - Uses platform-specific test pattern generation
+ *
+ * @code{.bash}
+ * # Use test pattern instead of webcam
+ * ./bin/ascii-chat client --test-pattern
+ * @endcode
+ *
+ * @see src/client/capture.c
+ * @see src/client/capture.h
+ * @see lib/os/webcam.h
+ * @see topic_client
+ */

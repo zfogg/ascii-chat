@@ -1,6 +1,6 @@
 /**
  * @page topic_image2ascii Image to ASCII Conversion
- * @ingroup image2ascii
+ * @ingroup module_video
  *
  * The image2ascii module converts RGB image data into ASCII art suitable for terminal display,
  * with SIMD-optimized processing for real-time video conversion at 60+ FPS.

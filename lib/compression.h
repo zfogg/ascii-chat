@@ -2,7 +2,7 @@
 
 /**
  * @file compression.h
- * @ingroup network
+ * @ingroup module_network
  * @brief Network Packet Compression Utilities
  *
  * This header provides compression and decompression utilities for network

@@ -100,7 +100,7 @@
  * @note Capture and playback can be started/stopped independently.
  * @note State is protected by state_mutex for thread-safe operations.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 typedef struct {
   PaStream *input_stream;       ///< PortAudio input stream for capture
@@ -133,7 +133,7 @@ typedef struct {
  *
  * @warning Must call audio_destroy() to clean up resources when done.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_init(audio_context_t *ctx);
 
@@ -148,7 +148,7 @@ asciichat_error_t audio_init(audio_context_t *ctx);
  * @note Ring buffers are destroyed and all data is lost.
  * @note PortAudio is terminated after last context is destroyed.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 void audio_destroy(audio_context_t *ctx);
 
@@ -174,7 +174,7 @@ void audio_destroy(audio_context_t *ctx);
  *
  * @warning Input device must be available and not in use by another application.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_start_capture(audio_context_t *ctx);
 
@@ -190,7 +190,7 @@ asciichat_error_t audio_start_capture(audio_context_t *ctx);
  * @note If capture is not active, this function has no effect.
  * @note Capture buffer is not cleared by this function.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_stop_capture(audio_context_t *ctx);
 
@@ -216,7 +216,7 @@ asciichat_error_t audio_stop_capture(audio_context_t *ctx);
  *
  * @warning Output device must be available and not in use by another application.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_start_playback(audio_context_t *ctx);
 
@@ -232,7 +232,7 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx);
  * @note If playback is not active, this function has no effect.
  * @note Playback buffer is not cleared by this function.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_stop_playback(audio_context_t *ctx);
 
@@ -261,7 +261,7 @@ asciichat_error_t audio_stop_playback(audio_context_t *ctx);
  *
  * @warning Buffer must be large enough to hold num_samples float values.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int num_samples);
 
@@ -283,7 +283,7 @@ asciichat_error_t audio_read_samples(audio_context_t *ctx, float *buffer, int nu
  *
  * @warning Buffer must contain at least num_samples float values.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer, int num_samples);
 
@@ -311,7 +311,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
  * @warning Real-time priority can cause system instability if misused.
  *          Only use in audio threads that process data quickly.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_set_realtime_priority(void);
 
@@ -336,7 +336,7 @@ asciichat_error_t audio_set_realtime_priority(void);
  *
  * @warning Must call audio_ring_buffer_destroy() to free resources.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 audio_ring_buffer_t *audio_ring_buffer_create(void);
 
@@ -349,7 +349,7 @@ audio_ring_buffer_t *audio_ring_buffer_create(void);
  *
  * @note All samples in the buffer are discarded.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
 
@@ -370,7 +370,7 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
  *
  * @warning Data must contain at least samples float values.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples);
 
@@ -392,7 +392,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
  *
  * @warning Data buffer must be large enough to hold samples float values.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t samples);
 
@@ -408,7 +408,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
  * @note Thread-safe: Can be called from any thread.
  * @note Value may change immediately after return due to concurrent writes.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
 
@@ -424,8 +424,9 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
  * @note Thread-safe: Can be called from any thread.
  * @note Value may change immediately after return due to concurrent reads.
  *
- * @ingroup audio
+ * @ingroup module_audio
  */
 size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb);
 
 /** @} */
+

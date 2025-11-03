@@ -1,0 +1,72 @@
+/**
+ * @defgroup client_keepalive Connection Keepalive
+ * @ingroup module_client
+ * @brief Ping/pong keepalive and timeout detection
+ */
+
+/**
+ * @page topic_client_keepalive Connection Keepalive
+ * @ingroup client_keepalive
+ *
+ * @section client_keepalive_overview Overview
+ *
+ * The keepalive subsystem manages connection liveness by sending periodic ping
+ * packets and detecting pong timeouts to identify dead connections.
+ *
+ * **Implementation**: src/client/keepalive.c, src/client/keepalive.h
+ *
+ * @section client_keepalive_config Configuration
+ *
+ * **Timing Parameters**:
+ * - Ping interval: 5 seconds
+ * - Pong timeout: 30 seconds
+ * - Timeout triggers reconnection
+ *
+ * @section client_keepalive_thread Keepalive Thread
+ *
+ * @code{.c}
+ * static void *keepalive_thread_func(void *arg)
+ * {
+ *   (void)arg;
+ *
+ *   time_t last_pong_time = time(NULL);
+ *
+ *   while (!should_exit() && server_connection_is_active()) {
+ *     // Send ping packet
+ *     send_packet_to_server(PACKET_TYPE_PING, NULL, 0,
+ *                          server_connection_get_client_id());
+ *
+ *     // Wait for ping interval
+ *     for (int i = 0; i < PING_INTERVAL_SEC * 10; i++) {
+ *       if (!should_exit() && !server_connection_is_active()) break;
+ *       platform_sleep_usec(100000);  // 100ms
+ *     }
+ *
+ *     // Check pong timeout
+ *     time_t now = time(NULL);
+ *     if (now - last_pong_time > PONG_TIMEOUT_SEC) {
+ *       log_warn("Pong timeout (%d seconds) - connection may be dead", PONG_TIMEOUT_SEC);
+ *       server_connection_lost();
+ *       break;
+ *     }
+ *   }
+ *
+ *   atomic_store(&g_keepalive_thread_exited, true);
+ *   return NULL;
+ * }
+ * @endcode
+ *
+ * @section client_keepalive_pong Pong Recording
+ *
+ * @code{.c}
+ * void keepalive_record_pong(void)
+ * {
+ *   // Update last pong time (called by protocol handler)
+ *   g_last_pong_time = time(NULL);
+ * }
+ * @endcode
+ *
+ * @see src/client/keepalive.c
+ * @see src/client/keepalive.h
+ * @see topic_client
+ */

@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/simd/sse2.h
- * @ingroup image2ascii
+ * @ingroup module_video
  * @brief SSE2-optimized ASCII rendering functions
  *
  * This header provides SSE2 (Streaming SIMD Extensions 2) optimized
@@ -30,7 +30,7 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *render_ascii_image_monochrome_sse2(const image_t *image, const char *ascii_chars);
 
@@ -42,7 +42,7 @@ char *render_ascii_image_monochrome_sse2(const image_t *image, const char *ascii
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
@@ -50,7 +50,7 @@ char *render_ascii_sse2_unified_optimized(const image_t *image, bool use_backgro
 /**
  * @brief Destroy SSE2 caches
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void sse2_caches_destroy(void);
 

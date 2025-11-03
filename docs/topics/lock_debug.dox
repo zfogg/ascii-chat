@@ -1,6 +1,14 @@
 /**
+ * @defgroup lock_debug Lock Debugging Utilities
+ * @ingroup module_development
+ *
+ */
+
+/**
  * @page topic_lock_debug Lock Debugging Utilities
  * @ingroup lock_debug
+ *
+ * Lock debugging and deadlock detection system for ASCII-Chat.
  *
  * @section lock_debug_overview Overview
  *

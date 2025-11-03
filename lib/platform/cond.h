@@ -2,7 +2,7 @@
 
 /**
  * @file platform/cond.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Cross-platform condition variable interface for ASCII-Chat
  *
  * This header provides a unified condition variable interface that abstracts platform-specific
@@ -48,7 +48,7 @@ typedef pthread_cond_t cond_t;
  * Initializes the condition variable for use. Must be called before any other
  * condition variable operations.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int cond_init(cond_t *cond);
 
@@ -60,7 +60,7 @@ int cond_init(cond_t *cond);
  * Destroys the condition variable and frees any associated resources.
  * No threads should be waiting on the condition variable when this is called.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int cond_destroy(cond_t *cond);
 
@@ -76,7 +76,7 @@ int cond_destroy(cond_t *cond);
  *
  * @warning The mutex must be locked before calling this function.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int cond_wait(cond_t *cond, mutex_t *mutex);
 
@@ -92,7 +92,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex);
  *
  * @warning The mutex must be locked before calling this function.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms);
 
@@ -104,7 +104,7 @@ int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms);
  * Wakes up one thread that is waiting on the condition variable.
  * If no threads are waiting, the signal is lost.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int cond_signal(cond_t *cond);
 
@@ -116,6 +116,6 @@ int cond_signal(cond_t *cond);
  * Wakes up all threads that are waiting on the condition variable.
  * If no threads are waiting, the broadcast has no effect.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int cond_broadcast(cond_t *cond);

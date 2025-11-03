@@ -2,7 +2,7 @@
 
 /**
  * @file platform/socket.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Cross-platform socket interface for ASCII-Chat
  *
  * This header provides a unified socket interface that abstracts platform-specific
@@ -62,7 +62,7 @@ typedef int socket_t;
  * Initializes the socket subsystem. On Windows, this initializes Winsock.
  * Must be called before any socket operations.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 asciichat_error_t socket_init(void);
 
@@ -72,7 +72,7 @@ asciichat_error_t socket_init(void);
  * Cleans up the socket subsystem. On Windows, this cleans up Winsock.
  * Should be called during program shutdown.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void socket_cleanup(void);
 
@@ -83,7 +83,7 @@ void socket_cleanup(void);
  * @param protocol Protocol (typically 0 for automatic)
  * @return Socket handle on success, INVALID_SOCKET_VALUE on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 socket_t socket_create(int domain, int type, int protocol);
 
@@ -92,7 +92,7 @@ socket_t socket_create(int domain, int type, int protocol);
  * @param sock Socket to close
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_close(socket_t sock);
 
@@ -103,7 +103,7 @@ int socket_close(socket_t sock);
  * @param addrlen Length of address structure
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_bind(socket_t sock, const struct sockaddr *addr, socklen_t addrlen);
 
@@ -113,7 +113,7 @@ int socket_bind(socket_t sock, const struct sockaddr *addr, socklen_t addrlen);
  * @param backlog Maximum length of the queue of pending connections
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_listen(socket_t sock, int backlog);
 
@@ -124,7 +124,7 @@ int socket_listen(socket_t sock, int backlog);
  * @param addrlen Pointer to address length (input/output)
  * @return New socket handle on success, INVALID_SOCKET_VALUE on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen);
 
@@ -135,7 +135,7 @@ socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
  * @param addrlen Length of address structure
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen);
 
@@ -147,7 +147,7 @@ int socket_connect(socket_t sock, const struct sockaddr *addr, socklen_t addrlen
  * @param flags Socket flags (typically 0)
  * @return Number of bytes sent on success, -1 on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags);
 
@@ -159,7 +159,7 @@ ssize_t socket_send(socket_t sock, const void *buf, size_t len, int flags);
  * @param flags Socket flags (typically 0)
  * @return Number of bytes received on success, -1 on error, 0 on connection closed
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags);
 
@@ -173,7 +173,7 @@ ssize_t socket_recv(socket_t sock, void *buf, size_t len, int flags);
  * @param addrlen Length of destination address
  * @return Number of bytes sent on success, -1 on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 ssize_t socket_sendto(socket_t sock, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr,
                       socklen_t addrlen);
@@ -188,7 +188,7 @@ ssize_t socket_sendto(socket_t sock, const void *buf, size_t len, int flags, con
  * @param addrlen Pointer to address length (input/output)
  * @return Number of bytes received on success, -1 on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 ssize_t socket_recvfrom(socket_t sock, void *buf, size_t len, int flags, struct sockaddr *src_addr, socklen_t *addrlen);
 
@@ -201,7 +201,7 @@ ssize_t socket_recvfrom(socket_t sock, void *buf, size_t len, int flags, struct 
  * @param optlen Length of option value
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_setsockopt(socket_t sock, int level, int optname, const void *optval, socklen_t optlen);
 
@@ -214,7 +214,7 @@ int socket_setsockopt(socket_t sock, int level, int optname, const void *optval,
  * @param optlen Pointer to option length (input/output)
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_getsockopt(socket_t sock, int level, int optname, void *optval, socklen_t *optlen);
 
@@ -224,7 +224,7 @@ int socket_getsockopt(socket_t sock, int level, int optname, void *optval, sockl
  * @param how Shutdown mode (SHUT_RD, SHUT_WR, SHUT_RDWR)
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_shutdown(socket_t sock, int how);
 
@@ -235,7 +235,7 @@ int socket_shutdown(socket_t sock, int how);
  * @param addrlen Pointer to address length (input/output)
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_getpeername(socket_t sock, struct sockaddr *addr, socklen_t *addrlen);
 
@@ -246,7 +246,7 @@ int socket_getpeername(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
  * @param addrlen Pointer to address length (input/output)
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_getsockname(socket_t sock, struct sockaddr *addr, socklen_t *addrlen);
 
@@ -255,7 +255,7 @@ int socket_getsockname(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
  * @param sock Socket to configure
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_blocking(socket_t sock);
 
@@ -265,7 +265,7 @@ int socket_set_blocking(socket_t sock);
  * @param nonblocking true for non-blocking, false for blocking
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_nonblocking(socket_t sock, bool nonblocking);
 
@@ -275,7 +275,7 @@ int socket_set_nonblocking(socket_t sock, bool nonblocking);
  * @param reuse true to enable reuse, false to disable
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_reuseaddr(socket_t sock, bool reuse);
 
@@ -285,7 +285,7 @@ int socket_set_reuseaddr(socket_t sock, bool reuse);
  * @param nodelay true to disable Nagle's algorithm, false to enable
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_nodelay(socket_t sock, bool nodelay);
 
@@ -295,7 +295,7 @@ int socket_set_nodelay(socket_t sock, bool nodelay);
  * @param keepalive true to enable keepalive, false to disable
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_keepalive(socket_t sock, bool keepalive);
 
@@ -308,7 +308,7 @@ int socket_set_keepalive(socket_t sock, bool keepalive);
  * @param count Number of keepalive probes before connection failure
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interval, int count);
 
@@ -319,7 +319,7 @@ int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interv
  * @param timeout Linger timeout in seconds
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_linger(socket_t sock, bool enable, int timeout);
 
@@ -330,7 +330,7 @@ int socket_set_linger(socket_t sock, bool enable, int timeout);
  * @param send_size Send buffer size in bytes
  * @return 0 on success, non-zero on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_set_buffer_sizes(socket_t sock, int recv_size, int send_size);
 
@@ -343,7 +343,7 @@ int socket_set_buffer_sizes(socket_t sock, int recv_size, int send_size);
  *
  * @note This is a convenience wrapper around socket_getpeername().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *addrlen);
 
@@ -352,7 +352,7 @@ int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *add
  * @param sock Socket to query
  * @return Error code (platform-specific)
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_get_error(socket_t sock);
 
@@ -360,7 +360,7 @@ int socket_get_error(socket_t sock);
  * @brief Get last socket error code
  * @return Error code (platform-specific)
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_get_last_error(void);
 
@@ -370,7 +370,7 @@ int socket_get_last_error(void);
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 const char *socket_get_error_string(void);
 
@@ -381,7 +381,7 @@ const char *socket_get_error_string(void);
  * @param timeout Timeout in milliseconds (-1 for infinite)
  * @return Number of sockets with events, -1 on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);
 
@@ -394,7 +394,7 @@ int socket_poll(struct pollfd *fds, nfds_t nfds, int timeout);
  * @param timeout Timeout value (or NULL for infinite)
  * @return Number of ready sockets, -1 on error
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
 
@@ -402,7 +402,7 @@ int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *ex
  * @brief Clear an fd_set
  * @param set fd_set to clear
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void socket_fd_zero(fd_set *set);
 
@@ -411,7 +411,7 @@ void socket_fd_zero(fd_set *set);
  * @param sock Socket to add
  * @param set fd_set to add to
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void socket_fd_set(socket_t sock, fd_set *set);
 
@@ -421,7 +421,7 @@ void socket_fd_set(socket_t sock, fd_set *set);
  * @param set fd_set to check in
  * @return Non-zero if socket is in set, 0 otherwise
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_fd_isset(socket_t sock, fd_set *set);
 
@@ -430,7 +430,7 @@ int socket_fd_isset(socket_t sock, fd_set *set);
  * @param sock Socket handle
  * @return File descriptor value (on POSIX, same as socket handle)
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int socket_get_fd(socket_t sock);
 
@@ -439,7 +439,7 @@ int socket_get_fd(socket_t sock);
  * @param sock Socket handle to check
  * @return true if socket is valid, false otherwise
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 bool socket_is_valid(socket_t sock);
 

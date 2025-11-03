@@ -1,5 +1,12 @@
 /**
- * @page topic_errno Error Handling System
+ * @file asciichat_errno.h
+ * @defgroup errno Error Handling
+ * @ingroup module_development
+ * @brief Thread-Local Error Number System with Context
+ */
+
+/**
+ * @page topic_errno asciichat_errno
  * @ingroup errno
  *
  * @section errno_overview Overview

@@ -2,7 +2,7 @@
 
 /**
  * @file platform/rwlock.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Cross-platform read-write lock interface for ASCII-Chat
  *
  * This header provides a unified read-write lock interface that abstracts platform-specific
@@ -61,7 +61,7 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
  * Initializes the read-write lock for use. Must be called before any other
  * lock operations.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_init(rwlock_t *lock);
 
@@ -73,7 +73,7 @@ int rwlock_init(rwlock_t *lock);
  * Destroys the read-write lock and frees any associated resources.
  * The lock must not be held by any thread when this is called.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_destroy(rwlock_t *lock);
 
@@ -84,7 +84,7 @@ int rwlock_destroy(rwlock_t *lock);
  *
  * @note This is the implementation function. Use rwlock_init() instead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_init_impl(rwlock_t *lock);
 
@@ -95,7 +95,7 @@ int rwlock_init_impl(rwlock_t *lock);
  *
  * @note This is the implementation function. Use rwlock_destroy() instead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_destroy_impl(rwlock_t *lock);
 
@@ -110,7 +110,7 @@ int rwlock_destroy_impl(rwlock_t *lock);
  * @note This is the implementation function. Use rwlock_rdlock() macro instead,
  *       which includes debug tracking in debug builds.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_rdlock_impl(rwlock_t *lock);
 
@@ -125,7 +125,7 @@ int rwlock_rdlock_impl(rwlock_t *lock);
  * @note This is the implementation function. Use rwlock_wrlock() macro instead,
  *       which includes debug tracking in debug builds.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_wrlock_impl(rwlock_t *lock);
 
@@ -139,7 +139,7 @@ int rwlock_wrlock_impl(rwlock_t *lock);
  * @note This is the implementation function. Use rwlock_rdunlock() macro instead,
  *       which includes debug tracking in debug builds.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_rdunlock_impl(rwlock_t *lock);
 
@@ -153,7 +153,7 @@ int rwlock_rdunlock_impl(rwlock_t *lock);
  * @note This is the implementation function. Use rwlock_wrunlock() macro instead,
  *       which includes debug tracking in debug builds.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int rwlock_wrunlock_impl(rwlock_t *lock);
 
@@ -172,7 +172,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
  * @note In debug builds, this macro includes lock debugging if initialized.
  *       In release builds, calls the implementation directly for zero overhead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef NDEBUG
 #define rwlock_rdlock(lock) rwlock_rdlock_impl(lock)
@@ -191,7 +191,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
  * @note In debug builds, this macro includes lock debugging if initialized.
  *       In release builds, calls the implementation directly for zero overhead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef NDEBUG
 #define rwlock_wrlock(lock) rwlock_wrlock_impl(lock)
@@ -209,7 +209,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
  * @note In debug builds, this macro includes lock debugging if initialized.
  *       In release builds, calls the implementation directly for zero overhead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef NDEBUG
 #define rwlock_rdunlock(lock) rwlock_rdunlock_impl(lock)
@@ -227,7 +227,7 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
  * @note In debug builds, this macro includes lock debugging if initialized.
  *       In release builds, calls the implementation directly for zero overhead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifdef NDEBUG
 #define rwlock_wrunlock(lock) rwlock_wrunlock_impl(lock)

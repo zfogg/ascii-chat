@@ -1,57 +1,72 @@
 /**
- * @defgroup module_utilities Utilities Module
+ * @defgroup module_utilities Utilities
  * @brief Foundation utilities used throughout the codebase
  *
  * String manipulation, path handling, IP parsing, UTF-8, CRC32, and formatting utilities.
  */
 
 /**
- * @defgroup module_data_structures Data Structures Module
+ * @defgroup module_data_structures Data Structures
  * @brief High-performance data structures for memory and packet management
  *
  * Buffer pools, ring buffers, packet queues, and hash tables.
  */
 
 /**
- * @defgroup module_platform Platform Abstraction Module
+ * @defgroup module_platform Platform Abstraction
  * @brief Cross-platform abstractions for threading, sockets, and system calls
  *
  * Platform abstraction layer and OS-specific functionality.
  */
 
 /**
- * @defgroup module_crypto Cryptography Module
+ * @defgroup module_crypto Cryptography
  * @brief End-to-end encryption and secure communication
  *
  * Cryptographic operations, handshake protocol, and key management.
  */
 
 /**
- * @defgroup module_video Video Processing Module
+ * @defgroup module_video Video Processing
  * @brief Video capture, ASCII conversion, and frame layout
  *
  * Video frame management, image-to-ASCII conversion with SIMD, grid layout, and palettes.
  */
 
 /**
- * @defgroup module_audio Audio Processing Module
+ * @defgroup module_audio Audio Processing
  * @brief Audio capture, playback, and multi-client mixing
  *
  * Audio system with PortAudio and multi-client audio mixer.
  */
 
 /**
- * @defgroup module_core Core Infrastructure Module
+ * @defgroup module_core Core Infrastructure
  * @brief Core functionality including error handling, logging, and configuration
  *
  * Common definitions, error handling, logging system, and configuration.
  */
 
 /**
- * @defgroup module_network Network Module
+ * @defgroup module_network Network
  * @brief Network I/O, packet protocol, and audio/video streaming
  *
  * Network operations, packet types, and audio/video networking.
+ */
+
+/**
+ * @defgroup module_client Client Application
+ * @brief Client application for connecting to servers and streaming media
+ *
+ * Client connection management, media capture, display rendering, and reconnection logic.
+ */
+
+/**
+ * @defgroup module_server Server
+ * @brief ASCII-Chat server implementation and architecture
+ *
+ * Multi-client real-time video and audio streaming server with per-client threading,
+ * end-to-end encryption, and terminal-aware ASCII rendering.
  */
 
 /**
@@ -71,13 +86,13 @@
  *
  * @tableofcontents
  *
- * @section topics_utilities Utilities Module
+ * @section topics_utilities Utilities
  *
  * @copybrief module_utilities
  *
  * - @ref topic_util "Utility Functions" - String, path, IP, UTF-8, CRC32, formatting utilities
  *
- * @section topics_data Data Structures Module
+ * @section topics_data Data Structures
  *
  * @copybrief module_data_structures
  *
@@ -86,14 +101,14 @@
  * - @ref topic_packet_queue "Packet Queue" - Thread-safe per-client packet queues
  * - @ref topic_hashtable "Hash Table" - High-performance client ID lookup
  *
- * @section topics_platform Platform Abstraction Module
+ * @section topics_platform Platform Abstraction
  *
  * @copybrief module_platform
  *
  * - @ref topic_platform "Platform Abstraction Layer" - Cross-platform threading, sockets, system calls
  * - @ref topic_os "OS Abstractions" - Platform-specific functionality (webcam, etc.)
  *
- * @section topics_crypto Cryptography Module
+ * @section topics_crypto Cryptography
  *
  * @copybrief module_crypto
  *
@@ -102,7 +117,7 @@
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Key Management" - SSH/GPG key parsing and validation
  *
- * @section topics_video Video Processing Module
+ * @section topics_video Video Processing
  *
  * @copybrief module_video
  *
@@ -111,14 +126,14 @@
  * - @ref topic_grid_layout "Grid Layout System" - Multi-frame layout for multi-user video
  * - @ref topic_palette "Palette Management" - ASCII character palettes with UTF-8 support
  *
- * @section topics_audio Audio Processing Module
+ * @section topics_audio Audio Processing
  *
  * @copybrief module_audio
  *
  * - @ref topic_audio "Audio System" - Audio capture and playback with PortAudio
  * - @ref topic_mixer "Audio Mixer" - Multi-client audio mixing with ducking
  *
- * @section topics_core Core Infrastructure Module
+ * @section topics_core Core Infrastructure
  *
  * @copybrief module_core
  *
@@ -126,14 +141,35 @@
  * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref topic_logging "Logging System" - Level-based logging, rate limiting, file output
  * - @ref topic_options "Options and Configuration" - Command-line parsing and TOML config
+ * - @ref topic_config "Configuration" - TOML configuration file management
  *
- * @section topics_network Network Module
+ * @section topics_network Network
  *
  * @copybrief module_network
  *
  * - @ref topic_network "Network I/O" - Socket operations, timeouts, connections, packet protocol
  * - @ref topic_packet_types "Packet Types" - Network packet structures and definitions
  * - @ref topic_av "Audio/Video Networking" - Network APIs for audio/video streaming
+ *
+ * @section topics_client Client Application
+ *
+ * @copybrief module_client
+ *
+ * - @ref topic_client "Overview of Client" - Complete client architecture overview
+ * - @ref topic_client_main "Client Main Entry Point" - Main lifecycle orchestration and reconnection logic
+ * - @ref topic_client_connection "Connection Management" - Server connection, packet transmission, and state tracking
+ * - @ref topic_client_protocol "Protocol Handler" - Packet reception and processing
+ * - @ref topic_client_capture "Media Capture" - Webcam video capture and transmission
+ * - @ref topic_client_display "Terminal Display" - Terminal rendering and TTY management
+ * - @ref topic_client_audio "Audio Processing" - Audio capture, playback, and jitter buffering
+ * - @ref topic_client_keepalive "Connection Keepalive" - Ping/pong and timeout detection
+ * - @ref topic_client_crypto "Cryptographic Operations" - Handshake and key management
+ *
+ * @section topics_server Server
+ *
+ * @copybrief module_server
+ *
+ * - @ref topic_server "Overview of Server" - Multi-client server with per-client threading, encryption, and real-time rendering
  *
  * @section topics_development Development & Debugging
  *
@@ -142,6 +178,7 @@
  * - @ref topic_build "Build System" - CMake configuration, cross-platform compilation, build types
  * - @ref topic_testing "Testing" - Test framework, test runner, Docker testing, coverage reporting
  * - @ref topic_debug "Debugging Utilities" - Error tracking, memory leak detection, diagnostics
+ * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref topic_lock_debug "Lock Debugging" - Lock tracking, deadlock detection, contention analysis
  */
 

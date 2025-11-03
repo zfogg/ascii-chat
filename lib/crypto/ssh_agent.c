@@ -1,3 +1,9 @@
+/**
+ * @file crypto/ssh_agent.c
+ * @ingroup crypto
+ * @brief 🔌 SSH agent protocol implementation for key authentication via ssh-agent
+ */
+
 #include "ssh_agent.h"
 #include "common.h"
 #include <stdio.h>

@@ -13,9 +13,7 @@
 
 /**
  * @file asciichat_errno.h
- * @defgroup errno Error Handling
- * @ingroup debug
- * @brief Thread-Local Error Number System with Context
+ * @ingroup module_development
  *
  * This header provides a comprehensive thread-local error number system that
  * captures full error context including location, stack traces, and system
@@ -104,7 +102,7 @@
  * @note Context message is dynamically allocated and must be freed by the system.
  * @note Thread-local storage ensures each thread has independent error state.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 typedef struct {
   asciichat_error_t code;   ///< Error code (asciichat_error_t enum value)
@@ -136,7 +134,7 @@ typedef struct {
  * @note Use HAS_ERRNO() macro to check for errors and get context.
  * @note Context is automatically updated when errors are set via SET_ERRNO().
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 extern __thread asciichat_error_context_t asciichat_errno_context;
 
@@ -149,7 +147,7 @@ extern __thread asciichat_error_context_t asciichat_errno_context;
  * @note Use GET_ERRNO() macro to read the current error code.
  * @note Use CLEAR_ERRNO() macro to clear the error state.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 extern __thread asciichat_error_t asciichat_errno;
 
@@ -277,7 +275,7 @@ extern __thread asciichat_error_t asciichat_errno;
  *
  * @warning Use SET_ERRNO() macros instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_set_errno(asciichat_error_t code, const char *file, int line, const char *function,
                          const char *context_message);
@@ -300,7 +298,7 @@ void asciichat_set_errno(asciichat_error_t code, const char *file, int line, con
  *
  * @warning Use SET_ERRNO() macros instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_set_errno_with_message(asciichat_error_t code, const char *file, int line, const char *function,
                                       const char *format, ...);
@@ -322,7 +320,7 @@ void asciichat_set_errno_with_message(asciichat_error_t code, const char *file, 
  *
  * @warning Use SET_ERRNO_SYS() macro instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_set_errno_with_system_error(asciichat_error_t code, const char *file, int line, const char *function,
                                            int sys_errno);
@@ -346,7 +344,7 @@ void asciichat_set_errno_with_system_error(asciichat_error_t code, const char *f
  *
  * @warning Use SET_ERRNO_SYS() macro instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, const char *file, int line,
                                                        const char *function, int sys_errno, const char *format, ...);
@@ -366,7 +364,7 @@ void asciichat_set_errno_with_system_error_and_message(asciichat_error_t code, c
  * @note This function is only useful on Windows platforms.
  * @note Thread-safe: Uses thread-local storage.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_set_errno_with_wsa_error(asciichat_error_t code, const char *file, int line, const char *function,
                                         int wsa_error);
@@ -385,7 +383,7 @@ void asciichat_set_errno_with_wsa_error(asciichat_error_t code, const char *file
  *
  * @warning Use HAS_ERRNO() macro instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 bool asciichat_has_errno(asciichat_error_context_t *context);
 
@@ -400,7 +398,7 @@ bool asciichat_has_errno(asciichat_error_context_t *context);
  * @note Returns false if no error occurred or error doesn't have WSA code.
  * @note Thread-safe: Uses thread-local storage.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 bool asciichat_has_wsa_error(void);
 
@@ -417,7 +415,7 @@ bool asciichat_has_wsa_error(void);
  *
  * @warning Use CLEAR_ERRNO() macro instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_clear_errno(void);
 
@@ -433,7 +431,7 @@ void asciichat_clear_errno(void);
  *
  * @warning Use GET_ERRNO() macro instead of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 asciichat_error_t asciichat_get_errno(void);
 
@@ -457,7 +455,7 @@ asciichat_error_t asciichat_get_errno(void);
  * @warning This function terminates the program. Use FATAL() macro instead
  *          of calling this directly.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
                                   const char *format, ...);
@@ -474,7 +472,7 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
  * @note System errors (errno, WSA) are included if present.
  * @note Timestamp and location information are included.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_print_error_context(const asciichat_error_context_t *context);
 
@@ -539,7 +537,7 @@ void asciichat_print_error_context(const asciichat_error_context_t *context);
  * @note Statistics are aggregated across all threads.
  * @note Counts are cumulative since initialization.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 typedef struct {
   /** @brief Count for each error code (256 possible error codes) */
@@ -561,7 +559,7 @@ typedef struct {
  * @note Idempotent: Safe to call multiple times (no-op after first call).
  * @note Thread-safe: Can be called from any thread.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_error_stats_init(void);
 
@@ -575,7 +573,7 @@ void asciichat_error_stats_init(void);
  * @note Thread-safe: Can be called from multiple threads simultaneously.
  * @note Statistics counters are updated atomically.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_error_stats_record(asciichat_error_t code);
 
@@ -589,7 +587,7 @@ void asciichat_error_stats_record(asciichat_error_t code);
  * @note Statistics are formatted and printed at INFO level.
  * @note Requires statistics system to be initialized.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_error_stats_print(void);
 
@@ -602,7 +600,7 @@ void asciichat_error_stats_print(void);
  * @note Thread-safe: Can be called from any thread.
  * @note All counters are reset to zero (total_errors, error_counts, etc.).
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_error_stats_reset(void);
 
@@ -617,7 +615,7 @@ void asciichat_error_stats_reset(void);
  *       internal state).
  * @note Thread-safe: Can be called from any thread.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 asciichat_error_stats_t asciichat_error_stats_get(void);
 
@@ -643,7 +641,7 @@ asciichat_error_stats_t asciichat_error_stats_get(void);
  * @note Thread ID must be valid (positive integer).
  * @note Returns ASCIICHAT_OK if thread has no error or thread ID is invalid.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 asciichat_error_t asciichat_get_thread_error(int thread_id);
 
@@ -658,7 +656,7 @@ asciichat_error_t asciichat_get_thread_error(int thread_id);
  * @note Thread ID must be valid (positive integer).
  * @note This is separate from thread-local error state (asciichat_errno).
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_set_thread_error(int thread_id, asciichat_error_t code);
 
@@ -670,7 +668,7 @@ void asciichat_set_thread_error(int thread_id, asciichat_error_t code);
  *
  * @note Thread ID must be valid (positive integer).
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_clear_thread_error(int thread_id);
 
@@ -692,7 +690,7 @@ void asciichat_clear_thread_error(int thread_id);
  * @note Suppression only affects automatic logging, not manual error checking.
  * @note Errors can still be checked using HAS_ERRNO() and GET_ERRNO().
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_errno_suppress(bool suppress);
 
@@ -706,7 +704,7 @@ void asciichat_errno_suppress(bool suppress);
  * @note Safe to call multiple times (no-op after first call).
  * @note All error statistics and context messages are freed.
  *
- * @ingroup errno
+ * @ingroup module_core
  */
 void asciichat_errno_cleanup(void);
 

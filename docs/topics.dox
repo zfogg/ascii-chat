@@ -9,6 +9,7 @@
  * @subpage topic_av
  * @subpage topic_buffer_pool
  * @subpage topic_build
+ * @subpage topic_client
  * @subpage topic_common
  * @subpage topic_config
  * @subpage topic_crypto
@@ -24,5 +25,6 @@
  * @subpage topic_palette
  * @subpage topic_platform
  * @subpage topic_ringbuffer
+ * @subpage topic_server
  * @subpage topic_testing
  */

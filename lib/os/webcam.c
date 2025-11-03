@@ -1,5 +1,11 @@
+
+/**
+ * @file os/webcam.c
+ * @ingroup os
+ * @brief 📷 Cross-platform webcam abstraction layer for Media Foundation (Windows) and V4L2 (Linux)
+ */
+
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "webcam.h"
 #include "common.h"

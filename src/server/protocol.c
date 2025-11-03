@@ -1,13 +1,9 @@
 /**
- * @file protocol.c
- * @brief Client Packet Processing and Protocol State Management
+ * @file server/protocol.c
+ * @ingroup server_protocol
+ * @brief 📡 Server packet processor: client communication handling, protocol state management, and packet dispatch
  *
- * This module implements the ASCII-Chat server's packet processing engine,
- * handling all incoming communication from connected clients. It was extracted
- * from the original monolithic server.c to provide clean separation between
- * network protocol handling and other server concerns.
- *
- * CORE RESPONSIBILITIES:
+ * CORE RESPONSIBILITIES
  * ======================
  * 1. Parse and validate incoming packets from clients
  * 2. Update client state based on received packet data

@@ -1,4 +1,10 @@
 /**
+ * @defgroup crypto Cryptographic Operations
+ * @ingroup module_crypto
+ * @brief End-to-end encryption and secure communication
+ */
+
+/**
  * @page topic_crypto Cryptography Module
  * @ingroup crypto
  *

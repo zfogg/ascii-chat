@@ -1,3 +1,10 @@
+
+/**
+ * @file options.c
+ * @ingroup options
+ * @brief ⚙️ Command-line argument parser with validation and configuration merging
+ */
+
 #include "platform/system.h"
 #include "asciichat_errno.h"
 #ifdef _WIN32

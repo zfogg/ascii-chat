@@ -1,3 +1,8 @@
+/**
+ * @file server/client.h
+ * @ingroup server_client
+ * @brief Per-client state management and lifecycle orchestration
+ */
 #pragma once
 
 #include <stdatomic.h>
@@ -58,7 +63,7 @@
  * @note Buffer pointers are set once during client creation and never change.
  * @note Thread handles are valid only when threads are running.
  *
- * @ingroup server
+ * @ingroup server_client
  */
 typedef struct {
   socket_t socket;
@@ -183,7 +188,7 @@ typedef struct {
  * @note All client access should go through find_client_by_id() or find_client_by_socket()
  *       to ensure proper locking.
  *
- * @ingroup server
+ * @ingroup server_client
  */
 typedef struct {
   /** @brief Array of client_info_t structures (backing storage) */

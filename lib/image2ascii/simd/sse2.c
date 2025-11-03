@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/sse2.c
+ * @ingroup image2ascii
+ * @brief ⚡ SSE2-accelerated ASCII rendering with 128-bit vector operations (x86 baseline)
+ */
+
 #if SIMD_SUPPORT_SSE2
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,13 +1,7 @@
 /**
- * @file render.c
- * @brief Per-Client Rendering Threads and Real-Time Media Processing
- *
- * This module implements ASCII-Chat's high-performance per-client rendering
- * system, providing dedicated threads for video and audio processing for each
- * connected client. It was extracted from the monolithic server.c to enable
- * scalable real-time media processing.
- *
- * CORE RESPONSIBILITIES:
+ * @file server/render.c
+ * @ingroup server_render
+ * @brief 🎨 Per-client rendering threads: 60fps video and 172fps audio processing with rate limiting
  * ======================
  * 1. Manage per-client video rendering threads (60fps per client)
  * 2. Manage per-client audio rendering threads (172fps per client)
