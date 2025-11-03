@@ -1,6 +1,7 @@
 /**
  * @defgroup network Network Module
  * @ingroup module_network
+ * @brief Core network I/O operations with timeout support
  *
  * @file network/network.h
  * @ingroup network

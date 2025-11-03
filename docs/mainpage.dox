@@ -17,32 +17,81 @@
  *       to understand how to compile ascii-chat on Windows, Linux, and macOS, configure
  *       the build system, and set up your development environment.
  *
- * @warning **Important:** When exploring this documentation, we strongly urge you to **search for "README"** and
- *          **"MODULE"** pages early on. These pages provide comprehensive overviews and are excellent entry points
- *          for understanding major subsystems. Use the search functionality (Ctrl+F / Cmd+F or the search bar) to
- *          find these pages quickly.
+ * @warning **Important:** When exploring this documentation, navigate to @ref topics "Topics" in the sidebar. Many topic
+ *          pages have "README" in their title and provide comprehensive subsystem overviews. These are excellent
+ *          entry points for understanding major subsystems. You can also start with **Topic Categories** for an
+ *          organized index. See the @ref exploring_docs "Exploring the Documentation" section below for detailed
+ *          navigation guidance.
  *
  * @section exploring_docs Exploring the Documentation
  *
- * This documentation is organized into several sections accessible from the navigation
- * menu on the left:
+ * @subsection understanding_sidebar Understanding the Sidebar
  *
- * @subsection mainpage_this_page Main Page (This Page)
+ * The **left sidebar** is your primary navigation tool. It contains the following main sections:
  *
- * You're currently viewing the main landing page. This provides:
- * - Project overview and introduction
- * - Quick navigation guide
- * - Links to major modules and subsystems
- * - Getting started examples
+ * - **ascii-chat API Documentation** - The main landing page (you are here)
+ * - @ref topics "Topics" - Comprehensive architectural documentation (the most important section for understanding the system)
+ * - **Topic Categories** - Index page that lists all topics organized by category (start here to browse topics!)
+ * - **Data Structures** - All struct and typedef definitions organized by functionality
+ * - **Files** - Browse source files organized by directory structure
+ * - **Examples** - Code examples and usage patterns
+ * - **Search** - Use the search bar at the top of the page to find anything quickly
  *
- * @subsection topics_page Topics (Detailed Guides)
+ * @subsubsection sidebar_topics Finding Topics in the Sidebar
  *
- * For in-depth architectural documentation and implementation details, visit the
- * **@ref topic_categories "Topic Categories"** page. This section provides comprehensive
- * guides organized by subsystem:
+ * @ref topics "Topics" are directly accessible in the sidebar. To access them:
+ *
+ * 1. Look for **"Topics"** in the left sidebar (or click @ref topics "here")
+ * 2. Click to expand it
+ * 3. You'll see all available topic pages listed
+ *
+ * Alternatively, you can start with **"Topic Categories"** in the sidebar, which provides an organized
+ * index of all topics grouped by category. This is an excellent starting point!
+ *
+ * The @ref topics "Topics" page includes comprehensive architectural guides with names like:
+ * - **"Topic Categories"** - Index page that lists all topics organized by category (start here!)
+ * - **"Build System README"** - Comprehensive build documentation
+ * - **"Cryptography Module README"** - Crypto architecture and usage
+ * - **"Handshake Module README"** - Protocol and authentication details
+ * - **"Keys Module README"** - SSH/GPG key management
+ * - And many more detailed guides...
+ *
+ * @note **Pro Tip**: Many topic pages have "README" in their title and descriptive Uppercase names.
+ *       These are comprehensive overview documents that explain entire subsystems in detail.
+ *
+ * @subsubsection sidebar_navigation How to Navigate the Sidebar
+ *
+ * **Looking for architectural documentation?**
+ * - Click @ref topics "Topics" in the sidebar to see all topic pages
+ * - Or start with **"Topic Categories"** for an organized index of all topics
+ * - Look for topic pages with "README" in the title for comprehensive subsystem overviews
+ *
+ * **Looking for a specific function or struct?**
+ * - Use the **search bar** at the top of the page (fastest method)
+ * - Or check **"Data Structures"** to find type definitions
+ * - Or browse **"Files"** to see all functions in a particular source file
+ *
+ * **Looking for implementation details?**
+ * - Check **"Files"** to browse source files by directory
+ * - Review **"Data Structures"** to understand type definitions
+ * - Read @ref topics "Topics" for architectural context, then drill into specific files
+ * - Check **"Examples"** for code samples and usage patterns
+ *
+ * @subsection topics_page Topics: Comprehensive Architectural Documentation
+ *
+ * @ref topics "Topics" are detailed guides that explain subsystems comprehensively. They combine:
+ * - Architectural overviews and design rationale
+ * - API documentation with usage examples
+ * - Integration patterns and best practices
+ * - Performance considerations and optimization notes
+ *
+ * Access topics directly via @ref topics "Topics" in the sidebar, or start with **"Topic Categories"**
+ * in the sidebar for an organized index of all topics grouped by category.
+ *
+ * **Key topics to explore:**
  *
  * - **@ref topic_build "Build System"**: CMake configuration, cross-platform compilation, build types,
- *   platform-specific gotchas, static builds, and build optimizations (start here!)
+ *   platform-specific gotchas, static builds, and build optimizations (**start here if new to the project!**)
  * - **Core Modules**: Cryptography, handshake protocol, key management
  * - **Data Structures**: Buffer pools, ring buffers, packet queues, hash tables
  * - **Media Processing**: Audio system, image-to-ASCII conversion, palette management
@@ -51,46 +100,42 @@
  * - **Core Libraries**: Common definitions, configuration
  * - **Debugging**: Error handling, lock debugging, memory leak detection
  *
- * @subsubsection how_to_use_topics How to Use Topics
+ * @subsubsection how_to_use_topics What's Inside Each Topic Page?
  *
- * Each topic page provides:
- * - **Overview**: High-level description of the subsystem
- * - **Architecture**: Design decisions and structural details
- * - **API Reference**: Function signatures and usage patterns
- * - **Examples**: Code samples showing how to use the APIs
- * - **Integration**: How the module fits into the larger system
- * - **Performance**: Benchmarks and optimization notes
- * - **Best Practices**: Recommended usage patterns and common pitfalls
+ * Each topic page typically includes:
+ * - **Overview**: High-level description and purpose of the subsystem
+ * - **Architecture**: Design decisions, structural details, and how components interact
+ * - **API Reference**: Function signatures, parameters, return values, and usage patterns
+ * - **Examples**: Complete code samples showing how to use the APIs correctly
+ * - **Integration**: How the module fits into the larger system and interacts with other components
+ * - **Performance**: Benchmarks, optimization notes, and performance considerations
+ * - **Best Practices**: Recommended usage patterns, common pitfalls, and gotchas
+ * - **Related**: Links to related topics, modules, and code elements
  *
- * @subsection modules_page Modules (Code Organization)
- *
- * The **Modules** section groups related code elements together:
- * - Functions, structures, and constants are organized by functionality
- * - Each module represents a logical subsystem (e.g., Audio System, Crypto Module)
- * - Module pages automatically include all documented code elements with `@ingroup`
- * - Use this for quick API reference and browsing related functionality
- *
- * @subsection pages_page Related Pages
- *
- * The **Related Pages** section contains:
- * - **Topics**: Topic Categories and individual topic guides
- * - Topic pages merge module documentation with detailed explanations
- * - Links from topic pages to related code elements
- *
- * @subsection files_page Files (Source Code)
+ * @subsection files_page Files: Browse Source Code
  *
  * The **Files** section lists all source files in the project:
- * - Header files (`.h`) with file-level documentation
+ * - Header files (`.h`) with file-level documentation explaining the file's purpose
  * - Implementation files (`.c`) for implementation details
- * - Organized by directory structure
+ * - Organized by directory structure (e.g., `lib/crypto/`, `src/client/`)
  * - Each file's documentation describes its purpose and key features
+ * - Click a file to see all functions, structures, and constants defined within it
  *
- * @subsection class_page Data Structures
+ * @subsection class_page Data Structures: Type Definitions
  *
  * The **Data Structures** section shows all `struct` and `typedef` definitions:
- * - Structures organized by module
- * - Member documentation with types and descriptions
- * - Links to related functions and usage examples
+ * - Structures organized by functionality (as defined with `@ingroup`)
+ * - Complete member documentation with types and descriptions
+ * - Links to related functions that use these structures
+ * - Useful for understanding data flow and API contracts
+ *
+ * @subsection examples_page Examples: Code Samples and Usage Patterns
+ *
+ * The **Examples** section provides:
+ * - Code samples demonstrating how to use the APIs
+ * - Usage patterns and common workflows
+ * - Integration examples showing how components work together
+ * - Best practices demonstrated through practical code
  *
  * @section navigation_tips Navigation Tips
  *
@@ -104,26 +149,36 @@
  * 2. Read this main page to understand the project overview
  * 3. Visit @ref topic_categories "Topic Categories" to browse detailed guides
  * 4. Check out @ref getting_started "Getting Started" section below for code examples
- * 5. Explore the **Modules** section for API reference organized by functionality
+ * 5. Explore @ref topics "Topics" for architectural documentation and **Files** or **Data Structures** for API reference
  *
  * @subsection finding_code Finding Code Elements
  *
  * **Looking for a specific function or structure?**
  *
  * - **Use the search bar** at the top of the page (Ctrl+F / Cmd+F in browser)
- * - **Browse Modules** to find related code grouped together
- * - **Check Files** to see all functions in a particular header
- * - **Review Data Structures** to understand type definitions
+ * - **Browse Data Structures** to find related types grouped together
+ * - **Check Files** to see all functions in a particular source file
+ * - **Review** @ref topics "Topics" for architectural context and usage examples
  *
  * @subsection understanding_system Understanding the System
  *
  * **Want to understand how things work together?**
  *
- * - Read @ref topic_categories "Topic Pages" for architectural overviews and design explanations
- * - Follow cross-references in documentation to navigate between related concepts
- *   (like @ref topic_build "Build System" or @ref topic_crypto "Cryptography")
- * - Review "See also" references at the bottom of documentation blocks
- * - Check Integration sections in topic pages for how modules interact
+ * 1. **Start with Topics**: Navigate to @ref topics "Topics" in the sidebar, or visit
+ *    **@ref topic_categories "Topic Categories"** for an organized index. @ref topics "Topics" provide comprehensive
+ *    architectural documentation that explains how subsystems work together.
+ *
+ * 2. **Look for README pages**: Many topics have "README" in their title (e.g., "Build System README",
+ *    "Cryptography Module README"). These are the most comprehensive guides and are excellent entry points.
+ *
+ * 3. **Follow cross-references**: Click on `@ref` links in documentation (like @ref topic_build "Build System"
+ *    or @ref topic_crypto "Cryptography") to navigate between related concepts.
+ *
+ * 4. **Review "See also" sections**: Most documentation blocks include "See also" references at the bottom
+ *    that link to related topics, modules, or functions.
+ *
+ * 5. **Check Integration sections**: Topic pages include "Integration" sections that explain how modules
+ *    interact with each other in the larger system.
  *
  * @subsection contribution_guide Contributing to the Project
  *
@@ -131,7 +186,7 @@
  *
  * - **Set up your build environment**: Read @ref topic_build "Build System" to configure your
  *   development environment and understand build types, CMake presets, and testing setup
- * - **Read Topic Pages** to understand the architecture before making changes
+ * - **Read** @ref topics "Topic Pages" to understand the architecture before making changes
  * - **Review Best Practices** sections for coding standards and patterns
  * - **Check** @note \@note tags that look like this and @warning \@warning tags that look like this in documentation for important details
  * - **Follow the existing documentation style** when adding new code and format with clang-format
@@ -163,7 +218,7 @@
  * @subsection crypto_module Cryptography
  * - @ref topic_crypto "Crypto Core" - Core cryptographic operations
  * - @ref handshake "Handshake Protocol" - Cryptographic handshake implementation
- * - @ref keys "Key Management" - SSH key, GPG key, and key validation APIs
+ * - @ref keys "Keys Module" - SSH key, GPG key, and key validation APIs
  *
  * @subsection media_module Media Processing
  * - @ref audio "Audio System" - Audio capture and playback
@@ -443,14 +498,27 @@
  * - `receive_packet_secure()` should be called from dedicated receive thread
  * - Crypto context is per-connection (not thread-safe for concurrent access)
  *
- * For more details, see the @ref topic_categories "Topic Categories" page:
- * - @ref topic_build "Build System" for compilation and build configuration
- * - @ref topic_crypto "Cryptography Module" for encryption details
- * - @ref topic_handshake "Handshake Protocol" for authentication
- * - @ref topic_keys "Key Management" for SSH/GPG key handling
- * - @ref topic_av "Audio/Video Networking" for media packet APIs
- * - @ref topic_network "Network I/O" for packet I/O operations
+ * For more details, explore the **@ref topic_categories "Topic Categories"** page, which provides
+ * links to all topics organized by category. Key topics include:
  *
+ * - **@ref topic_build "Build System"**: Complete build documentation, CMake configuration,
+ *   cross-platform compilation, build types, and optimization
+ * - **@ref topic_crypto_detailed "Cryptography Module README"**: Encryption architecture,
+ *   cryptographic operations, and security details
+ * - **@ref topic_handshake "Handshake Module README"**: How client and server establish
+ *   secure encrypted sessions using X25519 key exchange
+ * - **@ref topic_keys "Keys Module README"**: SSH/GPG key handling, key validation,
+ *   and authentication mechanisms
+ * - **@ref topic_av "Audio/Video Networking"**: Media packet APIs, compression,
+ *   and streaming protocols
+ * - **@ref topic_network "Network I/O"**: Packet I/O operations, socket management,
+ *   and network abstractions
+ *
+ * @note **Finding Topics**: All topics are accessible via @ref topics "Topics" in the sidebar. Many topics have
+ *       "README" in their title and descriptive Uppercase names, indicating they are comprehensive
+ *       subsystem documentation. You can also start with **Topic Categories** for an organized index,
+ *       or use the search bar at the top of the page to find topics.
+ * 
  * @section building Building Documentation
  *
  * To build this documentation, you'll need Doxygen configured. See @ref topic_build "Build System"
@@ -483,7 +551,7 @@
  *       Buffer", @ref packet_queue "Packet Queue", @ref network "Network I/O",
  *       @ref packet "Packet Types", @ref av "Audio/Video Networking", @ref
  *       crypto "Cryptography", @ref handshake "Handshake Protocol", @ref keys
- *       "Key Management", @ref audio "Audio System", @ref palette "Palette
+ *       "Keys Module", @ref audio "Audio System", @ref palette "Palette
  *       Management", @ref image2ascii "Image to ASCII", @ref video_frame "Video
  *       Frames", and @ref util "Utilities" for detailed documentation.
  *

@@ -1,6 +1,5 @@
 /**
  * @defgroup util Utility Functions
- * @ingroup module_utilities
  * @brief String, path, IP, UTF-8, CRC32, and formatting utilities
  */
 

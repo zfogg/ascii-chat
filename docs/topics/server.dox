@@ -312,7 +312,7 @@
  * - All subsequent packets are encrypted with XSalsa20-Poly1305
  * - Perfect forward secrecy (ephemeral keys per session)
  *
- * @subsection server_crypto_keys Key Management
+ * @subsection server_crypto_keys Keys Module
  *
  * The server supports multiple key management approaches:
  *
@@ -333,7 +333,7 @@
  * - Key exchange provides confidentiality but not authentication
  * - Suitable for trusted networks or testing
  *
- * For complete key management details, see @ref topic_keys "Key Management".
+ * For complete key management details, see @ref topic_keys "Keys Module".
  *
  * @section server_statistics Statistics Logger Thread
  *

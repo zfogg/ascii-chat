@@ -1,11 +1,4 @@
 /**
- * @defgroup module_utilities Utilities
- * @brief Foundation utilities used throughout the codebase
- *
- * String manipulation, path handling, IP parsing, UTF-8, CRC32, and formatting utilities.
- */
-
-/**
  * @defgroup module_data_structures Data Structures
  * @brief High-performance data structures for memory and packet management
  *
@@ -20,17 +13,10 @@
  */
 
 /**
- * @defgroup module_video Video Processing
+ * @defgroup module_video Video
  * @brief Video capture, ASCII conversion, and frame layout
  *
  * Video frame management, image-to-ASCII conversion with SIMD, grid layout, and palettes.
- */
-
-/**
- * @defgroup module_audio Audio Processing
- * @brief Audio capture, playback, and multi-client mixing
- *
- * Audio system with PortAudio and multi-client audio mixer.
  */
 
 /**
@@ -107,9 +93,9 @@
  *
  * - @ref topic_crypto_detailed "Cryptography README" - Detailed crypto implementation guide
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
- * - @ref topic_keys "Key Management" - SSH/GPG key parsing and validation
+ * - @ref topic_keys "Keys Module" - SSH/GPG key parsing and validation
  *
- * @section topics_video Video Processing
+ * @section topics_video Video
  *
  * @copybrief module_video
  *

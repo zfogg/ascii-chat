@@ -476,7 +476,7 @@
  * }
  * @endcode
  *
- * **Key Management**:
+ * **Keys Module**:
  * - Client keys loaded from `--client-key` path
  * - Server keys loaded from `--server-key` path or fetched via HTTPS
  * - Known hosts stored in `~/.ascii-chat/known_hosts`

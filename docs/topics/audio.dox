@@ -1,6 +1,7 @@
 /**
- * @defgroup audio Audio Module
+ * @defgroup audio Audio
  * @ingroup module_audio
+ * @brief Audio system for real-time audio capture and playback
  *
  * @page topic_audio Audio README
  * @ingroup audio

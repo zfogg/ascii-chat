@@ -1,5 +1,5 @@
 /**
- * @page topic_server_protocol Protocol Handler
+ * @page topic_server_protocol Server Protocol README
  * @ingroup server_protocol
  *
  * @section server_protocol_overview Overview
