@@ -1,5 +1,5 @@
 /**
- * @defgroup network Network I/O
+ * @defgroup network Network Module
  * @ingroup module_network
  *
  * @file network/network.h

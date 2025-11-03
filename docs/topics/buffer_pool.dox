@@ -41,12 +41,12 @@
  *
  * | Size Class | Buffer Size | Pool Count | Total Memory | What's it good for? |
  * |------------|-------------|------------|--------------|---------------------|
- * | **Small**  | 1 KB        | 256        | 256 KB       | Audio packets (nice and compact) |
- * | **Medium** | 64 KB       | 256        | 16 MB        | Small video frames |
- * | **Large**  | 256 KB      | 256        | 64 MB        | Large video frames |
- * | **XLarge** | 2 MB        | 256        | 512 MB       | HD video frames (the big stuff) |
+ * | **Small**  | 1 KB        | 128        | 128 KB       | Audio packets (nice and compact) |
+ * | **Medium** | 64 KB       | 64         | 4 MB         | Small video frames |
+ * | **Large**  | 256 KB      | 32         | 8 MB         | Large video frames |
+ * | **XLarge** | 2 MB        | 64         | 128 MB       | HD video frames (the big stuff) |
  *
- * **Total pre-allocated memory**: ~592 MB (yeah, it's a decent chunk, but remember—this
+ * **Total pre-allocated memory**: ~140 MB (yeah, it's a decent chunk, but remember—this
  * eliminates malloc overhead for thousands of allocations per second!)
  *
  * @subsection buffer_pool_allocation Allocation Strategy
@@ -213,10 +213,10 @@
  * Output example:
  * @verbatim
  * [buffer_pool] Global pool statistics:
- *   Small (1KB):   hits=45231 misses=12 peak=89/256 (34.8%)
- *   Medium (64KB): hits=8901 misses=156 peak=198/256 (77.3%)
- *   Large (256KB): hits=3421 misses=89 peak=234/256 (91.4%)
- *   XLarge (2MB):  hits=142 misses=3 peak=67/256 (26.2%)
+ *   Small (1KB):   hits=45231 misses=12 peak=89/128 (69.5%)
+ *   Medium (64KB): hits=8901 misses=156 peak=48/64 (75.0%)
+ *   Large (256KB): hits=3421 misses=89 peak=28/32 (87.5%)
+ *   XLarge (2MB):  hits=142 misses=3 peak=45/64 (70.3%)
  *   Overall hit rate: 98.7%
  * @endverbatim
  *

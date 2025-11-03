@@ -192,272 +192,230 @@
  * 5. Start audio/video capture and network streaming
  * 6. Handle incoming packets and render to terminal
  *
- * @subsection example_client Client Example
+ * @subsection example_client Client Workflow: Connect, Handshake, Send Video, Display ASCII
  *
- * This example shows a complete client setup with encryption, compression, and capabilities:
+ * Complete client workflow from connection to displaying ASCII frames:
  *
  * @code{.c}
- * #include "audio.h"
- * #include "crypto/handshake.h"
- * #include "network/av.h"
- * #include "network/packet_types.h"
- * #include "common.h"
- * #include "logging.h"
+ * // STEP 1: Connect to server and perform crypto handshake
+ * // From src/client/main.c and src/client/crypto.c
  *
- * // Client setup with encryption and compression
- * int setup_client(socket_t sockfd) {
- *     asciichat_error_t err;
+ * // Connect to server
+ * socket_t sockfd = server_connection_connect("127.0.0.1", 27224);
+ * if (sockfd == INVALID_SOCKET_VALUE) {
+ *     log_error("Failed to connect to server");
+ *     return ERROR_NETWORK_CONNECT;
+ * }
  *
- *     // 1. Initialize logging
- *     log_init("client.log", LOG_INFO);
+ * // Perform cryptographic handshake with server
+ * // This establishes encrypted session using X25519 key exchange
+ * asciichat_error_t handshake_result = crypto_client_perform_handshake();
+ * if (handshake_result != ASCIICHAT_OK) {
+ *     log_error("Crypto handshake failed");
+ *     return handshake_result;
+ * }
+ * log_info("Encrypted session established with server");
  *
- *     // 2. Initialize common subsystems (memory, error handling, etc.)
- *     err = asciichat_common_init("client.log");
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to initialize common subsystems: %d", err);
- *         return -1;
+ * // Send client capabilities to server (terminal size, color support, etc.)
+ * client_capabilities_packet_t caps = {
+ *     .terminal_width = htons(80),
+ *     .terminal_height = htons(24),
+ *     .supports_color = 1,
+ *     .color_mode = COLOR_MODE_TRUECOLOR,
+ *     .render_mode = RENDER_MODE_HALF_BLOCK
+ * };
+ * threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps), 0);
+ *
+ * // STEP 2: Capture webcam frame and send to server
+ * // From src/client/capture.c
+ *
+ * // Capture RGB frame from webcam (640x480 in this example)
+ * rgb_t *webcam_pixels = NULL;
+ * int width = 640, height = 480;
+ * if (webcam_capture_frame(&webcam_pixels, &width, &height) != 0) {
+ *     log_error("Failed to capture webcam frame");
+ *     return ERROR_WEBCAM;
+ * }
+ *
+ * // Package frame: [width:4][height:4][rgb_data:w*h*3]
+ * size_t frame_size = sizeof(uint32_t) * 2 + (size_t)width * (size_t)height * sizeof(rgb_t);
+ * uint8_t *frame_data = SAFE_MALLOC(frame_size, uint8_t *);
+ *
+ * // Write dimensions in network byte order
+ * *(uint32_t *)frame_data = htonl(width);
+ * *(uint32_t *)(frame_data + sizeof(uint32_t)) = htonl(height);
+ *
+ * // Copy pixel data
+ * memcpy(frame_data + sizeof(uint32_t) * 2, webcam_pixels,
+ *        (size_t)width * (size_t)height * sizeof(rgb_t));
+ *
+ * // Send image frame to server (automatically encrypted after handshake)
+ * threaded_send_packet(PACKET_TYPE_IMAGE_FRAME, frame_data, frame_size, 0);
+ *
+ * SAFE_FREE(frame_data);
+ * log_debug("Sent %dx%d webcam frame to server", width, height);
+ *
+ * // STEP 3: Receive ASCII frame from server and display
+ * // From src/client/protocol.c
+ *
+ * // Receive packet (automatically decrypted)
+ * bool crypto_ready = crypto_client_is_ready();
+ * const crypto_context_t *crypto_ctx = crypto_client_get_context();
+ * packet_envelope_t envelope;
+ * packet_recv_result_t result = receive_packet_secure(sockfd, (void *)crypto_ctx,
+ *                                                     crypto_ready, &envelope);
+ *
+ * if (result == PACKET_RECV_OK && envelope.type == PACKET_TYPE_ASCII_FRAME) {
+ *     // Parse ASCII frame header
+ *     ascii_frame_packet_t *header = (ascii_frame_packet_t *)envelope.data;
+ *     header->width = ntohl(header->width);
+ *     header->height = ntohl(header->height);
+ *     header->original_size = ntohl(header->original_size);
+ *     header->checksum = ntohl(header->checksum);
+ *
+ *     // Extract ASCII art string
+ *     const char *frame_data_ptr = (const char *)envelope.data + sizeof(ascii_frame_packet_t);
+ *     char *ascii_frame = SAFE_MALLOC(header->original_size + 1, char *);
+ *     memcpy(ascii_frame, frame_data_ptr, header->original_size);
+ *     ascii_frame[header->original_size] = '\0';
+ *
+ *     // Verify integrity
+ *     uint32_t actual_crc = asciichat_crc32(ascii_frame, header->original_size);
+ *     if (actual_crc == header->checksum) {
+ *         // Display ASCII art in terminal
+ *         display_render_frame(ascii_frame, false);
+ *         log_debug("Displayed %ux%u ASCII frame", header->width, header->height);
  *     }
  *
- *     // 3. Initialize crypto context
- *     crypto_context_t crypto_ctx;
- *     err = crypto_init(&crypto_ctx);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to initialize crypto: %d", err);
- *         return -1;
- *     }
- *
- *     // 4. Perform cryptographic handshake with server
- *     uint8_t client_public_key[32], client_secret_key[32];
- *     crypto_generate_keypair(client_public_key, client_secret_key);
- *
- *     err = crypto_handshake_client(&crypto_ctx, sockfd,
- *                                   client_public_key, client_secret_key, NULL);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Crypto handshake failed: %d", err);
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
- *     log_info("Crypto handshake complete - encryption enabled");
- *
- *     // 5. Send client capabilities
- *     terminal_capabilities_packet_t caps;
- *     SAFE_MEMSET(&caps, sizeof(caps), 0, sizeof(caps));
- *     caps.width = htons(160);
- *     caps.height = htons(45);
- *     caps.capabilities = htonl(CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR);
- *     caps.color_level = htonl(TERM_COLOR_24BIT);
- *     caps.color_count = htonl(16777216);
- *     caps.render_mode = htonl(RENDER_MODE_FOREGROUND);
- *     caps.desired_fps = 30;
- *     SAFE_STRNCPY(caps.term_type, "xterm-256color", sizeof(caps.term_type));
- *
- *     // Send capabilities (encrypted automatically by threaded_send_packet)
- *     int result = threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES,
- *                                       &caps, sizeof(caps));
- *     if (result < 0) {
- *         log_error("Failed to send client capabilities");
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
- *
- *     // 6. Initialize audio for capture/playback
- *     audio_context_t audio_ctx;
- *     err = audio_init(&audio_ctx);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to initialize audio: %d", err);
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
- *
- *     err = audio_start_capture(&audio_ctx);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to start audio capture");
- *         audio_destroy(&audio_ctx);
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
- *
- *     err = audio_start_playback(&audio_ctx);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to start audio playback");
- *         audio_destroy(&audio_ctx);
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
- *
- *     // 7. Main loop: capture audio and send with encryption/compression
- *     float audio_samples[256];
- *     while (running) {
- *         // Capture audio samples
- *         size_t frames = audio_read_capture(&audio_ctx, audio_samples, 256);
- *         if (frames > 0) {
- *             // Send audio packet (encrypted and compressed automatically)
- *             // threaded_send_packet handles encryption via crypto_ctx
- *             // Compression is applied automatically for large packets
- *             result = av_send_audio_batch(sockfd, audio_samples, frames, 44100);
- *             if (result < 0) {
- *                 log_warn("Failed to send audio packet");
- *             }
- *         }
- *
- *         // Receive and process incoming packets
- *         packet_envelope_t envelope;
- *         packet_recv_result_t recv_result = receive_packet_secure(
- *             sockfd, &crypto_ctx, true, &envelope);
- *
- *         if (recv_result == PACKET_RECV_SUCCESS) {
- *             // Process packet based on type
- *             switch (envelope.type) {
- *                 case PACKET_TYPE_ASCII_FRAME:
- *                     // Render ASCII frame to terminal
- *                     render_ascii_frame(envelope.data, envelope.len);
- *                     break;
- *                 case PACKET_TYPE_AUDIO_BATCH:
- *                     // Play back audio
- *                     audio_write_playback(&audio_ctx, envelope.data, envelope.len);
- *                     break;
- *                 // ... handle other packet types
- *             }
- *
- *             // Free packet buffer
- *             if (envelope.allocated_buffer) {
- *                 buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
- *             }
- *         }
- *     }
- *
- *     // 8. Cleanup
- *     audio_stop_capture(&audio_ctx);
- *     audio_stop_playback(&audio_ctx);
- *     audio_destroy(&audio_ctx);
- *     crypto_destroy(&crypto_ctx);  // Zeros all keys
- *     log_destroy();
- *     return 0;
+ *     SAFE_FREE(ascii_frame);
+ *     buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
  * }
  * @endcode
  *
- * @subsection example_server Server Example
+ * @subsection example_server Server Workflow: Receive Video, Convert to ASCII, Broadcast
  *
- * This example shows a server setup with encryption, compression, and multi-client support:
+ * Complete server workflow showing client connection, video reception, ASCII conversion, and broadcasting:
  *
  * @code{.c}
- * #include "crypto/handshake.h"
- * #include "network/av.h"
- * #include "network/packet_types.h"
- * #include "common.h"
- * #include "logging.h"
- * #include "server/client.h"
+ * // STEP 1: Accept client connection and perform crypto handshake
+ * // From src/server/main.c and src/server/crypto.c
  *
- * // Server-side client handling with encryption
- * int handle_client_connection(socket_t client_sock, client_info_t *client) {
- *     asciichat_error_t err;
+ * // Accept incoming client connection
+ * socket_t client_sockfd = socket_accept(listen_sockfd, NULL, NULL);
+ * if (client_sockfd == INVALID_SOCKET_VALUE) {
+ *     log_error("Failed to accept client connection");
+ *     return ERROR_NETWORK_ACCEPT;
+ * }
  *
- *     // 1. Initialize crypto context for this client
- *     crypto_context_t crypto_ctx;
- *     err = crypto_init(&crypto_ctx);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to initialize crypto for client: %d", err);
- *         return -1;
+ * // Assign client ID and create client info structure
+ * uint32_t client_id = allocate_client_id();
+ * client_info_t *client = create_client_info(client_id, client_sockfd);
+ *
+ * // Perform server-side crypto handshake
+ * asciichat_error_t handshake_result = crypto_server_perform_handshake(client);
+ * if (handshake_result != ASCIICHAT_OK) {
+ *     log_error("Crypto handshake failed for client %u", client_id);
+ *     close_client_connection(client);
+ *     return handshake_result;
+ * }
+ * log_info("Client %u: Encrypted session established", client_id);
+ *
+ * // STEP 2: Receive video frame from client
+ * // From src/server/protocol.c
+ *
+ * // Receive packet from client (automatically decrypted)
+ * bool crypto_ready = crypto_server_client_is_ready(client);
+ * const crypto_context_t *crypto_ctx = crypto_server_get_client_context(client);
+ * packet_envelope_t envelope;
+ * packet_recv_result_t result = receive_packet_secure(client_sockfd, (void *)crypto_ctx,
+ *                                                     crypto_ready, &envelope);
+ *
+ * if (result == PACKET_RECV_OK && envelope.type == PACKET_TYPE_IMAGE_FRAME) {
+ *     // Parse image frame: [width:4][height:4][rgb_data:w*h*3]
+ *     uint32_t img_width = ntohl(*(uint32_t *)envelope.data);
+ *     uint32_t img_height = ntohl(*(uint32_t *)(envelope.data + sizeof(uint32_t)));
+ *     rgb_t *pixels = (rgb_t *)(envelope.data + sizeof(uint32_t) * 2);
+ *
+ *     log_debug("Client %u: Received %ux%u video frame", client_id, img_width, img_height);
+ *
+ *     // Store frame in client's incoming video buffer
+ *     video_frame_store(client->incoming_video_buffer, envelope.data, envelope.len);
+ *
+ *     // Mark client as sending video
+ *     atomic_store(&client->is_sending_video, true);
+ *
+ *     buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+ * }
+ *
+ * // STEP 3: Convert video to ASCII and broadcast to all clients
+ * // From src/server/stream.c and src/server/render.c
+ *
+ * // For each connected client, generate personalized ASCII frame
+ * for (int i = 0; i < MAX_CLIENTS; i++) {
+ *     client_info_t *target_client = &g_client_manager.clients[i];
+ *     if (!atomic_load(&target_client->active)) {
+ *         continue;
  *     }
  *
- *     // 2. Perform cryptographic handshake (server side)
- *     uint8_t server_public_key[32], server_secret_key[32];
- *     crypto_generate_keypair(server_public_key, server_secret_key);
+ *     // Get target client's terminal dimensions
+ *     unsigned short term_width = target_client->terminal_caps.width;
+ *     unsigned short term_height = target_client->terminal_caps.height;
  *
- *     // Load server identity key (for authentication)
- *     ed25519_key_t server_identity_key;
- *     err = load_ssh_key("~/.ssh/ascii-chat-server", &server_identity_key, NULL);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Failed to load server identity key");
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
+ *     // Mix video from ALL clients into composite for this target client
+ *     size_t ascii_size = 0;
+ *     char *ascii_frame = create_mixed_ascii_frame_for_client(
+ *         target_client->client_id, term_width, term_height, &ascii_size);
+ *
+ *     if (!ascii_frame) {
+ *         continue; // No video sources available yet
  *     }
  *
- *     err = crypto_handshake_server(&crypto_ctx, client_sock,
- *                                   server_public_key, server_secret_key,
- *                                   &server_identity_key, NULL);
- *     if (err != ASCIICHAT_OK) {
- *         log_error("Crypto handshake failed: %d", err);
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
- *     log_info("Crypto handshake complete - encryption enabled for client");
+ *     // Package ASCII frame with header
+ *     ascii_frame_packet_t packet_header = {
+ *         .width = htonl(term_width),
+ *         .height = htonl(term_height),
+ *         .original_size = htonl(ascii_size),
+ *         .compressed_size = 0,
+ *         .checksum = htonl(asciichat_crc32(ascii_frame, ascii_size)),
+ *         .flags = 0
+ *     };
  *
- *     // Zero identity key after use
- *     sodium_memzero(&server_identity_key, sizeof(server_identity_key));
+ *     // Combine header + ASCII data into single packet
+ *     size_t total_size = sizeof(packet_header) + ascii_size;
+ *     uint8_t *packet_data = SAFE_MALLOC(total_size, uint8_t *);
+ *     memcpy(packet_data, &packet_header, sizeof(packet_header));
+ *     memcpy(packet_data + sizeof(packet_header), ascii_frame, ascii_size);
  *
- *     // 3. Receive client capabilities
- *     packet_envelope_t envelope;
- *     packet_recv_result_t result = receive_packet_secure(
- *         client_sock, &crypto_ctx, true, &envelope);
+ *     // Send to target client (automatically encrypted)
+ *     threaded_send_packet_to_client(target_client, PACKET_TYPE_ASCII_FRAME,
+ *                                    packet_data, total_size);
  *
- *     if (result != PACKET_RECV_SUCCESS ||
- *         envelope.type != PACKET_TYPE_CLIENT_CAPABILITIES) {
- *         log_error("Failed to receive client capabilities");
- *         crypto_destroy(&crypto_ctx);
- *         return -1;
- *     }
+ *     log_debug("Sent %zub ASCII frame to client %u", total_size, target_client->client_id);
  *
- *     // Process capabilities and configure client
- *     terminal_capabilities_packet_t *caps = (terminal_capabilities_packet_t *)envelope.data;
- *     client->width = ntohs(caps->width);
- *     client->height = ntohs(caps->height);
- *     client->terminal_caps.color_level = ntohl(caps->color_level);
- *     client->terminal_caps.capabilities = ntohl(caps->capabilities);
- *     // ... configure client based on capabilities
+ *     SAFE_FREE(ascii_frame);
+ *     SAFE_FREE(packet_data);
+ * }
  *
- *     if (envelope.allocated_buffer) {
- *         buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
- *     }
+ * // STEP 4: Mix and broadcast audio to all clients
+ * // From src/server/mixer.c
  *
- *     // 4. Store crypto context in client structure
- *     client->crypto_ctx = crypto_ctx;
- *     client->crypto_initialized = true;
- *
- *     // 5. Main loop: receive and send packets with encryption/compression
- *     while (client_connected(client)) {
- *         // Receive packet (automatically decrypted)
- *         result = receive_packet_secure(client_sock, &crypto_ctx, true, &envelope);
- *
- *         if (result == PACKET_RECV_SUCCESS) {
- *             // Process packet based on type
- *             switch (envelope.type) {
- *                 case PACKET_TYPE_AUDIO_BATCH:
- *                     // Broadcast to other clients (with encryption/compression)
- *                     broadcast_audio_to_others(client, envelope.data, envelope.len);
- *                     break;
- *                 case PACKET_TYPE_IMAGE_FRAME:
- *                     // Process video frame and generate ASCII
- *                     process_video_frame(client, envelope.data, envelope.len);
- *                     break;
- *                 // ... handle other packet types
- *             }
- *
- *             if (envelope.allocated_buffer) {
- *                 buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
- *             }
- *         }
- *
- *         // Send ASCII frame to client (encrypted and compressed automatically)
- *         if (has_pending_frame(client)) {
- *             char *ascii_frame = generate_ascii_frame(client);
- *             size_t frame_size = strlen(ascii_frame);
- *
- *             // threaded_send_packet handles:
- *             // - Encryption (via crypto_ctx)
- *             // - Compression (automatic for large packets)
- *             // - Packet formatting
- *             result = threaded_send_packet_to_client(client, PACKET_TYPE_ASCII_FRAME,
- *                                                      ascii_frame, frame_size);
- *             if (result < 0) {
- *                 log_warn("Failed to send frame to client");
- *             }
- *         }
+ * // Mix audio from all clients (excluding target client's own audio)
+ * for (int i = 0; i < MAX_CLIENTS; i++) {
+ *     client_info_t *target_client = &g_client_manager.clients[i];
+ *     if (!atomic_load(&target_client->active)) {
+ *         continue;
  *     }
  *
- *     // 6. Cleanup
- *     crypto_destroy(&crypto_ctx);
- *     return 0;
+ *     // Get mixed audio for this client (excludes their own audio)
+ *     float mixed_audio[AUDIO_SAMPLES_PER_PACKET];
+ *     int sample_count = mixer_get_mixed_audio_for_client(target_client->client_id,
+ *                                                         mixed_audio, AUDIO_SAMPLES_PER_PACKET);
+ *
+ *     if (sample_count > 0) {
+ *         // Send audio packet to client
+ *         size_t audio_size = sample_count * sizeof(float);
+ *         queue_audio_for_client(target_client, mixed_audio, audio_size);
+ *     }
  * }
  * @endcode
  *

@@ -241,18 +241,18 @@
  * @subsection config_cmdline_common Common Options
  *
  * Available for both server and client:
- * - `--config FILE`: Configuration file path
- * - `--log-file FILE`: Log file path
- * - `--help, -?`: Show help message
- * - `--version, -v`: Show version information
+ * - \c --config FILE: Configuration file path
+ * - --log-file FILE: Log file path
+ * - --help, -?: Show help message
+ * - --version, -v: Show version information
  *
  * @section config_default_locations Default Config Locations
  *
  * ascii-chat searches for configuration files in the following order:
  *
  * **Linux/macOS**:
- * - `~/.ascii-chat/config.toml`
  * - `~/.config/ascii-chat/config.toml`
+ * - `~/.ascii-chat/config.toml`
  * - `/etc/ascii-chat/config.toml`
  *
  * **Windows**:
@@ -412,9 +412,6 @@
  *     opts->audio = false;  // Disabled by default for client
  *     opts->sample_rate = SAMPLE_RATE;  // 48000
  *     opts->audio_channels = AUDIO_CHANNELS;  // 1 (mono)
- *
- *     // Server defaults
- *     opts->max_clients = MAX_CLIENTS;  // 9
  *
  *     // Logging defaults
  *     opts->log_level = LOG_INFO;

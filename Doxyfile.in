@@ -137,11 +137,10 @@ RECURSIVE              = YES
 EXCLUDE                = @CMAKE_SOURCE_DIR@/tests \
                          @CMAKE_SOURCE_DIR@/lib/platform/posix \
                          @CMAKE_SOURCE_DIR@/lib/platform/windows \
-                         @CMAKE_SOURCE_DIR@/lib/image2ascii/simd \
                          @CMAKE_SOURCE_DIR@/deps \
                          @CMAKE_SOURCE_DIR@/build \
+                         @CMAKE_SOURCE_DIR@/build_docker \
                          @CMAKE_SOURCE_DIR@/build_release \
-                         @CMAKE_SOURCE_DIR@/build-fast \
                          @CMAKE_BINARY_DIR@
 
 EXCLUDE_SYMLINKS       = NO

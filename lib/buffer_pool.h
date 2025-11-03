@@ -112,14 +112,14 @@
  * @{
  */
 
-/** @brief Number of small buffers to pre-allocate (256KB total) */
-#define BUFFER_POOL_SMALL_COUNT 256
-/** @brief Number of medium buffers to pre-allocate (16MB total) */
-#define BUFFER_POOL_MEDIUM_COUNT 256
-/** @brief Number of large buffers to pre-allocate (64MB total) */
-#define BUFFER_POOL_LARGE_COUNT 256
-/** @brief Number of extra large buffers to pre-allocate (512MB total) */
-#define BUFFER_POOL_XLARGE_COUNT 256
+/** @brief Number of small buffers to pre-allocate (128KB total) */
+#define BUFFER_POOL_SMALL_COUNT 128
+/** @brief Number of medium buffers to pre-allocate (4MB total) */
+#define BUFFER_POOL_MEDIUM_COUNT 64
+/** @brief Number of large buffers to pre-allocate (8MB total) */
+#define BUFFER_POOL_LARGE_COUNT 32
+/** @brief Number of extra large buffers to pre-allocate (128MB total) */
+#define BUFFER_POOL_XLARGE_COUNT 64
 
 /** @} */
 
@@ -207,7 +207,7 @@ typedef struct data_buffer_pool {
  * Creates a new buffer pool manager with all size classes initialized.
  * Each size class is pre-allocated with the configured number of buffers.
  *
- * @note Allocates significant memory up front (256KB + 16MB + 64MB + 512MB).
+ * @note Allocates significant memory up front (128KB + 4MB + 8MB + 128MB).
  *       Use this carefully in memory-constrained environments.
  *
  * @note Thread-safe: Can be called from multiple threads.

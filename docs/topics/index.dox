@@ -188,6 +188,7 @@
  * - @ref topic_testing "Testing" - Test framework, test runner, Docker testing, coverage reporting
  * - @ref topic_debug "Debugging Utilities" - Error tracking, memory leak detection, diagnostics
  * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
+ * - @ref exit_codes "Exit Codes" - Exit code categories and error descriptions from asciichat_error_t
  * - @ref topic_lock_debug "Lock Debugging" - Lock tracking, deadlock detection, contention analysis
  */
 
