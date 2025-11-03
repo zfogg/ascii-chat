@@ -54,18 +54,30 @@
  *
  * @section server_overview Overview
  *
- * The ascii-chat server is a high-performance, real-time multi-client system designed for
- * low-latency video and audio streaming with end-to-end encryption. The server implements
- * a sophisticated per-client threading architecture that provides linear scalability and
- * real-time performance guarantees for each connected client.
+ * Welcome to the heart of ascii-chat—the server! This is where all the magic happens.
  *
- * **Key Features**:
- * - **Per-client threading model**: 4 threads per client (receive, send, video render, audio render)
- * - **Real-time performance**: 60fps video rendering per client, 172fps audio mixing
- * - **Linear scalability**: Performance scales linearly up to 9+ concurrent clients
- * - **End-to-end encryption**: Full cryptographic handshake with X25519 key exchange
- * - **Terminal-aware rendering**: Client-specific ASCII generation based on terminal capabilities
- * - **Graceful shutdown**: Clean resource cleanup with proper thread coordination
+ * Picture a video conference with multiple people. Someone needs to coordinate everything: collecting
+ * video from each person, mixing the audio streams together, generating those cool ASCII frames,
+ * and sending everything back out to everyone. That's exactly what the server does, and it does
+ * it all in real-time at 60 frames per second!
+ *
+ * The server is designed like a well-oiled machine. Each client gets their own dedicated threads
+ * (think of them as personal assistants)—one for receiving data, one for sending, one for video
+ * rendering, and one for audio mixing. This means when Client A's connection gets slow, it doesn't
+ * affect Client B at all. They're independent! This architecture scales beautifully—we've tested
+ * with 9+ clients without breaking a sweat.
+ *
+ * And security? Every single packet is encrypted end-to-end using modern cryptography (X25519,
+ * XSalsa20-Poly1305—the good stuff). Your video chat stays private.
+ *
+ * What makes this server special?
+ * --------------------------------
+ * - **4 threads per client**: Receive, send, video render, audio render (complete independence)
+ * - **Real-time performance**: 60fps video per client, 172fps audio mixing (smooth as butter)
+ * - **Linear scalability**: Add more clients, performance scales proportionally (no bottlenecks!)
+ * - **End-to-end encryption**: Full cryptographic handshake—your data stays yours
+ * - **Terminal-aware**: Generates ASCII optimized for each client's terminal capabilities
+ * - **Graceful shutdown**: Clean resource cleanup even when things go sideways
  *
  * **Implementation**: src/server/*.c, src/server/*.h
  *
@@ -73,26 +85,36 @@
  *
  * @subsection server_threading_model Threading Model
  *
- * The server implements a sophisticated per-client threading architecture designed for
- * real-time media processing with linear scalability:
+ * Let's talk about how the server juggles multiple clients simultaneously—it's actually pretty clever!
  *
- * **Global Threads**:
- * - **Main Thread**: Connection acceptance, client lifecycle management, signal handling, coordination
- * - **Stats Logger Thread**: Performance monitoring and periodic reporting (every 30 seconds)
+ * Think of the server like a restaurant. You've got a host (main thread) greeting customers and showing
+ * them to tables. Then each table gets its own team of waiters (4 threads per client) who handle
+ * everything for that specific table. One waiter takes orders (receive thread), another delivers food
+ * (send thread), one prepares the visual presentation (video render), and another handles drinks
+ * (audio render). This way, if one table's order is taking forever, it doesn't slow down the other
+ * tables—everyone gets independent service!
  *
- * **Per-Client Threads** (4 threads per connected client):
- * 1. **Receive Thread**: Handles incoming packets from client (calls protocol.c functions)
- * 2. **Send Thread**: Manages outgoing packet delivery using packet queues
- * 3. **Video Render Thread**: Generates ASCII frames at 60fps (render.c)
- * 4. **Audio Render Thread**: Mixes audio streams at 172fps (render.c)
+ * The threading setup:
+ * --------------------
  *
- * This threading model provides:
- * - **Linear scalability**: No shared bottlenecks between clients
- * - **Fault isolation**: One client's issues don't affect others
- * - **Simplified synchronization**: Each client owns its resources
- * - **Real-time guarantees**: Each client gets dedicated CPU resources
+ * **Global Threads** (these run regardless of client count):
+ * - **Main Thread**: The host—greets new clients, handles connections, coordinates everything
+ * - **Stats Logger Thread**: The accountant—checks performance every 30 seconds, logs metrics
  *
- * For complete details on the concurrency architecture, see
+ * **Per-Client Threads** (4 dedicated threads for each connected client):
+ * 1. **Receive Thread**: Listens for incoming packets from this client (what are they sending?)
+ * 2. **Send Thread**: Delivers outgoing packets to this client (here's your ASCII frame!)
+ * 3. **Video Render Thread**: Generates personalized ASCII frames at 60fps (smooth video)
+ * 4. **Audio Render Thread**: Mixes audio from everyone at 172fps (clear sound)
+ *
+ * Why this design rocks:
+ * ---------------------
+ * - **Linear scalability**: Add clients, performance scales proportionally (no shared chokepoints)
+ * - **Fault isolation**: Client A's slow connection doesn't affect Client B at all
+ * - **Simple synchronization**: Each client owns their stuff, minimal lock fighting
+ * - **Real-time guarantees**: Everyone gets their own CPU time slice—fair and predictable
+ *
+ * For the nitty-gritty details on locks, synchronization, and threading internals, check out
  * <a href="../notes/CONCURRENCY.md">Concurrency Architecture Documentation</a>.
  *
  * @subsection server_modules Server Modules
@@ -203,38 +225,62 @@
  *
  * @subsection server_lock_ordering Lock Ordering Protocol
  *
- * **CRITICAL RULE**: Always acquire locks in this order to prevent deadlocks:
- * 1. **Global RWLock** (`g_client_manager_rwlock`)
- * 2. **Per-Client Mutex** (`client_state_mutex`)
- * 3. **Specialized Mutexes** (`video_buffer_mutex`, `g_stats_mutex`, etc.)
+ * Okay, this is super important—like "your program will freeze if you mess this up" important.
  *
- * This ordering is enforced throughout the codebase. Violations can cause deadlocks.
- * See <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a> for detailed examples and rationale.
+ * Deadlocks are the nightmare of multi-threaded programming. Imagine two threads: Thread A holds
+ * Lock 1 and wants Lock 2, while Thread B holds Lock 2 and wants Lock 1. Both threads wait forever.
+ * Boom, deadlock. The program freezes. Not fun.
+ *
+ * The solution? **Always acquire locks in the same order.** It's like a traffic rule—if everyone
+ * follows it, there are no collisions.
+ *
+ * **CRITICAL RULE** (memorize this!):
+ * ------------------------------------
+ * Always acquire locks in this exact order:
+ * 1. **Global RWLock** (`g_client_manager_rwlock`) — The big one, protects the client list
+ * 2. **Per-Client Mutex** (`client_state_mutex`) — Protects individual client state
+ * 3. **Specialized Mutexes** (`video_buffer_mutex`, `g_stats_mutex`, etc.) — Specific subsystems
+ *
+ * **Never** acquire them in a different order. Ever. Seriously. Violating this causes deadlocks,
+ * and debugging deadlocks is like finding a needle in a haystack while wearing mittens.
+ *
+ * For detailed examples, war stories, and the rationale behind this ordering, check out
+ * <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>.
  *
  * @subsection server_snapshot_pattern Snapshot Pattern
  *
- * All client state access uses the snapshot pattern to minimize lock holding time:
+ * Here's a clever technique we use throughout the server to keep things fast: the **snapshot pattern**.
  *
+ * The idea is simple: hold locks for as little time as possible. Instead of keeping a lock while
+ * doing expensive work (like rendering a frame), we quickly grab the lock, copy the data we need
+ * into local variables (a "snapshot"), release the lock, and then do the work using the snapshot.
+ *
+ * It's like taking a photo instead of staring at the original—you get what you need, then other
+ * people can look at the original while you work with your copy.
+ *
+ * Here's what it looks like in practice:
  * @code{.c}
  * // 1. Acquire mutex
  * mutex_lock(&client->client_state_mutex);
  *
- * // 2. Copy needed state to local variables
+ * // 2. Quickly copy what we need to local variables
  * bool should_continue = client->video_render_thread_running && client->active;
  * uint32_t client_id_snapshot = client->client_id;
  * unsigned short width_snapshot = client->width;
  * unsigned short height_snapshot = client->height;
  *
- * // 3. Release mutex immediately
+ * // 3. Release the lock immediately (this is the key!)
  * mutex_unlock(&client->client_state_mutex);
  *
- * // 4. Process using local copies (no locks held)
+ * // 4. Now do the expensive work with our snapshot (no locks held)
  * if (should_continue) {
  *   generate_frame(client_id_snapshot, width_snapshot, height_snapshot);
+ *   // This might take milliseconds, but we're not blocking anyone!
  * }
  * @endcode
  *
- * This pattern ensures minimal lock contention and prevents blocking render threads.
+ * This pattern is why the server can maintain 60fps video rendering—we minimize lock contention,
+ * so threads don't spend time waiting for each other.
  *
  * @section server_cryptography Cryptographic Operations
  *
@@ -425,24 +471,27 @@
  *
  * @section server_quirks Known Quirks and Limitations
  *
+ * Every system has its quirks, and ascii-chat is no exception. Here are some things you
+ * should know about—not bugs, just... characteristics!
+ *
  * @subsection server_ssh_keygen_dependency SSH Keygen Dependency
  *
- * **Current Limitation**: The server currently depends on `ssh-keygen` being available
- * in the system PATH for decrypting passphrase-protected SSH keys.
+ * **The situation**: If you're using encrypted SSH keys for server authentication, the
+ * server needs `ssh-keygen` to be available in your system PATH.
  *
- * **Why**: When loading encrypted Ed25519 private keys (with `--server-key`), the server
- * uses `ssh-keygen -q -p` to decrypt the key because:
- * - OpenSSH private key format is complex to parse directly
- * - `ssh-keygen` provides robust password validation
- * - Safer approach than implementing custom OpenSSH key parser
+ * **Why this is necessary**: When you load an encrypted Ed25519 private key (via `--server-key`),
+ * we need to decrypt it. OpenSSH's private key format is... let's say "intricate." Rather than
+ * writing our own parser (which could introduce security bugs), we lean on `ssh-keygen -q -p`
+ * to do the decryption. It's battle-tested, secure, and handles edge cases we might miss.
  *
- * **Workaround**: 
- * - Use passwordless keys (no passphrase): `ssh-keygen -t ed25519 -N ""`
- * - Use `--no-encrypt` flag to disable encryption (testing only)
- * - Ensure `ssh-keygen` is in PATH (typically included with SSH installations)
+ * **How to work around it**:
+ * - **Use passwordless keys**: Generate without a passphrase: `ssh-keygen -t ed25519 -N ""`
+ * - **Install ssh-keygen**: Usually comes with SSH installations (OpenSSH on Linux/Mac, Git Bash on Windows)
+ * - **Testing only**: Use `--no-encrypt` to disable encryption (don't use in production!)
  *
- * **Future**: May implement native OpenSSH key parsing to remove this dependency.
- * See `lib/crypto/keys/ssh_keys.c:707-1022` for implementation details.
+ * **The future**: We might implement native OpenSSH key parsing eventually, but for now,
+ * `ssh-keygen` is our friend. Check out `lib/crypto/keys/ssh_keys.c:707-1022` if you're
+ * curious about the implementation.
  *
  * @subsection server_stats_thread_behavior Stats Logger Thread Behavior
  *
@@ -502,16 +551,23 @@
  *
  * @subsection server_frame_dropping Frame Dropping Under Load
  *
- * **Behavior**: Server aggressively drops frames under load to maintain real-time
- * performance. This is by design for real-time streaming.
+ * **Here's the thing about real-time video**: When the system gets overloaded, you have
+ * two choices—buffer everything (causing latency to skyrocket) or drop frames (keeping
+ * latency low but reducing smoothness). We chose the latter.
  *
- * **Why**: Better to drop frames than delay all frames (real-time requirement).
- * - Always uses latest available frame
- * - Logarithmic drop rate based on buffer occupancy
- * - Maintains frame rate under load
+ * **Why drop frames instead of buffering?** Think about a live conversation. Would you rather:
+ * - See smooth video but with a 5-second delay (buffering approach), or
+ * - See slightly choppy video but respond in real-time (frame dropping approach)?
  *
- * **Impact**: Clients may see frame rate reduction under heavy load, but latency
- * remains low (no frame buffering delays).
+ * For a chat application, real-time responsiveness beats smoothness. So when the server
+ * gets overwhelmed (lots of clients, slow CPU, whatever), it:
+ * - Always uses the **latest** available frame (freshest data)
+ * - Drops older frames logarithmically based on buffer occupancy (smart dropping)
+ * - Maintains target frame rate as much as possible
+ *
+ * **What this means for you**: Under heavy load, clients might see 30fps instead of 60fps,
+ * but the video will always feel responsive. No weird lag where someone asks a question
+ * and you respond 5 seconds later!
  *
  * @section server_integration Integration with Library Modules
  *
@@ -554,29 +610,44 @@
  *
  * @section server_best_practices Best Practices
  *
- * **Thread Safety**:
- * - Always follow lock ordering protocol (global → per-client)
- * - Use snapshot pattern for client state access
- * - Minimize lock holding time
- * - Use atomic operations for simple flags
+ * Here are some hard-won lessons from building and debugging this server. Follow these,
+ * and you'll save yourself a lot of headaches!
  *
- * **Error Handling**:
- * - Always check return values from network operations
- * - Use `SET_ERRNO()` macros in library code
- * - Use `FATAL()` macros for fatal errors in main code
- * - Provide meaningful error context
+ * Thread Safety (avoiding the deadlock nightmare):
+ * ------------------------------------------------
+ * - **Always follow lock ordering**: Global → per-client → specialized (no exceptions!)
+ * - **Use snapshot pattern**: Copy data while holding locks, process without locks
+ * - **Minimize lock time**: Hold locks for as little time as possible
+ * - **Atomic flags**: Use atomics for simple booleans (no lock needed)
  *
- * **Performance**:
- * - Minimize allocations in hot paths (use buffer pools)
- * - Avoid unnecessary lock contention
- * - Use lock-free data structures where possible
- * - Profile lock contention with lock debugging system
+ * Why? Deadlocks are terrible to debug. Following these rules prevents them entirely.
  *
- * **Shutdown**:
- * - Always set shutdown flags before joining threads
- * - Join threads in proper order (send → receive → render)
- * - Check shutdown flags frequently in loops
- * - Use interruptible sleep operations
+ * Error Handling (making bugs easy to find):
+ * ------------------------------------------
+ * - **Check all returns**: Network operations can fail—always check the return value
+ * - **Use SET_ERRNO()**: In library code, use this for automatic context capture
+ * - **Use FATAL()**: In main code, fatal errors should be obvious and informative
+ * - **Meaningful messages**: "Failed to bind" is better than "Error -1"
+ *
+ * Why? Good error messages save hours of debugging. You'll thank yourself later.
+ *
+ * Performance (keeping it fast):
+ * ------------------------------
+ * - **Use buffer pools**: Hot paths should never call malloc() directly
+ * - **Avoid lock fighting**: If threads are waiting for locks, rethink your design
+ * - **Lock-free when possible**: Ring buffers, atomics—they're your friends
+ * - **Profile contention**: Use the lock debugging system to find bottlenecks
+ *
+ * Why? Real-time 60fps doesn't happen by accident. Every microsecond counts.
+ *
+ * Shutdown (cleaning up gracefully):
+ * ----------------------------------
+ * - **Flags first**: Set shutdown flags before joining threads (they need to know to stop!)
+ * - **Join in order**: send → receive → render (order matters for cleanup)
+ * - **Check frequently**: Loops should check shutdown flags often (responsive exit)
+ * - **Interruptible sleep**: Use sleep that can be interrupted by shutdown signals
+ *
+ * Why? Nothing's worse than a program that won't exit. Clean shutdown is a feature.
  *
  * @see src/server/main.c For server entry point and initialization
  * @see src/server/client.c For client lifecycle management

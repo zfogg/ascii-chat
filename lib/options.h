@@ -1,6 +1,6 @@
 /**
  * @defgroup options Options Module
- * @ingroup module_core
+ * @ingroup options
  * @brief The command-line flags available.
  *
  * @file options.h

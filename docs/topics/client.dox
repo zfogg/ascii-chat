@@ -50,26 +50,40 @@
  * @page topic_client Overview of Client (src/client/*)
  * @ingroup module_client
  *
+ * @tableofcontents
+ *
  * @section client_overview Overview
  *
- * The ascii-chat client application connects to ascii-chat servers, captures
- * video and audio from local devices, transmits media streams to the server,
- * and renders received ASCII frames to the terminal. It implements robust
- * reconnection logic, cryptographic authentication, and multi-threaded media
- * processing.
+ * Welcome to the ascii-chat client—where the magic happens on your screen!
+ *
+ * Think of the client as your personal video chat portal. It's the part of ascii-chat that runs
+ * on your computer, capturing your webcam and microphone, sending that data to the server, and
+ * displaying everyone else's video as beautiful ASCII art right in your terminal. It's like a
+ * normal video chat app, except way cooler because it works in your terminal!
+ *
+ * The client is surprisingly sophisticated under the hood. It juggles multiple tasks simultaneously:
+ * grabbing frames from your webcam, capturing audio, encrypting everything, sending it over the
+ * network, receiving ASCII frames from the server, and rendering them to your terminal—all while
+ * staying responsive and handling network hiccups gracefully.
+ *
+ * But here's the best part: all of this complexity is hidden from you. Just run the client, and
+ * it connects to the server, authenticates securely, and starts streaming. If your connection drops?
+ * No problem—it automatically reconnects. Network slow? It handles that too. The client is designed
+ * to be reliable and resilient, so you can focus on your conversation, not technical issues.
  *
  * **Implementation**: src/client/*.c, src/client/*.h
  *
- * **Key Features**:
- * - Automatic server connection with exponential backoff retry
- * - Webcam video capture and transmission (AVFoundation, V4L2, or test pattern)
- * - Audio capture and playback via PortAudio
- * - Real-time ASCII frame rendering to terminal
- * - End-to-end encryption with X25519/XSalsa20-Poly1305
- * - SSH key authentication (Ed25519)
- * - Connection keepalive with ping/pong
- * - Graceful reconnection on connection loss
- * - Snapshot mode for single-frame testing
+ * What makes the client special?
+ * -------------------------------
+ * - **Smart connection management**: Connects automatically with exponential backoff (won't spam the server)
+ * - **Cross-platform video capture**: Works with your webcam on macOS, Linux, or Windows (or test patterns if you prefer)
+ * - **Crystal-clear audio**: PortAudio handles both capture and playback with jitter buffering
+ * - **Real-time rendering**: ASCII frames appear instantly in your terminal—no lag
+ * - **Secure by default**: End-to-end encryption using modern cryptography (X25519/XSalsa20-Poly1305)
+ * - **SSH key authentication**: Use your existing SSH keys (Ed25519) for secure login
+ * - **Stays connected**: Ping/pong keepalive prevents timeout disconnects
+ * - **Handles interruptions**: Reconnects gracefully when your network burps
+ * - **Snapshot mode**: Perfect for testing—capture a single frame and exit
  *
  * @section client_architecture Architecture
  *
@@ -507,8 +521,8 @@
  * - `--log-file <path>`: Log to file instead of stderr
  *
  * **Configuration Options**:
- * - `--config <path>`: Load options from TOML config file
- * - `--config-create <path>`: Generate default config file and exit
+ * - \c --config \c <path>: Load options from TOML config file
+ * - \c --config-create \c <path>: Generate default config file and exit
  *
  * @section client_error_handling Error Handling and Exit Codes
  *
@@ -663,11 +677,6 @@
  * - Encrypted SSH keys require `ssh-keygen` or `$SSH_AUTH_SOCK`
  * - Native key decryption not yet implemented
  * - Workaround: Use unencrypted keys or ssh-agent
- *
- * **Windows Webcam Support**:
- * - Windows only supports test pattern mode
- * - Real webcam capture via Media Foundation TODO
- * - Workaround: Use `--test-pattern` flag
  *
  * **IPv6 Connection Issues**:
  * - Some systems prioritize IPv6 but server only listens on IPv4

@@ -2,7 +2,7 @@
 
 /**
  * @defgroup buffer_pool Buffer Pool
- * @ingroup module_data_structures
+ * @ingroup buffer_pool
  *
  * @file buffer_pool.h
  * @ingroup buffer_pool

@@ -2,7 +2,7 @@
 
 /**
  * @defgroup hashtable Hash Table
- * @ingroup module_data_structures
+ * @ingroup hashtable
  *
  * @file hashtable.h
  * @ingroup hashtable

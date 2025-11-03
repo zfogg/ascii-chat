@@ -8,96 +8,152 @@
  *
  * @section palette_overview Overview
  *
+ * Welcome to the Palette Management module! This is where we turn video frames
+ * into beautiful ASCII art. The palette system is all about choosing the right
+ * characters to represent different brightness levels—from dark spaces to light
+ * block characters, we've got options for every terminal and every aesthetic.
+ *
+ * What does the palette system do?
+ * --------------------------------
  * The Palette Management module provides comprehensive ASCII character palette
- * management for converting video frames to ASCII art in ascii-chat. The system
- * supports multiple built-in palettes, custom user-defined palettes, and full
- * UTF-8 support for enhanced visual effects.
+ * management for converting video frames to ASCII art in ascii-chat. Here's
+ * what it gives you:
+ * - **Five built-in palette types** (standard, blocks, digital, minimal, cool)
+ *   so you can choose the style that fits your terminal
+ * - **Custom user-defined palettes** via command-line options (if you want
+ *   something unique, you can create your own)
+ * - **UTF-8 character support** with proper encoding handling (for terminals
+ *   that support Unicode)
+ * - **Automatic UTF-8 capability detection** and compatibility checking (we
+ *   detect what your terminal supports and pick the right palette automatically)
+ * - **Palette validation** to ensure proper character ordering (so your custom
+ *   palettes work correctly)
+ * - **Luminance mapping** for optimal brightness-to-character conversion (so
+ *   dark pixels become dark characters and bright pixels become bright characters)
+ * - **Client compatibility checking** and automatic fallback (if your terminal
+ *   doesn't support UTF-8, we fall back to ASCII automatically)
  *
  * **Implementation**: lib/palette.h
- *
- * **Key Features**:
- * - Five built-in palette types (standard, blocks, digital, minimal, cool)
- * - Custom user-defined palettes via command-line options
- * - UTF-8 character support with proper encoding handling
- * - Automatic UTF-8 capability detection and compatibility checking
- * - Palette validation to ensure proper character ordering
- * - Luminance mapping for optimal brightness-to-character conversion
- * - Client compatibility checking and automatic fallback
  *
  * @section palette_builtin Built-in Palettes
  *
  * ascii-chat provides five built-in palette types, each optimized for different
- * visual styles and terminal capabilities:
+ * visual styles and terminal capabilities. Think of them as different "art styles"
+ * for your ASCII art—some are classic and simple, others are modern and smooth.
+ * Let's explore what each one offers:
  *
  * @subsection palette_standard Standard Palette
  *
+ * The Standard palette is the classic ASCII art style—if you've ever seen ASCII
+ * art in movies or old-school terminal demos, this is probably what they were
+ * using. It's simple, reliable, and works everywhere.
+ *
  * **Characters**: `"   ...',;:clodxkO0KXNWM"`
  *
- * Classic ASCII art palette with varying character density. The standard palette
- * uses traditional ASCII characters ordered from darkest (spaces) to lightest
- * (capital letters) for optimal brightness mapping.
+ * This palette uses traditional ASCII characters ordered from darkest (spaces)
+ * to lightest (capital letters) for optimal brightness mapping. It's the "tried
+ * and true" option—nothing fancy, but it works great.
  *
- * **Characteristics**:
- * - Pure ASCII (no UTF-8 required)
- * - 23 characters total
- * - Wide compatibility (works in all terminals)
- * - Classic ASCII art aesthetic
+ * What makes it special?
+ * ---------------------
+ * - **Pure ASCII**: No UTF-8 required, so it works in any terminal, even
+ *   ancient ones
+ * - **23 characters total**: A good balance between detail and simplicity
+ * - **Wide compatibility**: Works in all terminals, even terminals that don't
+ *   support UTF-8
+ * - **Classic ASCII art aesthetic**: The traditional look that everyone recognizes
+ *
+ * This is probably what you want if you're not sure which palette to use—it's
+ * the safe default that works everywhere.
  *
  * @subsection palette_blocks Blocks Palette
  *
+ * The Blocks palette is our high-quality option for terminals that support UTF-8.
+ * It uses Unicode block characters to create smooth gradients that look almost
+ * like real video—it's really impressive what you can do with block characters!
+ *
  * **Characters**: `"   ░░▒▒▓▓██"`
  *
- * Unicode block characters providing solid rendering with smooth gradients.
- * The blocks palette uses Unicode half-block and full-block characters for
- * high-quality visual output.
+ * This palette uses Unicode half-block and full-block characters to create a
+ * smooth gradient effect. The blocks range from light to dark, creating a
+ * continuous gradient that looks much smoother than ASCII characters.
  *
- * **Characteristics**:
- * - Requires UTF-8 support
- * - 10 characters (spaces + 4 block pairs)
- * - Smooth gradient effect
- * - Best visual quality for UTF-8 terminals
+ * What makes it special?
+ * ---------------------
+ * - **Requires UTF-8 support**: Your terminal needs to support UTF-8 for this
+ *   to work, but most modern terminals do
+ * - **10 characters total**: Just spaces and 4 block pairs (light half-block,
+ *   dark half-block, light full-block, dark full-block)
+ * - **Smooth gradient effect**: The blocks create a much smoother gradient than
+ *   ASCII characters
+ * - **Best visual quality for UTF-8 terminals**: If your terminal supports UTF-8,
+ *   this is probably the best-looking option
+ *
+ * This is what you want if you have a modern terminal and want the best visual
+ * quality!
  *
  * @subsection palette_digital Digital Palette
  *
+ * The Digital palette has a unique glitch/digital aesthetic—think "Matrix" meets
+ * "cyberpunk terminal". It uses mathematical and geometric Unicode characters
+ * to create a technical, modern look.
+ *
  * **Characters**: `"   -=≡≣▰▱◼"`
  *
- * Digital/glitch aesthetic palette with mathematical and geometric characters.
- * The digital palette provides a unique visual style suitable for modern,
- * technical terminal environments.
+ * This palette combines mathematical symbols (equals, equivalent) with geometric
+ * shapes (squares, blocks) to create a unique visual style. It's not for
+ * everyone, but if you like the "cyberpunk hacker" aesthetic, this is for you!
  *
- * **Characteristics**:
- * - Requires UTF-8 support
- * - 10 characters total
- * - Unique glitch/digital aesthetic
- * - Technical appearance
+ * What makes it special?
+ * ---------------------
+ * - **Requires UTF-8 support**: Needs UTF-8 for the special characters
+ * - **10 characters total**: A mix of mathematical and geometric symbols
+ * - **Unique glitch/digital aesthetic**: Very distinctive look
+ * - **Technical appearance**: Looks like something from a sci-fi movie
+ *
+ * This is for when you want something unique and technical-looking.
  *
  * @subsection palette_minimal Minimal Palette
  *
+ * The Minimal palette is for when you want the absolute simplest possible rendering.
+ * It uses just seven characters (spaces, dots, dashes, plus signs, asterisks,
+ * and hashes), so it's fast, simple, and works everywhere.
+ *
  * **Characters**: `"   .-+*#"`
  *
- * Simple ASCII palette with minimal character set. The minimal palette
- * provides basic rendering with just seven characters for maximum compatibility
- * and simplicity.
+ * This is the "less is more" palette—maximum simplicity, maximum compatibility.
+ * If you're running on an ancient terminal or want the absolute fastest rendering,
+ * this is what you want.
  *
- * **Characteristics**:
- * - Pure ASCII (no UTF-8 required)
- * - 7 characters total
- * - Maximum simplicity
- * - Fast rendering
+ * What makes it special?
+ * ---------------------
+ * - **Pure ASCII**: No UTF-8 required, works everywhere
+ * - **7 characters total**: Just the basics—spaces, dots, dashes, plus, asterisk, hash
+ * - **Maximum simplicity**: As simple as it gets while still being usable
+ * - **Fast rendering**: Fewer characters means faster conversion
+ *
+ * This is for minimalism lovers and performance purists.
  *
  * @subsection palette_cool Cool Palette
  *
+ * The Cool palette is another UTF-8 option that uses ascending block characters
+ * to create a smooth gradient. It's similar to the Blocks palette, but uses a
+ * different set of characters that create a slightly different look.
+ *
  * **Characters**: `"   ▁▂▃▄▅▆▇█"`
  *
- * Unicode ascending blocks palette providing smooth gradient effect. The cool
- * palette uses Unicode ascending block characters to create a visually appealing
- * gradient from dark to light.
+ * This palette uses Unicode ascending block characters (think "stair steps going
+ * up") to create a visually appealing gradient from dark to light. It's smooth,
+ * modern, and looks great in UTF-8 terminals.
  *
- * **Characteristics**:
- * - Requires UTF-8 support
- * - 10 characters (spaces + ascending blocks)
- * - Smooth gradient effect
- * - Modern visual style
+ * What makes it special?
+ * ---------------------
+ * - **Requires UTF-8 support**: Needs UTF-8 for the ascending block characters
+ * - **10 characters total**: Spaces plus 7 ascending block characters
+ * - **Smooth gradient effect**: Creates a nice smooth transition from dark to light
+ * - **Modern visual style**: Clean, modern look
+ *
+ * This is another great option if you have UTF-8 support and want smooth gradients!
  *
  * @section palette_utf8 UTF-8 Support
  *
@@ -253,19 +309,33 @@
  *
  * @section palette_luminance Luminance Mapping
  *
+ * Luminance mapping is the "secret sauce" that makes video-to-ASCII conversion
+ * fast. Instead of calculating which character to use for each pixel every time,
+ * we pre-compute a lookup table that maps brightness values directly to character
+ * indices. This makes the conversion super fast—we're talking O(1) lookup time!
+ *
  * @subsection palette_luminance_overview Luminance Mapping Overview
  *
- * Luminance mapping converts pixel brightness values (0-255) directly to
- * palette character indices using a pre-computed lookup table. This eliminates
- * the need for searching or calculation during video-to-ASCII conversion,
- * significantly improving performance.
+ * Luminance mapping converts pixel brightness values (0-255) directly to palette
+ * character indices using a pre-computed lookup table. This eliminates the need
+ * for searching or calculation during video-to-ASCII conversion, which makes
+ * everything significantly faster.
  *
+ * How does it work?
+ * ----------------
  * **Mapping Process**:
- * 1. Pixel brightness extracted (0-255 range)
- * 2. Direct lookup in luminance mapping table (256 entries)
- * 3. Character index retrieved (0 to palette_length-1)
- * 4. Character selected from palette
- * 5. Character rendered to terminal
+ * 1. **Pixel brightness extracted** (0-255 range): We calculate how bright each
+ *    pixel is (from completely black at 0 to completely white at 255)
+ * 2. **Direct lookup in luminance mapping table** (256 entries): We use the
+ *    brightness value as an index into a lookup table—no calculation needed!
+ * 3. **Character index retrieved** (0 to palette_length-1): The lookup table
+ *    tells us which character index to use
+ * 4. **Character selected from palette**: We grab that character from the palette
+ * 5. **Character rendered to terminal**: Finally, we render it to the terminal
+ *
+ * The key insight is that we pre-compute the lookup table once during initialization,
+ * so during rendering we just do a simple array lookup. This is way faster than
+ * calculating which character to use for each pixel every time!
  *
  * @subsection palette_luminance_building Building Luminance Maps
  *
@@ -635,22 +705,46 @@
  *
  * @section palette_performance Performance Characteristics
  *
+ * Palette performance is all about speed—we're converting video frames to ASCII
+ * in real-time, so every optimization matters. The luminance mapping system
+ * makes this super fast, but let's look at what you can expect:
+ *
+ * How fast is palette lookup?
+ * ---------------------------
  * **Palette Lookup**:
- * - Luminance mapping: O(1) constant time lookup
- * - No calculation required during rendering
- * - Single array access per pixel
- * - Optimal for real-time video conversion
+ * - **Luminance mapping**: O(1) constant time lookup—that means it takes the
+ *   same amount of time regardless of how many characters are in the palette
+ * - **No calculation required during rendering**: We just do a simple array
+ *   lookup—no math, no searching, just grab the value from the table
+ * - **Single array access per pixel**: One lookup, one character selection,
+ *   done!
+ * - **Optimal for real-time video conversion**: Fast enough that you can convert
+ *   video frames at 60 FPS without any problems
  *
+ * How fast is UTF-8 processing?
+ * -----------------------------
  * **UTF-8 Processing**:
- * - UTF-8 palette creation: O(n) where n is byte length
- * - Character index lookup: O(1) with pre-computed structure
- * - UTF-8 detection: O(1) environment variable checks
+ * - **UTF-8 palette creation**: O(n) where n is byte length—this happens once
+ *   during initialization, so it's not a bottleneck
+ * - **Character index lookup**: O(1) with pre-computed structure—once the palette
+ *   is built, lookups are instant
+ * - **UTF-8 detection**: O(1) environment variable checks—we just check a few
+ *   environment variables, which is essentially free
  *
+ * How much memory does it use?
+ * ---------------------------
  * **Memory Usage**:
- * - ASCII palette: ~23 bytes (STANDARD)
- * - UTF-8 palette: ~40-100 bytes depending on character count
- * - Luminance mapping: 256 bytes (fixed size)
- * - UTF-8 character info: ~8 bytes per character
+ * - **ASCII palette**: ~23 bytes (STANDARD palette)—super tiny!
+ * - **UTF-8 palette**: ~40-100 bytes depending on character count (still very
+ *   small, even for larger palettes)
+ * - **Luminance mapping**: 256 bytes (fixed size)—this is the lookup table,
+ *   and it's always 256 bytes regardless of palette size
+ * - **UTF-8 character info**: ~8 bytes per character—just a tiny bit of metadata
+ *   per character to track byte length and display width
+ *
+ * Memory usage is minimal—even with UTF-8 palettes, you're looking at well under
+ * a kilobyte per palette. The luminance mapping table is always 256 bytes
+ * (one byte per possible brightness value), which is nothing by modern standards.
  *
  * @section palette_integration Integration with Video-to-ASCII
  *

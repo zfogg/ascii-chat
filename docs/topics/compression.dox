@@ -10,37 +10,75 @@
  *
  * @section compression_overview Overview
  *
+ * Welcome to the Compression module! This is where we shrink your data down
+ * to save bandwidth. Compression is all about balance—we want to save bandwidth
+ * without wasting CPU, so we compress intelligently only when it actually helps.
+ *
+ * What does the compression module do?
+ * -----------------------------------
  * The compression module provides fast zstd compression/decompression utilities
  * for optimizing network payload size in ascii-chat. Compression reduces bandwidth
- * usage for large packets like video frames and audio batches, improving performance
- * over low-bandwidth connections.
+ * usage for large packets like video frames and audio batches, which improves
+ * performance over low-bandwidth connections.
+ *
+ * Here's what it gives you:
+ * - **zstd compression algorithm** (level 1 for speed/ratio balance)—we use
+ *   zstd because it's fast and gives good compression ratios
+ * - **Automatic compression ratio checking** (only compresses if beneficial)—we
+ *   don't waste CPU compressing data that doesn't benefit
+ * - **Minimum size threshold** to avoid overhead on small packets—we don't
+ *   bother compressing tiny packets where compression overhead isn't worth it
+ * - **Memory-efficient compression/decompression**—we don't use a lot of memory
+ *   for compression
+ * - **Pure utility functions** (no state management)—simple functions that
+ *   you can call from anywhere
  *
  * **Implementation**: lib/compression.c, lib/compression.h
  *
- * **Key Features**:
- * - zstd compression algorithm (level 1 for speed/ratio balance)
- * - Automatic compression ratio checking (only compresses if beneficial)
- * - Minimum size threshold to avoid overhead on small packets
- * - Memory-efficient compression/decompression
- * - Pure utility functions (no state management)
- *
  * @section compression_strategy Compression Strategy
  *
- * Compression is automatically applied when:
- * - Packet size exceeds minimum threshold (1KB)
- * - Compression achieves at least 20% size reduction (<80% of original size)
+ * Compression isn't always worth it—sometimes the compressed data is actually
+ * larger than the original, or the CPU cost isn't worth the bandwidth savings.
+ * We've designed the compression system to be smart about when to compress.
  *
- * This prevents:
- * - Overhead of compressing already-compressed data
- * - CPU waste on small packets that don't benefit
- * - Compression expansion (when compressed data is larger than original)
+ * When do we compress?
+ * --------------------
+ * Compression is automatically applied when:
+ * - **Packet size exceeds minimum threshold** (1KB)—we don't compress tiny
+ *   packets because the overhead isn't worth it
+ * - **Compression achieves at least 20% size reduction** (<80% of original size)—
+ *   if compression doesn't save at least 20%, we skip it
+ *
+ * What problems does this prevent?
+ * --------------------------------
+ * This strategy prevents several common problems:
+ * - **Overhead of compressing already-compressed data**: If something is already
+ *   compressed (like a JPEG image), trying to compress it again usually makes it
+ *   bigger—we detect this and skip compression
+ * - **CPU waste on small packets**: Compressing tiny packets often takes more CPU
+ *   time than the bandwidth savings are worth—we don't bother with small packets
+ * - **Compression expansion**: Sometimes compressed data is actually larger than
+ *   the original (this is called "expansion")—we check for this and use the
+ *   original data if compression expanded it
  *
  * @subsection compression_algorithm Algorithm
  *
- * - Uses zstd level 1 compression for optimal speed/ratio balance
- * - Compatible with standard zstd decompression
- * - Provides good compression ratio for text/ASCII data
- * - Reasonable CPU overhead for real-time streaming
+ * We use zstd (Zstandard) compression, which is a modern compression algorithm
+ * developed by Facebook/Meta. Here's why we chose it:
+ *
+ * Why zstd?
+ * ---------
+ * - **Uses zstd level 1** for optimal speed/ratio balance—level 1 is fast enough
+ *   for real-time streaming but still gives good compression
+ * - **Compatible with standard zstd decompression**—any zstd-compatible tool can
+ *   decompress our data
+ * - **Provides good compression ratio for text/ASCII data**—our ASCII frames
+ *   compress really well (often 70-90% compression!)
+ * - **Reasonable CPU overhead for real-time streaming**—we can compress at
+ *   200-500 MB/s, which is fast enough for real-time video
+ *
+ * zstd level 1 is perfect for our use case—it's fast enough that it doesn't
+ * slow things down, but still gives us significant bandwidth savings.
  *
  * @section compression_api API Usage
  *
@@ -109,31 +147,84 @@
  *
  * @section compression_performance Performance Characteristics
  *
+ * Compression performance is all about balancing speed and compression ratio.
+ * We've tuned the system for real-time video streaming, so speed is critical,
+ * but we still want good compression. Let's look at what you can expect:
+ *
+ * How fast is compression?
+ * -----------------------
  * **Compression Speed**:
- * - zstd level 1: ~200-500 MB/s compression (CPU-dependent)
- * - Suitable for real-time video streaming (60fps)
- * - Low CPU overhead compared to higher compression levels
+ * - **zstd level 1**: ~200-500 MB/s compression (CPU-dependent)—this is fast
+ *   enough that compression doesn't become a bottleneck
+ * - **Suitable for real-time video streaming** (60fps)—we can compress video
+ *   frames at 60 FPS without slowing things down
+ * - **Low CPU overhead compared to higher compression levels**—level 1 is
+ *   much faster than higher levels (level 3+), but still gives good compression
  *
+ * The speed varies depending on your CPU, but even on a modest CPU, you can
+ * compress at 200 MB/s, which is more than enough for real-time video.
+ *
+ * How much bandwidth do we save?
+ * ------------------------------
  * **Compression Ratio**:
- * - ASCII text: 70-90% compression (significant bandwidth savings)
- * - Binary data: 60-80% compression
- * - Already-compressed: Often expands (detected and avoided)
+ * - **ASCII text**: 70-90% compression (significant bandwidth savings!)—this
+ *   is the big win for ASCII frames
+ * - **Binary data**: 60-80% compression—binary data compresses less well, but
+ *   we still save bandwidth
+ * - **Already-compressed**: Often expands (detected and avoided)—if something
+ *   is already compressed (like a JPEG), trying to compress it again usually
+ *   makes it bigger, so we detect this and skip compression
  *
+ * ASCII frames compress really well because they're text—all those repeated
+ * spaces and characters compress down nicely. You can often get 70-90% compression,
+ * which means a 6 MB frame becomes 600 KB-1.8 MB. That's a huge bandwidth savings!
+ *
+ * How much memory does it use?
+ * ----------------------------
  * **Memory Usage**:
- * - Output buffer allocated by compress_data() (must be freed by caller)
- * - Input buffer must be provided by caller for decompress_data()
- * - No persistent state (pure functions)
+ * - **Output buffer allocated by compress_data()** (must be freed by caller)—
+ *   we allocate the compressed output buffer, but you're responsible for freeing it
+ * - **Input buffer must be provided by caller for decompress_data()**—you provide
+ *   the decompressed output buffer
+ * - **No persistent state** (pure functions)—no global state, no initialization
+ *   needed, just call the functions whenever you need them
+ *
+ * Memory usage is pretty reasonable—we allocate the compressed output buffer
+ * (which is usually smaller than the input), but there's no persistent state,
+ * so memory usage is minimal.
  *
  * @section compression_settings Configuration
  *
- * **Compression Thresholds**:
- * - `COMPRESSION_MIN_SIZE` (1024 bytes): Minimum packet size to attempt compression
- * - `COMPRESSION_RATIO_THRESHOLD` (0.8): Maximum acceptable compression ratio (80% of original)
+ * Compression settings control when and how we compress. We've tuned these
+ * values for real-time video streaming, but let's understand what they mean:
  *
+ * What thresholds do we use?
+ * --------------------------
+ * **Compression Thresholds**:
+ * - **`COMPRESSION_MIN_SIZE`** (1024 bytes): Minimum packet size to attempt
+ *   compression—we don't compress packets smaller than 1KB because the overhead
+ *   isn't worth it
+ * - **`COMPRESSION_RATIO_THRESHOLD`** (0.8): Maximum acceptable compression ratio
+ *   (80% of original)—if compression doesn't reduce size by at least 20%, we
+ *   skip it
+ *
+ * These thresholds ensure we only compress when it's actually beneficial. Small
+ * packets and packets that don't compress well are skipped, saving CPU without
+ * wasting bandwidth.
+ *
+ * What compression level do we use?
+ * --------------------------------
  * **Compression Level**:
- * - Fixed at zstd level 1 for optimal speed/ratio balance
- * - Higher levels provide better compression but slower performance
- * - Level 1 is ideal for real-time streaming applications
+ * - **Fixed at zstd level 1** for optimal speed/ratio balance—level 1 is the
+ *   sweet spot for real-time streaming
+ * - **Higher levels provide better compression but slower performance**—you could
+ *   get better compression with level 3 or 5, but it would be much slower
+ * - **Level 1 is ideal for real-time streaming applications**—fast enough for
+ *   60 FPS, but still gives good compression
+ *
+ * We could use higher compression levels (which would save more bandwidth), but
+ * the CPU cost would be too high for real-time streaming. Level 1 is the
+ * perfect balance.
  *
  * @section compression_error_handling Error Handling
  *

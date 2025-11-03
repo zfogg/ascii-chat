@@ -7,54 +7,107 @@
  *
  * @section audio_overview Overview
  *
+ * Welcome to the Audio System! This is where all the audio magic happens—capturing
+ * your voice from the microphone, playing back audio from other participants, and
+ * making sure everything runs smoothly in real-time. We use PortAudio for cross-platform
+ * audio I/O, which means everything works the same way on Linux, macOS, and Windows.
+ *
+ * What does the audio system do?
+ * ------------------------------
  * The Audio System provides real-time audio capture and playback functionality for
- * ascii-chat video chat sessions. It uses PortAudio for cross-platform audio I/O,
- * enabling low-latency audio streaming with thread-safe ring buffers.
+ * ascii-chat video chat sessions. Here's what it gives you:
+ * - **Real-time audio capture** from microphone/input devices (so your voice is
+ *   captured as you speak)
+ * - **Real-time audio playback** to speakers/output devices (so you hear others
+ *   in real-time)
+ * - **Thread-safe ring buffers** for audio data (so capture and playback can run
+ *   in parallel without conflicts)
+ * - **Low-latency audio processing** (so there's minimal delay between speaking
+ *   and hearing)
+ * - **Platform-specific real-time priority scheduling** (so audio threads get
+ *   priority and don't get interrupted by other tasks)
+ * - **Configurable audio parameters** (sample rate, buffer size) so you can tune
+ *   for your needs
+ * - **Automatic device enumeration and selection** (so it just works with your
+ *   audio devices)
  *
  * **Implementation**: lib/audio.h
  *
- * **Key Features**:
- * - Real-time audio capture from microphone/input devices
- * - Real-time audio playback to speakers/output devices
- * - Thread-safe ring buffers for audio data
- * - Low-latency audio processing
- * - Platform-specific real-time priority scheduling
- * - Configurable audio parameters (sample rate, buffer size)
- * - Automatic device enumeration and selection
- *
  * @section audio_architecture Architecture
  *
- * The audio system uses PortAudio for cross-platform audio I/O:
+ * The audio system is built around a few key concepts: PortAudio for cross-platform
+ * audio I/O, ring buffers for efficient data transfer, and thread-safe operations
+ * so everything can run in parallel. Let's walk through how everything fits together.
+ *
+ * How does PortAudio work?
+ * ------------------------
+ * We use PortAudio for cross-platform audio I/O because it handles all the
+ * platform-specific details for us—we write the same code and it works on Linux,
+ * macOS, and Windows. PortAudio provides:
  *
  * **Audio Streams**:
- * - Separate input and output streams for full-duplex audio
- * - Independent capture and playback threads
- * - Automatic stream management and lifecycle
+ * - **Separate input and output streams** for full-duplex audio (you can capture
+ *   and play back at the same time)
+ * - **Independent capture and playback threads** (so capture doesn't block playback
+ *   and vice versa)
+ * - **Automatic stream management and lifecycle** (PortAudio handles starting,
+ *   stopping, and cleaning up streams)
  *
+ * What about ring buffers?
+ * ------------------------
  * **Ring Buffers**:
- * - Efficient producer-consumer audio data transfer
- * - Lock-free or mutex-protected buffers depending on platform
- * - Jitter buffering to smooth out network timing variations
- * - Configurable buffer sizes for latency/quality trade-offs
+ * - **Efficient producer-consumer audio data transfer**: Ring buffers let one
+ *   thread (the producer) write data while another thread (the consumer) reads data,
+ *   without blocking each other
+ * - **Lock-free or mutex-protected buffers** depending on platform (we use the
+ *   most efficient approach for each platform)
+ * - **Jitter buffering** to smooth out network timing variations (network latency
+ *   can vary, so we buffer a bit to smooth it out)
+ * - **Configurable buffer sizes** for latency/quality trade-offs (bigger buffers
+ *   = smoother playback but higher latency, smaller buffers = lower latency but
+ *   might stutter)
  *
+ * How do we handle threading?
+ * --------------------------
  * **Thread Safety**:
- * - Audio context state protected by mutex
- * - Ring buffers provide thread-safe audio data transfer
- * - Real-time priority scheduling on supported platforms
+ * - **Audio context state protected by mutex**: When multiple threads access the
+ *   audio context, they're protected by a mutex so there are no race conditions
+ * - **Ring buffers provide thread-safe audio data transfer**: The ring buffers
+ *   themselves are thread-safe, so capture and playback can run in parallel
+ * - **Real-time priority scheduling on supported platforms**: Audio threads get
+ *   real-time priority, so they don't get interrupted by other tasks (critical for
+ *   smooth audio playback)
  *
  * @section audio_parameters Audio Parameters
  *
- * **Default Configuration**:
- * - Sample Rate: 44.1kHz (CD quality)
- * - Channels: Mono (1 channel)
- * - Buffer Size: 256 frames per buffer (low latency)
- * - Format: 32-bit floating point samples
+ * Audio parameters control the quality and latency of audio. The defaults are
+ * tuned for good quality with low latency, but you can adjust them for your needs.
  *
+ * What are the defaults?
+ * ---------------------
+ * **Default Configuration**:
+ * - **Sample Rate**: 44.1kHz (CD quality)—this gives you excellent audio quality
+ *   while keeping bandwidth reasonable. If you need even higher quality, you can
+ *   go up to 48kHz or even 192kHz
+ * - **Channels**: Mono (1 channel)—this keeps bandwidth low. If you want stereo
+ *   (2 channels), you can enable it, but it doubles the bandwidth
+ * - **Buffer Size**: 256 frames per buffer (low latency)—this gives you low latency
+ *   (~5.8ms at 44.1kHz). If you have audio stuttering, you might want to increase
+ *   this
+ * - **Format**: 32-bit floating point samples—this gives you the best quality and
+ *   is what PortAudio recommends
+ *
+ * What can I configure?
+ * --------------------
  * **Configurable Options**:
- * - Custom sample rates (8kHz to 192kHz)
- * - Stereo support (2 channels)
- * - Variable buffer sizes (128-1024 frames)
- * - Device selection (input/output)
+ * - **Custom sample rates**: You can use any sample rate from 8kHz (for low bandwidth)
+ *   up to 192kHz (for high quality), but 44.1kHz and 48kHz are the most common
+ * - **Stereo support**: You can enable stereo (2 channels) if you want spatial audio,
+ *   but it doubles the bandwidth
+ * - **Variable buffer sizes**: You can adjust buffer sizes from 128 frames (ultra-low
+ *   latency but might stutter) to 1024 frames (smooth but higher latency)
+ * - **Device selection**: You can choose which input/output device to use if you
+ *   have multiple audio devices
  *
  * @section audio_operations Operations
  *
@@ -155,20 +208,48 @@
  *
  * @section audio_performance Performance
  *
+ * Audio performance is all about balancing latency, CPU usage, and bandwidth.
+ * We've tuned the defaults for good performance across all three dimensions, but
+ * let's look at what you can expect:
+ *
+ * How much latency do we have?
+ * ----------------------------
  * **Latency**:
- * - Buffer size: 256 frames @ 44.1kHz = ~5.8ms latency
- * - Network jitter buffering: +46ms (8 packets)
- * - Total end-to-end latency: ~50-60ms
+ * - **Buffer size**: 256 frames @ 44.1kHz = ~5.8ms latency (this is the latency
+ *   from the audio buffer itself)
+ * - **Network jitter buffering**: +46ms (8 packets) (this is extra buffering to
+ *   smooth out network timing variations)
+ * - **Total end-to-end latency**: ~50-60ms (this is the total time from when
+ *   someone speaks to when you hear it)
  *
+ * 50-60ms is quite good for networked audio—it's comparable to phone calls and
+ * way better than most video conferencing software. The jitter buffering helps
+ * smooth out network hiccups, so you get smooth audio even when the network
+ * is a bit flaky.
+ *
+ * How much CPU does audio use?
+ * ---------------------------
  * **CPU Usage**:
- * - Audio capture: ~1-2% CPU (single thread)
- * - Audio playback: ~1-2% CPU (single thread)
- * - Total audio overhead: ~2-4% CPU
+ * - **Audio capture**: ~1-2% CPU (single thread) (capturing audio is pretty
+ *   lightweight)
+ * - **Audio playback**: ~1-2% CPU (single thread) (playback is also lightweight)
+ * - **Total audio overhead**: ~2-4% CPU (so audio adds about 2-4% CPU overhead
+ *   total)
  *
+ * Audio is pretty lightweight—you probably won't even notice the CPU usage unless
+ * you're monitoring it closely.
+ *
+ * How much bandwidth does audio use?
+ * ----------------------------------
  * **Bandwidth**:
- * - 44.1kHz mono: ~176 KB/s
- * - 48kHz mono: ~192 KB/s
- * - 48kHz stereo: ~384 KB/s
+ * - **44.1kHz mono**: ~176 KB/s (about 176 kilobytes per second)
+ * - **48kHz mono**: ~192 KB/s (about 192 kilobytes per second)
+ * - **48kHz stereo**: ~384 KB/s (about 384 kilobytes per second, double because
+ *   stereo is two channels)
+ *
+ * Audio bandwidth is pretty reasonable—even stereo at 48kHz is only about 384 KB/s,
+ * which is much less than video. You could stream audio over a decent cellular
+ * connection without any problems.
  *
  * @section audio_ring_buffers Ring Buffers
  *

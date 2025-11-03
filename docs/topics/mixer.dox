@@ -4,21 +4,33 @@
  *
  * @section mixer_overview Overview
  *
- * The Mixer provides real-time audio mixing for multiple clients in ascii-chat
- * video chat sessions. It supports dynamic client addition/removal, automatic
- * ducking, and efficient multi-client audio processing.
+ * Welcome to the audio mixer—where all the magic happens when multiple people are talking at once!
+ *
+ * Picture yourself in a group video call. Person A is talking, Person B laughs, Person C asks a
+ * question—all happening simultaneously. Your speakers don't have three separate outputs (well,
+ * most don't). So how does your computer play all three audio streams at once? That's where the
+ * mixer comes in!
+ *
+ * The mixer takes multiple audio streams (one from each client) and combines them into a single
+ * output stream that gets sent to everyone. It's like a real mixing board at a concert—each
+ * microphone is a separate input, and the mixer blends them into one cohesive sound that goes
+ * to the speakers.
+ *
+ * But here's the cool part: when lots of people are talking at once, the mixer automatically
+ * applies "ducking" (volume reduction) so the combined audio doesn't clip or distort. It's like
+ * how a good sound engineer knows to turn down each microphone a bit when everyone's singing
+ * together—the mix stays clear and balanced.
  *
  * **Implementation**: lib/mixer.h
  *
- * **Key Features**:
- * - Real-time mixing of multiple audio streams
- * - Dynamic client addition and removal
- * - Automatic ducking (volume reduction) when many clients talk
- * - Thread-safe audio stream management
- * - Per-client audio buffering
- * - Configurable mixing parameters
- * - Low-latency audio processing
- *
+ * What makes the mixer special?
+ * ------------------------------
+ * - **Real-time mixing**: Combines multiple audio streams on the fly
+ * - **Dynamic client management**: Clients can join or leave without disrupting the mix
+ * - **Automatic ducking**: Prevents distortion when many people talk simultaneously
+ * - **Thread-safe**: Safe for multi-threaded audio processing
+ * - **Low latency**: Minimal processing delay (you won't notice it!)
+ * - **Per-client buffering**: Each client has their own buffer for smooth audio
  * @section mixer_architecture Architecture
  *
  * **Mixer Design**:
@@ -115,13 +127,19 @@
  *
  * @section mixer_ducking Automatic Ducking
  *
- * **Ducking Algorithm**:
- * - Monitors number of active clients
- * - Reduces per-client volume when threshold exceeded
- * - Prevents audio clipping with many clients
- * - Smooth volume transitions
+ * Ducking is one of the mixer's coolest features. Here's the problem it solves: if you have
+ * 8 people all talking at full volume, the mixed audio would be 8× louder—way too loud! You'd
+ * get clipping, distortion, and generally terrible audio quality.
  *
- * **Ducking Formula**:
+ * The solution? Automatically reduce everyone's volume proportionally. The ducking algorithm
+ * is beautifully simple:
+ *
+ * - **Monitor**: Keep track of how many clients are talking
+ * - **Scale down**: When more than 4 clients talk, reduce each person's volume proportionally
+ * - **Prevent clipping**: This keeps the mixed output from getting too loud
+ * - **Smooth transitions**: Volume changes happen gradually (no jarring jumps)
+ *
+ * The math is straightforward:
  * @code{.c}
  * if (num_clients > ducking_threshold) {
  *     float scale = ducking_threshold / (float)num_clients;
@@ -131,11 +149,14 @@
  * }
  * @endcode
  *
- * **Example**:
- * - 1-4 clients: 100% volume each
- * - 5 clients: 80% volume each (4/5)
- * - 8 clients: 50% volume each (4/8)
- * - 16 clients: 25% volume each (4/16)
+ * Here's what it looks like in practice:
+ * - **1-4 clients**: 100% volume each (full volume, no ducking needed)
+ * - **5 clients**: 80% volume each (4/5 = 0.8)
+ * - **8 clients**: 50% volume each (4/8 = 0.5)
+ * - **16 clients**: 25% volume each (4/16 = 0.25)
+ *
+ * Even with 16 people talking, everyone is still audible—just quieter individually so
+ * the total mix stays at a reasonable level!
  *
  * **Configuration**:
  * @code{.c}

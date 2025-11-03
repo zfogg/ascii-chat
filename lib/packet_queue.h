@@ -1,6 +1,6 @@
 /**
  * @defgroup packet_queue Packet Queue
- * @ingroup module_data_structures
+ * @ingroup packet_queue
  *
  * @file packet_queue.h
  * @ingroup packet_queue

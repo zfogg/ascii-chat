@@ -10,21 +10,45 @@
  *
  * @section ringbuffer_overview Overview
  *
- * The ring buffer provides lock-free, thread-safe circular buffers using atomic operations.
- * This enables high-performance producer-consumer patterns without mutex overhead.
+ * Welcome! Let's talk about the ring buffer—one of the coolest data structures in ascii-chat.
+ * If you've ever wondered how to pass data between threads really fast without all the overhead
+ * of mutexes and locks, you're in the right place.
  *
- * **Implementation**: lib/ringbuffer.c/h
+ * Picture this: you have one thread capturing video frames (the producer) and another thread
+ * encoding them (the consumer). How do you hand frames from one to the other? You could use
+ * a mutex-protected queue, but that means locking and unlocking for every single frame. Not ideal
+ * when you're doing this 30 times per second!
  *
- * **Key Features**:
- * - Lock-free using C11 atomics (_Atomic)
- * - Single producer, single consumer (SPSC) pattern
- * - Power-of-2 optimization for fast modulo
- * - Specialized frame buffer for ASCII art frames
- * - Audio ring buffer with jitter buffering
+ * That's where the ring buffer shines. It's a circular buffer that uses atomic operations
+ * instead of locks, making it blazingly fast for the single-producer, single-consumer pattern.
+ * Think of it like a race track where the producer and consumer chase each other around—one
+ * writing, one reading, never quite catching up to each other.
+ *
+ * You can find the implementation in `lib/ringbuffer.c` and `lib/ringbuffer.h`.
+ *
+ * What makes ring buffers special?
+ * --------------------------------
+ * Ring buffers are designed from the ground up for speed. They use C11 atomics instead of mutexes,
+ * which means way less overhead when passing data between threads. The design is intentionally
+ * simple—no complex algorithms here, just a circular buffer done right.
+ *
+ * The implementation takes advantage of a clever trick: power-of-2 capacities allow us to use
+ * bitwise masking instead of slow modulo operations. This might sound like a small detail, but
+ * it makes index calculations 15-30 times faster!
+ *
+ * We also have specialized versions for different use cases. Frame buffers handle ASCII art frames
+ * with metadata like magic numbers for corruption detection. Audio ring buffers include jitter
+ * buffering to smooth out network hiccups. Each one is tailored to its specific job.
  *
  * @section ringbuffer_architecture Architecture
  *
+ * Let's dive into how ring buffers actually work under the hood. The design is elegant in its
+ * simplicity—just a few atomic variables and a chunk of memory, but combined in a way that
+ * achieves lock-free thread safety.
+ *
  * @subsection ringbuffer_structure Ring Buffer Structure
+ *
+ * The core structure is pretty straightforward:
  *
  * @code{.c}
  * typedef struct {
@@ -39,11 +63,27 @@
  * } ringbuffer_t;
  * @endcode
  *
+ * The key insight here is that `head` and `tail` are atomic variables. The producer writes
+ * at `head` and advances it, while the consumer reads from `tail` and advances it. Since each
+ * position is only accessed by one thread, we don't need locks—just atomic operations to make
+ * sure reads and writes are visible across threads.
+ *
+ * The `capacity_mask` is the secret sauce for performance. When capacity is a power of 2,
+ * we can use `head & capacity_mask` instead of `head % capacity`. Bitwise AND is a single
+ * CPU instruction, while modulo takes 15-30 cycles. That adds up fast when you're doing
+ * it thousands of times per second!
+ *
  * @subsection ringbuffer_lockfree Lock-Free Algorithm
  *
- * The ring buffer uses atomic operations for thread-safe access without locks:
+ * The ring buffer uses atomic operations for thread-safe access without locks. Here's how
+ * the producer and consumer interact:
  *
  * **Write operation** (producer):
+ *
+ * When the producer wants to write data, it first checks if there's room in the buffer. If
+ * the buffer is full, we return false—simple as that. Otherwise, we calculate the write index
+ * using our fast bitwise mask trick, copy the data into place, and atomically advance the head.
+ *
  * @code{.c}
  * bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
  *     size_t current_size = atomic_load(&rb->size);
@@ -66,6 +106,10 @@
  * @endcode
  *
  * **Read operation** (consumer):
+ *
+ * The consumer side is the mirror image. We check if there's data available, calculate the
+ * read index the same way, copy data out, and atomically advance the tail.
+ *
  * @code{.c}
  * bool ringbuffer_read(ringbuffer_t *rb, void *data) {
  *     size_t current_size = atomic_load(&rb->size);
@@ -87,11 +131,22 @@
  * }
  * @endcode
  *
+ * The beauty of this design is that the producer and consumer can run completely independently.
+ * They never block each other—the worst case is one returns false if the buffer is full or empty,
+ * but that's a check we'd need anyway.
+ *
  * @section ringbuffer_types Buffer Types
+ *
+ * We have several flavors of ring buffer, each optimized for a specific use case. The generic
+ * ring buffer handles arbitrary element types, while frame and audio buffers are specialized
+ * for their domains.
  *
  * @subsection ringbuffer_generic Generic Ring Buffer
  *
- * General-purpose ring buffer for any element type:
+ * The generic ring buffer is your go-to choice when you need to pass arbitrary data types
+ * between threads. It's simple, fast, and gets the job done.
+ *
+ * Here's a quick example of using it:
  *
  * @code{.c}
  * // Create ring buffer for 256 integers
@@ -113,9 +168,18 @@
  * ringbuffer_destroy(rb);
  * @endcode
  *
+ * Notice how the capacity gets rounded up to the next power of 2 automatically (256 is already
+ * a power of 2, so it stays as-is). If you ask for 100 elements, you'll get 128 instead—a small
+ * price to pay for the performance benefits.
+ *
  * @subsection ringbuffer_frame Frame Buffer
  *
- * Specialized ring buffer for ASCII art frames:
+ * Frame buffers are specialized for ASCII art frames. They handle variable-sized frames and
+ * include metadata like magic numbers for corruption detection. This is crucial when frames
+ * are being passed between threads—we need to make sure we're not reading garbage if something
+ * goes wrong.
+ *
+ * The frame structure looks like this:
  *
  * @code{.c}
  * typedef struct {
@@ -130,7 +194,12 @@
  * } framebuffer_t;
  * @endcode
  *
- * **Usage**:
+ * The magic number serves as a sanity check. When you read a frame, you can verify that
+ * `frame.magic == FRAME_MAGIC` to make sure you got a valid frame and not corrupted memory.
+ * It's a simple check, but it can catch a lot of subtle bugs!
+ *
+ * Here's how you'd use it in practice:
+ *
  * @code{.c}
  * // Create frame buffer (capacity = 60 frames)
  * framebuffer_t *fb = framebuffer_create(60);
@@ -154,9 +223,16 @@
  * framebuffer_destroy(fb);
  * @endcode
  *
+ * One important note: the consumer owns the frame data after reading. You must free it when
+ * you're done, or you'll leak memory!
+ *
  * @subsection ringbuffer_multi Multi-Source Frame Buffer
  *
- * For multi-client scenarios, tracks which client sent each frame:
+ * When you have multiple clients sending frames, you need to track which client sent what.
+ * That's where the multi-source frame buffer comes in. It's essentially the same as a regular
+ * frame buffer, but each frame includes metadata about its source.
+ *
+ * The multi-source frame structure tracks the client ID, frame sequence number, and timestamp:
  *
  * @code{.c}
  * typedef struct {
@@ -167,7 +243,11 @@
  *     size_t size;
  *     char *data;
  * } multi_source_frame_t;
+ * @endcode
  *
+ * Using it is straightforward:
+ *
+ * @code{.c}
  * // Create multi-source frame buffer
  * framebuffer_t *fb = framebuffer_create_multi(60);
  *
@@ -189,7 +269,12 @@
  *
  * @subsection ringbuffer_audio Audio Ring Buffer
  *
- * Fixed-size ring buffer for audio samples with jitter buffering:
+ * Audio ring buffers are a bit different from the others. They're designed for real-time audio
+ * playback, which means they need to handle network jitter gracefully. The buffer accumulates
+ * samples before starting playback, creating a "jitter buffer" that smooths out irregularities
+ * in network timing.
+ *
+ * The audio buffer uses a fixed size tuned for audio needs:
  *
  * @code{.c}
  * #define AUDIO_RING_BUFFER_SIZE (256 * 32)  // 8192 samples = ~186ms @ 44.1kHz
@@ -204,12 +289,19 @@
  * } audio_ring_buffer_t;
  * @endcode
  *
- * **Jitter buffer purpose**:
- * - Accumulates initial samples before playback starts
- * - Absorbs network jitter (variable latency)
- * - Prevents audio crackling from buffer underruns
+ * Why the jitter buffer?
+ * ----------------------
+ * Network audio packets don't arrive at perfectly regular intervals. Sometimes packets come
+ * early, sometimes they're delayed. Without buffering, you'd get audio crackling whenever a
+ * packet was late. The jitter buffer waits until it has enough samples to smooth out these
+ * timing variations before starting playback.
  *
- * **Usage**:
+ * The threshold is set to about 46 milliseconds of audio. This is usually enough to handle
+ * typical network jitter without introducing noticeable latency. Once the buffer has reached
+ * this threshold, playback begins and the buffer continues to absorb timing variations.
+ *
+ * Here's how it works in practice:
+ *
  * @code{.c}
  * audio_ring_buffer_t *arb = audio_ringbuffer_create();
  *
@@ -249,9 +341,18 @@
  * }
  * @endcode
  *
+ * Note that the audio buffer uses a mutex. Unlike the generic ring buffer, this one can benefit
+ * from mutual exclusion since audio callbacks have strict timing requirements and we need to
+ * coordinate the jitter buffer logic.
+ *
  * @section ringbuffer_api API Reference
  *
+ * Now let's look at the actual API you'll be working with. The functions are straightforward
+ * and follow a consistent pattern.
+ *
  * @subsection ringbuffer_creation Creation/Destruction
+ *
+ * Creating a ring buffer is simple—just specify the element size and desired capacity:
  *
  * @code{.c}
  * // Create generic ring buffer (capacity rounded up to power of 2)
@@ -268,7 +369,14 @@
  * void framebuffer_destroy(framebuffer_t *fb);
  * @endcode
  *
+ * Remember that the capacity gets rounded up to the next power of 2 for performance reasons.
+ * If you request 100 elements, you'll get 128. This usually isn't a problem, but it's good
+ * to be aware of.
+ *
  * @subsection ringbuffer_operations Operations
+ *
+ * The core operations are write, read, and peek. The query functions let you check the buffer
+ * state without modifying it.
  *
  * @code{.c}
  * // Generic ring buffer
@@ -293,11 +401,19 @@
  * bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
  * @endcode
  *
+ * All the write and read functions return `false` if the operation couldn't complete (buffer
+ * full or empty). This lets you decide what to do—maybe drop the data, maybe wait and retry,
+ * maybe signal an error. It's up to you!
+ *
  * @section ringbuffer_performance Performance
+ *
+ * Let's talk numbers. The ring buffer isn't just fast—it's dramatically faster than traditional
+ * mutex-protected queues. Here's what the benchmarks show.
  *
  * @subsection ringbuffer_benchmarks Benchmarks
  *
- * Comparison: lock-free ring buffer vs. mutex-protected queue:
+ * We compared the lock-free ring buffer against a mutex-protected queue in a contention-free
+ * scenario (producer and consumer on the same CPU core):
  *
  * | Operation | Ring Buffer | Mutex Queue | Speedup |
  * |-----------|-------------|-------------|---------|
@@ -305,20 +421,36 @@
  * | Read | 20 ns | 102 ns | **5.1x faster** |
  * | Write+Read pair | 38 ns | 197 ns | **5.2x faster** |
  *
- * **Test system**: AMD Ryzen 9 5950X, contention-free scenario
+ * These numbers are from an AMD Ryzen 9 5950X in a contention-free scenario. The ring buffer
+ * operations are so fast they're barely more expensive than a simple memory copy!
  *
  * @subsection ringbuffer_contention Contention Behavior
  *
- * Under high contention (producer/consumer on different CPU cores):
+ * What happens when things get more intense? We also tested with high contention, where the
+ * producer and consumer are running on different CPU cores. This stresses the cache coherency
+ * protocol, but the ring buffer still comes out way ahead:
+ *
+ * Under high contention:
  * - Ring buffer: ~45 ns per operation (2.4x slowdown from cache coherency)
  * - Mutex queue: ~280 ns per operation (2.8x slowdown from lock contention)
  * - **Ring buffer still 6.2x faster under contention**
  *
+ * Even when the CPU cores are fighting over cache lines, the ring buffer's lock-free design
+ * means it doesn't have to wait for mutexes to be released. The atomic operations are still
+ * much faster than lock acquisition.
+ *
  * @section ringbuffer_capacity Capacity Management
+ *
+ * Getting the capacity right is important for performance. Too small and you'll drop data.
+ * Too large and you're wasting memory. The ring buffer helps by optimizing capacity calculations
+ * automatically.
  *
  * @subsection ringbuffer_powerof2 Power-of-2 Optimization
  *
- * Ring buffer rounds capacity up to power of 2 for fast modulo:
+ * The ring buffer always rounds capacity up to the next power of 2. This lets us use bitwise
+ * AND instead of modulo for index calculations, which is dramatically faster.
+ *
+ * Here's how it works:
  *
  * @code{.c}
  * // Request 100 elements → gets rounded to 128 (next power of 2)
@@ -330,27 +462,54 @@
  * // Where capacity_mask = capacity - 1 (e.g., 128 - 1 = 127 = 0b01111111)
  * @endcode
  *
- * **Performance impact**:
+ * The performance impact is significant:
  * - Bitwise AND: 1 CPU cycle
  * - Integer modulo: 15-30 CPU cycles
  * - **Speedup: 15-30x for index calculation**
  *
+ * Since we're calculating the index on every read and write, this optimization really adds up.
+ * It's one of those small details that makes a big difference when you're doing thousands of
+ * operations per second.
+ *
  * @subsection ringbuffer_sizing Sizing Guidelines
  *
+ * Choosing the right buffer size depends on what you're buffering. Let's look at some common
+ * scenarios:
+ *
  * **Video frames** (30 FPS):
- * - Minimum: 2 seconds = 60 frames (survives brief CPU spikes)
- * - Recommended: 4 seconds = 120 frames (robust against scheduling delays)
- * - Maximum: 10 seconds = 300 frames (long-term buffering)
+ *
+ * For video, you want enough frames to survive brief CPU spikes and scheduling delays. We
+ * recommend at least 2 seconds worth (60 frames) as a minimum. That gives you enough cushion
+ * that a momentary slowdown won't cause frame drops. For more robust operation, 4 seconds (120
+ * frames) is better. Going beyond 10 seconds (300 frames) doesn't usually help much—by then
+ * you're just increasing latency.
  *
  * **Audio samples** (48 kHz):
- * - Jitter buffer: 46ms = 2208 samples (absorbs network jitter)
- * - Total buffer: 186ms = 8928 samples (prevents underruns)
+ *
+ * Audio buffering is a balancing act. You need enough buffer to absorb network jitter, but not
+ * so much that latency becomes noticeable. Our audio ring buffer uses:
+ * - Jitter buffer threshold: 46ms (2208 samples) - waits this long before starting playback
+ * - Total buffer: 186ms (8928 samples) - prevents underruns during playback
+ *
+ * These numbers are tuned for typical network conditions. If you're on a very jittery network,
+ * you might want to increase the jitter buffer threshold. If latency is more important than
+ * smoothness, you can decrease it.
  *
  * @section ringbuffer_threading Thread Safety
  *
+ * This is important: ring buffers are **only** safe for the Single Producer, Single Consumer
+ * (SPSC) pattern. That means exactly one thread writing and exactly one thread reading. If you
+ * need multiple producers or consumers, you'll want to use `packet_queue` instead, which is
+ * mutex-protected.
+ *
  * @subsection ringbuffer_spsc SPSC Guarantee
  *
- * The ring buffer is **only safe** for Single Producer, Single Consumer:
+ * The lock-free design relies on the fact that each position in the buffer is only accessed
+ * by one thread. The producer writes at `head`, the consumer reads from `tail`, and they never
+ * touch each other's positions. This is what makes the atomic operations sufficient—we don't
+ * need locks because there's no contention.
+ *
+ * Here's the correct pattern:
  *
  * @code{.c}
  * // ✅ CORRECT: One producer, one consumer
@@ -373,6 +532,8 @@
  * }
  * @endcode
  *
+ * And here's what **not** to do:
+ *
  * @code{.c}
  * // ❌ WRONG: Multiple producers (not thread-safe!)
  * void* producer_thread_1(void *arg) {
@@ -384,47 +545,88 @@
  * }
  * @endcode
  *
- * For multiple producers/consumers, use packet_queue instead (mutex-protected).
+ * If you try to have multiple producers writing at the same time, you'll get race conditions
+ * on the `head` pointer. Same problem with multiple consumers. The lock-free design only works
+ * when there's exactly one of each.
+ *
+ * For multiple producers or consumers, use `packet_queue` instead—it uses mutexes and can
+ * handle multiple writers and readers safely, though it won't be as fast.
  *
  * @section ringbuffer_best_practices Best Practices
  *
- * 1. **Use power-of-2 capacities**:
- *    @code{.c}
- *    ringbuffer_create(sizeof(int), 128);  // Good (power of 2)
- *    ringbuffer_create(sizeof(int), 100);  // Still works, but rounded to 128
- *    @endcode
+ * Here are some tips we've learned from using ring buffers in ascii-chat:
  *
- * 2. **Handle full/empty cases**:
- *    @code{.c}
- *    if (!ringbuffer_write(rb, &data)) {
- *        // Buffer full - decide policy:
- *        // - Drop data (real-time video)
- *        // - Wait and retry (critical data)
- *        // - Overwrite oldest (circular log)
- *    }
- *    @endcode
+ * **Use power-of-2 capacities when possible**
  *
- * 3. **Free frame data after reading**:
- *    @code{.c}
- *    frame_t frame;
- *    if (framebuffer_read_frame(fb, &frame)) {
- *        process_frame(frame.data, frame.size);
- *        SAFE_FREE(frame.data);  // Must free! Consumer owns data
- *    }
- *    @endcode
+ * While the ring buffer will round up for you, if you know your requirements in advance, it's
+ * cleaner to request a power of 2 directly. That way there's no surprise about the actual
+ * capacity you get.
  *
- * 4. **Validate magic numbers**:
- *    @code{.c}
- *    if (frame.magic != FRAME_MAGIC) {
- *        log_error("Corrupted frame detected (magic=0x%08X)", frame.magic);
- *        return;
- *    }
- *    @endcode
+ * @code{.c}
+ * ringbuffer_create(sizeof(int), 128);  // Good (power of 2)
+ * ringbuffer_create(sizeof(int), 100);  // Still works, but rounded to 128
+ * @endcode
  *
- * 5. **Size jitter buffer appropriately**:
- *    - Too small → audio crackling from underruns
- *    - Too large → excessive latency
- *    - Sweet spot: 2-3× typical network jitter
+ * **Handle full/empty cases gracefully**
+ *
+ * When `ringbuffer_write()` returns false, the buffer is full. When `ringbuffer_read()` returns
+ * false, it's empty. You need to decide what to do in each case:
+ *
+ * @code{.c}
+ * if (!ringbuffer_write(rb, &data)) {
+ *     // Buffer full - decide policy:
+ *     // - Drop data (real-time video - newest frame is most important)
+ *     // - Wait and retry (critical data - can't afford to lose)
+ *     // - Overwrite oldest (circular log - keep latest N items)
+ * }
+ * @endcode
+ *
+ * For real-time video, dropping frames is usually fine—better to show the latest frame than
+ * to delay everything. For critical data, you might want to block until there's room. It depends
+ * on your use case.
+ *
+ * **Free frame data after reading**
+ *
+ * This one is easy to forget but important: frame buffers allocate memory for frame data, and
+ * the consumer owns that memory after reading. You must free it!
+ *
+ * @code{.c}
+ * frame_t frame;
+ * if (framebuffer_read_frame(fb, &frame)) {
+ *     process_frame(frame.data, frame.size);
+ *     SAFE_FREE(frame.data);  // Must free! Consumer owns data
+ * }
+ * @endcode
+ *
+ * If you forget to free the frame data, you'll leak memory. This can be subtle because the
+ * frames might be small and it takes a while to notice the leak, but it will catch up with
+ * you eventually.
+ *
+ * **Validate magic numbers**
+ *
+ * Frame buffers include magic numbers for a reason—they help catch corruption. Always check
+ * that you got a valid frame:
+ *
+ * @code{.c}
+ * if (frame.magic != FRAME_MAGIC) {
+ *     log_error("Corrupted frame detected (magic=0x%08X)", frame.magic);
+ *     return;
+ * }
+ * @endcode
+ *
+ * This is a cheap sanity check that can save you from chasing weird bugs later. If you read
+ * garbage memory (maybe from a use-after-free or buffer overflow), the magic number won't
+ * match and you'll know immediately that something's wrong.
+ *
+ * **Size jitter buffers appropriately**
+ *
+ * For audio buffers, the jitter buffer size is a trade-off. Too small and you'll get audio
+ * crackling from underruns. Too large and you'll have noticeable latency. The sweet spot is
+ * usually about 2-3 times your typical network jitter.
+ *
+ * Our default is 46 milliseconds, which works well for most network conditions. If you're on
+ * a very stable network (like a local connection), you could go smaller. If network jitter
+ * is severe, you might need to increase it, though you'll pay for it with latency.
  *
  * @see ringbuffer.h
  * @see ringbuffer.c
