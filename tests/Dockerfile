@@ -1,4 +1,4 @@
-# Dockerfile for running ASCII-Chat tests on Windows via Docker
+# Dockerfile for running ascii-chat tests on Windows via Docker
 # Uses Arch Linux for a lightweight container with full Criterion compatibility
 
 FROM archlinux:latest

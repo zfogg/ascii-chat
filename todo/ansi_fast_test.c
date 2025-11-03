@@ -256,7 +256,7 @@ void benchmark_complete_optimizations(void) {
     total_pixel_time = total_string_time = total_output_time = total_time = 0;
 
     // Half-block mode has been removed from the project
-    // Skip this test since ASCII-Chat focuses on ASCII art, not pixel-perfect terminal graphics
+    // Skip this test since ascii-chat focuses on ASCII art, not pixel-perfect terminal graphics
     for (int i = 0; i < iterations; i++) {
       total_pixel_time += 0;
       total_string_time += 0;
@@ -264,7 +264,7 @@ void benchmark_complete_optimizations(void) {
       total_time += 0;
     }
 
-    printf("  Half-block mode (▀): REMOVED - ASCII-Chat focuses on ASCII art\n");
+    printf("  Half-block mode (▀): REMOVED - ascii-chat focuses on ASCII art\n");
     printf("    Pixel processing: SKIPPED\n");
     printf("    String generation: SKIPPED\n");
     printf("    Terminal output: SKIPPED\n");

@@ -1,3 +1,9 @@
+/**
+ * @file util/string.c
+ * @ingroup util
+ * @brief 🔤 String manipulation utilities: ASCII escaping, trimming, case conversion, and formatting
+ */
+
 #include "util/string.h"
 #include "common.h"
 #include <string.h>

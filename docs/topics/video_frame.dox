@@ -1,0 +1,312 @@
+/**
+ * @defgroup video_frame Video Frame Buffers
+ * @ingroup module_video
+ *
+ * @page topic_video_frame Video Frame README
+ * @ingroup video_frame
+ *
+ * @section video_frame_overview Overview
+ *
+ * The Video Frame module provides structures and utilities for managing video
+ * frames throughout the ascii-chat pipeline. It handles RGB image data, frame
+ * metadata, and efficient frame lifecycle management.
+ *
+ * **Implementation**: lib/video_frame.h
+ *
+ * **Key Features**:
+ * - RGB24 image frame representation
+ * - Frame metadata (timestamp, dimensions, client ID)
+ * - Efficient memory management
+ * - Frame ownership tracking
+ * - Reference counting (where applicable)
+ * - Frame validation and verification
+ *
+ * @section video_frame_structure Frame Structure
+ *
+ * **video_frame_t**:
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t *data;        // RGB24 pixel data
+ *     uint32_t width;       // Frame width in pixels
+ *     uint32_t height;      // Frame height in pixels
+ *     size_t data_size;     // Total bytes (width * height * 3)
+ *     uint32_t client_id;   // Client that owns this frame
+ *     uint64_t timestamp;   // Capture timestamp (microseconds)
+ *     bool owns_data;       // Whether this frame owns the data buffer
+ * } video_frame_t;
+ * @endcode
+ *
+ * **Frame Properties**:
+ * - **data**: RGB24 format (3 bytes per pixel: R, G, B)
+ * - **width/height**: Frame dimensions
+ * - **data_size**: Always equals width * height * 3
+ * - **client_id**: Which client this frame belongs to
+ * - **timestamp**: Microsecond-precision capture time
+ * - **owns_data**: Memory ownership flag
+ *
+ * @section video_frame_operations Operations
+ *
+ * @subsection video_frame_create Creation
+ *
+ * **Allocate New Frame**:
+ * @code{.c}
+ * video_frame_t *frame = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
+ * frame->width = 640;
+ * frame->height = 480;
+ * frame->data_size = frame->width * frame->height * 3;
+ * frame->data = SAFE_MALLOC(frame->data_size, uint8_t *);
+ * frame->owns_data = true;
+ * frame->client_id = client_id;
+ * frame->timestamp = get_timestamp_usec();
+ * @endcode
+ *
+ * **Create from Existing Data**:
+ * @code{.c}
+ * video_frame_t frame = {
+ *     .data = existing_rgb_data,
+ *     .width = 1920,
+ *     .height = 1080,
+ *     .data_size = 1920 * 1080 * 3,
+ *     .client_id = client_id,
+ *     .timestamp = get_timestamp_usec(),
+ *     .owns_data = false  // Don't free existing_rgb_data
+ * };
+ * @endcode
+ *
+ * @subsection video_frame_access Data Access
+ *
+ * **Pixel Access**:
+ * @code{.c}
+ * // Get pixel at (x, y)
+ * size_t offset = (y * frame->width + x) * 3;
+ * uint8_t r = frame->data[offset + 0];
+ * uint8_t g = frame->data[offset + 1];
+ * uint8_t b = frame->data[offset + 2];
+ *
+ * // Set pixel at (x, y)
+ * frame->data[offset + 0] = 255;  // R
+ * frame->data[offset + 1] = 128;  // G
+ * frame->data[offset + 2] = 0;    // B
+ * @endcode
+ *
+ * **Row Access**:
+ * @code{.c}
+ * // Get pointer to row y
+ * uint8_t *row = &frame->data[y * frame->width * 3];
+ *
+ * // Process entire row
+ * for (uint32_t x = 0; x < frame->width; x++) {
+ *     uint8_t r = row[x * 3 + 0];
+ *     uint8_t g = row[x * 3 + 1];
+ *     uint8_t b = row[x * 3 + 2];
+ *     // Process pixel...
+ * }
+ * @endcode
+ *
+ * @subsection video_frame_copy Copying
+ *
+ * **Deep Copy**:
+ * @code{.c}
+ * video_frame_t *copy = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
+ * copy->width = src->width;
+ * copy->height = src->height;
+ * copy->data_size = src->data_size;
+ * copy->client_id = src->client_id;
+ * copy->timestamp = src->timestamp;
+ * copy->owns_data = true;
+ *
+ * // Allocate and copy pixel data
+ * copy->data = SAFE_MALLOC(copy->data_size, uint8_t *);
+ * memcpy(copy->data, src->data, copy->data_size);
+ * @endcode
+ *
+ * **Shallow Copy** (reference):
+ * @code{.c}
+ * video_frame_t reference = *src;
+ * reference.owns_data = false;  // Don't free the data when done
+ * @endcode
+ *
+ * @subsection video_frame_destroy Cleanup
+ *
+ * **Free Frame**:
+ * @code{.c}
+ * if (frame->owns_data && frame->data) {
+ *     free(frame->data);
+ *     frame->data = NULL;
+ * }
+ * free(frame);
+ * frame = NULL;
+ * @endcode
+ *
+ * @section video_frame_validation Validation
+ *
+ * **Validate Frame**:
+ * @code{.c}
+ * bool is_valid_frame(const video_frame_t *frame) {
+ *     if (!frame) return false;
+ *     if (!frame->data) return false;
+ *     if (frame->width == 0 || frame->height == 0) return false;
+ *     if (frame->data_size != frame->width * frame->height * 3) return false;
+ *     return true;
+ * }
+ * @endcode
+ *
+ * **Check Frame Dimensions**:
+ * @code{.c}
+ * if (frame->width > MAX_WIDTH || frame->height > MAX_HEIGHT) {
+ *     log_error("Frame dimensions too large: %ux%u", frame->width, frame->height);
+ *     return ERROR_INVALID_PARAM;
+ * }
+ * @endcode
+ *
+ * @section video_frame_ownership Ownership Rules
+ *
+ * **Ownership Flag**:
+ * - `owns_data = true`: Frame owns the data buffer, must free on cleanup
+ * - `owns_data = false`: Frame references external data, do NOT free
+ *
+ * **Ownership Transfer**:
+ * @code{.c}
+ * // Sender transfers ownership
+ * video_frame_t *frame = create_frame();
+ * frame->owns_data = true;
+ * send_to_queue(frame);
+ * // Sender no longer responsible for freeing frame->data
+ *
+ * // Receiver takes ownership
+ * video_frame_t *received = receive_from_queue();
+ * if (received->owns_data) {
+ *     // Must free when done
+ *     free(received->data);
+ * }
+ * @endcode
+ *
+ * @section video_frame_pipeline Frame Pipeline
+ *
+ * **Capture → Process → Encode → Send**:
+ * @code{.c}
+ * // 1. Capture from webcam
+ * video_frame_t *frame = webcam_capture();
+ * frame->owns_data = true;
+ * frame->timestamp = get_timestamp_usec();
+ *
+ * // 2. Process (resize, flip, etc.)
+ * video_frame_t *processed = process_frame(frame);
+ *
+ * // 3. Convert to ASCII
+ * ascii_frame_t *ascii = image_to_ascii(processed);
+ *
+ * // 4. Send over network
+ * send_ascii_frame(client_id, ascii);
+ *
+ * // 5. Cleanup
+ * if (frame->owns_data) free(frame->data);
+ * free(frame);
+ * if (processed->owns_data) free(processed->data);
+ * free(processed);
+ * free(ascii);
+ * @endcode
+ *
+ * @section video_frame_memory Memory Management
+ *
+ * **Allocation Strategy**:
+ * @code{.c}
+ * // Calculate size with overflow protection
+ * size_t data_size = (size_t)width * (size_t)height * 3;
+ *
+ * // Allocate frame data
+ * uint8_t *data = SAFE_MALLOC(data_size, uint8_t *);
+ * if (!data) {
+ *     return SET_ERRNO(ERROR_OUT_OF_MEMORY, "Failed to allocate frame data");
+ * }
+ * @endcode
+ *
+ * **Buffer Reuse**:
+ * @code{.c}
+ * // Reuse existing buffer if same size
+ * if (frame->data_size == new_size) {
+ *     // Reuse existing buffer
+ *     memcpy(frame->data, new_data, new_size);
+ * } else {
+ *     // Reallocate if size changed
+ *     if (frame->owns_data) free(frame->data);
+ *     frame->data = SAFE_MALLOC(new_size, uint8_t *);
+ *     frame->data_size = new_size;
+ * }
+ * @endcode
+ *
+ * @section video_frame_timestamps Timestamps
+ *
+ * **Microsecond Precision**:
+ * @code{.c}
+ * #include <sys/time.h>
+ *
+ * uint64_t get_timestamp_usec(void) {
+ *     struct timeval tv;
+ *     gettimeofday(&tv, NULL);
+ *     return (uint64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+ * }
+ *
+ * frame->timestamp = get_timestamp_usec();
+ * @endcode
+ *
+ * **Calculate Frame Age**:
+ * @code{.c}
+ * uint64_t now = get_timestamp_usec();
+ * uint64_t age_usec = now - frame->timestamp;
+ * double age_ms = age_usec / 1000.0;
+ *
+ * if (age_ms > 100.0) {
+ *     log_warn("Frame is stale: %.1fms old", age_ms);
+ * }
+ * @endcode
+ *
+ * @section video_frame_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always set `owns_data` correctly
+ * - Validate frame dimensions before allocation
+ * - Use overflow-safe size calculations
+ * - Set timestamp when capturing frames
+ * - Free frames when done
+ * - Check for NULL before dereferencing
+ *
+ * **DON'T**:
+ * - Don't free frame->data if owns_data is false
+ * - Don't use frame after freeing
+ * - Don't assume frame->data is aligned
+ * - Don't modify shared frame data
+ * - Don't forget to set client_id
+ * - Don't use stale frames (check timestamp)
+ *
+ * @section video_frame_integration Integration Example
+ *
+ * **Complete Usage**:
+ * @code{.c}
+ * // Capture frame
+ * video_frame_t *frame = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
+ * frame->width = 640;
+ * frame->height = 480;
+ * frame->data_size = 640 * 480 * 3;
+ * frame->data = SAFE_MALLOC(frame->data_size, uint8_t *);
+ * frame->owns_data = true;
+ * frame->client_id = my_client_id;
+ * frame->timestamp = get_timestamp_usec();
+ *
+ * // Fill with webcam data
+ * webcam_read(frame->data, frame->data_size);
+ *
+ * // Process and send
+ * process_and_send_frame(frame);
+ *
+ * // Cleanup (if still owning data)
+ * if (frame->owns_data && frame->data) {
+ *     free(frame->data);
+ * }
+ * free(frame);
+ * @endcode
+ *
+ * @see video_frame.h
+ * @see image2ascii/image.h
+ * @see os/webcam.h
+ */

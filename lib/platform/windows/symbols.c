@@ -1,12 +1,7 @@
 /**
- * @file symbols.c (Windows)
- * @brief Symbol resolution - delegates to cross-platform implementation
- *
- * The symbol resolution implementation is now cross-platform and lives in
- * ../symbols.c. This file just includes it for Windows builds.
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date October 2025
+ * @file platform/windows/symbols.c
+ * @ingroup platform
+ * @brief 🔍 Windows symbol resolution stub (cross-platform implementation in ../symbols.c)
  */
 
 // The implementation in symbols.c is cross-platform and handles

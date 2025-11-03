@@ -1,7 +1,8 @@
 #pragma once
 
 /**
- * @file windows_compat.h
+ * @file platform/windows_compat.h
+ * @ingroup platform
  * @brief Wrapper for windows.h with C23 alignment compatibility
  *
  * This header provides a single point to include windows.h with proper alignment.

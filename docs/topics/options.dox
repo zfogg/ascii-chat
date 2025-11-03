@@ -1,0 +1,170 @@
+/**
+ * @page topic_options Options README
+ * @ingroup options
+ *
+ * @section options_overview Overview
+ *
+ * The Options system provides command-line argument parsing support for
+ * ascii-chat. It handles server and client options, validates settings, and
+ * manages application configuration.
+ *
+ * **Implementation**: lib/options.h, lib/config.h
+ *
+ * **Key Features**:
+ * - Command-line argument parsing with getopt
+ * - Server and client mode options
+ * - Automatic help generation
+ * - Configuration validation
+ * - Default value management
+ *
+ * @section options_modes Operation Modes
+ *
+ * **Server Mode**:
+ * @code{.sh}
+ * ./ascii-chat server [options]
+ * @endcode
+ *
+ * **Client Mode**:
+ * @code{.sh}
+ * ./ascii-chat client [options]
+ * @endcode
+ *
+ * @section options_common_options Common Options
+ *
+ * **Network Options**:
+ * - `--address ADDR` - Server address (default: localhost)
+ * - `--port PORT` - Server port (default: 27224)
+ * - `--ipv6` - Use IPv6 instead of IPv4
+ *
+ * **Display Options**:
+ * - `--width WIDTH` - Terminal width (default: auto-detect)
+ * - `--height HEIGHT` - Terminal height (default: auto-detect)
+ * - `--color` - Enable color output
+ * - `--stretch` - Stretch video to fill terminal
+ * - `--half-block` - Use half-block rendering (2x vertical resolution)
+ *
+ * **Video Options**:
+ * - `--webcam INDEX` - Webcam device index (default: 0)
+ * - `--webcam-flip` - Flip webcam horizontally
+ * - `--test-pattern` - Use test pattern instead of webcam
+ * - `--snapshot` - Capture single frame and exit
+ * - `--snapshot-delay SEC` - Delay before snapshot (default: 1.0)
+ *
+ * **Audio Options**:
+ * - `--audio` - Enable audio (client only, server always has audio)
+ * - `--no-audio` - Disable audio
+ *
+ * **Crypto Options**:
+ * - `--key PATH` - SSH private key for authentication
+ * - `--server-key KEY` - Server public key or github:username
+ * - `--password PASS` - Shared password for encryption
+ * - `--insecure` - Skip host identity verification (NOT RECOMMENDED)
+ * - `--client-keys KEYS` - Whitelist of allowed client keys (comma-separated)
+ *
+ * **Logging Options**:
+ * - `--log-file PATH` - Write logs to file
+ * - `--log-level LEVEL` - Set log level (0-4)
+ *
+ * **Configuration Options**:
+ * - `--config PATH` - Load configuration from TOML file
+ * - `--config-create PATH` - Create default config file
+ *
+ * @section options_examples Usage Examples
+ *
+ * @subsection options_server_examples Server Examples
+ *
+ * **Basic Server**:
+ * @code{.sh}
+ * ./ascii-chat server
+ * @endcode
+ *
+ * **Server with Authentication**:
+ * @code{.sh}
+ * ./ascii-chat server --key ~/.ssh/id_ed25519 --client-keys github:user1,github:user2
+ * @endcode
+ *
+ * **Server with Custom Port**:
+ * @code{.sh}
+ * ./ascii-chat server --port 8080
+ * @endcode
+ *
+ * **Server with Logging**:
+ * @code{.sh}
+ * ./ascii-chat server --log-file /var/log/ascii-chat.log --log-level 1
+ * @endcode
+ *
+ * @subsection options_client_examples Client Examples
+ *
+ * **Basic Client**:
+ * @code{.sh}
+ * ./ascii-chat client
+ * @endcode
+ *
+ * **Connect to Remote Server**:
+ * @code{.sh}
+ * ./ascii-chat client --address 192.168.1.100 --port 27224
+ * @endcode
+ *
+ * **Client with Audio and Color**:
+ * @code{.sh}
+ * ./ascii-chat client --audio --color
+ * @endcode
+ *
+ * **Client with Custom Webcam**:
+ * @code{.sh}
+ * ./ascii-chat client --webcam 1 --webcam-flip
+ * @endcode
+ *
+ * **Snapshot Mode**:
+ * @code{.sh}
+ * ./ascii-chat client --snapshot --snapshot-delay 5
+ * @endcode
+ *
+ * **Client with Server Verification**:
+ * @code{.sh}
+ * ./ascii-chat client --server-key github:zfogg
+ * @endcode
+ *
+ *
+ * @section options_api Programmatic API
+ *
+ * **Parse Options**:
+ * @code{.c}
+ * options_t opts;
+ * asciichat_error_t err = parse_options(argc, argv, &opts);
+ * if (err != ASCIICHAT_OK) {
+ *     return err;
+ * }
+ * @endcode
+ *
+ * **Error Handling**:
+ * @code{.c}
+ * asciichat_error_t err = parse_options(argc, argv, &opts);
+ * if (err != ASCIICHAT_OK) {
+ *     asciichat_error_context_t ctx;
+ *     if (HAS_ERRNO(&ctx)) {
+ *         log_error("Invalid options: %s", ctx.context_message);
+ *     }
+ *     return err;
+ * }
+ * @endcode
+ *
+ * @section options_help Help System
+ *
+ * **Show Help**:
+ * @code{.sh}
+ * ./ascii-chat --help
+ * ./ascii-chat server --help
+ * ./ascii-chat client --help
+ * @endcode
+ *
+ * **Help Output**:
+ * - Lists all available options
+ * - Shows default values
+ * - Provides usage examples
+ * - Displays mode-specific options
+ *
+ * @see @ref topic_config "Configuration" for configuration files and precedence
+ * @see options.h
+ * @see config.h
+ */

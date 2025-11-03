@@ -17,7 +17,7 @@ RELEASE_DIR="release-$VERSION"
 RELEASE_NAME="ascii-chat-${OS}-${ARCH}"
 
 echo "========================================="
-echo "Creating ASCII-Chat Release: $VERSION"
+echo "Creating ascii-chat Release: $VERSION"
 echo "Platform: ${OS}-${ARCH}"
 echo "Build Type: Production (musl + static)"
 echo "========================================="
@@ -44,7 +44,7 @@ cp LICENSE "$RELEASE_DIR/" 2>/dev/null || true
 
 # Create release notes
 cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
-# ASCII-Chat $VERSION
+# ascii-chat $VERSION
 
 ## Build Information
 - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -57,7 +57,7 @@ cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
 - Linking: Static (no dependencies)
 
 ## Files
-- \`ascii-chat\` - ASCII-Chat binary
+- \`ascii-chat\` - ascii-chat binary
 
 ## Verification
 \`\`\`bash

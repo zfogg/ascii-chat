@@ -1,0 +1,49 @@
+/**
+ * @defgroup crypto Cryptographic Operations
+ * @ingroup module_crypto
+ * @brief End-to-end encryption and secure communication
+ */
+
+/**
+ * @page topic_crypto Cryptography Module
+ * @ingroup crypto
+ *
+ * The cryptography module provides end-to-end encryption for all ascii-chat communications
+ * using libsodium, implementing a robust protocol with mutual authentication and perfect
+ * forward secrecy.
+ *
+ * For comprehensive documentation on cryptographic implementation, threat models,
+ * security considerations, and known vulnerabilities, see @ref topic_crypto_detailed
+ * "Cryptography Detailed Documentation".
+ *
+ * @subpage topic_crypto_detailed
+ *
+ * @section crypto_overview Overview
+ *
+ * Welcome to the cryptography module—where we keep your video chat sessions private and secure!
+ *
+ * Let's talk about privacy. When you're video chatting with friends, you probably don't want
+ * random people on your network snooping on your conversations, right? That's where encryption
+ * comes in. Every packet that ascii-chat sends is encrypted, making it unreadable to anyone
+ * who might be listening in.
+ *
+ * But here's the cool part: you don't have to be a cryptography expert to use this. The module
+ * handles all the complex stuff—key exchange, encryption, decryption, authentication—behind
+ * a simple API. You just call a few functions, and boom, your data is secure.
+ *
+ * We use libsodium, which is basically the gold standard for modern cryptography libraries.
+ * It uses battle-tested algorithms (X25519 for key exchange, XSalsa20-Poly1305 for encryption,
+ * Ed25519 for signatures) that have been reviewed by actual cryptographers. This isn't some
+ * homemade crypto that'll get broken in five minutes—it's the real deal.
+ *
+ * **For comprehensive security details, threat models, and attack vectors, see**
+ * @ref topic_crypto_detailed "Cryptography Detailed Documentation".
+ *
+ * What does the crypto module give you?
+ * --------------------------------------
+ * - **End-to-end encryption**: Everything is encrypted by default
+ * - **Perfect forward secrecy**: Ephemeral keys mean past sessions stay private
+ * - **Mutual authentication**: Both client and server prove their identity
+ * - **SSH key support**: Use your existing SSH keys for authentication
+ * - **Known hosts**: Trust-on-first-use prevents man-in-the-middle attacks
+ * - **Modern algorithms**: X25519, XSalsa20-Poly1305, Ed25519 (the good stuff!)

@@ -1,0 +1,409 @@
+/**
+ * @page topic_server_render Render Threads
+ * @ingroup server_render
+ *
+ * @section server_render_overview Overview
+ *
+ * The render thread module manages per-client rendering threads that generate
+ * personalized ASCII frames at 60fps and mix audio streams at 172fps. This module
+ * embodies the real-time performance guarantees of ascii-chat, ensuring every client
+ * receives smooth video and low-latency audio regardless of the number of connected
+ * clients. The module implements sophisticated rate limiting, precise timing control,
+ * and thread lifecycle management to achieve professional-grade performance.
+ *
+ * **Implementation**: src/server/render.c, src/server/render.h
+ *
+ * **Key Responsibilities**:
+ * - Manage per-client video rendering threads (60fps per client)
+ * - Manage per-client audio rendering threads (172fps per client)
+ * - Coordinate frame generation timing and rate limiting
+ * - Ensure thread-safe access to client state and media buffers
+ * - Provide graceful thread lifecycle management
+ * - Handle platform-specific timing and synchronization
+ *
+ * @section server_render_threading Per-Client Threading Model
+ *
+ * Each connected client spawns exactly 2 dedicated threads:
+ *
+ * @subsection server_render_video_thread Video Render Thread
+ *
+ * **Purpose**: Generate personalized ASCII frames at 60fps
+ * **Performance**: 16.67ms intervals (60 frames per second)
+ * **Operations**:
+ * - Collects video frames from all active clients (via stream.c)
+ * - Creates composite frame with appropriate grid layout
+ * - Converts composite to ASCII using client's terminal capabilities
+ * - Queues ASCII frame in client's video packet queue
+ * - Rate limits to exactly 60fps with precise timing
+ *
+ * **Thread Implementation**:
+ * @code{.c}
+ * static void *video_render_thread_func(void *arg) {
+ *   uint32_t client_id = (uint32_t)(uintptr_t)arg;
+ *
+ *   // Initialize timing
+ *   struct timespec last_frame_time;
+ *   clock_gettime(CLOCK_MONOTONIC, &last_frame_time);
+ *
+ *   while (true) {
+ *     // Check shutdown flag
+ *     if (atomic_load(&g_server_should_exit) ||
+ *         !atomic_load(&client->video_render_thread_running) ||
+ *         !atomic_load(&client->active)) {
+ *       break;
+ *     }
+ *
+ *     // Generate personalized ASCII frame for client
+ *     ascii_frame_t *frame = generate_personalized_ascii_frame(client_id);
+ *     if (frame) {
+ *       // Queue frame for delivery via send thread
+ *       packet_queue_enqueue(client->video_packet_queue, frame, frame_size);
+ *     }
+ *
+ *     // Rate limit to exactly 60fps
+ *     struct timespec current_time;
+ *     clock_gettime(CLOCK_MONOTONIC, &current_time);
+ *     double elapsed = timespec_diff_ms(&current_time, &last_frame_time);
+ *
+ *     if (elapsed < 16.67) {
+ *       // Ahead of schedule - sleep until next frame time
+ *       platform_sleep_usec((int)((16.67 - elapsed) * 1000));
+ *     }
+ *
+ *     last_frame_time = current_time;
+ *   }
+ *
+ *   return NULL;
+ * }
+ * @endcode
+ *
+ * **Rate Limiting Strategy**:
+ * - Uses CLOCK_MONOTONIC for precise timing
+ * - Calculates elapsed time since last frame
+ * - Sleeps only if ahead of schedule
+ * - Prevents CPU spinning under light load
+ * - Maintains exactly 60fps timing
+ *
+ * @subsection server_render_audio_thread Audio Render Thread
+ *
+ * **Purpose**: Mix audio streams at 172fps (excluding client's own audio)
+ * **Performance**: 5.8ms intervals (172 frames per second)
+ * **Operations**:
+ * - Reads audio samples from all clients via audio mixer
+ * - Excludes client's own audio to prevent echo
+ * - Mixes remaining audio streams with ducking and compression
+ * - Queues mixed audio in client's audio packet queue
+ * - Rate limits to exactly 172fps (5.8ms intervals)
+ *
+ * **Thread Implementation**:
+ * @code{.c}
+ * static void *audio_render_thread_func(void *arg) {
+ *   uint32_t client_id = (uint32_t)(uintptr_t)arg;
+ *
+ *   // Audio mixer provides per-client mixed audio
+ *   mixer_t *mixer = g_audio_mixer;
+ *
+ *   while (true) {
+ *     // Check shutdown flag
+ *     if (atomic_load(&g_server_should_exit) ||
+ *         !atomic_load(&client->audio_render_thread_running) ||
+ *         !atomic_load(&client->active)) {
+ *       break;
+ *     }
+ *
+ *     // Get mixed audio (excluding client's own audio)
+ *     audio_sample_t *mixed_audio = mixer_get_mixed_audio(mixer, client_id);
+ *
+ *     if (mixed_audio) {
+ *       // Queue audio for delivery via send thread
+ *       packet_queue_enqueue(client->audio_packet_queue, mixed_audio,
+ *                            mixed_audio_size);
+ *     }
+ *
+ *     // Rate limit to exactly 172fps (5.8ms intervals)
+ *     platform_sleep_usec(5800);  // 5.8ms
+ *   }
+ *
+ *   return NULL;
+ * }
+ * @endcode
+ *
+ * **Audio Processing Features**:
+ * - Echo cancellation (excludes client's own audio)
+ * - Audio ducking (quiets other clients when client speaks)
+ * - Compression (normalizes audio levels)
+ * - Noise gate (suppresses background noise)
+ * - Low-latency delivery (5.8ms intervals)
+ *
+ * @section server_render_rate_limiting Rate Limiting and Timing Control
+ *
+ * @subsection server_render_timing_precision Timing Precision
+ *
+ * **Platform-Specific Timing**:
+ * - Windows: Uses Sleep() with millisecond precision
+ * - POSIX: Uses condition variables for responsive interruption
+ * - High-resolution timing with clock_gettime()
+ * - Interruptible sleep for responsive shutdown
+ *
+ * **Rate Limiting Algorithm**:
+ * @code{.c}
+ * // Calculate elapsed time since last frame
+ * double elapsed = timespec_diff_ms(&current_time, &last_frame_time);
+ *
+ * if (elapsed < target_interval) {
+ *   // Ahead of schedule - sleep until next frame time
+ *   platform_sleep_usec((int)((target_interval - elapsed) * 1000));
+ * } else {
+ *   // Behind schedule - skip sleep to catch up
+ *   // This prevents frame accumulation under load
+ * }
+ * @endcode
+ *
+ * **Timing Guarantees**:
+ * - Video: Exactly 60fps (16.67ms intervals)
+ * - Audio: Exactly 172fps (5.8ms intervals)
+ * - Platform-specific high-resolution timers
+ * - Interruptible sleep for responsive shutdown
+ *
+ * @subsection server_render_cpu_usage CPU Usage Management
+ *
+ * **Prevent CPU Spinning**:
+ * - Sleep when ahead of schedule
+ * - Skip sleep only when behind schedule
+ * - Minimal CPU usage under light load
+ * - Responsive to load changes
+ *
+ * **Catch-Up Strategy**:
+ * - Behind schedule: Skip sleep to catch up
+ * - Prevents frame accumulation
+ * - Maintains real-time performance
+ * - Adaptive to load changes
+ *
+ * @section server_render_thread_safety Thread Safety and Synchronization
+ *
+ * @subsection server_render_state_access Client State Access
+ *
+ * All client state access uses the snapshot pattern:
+ *
+ * @code{.c}
+ * // Snapshot client state under mutex
+ * mutex_lock(&client->client_state_mutex);
+ *
+ * bool should_continue = client->video_render_thread_running &&
+ *                        client->active;
+ * uint32_t client_id_snapshot = client->client_id;
+ * unsigned short width_snapshot = client->width;
+ * unsigned short height_snapshot = client->height;
+ * terminal_capabilities_t caps_snapshot = client->capabilities;
+ *
+ * mutex_unlock(&client->client_state_mutex);
+ *
+ * // Process using local copies (no locks held)
+ * if (should_continue) {
+ *   generate_frame(client_id_snapshot, width_snapshot, height_snapshot,
+ *                  &caps_snapshot);
+ * }
+ * @endcode
+ *
+ * **Snapshot Benefits**:
+ * - Minimal lock holding time
+ * - No blocking operations while holding locks
+ * - Prevents deadlocks from complex call chains
+ * - Enables parallel processing across clients
+ *
+ * @subsection server_render_thread_control Thread Control Flags
+ *
+ * **Atomic Thread Control**:
+ * - `video_render_thread_running`: Atomic boolean for thread control
+ * - `audio_render_thread_running`: Atomic boolean for thread control
+ * - `active`: Atomic boolean for client connection status
+ * - `g_server_should_exit`: Atomic boolean for server shutdown
+ *
+ * **Shutdown Coordination**:
+ * - Threads check flags frequently in loops
+ * - Clean thread exit on flag change
+ * - No blocking operations that can't be interrupted
+ * - Responsive shutdown (threads exit within frame interval)
+ *
+ * @subsection server_render_buffer_access Media Buffer Access
+ *
+ * **Video Buffer Access**:
+ * - Double-buffer system (atomic operations)
+ * - Thread-safe frame reading
+ * - Always get latest available frame
+ * - Frame dropping under load handled gracefully
+ *
+ * **Audio Buffer Access**:
+ * - Lock-free ring buffer
+ * - Thread-safe audio sample reading
+ * - Automatic overflow handling
+ * - Low-latency access
+ *
+ * @section server_render_thread_lifecycle Thread Lifecycle Management
+ *
+ * @subsection server_render_thread_creation Thread Creation
+ *
+ * **Creation Order**:
+ * 1. Video render thread created first (60fps requirement)
+ * 2. Audio render thread created second (172fps requirement)
+ *
+ * **Creation Process**:
+ * @code{.c}
+ * int create_client_render_threads(client_info_t *client) {
+ *   // Create video render thread
+ *   atomic_store(&client->video_render_thread_running, true);
+ *   if (ascii_thread_create(&client->video_render_thread,
+ *                           video_render_thread_func,
+ *                           (void *)(uintptr_t)client->client_id) != 0) {
+ *     return -1;
+ *   }
+ *
+ *   // Create audio render thread
+ *   atomic_store(&client->audio_render_thread_running, true);
+ *   if (ascii_thread_create(&client->audio_render_thread,
+ *                           audio_render_thread_func,
+ *                           (void *)(uintptr_t)client->client_id) != 0) {
+ *     // Cleanup video thread on failure
+ *     atomic_store(&client->video_render_thread_running, false);
+ *     ascii_thread_join(&client->video_render_thread, NULL);
+ *     return -1;
+ *   }
+ *
+ *   return 0;
+ * }
+ * @endcode
+ *
+ * @subsection server_render_thread_termination Thread Termination
+ *
+ * **Termination Sequence**:
+ * 1. Set thread running flags to false
+ * 2. Threads detect flag change and exit loops
+ * 3. Join threads to ensure complete cleanup
+ * 4. Clear thread handles
+ *
+ * **Termination Process**:
+ * @code{.c}
+ * void destroy_client_render_threads(client_info_t *client) {
+ *   // Signal threads to exit
+ *   atomic_store(&client->video_render_thread_running, false);
+ *   atomic_store(&client->audio_render_thread_running, false);
+ *
+ *   // Join threads with timeout
+ *   ascii_thread_join_timeout(&client->video_render_thread, NULL, 1000);
+ *   ascii_thread_join_timeout(&client->audio_render_thread, NULL, 1000);
+ *
+ *   // Clear thread handles
+ *   ascii_thread_init(&client->video_render_thread);
+ *   ascii_thread_init(&client->audio_render_thread);
+ * }
+ * @endcode
+ *
+ * **Timeout Handling**:
+ * - Thread join timeouts prevent blocking
+ * - Logged warnings for timeout cases
+ * - Graceful degradation on thread hang
+ * - Clean shutdown even if threads don't exit cleanly
+ *
+ * @section server_render_platform_abstraction Platform Abstraction Integration
+ *
+ * @subsection server_render_timing Cross-Platform Timing
+ *
+ * **Windows Timing**:
+ * - Uses Sleep() with millisecond precision
+ * - Requires timer resolution adjustment (timeBeginPeriod)
+ * - Minimal overhead for sleep operations
+ *
+ * **POSIX Timing**:
+ * - Uses condition variables for responsive interruption
+ * - High-resolution timing with clock_gettime()
+ * - Interruptible sleep for shutdown responsiveness
+ *
+ * @subsection server_render_thread_management Cross-Platform Threading
+ *
+ * **Windows Threading**:
+ * - Uses platform abstraction layer
+ * - Handles Windows-specific thread initialization
+ * - Platform-safe thread join operations
+ *
+ * **POSIX Threading**:
+ * - Uses pthreads via platform abstraction
+ * - Standard POSIX thread operations
+ * - Cross-platform thread lifecycle management
+ *
+ * @section server_render_integration Integration with Other Modules
+ *
+ * @subsection server_render_client Integration with client.c
+ *
+ * **Called By**:
+ * - `create_client_render_threads()`: Creates render threads per client
+ * - Thread creation coordinated with client lifecycle
+ *
+ * **Provides To**:
+ * - Render thread management functions
+ * - Thread lifecycle coordination
+ *
+ * @subsection server_render_stream Integration with stream.c
+ *
+ * **Called By**:
+ * - Video render threads call `generate_personalized_ascii_frame()`
+ * - Frame generation at 60fps per client
+ *
+ * **Provides To**:
+ * - Per-client frame generation requests
+ * - Terminal capability awareness
+ *
+ * @subsection server_render_mixer Integration with mixer.c
+ *
+ * **Called By**:
+ * - Audio render threads call `mixer_get_mixed_audio()`
+ * - Audio mixing at 172fps per client
+ *
+ * **Provides To**:
+ * - Per-client audio mixing requests
+ * - Echo cancellation (excludes client's own audio)
+ *
+ * @section server_render_performance Performance Characteristics
+ *
+ * **Linear Scaling**:
+ * - Each client gets dedicated render threads
+ * - No shared bottlenecks between clients
+ * - Performance scales linearly up to 9+ clients
+ * - Real-time guarantees maintained per client
+ *
+ * **CPU Usage**:
+ * - Minimal CPU usage when ahead of schedule
+ * - Adaptive to load changes
+ * - No CPU spinning under light load
+ * - Efficient sleep operations
+ *
+ * **Timing Precision**:
+ * - Exactly 60fps for video (16.67ms intervals)
+ * - Exactly 172fps for audio (5.8ms intervals)
+ * - Platform-specific high-resolution timers
+ * - Consistent timing across platforms
+ *
+ * @section server_render_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always check shutdown flags in loops
+ * - Use snapshot pattern for client state access
+ * - Sleep when ahead of schedule to prevent CPU spinning
+ * - Use precise timing for rate limiting
+ * - Join threads with timeout to prevent blocking
+ *
+ * **DON'T**:
+ * - Don't hold locks during frame generation
+ * - Don't skip shutdown flag checks
+ * - Don't use blocking operations without timeout
+ * - Don't ignore thread join failures
+ * - Don't modify thread control flags without synchronization
+ *
+ * @see src/server/render.c
+ * @see src/server/render.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_client "Client Management"
+ * @see @ref topic_server_stream "Stream Generation"
+ * @see topic_mixer
+ * @see <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
+ */
+

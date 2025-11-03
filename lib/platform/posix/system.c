@@ -1,9 +1,7 @@
 /**
- * @file system.c
- * @brief POSIX system functions implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides POSIX system function wrappers for the platform abstraction layer,
- * enabling cross-platform system operations using a unified API.
+ * @file platform/posix/system.c
+ * @ingroup platform
+ * @brief 🖥️ POSIX system utilities: process management, file I/O, memory mapping, and signal handling
  */
 
 #ifndef _WIN32

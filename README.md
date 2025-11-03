@@ -23,7 +23,7 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 ## Dependencies
 
-ASCII-Chat relies on several key libraries for its functionality. Each dependency serves a specific purpose in the application:
+ascii-chat relies on several key libraries for its functionality. Each dependency serves a specific purpose in the application:
 
 ### Core Dependencies
 
@@ -174,7 +174,7 @@ CMake supports several configuration options:
 
 ## Usage
 
-ASCII-Chat uses a unified binary with two modes: `server` and `client`.
+ascii-chat uses a unified binary with two modes: `server` and `client`.
 
 Start the server and wait for client connections:
 ```bash
@@ -270,7 +270,7 @@ Run `./bin/ascii-chat server --help` to see all server options:
 
 ## Cryptography
 
-ASCII-Chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
+ascii-chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
 
 ascii-chat's crypto works like your web browser's HTTPS: the client and server perform the Diffie-Hellman exchange to establish secure communication with ephemeral keys every connection. HTTPS depends on certificates tied to DNS names with a certificate authority roots build into the operating system, but ascii-chat is built on TCP so DNS doesn't work for us to secure our servers. ascii-chat users need to verify their server's public keys manually until ACDS (ascii-chat discovery service) is built.
 
@@ -314,7 +314,7 @@ ascii-chat client --no-encrypt
 
 # Server key verification (client verifies server identity)
 ascii-chat client --key ~/.ssh/id_ed25519 --server-key ~/.ssh/server1.pub
-# This .pub file format is the same one ssh-keygen generates for any ed25519 keys it creates.
+# This .pub file format is standard OpenSSH public key format (ssh-ed25519).
 
 # Client key whitelisting (server only accepts specific clients)
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
@@ -329,7 +329,7 @@ ascii-chat client --key ~/.ssh/id_ed25519  --server-key ~/.ssh/server1.pub --pas
 
 ## Environment Variables
 
-ASCII-Chat uses several environment variables for configuration and security
+ascii-chat uses several environment variables for configuration and security
 controls. These variables can be set to modify the program's behavior without
 changing command-line arguments.
 

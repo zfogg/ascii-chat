@@ -1,3 +1,9 @@
+/**
+ * @file util/ip.c
+ * @ingroup util
+ * @brief 🌍 IPv4/IPv6 address parsing, validation, and formatting utilities
+ */
+
 #include "ip.h"
 #include "common.h"
 #include <string.h>

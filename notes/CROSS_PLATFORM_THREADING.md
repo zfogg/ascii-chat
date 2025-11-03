@@ -96,7 +96,7 @@ Direct platform code with macros:
 #endif
 ```
 
-## Recommended Approach for ASCII-Chat
+## Recommended Approach for ascii-chat
 
 ### Option 1: Simple Macros (Minimal Changes)
 ```c
@@ -128,19 +128,19 @@ Direct platform code with macros:
 #ifdef WIN32
   typedef HANDLE pthread_t;
   typedef CRITICAL_SECTION pthread_mutex_t;
-  
-  static inline int pthread_create(pthread_t *thread, void *attr, 
+
+  static inline int pthread_create(pthread_t *thread, void *attr,
                                    void *(*func)(void*), void *arg) {
     *thread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)func, arg, 0, NULL);
     return (*thread == NULL) ? -1 : 0;
   }
-  
+
   static inline int pthread_join(pthread_t thread, void **retval) {
     WaitForSingleObject(thread, INFINITE);
     CloseHandle(thread);
     return 0;
   }
-  
+
   // ... implement all pthread functions used
 #endif
 ```
@@ -153,7 +153,7 @@ Windows native threads vs pthreads-win32:
 - **SRWLock**: ~30% faster than pthread_rwlock for read-heavy workloads
 - **Condition Variables**: Similar performance
 
-## ASCII-Chat Specific Needs
+## ascii-chat Specific Needs
 
 The project uses:
 - `pthread_create/join` - Basic thread lifecycle

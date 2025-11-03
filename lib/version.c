@@ -1,5 +1,8 @@
-// Embeds ASCII-Chat version information in the compiled binary
-// This creates a custom ELF section readable with: readelf -p .ascii_chat_version <binary>
+/**
+ * @file version.c
+ * @ingroup version
+ * @brief 🏷️ Binary-embedded version information in custom ELF/Mach-O sections for runtime inspection
+ */
 
 #include "version.h"
 

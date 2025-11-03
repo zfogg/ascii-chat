@@ -1,18 +1,7 @@
 /**
- * @file main.c
- * @brief ASCII-Chat Client Main Entry Point
- *
- * This module serves as the main entry point for the ASCII-Chat client application.
- * It orchestrates the entire client lifecycle including initialization, connection
- * management, and the primary event loop that manages reconnection logic.
- *
- * ## Architecture Overview
- *
- * The client follows a modular threading architecture:
- * - **Main thread**: Connection management and event coordination
- * - **Data reception thread**: Handles incoming packets from server
- * - **Ping thread**: Maintains connection keepalive
- * - **Webcam capture thread**: Captures and transmits video frames
+ * @file client/main.c
+ * @ingroup client_main
+ * @brief 🖥️ Client main entry point: connection management, event loop, and multi-threaded lifecycle orchestration
  * - **Audio capture thread**: Captures and transmits audio data (optional)
  *
  * ## Connection Management
@@ -92,35 +81,54 @@
  * Global State Variables
  * ============================================================================ */
 
-/** Global flag indicating shutdown has been requested */
+/**
+ * @brief Global atomic flag indicating shutdown has been requested
+ *
+ * Primary coordination mechanism for clean client shutdown. Set to true by
+ * signal handlers (SIGINT) or main loop on error conditions. All worker threads
+ * check this flag in their main loops to exit gracefully.
+ *
+ * @note Must be atomic for thread-safe access without mutexes
+ * @ingroup client_main
+ */
 static atomic_bool g_client_should_exit = false;
 
 /**
- * Check if shutdown has been requested
+ * @brief Check if shutdown has been requested
  *
  * This function is also registered as the shutdown check callback for
- * library code via shutdown_register_callback().
+ * library code via shutdown_register_callback(). Thread-safe check of
+ * the global exit flag used by all client threads.
  *
  * @return true if shutdown requested, false otherwise
+ *
+ * @ingroup client_main
  */
 bool should_exit() {
   return atomic_load(&g_client_should_exit);
 }
 
 /**
- * Signal that shutdown should be requested
+ * @brief Signal that shutdown should be requested
+ *
+ * Sets the global exit flag to trigger graceful shutdown of all client
+ * threads. Thread-safe and can be called from signal handlers.
+ *
+ * @ingroup client_main
  */
 void signal_exit() {
   atomic_store(&g_client_should_exit, true);
 }
 
 /**
- * Signal handler for SIGINT (Ctrl-C)
+ * @brief Signal handler for SIGINT (Ctrl-C)
  *
  * Implements double-tap behavior: first SIGINT requests graceful shutdown,
  * second SIGINT within the same session forces immediate exit.
  *
  * @param sigint The signal number (unused)
+ *
+ * @ingroup client_main
  */
 static void sigint_handler(int sigint) {
   (void)(sigint);
@@ -151,12 +159,14 @@ static void sigint_handler(int sigint) {
 }
 
 /**
- * Platform-compatible SIGWINCH handler for terminal resize events
+ * @brief Platform-compatible SIGWINCH handler for terminal resize events
  *
  * Automatically updates terminal dimensions and notifies server when
  * both width and height are set to auto-detect mode.
  *
  * @param sigwinch The signal number (unused)
+ *
+ * @ingroup client_main
  */
 #ifndef _WIN32
 static void sigwinch_handler(int sigwinch) {
@@ -180,6 +190,17 @@ static void sigwinch_handler(int sigwinch) {
 }
 #else
 // Windows-compatible signal handler (placeholder - actual resize detection uses callback)
+/**
+ * @brief Windows-compatible SIGWINCH handler (placeholder)
+ *
+ * On Windows, SIGWINCH is not a real signal - resize detection uses
+ * ReadConsoleInput. See terminal_resize_callback() for the actual Windows
+ * resize handling.
+ *
+ * @param sigwinch The signal number (unused)
+ *
+ * @ingroup client_main
+ */
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
   // On Windows, SIGWINCH is not a real signal - resize detection uses ReadConsoleInput
@@ -187,13 +208,15 @@ static void sigwinch_handler(int sigwinch) {
 }
 
 /**
- * Windows console resize callback function
+ * @brief Windows console resize callback function
  *
  * Called by the Windows console resize detection thread when terminal size changes.
  * This provides equivalent functionality to Unix SIGWINCH signal handling.
  *
  * @param cols New terminal width in columns
  * @param rows New terminal height in rows
+ *
+ * @ingroup client_main
  */
 static void terminal_resize_callback(int cols, int rows) {
   (void)cols;
@@ -220,11 +243,13 @@ static void terminal_resize_callback(int cols, int rows) {
 #endif
 
 /**
- * Perform complete client shutdown and resource cleanup
+ * @brief Perform complete client shutdown and resource cleanup
  *
  * This function is registered with atexit() to ensure proper cleanup
  * regardless of how the program terminates. Order of cleanup is important
  * to prevent race conditions and resource leaks.
+ *
+ * @ingroup client_main
  */
 static void shutdown_client() {
   // Set global shutdown flag to stop all threads
@@ -253,13 +278,15 @@ static void shutdown_client() {
 }
 
 /**
- * Initialize all client subsystems
+ * @brief Initialize all client subsystems
  *
  * Performs initialization in dependency order, with error checking
  * and cleanup on failure. This function must be called before
  * entering the main connection loop.
  *
  * @return 0 on success, non-zero error code on failure
+ *
+ * @ingroup client_main
  */
 static int initialize_client_systems() {
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
@@ -340,7 +367,7 @@ static int initialize_client_systems() {
 }
 
 /**
- * Main application entry point
+ * @brief Main application entry point
  *
  * Orchestrates the complete client lifecycle:
  * 1. Command line parsing and option validation
@@ -356,6 +383,8 @@ static int initialize_client_systems() {
  * @param argc Command line argument count
  * @param argv Command line argument vector
  * @return 0 on success, error code on failure
+ *
+ * @ingroup client_main
  */
 #include "main.h"
 
@@ -526,6 +555,6 @@ int client_main(int argc, char *argv[]) {
     log_info("Cleanup complete, will attempt reconnection");
   }
 
-  log_info("ASCII-Chat client shutting down");
+  log_info("ascii-chat client shutting down");
   return 0;
 }

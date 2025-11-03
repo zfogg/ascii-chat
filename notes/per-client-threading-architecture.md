@@ -2,7 +2,7 @@
 
 ## Overview
 
-ASCII-Chat has been transformed from a single-threaded bottleneck architecture to a high-performance per-client threading system. Each client gets dedicated video and audio rendering threads, enabling linear performance scaling and true concurrent processing.
+ascii-chat has been transformed from a single-threaded bottleneck architecture to a high-performance per-client threading system. Each client gets dedicated video and audio rendering threads, enabling linear performance scaling and true concurrent processing.
 
 ## Architecture Summary
 
@@ -271,7 +271,7 @@ int destroy_client_render_threads(client_info_t *client) {
 
 ## Conclusion
 
-The per-client threading architecture successfully transforms ASCII-Chat from a single-threaded bottleneck to a high-performance concurrent system. The critical synchronization fixes eliminate race conditions while maintaining full 60 FPS video and 172 FPS audio performance per client. The 2,088+ RWLock operations/second are acceptable for a high-performance real-time media streaming application.
+The per-client threading architecture successfully transforms ascii-chat from a single-threaded bottleneck to a high-performance concurrent system. The critical synchronization fixes eliminate race conditions while maintaining full 60 FPS video and 172 FPS audio performance per client. The 2,088+ RWLock operations/second are acceptable for a high-performance real-time media streaming application.
 
 **Key Success Metrics:**
 - ✅ **Zero race conditions** with proper mutex protection

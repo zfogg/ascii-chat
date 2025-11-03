@@ -1,3 +1,9 @@
+/**
+ * @file mixer.c
+ * @ingroup audio
+ * @brief 🎚️ Real-time audio mixer with ducking, gain control, and multi-stream blending
+ */
+
 #include "audio.h"
 #include "mixer.h"
 #include "common.h"

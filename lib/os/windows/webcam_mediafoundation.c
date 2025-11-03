@@ -1,3 +1,9 @@
+/**
+ * @file os/windows/webcam_mediafoundation.c
+ * @ingroup webcam
+ * @brief 📷 Windows Media Foundation webcam capture with hardware acceleration support
+ */
+
 #ifdef _WIN32
 
 #define COBJMACROS
@@ -225,7 +231,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     IMFMediaType_SetGUID(rgbType, &MF_MT_MAJOR_TYPE, &MFMediaType_Video);
     IMFMediaType_SetGUID(rgbType, &MF_MT_SUBTYPE, &MFVideoFormat_RGB32);
 
-    // Request 640x480 resolution (we only need 480x270 max for ASCII-Chat)
+    // Request 640x480 resolution (we only need 480x270 max for ascii-chat)
     // This dramatically reduces pixel copy overhead (307,200 vs 8,294,400 pixels)
     UINT64 frameSize = ((UINT64)640 << 32) | (UINT64)480;
     hr = IMFMediaType_SetUINT64(rgbType, &MF_MT_FRAME_SIZE, frameSize);

@@ -1,11 +1,48 @@
 #pragma once
 
-#include <stdint.h>
-#include "platform/abstraction.h"
+/**
+ * @file server/stats.h
+ * @ingroup server_stats
+ * @brief Server performance statistics tracking
+ *
+ * This header provides server-side performance statistics tracking including
+ * frame capture/send rates, bandwidth metrics, and performance counters.
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ */
 
-/* ============================================================================
- * Performance Statistics
- * ============================================================================
+#include <stdint.h>
+#include "platform/mutex.h"
+
+/**
+ * @brief Server performance statistics structure
+ *
+ * Tracks comprehensive performance metrics for the ascii-chat server including
+ * frame processing rates, bandwidth usage, and performance counters.
+ *
+ * STATISTICS TRACKED:
+ * ===================
+ * - frames_captured: Total frames captured from webcam/sources
+ * - frames_sent: Total frames sent to all clients
+ * - frames_dropped: Total frames dropped (backpressure, timeout, etc.)
+ * - bytes_sent: Total bytes transmitted (network bandwidth)
+ * - avg_capture_fps: Average frame capture rate (frames per second)
+ * - avg_send_fps: Average frame send rate (frames per second)
+ *
+ * PERFORMANCE METRICS:
+ * ====================
+ * These statistics enable:
+ * - Performance monitoring and analysis
+ * - Bottleneck identification
+ * - Capacity planning
+ * - Quality of service metrics
+ *
+ * @note Statistics are updated atomically for thread-safe access.
+ * @note Rates (avg_capture_fps, avg_send_fps) are calculated over time windows.
+ * @note Frame drop rate = frames_dropped / frames_captured (when frames_captured > 0)
+ *
+ * @ingroup server_stats
  */
 typedef struct {
   uint64_t frames_captured;

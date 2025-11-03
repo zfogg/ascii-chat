@@ -1,3 +1,10 @@
+
+/**
+ * @file video_frame.c
+ * @ingroup video_frame
+ * @brief 🎬 Video frame buffer management for client-specific ASCII rendering
+ */
+
 #include "video_frame.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system

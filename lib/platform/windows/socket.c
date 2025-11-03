@@ -1,3 +1,9 @@
+/**
+ * @file platform/windows/socket.c
+ * @ingroup platform
+ * @brief 🌐 Windows Winsock implementation with TCP/UDP support and network address handling
+ */
+
 #ifdef _WIN32
 
 #include <winsock2.h>

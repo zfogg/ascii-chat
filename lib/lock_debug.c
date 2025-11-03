@@ -1,12 +1,7 @@
 /**
  * @file lock_debug.c
- * @brief Lock debugging and deadlock detection system implementation
- *
- * This file implements the lock tracking system that helps identify deadlocks
- * by monitoring all mutex and rwlock acquisitions with call stack backtraces.
- * Uses the existing hashtable.c implementation for efficient lock record storage.
- *
- * @author Zachary Fogg <me@zfo.gg>
+ * @ingroup lock_debug
+ * @brief 🔒 Lock debugging and deadlock detection with call stack backtraces and lock ordering validation
  * @date September 2025
  */
 

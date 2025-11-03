@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/common.c
+ * @ingroup image2ascii
+ * @brief 🔧 Shared SIMD utilities: initialization, cleanup, and architecture-specific resource management
+ */
+
 #include "common.h"
 #include "image2ascii/simd/common.h"
 #include "hashtable.h"

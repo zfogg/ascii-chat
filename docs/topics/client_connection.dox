@@ -1,0 +1,191 @@
+/**
+ * @defgroup client_connection Connection Management
+ * @ingroup module_client
+ * @brief Server connection establishment, packet transmission, and state tracking
+ */
+
+/**
+ * @page topic_client_connection Connection Management
+ * @ingroup client_connection
+ *
+ * @section client_connection_overview Overview
+ *
+ * The connection management subsystem handles TCP socket creation, connection
+ * establishment, cryptographic handshake coordination, and thread-safe packet
+ * transmission to the server.
+ *
+ * **Implementation**: src/client/server.c, src/client/server.h
+ *
+ * @section client_connection_state Connection State
+ *
+ * **Global State Variables**:
+ * - `g_sockfd`: Socket file descriptor
+ * - `g_client_id`: Server-assigned client ID
+ * - `g_server_ip`: Resolved server IP address
+ * - `g_connection_active`: Atomic boolean for connection status
+ * - `g_connection_lost`: Atomic boolean for connection loss detection
+ * - `g_send_mutex`: Mutex protecting all packet sends
+ *
+ * @section client_connection_establish Connection Establishment
+ *
+ * @subsection client_connection_flow Connection Flow
+ *
+ * @code{.c}
+ * int server_connection_establish(const char *address, int port,
+ *                                 int reconnect_attempt, bool first_connection,
+ *                                 bool has_ever_connected)
+ * {
+ *   // 1. Create socket
+ *   socket_t sockfd = socket(AF_INET, SOCK_STREAM, 0);
+ *
+ *   // 2. Resolve address (IPv4/IPv6)
+ *   struct addrinfo *result = resolve_address(address, port);
+ *
+ *   // 3. Connect with timeout
+ *   if (connect(sockfd, result->ai_addr, result->ai_addrlen) < 0) {
+ *     return CONNECTION_ERROR_GENERIC;
+ *   }
+ *
+ *   // 4. Perform cryptographic handshake
+ *   crypto_handshake_result_t handshake_result =
+ *     perform_crypto_handshake_client(sockfd, &crypto_ctx, opt_server_key,
+ *                                     server_ip, opt_client_key);
+ *
+ *   if (handshake_result != HANDSHAKE_SUCCESS &&
+ *       handshake_result != HANDSHAKE_WARNING_NO_CLIENT_AUTH) {
+ *     socket_close(sockfd);
+ *     return map_handshake_error(handshake_result);
+ *   }
+ *
+ *   // 5. Send client capabilities
+ *   send_client_capabilities();
+ *
+ *   // 6. Update global state
+ *   g_sockfd = sockfd;
+ *   atomic_store(&g_connection_active, true);
+ *   atomic_store(&g_connection_lost, false);
+ *
+ *   return CONNECTION_SUCCESS;
+ * }
+ * @endcode
+ *
+ * @subsection client_connection_errors Connection Error Codes
+ *
+ * **Error Types**:
+ * - `CONNECTION_SUCCESS (0)`: Connection established successfully
+ * - `CONNECTION_WARNING_NO_CLIENT_AUTH (1)`: Connected but server not verifying client
+ * - `CONNECTION_ERROR_GENERIC (-1)`: Network error (allow retry)
+ * - `CONNECTION_ERROR_AUTH_FAILED (-2)`: Client authentication failed (no retry)
+ * - `CONNECTION_ERROR_HOST_KEY_FAILED (-3)`: Server host key verification failed (no retry)
+ *
+ * @section client_connection_send Packet Transmission
+ *
+ * @subsection client_connection_send_packet Thread-Safe Packet Send
+ *
+ * @code{.c}
+ * int send_packet_to_server(packet_type_t type, const void *data, size_t data_len,
+ *                          uint32_t client_id)
+ * {
+ *   // Thread-safe send with global mutex
+ *   mutex_lock(&g_send_mutex);
+ *
+ *   // Check connection status
+ *   if (!server_connection_is_active()) {
+ *     mutex_unlock(&g_send_mutex);
+ *     return -1;
+ *   }
+ *
+ *   // Send encrypted packet
+ *   int result = send_packet(g_sockfd, &crypto_ctx, type, data, data_len, client_id);
+ *
+ *   mutex_unlock(&g_send_mutex);
+ *
+ *   // Detect connection loss on send error
+ *   if (result < 0) {
+ *     server_connection_lost();
+ *   }
+ *
+ *   return result;
+ * }
+ * @endcode
+ *
+ * **Thread Safety**:
+ * - ALL packet sends MUST go through `send_packet_to_server()`
+ * - Global `g_send_mutex` prevents interleaved packets
+ * - Socket FD checked under mutex protection
+ * - Connection loss detected atomically
+ *
+ * @section client_connection_loss Connection Loss Detection
+ *
+ * @subsection client_connection_loss_triggers Loss Detection Triggers
+ *
+ * **Connection loss detected by**:
+ * 1. Socket write error during `send_packet_to_server()`
+ * 2. Socket read error during `receive_packet()` in protocol thread
+ * 3. Keepalive timeout (no pong for 30 seconds)
+ * 4. Decryption failure (corrupted stream)
+ *
+ * @subsection client_connection_loss_handling Loss Handling
+ *
+ * @code{.c}
+ * void server_connection_lost(void)
+ * {
+ *   // Atomic compare-exchange ensures only first detection triggers action
+ *   bool expected = true;
+ *   if (atomic_compare_exchange_strong(&g_connection_active, &expected, false)) {
+ *     // First thread to detect loss
+ *     atomic_store(&g_connection_lost, true);
+ *     log_warn("Connection lost detected");
+ *   }
+ * }
+ * @endcode
+ *
+ * @section client_connection_cleanup Connection Cleanup
+ *
+ * @subsection client_connection_close Graceful Close
+ *
+ * @code{.c}
+ * void server_connection_close(void)
+ * {
+ *   if (g_sockfd != INVALID_SOCKET_VALUE) {
+ *     socket_shutdown(g_sockfd, SHUT_RDWR);  // Signal shutdown
+ *     socket_close(g_sockfd);                 // Close socket
+ *     g_sockfd = INVALID_SOCKET_VALUE;
+ *   }
+ *
+ *   atomic_store(&g_connection_active, false);
+ *   g_client_id = 0;
+ * }
+ * @endcode
+ *
+ * @subsection client_connection_emergency Emergency Shutdown
+ *
+ * @code{.c}
+ * void server_connection_shutdown(void)
+ * {
+ *   // Signal-safe emergency shutdown
+ *   if (g_sockfd != INVALID_SOCKET_VALUE) {
+ *     socket_close(g_sockfd);  // Immediate close (no shutdown)
+ *     g_sockfd = INVALID_SOCKET_VALUE;
+ *   }
+ * }
+ * @endcode
+ *
+ * @section client_connection_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always use `send_packet_to_server()` for packet transmission
+ * - Check `server_connection_is_active()` before operations
+ * - Use atomic operations for connection state flags
+ * - Wait for thread exit before reconnection
+ *
+ * **DON'T**:
+ * - Don't send packets without `g_send_mutex`
+ * - Don't close socket while threads may be using it
+ * - Don't ignore return values from send operations
+ * - Don't modify `g_sockfd` directly (use provided functions)
+ *
+ * @see src/client/server.c
+ * @see src/client/server.h
+ * @see @ref topic_client "Client Overview"
+ */

@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/ascii_simd.c
+ * @ingroup image2ascii
+ * @brief ⚡ Main SIMD ASCII rendering dispatcher with architecture detection and fallback handling
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

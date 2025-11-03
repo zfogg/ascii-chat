@@ -1,3 +1,10 @@
+
+/**
+ * @file palette.c
+ * @ingroup palette
+ * @brief 🎨 Terminal color palette management with Unicode character width detection
+ */
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <string.h>

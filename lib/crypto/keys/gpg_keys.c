@@ -1,3 +1,9 @@
+/**
+ * @file crypto/keys/gpg_keys.c
+ * @ingroup keys
+ * @brief 🔑 GPG public key extraction and validation from GPG keyrings
+ */
+
 #include "gpg_keys.h"
 #include "validation.h"
 #include "../../common.h"

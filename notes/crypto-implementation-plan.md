@@ -1,4 +1,4 @@
-# ASCII-Chat Cryptography Implementation Plan
+# ascii-chat Cryptography Implementation Plan
 
 **Status**: ✅ **PRODUCTION READY** (October 2025)
 **Version**: 2.0
@@ -20,7 +20,7 @@
 
 ## Executive Summary
 
-ASCII-Chat implements **end-to-end encryption by default** using modern cryptographic primitives from libsodium. The implementation follows a progressive security model with 6 authentication levels, from default ephemeral encryption to paranoid multi-factor authentication.
+ascii-chat implements **end-to-end encryption by default** using modern cryptographic primitives from libsodium. The implementation follows a progressive security model with 6 authentication levels, from default ephemeral encryption to paranoid multi-factor authentication.
 
 ### Key Achievements
 
@@ -218,7 +218,7 @@ lib/crypto/
 
 ### The MITM Problem
 
-ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-existing trust infrastructure like the Certificate Authority (CA) system used by HTTPS.
+ascii-chat faces a **fundamental cryptographic challenge**: there is no pre-existing trust infrastructure like the Certificate Authority (CA) system used by HTTPS.
 
 **Without verification:**
 - ✅ Privacy: Encrypted against passive eavesdropping (ISP, WiFi admin)
@@ -721,7 +721,7 @@ static char **parse_pgp_key_blocks(const char *gpg_text, size_t *num_keys_out);
 
 **Format:**
 ```
-# ASCII-Chat Known Hosts
+# ascii-chat Known Hosts
 # Format: IP:port key-type public-key [comment]
 
 # IPv4 example:
@@ -814,7 +814,7 @@ int remove_known_host(const char *hostname, uint16_t port);
 
 ### 1. Session Discovery Service (Issue #82)
 
-**Goal:** Transform ASCII-Chat from requiring manual IP/port coordination into a phone-number-like system with memorable session strings.
+**Goal:** Transform ascii-chat from requiring manual IP/port coordination into a phone-number-like system with memorable session strings.
 
 #### Architecture
 
@@ -842,7 +842,7 @@ int remove_known_host(const char *hostname, uint16_t port);
 **Starting a session:**
 ```bash
 $ ascii-chat
-🎥 Starting ASCII-Chat session...
+🎥 Starting ascii-chat session...
 📡 Registering with discovery service...
 
 ┌─────────────────────────────────────┐
@@ -1051,10 +1051,10 @@ ascii-chat --client --address 192.168.1.100 --port 8080
 
 ### Documentation
 
-- [ASCII-Chat Crypto Documentation](../docs/crypto.md) - Comprehensive security documentation
+- [ascii-chat Crypto Documentation](../docs/crypto.md) - Comprehensive security documentation
 - [Issue #82: Session Discovery Service](https://github.com/zfogg/ascii-chat/issues/82) - RFC for discovery protocol
 - [Issue #75: WebRTC P2P Architecture](https://github.com/zfogg/ascii-chat/issues/75) - Decentralized sessions
-- [Issue #55: ACIP RFC](https://github.com/zfogg/ascii-chat/issues/55) - Standardize ASCII-Chat Internet Protocol
+- [Issue #55: ACIP RFC](https://github.com/zfogg/ascii-chat/issues/55) - Standardize ascii-chat Internet Protocol
 
 ### Cryptography
 
@@ -1131,7 +1131,7 @@ ascii-chat --client --address 192.168.1.100 --port 8080
 **Document Version:** 2.0
 **Last Updated:** October 2025
 **Status:** Production Ready
-**Maintainer:** ASCII-Chat Development Team
+**Maintainer:** ascii-chat Development Team
 
 🤖 *Generated with assistance from [Claude Code](https://claude.ai/code)*
 

@@ -1,14 +1,21 @@
+/**
+ * @file image2ascii/simd/ssse3.c
+ * @ingroup image2ascii
+ * @brief 🚀 SSSE3-accelerated ASCII rendering with advanced shuffle operations for x86
+ */
+
+#if SIMD_SUPPORT_SSSE3
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+
+#include <tmmintrin.h>
+
 #include "ssse3.h"
 #include "ascii_simd.h"
 #include "common.h"
 #include "../output_buffer.h"
-
-#if SIMD_SUPPORT_SSSE3
-#include <tmmintrin.h>
 
 //=============================================================================
 // Image-based API (matches NEON architecture)

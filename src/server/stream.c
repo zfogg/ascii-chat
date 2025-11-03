@@ -1,13 +1,7 @@
 /**
- * @file stream.c
- * @brief Multi-Client Video Mixing and Per-Client ASCII Frame Generation
- *
- * This module represents the heart of ASCII-Chat's video processing pipeline,
- * implementing sophisticated multi-client video mixing and personalized ASCII
- * frame generation. It was extracted from the monolithic server.c to provide
- * clean separation between video processing and other server concerns.
- *
- * CORE RESPONSIBILITIES:
+ * @file server/stream.c
+ * @ingroup server_stream
+ * @brief 🎬 Multi-client video mixer: frame generation, ASCII conversion, and per-client personalized rendering
  * ======================
  * 1. Collect video frames from all active clients
  * 2. Create composite video layouts (single client, 2x2, 3x3 grids)
@@ -156,7 +150,15 @@
 extern rwlock_t g_client_manager_rwlock;
 extern client_manager_t g_client_manager;
 
-// Track previous active video source count for grid layout change detection
+/**
+ * @brief Previous active video source count for layout change detection
+ *
+ * Tracks the number of active video sources from the previous frame generation
+ * cycle. Used to detect changes in the active client count, which triggers
+ * grid layout recalculation for optimal display arrangement.
+ *
+ * @ingroup server_stream
+ */
 static atomic_int g_previous_active_video_count = 0;
 
 /* ============================================================================
@@ -164,7 +166,11 @@ static atomic_int g_previous_active_video_count = 0;
  * ============================================================================
  */
 
-// Helper function to clean up current_frame.data using the appropriate method
+/**
+ * @brief Clean up frame data using buffer pool or standard free
+ * @param frame Frame structure with data to clean up
+ * @ingroup server_stream
+ */
 static void cleanup_current_frame_data(multi_source_frame_t *frame) {
   if (frame && frame->data) {
     data_buffer_pool_t *pool = data_buffer_pool_get_global();
@@ -177,14 +183,62 @@ static void cleanup_current_frame_data(multi_source_frame_t *frame) {
   }
 }
 
-// Structure for image sources
+/**
+ * @brief Image source structure for multi-client video mixing
+ *
+ * Represents a single video source (client) in the video mixing pipeline.
+ * This structure is used to collect video frames from all active clients
+ * before creating composite layouts for multi-user display.
+ *
+ * CORE FIELDS:
+ * ============
+ * - image: Pointer to the client's current video frame (image_t structure)
+ * - client_id: Unique identifier for this client
+ * - has_video: Whether this client is actively sending video
+ *
+ * USAGE PATTERN:
+ * ==============
+ * 1. Collect video sources: collect_video_sources() fills array with active clients
+ * 2. Filter sources: Only sources with has_video=true are used in composite
+ * 3. Create composite: generate_composite_frame() uses sources to create layout
+ * 4. Free sources: Sources are automatically cleaned up after composite generation
+ *
+ * VIDEO MIXING:
+ * =============
+ * This structure is central to the multi-client video mixing system:
+ * - Single client: One source, full-screen display
+ * - Multiple clients: Multiple sources, grid layout (2x2, 3x3, etc.)
+ * - Grid layout: Each source occupies one cell in the grid
+ * - Aspect ratio: Each source maintains its aspect ratio within cell
+ *
+ * MEMORY MANAGEMENT:
+ * ==================
+ * - image pointer points to frame data managed by video_frame_buffer_t
+ * - Frame data is owned by the double-buffer system, not this structure
+ * - No manual memory management needed (automatic via buffer system)
+ *
+ * @note image pointer is valid only when has_video is true.
+ * @note image pointer may be NULL if client stopped sending video.
+ * @note client_id is used to identify which client this source represents.
+ *
+ * @ingroup server_stream
+ */
 typedef struct {
+  /** @brief Pointer to client's current video frame (owned by buffer system) */
   image_t *image;
+  /** @brief Unique client identifier for this source */
   uint32_t client_id;
-  bool has_video; // Whether this client has video or is just a placeholder
+  /** @brief Whether this client has active video stream */
+  bool has_video;
 } image_source_t;
 
-// Collect video frames from all active clients
+/**
+ * @brief Collect video frames from all active clients
+ * @param sources Output array of image sources
+ * @param max_sources Maximum number of sources to collect
+ * @return Number of sources collected
+ * @ingroup server_stream
+ */
 static int collect_video_sources(image_source_t *sources, int max_sources) {
   int source_count = 0;
 
@@ -346,7 +400,16 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   return source_count;
 }
 
-// Handle single source video layout
+/**
+ * @brief Create composite image for single video source layout
+ * @param sources Array of image sources
+ * @param source_count Number of sources in array
+ * @param target_client_id Client ID receiving this composite
+ * @param width Terminal width in characters
+ * @param height Terminal height in characters
+ * @return Composite image or NULL on error
+ * @ingroup server_stream
+ */
 static image_t *create_single_source_composite(image_source_t *sources, int source_count, uint32_t target_client_id,
                                                unsigned short width, unsigned short height) {
   // Find the single source with video
@@ -440,7 +503,7 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
 }
 
 /**
- * Calculate optimal grid layout that maximizes space usage
+ * @brief Calculate optimal grid layout that maximizes space usage
  *
  * This function tries all reasonable grid configurations (rows x cols) and chooses
  * the one that uses the most terminal space while respecting video aspect ratios.
@@ -457,6 +520,8 @@ static image_t *create_single_source_composite(image_source_t *sources, int sour
  * @param terminal_height Terminal height in characters
  * @param out_cols Output: optimal number of columns
  * @param out_rows Output: optimal number of rows
+ *
+ * @ingroup server_stream
  */
 static void calculate_optimal_grid_layout(image_source_t *sources, int source_count, int sources_with_video,
                                           int terminal_width, int terminal_height, int *out_cols, int *out_rows) {
@@ -587,7 +652,17 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
            (float)terminal_width / (float)terminal_height, terminal_visual_aspect, avg_aspect);
 }
 
-// Handle multi-source grid layout
+/**
+ * @brief Create composite image for multi-source grid layout
+ * @param sources Array of image sources
+ * @param source_count Number of sources in array
+ * @param sources_with_video Number of sources with active video
+ * @param target_client_id Client ID receiving this composite (unused)
+ * @param width Terminal width in characters
+ * @param height Terminal height in characters
+ * @return Composite image or NULL on error
+ * @ingroup server_stream
+ */
 static image_t *create_multi_source_composite(image_source_t *sources, int source_count, int sources_with_video,
                                               uint32_t target_client_id, unsigned short width, unsigned short height) {
   (void)target_client_id; // Unused - composite is same for all clients now
@@ -704,8 +779,15 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
   return composite;
 }
 
-// Convert composite image to ASCII using client capabilities
-// OPTIMIZATION: Takes client_id instead of finding client, avoids extra rwlock acquisition
+/**
+ * @brief Convert composite image to ASCII using client capabilities
+ * @param composite Composite image to convert
+ * @param target_client_id Client ID for capability lookup
+ * @param width Terminal width in characters
+ * @param height Terminal height in characters
+ * @return Allocated ASCII frame string (caller must free) or NULL on error
+ * @ingroup server_stream
+ */
 static char *convert_composite_to_ascii(image_t *composite, uint32_t target_client_id, unsigned short width,
                                         unsigned short height) {
   // LOCK OPTIMIZATION: Don't call find_client_by_id() - it would acquire rwlock unnecessarily

@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
     username = argv[1];
   }
 
-  printf("ASCII-Chat HTTPS Client Test\n");
+  printf("ascii-chat HTTPS Client Test\n");
   printf("============================\n");
   printf("Testing with username: %s\n", username);
 

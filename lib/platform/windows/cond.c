@@ -1,9 +1,7 @@
 /**
- * @file cond.c
- * @brief Windows condition variable implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides Windows Condition Variable wrappers for the platform abstraction layer,
- * enabling cross-platform thread synchronization using a unified API.
+ * @file platform/windows/cond.c
+ * @ingroup platform
+ * @brief ⏰ Windows Condition Variable implementation for thread signaling and waiting
  */
 
 #ifdef _WIN32

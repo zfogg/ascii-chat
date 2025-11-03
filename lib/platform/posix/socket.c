@@ -1,3 +1,9 @@
+/**
+ * @file platform/posix/socket.c
+ * @ingroup platform
+ * @brief 🌐 POSIX socket implementation with TCP/UDP support and network address handling
+ */
+
 #ifndef _WIN32
 
 #include <sys/socket.h>

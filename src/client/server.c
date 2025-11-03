@@ -1,12 +1,7 @@
 /**
- * @file server.c
- * @brief ASCII-Chat Client Server Connection Management
- *
- * This module handles all aspects of client-to-server communication including
- * connection establishment, reconnection logic with exponential backoff,
- * socket management, and thread-safe packet transmission.
- *
- * ## Connection Lifecycle
+ * @file client/server.c
+ * @ingroup client_connection
+ * @brief 🌐 Client connection manager: TCP connection, reconnection with exponential backoff, and thread-safe transmission
  *
  * The connection management follows a robust state machine:
  * 1. **Initialization**: Socket creation and address resolution
@@ -96,35 +91,102 @@
  * Connection State Management
  * ============================================================================ */
 
-/** Current socket file descriptor (INVALID_SOCKET_VALUE when disconnected) */
+/**
+ * @brief Current socket file descriptor
+ *
+ * Stores the active socket connection to the server. Set to INVALID_SOCKET_VALUE
+ * when disconnected. Thread-safe access via atomic operations where needed.
+ *
+ * @ingroup client_connection
+ */
 static socket_t g_sockfd = INVALID_SOCKET_VALUE;
 
-/** Atomic flag indicating if connection is active */
+/**
+ * @brief Atomic flag indicating if connection is currently active
+ *
+ * Thread-safe flag indicating whether the connection is established and active.
+ * Checked by all threads to determine if they can use the socket safely.
+ * Set to true on successful connection, false on disconnection.
+ *
+ * @ingroup client_connection
+ */
 static atomic_bool g_connection_active = false;
 
-/** Atomic flag indicating if connection loss was detected */
+/**
+ * @brief Atomic flag indicating if connection loss was detected
+ *
+ * Set to true when a connection failure is detected by any thread (protocol,
+ * keepalive, or main loop). Used to trigger reconnection logic.
+ *
+ * @ingroup client_connection
+ */
 static atomic_bool g_connection_lost = false;
 
-/** Atomic flag indicating if reconnection should be attempted */
+/**
+ * @brief Atomic flag indicating if reconnection should be attempted
+ *
+ * Set by main loop to signal that reconnection should be attempted after
+ * connection loss. Used to coordinate exponential backoff retry logic.
+ *
+ * @ingroup client_connection
+ */
 static atomic_bool g_should_reconnect = false;
 
-/** Client ID assigned by server (derived from local port) */
+/**
+ * @brief Client ID assigned by server
+ *
+ * Unique identifier assigned to this client by the server during connection
+ * establishment. Derived from the client's local port number.
+ *
+ * @ingroup client_connection
+ */
 static uint32_t g_my_client_id = 0;
 
-/** Resolved server IP address (for known_hosts) */
+/**
+ * @brief Resolved server IP address string
+ *
+ * Stores the resolved server IP address (IPv4 or IPv6) in string format.
+ * Used for known_hosts verification and logging purposes. Sized to hold
+ * maximum IPv6 address length with scope ID.
+ *
+ * @ingroup client_connection
+ */
 static char g_server_ip[256] = {0};
 
-/** Mutex to protect socket sends (prevent interleaved packets) */
+/**
+ * @brief Mutex protecting socket send operations
+ *
+ * Ensures thread-safe packet transmission by preventing interleaved packets
+ * on the wire. All send functions must acquire this mutex before writing
+ * to the socket to maintain packet integrity.
+ *
+ * @ingroup client_connection
+ */
 static mutex_t g_send_mutex = {0};
 
 /* ============================================================================
  * Crypto State
  * ============================================================================ */
 
-/** Per-connection crypto handshake context */
+/**
+ * @brief Per-connection crypto handshake context
+ *
+ * Maintains the cryptographic state for the current connection, including
+ * key exchange state, encryption keys, and handshake progress.
+ *
+ * @note This is not static because it may be accessed from crypto.c
+ * @ingroup client_connection
+ */
 crypto_handshake_context_t g_crypto_ctx = {0};
 
-/** Whether encryption is enabled for this connection */
+/**
+ * @brief Flag indicating whether encryption is enabled for this connection
+ *
+ * Set to true after successful cryptographic handshake completion.
+ * Controls whether packets are encrypted before transmission.
+ *
+ * @ingroup client_connection
+ */
 static bool g_encryption_enabled = false;
 
 /* ============================================================================
@@ -135,7 +197,7 @@ static bool g_encryption_enabled = false;
 #define MAX_RECONNECT_DELAY (5 * 1000 * 1000)
 
 /**
- * Calculate reconnection delay with exponential backoff
+ * @brief Calculate reconnection delay with exponential backoff
  *
  * Implements exponential backoff with a reasonable cap to prevent
  * excessively long delays. The formula provides rapid initial retries
@@ -143,6 +205,8 @@ static bool g_encryption_enabled = false;
  *
  * @param reconnect_attempt The current attempt number (1-based)
  * @return Delay in microseconds before next attempt
+ *
+ * @ingroup client_connection
  */
 static float get_reconnect_delay(unsigned int reconnect_attempt) {
   // Increased initial delay to allow socket cleanup
@@ -157,13 +221,15 @@ static float get_reconnect_delay(unsigned int reconnect_attempt) {
  * ============================================================================ */
 
 /**
- * Close socket connection safely
+ * @brief Close socket connection safely
  *
  * Performs platform-appropriate socket closure and resets the global
  * socket descriptor. Safe to call multiple times or with invalid sockets.
  *
  * @param socketfd Socket file descriptor to close
  * @return 0 on success, -1 on error
+ *
+ * @ingroup client_connection
  */
 static int close_socket(socket_t socketfd) {
   if (socket_is_valid(socketfd)) {
@@ -189,12 +255,14 @@ static int close_socket(socket_t socketfd) {
  * ============================================================================ */
 
 /**
- * Initialize the server connection management subsystem
+ * @brief Initialize the server connection management subsystem
  *
  * Sets up the send mutex and initializes connection state variables.
  * Must be called once during client startup before any connection attempts.
  *
  * @return 0 on success, non-zero on failure
+ *
+ * @ingroup client_connection
  */
 int server_connection_init() {
   // Initialize mutex for thread-safe packet sending
@@ -214,7 +282,7 @@ int server_connection_init() {
 }
 
 /**
- * Establish connection to ASCII-Chat server
+ * @brief Establish connection to ascii-chat server
  *
  * Attempts to connect to the specified server with full capability negotiation.
  * Implements reconnection logic with exponential backoff for failed attempts.
@@ -225,7 +293,10 @@ int server_connection_init() {
  * @param port Server port number
  * @param reconnect_attempt Current reconnection attempt number (0 for first)
  * @param first_connection True if this is the initial connection attempt
+ * @param has_ever_connected True if a connection was ever successfully established
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
  */
 int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
                                 bool has_ever_connected) {
@@ -545,41 +616,59 @@ connection_success:
 }
 
 /**
- * Check if server connection is currently active
+ * @brief Check if server connection is currently active
  *
  * @return true if connection is active, false otherwise
+ *
+ * @ingroup client_connection
  */
 bool server_connection_is_active() {
   return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE);
 }
 
 /**
- * Get current socket file descriptor
+ * @brief Get current socket file descriptor
  *
  * @return Socket file descriptor or INVALID_SOCKET_VALUE if disconnected
+ *
+ * @ingroup client_connection
  */
 socket_t server_connection_get_socket() {
   return g_sockfd;
 }
 
 /**
- * Get client ID assigned by server
+ * @brief Get client ID assigned by server
  *
  * @return Client ID (based on local port) or 0 if not connected
+ *
+ * @ingroup client_connection
  */
 uint32_t server_connection_get_client_id() {
   return g_my_client_id;
 }
 
+/**
+ * @brief Get resolved server IP address
+ *
+ * Returns the server's IP address that was resolved during connection
+ * establishment. Used for known_hosts verification and logging.
+ *
+ * @return Server IP address string (IPv4 or IPv6), or empty string if not connected
+ *
+ * @ingroup client_connection
+ */
 const char *server_connection_get_ip() {
   return g_server_ip;
 }
 
 /**
- * Close the server connection gracefully
+ * @brief Close the server connection gracefully
  *
  * Marks connection as inactive and closes the socket. This function
  * is safe to call multiple times and from multiple threads.
+ *
+ * @ingroup client_connection
  */
 void server_connection_close() {
   atomic_store(&g_connection_active, false);
@@ -602,11 +691,13 @@ void server_connection_close() {
 }
 
 /**
- * Emergency connection shutdown for signal handlers
+ * @brief Emergency connection shutdown for signal handlers
  *
  * Performs immediate connection shutdown without waiting for graceful
  * close procedures. Uses socket shutdown to interrupt any blocking
  * recv() operations in other threads.
+ *
+ * @ingroup client_connection
  */
 void server_connection_shutdown() {
   atomic_store(&g_connection_active, false);
@@ -623,10 +714,12 @@ void server_connection_shutdown() {
 }
 
 /**
- * Signal that connection has been lost
+ * @brief Signal that connection has been lost
  *
  * Called by other modules (typically protocol handlers) when they
  * detect connection failure. Triggers reconnection logic in main loop.
+ *
+ * @ingroup client_connection
  */
 void server_connection_lost() {
   atomic_store(&g_connection_lost, true);
@@ -638,19 +731,23 @@ void server_connection_lost() {
 }
 
 /**
- * Check if connection loss has been detected
+ * @brief Check if connection loss has been detected
  *
  * @return true if connection loss was flagged, false otherwise
+ *
+ * @ingroup client_connection
  */
 bool server_connection_is_lost() {
   return atomic_load(&g_connection_lost);
 }
 
 /**
- * Cleanup connection management subsystem
+ * @brief Cleanup connection management subsystem
  *
  * Closes any active connection and destroys synchronization objects.
  * Called during client shutdown.
+ *
+ * @ingroup client_connection
  */
 void server_connection_cleanup() {
   log_set_terminal_output(true);
@@ -662,8 +759,22 @@ void server_connection_cleanup() {
  * Thread Safety Interface
  * ============================================================================ */
 
+/* ============================================================================
+ * Thread-Safe Wrapper Functions
+ * ============================================================================ */
+
 /**
- * Thread-safe wrapper functions for network operations
+ * @brief Thread-safe packet transmission
+ *
+ * Sends a packet to the server with proper mutex protection and connection
+ * state checking. Automatically handles encryption if crypto is ready.
+ *
+ * @param type Packet type identifier
+ * @param data Packet payload
+ * @param len Payload length
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
  */
 int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
   socket_t sockfd = server_connection_get_socket();
@@ -681,6 +792,20 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
   return result;
 }
 
+/**
+ * @brief Thread-safe batched audio packet transmission
+ *
+ * Sends a batched audio packet to the server with proper mutex protection
+ * and connection state checking. Automatically handles encryption if crypto
+ * is ready.
+ *
+ * @param samples Audio sample buffer containing batched samples
+ * @param num_samples Total number of samples in the batch
+ * @param batch_count Number of audio chunks in this batch
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
@@ -697,6 +822,13 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
   return result;
 }
 
+/**
+ * @brief Thread-safe ping packet transmission
+ *
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
 int threaded_send_ping_packet(void) {
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
@@ -709,6 +841,13 @@ int threaded_send_ping_packet(void) {
   return result;
 }
 
+/**
+ * @brief Thread-safe pong packet transmission
+ *
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
 int threaded_send_pong_packet(void) {
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
@@ -721,6 +860,14 @@ int threaded_send_pong_packet(void) {
   return result;
 }
 
+/**
+ * @brief Thread-safe stream start packet transmission
+ *
+ * @param stream_type Type of stream (audio/video)
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
 int threaded_send_stream_start_packet(uint32_t stream_type) {
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
@@ -734,6 +881,19 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
   return threaded_send_packet(PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
 }
 
+/**
+ * @brief Thread-safe terminal size packet transmission with auto-detection
+ *
+ * Sends terminal capabilities packet to the server including terminal size,
+ * color capabilities, and rendering preferences. Auto-detects terminal
+ * capabilities if not explicitly specified.
+ *
+ * @param width Terminal width in characters
+ * @param height Terminal height in characters
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
 int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned short height) {
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
@@ -803,6 +963,17 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));
 }
 
+/**
+ * @brief Thread-safe client join packet transmission
+ *
+ * Sends client join packet with display name and capabilities to the server.
+ *
+ * @param display_name Client display name
+ * @param capabilities Client capability flags
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
 int threaded_send_client_join_packet(const char *display_name, uint32_t capabilities) {
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {

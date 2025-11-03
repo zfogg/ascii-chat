@@ -1,3 +1,8 @@
+/**
+ * @file server/client.h
+ * @ingroup server_client
+ * @brief Per-client state management and lifecycle orchestration
+ */
 #pragma once
 
 #include <stdatomic.h>
@@ -16,9 +21,49 @@
 
 // Use definitions from network.h (MAX_CLIENTS, MAX_DISPLAY_NAME_LEN)
 
-/* ============================================================================
- * Client Information Structure
- * ============================================================================
+/**
+ * @brief Per-client state structure for server-side client management
+ *
+ * Represents complete state for a single connected client in the ascii-chat server.
+ * This structure stores all client-specific information including network connection,
+ * media capabilities, terminal settings, threading state, and synchronization primitives.
+ *
+ * CORE FIELDS:
+ * ============
+ * - Network: Socket, IP address, port, thread handles
+ * - Media: Video/audio capabilities, stream state, buffers
+ * - Terminal: Capabilities, palette cache, dimensions
+ * - Threading: Send/receive/render thread handles and flags
+ * - Synchronization: Mutexes for thread-safe state access
+ * - Crypto: Cryptographic handshake context for secure communication
+ *
+ * THREADING MODEL:
+ * ================
+ * Each client has dedicated threads:
+ * - receive_thread: Handles incoming packets (protocol processing)
+ * - send_thread: Manages outgoing packet delivery (packet queues)
+ * - video_render_thread: Generates ASCII frames at 60fps
+ * - audio_render_thread: Mixes audio streams at 172fps
+ *
+ * BUFFER MANAGEMENT:
+ * ==================
+ * - incoming_video_buffer: Double-buffered video frames from client
+ * - incoming_audio_buffer: Ring buffer for client's audio samples
+ * - outgoing_video_buffer: Double-buffered ASCII frames to send
+ * - audio_queue: Packet queue for audio packets to send
+ *
+ * MEMORY MANAGEMENT:
+ * ==================
+ * - Pre-allocated buffers to avoid malloc/free in hot paths
+ * - send_buffer: For packet assembly
+ * - crypto_plaintext_buffer: For encryption plaintext
+ * - crypto_ciphertext_buffer: For encryption ciphertext
+ *
+ * @note All atomic fields are thread-safe for concurrent access.
+ * @note Buffer pointers are set once during client creation and never change.
+ * @note Thread handles are valid only when threads are running.
+ *
+ * @ingroup server_client
  */
 typedef struct {
   socket_t socket;
@@ -100,16 +145,62 @@ typedef struct {
   bool crypto_initialized;
 } client_info_t;
 
-/* ============================================================================
- * Client Manager Structure
- * ============================================================================
+/**
+ * @brief Global client manager structure for server-side client coordination
+ *
+ * Manages all connected clients in the ascii-chat server. Provides O(1) client
+ * lookup via hashtable while maintaining array-based storage for iteration.
+ * This structure serves as the central coordination point for client lifecycle
+ * management.
+ *
+ * ARCHITECTURE:
+ * =============
+ * The client manager uses a dual-storage approach:
+ * - Array (clients[]): Fast iteration, stable pointers, sequential access
+ * - Hashtable (client_hashtable): O(1) lookup by client_id
+ *
+ * This design provides:
+ * - O(1) lookups via hashtable
+ * - O(n) iteration via array (for stats, rendering, etc.)
+ * - Stable pointers (array elements don't move)
+ * - Linear memory layout (cache-friendly)
+ *
+ * THREAD SAFETY:
+ * ==============
+ * Protected by g_client_manager_rwlock (reader-writer lock):
+ * - Read operations (lookups, stats): Acquire read lock (concurrent)
+ * - Write operations (add/remove): Acquire write lock (exclusive)
+ *
+ * LOCK ORDERING:
+ * - Always acquire g_client_manager_rwlock BEFORE per-client mutexes
+ * - Prevents deadlocks in multi-client operations
+ *
+ * STRUCTURE FIELDS:
+ * =================
+ * - clients[]: Array of client_info_t structures (backing storage)
+ * - client_hashtable: Hashtable for O(1) client_id -> client_info_t* lookups
+ * - client_count: Current number of active clients
+ * - mutex: Legacy mutex (mostly replaced by rwlock)
+ * - next_client_id: Monotonic counter for unique client IDs
+ *
+ * @note The hashtable uses client_id as key and points to elements in clients[] array.
+ * @note next_client_id is atomic for thread-safe ID assignment.
+ * @note All client access should go through find_client_by_id() or find_client_by_socket()
+ *       to ensure proper locking.
+ *
+ * @ingroup server_client
  */
 typedef struct {
-  client_info_t clients[MAX_CLIENTS]; // Backing storage
-  hashtable_t *client_hashtable;      // Hash table for O(1) lookup by client_id
+  /** @brief Array of client_info_t structures (backing storage) */
+  client_info_t clients[MAX_CLIENTS];
+  /** @brief Hashtable for O(1) client_id -> client_info_t* lookups */
+  hashtable_t *client_hashtable;
+  /** @brief Current number of active clients */
   int client_count;
+  /** @brief Legacy mutex (mostly replaced by rwlock) */
   mutex_t mutex;
-  _Atomic uint32_t next_client_id; // For assigning unique IDs
+  /** @brief Monotonic counter for unique client IDs (atomic for thread-safety) */
+  _Atomic uint32_t next_client_id;
 } client_manager_t;
 
 // Global client manager

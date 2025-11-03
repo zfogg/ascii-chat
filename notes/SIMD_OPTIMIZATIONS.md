@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the comprehensive SIMD optimization system for ASCII-Chat's real-time video-to-ASCII conversion. The system delivers **4-25x performance improvements** over scalar implementations through advanced vectorization techniques and intelligent caching.
+This document describes the comprehensive SIMD optimization system for ascii-chat's real-time video-to-ASCII conversion. The system delivers **4-25x performance improvements** over scalar implementations through advanced vectorization techniques and intelligent caching.
 
 ## Supported SIMD Architectures
 
@@ -15,9 +15,9 @@ This document describes the comprehensive SIMD optimization system for ASCII-Cha
 ## Current Performance Achievement
 
 ### NEON Performance Results (Production Ready):
-- **Small images (40×12)**: **6.77x speedup** 
+- **Small images (40×12)**: **6.77x speedup**
 - **Medium images (80×24)**: **3.52x speedup**
-- **Large images (160×48)**: **4.05x speedup** 
+- **Large images (160×48)**: **4.05x speedup**
 - **Webcam resolution (320×240)**: **4.05x speedup**
 - **UTF-8 emoji palettes**: **0.4x penalty** (UTF-8 faster than ASCII!)
 
@@ -37,7 +37,7 @@ uint8x16_t char_indices = vqtbl4q_u8(tbl, luminance_indices); // 16 lookups in 1
 
 This enables **true 16x vectorization** impossible on other architectures:
 - **SSE2/SSSE3**: Limited to 16-entry table lookups
-- **AVX2**: Limited to 32-entry table lookups  
+- **AVX2**: Limited to 32-entry table lookups
 - **SVE**: Variable vector length complicates fixed-size lookups
 
 ### NEON-Specific Cache System
@@ -133,7 +133,7 @@ typedef struct {
 
 **Capabilities:**
 - **16 pixels/cycle** processing with `vld3q_u8`
-- **64-entry table lookups** with `vqtbl4q_u8` 
+- **64-entry table lookups** with `vqtbl4q_u8`
 - **Vectorized UTF-8 emission** with `vst2q_u8`, `vst3q_u8`, `vst4q_u8`
 - **Horizontal reductions** with `vpaddlq_u8` chains
 
@@ -160,7 +160,7 @@ __m256i final_chars = _mm256_blendv_epi8(lower_chars, upper_chars, high_mask);
 
 **UTF-8 Strategy:** Use **fixed-stride UTF-8 caching** with 4-byte character slots, similar to NEON's byte separation approach.
 
-### 3. Intel SSE2 (16 pixels/cycle theoretical)  
+### 3. Intel SSE2 (16 pixels/cycle theoretical)
 **Status: ⚠️ Severely Limited - Baseline x86_64**
 
 **Critical Limitations:**
@@ -175,7 +175,7 @@ __m256i final_chars = _mm256_blendv_epi8(lower_chars, upper_chars, high_mask);
 // SSE2: Basic arithmetic and logical operations only
 __m128i r = _mm_unpacklo_epi8(rgb_low, _mm_setzero_si128());  // Manual extraction
 __m128i g = _mm_unpackhi_epi8(rgb_low, _mm_setzero_si128());  // Tedious deinterleaving
-__m128i luminance = _mm_add_epi16(_mm_mullo_epi16(r, r_coeff), 
+__m128i luminance = _mm_add_epi16(_mm_mullo_epi16(r, r_coeff),
                                   _mm_mullo_epi16(g, g_coeff)); // Basic math only
 ```
 
@@ -218,7 +218,7 @@ __m128i lut_48_63 = _mm_loadu_si128((__m128i*)&palette[48]); // Fourth 16 chars
 
 // Determine which lookup table to use for each index
 __m128i mask_0_15 = _mm_cmplt_epi8(indices, _mm_set1_epi8(16));
-__m128i mask_16_31 = _mm_and_si128(_mm_cmplt_epi8(indices, _mm_set1_epi8(32)), 
+__m128i mask_16_31 = _mm_and_si128(_mm_cmplt_epi8(indices, _mm_set1_epi8(32)),
                                    _mm_cmplt_epi8(_mm_set1_epi8(15), indices));
 // ... similar masks for other ranges
 
@@ -237,7 +237,7 @@ __m128i result = _mm_blendv_epi8(chars_0_15, chars_16_31, mask_16_31);
 // NEON: Single instruction for 64-entry lookup
 uint8x16_t chars = vqtbl4q_u8(palette_cache, indices); // 1 instruction!
 
-// SSSE3: 8+ instructions for same 64-entry lookup  
+// SSSE3: 8+ instructions for same 64-entry lookup
 __m128i chars = complex_multi_shuffle_blend_sequence(indices); // 8+ instructions
 ```
 
@@ -255,7 +255,7 @@ for (int i = 0; i < 16; i++) {
     uint8_t char_len = utf8_char_lengths[i];
     if (char_len >= 1) *pos++ = byte0[i];  // Scalar stores only
     if (char_len >= 2) *pos++ = byte1[i];
-    if (char_len >= 3) *pos++ = byte2[i]; 
+    if (char_len >= 3) *pos++ = byte2[i];
     if (char_len >= 4) *pos++ = byte3[i];
 }
 ```
@@ -344,7 +344,7 @@ vst4q_u8(output_pos, {{byte0, byte1, byte2, byte3}}); // 64 bytes interleaved
 
 ### Advanced Optimizations:
 1. **Run-length encoding vectorization** - SIMD RLE compression
-2. **ANSI sequence pre-computation** - Vectorized color code generation  
+2. **ANSI sequence pre-computation** - Vectorized color code generation
 3. **Memory layout improvements** - Optimal stride patterns for different architectures
 4. **Multi-resolution support** - Block character modes for higher density
 
@@ -365,7 +365,7 @@ vst4q_u8(output_pos, {{byte0, byte1, byte2, byte3}}); // 64 bytes interleaved
 
 ### Global Cache Hierarchy:
 1. **UTF-8 Palette Cache** (shared across architectures)
-2. **Character Index Ramp Cache** (shared across architectures)  
+2. **Character Index Ramp Cache** (shared across architectures)
 3. **Architecture-Specific Caches** (NEON table cache, future AVX2 cache, etc.)
 
 ### Concurrency Model:
@@ -381,7 +381,7 @@ vst4q_u8(output_pos, {{byte0, byte1, byte2, byte3}}); // 64 bytes interleaved
 ## Code Organization
 
 ### Core Files:
-- `lib/image2ascii/simd/neon.c` - **Reference SIMD implementation** 
+- `lib/image2ascii/simd/neon.c` - **Reference SIMD implementation**
 - `lib/image2ascii/simd/common.c` - **Shared cache system**
 - `lib/image2ascii/simd/avx2.c` - Intel AVX2 implementation (needs optimization)
 - `lib/image2ascii/simd/sse2.c` - Intel SSE2 baseline (needs optimization)
@@ -402,7 +402,7 @@ vst4q_u8(output_pos, {{byte0, byte1, byte2, byte3}}); // 64 bytes interleaved
 
 # Expected results:
 # - Monochrome: >2x speedup required
-# - UTF-8 palettes: <3x penalty acceptable  
+# - UTF-8 palettes: <3x penalty acceptable
 # - Cache performance: <1ms/frame for medium images
 # - Concurrency: <0.5ms/call under load
 ```
@@ -571,13 +571,13 @@ _mm256_mask_i32scatter_epi8(output, valid_mask, positions, final_chars, 1);
 
 ### Next Implementation Targets:
 1. **Complete NEON TBL optimization** - Perfect the prefix sum + unrolled emission approach
-2. **AVX2 dual-lookup system** - Implement 64-entry simulation with scatter emission  
+2. **AVX2 dual-lookup system** - Implement 64-entry simulation with scatter emission
 3. **Intel AVX-512 prototype** - Explore true end-to-end vectorization
 4. **ARM SVE investigation** - Variable-length vectors might handle variable UTF-8 naturally
 
 ### Theoretical Perfect Architecture Requirements:
 1. **64+ entry table lookups** (NEON `vqtbl4q_u8` equivalent)
-2. **Variable-position scatter stores** (AVX2 `_mm256_i32scatter_epi8` equivalent) 
+2. **Variable-position scatter stores** (AVX2 `_mm256_i32scatter_epi8` equivalent)
 3. **Efficient prefix sum** for position calculation
 4. **Conditional masking** for variable-length character emission
 
@@ -600,9 +600,9 @@ uint8x16_t ascii_chars = vqtbl4q_u8(ascii_cache, luminance >> 2); // Instant 16 
 // One instruction: 16 simultaneous arbitrary lookups with 64-entry palette support
 ```
 
-**Why it's revolutionary**: 
+**Why it's revolutionary**:
 - **16 simultaneous lookups** in a single instruction
-- **64-entry table support** (4 × 16-byte tables) 
+- **64-entry table support** (4 × 16-byte tables)
 - **No bounds checking** needed (`vqtbl` handles out-of-bounds gracefully)
 - **Perfect for ASCII conversion**: `luminance_value → ASCII_character` mapping
 
@@ -610,7 +610,7 @@ uint8x16_t ascii_chars = vqtbl4q_u8(ascii_cache, luminance >> 2); // Instant 16 
 ```cpp
 // AVX2 forces clunky multi-instruction character lookup simulation
 __m256i lower_chars = _mm256_shuffle_epi8(lut_0_31, indices_masked_low);
-__m256i upper_chars = _mm256_shuffle_epi8(lut_32_63, indices_masked_high); 
+__m256i upper_chars = _mm256_shuffle_epi8(lut_32_63, indices_masked_high);
 __m256i final_chars = _mm256_blendv_epi8(lower_chars, upper_chars, mask);
 // 3+ instructions to simulate what NEON does in 1!
 ```
@@ -630,7 +630,7 @@ _mm256_i32scatter_epi8(output_buffer, utf8_positions, utf8_data, 1);
 **Latest comprehensive test results (72 test combinations, release mode):**
 
 #### Pure Performance Categories:
-- **Pure ASCII**: 4.75-6.11x speedup consistently  
+- **Pure ASCII**: 4.75-6.11x speedup consistently
 - **Mixed UTF-8**: 3.3-5.1x speedup (Heavy Mixed 30 chars)
 - **Complex palettes**: 2.8-4.4x speedup across all sizes
 - **Cache benefits**: 1.1-3.7x additional improvements
@@ -641,7 +641,7 @@ _mm256_i32scatter_epi8(output_buffer, utf8_positions, utf8_data, 1);
 uint8x16_t ascii = vqtbl4q_u8(ascii_cache, luminance);    // 🔥 Blazing fast
 for (int i = 0; i < 16; i++) { /* scalar UTF-8 emit */ }  // 😐 Small overhead
 
-// vs Theoretical AVX2: Clunky lookup + perfect scatter  
+// vs Theoretical AVX2: Clunky lookup + perfect scatter
 __m256i ascii = multi_lookup_simulation(luminance);       // 😞 3x slower lookup
 _mm256_i32scatter_epi8(output, positions, utf8_data, 1);  // ✅ Perfect scatter
 ```
@@ -652,7 +652,7 @@ _mm256_i32scatter_epi8(output, positions, utf8_data, 1);  // ✅ Perfect scatter
 
 **Tested configurations**: 12 palettes × 6 sizes = 72 combinations covering:
 - **Palettes**: Pure ASCII, Greek (2-byte), Emoji (4-byte), All Mixed (1+2+3+4 byte)
-- **Sizes**: 8×4 (tiny) through 480×270 (HD-partial) 
+- **Sizes**: 8×4 (tiny) through 480×270 (HD-partial)
 - **Cache scenarios**: Cold vs warm cache performance
 - **UTF-8 complexity**: From simple ASCII to dense mixed-byte patterns
 
@@ -665,7 +665,7 @@ _mm256_i32scatter_epi8(output, positions, utf8_data, 1);  // ✅ Perfect scatter
 
 **Suspicion disproven**: The mixed UTF-8 path was **not** using scalar code - it's genuinely **optimized NEON achieving real speedups**.
 
-### The Theoretical Perfect Architecture 
+### The Theoretical Perfect Architecture
 
 **What we'd need for ultimate UTF-8 vectorization**:
 ```cpp
@@ -684,7 +684,7 @@ _mm256_i32scatter_epi8(output, positions, utf8_data, 1);     // AVX2 strength
 - **Performance**: 4-6x speedups achieved in production
 - **Approach**: Small scalar loops acceptable due to lookup dominance
 
-#### AVX2 (Future Optimization Target) ⚠️  
+#### AVX2 (Future Optimization Target) ⚠️
 - **Strategy**: Multi-lookup simulation + leverage scatter advantages
 - **Challenge**: 64-entry lookups require 3+ instruction simulation
 - **Opportunity**: True scatter stores could excel at UTF-8 positioning
@@ -697,7 +697,7 @@ _mm256_i32scatter_epi8(output, positions, utf8_data, 1);     // AVX2 strength
 ## Conclusion
 
 The NEON implementation represents **state-of-the-art vectorized ASCII rendering** with:
-- **True 16x pixel processing** using unique NEON capabilities  
+- **True 16x pixel processing** using unique NEON capabilities
 - **Intelligent UTF-8 vectorization** maintaining correctness and performance
 - **Production-ready cache system** supporting real-time multi-client rendering
 - **Comprehensive test coverage** with 72 test combinations validating 3-6x speedups

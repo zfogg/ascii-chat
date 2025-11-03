@@ -1,0 +1,296 @@
+/**
+ * @page topic_av Audio/Video Networking
+ * @ingroup av
+ *
+ * @section av_overview Overview
+ *
+ * The Audio/Video Networking module provides the network protocol implementation
+ * for audio, video, and ASCII frame packets in ascii-chat. The system handles
+ * packet serialization, compression, encryption integration, and message formatting
+ * for real-time media streaming over TCP.
+ *
+ * **Implementation**: lib/network/av.h
+ *
+ * **Key Features**:
+ * - ASCII frame packet transmission (text-based video frames)
+ * - Image frame packet transmission (raw pixel data)
+ * - Audio packet transmission (single and batched)
+ * - Protocol message handling (size, audio, text)
+ * - Compression integration for large packets
+ * - Cryptographic encryption support
+ * - Error handling and validation
+ *
+ * @section av_packet_types Packet Types
+ *
+ * The system handles multiple packet types:
+ *
+ * **Frame Packets**:
+ * - ASCII frames: Text-based video frames for terminal display
+ * - Image frames: Raw pixel data (RGB, RGBA, BGR, etc.)
+ *
+ * **Audio Packets**:
+ * - Single audio packets: Legacy single-packet format (PACKET_TYPE_AUDIO)
+ * - Audio batch packets: Batched audio samples (PACKET_TYPE_AUDIO_BATCH) - efficient
+ *
+ * **Message Packets**:
+ * - Size messages: Terminal dimension notifications (PACKET_TYPE_SIZE_MESSAGE)
+ * - Audio messages: Audio metadata announcements (PACKET_TYPE_AUDIO_MESSAGE)
+ * - Text messages: Text chat messages (PACKET_TYPE_TEXT_MESSAGE)
+ *
+ * @section av_operations Operations
+ *
+ * @subsection av_frame_operations Frame Operations
+ *
+ * **ASCII Frame Transmission**:
+ * @code{.c}
+ * // Send ASCII frame with compression support
+ * int result = av_send_ascii_frame(sockfd, frame_data, frame_size);
+ * if (result < 0) {
+ *     log_error("Failed to send ASCII frame");
+ * }
+ * @endcode
+ *
+ * **Image Frame Transmission**:
+ * @code{.c}
+ * // Send image frame with compression support
+ * int result = av_send_image_frame(sockfd, image_data, width, height, format);
+ * if (result < 0) {
+ *     log_error("Failed to send image frame");
+ * }
+ * @endcode
+ *
+ * @subsection av_audio_operations Audio Operations
+ *
+ * **Single Audio Packet (Legacy)**:
+ * @code{.c}
+ * // Send single audio packet (legacy - less efficient)
+ * int result = av_send_audio(sockfd, samples, num_samples);
+ * if (result < 0) {
+ *     log_error("Failed to send audio packet");
+ * }
+ * @endcode
+ *
+ * **Audio Batch Packet (Efficient)**:
+ * @code{.c}
+ * // Send batched audio with encryption support
+ * int result = send_audio_batch_packet(sockfd, samples, total_samples,
+ *                                       batch_count, crypto_ctx);
+ * if (result < 0) {
+ *     log_error("Failed to send audio batch");
+ * }
+ *
+ * // Or use convenience function without encryption
+ * result = av_send_audio_batch(sockfd, samples, total_samples, sample_rate);
+ * @endcode
+ *
+ * **Benefits of Batching**:
+ * - Reduced packet overhead (75% fewer packets)
+ * - Better bandwidth efficiency (80% reduction in overhead)
+ * - At 44.1 kHz: 47 packets/second (was 188)
+ *
+ * @subsection av_message_operations Message Operations
+ *
+ * **Terminal Size Message**:
+ * @code{.c}
+ * // Send terminal size notification
+ * int result = av_send_size_message(sockfd, width, height);
+ * if (result < 0) {
+ *     log_error("Failed to send size message");
+ * }
+ * @endcode
+ *
+ * **Audio Message**:
+ * @code{.c}
+ * // Send audio metadata announcement
+ * int result = av_send_audio_message(sockfd, num_samples);
+ * if (result < 0) {
+ *     log_error("Failed to send audio message");
+ * }
+ * @endcode
+ *
+ * **Text Message**:
+ * @code{.c}
+ * // Send text chat message
+ * int result = av_send_text_message(sockfd, "Hello, world!");
+ * if (result < 0) {
+ *     log_error("Failed to send text message");
+ * }
+ * @endcode
+ *
+ * **Message Parsing**:
+ * @code{.c}
+ * // Parse size message string
+ * unsigned short width, height;
+ * int result = av_parse_size_message("SIZE:160,45\n", &width, &height);
+ * if (result < 0) {
+ *     log_error("Failed to parse size message");
+ * }
+ * @endcode
+ *
+ * @section av_protocol_integration Protocol Integration
+ *
+ * The Audio/Video Networking module integrates with:
+ *
+ * **Packet System**:
+ * - network/packet.h: Packet header system for framing
+ * - network/packet_types.h: Packet type definitions
+ *
+ * **Compression**:
+ * - compression.h: Automatic compression for large packets
+ * - Compression threshold-based decision making
+ * - Decompression on receive path
+ *
+ * **Cryptography**:
+ * - crypto/crypto.h: Encryption/decryption support
+ * - Automatic encryption when crypto context provided
+ * - Encryption policy enforcement
+ *
+ * **Network Layer**:
+ * - network/network.h: Socket I/O operations
+ * - platform/socket.h: Platform socket abstraction
+ *
+ * @section av_message_formats Message Formats
+ *
+ * Protocol messages use text-based formats for compatibility:
+ *
+ * **Size Message**:
+ * - Format: `"SIZE:width,height\n"`
+ * - Example: `"SIZE:160,45\n"`
+ * - Prefix: `SIZE_MESSAGE_PREFIX` ("SIZE:")
+ * - Format string: `SIZE_MESSAGE_FORMAT` ("SIZE:%u,%u\n")
+ *
+ * **Audio Message**:
+ * - Format: `"AUDIO:num_samples\n"`
+ * - Example: `"AUDIO:1024\n"`
+ * - Prefix: `AUDIO_MESSAGE_PREFIX` ("AUDIO:")
+ * - Format string: `AUDIO_MESSAGE_FORMAT` ("AUDIO:%u\n")
+ *
+ * **Text Message**:
+ * - Format: Plain text with packet headers
+ * - No special formatting required
+ *
+ * @section av_compression Compression
+ *
+ * Large packets automatically support compression:
+ * - **ASCII frames**: Compressed if size exceeds threshold
+ * - **Image frames**: Compressed for large images
+ * - **Audio batches**: Compressed for large audio data
+ *
+ * **Compression Decision**:
+ * - Size threshold-based (e.g., 100KB)
+ * - Compression ratio check (only if >80% size reduction)
+ * - Automatic compression/decompression
+ *
+ * @section av_encryption Encryption
+ *
+ * All packet functions handle encryption when crypto context is provided:
+ *
+ * **Automatic Encryption**:
+ * @code{.c}
+ * // Send encrypted audio batch
+ * send_audio_batch_packet(sockfd, samples, total_samples,
+ *                         batch_count, crypto_ctx);
+ * @endcode
+ *
+ * **Encryption Policy**:
+ * - Handshake packets: Always unencrypted (plaintext)
+ * - Session packets: Encrypted when crypto context provided
+ * - Encryption enforcement: Optional or required based on policy
+ *
+ * @section av_error_handling Error Handling
+ *
+ * All functions return error codes:
+ * - **0**: Success
+ * - **-1**: Error (check errno or use network_error_string())
+ *
+ * **Error Reporting**:
+ * @code{.c}
+ * if (av_send_ascii_frame(sockfd, frame_data, frame_size) < 0) {
+ *     log_error("Frame send failed: %s", network_error_string());
+ * }
+ * @endcode
+ *
+ * @section av_performance Performance
+ *
+ * **Batched Audio Packets**:
+ * - 75% reduction in packet count (4 chunks per packet)
+ * - 80% reduction in packet overhead
+ * - At 44.1 kHz: 47 packets/second (was 188)
+ * - Packet overhead: 846 bytes/sec (was 3.4 KB/sec)
+ *
+ * **Compression Benefits**:
+ * - Reduces bandwidth for large frames
+ * - Automatic compression threshold-based decision
+ * - Only compresses if beneficial (>80% size reduction)
+ *
+ * **Message Format**:
+ * - Text-based for compatibility
+ * - Simple parsing (no complex binary formats)
+ * - Maximum message length: 32 bytes (SIZE_MESSAGE_MAX_LEN, AUDIO_MESSAGE_MAX_LEN)
+ *
+ * @section av_best_practices Best Practices
+ *
+ * 1. **Use batched audio for efficiency**:
+ *    @code{.c}
+ *    // Prefer batched audio
+ *    av_send_audio_batch(sockfd, samples, total_samples, sample_rate);
+ *    // Avoid single-packet audio (legacy)
+ *    // av_send_audio(sockfd, samples, num_samples);
+ *    @endcode
+ *
+ * 2. **Handle compression automatically**:
+ *    @code{.c}
+ *    // Compression is automatic - no manual intervention needed
+ *    av_send_ascii_frame(sockfd, frame_data, frame_size);
+ *    @endcode
+ *
+ * 3. **Use encryption when available**:
+ *    @code{.c}
+ *    // Use encryption context when available
+ *    send_audio_batch_packet(sockfd, samples, total_samples,
+ *                            batch_count, crypto_ctx);
+ *    @endcode
+ *
+ * 4. **Validate message formats**:
+ *    @code{.c}
+ *    // Parse messages with validation
+ *    if (av_parse_size_message(message, &width, &height) < 0) {
+ *        log_error("Invalid size message format");
+ *    }
+ *    @endcode
+ *
+ * 5. **Handle errors gracefully**:
+ *    @code{.c}
+ *    if (av_send_ascii_frame(sockfd, frame_data, frame_size) < 0) {
+ *        // Handle error - connection may be lost
+ *        handle_network_error();
+ *    }
+ *    @endcode
+ *
+ * @section av_packet_details Packet Details
+ *
+ * **ASCII Frame Packet** (PACKET_TYPE_ASCII_FRAME):
+ * - Contains ASCII frame data with metadata
+ * - Metadata: width, height, compression status, checksum
+ * - Payload: ASCII frame string (may be compressed)
+ *
+ * **Image Frame Packet** (PACKET_TYPE_IMAGE_FRAME):
+ * - Contains raw pixel data with metadata
+ * - Metadata: dimensions, format, compression status, checksum, timestamp
+ * - Payload: Pixel data (RGB, RGBA, BGR, etc.) - may be compressed
+ *
+ * **Audio Batch Packet** (PACKET_TYPE_AUDIO_BATCH):
+ * - Contains multiple audio chunks aggregated
+ * - Metadata: batch count, total samples, sample rate, channels
+ * - Payload: Float samples array (interleaved if stereo)
+ *
+ * **Message Packets**:
+ * - Size message: Terminal dimension notification
+ * - Audio message: Audio metadata announcement
+ * - Text message: Plain text chat message
+ *
+ * @see network/av.h
+ * @see network/packet.h
+ * @see network/packet_types.h
+ */
+

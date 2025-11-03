@@ -1,0 +1,462 @@
+/**
+ * @defgroup debug_util Debugging
+ * @ingroup module_development
+ * @brief Tools to help you figure out what's going on with the code.
+ */
+
+/**
+ * @page topic_debug Debug README
+ * @ingroup debug_util
+ *
+ * @section debug_overview Overview
+ *
+ * The Debugging Utilities module provides comprehensive debugging and diagnostic
+ * tools for ascii-chat development and troubleshooting. This module includes
+ * error tracking, lock debugging, memory leak detection, and diagnostic utilities
+ * to help identify and resolve issues in the codebase.
+ *
+ * **Key Features**:
+ * - Thread-local error context with stack traces
+ * - Lock debugging and deadlock detection
+ * - Memory leak detection and tracking
+ * - Safe memory allocation macros with error checking
+ * - Debug build utilities for diagnostics
+ *
+ * @section debug_modules Debug Modules
+ *
+ * @subsection debug_error_handling Error Handling (asciichat_errno)
+ *
+ * The error handling system provides thread-local error tracking with full context:
+ *
+ * **Thread-Local Error Context**:
+ * - Each thread has independent error state
+ * - Automatic file/line/function capture
+ * - Stack trace capture in debug builds
+ * - System error integration (errno, WSA errors)
+ *
+ * **Error Context Structure**:
+ * @code{.c}
+ * typedef struct {
+ *     asciichat_error_t error_code;     // Error code
+ *     const char *file;                 // Source file
+ *     int line;                         // Line number
+ *     const char *function;             // Function name
+ *     char *stack_trace;                // Stack trace (debug builds)
+ *     char *context_message;            // Custom context message
+ *     time_t timestamp;                 // Error timestamp
+ *     int system_error;                 // System errno/WSA error
+ * } asciichat_error_context_t;
+ * @endcode
+ *
+ * **Library Macros**:
+ * @code{.c}
+ * // In library code (lib/):
+ * SET_ERRNO(ERROR_NETWORK, "Connection failed");
+ * SET_ERRNO_SYS(ERROR_MEMORY, "malloc failed", errno);
+ * @endcode
+ *
+ * **Application Macros**:
+ * @code{.c}
+ * // In application code (src/):
+ * if (HAS_ERRNO()) {
+ *     asciichat_error_context_t *ctx = GET_ERRNO();
+ *     log_error("Library error: %s at %s:%d in %s()",
+ *               ctx->context_message, ctx->file, ctx->line, ctx->function);
+ *     CLEAR_ERRNO();
+ * }
+ * @endcode
+ *
+ * **Debug Features**:
+ * - Stack traces captured automatically in debug builds
+ * - Full error context in log messages
+ * - Error statistics tracking per thread
+ * - Integration with FATAL() macro
+ *
+ * @subsection debug_lock_debugging Lock Debugging (lock_debug)
+ *
+ * The lock debugging system tracks all mutex and rwlock acquisitions to help
+ * identify deadlocks and lock contention issues:
+ *
+ * **Lock Tracking**:
+ * - Tracks all mutex and rwlock acquisitions with backtraces
+ * - Thread-safe lock record management
+ * - Automatic cleanup of lock records on unlock
+ * - Integration with platform backtrace functionality
+ *
+ * **Lock Record Structure**:
+ * @code{.c}
+ * typedef struct lock_record {
+ *     void *lock_address;                    // Lock object address
+ *     lock_type_t lock_type;                 // MUTEX, RWLOCK_READ, RWLOCK_WRITE
+ *     uint64_t thread_id;                    // Thread that acquired lock
+ *     struct timespec acquisition_time;      // When lock was acquired
+ *     const char *file_name;                // Source file
+ *     int line_number;                       // Line number
+ *     const char *function_name;            // Function name
+ *     void *backtrace_buffer[32];           // Raw backtrace addresses
+ *     char **backtrace_symbols;             // Symbolized backtrace
+ * } lock_record_t;
+ * @endcode
+ *
+ * **Usage**:
+ * @code{.c}
+ * // Initialize lock debugging
+ * lock_debug_init();
+ *
+ * // Replace regular locks with debug versions
+ * DEBUG_MUTEX_LOCK(&my_mutex);
+ * // ... critical section ...
+ * DEBUG_MUTEX_UNLOCK(&my_mutex);
+ *
+ * // Start debug thread to print locks on '?' key
+ * lock_debug_start_thread();
+ *
+ * // Print all held locks
+ * print_all_held_locks();
+ * @endcode
+ *
+ * **Debug Thread**:
+ * - Runs in background monitoring lock state
+ * - Press '?' key to trigger lock information printing
+ * - Prints all held locks with full backtraces
+ * - Helps identify deadlocks and lock contention
+ *
+ * **Lock Statistics**:
+ * - Total locks acquired/released (lifetime)
+ * - Current number of held locks
+ * - Lock usage statistics by code location
+ * - Orphaned release detection (unlocks without locks)
+ *
+ * @subsection debug_memory_debugging Memory Debugging (common.h)
+ *
+ * The memory debugging system provides comprehensive memory leak detection and
+ * tracking:
+ *
+ * **Memory Macros**:
+ * - SAFE_MALLOC: Safe malloc with error checking
+ * - SAFE_CALLOC: Safe calloc with error checking
+ * - SAFE_REALLOC: Safe realloc with error checking
+ * - SAFE_FREE: Safe free that sets pointer to NULL
+ * - SAFE_MALLOC_ALIGNED: Aligned memory allocation
+ * - SAFE_MALLOC_SIMD: SIMD-aligned memory allocation
+ *
+ * **Usage**:
+ * @code{.c}
+ * // Allocate memory (automatically checks for NULL)
+ * int *array = SAFE_MALLOC(100 * sizeof(int), int*);
+ *
+ * // Allocate zero-initialized memory
+ * char *buffer = SAFE_CALLOC(1024, sizeof(char), char*);
+ *
+ * // Reallocate memory
+ * buffer = SAFE_REALLOC(buffer, 2048, char*);
+ *
+ * // Free memory (sets pointer to NULL, removes from leak tracker)
+ * SAFE_FREE(buffer);
+ * @endcode
+ *
+ * **Debug Memory Tracking**:
+ *
+ * When DEBUG_MEMORY is defined and CMAKE_BUILD_TYPE=Debug:
+ *
+ * **Leak Detection**:
+ * - All allocations tracked with address, size, file, line, timestamp
+ * - On program exit, reports any unfreed allocations
+ * - Thread-safe allocation tracking
+ * - Comprehensive leak reports
+ *
+ * **Allocation Logging**:
+ * @code
+ * [MEMORY] malloc(1024) = 0x7f1234567890 at src/client.c:123 in process_frame()
+ * [MEMORY] free(0x7f1234567890) at src/client.c:456 in cleanup_frame()
+ * @endcode
+ *
+ * **Double-Free Detection**:
+ * - Detects freeing already-freed memory
+ * - Triggers assertion with full context
+ * - Prevents use-after-free bugs
+ *
+ * **Memory Reports**:
+ * @code{.c}
+ * debug_memory_report();
+ * // Output:
+ * // Current allocations: 5 (total 4096 bytes)
+ * // Peak allocations: 10 (total 8192 bytes)
+ * // Total malloc calls: 100
+ * // Total free calls: 95
+ * // Leaked: 5 allocations (4096 bytes)
+ * @endcode
+ *
+ * **Memory Statistics**:
+ * - Current allocations and total size
+ * - Peak allocations and peak size
+ * - Total allocation/deallocation calls
+ * - Leak summary (unfreed allocations)
+ *
+ * @section debug_integration Integration
+ *
+ * @subsection debug_build_configuration Build Configuration
+ *
+ * **Debug Build**:
+ * @code{.cmake}
+ * cmake -DCMAKE_BUILD_TYPE=Debug -DDEBUG_MEMORY=ON ..
+ * @endcode
+ *
+ * **Enable Debug Features**:
+ * @code{.c}
+ * // Enable memory debugging
+ * #define DEBUG_MEMORY 1
+ *
+ * // Enable lock debugging
+ * lock_debug_init();
+ * lock_debug_start_thread();
+ *
+ * // Error tracking is always enabled (thread-local)
+ * @endcode
+ *
+ * @subsection debug_runtime_usage Runtime Usage
+ *
+ * **Error Handling**:
+ * @code{.c}
+ * // Library code sets errors
+ * if (connect_failed) {
+ *     SET_ERRNO(ERROR_NETWORK, "Connection timeout");
+ *     return ERROR_NETWORK;
+ * }
+ *
+ * // Application code checks errors
+ * if (some_library_function() != ASCIICHAT_OK) {
+ *     if (HAS_ERRNO()) {
+ *         asciichat_error_context_t *ctx = GET_ERRNO();
+ *         log_error("Error: %s", ctx->context_message);
+ *         CLEAR_ERRNO();
+ *     }
+ * }
+ * @endcode
+ *
+ * **Lock Debugging**:
+ * @code{.c}
+ * // Replace mutex_lock with DEBUG_MUTEX_LOCK
+ * DEBUG_MUTEX_LOCK(&my_mutex);
+ * // ... critical section ...
+ * DEBUG_MUTEX_UNLOCK(&my_mutex);
+ *
+ * // Print held locks anytime
+ * print_all_held_locks();
+ * @endcode
+ *
+ * **Memory Debugging**:
+ * @code{.c}
+ * // Use SAFE_* macros for all allocations
+ * void *data = SAFE_MALLOC(size, void*);
+ *
+ * // Check for leaks at any time
+ * debug_memory_report();
+ *
+ * // Quiet mode (suppress stderr output)
+ * debug_memory_set_quiet_mode(true);
+ * @endcode
+ *
+ * @section debug_best_practices Best Practices
+ *
+ * 1. **Use Error Handling Consistently**:
+ *    @code{.c}
+ *    // Always use SET_ERRNO in library code
+ *    SET_ERRNO(ERROR_MEMORY, "Allocation failed");
+ *    
+ *    // Always check HAS_ERRNO in application code
+ *    if (HAS_ERRNO()) {
+ *         handle_error();
+ *     }
+ *    @endcode
+ *
+ * 2. **Enable Lock Debugging During Development**:
+ *    @code{.c}
+ *    // Initialize early in main()
+ *    lock_debug_init();
+ *    lock_debug_start_thread();
+ *    
+ *    // Use DEBUG_* lock macros everywhere
+ *    DEBUG_MUTEX_LOCK(&mutex);
+ *    @endcode
+ *
+ * 3. **Use SAFE_* Macros for All Allocations**:
+ *    @code{.c}
+ *    // Always use SAFE_MALLOC instead of malloc
+ *    void *ptr = SAFE_MALLOC(size, void*);
+ *    
+ *    // Always use SAFE_FREE (sets pointer to NULL)
+ *    SAFE_FREE(ptr);
+ *    @endcode
+ *
+ * 4. **Check Memory Leaks Regularly**:
+ *    @code{.c}
+ *    // Call before program exit
+ *    debug_memory_report();
+ *    
+ *    // Or enable automatic leak detection
+ *    // Leaks are reported on program exit automatically
+ *    @endcode
+ *
+ * 5. **Debug Thread for Lock Monitoring**:
+ *    @code{.c}
+ *    // Start debug thread
+ *    lock_debug_start_thread();
+ *    
+ *    // Press '?' key anytime to see held locks
+ *    // Useful for debugging deadlocks
+ *    @endcode
+ *
+ * @section debug_performance_impact Performance Impact
+ *
+ * **Debug Builds**:
+ * - Stack trace capture adds ~5-10ms per error
+ * - Lock tracking adds ~1-2µs per lock operation
+ * - Memory tracking adds ~1-2µs per allocation
+ * - Debug thread uses minimal CPU (waits for '?' key)
+ *
+ * **Release Builds**:
+ * - Error handling: Minimal overhead (thread-local storage)
+ * - Lock debugging: Disabled (no overhead)
+ * - Memory debugging: Disabled (no overhead)
+ * - All debug features are compiled out
+ *
+ * **Recommendations**:
+ * - Use debug builds during development
+ * - Disable debug features in production builds
+ * - Enable memory debugging only when investigating leaks
+ * - Enable lock debugging only when investigating deadlocks
+ *
+ * @section debug_examples Examples
+ *
+ * @subsection debug_error_example Error Handling Example
+ *
+ * @code{.c}
+ * // Library code (lib/network/network.c)
+ * asciichat_error_t network_connect(const char *host, int port) {
+ *     socket_t sock = socket_create();
+ *     if (sock == INVALID_SOCKET) {
+ *         SET_ERRNO_SYS(ERROR_NETWORK, "socket() failed", errno);
+ *         return ERROR_NETWORK;
+ *     }
+ *     
+ *     if (connect_failed) {
+ *         SET_ERRNO(ERROR_NETWORK_CONNECT, "Connection timeout");
+ *         socket_close(sock);
+ *         return ERROR_NETWORK_CONNECT;
+ *     }
+ *     
+ *     return ASCIICHAT_OK;
+ * }
+ *
+ * // Application code (src/client/main.c)
+ * int main() {
+ *     asciichat_error_t err = network_connect("server.example.com", 8080);
+ *     if (err != ASCIICHAT_OK) {
+ *         if (HAS_ERRNO()) {
+ *             asciichat_error_context_t *ctx = GET_ERRNO();
+ *             log_error("Network error: %s at %s:%d",
+ *                       ctx->context_message, ctx->file, ctx->line);
+ *             if (ctx->stack_trace) {
+ *                 log_debug("Stack trace:\n%s", ctx->stack_trace);
+ *             }
+ *             CLEAR_ERRNO();
+ *         }
+ *         return err;
+ *     }
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * @subsection debug_lock_example Lock Debugging Example
+ *
+ * @code{.c}
+ * // Initialize lock debugging
+ * int main() {
+ *     lock_debug_init();
+ *     lock_debug_start_thread();
+ *     
+ *     // Use debug lock macros
+ *     static mutex_t g_shared_mutex;
+ *     
+ *     void critical_section() {
+ *         DEBUG_MUTEX_LOCK(&g_shared_mutex);
+ *         // ... critical code ...
+ *         DEBUG_MUTEX_UNLOCK(&g_shared_mutex);
+ *     }
+ *     
+ *     // Press '?' key to see all held locks
+ *     // Output:
+ *     // Lock at 0x7f1234567890 (MUTEX)
+ *     //   Acquired by thread 0x1234 at client.c:123 in critical_section()
+ *     //   Backtrace:
+ *     //     #0: critical_section() at client.c:123
+ *     //     #1: process_frame() at client.c:456
+ *     //     #2: main() at client.c:789
+ *     
+ *     lock_debug_cleanup();
+ * }
+ * @endcode
+ *
+ * @subsection debug_memory_example Memory Debugging Example
+ *
+ * @code{.c}
+ * // Enable memory debugging
+ * #define DEBUG_MEMORY 1
+ *
+ * void process_data() {
+ *     // All allocations are tracked
+ *     int *data = SAFE_MALLOC(1000 * sizeof(int), int*);
+ *     char *buffer = SAFE_CALLOC(1024, sizeof(char), char*);
+ *     
+ *     // Use data...
+ *     process(data, buffer);
+ *     
+ *     // Free memory (removes from leak tracker)
+ *     SAFE_FREE(data);
+ *     SAFE_FREE(buffer);
+ * }
+ *
+ * // At program exit, automatic leak report:
+ * // Memory leak detected:
+ * //   Address: 0x7f1234567890
+ * //   Size: 1024 bytes
+ * //   Allocated at: client.c:123 in process_data()
+ * //   Thread: 0x7f123456
+ * // Total leaked: 1024 bytes in 1 allocation
+ * @endcode
+ *
+ * @section debug_troubleshooting Troubleshooting
+ *
+ * **Common Issues**:
+ *
+ * 1. **Stack Traces Not Appearing**:
+ *    - Ensure CMAKE_BUILD_TYPE=Debug
+ *    - Check that debug symbols are available
+ *    - Verify addr2line or llvm-symbolizer is in PATH
+ *
+ * 2. **Lock Debugging Not Working**:
+ *    - Ensure lock_debug_init() is called before any locks
+ *    - Use DEBUG_* macros instead of regular lock functions
+ *    - Check that debug thread is started: lock_debug_start_thread()
+ *
+ * 3. **Memory Leaks Not Detected**:
+ *    - Ensure DEBUG_MEMORY is defined
+ *    - Check that CMAKE_BUILD_TYPE=Debug
+ *    - Verify mimalloc override is disabled (MI_MALLOC_OVERRIDE not set)
+ *    - Use SAFE_* macros for all allocations
+ *
+ * 4. **Performance Issues in Debug Builds**:
+ *    - Stack trace capture adds overhead
+ *    - Lock tracking adds small overhead per operation
+ *    - Memory tracking adds small overhead per allocation
+ *    - Use release builds for performance testing
+ *
+ * @note Debug utilities are designed for development and troubleshooting.
+ *       Disable debug features in production builds for optimal performance.
+ *
+ * @see lib/asciichat_errno.h for error handling documentation
+ * @see lib/lock_debug.h for lock debugging documentation
+ * @see lib/common.h for memory debugging macros
+ */
+

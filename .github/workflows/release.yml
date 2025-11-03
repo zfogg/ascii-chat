@@ -157,7 +157,7 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
         else
-          echo "CHANGELOG=Initial release of ASCII-Chat" >> $GITHUB_OUTPUT
+          echo "CHANGELOG=Initial release of ascii-chat" >> $GITHUB_OUTPUT
         fi
 
     - name: Create and push tag
@@ -173,9 +173,9 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.version.outputs.version }}
-        name: ASCII-Chat ${{ steps.version.outputs.version }}
+        name: ascii-chat ${{ steps.version.outputs.version }}
         body: |
-          # ASCII-Chat ${{ steps.version.outputs.version }}
+          # ascii-chat ${{ steps.version.outputs.version }}
 
           Terminal-based video chat with ASCII art conversion. Supports multiple clients with real-time video mixing and audio streaming.
 
@@ -337,7 +337,7 @@ jobs:
 
         # Create release notes
         cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
-        # ASCII-Chat $VERSION
+        # ascii-chat $VERSION
 
         ## Build Information
         - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
@@ -439,7 +439,7 @@ jobs:
         # Create release notes
         $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC")
         @"
-# ASCII-Chat $VERSION
+# ascii-chat $VERSION
 
 ## Build Information
 - Built: $timestamp
@@ -484,7 +484,7 @@ All required DLLs are included.
 
         # Create combined checksum file
         @"
-# ASCII-Chat $VERSION - $PLATFORM build
+# ascii-chat $VERSION - $PLATFORM build
 # Checksums generated on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC
 
 ## SHA-256
