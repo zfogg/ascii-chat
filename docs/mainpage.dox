@@ -142,8 +142,9 @@
  *
  * @subsection core_module Core Library
  * - @ref common "Common Definitions" - Error codes, macros, core types
- * - @ref logging "Logging System" - Logging API and utilities
- * - @ref options "Configuration" - Command-line options and configuration
+ * - @ref options "Options module" - Command-line options
+ * - @ref config "Config module" - File-based configuration
+ * - @ref logging "Logging Module" - Logging API and utilities
  *
  * @subsection platform_module Platform Abstractions
  * - @ref platform "Platform Layer" - Cross-platform abstractions for threads, mutexes, sockets, system calls
@@ -155,12 +156,12 @@
  * - @ref packet_queue "Packet Queue" - Queue management for network packets
  *
  * @subsection network_module Network Layer
- * - @ref network "Network I/O" - Socket operations, timeouts, connections
+ * - @ref network "Network Module" - Socket operations, timeouts, connections
  * - @ref packet "Packet Types" - Network packet structures and definitions
  * - @ref av "Audio/Video Networking" - Network APIs for audio/video streaming
  *
  * @subsection crypto_module Cryptography
- * - @ref crypto "Crypto Core" - Core cryptographic operations
+ * - @ref topic_crypto "Crypto Core" - Core cryptographic operations
  * - @ref handshake "Handshake Protocol" - Cryptographic handshake implementation
  * - @ref keys "Key Management" - SSH key, GPG key, and key validation APIs
  *

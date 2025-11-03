@@ -13,13 +13,6 @@
  */
 
 /**
- * @defgroup module_abstractions Abstraction
- * @brief Cross-platform abstractions for threading, sockets, and system calls, and hardware access
- *
- * Platform abstraction layer and OS-specific functionality.
- */
-
-/**
  * @defgroup module_crypto Cryptography
  * @brief End-to-end encryption and secure communication
  *
@@ -112,7 +105,6 @@
  *
  * @copybrief module_crypto
  *
- * - @ref topic_crypto "Cryptography" - End-to-end encryption and cryptographic operations
  * - @ref topic_crypto_detailed "Cryptography README" - Detailed crypto implementation guide
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Key Management" - SSH/GPG key parsing and validation

@@ -1,6 +1,6 @@
 /**
- * @page topic_os Operating System
- * @ingroup module_abstractions
+ * @page topic_os Operating System README
+ * @ingroup os
  *
  * Operating system specific functionality including webcam capture, platform detection,
  * and OS-specific optimizations for Windows, Linux, and macOS.
