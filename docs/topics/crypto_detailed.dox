@@ -341,7 +341,7 @@
  *   |                                        |
  *   |<----- CRYPTO_HANDSHAKE_COMPLETE -------|
  *   |                                        |
- *   | ✅ Encryption active                  | ✅ Encryption active
+ *   | ✅ Encryption active                   | ✅ Encryption active
  *   |                                        |
  *   |<===== ENCRYPTED PACKETS ==============>|
  *   |       All future packets encrypted     |
@@ -354,30 +354,30 @@
  * **Client Capabilities (`CRYPTO_CAPABILITIES`):**
  * @code{.c}
  * typedef struct {
- *   uint16_t supported_kex_algorithms;    // Bitmask of supported KEX algorithms
- *   uint16_t supported_auth_algorithms;  // Bitmask of supported auth algorithms
- *   uint16_t supported_cipher_algorithms; // Bitmask of supported cipher algorithms
- *   uint8_t requires_verification;       // Boolean: requires server identity verification
- *   uint8_t preferred_kex;               // Preferred KEX algorithm
- *   uint8_t preferred_auth;             // Preferred auth algorithm
- *   uint8_t preferred_cipher;           // Preferred cipher algorithm
+ *   uint16_t supported_kex_algorithms;      // Bitmask of supported KEX algorithms
+ *   uint16_t supported_auth_algorithms;     // Bitmask of supported auth algorithms
+ *   uint16_t supported_cipher_algorithms;   // Bitmask of supported cipher algorithms
+ *   uint8_t requires_verification;          // Boolean: requires server identity verification
+ *   uint8_t preferred_kex;                  // Preferred KEX algorithm
+ *   uint8_t preferred_auth;                 // Preferred auth algorithm
+ *   uint8_t preferred_cipher;               // Preferred cipher algorithm
  * } crypto_capabilities_packet_t;
  * @endcode
  *
  * **Server Parameters (`CRYPTO_PARAMETERS`):**
  * @code{.c}
  * typedef struct {
- *   uint8_t selected_kex;          // Which KEX algorithm (KEX_ALGO_*)
- *   uint8_t selected_auth;         // Which auth algorithm (AUTH_ALGO_*)
- *   uint8_t selected_cipher;       // Which cipher algorithm (CIPHER_ALGO_*)
- *   uint8_t verification_enabled;  // Boolean: server requires verification
- *   uint16_t kex_public_key_size;  // e.g., 32 for X25519, 1568 for Kyber1024
- *   uint16_t auth_public_key_size; // e.g., 32 for Ed25519, 1952 for Dilithium3
- *   uint16_t signature_size;       // e.g., 64 for Ed25519, 3309 for Dilithium3
- *   uint16_t shared_secret_size;   // e.g., 32 for X25519
- *   uint8_t nonce_size;            // e.g., 24 for XSalsa20 nonce
- *   uint8_t mac_size;              // e.g., 16 for Poly1305 MAC
- *   uint8_t hmac_size;             // e.g., 32 for HMAC-SHA256
+ *   uint8_t selected_kex;            // Which KEX algorithm (KEX_ALGO_*)
+ *   uint8_t selected_auth;           // Which auth algorithm (AUTH_ALGO_*)
+ *   uint8_t selected_cipher;         // Which cipher algorithm (CIPHER_ALGO_*)
+ *   uint8_t verification_enabled;    // Boolean: server requires verification
+ *   uint16_t kex_public_key_size;    // e.g., 32 for X25519, 1568 for Kyber1024
+ *   uint16_t auth_public_key_size;   // e.g., 32 for Ed25519, 1952 for Dilithium3
+ *   uint16_t signature_size;         // e.g., 64 for Ed25519, 3309 for Dilithium3
+ *   uint16_t shared_secret_size;     // e.g., 32 for X25519
+ *   uint8_t nonce_size;              // e.g., 24 for XSalsa20 nonce
+ *   uint8_t mac_size;                // e.g., 16 for Poly1305 MAC
+ *   uint8_t hmac_size;               // e.g., 32 for HMAC-SHA256
  * } crypto_parameters_packet_t;
  * @endcode
  *
@@ -400,8 +400,8 @@
  * **Server sends:**
  * @code{.c}
  * typedef struct {
- *   uint8_t ephemeral_public_key[32];  // X25519 DH public key (always)
- *   uint8_t identity_public_key[32];   // Ed25519 identity (if --key used)
+ *   uint8_t ephemeral_public_key[32];   // X25519 DH public key (always)
+ *   uint8_t identity_public_key[32];    // Ed25519 identity (if --key used)
  *   uint8_t signature[64];              // Ed25519 signature (if --key used)
  * } key_exchange_init_packet_t;
  * @endcode
@@ -426,8 +426,8 @@
  * **Client sends:**
  * @code{.c}
  * typedef struct {
- *   uint8_t ephemeral_public_key[32];  // X25519 DH public key (always)
- *   uint8_t identity_public_key[32];   // Ed25519 identity (if --key used)
+ *   uint8_t ephemeral_public_key[32];   // X25519 DH public key (always)
+ *   uint8_t identity_public_key[32];    // Ed25519 identity (if --key used)
  *   uint8_t signature[64];              // Ed25519 signature (if --key used)
  * } key_exchange_response_packet_t;
  * @endcode
@@ -1412,26 +1412,26 @@
  *
  * @code
  * Client (Initiator)              Server (Responder)
- *   |                                 |
- *   | Trigger: Time/packet threshold  |
- *   |                                 |
- *   |-- CRYPTO_REKEY_REQUEST -------->|
- *   |   [new_ephemeral_pk: 32 bytes]  |
- *   |                                 |
- *   |                                 | Generate new ephemeral X25519 keypair
- *   |                                 | Compute shared_secret_new = DH(my_sk, their_pk)
- *   |                                 |
- *   |<-- CRYPTO_REKEY_RESPONSE -------|
- *   |   [new_ephemeral_pk: 32 bytes]  |
- *   |                                 |
- *   | Compute shared_secret_new       |
- *   |                                 |
- *   |-- CRYPTO_REKEY_COMPLETE (encrypted with NEW key) -->|
- *   |                                 |
- *   | ✅ Switch to new key            | ✅ Switch to new key
- *   | ✅ Reset nonce_counter = 1      | ✅ Reset nonce_counter = 1
- *   | ✅ Generate new session_id      | ✅ Generate new session_id
- *   | ✅ Wipe old shared_secret       | ✅ Wipe old shared_secret
+ *   |                                                 |
+ *   | Trigger: Time/packet threshold                  |
+ *   |                                                 |
+ *   |-- CRYPTO_REKEY_REQUEST -------->                |
+ *   |   [new_ephemeral_pk: 32 bytes]                  |
+ *   |                                                 |
+ *   | Generate new ephemeral X25519 keypair           |
+ *   | Compute shared_secret_new = DH(my_sk, their_pk) | 
+ *   |                                                 |
+ *   |<-- CRYPTO_REKEY_RESPONSE ------>                |
+ *   |   [new_ephemeral_pk: 32 bytes]                  |
+ *   |                                                 |
+ *   | Compute shared_secret_new                       |
+ *   |                                                 |
+ *   |-- CRYPTO_REKEY_COMPLETE -->                     | (encrypted with NEW key)
+ *   |                                                 |
+ *   | ✅ Switch to new key                            |
+ *   | ✅ Reset nonce_counter = 1                      |
+ *   | ✅ Generate new session_id                      |
+ *   | ✅ Wipe old shared_secret                       |
  * @endcode
  *
  * **New Packet Types:**
@@ -1708,16 +1708,16 @@
  *
  * **Previous attack scenario:**
  * @code
- * Client                    Attacker                    Server
- *    |                         |                           |
- *    |--KEY_EXCHANGE_INIT----->|                           |
- *    |                         |----KEY_EXCHANGE_INIT----->|
- *    |                         |<---server_pubkey----------|
- *    |<---attacker_pubkey------|                           |
- *    |                         |                           |
- *    | Computes: HMAC(password_key, nonce)                 |
- *    |                         | Attacker can compute same HMAC with password
- *    |                         | Even though DH secrets differ!
+ *                   Client              Attacker               Server
+ *    |                                     |                                              |
+ *    | --------KEY_EXCHANGE_INIT---------> |                                              |
+ *    |                                     | ------------KEY_EXCHANGE_INIT--------------> |
+ *    |                                     | <--------------server_pubkey---------------- |
+ *    | <-------attacker_pubkey------------ |                                              |
+ *    |                                     |                                              |
+ *    | Computes: HMAC(password_key, nonce) |                                              |
+ *    |                                     | Attacker can compute same HMAC with password |
+ *    |                                     | Even though DH secrets differ!               |
  * @endcode
  *
  * **Root cause:**
