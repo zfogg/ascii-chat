@@ -1,6 +1,12 @@
 /**
- * @page exit_codes Exit Codes
+ * @defgroup error Errors
  * @ingroup module_development
+ * @brief When things go wrong and ending the program unsuccessfully
+ */
+
+/**
+ * @page exit_codes Exit Codes
+ * @ingroup error
  *
  * @tableofcontents
  *

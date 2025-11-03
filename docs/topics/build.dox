@@ -1,12 +1,13 @@
 /**
  * @defgroup build Build System
  * @ingroup module_development
- * @brief CMake-based build system with cross-platform support and modular architecture
+ * @brief Compile human-readable code into machine-executable code
  */
 
 /**
- * @page topic_build CMake
+ * @page topic_build CMake Compile README
  * @ingroup build
+ * @brief CMake-based build system with cross-platform support and modular architecture
  *
  * @section build_overview Overview
  *

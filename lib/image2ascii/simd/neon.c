@@ -958,7 +958,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes) {
   /* Main: half-block renderer. Returns NUL-terminated malloc'd string; caller free(). */
   if (width <= 0 || height <= 0)
-    return strdup("");
+    return platform_strdup("");
   if (stride_bytes <= 0)
     stride_bytes = width * 3;
 

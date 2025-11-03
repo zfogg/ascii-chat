@@ -1,5 +1,5 @@
 /**
- * @defgroup debug_util Debugging Overview
+ * @defgroup debug_util Debugging
  * @ingroup module_development
  * @brief Tools to help you figure out what's going on with the code.
  */

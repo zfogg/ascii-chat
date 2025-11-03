@@ -1,8 +1,30 @@
 /**
+ * @defgroup module_utilities Utilities
+ * @brief Core utility functions for string manipulation, paths, IP parsing, and formatting
+ *
+ * String utilities, path handling, IP address parsing, UTF-8 support, CRC32, and formatting.
+ */
+
+/**
  * @defgroup module_data_structures Data Structures
  * @brief High-performance data structures for memory and packet management
  *
  * Buffer pools, ring buffers, packet queues, and hash tables.
+ */
+
+/**
+ * @defgroup module_platform Platform Abstraction
+ * @brief Cross-platform abstractions for threads, mutexes, sockets, and system calls
+ *
+ * Complete platform abstraction layer enabling Windows/Linux/macOS portability
+ * with zero overhead and consistent semantics.
+ */
+
+/**
+ * @defgroup module_abstractions Abstraction Layers
+ * @brief Platform and OS abstraction layers
+ *
+ * Cross-platform abstractions for threads, sockets, terminal I/O, and OS-specific functionality.
  */
 
 /**
@@ -17,6 +39,13 @@
  * @brief Video capture, ASCII conversion, and frame layout
  *
  * Video frame management, image-to-ASCII conversion with SIMD, grid layout, and palettes.
+ */
+
+/**
+ * @defgroup module_audio Audio Processing
+ * @brief Audio capture, playback, and multi-client mixing
+ *
+ * Audio system with PortAudio integration and multi-client audio mixing with ducking.
  */
 
 /**
@@ -84,7 +113,9 @@
  *
  * @copybrief module_platform
  *
- * - @ref topic_platform "Platform Abstraction Layer" - Cross-platform threading, sockets, system calls
+ * - @ref topic_platform "Platform Abstraction Layer README" - **Comprehensive guide** covering cross-platform
+ *   threading, mutexes, sockets, terminal I/O, crash handling, static initialization, and OS portability
+ *   (Windows/Linux/macOS)
  * - @ref topic_os "OS Abstractions" - Platform-specific functionality (webcam, etc.)
  *
  * @section topics_crypto Cryptography
