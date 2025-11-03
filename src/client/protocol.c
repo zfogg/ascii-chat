@@ -1,13 +1,7 @@
 /**
- * @file protocol.c
- * @brief ASCII-Chat Client Protocol Handler
- *
- * This module implements the client-side protocol handling for ASCII-Chat,
- * managing packet reception, parsing, and dispatch to appropriate handlers.
- * It coordinates the data reception thread and manages protocol-level
- * connection state.
- *
- * ## Protocol Architecture
+ * @file client/protocol.c
+ * @ingroup client_protocol
+ * @brief 📡 Client protocol handler: packet reception, parsing, and dispatch with data thread coordination
  *
  * The client protocol handler follows a producer-consumer pattern:
  * - **Producer**: Data reception thread reads packets from socket
@@ -75,7 +69,7 @@
  * - **Leak Prevention**: Comprehensive cleanup on all error paths
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date 2025
+ * @date September 2025
  * @version 2.0
  */
 
@@ -156,7 +150,7 @@ static atomic_bool g_data_thread_exited = false;
  * @note is_active indicates whether client is sending media (video/audio).
  * @note last_seen is updated when receiving packets from this client.
  *
- * @ingroup client
+ * @ingroup client_protocol
  */
 typedef struct {
   /** @brief Unique client identifier assigned by server */
@@ -179,7 +173,7 @@ static bool g_should_clear_before_next_frame = false;
  * ============================================================================ */
 
 /**
- * Handle ASCII frame packet from server
+ * @brief Handle incoming ASCII frame packet from server
  *
  * Processes unified ASCII frame packets that contain both header information
  * and frame data. Supports optional zlib compression with integrity verification.
@@ -196,6 +190,8 @@ static bool g_should_clear_before_next_frame = false;
  *
  * @param data Raw packet data starting with ascii_frame_packet_t header
  * @param len Total packet length including header and frame data
+ *
+ * @ingroup client_protocol
  */
 static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (should_exit()) {
@@ -450,19 +446,16 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 }
 
 /**
- * Handle audio packet from server
+ * @brief Handle incoming audio packet from server
  *
- * Processes audio sample data with volume boosting and clipping protection.
- * Integrates with audio subsystem for playback queue management.
+ * Processes audio sample packets and queues them for playback. Extracts
+ * float samples from packet payload and passes them to the audio subsystem
+ * for jitter-buffered playback.
  *
- * Audio Processing Pipeline:
- * 1. Input validation and size checking
- * 2. Volume boost application (configurable multiplier)
- * 3. Soft clipping to prevent distortion
- * 4. Queue submission to audio playback system
+ * @param data Packet payload containing float audio samples
+ * @param len Total packet length in bytes
  *
- * @param data Raw audio sample data (float array)
- * @param len Length of data in bytes
+ * @ingroup client_protocol
  */
 static void handle_audio_packet(const void *data, size_t len) {
   if (!opt_audio_enabled || !data || len == 0) {
@@ -484,14 +477,16 @@ static void handle_audio_packet(const void *data, size_t len) {
 }
 
 /**
- * Handle server state packet for multi-client coordination
+ * @brief Handle incoming server state packet
  *
- * Processes server state updates that coordinate console clearing logic
- * across multiple client connections. When the active client count changes,
- * triggers console clearing before the next frame to prevent display artifacts.
+ * Processes server state updates including active client count and console
+ * clear coordination. Manages multi-client state tracking and terminal
+ * synchronization.
  *
- * @param data Server state packet data
- * @param len Packet data length
+ * @param data Packet payload (must be server_state_packet_t)
+ * @param len Total packet length in bytes
+ *
+ * @ingroup client_protocol
  */
 static void handle_server_state_packet(const void *data, size_t len) {
   if (!data || len != sizeof(server_state_packet_t)) {
@@ -526,7 +521,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
  * ============================================================================ */
 
 /**
- * Main data reception thread function
+ * @brief Data reception thread function
  *
  * Implements the core packet reception loop that continuously reads packets
  * from the server connection and dispatches them to appropriate handlers.
@@ -546,8 +541,10 @@ static void handle_server_state_packet(const void *data, size_t len) {
  * - Resource errors handled with graceful degradation
  * - Buffer cleanup performed on all exit paths
  *
- * @param arg Unused thread argument
+ * @param arg Thread argument (unused)
  * @return NULL on thread exit
+ *
+ * @ingroup client_protocol
  */
 static void *data_reception_thread_func(void *arg) {
   (void)arg;
@@ -699,6 +696,8 @@ static void *data_reception_thread_func(void *arg) {
  * Must be called after successful server connection establishment.
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_protocol
  */
 int protocol_start_connection() {
   // Reset protocol state for new connection
@@ -741,6 +740,8 @@ int protocol_start_connection() {
  *
  * Gracefully shuts down the data reception thread and cleans up
  * protocol state. Safe to call multiple times.
+ *
+ * @ingroup client_protocol
  */
 void protocol_stop_connection() {
   if (!g_data_thread_created) {
@@ -808,6 +809,8 @@ void protocol_stop_connection() {
  * Check if connection has been lost
  *
  * @return true if protocol detected connection loss, false otherwise
+ *
+ * @ingroup client_protocol
  */
 bool protocol_connection_lost() {
   return atomic_load(&g_data_thread_exited) || server_connection_is_lost();

@@ -1,18 +1,7 @@
 /**
- * @file main.c
- * @brief ASCII-Chat Server - Main Entry Point and Connection Manager
- *
- * This file serves as the core of the ASCII-Chat server's modular architecture,
- * replacing the original monolithic server.c (2408+ lines) with a clean, maintainable
- * design split across multiple specialized modules.
- *
- * ARCHITECTURAL OVERVIEW:
- * ======================
- * This server implements a high-performance multi-client architecture where:
- * - Each client gets dedicated rendering threads (video @ 60fps + audio @ 172fps)
- * - Per-client packet queues eliminate shared bottlenecks and enable linear scaling
- * - Thread-safe design with proper mutex ordering prevents race conditions
- * - Platform abstraction supports Windows, Linux, and macOS seamlessly
+ * @file server/main.c
+ * @ingroup server_main
+ * @brief 🖥️ Server main entry point: multi-client connection manager with per-client rendering threads (60fps video + 172fps audio)
  *
  * MODULAR COMPONENTS:
  * ===================
@@ -487,8 +476,9 @@ static void sigusr1_handler(int sigusr1) {
  */
 
 /**
- * Initialize crypto for server
+ * @brief Initialize crypto for server
  * @return 0 on success, -1 on error
+ * @ingroup server_main
  */
 static int init_server_crypto(void) {
   // Check if encryption is disabled

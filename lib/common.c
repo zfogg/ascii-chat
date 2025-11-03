@@ -1,3 +1,10 @@
+
+/**
+ * @file common.c
+ * @ingroup common
+ * @brief 🔧 Core utilities: memory management, safe macros, and cross-platform helpers
+ */
+
 // Platform-specific malloc size headers - MUST come before common.h
 // to avoid conflicts with debug memory macros
 #ifdef _WIN32

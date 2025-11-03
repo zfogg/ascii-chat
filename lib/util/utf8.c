@@ -1,6 +1,7 @@
 /**
- * @file utf8.c
- * @brief UTF-8 encoding and decoding implementation
+ * @file util/utf8.c
+ * @ingroup util
+ * @brief 🔤 UTF-8 encoding and decoding with multi-byte character support
  */
 
 #include "utf8.h"

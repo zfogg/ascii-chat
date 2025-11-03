@@ -2,7 +2,7 @@
 
 /**
  * @file tests/common.h
- * @ingroup testing
+ * @ingroup module_development
  * @brief Common test utilities and environment detection
  *
  * This header provides common utilities and helpers for writing ASCII-Chat tests.
@@ -82,7 +82,7 @@
  *       On Windows, Docker and CI checks still work, but WSL detection
  *       is POSIX-only.
  *
- * @ingroup platform
+ * @ingroup module_platform
  *
  * @par Example
  * @code

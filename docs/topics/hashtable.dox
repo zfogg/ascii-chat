@@ -1,4 +1,10 @@
 /**
+ * @defgroup hashtable Hash Table
+ * @ingroup module_data_structures
+ * @brief High-performance client ID lookup
+ */
+
+/**
  * @page topic_hashtable Hash Table
  * @ingroup hashtable
  *

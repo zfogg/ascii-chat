@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/avx2.c
+ * @ingroup image2ascii
+ * @brief 🚀 AVX2-accelerated ASCII rendering with 256-bit vector operations for x86_64
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

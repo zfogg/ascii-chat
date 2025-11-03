@@ -1,13 +1,7 @@
 /**
- * @file system.c
- * @brief Cross-platform system utilities (shared implementation)
- *
- * This file is meant to be included by platform-specific system.c files
- * (windows/system.c and posix/system.c), which already have all necessary
- * headers included.
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @file platform/system.c
+ * @ingroup platform
+ * @brief 🔧 Shared cross-platform system utilities (included by posix/system.c and windows/system.c)
  */
 
 // NOTE: This file is #included by windows/system.c and posix/system.c

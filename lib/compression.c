@@ -1,5 +1,8 @@
-// compression.c - Pure compression/decompression utilities
-// Network functions have been moved to network.c
+/**
+ * @file compression.c
+ * @ingroup compression
+ * @brief 🗜️ Fast zstd compression/decompression utilities for network payload optimization
+ */
 
 #include <zstd.h>
 #include <string.h>

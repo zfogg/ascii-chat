@@ -1,3 +1,9 @@
+/**
+ * @file crypto/gpg.c
+ * @ingroup crypto
+ * @brief 🔐 GPG key parsing and validation utilities for public key authentication
+ */
+
 #include "gpg.h"
 #include "keys/keys.h"
 #include "common.h"

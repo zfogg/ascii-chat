@@ -1,13 +1,7 @@
 /**
- * @file client.c
- * @brief Per-Client Lifecycle Management and Threading Coordination
- *
- * This module manages the complete lifecycle of individual clients in the ASCII-Chat
- * server's modular architecture. It replaced the client management portions of the
- * original monolithic server.c, providing clean separation of concerns and improved
- * maintainability.
- *
- * CORE RESPONSIBILITIES:
+ * @file server/client.c
+ * @ingroup server_client
+ * @brief 👥 Per-client lifecycle manager: threading coordination, state management, and client lifecycle orchestration
  * ======================
  * 1. Client connection establishment and initialization
  * 2. Per-client thread creation and management (receive, send, render)

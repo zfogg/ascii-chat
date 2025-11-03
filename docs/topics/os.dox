@@ -1,6 +1,6 @@
 /**
  * @page topic_os OS Abstractions
- * @ingroup os
+ * @ingroup module_platform
  *
  * Operating system specific functionality including webcam capture, platform detection,
  * and OS-specific optimizations for Windows, Linux, and macOS.

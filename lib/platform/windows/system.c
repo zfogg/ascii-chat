@@ -1,9 +1,7 @@
 /**
- * @file system.c
- * @brief Windows system functions implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides Windows system function wrappers for the platform abstraction layer,
- * enabling cross-platform system operations using a unified API.
+ * @file platform/windows/system.c
+ * @ingroup platform
+ * @brief 🖥️ Windows system utilities: process management, file I/O, memory mapping, and Win32 API wrappers
  */
 
 #ifdef _WIN32

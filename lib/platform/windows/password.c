@@ -1,3 +1,9 @@
+/**
+ * @file platform/windows/password.c
+ * @ingroup platform
+ * @brief 🔐 Windows password prompt with _getch() for secure input without echo
+ */
+
 #include "platform/password.h"
 #include <stdio.h>
 #include <conio.h>

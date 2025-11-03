@@ -1,3 +1,9 @@
+/**
+ * @file ringbuffer.c
+ * @ingroup ringbuffer
+ * @brief 🎯 Lock-free circular buffer for audio streaming with atomic operations
+ */
+
 #include "ringbuffer.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system

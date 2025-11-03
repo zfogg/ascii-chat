@@ -1,8 +1,12 @@
 /**
- * @subpage topic_build Build System
  * @defgroup build Build System
- * @ingroup dev
+ * @ingroup module_development
  * @brief CMake-based build system with cross-platform support and modular architecture
+ */
+
+/**
+ * @page topic_build CMake
+ * @ingroup build
  *
  * @section build_overview Overview
  *

@@ -1,13 +1,7 @@
 /**
- * @file crypto.c
- * @brief Server-Side Cryptographic Handshake and Encryption Management
- *
- * This module implements the server-side cryptographic handshake process and
- * provides per-client encryption/decryption functions for secure communication.
- * It was extracted from the original monolithic server.c to provide clean
- * separation between cryptographic operations and other server concerns.
- *
- * CORE RESPONSIBILITIES:
+ * @file server/crypto.c
+ * @ingroup server_crypto
+ * @brief 🔐 Server cryptography: per-client handshake, X25519 key exchange, and session encryption management
  * ======================
  * 1. Initialize server crypto system and validate encryption configuration
  * 2. Perform cryptographic handshake with each connecting client

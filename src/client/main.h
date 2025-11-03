@@ -1,5 +1,6 @@
 /**
- * @file client_mode.h
+ * @file client/main.h
+ * @ingroup client_main
  * @brief ASCII-Chat Client Mode Entry Point Header
  *
  * This header exposes the client mode entry point for the unified binary architecture.

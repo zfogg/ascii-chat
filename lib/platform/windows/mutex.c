@@ -1,9 +1,7 @@
 /**
- * @file mutex.c
- * @brief Windows mutex implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides Windows Critical Section wrappers for the platform abstraction layer,
- * enabling cross-platform mutex synchronization using a unified API.
+ * @file platform/windows/mutex.c
+ * @ingroup platform
+ * @brief 🔒 Windows Critical Section implementation for cross-platform synchronization
  */
 
 #ifdef _WIN32

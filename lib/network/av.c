@@ -1,3 +1,9 @@
+/**
+ * @file network/av.c
+ * @ingroup network
+ * @brief 📹 Audio/video network streaming with frame encoding and packet batching
+ */
+
 #include "av.h"
 #include "network.h"
 #include "packet.h"

@@ -1,0 +1,594 @@
+/**
+ * @defgroup module_server Server
+ * @brief ASCII-Chat server implementation and architecture
+ *
+ * Multi-client real-time video and audio streaming server with per-client threading,
+ * end-to-end encryption, and terminal-aware ASCII rendering.
+ */
+
+/**
+ * @defgroup server_main Server Main Entry Point
+ * @ingroup module_server
+ * @brief Server initialization, signal handling, and connection management
+ */
+
+/**
+ * @defgroup server_client Client Management
+ * @ingroup module_server
+ * @brief Per-client lifecycle management and threading coordination
+ */
+
+/**
+ * @defgroup server_protocol Protocol Handler
+ * @ingroup module_server
+ * @brief Network packet processing and protocol implementation
+ */
+
+/**
+ * @defgroup server_stream Stream Generation
+ * @ingroup module_server
+ * @brief Multi-client video mixing and ASCII frame generation
+ */
+
+/**
+ * @defgroup server_render Render Threads
+ * @ingroup module_server
+ * @brief Per-client rendering threads with rate limiting
+ */
+
+/**
+ * @defgroup server_stats Statistics and Monitoring
+ * @ingroup module_server
+ * @brief Performance monitoring and resource utilization tracking
+ */
+
+/**
+ * @defgroup server_crypto Cryptographic Operations
+ * @ingroup module_server
+ * @brief Per-client cryptographic handshake and session encryption management
+ */
+
+/**
+ * @page topic_server Overview of Server (src/server/*)
+ * @ingroup module_server
+ *
+ * @section server_overview Overview
+ *
+ * The ASCII-Chat server is a high-performance, real-time multi-client system designed for
+ * low-latency video and audio streaming with end-to-end encryption. The server implements
+ * a sophisticated per-client threading architecture that provides linear scalability and
+ * real-time performance guarantees for each connected client.
+ *
+ * **Key Features**:
+ * - **Per-client threading model**: 4 threads per client (receive, send, video render, audio render)
+ * - **Real-time performance**: 60fps video rendering per client, 172fps audio mixing
+ * - **Linear scalability**: Performance scales linearly up to 9+ concurrent clients
+ * - **End-to-end encryption**: Full cryptographic handshake with X25519 key exchange
+ * - **Terminal-aware rendering**: Client-specific ASCII generation based on terminal capabilities
+ * - **Graceful shutdown**: Clean resource cleanup with proper thread coordination
+ *
+ * **Implementation**: src/server/*.c, src/server/*.h
+ *
+ * @section server_architecture Architecture
+ *
+ * @subsection server_threading_model Threading Model
+ *
+ * The server implements a sophisticated per-client threading architecture designed for
+ * real-time media processing with linear scalability:
+ *
+ * **Global Threads**:
+ * - **Main Thread**: Connection acceptance, client lifecycle management, signal handling, coordination
+ * - **Stats Logger Thread**: Performance monitoring and periodic reporting (every 30 seconds)
+ *
+ * **Per-Client Threads** (4 threads per connected client):
+ * 1. **Receive Thread**: Handles incoming packets from client (calls protocol.c functions)
+ * 2. **Send Thread**: Manages outgoing packet delivery using packet queues
+ * 3. **Video Render Thread**: Generates ASCII frames at 60fps (render.c)
+ * 4. **Audio Render Thread**: Mixes audio streams at 172fps (render.c)
+ *
+ * This threading model provides:
+ * - **Linear scalability**: No shared bottlenecks between clients
+ * - **Fault isolation**: One client's issues don't affect others
+ * - **Simplified synchronization**: Each client owns its resources
+ * - **Real-time guarantees**: Each client gets dedicated CPU resources
+ *
+ * For complete details on the concurrency architecture, see
+ * <a href="../notes/CONCURRENCY.md">Concurrency Architecture Documentation</a>.
+ *
+ * @subsection server_modules Server Modules
+ *
+ * The server is organized into modular components:
+ *
+ * @subsubsection server_main Main Entry Point
+ * @ingroup server_main
+ * **File**: src/server/main.c, src/server/main.h
+ *
+ * Server initialization, signal handling, connection management, and overall orchestration.
+ * Handles:
+ * - Socket binding and listening (IPv4 and IPv6)
+ * - Client connection acceptance
+ * - Signal handler setup (SIGINT/SIGTERM)
+ * - Global shutdown coordination
+ * - Resource cleanup
+ *
+ * @subsubsection server_client Client Management
+ * @ingroup server_client
+ * **File**: src/server/client.c, src/server/client.h
+ *
+ * Per-client lifecycle management, threading coordination, and state management.
+ * Handles:
+ * - Client connection establishment (`add_client()`)
+ * - Client disconnection handling (`remove_client()`)
+ * - Thread creation and management per client
+ * - Client state synchronization
+ * - Hash table management for O(1) client lookups
+ *
+ * @subsubsection server_protocol Protocol Handler
+ * @ingroup server_protocol
+ * **File**: src/server/protocol.c, src/server/protocol.h
+ *
+ * Network packet processing and protocol implementation.
+ * Handles:
+ * - Packet parsing and validation
+ * - Client state updates based on received packets
+ * - Media data storage (video frames, audio samples)
+ * - Protocol compliance checking
+ * - Packet type dispatch
+ *
+ * @subsubsection server_stream Stream Generation
+ * @ingroup server_stream
+ * **File**: src/server/stream.c, src/server/stream.h
+ *
+ * Multi-client video mixing, ASCII frame generation, and personalized rendering.
+ * Handles:
+ * - Video frame collection from all active clients
+ * - Composite frame generation (single, 2x2, 3x3 layouts)
+ * - ASCII conversion with terminal capability awareness
+ * - Per-client personalized frame generation
+ * - Buffer pool integration for efficient memory management
+ *
+ * @subsubsection server_render Render Threads
+ * @ingroup server_render
+ * **File**: src/server/render.c, src/server/render.h
+ *
+ * Per-client rendering threads with rate limiting and timing control.
+ * Handles:
+ * - Video render thread management (60fps per client)
+ * - Audio render thread management (172fps per client)
+ * - Frame generation timing and rate limiting
+ * - Thread lifecycle management
+ * - Platform-specific timing integration
+ *
+ * @subsubsection server_stats Statistics and Monitoring
+ * @ingroup server_stats
+ * **File**: src/server/stats.c, src/server/stats.h
+ *
+ * Performance monitoring, resource utilization tracking, and health reporting.
+ * Handles:
+ * - Continuous performance metric collection
+ * - Per-client statistics reporting
+ * - Buffer pool utilization tracking
+ * - Packet queue performance analysis
+ * - Hash table efficiency monitoring
+ * - Periodic statistics logging (every 30 seconds)
+ *
+ * @subsubsection server_crypto Cryptographic Operations
+ * @ingroup server_crypto
+ * **File**: src/server/crypto.c, src/server/crypto.h
+ *
+ * Per-client cryptographic handshake, key exchange, and session encryption management.
+ * Handles:
+ * - Cryptographic handshake with each client
+ * - X25519 key exchange per session
+ * - Session encryption key derivation
+ * - Client authentication (password, SSH key, passwordless)
+ * - Client whitelist integration
+ * - Per-client crypto context management
+ *
+ * For complete details on cryptography, see @ref topic_crypto "Cryptography Module".
+ * For handshake protocol details, see @ref topic_handshake "Handshake Protocol".
+ *
+ * @section server_concurrency Concurrency Architecture
+ *
+ * @subsection server_synchronization Synchronization Primitives
+ *
+ * The server uses a carefully designed synchronization architecture to ensure thread safety
+ * while maintaining high performance. See <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
+ * for complete details on:
+ *
+ * - **Global RWLock** (`g_client_manager_rwlock`): Protects global client array
+ * - **Per-Client Mutexes**: Fine-grained locking for client state
+ * - **Atomic Variables**: Lock-free thread control flags
+ * - **Condition Variables**: Thread wakeup during shutdown
+ *
+ * @subsection server_lock_ordering Lock Ordering Protocol
+ *
+ * **CRITICAL RULE**: Always acquire locks in this order to prevent deadlocks:
+ * 1. **Global RWLock** (`g_client_manager_rwlock`)
+ * 2. **Per-Client Mutex** (`client_state_mutex`)
+ * 3. **Specialized Mutexes** (`video_buffer_mutex`, `g_stats_mutex`, etc.)
+ *
+ * This ordering is enforced throughout the codebase. Violations can cause deadlocks.
+ * See <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a> for detailed examples and rationale.
+ *
+ * @subsection server_snapshot_pattern Snapshot Pattern
+ *
+ * All client state access uses the snapshot pattern to minimize lock holding time:
+ *
+ * @code{.c}
+ * // 1. Acquire mutex
+ * mutex_lock(&client->client_state_mutex);
+ *
+ * // 2. Copy needed state to local variables
+ * bool should_continue = client->video_render_thread_running && client->active;
+ * uint32_t client_id_snapshot = client->client_id;
+ * unsigned short width_snapshot = client->width;
+ * unsigned short height_snapshot = client->height;
+ *
+ * // 3. Release mutex immediately
+ * mutex_unlock(&client->client_state_mutex);
+ *
+ * // 4. Process using local copies (no locks held)
+ * if (should_continue) {
+ *   generate_frame(client_id_snapshot, width_snapshot, height_snapshot);
+ * }
+ * @endcode
+ *
+ * This pattern ensures minimal lock contention and prevents blocking render threads.
+ *
+ * @section server_cryptography Cryptographic Operations
+ *
+ * The server supports end-to-end encryption with multiple authentication modes.
+ * See @ref topic_crypto "Cryptography Module" for algorithm details and
+ * @ref topic_handshake "Handshake Protocol" for connection establishment.
+ *
+ * @subsection server_crypto_handshake Cryptographic Handshake
+ *
+ * Each client connection performs a cryptographic handshake before media streaming begins:
+ *
+ * **Phase 0: Algorithm Negotiation**
+ * - Client advertises supported algorithms
+ * - Server selects compatible algorithms
+ * - Both agree on key exchange, cipher, and authentication methods
+ *
+ * **Phase 1: Key Exchange**
+ * - Server generates ephemeral X25519 keypair
+ * - Client generates ephemeral X25519 keypair
+ * - Both exchange public keys and compute shared secret via ECDH
+ *
+ * **Phase 2: Authentication**
+ * - Server verifies client identity (if whitelist enabled)
+ * - Server signs challenge with Ed25519 identity key (if available)
+ * - Client proves identity with password or SSH key
+ *
+ * **Phase 3: Session Establishment**
+ * - Both derive session encryption keys from shared secret
+ * - All subsequent packets are encrypted with XSalsa20-Poly1305
+ * - Perfect forward secrecy (ephemeral keys per session)
+ *
+ * @subsection server_crypto_keys Key Management
+ *
+ * The server supports multiple key management approaches:
+ *
+ * **SSH Key Authentication**:
+ * - Server loads Ed25519 private key (via `--server-key`)
+ * - Server verifies client public keys against whitelist (via `--client-keys`)
+ * - Keys must be Ed25519 format (modern, secure, fast)
+ * - **Technical Dependency**: Requires `ssh-keygen` for encrypted key decryption
+ *   (currently uses `ssh-keygen -q -p` to decrypt passphrase-protected keys)
+ *
+ * **Password Authentication**:
+ * - Both server and client derive same key from shared password
+ * - Uses Argon2id key derivation for password hashing
+ * - No identity keys required (password-only mode)
+ *
+ * **Passwordless Mode**:
+ * - Ephemeral keys only (no long-term identity)
+ * - Key exchange provides confidentiality but not authentication
+ * - Suitable for trusted networks or testing
+ *
+ * For complete key management details, see @ref topic_keys "Key Management".
+ *
+ * @section server_statistics Statistics Logger Thread
+ *
+ * The stats logger thread (`stats_logger_thread()` in stats.c) provides continuous
+ * performance monitoring and resource utilization tracking.
+ *
+ * @subsection server_stats_functionality Statistics Functionality
+ *
+ * **Monitoring Frequency**:
+ * - Statistics collected every 30 seconds
+ * - Thread checks shutdown flag every 10ms for responsive shutdown
+ * - Background processing doesn't affect real-time performance
+ *
+ * **Metrics Collected**:
+ * - Active client count
+ * - Clients with audio capabilities
+ * - Clients with video capabilities
+ * - Per-client packet queue statistics (enqueued, dequeued, dropped)
+ * - Per-client video buffer statistics (total frames, dropped frames, drop rate)
+ * - Buffer pool utilization (global allocation/deallocation rates)
+ * - Lock debugging statistics (mutex/RWLock acquisitions, releases, currently held)
+ * - Hash table efficiency metrics
+ *
+ * **Statistics Output**:
+ * The stats logger generates comprehensive performance reports with per-client details:
+ * ```
+ * Stats: Clients: 3, Audio: 2, Video: 3
+ *   Client 1 audio queue: 1024 enqueued, 1024 dequeued, 0 dropped
+ *   Client 1 video buffer: 1800 frames, 12 dropped (0.7% drop rate)
+ *   Client 2 audio queue: 512 enqueued, 512 dequeued, 0 dropped
+ *   ...
+ * ```
+ *
+ * **Thread Safety**:
+ * - Uses reader locks on shared data structures
+ * - Takes atomic snapshots of volatile counters
+ * - Minimal impact on operational performance
+ * - Safe concurrent access with render threads
+ *
+ * @subsection server_stats_debugging Debug Output
+ *
+ * The stats logger thread includes extensive debug instrumentation for troubleshooting:
+ * - Thread startup/shutdown logging
+ * - Loop iteration counters
+ * - Shutdown flag state changes
+ * - Sleep cycle progression
+ * - Statistics collection timing
+ *
+ * Debug output is enabled via logging system configuration. See @ref topic_logging
+ * "Logging System" for details.
+ *
+ * @section server_error_handling Error Handling
+ *
+ * The server implements comprehensive error handling throughout all modules.
+ * See @ref ERRNO_SYSTEM "Error Number System" for complete error handling details.
+ *
+ * @subsection server_error_patterns Error Handling Patterns
+ *
+ * **Library Code** (server modules):
+ * - Use `SET_ERRNO()` macros for error reporting
+ * - Provide meaningful context messages
+ * - Capture system errors with `SET_ERRNO_SYS()`
+ * - Return appropriate error codes
+ *
+ * **Application Code** (main.c):
+ * - Check for library errors with `HAS_ERRNO()`
+ * - Use `FATAL()` macros for fatal errors
+ * - Use `FATAL_AUTO_CONTEXT()` for automatic context detection
+ * - Log errors with full context before shutdown
+ *
+ * @subsection server_fatal_errors Fatal Errors
+ *
+ * The server uses `FATAL()` macros to terminate the server on critical errors:
+ *
+ * - **Network errors**: Socket creation, binding, listening failures
+ * - **Cryptographic errors**: Key loading failures, handshake failures
+ * - **Memory errors**: Critical allocation failures
+ * - **Configuration errors**: Invalid command-line options, missing dependencies
+ *
+ * All fatal errors include full context including file, line, function, and error message.
+ * See @ref docs/EXIT_CODES.md "Exit Codes" for complete exit code reference.
+ *
+ * @subsection server_non_fatal_errors Non-Fatal Errors
+ *
+ * Many errors are handled gracefully without server termination:
+ *
+ * - **Client connection errors**: Individual client failures don't crash server
+ * - **Packet parsing errors**: Invalid packets logged but client not disconnected
+ * - **Buffer allocation errors**: Frame dropping instead of crash
+ * - **Network timeouts**: Connection retry logic instead of termination
+ *
+ * @section server_shutdown Shutdown and Exit
+ *
+ * The server implements graceful shutdown with proper resource cleanup.
+ *
+ * @subsection server_shutdown_sequence Shutdown Sequence
+ *
+ * **1. Shutdown Signal** (SIGINT/SIGTERM handler):
+ * - Sets atomic `g_server_should_exit` flag (signal-safe)
+ * - Closes listening sockets to interrupt `accept()` calls
+ * - Returns immediately (no complex cleanup in signal handler)
+ *
+ * **2. Main Thread Detection**:
+ * - Main loop detects `g_server_should_exit` flag
+ * - Stops accepting new connections
+ * - Initiates client cleanup sequence
+ *
+ * **3. Client Cleanup** (per client, in `remove_client()`):
+ * - Sets thread shutdown flags (atomic operations)
+ * - Shuts down packet queues (wakes up blocked threads)
+ * - Joins threads in order: send → receive → video render → audio render
+ * - Cleans up resources: queues, buffers, mutexes
+ * - Closes client sockets
+ *
+ * **4. Statistics Thread Cleanup**:
+ * - Statistics thread detects shutdown flag
+ * - Exits monitoring loop gracefully
+ * - Logs final statistics report
+ * - Thread joined by main thread
+ *
+ * **5. Resource Cleanup**:
+ * - Closes remaining sockets
+ * - Destroys synchronization primitives
+ * - Frees global buffers
+ * - Logs final shutdown message
+ *
+ * @subsection server_exit_codes Exit Codes
+ *
+ * The server exits with specific codes to indicate status:
+ * - **0**: Normal shutdown (graceful termination)
+ * - **1**: Fatal error or forced termination (double Ctrl+C)
+ * - **Error codes**: See @ref docs/EXIT_CODES.md "Exit Codes" for complete reference
+ *
+ * Exit codes are set via `FATAL()` macros or explicit `exit()` calls.
+ *
+ * @section server_quirks Known Quirks and Limitations
+ *
+ * @subsection server_ssh_keygen_dependency SSH Keygen Dependency
+ *
+ * **Current Limitation**: The server currently depends on `ssh-keygen` being available
+ * in the system PATH for decrypting passphrase-protected SSH keys.
+ *
+ * **Why**: When loading encrypted Ed25519 private keys (with `--server-key`), the server
+ * uses `ssh-keygen -q -p` to decrypt the key because:
+ * - OpenSSH private key format is complex to parse directly
+ * - `ssh-keygen` provides robust password validation
+ * - Safer approach than implementing custom OpenSSH key parser
+ *
+ * **Workaround**: 
+ * - Use passwordless keys (no passphrase): `ssh-keygen -t ed25519 -N ""`
+ * - Use `--no-encrypt` flag to disable encryption (testing only)
+ * - Ensure `ssh-keygen` is in PATH (typically included with SSH installations)
+ *
+ * **Future**: May implement native OpenSSH key parsing to remove this dependency.
+ * See `lib/crypto/keys/ssh_keys.c:707-1022` for implementation details.
+ *
+ * @subsection server_stats_thread_behavior Stats Logger Thread Behavior
+ *
+ * The stats logger thread (`stats_logger_thread()` in stats.c) has specific behavior
+ * characteristics:
+ *
+ * **30-Second Intervals**:
+ * - Statistics are collected and logged every 30 seconds
+ * - Thread sleeps in 10ms increments to maintain shutdown responsiveness
+ * - Shutdown flag is checked frequently (every 10ms) during sleep periods
+ *
+ * **Per-Client Details**:
+ * - Only logs per-client details if clients have active queues or buffers
+ * - Filters out empty/zero statistics to reduce log spam
+ * - Format: `Client N audio queue: X enqueued, Y dequeued, Z dropped`
+ *
+ * **Lock Debug Integration**:
+ * - Integrates with lock debugging system for mutex/RWLock statistics
+ * - Reports total locks acquired/released and currently held count
+ * - Helps identify lock contention issues
+ *
+ * **Final Statistics Report**:
+ * - Logs final server statistics on thread exit
+ * - Prints error statistics summary
+ * - Helps diagnose issues during shutdown
+ *
+ * @subsection server_double_ctrl_c Double Ctrl+C Behavior
+ *
+ * **Historical Issue**: Previously required double Ctrl+C to shutdown (fixed).
+ *
+ * **Root Cause**: Signal handler was accessing shared client data structures without
+ * proper synchronization, causing race conditions and incomplete shutdown.
+ *
+ * **Current Behavior** (after fix):
+ * - Single Ctrl+C properly shuts down server
+ * - Signal handler is signal-safe (only sets flags, no data structure access)
+ * - Main thread handles all cleanup with proper synchronization
+ *
+ * See <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a> Bug #1 for complete fix details.
+ *
+ * @subsection server_max_clients Client Limits
+ *
+ * **Current Limitation**: Server supports up to `MAX_CLIENTS` concurrent connections
+ * (defined in client.h). Default is typically 64 clients.
+ *
+ * **Why**: Client array is statically allocated for performance (no dynamic allocation).
+ * - Faster client lookups (O(1) array access)
+ * - No allocation overhead per connection
+ * - Predictable memory usage
+ *
+ * **Scaling**: Server scales linearly up to 9+ clients in testing. Actual capacity
+ * depends on:
+ * - CPU cores available
+ * - Memory bandwidth
+ * - Network bandwidth
+ * - Client frame rates and resolutions
+ *
+ * @subsection server_frame_dropping Frame Dropping Under Load
+ *
+ * **Behavior**: Server aggressively drops frames under load to maintain real-time
+ * performance. This is by design for real-time streaming.
+ *
+ * **Why**: Better to drop frames than delay all frames (real-time requirement).
+ * - Always uses latest available frame
+ * - Logarithmic drop rate based on buffer occupancy
+ * - Maintains frame rate under load
+ *
+ * **Impact**: Clients may see frame rate reduction under heavy load, but latency
+ * remains low (no frame buffering delays).
+ *
+ * @section server_integration Integration with Library Modules
+ *
+ * The server integrates with many library modules:
+ *
+ * - **Network I/O** (@ref topic_network "Network Module"): Socket operations, packet protocol
+ * - **Cryptography** (@ref topic_crypto "Crypto Module"): Handshake, encryption, key management
+ * - **Video Processing** (@ref topic_image2ascii "Image to ASCII"): RGB to ASCII conversion
+ * - **Audio Processing** (@ref topic_audio "Audio Module"): Audio mixing and playback
+ * - **Buffer Management** (@ref topic_buffer_pool "Buffer Pool"): Efficient memory allocation
+ * - **Packet Queues** (@ref topic_packet_queue "Packet Queue"): Thread-safe packet delivery
+ * - **Logging** (@ref topic_logging "Logging System"): Structured logging with levels
+ * - **Error Handling** (@ref ERRNO_SYSTEM "Error System"): Typed error codes and context
+ * - **Platform Abstraction** (@ref topic_platform "Platform Layer"): Cross-platform threading/sockets
+ *
+ * @section server_performance Performance Characteristics
+ *
+ * **Linear Scaling**:
+ * - Performance scales linearly with number of clients
+ * - No shared bottlenecks between clients
+ * - Each client gets dedicated CPU resources
+ * - Real-time guarantees maintained per client
+ *
+ * **Frame Rates**:
+ * - Video: 60fps per client (16.67ms intervals)
+ * - Audio: 172fps per client (5.8ms intervals)
+ * - Frame rate maintained under normal load
+ * - Frame dropping prevents latency accumulation under heavy load
+ *
+ * **Memory Usage**:
+ * - Per-client memory: ~1-2 MB per client (buffers, queues, state)
+ * - Buffer pool: Shared pool reduces allocation overhead
+ * - Scales linearly with number of clients
+ *
+ * **CPU Usage**:
+ * - Video rendering: ~10-20% CPU per client (depends on resolution)
+ * - Audio mixing: ~1-2% CPU per client
+ * - Network I/O: Minimal CPU (kernel handles most work)
+ * - Statistics: Negligible (<1% CPU)
+ *
+ * @section server_best_practices Best Practices
+ *
+ * **Thread Safety**:
+ * - Always follow lock ordering protocol (global → per-client)
+ * - Use snapshot pattern for client state access
+ * - Minimize lock holding time
+ * - Use atomic operations for simple flags
+ *
+ * **Error Handling**:
+ * - Always check return values from network operations
+ * - Use `SET_ERRNO()` macros in library code
+ * - Use `FATAL()` macros for fatal errors in main code
+ * - Provide meaningful error context
+ *
+ * **Performance**:
+ * - Minimize allocations in hot paths (use buffer pools)
+ * - Avoid unnecessary lock contention
+ * - Use lock-free data structures where possible
+ * - Profile lock contention with lock debugging system
+ *
+ * **Shutdown**:
+ * - Always set shutdown flags before joining threads
+ * - Join threads in proper order (send → receive → render)
+ * - Check shutdown flags frequently in loops
+ * - Use interruptible sleep operations
+ *
+ * @see src/server/main.c For server entry point and initialization
+ * @see src/server/client.c For client lifecycle management
+ * @see src/server/protocol.c For packet processing
+ * @see src/server/stream.c For video mixing and ASCII generation
+ * @see src/server/render.c For rendering threads
+ * @see src/server/stats.c For performance monitoring
+ * @see src/server/crypto.c For cryptographic operations
+ * @see <a href="../notes/CONCURRENCY.md">CONCURRENCY.md</a> For complete concurrency architecture
+ * @see topic_crypto For cryptography details
+ * @see topic_handshake For handshake protocol details
+ * @see topic_keys For key management details
+ * @see topic_network For network I/O details
+ */
+

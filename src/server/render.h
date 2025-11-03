@@ -1,3 +1,8 @@
+/**
+ * @file server/render.h
+ * @ingroup server_render
+ * @brief Per-client rendering threads with rate limiting
+ */
 #pragma once
 
 #include "client.h"

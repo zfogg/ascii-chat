@@ -1,3 +1,9 @@
+/**
+ * @file util/path.c
+ * @ingroup util
+ * @brief 📂 Cross-platform path manipulation with normalization and Windows/Unix separator handling
+ */
+
 #include "path.h"
 #include "common.h"
 #include <string.h>

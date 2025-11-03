@@ -1,9 +1,7 @@
 /**
- * @file rwlock.c
- * @brief POSIX read-write lock implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides POSIX pthread read-write lock wrappers for the platform abstraction layer,
- * enabling cross-platform reader-writer synchronization using a unified API.
+ * @file platform/posix/rwlock.c
+ * @ingroup platform
+ * @brief 🔓 POSIX pthread read-write lock implementation for multi-reader/single-writer synchronization
  */
 
 #ifndef _WIN32

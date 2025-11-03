@@ -2,7 +2,7 @@
 
 /**
  * @file crypto/keys/gpg_keys.h
- * @ingroup crypto
+ * @ingroup keys
  * @brief GPG key parsing and validation functions
  *
  * This module handles GPG key parsing, validation, and conversion
@@ -63,7 +63,7 @@
  * @warning Key format: Only Ed25519 GPG keys are supported.
  *          RSA/ECDSA GPG keys will return error.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out);
 
@@ -88,7 +88,7 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out)
  *
  * @warning GPG support is currently disabled. Function will not work until implemented.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key_size, public_key_t *key_out);
 
@@ -108,7 +108,7 @@ asciichat_error_t parse_gpg_key_binary(const uint8_t *gpg_key_binary, size_t key
  *
  * @warning GPG support is currently disabled. Function may not work until GPG support is re-enabled.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t validate_gpg_key_format(const char *gpg_key_text);
 
@@ -131,7 +131,7 @@ asciichat_error_t validate_gpg_key_format(const char *gpg_key_text);
  *
  * @warning GPG support is currently disabled. Function will not work until implemented.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed25519_pk[32]);
 
@@ -154,7 +154,7 @@ asciichat_error_t extract_ed25519_from_gpg(const char *gpg_key_text, uint8_t ed2
  * @warning GPG support is currently disabled. Function depends on extract_ed25519_from_gpg()
  *          which is not yet implemented. Function will not work until GPG support is re-enabled.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_pk[32]);
 
@@ -185,7 +185,7 @@ asciichat_error_t gpg_to_x25519_public(const char *gpg_key_text, uint8_t x25519_
  *
  * @warning GPG support is currently disabled. Function will not work until implemented.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerprint_out[20]);
 
@@ -209,7 +209,7 @@ asciichat_error_t get_gpg_fingerprint(const char *gpg_key_text, uint8_t fingerpr
  *
  * @warning GPG support is currently disabled. Function will not work until implemented.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]);
 
@@ -233,7 +233,7 @@ asciichat_error_t get_gpg_key_id(const char *gpg_key_text, uint8_t key_id_out[8]
  *
  * @warning GPG support is currently disabled. Function will not work until implemented.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expired);
 
@@ -264,7 +264,7 @@ asciichat_error_t check_gpg_key_expiry(const char *gpg_key_text, bool *is_expire
  * @warning GPG support is currently disabled. Function depends on get_gpg_key_id()
  *          which is not yet implemented. Falls back to generic message if extraction fails.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output, size_t output_size);
 
@@ -285,7 +285,7 @@ asciichat_error_t format_gpg_key_display(const char *gpg_key_text, char *output,
  *
  * @warning GPG support is currently disabled. Function may not work until GPG support is re-enabled.
  *
- * @ingroup crypto
+ * @ingroup keys
  */
 asciichat_error_t extract_gpg_key_comment(const char *gpg_key_text, char *comment_out, size_t comment_size);
 

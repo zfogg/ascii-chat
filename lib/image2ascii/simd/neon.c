@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/neon.c
+ * @ingroup image2ascii
+ * @brief ⚡ ARM NEON-accelerated ASCII rendering with 128-bit vector operations for ARM64
+ */
+
 #if SIMD_SUPPORT_NEON
 #include <stdio.h>
 #include <stdlib.h>

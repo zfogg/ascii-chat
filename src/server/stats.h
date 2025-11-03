@@ -1,8 +1,8 @@
 #pragma once
 
 /**
- * @file stats.h
- * @ingroup server
+ * @file server/stats.h
+ * @ingroup server_stats
  * @brief Server performance statistics tracking
  *
  * This header provides server-side performance statistics tracking including
@@ -42,7 +42,7 @@
  * @note Rates (avg_capture_fps, avg_send_fps) are calculated over time windows.
  * @note Frame drop rate = frames_dropped / frames_captured (when frames_captured > 0)
  *
- * @ingroup server
+ * @ingroup server_stats
  */
 typedef struct {
   uint64_t frames_captured;

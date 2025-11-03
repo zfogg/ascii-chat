@@ -1,5 +1,6 @@
 /**
- * @file server_mode.h
+ * @file server/main.h
+ * @ingroup server_main
  * @brief ASCII-Chat Server Mode Entry Point Header
  *
  * This header exposes the server mode entry point for the unified binary architecture.

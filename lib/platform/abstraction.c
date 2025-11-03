@@ -1,3 +1,10 @@
+
+/**
+ * @file platform/abstraction.c
+ * @ingroup platform
+ * @brief 🏗️ Common platform abstraction stubs (OS-specific code in posix/ and windows/ subdirectories)
+ */
+
 // ============================================================================
 // Common Platform Functions
 // ============================================================================

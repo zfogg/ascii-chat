@@ -142,7 +142,7 @@
  * platform implementation files. Application code should NOT use this
  * macro - use the unified API instead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PLATFORM_WINDOWS 1
 
@@ -152,7 +152,7 @@
  * platform implementation files. Application code should NOT use this
  * macro - use the unified API instead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PLATFORM_POSIX 0
 #else
@@ -192,7 +192,7 @@
  * // sizeof(packed_struct_t) == 3 (not 4 with padding)
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PACKED_STRUCT_BEGIN __pragma(pack(push, 1))
 
@@ -201,7 +201,7 @@
  * Use this macro after a structure definition to restore default packing.
  * Must be paired with PACKED_STRUCT_BEGIN before the structure.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PACKED_STRUCT_END __pragma(pack(pop))
 
@@ -210,7 +210,7 @@
  * On Windows, packing is handled by PACKED_STRUCT_BEGIN/END macros.
  * This macro is provided for compatibility but is a no-op.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PACKED_ATTR
 
@@ -224,7 +224,7 @@
  * ALIGNED_ATTR(32) uint8_t buffer[1024];  // 32-byte aligned
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_ATTR(x) __declspec(align(x))
 #else
@@ -247,14 +247,14 @@
  * } PACKED_ATTR packed_struct_t;
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PACKED_ATTR __attribute__((packed))
 
 /** @brief Memory alignment attribute (POSIX: __attribute__((aligned)))
  * @param x Alignment in bytes (must be power of 2)
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_ATTR(x) __attribute__((aligned(x)))
 #endif
@@ -312,7 +312,7 @@
  *
  * @note Thread-local variables are initialized once per thread on first access.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define THREAD_LOCAL __declspec(thread)
 
@@ -321,7 +321,7 @@
  * Aligns a variable or structure member to 32-byte boundary. Useful for
  * SIMD operations (AVX/AVX2 require 32-byte alignment).
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_32 __declspec(align(32))
 
@@ -330,24 +330,24 @@
  * Aligns a variable or structure member to 16-byte boundary. Useful for
  * SIMD operations (SSE requires 16-byte alignment).
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_16 __declspec(align(16))
 #else
 // Clang on Windows
 /** @brief Thread-local storage keyword (Clang/GCC: __thread)
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define THREAD_LOCAL __thread
 /** @brief 32-byte alignment macro (Clang/GCC: __attribute__((aligned(32))))
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_32 __attribute__((aligned(32)))
 /** @brief 16-byte alignment macro (Clang/GCC: __attribute__((aligned(16))))
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_16 __attribute__((aligned(16)))
 #endif
@@ -356,17 +356,17 @@
 #ifndef THREAD_LOCAL
 /** @brief Thread-local storage keyword (POSIX: __thread)
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define THREAD_LOCAL __thread
 /** @brief 32-byte alignment macro (POSIX: __attribute__((aligned(32))))
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_32 __attribute__((aligned(32)))
 /** @brief 16-byte alignment macro (POSIX: __attribute__((aligned(16))))
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define ALIGNED_16 __attribute__((aligned(16)))
 #endif
@@ -396,7 +396,7 @@
  * @note This is the legacy Windows path limit. Modern Windows supports longer
  *       paths with the \\?\ prefix.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define PATH_MAX 260
 #endif
@@ -430,7 +430,7 @@
  * Signal constant for broken pipe errors. On POSIX, this signal is sent
  * when writing to a pipe with no readers. On Windows, defined for compatibility.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define SIGPIPE 13
 #endif
@@ -449,7 +449,7 @@
  *
  * Type for pollfd array sizes. On Windows, defined as unsigned long.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 typedef unsigned long nfds_t;
 
@@ -468,7 +468,7 @@ typedef unsigned long nfds_t;
  *
  * Windows-specific socket IO control code for setting TCP keepalive parameters.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define SIO_KEEPALIVE_VALS _WSAIOW(IOC_VENDOR, 4)
 #endif
@@ -489,7 +489,7 @@ typedef unsigned long nfds_t;
  * On Windows, provides POSIX write() by aliasing to _write().
  * Application code should use platform_write() instead.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define write _write
 #endif
@@ -502,34 +502,34 @@ typedef unsigned long nfds_t;
 // POSIX function aliases for Windows
 /** @brief Close function alias (Windows: _close) - Use platform functions instead
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define close _close
 /** @brief Lseek function alias (Windows: _lseek) - Use platform functions instead
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define lseek _lseek
 /** @brief Read function alias (Windows: _read) - Use platform functions instead
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define read _read
 /** @brief Unlink function alias (Windows: _unlink) - Use platform functions instead
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define unlink _unlink
 
 // Additional POSIX function aliases for Windows
 /** @brief Isatty function alias (Windows: _isatty) - Use platform_isatty() instead
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define isatty _isatty
 /** @brief Getpid function alias (Windows: _getpid) - Use platform_get_pid() instead
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define getpid _getpid
 
@@ -551,7 +551,7 @@ typedef unsigned long nfds_t;
  * @note Alignment must be a power of 2.
  * @note Size must be a multiple of alignment.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void *aligned_alloc(size_t alignment, size_t size);
 
@@ -564,7 +564,7 @@ void *aligned_alloc(size_t alignment, size_t size);
  * Provides POSIX clock_gettime() on Windows. Supports CLOCK_REALTIME and
  * CLOCK_MONOTONIC clock IDs.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 int clock_gettime(int clk_id, struct timespec *tp);
 
@@ -577,7 +577,7 @@ int clock_gettime(int clk_id, struct timespec *tp);
  * Provides POSIX gmtime_r() on Windows. Thread-safe version of gmtime()
  * that writes to the provided result structure instead of a static buffer.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 struct tm *gmtime_r(const time_t *timep, struct tm *result);
 
@@ -589,7 +589,7 @@ struct tm *gmtime_r(const time_t *timep, struct tm *result);
  * Type definition for microsecond values. Provided for compatibility with
  * POSIX code that uses useconds_t.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 typedef unsigned int useconds_t;
 
@@ -606,7 +606,7 @@ typedef unsigned int useconds_t;
  * is called. On Windows, this concept doesn't apply (no exec()), so it's
  * always 0.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define O_CLOEXEC 0
 #endif
@@ -619,7 +619,7 @@ typedef unsigned int useconds_t;
  * Clock ID for system-wide realtime clock. Provided for compatibility
  * with POSIX code using clock_gettime().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define CLOCK_REALTIME 0
 #ifndef CLOCK_MONOTONIC
@@ -628,7 +628,7 @@ typedef unsigned int useconds_t;
  * Clock ID for monotonic clock (not affected by system time changes).
  * Provided for compatibility with POSIX code using clock_gettime().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #define CLOCK_MONOTONIC 1
 #endif
@@ -667,7 +667,7 @@ typedef unsigned int useconds_t;
  * platform_sleep_usec(1000);  // Sleep for 1000 microseconds (1 millisecond)
  * @endcode
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 void platform_sleep_usec(unsigned int usec);
 
@@ -684,7 +684,7 @@ void platform_sleep_usec(unsigned int usec);
  * @note On Windows, automatically handles line ending conversion if needed.
  * @note On POSIX, equivalent to standard write().
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 ssize_t platform_write(int fd, const void *buf, size_t count);
 
@@ -717,7 +717,7 @@ ssize_t platform_write(int fd, const void *buf, size_t count);
  * @note This macro casts the parameter to void, which effectively tells the
  *       compiler that the parameter is intentionally unused.
  *
- * @ingroup platform
+ * @ingroup module_platform
  */
 #ifndef UNUSED
 #define UNUSED(x) ((void)(x))

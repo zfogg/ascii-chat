@@ -1,9 +1,7 @@
 /**
  * @file platform/windows/string.c
- * @brief Windows implementation of safe string functions
- *
- * This file provides Windows implementations of safe string functions
- * that satisfy clang-tidy cert-err33-c requirements.
+ * @ingroup platform
+ * @brief 🔤 Windows Secure CRT string functions satisfying clang-tidy cert-err33-c requirements
  *
  * IMPORTANT: This file uses Windows Secure CRT functions (strcpy_s, strcat_s,
  * etc.) which are ALWAYS available on Windows with MSVC or Clang, regardless

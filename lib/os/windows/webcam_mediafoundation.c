@@ -1,3 +1,9 @@
+/**
+ * @file os/windows/webcam_mediafoundation.c
+ * @ingroup os
+ * @brief 📷 Windows Media Foundation webcam capture with hardware acceleration support
+ */
+
 #ifdef _WIN32
 
 #define COBJMACROS

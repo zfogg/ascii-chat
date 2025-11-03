@@ -1,9 +1,7 @@
 /**
- * @file rwlock.c
- * @brief Windows read-write lock implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides Windows SRW Lock wrappers for the platform abstraction layer,
- * enabling cross-platform reader-writer synchronization using a unified API.
+ * @file platform/windows/rwlock.c
+ * @ingroup platform
+ * @brief 🔓 Windows SRW Lock implementation for multi-reader/single-writer synchronization
  */
 
 #ifdef _WIN32

@@ -2,7 +2,7 @@
 
 /**
  * @file platform/internal.h
- * @ingroup platform
+ * @ingroup module_platform
  * @brief Internal implementation helpers for platform abstraction layer
  *
  * This header contains internal helpers and macros used by the platform

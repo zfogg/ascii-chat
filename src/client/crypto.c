@@ -1,13 +1,7 @@
 /**
- * @file crypto.c
- * @brief Client-Side Cryptographic Handshake and Encryption Management
- *
- * This module implements the client-side cryptographic handshake process and
- * provides encryption/decryption functions for secure communication with the
- * server. It integrates the crypto handshake into the client connection flow,
- * performing authentication and key exchange after TCP connection establishment
- * but before sending application data.
- *
+ * @file client/crypto.c
+ * @ingroup client_crypto
+ * @brief 🔐 Client cryptography: handshake integration, X25519 key exchange, and per-session encryption
  * CORE RESPONSIBILITIES:
  * ======================
  * 1. Initialize client crypto context with authentication credentials
@@ -181,6 +175,8 @@ static bool g_crypto_initialized = false;
  * Initialize client crypto handshake
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
@@ -315,6 +311,8 @@ int client_crypto_init(void) {
  *
  * @param socket Connected socket to server
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int client_crypto_handshake(socket_t socket) {
   // If client has --no-encrypt, skip handshake entirely
@@ -560,6 +558,8 @@ int client_crypto_handshake(socket_t socket) {
  * Check if crypto handshake is ready
  *
  * @return true if encryption is ready, false otherwise
+ *
+ * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
   if (!g_crypto_initialized || opt_no_encrypt) {
@@ -573,6 +573,8 @@ bool crypto_client_is_ready(void) {
  * Get crypto context for encryption/decryption
  *
  * @return crypto context or NULL if not ready
+ *
+ * @ingroup client_crypto
  */
 const crypto_context_t *crypto_client_get_context(void) {
   if (!crypto_client_is_ready()) {
@@ -591,6 +593,8 @@ const crypto_context_t *crypto_client_get_context(void) {
  * @param ciphertext_size Size of output buffer
  * @param ciphertext_len Output length of encrypted data
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext,
                                  size_t ciphertext_size, size_t *ciphertext_len) {
@@ -607,6 +611,8 @@ int crypto_client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len,
  * @param plaintext_size Size of output buffer
  * @param plaintext_len Output length of decrypted data
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
                                  size_t plaintext_size, size_t *plaintext_len) {
@@ -616,6 +622,8 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 
 /**
  * Cleanup crypto client resources
+ *
+ * @ingroup client_crypto
  */
 void crypto_client_cleanup(void) {
   if (g_crypto_initialized) {
@@ -633,6 +641,8 @@ void crypto_client_cleanup(void) {
  * Check if session rekeying should be triggered
  *
  * @return true if rekey should be initiated, false otherwise
+ *
+ * @ingroup client_crypto
  */
 bool crypto_client_should_rekey(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -645,6 +655,8 @@ bool crypto_client_should_rekey(void) {
  * Initiate session rekeying (client-initiated)
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_initiate_rekey(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -675,6 +687,8 @@ int crypto_client_initiate_rekey(void) {
  * @param packet Packet data
  * @param packet_len Packet length
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -695,6 +709,8 @@ int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len
  * Send REKEY_RESPONSE packet to server
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_send_rekey_response(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -723,6 +739,8 @@ int crypto_client_send_rekey_response(void) {
  * @param packet Packet data
  * @param packet_len Packet length
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_len) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -743,6 +761,8 @@ int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_le
  * Send REKEY_COMPLETE packet to server and commit to new key
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_send_rekey_complete(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {

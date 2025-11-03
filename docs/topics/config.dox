@@ -1,6 +1,6 @@
 /**
  * @page topic_config Configuration
- * @ingroup options
+ * @ingroup module_core
  *
  * Command-line argument parsing and TOML-based configuration file management for flexible
  * server and client setup.

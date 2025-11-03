@@ -1,11 +1,7 @@
 /**
  * @file config.c
  * @ingroup options
- * @brief TOML configuration file loading and validation implementation
- *
- * This file implements the configuration loading functionality for ASCII-Chat.
- * It parses TOML configuration files and applies validated values to global
- * options, with command-line arguments taking precedence.
+ * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
 #include "config.h"

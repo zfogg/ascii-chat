@@ -2,7 +2,7 @@
 
 /**
  * @file config.h
- * @ingroup options
+ * @ingroup module_core
  * @brief TOML configuration file support for ASCII-Chat
  *
  * This module provides functionality for loading configuration from TOML files
@@ -96,7 +96,7 @@
  * @warning Configuration warnings are printed directly to stderr because logging
  *          may not be initialized yet when this function is called.
  *
- * @ingroup options
+ * @ingroup module_core
  */
 asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict);
 
@@ -117,6 +117,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
  * @note The function will create the directory structure if needed.
  * @note If the file already exists, it will not be overwritten (returns error).
  *
- * @ingroup options
+ * @ingroup module_core
  */
 asciichat_error_t config_create_default(const char *config_path);

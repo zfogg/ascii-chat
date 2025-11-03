@@ -1,5 +1,11 @@
 /**
- * @page topic_debug Debugging Utilities
+ * @defgroup debug_util Debugging Overview
+ * @ingroup module_development
+ * @brief Tools to help you figure out what's going on with the code.
+ */
+
+/**
+ * @page topic_debug Debug README
  * @ingroup debug_util
  *
  * @section debug_overview Overview

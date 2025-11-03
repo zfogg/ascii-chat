@@ -1,9 +1,7 @@
 /**
- * @file thread.c
- * @brief Windows thread implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides Windows Threading API wrappers for the platform abstraction layer,
- * enabling cross-platform thread management using a unified API.
+ * @file platform/windows/thread.c
+ * @ingroup platform
+ * @brief 🧵 Windows threading API implementation for cross-platform thread management
  */
 
 #ifdef _WIN32

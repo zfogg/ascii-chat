@@ -1,12 +1,7 @@
 /**
  * @file platform/posix/string.c
- * @brief POSIX implementation of safe string functions
- *
- * This file provides POSIX implementations of safe string functions
- * that satisfy clang-tidy cert-err33-c requirements.
- *
- * @author Assistant
- * @date December 2024
+ * @ingroup platform
+ * @brief 🔤 POSIX safe string functions satisfying clang-tidy cert-err33-c requirements
  */
 
 #include "platform/string.h"

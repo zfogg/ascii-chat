@@ -1,0 +1,135 @@
+/**
+ * @defgroup client_protocol Protocol Handler
+ * @ingroup module_client
+ * @brief Client-side packet processing and data reception thread
+ */
+
+/**
+ * @page topic_client_protocol Protocol Handler
+ * @ingroup client_protocol
+ *
+ * @section client_protocol_overview Overview
+ *
+ * The protocol handler manages the data reception thread, processes incoming
+ * packets from the server, and dispatches them to appropriate handlers based
+ * on packet type.
+ *
+ * **Implementation**: src/client/protocol.c, src/client/protocol.h
+ *
+ * @section client_protocol_thread Data Reception Thread
+ *
+ * @code{.c}
+ * static void *data_reception_thread(void *arg)
+ * {
+ *   (void)arg;
+ *
+ *   socket_t sockfd = server_connection_get_socket();
+ *   const crypto_context_t *crypto_ctx = crypto_client_get_context();
+ *
+ *   while (!should_exit() && server_connection_is_active()) {
+ *     packet_header_t header;
+ *     void *payload = NULL;
+ *     size_t payload_len = 0;
+ *
+ *     // Receive and decrypt packet
+ *     int result = receive_packet(sockfd, crypto_ctx, &header, &payload, &payload_len);
+ *
+ *     if (result < 0) {
+ *       log_debug("receive_packet failed - connection lost");
+ *       server_connection_lost();
+ *       break;
+ *     }
+ *
+ *     // Dispatch based on packet type
+ *     handle_packet(&header, payload, payload_len);
+ *
+ *     if (payload) {
+ *       free(payload);
+ *       payload = NULL;
+ *     }
+ *   }
+ *
+ *   atomic_store(&g_data_thread_exited, true);
+ *   return NULL;
+ * }
+ * @endcode
+ *
+ * @section client_protocol_handlers Packet Handlers
+ *
+ * @subsection client_protocol_ascii_frame ASCII Frame Handler
+ *
+ * @code{.c}
+ * static void handle_ascii_frame(const void *payload, size_t payload_len)
+ * {
+ *   // Render ASCII frame to terminal
+ *   display_render_frame((const char *)payload, opt_snapshot);
+ *
+ *   // Snapshot mode: exit after displaying frame
+ *   if (opt_snapshot) {
+ *     signal_exit();
+ *   }
+ * }
+ * @endcode
+ *
+ * @subsection client_protocol_audio_batch Audio Batch Handler
+ *
+ * @code{.c}
+ * static void handle_audio_batch(const void *payload, size_t payload_len)
+ * {
+ *   const float *samples = (const float *)payload;
+ *   int num_samples = payload_len / sizeof(float);
+ *
+ *   // Process received audio samples
+ *   audio_process_received_samples(samples, num_samples);
+ * }
+ * @endcode
+ *
+ * @subsection client_protocol_pong Pong Handler
+ *
+ * @code{.c}
+ * static void handle_pong(void)
+ * {
+ *   // Update last pong time for keepalive timeout tracking
+ *   keepalive_record_pong();
+ * }
+ * @endcode
+ *
+ * @subsection client_protocol_clear Clear Console Handler
+ *
+ * @code{.c}
+ * static void handle_clear_console(void)
+ * {
+ *   // Server requests terminal clear
+ *   display_full_reset();
+ * }
+ * @endcode
+ *
+ * @subsection client_protocol_server_state Server State Handler
+ *
+ * @code{.c}
+ * static void handle_server_state(const void *payload, size_t payload_len)
+ * {
+ *   // Log server state information
+ *   log_debug("Received server state update");
+ * }
+ * @endcode
+ *
+ * @section client_protocol_loss Connection Loss Detection
+ *
+ * **Loss triggers in protocol thread**:
+ * - `receive_packet()` returns error
+ * - Socket read error (connection closed by server)
+ * - Decryption failure (corrupted stream)
+ * - Invalid packet magic number
+ *
+ * @code{.c}
+ * if (receive_packet(...) < 0) {
+ *   server_connection_lost();  // Signal connection loss
+ *   break;                     // Exit thread
+ * }
+ * @endcode
+ *
+ * @see src/client/protocol.c
+ * @see src/client/protocol.h
+ * @see topic_client
+ */

@@ -1,4 +1,10 @@
 /**
+ * @defgroup handshake Handshake Protocol
+ * @ingroup module_crypto
+ * @brief Cryptographic handshake protocol implementation for key exchange and authentication
+ */
+
+/**
  * @page topic_handshake Handshake Protocol
  * @ingroup handshake
  *

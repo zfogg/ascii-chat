@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/simd/ssse3.h
- * @ingroup image2ascii
+ * @ingroup module_video
  * @brief SSSE3-optimized ASCII rendering functions
  *
  * This header provides SSSE3 (Supplemental Streaming SIMD Extensions 3)
@@ -30,7 +30,7 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *ascii_chars);
 
@@ -42,7 +42,7 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *asci
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                            const char *ascii_chars);
@@ -50,7 +50,7 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
 /**
  * @brief Destroy SSSE3 caches
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ssse3_caches_destroy(void);
 

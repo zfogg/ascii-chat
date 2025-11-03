@@ -75,7 +75,7 @@
 /**
  * @name Network Timeout Constants
  * @{
- * @ingroup network
+ * @ingroup module_network
  *
  * Timeout values tuned for real-time video streaming. All timeouts
  * are specified in seconds.
@@ -87,7 +87,7 @@
  * Maximum time to wait for connection establishment. Reduced from
  * default for faster connection attempts and quicker failure detection.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define CONNECT_TIMEOUT 3
 
@@ -97,7 +97,7 @@
  * Maximum time to wait for data transmission. Video frames need timely
  * delivery to maintain real-time performance.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define SEND_TIMEOUT 5
 
@@ -107,7 +107,7 @@
  * Maximum time to wait for incoming data. If no data is received within
  * this time, connection is considered dead.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define RECV_TIMEOUT 15
 
@@ -117,7 +117,7 @@
  * Maximum time to wait for incoming connections. Balanced between
  * responsiveness and CPU usage.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define ACCEPT_TIMEOUT 3
 
@@ -126,7 +126,7 @@
 /**
  * @name Socket Keepalive Settings
  * @{
- * @ingroup network
+ * @ingroup module_network
  *
  * Keepalive settings to detect dead connections. TCP keepalive probes
  * are sent when connection is idle to detect broken connections.
@@ -138,7 +138,7 @@
  * Time to wait before sending first keepalive probe after connection
  * becomes idle.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define KEEPALIVE_IDLE 60
 
@@ -147,7 +147,7 @@
  *
  * Interval between subsequent keepalive probes.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define KEEPALIVE_INTERVAL 10
 
@@ -156,7 +156,7 @@
  *
  * Number of keepalive probes to send before considering connection dead.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 #define KEEPALIVE_COUNT 8
 
@@ -165,7 +165,7 @@
 /**
  * @name Socket I/O Operations
  * @{
- * @ingroup network
+ * @ingroup module_network
  */
 
 /**
@@ -185,7 +185,7 @@
  * @note Partial sends are handled automatically - function retries
  *       until all data is sent or timeout occurs.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int timeout_seconds);
 
@@ -206,7 +206,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
  * @note Returns -1 on timeout or error. Use network_error_string()
  *       to get human-readable error description.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_seconds);
 
@@ -226,7 +226,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
  * @note addrlen must point to initialized value containing size of
  *       addr buffer. On return, contains actual size of address.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *addrlen, int timeout_seconds);
 
@@ -246,7 +246,7 @@ int accept_with_timeout(socket_t listenfd, struct sockaddr *addr, socklen_t *add
  * @note Returns false on timeout or connection failure. Use network_error_string()
  *       to get human-readable error description.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_t addrlen, int timeout_seconds);
 
@@ -255,7 +255,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
 /**
  * @name Socket Configuration Functions
  * @{
- * @ingroup network
+ * @ingroup module_network
  */
 
 /**
@@ -270,7 +270,7 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
  * @note Socket-level timeouts work in addition to application-level
  *       timeouts in send_with_timeout() and recv_with_timeout().
  *
- * @ingroup network
+ * @ingroup module_network
  */
 int set_socket_timeout(socket_t sockfd, int timeout_seconds);
 
@@ -285,7 +285,7 @@ int set_socket_timeout(socket_t sockfd, int timeout_seconds);
  * @note Keepalive helps detect dead connections (broken network path)
  *       without application-level heartbeats.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 int set_socket_keepalive(socket_t sockfd);
 
@@ -302,7 +302,7 @@ int set_socket_keepalive(socket_t sockfd);
  *
  * @note Useful for asynchronous I/O patterns with select/poll/epoll.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 int set_socket_nonblocking(socket_t sockfd);
 
@@ -311,7 +311,7 @@ int set_socket_nonblocking(socket_t sockfd);
 /**
  * @name Error Reporting Functions
  * @{
- * @ingroup network
+ * @ingroup module_network
  */
 
 /**
@@ -324,7 +324,7 @@ int set_socket_nonblocking(socket_t sockfd);
  * @note Error string is thread-local - each thread has its own
  *       error state.
  *
- * @ingroup network
+ * @ingroup module_network
  */
 const char *network_error_string();
 

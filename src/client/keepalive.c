@@ -1,12 +1,7 @@
 /**
- * @file keepalive.c
- * @brief ASCII-Chat Client Connection Keepalive Management
- *
- * This module implements connection keepalive functionality for the ASCII-Chat
- * client, ensuring reliable detection of connection failures through periodic
- * ping/pong exchanges with the server.
- *
- * ## Keepalive Architecture
+ * @file client/keepalive.c
+ * @ingroup client_keepalive
+ * @brief 💓 Client keepalive: periodic ping/pong exchange for reliable connection failure detection
  *
  * The keepalive system uses a dedicated ping thread:
  * - **Ping Thread**: Sends periodic ping packets to server
@@ -125,6 +120,8 @@ static atomic_bool g_ping_thread_exited = false;
  *
  * @param arg Unused thread argument
  * @return NULL on thread exit
+ *
+ * @ingroup client_keepalive
  */
 static void *ping_thread_func(void *arg) {
   (void)arg;
@@ -186,6 +183,8 @@ static void *ping_thread_func(void *arg) {
  * Must be called after successful server connection establishment.
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_keepalive
  */
 int keepalive_start_thread() {
   if (g_ping_thread_created) {
@@ -209,6 +208,8 @@ int keepalive_start_thread() {
  *
  * Gracefully stops the ping thread and cleans up resources.
  * Safe to call multiple times.
+ *
+ * @ingroup client_keepalive
  */
 void keepalive_stop_thread() {
   if (!g_ping_thread_created) {
@@ -240,6 +241,8 @@ void keepalive_stop_thread() {
  * Check if keepalive thread has exited
  *
  * @return true if thread has exited, false otherwise
+ *
+ * @ingroup client_keepalive
  */
 bool keepalive_thread_exited() {
   return atomic_load(&g_ping_thread_exited);

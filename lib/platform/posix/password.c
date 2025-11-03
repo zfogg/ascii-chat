@@ -1,3 +1,9 @@
+/**
+ * @file platform/posix/password.c
+ * @ingroup platform
+ * @brief 🔐 POSIX password prompt with terminal echo disabling for secure input
+ */
+
 #include "platform/password.h"
 #include <stdio.h>
 #include <string.h>

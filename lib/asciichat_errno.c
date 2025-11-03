@@ -1,3 +1,9 @@
+/**
+ * @file asciichat_errno.c
+ * @ingroup errno
+ * @brief 🚨 Custom error code system with formatted messages, thread-local storage, and errno mapping
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

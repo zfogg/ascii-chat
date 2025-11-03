@@ -1,4 +1,10 @@
 /**
+ * @defgroup ringbuffer Ring Buffer
+ * @ingroup module_data_structures
+ * @brief Lock-free circular buffers for audio/video
+ */
+
+/**
  * @page topic_ringbuffer Ring Buffer
  * @ingroup ringbuffer
  *

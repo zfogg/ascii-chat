@@ -1,6 +1,6 @@
 /**
  * @page topic_common Common Definitions
- * @ingroup common
+ * @ingroup module_core
  *
  * Core error handling, memory management, logging, and type definitions shared throughout
  * the ASCII-Chat application.

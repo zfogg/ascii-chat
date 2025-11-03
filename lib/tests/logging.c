@@ -1,3 +1,9 @@
+/**
+ * @file tests/logging.c
+ * @ingroup tests
+ * @brief 🧪 Test utilities for logging: stdout/stderr redirection and capture helpers
+ */
+
 #include <stdint.h>
 #include <stdatomic.h>
 #include <stdbool.h>

@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/simd/ascii_simd_color.c
+ * @ingroup image2ascii
+ * @brief 🎨 SIMD-accelerated color matching and palette lookup for ASCII rendering
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

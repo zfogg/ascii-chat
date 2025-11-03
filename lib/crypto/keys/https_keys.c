@@ -1,3 +1,9 @@
+/**
+ * @file crypto/keys/https_keys.c
+ * @ingroup keys
+ * @brief 🌐 HTTPS public key fetching from GitHub/GitLab with URL parsing and caching
+ */
+
 #include "https_keys.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"

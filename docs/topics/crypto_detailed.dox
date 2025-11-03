@@ -1,7 +1,6 @@
 /**
  * @page topic_crypto_detailed Cryptography Overview
- * @defgroup crypto_detailed Cryptography Overview
- * @ingroup crypto
+ * @ingroup module_crypto
  * @brief Overview of ASCII-Chat's cryptographic implementation, security model, and privacy philosophies
  *
  * This page provides comprehensive documentation on ASCII-Chat's cryptographic

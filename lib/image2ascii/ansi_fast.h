@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/ansi_fast.h
- * @ingroup image2ascii
+ * @ingroup module_video
  * @brief Fast ANSI escape sequence generation
  *
  * This header provides optimized ANSI escape sequence generation using
@@ -33,7 +33,7 @@ extern dec3_t dec3[256];
 /**
  * @brief Color mode for ANSI generation
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 typedef enum {
   ANSI_MODE_FOREGROUND,           /**< Foreground color mode: \033[38;2;R;G;Bm */
@@ -44,7 +44,7 @@ typedef enum {
 /**
  * @brief Timing breakdown for performance measurement
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 typedef struct {
   double pixel_time;  /**< Luminance/ASCII conversion time */
@@ -58,7 +58,7 @@ typedef struct {
  *
  * Must be called once at startup before using any ANSI generation functions.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ansi_fast_init(void);
 
@@ -70,7 +70,7 @@ void ansi_fast_init(void);
  * @param b Blue component (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b);
 
@@ -82,7 +82,7 @@ char *append_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b);
  * @param b Blue component (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
 
@@ -97,7 +97,7 @@ char *append_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
  * @param bg_b Background blue component (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b, uint8_t bg_r, uint8_t bg_g,
                              uint8_t bg_b);
@@ -108,7 +108,7 @@ char *append_truecolor_fg_bg(char *dst, uint8_t fg_r, uint8_t fg_g, uint8_t fg_b
  * Emits SGR (Select Graphic Rendition) sequences only when colors change,
  * reducing terminal output size.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 typedef struct {
   char *buffer;                   /**< Output buffer */
@@ -126,7 +126,7 @@ typedef struct {
  * @param capacity Buffer capacity in bytes
  * @param mode Color mode to use
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ansi_rle_init(ansi_rle_context_t *ctx, char *buffer, size_t capacity, ansi_color_mode_t mode);
 
@@ -140,7 +140,7 @@ void ansi_rle_init(ansi_rle_context_t *ctx, char *buffer, size_t capacity, ansi_
  *
  * Only emits SGR when color changes from previous pixel.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b, char ascii_char);
 
@@ -150,7 +150,7 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
  *
  * Adds ANSI reset sequence and null terminator.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ansi_rle_finish(ansi_rle_context_t *ctx);
 
@@ -159,7 +159,7 @@ void ansi_rle_finish(ansi_rle_context_t *ctx);
  *
  * Must be called before using 256-color functions.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ansi_fast_init_256color(void);
 
@@ -169,7 +169,7 @@ void ansi_fast_init_256color(void);
  * @param color_index 256-color palette index (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_256color_fg(char *dst, uint8_t color_index);
 
@@ -180,7 +180,7 @@ char *append_256color_fg(char *dst, uint8_t color_index);
  * @param b Blue component (0-255)
  * @return 256-color palette index (0-255)
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b);
 
@@ -189,7 +189,7 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b);
  *
  * Must be called before using 16-color functions.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void ansi_fast_init_16color(void);
 
@@ -199,7 +199,7 @@ void ansi_fast_init_16color(void);
  * @param color_index 16-color ANSI index (0-15)
  * @return Pointer to end of appended sequence
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_16color_fg(char *dst, uint8_t color_index);
 
@@ -209,7 +209,7 @@ char *append_16color_fg(char *dst, uint8_t color_index);
  * @param color_index 16-color ANSI index (0-15)
  * @return Pointer to end of appended sequence
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_16color_bg(char *dst, uint8_t color_index);
 
@@ -220,14 +220,14 @@ char *append_16color_bg(char *dst, uint8_t color_index);
  * @param b Blue component (0-255)
  * @return 16-color ANSI index (0-15)
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 uint8_t rgb_to_16color(uint8_t r, uint8_t g, uint8_t b);
 
 /**
  * @brief RGB error structure for dithering
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 typedef struct {
   int r; /**< Red error component */
@@ -242,7 +242,7 @@ typedef struct {
  * @param g Output green component (0-255)
  * @param b Output blue component (0-255)
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 void get_16color_rgb(uint8_t color_index, uint8_t *r, uint8_t *g, uint8_t *b);
 
@@ -260,7 +260,7 @@ void get_16color_rgb(uint8_t color_index, uint8_t *r, uint8_t *g, uint8_t *b);
  *
  * Uses Floyd-Steinberg dithering algorithm for improved color approximation.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, int height, rgb_error_t *error_buffer);
 
@@ -281,7 +281,7 @@ typedef terminal_color_mode_t color_mode_t;
  *
  * Automatically selects appropriate ANSI sequence based on color mode.
  *
- * @ingroup image2ascii
+ * @ingroup module_video
  */
 char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color_mode_t mode);
 

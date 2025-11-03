@@ -1,3 +1,9 @@
+/**
+ * @file image2ascii/image.c
+ * @ingroup image2ascii
+ * @brief 🖨️ Image processing: format detection, decoding, scaling, and pixel format conversion
+ */
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
