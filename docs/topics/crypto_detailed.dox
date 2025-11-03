@@ -1,6 +1,6 @@
 /**
  * @page topic_crypto_detailed Cryptography README
- * @ingroup module_crypto
+ * @ingroup crypto
  * @brief Overview of ascii-chat's cryptographic implementation, security model, and privacy philosophies
  *
  * This page provides comprehensive documentation on ascii-chat's cryptographic

@@ -1,8 +1,10 @@
 #pragma once
 
 /**
+ * @defgroup platform Platform Abstractions
+ * @brief Cross-platform abstractions for threading, sockets, and system calls, and hardware access
+ *
  * @file platform/abstraction.h
- * @defgroup platform Platform Abstraction Layer
  * @ingroup platform
  * @brief Cross-platform abstraction layer umbrella header for ascii-chat
  *

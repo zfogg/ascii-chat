@@ -3,7 +3,7 @@
 /**
  * @defgroup os OS Abstractions
  *
- * @defgroup webcam Webcam Capture
+ * @defgroup webcam Webcam Module
  * @ingroup os
  * @brief Cross-platform webcam capture API
  */
