@@ -1,11 +1,11 @@
 /**
- * @page topic_platform Platform Abstraction Layer
- * @ingroup module_platform
+ * @page topic_platform Platform
+ * @ingroup module_abstractions
  *
  * @section platform_overview Overview
  *
  * The Platform Abstraction Layer is a comprehensive cross-platform abstraction module
- * that enables ASCII-Chat to run seamlessly on Windows, Linux, and macOS. This module
+ * that enables ascii-chat to run seamlessly on Windows, Linux, and macOS. This module
  * provides a unified API for platform-specific functionality, allowing application code
  * to remain completely platform-independent.
  *
@@ -52,7 +52,7 @@
  * @subsection platform_philosophy_performance Performance-First Abstraction
  *
  * **Platform-specific optimizations preserved**: Unlike many abstraction layers that
- * prioritize consistency over performance, ASCII-Chat's platform layer chooses the
+ * prioritize consistency over performance, ascii-chat's platform layer chooses the
  * best primitive for each platform:
  *
  * - **Windows**: Uses CRITICAL_SECTION (fastest user-mode mutex, ~100ns overhead)
@@ -112,7 +112,7 @@
  * @subsection platform_philosophy_minimalism Minimal Abstraction Surface
  *
  * **Expose only what's needed**: The platform layer doesn't try to abstract everything.
- * Instead, it provides a focused API that covers only what ASCII-Chat needs:
+ * Instead, it provides a focused API that covers only what ascii-chat needs:
  *
  * - Threading (thread creation, joining, detaching)
  * - Synchronization (mutexes, rwlocks, condition variables)
@@ -121,14 +121,14 @@
  * - System utilities (environment variables, safe string functions, error handling)
  * - Debugging support (backtraces, symbol resolution)
  *
- * Complex platform features that ASCII-Chat doesn't use (e.g., Windows COM, macOS
+ * Complex platform features that ascii-chat doesn't use (e.g., Windows COM, macOS
  * CoreFoundation, Linux-specific ioctls) are left out entirely. This keeps the
  * abstraction layer small, maintainable, and focused.
  *
  * **Benefits of minimalism**:
  * - **Faster compilation**: Fewer headers, smaller API surface
  * - **Easier maintenance**: Less code to maintain, fewer edge cases
- * - **Better focus**: API designed for ASCII-Chat's specific needs
+ * - **Better focus**: API designed for ascii-chat's specific needs
  *
  * @subsection platform_philosophy_future_proofing Future Platform Support
  *
@@ -153,7 +153,7 @@
  * 4. **Maintainability**: Clear separation of concerns, minimal API surface
  * 5. **Portability**: Easy to add new platforms, consistent semantics
  *
- * This philosophy ensures that ASCII-Chat can run efficiently on multiple platforms
+ * This philosophy ensures that ascii-chat can run efficiently on multiple platforms
  * while maintaining clean, readable, and maintainable application code.
  *
  * **Supported Platforms**:

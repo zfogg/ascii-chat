@@ -1,6 +1,6 @@
 # Publish Test Results Action
 
-A composite GitHub Action that handles test result publishing for the ASCII-Chat project. This action encapsulates all the logic for validating JUnit XML, publishing test results to GitHub checks, and uploading both test results and coverage to Codecov.
+A composite GitHub Action that handles test result publishing for the ascii-chat project. This action encapsulates all the logic for validating JUnit XML, publishing test results to GitHub checks, and uploading both test results and coverage to Codecov.
 
 ## Features
 

@@ -1,6 +1,6 @@
 /**
  * @file platform/symbols.h
- * @ingroup module_platform
+ * @ingroup platform
  * @brief Symbol Resolution Cache for Backtrace Addresses
  *
  * This header provides a high-performance symbol resolution cache system for
@@ -97,7 +97,7 @@
  * @note Idempotent: Safe to call multiple times (no-op after first call).
  * @note Thread-safe: Can be called from any thread during initialization.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 asciichat_error_t symbol_cache_init(void);
 
@@ -111,7 +111,7 @@ asciichat_error_t symbol_cache_init(void);
  * @note Safe to call multiple times (no-op after first call).
  * @note All cached symbol strings are freed automatically.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void symbol_cache_cleanup(void);
 
@@ -139,7 +139,7 @@ void symbol_cache_cleanup(void);
  * @note For batch resolution, use symbol_cache_resolve_batch() which handles
  *       both cache lookup and addr2line resolution automatically.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 const char *symbol_cache_lookup(void *addr);
 
@@ -159,7 +159,7 @@ const char *symbol_cache_lookup(void *addr);
  *
  * @warning Memory allocation failures return false. Check return value.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 bool symbol_cache_insert(void *addr, const char *symbol);
 
@@ -182,7 +182,7 @@ bool symbol_cache_insert(void *addr, const char *symbol);
  * @note All counters are cumulative since cache initialization.
  * @note Thread-safe: Can be called from any thread.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void symbol_cache_get_stats(uint64_t *hits_out, uint64_t *misses_out, size_t *entries_out);
 
@@ -195,7 +195,7 @@ void symbol_cache_get_stats(uint64_t *hits_out, uint64_t *misses_out, size_t *en
  * @note Requires logging system to be initialized.
  * @note Statistics are formatted and logged at INFO level.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void symbol_cache_print_stats(void);
 
@@ -234,7 +234,7 @@ void symbol_cache_print_stats(void);
  * @warning Caller must free the returned array using symbol_cache_free_symbols().
  *          Do NOT free individual strings (owned by cache).
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 char **symbol_cache_resolve_batch(void *const *buffer, int size);
 
@@ -249,7 +249,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size);
  * @note Safe to call with NULL pointer (no-op).
  * @note This function only frees the array structure, not cached symbol strings.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void symbol_cache_free_symbols(char **symbols);
 

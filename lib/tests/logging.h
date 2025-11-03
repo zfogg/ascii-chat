@@ -3,7 +3,7 @@
 
 /**
  * @file tests/logging.h
- * @ingroup module_development
+ * @ingroup testing
  * @brief Test logging control utilities
  *
  * This header provides utilities for controlling logging output during tests.
@@ -68,7 +68,7 @@
  *       test_logging_restore().
  * @note This function can be called multiple times safely.
  *
- * @ingroup module_platform
+ * @ingroup testing
  */
 int test_logging_disable(bool disable_stdout, bool disable_stderr);
 
@@ -82,7 +82,7 @@ int test_logging_disable(bool disable_stdout, bool disable_stderr);
  * @note This function should be called in test teardown to ensure proper
  *       cleanup, though the test macros handle this automatically.
  *
- * @ingroup module_platform
+ * @ingroup testing
  */
 int test_logging_restore(void);
 
@@ -93,7 +93,7 @@ int test_logging_restore(void);
  * Checks whether stdout and/or stderr have been redirected to /dev/null.
  * Useful for conditional logging control or debugging test setup.
  *
- * @ingroup module_platform
+ * @ingroup testing
  */
 bool test_logging_is_disabled(void);
 

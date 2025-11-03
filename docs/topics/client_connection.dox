@@ -187,5 +187,5 @@
  *
  * @see src/client/server.c
  * @see src/client/server.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

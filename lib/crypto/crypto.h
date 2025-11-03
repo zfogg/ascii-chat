@@ -2,12 +2,12 @@
 
 /**
  * @file crypto/crypto.h
- * @defgroup crypto Cryptography Module
+ * @defgroup crypto Crypto Module
  * @ingroup crypto
- * @brief Core cryptographic operations for ASCII-Chat
+ * @brief Core cryptographic operations for ascii-chat
  *
  * This header provides the core cryptographic operations for secure communication
- * in ASCII-Chat, including key exchange, encryption/decryption, authentication,
+ * in ascii-chat, including key exchange, encryption/decryption, authentication,
  * and session rekeying.
  *
  * The interface provides:

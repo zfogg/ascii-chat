@@ -18,7 +18,7 @@
 /**
  * @brief Server performance statistics structure
  *
- * Tracks comprehensive performance metrics for the ASCII-Chat server including
+ * Tracks comprehensive performance metrics for the ascii-chat server including
  * frame processing rates, bandwidth usage, and performance counters.
  *
  * STATISTICS TRACKED:

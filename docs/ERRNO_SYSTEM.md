@@ -1,8 +1,8 @@
-# ASCII-Chat Error Number System
+# ascii-chat Error Number System
 
 ## Overview
 
-The ASCII-Chat Error Number System (`asciichat_errno`) is a comprehensive error handling system that provides:
+The ascii-chat Error Number System (`asciichat_errno`) is a comprehensive error handling system that provides:
 
 - **Thread-local error context** with automatic file/line/function capture
 - **Stack trace capture** in debug builds
@@ -282,7 +282,7 @@ Stack trace from library error:
 
 ### Error Statistics Output
 ```
-=== ASCII-Chat Error Statistics ===
+=== ascii-chat Error Statistics ===
 Total errors: 15
 Last error: 2024-01-15 14:30:25 (code 41)
 

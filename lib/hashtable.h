@@ -1,13 +1,15 @@
 #pragma once
 
 /**
- * @file hashtable.h
  * @defgroup hashtable Hash Table
+ * @ingroup module_data_structures
+ *
+ * @file hashtable.h
  * @ingroup hashtable
  * @brief High-Performance Hash Table for Client ID Lookup
  *
  * This header provides a specialized hash table implementation optimized
- * for client ID lookup in ASCII-Chat's multi-client server architecture.
+ * for client ID lookup in ascii-chat's multi-client server architecture.
  * The implementation uses separate chaining with reader-writer locks for
  * optimal concurrent access performance.
  *

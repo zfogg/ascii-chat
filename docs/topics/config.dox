@@ -1,13 +1,13 @@
 /**
- * @page topic_config Configuration
- * @ingroup module_core
+ * @page topic_config Configuration README
+ * @ingroup config
  *
  * Command-line argument parsing and TOML-based configuration file management for flexible
  * server and client setup.
  *
  * @section config_overview Overview
  *
- * ASCII-Chat supports two configuration methods:
+ * ascii-chat supports two configuration methods:
  * 1. **Command-line arguments**: Quick configuration for ad-hoc usage
  * 2. **TOML configuration files**: Persistent, structured configuration
  *
@@ -18,14 +18,14 @@
  *
  * @section config_toml TOML Configuration Files
  *
- * ASCII-Chat uses TOML (Tom's Obvious, Minimal Language) for configuration files,
+ * ascii-chat uses TOML (Tom's Obvious, Minimal Language) for configuration files,
  * parsed by the tomlc17 library.
  *
  * @subsection config_toml_format File Format
  *
  * **Complete example configuration**:
  * @code{.toml}
- * # ASCII-Chat Configuration File
+ * # ascii-chat Configuration File
  * # Location: ~/.config/ascii-chat/config.toml
  *
  * [server]
@@ -124,11 +124,11 @@
  *
  * @subsection config_toml_loading Loading Configuration
  *
+ * **Load Config File**:
  * @code{.c}
  * #include "config.h"
  * #include "options.h"
  *
- * // Parse configuration file
  * options_t opts;
  * asciichat_error_t err = config_load(&opts, "~/.config/ascii-chat/config.toml");
  * if (err != ASCIICHAT_OK) {
@@ -143,6 +143,13 @@
  *
  * // Cleanup
  * options_destroy(&opts);
+ * @endcode
+ *
+ * **Apply Defaults**:
+ * @code{.c}
+ * // Initialize with default values
+ * options_t opts = {0};
+ * apply_default_options(&opts);
  * @endcode
  *
  * @section config_cmdline Command-Line Options
@@ -239,49 +246,81 @@
  * - `--help, -?`: Show help message
  * - `--version, -v`: Show version information
  *
+ * @section config_default_locations Default Config Locations
+ *
+ * ascii-chat searches for configuration files in the following order:
+ *
+ * **Linux/macOS**:
+ * - `~/.ascii-chat/config.toml`
+ * - `~/.config/ascii-chat/config.toml`
+ * - `/etc/ascii-chat/config.toml`
+ *
+ * **Windows**:
+ * - `%APPDATA%\ascii-chat\config.toml`
+ * - `%USERPROFILE%\.ascii-chat\config.toml`
+ *
+ * **Creating a Default Config**:
+ * @code{.sh}
+ * ./ascii-chat client --config-create ~/.ascii-chat/config.toml
+ * @endcode
+ *
+ * **Using a Config File**:
+ * @code{.sh}
+ * ./ascii-chat client --config ~/.ascii-chat/config.toml
+ * @endcode
+ *
+ * **Overriding Config with CLI**:
+ * @code{.sh}
+ * # Config file sets port=27224, but override it
+ * ./ascii-chat client --config ~/.ascii-chat/config.toml --port 8080
+ * @endcode
+ *
  * @section config_precedence Configuration Precedence
  *
  * Settings are applied in this order (later overrides earlier):
- * 1. Built-in defaults
- * 2. Configuration file (if specified with --config)
- * 3. Environment variables (e.g., $LOG_LEVEL)
- * 4. Command-line arguments
+ * 1. **Built-in defaults** - Hardcoded default values
+ * 2. **Config file** - Values from TOML configuration (if specified with --config)
+ * 3. **Environment variables** - LOG_LEVEL, etc.
+ * 4. **Command-line arguments** - Highest priority
  *
- * Example:
- * @code{.bash}
- * # config.toml specifies port = 27224
- * # Command-line overrides to port 8080
- * ./ascii-chat server --config config.toml --port 8080
- * # Result: Server listens on port 8080
+ * **Example**:
+ * @code{.sh}
+ * # Config file has port=27224
+ * # Environment has LOG_LEVEL=1
+ * # Command line has --port 8080
+ * # Result: port=8080 (CLI wins), log_level=1 (from env)
  * @endcode
  *
  * @section config_validation Configuration Validation
  *
- * The configuration system validates all settings:
+ * The configuration system automatically validates all settings:
  *
- * **Port numbers**:
- * - Must be 1-65535
- * - Ports < 1024 may require root/admin privileges
- *
- * **Dimensions**:
- * - Width: 20-500 (practical terminal limits)
- * - Height: 10-200
- * - Must be positive integers
- *
- * **Client limits**:
- * - max_clients: 1-9 (grid layout constraint)
- *
- * **File paths**:
+ * **Automatic Validation**:
+ * - Port range validation (1-65535)
+ * - Webcam index validation
+ * - File path validation (key files, config files)
+ * - Log level validation (0-4)
+ * - IP address format validation
+ * - Dimensions validation (width: 20-500, height: 10-200)
+ * - Client limits (max_clients: 1-9, grid layout constraint)
  * - Tilde expansion for home directory (~/)
- * - Validation of file existence and permissions
  * - SSH keys must be Ed25519 format
- *
- * **Palette strings**:
- * - Must have at least 2 characters
- * - Characters ordered dark → bright
+ * - Palette strings (must have at least 2 characters, ordered dark → bright)
  * - UTF-8 validation for multi-byte characters
  *
- * Example validation:
+ * **Error Reporting**:
+ * @code{.c}
+ * asciichat_error_t err = config_load(&opts, "~/.ascii-chat/config.toml");
+ * if (err != ASCIICHAT_OK) {
+ *     asciichat_error_context_t ctx;
+ *     if (HAS_ERRNO(&ctx)) {
+ *         log_error("Invalid configuration: %s", ctx.context_message);
+ *     }
+ *     return err;
+ * }
+ * @endcode
+ *
+ * Example validation code:
  * @code{.c}
  * asciichat_error_t validate_config(const options_t *opts) {
  *     if (opts->port < 1 || opts->port > 65535) {
@@ -383,6 +422,8 @@
  * }
  * @endcode
  *
+ * @see @ref topic_options "Options" for command-line argument parsing
  * @see options.h
  * @see config.h
  */
+

@@ -87,13 +87,38 @@
 
 /** Use tty_info_t from platform abstraction */
 
-/** Global TTY information */
+/**
+ * @brief Global TTY information structure
+ *
+ * Maintains information about the terminal/TTY device for interactive output.
+ * Contains file descriptor, device path, and validity status. Initialized
+ * during display subsystem startup.
+ *
+ * @note Not static because it may be accessed from other modules
+ * @ingroup client_display
+ */
 tty_info_t g_tty_info = {-1, NULL, false};
 
-/** Flag indicating if we have a valid TTY for interactive output */
+/**
+ * @brief Flag indicating if we have a valid TTY for interactive output
+ *
+ * Set to true if the display has detected a valid terminal/TTY for rendering.
+ * When false, output may be redirected or non-interactive (pipes, files, etc.).
+ * Used to determine optimal rendering strategy.
+ *
+ * @ingroup client_display
+ */
 static bool g_has_tty = false;
 
-/** Flag indicating if this is the first frame of the current connection */
+/**
+ * @brief Atomic flag indicating if this is the first frame of the current connection
+ *
+ * Set to true at the start of each new connection, cleared after the first
+ * frame is rendered. Used to disable logging during the first frame render
+ * to prevent console corruption, then enable logging for subsequent frames.
+ *
+ * @ingroup client_display
+ */
 static atomic_bool g_is_first_frame_of_connection = true;
 
 /* ============================================================================

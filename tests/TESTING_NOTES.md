@@ -1,4 +1,4 @@
-# ASCII-Chat Testing Notes
+# ascii-chat Testing Notes
 
 ## Test Framework Status (September 2025)
 

@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/simd/common.h
- * @ingroup module_video
+ * @ingroup image2ascii
  * @brief Common SIMD utilities and structures
  *
  * This header provides common utilities, cache systems, and helper functions
@@ -55,7 +55,7 @@ typedef rgb_t rgb_pixel_t;
  * @param ramp64 Output array for ramp indices
  * @param ascii_chars Character palette string
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars);
 
@@ -67,7 +67,7 @@ void build_ramp64(uint8_t ramp64[RAMP64_SIZE], const char *ascii_chars);
  * @param current_time Current timestamp (nanoseconds)
  * @return Eviction score (lower = more likely to evict)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
                                       uint64_t current_time);
@@ -76,14 +76,14 @@ double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access
  * @brief Get current time in nanoseconds
  * @return Current timestamp in nanoseconds since epoch
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 uint64_t get_current_time_ns(void);
 
 /**
  * @brief UTF-8 character structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   char utf8_bytes[4]; /**< UTF-8 character bytes (up to 4) */
@@ -95,7 +95,7 @@ typedef struct {
  *
  * Thread-safe cache system for UTF-8 character lookup with eviction tracking.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct utf8_palette_cache_s {
   utf8_char_t cache[256];      /**< 256-entry cache for direct luminance lookup (monochrome) */
@@ -121,7 +121,7 @@ typedef struct utf8_palette_cache_s {
  *
  * Thread-safe cache lookup with automatic creation and eviction.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
 
@@ -130,7 +130,7 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
  * @param ascii_chars Character palette string
  * @param cache Output cache array (256 entries)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]);
 
@@ -140,7 +140,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
  * @param cache64 Output cache array (64 entries)
  * @param char_index_ramp Output character index ramp (64 entries)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]);
 
@@ -155,7 +155,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
  *
  * Cleans up all caches and frees associated memory.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void simd_caches_destroy_all(void);
 
@@ -163,7 +163,7 @@ void simd_caches_destroy_all(void);
  * @brief Check if SSE2 is supported
  * @return true if SSE2 is available, false otherwise
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 bool has_sse2_support(void);
 
@@ -171,7 +171,7 @@ bool has_sse2_support(void);
  * @brief Check if SSSE3 is supported
  * @return true if SSSE3 is available, false otherwise
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 bool has_ssse3_support(void);
 
@@ -179,7 +179,7 @@ bool has_ssse3_support(void);
  * @brief Check if AVX2 is supported
  * @return true if AVX2 is available, false otherwise
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 bool has_avx2_support(void);
 
@@ -187,7 +187,7 @@ bool has_avx2_support(void);
  * @brief Check if NEON is supported
  * @return true if NEON is available, false otherwise
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 bool has_neon_support(void);
 
@@ -195,7 +195,7 @@ bool has_neon_support(void);
  * @brief Check if SVE is supported
  * @return true if SVE is available, false otherwise
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 bool has_sve_support(void);
 
@@ -207,7 +207,7 @@ bool has_sve_support(void);
  * @param b Blue component (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b);
 
@@ -219,7 +219,7 @@ char *append_sgr_truecolor_fg(char *dst, uint8_t r, uint8_t g, uint8_t b);
  * @param b Blue component (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
 
@@ -234,7 +234,7 @@ char *append_sgr_truecolor_bg(char *dst, uint8_t r, uint8_t g, uint8_t b);
  * @param bb Background blue component (0-255)
  * @return Pointer to end of appended sequence
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb);
 
@@ -243,7 +243,7 @@ char *append_sgr_truecolor_fg_bg(char *dst, uint8_t fr, uint8_t fg, uint8_t fb, 
  * @param dst Destination buffer pointer
  * @return Pointer to end of appended sequence
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *append_sgr_reset(char *dst);
 
@@ -255,7 +255,7 @@ char *append_sgr_reset(char *dst);
  *
  * @note Defined in ascii_simd.c to avoid circular dependencies.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 size_t write_rgb_triplet(uint8_t value, char *dst);
 
@@ -267,7 +267,7 @@ size_t write_rgb_triplet(uint8_t value, char *dst);
  *
  * Simple decimal writer for REP counts (can be larger than 255).
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 static inline size_t write_decimal(int value, char *dst) {
   if (value == 0) {

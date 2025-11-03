@@ -1,11 +1,14 @@
 /**
- * @page topic_audio Audio System
+ * @defgroup audio Audio Module
  * @ingroup module_audio
+ *
+ * @page topic_audio Audio README
+ * @ingroup audio
  *
  * @section audio_overview Overview
  *
  * The Audio System provides real-time audio capture and playback functionality for
- * ASCII-Chat video chat sessions. It uses PortAudio for cross-platform audio I/O,
+ * ascii-chat video chat sessions. It uses PortAudio for cross-platform audio I/O,
  * enabling low-latency audio streaming with thread-safe ring buffers.
  *
  * **Implementation**: lib/audio.h

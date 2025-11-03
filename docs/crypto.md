@@ -1,4 +1,4 @@
-# ASCII-Chat Cryptography Documentation
+# ascii-chat Cryptography Documentation
 
 **Version:** 2.0
 **Last Updated:** October 2025
@@ -22,7 +22,7 @@
 
 ## Overview
 
-ASCII-Chat implements **end-to-end encryption by default** using modern cryptographic primitives from [libsodium](https://doc.libsodium.org/). All data packets (headers and payloads) are encrypted after the initial handshake, protecting against eavesdropping and tampering.
+ascii-chat implements **end-to-end encryption by default** using modern cryptographic primitives from [libsodium](https://doc.libsodium.org/). All data packets (headers and payloads) are encrypted after the initial handshake, protecting against eavesdropping and tampering.
 
 ### Key Features
 
@@ -49,7 +49,7 @@ ASCII-Chat implements **end-to-end encryption by default** using modern cryptogr
 
 ### The MITM Problem
 
-ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-existing trust infrastructure like the Certificate Authority (CA) system used by HTTPS. This creates a security tradeoff:
+ascii-chat faces a **fundamental cryptographic challenge**: there is no pre-existing trust infrastructure like the Certificate Authority (CA) system used by HTTPS. This creates a security tradeoff:
 
 **Without verification:**
 - ✅ Privacy: Encrypted against passive eavesdropping (ISP, WiFi admin, etc.)
@@ -61,7 +61,7 @@ ASCII-Chat faces a **fundamental cryptographic challenge**: there is no pre-exis
 
 ### Default Behavior: Privacy Without Trust
 
-**By default**, ASCII-Chat provides **privacy but not authentication**:
+**By default**, ascii-chat provides **privacy but not authentication**:
 
 ```bash
 # Server (ephemeral key generated)
@@ -97,14 +97,14 @@ This is similar to **Bluetooth pairing** or **Signal safety numbers** - the firs
 | **HTTPS** | ✅ Always | CA system | Automatic (OS trust store) |
 | **SSH** | ✅ Always | Known hosts | Manual (first connection prompts) |
 | **Signal** | ✅ Always | Safety numbers | Manual (QR code scanning) |
-| **ASCII-Chat** | ✅ Always | Ephemeral DH | Optional (--server-key flag) |
+| **ascii-chat** | ✅ Always | Ephemeral DH | Optional (--server-key flag) |
 | **Zoom** | ✅ Sometimes | Central server | None (trust Zoom) |
 
 ---
 
 ## Cryptographic Primitives
 
-ASCII-Chat uses [libsodium](https://doc.libsodium.org/), a modern, portable, easy-to-use crypto library based on NaCl.
+ascii-chat uses [libsodium](https://doc.libsodium.org/), a modern, portable, easy-to-use crypto library based on NaCl.
 
 ### Core Algorithms
 
@@ -554,7 +554,7 @@ Using Ed25519→X25519 conversion for encryption would be simpler code-wise, but
 
 ### SSH Ed25519 Keys
 
-ASCII-Chat can use existing SSH Ed25519 keys for **authentication** (identity proof via signatures):
+ascii-chat can use existing SSH Ed25519 keys for **authentication** (identity proof via signatures):
 
 ```bash
 # Server: Use SSH private key for identity
@@ -571,7 +571,7 @@ ascii-chat client --server-key ~/.ssh/server_id_ed25519.pub
 
 **Ed25519 to X25519 conversion:**
 
-ASCII-Chat can convert Ed25519 keys to X25519 format for compatibility, but **does NOT use the converted key for encryption**:
+ascii-chat can convert Ed25519 keys to X25519 format for compatibility, but **does NOT use the converted key for encryption**:
 
 ```c
 // Public key: Ed25519 (signing) → X25519 (for compatibility only)
@@ -593,11 +593,11 @@ The SSH key proves identity through signatures. The ephemeral keys provide encry
 
 ### SSH Agent Integration
 
-ASCII-Chat supports **SSH agent** for encrypted private keys, allowing password-free authentication when your SSH key is already loaded in the agent.
+ascii-chat supports **SSH agent** for encrypted private keys, allowing password-free authentication when your SSH key is already loaded in the agent.
 
 **How it works:**
 
-When you provide an encrypted SSH key via `--key`, ASCII-Chat automatically checks if that specific key is available in the SSH agent:
+When you provide an encrypted SSH key via `--key`, ascii-chat automatically checks if that specific key is available in the SSH agent:
 
 ```bash
 # 1. Start SSH agent (if not already running)
@@ -676,7 +676,7 @@ int ed25519_sign_message(const private_key_t *key, const uint8_t *message,
 
 **Security architecture:**
 
-ASCII-Chat uses a **separation of concerns** design where SSH keys are ONLY used for authentication, never encryption:
+ascii-chat uses a **separation of concerns** design where SSH keys are ONLY used for authentication, never encryption:
 
 | Component | SSH Agent Mode | In-Memory Mode |
 |-----------|----------------|----------------|
@@ -794,7 +794,7 @@ Both SSH agent mode and in-memory mode provide **identical forward secrecy** - e
 
 **Problem:** Users with encrypted SSH keys had to manually add keys to ssh-agent, or enter their password repeatedly.
 
-**Solution:** ASCII-Chat now **automatically adds decrypted keys to ssh-agent** after successful password entry, eliminating future password prompts.
+**Solution:** ascii-chat now **automatically adds decrypted keys to ssh-agent** after successful password entry, eliminating future password prompts.
 
 **How it works:**
 
@@ -979,7 +979,7 @@ ascii-chat client --server-key github:zfogg
 
 ### GPG Key Support (Optional)
 
-**If GPG is installed**, ASCII-Chat can use GPG keys:
+**If GPG is installed**, ascii-chat can use GPG keys:
 
 ```bash
 # Use GPG key by ID
@@ -1013,7 +1013,7 @@ Or use SSH keys: --key ~/.ssh/id_ed25519
 
 **Format:**
 ```
-# ASCII-Chat Known Hosts
+# ascii-chat Known Hosts
 # Format: IP:port x25519 <hex-key> [comment]
 # IPv4 example:
 192.168.1.100:27224 x25519 a1b2c3d4e5f6... homeserver
@@ -1027,7 +1027,7 @@ Or use SSH keys: --key ~/.ssh/id_ed25519
 
 **Security Design: IP Binding (Not Hostnames)**
 
-ASCII-Chat binds server keys to **resolved IP addresses**, not DNS hostnames, for critical security reasons:
+ascii-chat binds server keys to **resolved IP addresses**, not DNS hostnames, for critical security reasons:
 
 **Why IP addresses?**
 1. **DNS Hijacking Prevention:**
@@ -1235,7 +1235,7 @@ ascii-chat client
 
 **Server's authorized_keys format:**
 ```
-# ASCII-Chat Authorized Keys
+# ascii-chat Authorized Keys
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFoo... alice@laptop
 ssh-ed25519 AAAAB3NzaC1yc2EAAAADAQABAAABAQC... bob@desktop
 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBar... carol@phone
@@ -1443,7 +1443,7 @@ memcpy(nonce, ctx->session_id, 16);           // Session ID prevents cross-sessi
 
 ### Overview
 
-ASCII-Chat implements **automatic session rekeying** to provide forward secrecy within long-lived connections. After the initial handshake establishes encryption, the system periodically performs new Diffie-Hellman key exchanges to rotate encryption keys.
+ascii-chat implements **automatic session rekeying** to provide forward secrecy within long-lived connections. After the initial handshake establishes encryption, the system periodically performs new Diffie-Hellman key exchanges to rotate encryption keys.
 
 **Security benefits:**
 - ✅ **Intra-session forward secrecy** - Compromise at time T doesn't decrypt packets before time T
@@ -1765,7 +1765,7 @@ bool crypto_should_rekey(const crypto_context_t *ctx) {
 **Severity:** Medium (mitigated by user choice)
 
 **Description:**
-By default, ASCII-Chat does not verify server identity. An attacker who controls the network can intercept the initial handshake and perform a man-in-the-middle attack.
+By default, ascii-chat does not verify server identity. An attacker who controls the network can intercept the initial handshake and perform a man-in-the-middle attack.
 
 **Attack scenario:**
 1. Client attempts to connect to server at 192.168.1.100:27224
@@ -2072,7 +2072,7 @@ public_key_t *whitelist = load_whitelist("authorized_clients.txt");
 
 **Why hot-reload is not needed:**
 
-**ASCII-Chat's security model does not require hot revocation:**
+**ascii-chat's security model does not require hot revocation:**
 1. **Server makes no assumptions about key compromise** - The server's job is to enforce the whitelist at connection time, not to detect or respond to compromise
 2. **Manual restart is acceptable** - If an operator learns a client key is compromised, a simple server restart (2 seconds) is perfectly adequate
 3. **Symmetric responsibility** - Just as clients can choose not to connect to servers with compromised keys, operators can restart servers to remove compromised client keys
@@ -2098,7 +2098,7 @@ killall ascii-chat server
 - ✅ Zero-downtime reload is overkill for a video chat application
 
 **Alternative considered and rejected:**
-Signal-based hot reload (SIGHUP) would add complexity for minimal benefit. ASCII-Chat prioritizes simplicity over operational features that don't improve security.
+Signal-based hot reload (SIGHUP) would add complexity for minimal benefit. ascii-chat prioritizes simplicity over operational features that don't improve security.
 
 **Impact:** None - This is not a security issue, just an operational characteristic
 
@@ -2595,7 +2595,7 @@ if (packet->sequence_number <= last_seen_sequence) {
 }
 ```
 
-**Note:** ASCII-Chat uses nonce-based encryption which provides implicit replay resistance (same nonce won't decrypt to same plaintext due to MAC)
+**Note:** ascii-chat uses nonce-based encryption which provides implicit replay resistance (same nonce won't decrypt to same plaintext due to MAC)
 
 ### Bug Class 5: Key Confusion
 
@@ -2640,7 +2640,7 @@ crypto_secretbox_easy(ciphertext, plaintext, nonce, encryption_key);
 
 **Document Version:** 2.3
 **Last Updated:** October 2025 (Session rekeying protocol implemented)
-**Maintainer:** ASCII-Chat Development Team
-**License:** Same as ASCII-Chat project (see LICENSE)
+**Maintainer:** ascii-chat Development Team
+**License:** Same as ascii-chat project (see LICENSE)
 
 🤖 *This document was generated with assistance from [Claude Code](https://claude.ai/code)*

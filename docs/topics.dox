@@ -1,9 +1,9 @@
 /**
  * @page topics Topics
- * @brief Comprehensive topic documentation for ASCII-Chat
+ * @brief Comprehensive topic documentation for ascii-chat
  *
  * This section contains detailed topic pages covering all major subsystems
- * and architectural components of ASCII-Chat.
+ * and architectural components of ascii-chat.
  *
  * @subpage topic_audio
  * @subpage topic_av
@@ -11,6 +11,7 @@
  * @subpage topic_build
  * @subpage topic_client
  * @subpage topic_common
+ * @subpage topic_compression
  * @subpage topic_config
  * @subpage topic_crypto
  * @subpage topic_debug
@@ -26,5 +27,13 @@
  * @subpage topic_platform
  * @subpage topic_ringbuffer
  * @subpage topic_server
+ * @subpage topic_server_main
+ * @subpage topic_server_client
+ * @subpage topic_server_protocol
+ * @subpage topic_server_stream
+ * @subpage topic_server_render
+ * @subpage topic_server_stats
+ * @subpage topic_server_crypto
+ * @subpage topic_main
  * @subpage topic_testing
  */

@@ -2,12 +2,13 @@
 
 /**
  * @file network/av.h
- * @defgroup av Audio/Video Networking
+ * @ingroup network
  * @ingroup av
+ * @defgroup av Audio/Video Networking
  * @brief Audio/Video/ASCII Packet Network Protocol Implementation
  *
  * This header provides the network protocol implementation for audio, video,
- * and ASCII frame packets in ASCII-Chat. The system handles packet serialization,
+ * and ASCII frame packets in ascii-chat. The system handles packet serialization,
  * compression, encryption integration, and message formatting for real-time
  * media streaming over TCP.
  *
@@ -71,7 +72,8 @@
 /**
  * @name Frame Packet Functions
  * @{
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 
 /**
@@ -88,7 +90,8 @@
  *
  * @note Compression is applied only if it reduces size by threshold percentage.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_size);
 
@@ -108,7 +111,8 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
  *
  * @note Compression reduces bandwidth for large image frames.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height, uint8_t format);
 
@@ -117,7 +121,8 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
 /**
  * @name Audio Packet Functions
  * @{
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 
 /**
@@ -132,7 +137,8 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
  *
  * @note Use av_send_audio_batch() for better bandwidth efficiency.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_audio(socket_t sockfd, const float *samples, int num_samples);
 
@@ -153,7 +159,8 @@ int av_send_audio(socket_t sockfd, const float *samples, int num_samples);
  *
  * @note Encryption is applied automatically when crypto_ctx is provided.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
                             crypto_context_t *crypto_ctx);
@@ -172,7 +179,8 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
  * @note This function does not support encryption. Use send_audio_batch_packet()
  *       with crypto_ctx parameter for encryption support.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, int sample_rate);
 
@@ -181,7 +189,8 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
 /**
  * @name Message Packet Functions
  * @{
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  *
  * Protocol message functions for text-based communication.
  * Messages use simple string formats for compatibility.
@@ -199,7 +208,8 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
  *
  * @note Message format is text-based for compatibility.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_size_message(socket_t sockfd, unsigned short width, unsigned short height);
 
@@ -214,7 +224,8 @@ int av_send_size_message(socket_t sockfd, unsigned short width, unsigned short h
  *
  * @note Message format is text-based for compatibility.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_audio_message(socket_t sockfd, unsigned int num_samples);
 
@@ -228,7 +239,8 @@ int av_send_audio_message(socket_t sockfd, unsigned int num_samples);
  *
  * @note Text message is sent as-is without modification.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_send_text_message(socket_t sockfd, const char *text);
 
@@ -245,7 +257,8 @@ int av_send_text_message(socket_t sockfd, const char *text);
  *
  * @warning Buffer must be large enough for num_samples float values.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_receive_audio_message(socket_t sockfd, const char *header, float *samples, size_t max_samples);
 
@@ -254,7 +267,8 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
 /**
  * @name Message Parsing Functions
  * @{
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 
 /**
@@ -271,7 +285,8 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
  *
  * @note All output parameters must be non-NULL.
  *
- * @ingroup module_network
+ * @ingroup av
+ * @ingroup network
  */
 int av_parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 

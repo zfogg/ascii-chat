@@ -1,6 +1,6 @@
 /**
  * @file tests/globals.c
- * @ingroup tests
+ * @ingroup testing
  * @brief 🔗 Global symbol stubs for test executables to satisfy linker dependencies
  */
 

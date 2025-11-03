@@ -131,5 +131,5 @@
  *
  * @see src/client/protocol.c
  * @see src/client/protocol.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

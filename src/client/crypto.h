@@ -1,7 +1,7 @@
 /**
  * @file client/crypto.h
  * @ingroup client_crypto
- * @brief ASCII-Chat Client Cryptography Handler Interface
+ * @brief ascii-chat Client Cryptography Handler Interface
  *
  * Provides client-side cryptographic handshake coordination, key loading,
  * and encryption context management for secure server communication.

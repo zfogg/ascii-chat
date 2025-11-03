@@ -27,7 +27,7 @@
  *
  * @subsection buffer_pool_size_classes Size Classes
  *
- * The buffer pool uses four size classes optimized for ASCII-Chat workloads:
+ * The buffer pool uses four size classes optimized for ascii-chat workloads:
  *
  * | Size Class | Buffer Size | Pool Count | Total Memory | Use Case |
  * |------------|-------------|------------|--------------|----------|
@@ -116,7 +116,7 @@
  *
  * @subsection buffer_pool_global Global Pool (Recommended)
  *
- * ASCII-Chat uses a global singleton pool for convenience:
+ * ascii-chat uses a global singleton pool for convenience:
  *
  * @code{.c}
  * // Initialize at startup (in main())

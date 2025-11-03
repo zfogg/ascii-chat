@@ -1,11 +1,14 @@
 /**
- * @page topic_video_frame Video Frame Management
+ * @defgroup video_frame Video Frame Buffers
  * @ingroup module_video
+ *
+ * @page topic_video_frame Video Frame README
+ * @ingroup video_frame
  *
  * @section video_frame_overview Overview
  *
  * The Video Frame module provides structures and utilities for managing video
- * frames throughout the ASCII-Chat pipeline. It handles RGB image data, frame
+ * frames throughout the ascii-chat pipeline. It handles RGB image data, frame
  * metadata, and efficient frame lifecycle management.
  *
  * **Implementation**: lib/video_frame.h

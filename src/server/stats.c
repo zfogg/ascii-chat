@@ -173,6 +173,8 @@ mutex_t g_stats_mutex = {0};
  *
  * Used to prevent attempting to lock an uninitialized mutex in debug builds
  * where stats_init() may not be called (it's guarded by #ifdef NDEBUG).
+ *
+ * @ingroup server_stats
  */
 static bool g_stats_mutex_initialized = false;
 

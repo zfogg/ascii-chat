@@ -1,21 +1,26 @@
 /**
- * @mainpage ASCII-Chat API Documentation
+ * @mainpage ascii-chat API Documentation
  *
  * @section intro_sec Introduction
  *
- * ASCII-Chat is a real-time terminal-based video chat application that converts
+ * ascii-chat is a real-time terminal-based video chat application that converts
  * video streams to ASCII art for display in terminals. It supports multiple clients,
  * audio streaming, and end-to-end encryption.
  *
  * This documentation provides comprehensive API reference and architectural guidance
- * for developers working with ASCII-Chat. Whether you're integrating ASCII-Chat into
+ * for developers working with ascii-chat. Whether you're integrating ascii-chat into
  * your application, extending its functionality, or contributing to the project, this
  * documentation will help you understand the codebase structure and implementation
  * details.
  *
  * @note **Getting Started?** We recommend starting with the @ref topic_build "Build System" topic
- *       to understand how to compile ASCII-Chat on Windows, Linux, and macOS, configure
+ *       to understand how to compile ascii-chat on Windows, Linux, and macOS, configure
  *       the build system, and set up your development environment.
+ *
+ * @warning **Important:** When exploring this documentation, we strongly urge you to **search for "README"** and
+ *          **"MODULE"** pages early on. These pages provide comprehensive overviews and are excellent entry points
+ *          for understanding major subsystems. Use the search functionality (Ctrl+F / Cmd+F or the search bar) to
+ *          find these pages quickly.
  *
  * @section exploring_docs Exploring the Documentation
  *
@@ -91,10 +96,10 @@
  *
  * @subsection quick_start Quick Start
  *
- * **New to ASCII-Chat?** Start here:
+ * **New to ascii-chat?** Start here:
  *
  * 1. **Set up your build environment**: Read @ref topic_build "Build System" to learn how to
- *    compile ASCII-Chat on your platform (Windows, Linux, or macOS) and understand the
+ *    compile ascii-chat on your platform (Windows, Linux, or macOS) and understand the
  *    CMake configuration, build types, and platform-specific considerations
  * 2. Read this main page to understand the project overview
  * 3. Visit @ref topic_categories "Topic Categories" to browse detailed guides
@@ -171,14 +176,14 @@
  * @section getting_started Getting Started
  *
  * @note Before diving into the code, make sure you've read the @ref topic_build "Build System" topic
- *       to understand how to compile and configure ASCII-Chat for your platform.
+ *       to understand how to compile and configure ascii-chat for your platform.
  *
- * This section provides a quick overview of how to use the ASCII-Chat library.
+ * This section provides a quick overview of how to use the ascii-chat library.
  * For detailed documentation on each component, see the @ref topic_categories "Topic Categories" page.
  *
  * @subsection typical_workflow Typical Workflow
  *
- * The typical workflow for using the ASCII-Chat library:
+ * The typical workflow for using the ascii-chat library:
  *
  * 1. Initialize the logging system with log_init()
  * 2. Initialize common subsystems with asciichat_common_init()

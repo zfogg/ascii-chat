@@ -1,6 +1,6 @@
 /**
  * @file config.c
- * @ingroup options
+ * @ingroup config
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
@@ -157,7 +157,7 @@ extern int validate_fps(const char *value_str, char *error_msg, size_t error_msg
  * @param datum TOML datum structure
  * @return Pointer to string value, or NULL if not a string type
  *
- * @ingroup options
+ * @ingroup config
  */
 static const char *get_toml_string(toml_datum_t datum) {
   if (datum.type == TOML_STRING) {
@@ -194,7 +194,7 @@ static const char *get_toml_string(toml_datum_t datum) {
  *
  * Invalid values are skipped with warnings.
  *
- * @ingroup options
+ * @ingroup config
  */
 static void apply_network_config(toml_datum_t toptab, bool is_client) {
   if (is_client) {
@@ -329,7 +329,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
  *
  * Invalid values are skipped with warnings.
  *
- * @ingroup options
+ * @ingroup config
  */
 static void apply_client_config(toml_datum_t toptab, bool is_client) {
   if (!is_client) {
@@ -519,7 +519,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
  *
  * Invalid values are skipped with warnings.
  *
- * @ingroup options
+ * @ingroup config
  */
 static void apply_audio_config(toml_datum_t toptab, bool is_client) {
   if (!is_client) {
@@ -570,7 +570,7 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
  * If `palette.chars` is provided, `palette.type` is automatically set to "custom".
  * Invalid values are skipped with warnings.
  *
- * @ingroup options
+ * @ingroup config
  */
 static void apply_palette_config_from_toml(toml_datum_t toptab) {
   toml_datum_t palette = toml_seek(toptab, "palette");
@@ -628,7 +628,7 @@ static void apply_palette_config_from_toml(toml_datum_t toptab) {
  *
  * Invalid values are skipped with warnings.
  *
- * @ingroup options
+ * @ingroup config
  */
 static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
   toml_datum_t crypto = toml_seek(toptab, "crypto");
@@ -721,7 +721,7 @@ static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
  *
  * The root-level `log_file` takes precedence if both are present.
  *
- * @ingroup options
+ * @ingroup config
  */
 static void apply_log_config(toml_datum_t toptab) {
   // Log file can be in root or in a [logging] section
@@ -767,7 +767,7 @@ static void apply_log_config(toml_datum_t toptab) {
  * @note Configuration warnings are printed to stderr because logging may not be
  *       initialized yet when this function is called.
  *
- * @ingroup options
+ * @ingroup config
  */
 asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict) {
   char *config_path_expanded = NULL;
@@ -892,7 +892,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
  * @note The function will create the directory structure if needed.
  * @note If the file already exists, it will not be overwritten (returns error).
  *
- * @ingroup options
+ * @ingroup config
  */
 asciichat_error_t config_create_default(const char *config_path) {
   (void)fprintf(stderr, "[DEBUG] config_create_default: called with config_path=%s\n",

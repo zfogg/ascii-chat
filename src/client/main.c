@@ -81,7 +81,16 @@
  * Global State Variables
  * ============================================================================ */
 
-/** Global flag indicating shutdown has been requested */
+/**
+ * @brief Global atomic flag indicating shutdown has been requested
+ *
+ * Primary coordination mechanism for clean client shutdown. Set to true by
+ * signal handlers (SIGINT) or main loop on error conditions. All worker threads
+ * check this flag in their main loops to exit gracefully.
+ *
+ * @note Must be atomic for thread-safe access without mutexes
+ * @ingroup client_main
+ */
 static atomic_bool g_client_should_exit = false;
 
 /**
@@ -546,6 +555,6 @@ int client_main(int argc, char *argv[]) {
     log_info("Cleanup complete, will attempt reconnection");
   }
 
-  log_info("ASCII-Chat client shutting down");
+  log_info("ascii-chat client shutting down");
   return 0;
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generate test videos for ASCII-Chat testing
+# Generate test videos for ascii-chat testing
 # Creates a simulated webcam video of a person at their computer
 
 set -e
@@ -10,7 +10,7 @@ FIXTURES_DIR="$SCRIPT_DIR/../fixtures"
 mkdir -p "$FIXTURES_DIR"
 cd "$FIXTURES_DIR"
 
-echo "Generating test video for ASCII-Chat..."
+echo "Generating test video for ascii-chat..."
 
 # Generate a realistic webcam test video
 # This simulates a person sitting at their computer with natural movements
@@ -124,7 +124,7 @@ generate_simple_test() {
     echo "Creating simple test pattern..."
 
     ffmpeg -f lavfi -i "testsrc2=duration=5:size=640x480:rate=30" \
-        -vf "drawtext=text='ASCII-Chat Test':x=(w-text_w)/2:y=(h-text_h)/2:fontcolor=white:fontsize=30" \
+        -vf "drawtext=text='ascii-chat Test':x=(w-text_w)/2:y=(h-text_h)/2:fontcolor=white:fontsize=30" \
         -c:v libx264 -preset ultrafast -crf 28 -pix_fmt yuv420p \
         -y test_pattern.mp4
 

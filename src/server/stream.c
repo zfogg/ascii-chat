@@ -150,7 +150,15 @@
 extern rwlock_t g_client_manager_rwlock;
 extern client_manager_t g_client_manager;
 
-// Track previous active video source count for grid layout change detection
+/**
+ * @brief Previous active video source count for layout change detection
+ *
+ * Tracks the number of active video sources from the previous frame generation
+ * cycle. Used to detect changes in the active client count, which triggers
+ * grid layout recalculation for optimal display arrangement.
+ *
+ * @ingroup server_stream
+ */
 static atomic_int g_previous_active_video_count = 0;
 
 /* ============================================================================

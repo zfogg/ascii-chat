@@ -1,4 +1,4 @@
-# ASCII-Chat Development Guide for Claude
+# ascii-chat Development Guide for Claude
 
 ## Repository Information
 
@@ -23,7 +23,7 @@
 
 ## Memory Management Macros (CRITICAL)
 
-**IMPORTANT**: ASCII-Chat uses custom memory macros for debugging and leak tracking. **ALWAYS** use these instead of standard C memory functions.
+**IMPORTANT**: ascii-chat uses custom memory macros for debugging and leak tracking. **ALWAYS** use these instead of standard C memory functions.
 
 ### Safe Memory Allocation Macros
 
@@ -186,7 +186,7 @@ asciichat_error_t current_error = GET_ERRNO();
 
 ## Project Overview
 
-ASCII-Chat is a terminal-based video chat application that converts webcam video to ASCII art in real-time. It supports multiple clients connecting to a single server, with video mixing and audio streaming capabilities.
+ascii-chat is a terminal-based video chat application that converts webcam video to ASCII art in real-time. It supports multiple clients connecting to a single server, with video mixing and audio streaming capabilities.
 
 **Key Features:**
 
@@ -290,7 +290,7 @@ ascii-chat/
 
 ### Windows Support (NEW - September 2025)
 
-ASCII-Chat now has comprehensive Windows support through a platform abstraction layer:
+ascii-chat now has comprehensive Windows support through a platform abstraction layer:
 
 **Windows-specific features:**
 
@@ -329,7 +329,7 @@ The preferred method is using the PowerShell build script `build.ps1` which hand
 
 The build script automatically:
 
-- Kills any running ASCII-Chat processes before building
+- Kills any running ascii-chat processes before building
 - Cleans build directory if passed -Clean.
 - Copies runtime DLLs, binaries, and debug info to the correct location.
 - Links compile_commands.json to repo root
@@ -615,7 +615,7 @@ typedef enum {
 
 ## Cryptographic Protocol
 
-ASCII-Chat implements **end-to-end encryption by default** using libsodium:
+ascii-chat implements **end-to-end encryption by default** using libsodium:
 
 **Algorithms:**
 
@@ -677,7 +677,7 @@ git push origin HEAD
 
 ### Per-Client Threading Architecture
 
-ASCII-Chat uses a high-performance per-client threading model:
+ascii-chat uses a high-performance per-client threading model:
 
 - **Each client gets 2 dedicated threads**: 1 video render (60 FPS) + 1 audio render (172 FPS)
 - **Linear performance scaling**: No shared bottlenecks, scales to 9+ clients

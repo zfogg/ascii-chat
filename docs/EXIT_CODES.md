@@ -1,8 +1,8 @@
-# ASCII-Chat Exit Codes
+# ascii-chat Exit Codes
 
 ## Overview
 
-ASCII-Chat uses a comprehensive exit code system to communicate detailed error information to users and scripts. Exit codes follow Unix conventions where **0 indicates success** and non-zero values indicate various types of failures.
+ascii-chat uses a comprehensive exit code system to communicate detailed error information to users and scripts. Exit codes follow Unix conventions where **0 indicates success** and non-zero values indicate various types of failures.
 
 ## Exit Code Philosophy
 
@@ -407,7 +407,7 @@ Examples:
 - **137** (128 + 9): Terminated by SIGKILL
 - **143** (128 + 15): Terminated by SIGTERM
 
-**ASCII-Chat does not use these codes directly.** They are set automatically by the shell.
+**ascii-chat does not use these codes directly.** They are set automatically by the shell.
 
 ---
 
@@ -584,7 +584,7 @@ int main(int argc, char **argv) {
 
 ### Overview
 
-ASCII-Chat provides convenient macros for fatal error handling that automatically:
+ascii-chat provides convenient macros for fatal error handling that automatically:
 1. Print a human-readable error message to stderr
 2. Include the exit code and location (file:line:function)
 3. Print a stack trace (debug builds only)

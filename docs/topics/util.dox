@@ -11,7 +11,7 @@
  * @section util_overview Overview
  *
  * The Utility module provides a collection of helper functions and utilities
- * used throughout ASCII-Chat. These include string manipulation, path handling,
+ * used throughout ascii-chat. These include string manipulation, path handling,
  * IP address parsing, mathematical operations, and format conversion.
  *
  * **Implementation**: lib/util/*.h

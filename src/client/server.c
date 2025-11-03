@@ -91,35 +91,102 @@
  * Connection State Management
  * ============================================================================ */
 
-/** Current socket file descriptor (INVALID_SOCKET_VALUE when disconnected) */
+/**
+ * @brief Current socket file descriptor
+ *
+ * Stores the active socket connection to the server. Set to INVALID_SOCKET_VALUE
+ * when disconnected. Thread-safe access via atomic operations where needed.
+ *
+ * @ingroup client_connection
+ */
 static socket_t g_sockfd = INVALID_SOCKET_VALUE;
 
-/** Atomic flag indicating if connection is active */
+/**
+ * @brief Atomic flag indicating if connection is currently active
+ *
+ * Thread-safe flag indicating whether the connection is established and active.
+ * Checked by all threads to determine if they can use the socket safely.
+ * Set to true on successful connection, false on disconnection.
+ *
+ * @ingroup client_connection
+ */
 static atomic_bool g_connection_active = false;
 
-/** Atomic flag indicating if connection loss was detected */
+/**
+ * @brief Atomic flag indicating if connection loss was detected
+ *
+ * Set to true when a connection failure is detected by any thread (protocol,
+ * keepalive, or main loop). Used to trigger reconnection logic.
+ *
+ * @ingroup client_connection
+ */
 static atomic_bool g_connection_lost = false;
 
-/** Atomic flag indicating if reconnection should be attempted */
+/**
+ * @brief Atomic flag indicating if reconnection should be attempted
+ *
+ * Set by main loop to signal that reconnection should be attempted after
+ * connection loss. Used to coordinate exponential backoff retry logic.
+ *
+ * @ingroup client_connection
+ */
 static atomic_bool g_should_reconnect = false;
 
-/** Client ID assigned by server (derived from local port) */
+/**
+ * @brief Client ID assigned by server
+ *
+ * Unique identifier assigned to this client by the server during connection
+ * establishment. Derived from the client's local port number.
+ *
+ * @ingroup client_connection
+ */
 static uint32_t g_my_client_id = 0;
 
-/** Resolved server IP address (for known_hosts) */
+/**
+ * @brief Resolved server IP address string
+ *
+ * Stores the resolved server IP address (IPv4 or IPv6) in string format.
+ * Used for known_hosts verification and logging purposes. Sized to hold
+ * maximum IPv6 address length with scope ID.
+ *
+ * @ingroup client_connection
+ */
 static char g_server_ip[256] = {0};
 
-/** Mutex to protect socket sends (prevent interleaved packets) */
+/**
+ * @brief Mutex protecting socket send operations
+ *
+ * Ensures thread-safe packet transmission by preventing interleaved packets
+ * on the wire. All send functions must acquire this mutex before writing
+ * to the socket to maintain packet integrity.
+ *
+ * @ingroup client_connection
+ */
 static mutex_t g_send_mutex = {0};
 
 /* ============================================================================
  * Crypto State
  * ============================================================================ */
 
-/** Per-connection crypto handshake context */
+/**
+ * @brief Per-connection crypto handshake context
+ *
+ * Maintains the cryptographic state for the current connection, including
+ * key exchange state, encryption keys, and handshake progress.
+ *
+ * @note This is not static because it may be accessed from crypto.c
+ * @ingroup client_connection
+ */
 crypto_handshake_context_t g_crypto_ctx = {0};
 
-/** Whether encryption is enabled for this connection */
+/**
+ * @brief Flag indicating whether encryption is enabled for this connection
+ *
+ * Set to true after successful cryptographic handshake completion.
+ * Controls whether packets are encrypted before transmission.
+ *
+ * @ingroup client_connection
+ */
 static bool g_encryption_enabled = false;
 
 /* ============================================================================
@@ -215,7 +282,7 @@ int server_connection_init() {
 }
 
 /**
- * @brief Establish connection to ASCII-Chat server
+ * @brief Establish connection to ascii-chat server
  *
  * Attempts to connect to the specified server with full capability negotiation.
  * Implements reconnection logic with exponential backoff for failed attempts.

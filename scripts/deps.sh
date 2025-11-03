@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install dependencies for ASCII-Chat
+# Install dependencies for ascii-chat
 #
 # This script handles platform-specific dependency installation:
 # - macOS: Uses Homebrew
@@ -12,7 +12,7 @@
 set -e
 
 echo ""
-echo "=== ASCII-Chat Dependency Installer ==="
+echo "=== ascii-chat Dependency Installer ==="
 echo ""
 
 # Detect platform

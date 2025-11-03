@@ -110,5 +110,5 @@
  * @see src/client/capture.c
  * @see src/client/capture.h
  * @see lib/os/webcam.h
- * @see topic_client
+ * @see @ref topic_client "Client Overview"
  */

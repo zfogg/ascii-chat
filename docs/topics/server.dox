@@ -1,6 +1,6 @@
 /**
  * @defgroup module_server Server
- * @brief ASCII-Chat server implementation and architecture
+ * @brief ascii-chat server implementation and architecture
  *
  * Multi-client real-time video and audio streaming server with per-client threading,
  * end-to-end encryption, and terminal-aware ASCII rendering.
@@ -54,7 +54,7 @@
  *
  * @section server_overview Overview
  *
- * The ASCII-Chat server is a high-performance, real-time multi-client system designed for
+ * The ascii-chat server is a high-performance, real-time multi-client system designed for
  * low-latency video and audio streaming with end-to-end encryption. The server implements
  * a sophisticated per-client threading architecture that provides linear scalability and
  * real-time performance guarantees for each connected client.

@@ -407,7 +407,7 @@ void asciichat_error_stats_print(void) {
     return;
   }
 
-  log_plain("\n=== ASCII-Chat Error Statistics ===\n");
+  log_plain("\n=== ascii-chat Error Statistics ===\n");
   log_plain("Total errors: %llu\n", (unsigned long long)error_stats.total_errors);
 
   if (error_stats.last_error_time > 0) {

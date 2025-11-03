@@ -1,8 +1,8 @@
-# ASCII-Chat Concurrency Architecture
+# ascii-chat Concurrency Architecture
 
 ## Overview
 
-This document describes the concurrency architecture of ASCII-Chat, covering both the current implementation and the ideal design patterns. ASCII-Chat implements a high-performance, real-time multi-client system with dedicated per-client threading for video and audio processing.
+This document describes the concurrency architecture of ascii-chat, covering both the current implementation and the ideal design patterns. ascii-chat implements a high-performance, real-time multi-client system with dedicated per-client threading for video and audio processing.
 
 ## Server Concurrency Architecture
 
@@ -1048,8 +1048,8 @@ The primary issue is **inconsistent application of the lock ordering protocol**.
 
 ## Conclusion
 
-The ASCII-Chat concurrency architecture balances performance, scalability, and maintainability through careful design of threading models, synchronization primitives, and data structures. The current per-client threading model provides excellent isolation and linear scalability, while the proposed improvements offer even better performance through lock-free data structures, thread pools, and event-driven architecture.
+The ascii-chat concurrency architecture balances performance, scalability, and maintainability through careful design of threading models, synchronization primitives, and data structures. The current per-client threading model provides excellent isolation and linear scalability, while the proposed improvements offer even better performance through lock-free data structures, thread pools, and event-driven architecture.
 
 However, several critical bugs in the current implementation prevent reliable operation under stress conditions. The primary issue is inconsistent application of the lock ordering protocol, particularly in signal handlers and client lookup functions. These bugs explain the reported symptoms of client freezes, server Ctrl+C issues, and reconnection failures.
 
-The key to successful concurrency in ASCII-Chat is maintaining the delicate balance between thread safety and performance, using the right synchronization primitive for each use case, and following established patterns for lock ordering and state management consistently throughout the codebase.
+The key to successful concurrency in ascii-chat is maintaining the delicate balance between thread safety and performance, using the right synchronization primitive for each use case, and following established patterns for lock ordering and state management consistently throughout the codebase.

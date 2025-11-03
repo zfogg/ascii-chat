@@ -2,7 +2,7 @@
 
 /**
  * @file image2ascii/simd/ascii_simd.h
- * @ingroup module_video
+ * @ingroup image2ascii
  * @brief SIMD-optimized ASCII conversion interface
  *
  * This header provides SIMD-optimized functions for converting images to ASCII art.
@@ -80,7 +80,7 @@
 /**
  * @brief Decimal conversion cache structure (1-3 digits)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   uint8_t len; /**< Number of digits (1-3) */
@@ -90,7 +90,7 @@ typedef struct {
 /**
  * @brief Global decimal cache for digit conversion
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   dec3_t dec3_table[256]; /**< Lookup table for 0-255 */
@@ -111,7 +111,7 @@ static const char ANSI_RESET[] = "\033[0m";
  *
  * Must be called before using any SIMD conversion functions.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void init_dec3(void);
 
@@ -120,7 +120,7 @@ void init_dec3(void);
  *
  * Initializes all SIMD subsystems and caches. Must be called once at startup.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void ascii_simd_init(void);
 
@@ -130,14 +130,14 @@ extern char g_default_luminance_palette[256];
 /**
  * @brief Initialize default luminance palette
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void init_default_luminance_palette(void);
 
 /**
  * @brief Dynamic string buffer structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   char *data; /**< Pointer to allocated buffer */
@@ -149,7 +149,7 @@ typedef struct {
  * @brief Initialize string buffer
  * @param s String buffer structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void str_init(Str *s);
 
@@ -157,7 +157,7 @@ void str_init(Str *s);
  * @brief Free string buffer
  * @param s String buffer structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void str_free(Str *s);
 
@@ -166,7 +166,7 @@ void str_free(Str *s);
  * @param s String buffer structure
  * @param need Minimum bytes needed
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void str_reserve(Str *s, size_t need);
 
@@ -176,7 +176,7 @@ void str_reserve(Str *s, size_t need);
  * @param src Source data
  * @param n Number of bytes to append
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void str_append_bytes(Str *s, const void *src, size_t n);
 
@@ -185,7 +185,7 @@ void str_append_bytes(Str *s, const void *src, size_t n);
  * @param s String buffer structure
  * @param c Character to append
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void str_append_c(Str *s, char c);
 
@@ -195,7 +195,7 @@ void str_append_c(Str *s, char c);
  * @param fmt Format string
  * @param ... Variable arguments
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void str_printf(Str *s, const char *fmt, ...);
 
@@ -204,7 +204,7 @@ void str_printf(Str *s, const char *fmt, ...);
  *
  * Used by NEON renderer for efficient color output.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   int cFR, cFG, cFB; /**< Current foreground RGB */
@@ -221,7 +221,7 @@ typedef rgb_t rgb_pixel_t;
  *
  * Simplified RGB image format for NEON optimizations.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   int w;           /**< Image width in pixels */
@@ -237,7 +237,7 @@ typedef struct {
  *
  * @note Aborts on out-of-memory condition.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 ImageRGB alloc_image(int w, int h);
 
@@ -248,7 +248,7 @@ ImageRGB alloc_image(int w, int h);
  * @param count Number of pixels to convert
  * @param luminance_palette Luminance-to-character mapping palette
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int count, const char luminance_palette[256]);
 
@@ -258,7 +258,7 @@ void convert_pixels_scalar(const rgb_pixel_t *pixels, char *ascii_chars, int cou
  * @param luminance_palette Luminance-to-character mapping palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_palette[256]);
 
@@ -267,7 +267,7 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
 /**
  * @brief SIMD benchmark results structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 typedef struct {
   double scalar_time;      /**< Scalar implementation time (seconds) */
@@ -287,7 +287,7 @@ typedef struct {
  * @param iterations Number of benchmark iterations
  * @return Benchmark results structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations);
 
@@ -299,7 +299,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int iterations
  * @param background_mode Use background colors
  * @return Benchmark results structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode);
 
@@ -313,7 +313,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
  * @param use_256color Use 256-color mode
  * @return Benchmark results structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, int iterations, bool background_mode,
                                                        const image_t *source_image, bool use_256color);
@@ -328,7 +328,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
  * @param use_256color Use 256-color mode
  * @return Benchmark results structure
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int height, int iterations,
                                                              bool background_mode, const image_t *source_image,
@@ -339,7 +339,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
  *
  * Prints available SIMD instruction sets to stdout.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void print_simd_capabilities(void);
 
@@ -349,7 +349,7 @@ void print_simd_capabilities(void);
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_simd(image_t *image, const char *ascii_chars);
 
@@ -361,7 +361,7 @@ char *image_print_simd(image_t *image, const char *ascii_chars);
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_256color, const char *ascii_chars);
 
@@ -371,7 +371,7 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
  *
  * Controls tradeoff between color fidelity and rendering speed.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void set_color_quality_mode(bool high_quality);
 
@@ -379,7 +379,7 @@ void set_color_quality_mode(bool high_quality);
  * @brief Get 256-color fast path setting
  * @return true if 256-color mode is enabled, false for truecolor
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 bool get_256_color_fast_path(void);
 
@@ -388,7 +388,7 @@ bool get_256_color_fast_path(void);
  *
  * Prevents first-frame performance penalty in benchmarks.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void prewarm_sgr256_fg_cache(void);
 
@@ -397,7 +397,7 @@ void prewarm_sgr256_fg_cache(void);
  *
  * Prevents first-frame performance penalty in benchmarks.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void prewarm_sgr256_cache(void);
 
@@ -407,7 +407,7 @@ void prewarm_sgr256_cache(void);
  * @param len_out Output parameter for sequence length
  * @return Pointer to ANSI sequence string (cached)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out);
 
@@ -418,7 +418,7 @@ char *get_sgr256_fg_string(uint8_t fg, uint8_t *len_out);
  * @param len_out Output parameter for sequence length
  * @return Pointer to ANSI sequence string (cached)
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
 
@@ -441,7 +441,7 @@ char *get_sgr256_fg_bg_string(uint8_t fg, uint8_t bg, uint8_t *len_out);
  *
  * Used by scalar fallbacks and declared in NEON implementation.
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg_g, const uint8_t *fg_b,
                                           const uint8_t *bg_r, const uint8_t *bg_g, const uint8_t *bg_b,

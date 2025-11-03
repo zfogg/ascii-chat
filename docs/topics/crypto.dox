@@ -8,7 +8,7 @@
  * @page topic_crypto Cryptography Module
  * @ingroup crypto
  *
- * The cryptography module provides end-to-end encryption for all ASCII-Chat communications
+ * The cryptography module provides end-to-end encryption for all ascii-chat communications
  * using libsodium, implementing a robust protocol with mutual authentication and perfect
  * forward secrecy.
  *
@@ -20,7 +20,7 @@
  *
  * @section crypto_overview Overview
  *
- * ASCII-Chat uses modern elliptic curve cryptography to provide:
+ * ascii-chat uses modern elliptic curve cryptography to provide:
  * - Confidentiality: XSalsa20-Poly1305 authenticated encryption
  * - Integrity: Built-in MAC (Message Authentication Code) verification
  * - Authenticity: Ed25519 digital signatures for identity verification

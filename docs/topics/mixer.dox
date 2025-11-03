@@ -1,12 +1,12 @@
 /**
- * @page topic_mixer Audio Mixer
- * @ingroup module_audio
+ * @page topic_mixer Mixer README
+ * @ingroup audio
  *
  * @section mixer_overview Overview
  *
- * The Audio Mixer provides real-time audio mixing for multiple clients in
- * ASCII-Chat video chat sessions. It supports dynamic client addition/removal,
- * automatic ducking, and efficient multi-client audio processing.
+ * The Mixer provides real-time audio mixing for multiple clients in ascii-chat
+ * video chat sessions. It supports dynamic client addition/removal, automatic
+ * ducking, and efficient multi-client audio processing.
  *
  * **Implementation**: lib/mixer.h
  *

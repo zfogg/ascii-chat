@@ -4,9 +4,8 @@
 
 /**
  * @file lock_debug.h
- * @defgroup lock_debug Lock Debugging
  * @ingroup lock_debug
- * @brief Lock debugging and deadlock detection system for ASCII-Chat
+ * @brief Lock debugging and deadlock detection system for ascii-chat
  *
  * This module provides comprehensive lock tracking to help identify deadlocks
  * and lock contention issues. It tracks all mutex and rwlock acquisitions
@@ -61,7 +60,7 @@ typedef struct hashtable hashtable_t;
 
 /**
  * @brief Lock type enumeration
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 typedef enum {
   LOCK_TYPE_MUTEX = 0,   ///< Standard mutex
@@ -88,7 +87,7 @@ typedef struct lock_record lock_record_t;
  * - Call stack backtrace with symbol information
  * - File and line number where lock was acquired
  *
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 struct lock_record {
   void *lock_address;               ///< Address of the actual lock object
@@ -115,7 +114,7 @@ struct lock_record {
  * This structure tracks aggregate statistics for each unique
  * file:line:function location that acquires locks.
  *
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 typedef struct lock_usage_stats {
   const char *file_name;             ///< Source file name
@@ -143,7 +142,7 @@ typedef struct lock_usage_stats {
  * - Atomic counters for statistics
  * - Debug thread management
  *
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 typedef struct {
   // Hashtable for O(1) lock record lookup using existing hashtable implementation
@@ -234,32 +233,32 @@ static inline uint32_t usage_stats_key(const char *file_name, int line_number, c
 /**
  * @brief Initialize the lock debugging system
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int lock_debug_init(void);
 
 /**
  * @brief Start the debug thread for lock monitoring
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int lock_debug_start_thread(void);
 
 /**
  * @brief Stop the debug thread and cleanup resources
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void lock_debug_cleanup(void);
 
 /**
  * @brief Join the debug thread (should be called as one of the last things before exit)
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void lock_debug_cleanup_thread(void);
 
 /**
  * @brief Trigger lock information printing (called by debug thread)
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void lock_debug_trigger_print(void);
 
@@ -274,7 +273,7 @@ void lock_debug_trigger_print(void);
  * @param line_number Source line number (use __LINE__)
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
 
@@ -285,7 +284,7 @@ int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, con
  * @param line_number Source line number (use __LINE__)
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
 
@@ -296,7 +295,7 @@ int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, c
  * @param line_number Source line number (use __LINE__)
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 
@@ -307,7 +306,7 @@ int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number
  * @param line_number Source line number (use __LINE__)
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 
@@ -318,7 +317,7 @@ int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number
  * @param line_number Source line number (use __LINE__)
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 
@@ -329,7 +328,7 @@ int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_numb
  * @param line_number Source line number (use __LINE__)
  * @param function_name Function name (use __func__)
  * @return 0 on success, error code on failure
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 
@@ -376,26 +375,26 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
  * @param total_acquired Output: total locks acquired (lifetime)
  * @param total_released Output: total locks released (lifetime)
  * @param currently_held Output: current number of held locks
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void lock_debug_get_stats(uint64_t *total_acquired, uint64_t *total_released, uint32_t *currently_held);
 
 /**
  * @brief Check if lock debugging is initialized
  * @return true if initialized, false otherwise
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 bool lock_debug_is_initialized(void);
 
 /**
  * @brief Print current lock debug state for debugging
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void lock_debug_print_state(void);
 
 /**
  * @brief Print all currently held locks with backtraces
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void print_all_held_locks(void);
 
@@ -404,7 +403,7 @@ void print_all_held_locks(void);
  * @param key Hashtable key
  * @param value Hashtable value
  * @param user_data User data pointer
- * @ingroup module_development
+ * @ingroup lock_debug
  */
 void print_orphaned_release_callback(uint32_t key, void *value, void *user_data);
 

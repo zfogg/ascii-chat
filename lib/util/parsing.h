@@ -19,7 +19,7 @@
  *
  * PROTOCOL MESSAGE FORMATS:
  * =========================
- * The system supports parsing of ASCII-Chat protocol messages:
+ * The system supports parsing of ascii-chat protocol messages:
  * - SIZE: "SIZE:width,height" - Video frame dimensions
  * - AUDIO: "AUDIO:num_samples" - Audio sample count
  *

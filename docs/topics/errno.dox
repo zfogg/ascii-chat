@@ -12,7 +12,7 @@
  * @section errno_overview Overview
  *
  * The Error Handling System provides comprehensive error tracking and reporting
- * for ASCII-Chat. It uses typed error codes, error context capture, and thread-local
+ * for ascii-chat. It uses typed error codes, error context capture, and thread-local
  * storage for safe multi-threaded error handling.
  *
  * **Implementation**: lib/asciichat_errno.h

@@ -1,3 +1,9 @@
+/**
+ * @file os/macos/webcam_avfoundation.m
+ * @ingroup webcam
+ * @brief 📷 macOS AVFoundation webcam capture implementation with hardware acceleration
+ */
+
 #ifdef __APPLE__
 
 #import <AVFoundation/AVFoundation.h>

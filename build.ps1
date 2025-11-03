@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-# PowerShell build script for ASCII-Chat on Windows
+# PowerShell build script for ascii-chat on Windows
 # Usage:
 #   .\build.ps1                    # Build using default/debug preset
 #   .\build.ps1 -Config Release    # Build using release preset
@@ -24,11 +24,11 @@ param(
   [string[]]$CFlags = @()
 )
 
-Write-Host "ASCII-Chat Build Script" -ForegroundColor Green
+Write-Host "ascii-chat Build Script" -ForegroundColor Green
 Write-Host ""
 
 # Kill any running server/client processes before building
-Write-Host "Checking for running ASCII-Chat processes..." -ForegroundColor Cyan
+Write-Host "Checking for running ascii-chat processes..." -ForegroundColor Cyan
 $processes = @("ascii-chat", "ascii-chat", "server", "client")
 $killed = $false
 
@@ -47,7 +47,7 @@ if ($killed) {
   Write-Host ""
 }
 else {
-  Write-Host "No running ASCII-Chat processes found." -ForegroundColor Green
+  Write-Host "No running ascii-chat processes found." -ForegroundColor Green
   Write-Host ""
 }
 

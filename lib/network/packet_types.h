@@ -1,11 +1,10 @@
 /**
  * @file network/packet_types.h
- * @defgroup packet Packet Types
  * @ingroup packet
- * @brief Network protocol packet type definitions and structures
+ * @ingroup network
  *
  * This module defines all packet types, packet structures, and protocol
- * constants used throughout the ASCII-Chat network communication system.
+ * constants used throughout the ascii-chat network communication system.
  * It serves as the central definition point for the network protocol.
  *
  * CORE RESPONSIBILITIES:
@@ -81,7 +80,7 @@
 /**
  * @name Network Protocol Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  */
 
 /**
@@ -90,7 +89,7 @@
  * Packets larger than this threshold are considered "large" and may
  * receive extended timeouts or compression treatment.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define LARGE_PACKET_THRESHOLD (100 * 1024)
 
@@ -100,7 +99,7 @@
  * Absolute maximum size for any packet. Packets larger than this
  * are rejected to prevent memory exhaustion attacks.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)
 
@@ -109,7 +108,7 @@
 /**
  * @name Timeout Configuration Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  *
  * Timeout constants for handling packets of different sizes.
  * Large packets require extended timeouts for successful transmission.
@@ -121,7 +120,7 @@
  * Default timeout for sending packets. Used as base value for
  * calculating timeouts for large packets.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define BASE_SEND_TIMEOUT 5
 
@@ -131,7 +130,7 @@
  * Additional timeout added per MB for large packets to prevent
  * premature timeout failures.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8
 
@@ -141,7 +140,7 @@
  * Minimum timeout value for client operations. Set to server timeout
  * plus buffer for reliable operation.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define MIN_CLIENT_TIMEOUT 10
 
@@ -151,7 +150,7 @@
  * Maximum timeout value for client operations. Prevents excessively
  * long waits for dead connections.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define MAX_CLIENT_TIMEOUT 60
 
@@ -160,7 +159,7 @@
 /**
  * @name Audio Batching Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  *
  * Audio batching configuration for efficient audio transmission.
  * Batched audio reduces packet overhead and improves bandwidth usage.
@@ -172,7 +171,7 @@
  * Number of audio chunks aggregated into a single batch packet
  * for efficiency.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define AUDIO_BATCH_COUNT 4
 
@@ -182,7 +181,7 @@
  * Total audio samples across all chunks in a batch. At 44.1kHz,
  * this equals ~23.2ms of audio.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define AUDIO_BATCH_SAMPLES (AUDIO_SAMPLES_PER_PACKET * AUDIO_BATCH_COUNT)
 
@@ -191,7 +190,7 @@
  *
  * Approximate duration of audio batch at 44.1kHz sample rate.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define AUDIO_BATCH_MS 23
 
@@ -201,7 +200,7 @@
  * Number of audio samples in a single audio packet. Smaller packets
  * provide lower latency at the cost of increased packet overhead.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define AUDIO_SAMPLES_PER_PACKET 256
 
@@ -210,7 +209,7 @@
 /**
  * @name Protocol Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  */
 
 /**
@@ -219,7 +218,7 @@
  * Magic number used in packet headers for packet validation.
  * Invalid magic numbers indicate corrupted or invalid packets.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define PACKET_MAGIC 0xDEADBEEF
 
@@ -228,7 +227,7 @@
 /**
  * @brief Network protocol packet type enumeration
  *
- * Defines all packet types used in the ASCII-Chat network protocol.
+ * Defines all packet types used in the ascii-chat network protocol.
  * Packet types are organized by category: protocol negotiation, frames,
  * audio, control, crypto handshake, multi-user extensions, messages.
  *
@@ -249,7 +248,7 @@
  * @note PACKET_TYPE_ENCRYPTED (24) is used for encrypted session packets
  *       after handshake completion.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef enum {
   /** @brief Protocol version and capabilities negotiation */
@@ -347,7 +346,7 @@ typedef enum {
  *
  * @warning Encrypting handshake packets will break the crypto handshake.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 static inline bool packet_is_handshake_type(packet_type_t type) {
   // Initial handshake packets (14-23)
@@ -380,7 +379,7 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
  *
  * @note CRC32 is computed over payload data, not including header.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Magic number (PACKET_MAGIC) for packet validation */
@@ -393,12 +392,13 @@ typedef struct {
   uint32_t crc32;
   /** @brief Client ID (0 = server, >0 = client identifier) */
   uint32_t client_id;
-} PACKED_ATTR packet_header_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ packet_header_t;
 
 /**
  * @name Multi-User Protocol Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  */
 
 /**
@@ -406,7 +406,7 @@ typedef struct {
  *
  * Used when a client connects without specifying a display name.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
 
@@ -416,7 +416,7 @@ typedef struct {
  * Maximum length for display_name field in client_info_packet_t.
  * Includes null terminator.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define MAX_DISPLAY_NAME_LEN 32
 
@@ -426,7 +426,7 @@ typedef struct {
  * Maximum number of clients that can connect to the server simultaneously.
  * Used for array sizing in client_list_packet_t.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 #define MAX_CLIENTS 10
 
@@ -438,14 +438,15 @@ typedef struct {
  * Packet structure for notifying server/client of terminal dimension changes.
  * Used when terminal is resized to update rendering dimensions.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Terminal width in characters */
   uint32_t width;
   /** @brief Terminal height in characters */
   uint32_t height;
-} PACKED_ATTR size_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ size_packet_t;
 
 /**
  * @brief Client information packet structure
@@ -453,7 +454,7 @@ typedef struct {
  * Contains client identification and capability information.
  * Used in multi-user protocol for client join/leave notifications.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Unique client identifier (1-9, 0 = server) */
@@ -462,7 +463,8 @@ typedef struct {
   char display_name[MAX_DISPLAY_NAME_LEN];
   /** @brief Client capabilities bitmask (CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH) */
   uint32_t capabilities;
-} PACKED_ATTR client_info_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ client_info_packet_t;
 
 /**
  * @brief Stream header packet structure
@@ -470,7 +472,7 @@ typedef struct {
  * Header prepended to media streams (video/audio) to identify source client
  * and stream characteristics. Used when multiple clients are streaming.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Client ID that this stream originates from (1-9) */
@@ -479,7 +481,8 @@ typedef struct {
   uint32_t stream_type;
   /** @brief Timestamp when frame/audio was captured (milliseconds since epoch) */
   uint32_t timestamp;
-} PACKED_ATTR stream_header_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ stream_header_t;
 
 /**
  * @brief Client list packet structure
@@ -487,14 +490,15 @@ typedef struct {
  * Contains list of all connected clients with their information.
  * Broadcast by server to all clients when client list changes.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Number of clients in the list (0 to MAX_CLIENTS) */
   uint32_t client_count;
   /** @brief Array of client information structures */
   client_info_packet_t clients[MAX_CLIENTS];
-} PACKED_ATTR client_list_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ client_list_packet_t;
 
 /**
  * @brief Server state packet structure
@@ -502,7 +506,7 @@ typedef struct {
  * Server broadcasts current connection state to all clients.
  * Sent when client count or active stream count changes.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Total number of currently connected clients */
@@ -511,7 +515,8 @@ typedef struct {
   uint32_t active_client_count;
   /** @brief Reserved fields for future use (must be zero) */
   uint32_t reserved[6];
-} PACKED_ATTR server_state_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ server_state_packet_t;
 
 /**
  * @brief Authentication failure reason flags
@@ -519,7 +524,7 @@ typedef struct {
  * Bitmask enumeration for authentication failure reasons.
  * Multiple flags can be combined to indicate multiple failure causes.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef enum {
   /** @brief Server requires password but client didn't provide one */
@@ -540,19 +545,20 @@ typedef enum {
  * Sent by server to client when authentication fails during crypto handshake.
  * Contains reason flags explaining why authentication was rejected.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Bitmask of auth_failure_reason_t values indicating failure causes */
   uint8_t reason_flags;
   /** @brief Reserved bytes for future use (must be zero) */
   uint8_t reserved[7];
-} PACKED_ATTR auth_failure_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ auth_failure_packet_t;
 
 /**
  * @name Protocol Negotiation Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  */
 
 /**
@@ -585,7 +591,7 @@ typedef struct {
  * @note This is the first packet exchanged in every connection.
  * @note Structure is 16 bytes total (packed).
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Major protocol version (must match for compatibility) */
@@ -602,7 +608,8 @@ typedef struct {
   uint16_t feature_flags;
   /** @brief Reserved bytes for future expansion (must be zero) */
   uint8_t reserved[7];
-} PACKED_ATTR protocol_version_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ protocol_version_packet_t;
 
 /**
  * @brief ASCII frame packet structure (Packet Type 2)
@@ -614,7 +621,7 @@ typedef struct {
  * @note If compressed_size > 0, data is zlib compressed.
  * @note Format: char data[original_size] or compressed_data[compressed_size]
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Terminal width in characters */
@@ -629,7 +636,8 @@ typedef struct {
   uint32_t checksum;
   /** @brief Frame flags bitmask (HAS_COLOR, IS_COMPRESSED, etc.) */
   uint32_t flags;
-} PACKED_ATTR ascii_frame_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ ascii_frame_packet_t;
 
 /**
  * @brief Image frame packet structure (Packet Type 3)
@@ -641,7 +649,7 @@ typedef struct {
  * @note Format: rgb_t pixels[width * height] or compressed data
  * @note Pixel formats are defined in common.h
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Image width in pixels */
@@ -656,7 +664,8 @@ typedef struct {
   uint32_t checksum;
   /** @brief Timestamp when frame was captured (milliseconds since epoch) */
   uint32_t timestamp;
-} PACKED_ATTR image_frame_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ image_frame_packet_t;
 
 /**
  * @brief Audio batch packet structure (Packet Type 28)
@@ -668,7 +677,7 @@ typedef struct {
  * @note Format: float samples[total_samples] (interleaved if stereo)
  * @note At 44.1kHz, this represents ~23ms of audio per batch.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT = 4) */
@@ -679,12 +688,13 @@ typedef struct {
   uint32_t sample_rate;
   /** @brief Number of audio channels (1=mono, 2=stereo) */
   uint32_t channels;
-} PACKED_ATTR audio_batch_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ audio_batch_packet_t;
 
 /**
  * @name Client Capability Flags
  * @{
- * @ingroup module_network
+ * @ingroup packet
  *
  * Bitmask flags for client capabilities in multi-user protocol.
  */
@@ -698,7 +708,7 @@ typedef struct {
 /**
  * @name Stream Type Flags
  * @{
- * @ingroup module_network
+ * @ingroup packet
  *
  * Bitmask flags for stream types in multi-user protocol.
  */
@@ -715,7 +725,7 @@ typedef struct {
  *
  * @note This packet must be sent UNENCRYPTED (handshake packet).
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Supported key exchange algorithms bitmask (KEX_ALGO_*) */
@@ -732,7 +742,8 @@ typedef struct {
   uint8_t preferred_auth;
   /** @brief Preferred cipher algorithm (CIPHER_ALGO_*) */
   uint8_t preferred_cipher;
-} PACKED_ATTR crypto_capabilities_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ crypto_capabilities_packet_t;
 
 /**
  * @brief Crypto parameters packet structure (Packet Type 15)
@@ -743,7 +754,7 @@ typedef struct {
  * @note This packet must be sent UNENCRYPTED (handshake packet).
  * @note Structure is 24 bytes total (packed).
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Selected key exchange algorithm (KEX_ALGO_*) */
@@ -770,7 +781,8 @@ typedef struct {
   uint8_t hmac_size;
   /** @brief Reserved bytes for future use (must be zero) */
   uint8_t reserved[3];
-} PACKED_ATTR crypto_parameters_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ crypto_parameters_packet_t;
 
 /**
  * @brief Terminal capabilities packet structure (Packet Type 5)
@@ -778,7 +790,7 @@ typedef struct {
  * Sent by client to server to report terminal capabilities, dimensions,
  * color support, and rendering preferences for optimal frame delivery.
  *
- * @ingroup module_network
+ * @ingroup packet
  */
 typedef struct {
   /** @brief Terminal capabilities bitmask (TERM_CAP_* flags) */
@@ -809,12 +821,13 @@ typedef struct {
   uint8_t desired_fps;
   /** @brief Reserved bytes for alignment (must be zero) */
   uint8_t reserved[2];
-} PACKED_ATTR terminal_capabilities_packet_t;
+} /** @cond */
+PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
 
 /**
  * @name Crypto Algorithm Constants
  * @{
- * @ingroup module_network
+ * @ingroup packet
  *
  * Algorithm identifiers for key exchange, authentication, and encryption.
  * Used in crypto handshake packet negotiation.

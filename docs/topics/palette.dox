@@ -1,11 +1,15 @@
 /**
- * @page topic_palette Palette Management
+ * @defgroup palette Character Palettes
  * @ingroup module_video
+ * @brief 🎨 Character palettes for video-to-ASCII conversion
+ *
+ * @page topic_palette Palette README
+ * @ingroup palette
  *
  * @section palette_overview Overview
  *
  * The Palette Management module provides comprehensive ASCII character palette
- * management for converting video frames to ASCII art in ASCII-Chat. The system
+ * management for converting video frames to ASCII art in ascii-chat. The system
  * supports multiple built-in palettes, custom user-defined palettes, and full
  * UTF-8 support for enhanced visual effects.
  *
@@ -22,7 +26,7 @@
  *
  * @section palette_builtin Built-in Palettes
  *
- * ASCII-Chat provides five built-in palette types, each optimized for different
+ * ascii-chat provides five built-in palette types, each optimized for different
  * visual styles and terminal capabilities:
  *
  * @subsection palette_standard Standard Palette

@@ -37,7 +37,7 @@ runs:
         if [ -f "codecov.yml" ]; then
           echo "🔍 Validating codecov.yml configuration..."
           response=$(curl -s --data-binary @codecov.yml https://codecov.io/validate)
-          
+
           # Check if response starts with "Valid!" (successful validation)
           if echo "$response" | grep -q '^Valid!'; then
             echo "✅ codecov.yml is valid"
@@ -59,19 +59,19 @@ runs:
       run: |
         if [ -f "${{ inputs.junit-file }}" ]; then
           echo "✅ JUnit XML exists ($(wc -l < ${{ inputs.junit-file }}) lines)"
-          
+
           # Try to validate the XML
           if xmllint --format "${{ inputs.junit-file }}" > /dev/null 2>&1; then
             echo "✅ Valid XML"
           else
             echo "⚠️ Invalid XML detected, attempting to fix..."
-            
+
             # Check if the file ends with </testsuites>
             if ! tail -1 "${{ inputs.junit-file }}" | grep -q '</testsuites>'; then
               echo "  Adding missing </testsuites> closing tag"
               echo '</testsuites>' >> "${{ inputs.junit-file }}"
             fi
-            
+
             # Try validation again
             if xmllint --format "${{ inputs.junit-file }}" > /dev/null 2>&1; then
               echo "✅ XML fixed successfully"
@@ -79,7 +79,7 @@ runs:
               echo "❌ Could not fix XML, creating minimal valid file"
               # Create a minimal valid JUnit XML
               echo '<?xml version="1.0" encoding="UTF-8"?>' > "${{ inputs.junit-file }}.fixed"
-              echo '<testsuites name="ASCII-Chat Tests">' >> "${{ inputs.junit-file }}.fixed"
+              echo '<testsuites name="ascii-chat Tests">' >> "${{ inputs.junit-file }}.fixed"
               echo '  <testsuite name="unknown" tests="0" failures="0" errors="1" time="0.0">' >> "${{ inputs.junit-file }}.fixed"
               echo '    <testcase classname="unknown" name="xml_parse_error" time="0.0">' >> "${{ inputs.junit-file }}.fixed"
               echo '      <error message="Original JUnit XML was malformed" type="XMLParseError">Could not parse original JUnit XML file</error>' >> "${{ inputs.junit-file }}.fixed"
@@ -93,10 +93,10 @@ runs:
           echo "❌ JUnit XML not found at ${{ inputs.junit-file }}"
           echo "Looking for XML files:"
           find . -name "*.xml" -type f | head -5
-          
+
           # Create a minimal file to prevent downstream errors
           echo '<?xml version="1.0" encoding="UTF-8"?>' > "${{ inputs.junit-file }}"
-          echo '<testsuites name="ASCII-Chat Tests">' >> "${{ inputs.junit-file }}"
+          echo '<testsuites name="ascii-chat Tests">' >> "${{ inputs.junit-file }}"
           echo '  <testsuite name="unknown" tests="0" failures="0" errors="1" time="0.0">' >> "${{ inputs.junit-file }}"
           echo '    <testcase classname="unknown" name="no_results" time="0.0">' >> "${{ inputs.junit-file }}"
           echo '      <error message="No test results found" type="MissingResults">JUnit XML file was not generated</error>' >> "${{ inputs.junit-file }}"
@@ -113,11 +113,11 @@ runs:
         files: |
           ${{ inputs.junit-file }}
         check_name: |
-          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
               format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
         comment_title: |
-          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
               format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
         compare_to_earlier_commit: true
@@ -132,11 +132,11 @@ runs:
         files: |
           ${{ inputs.junit-file }}
         check_name: |
-          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
               format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
         comment_title: |
-          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
               format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
         compare_to_earlier_commit: true
@@ -151,11 +151,11 @@ runs:
         files: |
           ${{ inputs.junit-file }}
         check_name: |
-          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
               format('{0} Tests ({1})', 'Performance', inputs.os-name) }}
         comment_title: |
-          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('{0} Test Results ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Test Results ({1})', 'Integration', inputs.os-name) ||
               format('{0} Test Results ({1})', 'Performance', inputs.os-name) }}
         compare_to_earlier_commit: true
@@ -169,7 +169,7 @@ runs:
       with:
         files: ${{ inputs.junit-file }}
         flags: |
-          ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
               format('ascii-chat-performance-{0}', inputs.os-name) }}
         token: ${{ inputs.codecov-token }}
@@ -201,11 +201,11 @@ runs:
         files: ${{ inputs.coverage-files }}
         directory: .
         flags: |
-          ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
               format('ascii-chat-performance-{0}', inputs.os-name) }}
         name: |
-          ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) || 
+          ${{ inputs.test-type == 'unit' && format('ascii-chat-coverage-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-coverage-{0}', inputs.os-name) ||
               format('ascii-chat-performance-coverage-{0}', inputs.os-name) }}
         fail_ci_if_error: false

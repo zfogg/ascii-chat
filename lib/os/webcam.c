@@ -1,7 +1,7 @@
 
 /**
  * @file os/webcam.c
- * @ingroup os
+ * @ingroup webcam
  * @brief 📷 Cross-platform webcam abstraction layer for Media Foundation (Windows) and V4L2 (Linux)
  */
 
@@ -264,7 +264,7 @@ void webcam_print_init_error_help(asciichat_error_t error_code) {
     safe_fprintf(stderr, "Webcam is already in use by another application.\n");
     safe_fprintf(stderr, "Windows allows only one application to access the webcam at a time.\n");
     safe_fprintf(stderr, "\n");
-    safe_fprintf(stderr, "To use ASCII-Chat with multiple clients, try these alternatives:\n");
+    safe_fprintf(stderr, "To use ascii-chat with multiple clients, try these alternatives:\n");
     safe_fprintf(stderr, "  --test-pattern    Generate a colorful test pattern instead of using webcam\n");
     safe_fprintf(stderr, "  --file VIDEO.mp4  Use a video file as input (to be implemented)\n");
     safe_fprintf(stderr, "\n");

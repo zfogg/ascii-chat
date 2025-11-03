@@ -158,7 +158,25 @@ static_cond_t g_shutdown_cond = STATIC_COND_INIT;
  * PLATFORM NOTE: Uses platform-abstracted socket_t type (SOCKET on Windows,
  * int on POSIX) with INVALID_SOCKET_VALUE for proper cross-platform handling.
  */
+/**
+ * @brief IPv4 listening socket file descriptor
+ *
+ * Socket used to accept incoming IPv4 connections. Set to INVALID_SOCKET_VALUE
+ * when not listening. Atomic to allow safe access from signal handlers.
+ *
+ * @ingroup server_main
+ */
 static _Atomic socket_t listenfd = INVALID_SOCKET_VALUE;
+
+/**
+ * @brief IPv6 listening socket file descriptor
+ *
+ * Socket used to accept incoming IPv6 connections. Set to INVALID_SOCKET_VALUE
+ * when not listening. Atomic to allow safe access from signal handlers.
+ *
+ * @note May be INVALID_SOCKET_VALUE if IPv6 is disabled or unavailable
+ * @ingroup server_main
+ */
 static _Atomic socket_t listenfd6 = INVALID_SOCKET_VALUE;
 
 /**
@@ -193,10 +211,51 @@ static bool g_stats_logger_thread_created = false;
  * ============================================================================
  */
 
-/** Global server crypto state */
+/**
+ * @brief Global flag indicating if server encryption is enabled
+ *
+ * Set to true when the server is configured to use encryption and has
+ * successfully loaded a private key. Controls whether the server performs
+ * cryptographic handshakes with clients.
+ *
+ * @note Accessed from crypto.c for server-side crypto operations
+ * @ingroup server_main
+ */
 bool g_server_encryption_enabled = false;
+
+/**
+ * @brief Global server private key
+ *
+ * Stores the server's private key loaded from the key file. Used for
+ * cryptographic handshakes and packet encryption/decryption. Initialized
+ * during server startup from the configured key file path.
+ *
+ * @note Accessed from crypto.c for server-side crypto operations
+ * @ingroup server_main
+ */
 private_key_t g_server_private_key = {0};
+
+/**
+ * @brief Global client public key whitelist
+ *
+ * Array of public keys for clients that are authorized to connect to the
+ * server. Used for client authentication when whitelist mode is enabled.
+ * Sized to hold up to MAX_CLIENTS entries.
+ *
+ * @note Only used when client authentication is enabled
+ * @note Accessed from crypto.c for client authentication
+ * @ingroup server_main
+ */
 public_key_t g_client_whitelist[MAX_CLIENTS] = {0};
+
+/**
+ * @brief Number of whitelisted clients
+ *
+ * Tracks the current number of entries in g_client_whitelist that are
+ * valid and active. Used to iterate the whitelist and check authorization.
+ *
+ * @ingroup server_main
+ */
 size_t g_num_whitelisted_clients = 0;
 
 /* ============================================================================
@@ -420,9 +479,9 @@ static void sigusr1_handler(int sigusr1) {
  */
 
 /**
- * @brief ASCII-Chat Server main entry point - orchestrates the entire server architecture
+ * @brief ascii-chat Server main entry point - orchestrates the entire server architecture
  *
- * This function serves as the conductor of the ASCII-Chat server's modular architecture.
+ * This function serves as the conductor of the ascii-chat server's modular architecture.
  * It replaces the original monolithic server design with a clean initialization sequence
  * followed by a robust multi-client connection management loop.
  *

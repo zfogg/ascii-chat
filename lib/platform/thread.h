@@ -2,8 +2,8 @@
 
 /**
  * @file platform/thread.h
- * @ingroup module_platform
- * @brief Cross-platform thread interface for ASCII-Chat
+ * @ingroup platform
+ * @brief Cross-platform thread interface for ascii-chat
  *
  * This header provides a unified thread interface that abstracts platform-specific
  * implementations (Windows threads vs POSIX pthreads).
@@ -52,7 +52,7 @@ typedef pthread_t thread_id_t;
  * Creates a new thread that executes the given function with the provided argument.
  * The thread handle is stored in the thread parameter.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg);
 
@@ -64,7 +64,7 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  *
  * Blocks the calling thread until the specified thread terminates.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 int ascii_thread_join(asciithread_t *thread, void **retval);
 
@@ -78,7 +78,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval);
  * Waits for the specified thread to terminate, with a maximum wait time.
  * Returns non-zero if the timeout expires before the thread completes.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t timeout_ms);
 
@@ -89,7 +89,7 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
  * Terminates the calling thread and optionally passes a return value
  * to any thread waiting to join.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void ascii_thread_exit(void *retval);
 
@@ -99,7 +99,7 @@ void ascii_thread_exit(void *retval);
  *
  * Returns a platform-specific thread identifier for the calling thread.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 thread_id_t ascii_thread_self(void);
 
@@ -109,7 +109,7 @@ thread_id_t ascii_thread_self(void);
  * @param t2 Second thread ID
  * @return Non-zero if thread IDs are equal, 0 otherwise
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 int ascii_thread_equal(thread_id_t t1, thread_id_t t2);
 
@@ -120,7 +120,7 @@ int ascii_thread_equal(thread_id_t t1, thread_id_t t2);
  * Returns a unique numeric identifier for the current thread.
  * This is more portable than thread_id_t for comparisons.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 uint64_t ascii_thread_current_id(void);
 
@@ -129,7 +129,7 @@ uint64_t ascii_thread_current_id(void);
  * @param thread Pointer to thread handle
  * @return true if thread is initialized, false otherwise
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 bool ascii_thread_is_initialized(asciithread_t *thread);
 
@@ -140,6 +140,6 @@ bool ascii_thread_is_initialized(asciithread_t *thread);
  * Sets the thread handle to an uninitialized state. Useful for
  * static initialization or resetting a thread handle.
  *
- * @ingroup module_platform
+ * @ingroup platform
  */
 void ascii_thread_init(asciithread_t *thread);

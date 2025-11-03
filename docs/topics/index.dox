@@ -13,8 +13,8 @@
  */
 
 /**
- * @defgroup module_platform Platform Abstraction
- * @brief Cross-platform abstractions for threading, sockets, and system calls
+ * @defgroup module_abstractions Abstraction
+ * @brief Cross-platform abstractions for threading, sockets, and system calls, and hardware access
  *
  * Platform abstraction layer and OS-specific functionality.
  */
@@ -55,15 +55,15 @@
  */
 
 /**
- * @defgroup module_client Client Application
+ * @defgroup module_client Application: Client
  * @brief Client application for connecting to servers and streaming media
  *
  * Client connection management, media capture, display rendering, and reconnection logic.
  */
 
 /**
- * @defgroup module_server Server
- * @brief ASCII-Chat server implementation and architecture
+ * @defgroup module_server Application: Server
+ * @brief ascii-chat server implementation and architecture
  *
  * Multi-client real-time video and audio streaming server with per-client threading,
  * end-to-end encryption, and terminal-aware ASCII rendering.
@@ -80,9 +80,9 @@
  * @page topic_categories Topic Categories
  * @brief Detailed documentation for major subsystems
  *
- * This page provides detailed information about the major subsystems in ASCII-Chat.
+ * This page provides detailed information about the major subsystems in ascii-chat.
  * Each topic covers architecture, implementation details, usage patterns, and best practices.
- * The categories below correspond to the CMake library modules used to build ASCII-Chat.
+ * The categories below correspond to the CMake library modules used to build ascii-chat.
  *
  * @tableofcontents
  *
@@ -113,7 +113,7 @@
  * @copybrief module_crypto
  *
  * - @ref topic_crypto "Cryptography" - End-to-end encryption and cryptographic operations
- * - @ref topic_crypto_detailed "Cryptography Overview" - Detailed crypto implementation guide
+ * - @ref topic_crypto_detailed "Cryptography README" - Detailed crypto implementation guide
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Key Management" - SSH/GPG key parsing and validation
  *
@@ -137,6 +137,7 @@
  *
  * @copybrief module_core
  *
+ * - @ref topic_main "main()" - Unified binary dispatcher routing to server or client mode
  * - @ref topic_common "Common Definitions" - Core utilities, macros, memory debugging, constants
  * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref topic_logging "Logging System" - Level-based logging, rate limiting, file output
@@ -148,6 +149,7 @@
  * @copybrief module_network
  *
  * - @ref topic_network "Network I/O" - Socket operations, timeouts, connections, packet protocol
+ * - @ref topic_compression "Network Compression" - zstd compression utilities for network payload optimization
  * - @ref topic_packet_types "Packet Types" - Network packet structures and definitions
  * - @ref topic_av "Audio/Video Networking" - Network APIs for audio/video streaming
  *
@@ -170,6 +172,13 @@
  * @copybrief module_server
  *
  * - @ref topic_server "Overview of Server" - Multi-client server with per-client threading, encryption, and real-time rendering
+ * - @ref topic_server_main "Server Main Entry Point" - Server initialization, signal handling, and connection management
+ * - @ref topic_server_client "Client Management" - Per-client lifecycle management and threading coordination
+ * - @ref topic_server_protocol "Protocol Handler" - Network packet processing and protocol implementation
+ * - @ref topic_server_stream "Stream Generation" - Multi-client video mixing and ASCII frame generation
+ * - @ref topic_server_render "Render Threads" - Per-client rendering threads with rate limiting
+ * - @ref topic_server_stats "Statistics and Monitoring" - Performance monitoring and resource utilization tracking
+ * - @ref topic_server_crypto "Cryptographic Operations" - Per-client cryptographic handshake and session encryption management
  *
  * @section topics_development Development & Debugging
  *
