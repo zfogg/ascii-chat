@@ -1,0 +1,245 @@
+/**
+ * @defgroup main main()
+ * @brief \c main() The binary's entry point
+ */
+
+/**
+ * @page topic_main main() README
+ * @ingroup main
+ *
+ * @section main_overview Overview
+ *
+ * The `main()` function serves as the unified entry point for the ascii-chat
+ * application, implementing a mode dispatcher that routes execution to either
+ * server or client mode based on command-line arguments. This design consolidates
+ * both server and client functionality into a single binary, simplifying deployment
+ * and ensuring version consistency.
+ *
+ * **Implementation**: src/main.c
+ *
+ * **Key Features**:
+ * - Unified binary dispatcher for server and client modes
+ * - Command-line argument parsing and mode selection
+ * - Help and version information display
+ * - Extensible mode registration system
+ * - Clean separation of concerns between dispatcher and modes
+ *
+ * @section main_architecture Unified Binary Architecture
+ *
+ * ascii-chat consolidates server and client into one executable:
+ *
+ * **Command Syntax**:
+ * @code{.bash}
+ * ascii-chat <mode> [options...]
+ * ascii-chat --help
+ * ascii-chat --version
+ * @endcode
+ *
+ * **Available Modes**:
+ * - **server** - Multi-client video chat server with ASCII frame mixing
+ * - **client** - Video chat client with webcam capture and terminal display
+ *
+ * **Design Benefits**:
+ * - Single binary simplifies installation and deployment
+ * - Shared library code reduces disk space usage
+ * - Unified versioning eliminates client/server mismatch issues
+ * - Easier testing and packaging (one artifact to build)
+ * - Consistent version reporting across modes
+ *
+ * @section main_dispatch_mode Dispatching Logic
+ *
+ * The dispatcher implements clean separation of concerns:
+ *
+ * @subsection main_help_version Help and Version
+ *
+ * @code{.c}
+ * // Top-level help (no mode specified)
+ * if (argc == 1 || (argc == 2 && strcmp(argv[1], "--help") == 0)) {
+ *   print_top_level_help();
+ *   exit(0);
+ * }
+ *
+ * // Version information
+ * if (argc == 2 && strcmp(argv[1], "--version") == 0) {
+ *   print_version();
+ *   exit(0);
+ * }
+ * @endcode
+ *
+ * @subsection main_mode_selection Mode Selection
+ *
+ * @code{.c}
+ * // Extract mode from first argument
+ * const char *mode_name = argv[1];
+ *
+ * // Find mode descriptor in registration table
+ * mode_descriptor_t *mode = find_mode_by_name(mode_name);
+ * if (!mode) {
+ *   fprintf(stderr, "Unknown mode: %s\n", mode_name);
+ *   print_top_level_help();
+ *   exit(ERROR_USAGE);
+ * }
+ *
+ * // Forward execution to mode-specific entry point
+ * int result = mode->entry_point(argc - 1, &argv[1]);
+ * exit(result);
+ * @endcode
+ *
+ * @section main_mode_interaction Mode Interaction
+ *
+ * The dispatcher forwards execution to mode-specific entry points:
+ *
+ * @subsection main_server_mode Server Mode
+ *
+ * When `server` mode is selected:
+ * @code{.c}
+ * // src/main.c dispatches to:
+ * int server_main(int argc, char *argv[]);
+ *
+ * // Located in src/server/main.c
+ * // Handles server initialization, connection management, and lifecycle
+ * @endcode
+ *
+ * **Server Entry Point** (`src/server/main.c`):
+ * - Initializes server subsystems (crypto, audio mixer, buffer pools)
+ * - Binds to listening sockets (IPv4 and IPv6)
+ * - Accepts client connections in main loop
+ * - Coordinates per-client threading (receive, send, render threads)
+ * - Handles graceful shutdown and cleanup
+ *
+ * @subsection main_client_mode Client Mode
+ *
+ * When `client` mode is selected:
+ * @code{.c}
+ * // src/main.c dispatches to:
+ * int client_main(int argc, char *argv[]);
+ *
+ * // Located in src/client/main.c
+ * // Handles client initialization, connection, and media capture
+ * @endcode
+ *
+ * **Client Entry Point** (`src/client/main.c`):
+ * - Initializes client subsystems (display, capture, audio)
+ * - Establishes connection to server with exponential backoff
+ * - Starts worker threads (protocol, keepalive, capture, audio)
+ * - Implements reconnection logic on connection loss
+ * - Handles graceful shutdown and cleanup
+ *
+ * @section main_mode_registration Mode Registration System
+ *
+ * The dispatcher uses a function pointer table pattern for extensibility:
+ *
+ * @code{.c}
+ * typedef int (*mode_entry_point_t)(int argc, char *argv[]);
+ *
+ * typedef struct {
+ *   const char *name;
+ *   const char *description;
+ *   mode_entry_point_t entry_point;
+ * } mode_descriptor_t;
+ *
+ * static const mode_descriptor_t modes[] = {
+ *   { "server", "Multi-client video chat server", server_main },
+ *   { "client", "Video chat client", client_main },
+ *   { NULL, NULL, NULL }  // Sentinel
+ * };
+ * @endcode
+ *
+ * **Adding New Modes**:
+ * 1. Implement `int new_mode_main(int argc, char *argv[])`
+ * 2. Add entry to modes[] table
+ * 3. Mode automatically appears in help and becomes available
+ *
+ * @section main_implementation Implementation Details
+ *
+ * @subsection main_command_parsing Command-Line Parsing
+ *
+ * The dispatcher handles top-level commands before mode dispatch:
+ *
+ * - `--help` (no mode): Shows mode selection help
+ * - `--version`: Shows unified binary version
+ * - `<mode> --help`: Forwarded to mode-specific entry point
+ * - `<mode> [options...]`: Forwarded to mode-specific entry point
+ *
+ * @subsection main_error_handling Error Handling
+ *
+ * **Invalid Mode**:
+ * - Prints error message to stderr
+ * - Shows top-level help
+ * - Exits with `ERROR_USAGE`
+ *
+ * **Mode Execution Failure**:
+ * - Returns mode's error code unchanged
+ * - Dispatcher exits with same code
+ * - Allows mode-specific exit codes to propagate
+ *
+ * @subsection main_version_reporting Version Reporting
+ *
+ * Both modes report the same version:
+ * @code{.c}
+ * // Version comes from common version.h
+ * printf("ascii-chat version %s\n", VERSION_STRING);
+ * @endcode
+ *
+ * This ensures server and client always know they're compatible.
+ *
+ * @section main_platform_compatibility Platform Compatibility
+ *
+ * The unified binary works identically across all platforms:
+ *
+ * - **Linux/Unix**: `./ascii-chat server` or `./ascii-chat client`
+ * - **macOS**: Same as Linux/Unix
+ * - **Windows**: `ascii-chat.exe server` or `ascii-chat.exe client`
+ *
+ * **Optional Backwards Compatibility**:
+ * - Symlinks can provide mode-specific aliases:
+ *   - `ascii-chat-server` → `ascii-chat server`
+ *   - `ascii-chat-client` → `ascii-chat client`
+ * - Environment-specific wrappers can provide convenience aliases
+ *
+ * @section main_design_rationale Design Rationale
+ *
+ * **Why Unified Binary?**
+ *
+ * 1. **Simplified Deployment**: One binary instead of two
+ * 2. **Version Consistency**: No client/server version mismatches
+ * 3. **Shared Codebase**: Common library code in lib/
+ * 4. **Easier Testing**: Single artifact to build and test
+ * 5. **Packaging Simplicity**: One package instead of two
+ *
+ * **Why Mode Dispatcher?**
+ *
+ * 1. **Clean Separation**: Dispatcher logic separate from mode logic
+ * 2. **Extensibility**: Easy to add new modes (relay, proxy, etc.)
+ * 3. **Help System**: Centralized help with mode-specific details
+ * 4. **Maintainability**: Mode code can evolve independently
+ *
+ * @section main_integration Integration Points
+ *
+ * **Dispatcher (`src/main.c`)**:
+ * - Provides top-level entry point
+ * - Parses mode argument
+ * - Routes to appropriate mode entry point
+ *
+ * **Server Mode (`src/server/main.c`)**:
+ * - Implements server_main() entry point
+ * - Coordinates server subsystems
+ * - Manages multi-client connections
+ *
+ * **Client Mode (`src/client/main.c`)**:
+ * - Implements client_main() entry point
+ * - Coordinates client subsystems
+ * - Manages connection and media capture
+ *
+ * **Shared Library (`lib/`)**:
+ * - Common functionality used by both modes
+ * - Platform abstraction, networking, crypto, video processing
+ * - No mode-specific dependencies
+ *
+ * @see src/main.c
+ * @see src/server/main.c
+ * @see src/client/main.c
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_client "Client Overview"
+ */
+

@@ -1,3 +1,10 @@
+
+/**
+ * @file audio.c
+ * @ingroup audio
+ * @brief 🔊 Audio capture and playback using PortAudio with buffer management
+ */
+
 #include "audio.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
@@ -5,7 +12,6 @@
 #include "options.h"
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <math.h>
 
 static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,

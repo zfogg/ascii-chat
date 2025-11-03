@@ -1,3 +1,9 @@
+/**
+ * @file hashtable.c
+ * @ingroup hashtable
+ * @brief 🔑 Fast hash table with FNV-1a hashing for client ID lookups and state management
+ */
+
 #include "hashtable.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system

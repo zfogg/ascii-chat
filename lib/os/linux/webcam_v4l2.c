@@ -1,3 +1,9 @@
+/**
+ * @file os/linux/webcam_v4l2.c
+ * @ingroup webcam
+ * @brief 📷 Linux V4L2 webcam capture implementation with MJPEG/YUY2 format support
+ */
+
 #ifdef __linux__
 
 #include <stdio.h>
@@ -33,6 +39,14 @@ struct webcam_context_t {
   int buffer_count;
 };
 
+/**
+ * @brief Set the format of the webcam
+ *
+ * @param ctx The webcam context
+ * @param width The width of the frame
+ * @param height The height of the frame
+ * @return int 0 on success, -1 on failure
+ */
 static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) {
   struct v4l2_format fmt = {0};
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;

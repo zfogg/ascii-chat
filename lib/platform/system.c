@@ -1,13 +1,7 @@
 /**
- * @file system.c
- * @brief Cross-platform system utilities (shared implementation)
- *
- * This file is meant to be included by platform-specific system.c files
- * (windows/system.c and posix/system.c), which already have all necessary
- * headers included.
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date January 2025
+ * @file platform/system.c
+ * @ingroup platform
+ * @brief 🔧 Shared cross-platform system utilities (included by posix/system.c and windows/system.c)
  */
 
 // NOTE: This file is #included by windows/system.c and posix/system.c
@@ -71,10 +65,58 @@
 // Binary PATH Detection Cache
 // ============================================================================
 
-// Cache entry for a binary name
+/**
+ * @brief Binary PATH cache entry structure for binary detection caching
+ *
+ * Represents a single cached binary PATH detection result. Maps a binary name
+ * to a boolean indicating whether the binary was found in PATH, avoiding
+ * expensive PATH searches for frequently checked binaries.
+ *
+ * CORE FIELDS:
+ * ============
+ * - bin_name: Binary name (e.g., "llvm-symbolizer", "addr2line")
+ * - in_path: Whether binary was found in PATH during last check
+ *
+ * USAGE:
+ * ======
+ * This structure is used internally by the binary PATH detection cache:
+ * - Key: Binary name (hashed for hashtable lookup)
+ * - Value: Boolean indicating PATH presence
+ *
+ * CACHE OPERATIONS:
+ * ================
+ * - Lookup: Fast O(1) hashtable lookup by binary name
+ * - Insertion: Cached after first PATH search
+ * - Lifetime: Owned by cache, freed on cache cleanup
+ *
+ * PERFORMANCE BENEFITS:
+ * =====================
+ * PATH searching without caching requires:
+ * - Tokenizing PATH environment variable (expensive)
+ * - Stat/access system calls for each PATH directory (slow)
+ * - File system operations for each directory check (disk-bound)
+ *
+ * With caching:
+ * - First check: Same cost as uncached (cache miss)
+ * - Subsequent checks: O(1) hashtable lookup (fast)
+ * - Eliminates redundant PATH searches
+ *
+ * MEMORY MANAGEMENT:
+ * ==================
+ * - bin_name string is allocated and owned by the cache
+ * - Do not free bin_name manually (cache manages it)
+ * - Entries are stored in hashtable (pre-allocated pool)
+ *
+ * @note This structure is used internally by the binary PATH detection system.
+ *       Users should interact via system_find_binary_in_path() function.
+ *
+ * @ingroup platform
+ */
 typedef struct {
-  char *bin_name; // Binary name (owns this string)
-  bool in_path;   // Whether binary was found in PATH
+  /** @brief Binary name string (allocated, owned by cache) */
+  char *bin_name;
+  /** @brief Whether binary was found in PATH (true = found, false = not found) */
+  bool in_path;
 } bin_cache_entry_t;
 
 static hashtable_t *g_bin_path_cache = NULL;

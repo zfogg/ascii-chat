@@ -1,6 +1,10 @@
-/*
+/**
+ * @file crypto/pem_utils.c
+ * @ingroup crypto
+ * @brief 📄 PEM format encoding/decoding utilities for certificates and keys (adapted from BearSSL)
+ *
  * Copyright (c) 2016 Thomas Pornin <pornin@bolet.org>
- * Adapted for ASCII-Chat by Zachary Fogg <me@zfo.gg>
+ * Adapted for ascii-chat by Zachary Fogg <me@zfo.gg>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the

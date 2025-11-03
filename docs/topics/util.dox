@@ -1,0 +1,319 @@
+/**
+ * @defgroup util Utility Functions
+ * @brief String, path, IP, UTF-8, CRC32, and formatting utilities
+ */
+
+/**
+ * @page topic_util Utility Functions
+ * @ingroup util
+ *
+ * @section util_overview Overview
+ *
+ * The Utility module provides a collection of helper functions and utilities
+ * used throughout ascii-chat. These include string manipulation, path handling,
+ * IP address parsing, mathematical operations, and format conversion.
+ *
+ * **Implementation**: lib/util/*.h
+ *
+ * **Key Features**:
+ * - Hardware-accelerated CRC32 checksums (SSE4.2, ARM CRC32)
+ * - Aspect ratio calculations and frame fitting
+ * - IP address parsing and validation (IPv4/IPv6)
+ * - UTF-8 string handling and validation
+ * - Path manipulation and normalization
+ * - String parsing and formatting utilities
+ * - Cross-platform mathematical operations
+ *
+ * @section util_modules Utility Modules
+ *
+ * @subsection util_crc32 CRC32 Checksums
+ *
+ * **Hardware Acceleration**:
+ * @code{.c}
+ * // CRC32 with automatic hardware acceleration
+ * uint32_t checksum = crc32_compute(data, length);
+ *
+ * // Check if hardware acceleration is available
+ * if (crc32_hw_supported()) {
+ *     log_info("Using hardware CRC32 acceleration");
+ * }
+ * @endcode
+ *
+ * **Platforms**:
+ * - x86/x64: SSE4.2 instructions (CRC32C)
+ * - ARM: ARM CRC32 instructions
+ * - Fallback: Software table-based CRC32
+ *
+ * @subsection util_aspect_ratio Aspect Ratio
+ *
+ * **Calculate Aspect Ratio**:
+ * @code{.c}
+ * // Calculate aspect ratio for fitting
+ * int display_width = 80, display_height = 24;
+ * int image_width = 1920, image_height = 1080;
+ *
+ * dimensions_t fitted = fit_to_aspect_ratio(
+ *     display_width, display_height,
+ *     image_width, image_height
+ * );
+ *
+ * log_info("Fitted size: %dx%d", fitted.width, fitted.height);
+ * @endcode
+ *
+ * **Maintain Aspect Ratio**:
+ * @code{.c}
+ * // Get dimensions that maintain aspect ratio
+ * dimensions_t dims = calculate_aspect_ratio_fit(
+ *     src_width, src_height,
+ *     dst_width, dst_height,
+ *     maintain_aspect_ratio  // true/false
+ * );
+ * @endcode
+ *
+ * @subsection util_ip IP Address Utilities
+ *
+ * **Parse IP Addresses**:
+ * @code{.c}
+ * // Parse IPv4 address
+ * struct in_addr addr4;
+ * if (parse_ipv4("192.168.1.1", &addr4)) {
+ *     log_info("Valid IPv4 address");
+ * }
+ *
+ * // Parse IPv6 address
+ * struct in6_addr addr6;
+ * if (parse_ipv6("::1", &addr6)) {
+ *     log_info("Valid IPv6 address");
+ * }
+ * @endcode
+ *
+ * **Validate IP Addresses**:
+ * @code{.c}
+ * // Check if string is valid IP
+ * if (is_valid_ipv4("192.168.1.1")) {
+ *     log_info("Valid IPv4");
+ * }
+ *
+ * if (is_valid_ipv6("2001:db8::1")) {
+ *     log_info("Valid IPv6");
+ * }
+ * @endcode
+ *
+ * **Format IP Addresses**:
+ * @code{.c}
+ * char ip_str[INET6_ADDRSTRLEN];
+ * format_ip_address(&addr, ip_str, sizeof(ip_str));
+ * log_info("IP: %s", ip_str);
+ * @endcode
+ *
+ * @subsection util_utf8 UTF-8 String Handling
+ *
+ * **Validate UTF-8**:
+ * @code{.c}
+ * const char *text = "Hello, 世界!";
+ * if (is_valid_utf8(text)) {
+ *     log_info("Valid UTF-8 string");
+ * }
+ * @endcode
+ *
+ * **Count UTF-8 Characters**:
+ * @code{.c}
+ * size_t char_count = utf8_strlen(text);
+ * size_t byte_count = strlen(text);
+ * log_info("Characters: %zu, Bytes: %zu", char_count, byte_count);
+ * @endcode
+ *
+ * **Iterate UTF-8 Characters**:
+ * @code{.c}
+ * const char *p = text;
+ * while (*p) {
+ *     uint32_t codepoint;
+ *     size_t bytes = utf8_decode(p, &codepoint);
+ *     log_debug("Codepoint: U+%04X", codepoint);
+ *     p += bytes;
+ * }
+ * @endcode
+ *
+ * @subsection util_path Path Utilities
+ *
+ * **Normalize Paths**:
+ * @code{.c}
+ * char normalized[PATH_MAX];
+ * normalize_path("/path/to/../file.txt", normalized, sizeof(normalized));
+ * // Result: "/path/file.txt"
+ * @endcode
+ *
+ * **Join Paths**:
+ * @code{.c}
+ * char joined[PATH_MAX];
+ * join_path("/home/user", ".ssh/id_ed25519", joined, sizeof(joined));
+ * // Result: "/home/user/.ssh/id_ed25519"
+ * @endcode
+ *
+ * **Expand Home Directory**:
+ * @code{.c}
+ * char expanded[PATH_MAX];
+ * expand_home_dir("~/.ssh/known_hosts", expanded, sizeof(expanded));
+ * // Result: "/home/username/.ssh/known_hosts"
+ * @endcode
+ *
+ * **Get File Extension**:
+ * @code{.c}
+ * const char *ext = get_file_extension("document.pdf");
+ * // Result: "pdf"
+ * @endcode
+ *
+ * @subsection util_string String Utilities
+ *
+ * **Trim Whitespace**:
+ * @code{.c}
+ * char text[] = "  hello world  ";
+ * trim_whitespace(text);
+ * // Result: "hello world"
+ * @endcode
+ *
+ * **String Matching**:
+ * @code{.c}
+ * if (str_starts_with(text, "hello")) {
+ *     log_info("Text starts with 'hello'");
+ * }
+ *
+ * if (str_ends_with(text, "world")) {
+ *     log_info("Text ends with 'world'");
+ * }
+ * @endcode
+ *
+ * **Case-Insensitive Compare**:
+ * @code{.c}
+ * if (strcasecmp_safe(str1, str2) == 0) {
+ *     log_info("Strings are equal (case-insensitive)");
+ * }
+ * @endcode
+ *
+ * @subsection util_parsing Parsing Utilities
+ *
+ * **Parse Integers**:
+ * @code{.c}
+ * int value;
+ * if (parse_int("1234", &value)) {
+ *     log_info("Parsed: %d", value);
+ * }
+ *
+ * // Parse with range validation
+ * if (parse_int_range("42", &value, 0, 100)) {
+ *     log_info("Valid value in range: %d", value);
+ * }
+ * @endcode
+ *
+ * **Parse Floating Point**:
+ * @code{.c}
+ * double value;
+ * if (parse_double("3.14159", &value)) {
+ *     log_info("Parsed: %f", value);
+ * }
+ * @endcode
+ *
+ * **Parse Boolean**:
+ * @code{.c}
+ * bool value;
+ * if (parse_bool("true", &value)) {
+ *     log_info("Boolean: %s", value ? "true" : "false");
+ * }
+ * // Accepts: "true", "false", "yes", "no", "1", "0" (case-insensitive)
+ * @endcode
+ *
+ * @subsection util_format Format Utilities
+ *
+ * **Format Byte Sizes**:
+ * @code{.c}
+ * char size_str[32];
+ * format_bytes(1024 * 1024 * 5, size_str, sizeof(size_str));
+ * // Result: "5.00 MB"
+ * @endcode
+ *
+ * **Format Duration**:
+ * @code{.c}
+ * char duration[64];
+ * format_duration(3665, duration, sizeof(duration));
+ * // Result: "1h 1m 5s"
+ * @endcode
+ *
+ * **Format Timestamp**:
+ * @code{.c}
+ * char timestamp[32];
+ * format_timestamp(time(NULL), timestamp, sizeof(timestamp));
+ * // Result: "2025-01-15 14:23:45"
+ * @endcode
+ *
+ * @subsection util_math Mathematical Utilities
+ *
+ * **Safe Integer Math**:
+ * @code{.c}
+ * // Clamp value to range
+ * int clamped = clamp(value, 0, 100);
+ *
+ * // Get minimum/maximum
+ * int min_val = min(a, b);
+ * int max_val = max(a, b);
+ * @endcode
+ *
+ * **Rounding**:
+ * @code{.c}
+ * // Round to nearest integer
+ * int rounded = round_to_int(3.7);  // Result: 4
+ *
+ * // Round up/down
+ * int ceil_val = round_up(3.2);     // Result: 4
+ * int floor_val = round_down(3.8);  // Result: 3
+ * @endcode
+ *
+ * **Alignment**:
+ * @code{.c}
+ * // Align to power of 2
+ * size_t aligned = align_up(123, 16);    // Result: 128
+ * size_t aligned_down = align_down(123, 16); // Result: 112
+ * @endcode
+ *
+ * @section util_performance Performance Notes
+ *
+ * **CRC32 Hardware Acceleration**:
+ * - ~10x faster on x86 with SSE4.2
+ * - ~8x faster on ARM with CRC32 instructions
+ * - Automatically detected at runtime
+ *
+ * **UTF-8 Validation**:
+ * - Optimized for ASCII-common case
+ * - SIMD acceleration where available
+ * - Early exit on invalid sequences
+ *
+ * **Path Operations**:
+ * - In-place modifications where possible
+ * - Minimal allocations
+ * - Platform-specific optimizations
+ *
+ * @section util_best_practices Best Practices
+ *
+ * **DO**:
+ * - Validate input strings before processing
+ * - Use UTF-8 functions for international text
+ * - Check return values from parsing functions
+ * - Use hardware-accelerated CRC32 when available
+ * - Normalize paths before comparison
+ *
+ * **DON'T**:
+ * - Don't assume ASCII-only input
+ * - Don't ignore parse errors
+ * - Don't use strcpy/sprintf (use safe versions)
+ * - Don't hard-code path separators
+ * - Don't perform string operations without bounds checking
+ *
+ * @see lib/crc32.h
+ * @see lib/util/aspect_ratio.h
+ * @see lib/util/ip.h
+ * @see lib/util/utf8.h
+ * @see lib/util/path.h
+ * @see lib/util/string.h
+ * @see lib/util/parsing.h
+ * @see lib/util/format.h
+ * @see lib/util/math.h
+ */

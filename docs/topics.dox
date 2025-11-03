@@ -1,0 +1,113 @@
+/**
+ * @page topics Topics
+ * @brief Comprehensive topic documentation for ascii-chat
+ *
+ * This page organizes documentation by functional modules, matching the architectural
+ * structure of the codebase. Each section corresponds to a module group defined by
+ * @defgroup/@ingroup annotations in the source code.
+ *
+ * @tableofcontents
+ *
+ * @section topics_utilities Utilities
+ *
+ * @copybrief module_utilities
+ *
+ * - @subpage topic_util
+ *
+ * @section topics_data_structures Data Structures
+ *
+ * @copybrief module_data_structures
+ *
+ * - @subpage topic_buffer_pool
+ * - @subpage topic_ringbuffer
+ * - @subpage topic_packet_queue
+ * - @subpage topic_hashtable
+ *
+ * @section topics_abstractions Abstraction Layers
+ *
+ * @copybrief module_abstractions
+ *
+ * - @subpage topic_platform
+ * - @subpage topic_os
+ *
+ * @section topics_crypto Cryptography
+ *
+ * @copybrief module_crypto
+ *
+ * - @subpage topic_crypto
+ * - @subpage topic_crypto_detailed
+ * - @subpage topic_handshake
+ * - @subpage topic_keys
+ *
+ * @section topics_video Video
+ *
+ * @copybrief module_video
+ *
+ * - @subpage topic_video_frame
+ * - @subpage topic_image2ascii
+ * - @subpage topic_grid_layout
+ * - @subpage topic_palette
+ *
+ * @section topics_audio Audio Processing
+ *
+ * @copybrief module_audio
+ *
+ * - @subpage topic_audio
+ * - @subpage topic_mixer
+ *
+ * @section topics_core Core Infrastructure
+ *
+ * @copybrief module_core
+ *
+ * - @subpage topic_main
+ * - @subpage topic_common
+ * - @subpage topic_errno
+ * - @subpage topic_logging
+ * - @subpage topic_options
+ * - @subpage topic_config
+ *
+ * @section topics_network Network
+ *
+ * @copybrief module_network
+ *
+ * - @subpage topic_network
+ * - @subpage topic_compression
+ * - @subpage topic_packet_types
+ * - @subpage topic_av
+ *
+ * @section topics_client Client Application
+ *
+ * @copybrief module_client
+ *
+ * - @subpage topic_client
+ * - @subpage topic_client_main
+ * - @subpage topic_client_connection
+ * - @subpage topic_client_protocol
+ * - @subpage topic_client_capture
+ * - @subpage topic_client_display
+ * - @subpage topic_client_audio
+ * - @subpage topic_client_keepalive
+ * - @subpage topic_client_crypto
+ *
+ * @section topics_server Server Application
+ *
+ * @copybrief module_server
+ *
+ * - @subpage topic_server
+ * - @subpage topic_server_main
+ * - @subpage topic_server_client
+ * - @subpage topic_server_protocol
+ * - @subpage topic_server_stream
+ * - @subpage topic_server_render
+ * - @subpage topic_server_stats
+ * - @subpage topic_server_crypto
+ *
+ * @section topics_development Development & Debugging
+ *
+ * @copybrief module_development
+ *
+ * - @subpage topic_build
+ * - @subpage topic_testing
+ * - @subpage topic_debug
+ * - @subpage topic_lock_debug
+ */

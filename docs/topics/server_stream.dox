@@ -1,0 +1,407 @@
+/**
+ * @page topic_server_stream Stream Generation
+ * @ingroup server_stream
+ *
+ * @section server_stream_overview Overview
+ *
+ * The stream generation module creates personalized ASCII art frames for each
+ * connected client by collecting video from all active clients, creating
+ * composite layouts, and converting to ASCII using client-specific terminal
+ * capabilities. This module embodies the core innovation of ascii-chat: real-time
+ * multi-client video chat rendered entirely in ASCII art, optimized for terminal
+ * viewing with professional-grade performance.
+ *
+ * **Implementation**: src/server/stream.c, src/server/stream.h
+ *
+ * **Key Responsibilities**:
+ * - Collect video frames from all active clients
+ * - Create composite video layouts (single client, 2x2, 3x3 grids)
+ * - Generate client-specific ASCII art with terminal capability awareness
+ * - Process latest frames from double-buffer system for real-time performance
+ * - Manage memory efficiently with buffer pools and zero-copy operations
+ * - Support advanced rendering modes (half-block, color, custom palettes)
+ *
+ * @section server_stream_architecture Video Mixing Architecture
+ *
+ * @subsection server_stream_pipeline Processing Pipeline
+ *
+ * The mixing system operates in five distinct stages:
+ *
+ * **Stage 1: Frame Collection**
+ * @code{.c}
+ * // Scan all active clients for available video frames
+ * for (int i = 0; i < MAX_CLIENTS; i++) {
+ *   client_info_t *source_client = &g_client_manager.clients[i];
+ *
+ *   // Skip inactive clients
+ *   if (!source_client->active) continue;
+ *
+ *   // Get latest frame from double-buffer system
+ *   video_frame_t *frame = get_latest_frame(source_client);
+ *
+ *   // Store frame for layout calculation
+ *   sources[source_count++] = (image_source_t){
+ *     .frame = frame,
+ *     .aspect_ratio = (float)frame->width / (float)frame->height,
+ *     .client_id = source_client->client_id
+ *   };
+ * }
+ * @endcode
+ *
+ * **Aggressive Frame Dropping**:
+ * - Always reads latest available frame (discards older frames)
+ * - Prevents buffer overflow under load
+ * - Maintains real-time performance like Zoom/Google Meet
+ * - Logarithmic drop rate based on buffer occupancy
+ *
+ * **Stage 2: Layout Calculation**
+ * @code{.c}
+ * // Determine optimal grid layout based on active client count
+ * int rows, cols;
+ * calculate_optimal_grid_layout(sources, source_count, terminal_width,
+ *                                terminal_height, &cols, &rows);
+ *
+ * // Calculate cell dimensions with aspect ratio preservation
+ * int cell_width = terminal_width / cols;
+ * int cell_height = terminal_height / rows;
+ * @endcode
+ *
+ * **Layout Algorithm**:
+ * - Tries all grid configurations (1x1, 2x1, 2x2, 3x2, 3x3)
+ * - Calculates total area utilization for each configuration
+ * - Chooses configuration with highest area utilization
+ * - Preserves aspect ratios in grid cells
+ *
+ * **Stage 3: Composite Generation**
+ * @code{.c}
+ * // Create composite image with proper dimensions
+ * image_t *composite = image_create(terminal_width, terminal_height);
+ *
+ * // Place each client's video in appropriate grid cell
+ * for (int i = 0; i < source_count; i++) {
+ *   int row = i / cols;
+ *   int col = i % cols;
+ *   int x = col * cell_width;
+ *   int y = row * cell_height;
+ *
+ *   // Scale and place frame in cell
+ *   image_scale_and_place(source->frame, composite, x, y,
+ *                         cell_width, cell_height);
+ * }
+ * @endcode
+ *
+ * **Composite Features**:
+ * - Aspect ratio preservation in grid cells
+ * - High-quality scaling (bilinear interpolation)
+ * - Support for different grid sizes (1x1, 2x2, 3x3)
+ * - Efficient memory usage via buffer pools
+ *
+ * **Stage 4: ASCII Conversion**
+ * @code{.c}
+ * // Convert composite to ASCII using client's terminal capabilities
+ * ascii_frame_t *ascii_frame = image_to_ascii(composite, &client->capabilities,
+ *                                              client->palette, client->color_mode);
+ *
+ * // Apply client-specific rendering options
+ * if (client->half_block_mode) {
+ *   ascii_frame = apply_half_block_rendering(ascii_frame);
+ * }
+ *
+ * if (client->color_mode) {
+ *   ascii_frame = apply_color_escape_sequences(ascii_frame,
+ *                                               client->color_depth);
+ * }
+ * @endcode
+ *
+ * **ASCII Conversion Features**:
+ * - Terminal capability awareness (color depth, UTF-8 support)
+ * - Custom ASCII palettes (brightness-to-character mapping)
+ * - Half-block rendering (2x vertical resolution)
+ * - ANSI escape sequence generation for color output
+ * - SIMD-optimized conversion for performance
+ *
+ * **Stage 5: Packet Generation**
+ * @code{.c}
+ * // Wrap ASCII frame in protocol packet
+ * ascii_frame_packet_t *packet = create_ascii_frame_packet(ascii_frame);
+ *
+ * // Queue packet for delivery via send thread
+ * packet_queue_enqueue(client->video_packet_queue, packet, packet_size);
+ * @endcode
+ *
+ * **Packet Features**:
+ * - Protocol-compliant packet headers
+ * - Frame metadata (dimensions, timestamp, checksum)
+ * - Compression support for large frames
+ * - Thread-safe queue operations
+ *
+ * @section server_stream_personalization Per-Client Customization
+ *
+ * Unlike traditional video mixing that generates one output, ascii-chat creates
+ * personalized frames for each client:
+ *
+ * @subsection server_stream_terminal_capabilities Terminal Capability Awareness
+ *
+ * **Color Depth**:
+ * - 1-bit (mono): Black and white ASCII only
+ * - 8-color: Basic ANSI colors
+ * - 16-color: Standard terminal colors
+ * - 256-color: Extended palette
+ * - 24-bit RGB: Full color support (when available)
+ *
+ * **Character Support**:
+ * - ASCII-only: Basic character set (portable)
+ * - UTF-8: Box drawing characters for smoother frames
+ * - Unicode: Special characters for enhanced rendering
+ *
+ * **Render Modes**:
+ * - Foreground color: Standard text coloring
+ * - Background color: Block-based rendering
+ * - Half-block: 2x vertical resolution using Unicode half-blocks
+ *
+ * **Custom Palettes**:
+ * - Brightness-to-character mapping
+ * - Multiple predefined palettes (simple, extended, full)
+ * - Custom palette support for client preferences
+ *
+ * @subsection server_stream_frame_customization Frame Customization
+ *
+ * Each client receives frames optimized for their terminal:
+ *
+ * @code{.c}
+ * // Generate personalized frame for client
+ * ascii_frame_t *frame = generate_personalized_ascii_frame(client_id);
+ *
+ * // Frame is customized based on:
+ * // - Client's terminal dimensions (width, height)
+ * // - Client's color depth (1-bit, 8-color, 256-color, RGB)
+ * // - Client's palette preference (simple, extended, full)
+ * // - Client's UTF-8 support (ASCII-only vs box drawing)
+ * // - Client's render mode (foreground, background, half-block)
+ * @endcode
+ *
+ * **Customization Benefits**:
+ * - Optimal quality for each client's terminal
+ * - Efficient use of available terminal capabilities
+ * - No wasted bandwidth on unsupported features
+ * - Consistent rendering across diverse terminals
+ *
+ * @section server_stream_performance Performance Optimizations
+ *
+ * @subsection server_stream_frame_buffering Frame Buffer Management
+ *
+ * **Double-Buffer System**:
+ * - Each client uses double-buffer for smooth frame delivery
+ * - Always provides latest available frame
+ * - No frame caching complexity or stale data concerns
+ * - Professional-grade real-time performance
+ * - Memory managed via buffer pools
+ *
+ * **Buffer Overflow Handling**:
+ * When clients send frames faster than processing:
+ * - Aggressive frame dropping (keep only latest)
+ * - Logarithmic drop rate based on buffer occupancy
+ * - Maintains real-time performance under load
+ * - Prevents buffer exhaustion
+ *
+ * @subsection server_stream_memory_management Memory Management
+ *
+ * **Buffer Pool Integration**:
+ * @code{.c}
+ * // All allocations use buffer pools
+ * image_t *composite = image_create_from_pool(terminal_width, terminal_height);
+ *
+ * // Automatic cleanup on return
+ * buffer_pool_return(composite);
+ * @endcode
+ *
+ * **Zero-Copy Operations**:
+ * - Frame data is reference-counted (avoid copies)
+ * - Double-buffer system eliminates need for frame copies
+ * - Efficient memory usage via buffer pools
+ * - Automatic cleanup on client disconnect
+ *
+ * **Memory Efficiency**:
+ * - Frame data is shared across clients where possible
+ * - Buffer pool reduces malloc/free overhead
+ * - Automatic cleanup prevents memory leaks
+ * - Graceful degradation on allocation failures
+ *
+ * @subsection server_stream_concurrency Concurrency Optimizations
+ *
+ * **Reader Locks on Client Manager**:
+ * - Allows parallel frame generation across clients
+ * - No blocking between client frame generation
+ * - Minimal lock contention
+ *
+ * **Lock-Free Media Buffers**:
+ * - Audio buffers use lock-free ring buffers
+ * - Video buffers use atomic operations for double-buffer
+ * - Minimal synchronization overhead
+ *
+ * **Per-Client Isolation**:
+ * - Each client's frame generation is independent
+ * - No shared state between frame generations
+ * - Linear scaling performance
+ *
+ * @section server_stream_integration Integration with Other Modules
+ *
+ * @subsection server_stream_render Integration with render.c
+ *
+ * **Called By**:
+ * - Video render threads call stream generation functions at 60fps
+ * - `generate_personalized_ascii_frame()`: Main entry point for frame generation
+ *
+ * **Provides To**:
+ * - Personalized ASCII frames for each client
+ * - Optimized frame generation per terminal
+ * - Terminal capability awareness
+ *
+ * @subsection server_stream_client Integration with client.c
+ *
+ * **Provides To**:
+ * - Client state access for frame generation
+ * - Terminal capabilities from client state
+ * - Frame queue for delivery
+ *
+ * **Uses From**:
+ * - Client video buffers (reads frames from all clients)
+ * - Client terminal capabilities (for ASCII conversion)
+ * - Client rendering preferences (palette, color mode)
+ *
+ * @subsection server_stream_protocol Integration with protocol.c
+ *
+ * **Consumed By**:
+ * - Video frames stored by protocol handlers
+ * - Frame data accessed by stream generation
+ *
+ * **Provides To**:
+ * - Frame generation uses stored video data
+ * - Client capabilities set by protocol handlers
+ *
+ * @subsection server_stream_image2ascii Integration with image2ascii/
+ *
+ * **Used By**:
+ * - ASCII conversion implementation (image2ascii/)
+ * - SIMD-optimized conversion routines
+ * - Palette management (palette.c)
+ *
+ * **Provides To**:
+ * - Composite images for ASCII conversion
+ * - Terminal capabilities for conversion optimization
+ * - Rendering preferences for palette selection
+ *
+ * @section server_stream_grid_layouts Grid Layout System
+ *
+ * @subsection server_stream_layout_types Supported Layout Types
+ *
+ * **Single Client (1x1)**:
+ * - Full-screen video when only one client connected
+ * - Maximum quality for single user
+ * - No scaling overhead
+ *
+ * **Side-by-Side (2x1)**:
+ * - Two clients side-by-side
+ * - Equal width split
+ * - Aspect ratio preserved in each half
+ *
+ * **Grid Layouts (2x2, 3x2, 3x3)**:
+ * - Multiple clients in grid arrangement
+ * - Optimal space utilization
+ * - Aspect ratio preserved in each cell
+ *
+ * @subsection server_stream_layout_algorithm Layout Calculation Algorithm
+ *
+ * **Algorithm**:
+ * 1. Try all grid configurations from 1x1 to NxN
+ * 2. For each configuration, calculate total area utilization
+ * 3. Choose configuration with highest area utilization
+ * 4. Calculate cell dimensions with aspect ratio preservation
+ *
+ * **Area Utilization**:
+ * - Accounts for aspect ratio preservation
+ * - Prefers larger frames over smaller frames
+ * - Optimizes for terminal space usage
+ * - Handles different source aspect ratios
+ *
+ * @section server_stream_ascii_conversion ASCII Conversion
+ *
+ * @subsection server_stream_conversion_process Conversion Process
+ *
+ * **RGB to Grayscale**:
+ * - Weighted conversion (red, green, blue weights)
+ * - Configurable color weights for optimization
+ * - SIMD-optimized for performance
+ *
+ * **Grayscale to ASCII**:
+ * - Brightness-to-character mapping
+ * - Multiple palette options (simple, extended, full)
+ * - Terminal capability awareness
+ *
+ * **Color Application**:
+ * - ANSI escape sequence generation
+ * - Terminal color depth support
+ * - Palette-based color selection
+ *
+ * @subsection server_stream_rendering_modes Rendering Modes
+ *
+ * **Foreground Color**:
+ * - Standard text coloring
+ * - Efficient escape sequences
+ * - Compatible with most terminals
+ *
+ * **Background Color**:
+ * - Block-based rendering
+ * - Higher quality appearance
+ * - Better color blending
+ *
+ * **Half-Block Rendering**:
+ * - 2x vertical resolution
+ * - Uses Unicode half-block characters
+ * - Requires UTF-8 support
+ * - Professional-grade quality
+ *
+ * @section server_stream_performance Performance Characteristics
+ *
+ * **Linear Scaling**:
+ * - Each client gets dedicated render thread
+ * - No shared bottlenecks between clients
+ * - Performance scales linearly up to 9+ clients
+ * - Real-time guarantees maintained per client
+ *
+ * **Frame Generation Speed**:
+ * - 60fps per client with precise timing
+ * - SIMD-optimized ASCII conversion
+ * - Efficient memory usage via buffer pools
+ * - Minimal CPU overhead
+ *
+ * **Memory Usage**:
+ * - Per-client composite buffers (temporary)
+ * - Frame data shared across clients
+ * - Buffer pool reduces malloc/free overhead
+ * - Automatic cleanup on client disconnect
+ *
+ * @section server_stream_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always use latest available frame (aggressive frame dropping)
+ * - Use buffer pools for all allocations
+ * - Check client active status before operations
+ * - Use snapshot pattern for client state access
+ * - Optimize for terminal capabilities
+ *
+ * **DON'T**:
+ * - Don't cache frames unnecessarily
+ * - Don't hold locks during frame generation
+ * - Don't skip frame dropping under load
+ * - Don't ignore terminal capabilities
+ * - Don't allocate without buffer pools
+ *
+ * @see src/server/stream.c
+ * @see src/server/stream.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_render "Render Threads"
+ * @see topic_image2ascii
+ * @see topic_palette
+ */
+

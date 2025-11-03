@@ -1,9 +1,7 @@
 /**
- * musl C23 Compatibility Wrappers
- *
- * glibc 2.38+ introduced __isoc23_* symbol variants for C23 standard functions
- * that support binary literal conversion (0b prefix). musl doesn't provide these
- * symbols, so we create aliases to the standard functions.
+ * @file musl_c23_compat.c
+ * @ingroup compat
+ * @brief 🔄 musl C23 compatibility wrappers for __isoc23_* symbol aliases (glibc 2.38+ compatibility)
  *
  * Note: These aliases provide the base functionality but don't implement the full
  * C23 binary literal support (0b/0B prefix) until musl adds native support.

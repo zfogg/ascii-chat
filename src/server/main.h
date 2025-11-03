@@ -1,13 +1,14 @@
 /**
- * @file server_mode.h
- * @brief ASCII-Chat Server Mode Entry Point Header
+ * @file server/main.h
+ * @ingroup server_main
+ * @brief ascii-chat Server Mode Entry Point Header
  *
  * This header exposes the server mode entry point for the unified binary architecture.
  * The unified binary dispatches to server_main() when invoked as `ascii-chat server`.
  *
  * ## Unified Binary Architecture
  *
- * The ASCII-Chat application uses a single binary with multiple operating modes:
+ * The ascii-chat application uses a single binary with multiple operating modes:
  * - **ascii-chat server** - Run as server (multi-client connection manager)
  * - **ascii-chat client** - Run as client (connects to server, streams video/audio)
  *

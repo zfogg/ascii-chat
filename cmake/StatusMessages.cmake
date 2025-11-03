@@ -16,7 +16,7 @@
 # Status Messages (matching Makefile help output)
 message(STATUS "")
 message(STATUS "========================================")
-message(STATUS "ASCII-Chat Configuration:")
+message(STATUS "ascii-chat Configuration:")
 message(STATUS "========================================")
 message(STATUS "  Build type:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  C Standard:        C${CMAKE_C_STANDARD}")

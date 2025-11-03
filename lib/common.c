@@ -1,3 +1,10 @@
+
+/**
+ * @file common.c
+ * @ingroup common
+ * @brief 🔧 Core utilities: memory management, safe macros, and cross-platform helpers
+ */
+
 // Platform-specific malloc size headers - MUST come before common.h
 // to avoid conflicts with debug memory macros
 #ifdef _WIN32
@@ -130,6 +137,7 @@ typedef struct mem_block {
   size_t size;
   char file[256];
   int line;
+  bool is_aligned; /* Track if this was allocated with aligned allocation function */
   struct mem_block *next;
 } mem_block_t;
 
@@ -227,6 +235,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
   if (block) {
     block->ptr = ptr;
     block->size = size;
+    block->is_aligned = false; /* Regular allocation, not aligned */
     // Normalize file path to resolve .. components and extract relative path
     const char *normalized_file = extract_project_relative_path(file);
     SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
@@ -245,12 +254,71 @@ void *debug_malloc(size_t size, const char *file, int line) {
   return ptr;
 }
 
+/* Register an aligned allocation with the debug tracker (called after aligned_alloc/posix_memalign/mi_malloc_aligned)
+ */
+void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
+  if (!ptr)
+    return;
+
+  // Skip tracking if we're already inside debug memory code (prevents recursion)
+  if (g_in_debug_memory) {
+    return;
+  }
+
+  g_in_debug_memory = true;
+
+  /* Update statistics with atomic operations - no locks needed */
+  atomic_fetch_add(&g_mem.malloc_calls, 1);
+  atomic_fetch_add(&g_mem.total_allocated, size);
+  size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
+
+  /* Update peak usage if needed */
+  size_t peak = atomic_load(&g_mem.peak_usage);
+  while (new_usage > peak) {
+    if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+      break;
+  }
+
+  /* Track individual allocations for detailed leak reporting */
+  ensure_mutex_initialized();
+#if PLATFORM_WINDOWS
+  mutex_lock(&g_mem.mutex);
+#else
+  pthread_mutex_lock(&g_mem.mutex);
+#endif
+
+  // Use raw malloc here to avoid recursion
+  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+  if (block) {
+    block->ptr = ptr;
+    block->size = size;
+    block->is_aligned = true; /* Mark as aligned allocation */
+    // Normalize file path to resolve .. components and extract relative path
+    const char *normalized_file = extract_project_relative_path(file);
+    SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
+    block->line = line;
+    block->next = g_mem.head;
+    g_mem.head = block;
+  }
+
+#if PLATFORM_WINDOWS
+  mutex_unlock(&g_mem.mutex);
+#else
+  pthread_mutex_unlock(&g_mem.mutex);
+#endif
+
+  g_in_debug_memory = false;
+}
+
 void debug_free(void *ptr, const char *file, int line) {
   if (!ptr)
     return;
 
   // Skip tracking if we're already inside debug memory code (prevents recursion from backtrace)
   if (g_in_debug_memory) {
+    // In recursion case, we can't safely access tracking (would need locks, risk of deadlock)
+    // Default to regular free() - aligned allocations freed during recursion may fail
+    // but this is safer than accessing g_mem.head without locks
     free(ptr);
     return;
   }
@@ -261,6 +329,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
   size_t freed_size = 0;
   bool found = false;
+  bool is_aligned = false;
 
   /* Search for allocation in linked list */
   ensure_mutex_initialized();
@@ -282,6 +351,7 @@ void debug_free(void *ptr, const char *file, int line) {
       }
 
       freed_size = curr->size;
+      is_aligned = curr->is_aligned;
       found = true;
       free(curr); // Use raw free to avoid recursion
       break;
@@ -312,8 +382,11 @@ void debug_free(void *ptr, const char *file, int line) {
     /* No tracking - use platform functions to get real allocation size */
     size_t real_size = 0;
 #ifdef _WIN32
-    /* Windows: Use _msize to get actual allocation size */
-    real_size = _msize(ptr);
+    /* Windows: Use _msize to get actual allocation size (only works for regular malloc) */
+    /* For aligned allocations, we can't determine size if not tracked */
+    if (!is_aligned) {
+      real_size = _msize(ptr);
+    }
 #elif defined(__APPLE__)
     /* macOS: Use malloc_size */
     real_size = malloc_size(ptr);
@@ -328,8 +401,18 @@ void debug_free(void *ptr, const char *file, int line) {
     }
   }
 
-  // Keep flag set until AFTER the actual free() to prevent recursion
-  SAFE_FREE(ptr);
+  // Use the correct free function based on whether this was an aligned allocation
+#ifdef _WIN32
+  if (is_aligned) {
+    _aligned_free(ptr);
+  } else {
+    free(ptr);
+  }
+#else
+  // On Unix, aligned allocations (posix_memalign/aligned_alloc) use regular free()
+  free(ptr);
+#endif
+
   g_in_debug_memory = false;
 }
 
@@ -371,6 +454,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   if (block) {
     block->ptr = ptr;
     block->size = total;
+    block->is_aligned = false; /* calloc is not aligned */
     SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
     block->line = line;
     block->next = g_mem.head;
@@ -489,6 +573,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   if (curr) {
     curr->ptr = new_ptr;
     curr->size = size;
+    curr->is_aligned = false; /* realloc always produces non-aligned allocation */
     SAFE_STRNCPY(curr->file, file, sizeof(curr->file) - 1);
     curr->file[sizeof(curr->file) - 1] = '\0';
     curr->line = line;
@@ -498,6 +583,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     if (block) {
       block->ptr = new_ptr;
       block->size = size;
+      block->is_aligned = false; /* realloc always produces non-aligned allocation */
       SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
       block->line = line;
       block->next = g_mem.head;

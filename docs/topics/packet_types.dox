@@ -1,0 +1,718 @@
+ /**
+ * @defgroup packet Packet Types
+ * @ingroup module_network
+ * @brief Network protocol packet type definitions and structures
+ */
+
+/**
+ * @page topic_packet_types Packet Types README
+ * @ingroup packet
+ *
+ * @section packet_types_overview Overview
+ *
+ * The packet types system defines all network protocol messages used in ascii-chat.
+ * This includes protocol negotiation, media streaming (video/audio), control messages,
+ * cryptographic handshake, and multi-user protocol extensions.
+ *
+ * **Implementation**: lib/network/packet_types.h
+ *
+ * **Key Features**:
+ * - Comprehensive packet type enumeration (31 packet types)
+ * - Packed structures for wire format compatibility
+ * - Protocol versioning and capability negotiation
+ * - Handshake packet detection for crypto routing
+ * - Network byte order for cross-platform compatibility
+ * - Magic number validation for packet detection
+ *
+ * @section packet_types_categories Packet Categories
+ *
+ * Packet types are organized into logical categories:
+ *
+ * **Protocol Negotiation** (Type 1):
+ * - PACKET_TYPE_PROTOCOL_VERSION: Initial handshake for version and capabilities
+ *
+ * **Media Packets** (Types 2-4, 28):
+ * - PACKET_TYPE_ASCII_FRAME (2): Complete ASCII art frame with metadata
+ * - PACKET_TYPE_IMAGE_FRAME (3): Raw RGB image from webcam
+ * - PACKET_TYPE_AUDIO (4): Single audio packet (legacy)
+ * - PACKET_TYPE_AUDIO_BATCH (28): Batched audio packets (efficient)
+ *
+ * **Control Packets** (Types 5-7, 12-13):
+ * - PACKET_TYPE_CLIENT_CAPABILITIES (5): Terminal capabilities report
+ * - PACKET_TYPE_PING (6): Keepalive ping
+ * - PACKET_TYPE_PONG (7): Keepalive pong response
+ * - PACKET_TYPE_CLEAR_CONSOLE (12): Server requests console clear
+ * - PACKET_TYPE_SERVER_STATE (13): Server broadcasts current state
+ *
+ * **Multi-User Protocol** (Types 8-11):
+ * - PACKET_TYPE_CLIENT_JOIN (8): Client announces capability to send media
+ * - PACKET_TYPE_CLIENT_LEAVE (9): Clean disconnect notification
+ * - PACKET_TYPE_STREAM_START (10): Client requests to start streaming
+ * - PACKET_TYPE_STREAM_STOP (11): Client stops sending media
+ *
+ * **Crypto Handshake** (Types 14-23):
+ * - **UNENCRYPTED** - These packets must NEVER be encrypted
+ * - PACKET_TYPE_CRYPTO_CAPABILITIES (14): Client → Server: Supported algorithms
+ * - PACKET_TYPE_CRYPTO_PARAMETERS (15): Server → Client: Chosen algorithms + sizes
+ * - PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT (16): Server → Client: Server public key
+ * - PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP (17): Client → Server: Client public key
+ * - PACKET_TYPE_CRYPTO_AUTH_CHALLENGE (18): Server → Client: Authentication nonce
+ * - PACKET_TYPE_CRYPTO_AUTH_RESPONSE (19): Client → Server: HMAC response
+ * - PACKET_TYPE_CRYPTO_AUTH_FAILED (20): Server → Client: Authentication rejected
+ * - PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP (21): Server → Client: Server proves knowledge
+ * - PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE (22): Server → Client: Encryption ready
+ * - PACKET_TYPE_CRYPTO_NO_ENCRYPTION (23): Client → Server: Proceed without encryption
+ * - PACKET_TYPE_ENCRYPTED (24): Encrypted session packets (after handshake)
+ *
+ * **Crypto Rekeying** (Types 25-27):
+ * - **UNENCRYPTED during rekey** - Must bypass encryption during rekey handshake
+ * - PACKET_TYPE_CRYPTO_REKEY_REQUEST (25): Initiator → Responder: New ephemeral key
+ * - PACKET_TYPE_CRYPTO_REKEY_RESPONSE (26): Responder → Initiator: New ephemeral key
+ * - PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27): Encrypted with NEW key (but still handshake)
+ *
+ * **Message Packets** (Types 29-31):
+ * - PACKET_TYPE_SIZE_MESSAGE (29): Terminal size notification
+ * - PACKET_TYPE_AUDIO_MESSAGE (30): Audio metadata message
+ * - PACKET_TYPE_TEXT_MESSAGE (31): Text chat message (future)
+ *
+ * @section packet_types_structure Packet Structure
+ *
+ * @subsection packet_types_header Packet Header
+ *
+ * All packets begin with a standard header:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t magic;     // PACKET_MAGIC (0xDEADBEEF) for validation
+ *     uint16_t type;      // packet_type_t enumeration
+ *     uint32_t length;    // Payload length in bytes (0 for header-only)
+ *     uint32_t crc32;     // CRC32 checksum of payload (0 if length == 0)
+ *     uint32_t client_id; // Client ID (0 = server, >0 = client identifier)
+ * } PACKED_ATTR packet_header_t;
+ * @endcode
+ *
+ * **Header fields**:
+ * - `magic`: Must be `PACKET_MAGIC` (0xDEADBEEF) or packet is invalid
+ * - `type`: Packet type enumeration value (1-31)
+ * - `length`: Payload data length in bytes (0 for header-only packets)
+ * - `crc32`: CRC32 checksum of payload data (not including header)
+ * - `client_id`: Identifies source (0 for server, 1-9 for clients)
+ *
+ * **Wire format**:
+ * - Structure is packed (no padding between fields)
+ * - Total header size: 18 bytes (4+2+4+4+4)
+ * - Network byte order (big-endian) for multi-byte fields
+ * - Magic number validation catches corrupted packets
+ *
+ * **Example packet construction**:
+ * @code{.c}
+ * packet_header_t header = {
+ *     .magic = PACKET_MAGIC,
+ *     .type = PACKET_TYPE_ASCII_FRAME,
+ *     .length = (uint32_t)ascii_frame_size,
+ *     .crc32 = crc32_compute(ascii_frame_data, ascii_frame_size),
+ *     .client_id = 3  // Frame from client 3
+ * };
+ * @endcode
+ *
+ * @subsection packet_types_handshake_detection Handshake Packet Detection
+ *
+ * Critical function for routing crypto handshake packets:
+ *
+ * @code{.c}
+ * bool packet_is_handshake_type(packet_type_t type);
+ * @endcode
+ *
+ * Returns `true` for:
+ * - Initial crypto handshake packets (types 14-23)
+ * - Rekey packets (types 25-27)
+ *
+ * Returns `false` for:
+ * - All other packet types (including PACKET_TYPE_ENCRYPTED = 24)
+ *
+ * **Usage**:
+ * @code{.c}
+ * // Before encrypting packet
+ * if (!packet_is_handshake_type(header.type)) {
+ *     // Encrypt payload
+ *     crypto_encrypt(&ctx, payload, payload_len, ciphertext, &ciphertext_len);
+ *     header.type = PACKET_TYPE_ENCRYPTED;  // Override type for encrypted
+ *     header.length = (uint32_t)ciphertext_len;
+ * } else {
+ *     // Send handshake packet in plaintext
+ *     // header.type remains unchanged
+ * }
+ * @endcode
+ *
+ * **Warning**: Encrypting handshake packets will break the crypto handshake.
+ * Always check with `packet_is_handshake_type()` before encryption.
+ *
+ * @section packet_types_protocol_negotiation Protocol Negotiation
+ *
+ * @subsection packet_types_version Protocol Version Packet
+ *
+ * First packet exchanged between client and server:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint16_t protocol_version;      // Major version (e.g., 1)
+ *     uint16_t protocol_revision;     // Minor revision (e.g., 0)
+ *     uint8_t supports_encryption;    // 1=yes, 0=no (plaintext mode)
+ *     uint8_t compression_algorithms; // Bitmap: COMPRESS_ALGO_ZLIB, etc.
+ *     uint8_t compression_threshold; // 0-100 percentage (80 = 80%)
+ *     uint16_t feature_flags;         // FEATURE_RLE_ENCODING, etc.
+ *     uint8_t reserved[7];            // Padding to 16 bytes
+ * } PACKED_ATTR protocol_version_packet_t;
+ * @endcode
+ *
+ * **Version negotiation flow**:
+ * @code{.c}
+ * // Client sends version packet
+ * protocol_version_packet_t client_version = {
+ *     .protocol_version = 1,
+ *     .protocol_revision = 0,
+ *     .supports_encryption = 1,
+ *     .compression_algorithms = COMPRESS_ALGO_ZLIB,
+ *     .compression_threshold = 80,
+ *     .feature_flags = FEATURE_RLE_ENCODING
+ * };
+ * send_packet(socket, PACKET_TYPE_PROTOCOL_VERSION, &client_version, sizeof(client_version));
+ *
+ * // Server responds with its version (must match major version)
+ * protocol_version_packet_t server_version = {
+ *     .protocol_version = 1,  // Must match client
+ *     .protocol_revision = 1,  // Server supports newer revision
+ *     .supports_encryption = 1,
+ *     .compression_algorithms = COMPRESS_ALGO_ZLIB,
+ *     .compression_threshold = 80,
+ *     .feature_flags = FEATURE_RLE_ENCODING
+ * };
+ * send_packet(socket, PACKET_TYPE_PROTOCOL_VERSION, &server_version, sizeof(server_version));
+ * @endcode
+ *
+ * **Version compatibility**:
+ * - Major version mismatch: Connection rejected
+ * - Minor revision mismatch: OK (server uses newer features, client ignores unknown)
+ * - Compression negotiation: Both parties choose lowest common denominator
+ *
+ * @section packet_types_frames Frame Packets
+ *
+ * @subsection packet_types_ascii_frame ASCII Frame Packet
+ *
+ * Complete ASCII art frame with compression support:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t width;           // Terminal width in characters
+ *     uint32_t height;          // Terminal height in characters
+ *     uint32_t original_size;   // Size of original ASCII data
+ *     uint32_t compressed_size; // Size of compressed data (0 = not compressed)
+ *     uint32_t checksum;        // CRC32 of original ASCII data
+ *     uint32_t flags;           // Bit flags: HAS_COLOR, IS_COMPRESSED, etc.
+ * } PACKED_ATTR ascii_frame_packet_t;
+ * @endcode
+ *
+ * **Payload structure**:
+ * - Header: `ascii_frame_packet_t` (24 bytes)
+ * - Data: `char data[original_size]` or `char compressed_data[compressed_size]`
+ *
+ * **Compression handling**:
+ * @code{.c}
+ * // Server: Send ASCII frame
+ * ascii_frame_packet_t header = {
+ *     .width = 160,
+ *     .height = 45,
+ *     .original_size = 7200,  // 160 * 45
+ *     .compressed_size = 0,
+ *     .checksum = crc32_compute(ascii_data, 7200),
+ *     .flags = FLAG_HAS_COLOR
+ * };
+ *
+ * // Compress if beneficial
+ * if (header.original_size > COMPRESS_THRESHOLD) {
+ *     compress_zlib(ascii_data, header.original_size,
+ *                    compressed_buf, &header.compressed_size);
+ *     if (header.compressed_size < header.original_size * 0.8) {
+ *         header.flags |= FLAG_IS_COMPRESSED;
+ *         // Send compressed data
+ *     } else {
+ *         header.compressed_size = 0;
+ *         // Send uncompressed data
+ *     }
+ * }
+ * @endcode
+ *
+ * @subsection packet_types_image_frame Image Frame Packet
+ *
+ * Raw RGB image from webcam:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t width;           // Image width in pixels
+ *     uint32_t height;          // Image height in pixels
+ *     uint32_t pixel_format;    // 0=RGB24, 1=RGBA32, 2=BGR24, etc.
+ *     uint32_t compressed_size; // If >0, image is compressed
+ *     uint32_t checksum;        // CRC32 of pixel data
+ *     uint32_t timestamp;       // When frame was captured
+ * } PACKED_ATTR image_frame_packet_t;
+ * @endcode
+ *
+ * **Payload structure**:
+ * - Header: `image_frame_packet_t` (24 bytes)
+ * - Data: `rgb_t pixels[width * height]` or compressed data
+ *
+ * **Usage** (client → server):
+ * @code{.c}
+ * // Capture frame from webcam
+ * uint8_t *rgb_frame = capture_webcam_frame(&width, &height);
+ *
+ * // Create image frame packet
+ * image_frame_packet_t header = {
+ *     .width = width,
+ *     .height = height,
+ *     .pixel_format = PIXEL_FORMAT_RGB24,
+ *     .compressed_size = 0,
+ *     .checksum = crc32_compute(rgb_frame, width * height * 3),
+ *     .timestamp = get_timestamp()
+ * };
+ *
+ * // Send to server
+ * send_packet(socket, PACKET_TYPE_IMAGE_FRAME, &header, sizeof(header));
+ * send_packet_data(socket, rgb_frame, width * height * 3);
+ * @endcode
+ *
+ * @section packet_types_audio Audio Packets
+ *
+ * @subsection packet_types_audio_single Single Audio Packet (Legacy)
+ *
+ * PACKET_TYPE_AUDIO (type 4) is the legacy single-packet format:
+ * - Fixed size: 256 samples per packet
+ * - Format: `float samples[256]`
+ * - Sample rate: Negotiated in protocol version packet
+ * - Channels: Usually mono (1 channel)
+ *
+ * **Disadvantages**:
+ * - High packet overhead (1 packet per 256 samples)
+ * - At 44.1 kHz: 188 packets/second
+ * - Each packet: 18-byte header + 1024-byte payload = 1042 bytes
+ * - Total overhead: 188 × 18 = 3.4 KB/sec (0.34% of bandwidth)
+ *
+ * @subsection packet_types_audio_batch Batched Audio Packet (Efficient)
+ *
+ * PACKET_TYPE_AUDIO_BATCH (type 28) batches multiple audio chunks:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t batch_count;   // Number of chunks (usually 4)
+ *     uint32_t total_samples; // Total samples across all chunks (1024)
+ *     uint32_t sample_rate;   // 44100, 48000, etc.
+ *     uint32_t channels;      // 1=mono, 2=stereo
+ * } PACKED_ATTR audio_batch_packet_t;
+ * @endcode
+ *
+ * **Payload structure**:
+ * - Header: `audio_batch_packet_t` (16 bytes)
+ * - Data: `float samples[total_samples]` (interleaved if stereo)
+ *
+ * **Benefits**:
+ * - Reduced packet overhead: 4 chunks per packet = 75% fewer packets
+ * - At 44.1 kHz: 47 packets/second (was 188)
+ * - Packet overhead: 47 × 18 = 846 bytes/sec (0.08% of bandwidth)
+ * - **80% reduction in packet overhead**
+ *
+ * **Example**:
+ * @code{.c}
+ * // Capture 4 audio chunks (256 samples each = 1024 total)
+ * float samples[1024];
+ * capture_audio_chunks(samples, 4);
+ *
+ * // Create batch packet
+ * audio_batch_packet_t header = {
+ *     .batch_count = 4,
+ *     .total_samples = 1024,
+ *     .sample_rate = 44100,
+ *     .channels = 1
+ * };
+ *
+ * // Send to server
+ * send_packet(socket, PACKET_TYPE_AUDIO_BATCH, &header, sizeof(header));
+ * send_packet_data(socket, samples, sizeof(samples));
+ * @endcode
+ *
+ * @section packet_types_control Control Packets
+ *
+ * @subsection packet_types_capabilities Client Capabilities
+ *
+ * Client reports terminal capabilities to server:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t capabilities;      // Bitmask: TERM_CAP_* flags
+ *     uint32_t color_level;       // terminal_color_level_t enum
+ *     uint32_t color_count;       // Actual color count (16, 256, 16777216)
+ *     uint32_t render_mode;        // render_mode_t enum (foreground/background/half-block)
+ *     uint16_t width, height;      // Terminal dimensions
+ *     char term_type[32];         // $TERM value
+ *     char colorterm[32];         // $COLORTERM value
+ *     uint8_t detection_reliable; // True if detection was reliable
+ *     uint32_t utf8_support;       // 0=no, 1=yes
+ *     uint32_t palette_type;      // palette_type_t enum
+ *     char palette_custom[64];    // Custom palette chars
+ *     uint8_t desired_fps;        // Client's desired FPS (1-144)
+ *     uint8_t reserved[2];
+ * } PACKED_ATTR terminal_capabilities_packet_t;
+ * @endcode
+ *
+ * **Usage**:
+ * @code{.c}
+ * terminal_capabilities_packet_t caps = {
+ *     .capabilities = TERM_CAP_VIDEO | TERM_CAP_AUDIO | TERM_CAP_COLOR,
+ *     .color_level = TERM_COLOR_24BIT,
+ *     .color_count = 16777216,
+ *     .render_mode = RENDER_MODE_HALF_BLOCK,
+ *     .width = 160,
+ *     .height = 45,
+ *     .detection_reliable = 1,
+ *     .utf8_support = 1,
+ *     .palette_type = PALETTE_STANDARD,
+ *     .desired_fps = 30
+ * };
+ * strncpy(caps.term_type, getenv("TERM"), sizeof(caps.term_type) - 1);
+ * strncpy(caps.colorterm, getenv("COLORTERM"), sizeof(caps.colorterm) - 1);
+ *
+ * send_packet(socket, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
+ * @endcode
+ *
+ * @subsection packet_types_ping_pong Ping/Pong Keepalive
+ *
+ * Maintains connection alive and detects dead connections:
+ *
+ * @code{.c}
+ * // Server: Send ping every 30 seconds
+ * void keepalive_thread(void *arg) {
+ *     while (running) {
+ *         sleep(30);
+ *
+ *         packet_header_t ping = {
+ *             .magic = PACKET_MAGIC,
+ *             .type = PACKET_TYPE_PING,
+ *             .length = 0,  // No payload
+ *             .crc32 = 0,
+ *             .client_id = 0  // From server
+ *         };
+ *         send_packet(socket, PACKET_TYPE_PING, NULL, 0);
+ *     }
+ * }
+ *
+ * // Client: Respond to ping
+ * void handle_packet(packet_header_t *header, void *payload) {
+ *     if (header->type == PACKET_TYPE_PING) {
+ *         packet_header_t pong = {
+ *             .magic = PACKET_MAGIC,
+ *             .type = PACKET_TYPE_PONG,
+ *             .length = 0,
+ *             .crc32 = 0,
+ *             .client_id = my_client_id
+ *         };
+ *         send_packet(socket, PACKET_TYPE_PONG, NULL, 0);
+ *     }
+ * }
+ * @endcode
+ *
+ * @section packet_types_crypto Crypto Handshake Packets
+ *
+ * All crypto handshake packets (types 14-23, 25-27) must be sent UNENCRYPTED.
+ * Use `packet_is_handshake_type()` to check before encryption.
+ *
+ * @subsection packet_types_crypto_flow Handshake Flow
+ *
+ * **Phase 1: Capability Exchange**
+ * @code{.c}
+ * // Client → Server: Supported algorithms
+ * crypto_capabilities_packet_t client_caps = {
+ *     .supported_kex_algorithms = KEX_ALGO_X25519,
+ *     .supported_auth_algorithms = AUTH_ALGO_ED25519,
+ *     .supported_cipher_algorithms = CIPHER_ALGO_XSALSA20_POLY1305,
+ *     .requires_verification = 1,
+ *     .preferred_kex = KEX_ALGO_X25519,
+ *     .preferred_auth = AUTH_ALGO_ED25519,
+ *     .preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305
+ * };
+ * send_packet(socket, PACKET_TYPE_CRYPTO_CAPABILITIES, &client_caps, sizeof(client_caps));
+ *
+ * // Server → Client: Chosen algorithms + data sizes
+ * crypto_parameters_packet_t server_params = {
+ *     .selected_kex = KEX_ALGO_X25519,
+ *     .selected_auth = AUTH_ALGO_ED25519,
+ *     .selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305,
+ *     .verification_enabled = 1,
+ *     .kex_public_key_size = 32,      // X25519
+ *     .auth_public_key_size = 32,     // Ed25519
+ *     .signature_size = 64,           // Ed25519
+ *     .shared_secret_size = 32,       // X25519
+ *     .nonce_size = 24,               // XSalsa20 nonce
+ *     .mac_size = 16,                 // Poly1305 MAC
+ *     .hmac_size = 32                 // HMAC-SHA256
+ * };
+ * send_packet(socket, PACKET_TYPE_CRYPTO_PARAMETERS, &server_params, sizeof(server_params));
+ * @endcode
+ *
+ * **Phase 2: Key Exchange**
+ * @code{.c}
+ * // Server → Client: Server's ephemeral public key
+ * uint8_t server_pubkey[32];
+ * crypto_generate_keypair(server_pubkey, server_secret);
+ * send_packet(socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,
+ *             server_pubkey, 32);
+ *
+ * // Client → Server: Client's ephemeral public key
+ * uint8_t client_pubkey[32];
+ * crypto_generate_keypair(client_pubkey, client_secret);
+ * send_packet(socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,
+ *             client_pubkey, 32);
+ * @endcode
+ *
+ * **Phase 3: Authentication**
+ * @code{.c}
+ * // Server → Client: Authentication challenge nonce
+ * uint8_t challenge[32];
+ * randombytes_buf(challenge, 32);
+ * send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge, 32);
+ *
+ * // Client → Server: HMAC response
+ * uint8_t client_hmac[32];
+ * compute_hmac(client_identity_key, challenge, 32, client_hmac);
+ * send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, client_hmac, 32);
+ *
+ * // Server verifies HMAC...
+ * // If verification fails:
+ * auth_failure_packet_t failure = {
+ *     .reason_flags = AUTH_FAIL_SIGNATURE_INVALID
+ * };
+ * send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+ *
+ * // If verification succeeds:
+ * // Server → Client: Server proves knowledge
+ * uint8_t server_hmac[32];
+ * compute_hmac(server_identity_key, client_hmac, 32, server_hmac);
+ * send_packet(socket, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac, 32);
+ * @endcode
+ *
+ * **Phase 4: Handshake Complete**
+ * @code{.c}
+ * // Server → Client: Encryption ready
+ * send_packet(socket, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0);
+ *
+ * // Now all subsequent packets use PACKET_TYPE_ENCRYPTED (type 24)
+ * // with encrypted payloads
+ * @endcode
+ *
+ * @section packet_types_multi_user Multi-User Protocol
+ *
+ * @subsection packet_types_client_join Client Join
+ *
+ * Client announces capability to send video/audio:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t client_id;                      // Unique client ID
+ *     char display_name[MAX_DISPLAY_NAME_LEN]; // User display name
+ *     uint32_t capabilities;                   // Bitmask: CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO
+ * } PACKED_ATTR client_info_packet_t;
+ *
+ * client_info_packet_t join = {
+ *     .client_id = 3,
+ *     .capabilities = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO
+ * };
+ * strncpy(join.display_name, "Alice", MAX_DISPLAY_NAME_LEN - 1);
+ * send_packet(socket, PACKET_TYPE_CLIENT_JOIN, &join, sizeof(join));
+ * @endcode
+ *
+ * @subsection packet_types_server_state Server State Broadcast
+ *
+ * Server broadcasts current state to all clients:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint32_t connected_client_count;  // Number of connected clients
+ *     uint32_t active_client_count;    // Number actively sending video
+ *     uint32_t reserved[6];
+ * } PACKED_ATTR server_state_packet_t;
+ *
+ * server_state_packet_t state = {
+ *     .connected_client_count = 5,
+ *     .active_client_count = 3
+ * };
+ *
+ * // Broadcast to all clients
+ * for (int i = 0; i < connected_clients; i++) {
+ *     send_packet(clients[i].socket, PACKET_TYPE_SERVER_STATE,
+ *                 &state, sizeof(state));
+ * }
+ * @endcode
+ *
+ * @section packet_types_protocol_versioning Protocol Versioning
+ *
+ * ascii-chat uses semantic versioning for protocol compatibility:
+ *
+ * **Version Format**:
+ * - Major version: Incompatible protocol changes (client/server must match)
+ * - Minor revision: Backward-compatible additions (server can be newer)
+ *
+ * **Compatibility Rules**:
+ * - Major version mismatch: Connection rejected
+ * - Minor revision mismatch: OK (server uses newer features, client ignores unknown)
+ * - Client sends: `protocol_version=1, revision=0`
+ * - Server responds: `protocol_version=1, revision=X` (X can be >= 0)
+ *
+ * **Future Protocol Changes**:
+ * - Major version bump: Complete protocol redesign
+ * - Minor revision bump: New packet types, new flags, extended structures
+ * - Reserved fields: Structures include reserved fields for future expansion
+ *
+ * @section packet_types_wire_format Wire Format
+ *
+ * @subsection packet_types_byte_order Byte Order
+ *
+ * All multi-byte fields use network byte order (big-endian):
+ *
+ * @code{.c}
+ * // Host to network (before sending)
+ * header.magic = htonl(PACKET_MAGIC);
+ * header.type = htons(PACKET_TYPE_ASCII_FRAME);
+ * header.length = htonl(payload_length);
+ * header.crc32 = htonl(crc32_value);
+ * header.client_id = htonl(client_id);
+ *
+ * // Network to host (after receiving)
+ * header.magic = ntohl(header.magic);
+ * header.type = ntohs(header.type);
+ * header.length = ntohl(header.length);
+ * header.crc32 = ntohl(header.crc32);
+ * header.client_id = ntohl(header.client_id);
+ * @endcode
+ *
+ * **Platform-specific functions**:
+ * - POSIX: `htonl()`, `htons()`, `ntohl()`, `ntohs()`
+ * - Windows: `htonl()`, `htons()`, `ntohl()`, `ntohs()` (winsock.h)
+ *
+ * @subsection packet_types_packing Structure Packing
+ *
+ * Structures are packed (no padding) for wire format compatibility:
+ *
+ * @code{.c}
+ * #ifdef _WIN32
+ * #pragma pack(push, 1)
+ * #endif
+ *
+ * typedef struct {
+ *     uint32_t field1;  // Offset 0
+ *     uint16_t field2;  // Offset 4 (not 8, due to packing)
+ *     uint32_t field3;  // Offset 6 (not 12)
+ * } PACKED_ATTR my_packet_t;
+ *
+ * #ifdef _WIN32
+ * #pragma pack(pop)
+ * #endif
+ * @endcode
+ *
+ * **Warning**: Packed structures may not be naturally aligned.
+ * Accessing fields may cause unaligned memory access (slower on some CPUs).
+ * ascii-chat structures are designed to avoid this issue.
+ *
+ * @section packet_types_best_practices Best Practices
+ *
+ * 1. **Always validate magic number**:
+ *    @code{.c}
+ *    if (header.magic != PACKET_MAGIC) {
+ *        log_error("Invalid packet magic: 0x%08X", header.magic);
+ *        return ERROR_NETWORK_PROTOCOL;
+ *    }
+ *    @endcode
+ *
+ * 2. **Check handshake types before encryption**:
+ *    @code{.c}
+ *    if (!packet_is_handshake_type(header.type)) {
+ *        // Encrypt payload
+ *        encrypt_packet(&header, payload, payload_len);
+ *    }
+ *    @endcode
+ *
+ * 3. **Validate payload length**:
+ *    @code{.c}
+ *    if (header.length > MAX_PACKET_SIZE) {
+ *        log_error("Packet too large: %u bytes", header.length);
+ *        return ERROR_NETWORK_PROTOCOL;
+ *    }
+ *    @endcode
+ *
+ * 4. **Verify CRC32 checksums**:
+ *    @code{.c}
+ *    uint32_t computed_crc = crc32_compute(payload, header.length);
+ *    if (computed_crc != header.crc32) {
+ *        log_error("CRC32 mismatch: expected 0x%08X, got 0x%08X",
+ *                  header.crc32, computed_crc);
+ *        return ERROR_NETWORK_PROTOCOL;
+ *    }
+ *    @endcode
+ *
+ * 5. **Use network byte order**:
+ *    @code{.c}
+ *    // Before sending
+ *    header.magic = htonl(PACKET_MAGIC);
+ *    header.length = htonl(payload_length);
+ *
+ *    // After receiving
+ *    header.magic = ntohl(header.magic);
+ *    header.length = ntohl(header.length);
+ *    @endcode
+ *
+ * 6. **Handle unknown packet types gracefully**:
+ *    @code{.c}
+ *    switch (header.type) {
+ *        case PACKET_TYPE_ASCII_FRAME:
+ *            handle_ascii_frame(payload, header.length);
+ *            break;
+ *        // ... known types ...
+ *        default:
+ *            log_warn("Unknown packet type: %u", header.type);
+ *            // Ignore unknown types (forward compatibility)
+ *            break;
+ *    }
+ *    @endcode
+ *
+ * @section packet_types_constants Protocol Constants
+ *
+ * **Packet Size Limits**:
+ * @code{.c}
+ * #define LARGE_PACKET_THRESHOLD (100 * 1024)  // 100 KB - triggers extended timeout
+ * #define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)  // 5 MB - absolute maximum
+ * @endcode
+ *
+ * **Timeout Configuration**:
+ * @code{.c}
+ * #define BASE_SEND_TIMEOUT 5  // Base timeout in seconds
+ * #define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8  // Extra timeout per MB
+ * #define MIN_CLIENT_TIMEOUT 10  // Minimum client timeout
+ * #define MAX_CLIENT_TIMEOUT 60  // Maximum client timeout
+ * @endcode
+ *
+ * **Audio Configuration**:
+ * @code{.c}
+ * #define AUDIO_SAMPLES_PER_PACKET 256  // Samples per single audio packet
+ * #define AUDIO_BATCH_COUNT 4  // Chunks per batch packet
+ * #define AUDIO_BATCH_SAMPLES 1024  // Total samples in batch (256 * 4)
+ * #define AUDIO_BATCH_MS 23  // Duration at 44.1 kHz (~23ms)
+ * @endcode
+ *
+ * **Magic Numbers**:
+ * @code{.c}
+ * #define PACKET_MAGIC 0xDEADBEEF  // Packet header magic number
+ * #define FRAME_MAGIC 0xDEADBEEF   // Frame buffer magic (different context)
+ * #define FRAME_FREED 0xFEEDFACE   // Freed frame marker
+ * @endcode
+ *
+ * @see network/packet_types.h
+ * @see network/packet.h
+ * @see network/av.h
+ */

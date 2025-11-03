@@ -1,15 +1,16 @@
 /**
  * @file main.c
- * @brief ASCII-Chat Unified Binary - Mode Dispatcher and Entry Point
+ * @ingroup main
+ * @brief ascii-chat Unified Binary - Mode Dispatcher and Entry Point
  *
- * This file implements the main entry point for the unified ASCII-Chat binary,
+ * This file implements the main entry point for the unified ascii-chat binary,
  * which provides both server and client functionality in a single executable.
  * The dispatcher parses the first command line argument to determine which mode
  * to run and forwards execution to the appropriate mode-specific entry point.
  *
  * ## Unified Binary Architecture
  *
- * The ASCII-Chat application consolidates server and client into one binary:
+ * The ascii-chat application consolidates server and client into one binary:
  *
  * **Command Syntax:**
  * ```
@@ -84,10 +85,22 @@
  * Constants and Configuration
  * ============================================================================ */
 
-/** Application name for help and error messages */
+/**
+ * @def APP_NAME
+ * @brief Application name for help and error messages
+ *
+ * Used consistently throughout the dispatcher for user-facing output.
+ * Defined as a macro to allow easy customization if needed.
+ */
 #define APP_NAME "ascii-chat"
 
-/** Version string from CMake-generated header */
+/**
+ * @def VERSION
+ * @brief Version string from CMake-generated header
+ *
+ * The version is set during build time by CMake and comes from
+ * version.h. It includes major, minor, and patch version numbers.
+ */
 #define VERSION ASCII_CHAT_VERSION_FULL
 
 /* ============================================================================
@@ -99,6 +112,16 @@
  *
  * All mode entry points must match this signature to be callable
  * by the dispatcher. The signature is identical to standard main().
+ *
+ * @param argc Argument count (at least 1, program name is always first)
+ * @param argv Argument vector (argv[0] is program name, rest are options)
+ * @return Exit code (0 for success, non-zero for error)
+ *
+ * @note The dispatcher strips the mode name from argv before calling
+ *       mode entry points, so mode handlers don't need to skip it.
+ * @note Mode entry points should use ERROR_USAGE for invalid arguments.
+ *
+ * @ingroup main
  */
 typedef int (*mode_entry_point_t)(int argc, char *argv[]);
 
@@ -109,11 +132,13 @@ typedef int (*mode_entry_point_t)(int argc, char *argv[]);
  * - Name: Command line argument to trigger this mode (e.g., "server")
  * - Description: Brief summary for help text
  * - Entry point: Function pointer to mode_main() implementation
+ *
+ * @ingroup main
  */
 typedef struct {
-  const char *name;               ///< Mode name (e.g., "server", "client")
-  const char *description;        ///< One-line description for help
-  mode_entry_point_t entry_point; ///< Function to call for this mode
+  const char *name;               ///< Mode name (e.g., "server", "client") - must be non-NULL for valid modes
+  const char *description;        ///< One-line description for help text display
+  mode_entry_point_t entry_point; ///< Function pointer to mode_main() implementation
 } mode_descriptor_t;
 
 /**
@@ -124,7 +149,12 @@ typedef struct {
  * 2. Create mode header (e.g., mode_name_mode.h)
  * 3. Add entry to this table
  *
- * The table is NULL-terminated for iteration convenience.
+ * The table is NULL-terminated for iteration convenience. The last entry
+ * must have all fields set to NULL to mark the end of the table.
+ *
+ * @note Table is static const for compile-time initialization
+ * @note Mode names must be unique (case-sensitive matching)
+ * @ingroup main
  */
 static const mode_descriptor_t g_mode_table[] = {
     {
@@ -151,10 +181,20 @@ static const mode_descriptor_t g_mode_table[] = {
  * Displays the main help screen showing available modes and global options.
  * This is shown when:
  * - User runs `ascii-chat` with no arguments
- * - User runs `ascii-chat --help`
+ * - User runs `ascii-chat --help` or `ascii-chat -h`
  * - User specifies an invalid mode
  *
+ * The output includes:
+ * - Application name and description
+ * - Usage syntax
+ * - List of available modes from the registration table
+ * - Instructions for mode-specific help
+ *
  * @param program_name Argv[0] from main (usually "ascii-chat")
+ *                    Currently unused - binary name is determined at compile time
+ *
+ * @note Platform-specific binary name (e.g., "ascii-chat.exe" on Windows)
+ * @ingroup main
  */
 static void print_usage(const char *program_name) {
   (void)program_name; // Unused - we use "ascii-chat" directly
@@ -190,6 +230,16 @@ static void print_usage(const char *program_name) {
  *
  * Displays the unified binary version and build information.
  * Version is defined by CMake during build process.
+ *
+ * The output includes:
+ * - Application name and version string
+ * - Compiler information (Clang, GCC, MSVC, etc.)
+ * - C library information (musl, glibc, MSVCRT, libSystem, etc.)
+ * - Platform information (OS name)
+ * - Project URL
+ *
+ * @note All information is determined at compile time
+ * @ingroup main
  */
 static void print_version() {
   printf("%s %s\n", APP_NAME, VERSION);
@@ -237,7 +287,12 @@ static void print_version() {
  * of modes (2-5 typically).
  *
  * @param mode_name Mode name to search for (e.g., "server")
- * @return Pointer to mode descriptor if found, NULL otherwise
+ *                 Must be non-NULL and null-terminated
+ * @return Pointer to mode descriptor if found, NULL if not found or invalid input
+ *
+ * @note Mode name matching is case-sensitive
+ * @note Searches until NULL terminator is found in table
+ * @ingroup main
  */
 static const mode_descriptor_t *find_mode(const char *mode_name) {
   for (const mode_descriptor_t *mode = g_mode_table; mode->name != NULL; mode++) {
@@ -249,7 +304,7 @@ static const mode_descriptor_t *find_mode(const char *mode_name) {
 }
 
 /**
- * @brief Main entry point for unified ASCII-Chat binary
+ * @brief Main entry point for unified ascii-chat binary
  *
  * This function implements the mode dispatcher pattern, routing execution
  * to the appropriate mode-specific entry point based on command line arguments.
@@ -278,6 +333,11 @@ static const mode_descriptor_t *find_mode(const char *mode_name) {
  * @return Exit code (0 = success, non-zero = error)
  */
 int main(int argc, char *argv[]) {
+  /**
+   * @name Argument Validation
+   * @{
+   */
+
   // Validate basic argument structure
   if (argc < 1 || argv == NULL || argv[0] == NULL) {
     fprintf(stderr, "Error: Invalid argument vector\n");
@@ -287,11 +347,25 @@ int main(int argc, char *argv[]) {
   // Store program name for error messages
   const char *program_name = argv[0];
 
+  /** @} */
+
+  /**
+   * @name Case 1: No Arguments - Show Usage
+   * @{
+   */
+
   // Case 1: No arguments provided - show usage
   if (argc == 1) {
     print_usage(program_name);
     return 0;
   }
+
+  /** @} */
+
+  /**
+   * @name Case 2: Find Mode (First Non-Option Argument)
+   * @{
+   */
 
   // Case 2: Find the mode (first non-option argument)
   int mode_index = -1;
@@ -310,6 +384,13 @@ int main(int argc, char *argv[]) {
       break;
     }
   }
+
+  /** @} */
+
+  /**
+   * @name Case 3: Handle Global Options (Before Mode)
+   * @{
+   */
 
   // Case 3: Check for --help or --version BEFORE the mode (global options)
   // If they appear after the mode, they'll be passed to the mode handler
@@ -331,6 +412,13 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  /** @} */
+
+  /**
+   * @name Case 4: Validate Mode Found
+   * @{
+   */
+
   // Case 4: Validate mode was found
   if (mode == NULL) {
     // Check if there's a non-option non-mode argument (invalid mode)
@@ -348,6 +436,13 @@ int main(int argc, char *argv[]) {
     print_usage(program_name);
     return ERROR_USAGE;
   }
+
+  /** @} */
+
+  /**
+   * @name Case 5: Build argv for Mode Entry Point
+   * @{
+   */
 
   // Case 5: Build argv for mode entry point
   // Include only arguments AFTER the mode
@@ -368,13 +463,29 @@ int main(int argc, char *argv[]) {
   }
   mode_argv[mode_argc] = NULL; // NULL-terminate for safety
 
+  /** @} */
+
+  /**
+   * @name Case 6: Dispatch to Mode Entry Point
+   * @{
+   */
+
   // Dispatch to mode entry point
   int exit_code = mode->entry_point(mode_argc, mode_argv);
   if (exit_code == ERROR_USAGE) {
     _exit(ERROR_USAGE);
   }
 
+  /** @} */
+
+  /**
+   * @name Cleanup and Return
+   * @{
+   */
+
   // Cleanup and return
   SAFE_FREE(mode_argv);
   return exit_code;
+
+  /** @} */
 }

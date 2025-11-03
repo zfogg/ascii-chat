@@ -1,12 +1,7 @@
 /**
- * @file display.c
- * @brief ASCII-Chat Client Display Management
- *
- * This module handles all terminal display operations for the ASCII-Chat client,
- * including TTY detection, terminal initialization, frame rendering, and
- * output routing between interactive TTY and stdout redirection modes.
- *
- * ## Display Architecture
+ * @file client/display.c
+ * @ingroup client_display
+ * @brief 💻 Client terminal display: TTY detection, frame rendering, and interactive/stdout output routing
  *
  * The display system supports dual output modes:
  * - **Interactive TTY Mode**: Direct terminal control with cursor positioning
@@ -70,7 +65,7 @@
  * - **Permission Errors**: Try alternative TTY paths before failing
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date 2025
+ * @date September 2025
  * @version 2.0
  */
 
@@ -92,13 +87,38 @@
 
 /** Use tty_info_t from platform abstraction */
 
-/** Global TTY information */
+/**
+ * @brief Global TTY information structure
+ *
+ * Maintains information about the terminal/TTY device for interactive output.
+ * Contains file descriptor, device path, and validity status. Initialized
+ * during display subsystem startup.
+ *
+ * @note Not static because it may be accessed from other modules
+ * @ingroup client_display
+ */
 tty_info_t g_tty_info = {-1, NULL, false};
 
-/** Flag indicating if we have a valid TTY for interactive output */
+/**
+ * @brief Flag indicating if we have a valid TTY for interactive output
+ *
+ * Set to true if the display has detected a valid terminal/TTY for rendering.
+ * When false, output may be redirected or non-interactive (pipes, files, etc.).
+ * Used to determine optimal rendering strategy.
+ *
+ * @ingroup client_display
+ */
 static bool g_has_tty = false;
 
-/** Flag indicating if this is the first frame of the current connection */
+/**
+ * @brief Atomic flag indicating if this is the first frame of the current connection
+ *
+ * Set to true at the start of each new connection, cleared after the first
+ * frame is rendered. Used to disable logging during the first frame render
+ * to prevent console corruption, then enable logging for subsequent frames.
+ *
+ * @ingroup client_display
+ */
 static atomic_bool g_is_first_frame_of_connection = true;
 
 /* ============================================================================
@@ -106,7 +126,7 @@ static atomic_bool g_is_first_frame_of_connection = true;
  * ============================================================================ */
 
 /**
- * Detect and configure current TTY
+ * @brief Detect and configure current TTY
  *
  * Implements multi-method TTY detection with fallback strategy:
  * 1. Check $TTY environment variable (most specific on macOS)
@@ -121,6 +141,8 @@ static atomic_bool g_is_first_frame_of_connection = true;
  * - Windows uses CON device for console access
  *
  * @return TTY information structure with file descriptor and path
+ *
+ * @ingroup client_display
  */
 static tty_info_t display_get_current_tty(void) {
   // Use the platform abstraction layer function
@@ -128,7 +150,7 @@ static tty_info_t display_get_current_tty(void) {
 }
 
 /**
- * Perform complete terminal reset
+ * @brief Perform complete terminal reset
  *
  * Executes comprehensive terminal reset sequence for clean display state.
  * Skips terminal control operations in snapshot mode to avoid interfering
@@ -142,6 +164,8 @@ static tty_info_t display_get_current_tty(void) {
  * 5. Terminal buffer flushing to ensure immediate effect
  *
  * @param fd File descriptor for terminal operations
+ *
+ * @ingroup client_display
  */
 static void full_terminal_reset(int fd) {
   // Skip terminal control sequences in snapshot mode - just print raw ASCII
@@ -159,7 +183,7 @@ static void full_terminal_reset(int fd) {
  * ============================================================================ */
 
 /**
- * Write frame data to appropriate output destination
+ * @brief Write frame data to appropriate output destination
  *
  * Routes frame output based on TTY availability and snapshot mode requirements.
  * Handles cursor positioning and output synchronization for different modes.
@@ -172,6 +196,8 @@ static void full_terminal_reset(int fd) {
  *
  * @param frame_data ASCII frame data to display
  * @param use_direct_tty Whether to use direct TTY output or stdout
+ *
+ * @ingroup client_display
  */
 static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
   // Safety check for NULL or empty data
@@ -215,7 +241,7 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
  * ============================================================================ */
 
 /**
- * Initialize display subsystem
+ * @brief Initialize what is necessary to display ascii frames
  *
  * Performs TTY detection, terminal configuration, and ASCII rendering
  * initialization. Must be called once during client startup.
@@ -227,6 +253,8 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
  * 4. Terminal dimension and capability setup
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_display
  */
 int display_init() {
   // Get TTY info for direct terminal access (if needed for interactive mode)
@@ -247,19 +275,23 @@ int display_init() {
 }
 
 /**
- * Check if display has TTY capability
+ * @brief Check if display has TTY capability
  *
  * @return true if TTY is available for interactive output, false otherwise
+ *
+ * @ingroup client_display
  */
 bool display_has_tty() {
   return g_has_tty;
 }
 
 /**
- * Perform full display reset
+ * @brief Perform full display reset
  *
  * Executes complete terminal reset sequence for clean display state.
  * Safe to call multiple times and handles mode-specific behavior.
+ *
+ * @ingroup client_display
  */
 void display_full_reset() {
   if (g_tty_info.fd >= 0 && !should_exit()) {
@@ -267,10 +299,26 @@ void display_full_reset() {
   }
 }
 
+/**
+ * @brief Reset display state for new connection
+ *
+ * Resets the first frame tracking flag to prepare for a new connection.
+ * Call this when starting a new connection to reset first frame tracking.
+ *
+ * @ingroup client_display
+ */
 void display_reset_for_new_connection() {
   atomic_store(&g_is_first_frame_of_connection, true);
 }
 
+/**
+ * @brief Disable terminal logging for first frame
+ *
+ * Disables terminal logging before clearing the display for the first frame
+ * to prevent log output from interfering with ASCII display.
+ *
+ * @ingroup client_display
+ */
 void display_disable_logging_for_first_frame() {
   // Disable terminal logging before clearing display and rendering first frame
   if (atomic_load(&g_is_first_frame_of_connection)) {
@@ -294,6 +342,8 @@ void display_disable_logging_for_first_frame() {
  *
  * @param frame_data ASCII frame data to render
  * @param is_snapshot_frame Whether this is the final snapshot frame
+ *
+ * @ingroup client_display
  */
 void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
   if (!frame_data) {
@@ -320,10 +370,12 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
 }
 
 /**
- * Cleanup display subsystem
+ * @brief Cleanup display subsystem
  *
  * Performs graceful cleanup of display resources and terminal state.
  * Restores terminal to original state and closes owned file descriptors.
+ *
+ * @ingroup client_display
  */
 void display_cleanup() {
   // Cleanup ASCII rendering

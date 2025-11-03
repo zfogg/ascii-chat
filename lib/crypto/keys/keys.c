@@ -1,9 +1,7 @@
 /**
- * @file crypto/keys.c
- * @brief High-level key management interface
- *
- * This file provides the main interface functions for key management,
- * delegating to the specialized modules for specific key types.
+ * @file crypto/keys/keys.c
+ * @ingroup keys
+ * @brief 🔑 High-level key management interface with SSH, GPG, and HTTPS key support
  */
 
 #include "keys.h"

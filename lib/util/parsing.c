@@ -1,3 +1,9 @@
+/**
+ * @file util/parsing.c
+ * @ingroup util
+ * @brief 🔍 Safe string parsing utilities for integers, sizes, and protocol messages
+ */
+
 #include "parsing.h"
 #include <string.h>
 #include <errno.h>

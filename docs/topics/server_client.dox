@@ -1,0 +1,455 @@
+/**
+ * @page topic_server_client Client Management
+ * @ingroup server_client
+ *
+ * @section server_client_overview Overview
+ *
+ * The client management module orchestrates the complete lifecycle of each connected
+ * client, from initial connection through thread spawning, state synchronization, and
+ * graceful disconnection cleanup. It serves as the integration hub between the main
+ * server loop and all per-client subsystems, managing the sophisticated per-client
+ * threading architecture that enables real-time video chat at 60fps per client.
+ *
+ * **Implementation**: src/server/client.c, src/server/client.h
+ *
+ * **Key Responsibilities**:
+ * - Client connection establishment and initialization
+ * - Per-client thread creation and management (4 threads per client)
+ * - Client state management with thread-safe access patterns
+ * - Hash table management for O(1) client ID lookups
+ * - Client disconnection handling and resource cleanup
+ * - Integration point between main.c and other server modules
+ *
+ * @section server_client_lifecycle Client Lifecycle
+ *
+ * @subsection server_client_connection Connection Establishment
+ *
+ * When a new client connects:
+ *
+ * @code{.c}
+ * int add_client(socket_t socket, const char *client_ip, int client_port)
+ * {
+ *   // 1. Find available slot in client array
+ *   rwlock_wrlock(&g_client_manager_rwlock);
+ *   int slot = find_available_client_slot();
+ *
+ *   // 2. Generate unique client ID (based on local port)
+ *   uint32_t client_id = generate_client_id(client_port);
+ *
+ *   // 3. Initialize client data structures
+ *   client_info_t *client = &g_client_manager.clients[slot];
+ *   mutex_init(&client->client_state_mutex);
+ *   atomic_store(&client->client_id, client_id);
+ *   atomic_store(&client->active, true);
+ *   client->socket = socket;
+ *
+ *   // 4. Add to hash table for O(1) lookups
+ *   hashtable_insert(g_client_manager.client_hashtable, client_id, client);
+ *
+ *   // 5. Perform cryptographic handshake
+ *   crypto_handshake_result_t handshake_result =
+ *     perform_crypto_handshake_server(socket, &client->crypto_ctx);
+ *
+ *   if (handshake_result != HANDSHAKE_SUCCESS) {
+ *     // Handshake failed - cleanup and return error
+ *     remove_client(client_id);
+ *     return -1;
+ *   }
+ *
+ *   // 6. Create per-client threads (receive, send, render)
+ *   create_client_receive_thread(client);
+ *   create_client_send_thread(client);
+ *   create_client_render_threads(client);  // Video + Audio render threads
+ *
+ *   rwlock_wrunlock(&g_client_manager_rwlock);
+ *
+ *   return client_id;
+ * }
+ * @endcode
+ *
+ * **Thread Creation Order**:
+ * 1. **Send Thread**: Created first (cleanest exit, no blocking I/O typically)
+ * 2. **Receive Thread**: Created second (handles incoming packets, may block on network)
+ * 3. **Video Render Thread**: Created third (60fps frame generation)
+ * 4. **Audio Render Thread**: Created fourth (172fps audio mixing)
+ *
+ * @subsection server_client_disconnection Disconnection Handling
+ *
+ * Client disconnection is detected and handled gracefully:
+ *
+ * @code{.c}
+ * int remove_client(uint32_t client_id)
+ * {
+ *   // 1. Find client in hash table
+ *   rwlock_wrlock(&g_client_manager_rwlock);
+ *   client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable, client_id);
+ *
+ *   // 2. Mark client as inactive (causes threads to exit)
+ *   atomic_store(&client->active, false);
+ *   atomic_store(&client->video_render_thread_running, false);
+ *   atomic_store(&client->audio_render_thread_running, false);
+ *
+ *   // 3. Join threads in reverse creation order
+ *   ascii_thread_join(&client->send_thread, NULL);
+ *   ascii_thread_join(&client->receive_thread, NULL);
+ *   ascii_thread_join(&client->video_render_thread, NULL);
+ *   ascii_thread_join(&client->audio_render_thread, NULL);
+ *
+ *   // 4. Cleanup resources
+ *   crypto_handshake_cleanup(&client->crypto_ctx);
+ *   packet_queue_destroy(client->video_packet_queue);
+ *   packet_queue_destroy(client->audio_packet_queue);
+ *   image_destroy(client->incoming_video_buffer);
+ *
+ *   // 5. Remove from hash table
+ *   hashtable_remove(g_client_manager.client_hashtable, client_id);
+ *
+ *   // 6. Clear client slot
+ *   memset(client, 0, sizeof(client_info_t));
+ *   g_client_manager.client_count--;
+ *
+ *   rwlock_wrunlock(&g_client_manager_rwlock);
+ *
+ *   return 0;
+ * }
+ * @endcode
+ *
+ * **Cleanup Order**:
+ * 1. Mark inactive (threads exit loops)
+ * 2. Join send thread (quickest, usually not blocked)
+ * 3. Join receive thread (may be blocked on recv(), will timeout)
+ * 4. Join render threads (computational work, clean exit)
+ * 5. Cleanup resources (crypto, queues, buffers)
+ * 6. Remove from hash table
+ * 7. Clear slot for reuse
+ *
+ * @section server_client_threading Per-Client Threading Architecture
+ *
+ * Each connected client spawns exactly 4 dedicated threads:
+ *
+ * @subsection server_client_receive_thread Receive Thread
+ *
+ * **Purpose**: Handle incoming packets from client
+ * **Module**: protocol.c functions called by receive thread
+ * **Operations**:
+ * - Receives encrypted packets from socket
+ * - Validates packet headers and CRC32 checksums
+ * - Decrypts packets using per-client crypto context
+ * - Dispatches to protocol handler functions based on packet type
+ * - Stores media data (video frames, audio samples) in client buffers
+ * - Updates client state (capabilities, dimensions, stream status)
+ *
+ * **Thread Safety**:
+ * - Uses per-client mutex for state updates
+ * - Snapshot pattern for minimal lock holding time
+ * - Thread-safe media buffers (double-buffer system)
+ *
+ * @subsection server_client_send_thread Send Thread
+ *
+ * **Purpose**: Manage outgoing packet delivery to client
+ * **Module**: client.c (send thread implementation)
+ * **Operations**:
+ * - Reads packets from client's video and audio packet queues
+ * - Encrypts packets using per-client crypto context
+ * - Sends encrypted packets to client socket
+ * - Handles chunked transmission for large packets
+ * - Detects send failures and marks connection lost
+ *
+ * **Thread Safety**:
+ * - Packet queues are internally thread-safe
+ * - Socket access protected by connection state checks
+ * - Connection loss detected atomically
+ *
+ * @subsection server_client_video_render_thread Video Render Thread
+ *
+ * **Purpose**: Generate personalized ASCII frames at 60fps
+ * **Module**: render.c (video render thread implementation)
+ * **Operations**:
+ * - Collects video frames from all active clients (via stream.c)
+ * - Creates composite frame with appropriate grid layout
+ * - Converts composite to ASCII using client's terminal capabilities
+ * - Queues ASCII frame in client's video packet queue
+ * - Rate limits to exactly 60fps with precise timing
+ *
+ * **Performance**:
+ * - 16.67ms intervals (60fps)
+ * - Per-client frame generation (each client gets personalized view)
+ * - Terminal capability awareness (color depth, palette, UTF-8 support)
+ * - Linear scaling (no shared bottlenecks)
+ *
+ * @subsection server_client_audio_render_thread Audio Render Thread
+ *
+ * **Purpose**: Mix audio streams at 172fps (excluding client's own audio)
+ * **Module**: render.c (audio render thread implementation)
+ * **Operations**:
+ * - Reads audio samples from all clients via audio mixer
+ * - Excludes client's own audio to prevent echo
+ * - Mixes remaining audio streams with ducking and compression
+ * - Queues mixed audio in client's audio packet queue
+ * - Rate limits to exactly 172fps (5.8ms intervals)
+ *
+ * **Performance**:
+ * - 5.8ms intervals (172fps)
+ * - Low-latency audio delivery
+ * - Professional audio processing (ducking, compression, noise gate)
+ * - Linear scaling (per-client dedicated threads)
+ *
+ * @section server_client_data_structures Data Structures
+ *
+ * @subsection server_client_manager Client Manager
+ *
+ * Global singleton managing all clients:
+ *
+ * @code{.c}
+ * typedef struct {
+ *   client_info_t clients[MAX_CLIENTS];      // Backing storage array
+ *   hashtable_t *client_hashtable;           // O(1) client_id -> client_info_t lookup
+ *   int client_count;                        // Current number of active clients
+ *   mutex_t mutex;                           // Protects client_count updates
+ * } client_manager_t;
+ *
+ * extern client_manager_t g_client_manager;
+ * extern rwlock_t g_client_manager_rwlock;   // Protects entire manager
+ * @endcode
+ *
+ * **Synchronization**:
+ * - Reader-writer lock allows concurrent reads
+ * - Exclusive write access for client add/remove
+ * - Hash table provides O(1) client lookups
+ * - Array provides O(1) slot access by index
+ *
+ * @subsection server_client_info Client Information
+ *
+ * Per-client state structure:
+ *
+ * @code{.c}
+ * typedef struct {
+ *   // Connection state
+ *   socket_t socket;
+ *   _Atomic uint32_t client_id;
+ *   _Atomic bool active;
+ *
+ *   // Threading
+ *   asciithread_t receive_thread;
+ *   asciithread_t send_thread;
+ *   asciithread_t video_render_thread;
+ *   asciithread_t audio_render_thread;
+ *   _Atomic bool video_render_thread_running;
+ *   _Atomic bool audio_render_thread_running;
+ *
+ *   // Cryptography
+ *   crypto_handshake_ctx_t crypto_ctx;
+ *   _Atomic bool crypto_initialized;
+ *
+ *   // Media buffers
+ *   video_frame_t *incoming_video_buffer;
+ *   ringbuffer_t *incoming_audio_buffer;
+ *
+ *   // Packet queues
+ *   packet_queue_t *video_packet_queue;
+ *   packet_queue_t *audio_packet_queue;
+ *
+ *   // Terminal capabilities
+ *   unsigned short width;
+ *   unsigned short height;
+ *   terminal_capabilities_t capabilities;
+ *
+ *   // Synchronization
+ *   mutex_t client_state_mutex;
+ *   mutex_t video_buffer_mutex;
+ * } client_info_t;
+ * @endcode
+ *
+ * **State Protection**:
+ * - `client_state_mutex`: Protects most client state fields
+ * - `video_buffer_mutex`: Protects video frame buffer
+ * - Atomic variables: Thread control flags (no mutex needed)
+ * - Atomic snapshot pattern: Copy state under mutex, process without locks
+ *
+ * @section server_client_synchronization Synchronization Patterns
+ *
+ * @subsection server_client_lock_ordering Lock Ordering Protocol
+ *
+ * **CRITICAL RULE**: Always acquire locks in this order:
+ * 1. `g_client_manager_rwlock` (global reader-writer lock)
+ * 2. `client->client_state_mutex` (per-client mutex)
+ * 3. Specialized mutexes (`video_buffer_mutex`, etc.)
+ *
+ * This ordering prevents deadlocks across all server code.
+ *
+ * **Example**:
+ * @code{.c}
+ * // CORRECT: Global lock first, then per-client mutex
+ * rwlock_rdlock(&g_client_manager_rwlock);
+ * client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable, client_id);
+ * mutex_lock(&client->client_state_mutex);
+ * // ... access client state ...
+ * mutex_unlock(&client->client_state_mutex);
+ * rwlock_rdunlock(&g_client_manager_rwlock);
+ * @endcode
+ *
+ * @subsection server_client_snapshot_pattern Snapshot Pattern
+ *
+ * All client state access uses the snapshot pattern to minimize lock contention:
+ *
+ * @code{.c}
+ * // 1. Acquire mutex
+ * mutex_lock(&client->client_state_mutex);
+ *
+ * // 2. Copy needed state to local variables
+ * bool should_continue = client->video_render_thread_running && client->active;
+ * uint32_t client_id_snapshot = client->client_id;
+ * unsigned short width_snapshot = client->width;
+ * unsigned short height_snapshot = client->height;
+ *
+ * // 3. Release mutex immediately
+ * mutex_unlock(&client->client_state_mutex);
+ *
+ * // 4. Process using local copies (no locks held)
+ * if (should_continue) {
+ *   generate_frame(client_id_snapshot, width_snapshot, height_snapshot);
+ * }
+ * @endcode
+ *
+ * **Benefits**:
+ * - Minimal lock holding time (reduces contention)
+ * - No blocking operations while holding locks
+ * - Prevents deadlocks from complex call chains
+ * - Enables parallel processing across clients
+ *
+ * @section server_client_hash_table Hash Table Integration
+ *
+ * The client manager uses a hash table for O(1) client ID lookups:
+ *
+ * @code{.c}
+ * // Add client to hash table
+ * hashtable_insert(g_client_manager.client_hashtable, client_id, client);
+ *
+ * // Lookup client by ID
+ * client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable, client_id);
+ *
+ * // Remove client from hash table
+ * hashtable_remove(g_client_manager.client_hashtable, client_id);
+ * @endcode
+ *
+ * **Performance**:
+ * - O(1) average-case lookup time
+ * - Handles hash collisions internally
+ * - Thread-safe operations (protected by RWLock)
+ * - Scales to 9+ clients efficiently
+ *
+ * **Client ID Generation**:
+ * - Based on client's local port number
+ * - Ensures uniqueness across connections
+ * - Provides stable identifier for session
+ *
+ * @section server_client_integration Integration with Other Modules
+ *
+ * @subsection server_client_main Integration with main.c
+ *
+ * **Called By**:
+ * - `add_client()`: Called from main loop when new connection accepted
+ * - `remove_client()`: Called from main loop during cleanup phase
+ *
+ * **Provides To**:
+ * - Global client manager (`g_client_manager`) for thread access
+ * - Client lookup functions for other modules
+ * - Thread lifecycle coordination
+ *
+ * @subsection server_client_protocol Integration with protocol.c
+ *
+ * **Called By**:
+ * - Receive threads call protocol handler functions
+ * - `handle_client_join_packet()`: Processes CLIENT_JOIN packets
+ * - `handle_client_capabilities_packet()`: Updates terminal capabilities
+ * - `handle_image_frame_packet()`: Stores video frames
+ * - `handle_audio_batch_packet()`: Stores audio samples
+ *
+ * **Provides To**:
+ * - Client state access for protocol handlers
+ * - Media buffer storage (video frames, audio samples)
+ * - State update functions
+ *
+ * @subsection server_client_render Integration with render.c
+ *
+ * **Called By**:
+ * - `create_client_render_threads()`: Creates video and audio render threads
+ * - Render threads access client state and media buffers
+ *
+ * **Provides To**:
+ * - Client state snapshots for render threads
+ * - Media buffers for frame generation
+ * - Terminal capabilities for ASCII conversion
+ *
+ * @subsection server_client_stream Integration with stream.c
+ *
+ * **Called By**:
+ * - Render threads call stream generation functions
+ * - `generate_personalized_ascii_frame()`: Creates client-specific frames
+ *
+ * **Provides To**:
+ * - Client capabilities for frame generation
+ * - Video frame access for mixing
+ * - Frame queue for delivery
+ *
+ * @section server_client_error_handling Error Handling
+ *
+ * **Connection Errors**:
+ * - Handshake failures: Client rejected, socket closed
+ * - Thread creation failures: Client rejected, resources cleaned up
+ * - Resource allocation failures: Graceful degradation, client rejected
+ *
+ * **Runtime Errors**:
+ * - Receive thread errors: Connection marked inactive, cleanup triggered
+ * - Send thread errors: Connection marked inactive, cleanup triggered
+ * - Render thread errors: Thread exits, connection continues (graceful degradation)
+ *
+ * **Cleanup Errors**:
+ * - Thread join timeouts: Logged but don't block shutdown
+ * - Resource cleanup failures: Logged but don't crash server
+ * - Hash table errors: Handled gracefully with fallback
+ *
+ * @section server_client_performance Performance Characteristics
+ *
+ * **Linear Scaling**:
+ * - Each client gets dedicated CPU resources
+ * - No shared bottlenecks between clients
+ * - Performance scales linearly up to 9+ clients
+ * - Real-time guarantees maintained per client
+ *
+ * **Memory Usage**:
+ * - Per-client allocations: ~50KB per client (buffers, queues)
+ * - Hash table overhead: ~1KB per client
+ * - Frame buffers: Variable based on terminal size
+ * - Audio buffers: Fixed size ring buffers
+ *
+ * **Thread Overhead**:
+ * - 4 threads per client (receive, send, video render, audio render)
+ * - Minimal context switching overhead
+ * - CPU affinity possible for performance tuning
+ *
+ * @section server_client_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always use proper lock ordering (RWLock → per-client mutex)
+ * - Use snapshot pattern for client state access
+ * - Check `client->active` before operations
+ * - Join threads before resource cleanup
+ * - Use hash table for client lookups (not array iteration)
+ *
+ * **DON'T**:
+ * - Don't acquire per-client mutex before global RWLock
+ * - Don't hold locks during blocking operations
+ * - Don't access client state without mutex protection
+ * - Don't skip thread joins during cleanup
+ * - Don't modify client array without write lock
+ *
+ * @see src/server/client.c
+ * @see src/server/client.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_main "Server Main Entry Point"
+ * @see @ref topic_server_protocol "Protocol Handler"
+ * @see @ref topic_server_render "Render Threads"
+ * @see <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
+ */
+

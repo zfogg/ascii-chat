@@ -54,6 +54,10 @@ set(CRYPTO_SRCS
     lib/crypto/keys/gpg_keys.c
     lib/crypto/keys/https_keys.c
     lib/crypto/keys/validation.c
+    # libsodium-bcrypt-pbkdf (OpenBSD implementation)
+    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
 )
 
 # =============================================================================
@@ -198,9 +202,15 @@ set(CORE_SRCS
     lib/asciichat_errno.c
     lib/logging.c
     lib/options.c
+    lib/config.c
     lib/lock_debug.c
     lib/version.c
     lib/palette.c
+)
+
+# Add tomlc17 parser source
+list(APPEND CORE_SRCS
+    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
 
 # =============================================================================

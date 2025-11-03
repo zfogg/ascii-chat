@@ -1,12 +1,7 @@
 /**
- * @file capture.c
- * @brief ASCII-Chat Client Media Capture Management
- *
- * This module manages webcam video capture and transmission for the ASCII-Chat
- * client. It implements a dedicated capture thread with frame rate limiting,
- * image processing pipeline, and network transmission with optimal sizing.
- *
- * ## Capture Architecture
+ * @file client/capture.c
+ * @ingroup client_capture
+ * @brief 📹 Client webcam capture: dedicated capture thread with frame rate limiting and network transmission
  *
  * The capture system follows a producer-consumer pattern:
  * - **Producer**: Webcam capture thread reads frames from camera
@@ -106,10 +101,35 @@
 /* ============================================================================
  * Capture Thread Management
  * ============================================================================ */
+
+/**
+ * @brief Webcam capture thread handle
+ *
+ * Thread handle for the background thread that captures video frames from
+ * the webcam device. Created during connection establishment, joined during shutdown.
+ *
+ * @ingroup client_capture
+ */
 static asciithread_t g_capture_thread;
 
+/**
+ * @brief Flag indicating if capture thread was successfully created
+ *
+ * Used during shutdown to determine whether the thread handle is valid and
+ * should be joined. Prevents attempting to join a thread that was never created.
+ *
+ * @ingroup client_capture
+ */
 static bool g_capture_thread_created = false;
 
+/**
+ * @brief Atomic flag indicating capture thread has exited
+ *
+ * Set by the capture thread when it exits. Used by other threads to detect
+ * thread termination without blocking on thread join operations.
+ *
+ * @ingroup client_capture
+ */
 static atomic_bool g_capture_thread_exited = false;
 
 /* ============================================================================
@@ -145,6 +165,8 @@ static atomic_bool g_capture_thread_exited = false;
  * @param max_height Maximum allowed height for transmission
  * @param result_width Output parameter for calculated width
  * @param result_height Output parameter for calculated height
+ *
+ * @ingroup client_capture
  */
 static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height, ssize_t max_width,
                                          ssize_t max_height, ssize_t *result_width, ssize_t *result_height) {
@@ -179,6 +201,8 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * @param max_width Maximum allowed frame width
  * @param max_height Maximum allowed frame height
  * @return Processed image ready for transmission, or NULL on error
+ *
+ * @ingroup client_capture
  */
 static image_t *process_frame_for_transmission(image_t *original_image, ssize_t max_width, ssize_t max_height) {
   if (!original_image) {
@@ -210,8 +234,9 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
 /* ============================================================================
  * Capture Thread Implementation
  * ============================================================================ */
+
 /**
- * Main webcam capture thread function
+ * @brief Webcam capture thread function
  *
  * Implements the continuous frame capture loop with rate limiting,
  * processing pipeline, and network transmission. Handles connection
@@ -234,6 +259,8 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
  *
  * @param arg Unused thread argument
  * @return NULL on thread exit
+ *
+ * @ingroup client_capture
  */
 static void *webcam_capture_thread_func(void *arg) {
   (void)arg;
@@ -350,6 +377,8 @@ static void *webcam_capture_thread_func(void *arg) {
  * Must be called once during client initialization.
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_capture
  */
 int capture_init() {
   // Initialize webcam capture
@@ -369,6 +398,8 @@ int capture_init() {
  * start notification to server.
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_capture
  */
 int capture_start_thread() {
   if (g_capture_thread_created) {
@@ -404,6 +435,8 @@ int capture_start_thread() {
  *
  * Gracefully stops the capture thread and cleans up resources.
  * Safe to call multiple times.
+ *
+ * @ingroup client_capture
  */
 void capture_stop_thread() {
   if (!g_capture_thread_created) {
@@ -457,6 +490,8 @@ void capture_stop_thread() {
  * Check if capture thread has exited
  *
  * @return true if thread has exited, false otherwise
+ *
+ * @ingroup client_capture
  */
 bool capture_thread_exited() {
   return atomic_load(&g_capture_thread_exited);
@@ -466,6 +501,8 @@ bool capture_thread_exited() {
  *
  * Stops capture thread and cleans up webcam resources.
  * Called during client shutdown.
+ *
+ * @ingroup client_capture
  */
 void capture_cleanup() {
   capture_stop_thread();

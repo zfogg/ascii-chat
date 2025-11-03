@@ -1,0 +1,356 @@
+/**
+ * @page topic_server_protocol Server Protocol README
+ * @ingroup server_protocol
+ *
+ * @section server_protocol_overview Overview
+ *
+ * The protocol handler module processes all incoming packets from clients, validates
+ * packet structure, updates client state, and stores media data for render threads.
+ * It serves as the communication bridge between clients and the server, translating
+ * network packets into actionable state changes and media data storage.
+ *
+ * **Implementation**: src/server/protocol.c, src/server/protocol.h
+ *
+ * **Key Responsibilities**:
+ * - Parse and validate incoming packets from clients
+ * - Update client state based on received packet data
+ * - Store media data (video frames, audio samples) in client buffers
+ * - Coordinate with other modules for media processing
+ * - Generate appropriate server responses to client requests
+ * - Maintain protocol compliance and packet format standards
+ *
+ * @section server_protocol_architecture Packet Processing Architecture
+ *
+ * @subsection server_protocol_flow Processing Flow
+ *
+ * Packet processing follows a three-stage pipeline:
+ *
+ * **Stage 1: Packet Reception** (in client.c receive thread):
+ * @code{.c}
+ * // Receive raw packet data from socket
+ * int packet_len = recv_with_timeout(client->socket, buffer, sizeof(buffer), timeout);
+ *
+ * // Validate packet header (magic number, CRC32, size)
+ * if (validate_packet_header(buffer, packet_len) < 0) {
+ *   log_warn("Invalid packet header from client %u", client_id);
+ *   return -1;
+ * }
+ *
+ * // Decrypt packet if encryption enabled
+ * if (client->crypto_initialized) {
+ *   decrypt_packet(buffer, packet_len, &client->crypto_ctx);
+ * }
+ *
+ * // Dispatch to appropriate handler based on packet type
+ * dispatch_packet_to_handler(client_id, buffer, packet_len);
+ * @endcode
+ *
+ * **Stage 2: Handler Function** (this module):
+ * @code{.c}
+ * // Validate packet payload structure
+ * if (packet_len < sizeof(packet_type_t)) {
+ *   log_warn("Packet too small from client %u", client_id);
+ *   return -1;
+ * }
+ *
+ * // Parse packet type
+ * packet_type_t type = get_packet_type(buffer);
+ *
+ * // Route to handler function based on type
+ * switch (type) {
+ *   case PACKET_TYPE_CLIENT_JOIN:
+ *     handle_client_join_packet(client_id, buffer, packet_len);
+ *     break;
+ *   case PACKET_TYPE_IMAGE_FRAME:
+ *     handle_image_frame_packet(client_id, buffer, packet_len);
+ *     break;
+ *   // ... other packet types ...
+ * }
+ * @endcode
+ *
+ * **Stage 3: Response Generation** (via packet queues):
+ * @code{.c}
+ * // Queue response packet for delivery
+ * packet_queue_enqueue(client->video_packet_queue, response_packet, response_len);
+ *
+ * // Send thread will deliver packet asynchronously
+ * // (no blocking I/O in handler functions)
+ * @endcode
+ *
+ * @section server_protocol_packet_types Supported Packet Types
+ *
+ * @subsection server_protocol_lifecycle Client Lifecycle Packets
+ *
+ * **PACKET_TYPE_CLIENT_JOIN**:
+ * - Initial client capabilities and identity
+ * - Contains display name, terminal capabilities, client version
+ * - Triggers client state initialization
+ * - Generates server welcome response
+ *
+ * **PACKET_TYPE_CLIENT_LEAVE**:
+ * - Clean disconnect notification
+ * - Triggers graceful client cleanup
+ * - No response required
+ *
+ * **PACKET_TYPE_CLIENT_CAPABILITIES**:
+ * - Terminal capabilities and preferences update
+ * - Contains color depth, palette preferences, UTF-8 support
+ * - Updates client state for frame generation
+ * - Triggers frame regeneration with new capabilities
+ *
+ * @subsection server_protocol_media Media Streaming Packets
+ *
+ * **PACKET_TYPE_STREAM_START**:
+ * - Signals client is ready to send audio/video
+ * - Contains stream type flags (audio, video, both)
+ * - Enables render threads for this client
+ * - Triggers frame generation activation
+ *
+ * **PACKET_TYPE_STREAM_STOP**:
+ * - Signals client is stopping audio/video transmission
+ * - Disables render threads for this client
+ * - Clears media buffers
+ *
+ * **PACKET_TYPE_IMAGE_FRAME**:
+ * - Raw RGB video frame data
+ * - Contains frame dimensions, timestamp, compressed data
+ * - Stored in client's incoming video buffer
+ * - Processed by video render thread
+ *
+ * **PACKET_TYPE_AUDIO_BATCH**:
+ * - Batched audio samples (efficient format)
+ * - Contains sample count, sample rate, compressed audio data
+ * - Stored in client's incoming audio ring buffer
+ * - Processed by audio render thread
+ *
+ * **PACKET_TYPE_AUDIO** (legacy):
+ * - Single audio sample packet (deprecated)
+ * - Replaced by PACKET_TYPE_AUDIO_BATCH
+ * - Still supported for backwards compatibility
+ *
+ * @subsection server_protocol_control Control Protocol Packets
+ *
+ * **PACKET_TYPE_PING**:
+ * - Client keepalive request
+ * - Generates PACKET_TYPE_PONG response
+ * - Used for connection health monitoring
+ *
+ * **PACKET_TYPE_PONG**:
+ * - Server keepalive response
+ * - Acknowledges client ping
+ * - Confirms bidirectional connectivity
+ *
+ * @section server_protocol_state_management State Management
+ *
+ * @subsection server_protocol_client_state Client State Updates
+ *
+ * All client state modifications use the snapshot pattern:
+ *
+ * @code{.c}
+ * // Handler function updates client state
+ * void handle_client_capabilities_packet(uint32_t client_id,
+ *                                        const void *data, size_t len)
+ * {
+ *   // 1. Get client (with read lock)
+ *   rwlock_rdlock(&g_client_manager_rwlock);
+ *   client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable,
+ *                                             client_id);
+ *
+ *   // 2. Acquire per-client mutex
+ *   mutex_lock(&client->client_state_mutex);
+ *
+ *   // 3. Update client state fields
+ *   client->width = packet->width;
+ *   client->height = packet->height;
+ *   client->capabilities = packet->capabilities;
+ *   client->palette = packet->palette;
+ *
+ *   // 4. Release mutex immediately
+ *   mutex_unlock(&client->client_state_mutex);
+ *
+ *   // 5. Release read lock
+ *   rwlock_rdunlock(&g_client_manager_rwlock);
+ *
+ *   // 6. Process using local copies (no locks held)
+ *   log_info("Client %u capabilities updated: %dx%d, palette=%s", client_id,
+ *            packet->width, packet->height, palette_name(packet->palette));
+ * }
+ * @endcode
+ *
+ * **State Fields**:
+ * - Terminal dimensions (width, height)
+ * - Terminal capabilities (color depth, UTF-8 support, palette)
+ * - Stream status (audio enabled, video enabled)
+ * - Client identity (display name, client version)
+ * - Connection metadata (connect time, last packet time)
+ *
+ * @subsection server_protocol_media_buffers Media Buffer Coordination
+ *
+ * **Video Frames**:
+ * - Stored in `client->incoming_video_buffer` (double-buffer system)
+ * - Thread-safe buffer access via mutex
+ * - Processed by video render thread at 60fps
+ * - Frame dropping under load (keep only latest frame)
+ *
+ * **Audio Samples**:
+ * - Stored in `client->incoming_audio_buffer` (lock-free ring buffer)
+ * - Thread-safe lock-free operations
+ * - Processed by audio render thread at 172fps
+ * - Automatic overflow handling (dropped samples logged)
+ *
+ * @section server_protocol_validation Packet Validation Strategy
+ *
+ * All handlers validate packets before processing:
+ *
+ * @code{.c}
+ * void handle_image_frame_packet(uint32_t client_id,
+ *                                 const void *data, size_t len)
+ * {
+ *   // 1. Validate packet size
+ *   if (len < sizeof(image_frame_packet_t)) {
+ *     log_warn("Image frame packet too small from client %u: %zu < %zu",
+ *              client_id, len, sizeof(image_frame_packet_t));
+ *     return;
+ *   }
+ *
+ *   // 2. Validate packet structure
+ *   const image_frame_packet_t *packet = (const image_frame_packet_t *)data;
+ *   if (packet->width == 0 || packet->height == 0) {
+ *     log_warn("Invalid frame dimensions from client %u: %ux%u",
+ *              client_id, packet->width, packet->height);
+ *     return;
+ *   }
+ *
+ *   // 3. Validate frame data size
+ *   size_t expected_size = packet->width * packet->height * 3; // RGB
+ *   if (packet->data_size > expected_size) {
+ *     log_warn("Frame data size mismatch from client %u: %zu > %zu",
+ *              client_id, packet->data_size, expected_size);
+ *     return;
+ *   }
+ *
+ *   // 4. Validate client capabilities
+ *   if (!client->video_enabled) {
+ *     log_warn("Client %u sent video but video not enabled", client_id);
+ *     return;
+ *   }
+ *
+ *   // 5. Process packet (all validations passed)
+ *   store_video_frame(client_id, packet);
+ * }
+ * @endcode
+ *
+ * **Validation Checks**:
+ * - Packet size matches expected structure size
+ * - Packet type matches handler function
+ * - Payload fields are within valid ranges
+ * - Client capabilities permit the operation
+ * - Buffer pointers are valid before access
+ * - Network byte order conversion where needed
+ *
+ * @section server_protocol_error_handling Error Handling Philosophy
+ *
+ * **Invalid Packets**:
+ * - Logged but don't disconnect clients
+ * - Malformed packets are silently dropped
+ * - Detailed error logging for troubleshooting
+ * - Protocol compliance checking prevents crashes
+ *
+ * **Buffer Allocation Failures**:
+ * - Handled gracefully with error return
+ * - Client continues receiving other packets
+ * - Render threads handle missing frames gracefully
+ * - No server crash from allocation failures
+ *
+ * **Network Errors During Responses**:
+ * - Don't affect client state
+ * - Logged for debugging
+ * - Send thread handles connection loss detection
+ * - No blocking I/O in handler functions
+ *
+ * **Shutdown Conditions**:
+ * - Handlers check `g_server_should_exit` flag
+ * - Early return from handlers during shutdown
+ * - Avoids error spam during cleanup
+ * - Clean thread exit without errors
+ *
+ * @section server_protocol_integration Integration with Other Modules
+ *
+ * @subsection server_protocol_client Integration with client.c
+ *
+ * **Called By**:
+ * - Receive threads call protocol handler functions
+ * - Receive thread receives packets and dispatches to handlers
+ *
+ * **Provides To**:
+ * - Client state update functions
+ * - Media buffer storage functions
+ * - Packet validation utilities
+ *
+ * @subsection server_protocol_render Integration with render.c
+ *
+ * **Consumed By**:
+ * - Render threads consume media data stored by handlers
+ * - Video render thread reads from `incoming_video_buffer`
+ * - Audio render thread reads from `incoming_audio_buffer`
+ *
+ * **Provides To**:
+ * - Video frame data for frame generation
+ * - Audio sample data for audio mixing
+ * - Client state for frame customization
+ *
+ * @subsection server_protocol_stream Integration with stream.c
+ *
+ * **Used By**:
+ * - Stream generation uses client capabilities set by handlers
+ * - Frame generation adapts to terminal dimensions
+ * - Palette selection based on client preferences
+ *
+ * **Provides To**:
+ * - Client terminal capabilities
+ * - Client rendering preferences
+ * - Frame generation parameters
+ *
+ * @section server_protocol_performance Performance Characteristics
+ *
+ * **Processing Speed**:
+ * - Packet validation is O(1) per packet
+ * - State updates use minimal locking
+ * - Media storage uses efficient buffer systems
+ * - No blocking I/O in handler functions
+ *
+ * **Memory Usage**:
+ * - Packet buffers: Temporary allocations (freed after processing)
+ * - Media buffers: Per-client fixed allocations
+ * - State structures: Minimal overhead per client
+ *
+ * **Concurrency**:
+ * - Per-client handler isolation (no shared state)
+ * - Thread-safe state updates (mutex protection)
+ * - Lock-free media buffers where possible
+ * - Minimal lock contention (snapshot pattern)
+ *
+ * @section server_protocol_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always validate packet size before accessing fields
+ * - Use snapshot pattern for client state access
+ * - Check client capabilities before operations
+ * - Handle errors gracefully without disconnecting clients
+ * - Use atomic operations for thread control flags
+ *
+ * **DON'T**:
+ * - Don't access packet fields without size validation
+ * - Don't hold locks during media processing
+ * - Don't perform blocking I/O in handler functions
+ * - Don't skip error checking on state updates
+ * - Don't ignore shutdown flags during processing
+ *
+ * @see src/server/protocol.c
+ * @see src/server/protocol.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_client "Client Management"
+ * @see @ref topic_server_render "Render Threads"
+ * @see topic_packet_types
+ */
+

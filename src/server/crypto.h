@@ -1,3 +1,8 @@
+/**
+ * @file server/crypto.h
+ * @ingroup server_crypto
+ * @brief Server cryptographic operations and per-client handshake management
+ */
 #pragma once
 
 #include <stdint.h>

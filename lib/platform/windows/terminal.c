@@ -1,9 +1,7 @@
 /**
- * @file terminal.c
- * @brief Windows terminal I/O implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides Windows Console API wrappers for the platform abstraction layer,
- * enabling cross-platform terminal operations using a unified API.
+ * @file platform/windows/terminal.c
+ * @ingroup platform
+ * @brief 💻 Windows Console API with ANSI color support and capability detection
  */
 
 #ifdef _WIN32

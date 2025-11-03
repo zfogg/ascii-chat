@@ -1,9 +1,7 @@
 /**
- * @file mutex.c
- * @brief POSIX mutex implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides POSIX pthread mutex wrappers for the platform abstraction layer,
- * enabling cross-platform mutex synchronization using a unified API.
+ * @file platform/posix/mutex.c
+ * @ingroup platform
+ * @brief 🔒 POSIX pthread mutex implementation for cross-platform synchronization
  */
 
 #ifndef _WIN32

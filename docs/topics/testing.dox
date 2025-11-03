@@ -1,0 +1,860 @@
+/**
+ * @defgroup testing Tests
+ * @ingroup module_development
+ * @brief Unit, integration, and performance
+ */
+
+/**
+ * @page topic_testing Testing with Criterion
+ * @ingroup testing
+ *
+ * @tableofcontents
+ *
+ * @section testing_overview Overview
+ *
+ * Welcome! This guide will help you get comfortable with the test suite in ascii-chat.
+ * We use Criterion, a modern C testing framework, to make sure everything works correctly.
+ * Don't worry if you're new to testing—we'll walk you through everything you need to know.
+ *
+ * The test suite is designed to work smoothly across different platforms (Linux, macOS, Windows)
+ * using Docker when needed, so you can run tests confidently on your machine.
+ *
+ * What types of tests do we have?
+ * --------------------------------
+ * - **Unit Tests**: Test individual components in isolation (think "does this one function work?")
+ * - **Integration Tests**: Test how components work together (think "does the whole system work?")
+ * - **Performance Tests**: Make sure things run fast enough (think "is this optimized enough?")
+ *
+ * What tools do we use?
+ * ---------------------
+ * - Criterion test framework (https://github.com/Snaipe/Criterion) for running tests
+ * - Docker for consistent testing across platforms
+ * - Automated test runner scripts that make running tests easy
+ * - Codecov for tracking how much of our code is tested
+ * - GitHub Actions to automatically run tests when code changes
+ *
+ * @section testing_framework Criterion Test Framework
+ *
+ * We chose Criterion because it's modern, feature-rich, and makes writing tests pleasant.
+ * If you're coming from other testing frameworks, you'll find it familiar. If you're new
+ * to testing in C, don't worry—it's straightforward once you see a few examples.
+ *
+ * Want to learn more?
+ * -------------------
+ * - Official Documentation: https://criterion.readthedocs.io/
+ * - GitHub Repository: https://github.com/Snaipe/Criterion
+ * - Getting Started Guide: https://criterion.readthedocs.io/en/latest/gettingstarted.html
+ *
+ * What features do we use?
+ * ------------------------
+ * - **Standard tests**: The basic `Test(suite, name)` for regular tests
+ * - **Parameterized tests**: Run the same test with different inputs (`ParameterizedTest`, `ParameterizedTestParameters`)
+ * - **Theory tests**: Test properties that should hold for many values (`Theory`, `TheoryDataPoints`)
+ * - **Fixtures**: Setup and teardown code that runs before/after tests (`TestSuite`, `.init`, `.fini`)
+ * - **Assertions**: Check that things work as expected (`cr_assert`, `cr_assert_eq`, `cr_assert_not_null`, etc.)
+ * - **Timeouts**: Make sure tests don't hang forever (`.timeout = N` in seconds)
+ * - **Parallel execution**: Run multiple tests at once for speed
+ *
+ * @subsection testing_windows Windows Compatibility
+ *
+ * Heads up! If you're on Windows, there's something important you should know.
+ *
+ * Criterion has limited Windows support, and many features don't work correctly on
+ * native Windows builds. To make sure tests run reliably for everyone, we've set up
+ * Docker-based testing.
+ *
+ * What to do on Windows:
+ * ---------------------
+ * - **Use Docker**: This is the recommended way to run tests on Windows
+ * - **Use the PowerShell script**: Run `tests/scripts/run-docker-tests.ps1` for easy testing
+ * - **Avoid native builds**: Only use native Windows Criterion builds if you absolutely have to,
+ *   and expect some limitations
+ *
+ * The Docker setup gives you the same Linux environment that works perfectly with Criterion,
+ * so your tests will run just like they do on Linux or macOS. No need to worry about
+ * platform differences!
+ *
+ * @section testing_test_types Test Types
+ *
+ * We organize tests into three categories, each serving a different purpose. Understanding
+ * when to use each type will help you write better tests.
+ *
+ * @subsection testing_unit Unit Tests
+ *
+ * Unit tests check individual pieces of code in isolation. Think of them like checking each
+ * ingredient before you cook—you want to make sure each component works correctly on its own.
+ *
+ * What makes a good unit test?
+ * ----------------------------
+ * - Tests one function or module at a time
+ * - Uses mocks or stubs for things it depends on (so you're only testing that one piece)
+ * - Runs quickly (we're talking milliseconds here)
+ * - Always gives the same result (deterministic)
+ * - Doesn't affect other tests (isolated)
+ *
+ * Where to find them:
+ * ------------------
+ * All unit tests live in `tests/unit/`. Each module typically has its own test file.
+ *
+ * Examples you can look at:
+ * - `tests/unit/ascii_test.c`: Testing ASCII conversion functions
+ * - `tests/unit/buffer_pool_test.c`: Testing buffer pool allocation
+ * - `tests/unit/crypto_test.c`: Testing cryptographic operations
+ * - `tests/unit/palette_test.c`: Testing palette management
+ *
+ * @subsection testing_integration Integration Tests
+ *
+ * Integration tests check how different pieces work together. Now you're testing the whole
+ * recipe, not just individual ingredients.
+ *
+ * What integration tests do:
+ * -------------------------
+ * - Test multiple components working together
+ * - May use real resources (actual network connections, real files, etc.)
+ * - Can take a bit longer to run (seconds instead of milliseconds)
+ * - Test realistic scenarios that users might actually encounter
+ *
+ * Where to find them:
+ * ------------------
+ * Integration tests live in `tests/integration/`.
+ *
+ * Examples you can look at:
+ * - `tests/integration/crypto_handshake_integration_test.c`: Testing the full cryptographic handshake
+ * - `tests/integration/crypto_network_integration_test.c`: Testing network encryption end-to-end
+ * - `tests/integration/ascii_simd_integration_test.c`: Verifying SIMD optimizations work correctly
+ *
+ * @subsection testing_performance Performance Tests
+ *
+ * Performance tests make sure critical code paths run fast enough. They're like a speedometer
+ * for your code—telling you if things are running as fast as they should.
+ *
+ * What performance tests do:
+ * -------------------------
+ * - Measure how long things take to run
+ * - Check that optimizations are actually working
+ * - Catch performance regressions (when code gets slower)
+ * - Use realistic data sizes and workloads
+ *
+ * Where to find them:
+ * ------------------
+ * Performance tests live in `tests/performance/`.
+ *
+ * Examples you can look at:
+ * - `tests/performance/ascii_performance_test.c`: Making sure ASCII conversion is fast
+ * - `tests/performance/crypto_performance_test.c`: Making sure encryption/decryption is fast
+ *
+ * @section testing_env_vars Environment Variables
+ *
+ * We use a couple of environment variables to make tests run faster and behave appropriately
+ * during testing. The test runners set these automatically, so you usually don't need to
+ * think about them—but it's good to know what they do.
+ *
+ * Test environment variables:
+ * --------------------------
+ * - **`TESTING=1`**: A general flag that says "we're in test mode"
+ *   - Code checks this to enable test-friendly behavior
+ *   - Enables shorter timeouts and reduced memory usage for faster tests
+ *   - Automatically set by our test runners
+ *
+ * - **`CRITERION_TEST=1`**: Specifically identifies Criterion test execution
+ *   - Network code uses this to shorten timeouts (tests shouldn't wait 30 seconds!)
+ *   - Also automatically set by test runners
+ *
+ * How code detects test mode:
+ * ---------------------------
+ * Code checks if it's running in a test environment like this:
+ * ```c
+ * static int is_test_environment(void) {
+ *   return SAFE_GETENV("CRITERION_TEST") != NULL || 
+ *          SAFE_GETENV("TESTING") != NULL;
+ * }
+ * ```
+ *
+ * This lets the code automatically optimize for testing:
+ * - Network timeouts drop from 5-30 seconds down to 1 second (much faster!)
+ * - Memory allocations can be limited for faster test execution
+ * - Expensive initialization steps can be skipped
+ *
+ * Real examples:
+ * --------------
+ * Here's how we shorten network timeouts during tests (from `lib/network/packet.c`):
+ * ```c
+ * static int calculate_packet_timeout(size_t packet_size) {
+ *   int base_timeout = is_test_environment() ? 1 : SEND_TIMEOUT;
+ *   // ... rest of calculation ...
+ * }
+ * ```
+ *
+ * And here's how we limit memory usage in tests (from `tests/unit/compression_test.c`):
+ * ```c
+ * size_t max_size = (getenv("TESTING") || getenv("CRITERION_TEST")) 
+ *                   ? 1000 
+ *                   : 1000000;
+ * ```
+ *
+ * @section testing_network_timeouts Network Timeouts
+ *
+ * Network operations can take time, and we don't want tests waiting around forever. So when
+ * tests are running (when `TESTING=1` or `CRITERION_TEST=1` is set), network timeouts get
+ * automatically shortened.
+ *
+ * What changes during testing:
+ * ----------------------------
+ * - **Connection timeouts**: 3 seconds → 1 second
+ * - **Send timeouts**: 5 seconds → 1 second
+ * - **Receive timeouts**: 15 seconds → 1 second
+ * - **Accept timeouts**: 3 seconds → 1 second
+ *
+ * This means integration tests that use the network complete in seconds instead of minutes,
+ * while still testing real network behavior. Pretty neat!
+ *
+ * Where this is implemented:
+ * -------------------------
+ * The timeout logic lives in these network functions:
+ * - `lib/network/network.c`: `send_with_timeout()`, `recv_with_timeout()`
+ * - `lib/network/packet.c`: `calculate_packet_timeout()`
+ *
+ * These functions automatically detect the test environment and use shorter timeouts:
+ * ```c
+ * timeout.tv_sec = is_test_environment() ? 1 : timeout_seconds;
+ * ```
+ *
+ * @section testing_docker Docker-Based Testing
+ *
+ * To make sure tests work the same everywhere, we've set up Docker-based testing. This is
+ * especially helpful on Windows where Criterion has limited support, but it's also great
+ * for ensuring consistent results across all platforms.
+ *
+ * @subsection testing_dockerfile Dockerfile
+ *
+ * Our test Dockerfile (`tests/Dockerfile`) uses Arch Linux as the base. It's lightweight,
+ * stays up-to-date, and has everything Criterion needs.
+ *
+ * What's included:
+ * ---------------
+ * - **Arch Linux base**: Lightweight and current
+ * - **Criterion**: The full test framework, ready to go
+ * - **All build tools**: Clang, CMake, Ninja, ccache, and all the libraries we need
+ * - **Pre-built BearSSL**: Dependencies are compiled when we build the image (saves time later)
+ * - **ccache configured**: Compilation results are cached between runs for speed
+ *
+ * The Dockerfile structure is pretty straightforward:
+ * ```dockerfile
+ * FROM archlinux:latest
+ * # Install compiler, build tools, and dependencies
+ * # Pre-build BearSSL from submodule
+ * # Configure ccache for persistent caching
+ * # Set environment variables (TESTING=1, etc.)
+ * WORKDIR /app
+ * CMD ["./tests/scripts/run_tests.sh"]
+ * ```
+ *
+ * @subsection testing_docker_compose docker-compose.yml
+ *
+ * The Docker Compose setup (`tests/docker-compose.yml`) makes it easy to run tests without
+ * thinking about Docker details.
+ *
+ * What it provides:
+ * ----------------
+ * - **`ascii-chat-tests` service**: The main test container
+ *   - Builds from our `tests/Dockerfile`
+ *   - Mounts your source code so you can edit files and see changes
+ *   - Sets up ccache volume so compilation is fast between runs
+ *   - Automatically sets all the test environment variables
+ *
+ * Volumes:
+ * -------
+ * - **ccache-data**: Keeps compilation cache between Docker runs (much faster rebuilds!)
+ * - **Source code**: Mounted read-write so build artifacts can be created
+ *
+ * Environment variables:
+ * ---------------------
+ * - `TESTING=1`: We're in test mode
+ * - `CRITERION_TEST=1`: Criterion test flag
+ * - `CCACHE_DIR=/ccache`: Where to store compilation cache
+ * - `ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer`: For AddressSanitizer support
+ *
+ * @subsection testing_docker_usage Using Docker for Testing
+ *
+ * On Windows, we have a convenient PowerShell script that makes Docker testing easy:
+ *
+ * Using the PowerShell script (recommended on Windows):
+ * ---------------------------------------------------
+ * ```powershell
+ * # Run all tests
+ * ./tests/scripts/run-docker-tests.ps1
+ *
+ * # Run just unit tests
+ * ./tests/scripts/run-docker-tests.ps1 unit
+ *
+ * # Run just integration tests
+ * ./tests/scripts/run-docker-tests.ps1 integration
+ *
+ * # Run just performance tests
+ * ./tests/scripts/run-docker-tests.ps1 performance
+ *
+ * # Run a specific test
+ * ./tests/scripts/run-docker-tests.ps1 unit options
+ * ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect
+ *
+ * # Run tests matching a pattern
+ * ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation"
+ *
+ * # Run clang-tidy for code analysis
+ * ./tests/scripts/run-docker-tests.ps1 -ClangTidy
+ * ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+ *
+ * # Open an interactive shell for debugging
+ * ./tests/scripts/run-docker-tests.ps1 -Interactive
+ *
+ * # Clean everything and rebuild from scratch
+ * ./tests/scripts/run-docker-tests.ps1 -Clean
+ * ```
+ *
+ * Using Docker Compose directly:
+ * -----------------------------
+ * You can also use Docker Compose commands directly if you prefer:
+ * ```bash
+ * # Build and run all tests
+ * docker-compose -f tests/docker-compose.yml up --build
+ *
+ * # Run tests in an existing container
+ * docker-compose -f tests/docker-compose.yml run ascii-chat-tests
+ *
+ * # Get an interactive shell for debugging
+ * docker-compose -f tests/docker-compose.yml run ascii-chat-tests /bin/bash
+ *
+ * # Clean rebuild (useful when dependencies change)
+ * docker-compose -f tests/docker-compose.yml build --no-cache
+ * ```
+ *
+ * Why use Docker for testing?
+ * ---------------------------
+ * - **Consistent environment**: Tests run the same way on your machine, CI, and everyone else's machine
+ * - **Full Criterion support**: All Criterion features work perfectly in Linux
+ * - **Isolated**: Tests don't mess with your system or depend on what you have installed
+ * - **Reproducible**: Same setup every time means reliable results
+ * - **Fast**: ccache keeps compilation fast between runs
+ *
+ * @section testing_runner Test Runner Script (run_tests.sh)
+ *
+ * The main test runner (`tests/scripts/run_tests.sh`) is a bash script that handles finding,
+ * building, and running all your tests. It's smart enough to only rebuild what changed and
+ * can run tests in parallel for speed.
+ *
+ * @subsection testing_runner_features Features
+ *
+ * What it can do:
+ * --------------
+ * - **Finds tests automatically**: Just scans for test files—no configuration needed
+ * - **Incremental builds**: Uses CMake and Ninja to only rebuild what changed
+ * - **Parallel execution**: Automatically runs multiple tests at once (uses half your CPU cores)
+ * - **Sequential mode**: Run one test at a time if you're debugging
+ * - **Timeout handling**: Kills tests that hang (default: 25 seconds per test)
+ * - **JUnit XML output**: Generate reports that CI systems understand
+ * - **Coverage builds**: Build with coverage instrumentation enabled
+ * - **Verbose mode**: See lots of detail when something goes wrong
+ * - **Test filtering**: Run only tests matching a pattern
+ *
+ * @subsection testing_runner_usage Usage
+ *
+ * Basic usage:
+ * -----------
+ * ```bash
+ * # Run all tests (default: debug build with AddressSanitizer)
+ * ./tests/scripts/run_tests.sh
+ *
+ * # Run a specific category
+ * ./tests/scripts/run_tests.sh unit
+ * ./tests/scripts/run_tests.sh integration
+ * ./tests/scripts/run_tests.sh performance
+ *
+ * # Run a specific test by name (various formats work)
+ * ./tests/scripts/run_tests.sh test_unit_ascii
+ * ./tests/scripts/run_tests.sh unit_ascii
+ * ./tests/scripts/run_tests.sh bin/test_unit_ascii
+ *
+ * # Run a specific test by category and name
+ * ./tests/scripts/run_tests.sh unit options
+ * ./tests/scripts/run_tests.sh integration crypto_network
+ * ```
+ *
+ * Build options:
+ * -------------
+ * ```bash
+ * # Choose your build type
+ * ./tests/scripts/run_tests.sh -b debug      # Debug with AddressSanitizer (default)
+ * ./tests/scripts/run_tests.sh -b dev        # Debug without sanitizers
+ * ./tests/scripts/run_tests.sh -b release    # Release with optimizations
+ * ./tests/scripts/run_tests.sh -b coverage   # Coverage instrumentation
+ * ./tests/scripts/run_tests.sh -b tsan       # ThreadSanitizer
+ * ```
+ *
+ * Execution control:
+ * -----------------
+ * ```bash
+ * # Control parallel execution
+ * ./tests/scripts/run_tests.sh -j 4          # Run 4 test executables in parallel
+ * ./tests/scripts/run_tests.sh --no-parallel  # Run one at a time (good for debugging)
+ *
+ * # Output and reporting
+ * ./tests/scripts/run_tests.sh -v             # Verbose output (see what's happening)
+ * ./tests/scripts/run_tests.sh -J            # Generate JUnit XML reports
+ * ./tests/scripts/run_tests.sh -l /tmp/log    # Write to a custom log file
+ *
+ * # Filter tests (only works when running a single test binary)
+ * ./tests/scripts/run_tests.sh test_unit_ascii -f "*some_test_name*"
+ * ```
+ *
+ * Advanced usage:
+ * --------------
+ * ```bash
+ * # Run multiple specific tests
+ * ./tests/scripts/run_tests.sh unit options audio buffer_pool
+ *
+ * # Coverage with JUnit output (useful for CI)
+ * ./tests/scripts/run_tests.sh -c -J
+ *
+ * # Custom build directory (useful in Docker)
+ * DOCKER_BUILD=1 ./tests/scripts/run_tests.sh
+ * ```
+ *
+ * @subsection testing_runner_architecture Architecture
+ *
+ * How it works:
+ * ------------
+ * The script discovers tests by looking for files:
+ * - Unit tests: `tests/unit/*_test.c`
+ * - Integration tests: `tests/integration/*_test.c`
+ * - Performance tests: `tests/performance/*_test.c`
+ *
+ * Test executables are named like: `test_{category}_{name}` (e.g., `test_unit_ascii`)
+ *
+ * Building:
+ * ---------
+ * - Uses CMake for configuration and building
+ * - Supports different build directories (`build`, `build_docker`, `build_clang`)
+ * - Incremental builds with Ninja (only rebuilds what changed—super fast!)
+ * - Tracks dependencies automatically
+ *
+ * Running tests:
+ * -------------
+ * The script can run tests in two modes:
+ *
+ * - **Parallel mode** (default): Runs multiple test executables at the same time
+ *   - Automatically figures out how many CPU cores you have
+ *   - Uses half your cores for tests (good balance of speed vs. memory)
+ *   - You can control this with `-j N` if you want
+ *
+ * - **Sequential mode**: Runs tests one at a time
+ *   - Use `--no-parallel` to enable this
+ *   - Great for debugging when you need to see output clearly
+ *
+ * Signal handling:
+ * ---------------
+ * If you press Ctrl-C, the script handles it gracefully:
+ * - Stops all running tests cleanly
+ * - Tells you what was cancelled
+ * - Cleans up temporary files
+ *
+ * @subsection testing_runner_internals Internal Details
+ *
+ * (You probably don't need to know these details, but they're here if you're curious!)
+ *
+ * How tests are run:
+ * -----------------
+ * Tests are started with these environment variables set:
+ * ```bash
+ * TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
+ * ```
+ *
+ * Default Criterion arguments:
+ * ----------------------------
+ * The script passes these arguments to Criterion by default:
+ * - `--jobs 0`: Let Criterion figure out the best parallelism
+ * - `--timeout 25`: Kill any test that takes longer than 25 seconds
+ * - `--color=always`: Pretty colors in the output
+ * - `--short-filename`: Shorter file paths in output (easier to read)
+ * - `--verbose`: If you've enabled verbose mode
+ *
+ * Parallelism calculation:
+ * ------------------------
+ * The script figures out how many tests to run in parallel like this:
+ * ```bash
+ * max_parallel_tests = (CPU_CORES / 2)
+ * ```
+ * This gives good performance without using so much memory that your system grinds to a halt.
+ *
+ * @section testing_parameterized Parameterized Tests
+ *
+ * Sometimes you want to test the same logic with different inputs. Instead of writing
+ * five nearly-identical test functions, you can use parameterized tests!
+ *
+ * Basic syntax:
+ * ------------
+ * ```c
+ * // First, define your test cases
+ * ParameterizedTestParameters(suite_name, test_name) {
+ *   static TestCase cases[] = {
+ *     { .input = 1, .expected = 2 },
+ *     { .input = 2, .expected = 4 },
+ *     { .input = 3, .expected = 6 },
+ *   };
+ *   return cr_make_param_array(TestCase, cases, sizeof(cases) / sizeof(cases[0]));
+ * }
+ *
+ * // Then, write the test that uses those cases
+ * ParameterizedTest(TestCase *tc, suite_name, test_name) {
+ *   cr_assert_eq(process_input(tc->input), tc->expected);
+ * }
+ * ```
+ *
+ * ⚠️ Important memory note:
+ * -------------------------
+ * If you need to allocate memory in your parameterized test data, you **must** use
+ * Criterion's special memory functions. Regular `malloc()` won't work correctly because
+ * Criterion needs to track the memory to clean it up properly.
+ *
+ * Use these Criterion functions:
+ * - `cr_malloc()`: Allocate memory (Criterion tracks it)
+ * - `cr_calloc()`: Allocate zero-initialized memory
+ * - `cr_realloc()`: Reallocate memory
+ * - `cr_free()`: Free memory allocated with Criterion functions
+ *
+ * But honestly? The easiest approach is to just use static arrays when possible:
+ * ```c
+ * // Good: Static array (no memory issues!)
+ * ParameterizedTestParameters(palette, utf8_boundary_property) {
+ *   static const char *palettes[] = {
+ *     " ░▒▓█",
+ *     " .:-=+*#%@",
+ *     " 0123456789",
+ *   };
+ *   return cr_make_param_array(const char *, palettes, 
+ *                              sizeof(palettes) / sizeof(palettes[0]));
+ * }
+ *
+ * // Avoid: Dynamic allocation (requires Criterion functions)
+ * ParameterizedTestParameters(palette, utf8_boundary_property) {
+ *   char **palettes = cr_malloc(3 * sizeof(char*));
+ *   palettes[0] = cr_strdup(" ░▒▓█");
+ *   palettes[1] = cr_strdup(" .:-=+*#%@");
+ *   palettes[2] = cr_strdup(" 0123456789");
+ *   // ... gotta remember to free this ...
+ * }
+ * ```
+ *
+ * Examples in our codebase:
+ * ------------------------
+ * Want to see parameterized tests in action? Check these out:
+ * - `tests/unit/terminal_detect_test.c`: Testing different COLORTERM and TERM values
+ * - `tests/unit/webcam_test.c`: Testing different webcam indices
+ * - `tests/unit/simd_scalar_comparison_test.c`: Testing different palettes
+ *
+ * @section testing_theorized Theorized Tests
+ *
+ * Theorized tests are Criterion's way of doing property-based testing. Instead of testing
+ * specific values, you test that a property holds for a whole range of values. It's like
+ * mathematical proof by example—if the property holds for all these values, it probably
+ * holds in general.
+ *
+ * Basic syntax:
+ * ------------
+ * ```c
+ * // Define the range of values to test
+ * TheoryDataPoints(suite_name, property_name) = {
+ *   TheoryPointsFromRange(0, 100, 1),      // Integers from 0 to 100
+ *   TheoryPointsFromRange(0.0, 1.0, 0.1),  // Floats from 0.0 to 1.0 in 0.1 steps
+ * };
+ *
+ * // Write the test that checks the property
+ * Theory((size_t data_size), suite_name, property_name) {
+ *   // This runs for every data_size in the range
+ *   void *data = malloc(data_size);
+ *   cr_assert_not_null(data);
+ *   free(data);
+ * }
+ * ```
+ *
+ * Theory data sources:
+ * -------------------
+ * Criterion gives you several ways to generate test values:
+ * - `TheoryPointsFromRange(min, max, step)`: Generate a range of values
+ * - `TheoryPointsFromArray(array, count)`: Use your own array of values
+ * - `TheoryPointsFromBitfield(bits)`: Generate all bit combinations
+ *
+ * What are these good for?
+ * ------------------------
+ * Theorized tests are perfect for checking mathematical properties:
+ * - **Roundtrip properties**: `decompress(compress(x)) == x` should always be true
+ * - **Boundary conditions**: Does the code handle values at the limits?
+ * - **Invariant properties**: Properties that should always hold no matter what
+ *
+ * Examples in our codebase:
+ * ------------------------
+ * We use theorized tests in lots of places:
+ * - `tests/unit/compression_test.c`: Compression roundtrip property
+ * - `tests/unit/crypto_test.c`: Encryption roundtrip and nonce uniqueness
+ * - `tests/unit/palette_test.c`: Palette length and UTF-8 boundary properties
+ * - `tests/unit/ringbuffer_test.c`: FIFO ordering property
+ * - `tests/unit/mixer_test.c`: Audio bounds property
+ * - `tests/unit/ascii_test.c`: Image size property
+ * - `tests/unit/buffer_pool_test.c`: Allocation roundtrip and pool reuse
+ * - `tests/unit/aspect_ratio_test.c`: Aspect ratio preservation
+ *
+ * @section testing_logging Test Logging Macros
+ *
+ * Tests can generate a lot of output, which makes it hard to see what actually matters.
+ * We've got some helpful macros in `lib/tests/logging.h` (included via `lib/tests/common.h`)
+ * that let you control logging during tests.
+ *
+ * @subsection testing_logging_suite_macros Test Suite Macros
+ *
+ * Quiet logging for a whole suite:
+ * --------------------------------
+ * ```c
+ * #include "tests/common.h"
+ *
+ * TEST_SUITE_WITH_QUIET_LOGGING(my_suite);
+ *
+ * Test(my_suite, my_test) {
+ *   // Logging is automatically turned off (goes to /dev/null)
+ *   // Log level is set to LOG_FATAL (only fatal errors show up)
+ * }
+ * ```
+ *
+ * Custom log levels:
+ * ------------------
+ * ```c
+ * TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(
+ *   my_suite, 
+ *   LOG_FATAL,    // Log level during setup
+ *   LOG_DEBUG,    // Log level to restore after
+ *   true,         // Disable stdout
+ *   true          // Disable stderr
+ * );
+ * ```
+ *
+ * Debug logging:
+ * -------------
+ * ```c
+ * TEST_SUITE_WITH_DEBUG_LOGGING(debug_suite);
+ *
+ * Test(debug_suite, debug_test) {
+ *   // Logging is enabled with LOG_DEBUG level
+ *   // You can see stdout/stderr for debugging
+ * }
+ * ```
+ *
+ * With timeout:
+ * -------------
+ * ```c
+ * TEST_SUITE_WITH_QUIET_LOGGING(my_suite, .timeout = 10);
+ * ```
+ *
+ * @subsection testing_logging_test_macros Per-Test Logging Macros
+ *
+ * Sometimes you just want to quiet things down for part of a test:
+ *
+ * Temporarily disable all logging:
+ * --------------------------------
+ * ```c
+ * Test(my_suite, my_test) {
+ *   TEST_LOGGING_TEMPORARILY_DISABLE();
+ *   // ... code that should be quiet ...
+ *   // Logging automatically restored when test ends
+ * }
+ * ```
+ *
+ * Disable just stdout:
+ * -------------------
+ * ```c
+ * Test(my_suite, my_test) {
+ *   TEST_LOGGING_TEMPORARILY_DISABLE_STDOUT();
+ *   // stdout is quiet, but stderr still works
+ * }
+ * ```
+ *
+ * Disable just stderr:
+ * -------------------
+ * ```c
+ * Test(my_suite, my_test) {
+ *   TEST_LOGGING_TEMPORARILY_DISABLE_STDERR();
+ *   // stderr is quiet, but stdout still works
+ * }
+ * ```
+ *
+ * @subsection testing_logging_manual Manual Setup/Teardown
+ *
+ * If you need more control, you can set things up manually:
+ * ```c
+ * TEST_LOGGING_SETUP_AND_TEARDOWN();
+ *
+ * TestSuite(my_suite, 
+ *           .init = setup_quiet_test_logging,
+ *           .fini = restore_test_logging);
+ * ```
+ *
+ * @subsection testing_logging_functions Low-Level Functions
+ *
+ * For maximum control, you can call the functions directly:
+ * ```c
+ * // Disable logging
+ * test_logging_disable(true, true);  // disable stdout, disable stderr
+ *
+ * // Restore logging
+ * test_logging_restore();
+ *
+ * // Check if logging is disabled
+ * bool is_disabled = test_logging_is_disabled();
+ * ```
+ *
+ * @section testing_coverage Code Coverage
+ *
+ * We use Codecov (https://codecov.io/) to track how much of our code is covered by tests.
+ * Coverage reports are automatically generated when code is pushed or pull requests are
+ * created, and uploaded to Codecov so you can see what's covered (and what isn't).
+ *
+ * Our Codecov project:
+ * --------------------
+ * - Project URL: https://codecov.io/gh/zfogg/ascii-chat
+ * - Coverage reports are automatically generated for every commit and PR
+ * - Coverage is organized by subsystem (crypto, network, audio, etc.)
+ *
+ * Configuration:
+ * --------------
+ * Coverage settings are in `codecov.yml`:
+ * - Different coverage targets for different parts of the codebase
+ * - Coverage grouped by functionality
+ * - Automatic PR comments with coverage reports
+ * - Coverage thresholds enforced per component
+ *
+ * Generating coverage locally:
+ * ---------------------------
+ * To build and run tests with coverage instrumentation:
+ * ```bash
+ * # Build with coverage
+ * ./tests/scripts/run_tests.sh -b coverage
+ *
+ * # Or use the coverage flag
+ * ./tests/scripts/run_tests.sh -c
+ *
+ * # Coverage files are generated as .gcov files
+ * # (They're automatically uploaded in CI, but you can check them locally too)
+ * ```
+ *
+ * Coverage organization:
+ * ---------------------
+ * Coverage is organized by test type and platform:
+ * - `ascii-chat-tests-ubuntu-debug`: Unit tests on Ubuntu (debug build)
+ * - `ascii-chat-tests-macos-debug`: Unit tests on macOS (debug build)
+ * - `ascii-chat-integration-ubuntu`: Integration tests on Ubuntu
+ * - `ascii-chat-performance-ubuntu`: Performance tests on Ubuntu
+ *
+ * Coverage targets:
+ * -----------------
+ * Different parts of the codebase have different coverage goals:
+ * - **Core server/client**: 75% target
+ * - **ASCII engine**: 80% target (this is the main feature, so we want good coverage)
+ * - **Audio/video systems**: 70% target
+ * - **Platform-specific code**: 60% target (informational—some platform code is hard to test)
+ *
+ * @section testing_best_practices Best Practices
+ *
+ * These are some guidelines we've learned from experience. Following them will help you
+ * write tests that are fast, reliable, and easy to maintain.
+ *
+ * Writing good tests:
+ * ------------------
+ * - **Always include `lib/tests/common.h`**: It has everything you need
+ * - **Use quiet logging macros**: Tests should be quiet unless something fails
+ * - **Test both success and failure paths**: Make sure error handling works too
+ * - **Use theorized tests for properties**: Great for roundtrip properties, invariants, etc.
+ * - **Use parameterized tests for similar cases**: Don't repeat yourself
+ * - **Keep tests independent**: One test shouldn't affect another
+ * - **Name tests clearly**: Future you (and others) will thank you
+ *
+ * Organizing tests:
+ * ----------------
+ * - **One test file per module**: `tests/unit/{module}_test.c` is the pattern
+ * - **Group related tests**: Use test suites to organize
+ * - **Use fixtures for setup/teardown**: Don't repeat setup code in every test
+ * - **Document complex logic**: If the test is tricky, explain why
+ *
+ * Performance:
+ * -----------
+ * - **Unit tests should be fast**: We're talking milliseconds here
+ * - **Integration tests can be slower**: Seconds are fine for these
+ * - **Use test environment variables**: Let the code optimize for testing
+ * - **Skip expensive operations**: Tests don't need to do everything the real code does
+ *
+ * Debugging:
+ * ---------
+ * - **Use `-v` for verbose output**: See what's actually happening
+ * - **Use `--no-parallel` for sequential execution**: Easier to see what's going on
+ * - **Use debug logging suite**: When you need to see debug output
+ * - **Use interactive Docker shell**: When you need to poke around
+ *
+ * @section testing_ci_cd CI/CD Integration
+ *
+ * Our test suite is integrated with GitHub Actions, so tests run automatically on every
+ * push and pull request. This means you'll know right away if something breaks!
+ *
+ * What happens automatically:
+ * ---------------------------
+ * - Tests run on every push and PR
+ * - Tests run on multiple platforms (Linux, macOS)
+ * - Coverage reports are generated and uploaded to Codecov
+ * - Test results are reported in JUnit XML format
+ * - Docker is used for consistent test execution
+ *
+ * CI workflows:
+ * ------------
+ * The main test workflow is in `.github/workflows/test.yml`:
+ * - Automatically discovers and runs all tests
+ * - Runs tests in parallel for speed
+ * - Uploads coverage to Codecov
+ * - Saves test result artifacts
+ *
+ * @section testing_resources Additional Resources
+ *
+ * Want to learn more?
+ * -------------------
+ * - **Criterion Documentation**: https://criterion.readthedocs.io/
+ * - **Codecov Documentation**: https://docs.codecov.com/
+ * - **Docker Documentation**: https://docs.docker.com/
+ *
+ * Where to look in the codebase:
+ * ------------------------------
+ * - **Test scripts**: `tests/scripts/`
+ * - **Test source**: `tests/unit/`, `tests/integration/`, `tests/performance/`
+ * - **Test utilities**: `lib/tests/`
+ * - **Docker config**: `tests/Dockerfile`, `tests/docker-compose.yml`
+ *
+ * @section testing_utilities Test Utilities
+ *
+ * The test utilities in `lib/tests/` provide common functionality for writing tests:
+ *
+ * **Files**:
+ * - @ref tests/logging.h "test_logging.h" - Logging control utilities for quiet test execution
+ * - @ref tests/logging.c "test_logging.c" - Implementation of logging redirection
+ * - @ref tests/common.h "common.h" - Common test utilities and environment detection
+ * - @ref tests/globals.c "globals.c" - Global symbol stubs for linker dependencies
+ *
+ * These utilities help tests run reliably by providing logging control, environment
+ * detection, and common headers. See the individual file documentation for details.
+ *
+ * Need help?
+ * ----------
+ * If you're stuck or have questions, feel free to ask! We're here to help. Check out
+ * the examples in the codebase—seeing real tests is often the best way to learn.
+ *
+ * @see tests/logging.h
+ * @see tests/logging.c
+ * @see tests/common.h
+ * @see tests/globals.c
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date September 2025
+ */
+

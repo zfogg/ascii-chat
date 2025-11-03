@@ -1,11 +1,7 @@
 /**
- * @file globals.c
- * @brief Global symbol definitions for test executables
- *
- * Test executables link against ascii-chat-lib which references certain global
- * symbols that are normally defined in src/server/main.c or src/client/main.c.
- * Since tests don't link against those files, we need to provide stub definitions
- * here to satisfy the linker.
+ * @file tests/globals.c
+ * @ingroup testing
+ * @brief 🔗 Global symbol stubs for test executables to satisfy linker dependencies
  */
 
 #include <stdatomic.h>

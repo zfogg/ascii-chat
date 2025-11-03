@@ -1,0 +1,135 @@
+/**
+ * @defgroup client_display Terminal Display
+ * @ingroup module_client
+ * @brief Terminal rendering, TTY management, and frame output
+ */
+
+/**
+ * @page topic_client_display Terminal Display
+ * @ingroup client_display
+ *
+ * @section client_display_overview Overview
+ *
+ * The terminal display subsystem manages terminal initialization, ASCII frame
+ * rendering, TTY capability detection, and terminal cleanup.
+ *
+ * **Implementation**: src/client/display.c, src/client/display.h
+ *
+ * @section client_display_init Initialization
+ *
+ * @code{.c}
+ * int display_init(void)
+ * {
+ *   // Check if stdout is a TTY
+ *   if (!isatty(STDOUT_FILENO)) {
+ *     log_warn("stdout is not a TTY - frames may not render correctly");
+ *     g_has_tty = false;
+ *     return 0;
+ *   }
+ *
+ *   g_has_tty = true;
+ *
+ *   // Initialize TTY for raw mode
+ *   if (tty_init(&g_tty_info) != 0) {
+ *     log_error("Failed to initialize TTY");
+ *     return -1;
+ *   }
+ *
+ *   return 0;
+ * }
+ * @endcode
+ *
+ * @section client_display_render Frame Rendering
+ *
+ * @code{.c}
+ * void display_render_frame(const char *frame_data, bool is_snapshot_frame)
+ * {
+ *   // Disable logging for first frame to prevent corruption
+ *   if (g_is_first_frame) {
+ *     display_disable_logging_for_first_frame();
+ *     g_is_first_frame = false;
+ *   }
+ *
+ *   if (g_has_tty) {
+ *     // Clear screen and home cursor
+ *     printf("\033[2J\033[H");
+ *     fflush(stdout);
+ *   }
+ *
+ *   // Output frame data
+ *   printf("%s", frame_data);
+ *   fflush(stdout);
+ *
+ *   // Snapshot mode: leave cursor at end
+ *   if (!is_snapshot_frame && g_has_tty) {
+ *     // Home cursor for next frame
+ *     printf("\033[H");
+ *     fflush(stdout);
+ *   }
+ * }
+ * @endcode
+ *
+ * @section client_display_first_frame First Frame Optimization
+ *
+ * **Problem**: Log messages corrupt first frame display
+ *
+ * **Solution**:
+ * - Suppress terminal logging before first frame render
+ * - Re-enable logging after first frame displayed
+ * - Prevents log messages from appearing in frame area
+ *
+ * @code{.c}
+ * void display_disable_logging_for_first_frame(void)
+ * {
+ *   // Temporarily disable terminal logging
+ *   logging_set_terminal_enabled(false);
+ *
+ *   // Will be re-enabled after first frame
+ * }
+ * @endcode
+ *
+ * @section client_display_reset Display Reset
+ *
+ * @subsection client_display_full_reset Full Reset
+ *
+ * @code{.c}
+ * void display_full_reset(void)
+ * {
+ *   if (g_has_tty) {
+ *     printf("\033[2J\033[H");  // Clear screen and home cursor
+ *     fflush(stdout);
+ *   }
+ * }
+ * @endcode
+ *
+ * @subsection client_display_connection_reset Connection Reset
+ *
+ * @code{.c}
+ * void display_reset_for_new_connection(void)
+ * {
+ *   // Reset first frame flag for reconnection
+ *   g_is_first_frame = true;
+ * }
+ * @endcode
+ *
+ * @section client_display_cleanup Cleanup
+ *
+ * @code{.c}
+ * void display_cleanup(void)
+ * {
+ *   if (g_has_tty) {
+ *     // Restore terminal settings
+ *     tty_restore(&g_tty_info);
+ *
+ *     // Clear screen and show cursor
+ *     printf("\033[2J\033[H\033[?25h");
+ *     fflush(stdout);
+ *   }
+ * }
+ * @endcode
+ *
+ * @see src/client/display.c
+ * @see src/client/display.h
+ * @see lib/platform/terminal.h
+ * @see @ref topic_client "Client Overview"
+ */

@@ -1,3 +1,10 @@
+/**
+ * @file image2ascii/simd/neon.c
+ * @ingroup image2ascii
+ * @brief ⚡ ARM NEON-accelerated ASCII rendering with 128-bit vector operations for ARM64
+ */
+
+#if SIMD_SUPPORT_NEON
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -5,20 +12,17 @@
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
-#include "platform/abstraction.h"
 #include <stdatomic.h>
 #include <math.h>
+
+#include <arm_neon.h>
 
 #include "common.h"
 #include "neon.h"
 #include "ascii_simd.h"
 #include "../image.h"
-// hashtable.h and crc32_hw.h no longer needed - NEON table cache removed
 #include "image2ascii/simd/common.h"
 #include "image2ascii/output_buffer.h"
-
-#if SIMD_SUPPORT_NEON // main block of code ifdef
-#include <arm_neon.h>
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance
@@ -954,7 +958,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes) {
   /* Main: half-block renderer. Returns NUL-terminated malloc'd string; caller free(). */
   if (width <= 0 || height <= 0)
-    return strdup("");
+    return platform_strdup("");
   if (stride_bytes <= 0)
     stride_bytes = width * 3;
 

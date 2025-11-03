@@ -1,0 +1,477 @@
+/**
+ * @page topic_server_crypto Cryptographic Operations
+ * @ingroup server_crypto
+ *
+ * @section server_crypto_overview Overview
+ *
+ * The cryptographic operations module manages per-client cryptographic handshakes,
+ * X25519 key exchange, session encryption, and client authentication for the
+ * ascii-chat server. This module embodies the security-first philosophy of
+ * ascii-chat, providing end-to-end encryption with multiple authentication modes
+ * to ensure secure multi-client video chat. The module integrates seamlessly with
+ * the client lifecycle, performing cryptographic handshakes during connection
+ * establishment and managing session encryption throughout the client's connection.
+ *
+ * **Implementation**: src/server/crypto.c, src/server/crypto.h
+ *
+ * **Key Responsibilities**:
+ * - Initialize server crypto system and validate encryption configuration
+ * - Perform cryptographic handshake with each connecting client
+ * - Manage per-client crypto contexts stored in client_info_t structures
+ * - Provide encryption/decryption functions for secure packet transmission
+ * - Support multiple authentication modes (password, SSH key, passwordless)
+ * - Integrate with client whitelist for authenticated access control
+ *
+ * @section server_crypto_handshake Cryptographic Handshake Architecture
+ *
+ * The cryptographic handshake follows a multi-phase protocol:
+ *
+ * @subsection server_crypto_phase0 Phase 0: Protocol Negotiation
+ *
+ * **Step 0a: Receive Client Protocol Version**
+ * @code{.c}
+ * // Receive client's protocol version
+ * protocol_version_packet_t client_version;
+ * result = receive_packet(socket, &packet_type, &payload, &payload_len);
+ *
+ * if (packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
+ *   return -1;  // Protocol mismatch
+ * }
+ *
+ * if (!client_version.supports_encryption) {
+ *   return -1;  // Client doesn't support encryption
+ * }
+ * @endcode
+ *
+ * **Step 0b: Send Server Protocol Version**
+ * @code{.c}
+ * // Send server's protocol version
+ * protocol_version_packet_t server_version = {0};
+ * server_version.protocol_version = htons(1);
+ * server_version.supports_encryption = 1;
+ *
+ * result = send_protocol_version_packet(socket, &server_version);
+ * @endcode
+ *
+ * **Step 0c: Receive Client Crypto Capabilities**
+ * @code{.c}
+ * // Receive client's supported algorithms
+ * crypto_capabilities_packet_t client_caps;
+ * result = receive_packet(socket, &packet_type, &payload, &payload_len);
+ *
+ * // Parse supported algorithms
+ * uint16_t supported_kex = ntohs(client_caps.supported_kex_algorithms);
+ * uint16_t supported_auth = ntohs(client_caps.supported_auth_algorithms);
+ * uint16_t supported_cipher = ntohs(client_caps.supported_cipher_algorithms);
+ * @endcode
+ *
+ * **Step 0d: Select Algorithms and Send Parameters**
+ * @code{.c}
+ * // Select algorithms (currently only X25519 + Ed25519 + XSalsa20-Poly1305)
+ * crypto_parameters_packet_t server_params = {0};
+ * server_params.selected_kex = KEX_ALGO_X25519;
+ * server_params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
+ *
+ * // Select authentication algorithm based on server configuration
+ * if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
+ *   server_params.selected_auth = AUTH_ALGO_ED25519;
+ * }
+ *
+ * result = send_crypto_parameters_packet(socket, &server_params);
+ * @endcode
+ *
+ * @subsection server_crypto_phase1 Phase 1: Key Exchange
+ *
+ * **Step 1: Send Server's Ephemeral Public Key**
+ * @code{.c}
+ * // Generate ephemeral key pair for this client session
+ * x25519_keypair_t ephemeral_keys;
+ * x25519_generate_keypair(&ephemeral_keys);
+ *
+ * // Store ephemeral private key in client's crypto context
+ * client->crypto_ctx.ephemeral_private_key = ephemeral_keys.private_key;
+ *
+ * // Send ephemeral public key to client
+ * key_exchange_init_packet_t keyex_init = {0};
+ * memcpy(keyex_init.public_key, ephemeral_keys.public_key, X25519_PUBLIC_KEY_SIZE);
+ *
+ * // If server has identity key, sign the key exchange
+ * if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
+ *   ed25519_sign(&keyex_init.signature, keyex_init.public_key,
+ *                X25519_PUBLIC_KEY_SIZE, &g_server_private_key);
+ *   memcpy(keyex_init.identity_key, g_server_public_key, ED25519_PUBLIC_KEY_SIZE);
+ * }
+ *
+ * result = send_key_exchange_init_packet(socket, &keyex_init);
+ * @endcode
+ *
+ * **Step 2: Receive Client's Public Key and Derive Shared Secret**
+ * @code{.c}
+ * // Receive client's ephemeral public key
+ * key_exchange_response_packet_t client_keyex;
+ * result = receive_packet(socket, &packet_type, &payload, &payload_len);
+ *
+ * // Derive shared secret using X25519 key exchange
+ * x25519_shared_secret_t shared_secret;
+ * x25519_derive_shared_secret(&shared_secret, client_keyex.public_key,
+ *                             &client->crypto_ctx.ephemeral_private_key);
+ *
+ * // Store shared secret in client's crypto context
+ * memcpy(client->crypto_ctx.shared_secret, shared_secret, X25519_SHARED_SECRET_SIZE);
+ * @endcode
+ *
+ * @subsection server_crypto_phase2 Phase 2: Authentication
+ *
+ * **Step 2: Send Authentication Challenge**
+ * @code{.c}
+ * // Receive client's public key and send auth challenge
+ * auth_request_packet_t auth_req;
+ * result = receive_packet(socket, &packet_type, &payload, &payload_len);
+ *
+ * // If whitelist enabled, verify client's public key
+ * if (g_num_whitelisted_clients > 0) {
+ *   bool client_in_whitelist = false;
+ *   for (size_t i = 0; i < g_num_whitelisted_clients; i++) {
+ *     if (memcmp(auth_req.public_key, g_client_whitelist[i],
+ *                ED25519_PUBLIC_KEY_SIZE) == 0) {
+ *       client_in_whitelist = true;
+ *       break;
+ *     }
+ *   }
+ *
+ *   if (!client_in_whitelist) {
+ *     return -1;  // Client not in whitelist
+ *   }
+ * }
+ *
+ * // Generate authentication challenge
+ * auth_challenge_packet_t challenge;
+ * random_bytes(challenge.challenge, AUTH_CHALLENGE_SIZE);
+ *
+ * // Sign challenge with server's identity key (if available)
+ * if (g_server_encryption_enabled && g_server_private_key.type == KEY_TYPE_ED25519) {
+ *   ed25519_sign(&challenge.signature, challenge.challenge,
+ *                AUTH_CHALLENGE_SIZE, &g_server_private_key);
+ * }
+ *
+ * result = send_auth_challenge_packet(socket, &challenge);
+ * @endcode
+ *
+ * **Step 3: Receive Authentication Response and Complete Handshake**
+ * @code{.c}
+ * // Receive client's authentication response
+ * auth_response_packet_t auth_resp;
+ * result = receive_packet(socket, &packet_type, &payload, &payload_len);
+ *
+ * // Verify client's signature on challenge
+ * if (!ed25519_verify(auth_resp.signature, challenge.challenge,
+ *                     AUTH_CHALLENGE_SIZE, auth_req.public_key)) {
+ *   return -1;  // Authentication failed
+ * }
+ *
+ * // Derive session encryption keys from shared secret
+ * derive_session_keys(&client->crypto_ctx.session_keys, &client->crypto_ctx.shared_secret);
+ *
+ * // Mark handshake as complete
+ * atomic_store(&client->crypto_initialized, true);
+ * @endcode
+ *
+ * @section server_crypto_authentication Authentication Modes
+ *
+ * @subsection server_crypto_password Password Authentication
+ *
+ * **How It Works**:
+ * - Uses Argon2id key derivation from shared password
+ * - Both server and client derive same key from password
+ * - No identity keys required (password-only mode)
+ * - Suitable for trusted networks or simple deployments
+ *
+ * **Configuration**:
+ * @code{.c}
+ * // Set password via --password command-line option
+ * // Password is used for key derivation, not transmitted
+ * // Both server and client must use same password
+ * @endcode
+ *
+ * @subsection server_crypto_ssh_key SSH Key Authentication
+ *
+ * **How It Works**:
+ * - Server uses Ed25519 private key for identity verification
+ * - Client provides Ed25519 public key for authentication
+ * - Identity verification via known_hosts and whitelist
+ * - Strong authentication with cryptographic signatures
+ *
+ * **Configuration**:
+ * @code{.c}
+ * // Server loads SSH key via --key option
+ * // Supports SSH Ed25519 key files
+ * // Supports gpg:keyid format for GPG keys (if GPG support enabled)
+ * // Client provides public key during handshake
+ * @endcode
+ *
+ * **Key Loading**:
+ * - Validates SSH key file format
+ * - Native encrypted key support (bcrypt_pbkdf + BearSSL AES-256-CTR)
+ * - Validates key type (Ed25519 required)
+ * - Loads private key for signing operations
+ *
+ * @subsection server_crypto_passwordless Passwordless Mode
+ *
+ * **How It Works**:
+ * - Ephemeral keys only (no long-term identity)
+ * - Key exchange provides confidentiality but not authentication
+ * - Suitable for trusted networks or testing
+ * - No identity verification performed
+ *
+ * **Configuration**:
+ * @code{.c}
+ * // No --key or --password provided
+ * // Server runs in passwordless mode
+ * // Key exchange provides encryption but no authentication
+ * @endcode
+ *
+ * @section server_crypto_per_client_contexts Per-Client Crypto Contexts
+ *
+ * Each client has an independent crypto context stored in client_info_t:
+ *
+ * @code{.c}
+ * typedef struct {
+ *   // Key exchange state
+ *   x25519_private_key_t ephemeral_private_key;
+ *   x25519_shared_secret_t shared_secret;
+ *
+ *   // Session encryption keys
+ *   session_keys_t session_keys;
+ *
+ *   // Authentication state
+ *   ed25519_public_key_t client_public_key;
+ *   bool authenticated;
+ *
+ *   // Handshake state
+ *   handshake_state_t state;
+ *   bool initialized;
+ * } crypto_handshake_ctx_t;
+ * @endcode
+ *
+ * **Context Lifecycle**:
+ * - Created during connection establishment
+ * - Initialized during cryptographic handshake
+ * - Used throughout client connection for encryption/decryption
+ * - Cleaned up on client disconnect
+ *
+ * **Thread Safety**:
+ * - Each client has independent crypto context (no shared state)
+ * - Socket access protected by client_state_mutex
+ * - Per-client encryption/decryption operations are isolated
+ * - Global server crypto state (g_server_private_key) read-only after init
+ *
+ * @section server_crypto_encryption_decryption Encryption and Decryption Operations
+ *
+ * @subsection server_crypto_packet_encryption Packet Encryption
+ *
+ * After handshake completion, all packets are encrypted before transmission:
+ *
+ * @code{.c}
+ * int crypto_server_encrypt_packet(uint32_t client_id,
+ *                                   const void *plaintext, size_t plaintext_len,
+ *                                   void *ciphertext, size_t *ciphertext_len)
+ * {
+ *   // Get client's crypto context
+ *   client_info_t *client = get_client_by_id(client_id);
+ *
+ *   // Check if encryption is enabled
+ *   if (!client->crypto_initialized) {
+ *     // Encryption not initialized - passthrough
+ *     memcpy(ciphertext, plaintext, plaintext_len);
+ *     *ciphertext_len = plaintext_len;
+ *     return 0;
+ *   }
+ *
+ *   // Encrypt packet using XSalsa20-Poly1305
+ *   int result = xsalsa20poly1305_encrypt(ciphertext, ciphertext_len,
+ *                                         plaintext, plaintext_len,
+ *                                         NULL, 0,  // No additional data
+ *                                         client->crypto_ctx.session_keys.encryption_key);
+ *
+ *   return result;
+ * }
+ * @endcode
+ *
+ * @subsection server_crypto_packet_decryption Packet Decryption
+ *
+ * All received packets are decrypted before processing:
+ *
+ * @code{.c}
+ * int crypto_server_decrypt_packet(uint32_t client_id,
+ *                                   const void *ciphertext, size_t ciphertext_len,
+ *                                   void *plaintext, size_t *plaintext_len)
+ * {
+ *   // Get client's crypto context
+ *   client_info_t *client = get_client_by_id(client_id);
+ *
+ *   // Check if encryption is enabled
+ *   if (!client->crypto_initialized) {
+ *     // Encryption not initialized - passthrough
+ *     memcpy(plaintext, ciphertext, ciphertext_len);
+ *     *plaintext_len = ciphertext_len;
+ *     return 0;
+ *   }
+ *
+ *   // Decrypt packet using XSalsa20-Poly1305
+ *   int result = xsalsa20poly1305_decrypt(plaintext, plaintext_len,
+ *                                         ciphertext, ciphertext_len,
+ *                                         NULL, 0,  // No additional data
+ *                                         client->crypto_ctx.session_keys.decryption_key);
+ *
+ *   return result;
+ * }
+ * @endcode
+ *
+ * **Automatic Passthrough**:
+ * - When encryption is disabled (--no-encrypt), packets pass through unchanged
+ * - No performance overhead when encryption disabled
+ * - Seamless integration with non-encrypted mode
+ *
+ * @section server_crypto_whitelist Client Whitelist Integration
+ *
+ * @subsection server_crypto_whitelist_loading Whitelist Loading
+ *
+ * Client whitelist is loaded during server initialization:
+ *
+ * @code{.c}
+ * // Load client whitelist if provided
+ * if (strlen(opt_client_keys) > 0) {
+ *   if (parse_client_keys(opt_client_keys, g_client_whitelist,
+ *                         &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+ *     return -1;  // Whitelist loading failed
+ *   }
+ *   log_info("Server will only accept %zu whitelisted clients",
+ *            g_num_whitelisted_clients);
+ * }
+ * @endcode
+ *
+ * **Whitelist Format**:
+ * - Supports multiple key formats (SSH public keys, raw hex, etc.)
+ * - Multiple keys can be provided (comma-separated)
+ * - Keys are validated during loading
+ * - Only Ed25519 keys are supported
+ *
+ * @subsection server_crypto_whitelist_verification Whitelist Verification
+ *
+ * During handshake, client's public key is verified against whitelist:
+ *
+ * @code{.c}
+ * // Verify client's public key against whitelist
+ * if (g_num_whitelisted_clients > 0) {
+ *   bool client_in_whitelist = false;
+ *   for (size_t i = 0; i < g_num_whitelisted_clients; i++) {
+ *     if (memcmp(client_public_key, g_client_whitelist[i],
+ *                ED25519_PUBLIC_KEY_SIZE) == 0) {
+ *       client_in_whitelist = true;
+ *       break;
+ *     }
+ *   }
+ *
+ *   if (!client_in_whitelist) {
+ *     log_warn("Client public key not in whitelist - rejecting connection");
+ *     return -1;  // Authentication failed
+ *   }
+ * }
+ * @endcode
+ *
+ * **Verification Behavior**:
+ * - If whitelist enabled, only whitelisted clients can connect
+ * - Clients not in whitelist are rejected during handshake
+ * - Detailed error logging for troubleshooting
+ * - Clean disconnect on whitelist rejection
+ *
+ * @section server_crypto_error_handling Error Handling
+ *
+ * **Handshake Errors**:
+ * - Client disconnection during handshake: Logged and return error
+ * - Protocol mismatch: Detailed error logging and disconnect
+ * - Authentication failure: Logged and disconnect (whitelist rejection)
+ * - Network errors: Detected and handled gracefully
+ * - Invalid packets: Validated before processing
+ *
+ * **Encryption/Decryption Errors**:
+ * - Decryption failures: Logged and packet dropped
+ * - Encryption failures: Logged and connection marked lost
+ * - Key derivation failures: Handled gracefully
+ * - Session key errors: Clean disconnect
+ *
+ * @section server_crypto_algorithm_support Algorithm Support
+ *
+ * **Current Algorithms**:
+ * - **Key Exchange**: X25519 (Elliptic Curve Diffie-Hellman)
+ * - **Cipher**: XSalsa20-Poly1305 (Authenticated Encryption)
+ * - **Authentication**: Ed25519 (when server has identity key)
+ * - **Key Derivation**: Argon2id (for password-based authentication)
+ * - **HMAC**: HMAC-SHA256 (for additional integrity protection)
+ *
+ * **Future Algorithm Support**:
+ * - Additional key exchange algorithms (ECDH-P256, etc.)
+ * - Additional cipher algorithms (ChaCha20-Poly1305, etc.)
+ * - Additional authentication algorithms (ECDSA, etc.)
+ *
+ * @section server_crypto_integration Integration with Other Modules
+ *
+ * @subsection server_crypto_client Integration with client.c
+ *
+ * **Called By**:
+ * - `add_client()`: Performs cryptographic handshake during connection
+ * - Handshake integrated into client connection flow
+ *
+ * **Provides To**:
+ * - Per-client crypto contexts
+ * - Encryption/decryption functions
+ * - Authentication verification
+ *
+ * @subsection server_crypto_protocol Integration with protocol.c
+ *
+ * **Used By**:
+ * - Protocol handlers decrypt received packets
+ * - Packet encryption before transmission
+ * - Seamless integration with packet processing
+ *
+ * **Provides To**:
+ * - Packet encryption/decryption functions
+ * - Crypto context access
+ *
+ * @subsection server_crypto_main Integration with main.c
+ *
+ * **Called By**:
+ * - `init_server_crypto()`: Initializes server crypto system
+ * - Server key loading and validation
+ * - Whitelist loading and validation
+ *
+ * **Provides To**:
+ * - Global server crypto state
+ * - Server identity key
+ * - Client whitelist
+ *
+ * @section server_crypto_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always validate packets before processing
+ * - Use per-client crypto contexts (no shared state)
+ * - Check crypto_initialized before encryption/decryption
+ * - Handle errors gracefully without disconnecting clients unnecessarily
+ * - Log detailed errors for troubleshooting
+ *
+ * **DON'T**:
+ * - Don't share crypto contexts between clients
+ * - Don't skip packet validation
+ * - Don't ignore encryption/decryption errors
+ * - Don't expose private keys in logs
+ * - Don't skip whitelist verification when enabled
+ *
+ * @see src/server/crypto.c
+ * @see src/server/crypto.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_client "Client Management"
+ * @see topic_crypto
+ * @see topic_handshake
+ * @see topic_keys
+ */
+

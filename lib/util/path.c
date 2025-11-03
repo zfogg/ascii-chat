@@ -1,3 +1,9 @@
+/**
+ * @file util/path.c
+ * @ingroup util
+ * @brief 📂 Cross-platform path manipulation with normalization and Windows/Unix separator handling
+ */
+
 #include "path.h"
 #include "common.h"
 #include <string.h>
@@ -197,4 +203,79 @@ char *expand_path(const char *path) {
     return expanded;
   }
   return platform_strdup(path);
+}
+
+char *get_config_dir(void) {
+#ifndef _WIN32
+  // Unix: Check XDG_CONFIG_HOME first
+  const char *xdg_config_home = platform_getenv("XDG_CONFIG_HOME");
+  if (xdg_config_home && xdg_config_home[0] != '\0') {
+    // Use XDG_CONFIG_HOME/ascii-chat
+    size_t len = strlen(xdg_config_home) + strlen("/ascii-chat/") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s/ascii-chat/", xdg_config_home);
+    return dir;
+  }
+
+  // Fallback to ~/.config/ascii-chat
+  const char *home = platform_getenv("HOME");
+  if (home && home[0] != '\0') {
+    size_t len = strlen(home) + strlen("/.config/ascii-chat/") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s/.config/ascii-chat/", home);
+    return dir;
+  }
+#endif
+
+  // Fallback to ~/.ascii-chat (cross-platform)
+  const char *home = platform_getenv("HOME");
+  if (!home) {
+    // On Windows, try USERPROFILE
+    home = platform_getenv("USERPROFILE");
+#ifdef _WIN32
+    // On Windows, also try APPDATA
+    if (!home) {
+      home = platform_getenv("APPDATA");
+    }
+#endif
+    if (!home) {
+      return NULL;
+    }
+  }
+
+#ifdef _WIN32
+  // Windows: Use APPDATA if available, otherwise USERPROFILE
+  const char *appdata = platform_getenv("APPDATA");
+  if (appdata && appdata[0] != '\0') {
+    size_t len = strlen(appdata) + strlen("\\.ascii-chat\\") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s\\.ascii-chat\\", appdata);
+    return dir;
+  }
+  // Fallback to USERPROFILE
+  size_t len = strlen(home) + strlen("\\.ascii-chat\\") + 1;
+  char *dir = SAFE_MALLOC(len, char *);
+  if (!dir) {
+    return NULL;
+  }
+  safe_snprintf(dir, len, "%s\\.ascii-chat\\", home);
+  return dir;
+#else
+  size_t len = strlen(home) + strlen("/.ascii-chat/") + 1;
+  char *dir = SAFE_MALLOC(len, char *);
+  if (!dir) {
+    return NULL;
+  }
+  safe_snprintf(dir, len, "%s/.ascii-chat/", home);
+  return dir;
+#endif
 }

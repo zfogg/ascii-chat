@@ -1,3 +1,9 @@
+/**
+ * @file server/protocol.h
+ * @ingroup server_protocol
+ * @ingroup network
+ * @brief Server packet processing and protocol implementation
+ */
 #pragma once
 
 #include "client.h"

@@ -1,4 +1,4 @@
-# Codecov configuration for ASCII-Chat
+# Codecov configuration for ascii-chat
 # This configuration uses Components to organize coverage reporting by functionality
 
 # Global settings
@@ -19,10 +19,10 @@ coverage:
   precision: 2
   round: down
   range: 60..100
-  
+
   # Status checks configuration
   status:
-    # Default rules applied to all status checks  
+    # Default rules applied to all status checks
     default_rules:
       flag_coverage_not_uploaded_behavior: include
 
@@ -433,7 +433,7 @@ component_management:
       name: "Header Files"
       paths:
         - "lib/**/*.h"
-        - "src/**/*.h" 
+        - "src/**/*.h"
       statuses:
         - type: project
           target: auto

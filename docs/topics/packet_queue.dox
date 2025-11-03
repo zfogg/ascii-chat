@@ -1,0 +1,163 @@
+/**
+ * @defgroup packet_queue Packet Queue
+ * @ingroup module_data_structures
+ * @brief Thread-safe per-client packet queues
+ */
+
+/**
+ * @page topic_packet_queue Packet Queue
+ * @ingroup packet_queue
+ *
+ * @section packet_queue_overview Overview
+ *
+ * Welcome! Let's talk about packet queues—the unsung heroes that keep ascii-chat's network
+ * communication smooth and organized.
+ *
+ * Imagine you're at a busy restaurant. Orders are coming in from multiple tables, and the kitchen
+ * needs to process them one at a time. You don't want orders getting mixed up or lost, right?
+ * That's exactly what packet queues do for network data—they line up incoming packets so each
+ * client's data gets processed in order, without chaos.
+ *
+ * Each client connected to the server gets their own dedicated packet queue. When packets arrive
+ * over the network, they get placed in the appropriate client's queue. Then, a separate thread
+ * can process packets at its own pace without blocking the network thread. It's like having a
+ * separate order ticket for each table—clean, organized, and efficient.
+ *
+ * **Implementation**: lib/packet_queue.c/h
+ *
+ * What makes packet queues useful?
+ * --------------------------------
+ * - **Per-client queues**: Each client has their own queue (no cross-contamination!)
+ * - **Thread-safe**: Multiple threads can safely interact with the queue
+ * - **Flexible ownership**: Choose whether the queue copies data or just references it
+ * - **Buffer pool integration**: Works with our buffer pool for efficient memory usage
+ * - **Statistics tracking**: See how well your queues are performing
+ * @section packet_queue_architecture Architecture
+ *
+ * @subsection packet_queue_structure Queue Structure
+ *
+ * @code{.c}
+ * // Single packet node in the queue
+ * typedef struct packet_node {
+ *     packet_header_t header;   // Type, length, CRC, client_id
+ *     void *data;               // Payload
+ *     struct packet_node *next; // Next packet in queue
+ * } packet_node_t;
+ *
+ * // Per-client packet queue
+ * typedef struct packet_queue {
+ *     packet_node_t *head;   // Front of queue (dequeue here)
+ *     packet_node_t *tail;   // Back of queue (enqueue here)
+ *     size_t size;           // Current packet count
+ *     size_t max_size;       // Maximum allowed packets (0 = unlimited)
+ *     bool owns_data;        // If true, queue frees packet data
+ *     mutex_t mutex;         // Thread safety
+ *
+ *     // Statistics
+ *     uint64_t packets_enqueued;
+ *     uint64_t packets_dequeued;
+ *     uint64_t packets_dropped;  // Dropped due to max_size limit
+ *     size_t peak_size;          // Peak queue depth
+ * } packet_queue_t;
+ * @endcode
+ *
+ * @subsection packet_queue_ownership Data Ownership
+ *
+ * Queues can either **copy** packet data or **reference** it:
+ *
+ * **Deep copy mode** (`owns_data = true`):
+ * - Queue allocates its own copy of packet data
+ * - Safe for producer to free original data immediately
+ * - Queue frees data when packet dequeued
+ * - Higher memory usage, but safer
+ *
+ * **Reference mode** (`owns_data = false`):
+ * - Queue stores pointer to original data
+ * - Producer must keep data alive until dequeued
+ * - Consumer responsible for freeing data
+ * - Lower memory usage, but requires careful lifetime management
+ *
+ * @code{.c}
+ * // Deep copy mode (safer)
+ * packet_queue_t *q = packet_queue_create(100, true);
+ *
+ * char *data = SAFE_MALLOC(1024, char*);
+ * strcpy(data, "Hello");
+ * packet_queue_enqueue(q, &header, data);
+ * SAFE_FREE(data);  // Can free immediately!
+ *
+ * // Reference mode (lower overhead)
+ * packet_queue_t *q = packet_queue_create(100, false);
+ *
+ * char *data = SAFE_MALLOC(1024, char*);
+ * strcpy(data, "Hello");
+ * packet_queue_enqueue(q, &header, data);
+ * // data must stay alive until dequeued!
+ *
+ * packet_header_t hdr;
+ * void *dequeued_data;
+ * if (packet_queue_dequeue(q, &hdr, &dequeued_data)) {
+ *     process_packet(dequeued_data);
+ *     SAFE_FREE(dequeued_data);  // Consumer frees
+ * }
+ * @endcode
+ *
+ * @section packet_queue_api API Reference
+ *
+ * @subsection packet_queue_creation Creation/Destruction
+ *
+ * @code{.c}
+ * // Create packet queue
+ * packet_queue_t *queue = packet_queue_create(100, true);
+ * if (!queue) {
+ *     log_error("Failed to create packet queue");
+ *     return NULL;
+ * }
+ *
+ * // Use queue...
+ *
+ * // Destroy queue
+ * packet_queue_destroy(queue);
+ * @endcode
+ *
+ * @section packet_queue_integration Integration
+ *
+ * **Buffer Pool Integration**:
+ * - Packet queues use buffer pool for efficient memory allocation
+ * - Node pool pre-allocates packet nodes
+ * - Data pool pre-allocates packet data buffers
+ * - Reduces malloc/free overhead in high-throughput scenarios
+ *
+ * **Network Integration**:
+ * - Each client has a dedicated packet queue
+ * - Network receive thread enqueues packets
+ * - Client processing thread dequeues packets
+ * - Decouples network I/O from packet processing
+ *
+ * @section packet_queue_performance Performance
+ *
+ * **Throughput**:
+ * - Enqueue: ~1M packets/second (mutex-protected)
+ * - Dequeue: ~1M packets/second (mutex-protected)
+ * - Memory overhead: ~40 bytes per queued packet
+ *
+ * **Scalability**:
+ * - Per-client queues eliminate contention between clients
+ * - Statistics tracking has minimal overhead
+ * - Buffer pool reduces allocation overhead
+ *
+ * @section packet_queue_thread_safety Thread Safety
+ *
+ * **Mutex Protection**:
+ * - All queue operations are mutex-protected
+ * - Thread-safe for concurrent enqueue/dequeue
+ * - No lock-free optimizations (simplicity over speed)
+ *
+ * **Concurrent Access**:
+ * - Multiple threads can enqueue concurrently
+ * - Only one thread should dequeue (per queue)
+ * - Statistics are updated atomically
+ *
+ * @see packet_queue.h
+ * @see buffer_pool.h
+ */

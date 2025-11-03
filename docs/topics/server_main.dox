@@ -1,0 +1,374 @@
+/**
+ * @page topic_server_main Server Main Entry Point
+ * @ingroup server_main
+ *
+ * @section server_main_overview Overview
+ *
+ * The server main entry point orchestrates the complete server lifecycle, from
+ * initialization and socket binding through the multi-client connection accept loop
+ * to graceful shutdown. It serves as the conductor of the ascii-chat server's modular
+ * architecture, coordinating all subsystems while maintaining real-time performance
+ * and thread safety guarantees.
+ *
+ * **Implementation**: src/server/main.c, src/server/main.h
+ *
+ * **Key Responsibilities**:
+ * - Platform initialization (Windows/POSIX compatibility)
+ * - Logging and configuration setup
+ * - Network socket creation and binding (IPv4 and IPv6)
+ * - Global resource initialization (audio mixer, buffer pools, crypto)
+ * - Background thread management (statistics logging)
+ * - Main connection accept loop with client lifecycle management
+ * - Signal handling for graceful shutdown (SIGINT, SIGTERM)
+ * - Resource cleanup and thread coordination
+ *
+ * @section server_main_architecture Architecture
+ *
+ * @subsection server_main_initialization Initialization Sequence
+ *
+ * The server initialization follows a strict dependency order:
+ *
+ * @code{.c}
+ * // 1. Parse command-line options
+ * options_init(argc, argv, MODE_SERVER);
+ *
+ * // 2. Initialize platform (Windows: Winsock, timer resolution)
+ * platform_init();
+ *
+ * // 3. Initialize logging system
+ * asciichat_shared_init("server.log");
+ *
+ * // 4. Initialize crypto system (keys, whitelist)
+ * init_server_crypto();
+ *
+ * // 5. Initialize lock debugging system
+ * lock_debug_init();
+ *
+ * // 6. Initialize statistics system
+ * stats_init();
+ *
+ * // 7. Setup signal handlers (SIGINT, SIGTERM, SIGUSR1)
+ * platform_signal(SIGINT, sigint_handler);
+ * platform_signal(SIGTERM, sigterm_handler);
+ *
+ * // 8. Initialize synchronization primitives
+ * rwlock_init(&g_client_manager_rwlock);
+ * mutex_init(&g_client_manager.mutex);
+ *
+ * // 9. Initialize client hash table for O(1) lookups
+ * g_client_manager.client_hashtable = hashtable_create();
+ *
+ * // 10. Initialize audio mixer for multi-client audio
+ * g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
+ *
+ * // 11. Bind listening sockets (IPv4 and/or IPv6)
+ * listenfd = bind_and_listen(ipv4_address, AF_INET, port);
+ * listenfd6 = bind_and_listen(ipv6_address, AF_INET6, port);
+ *
+ * // 12. Start statistics logger thread
+ * ascii_thread_create(&g_stats_logger_thread, stats_logger_thread, NULL);
+ * @endcode
+ *
+ * @subsection server_main_connection_loop Main Connection Loop
+ *
+ * The main connection loop orchestrates the complete multi-client lifecycle:
+ *
+ * @code{.c}
+ * while (!atomic_load(&g_server_should_exit)) {
+ *   // PHASE 1: Cleanup disconnected clients (free slots)
+ *   // Collect cleanup tasks under read lock
+ *   rwlock_rdlock(&g_client_manager_rwlock);
+ *   for (int i = 0; i < MAX_CLIENTS; i++) {
+ *     if (!client->active && client->receive_thread_initialized) {
+ *       cleanup_tasks[cleanup_count++] = client->client_id;
+ *     }
+ *   }
+ *   rwlock_rdunlock(&g_client_manager_rwlock);
+ *
+ *   // Process cleanup without holding lock
+ *   for (int i = 0; i < cleanup_count; i++) {
+ *     ascii_thread_join(&cleanup_tasks[i].receive_thread, NULL);
+ *     remove_client(cleanup_tasks[i].client_id);
+ *   }
+ *
+ *   // PHASE 2: Accept new connection (with timeout)
+ *   fd_set read_fds;
+ *   socket_select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+ *
+ *   socket_t client_sock = accept_with_timeout(accept_listenfd,
+ *                                              &client_addr, &client_len, 0);
+ *
+ *   // PHASE 3: Add client (spawns all per-client threads)
+ *   int client_id = add_client(client_sock, client_ip, client_port);
+ *   if (client_id < 0) {
+ *     socket_close(client_sock);  // Reject connection
+ *     continue;
+ *   }
+ *
+ *   // Connection accepted - client threads now running
+ *   log_info("Client %d connected, total clients: %d", client_id,
+ *            g_client_manager.client_count);
+ * }
+ * @endcode
+ *
+ * **Critical Loop Design**:
+ * - Cleanup MUST happen before accept() to free connection slots
+ * - Timeout on accept() allows checking shutdown flag
+ * - Dual-stack support (IPv4 and IPv6 sockets checked simultaneously)
+ * - Graceful degradation if add_client() fails
+ *
+ * @section server_main_signal_handling Signal Handling
+ *
+ * @subsection server_main_sigint SIGINT Handler (Ctrl+C)
+ *
+ * The SIGINT handler implements signal-safe shutdown:
+ *
+ * @code{.c}
+ * static void sigint_handler(int sigint) {
+ *   (void)sigint;
+ *   static int sigint_count = 0;
+ *   sigint_count++;
+ *
+ *   // Second Ctrl+C forces immediate exit
+ *   if (sigint_count > 1) {
+ *     _exit(1);
+ *   }
+ *
+ *   // First Ctrl+C: Graceful shutdown
+ *   atomic_store(&g_server_should_exit, true);
+ *   printf("SIGINT received - shutting down server...\n");
+ *
+ *   // Close listening sockets to interrupt accept()
+ *   socket_close(atomic_load(&listenfd));
+ *   socket_close(atomic_load(&listenfd6));
+ *
+ *   // NOTE: Do NOT access client data structures in signal handler
+ *   // Signal handlers cannot safely use mutexes or complex data structures
+ *   // Main thread will handle client cleanup when it detects g_server_should_exit
+ * }
+ * @endcode
+ *
+ * **Signal Safety Strategy**:
+ * - Only async-signal-safe functions (atomic operations, write())
+ * - No mutex operations (can deadlock if main thread holds mutex)
+ * - No malloc/free (heap corruption risk if interrupted)
+ * - Minimal work - set flag and close sockets to interrupt blocking I/O
+ *
+ * **Why Socket Closure**:
+ * Without closing sockets, threads remain blocked in:
+ * - `accept()` in main loop (waiting for new connections)
+ * - `recv()` in client receive threads (waiting for packets)
+ * - `send()` in client send threads (if network is slow)
+ *
+ * Closing sockets causes these functions to return with errors, allowing threads
+ * to check `g_server_should_exit` and exit gracefully.
+ *
+ * @subsection server_main_sigterm SIGTERM Handler
+ *
+ * SIGTERM is sent by process managers (systemd, Docker) for graceful termination:
+ *
+ * @code{.c}
+ * static void sigterm_handler(int sigterm) {
+ *   (void)sigterm;
+ *   atomic_store(&g_server_should_exit, true);
+ *   printf("SIGTERM received - shutting down server...\n");
+ *   // Return immediately - main thread handles cleanup
+ * }
+ * @endcode
+ *
+ * **Conservative Approach**:
+ * - More conservative than SIGINT handler
+ * - Relies on main thread for complete cleanup
+ * - Focuses on minimal flag setting
+ * - Prevents partial states during automated shutdown
+ *
+ * @subsection server_main_sigusr1 SIGUSR1 Handler (Lock Debugging)
+ *
+ * SIGUSR1 triggers lock debugging output for troubleshooting deadlocks:
+ *
+ * @code{.c}
+ * static void sigusr1_handler(int sigusr1) {
+ *   (void)sigusr1;
+ *   lock_debug_trigger_print();  // Signal-safe lock state dump
+ * }
+ * @endcode
+ *
+ * This allows external triggering of lock debugging without modifying running server.
+ *
+ * @section server_main_shutdown Shutdown Sequence
+ *
+ * The shutdown sequence ensures complete resource cleanup:
+ *
+ * @code{.c}
+ * // 1. Signal all threads to exit
+ * atomic_store(&g_server_should_exit, true);
+ *
+ * // 2. Wake up blocked threads
+ * static_cond_broadcast(&g_shutdown_cond);
+ *
+ * // 3. Close all client sockets (unblock receive threads)
+ * rwlock_rdlock(&g_client_manager_rwlock);
+ * for (int i = 0; i < MAX_CLIENTS; i++) {
+ *   if (client->socket != INVALID_SOCKET_VALUE) {
+ *     socket_close(client->socket);  // Interrupts blocking recv()
+ *   }
+ * }
+ * rwlock_rdunlock(&g_client_manager_rwlock);
+ *
+ * // 4. Wait for stats logger thread
+ * ascii_thread_join(&g_stats_logger_thread, NULL);
+ *
+ * // 5. Remove all clients (joins all worker threads)
+ * for (int i = 0; i < client_count; i++) {
+ *   remove_client(clients_to_remove[i]);
+ * }
+ *
+ * // 6. Cleanup resources in reverse dependency order
+ * hashtable_destroy(g_client_manager.client_hashtable);
+ * mixer_destroy(g_audio_mixer);
+ * rwlock_destroy(&g_client_manager_rwlock);
+ * mutex_destroy(&g_client_manager.mutex);
+ * stats_cleanup();
+ * lock_debug_cleanup();
+ * socket_close(listenfd);
+ * socket_close(listenfd6);
+ * simd_caches_destroy_all();
+ * data_buffer_pool_cleanup_global();
+ * log_destroy();
+ * @endcode
+ *
+ * **Cleanup Guarantees**:
+ * - All threads joined before resource cleanup
+ * - Resources cleaned in reverse dependency order
+ * - No memory leaks or hanging processes
+ * - Deterministic shutdown regardless of thread state
+ *
+ * @section server_main_dual_stack IPv4 and IPv6 Dual-Stack Support
+ *
+ * The server supports simultaneous binding to both IPv4 and IPv6:
+ *
+ * **Binding Logic**:
+ * - Default: Bind to both 127.0.0.1 (IPv4) and ::1 (IPv6) for localhost dual-stack
+ * - If only `--address` set: Bind only to that IPv4 address
+ * - If only `--address6` set: Bind only to that IPv6 address
+ * - If both set: Bind to both addresses (full dual-stack)
+ *
+ * **Connection Acceptance**:
+ * - Uses `select()` to check both sockets simultaneously
+ * - Accepts connections from either socket as they arrive
+ * - Handles IPv4-mapped IPv6 addresses transparently
+ * - Logs connection source (IPv4, IPv6, or IPv4-mapped)
+ *
+ * @section server_main_integration Integration Points
+ *
+ * **With Client Management (client.c)**:
+ * - Calls `add_client()` for each new connection
+ * - Calls `remove_client()` for disconnections
+ * - Accesses `g_client_manager` with proper locking
+ *
+ * **With Protocol Handler (protocol.c)**:
+ * - Not directly called (used by client receive threads)
+ * - Provides global state (`g_server_should_exit`)
+ *
+ * **With Stream Generation (stream.c)**:
+ * - Not directly called (used by render threads)
+ * - Render threads call stream functions independently
+ *
+ * **With Render Threads (render.c)**:
+ * - Threads created via `create_client_render_threads()` in client.c
+ * - Not directly managed by main.c
+ *
+ * **With Statistics (stats.c)**:
+ * - Starts `stats_logger_thread_func()` in background
+ * - Waits for stats thread during shutdown
+ *
+ * **With Cryptography (crypto.c)**:
+ * - Calls `init_server_crypto()` during initialization
+ * - Manages global server crypto state (`g_server_private_key`, `g_client_whitelist`)
+ *
+ * @section server_main_modular_design Modular Design Philosophy
+ *
+ * The original server.c became unmaintainable at 2408+ lines, making it:
+ * - Too large for LLM context windows (limited AI-assisted development)
+ * - Difficult for humans to navigate and understand
+ * - Slow to compile and modify
+ * - Hard to isolate bugs and add new features
+ *
+ * The modular design enables:
+ * - **Faster development cycles**: Smaller compilation units compile faster
+ * - **Better IDE support**: Jump-to-definition, IntelliSense work reliably
+ * - **Easier testing**: Isolated components can be unit tested
+ * - **Future extensibility**: New protocols, renderers, optimizations can be added cleanly
+ *
+ * **Module Boundaries**:
+ * - `main.c`: Server lifecycle, signal handling, connection acceptance
+ * - `client.c`: Per-client lifecycle, threading, state management
+ * - `protocol.c`: Packet processing, protocol state, media storage
+ * - `stream.c`: Video mixing, ASCII conversion, frame generation
+ * - `render.c`: Render thread management, rate limiting, timing
+ * - `stats.c`: Performance monitoring, resource tracking, reporting
+ * - `crypto.c`: Cryptographic handshake, key exchange, session encryption
+ *
+ * @section server_main_error_handling Error Handling
+ *
+ * **Initialization Errors**:
+ * - FATAL macros used for unrecoverable errors (crypto, network, platform)
+ * - Detailed error context via asciichat_errno system
+ * - Clean resource cleanup before exit
+ *
+ * **Connection Errors**:
+ * - Graceful degradation: Failed client addition doesn't crash server
+ * - Socket closure on failure: Prevents resource leaks
+ * - Error logging: Detailed diagnostics for troubleshooting
+ *
+ * **Runtime Errors**:
+ * - Connection loss handled by client management (not fatal)
+ * - Thread failures logged but don't crash server
+ * - Resource allocation failures handled gracefully
+ *
+ * @section server_main_concurrency Concurrency Model
+ *
+ * **Main Thread Responsibilities**:
+ * - Accept new connections (blocking with timeout)
+ * - Manage client lifecycle (add/remove)
+ * - Handle disconnection cleanup
+ * - Coordinate graceful shutdown
+ *
+ * **Background Thread Responsibilities**:
+ * - Per-client receive: Handle incoming packets (client.c)
+ * - Per-client send: Manage outgoing packets (client.c)
+ * - Per-client video render: Generate ASCII frames (render.c)
+ * - Per-client audio render: Mix audio streams (render.c)
+ * - Stats logger: Monitor server performance (stats.c)
+ *
+ * **Thread Safety**:
+ * - Global RWLock (`g_client_manager_rwlock`) protects client array
+ * - Atomic variables (`g_server_should_exit`) for shutdown coordination
+ * - Snapshot pattern for client state access
+ * - Lock ordering protocol prevents deadlocks
+ *
+ * See <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a> for complete details.
+ *
+ * @section server_main_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always check `g_server_should_exit` in loops
+ * - Use proper lock ordering (RWLock → per-client mutex)
+ * - Use snapshot pattern for client state access
+ * - Close sockets in signal handlers to interrupt blocking I/O
+ * - Wait for all threads during shutdown
+ *
+ * **DON'T**:
+ * - Don't access client data structures in signal handlers
+ * - Don't acquire locks in signal handlers (can deadlock)
+ * - Don't call malloc/free in signal handlers (heap corruption risk)
+ * - Don't skip client cleanup (memory leaks)
+ * - Don't ignore lock ordering protocol (deadlock risk)
+ *
+ * @see src/server/main.c
+ * @see src/server/main.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_client "Client Management"
+ * @see <a href="../notes/CONCURRENCY.md">Concurrency Documentation</a>
+ */
+

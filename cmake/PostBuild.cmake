@@ -14,7 +14,7 @@
 #
 # Tools required:
 #   - Linux: strip, objcopy, bash (for path removal)
-#   - Windows: strip, PowerShell (for path removal)
+#   - Windows: strip, bash (for path removal - Git Bash or WSL)
 #   - macOS: strip
 # =============================================================================
 
@@ -56,20 +56,19 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                     COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols and debug info from ascii-chat"
                 )
-                # Then remove embedded file paths from binary
-                find_program(POWERSHELL_EXECUTABLE pwsh powershell)
-                if(POWERSHELL_EXECUTABLE)
+                # Then remove embedded file paths from binary using bash script (much faster than PowerShell)
+                find_program(BASH_EXECUTABLE bash)
+                if(BASH_EXECUTABLE)
                     # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND
                     add_custom_command(TARGET ascii-chat POST_BUILD
-                        COMMAND ${POWERSHELL_EXECUTABLE} -ExecutionPolicy Bypass -File
-                            "${CMAKE_SOURCE_DIR}/cmake/remove_paths.ps1"
+                        COMMAND ${BASH_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
                             "$<TARGET_FILE:ascii-chat>"
                             "${CMAKE_SOURCE_DIR}"
                             "${CMAKE_BINARY_DIR}"
-                        COMMENT "Removing embedded file paths from ascii-chat"
+                        COMMENT "Removing embedded file paths from ascii-chat binary"
                     )
                 else()
-                    message(WARNING "PowerShell not found - cannot remove embedded paths from binary")
+                    message(WARNING "Bash not found - cannot remove embedded paths from binary")
                 endif()
             else()
                 # macOS: strip symbols

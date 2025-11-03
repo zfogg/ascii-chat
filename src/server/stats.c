@@ -1,13 +1,7 @@
 /**
- * @file stats.c
- * @brief Server Performance Monitoring and Statistics Collection
- *
- * This module implements comprehensive performance monitoring for the ASCII-Chat
- * server, providing real-time insights into system health, resource utilization,
- * and client behavior. It was extracted from the monolithic server.c to provide
- * centralized statistics management.
- *
- * CORE RESPONSIBILITIES:
+ * @file server/stats.c
+ * @ingroup server_stats
+ * @brief 📊 Server performance monitoring: resource utilization tracking, client metrics, and health reporting
  * ======================
  * 1. Continuous monitoring of server performance metrics
  * 2. Per-client statistics collection and reporting
@@ -175,18 +169,35 @@ server_stats_t g_stats = {0};
 mutex_t g_stats_mutex = {0};
 
 /**
+ * @brief Flag tracking whether stats mutex has been initialized
+ *
+ * Used to prevent attempting to lock an uninitialized mutex in debug builds
+ * where stats_init() may not be called (it's guarded by #ifdef NDEBUG).
+ *
+ * @ingroup server_stats
+ */
+static bool g_stats_mutex_initialized = false;
+
+/**
  * @brief Initialize the stats mutex
  * @return 0 on success, -1 on failure
  */
 int stats_init(void) {
-  return mutex_init(&g_stats_mutex);
+  int ret = mutex_init(&g_stats_mutex);
+  if (ret == 0) {
+    g_stats_mutex_initialized = true;
+  }
+  return ret;
 }
 
 /**
  * @brief Cleanup the stats mutex
  */
 void stats_cleanup(void) {
-  mutex_destroy(&g_stats_mutex);
+  if (g_stats_mutex_initialized) {
+    mutex_destroy(&g_stats_mutex);
+    g_stats_mutex_initialized = false;
+  }
 }
 
 /**
@@ -329,13 +340,16 @@ void *stats_logger_thread(void *arg) {
     }
 
     // Check exit condition before proceeding with statistics logging
+    // CRITICAL: Check multiple times to avoid accessing freed resources during shutdown
     if (atomic_load(&g_server_should_exit)) {
       break;
     }
 
     // Collect all statistics data first
     char lock_debug_info[512] = {0};
-    if (lock_debug_is_initialized()) {
+    // CRITICAL: Check exit condition again before accessing lock_debug
+    // lock_debug might be destroyed during shutdown
+    if (!atomic_load(&g_server_should_exit) && lock_debug_is_initialized()) {
       uint64_t total_acquired = 0, total_released = 0;
       uint32_t currently_held = 0;
       lock_debug_get_stats(&total_acquired, &total_released, &currently_held);
@@ -351,6 +365,12 @@ void *stats_logger_thread(void *arg) {
     }
 
     // Collect client statistics
+    // CRITICAL: Check exit condition again before accessing rwlock
+    // rwlock might be destroyed during shutdown
+    if (atomic_load(&g_server_should_exit)) {
+      break;
+    }
+
     rwlock_rdlock(&g_client_manager_rwlock);
     int active_clients = 0;
     int clients_with_audio = 0;
@@ -410,7 +430,6 @@ void *stats_logger_thread(void *arg) {
     rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Single comprehensive log statement
-
     if (client_details_len > 0) {
       log_info("Stats: Clients: %d, Audio: %d, Video: %d\n%s", active_clients, clients_with_audio, clients_with_video,
                client_details);
@@ -500,6 +519,12 @@ void update_server_stats(void) {
  * @see update_server_stats() For statistics update implementation
  */
 void log_server_stats(void) {
+  // Check if stats mutex is initialized before trying to lock it
+  // In debug builds, stats_init() may not be called (it's guarded by #ifdef NDEBUG)
+  // Skip logging if mutex is not initialized to avoid crashing
+  if (!g_stats_mutex_initialized) {
+    return; // Mutex not initialized, skip logging
+  }
   mutex_lock(&g_stats_mutex);
   log_info("Server Statistics:\n"
            "  frames_captured=%llu\n"

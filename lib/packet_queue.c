@@ -1,3 +1,9 @@
+/**
+ * @file packet_queue.c
+ * @ingroup packet_queue
+ * @brief 📬 Thread-safe packet queue with per-client isolation and memory pooling
+ */
+
 #include "packet_queue.h"
 #include "buffer_pool.h"
 #include "common.h"

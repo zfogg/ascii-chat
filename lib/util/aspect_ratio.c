@@ -1,3 +1,9 @@
+/**
+ * @file util/aspect_ratio.c
+ * @ingroup util
+ * @brief 📐 Terminal cell aspect ratio calculations for accurate image dimension scaling
+ */
+
 #include "common.h"
 #include "util/math.h"
 

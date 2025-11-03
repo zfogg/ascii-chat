@@ -1,3 +1,10 @@
+
+/**
+ * @file network/network.c
+ * @ingroup network
+ * @brief 🌐 Cross-platform socket I/O with timeout management and connection handling
+ */
+
 #include "network.h"
 #include "common.h"
 #include "asciichat_errno.h"

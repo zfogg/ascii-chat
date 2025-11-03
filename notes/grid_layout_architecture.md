@@ -1,4 +1,4 @@
-# ASCII-Chat Adaptive Grid Layout Architecture
+# ascii-chat Adaptive Grid Layout Architecture
 
 ## Overview
 A pragmatic grid layout system that dynamically adapts to terminal dimensions and client count, maximizing space usage while maintaining readability. The system uses direct calculation with multi-factor scoring to handle N clients gracefully, similar to Zoom/Hangouts gallery view.

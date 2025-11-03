@@ -1,3 +1,9 @@
+/**
+ * @file util/format.c
+ * @ingroup util
+ * @brief 📊 Byte size formatting utilities for human-readable output (B, KB, MB, GB, TB)
+ */
+
 #include "format.h"
 #include "platform/system.h"
 

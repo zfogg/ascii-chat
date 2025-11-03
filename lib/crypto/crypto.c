@@ -1,3 +1,9 @@
+/**
+ * @file crypto/crypto.c
+ * @ingroup crypto
+ * @brief 🔐 Core cryptography: encryption/decryption, key exchange, authentication, and session rekeying with BearSSL
+ */
+
 #include "crypto.h"
 #include "common.h"
 #include "asciichat_errno.h"

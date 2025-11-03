@@ -1,3 +1,9 @@
+/**
+ * @file crypto/keys/validation.c
+ * @ingroup keys
+ * @brief ✅ Cryptographic key validation: fingerprint computation, format checking, and trust verification
+ */
+
 #include "validation.h"
 #include "common.h"
 #include "asciichat_errno.h"

@@ -146,8 +146,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         # Get the source directory and normalize paths for Windows
         get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 
-        # NOTE: On Windows, this doesn't work. We have a certain powershell
-        # script "cmake/remove_paths.ps1" that edits strings with paths from the
+        # NOTE: On Windows, this doesn't work. We use the bash script
+        # "cmake/remove_paths.sh" (via Git Bash or WSL) that edits strings with paths from the
         # builder's machine in them found in the release binary for after it's
         # built.
         add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")

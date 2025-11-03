@@ -1,3 +1,10 @@
+/**
+ * @file image2ascii/simd/sve.c
+ * @ingroup image2ascii
+ * @brief 🚀 ARM SVE (Scalable Vector Extension) ASCII rendering with variable-length vectors
+ */
+
+#if SIMD_SUPPORT_SVE
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +12,6 @@
 #include "sve.h"
 #include "common.h"
 
-#if SIMD_SUPPORT_SVE
 #include <arm_sve.h>
 
 //=============================================================================

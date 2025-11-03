@@ -1,3 +1,8 @@
+/**
+ * @file server/stream.h
+ * @ingroup server_stream
+ * @brief Multi-client video mixing and ASCII frame generation
+ */
 #pragma once
 
 #include "client.h"

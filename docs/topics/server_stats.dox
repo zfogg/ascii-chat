@@ -1,0 +1,358 @@
+/**
+ * @page topic_server_stats Statistics and Monitoring
+ * @ingroup server_stats
+ *
+ * @section server_stats_overview Overview
+ *
+ * The statistics and monitoring module provides comprehensive performance tracking
+ * and operational visibility for the ascii-chat server. It operates as a background
+ * thread that collects metrics from all system components every 30 seconds and
+ * generates detailed reports for troubleshooting, performance optimization, and
+ * operational monitoring. This module embodies the operational excellence philosophy
+ * of ascii-chat, providing the visibility needed to maintain high-performance
+ * multi-client video chat.
+ *
+ * **Implementation**: src/server/stats.c, src/server/stats.h
+ *
+ * **Key Responsibilities**:
+ * - Continuous monitoring of server performance metrics
+ * - Per-client statistics collection and reporting
+ * - Buffer pool utilization tracking
+ * - Packet queue performance analysis
+ * - Hash table efficiency monitoring
+ * - Periodic statistics logging (every 30 seconds)
+ * - Operational visibility for administrators
+ *
+ * @section server_stats_architecture Monitoring Architecture
+ *
+ * @subsection server_stats_thread Statistics Collection Thread
+ *
+ * The statistics module runs as a dedicated background thread:
+ *
+ * @code{.c}
+ * static void *stats_logger_thread_func(void *arg) {
+ *   (void)arg;
+ *
+ *   // Main monitoring loop
+ *   while (!atomic_load(&g_server_should_exit)) {
+ *     // Sleep for reporting interval (30 seconds)
+ *     for (int i = 0; i < 300 && !atomic_load(&g_server_should_exit); i++) {
+ *       platform_sleep_usec(100000);  // 0.1 second intervals
+ *     }
+ *
+ *     if (atomic_load(&g_server_should_exit)) {
+ *       break;
+ *     }
+ *
+ *     // Collect statistics from all system components
+ *     collect_and_log_statistics();
+ *   }
+ *
+ *   return NULL;
+ * }
+ * @endcode
+ *
+ * **Thread Characteristics**:
+ * - Non-intrusive background monitoring
+ * - 30-second reporting intervals (configurable)
+ * - Interruptible sleep for responsive shutdown
+ * - Thread-safe data collection from all system components
+ * - Minimal impact on operational performance
+ *
+ * @subsection server_stats_collection Statistics Collection Methodology
+ *
+ * **Non-Intrusive Monitoring**:
+ * - Uses reader locks to avoid blocking operational threads
+ * - Takes atomic snapshots of volatile data
+ * - Minimal impact on render thread performance
+ * - Safe concurrent access to client data
+ *
+ * **Statistics Atomicity**:
+ * - Global statistics protected by dedicated mutex
+ * - Consistent reporting even during concurrent updates
+ * - Thread-safe access to shared counters
+ * - Snapshot pattern for volatile data
+ *
+ * @section server_stats_metrics Performance Metrics Collected
+ *
+ * @subsection server_stats_client Client Management Metrics
+ *
+ * **Client Statistics**:
+ * - Total active clients
+ * - Clients with audio capabilities
+ * - Clients with video capabilities
+ * - Connection duration and activity patterns
+ * - Per-client connection metadata
+ *
+ * **Collection Process**:
+ * @code{.c}
+ * // Collect client statistics
+ * rwlock_rdlock(&g_client_manager_rwlock);
+ *
+ * int active_clients = 0;
+ * int clients_with_audio = 0;
+ * int clients_with_video = 0;
+ *
+ * for (int i = 0; i < MAX_CLIENTS; i++) {
+ *   client_info_t *client = &g_client_manager.clients[i];
+ *   if (atomic_load(&client->active)) {
+ *     active_clients++;
+ *     if (client->audio_enabled) clients_with_audio++;
+ *     if (client->video_enabled) clients_with_video++;
+ *   }
+ * }
+ *
+ * rwlock_rdunlock(&g_client_manager_rwlock);
+ * @endcode
+ *
+ * @subsection server_stats_buffer_pool Buffer Pool Performance
+ *
+ * **Buffer Pool Metrics**:
+ * - Global buffer pool utilization
+ * - Allocation/deallocation rates
+ * - Peak usage patterns
+ * - Memory efficiency metrics
+ * - Buffer pool fragmentation indicators
+ *
+ * **Collection Process**:
+ * @code{.c}
+ * // Collect buffer pool statistics
+ * buffer_pool_stats_t stats = buffer_pool_get_statistics();
+ *
+ * log_info("Buffer Pool: %zu allocated, %zu peak, %zu total, %.2f%% utilization",
+ *          stats.allocated, stats.peak, stats.total,
+ *          (stats.allocated * 100.0) / stats.total);
+ * @endcode
+ *
+ * @subsection server_stats_packet_queue Packet Queue Performance
+ *
+ * **Packet Queue Statistics**:
+ * - Per-client queue depths
+ * - Enqueue/dequeue rates
+ * - Packet drop rates under load
+ * - Queue overflow incidents
+ * - Queue utilization patterns
+ *
+ * **Collection Process**:
+ * @code{.c}
+ * // Collect packet queue statistics
+ * rwlock_rdlock(&g_client_manager_rwlock);
+ *
+ * for (int i = 0; i < MAX_CLIENTS; i++) {
+ *   client_info_t *client = &g_client_manager.clients[i];
+ *   if (atomic_load(&client->active)) {
+ *     packet_queue_stats_t video_stats = 
+ *       packet_queue_get_statistics(client->video_packet_queue);
+ *     packet_queue_stats_t audio_stats = 
+ *       packet_queue_get_statistics(client->audio_packet_queue);
+ *
+ *     log_info("Client %u queues: video=%zu/%zu, audio=%zu/%zu",
+ *              client->client_id, video_stats.size, video_stats.capacity,
+ *              audio_stats.size, audio_stats.capacity);
+ *   }
+ * }
+ *
+ * rwlock_rdunlock(&g_client_manager_rwlock);
+ * @endcode
+ *
+ * @subsection server_stats_hash_table Hash Table Efficiency
+ *
+ * **Hash Table Metrics**:
+ * - Client lookup performance
+ * - Hash collision rates
+ * - Load factor monitoring
+ * - Access pattern analysis
+ * - Table efficiency indicators
+ *
+ * **Collection Process**:
+ * @code{.c}
+ * // Collect hash table statistics
+ * hashtable_stats_t stats = hashtable_get_statistics(g_client_manager.client_hashtable);
+ *
+ * log_info("Hash Table: %zu entries, %zu capacity, %.2f%% load factor, %zu collisions",
+ *          stats.entries, stats.capacity, stats.load_factor * 100.0, stats.collisions);
+ * @endcode
+ *
+ * @subsection server_stats_frame_processing Frame Processing Metrics
+ *
+ * **Frame Processing Statistics**:
+ * - Total frames captured from clients
+ * - Total frames sent to clients
+ * - Frame drop rate under load
+ * - Blank frame count (no video sources)
+ * - Frame generation performance
+ *
+ * **Collection Process**:
+ * @code{.c}
+ * // Collect frame processing statistics
+ * frame_stats_t stats = get_frame_processing_statistics();
+ *
+ * log_info("Frames: %zu captured, %zu sent, %zu dropped, %.2f%% drop rate",
+ *          stats.captured, stats.sent, stats.dropped,
+ *          (stats.dropped * 100.0) / stats.captured);
+ * @endcode
+ *
+ * @section server_stats_reporting Statistics Reporting
+ *
+ * @subsection server_stats_report_format Report Format
+ *
+ * Statistics are logged in a structured format:
+ *
+ * @code{.bash}
+ * [STATS] Client Count: 3 active (2 audio, 3 video)
+ * [STATS] Buffer Pool: 45/100 allocated (45.00% utilization), 52 peak
+ * [STATS] Packet Queues: avg_depth=12.3, max_depth=25, drops=3
+ * [STATS] Hash Table: 3 entries, 16 capacity (18.75% load), 0 collisions
+ * [STATS] Frames: 5420 captured, 5340 sent, 80 dropped (1.48% drop rate)
+ * @endcode
+ *
+ * **Report Sections**:
+ * 1. Client Statistics: Active client count and capabilities
+ * 2. Buffer Pool: Memory utilization and efficiency
+ * 3. Packet Queues: Queue performance and overflow incidents
+ * 4. Hash Table: Lookup performance and efficiency
+ * 5. Frame Processing: Frame generation and delivery metrics
+ *
+ * @subsection server_stats_reporting_interval Reporting Interval
+ *
+ * **Default Interval**: 30 seconds
+ * - Configurable via compile-time constants
+ * - Interruptible sleep for responsive shutdown
+ * - Adaptive to system load (may skip reports under heavy load)
+ *
+ * **Interval Tuning**:
+ * - Longer intervals: Lower overhead, less granular visibility
+ * - Shorter intervals: Higher overhead, more granular visibility
+ * - Default 30 seconds: Balanced visibility and overhead
+ *
+ * @section server_stats_integration Integration with Other Modules
+ *
+ * @subsection server_stats_client Integration with client.c
+ *
+ * **Monitored From**:
+ * - Client lifecycle statistics
+ * - Per-client connection metadata
+ * - Client activity patterns
+ * - Thread status and health
+ *
+ * **Provides To**:
+ * - Client count and activity reports
+ * - Connection duration metrics
+ * - Client capability statistics
+ *
+ * @subsection server_stats_buffer_pool Integration with Buffer Pool
+ *
+ * **Monitored From**:
+ * - Global buffer pool utilization
+ * - Allocation/deallocation rates
+ * - Memory efficiency metrics
+ *
+ * **Provides To**:
+ * - Memory usage reports
+ * - Buffer pool performance analysis
+ * - Memory leak detection indicators
+ *
+ * @subsection server_stats_packet_queue Integration with Packet Queues
+ *
+ * **Monitored From**:
+ * - Per-client packet queue depths
+ * - Enqueue/dequeue rates
+ * - Overflow incidents
+ *
+ * **Provides To**:
+ * - Queue performance reports
+ * - Overflow detection
+ * - Network congestion indicators
+ *
+ * @subsection server_stats_hash_table Integration with Hash Table
+ *
+ * **Monitored From**:
+ * - Hash table efficiency
+ * - Lookup performance
+ * - Collision statistics
+ *
+ * **Provides To**:
+ * - Hash table performance reports
+ * - Lookup efficiency metrics
+ * - Table optimization indicators
+ *
+ * @section server_stats_operational_visibility Operational Visibility
+ *
+ * @subsection server_stats_troubleshooting Troubleshooting Support
+ *
+ * **Performance Bottleneck Identification**:
+ * - Buffer pool utilization identifies memory pressure
+ * - Packet queue depths identify network congestion
+ * - Frame drop rates identify processing bottlenecks
+ * - Hash table collisions identify lookup inefficiency
+ *
+ * **System Health Monitoring**:
+ * - Client count trends indicate connection stability
+ * - Buffer pool peak usage identifies memory leaks
+ * - Packet queue overflow identifies network issues
+ * - Frame processing rates identify performance degradation
+ *
+ * @subsection server_stats_debugging Debugging Support
+ *
+ * **Extensive Debug Logging**:
+ * - Thread startup/shutdown tracking
+ * - Statistics collection reliability
+ * - Shutdown detection timing
+ * - Sleep/wake cycle behavior
+ *
+ * **Performance Profiling**:
+ * - Statistics collection overhead tracking
+ * - Thread execution time monitoring
+ * - Resource utilization trends
+ *
+ * @section server_stats_error_handling Error Handling
+ *
+ * **Statistics Collection Errors**:
+ * - Graceful degradation: Missing statistics logged but don't crash
+ * - Thread-safe error handling: Errors in one collection don't affect others
+ * - Detailed error logging: Troubleshooting information preserved
+ *
+ * **Thread Errors**:
+ * - Thread join timeouts: Logged but don't block shutdown
+ * - Statistics collection failures: Logged but server continues
+ * - Resource cleanup errors: Handled gracefully
+ *
+ * @section server_stats_performance Performance Impact
+ *
+ * **Minimal Overhead**:
+ * - Non-intrusive background monitoring
+ * - Reader locks only (no blocking writes)
+ * - Atomic snapshots (no long-held locks)
+ * - Minimal CPU usage (<1% typical)
+ *
+ * **Responsive Shutdown**:
+ * - Interruptible sleep operations
+ * - Frequent shutdown flag checks
+ * - Clean thread exit on shutdown
+ * - No blocking operations
+ *
+ * @section server_stats_best_practices Best Practices
+ *
+ * **DO**:
+ * - Use reader locks for statistics collection
+ * - Take atomic snapshots of volatile data
+ * - Check shutdown flags frequently
+ * - Log detailed statistics for troubleshooting
+ * - Handle errors gracefully
+ *
+ * **DON'T**:
+ * - Don't use write locks for statistics collection
+ * - Don't hold locks during statistics collection
+ * - Don't block on statistics collection
+ * - Don't skip error handling
+ * - Don't ignore shutdown flags
+ *
+ * @see src/server/stats.c
+ * @see src/server/stats.h
+ * @see @ref topic_server "Server Overview"
+ * @see @ref topic_server_main "Server Main Entry Point"
+ * @see topic_buffer_pool
+ * @see topic_packet_queue
+ * @see topic_hashtable
+ */
+

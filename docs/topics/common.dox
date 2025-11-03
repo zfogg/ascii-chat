@@ -1,0 +1,532 @@
+/**
+ * @page topic_common Common Definitions
+ * @ingroup common
+ *
+ * Core error handling, memory management, logging, and type definitions shared throughout
+ * the ascii-chat application.
+ *
+ * @section common_overview Overview
+ *
+ * The common module (lib/common.h, lib/common.c) provides fundamental infrastructure:
+ * - Comprehensive error handling with context tracking
+ * - Memory allocation with leak detection in debug builds
+ * - Rate-limited logging for high-frequency code paths
+ * - Platform-independent type definitions
+ * - Shared constants and macros
+ *
+ * All application code should use these common definitions to ensure consistency,
+ * proper error handling, and debuggability.
+ *
+ * @section common_errors Error Handling System
+ *
+ * ascii-chat uses a comprehensive error system (lib/asciichat_errno.h) that provides:
+ * - Specific error codes for different failure modes
+ * - Contextual error messages with file/line/function information
+ * - System error integration (errno on POSIX, GetLastError on Windows)
+ * - Thread-local error state (thread-safe)
+ * - Stack traces in debug builds
+ *
+ * @subsection common_error_codes Error Code Enumeration
+ *
+ * @code{.c}
+ * typedef enum {
+ *     ASCIICHAT_OK = 0,                 // Success
+ *
+ *     // Generic errors
+ *     ERROR_INVALID_PARAM,               // Invalid parameter passed
+ *     ERROR_MEMORY,                      // Memory allocation failed
+ *     ERROR_NOT_FOUND,                   // Resource not found
+ *     ERROR_ALREADY_EXISTS,              // Resource already exists
+ *     ERROR_TIMEOUT,                     // Operation timed out
+ *     ERROR_BUSY,                        // Resource busy
+ *     ERROR_NOT_SUPPORTED,               // Operation not supported
+ *
+ *     // Network errors (10-29)
+ *     ERROR_NETWORK_SOCKET = 10,         // Socket creation failed
+ *     ERROR_NETWORK_BIND,                // Socket bind failed
+ *     ERROR_NETWORK_LISTEN,              // Socket listen failed
+ *     ERROR_NETWORK_ACCEPT,              // Socket accept failed
+ *     ERROR_NETWORK_CONNECT,             // Socket connect failed
+ *     ERROR_NETWORK_SEND,                // Send failed
+ *     ERROR_NETWORK_RECV,                // Receive failed
+ *     ERROR_NETWORK_CLOSED,              // Connection closed by peer
+ *     ERROR_NETWORK_TIMEOUT,             // Network timeout
+ *     ERROR_NETWORK_PROTOCOL,            // Protocol error
+ *
+ *     // Crypto errors (30-49)
+ *     ERROR_CRYPTO_INIT = 30,            // Crypto initialization failed
+ *     ERROR_CRYPTO_KEYGEN,               // Key generation failed
+ *     ERROR_CRYPTO_ENCRYPT,              // Encryption failed
+ *     ERROR_CRYPTO_DECRYPT,              // Decryption failed
+ *     ERROR_CRYPTO_MAC_VERIFY,           // MAC verification failed
+ *     ERROR_CRYPTO_SIGNATURE,            // Signature verification failed
+ *     ERROR_CRYPTO_HANDSHAKE,            // Handshake failed
+ *     ERROR_CRYPTO_KEY_LOAD,             // Key loading failed
+ *     ERROR_CRYPTO_KNOWN_HOSTS,          // Known hosts verification failed
+ *
+ *     // Config errors (50-59)
+ *     ERROR_CONFIG = 50,                 // Configuration error
+ *     ERROR_CONFIG_PARSE,                // Config file parse error
+ *     ERROR_CONFIG_INVALID,              // Invalid configuration value
+ *
+ *     // Audio/Video errors (60-79)
+ *     ERROR_AUDIO_INIT = 60,             // Audio init failed
+ *     ERROR_AUDIO_START,                 // Audio start failed
+ *     ERROR_VIDEO_INIT = 70,             // Video init failed
+ *     ERROR_VIDEO_START,                 // Video start failed
+ *     ERROR_WEBCAM_INIT,                 // Webcam init failed
+ *     ERROR_WEBCAM_CAPTURE,              // Webcam capture failed
+ *
+ *     // Thread errors (80-89)
+ *     ERROR_THREAD_CREATE = 80,          // Thread creation failed
+ *     ERROR_THREAD_JOIN,                 // Thread join failed
+ *     ERROR_MUTEX_INIT,                  // Mutex initialization failed
+ *     ERROR_MUTEX_LOCK,                  // Mutex lock failed
+ *
+ * } asciichat_error_t;
+ * @endcode
+ *
+ * @subsection common_error_context Error Context
+ *
+ * Each error includes rich contextual information:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     asciichat_error_t error_code;       // Error code enum value
+ *     int system_errno;                    // System errno (POSIX) or GetLastError (Windows)
+ *     char context_message[256];           // Formatted error message with user context
+ *     char file[64];                       // Source file where error occurred
+ *     int line;                            // Line number
+ *     char function[64];                   // Function name
+ *     uint64_t timestamp;                  // Timestamp (microseconds since epoch)
+ * } asciichat_error_context_t;
+ * @endcode
+ *
+ * @subsection common_error_macros Error Handling Macros
+ *
+ * **SET_ERRNO**: Set error with custom message
+ * @code{.c}
+ * asciichat_error_t open_file(const char *path) {
+ *     if (!path) {
+ *         return SET_ERRNO(ERROR_INVALID_PARAM, "File path is NULL");
+ *     }
+ *
+ *     int fd = open(path, O_RDONLY);
+ *     if (fd < 0) {
+ *         return SET_ERRNO_SYS(ERROR_NOT_FOUND, "Failed to open file: %s", path);
+ *     }
+ *
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * **SET_ERRNO_SYS**: Set error with system errno
+ * @code{.c}
+ * asciichat_error_t create_socket(void) {
+ *     socket_t sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+ *     if (sockfd == INVALID_SOCKET_VALUE) {
+ *         return SET_ERRNO_SYS(ERROR_NETWORK_SOCKET,
+ *                               "socket() failed (errno=%d)", errno);
+ *     }
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * **HAS_ERRNO**: Check if error occurred
+ * @code{.c}
+ * asciichat_error_context_t err_ctx;
+ * asciichat_error_t result = risky_operation();
+ * if (HAS_ERRNO(&err_ctx)) {
+ *     log_error("Operation failed: %s (code=%d, file=%s:%d)",
+ *               err_ctx.context_message, err_ctx.error_code,
+ *               err_ctx.file, err_ctx.line);
+ *     return result;
+ * }
+ * @endcode
+ *
+ * **PRINT_ERRNO_CONTEXT**: Debug print error details
+ * @code{.c}
+ * if (HAS_ERRNO(&err_ctx)) {
+ *     PRINT_ERRNO_CONTEXT(&err_ctx);  // Only in debug builds
+ *     // Output:
+ *     // Error: ERROR_NETWORK_CONNECT (code=13)
+ *     // Message: Failed to connect to server (Connection refused)
+ *     // Location: src/client.c:245 in connect_to_server()
+ *     // System errno: 111 (Connection refused)
+ *     // Timestamp: 1234567890123456 µs
+ * }
+ * @endcode
+ *
+ * **CLEAR_ERRNO**: Clear error state
+ * @code{.c}
+ * CLEAR_ERRNO();  // Resets thread-local error state
+ * @endcode
+ *
+ * **GET_ERRNO**: Get current error code
+ * @code{.c}
+ * asciichat_error_t current_error = GET_ERRNO();
+ * if (current_error != ASCIICHAT_OK) {
+ *     // Handle error
+ * }
+ * @endcode
+ *
+ * @section common_memory Memory Management
+ *
+ * Custom memory allocation macros with automatic leak detection in debug builds:
+ *
+ * @subsection common_memory_macros Memory Allocation Macros
+ *
+ * **SAFE_MALLOC**: Allocate memory with leak tracking
+ * @code{.c}
+ * // Syntax: SAFE_MALLOC(size, cast_type)
+ * uint8_t *buffer = SAFE_MALLOC(1024, uint8_t*);
+ * if (!buffer) {
+ *     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate 1024 bytes");
+ * }
+ *
+ * // In debug builds, records:
+ * // - Allocation address
+ * // - Size (1024 bytes)
+ * // - File (src/client.c)
+ * // - Line (123)
+ * // - Thread ID
+ * @endcode
+ *
+ * **SAFE_CALLOC**: Allocate zeroed memory
+ * @code{.c}
+ * // Allocate array of 100 integers, initialized to 0
+ * int *array = SAFE_CALLOC(100, sizeof(int), int*);
+ * if (!array) {
+ *     return ERROR_MEMORY;
+ * }
+ * @endcode
+ *
+ * **SAFE_REALLOC**: Reallocate memory
+ * @code{.c}
+ * // Grow buffer from 1024 to 2048 bytes
+ * uint8_t *new_buffer = SAFE_REALLOC(buffer, 2048, uint8_t*);
+ * if (!new_buffer) {
+ *     // Original buffer still valid
+ *     SAFE_FREE(buffer);
+ *     return ERROR_MEMORY;
+ * }
+ * buffer = new_buffer;
+ * @endcode
+ *
+ * **SAFE_FREE**: Free memory and set to NULL
+ * @code{.c}
+ * SAFE_FREE(buffer);  // Frees and sets buffer = NULL
+ * // In debug builds, removes from leak tracker
+ * @endcode
+ *
+ * @subsection common_memory_debug Debug Memory Tracking
+ *
+ * When CMAKE_BUILD_TYPE=Debug and DEBUG_MEMORY is defined:
+ *
+ * **Leak Detection**:
+ * - All SAFE_MALLOC/CALLOC/REALLOC calls are recorded
+ * - Each allocation stores: address, size, file, line, timestamp
+ * - On program exit, reports any allocations not freed
+ * - Example output:
+ * @code
+ * Memory leak detected:
+ *   Address: 0x7f1234567890
+ *   Size: 1024 bytes
+ *   Allocated at: src/client.c:123 in process_frame()
+ *   Thread: 0x7f123456
+ * Total leaked: 1024 bytes in 1 allocation
+ * @endcode
+ *
+ * **Allocation Logging**:
+ * @code{.c}
+ * #define DEBUG_MEMORY 1
+ *
+ * // Every allocation is logged:
+ * // [MEMORY] malloc(1024) = 0x7f1234567890 at src/client.c:123
+ * // [MEMORY] free(0x7f1234567890) at src/client.c:456
+ * @endcode
+ *
+ * **Double-Free Detection**:
+ * - Freeing already-freed memory triggers assertion
+ * - Prevents use-after-free bugs
+ *
+ * **Memory Reports**:
+ * @code{.c}
+ * void asciichat_common_print_memory_stats(void);
+ * // Prints:
+ * // Current allocations: 5 (total 4096 bytes)
+ * // Peak allocations: 10 (total 8192 bytes)
+ * // Total malloc calls: 100
+ * // Total free calls: 95
+ * @endcode
+ *
+ * @section common_logging Logging System
+ *
+ * Multi-level logging with rate limiting for high-frequency code:
+ *
+ * @subsection common_logging_levels Log Levels
+ *
+ * @code{.c}
+ * typedef enum {
+ *     LOG_DEBUG = 0,   // Verbose debug information
+ *     LOG_INFO = 1,    // Informational messages
+ *     LOG_WARN = 2,    // Warnings (non-fatal issues)
+ *     LOG_ERROR = 3,   // Errors (operation failed)
+ *     LOG_FATAL = 4,   // Fatal errors (program will exit)
+ * } log_level_t;
+ * @endcode
+ *
+ * **Control via environment**:
+ * @code{.bash}
+ * export LOG_LEVEL=0  # DEBUG (all messages)
+ * export LOG_LEVEL=1  # INFO and above
+ * export LOG_LEVEL=2  # WARN and above
+ * export LOG_LEVEL=3  # ERROR and above
+ * export LOG_LEVEL=4  # FATAL only
+ * @endcode
+ *
+ * @subsection common_logging_standard Standard Logging Macros
+ *
+ * @code{.c}
+ * log_debug("Frame captured: %dx%d", width, height);
+ * log_info("Client connected from %s:%d", ip, port);
+ * log_warn("Audio buffer underrun detected");
+ * log_error("Failed to send packet: %s", strerror(errno));
+ * log_fatal("Critical error, terminating");  // Exits program
+ * @endcode
+ *
+ * Output format:
+ * @code
+ * [2025-01-15 14:32:45.123] [DEBUG] Frame captured: 1920x1080
+ * [2025-01-15 14:32:45.456] [INFO] Client connected from 192.168.1.100:12345
+ * [2025-01-15 14:32:45.789] [WARN] Audio buffer underrun detected
+ * [2025-01-15 14:32:46.012] [ERROR] Failed to send packet: Broken pipe
+ * [2025-01-15 14:32:46.345] [FATAL] Critical error, terminating
+ * @endcode
+ *
+ * @subsection common_logging_ratelimit Rate-Limited Logging
+ *
+ * For high-frequency code paths (e.g., video/audio processing at 60+ FPS):
+ *
+ * @code{.c}
+ * // Log at most once per second (1000000 µs)
+ * log_debug_every(1000000, "Processing frame %d", frame_count);
+ *
+ * // Log at most once per 5 seconds
+ * log_info_every(5000000, "Client status: %d connected", num_clients);
+ *
+ * // Log at most once per 10 seconds
+ * log_warn_every(10000000, "High CPU usage: %.1f%%", cpu_usage);
+ * @endcode
+ *
+ * **Implementation**:
+ * - Uses thread-local timestamp tracking
+ * - First call always logs
+ * - Subsequent calls within interval are suppressed
+ * - Different log sites have independent rate limiting
+ *
+ * **Example** (video processing loop at 60 FPS):
+ * @code{.c}
+ * while (running) {
+ *     capture_frame();
+ *
+ *     // Without rate limiting: 60 log messages per second
+ *     // log_debug("Frame captured");
+ *
+ *     // With rate limiting: 1 log message per second
+ *     log_debug_every(1000000, "Frame captured (count=%d)", frame_count);
+ *
+ *     frame_count++;
+ * }
+ * @endcode
+ *
+ * @subsection common_logging_config Logging Configuration
+ *
+ * @code{.c}
+ * // Initialize logging system
+ * asciichat_error_t log_init(const char *log_file, log_level_t level);
+ *
+ * // Change log level at runtime
+ * void log_set_level(log_level_t level);
+ *
+ * // Enable/disable color output
+ * void log_set_color(bool enable);
+ *
+ * // Cleanup logging
+ * void log_destroy(void);
+ * @endcode
+ *
+ * Usage:
+ * @code{.c}
+ * // Log to file and stderr
+ * log_init("/tmp/ascii-chat.log", LOG_INFO);
+ *
+ * // Later: increase verbosity
+ * log_set_level(LOG_DEBUG);
+ *
+ * // Cleanup
+ * log_destroy();
+ * @endcode
+ *
+ * @section common_types Common Type Definitions
+ *
+ * **Fixed-width integers** (platform-independent):
+ * @code{.c}
+ * #include <stdint.h>
+ * int8_t, uint8_t      // 8-bit signed/unsigned
+ * int16_t, uint16_t    // 16-bit signed/unsigned
+ * int32_t, uint32_t    // 32-bit signed/unsigned
+ * int64_t, uint64_t    // 64-bit signed/unsigned
+ * size_t               // Unsigned size type (32 or 64-bit)
+ * ssize_t              // Signed size type
+ * @endcode
+ *
+ * **Boolean** (C99 style):
+ * @code{.c}
+ * #include <stdbool.h>
+ * bool, true, false
+ * @endcode
+ *
+ * **NULL pointer**:
+ * @code{.c}
+ * #define NULL ((void*)0)
+ * @endcode
+ *
+ * @section common_constants Common Constants
+ *
+ * @code{.c}
+ * // Buffer sizes
+ * #define MAX_PACKET_SIZE 65536         // Maximum network packet payload
+ * #define MAX_PATH_LEN 4096             // Maximum path length
+ * #define MAX_CLIENTS 9                 // Maximum simultaneous clients
+ *
+ * // Network
+ * #define DEFAULT_PORT 27224            // Default server port
+ * #define PACKET_MAGIC 0xDEADBEEF      // Packet header magic number
+ *
+ * // Video
+ * #define DEFAULT_WIDTH 80              // Default terminal width
+ * #define DEFAULT_HEIGHT 24             // Default terminal height
+ * #define DEFAULT_FPS 30                // Default framerate
+ *
+ * // Audio
+ * #define SAMPLE_RATE 48000             // Audio sample rate (Hz)
+ * #define AUDIO_CHANNELS 1              // Mono audio
+ * #define FRAMES_PER_BUFFER 512         // PortAudio buffer size
+ * @endcode
+ *
+ * @section common_usage Usage Examples
+ *
+ * @subsection common_usage_error Comprehensive Error Handling
+ * @code{.c}
+ * asciichat_error_t initialize_system(const char *config_file) {
+ *     asciichat_error_t err;
+ *
+ *     // Load configuration
+ *     options_t opts;
+ *     err = config_load(&opts, config_file);
+ *     if (err != ASCIICHAT_OK) {
+ *         asciichat_error_context_t ctx;
+ *         if (HAS_ERRNO(&ctx)) {
+ *             log_error("Config load failed: %s", ctx.context_message);
+ *             PRINT_ERRNO_CONTEXT(&ctx);
+ *         }
+ *         return err;
+ *     }
+ *
+ *     // Initialize crypto
+ *     crypto_context_t crypto_ctx;
+ *     err = crypto_init(&crypto_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         options_destroy(&opts);
+ *         return err;
+ *     }
+ *
+ *     // Initialize audio
+ *     audio_context_t audio_ctx;
+ *     err = audio_init(&audio_ctx);
+ *     if (err != ASCIICHAT_OK) {
+ *         crypto_destroy(&crypto_ctx);
+ *         options_destroy(&opts);
+ *         return err;
+ *     }
+ *
+ *     return ASCIICHAT_OK;
+ * }
+ * @endcode
+ *
+ * @subsection common_usage_memory Memory Management with Leak Detection
+ * @code{.c}
+ * void process_data(void) {
+ *     // Allocate buffers
+ *     uint8_t *buffer1 = SAFE_MALLOC(1024, uint8_t*);
+ *     uint8_t *buffer2 = SAFE_CALLOC(512, sizeof(uint8_t), uint8_t*);
+ *
+ *     if (!buffer1 || !buffer2) {
+ *         log_error("Memory allocation failed");
+ *         SAFE_FREE(buffer1);
+ *         SAFE_FREE(buffer2);
+ *         return;
+ *     }
+ *
+ *     // Process data...
+ *
+ *     // Grow buffer if needed
+ *     if (need_more_space) {
+ *         uint8_t *new_buffer = SAFE_REALLOC(buffer1, 2048, uint8_t*);
+ *         if (!new_buffer) {
+ *             log_error("Reallocation failed");
+ *             SAFE_FREE(buffer1);
+ *             SAFE_FREE(buffer2);
+ *             return;
+ *         }
+ *         buffer1 = new_buffer;
+ *     }
+ *
+ *     // Cleanup (SAFE_FREE sets pointers to NULL)
+ *     SAFE_FREE(buffer1);
+ *     SAFE_FREE(buffer2);
+ * }
+ *
+ * // At program exit (debug builds):
+ * // If any SAFE_MALLOC'd memory wasn't freed, it's reported:
+ * // Memory leak detected:
+ * //   Address: 0x7f1234567890
+ * //   Size: 1024 bytes
+ * //   Allocated at: src/client.c:123
+ * @endcode
+ *
+ * @subsection common_usage_logging Rate-Limited Logging in Video Loop
+ * @code{.c}
+ * void video_processing_loop(void) {
+ *     uint64_t frame_count = 0;
+ *     uint64_t dropped_frames = 0;
+ *
+ *     while (running) {
+ *         // Capture frame (60 FPS)
+ *         uint8_t *frame_data;
+ *         asciichat_error_t err = webcam_capture_frame(webcam, &frame_data, &frame_len);
+ *
+ *         if (err != ASCIICHAT_OK) {
+ *             dropped_frames++;
+ *             // Log at most once per second to avoid spam
+ *             log_warn_every(1000000, "Frame capture failed (dropped %lu frames)",
+ *                             dropped_frames);
+ *             continue;
+ *         }
+ *
+ *         // Process frame...
+ *
+ *         frame_count++;
+ *
+ *         // Log progress every 5 seconds
+ *         log_info_every(5000000, "Processed %lu frames (%.1f FPS)",
+ *                         frame_count, calculate_fps());
+ *     }
+ * }
+ * @endcode
+ *
+ * @see common.h
+ * @see asciichat_errno.h
+ * @see logging.h
+ */

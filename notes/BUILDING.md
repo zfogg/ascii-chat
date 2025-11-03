@@ -1,6 +1,6 @@
-# Building ASCII-Chat
+# Building ascii-chat
 
-Complete guide to building ASCII-Chat on Linux, macOS, and Windows.
+Complete guide to building ascii-chat on Linux, macOS, and Windows.
 
 ## Quick Start
 
@@ -16,7 +16,7 @@ cmake --build build
 
 ## Build Types
 
-ASCII-Chat supports multiple build configurations via `CMAKE_BUILD_TYPE`:
+ascii-chat supports multiple build configurations via `CMAKE_BUILD_TYPE`:
 
 | Build Type | Optimization | Debug Symbols | Sanitizers | Use Case |
 |------------|-------------|---------------|------------|----------|

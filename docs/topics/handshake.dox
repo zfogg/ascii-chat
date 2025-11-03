@@ -1,0 +1,586 @@
+/**
+ * @defgroup handshake Handshake Module
+ * @ingroup module_crypto
+ * @brief Cryptographic handshake implementation for key exchange and authentication
+ */
+
+/**
+ * @page topic_handshake Crypto Handshake README
+ * @ingroup handshake
+ *
+ * The cryptographic handshake protocol establishes secure, authenticated connections
+ * between ascii-chat clients and servers. The handshake implements mutual authentication,
+ * key exchange, and session establishment with perfect forward secrecy.
+ *
+ * @section handshake_overview Overview
+ *
+ * The handshake protocol manages the complete security setup for each connection:
+ * 1. **Capabilities negotiation**: Client and server agree on cryptographic algorithms
+ * 2. **Parameters negotiation**: Algorithm-specific sizes and configuration
+ * 3. **Key exchange**: Diffie-Hellman key exchange establishes shared secret
+ * 4. **Authentication**: Password or client key authentication proves identity
+ * 5. **Session establishment**: Encryption keys derived and encryption enabled
+ *
+ * **Implementation**: lib/crypto/handshake.c/h
+ *
+ * **Key Features**:
+ * - Perfect forward secrecy via ephemeral X25519 key exchange
+ * - Mutual authentication (client and server both prove identity)
+ * - Password-based or SSH key-based authentication
+ * - Server identity verification via known_hosts (TOFU)
+ * - Client whitelisting for access control
+ * - Session rekeying for long-lived connections
+ * - State machine with strict validation
+ *
+ * @section handshake_sequence Handshake Sequence
+ *
+ * The complete handshake follows this sequence:
+ *
+ * @subsection handshake_phase0 Phase 0: Algorithm Negotiation
+ *
+ * **Client → Server: CRYPTO_CAPABILITIES**
+ * - Client advertises supported algorithms (key exchange, authentication, cipher)
+ * - Client specifies preferred algorithms
+ * - Client indicates whether server verification is required
+ *
+ * **Server → Client: CRYPTO_PARAMETERS**
+ * - Server selects algorithms based on client capabilities
+ * - Server provides algorithm-specific sizes (key sizes, signature sizes, etc.)
+ * - Server indicates whether verification is enabled
+ *
+ * **Packet Formats**:
+ * @code{.c}
+ * typedef struct {
+ *     uint16_t supported_kex_algorithms;    // Supported KEX algorithms (bitmask)
+ *     uint16_t supported_auth_algorithms;   // Supported auth algorithms (bitmask)
+ *     uint16_t supported_cipher_algorithms; // Supported cipher algorithms (bitmask)
+ *     uint8_t requires_verification;        // Whether server verification required
+ *     uint8_t preferred_kex;                // Preferred KEX algorithm
+ *     uint8_t preferred_auth;               // Preferred auth algorithm
+ *     uint8_t preferred_cipher;             // Preferred cipher algorithm
+ * } crypto_capabilities_packet_t;
+ *
+ * typedef struct {
+ *     uint8_t selected_kex;          // Which KEX algorithm (KEX_ALGO_*)
+ *     uint8_t selected_auth;         // Which auth algorithm (AUTH_ALGO_*)
+ *     uint8_t selected_cipher;       // Which cipher algorithm (CIPHER_ALGO_*)
+ *     uint8_t verification_enabled;  // Whether server verification enabled
+ *     uint16_t kex_public_key_size;  // e.g., 32 for X25519
+ *     uint16_t auth_public_key_size; // e.g., 32 for Ed25519
+ *     uint16_t signature_size;       // e.g., 64 for Ed25519
+ *     uint16_t shared_secret_size;   // e.g., 32 for X25519
+ *     uint8_t nonce_size;            // e.g., 24 for XSalsa20
+ *     uint8_t mac_size;              // e.g., 16 for Poly1305
+ *     uint8_t hmac_size;             // e.g., 32 for HMAC-SHA256
+ * } crypto_parameters_packet_t;
+ * @endcode
+ *
+ * **Current Algorithms**:
+ * - Key Exchange: X25519 (Curve25519 Diffie-Hellman)
+ * - Authentication: Ed25519 (Edwards-curve signatures)
+ * - Cipher: XSalsa20-Poly1305 (authenticated encryption)
+ *
+ * **Future-Proofing**: The negotiation protocol supports post-quantum algorithms.
+ * Future versions can add Kyber (key exchange), Dilithium (signatures), and
+ * hybrid modes (classical + post-quantum) without breaking compatibility.
+ *
+ * @subsection handshake_phase1 Phase 1: Key Exchange Init (Server → Client)
+ *
+ * **Server sends: CRYPTO_KEY_EXCHANGE_INIT**
+ *
+ * The server sends its ephemeral public key and optionally its identity key:
+ *
+ * **Simple Format** (no server identity key):
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t ephemeral_public_key[32];  // X25519 DH public key
+ * } key_exchange_init_simple_t;
+ * @endcode
+ *
+ * **Authenticated Format** (server has identity key):
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t ephemeral_public_key[32];  // X25519 DH public key
+ *     uint8_t identity_public_key[32];   // Ed25519 identity key
+ *     uint8_t signature[64];              // Ed25519 signature of ephemeral key
+ * } key_exchange_init_authenticated_t;
+ * @endcode
+ *
+ * **Client Processing**:
+ * 1. Extract ephemeral public key (always present)
+ * 2. If identity key present:
+ *    - Verify signature proves server has identity private key
+ *    - Check against `--server-key` if provided (must match)
+ *    - Check against `known_hosts` file (TOFU verification)
+ *    - If first connection: prompt user to save to known_hosts
+ * 3. Generate client's ephemeral keypair
+ * 4. Compute shared secret: `shared_secret = X25519(client_private, server_public)`
+ *
+ * **Security Note**: The signature cryptographically binds the ephemeral key to
+ * the identity key, preventing man-in-the-middle attacks. An attacker cannot
+ * replace the ephemeral key without also possessing the identity private key.
+ *
+ * @subsection handshake_phase2 Phase 2: Key Exchange Response (Client → Server)
+ *
+ * **Client sends: CRYPTO_KEY_EXCHANGE_RESP**
+ *
+ * The client responds with its ephemeral public key and optionally its identity key:
+ *
+ * **Simple Format** (no client identity key):
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t ephemeral_public_key[32];  // X25519 DH public key
+ * } key_exchange_response_simple_t;
+ * @endcode
+ *
+ * **Authenticated Format** (client has identity key):
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t ephemeral_public_key[32];  // X25519 DH public key
+ *     uint8_t identity_public_key[32];   // Ed25519 identity key
+ *     uint8_t signature[64];              // Ed25519 signature of ephemeral key
+ * } key_exchange_response_authenticated_t;
+ * @endcode
+ *
+ * **Server Processing**:
+ * 1. Extract client's ephemeral public key (always present)
+ * 2. If identity key present:
+ *    - Verify signature proves client has identity private key
+ *    - Check against `--client-keys` whitelist if provided
+ *    - Reject if whitelist enabled and client not found
+ * 3. Compute shared secret: `shared_secret = X25519(server_private, client_public)`
+ *
+ * **At this point both sides have**:
+ * - ✅ Ephemeral Diffie-Hellman shared secret (32 bytes)
+ * - ✅ Peer's identity public key (if authenticated mode)
+ * - ✅ Verified peer's identity (signature verification)
+ *
+ * @subsection handshake_phase3 Phase 3: Authentication Challenge (Server → Client)
+ *
+ * **Server sends: CRYPTO_AUTH_CHALLENGE**
+ *
+ * The server sends an authentication challenge with flags indicating requirements:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t nonce[32];  // Random challenge nonce
+ *     uint8_t flags;      // Authentication requirement flags
+ * } auth_challenge_packet_t;
+ * @endcode
+ *
+ * **Flags**:
+ * - `AUTH_REQUIRE_PASSWORD (0x01)`: Server requires password authentication
+ * - `AUTH_REQUIRE_CLIENT_KEY (0x02)`: Server requires client key authentication (whitelist)
+ *
+ * **Client Processing**:
+ * 1. Extract challenge nonce (32 random bytes)
+ * 2. Determine authentication method based on flags and client configuration
+ * 3. Prepare authentication response:
+ *    - **Password mode**: `HMAC(password_key, nonce || shared_secret)`
+ *      where `password_key = Argon2id(password, salt)` (derived from password)
+ *    - **Client key mode**: `HMAC(shared_secret, nonce)` if no password,
+ *      otherwise still use password_key for HMAC
+ * 4. Bind authentication to shared secret to prevent replay attacks
+ *
+ * **Security Note**: Authentication is bound to the DH shared secret. This prevents
+ * an attacker from replaying authentication responses without knowing the shared secret,
+ * even if they intercepted the initial key exchange packets.
+ *
+ * @subsection handshake_phase4 Phase 4: Authentication Response (Client → Server)
+ *
+ * **Client sends: CRYPTO_AUTH_RESPONSE**
+ *
+ * The client sends an HMAC proving knowledge of the password or shared secret:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t hmac[32];  // HMAC-SHA256 of challenge nonce
+ * } auth_response_packet_t;
+ * @endcode
+ *
+ * **Server Processing**:
+ * 1. Extract HMAC from response
+ * 2. Recompute expected HMAC using same method as client:
+ *    - **Password mode**: `HMAC(password_key, nonce || shared_secret)`
+ *    - **No password**: `HMAC(shared_secret, nonce)`
+ * 3. Constant-time compare with received HMAC
+ * 4. If HMAC matches:
+ *    - If client sent identity key: Verify client is in whitelist
+ *    - Proceed to handshake completion
+ * 5. If HMAC mismatch: Send `CRYPTO_AUTH_FAILED` and terminate handshake
+ *
+ * **HMAC Binding**: The HMAC includes both the challenge nonce AND the shared secret.
+ * This ensures that:
+ * - Authentication cannot be replayed by an attacker who doesn't know the shared secret
+ * - Even if an attacker intercepts the challenge, they cannot forge a response
+ * - The authentication is cryptographically bound to this specific session
+ *
+ * @subsection handshake_phase5 Phase 5: Server Authentication (Optional - Server → Client)
+ *
+ * **Server sends: CRYPTO_SERVER_AUTH_RESP**
+ *
+ * If client requested server verification, server proves knowledge of shared secret:
+ *
+ * @code{.c}
+ * typedef struct {
+ *     uint8_t hmac[32];  // HMAC-SHA256 of client's challenge nonce || shared_secret
+ * } server_auth_response_packet_t;
+ * @endcode
+ *
+ * **Client Processing**:
+ * 1. Extract server's HMAC
+ * 2. Recompute expected HMAC: `HMAC(shared_secret, client_challenge_nonce || shared_secret)`
+ * 3. Constant-time compare with received HMAC
+ * 4. If HMAC matches: Server has proven knowledge of shared secret (mutual authentication)
+ * 5. If HMAC mismatch: Reject connection (possible MITM attack)
+ *
+ * **Mutual Authentication**: This phase ensures both parties have proven knowledge of
+ * the shared secret. Combined with the identity key signatures in phase 1/2, this provides
+ * strong mutual authentication: server identity (Ed25519 signature) + shared secret (HMAC).
+ *
+ * @subsection handshake_phase6 Phase 6: Handshake Complete (Server → Client)
+ *
+ * **Server sends: CRYPTO_HANDSHAKE_COMPLETE**
+ *
+ * Empty packet (0 bytes payload) indicating handshake is complete:
+ *
+ * @code{.c}
+ * // Packet type: PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE
+ * // Payload: Empty (0 bytes)
+ * @endcode
+ *
+ * **Both Sides**:
+ * - ✅ Handshake state transitions to `CRYPTO_HANDSHAKE_READY`
+ * - ✅ Session encryption keys derived from shared secret
+ * - ✅ All subsequent packets encrypted with XSalsa20-Poly1305
+ * - ✅ Nonce counters initialized for send/receive directions
+ *
+ * **After Completion**:
+ * - All application packets (video, audio, control) are wrapped in `PACKET_TYPE_ENCRYPTED`
+ * - Handshake packets are NEVER encrypted (they use `packet_is_handshake_type()` check)
+ * - Encryption is automatic via `send_packet_secure()` / `receive_packet_secure()`
+ *
+ * @section handshake_state_machine State Machine
+ *
+ * The handshake follows a strict state machine with validation at each transition:
+ *
+ * **Handshake States**:
+ * @code{.c}
+ * typedef enum {
+ *     CRYPTO_HANDSHAKE_DISABLED = 0,   // No encryption (handshake disabled)
+ *     CRYPTO_HANDSHAKE_INIT,           // Initial state (ready to start handshake)
+ *     CRYPTO_HANDSHAKE_KEY_EXCHANGE,   // DH key exchange in progress
+ *     CRYPTO_HANDSHAKE_AUTHENTICATING, // Authentication challenge/response
+ *     CRYPTO_HANDSHAKE_READY,          // Handshake complete, encryption ready
+ *     CRYPTO_HANDSHAKE_FAILED          // Handshake failed (cannot recover)
+ * } crypto_handshake_state_t;
+ * @endcode
+ *
+ * **State Transitions**:
+ *
+ * ```
+ * DISABLED → INIT (crypto_handshake_init)
+ * INIT → KEY_EXCHANGE (crypto_handshake_server_start / crypto_handshake_client_key_exchange)
+ * KEY_EXCHANGE → AUTHENTICATING (crypto_handshake_server_auth_challenge / crypto_handshake_client_auth_response)
+ * AUTHENTICATING → READY (crypto_handshake_server_complete / crypto_handshake_client_complete)
+ * ANY → FAILED (on error)
+ * ```
+ *
+ * **State Validation**: All handshake functions validate current state before proceeding.
+ * Invalid state transitions return `ERROR_INVALID_STATE`. This prevents:
+ * - Out-of-order packet processing
+ * - Race conditions in concurrent handshakes
+ * - Protocol violations
+ *
+ * @section handshake_authentication Authentication Methods
+ *
+ * @subsection handshake_password Password Authentication
+ *
+ * Password-based authentication uses Argon2id key derivation:
+ *
+ * **Key Derivation**:
+ * @code{.c}
+ * // Server/client both derive password_key from password
+ * uint8_t password_key[32];
+ * uint8_t salt[16] = ARGON2ID_SALT;  // Fixed salt for ascii-chat
+ * 
+ * argon2id_hash_raw(
+ *     ARGON2ID_TIME_COST,    // 3 iterations
+ *     ARGON2ID_MEMORY_COST,  // 64 MB memory
+ *     ARGON2ID_PARALLELISM,  // 4 threads
+ *     password, strlen(password),
+ *     salt, sizeof(salt),
+ *     password_key, 32
+ * );
+ * @endcode
+ *
+ * **Authentication**:
+ * @code{.c}
+ * // Client computes HMAC
+ * uint8_t input[64];
+ * memcpy(input, nonce, 32);              // Challenge nonce
+ * memcpy(input + 32, shared_secret, 32); // DH shared secret
+ * 
+ * uint8_t hmac[32];
+ * crypto_generichash_state state;
+ * crypto_generichash_init(&state, password_key, 32, 32);
+ * crypto_generichash_update(&state, input, 64);
+ * crypto_generichash_final(&state, hmac, 32);
+ * @endcode
+ *
+ * **Security Properties**:
+ * - Password is never transmitted over the network
+ * - Argon2id provides strong key derivation (resistant to GPU/ASIC attacks)
+ * - HMAC binding to shared secret prevents offline password guessing
+ * - Salt prevents rainbow table attacks
+ *
+ * @subsection handshake_client_key Client Key Authentication
+ *
+ * SSH Ed25519 key-based authentication for client identity:
+ *
+ * **Key Exchange**:
+ * - Client sends Ed25519 identity public key in `CRYPTO_KEY_EXCHANGE_RESP`
+ * - Client signs ephemeral X25519 public key with Ed25519 private key
+ * - Server verifies signature and checks client key against whitelist
+ *
+ * **Whitelist Checking**:
+ * @code{.c}
+ * // Server checks client key against whitelist
+ * bool client_authorized = false;
+ * for (size_t i = 0; i < num_whitelisted_clients; i++) {
+ *     if (memcmp(client_identity_key, whitelist[i].public_key, 32) == 0) {
+ *         client_authorized = true;
+ *         break;
+ *     }
+ * }
+ * 
+ * if (!client_authorized && require_client_auth) {
+ *     return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE,
+ *                      "Client not in whitelist");
+ * }
+ * @endcode
+ *
+ * **Security Properties**:
+ * - Client identity proven via Ed25519 signature
+ * - Server maintains whitelist for access control
+ * - Forward secrecy maintained (ephemeral keys still used for encryption)
+ * - Identity key never used for encryption (separation of identity and encryption)
+ *
+ * @subsection handshake_server_identity Server Identity Verification
+ *
+ * Server identity verification via known_hosts (TOFU - Trust On First Use):
+ *
+ * **Known Hosts File**: `~/.config/ascii-chat/known_hosts`
+ * Format: `IP_address public_key timestamp`
+ *
+ * **Verification Flow**:
+ * @code{.c}
+ * // Client receives server identity key in CRYPTO_KEY_EXCHANGE_INIT
+ * if (server_has_identity_key) {
+ *     // Check against --server-key if provided
+ *     if (expected_server_key && 
+ *         memcmp(server_identity_key, expected_server_key, 32) != 0) {
+ *         return ERROR_CRYPTO_HANDSHAKE;  // Key mismatch
+ *     }
+ *     
+ *     // Check known_hosts
+ *     char known_hosts_path[256];
+ *     snprintf(known_hosts_path, sizeof(known_hosts_path),
+ *              "%s/.config/ascii-chat/known_hosts", getenv("HOME"));
+ *     
+ *     if (known_hosts_has_entry(known_hosts_path, server_ip, server_port)) {
+ *         // Known server - verify key matches
+ *         uint8_t saved_key[32];
+ *         known_hosts_get_key(known_hosts_path, server_ip, server_port, saved_key);
+ *         if (memcmp(server_identity_key, saved_key, 32) != 0) {
+ *             return ERROR_CRYPTO_KNOWN_HOSTS;  // Key changed - possible MITM!
+ *         }
+ *     } else {
+ *         // First connection - prompt user
+ *         printf("The authenticity of server %s:%d can't be established.\n"
+ *                "Server's Ed25519 key fingerprint is:\n"
+ *                "%s\n"
+ *                "Are you sure you want to continue connecting? (yes/no) ",
+ *                server_ip, server_port, key_fingerprint);
+ *         // Save to known_hosts if user confirms
+ *         known_hosts_add_entry(known_hosts_path, server_ip, server_port,
+ *                              server_identity_key);
+ *     }
+ * }
+ * @endcode
+ *
+ * **Security Properties**:
+ * - TOFU model: Trust server on first connection, verify on subsequent
+ * - Detects MITM attacks if server key changes between connections
+ * - User confirmation required for first connection
+ * - Manual server key verification via `--server-key` overrides TOFU
+ *
+ * @section handshake_rekeying Session Rekeying
+ *
+ * ascii-chat implements periodic session rekeying to provide forward secrecy
+ * within long-lived connections. After the initial handshake, the system performs
+ * new Diffie-Hellman key exchanges to rotate encryption keys.
+ *
+ * **Rekeying Triggers**:
+ * - **Time threshold**: Rekey after 1 hour of active connection
+ * - **Packet count threshold**: Rekey after 1 million encrypted packets
+ * - Whichever comes first triggers rekeying
+ *
+ * **Rekeying Protocol**:
+ *
+ * The rekeying flow uses a 3-packet handshake similar to the initial key exchange:
+ *
+ * ```
+ * Initiator                         Responder
+ *    |                                  |
+ *    |--- CRYPTO_REKEY_REQUEST -------->|
+ *    |    [new_ephemeral_pk[32]]        |
+ *    |                                  | Generate new ephemeral keypair
+ *    |                                  | Compute temp_shared_secret
+ *    |                                  |
+ *    |<-- CRYPTO_REKEY_RESPONSE --------|
+ *    |    [new_ephemeral_pk[32]]        |
+ *    |                                  |
+ *    | Compute temp_shared_secret       |
+ *    |                                  |
+ *    |--- CRYPTO_REKEY_COMPLETE ------->|
+ *    |    [empty, encrypted with NEW key]|
+ *    |                                  | Decrypt with temp_shared_secret
+ *    |                                  | If successful, commit to new key
+ *    |                                  |
+ *    | ✅ Commit to new key             | ✅ Commit to new key
+ * ```
+ *
+ * **Key Commitment**:
+ * - Old keys remain active until `CRYPTO_REKEY_COMPLETE` is verified
+ * - This ensures no service interruption during rekeying
+ * - `REKEY_COMPLETE` packet is encrypted with NEW shared secret to prove both sides computed the same secret
+ * - Once verified, both sides replace `shared_key` with `temp_shared_key`
+ * - Old keys are securely zeroed from memory
+ *
+ * **Security Benefits**:
+ * - Limits exposure if encryption key is compromised
+ * - Periodic key rotation maintains forward secrecy
+ * - Old session data cannot be decrypted with new keys
+ * - Automatic rekeying requires no user intervention
+ *
+ * @section handshake_security Security Considerations
+ *
+ * @subsection handshake_forward_secrecy Forward Secrecy
+ *
+ * **Perfect Forward Secrecy**:
+ * - Each connection uses unique ephemeral X25519 keypairs
+ * - Shared secret is computed fresh for each session
+ * - Ephemeral keys are destroyed after handshake completion
+ * - Compromising identity keys does NOT reveal past session keys
+ * - Recorded traffic cannot be decrypted even if identity keys are later compromised
+ *
+ * **Why This Matters**:
+ * - Long-term identity keys may be compromised months or years later
+ * - Forward secrecy ensures past conversations remain confidential
+ * - Each session is cryptographically isolated
+ * - Regular rekeying limits exposure for long-lived connections
+ *
+ * @subsection handshake_mitm_protection MITM Protection
+ *
+ * **Identity Key Signatures**:
+ * - Server signs ephemeral key with identity key (if `--key` provided)
+ * - Client signs ephemeral key with identity key (if `--key` provided)
+ * - Signatures prove ownership of identity keys
+ * - Attacker cannot forge signatures without identity private keys
+ *
+ * **Known Hosts Verification**:
+ * - First connection: User confirms server identity (TOFU)
+ * - Subsequent connections: Automatic verification against known_hosts
+ * - Key changes detected (possible MITM attack)
+ * - Manual verification via `--server-key` provides stronger guarantee
+ *
+ * **HMAC Binding**:
+ * - Authentication responses are bound to DH shared secret
+ * - Attacker cannot replay authentication without knowing shared secret
+ * - Prevents authentication bypass even if challenge is intercepted
+ *
+ * @subsection handshake_replay_protection Replay Protection
+ *
+ * **Challenge Nonces**:
+ * - Server generates random 32-byte nonce for each handshake
+ * - Nonce is unique per handshake attempt
+ * - Authentication responses cannot be replayed to different challenges
+ *
+ * **Shared Secret Binding**:
+ * - HMAC includes both nonce AND shared secret
+ * - Even if nonce is reused (shouldn't happen), attacker needs shared secret
+ * - Prevents replay attacks across different sessions
+ *
+ * @subsection handshake_timing_attacks Timing Attack Resistance
+ *
+ * **Constant-Time Operations**:
+ * - HMAC comparison uses constant-time memcmp
+ * - Key comparisons use constant-time sodium_memcmp
+ * - No data-dependent branches in crypto operations
+ * - Resistant to timing side-channel attacks
+ *
+ * @section handshake_usage Usage Examples
+ *
+ * @subsection handshake_server_example Server-Side Handshake
+ *
+ * @code{.c}
+ * // Initialize server handshake context
+ * crypto_handshake_context_t ctx;
+ * asciichat_error_t err = crypto_handshake_init(&ctx, true);  // is_server = true
+ * if (err != ASCIICHAT_OK) {
+ *     return err;
+ * }
+ * 
+ * // Load server identity key (optional)
+ * if (server_key_file) {
+ *     ed25519_key_t server_key;
+ *     err = load_ssh_key(server_key_file, &server_key, NULL);
+ *     if (err == ASCIICHAT_OK) {
+ *         memcpy(ctx.server_public_key, server_key.public_key, 32);
+ *         memcpy(ctx.server_private_key, server_key.private_key, 32);
+ *         sodium_memzero(&server_key, sizeof(server_key));
+ *     }
+ * }
+ * 
+ * // Load client whitelist (optional)
+ * if (client_keys_file) {
+ *     err = load_client_keys(client_keys_file, &ctx.client_whitelist,
+ *                            &ctx.num_whitelisted_clients);
+ *     if (err == ASCIICHAT_OK) {
+ *         ctx.require_client_auth = true;
+ *     }
+ * }
+ * 
+ * // Set password (optional)
+ * if (password) {
+ *     strncpy(ctx.password, password, sizeof(ctx.password) - 1);
+ *     ctx.has_password = true;
+ * }
+ * 
+ * // Wait for client capabilities
+ * packet_envelope_t envelope;
+ * packet_recv_result_t result = receive_packet_secure(client_socket, NULL, false,
+ *                                                       &envelope);
+ * if (result != PACKET_RECV_SUCCESS || 
+ *     envelope.type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
+ *     return ERROR_CRYPTO_HANDSHAKE;
+ * }
+ * 
+ * // Process capabilities and set parameters
+ * crypto_parameters_packet_t params = {
+ *     .selected_kex = KEX_ALGO_X25519,
+ *     .selected_auth = AUTH_ALGO_ED25519,
+ *     .selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305,
+ *     .kex_public_key_size = 32,
+ *     .auth_public_key_size = 32,
+ *     .signature_size = 64,
+ *     .shared_secret_size = 32,
+ *     .nonce_size = 24,
+ *     .mac_size = 16,
+ *     .hmac_size = 32
+ * };
+ * err = crypto_handshake_set_parameters(&ctx, &params);
+ * @endcode
+ *
+ */

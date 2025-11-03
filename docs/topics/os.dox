@@ -1,0 +1,408 @@
+/**
+ * @page topic_os Operating System README
+ * @ingroup os
+ *
+ * Operating system specific functionality including webcam capture, platform detection,
+ * and OS-specific optimizations for Windows, Linux, and macOS.
+ *
+ * @section os_overview Overview
+ *
+ * While the platform abstraction layer (lib/platform/) provides generic cross-platform APIs,
+ * the OS abstraction layer (lib/os/) handles truly platform-specific functionality that
+ * doesn't have a common API across operating systems:
+ *
+ * - **Webcam capture**: Different APIs per platform (AVFoundation, V4L2, Media Foundation)
+ * - **Hardware detection**: CPU capabilities, SIMD instruction sets
+ * - **Performance optimization**: Platform-specific tuning
+ * - **System integration**: Native clipboard, notifications, etc.
+ *
+ * @section os_webcam Webcam Capture
+ *
+ * Each platform has its own webcam API with different capabilities and performance:
+ *
+ * @subsection os_webcam_macos macOS - AVFoundation
+ *
+ * **Implementation**: lib/os/macos/webcam_avfoundation.m (Objective-C)
+ *
+ * **API**: AVFoundation framework (modern, recommended by Apple)
+ * - AVCaptureDevice: Represents physical camera
+ * - AVCaptureSession: Manages capture pipeline
+ * - AVCaptureVideoDataOutput: Provides frame callbacks
+ *
+ * **Capabilities**:
+ * - Supports all built-in and USB webcams
+ * - Hardware-accelerated video processing
+ * - Multiple simultaneous capture sessions
+ * - Automatic format negotiation
+ * - Native RGB/YUV pixel formats
+ *
+ * **Supported Resolutions**:
+ * - 640x480 @ 30 FPS (VGA, default)
+ * - 1280x720 @ 30 FPS (HD)
+ * - 1920x1080 @ 30 FPS (Full HD, if supported)
+ * - 3840x2160 @ 30 FPS (4K, if supported)
+ *
+ * **Pixel Formats**:
+ * - kCVPixelFormatType_24RGB: 24-bit RGB (preferred)
+ * - kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange: NV12 (efficient)
+ * - Automatic conversion handled by Core Video
+ *
+ * **Performance**:
+ * - ~5% CPU for 1920x1080 @ 30 FPS capture
+ * - Zero-copy frame access via CVPixelBuffer
+ * - Hardware-accelerated color space conversion
+ *
+ * **Implementation Example**:
+ * @code{.m}
+ * // Create capture session
+ * AVCaptureSession *session = [[AVCaptureSession alloc] init];
+ * session.sessionPreset = AVCaptureSessionPreset1280x720;
+ *
+ * // Get default camera
+ * AVCaptureDevice *camera = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+ * AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:camera error:nil];
+ * [session addInput:input];
+ *
+ * // Configure output
+ * AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+ * output.videoSettings = @{
+ *     (id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_24RGB)
+ * };
+ *
+ * // Set frame callback
+ * dispatch_queue_t queue = dispatch_queue_create("webcam", NULL);
+ * [output setSampleBufferDelegate:self queue:queue];
+ * [session addOutput:output];
+ *
+ * // Start capture
+ * [session startRunning];
+ * @endcode
+ *
+ * @subsection os_webcam_linux Linux - Video4Linux2 (V4L2)
+ *
+ * **Implementation**: lib/os/linux/webcam_v4l2.c (C)
+ *
+ * **API**: Video4Linux2 kernel interface (standard Linux video API)
+ * - Device nodes: /dev/video0, /dev/video1, etc.
+ * - ioctl-based control interface
+ * - Memory-mapped I/O for zero-copy capture
+ * - Support for USB webcams and built-in cameras
+ *
+ * **Capabilities**:
+ * - Universal Linux webcam support
+ * - Low-level control over camera settings
+ * - Efficient memory-mapped buffers (4-8 buffers typical)
+ * - Select/poll support for async I/O
+ * - Multiple pixel format support
+ *
+ * **Supported Pixel Formats**:
+ * - V4L2_PIX_FMT_RGB24: 24-bit RGB (preferred)
+ * - V4L2_PIX_FMT_YUYV: YUV 4:2:2 (common, requires conversion)
+ * - V4L2_PIX_FMT_MJPEG: Motion JPEG (requires decoding)
+ * - V4L2_PIX_FMT_H264: H.264 compressed (requires decoding)
+ *
+ * **Device Enumeration**:
+ * @code{.c}
+ * // Find all video devices
+ * for (int i = 0; i < 64; i++) {
+ *     char devname[32];
+ *     snprintf(devname, sizeof(devname), "/dev/video%d", i);
+ *
+ *     int fd = open(devname, O_RDWR);
+ *     if (fd >= 0) {
+ *         struct v4l2_capability cap;
+ *         if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0) {
+ *             if (cap.capabilities & V4L2_CAP_VIDEO_CAPTURE) {
+ *                 log_info("Found camera: %s (%s)", cap.card, devname);
+ *             }
+ *         }
+ *         close(fd);
+ *     }
+ * }
+ * @endcode
+ *
+ * **Memory-Mapped Capture**:
+ * @code{.c}
+ * // Request buffers
+ * struct v4l2_requestbuffers req = {0};
+ * req.count = 4;  // Number of buffers
+ * req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+ * req.memory = V4L2_MEMORY_MMAP;
+ * ioctl(fd, VIDIOC_REQBUFS, &req);
+ *
+ * // Map buffers
+ * struct buffer {
+ *     void *start;
+ *     size_t length;
+ * } buffers[4];
+ *
+ * for (int i = 0; i < req.count; i++) {
+ *     struct v4l2_buffer buf = {0};
+ *     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+ *     buf.memory = V4L2_MEMORY_MMAP;
+ *     buf.index = i;
+ *     ioctl(fd, VIDIOC_QUERYBUF, &buf);
+ *
+ *     buffers[i].length = buf.length;
+ *     buffers[i].start = mmap(NULL, buf.length,
+ *                              PROT_READ | PROT_WRITE,
+ *                              MAP_SHARED, fd, buf.m.offset);
+ * }
+ *
+ * // Start capture
+ * enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+ * ioctl(fd, VIDIOC_STREAMON, &type);
+ *
+ * // Dequeue frame
+ * struct v4l2_buffer buf = {0};
+ * buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+ * buf.memory = V4L2_MEMORY_MMAP;
+ * ioctl(fd, VIDIOC_DQBUF, &buf);
+ *
+ * // Process frame at buffers[buf.index].start
+ * // ...
+ *
+ * // Requeue buffer
+ * ioctl(fd, VIDIOC_QBUF, &buf);
+ * @endcode
+ *
+ * **Performance**:
+ * - ~3% CPU for 1920x1080 @ 30 FPS capture (RGB)
+ * - Zero-copy via memory mapping
+ * - ~10% CPU if YUYV→RGB conversion needed
+ *
+ * @subsection os_webcam_windows Windows - Media Foundation
+ *
+ * **Implementation**: lib/os/windows/webcam_mediafoundation.c (C++)
+ *
+ * **API**: Media Foundation (modern Windows multimedia API, Vista+)
+ * - IMFMediaSource: Represents camera device
+ * - IMFSourceReader: Simplified capture interface
+ * - COM-based object model
+ *
+ * **Capabilities**:
+ * - Supports all UVC (USB Video Class) webcams
+ * - Built-in Windows camera app compatibility
+ * - Hardware-accelerated video processing
+ * - Automatic format negotiation
+ * - Native RGB/YUV pixel formats
+ *
+ * **Supported Pixel Formats**:
+ * - MFVideoFormat_RGB24: 24-bit RGB (preferred)
+ * - MFVideoFormat_NV12: NV12 YUV (efficient, requires conversion)
+ * - MFVideoFormat_YUY2: YUY2 422 (common)
+ * - MFVideoFormat_MJPG: Motion JPEG (requires decoding)
+ *
+ * **Device Enumeration**:
+ * @code{.cpp}
+ * // Initialize COM
+ * CoInitializeEx(NULL, COINIT_MULTITHREADED);
+ * MFStartup(MF_VERSION);
+ *
+ * // Enumerate video capture devices
+ * IMFAttributes *attributes = NULL;
+ * MFCreateAttributes(&attributes, 1);
+ * attributes->SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE,
+ *                      MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+ *
+ * IMFActivate **devices = NULL;
+ * UINT32 count = 0;
+ * MFEnumDeviceSources(attributes, &devices, &count);
+ *
+ * for (UINT32 i = 0; i < count; i++) {
+ *     WCHAR *friendly_name = NULL;
+ *     UINT32 name_len = 0;
+ *     devices[i]->GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
+ *                                      &friendly_name, &name_len);
+ *     log_info("Found camera: %ls", friendly_name);
+ *     CoTaskMemFree(friendly_name);
+ * }
+ * @endcode
+ *
+ * **Capture with Source Reader**:
+ * @code{.cpp}
+ * // Activate device
+ * IMFMediaSource *source = NULL;
+ * devices[0]->ActivateObject(IID_PPV_ARGS(&source));
+ *
+ * // Create source reader
+ * IMFSourceReader *reader = NULL;
+ * MFCreateSourceReaderFromMediaSource(source, NULL, &reader);
+ *
+ * // Configure output format
+ * IMFMediaType *media_type = NULL;
+ * MFCreateMediaType(&media_type);
+ * media_type->SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+ * media_type->SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24);
+ * MFSetAttributeSize(media_type, MF_MT_FRAME_SIZE, 1920, 1080);
+ * reader->SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, media_type);
+ *
+ * // Read frame
+ * IMFSample *sample = NULL;
+ * DWORD stream_flags = 0;
+ * reader->ReadSample(MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0,
+ *                     NULL, &stream_flags, NULL, &sample);
+ *
+ * if (sample) {
+ *     IMFMediaBuffer *buffer = NULL;
+ *     sample->ConvertToContiguousBuffer(&buffer);
+ *
+ *     BYTE *data = NULL;
+ *     DWORD length = 0;
+ *     buffer->Lock(&data, NULL, &length);
+ *
+ *     // Process frame data...
+ *
+ *     buffer->Unlock();
+ *     buffer->Release();
+ *     sample->Release();
+ * }
+ * @endcode
+ *
+ * **Performance**:
+ * - ~4% CPU for 1920x1080 @ 30 FPS capture (RGB)
+ * - Hardware-accelerated decoding for MJPEG/H.264
+ *
+ * @subsection os_webcam_api Unified Webcam API
+ *
+ * ascii-chat provides a unified C API across all platforms:
+ *
+ * @code{.c}
+ * typedef struct webcam_context webcam_context_t;
+ *
+ * // Initialize webcam
+ * webcam_context_t *webcam_init(int device_index, int width, int height, int fps);
+ *
+ * // Start capture
+ * asciichat_error_t webcam_start(webcam_context_t *ctx);
+ *
+ * // Capture frame (blocking)
+ * asciichat_error_t webcam_capture_frame(webcam_context_t *ctx,
+ *                                          uint8_t **rgb_data,
+ *                                          size_t *data_len);
+ *
+ * // Stop capture
+ * asciichat_error_t webcam_stop(webcam_context_t *ctx);
+ *
+ * // Cleanup
+ * void webcam_destroy(webcam_context_t *ctx);
+ *
+ * // List available devices
+ * char** webcam_list_devices(int *count);
+ * @endcode
+ *
+ * Usage example:
+ * @code{.c}
+ * // Initialize webcam (first device, 1920x1080 @ 30fps)
+ * webcam_context_t *webcam = webcam_init(0, 1920, 1080, 30);
+ * if (!webcam) {
+ *     log_error("Failed to initialize webcam");
+ *     return ERROR_WEBCAM_INIT;
+ * }
+ *
+ * // Start capture
+ * webcam_start(webcam);
+ *
+ * // Capture loop
+ * while (running) {
+ *     uint8_t *rgb_frame;
+ *     size_t frame_len;
+ *
+ *     asciichat_error_t err = webcam_capture_frame(webcam, &rgb_frame, &frame_len);
+ *     if (err == ASCIICHAT_OK) {
+ *         // Process frame...
+ *         process_frame(rgb_frame, 1920, 1080);
+ *     }
+ * }
+ *
+ * // Cleanup
+ * webcam_stop(webcam);
+ * webcam_destroy(webcam);
+ * @endcode
+ *
+ * @section os_hardware Hardware Detection
+ *
+ * CPU capability detection for SIMD optimization:
+ *
+ * **x86/x86_64**:
+ * @code{.c}
+ * bool cpu_has_sse2(void);    // SSE2 (baseline for x86_64)
+ * bool cpu_has_ssse3(void);   // SSSE3
+ * bool cpu_has_avx2(void);    // AVX2
+ * bool cpu_has_aes(void);     // AES-NI instructions
+ * bool cpu_has_crc32(void);   // CRC32 instruction
+ * @endcode
+ *
+ * Implementation uses CPUID instruction:
+ * @code{.c}
+ * static void cpuid(uint32_t leaf, uint32_t *eax, uint32_t *ebx,
+ *                    uint32_t *ecx, uint32_t *edx) {
+ *     __asm__ __volatile__(
+ *         "cpuid"
+ *         : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+ *         : "a"(leaf)
+ *     );
+ * }
+ *
+ * bool cpu_has_avx2(void) {
+ *     uint32_t eax, ebx, ecx, edx;
+ *     cpuid(7, &eax, &ebx, &ecx, &edx);
+ *     return (ebx & (1 << 5)) != 0;  // AVX2 bit
+ * }
+ * @endcode
+ *
+ * **ARM/ARM64**:
+ * @code{.c}
+ * bool cpu_has_neon(void);    // NEON SIMD
+ * bool cpu_has_sve(void);     // Scalable Vector Extension
+ * bool cpu_has_crypto(void);  // ARM Crypto Extensions
+ * @endcode
+ *
+ * Implementation reads /proc/cpuinfo on Linux, sysctlbyname on macOS:
+ * @code{.c}
+ * #ifdef __APPLE__
+ * bool cpu_has_neon(void) {
+ *     // All Apple Silicon has NEON
+ *     return true;
+ * }
+ * #elif defined(__linux__)
+ * bool cpu_has_neon(void) {
+ *     FILE *f = fopen("/proc/cpuinfo", "r");
+ *     char line[256];
+ *     while (fgets(line, sizeof(line), f)) {
+ *         if (strstr(line, "Features") && strstr(line, "neon")) {
+ *             fclose(f);
+ *             return true;
+ *         }
+ *     }
+ *     fclose(f);
+ *     return false;
+ * }
+ * #endif
+ * @endcode
+ *
+ * @section os_performance Platform-Specific Optimizations
+ *
+ * **Windows**:
+ * - SetThreadPriority for realtime video/audio threads
+ * - SetProcessPriorityBoost to disable dynamic priority boost
+ * - QueryPerformanceCounter for high-resolution timestamps
+ * - Multimedia Class Scheduler Service (MMCSS) for low-latency audio
+ *
+ * **macOS**:
+ * - pthread_setschedparam for realtime threads
+ * - mach_timebase_info for nanosecond timing
+ * - Metal acceleration for video processing (future)
+ * - Core Audio low-latency mode
+ *
+ * **Linux**:
+ * - SCHED_FIFO for realtime scheduling (requires CAP_SYS_NICE)
+ * - clock_gettime(CLOCK_MONOTONIC) for precise timing
+ * - memfd_create for anonymous shared memory
+ * - ALSA period size tuning for low-latency audio
+ *
+ * @see os/webcam.h
+ * @see os/macos/webcam_avfoundation.m
+ * @see os/linux/webcam_v4l2.c
+ * @see os/windows/webcam_mediafoundation.c
+ */

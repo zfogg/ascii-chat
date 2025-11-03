@@ -1,0 +1,92 @@
+/**
+ * @defgroup client_crypto Cryptographic Operations
+ * @ingroup module_client
+ * @brief Client-side cryptographic handshake and key management
+ */
+
+/**
+ * @page topic_client_crypto Cryptographic Operations
+ * @ingroup client_crypto
+ *
+ * @section client_crypto_overview Overview
+ *
+ * The client crypto subsystem coordinates the cryptographic handshake with the
+ * server, loads client and server keys, verifies host identity, and manages the
+ * encryption context for secure communication.
+ *
+ * **Implementation**: src/client/crypto.c, src/client/crypto.h
+ *
+ * @section client_crypto_handshake Handshake Process
+ *
+ * @code{.c}
+ * int client_crypto_handshake(socket_t socket)
+ * {
+ *   crypto_handshake_context_t handshake_ctx;
+ *
+ *   // Perform client-side handshake
+ *   crypto_handshake_result_t result =
+ *     perform_crypto_handshake_client(socket, &handshake_ctx,
+ *                                     opt_server_key, server_ip, opt_client_key);
+ *
+ *   switch (result) {
+ *     case HANDSHAKE_SUCCESS:
+ *       log_info("Secure connection established");
+ *       g_crypto_ctx = handshake_ctx.crypto_ctx;
+ *       g_crypto_ready = true;
+ *       return 0;
+ *
+ *     case HANDSHAKE_WARNING_NO_CLIENT_AUTH:
+ *       log_warn("Server not verifying client identity");
+ *       g_crypto_ctx = handshake_ctx.crypto_ctx;
+ *       g_crypto_ready = true;
+ *       return CONNECTION_WARNING_NO_CLIENT_AUTH;
+ *
+ *     case HANDSHAKE_ERROR_AUTH_FAILED:
+ *       log_error("Client authentication failed - wrong client key?");
+ *       return CONNECTION_ERROR_AUTH_FAILED;  // No retry
+ *
+ *     case HANDSHAKE_ERROR_HOST_KEY_FAILED:
+ *       log_error("Server host key verification failed");
+ *       return CONNECTION_ERROR_HOST_KEY_FAILED;  // No retry
+ *
+ *     default:
+ *       log_error("Handshake failed");
+ *       return CONNECTION_ERROR_GENERIC;  // Allow retry
+ *   }
+ * }
+ * @endcode
+ *
+ * @section client_crypto_keys Key Management
+ *
+ * **Client Keys** (`--client-key`):
+ * - Ed25519 SSH private keys for client authentication
+ * - Loaded from filesystem or SSH agent
+ * - Password support via `$ASCII_CHAT_SSH_PASSWORD`
+ *
+ * **Server Keys** (`--server-key`):
+ * - Ed25519 SSH public keys for server verification
+ * - Can be loaded from:
+ *   - Filesystem path (`~/.ssh/server_id_ed25519.pub`)
+ *   - GitHub URL (`github:username`)
+ *   - GitLab URL (`gitlab:username`)
+ * - Verified against known_hosts file
+ *
+ * @note **Native Decryption**: Encrypted SSH keys are decrypted natively using bcrypt_pbkdf
+ *       (from libsodium-bcrypt-pbkdf) + BearSSL AES-256-CTR. No external tools required.
+ *       Alternatively, use `$SSH_AUTH_SOCK` (ssh-agent) for password-free authentication.
+ *
+ * @section client_crypto_known_hosts Known Hosts Verification
+ *
+ * **TOFU (Trust On First Use)**:
+ * - First connection: Record server public key by IP
+ * - Subsequent connections: Verify key matches recorded value
+ * - Key mismatch: Connection rejected (possible MITM attack)
+ *
+ * **Known hosts file**: `~/.ascii-chat/known_hosts`
+ *
+ * @see src/client/crypto.c
+ * @see src/client/crypto.h
+ * @see lib/crypto/handshake.h
+ * @see lib/crypto/keys/keys.h
+ * @see @ref topic_client "Client Overview"
+ */

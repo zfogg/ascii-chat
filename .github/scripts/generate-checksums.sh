@@ -30,7 +30,7 @@ fi
 
 # Create combined checksum file
 cat > "checksums-${PLATFORM}.txt" <<EOF
-# ASCII-Chat ${VERSION} - ${PLATFORM} build
+# ascii-chat ${VERSION} - ${PLATFORM} build
 # Checksums generated on $(date -u)
 
 ## SHA-256

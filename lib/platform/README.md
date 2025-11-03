@@ -2,7 +2,7 @@
 
 ## Overview
 
-The platform abstraction layer provides a unified, cross-platform API that enables ASCII-Chat to run seamlessly on Windows, Linux, and macOS. This layer abstracts platform-specific functionality into a common interface, allowing the main application code to remain platform-independent.
+The platform abstraction layer provides a unified, cross-platform API that enables ascii-chat to run seamlessly on Windows, Linux, and macOS. This layer abstracts platform-specific functionality into a common interface, allowing the main application code to remain platform-independent.
 
 ## Architecture
 

@@ -1,0 +1,708 @@
+/**
+ * @defgroup client_main Client Main Entry Point
+ * @ingroup module_client
+ * @brief Client lifecycle orchestration and reconnection logic
+ */
+
+/**
+ * @defgroup client_connection Connection Management
+ * @ingroup module_client
+ * @brief Server connection, packet transmission, and state tracking
+ */
+
+/**
+ * @defgroup client_protocol Protocol Handler
+ * @ingroup module_client
+ * @brief Packet reception and processing
+ */
+
+/**
+ * @defgroup client_capture Media Capture
+ * @ingroup module_client
+ * @brief Webcam video capture and transmission
+ */
+
+/**
+ * @defgroup client_display Terminal Display
+ * @ingroup module_client
+ * @brief Terminal rendering and TTY management
+ */
+
+/**
+ * @defgroup client_audio Audio Processing
+ * @ingroup module_client
+ * @brief Audio capture, playback, and jitter buffering
+ */
+
+/**
+ * @defgroup client_keepalive Connection Keepalive
+ * @ingroup module_client
+ * @brief Ping/pong and timeout detection
+ */
+
+/**
+ * @defgroup client_crypto Cryptographic Operations
+ * @ingroup module_client
+ * @brief Handshake and key management
+ */
+
+/**
+ * @page topic_client Overview of Client (src/client/*)
+ * @ingroup module_client
+ *
+ * @tableofcontents
+ *
+ * @section client_overview Overview
+ *
+ * Welcome to the ascii-chat client—where the magic happens on your screen!
+ *
+ * Think of the client as your personal video chat portal. It's the part of ascii-chat that runs
+ * on your computer, capturing your webcam and microphone, sending that data to the server, and
+ * displaying everyone else's video as beautiful ASCII art right in your terminal. It's like a
+ * normal video chat app, except way cooler because it works in your terminal!
+ *
+ * The client is surprisingly sophisticated under the hood. It juggles multiple tasks simultaneously:
+ * grabbing frames from your webcam, capturing audio, encrypting everything, sending it over the
+ * network, receiving ASCII frames from the server, and rendering them to your terminal—all while
+ * staying responsive and handling network hiccups gracefully.
+ *
+ * But here's the best part: all of this complexity is hidden from you. Just run the client, and
+ * it connects to the server, authenticates securely, and starts streaming. If your connection drops?
+ * No problem—it automatically reconnects. Network slow? It handles that too. The client is designed
+ * to be reliable and resilient, so you can focus on your conversation, not technical issues.
+ *
+ * **Implementation**: src/client/*.c, src/client/*.h
+ *
+ * What makes the client special?
+ * -------------------------------
+ * - **Smart connection management**: Connects automatically with exponential backoff (won't spam the server)
+ * - **Cross-platform video capture**: Works with your webcam on macOS, Linux, or Windows (or test patterns if you prefer)
+ * - **Crystal-clear audio**: PortAudio handles both capture and playback with jitter buffering
+ * - **Real-time rendering**: ASCII frames appear instantly in your terminal—no lag
+ * - **Secure by default**: End-to-end encryption using modern cryptography (X25519/XSalsa20-Poly1305)
+ * - **SSH key authentication**: Use your existing SSH keys (Ed25519) for secure login
+ * - **Stays connected**: Ping/pong keepalive prevents timeout disconnects
+ * - **Handles interruptions**: Reconnects gracefully when your network burps
+ * - **Snapshot mode**: Perfect for testing—capture a single frame and exit
+ *
+ * @section client_architecture Architecture
+ *
+ * @subsection client_threading Threading Model
+ *
+ * The client uses a modular threading architecture:
+ *
+ * - **Main Thread**: Connection management, reconnection logic, event coordination
+ * - **Data Reception Thread** (protocol.c): Handles incoming packets from server
+ * - **Ping Thread** (keepalive.c): Sends keepalive pings every 5 seconds
+ * - **Webcam Capture Thread** (capture.c): Captures and transmits video frames
+ * - **Audio Capture Thread** (audio.c): Captures and transmits audio data (optional)
+ *
+ * **Thread Lifecycle**:
+ * @code{.c}
+ * // Connection established
+ * protocol_start_connection();  // Start data reception thread
+ * keepalive_start_thread();     // Start ping thread
+ * capture_start_thread();       // Start webcam capture thread
+ * if (opt_audio_enabled) {
+ *   audio_start_thread();       // Start audio capture thread
+ * }
+ *
+ * // Connection lost or shutdown
+ * capture_stop_thread();
+ * audio_stop_thread();
+ * keepalive_stop_thread();
+ * protocol_stop_connection();
+ * @endcode
+ *
+ * @subsection client_reconnection Reconnection Logic
+ *
+ * The client implements exponential backoff with jitter for reconnection:
+ *
+ * **Retry Strategy**:
+ * - Initial delay: 10ms
+ * - Exponential growth: delay = 10ms + (200ms * attempt)
+ * - Maximum delay: 5 seconds
+ * - Jitter: Small random component to prevent thundering herd
+ *
+ * **Reconnection Flow**:
+ * @code{.c}
+ * int reconnect_attempt = 0;
+ * while (!should_exit()) {
+ *   if (server_connection_establish(...) == 0) {
+ *     // Connection successful
+ *     reconnect_attempt = 0;
+ *     break;
+ *   }
+ *
+ *   // Exponential backoff with cap at 5 seconds
+ *   int delay_ms = 10 + (200 * reconnect_attempt);
+ *   if (delay_ms > 5000) delay_ms = 5000;
+ *   platform_sleep_usec(delay_ms * 1000);
+ *   reconnect_attempt++;
+ * }
+ * @endcode
+ *
+ * **Connection Loss Detection**:
+ * - Thread exit detection (data reception thread died)
+ * - Socket error detection (network errors during packet send)
+ * - Keepalive timeout (no pong response for 30 seconds)
+ *
+ * @section client_modules Client Modules
+ *
+ * @subsection client_main Main Entry Point
+ *
+ * **File**: src/client/main.c, src/client/main.h
+ *
+ * **Responsibilities**:
+ * - Command-line argument parsing
+ * - Platform and subsystem initialization
+ * - Connection establishment and reconnection orchestration
+ * - Signal handling (Ctrl+C for graceful shutdown)
+ * - Main event loop and thread coordination
+ * - Cleanup and resource deallocation
+ *
+ * **Global State**:
+ * - `g_should_exit`: Atomic boolean for shutdown coordination
+ * - `g_send_mutex`: Global mutex protecting packet transmission
+ *
+ * **Error Handling**:
+ * - Returns 0 on success
+ * - Returns 1 on configuration/initialization errors
+ * - Returns 2 on connection errors (after max retries)
+ * - Returns 130 on SIGINT (Ctrl+C)
+ *
+ * @subsection client_server Server Connection Management
+ *
+ * **File**: src/client/server.c, src/client/server.h
+ *
+ * **Responsibilities**:
+ * - TCP socket creation and connection establishment
+ * - Address resolution (IPv4/IPv6)
+ * - Cryptographic handshake coordination
+ * - Thread-safe packet transmission (`send_packet_to_server`)
+ * - Connection state tracking
+ * - Socket cleanup and shutdown
+ *
+ * **Connection State**:
+ * - `g_connection_active`: Atomic boolean indicating active connection
+ * - `g_connection_lost`: Atomic boolean indicating detected connection loss
+ * - `g_sockfd`: Socket file descriptor
+ * - `g_client_id`: Server-assigned client ID
+ * - `g_server_ip`: Resolved server IP address
+ *
+ * **Thread Safety**:
+ * - All packet sends protected by `g_send_mutex`
+ * - Atomic operations for connection state flags
+ * - Socket FD checked before every send operation
+ *
+ * **Key Functions**:
+ * @code{.c}
+ * // Establish connection to server
+ * int server_connection_establish(const char *address, int port, int reconnect_attempt,
+ *                                 bool first_connection, bool has_ever_connected);
+ *
+ * // Send packet to server (thread-safe)
+ * int send_packet_to_server(packet_type_t type, const void *data, size_t data_len,
+ *                          uint32_t client_id);
+ *
+ * // Check connection status
+ * bool server_connection_is_active();
+ * bool server_connection_was_lost();
+ *
+ * // Close connection gracefully
+ * void server_connection_close();
+ * @endcode
+ *
+ * @subsection client_protocol Protocol Handler
+ *
+ * **File**: src/client/protocol.c, src/client/protocol.h
+ *
+ * **Responsibilities**:
+ * - Data reception thread management
+ * - Incoming packet processing
+ * - Packet type dispatching
+ * - Frame rendering coordination
+ * - Connection loss detection
+ *
+ * **Packet Types Handled**:
+ * - `PACKET_TYPE_ASCII_FRAME`: ASCII frame from server → render to terminal
+ * - `PACKET_TYPE_AUDIO_BATCH`: Batched audio samples → process for playback
+ * - `PACKET_TYPE_PONG`: Ping response → reset keepalive timeout
+ * - `PACKET_TYPE_CLEAR_CONSOLE`: Server command → clear terminal
+ * - `PACKET_TYPE_SERVER_STATE`: Server state update → log info
+ *
+ * **Data Reception Loop**:
+ * @code{.c}
+ * while (!should_exit() && server_connection_is_active()) {
+ *   packet_header_t header;
+ *
+ *   // Receive and decrypt packet header
+ *   if (receive_packet(sockfd, crypto_ctx, &header, &payload, &payload_len) < 0) {
+ *     server_connection_lost();  // Detect connection loss
+ *     break;
+ *   }
+ *
+ *   // Dispatch to handler based on packet type
+ *   switch (header.type) {
+ *     case PACKET_TYPE_ASCII_FRAME:
+ *       display_render_frame(payload, is_snapshot);
+ *       break;
+ *     // ... other packet types ...
+ *   }
+ *
+ *   if (payload) free(payload);
+ * }
+ * @endcode
+ *
+ * **Connection Loss Detection**:
+ * - Socket errors during `receive_packet()`
+ * - Socket closure by server
+ * - Decryption failures (corrupted stream)
+ * - Thread exit triggers `server_connection_lost()`
+ *
+ * @subsection client_capture Video Capture
+ *
+ * **File**: src/client/capture.c, src/client/capture.h
+ *
+ * **Responsibilities**:
+ * - Webcam capture thread management
+ * - Video frame capture at target FPS
+ * - Frame compression (optional)
+ * - Frame transmission to server
+ * - Snapshot mode coordination
+ *
+ * **Platform Webcam Support**:
+ * - **macOS**: AVFoundation (lib/os/webcam_avfoundation.m)
+ * - **Linux**: Video4Linux2 (lib/os/webcam_v4l2.c)
+ * - **Windows**: Test pattern only (lib/os/webcam_windows.c) - real capture TODO
+ *
+ * **Capture Loop**:
+ * @code{.c}
+ * while (!should_exit() && server_connection_is_active()) {
+ *   video_frame_t *frame = webcam_capture();
+ *   if (!frame) {
+ *     // Webcam error or test pattern mode
+ *     continue;
+ *   }
+ *
+ *   // Optional compression
+ *   if (opt_compress) {
+ *     compressed_data = compress_frame(frame->data, frame->data_size, &compressed_size);
+ *   }
+ *
+ *   // Send to server
+ *   send_packet_to_server(PACKET_TYPE_IMAGE_FRAME,
+ *                        compressed_data ? compressed_data : frame->data,
+ *                        compressed_data ? compressed_size : frame->data_size,
+ *                        g_client_id);
+ *
+ *   // Rate limiting (target FPS)
+ *   platform_sleep_usec(frame_interval_usec);
+ *
+ *   // Snapshot mode: exit after configured delay
+ *   if (opt_snapshot && elapsed_time > opt_snapshot_delay) {
+ *     break;
+ *   }
+ * }
+ * @endcode
+ *
+ * **Snapshot Mode**:
+ * - `--snapshot`: Capture single frame and exit
+ * - `--snapshot-delay <seconds>`: Capture for N seconds then exit
+ * - Useful for testing without continuous streaming
+ *
+ * @subsection client_display Terminal Display
+ *
+ * **File**: src/client/display.c, src/client/display.h
+ *
+ * **Responsibilities**:
+ * - Terminal initialization and configuration
+ * - TTY capability detection
+ * - ASCII frame rendering
+ * - Terminal reset and cleanup
+ * - Logging suppression for first frame
+ *
+ * **TTY Handling**:
+ * @code{.c}
+ * // Initialize display subsystem
+ * if (display_init() != 0) {
+ *   log_fatal("Failed to initialize display");
+ *   return 1;
+ * }
+ *
+ * // Check if stdout is a TTY
+ * if (!display_has_tty()) {
+ *   log_warn("stdout is not a TTY - frames may not render correctly");
+ * }
+ *
+ * // Render frame to terminal
+ * display_render_frame(ascii_frame_data, is_snapshot_frame);
+ *
+ * // Cleanup on exit
+ * display_cleanup();  // Restores terminal settings
+ * @endcode
+ *
+ * **Terminal Capabilities**:
+ * - Detects color support (24-bit true color, 256-color, ANSI)
+ * - Detects Unicode/UTF-8 support
+ * - Detects half-block character support
+ * - Sends capabilities to server via `PACKET_TYPE_CLIENT_CAPABILITIES`
+ *
+ * **First Frame Optimization**:
+ * - Disables terminal logging before first frame render
+ * - Prevents log messages from corrupting display
+ * - Re-enables logging after first frame displayed
+ *
+ * @subsection client_audio Audio Processing
+ *
+ * **File**: src/client/audio.c, src/client/audio.h
+ *
+ * **Responsibilities**:
+ * - PortAudio initialization and configuration
+ * - Audio capture thread management
+ * - Audio sample capture and transmission
+ * - Received audio sample playback
+ * - Ring buffer management for audio jitter
+ *
+ * **Audio Pipeline**:
+ * @code{.c}
+ * // Initialize audio subsystem
+ * if (audio_client_init() != 0) {
+ *   log_error("Failed to initialize audio");
+ *   return -1;
+ * }
+ *
+ * // Start audio capture thread
+ * if (opt_audio_enabled) {
+ *   audio_start_thread();
+ * }
+ *
+ * // Audio capture loop (in thread)
+ * while (!should_exit() && server_connection_is_active()) {
+ *   float samples[AUDIO_BATCH_SIZE];
+ *   if (audio_capture_samples(samples, AUDIO_BATCH_SIZE) > 0) {
+ *     send_packet_to_server(PACKET_TYPE_AUDIO, samples,
+ *                          AUDIO_BATCH_SIZE * sizeof(float), g_client_id);
+ *   }
+ * }
+ *
+ * // Process received audio from server
+ * void audio_process_received_samples(const float *samples, int num_samples) {
+ *   audio_ringbuffer_write(samples, num_samples);  // Jitter buffering
+ * }
+ * @endcode
+ *
+ * **Audio Configuration**:
+ * - Sample rate: 44100 Hz
+ * - Channels: 1 (mono)
+ * - Format: 32-bit float
+ * - Batch size: 256 samples (~5.8ms at 44.1kHz)
+ * - Ring buffer: 8192 samples (~185ms jitter buffer)
+ *
+ * @subsection client_keepalive Connection Keepalive
+ *
+ * **File**: src/client/keepalive.c, src/client/keepalive.h
+ *
+ * **Responsibilities**:
+ * - Ping thread management
+ * - Periodic ping packet transmission
+ * - Pong timeout detection
+ * - Connection liveness monitoring
+ *
+ * **Keepalive Loop**:
+ * @code{.c}
+ * #define PING_INTERVAL_SEC 5
+ * #define PONG_TIMEOUT_SEC 30
+ *
+ * while (!should_exit() && server_connection_is_active()) {
+ *   // Send ping packet
+ *   send_packet_to_server(PACKET_TYPE_PING, NULL, 0, g_client_id);
+ *
+ *   // Wait for ping interval
+ *   platform_sleep_usec(PING_INTERVAL_SEC * 1000000);
+ *
+ *   // Check pong timeout
+ *   time_t now = time(NULL);
+ *   if (now - last_pong_time > PONG_TIMEOUT_SEC) {
+ *     log_warn("Pong timeout - connection may be dead");
+ *     server_connection_lost();
+ *     break;
+ *   }
+ * }
+ * @endcode
+ *
+ * **Timeout Behavior**:
+ * - Ping sent every 5 seconds
+ * - Pong expected within 30 seconds of last pong
+ * - Timeout triggers reconnection attempt
+ * - Prevents zombie connections from blocking resources
+ *
+ * @subsection client_crypto Client Cryptography
+ *
+ * **File**: src/client/crypto.c, src/client/crypto.h
+ *
+ * **Responsibilities**:
+ * - Client-side cryptographic handshake
+ * - SSH key loading and authentication
+ * - Known hosts verification
+ * - Server identity validation
+ * - Encryption context initialization
+ *
+ * **Handshake Flow**:
+ * @code{.c}
+ * crypto_handshake_context_t crypto_ctx;
+ *
+ * // Perform client-side handshake
+ * crypto_handshake_result_t result =
+ *   perform_crypto_handshake_client(sockfd, &crypto_ctx, opt_server_key,
+ *                                   server_ip, opt_client_key);
+ *
+ * switch (result) {
+ *   case HANDSHAKE_SUCCESS:
+ *     log_info("Secure connection established");
+ *     break;
+ *   case HANDSHAKE_WARNING_NO_CLIENT_AUTH:
+ *     log_warn("Server not verifying client identity");
+ *     break;
+ *   case HANDSHAKE_ERROR_AUTH_FAILED:
+ *     log_error("Client authentication failed");
+ *     return CONNECTION_ERROR_AUTH_FAILED;  // No retry
+ *   case HANDSHAKE_ERROR_HOST_KEY_FAILED:
+ *     log_error("Server host key verification failed");
+ *     return CONNECTION_ERROR_HOST_KEY_FAILED;  // No retry
+ *   default:
+ *     log_error("Handshake failed");
+ *     return CONNECTION_ERROR_GENERIC;  // Allow retry
+ * }
+ * @endcode
+ *
+ * **Keys Module**:
+ * - Client keys loaded from `--client-key` path
+ * - Server keys loaded from `--server-key` path or fetched via HTTPS
+ * - Known hosts stored in `~/.ascii-chat/known_hosts`
+ * - SSH agent integration via `$SSH_AUTH_SOCK` (Unix only)
+ * - Password support via `$ASCII_CHAT_SSH_PASSWORD` environment variable
+ *
+ * @note **SSH Key Support**: The client supports native encrypted SSH key decryption
+ *       using bcrypt_pbkdf (libsodium-bcrypt-pbkdf) + BearSSL AES-256-CTR. No external
+ *       tools required. Alternatively, use `$SSH_AUTH_SOCK` for agent-based
+ *       password-free authentication (see lib/crypto/keys/ for implementation).
+ *
+ * @section client_command_line Command-Line Options
+ *
+ * **Connection Options**:
+ * - `--address <host>`: Server address (default: localhost)
+ * - `--port <port>`: Server port (default: 27224)
+ *
+ * **Media Options**:
+ * - \c --audio: Enable audio capture and playback
+ * - `--webcam-index <N>`: Select webcam device index
+ * - `--webcam-flip`: Flip webcam video vertically
+ * - `--test-pattern`: Use test pattern instead of webcam
+ *
+ * **Display Options**:
+ * - `--width <N>`: Terminal width (auto-detected if not specified)
+ * - `--height <N>`: Terminal height (auto-detected if not specified)
+ * - `--color`: Enable color output (auto-detected from terminal caps)
+ * - `--stretch`: Stretch frames ignoring aspect ratio
+ * - `--half-block`: Use half-block rendering for 2x vertical resolution
+ * - \c --palette \c <name>: Select ASCII palette (default: auto-detected)
+ *
+ * **Cryptography Options**:
+ * - `--client-key <path>`: Client SSH key for authentication
+ * - `--server-key <path|url>`: Server SSH public key for verification
+ *   - Path: `~/.ssh/server_id_ed25519.pub`
+ *   - URL: `github:username` or `gitlab:username`
+ * - `--insecure-no-host-identity-check`: Skip server host key verification (DANGEROUS!)
+ *
+ * **Testing Options**:
+ * - `--snapshot`: Capture single frame and exit
+ * - `--snapshot-delay <seconds>`: Capture for N seconds then exit
+ * - `--log-file <path>`: Log to file instead of stderr
+ *
+ * **Configuration Options**:
+ * - \c --config \c <path>: Load options from TOML config file
+ * - \c --config-create \c <path>: Generate default config file and exit
+ *
+ * @section client_error_handling Error Handling and Exit Codes
+ *
+ * **Exit Codes**:
+ * - `0`: Successful execution (clean exit or snapshot completed)
+ * - `1`: Configuration/initialization error (invalid args, missing webcam, etc.)
+ * - `2`: Connection error after max retries or fatal auth failure
+ * - `130`: SIGINT received (Ctrl+C)
+ *
+ * **Error Categories**:
+ *
+ * **Configuration Errors** (exit 1):
+ * - Invalid command-line arguments
+ * - Missing or invalid config file
+ * - Webcam initialization failure
+ * - Audio initialization failure
+ * - Display initialization failure
+ *
+ * **Connection Errors** (exit 2):
+ * - Network unreachable
+ * - Connection refused
+ * - DNS resolution failure
+ * - Authentication failure (wrong client key)
+ * - Host key verification failure (wrong server key)
+ * - Handshake timeout
+ *
+ * **Runtime Errors** (log and attempt reconnect):
+ * - Socket write error
+ * - Socket read error
+ * - Packet decryption failure
+ * - Frame corruption
+ * - Keepalive timeout
+ *
+ * @section client_synchronization Synchronization and Thread Safety
+ *
+ * @subsection client_global_state Global State Protection
+ *
+ * **Global Mutex** (`g_send_mutex`):
+ * - Protects ALL calls to `send_packet_to_server()`
+ * - Prevents interleaved packet transmission
+ * - Ensures packet atomicity on the wire
+ *
+ * **Atomic Flags**:
+ * - `g_should_exit`: Global shutdown coordination (checked by all threads)
+ * - `g_connection_active`: Connection status (set/checked atomically)
+ * - `g_connection_lost`: Connection loss detection (set by any thread)
+ *
+ * **Thread Exit Coordination**:
+ * @code{.c}
+ * // Main thread signals shutdown
+ * signal_exit();  // Sets g_should_exit atomically
+ *
+ * // All threads check flag in main loop
+ * while (!should_exit() && server_connection_is_active()) {
+ *   // Thread work...
+ * }
+ *
+ * // Main thread waits for clean exit
+ * capture_stop_thread();    // Signals thread to exit
+ * while (!capture_thread_exited()) {
+ *   platform_sleep_usec(10000);  // 10ms poll
+ * }
+ * @endcode
+ *
+ * @subsection client_race_conditions Common Race Conditions
+ *
+ * **Socket FD Race**:
+ * - **Problem**: Socket closed while thread tries to send
+ * - **Solution**: Check `server_connection_is_active()` before every send
+ * - **Solution**: Hold `g_send_mutex` during entire send operation
+ *
+ * **Connection Loss Race**:
+ * - **Problem**: Multiple threads detect connection loss simultaneously
+ * - **Solution**: `server_connection_lost()` uses atomic compare-exchange
+ * - **Solution**: Only first detection triggers reconnection
+ *
+ * **Thread Exit Race**:
+ * - **Problem**: Main thread starts reconnection while threads still cleaning up
+ * - **Solution**: Main thread polls `*_thread_exited()` before reconnection
+ * - **Solution**: Threads set exit flag atomically before returning
+ *
+ * @section client_best_practices Best Practices
+ *
+ * **DO**:
+ * - Always check `should_exit()` in thread main loops
+ * - Always check `server_connection_is_active()` before sending packets
+ * - Always hold `g_send_mutex` when calling `send_packet_to_server()`
+ * - Always wait for thread exit before reconnection
+ * - Always use atomic operations for connection state flags
+ * - Always cleanup resources in reverse initialization order
+ *
+ * **DON'T**:
+ * - Don't call `send_packet_to_server()` without `g_send_mutex`
+ * - Don't close socket while threads may be using it
+ * - Don't start reconnection without waiting for thread exit
+ * - Don't ignore return values from connection functions
+ * - Don't use blocking I/O without timeout checking
+ * - Don't assume terminal is TTY without checking
+ *
+ * @section client_debugging Debugging and Troubleshooting
+ *
+ * **Connection Issues**:
+ * @code{.bash}
+ * # Enable debug logging
+ * LOG_LEVEL=0 ./bin/ascii-chat client --log-file=/tmp/client-debug.log
+ *
+ * # Test with snapshot mode (no continuous streaming)
+ * ./bin/ascii-chat client --snapshot --snapshot-delay 5
+ *
+ * # Skip host key verification (testing only!)
+ * export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
+ * ./bin/ascii-chat client
+ * @endcode
+ *
+ * **Webcam Issues**:
+ * @code{.bash}
+ * # List available webcams
+ * ./bin/ascii-chat client --webcam-index -1  # Will list and exit
+ *
+ * # Use specific webcam
+ * ./bin/ascii-chat client --webcam-index 1
+ *
+ * # Use test pattern instead of webcam
+ * ./bin/ascii-chat client --test-pattern
+ * @endcode
+ *
+ * **Audio Issues**:
+ * @code{.bash}
+ * # List audio devices
+ * ./bin/ascii-chat client \c --audio --log-level 0  # Check PortAudio logs
+ *
+ * # Disable audio if causing issues
+ * ./bin/ascii-chat client  # Audio disabled by default
+ * @endcode
+ *
+ * **Display Issues**:
+ * @code{.bash}
+ * # Check terminal capabilities
+ * LOG_LEVEL=0 ./bin/ascii-chat client --log-file=/tmp/caps.log
+ * grep "Terminal capabilities" /tmp/caps.log
+ *
+ * # Force specific dimensions
+ * ./bin/ascii-chat client --width 80 --height 24
+ *
+ * # Try different palette
+ * ./bin/ascii-chat client --palette simple
+ * @endcode
+ *
+ * @section client_known_issues Known Issues and Limitations
+ *
+ * **SSH Key Decryption**:
+ * - Native encrypted key support using bcrypt_pbkdf + BearSSL AES-256-CTR
+ * - No external tools (ssh-keygen) required
+ * - Alternative: Use `$SSH_AUTH_SOCK` (ssh-agent) for password-free authentication
+ *
+ * **IPv6 Connection Issues**:
+ * - Some systems prioritize IPv6 but server only listens on IPv4
+ * - Workaround: Explicitly use IPv4 address
+ * - Example: `./bin/ascii-chat client --address 127.0.0.1`
+ *
+ * **Terminal Compatibility**:
+ * - Some terminals don't support UTF-8 or half-block characters
+ * - Some terminals have incorrect TERM environment variable
+ * - Workaround: Use \c --palette simple for ASCII-only rendering
+ *
+ * **Reconnection Behavior**:
+ * - Reconnection resets frame display (first frame optimization repeats)
+ * - Brief flicker during reconnection is expected
+ * - Keepalive timeout (30s) may be too long for some use cases
+ *
+ * @see src/client/main.c
+ * @see src/client/server.c
+ * @see src/client/protocol.c
+ * @see src/client/capture.c
+ * @see src/client/display.c
+ * @see src/client/audio.c
+ * @see src/client/keepalive.c
+ * @see src/client/crypto.c
+ * @see lib/crypto/handshake.h
+ * @see lib/crypto/keys/keys.h
+ * @see lib/os/webcam.h
+ * @see lib/platform/terminal.h
+ */

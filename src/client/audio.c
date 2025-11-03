@@ -1,12 +1,7 @@
 /**
- * @file audio.c
- * @brief ASCII-Chat Client Audio Processing Management
- *
- * This module manages all audio-related functionality for the ASCII-Chat client,
- * including audio system initialization, capture thread management, sample
- * processing pipeline, and audio playback coordination.
- *
- * ## Audio Architecture
+ * @file client/audio.c
+ * @ingroup client_audio
+ * @brief 🔊 Client audio management: capture thread, sample processing, and playback coordination
  *
  * The audio system implements a dual-thread architecture:
  * - **Capture Thread**: Records microphone input and transmits to server
@@ -96,20 +91,50 @@
  * Audio System State
  * ============================================================================ */
 
-/** Global audio context for PortAudio operations */
+/**
+ * @brief Global audio context for PortAudio operations
+ *
+ * Maintains the PortAudio stream state, audio format configuration, and
+ * device information. Initialized during audio subsystem startup, cleaned
+ * up during shutdown.
+ *
+ * @ingroup client_audio
+ */
 static audio_context_t g_audio_context = {0};
 
 /* ============================================================================
  * Audio Capture Thread Management
  * ============================================================================ */
 
-/** Audio capture thread handle */
+/**
+ * @brief Audio capture thread handle
+ *
+ * Thread handle for the background thread that captures audio samples from
+ * the audio input device. Created during connection establishment, joined
+ * during shutdown.
+ *
+ * @ingroup client_audio
+ */
 static asciithread_t g_audio_capture_thread;
 
-/** Flag indicating if audio capture thread was created */
+/**
+ * @brief Flag indicating if audio capture thread was successfully created
+ *
+ * Used during shutdown to determine whether the thread handle is valid and
+ * should be joined. Prevents attempting to join a thread that was never created.
+ *
+ * @ingroup client_audio
+ */
 static bool g_audio_capture_thread_created = false;
 
-/** Atomic flag indicating audio capture thread has exited */
+/**
+ * @brief Atomic flag indicating audio capture thread has exited
+ *
+ * Set by the audio capture thread when it exits. Used by other threads to
+ * detect thread termination without blocking on thread join operations.
+ *
+ * @ingroup client_audio
+ */
 static atomic_bool g_audio_capture_thread_exited = false;
 
 /* ============================================================================
@@ -138,6 +163,8 @@ static atomic_bool g_audio_capture_thread_exited = false;
  *
  * @param samples Raw audio sample data from server
  * @param num_samples Number of samples in the buffer
+ *
+ * @ingroup client_audio
  */
 void audio_process_received_samples(const float *samples, int num_samples) {
   if (!opt_audio_enabled || !samples || num_samples <= 0) {
@@ -197,6 +224,8 @@ void audio_process_received_samples(const float *samples, int num_samples) {
  *
  * @param arg Unused thread argument
  * @return NULL on thread exit
+ *
+ * @ingroup client_audio
  */
 static void *audio_capture_thread_func(void *arg) {
   (void)arg;
@@ -380,6 +409,8 @@ static void *audio_capture_thread_func(void *arg) {
  * if audio is enabled. Must be called once during client initialization.
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_audio
  */
 int audio_client_init() {
   if (!opt_audio_enabled) {
@@ -414,6 +445,8 @@ int audio_client_init() {
  * start notification to server.
  *
  * @return 0 on success, negative on error
+ *
+ * @ingroup client_audio
  */
 int audio_start_thread() {
   log_info("audio_start_thread called: opt_audio_enabled=%d", opt_audio_enabled);
@@ -450,6 +483,8 @@ int audio_start_thread() {
  *
  * Gracefully stops the audio capture thread and cleans up resources.
  * Safe to call multiple times.
+ *
+ * @ingroup client_audio
  */
 void audio_stop_thread() {
   if (!g_audio_capture_thread_created) {
@@ -481,6 +516,8 @@ void audio_stop_thread() {
  * Check if audio capture thread has exited
  *
  * @return true if thread has exited, false otherwise
+ *
+ * @ingroup client_audio
  */
 bool audio_thread_exited() {
   return atomic_load(&g_audio_capture_thread_exited);
@@ -491,6 +528,8 @@ bool audio_thread_exited() {
  *
  * Stops audio threads and cleans up PortAudio resources.
  * Called during client shutdown.
+ *
+ * @ingroup client_audio
  */
 void audio_cleanup() {
   if (!opt_audio_enabled) {

@@ -1,12 +1,7 @@
 /**
- * @file symbols.c (POSIX)
- * @brief Symbol resolution - delegates to cross-platform implementation
- *
- * The symbol resolution implementation is now cross-platform and lives in
- * ../symbols.c. This file just includes it for POSIX builds.
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date October 2025
+ * @file platform/posix/symbols.c
+ * @ingroup platform
+ * @brief 🔍 POSIX symbol resolution stub (cross-platform implementation in ../symbols.c)
  */
 
 // The implementation in symbols.c is cross-platform and handles

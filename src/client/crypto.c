@@ -1,10 +1,149 @@
 /**
- * @file crypto_client.c
- * @brief Client-side crypto handshake integration
+ * @file client/crypto.c
+ * @ingroup client_crypto
+ * @brief 🔐 Client cryptography: handshake integration, X25519 key exchange, and per-session encryption
+ * CORE RESPONSIBILITIES:
+ * ======================
+ * 1. Initialize client crypto context with authentication credentials
+ * 2. Perform cryptographic handshake with server during connection
+ * 3. Manage global crypto context for client connection
+ * 4. Provide encryption/decryption functions for secure packet transmission
+ * 5. Support multiple authentication modes (password, SSH key, passwordless)
+ * 6. Handle session rekeying for long-lived connections
  *
- * This module integrates the crypto handshake into the client connection flow.
- * It handles the client-side crypto handshake after TCP connection is established
- * but before sending application data.
+ * CRYPTOGRAPHIC HANDSHAKE ARCHITECTURE:
+ * ======================================
+ * The handshake follows a multi-phase protocol:
+ *
+ * PHASE 0: PROTOCOL NEGOTIATION:
+ * - Step 0a: Send client protocol version
+ * - Step 0b: Receive server protocol version
+ * - Step 0c: Send client crypto capabilities
+ * - Step 0d: Receive server crypto parameters
+ *
+ * PHASE 1: KEY EXCHANGE:
+ * - Step 1: Receive server's ephemeral public key and send our public key
+ * - Client generates ephemeral key pair for this session
+ * - Both sides derive shared secret using X25519 key exchange
+ *
+ * PHASE 2: AUTHENTICATION:
+ * - Step 2: Receive auth challenge and send response
+ * - Client signs challenge with identity key (if client has identity key)
+ * - Server verifies client identity (if whitelist enabled)
+ * - Step 3: Receive handshake complete message
+ *
+ * CRYPTO INITIALIZATION:
+ * ======================
+ * The client supports three initialization modes:
+ *
+ * 1. SSH KEY MODE (--key specified):
+ *    - Parses Ed25519 private key from file or gpg:keyid format
+ *    - Extracts public key for authentication
+ *    - Supports password-protected keys (SSH agent or prompt)
+ *    - Optional password for dual authentication (key + password)
+ *
+ * 2. PASSWORD MODE (--password specified):
+ *    - Uses Argon2id key derivation from shared password
+ *    - Both client and server derive same key from password
+ *    - No identity keys required
+ *
+ * 3. PASSWORDLESS MODE (no credentials):
+ *    - Generates random ephemeral keys
+ *    - No long-term identity (no authentication)
+ *    - Suitable for trusted networks or testing
+ *
+ * GLOBAL CRYPTO CONTEXT:
+ * =====================
+ * The client uses a single global crypto context (g_crypto_ctx):
+ * - Shared across all connection attempts (reused on reconnection)
+ * - Initialized once per program execution
+ * - Cleaned up on program shutdown
+ * - Stores server connection info for known_hosts verification
+ *
+ * SERVER IDENTITY VERIFICATION:
+ * =============================
+ * Client verifies server identity using known_hosts:
+ * - Checks server's identity key against ~/.ascii-chat/known_hosts
+ * - First connection: Prompts user to accept server key
+ * - Subsequent connections: Verifies key matches stored value
+ * - Key mismatch: Warns user about potential MITM attack
+ * - Optional --server-key for explicit server key verification
+ *
+ * CLIENT AUTHENTICATION REQUIREMENTS:
+ * ====================================
+ * When server requires client authentication (whitelist enabled):
+ * - Client must provide identity key with --key option
+ * - Client's public key must be in server's --client-keys list
+ * - Authentication failure results in connection rejection
+ * - Interactive prompt warns user if no identity key provided
+ *
+ * SESSION REKEYING:
+ * =================
+ * Long-lived connections support periodic rekeying:
+ * - crypto_client_should_rekey(): Checks if rekey is needed
+ * - crypto_client_initiate_rekey(): Client-initiated rekeying
+ * - crypto_client_process_rekey_request(): Handles server-initiated rekey
+ * - Rekeying refreshes encryption keys without reconnecting
+ *
+ * ENCRYPTION/DECRYPTION OPERATIONS:
+ * ==================================
+ * After handshake completion:
+ * - crypto_client_encrypt_packet(): Encrypts packets before transmission
+ * - crypto_client_decrypt_packet(): Decrypts received packets
+ * - Both functions use global crypto context
+ * - Automatic passthrough when encryption disabled (--no-encrypt)
+ *
+ * ALGORITHM SUPPORT:
+ * ==================
+ * The client currently supports:
+ * - Key Exchange: X25519 (Elliptic Curve Diffie-Hellman)
+ * - Cipher: XSalsa20-Poly1305 (Authenticated Encryption)
+ * - Authentication: Ed25519 (when client has identity key)
+ * - Key Derivation: Argon2id (for password-based authentication)
+ * - HMAC: HMAC-SHA256 (for additional integrity protection)
+ *
+ * ERROR HANDLING:
+ * ==============
+ * Handshake errors are handled appropriately:
+ * - Server disconnection during handshake: Log and return error
+ * - Protocol mismatch: Log detailed error and abort connection
+ * - Authentication failure: Log and return CONNECTION_ERROR_AUTH_FAILED
+ * - Network errors: Detect and handle gracefully (reconnection)
+ * - Invalid packets: Validate size and format before processing
+ *
+ * THREAD SAFETY:
+ * ==============
+ * Crypto operations are thread-safe:
+ * - Global crypto context protected by initialization flag
+ * - Single crypto context per client process (no concurrent handshakes)
+ * - Encryption/decryption operations are safe for concurrent use
+ * - Rekeying operations coordinate with connection thread
+ *
+ * INTEGRATION WITH OTHER MODULES:
+ * ===============================
+ * - main.c: Calls client_crypto_init() during client startup
+ * - server.c: Calls client_crypto_handshake() during connection
+ * - protocol.c: Uses encryption functions for secure packet transmission
+ * - crypto/handshake.h: Core handshake protocol implementation
+ * - crypto/keys/keys.h: Key parsing and management functions
+ * - crypto/known_hosts.h: Server identity verification
+ *
+ * WHY THIS MODULAR DESIGN:
+ * =========================
+ * Separating cryptographic operations from connection management provides:
+ * - Clear cryptographic interface for application code
+ * - Easier handshake protocol evolution
+ * - Better error isolation and debugging
+ * - Improved security auditing capabilities
+ * - Independent testing of crypto functionality
+ *
+ * @author Zachary Fogg <me@zfo.gg>
+ * @date October 2025
+ * @version 2.0
+ * @see server.c For connection establishment and crypto handshake timing
+ * @see crypto/handshake.h For handshake protocol implementation
+ * @see crypto/keys/keys.h For key parsing and management
+ * @see crypto/known_hosts.h For server identity verification
  */
 
 #include "crypto.h"
@@ -30,12 +169,23 @@
 // Global crypto handshake context for this client connection
 // NOTE: We use the crypto context from server.c to match the handshake
 extern crypto_handshake_context_t g_crypto_ctx;
+
+/**
+ * @brief Flag indicating if crypto subsystem has been initialized
+ *
+ * Set to true after successful initialization of cryptographic components.
+ * Used to prevent multiple initialization attempts and ensure proper cleanup.
+ *
+ * @ingroup client_crypto
+ */
 static bool g_crypto_initialized = false;
 
 /**
  * Initialize client crypto handshake
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int client_crypto_init(void) {
   log_debug("CLIENT_CRYPTO_INIT: Starting crypto initialization");
@@ -170,6 +320,8 @@ int client_crypto_init(void) {
  *
  * @param socket Connected socket to server
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int client_crypto_handshake(socket_t socket) {
   // If client has --no-encrypt, skip handshake entirely
@@ -415,6 +567,8 @@ int client_crypto_handshake(socket_t socket) {
  * Check if crypto handshake is ready
  *
  * @return true if encryption is ready, false otherwise
+ *
+ * @ingroup client_crypto
  */
 bool crypto_client_is_ready(void) {
   if (!g_crypto_initialized || opt_no_encrypt) {
@@ -428,6 +582,8 @@ bool crypto_client_is_ready(void) {
  * Get crypto context for encryption/decryption
  *
  * @return crypto context or NULL if not ready
+ *
+ * @ingroup client_crypto
  */
 const crypto_context_t *crypto_client_get_context(void) {
   if (!crypto_client_is_ready()) {
@@ -446,6 +602,8 @@ const crypto_context_t *crypto_client_get_context(void) {
  * @param ciphertext_size Size of output buffer
  * @param ciphertext_len Output length of encrypted data
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len, uint8_t *ciphertext,
                                  size_t ciphertext_size, size_t *ciphertext_len) {
@@ -462,6 +620,8 @@ int crypto_client_encrypt_packet(const uint8_t *plaintext, size_t plaintext_len,
  * @param plaintext_size Size of output buffer
  * @param plaintext_len Output length of decrypted data
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
                                  size_t plaintext_size, size_t *plaintext_len) {
@@ -471,6 +631,8 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 
 /**
  * Cleanup crypto client resources
+ *
+ * @ingroup client_crypto
  */
 void crypto_client_cleanup(void) {
   if (g_crypto_initialized) {
@@ -488,6 +650,8 @@ void crypto_client_cleanup(void) {
  * Check if session rekeying should be triggered
  *
  * @return true if rekey should be initiated, false otherwise
+ *
+ * @ingroup client_crypto
  */
 bool crypto_client_should_rekey(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -500,6 +664,8 @@ bool crypto_client_should_rekey(void) {
  * Initiate session rekeying (client-initiated)
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_initiate_rekey(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -530,6 +696,8 @@ int crypto_client_initiate_rekey(void) {
  * @param packet Packet data
  * @param packet_len Packet length
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -550,6 +718,8 @@ int crypto_client_process_rekey_request(const uint8_t *packet, size_t packet_len
  * Send REKEY_RESPONSE packet to server
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_send_rekey_response(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -578,6 +748,8 @@ int crypto_client_send_rekey_response(void) {
  * @param packet Packet data
  * @param packet_len Packet length
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_len) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {
@@ -598,6 +770,8 @@ int crypto_client_process_rekey_response(const uint8_t *packet, size_t packet_le
  * Send REKEY_COMPLETE packet to server and commit to new key
  *
  * @return 0 on success, -1 on failure
+ *
+ * @ingroup client_crypto
  */
 int crypto_client_send_rekey_complete(void) {
   if (!g_crypto_initialized || !crypto_client_is_ready()) {

@@ -1,4 +1,4 @@
-# Installing Windows SDK for ASCII-Chat Development
+# Installing Windows SDK for ascii-chat Development
 
 ## Check if Windows SDK is Already Installed
 
@@ -97,9 +97,9 @@ where cl
 clang -E -x c - -v < nul 2>&1 | findstr /C:"Windows Kits"
 ```
 
-## For ASCII-Chat
+## For ascii-chat
 
-Since ASCII-Chat uses POSIX APIs, you have two options:
+Since ascii-chat uses POSIX APIs, you have two options:
 
 1. **Use MSYS2/MinGW** (Easier) - Provides POSIX compatibility layer
 2. **Port to Windows APIs** (More work) - Replace POSIX calls with Windows equivalents

@@ -1,12 +1,7 @@
 /**
- * @file http_client.c
- * @brief HTTPS client implementation using BearSSL
- *
- * Simple HTTPS GET client for fetching public keys from GitHub/GitLab.
- * Uses BearSSL for TLS and system CA certificates for trust validation.
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date October 2025
+ * @file crypto/http_client.c
+ * @ingroup crypto
+ * @brief 🌐 HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA validation
  */
 
 #include "http_client.h"

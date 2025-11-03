@@ -1,4 +1,4 @@
-# ASCII-Chat Test Scripts
+# ascii-chat Test Scripts
 
 This directory contains unified test runner scripts that consolidate all the common test running patterns from the Makefile into reusable, standalone scripts.
 

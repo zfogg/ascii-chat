@@ -1,7 +1,7 @@
 # =============================================================================
 # Dependency Finding and Configuration
 # =============================================================================
-# Finds and configures all external dependencies for ASCII-Chat
+# Finds and configures all external dependencies for ascii-chat
 #
 # Platform-specific dependency management:
 #   - Windows: Uses vcpkg for package management
@@ -496,7 +496,7 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
                             "================================================================================\n"
                             "ERROR: Insufficient Windows SDK Version\n"
                             "================================================================================\n"
-                            "ASCII-Chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
+                            "ascii-chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
                             "Current version detected: ${WINDOWS_SDK_VERSION}\n"
                             "\n"
                             "To install Windows SDK 10.0 or higher:\n"
@@ -519,7 +519,7 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
                             "After installation, restart your command prompt and try building again.\n"
                             "================================================================================")
                     else()
-                        message(STATUS "Windows SDK version ${WINDOWS_SDK_VERSION} detected - sufficient for ASCII-Chat")
+                        message(STATUS "Windows SDK version ${WINDOWS_SDK_VERSION} detected - sufficient for ascii-chat")
                     endif()
                 else()
                     message(WARNING "Could not parse Windows SDK version: ${WINDOWS_SDK_VERSION}")
@@ -532,7 +532,7 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
                 "================================================================================\n"
                 "WARNING: Could not detect Windows SDK version\n"
                 "================================================================================\n"
-                "ASCII-Chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
+                "ascii-chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
                 "If you encounter build errors related to missing headers (mfapi.h, mfidl.h),\n"
                 "please install Windows SDK 10.0 or higher using one of these methods:\n"
                 "\n"
@@ -556,7 +556,7 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
             "================================================================================\n"
             "WARNING: Could not find Windows Kits directory\n"
             "================================================================================\n"
-            "ASCII-Chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
+            "ascii-chat requires Windows SDK 10.0 or higher for Media Foundation APIs.\n"
             "Please install Windows SDK 10.0 or higher using one of these methods:\n"
             "\n"
             "METHOD 1 - Visual Studio Installer (Recommended):\n"

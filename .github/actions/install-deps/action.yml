@@ -1,5 +1,5 @@
 name: 'Install Dependencies'
-description: 'Install and cache build dependencies for ASCII-Chat'
+description: 'Install and cache build dependencies for ascii-chat'
 inputs:
   os:
     description: 'Operating system (ubuntu or macos)'

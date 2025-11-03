@@ -1,9 +1,7 @@
 /**
- * @file thread.c
- * @brief POSIX thread implementation for ASCII-Chat platform abstraction layer
- *
- * This file provides POSIX pthread wrappers for the platform abstraction layer,
- * enabling cross-platform thread management using a unified API.
+ * @file platform/posix/thread.c
+ * @ingroup platform
+ * @brief 🧵 POSIX pthread implementation for cross-platform thread management
  */
 
 #ifndef _WIN32
