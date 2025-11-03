@@ -71,8 +71,9 @@
  *   - GitLab URL (`gitlab:username`)
  * - Verified against known_hosts file
  *
- * @note **SSH Key Dependency**: Encrypted SSH keys currently require `ssh-keygen`
- *       or `$SSH_AUTH_SOCK` (ssh-agent). Native key decryption planned for future.
+ * @note **Native Decryption**: Encrypted SSH keys are decrypted natively using bcrypt_pbkdf
+ *       (from libsodium-bcrypt-pbkdf) + BearSSL AES-256-CTR. No external tools required.
+ *       Alternatively, use `$SSH_AUTH_SOCK` (ssh-agent) for password-free authentication.
  *
  * @section client_crypto_known_hosts Known Hosts Verification
  *

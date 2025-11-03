@@ -121,6 +121,12 @@ if(BEARSSL_FOUND)
     target_include_directories(ascii-chat-crypto PRIVATE ${BEARSSL_INCLUDE_DIRS})
 endif()
 
+# Add libsodium-bcrypt-pbkdf include directory
+target_include_directories(ascii-chat-crypto PRIVATE
+    ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
+    ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
+)
+
 # -----------------------------------------------------------------------------
 # Module 4: SIMD (depends on: util, core, video)
 # Note: Circular dependency with video (simd needs video for benchmark code,
