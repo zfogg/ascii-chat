@@ -331,6 +331,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 #define COMPRESS_ALGO_ZLIB 0x01
 /** @brief LZ4 fast compression algorithm */
 #define COMPRESS_ALGO_LZ4 0x02
+/** @brief zstd algorithm */
+#define COMPRESS_ALGO_ZSTD 0x03
 
 // =============================================================================
 // Frame Flags
@@ -573,7 +575,7 @@ bool shutdown_is_requested(void);
 /* Linux/other platforms use aligned_alloc() (C11) */
 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
   ({                                                                                                                   \
-    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
+    size_t aligned_size = (((size) + (alignment)-1) / (alignment)) * (alignment);                                      \
     cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                        \
     if (!_ptr) {                                                                                                       \
       FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,                  \
@@ -717,7 +719,7 @@ void debug_memory_report(void);
  * @ingroup common
  */
 void debug_memory_set_quiet_mode(bool quiet);
-#endif                                        /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
+#endif /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
 
 /** @} */
 
@@ -748,4 +750,3 @@ void debug_memory_set_quiet_mode(bool quiet);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t asciichat_shared_init(const char *default_log_filename);
-

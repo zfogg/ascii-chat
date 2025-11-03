@@ -151,4 +151,26 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
  */
 bool ssh_agent_has_key(const public_key_t *public_key);
 
+/**
+ * @brief Retrieve a private key from ssh-agent by matching public key
+ * @param public_key Public key to match (must not be NULL)
+ * @param key_out Output private key structure (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Retrieves private key from SSH agent by sending SSH2_AGENTC_SIGN_REQUEST.
+ * This doesn't actually retrieve the private key material - instead it proves
+ * the key exists in the agent by attempting a signature operation.
+ *
+ * @note Agent requirement: SSH agent must be running and accessible.
+ *       Returns error if agent is not available.
+ *
+ * @note Key format: Only Ed25519 keys are supported.
+ *
+ * @note Security: Private key never leaves ssh-agent.
+ *       This function only verifies the key exists by matching the public key.
+ *
+ * @ingroup crypto
+ */
+asciichat_error_t ssh_agent_get_key(const public_key_t *public_key, private_key_t *key_out);
+
 /** @} */

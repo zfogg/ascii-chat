@@ -10,7 +10,6 @@
 #define ADDR2LINE_BIN "addr2line.exe"
 #define popen _popen
 #define pclose _pclose
-#define strdup _strdup
 #else
 #define LLVM_SYMBOLIZER_BIN "llvm-symbolizer"
 #define ADDR2LINE_BIN "addr2line"
@@ -346,7 +345,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
   }
 
   entry->addr = addr;
-  entry->symbol = strdup(symbol);
+  entry->symbol = platform_strdup(symbol);
   if (!entry->symbol) {
     SAFE_FREE(entry);
     hashtable_write_unlock(cache);

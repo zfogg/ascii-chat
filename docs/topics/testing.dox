@@ -1,7 +1,7 @@
 /**
  * @defgroup testing Tests
  * @ingroup module_development
- * @brief Criterion unit, integration, and performance tests
+ * @brief Unit, integration, and performance
  */
 
 /**

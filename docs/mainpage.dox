@@ -19,7 +19,7 @@
  *
  * @warning **Important:** When exploring this documentation, navigate to @ref topics "Topics" in the sidebar. Many topic
  *          pages have "README" in their title and provide comprehensive subsystem overviews. These are excellent
- *          entry points for understanding major subsystems. You can also start with **Topic Categories** for an
+ *          entry points for understanding major subsystems. You can also start with **@ref topic_categories "Topic Categories"** for an
  *          organized index. See the @ref exploring_docs "Exploring the Documentation" section below for detailed
  *          navigation guidance.
  *
@@ -31,7 +31,7 @@
  *
  * - **ascii-chat API Documentation** - The main landing page (you are here)
  * - @ref topics "Topics" - Comprehensive architectural documentation (the most important section for understanding the system)
- * - **Topic Categories** - Index page that lists all topics organized by category (start here to browse topics!)
+ * - **@ref topic_categories "Topic Categories"** - Index page that lists all topics organized by category (start here to browse topics!)
  * - **Data Structures** - All struct and typedef definitions organized by functionality
  * - **Files** - Browse source files organized by directory structure
  * - **Examples** - Code examples and usage patterns
@@ -45,11 +45,11 @@
  * 2. Click to expand it
  * 3. You'll see all available topic pages listed
  *
- * Alternatively, you can start with **"Topic Categories"** in the sidebar, which provides an organized
+ * Alternatively, you can start with **@ref topic_categories "Topic Categories"** in the sidebar, which provides an organized
  * index of all topics grouped by category. This is an excellent starting point!
  *
  * The @ref topics "Topics" page includes comprehensive architectural guides with names like:
- * - **"Topic Categories"** - Index page that lists all topics organized by category (start here!)
+ * - **@ref topic_categories "Topic Categories"** - Index page that lists all topics organized by category (start here!)
  * - **"Build System README"** - Comprehensive build documentation
  * - **"Cryptography Module README"** - Crypto architecture and usage
  * - **"Handshake Module README"** - Protocol and authentication details
@@ -63,7 +63,7 @@
  *
  * **Looking for architectural documentation?**
  * - Click @ref topics "Topics" in the sidebar to see all topic pages
- * - Or start with **"Topic Categories"** for an organized index of all topics
+ * - Or start with **@ref topic_categories "Topic Categories"** for an organized index of all topics
  * - Look for topic pages with "README" in the title for comprehensive subsystem overviews
  *
  * **Looking for a specific function or struct?**
@@ -85,20 +85,95 @@
  * - Integration patterns and best practices
  * - Performance considerations and optimization notes
  *
- * Access topics directly via @ref topics "Topics" in the sidebar, or start with **"Topic Categories"**
+ * Access topics directly via @ref topics "Topics" in the sidebar, or start with **@ref topic_categories "Topic Categories"**
  * in the sidebar for an organized index of all topics grouped by category.
  *
  * **Key topics to explore:**
  *
+ * **Getting Started:**
  * - **@ref topic_build "Build System"**: CMake configuration, cross-platform compilation, build types,
  *   platform-specific gotchas, static builds, and build optimizations (**start here if new to the project!**)
- * - **Core Modules**: Cryptography, handshake protocol, key management
- * - **Data Structures**: Buffer pools, ring buffers, packet queues, hash tables
- * - **Media Processing**: Audio system, image-to-ASCII conversion, palette management
- * - **Platform Support**: Cross-platform abstractions, OS-specific functionality
- * - **Network Layer**: Socket operations, packet protocol, audio/video networking
- * - **Core Libraries**: Common definitions, configuration
- * - **Debugging**: Error handling, lock debugging, memory leak detection
+ * - **@ref topic_platform "Platform Abstraction Layer README"**: Complete cross-platform abstraction guide covering
+ *   threads, mutexes, sockets, terminal I/O, crash handling, and OS portability (**essential for understanding
+ *   Windows/Linux/macOS support!**)
+ * - **@ref topic_testing "Testing Framework"**: Test infrastructure, test runner, Docker testing, coverage
+ *
+ * **Core Infrastructure:**
+ * - **@ref topic_common "Common Definitions"**: Core utilities, macros, memory debugging, constants
+ * - **@ref topic_errno "Error Handling System"**: Typed error codes, error context, thread-safe errors
+ * - **@ref topic_logging "Logging System"**: Level-based logging, rate limiting, file output
+ * - **@ref topic_options "Options and Configuration"**: Command-line parsing and TOML config
+ *
+ * **Cryptography:**
+ * - **@ref topic_crypto_detailed "Cryptography Module README"**: Encryption architecture and security details
+ * - **@ref topic_handshake "Handshake Protocol"**: Secure connection establishment with X25519
+ * - **@ref topic_keys "Keys Module"**: SSH/GPG key parsing and validation
+ *
+ * **Data Structures:**
+ * - **@ref topic_buffer_pool "Buffer Pool"**: Pre-allocated memory buffers for efficient allocation
+ * - **@ref topic_ringbuffer "Ring Buffer"**: Lock-free circular buffers for audio/video
+ * - **@ref topic_packet_queue "Packet Queue"**: Thread-safe per-client packet queues
+ * - **@ref topic_hashtable "Hash Table"**: High-performance client ID lookup
+ *
+ * **Media Processing:**
+ * - **@ref topic_image2ascii "Image to ASCII Conversion"**: Video frame conversion with SIMD optimization
+ * - **@ref topic_grid_layout "Grid Layout System"**: Multi-frame layout for multi-user video
+ * - **@ref topic_audio "Audio System"**: Audio capture and playback with PortAudio
+ * - **@ref topic_mixer "Audio Mixer"**: Multi-client audio mixing with ducking
+ * - **@ref topic_palette "Palette Management"**: ASCII character palettes with UTF-8 support
+ *
+ * **Network Layer:**
+ * - **@ref topic_network "Network I/O"**: Socket operations, timeouts, packet protocol
+ * - **@ref topic_av "Audio/Video Networking"**: Network APIs for audio/video streaming
+ * - **@ref topic_packet_types "Packet Types"**: Network packet structures and definitions
+ * - **@ref topic_compression "Network Compression"**: zstd compression for payload optimization
+ *
+ * **Client Application:**
+ * - **@ref topic_client "Client Overview"**: Complete client architecture
+ * - **@ref topic_client_main "Client Main"**: Main lifecycle orchestration and reconnection logic
+ * - **@ref topic_client_connection "Connection Management"**: Server connection and packet transmission
+ * - **@ref topic_client_protocol "Protocol Handler"**: Packet reception and processing
+ * - **@ref topic_client_capture "Media Capture"**: Webcam video capture and transmission
+ * - **@ref topic_client_display "Terminal Display"**: Terminal rendering and TTY management
+ * - **@ref topic_client_audio "Audio Processing"**: Audio capture, playback, and jitter buffering
+ * - **@ref topic_client_crypto "Client Cryptography"**: Handshake and key management
+ *
+ * **Server Application:**
+ * - **@ref topic_server "Server Overview"**: Multi-client server with per-client threading
+ * - **@ref topic_server_main "Server Main"**: Server initialization and connection management
+ * - **@ref topic_server_client "Client Management"**: Per-client lifecycle and threading coordination
+ * - **@ref topic_server_protocol "Protocol Handler"**: Network packet processing
+ * - **@ref topic_server_stream "Stream Generation"**: Multi-client video mixing and ASCII generation
+ * - **@ref topic_server_render "Render Threads"**: Per-client rendering threads with rate limiting
+ * - **@ref topic_server_stats "Statistics and Monitoring"**: Performance monitoring and resource tracking
+ * - **@ref topic_server_crypto "Server Cryptography"**: Per-client handshake and session encryption
+ *
+ * For more details, explore the **@ref topic_categories "Topic Categories"** page, which provides
+ * links to all topics organized by category. Key topics include:
+ *
+ * - **@ref topic_build "Build System"**: Complete build documentation, CMake configuration,
+ *   cross-platform compilation, build types, and optimization
+ * - **@ref topic_platform "Platform Abstraction Layer README"**: Comprehensive guide to cross-platform
+ *   abstractions, threading, sockets, terminal I/O, and OS portability
+ * - **@ref topic_crypto_detailed "Cryptography Module README"**: Encryption architecture,
+ *   cryptographic operations, and security details
+ * - **@ref topic_handshake "Handshake Module README"**: How client and server establish
+ *   secure encrypted sessions using X25519 key exchange
+ * - **@ref topic_keys "Keys Module README"**: SSH/GPG key handling, key validation,
+ *   and authentication mechanisms
+ * - **@ref topic_av "Audio/Video Networking"**: Media packet APIs, compression,
+ *   and streaming protocols
+ * - **@ref topic_network "Network I/O"**: Packet I/O operations, socket management,
+ *   and network abstractions
+ *
+ * @note **Finding Topics**: All topics are accessible via @ref topics "Topics" in the sidebar. Many topics have
+ *       "README" in their title and descriptive Uppercase names, indicating they are comprehensive
+ *       subsystem documentation. You can also start with **@ref topic_categories "Topic Categories"** for an organized index,
+ *       or use the search bar at the top of the page to find topics.
+ *
+ * **Development & Debugging:**
+ * - **@ref topic_debug "Debugging Utilities"**: Error tracking, memory leak detection, diagnostics
+ * - **@ref topic_lock_debug "Lock Debugging"**: Lock tracking, deadlock detection, contention analysis
  *
  * @subsubsection how_to_use_topics What's Inside Each Topic Page?
  *
@@ -202,7 +277,9 @@
  * - @ref logging "Logging Module" - Logging API and utilities
  *
  * @subsection platform_module Platform Abstractions
- * - @ref platform "Platform Layer" - Cross-platform abstractions for threads, mutexes, sockets, system calls
+ * - @ref topic_platform "Platform Abstraction Layer README" - **Comprehensive guide** to cross-platform abstractions
+ *   for threads, mutexes, sockets, terminal I/O, crash handling, and OS portability (Windows/Linux/macOS)
+ * - @ref platform "Platform Layer" - API reference for platform abstractions
  * - @ref os "OS Abstractions" - Operating system specific functionality (webcam, etc.)
  *
  * @subsection core_libs_module Core Libraries
@@ -497,27 +574,6 @@
  * - `threaded_send_packet()` is thread-safe for concurrent sending
  * - `receive_packet_secure()` should be called from dedicated receive thread
  * - Crypto context is per-connection (not thread-safe for concurrent access)
- *
- * For more details, explore the **@ref topic_categories "Topic Categories"** page, which provides
- * links to all topics organized by category. Key topics include:
- *
- * - **@ref topic_build "Build System"**: Complete build documentation, CMake configuration,
- *   cross-platform compilation, build types, and optimization
- * - **@ref topic_crypto_detailed "Cryptography Module README"**: Encryption architecture,
- *   cryptographic operations, and security details
- * - **@ref topic_handshake "Handshake Module README"**: How client and server establish
- *   secure encrypted sessions using X25519 key exchange
- * - **@ref topic_keys "Keys Module README"**: SSH/GPG key handling, key validation,
- *   and authentication mechanisms
- * - **@ref topic_av "Audio/Video Networking"**: Media packet APIs, compression,
- *   and streaming protocols
- * - **@ref topic_network "Network I/O"**: Packet I/O operations, socket management,
- *   and network abstractions
- *
- * @note **Finding Topics**: All topics are accessible via @ref topics "Topics" in the sidebar. Many topics have
- *       "README" in their title and descriptive Uppercase names, indicating they are comprehensive
- *       subsystem documentation. You can also start with **Topic Categories** for an organized index,
- *       or use the search bar at the top of the page to find topics.
  * 
  * @section building Building Documentation
  *
