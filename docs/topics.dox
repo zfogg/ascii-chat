@@ -39,7 +39,7 @@
  * - @subpage topic_handshake
  * - @subpage topic_keys
  *
- * @section topics_video Video Processing
+ * @section topics_video Video
  *
  * @copybrief module_video
  *

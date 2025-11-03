@@ -3,6 +3,7 @@
 /**
  * @defgroup av Audio/Video Networking
  * @ingroup module_network
+ * @brief Audio/Video/ASCII Packet Network Protocol Implementation
  *
  * @file network/av.h
  * @ingroup av

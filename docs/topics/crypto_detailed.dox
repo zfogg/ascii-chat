@@ -628,7 +628,7 @@
  * - ✅ Use shared secret as encryption key
  * - ✅ Increment nonce counter for each packet
  *
- * @section crypto_detailed_key_management Key Management
+ * @section crypto_detailed_key_management Keys Module
  *
  * @subsection crypto_detailed_key_separation Design Principle: Separation of Identity and Encryption
  *
@@ -2473,6 +2473,6 @@
  * **License:** Same as ascii-chat project (see LICENSE)
  *
  * @see topic_crypto "Cryptography Module" for module API documentation
- * @see topic_keys "Key Management" for detailed key handling
+ * @see topic_keys "Keys Module" for detailed key handling
  * @see topic_handshake "Handshake Protocol" for handshake details
  */

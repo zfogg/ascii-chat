@@ -1,6 +1,7 @@
 /**
  * @defgroup logging Logging System
  * @ingroup module_core
+ * @brief Logging API with multiple log levels and terminal output control
  *
  * @file logging.h
  * @ingroup logging

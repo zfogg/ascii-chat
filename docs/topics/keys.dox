@@ -5,12 +5,12 @@
  */
 
 /**
- * @page topic_keys Key Management
+ * @page topic_keys Key Management README
  * @ingroup keys
  *
  * @section keys_overview Overview
  *
- * The Key Management module provides comprehensive support for parsing, validating, and managing
+ * The Keys Module module provides comprehensive support for parsing, validating, and managing
  * cryptographic keys from multiple sources and formats. It serves as the foundation for secure
  * authentication and key exchange in ascii-chat.
  *

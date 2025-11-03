@@ -1,14 +1,10 @@
 /**
- * @defgroup module_main main()
- * @brief main() ascii-chat function
- *
- * @defgroup main Main Module
- * @ingroup module_main
- * @brief main() ascii-chat function
+ * @defgroup main main()
+ * @brief \c main() The binary's entry point
  */
 
 /**
- * @page topic_main main() Overview
+ * @page topic_main main() README
  * @ingroup main
  *
  * @section main_overview Overview

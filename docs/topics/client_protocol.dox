@@ -1,11 +1,11 @@
 /**
- * @defgroup client_protocol Protocol Handler
+ * @defgroup client_protocol Client Handler
  * @ingroup module_client
  * @brief Client-side packet processing and data reception thread
  */
 
 /**
- * @page topic_client_protocol Protocol Handler
+ * @page topic_client_protocol Client Protocol README
  * @ingroup client_protocol
  *
  * @section client_protocol_overview Overview

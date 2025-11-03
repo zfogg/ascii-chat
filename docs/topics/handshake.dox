@@ -1,10 +1,11 @@
 /**
- * @defgroup handshake Handshake Protocol
+ * @defgroup handshake Handshake Module
  * @ingroup module_crypto
+ * @brief Cryptographic handshake implementation for key exchange and authentication
  */
 
 /**
- * @page topic_handshake Handshake Protocol
+ * @page topic_handshake Crypto Handshake README
  * @ingroup handshake
  *
  * The cryptographic handshake protocol establishes secure, authenticated connections
