@@ -4,10 +4,33 @@
  *
  * @section platform_overview Overview
  *
- * The Platform Abstraction Layer is a comprehensive cross-platform abstraction module
- * that enables ascii-chat to run seamlessly on Windows, Linux, and macOS. This module
- * provides a unified API for platform-specific functionality, allowing application code
- * to remain completely platform-independent.
+ * Welcome to the platform abstraction layer—the unsung hero that makes ascii-chat work seamlessly
+ * across Windows, Linux, and macOS!
+ *
+ * Here's the thing about cross-platform development: every operating system has its own way of
+ * doing things. Windows uses different APIs than Linux. macOS has its quirks. Writing code that
+ * works everywhere usually means lots of `#ifdef _WIN32` scattered throughout your codebase,
+ * making it a mess to read and maintain.
+ *
+ * But what if you could write your code once and have it just work everywhere? That's exactly
+ * what the platform abstraction layer does. It provides a unified API—one set of functions that
+ * work identically on all platforms. Under the hood, it translates your calls to the appropriate
+ * platform-specific APIs. You write clean, readable code, and the platform layer handles all
+ * the messy details.
+ *
+ * Think of it like an adapter plug for international travel. You don't need to carry different
+ * devices for each country—you just bring one adapter that works everywhere. Same idea here!
+ *
+ * What does the platform layer abstract?
+ * ---------------------------------------
+ * - **Threading**: Create threads, join them, get thread IDs—same API everywhere
+ * - **Synchronization**: Mutexes, read-write locks, condition variables (with platform-optimized implementations)
+ * - **Networking**: Sockets that work the same on Windows' Winsock2 and POSIX BSD sockets
+ * - **Terminal I/O**: Control the terminal, detect capabilities, raw mode—consistent across platforms
+ * - **System functions**: Environment variables, time operations, crash handling, and more
+ * - **File I/O**: Safe, portable file operations with proper error handling
+ *
+ * **Supported Platforms**: Windows 10+, Linux (POSIX), macOS (POSIX)
  *
  * @section platform_philosophy Design Philosophy
  *

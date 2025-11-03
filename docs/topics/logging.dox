@@ -4,47 +4,56 @@
  *
  * @section logging_overview Overview
  *
- * The Logging System provides structured, level-based logging with rate limiting,
- * file output, and thread-safe operation for ascii-chat. It supports both console
- * and file logging with configurable log levels.
+ * Welcome to the logging system! If you've ever tried to debug a complex program without good
+ * logging, you know the pain. The logging system is your debugging best friend—it helps you
+ * understand what's happening in your application, track down bugs, and monitor behavior in
+ * production.
+ *
+ * Think of logging as your application's diary. It writes down everything that happens: when
+ * clients connect, when errors occur, when packets are processed. You can configure how chatty
+ * it should be (from super verbose DEBUG mode to quiet ERROR-only mode), and you can send the
+ * output to the console, to a file, or both!
  *
  * **Implementation**: lib/logging.h
  *
- * **Key Features**:
- * - Five log levels (DEBUG, INFO, WARN, ERROR, FATAL)
- * - Rate-limited logging for high-frequency messages
- * - File and console output support
- * - Thread-safe logging with mutex protection
- * - Automatic timestamp and source location tracking
- * - Colored console output (when supported)
- * - Runtime log level configuration
+ * What makes this logging system helpful?
+ * ----------------------------------------
+ * - **Five log levels**: DEBUG, INFO, WARN, ERROR, FATAL (choose your verbosity)
+ * - **Rate limiting**: Prevents log spam in tight loops (your disk will thank you)
+ * - **Flexible output**: Console, file, or both simultaneously
+ * - **Thread-safe**: Multiple threads can log without stepping on each other
+ * - **Context tracking**: Automatic timestamps and source location (file:line)
+ * - **Pretty colors**: Colored console output so errors jump out at you
+ * - **Runtime configuration**: Change log level on the fly via environment variable
  *
  * @section logging_levels Log Levels
  *
- * **DEBUG (0)**:
- * - Detailed diagnostic information
- * - Only compiled in debug builds
- * - Use for verbose debugging output
+ * The logging system has five levels, from most verbose to least:
  *
- * **INFO (1)**:
- * - General informational messages
- * - Normal operation events
- * - User-facing status updates
+ * **DEBUG (0)** - The chatty one:
+ * - Use this when you need detailed diagnostic information
+ * - Only available in debug builds (stripped out in release for performance)
+ * - Perfect for understanding exactly what's happening step by step
  *
- * **WARN (2)**:
- * - Warning conditions
- * - Non-critical issues
- * - Potential problems
+ * **INFO (1)** - The reporter:
+ * - General informational messages about normal operations
+ * - "Client connected", "Frame processed", that sort of thing
+ * - What you'd want to see during normal operation
  *
- * **ERROR (3)**:
- * - Error conditions
- * - Operation failures
- * - Recoverable errors
+ * **WARN (2)** - The concerned citizen:
+ * - Something's not quite right, but we can keep going
+ * - "Buffer is getting full", "Retrying connection"
+ * - Pay attention, but don't panic
  *
- * **FATAL (4)**:
- * - Fatal errors
- * - Unrecoverable conditions
- * - Application termination
+ * **ERROR (3)** - Houston, we have a problem:
+ * - Operation failures that are recoverable
+ * - "Failed to send packet", "Client disconnected unexpectedly"
+ * - Things went wrong, but we're handling it
+ *
+ * **FATAL (4)** - The showstopper:
+ * - Unrecoverable errors that mean we can't continue
+ * - "Cannot initialize crypto", "Out of memory"
+ * - Time to gracefully shut down
  *
  * @section logging_usage Basic Usage
  *
@@ -142,10 +151,21 @@
  *
  * @section logging_format Output Format
  *
+ * Log messages have a consistent format that makes them easy to read and
+ * understand. Every message includes a timestamp, level, source location,
+ * and the actual message text. Let's look at the format:
+ *
+ * What does a log message look like?
+ * ----------------------------------
  * **Log Message Format**:
  * ```
  * [TIMESTAMP] LEVEL [file:line] message
  * ```
+ *
+ * The format is simple and consistent—timestamp first (so you can see when
+ * things happened), level next (so you know how important it is), source
+ * location (so you know where in the code it came from), and the message
+ * itself.
  *
  * **Example Output**:
  * ```
@@ -155,12 +175,22 @@
  * [2025-01-15 14:23:47] ERROR [crypto.c:789] Handshake failed: invalid signature
  * ```
  *
+ * Notice how you can see exactly when things happened, what level they are,
+ * where in the code they came from, and what the message is. This makes
+ * debugging much easier!
+ *
+ * What about colors?
+ * ------------------
  * **Console Colors** (ANSI terminals):
- * - DEBUG: Gray
- * - INFO: White
- * - WARN: Yellow
- * - ERROR: Red
- * - FATAL: Bold Red
+ * - **DEBUG**: Gray (subtle, so it doesn't distract from important messages)
+ * - **INFO**: White (default color, for normal messages)
+ * - **WARN**: Yellow (gets your attention, but not too alarming)
+ * - **ERROR**: Red (you should pay attention to this!)
+ * - **FATAL**: Bold Red (this is serious!)
+ *
+ * Colors make it easy to scan logs—errors jump out in red, warnings in yellow.
+ * If you're in a terminal that supports colors, this makes debugging much
+ * easier.
  *
  * @section logging_threading Thread Safety
  *
@@ -190,20 +220,51 @@
  *
  * @section logging_performance Performance Considerations
  *
+ * Logging performance is important—you don't want logging to slow down your
+ * application. We've designed the system to be efficient, but there are some
+ * things to keep in mind:
+ *
+ * How do we keep logging fast?
+ * ---------------------------
  * **Rate Limiting**:
- * - Use log_*_every() in high-frequency code paths
- * - Prevents log spam and performance degradation
- * - Minimal overhead when rate limit is active
+ * - **Use log_*_every() in high-frequency code paths**: If you're logging in a
+ *   tight loop, use rate limiting so you don't flood the logs
+ * - **Prevents log spam and performance degradation**: Without rate limiting,
+ *   logging can slow down your application significantly
+ * - **Minimal overhead when rate limit is active**: Once the rate limit is
+ *   active, logging is essentially free (we just check if enough time has
+ *   passed, then skip logging)
  *
+ * Rate limiting is your friend in tight loops—you can log every iteration
+ * without actually logging every iteration!
+ *
+ * How about file I/O?
+ * -------------------
  * **File I/O**:
- * - File logging adds I/O overhead
- * - Consider async file writing for high-throughput
- * - Use buffered output for better performance
+ * - **File logging adds I/O overhead**: Writing to a file is slower than
+ *   writing to console, but it's still pretty fast for most use cases
+ * - **Consider async file writing for high-throughput**: If you're logging a
+ *   lot (thousands of messages per second), you might want async file writing
+ * - **Use buffered output for better performance**: We use buffered I/O, so
+ *   multiple log messages can be written in one operation
  *
+ * File logging is pretty fast—we use buffered I/O, so most of the time you
+ * won't notice the overhead. If you're logging hundreds of messages per second,
+ * you might want to consider rate limiting or async logging.
+ *
+ * What about string formatting?
+ * -----------------------------
  * **String Formatting**:
- * - Avoid expensive formatting in hot paths
- * - Use rate limiting for frequent messages
- * - Consider conditional compilation for debug logs
+ * - **Avoid expensive formatting in hot paths**: String formatting (like
+ *   `sprintf()`) can be slow if you're doing it thousands of times per second
+ * - **Use rate limiting for frequent messages**: If you're logging frequently,
+ *   rate limiting reduces the number of format operations
+ * - **Consider conditional compilation for debug logs**: Debug logs can be
+ *   compiled out entirely in release builds, so they have zero overhead
+ *
+ * String formatting is usually pretty fast, but if you're doing it millions
+ * of times per second, it can add up. Use rate limiting for frequent messages,
+ * and remember that debug logs are compiled out in release builds!
  *
  * @section logging_best_practices Best Practices
  *

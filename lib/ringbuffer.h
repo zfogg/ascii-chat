@@ -2,7 +2,7 @@
 
 /**
  * @defgroup ringbuffer Ring Buffer
- * @ingroup module_data_structures
+ * @ingroup ringbuffer
  *
  * @file ringbuffer.h
  * @ingroup ringbuffer

@@ -30,9 +30,43 @@ if(DOXYGEN_EXECUTABLE)
     # Create docs directory if it doesn't exist
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/docs")
 
+    # Generate manpage renaming script at configure time
+    file(WRITE "${CMAKE_BINARY_DIR}/RenameManpages.cmake" "
+# Rename manpages with ascii-chat- prefix
+file(TO_CMAKE_PATH \"\${MAN_DIR}\" MAN_DIR)
+
+# Find all .3 manpages in the directory
+file(GLOB MANPAGES \"\${MAN_DIR}/*.3\")
+if(NOT MANPAGES)
+    message(STATUS \"No manpages found in \${MAN_DIR}, skipping\")
+    return()
+endif()
+
+set(RENAMED_COUNT 0)
+set(SKIPPED_COUNT 0)
+
+foreach(MANPAGE \${MANPAGES})
+    get_filename_component(FILENAME \"\${MANPAGE}\" NAME)
+    if(FILENAME MATCHES \"^ascii-chat-\")
+        math(EXPR SKIPPED_COUNT \"\${SKIPPED_COUNT} + 1\")
+        continue()
+    endif()
+
+    set(NEW_FILENAME \"ascii-chat-\${FILENAME}\")
+    get_filename_component(DIR \"\${MANPAGE}\" DIRECTORY)
+    set(NEW_PATH \"\${DIR}/\${NEW_FILENAME}\")
+    file(RENAME \"\${MANPAGE}\" \"\${NEW_PATH}\")
+    math(EXPR RENAMED_COUNT \"\${RENAMED_COUNT} + 1\")
+endforeach()
+
+message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} already prefixed\")
+")
+
     # Create documentation target
     add_custom_target(docs
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+        COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
+        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/docs/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM
@@ -73,6 +107,14 @@ if(DOXYGEN_EXECUTABLE)
         DIRECTORY ${CMAKE_BINARY_DIR}/docs/html
         DESTINATION share/doc/ascii-chat
         OPTIONAL
+    )
+
+    # Install manpages (optional)
+    install(
+        DIRECTORY ${CMAKE_BINARY_DIR}/docs/man/
+        DESTINATION share/man
+        OPTIONAL
+        FILES_MATCHING PATTERN "*.3"
     )
 
     message(STATUS "Documentation target 'docs' is available. Build with: cmake --build build --target docs")

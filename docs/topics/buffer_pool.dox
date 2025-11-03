@@ -10,52 +10,64 @@
  *
  * @section buffer_pool_overview Overview
  *
- * The buffer pool system provides pre-allocated memory buffers to reduce malloc/free overhead
- * in high-throughput scenarios. This is critical for real-time video streaming where allocations
- * can cause frame drops and latency spikes.
+ * Welcome! Let's talk about the buffer pool system—one of the secret weapons for making
+ * ascii-chat's real-time video streaming fast and smooth.
+ *
+ * You know how constantly calling `malloc()` and `free()` can slow things down? Well, imagine
+ * doing that 30 times per second for video frames, per client! The buffer pool solves this by
+ * pre-allocating a bunch of memory buffers up front, so when you need one, it's ready to go.
+ * No waiting for the system allocator, no frame drops, no latency spikes—just grab a buffer
+ * and get to work.
+ *
+ * Think of it like having a stack of clean plates ready for a dinner party. Instead of washing
+ * a plate every time someone needs one, you just grab from the stack. Much faster!
  *
  * **Implementation**: lib/buffer_pool.c/h
  *
- * **Key Features**:
- * - Multiple size classes (small/medium/large/xlarge)
- * - Thread-safe with mutex protection
- * - Detailed statistics tracking
- * - Automatic fallback to malloc when pools exhausted
- * - Global singleton pattern for convenience
+ * What does the buffer pool give you?
+ * ------------------------------------
+ * - Multiple size classes (small/medium/large/xlarge) for different needs
+ * - Thread-safe operation with mutex protection (multiple threads can use it safely)
+ * - Detailed statistics so you can see how well it's working
+ * - Automatic fallback to malloc when pools run dry (graceful degradation)
+ * - Global singleton pattern for convenience (one pool for the whole app)
  *
  * @section buffer_pool_architecture Architecture
  *
  * @subsection buffer_pool_size_classes Size Classes
  *
- * The buffer pool uses four size classes optimized for ascii-chat workloads:
+ * The buffer pool isn't one-size-fits-all. Instead, it provides four different size classes,
+ * each optimized for different types of data you'll be working with:
  *
- * | Size Class | Buffer Size | Pool Count | Total Memory | Use Case |
- * |------------|-------------|------------|--------------|----------|
- * | **Small**  | 1 KB        | 256        | 256 KB       | Audio packets |
+ * | Size Class | Buffer Size | Pool Count | Total Memory | What's it good for? |
+ * |------------|-------------|------------|--------------|---------------------|
+ * | **Small**  | 1 KB        | 256        | 256 KB       | Audio packets (nice and compact) |
  * | **Medium** | 64 KB       | 256        | 16 MB        | Small video frames |
  * | **Large**  | 256 KB      | 256        | 64 MB        | Large video frames |
- * | **XLarge** | 2 MB        | 256        | 512 MB       | HD video frames |
+ * | **XLarge** | 2 MB        | 256        | 512 MB       | HD video frames (the big stuff) |
  *
- * **Total pre-allocated memory**: ~592 MB
+ * **Total pre-allocated memory**: ~592 MB (yeah, it's a decent chunk, but remember—this
+ * eliminates malloc overhead for thousands of allocations per second!)
  *
  * @subsection buffer_pool_allocation Allocation Strategy
  *
- * When allocating a buffer, the pool manager:
- * 1. Selects the smallest size class that fits the request
- * 2. Attempts to get a buffer from the corresponding pool's free list
- * 3. Falls back to malloc() if pool is exhausted
- * 4. Tracks statistics for hit rate analysis
+ * So how does the buffer pool decide which buffer to give you? It's pretty straightforward:
  *
- * Example allocation flow:
+ * 1. **Pick the right size**: It selects the smallest size class that can fit your request
+ * 2. **Try the pool first**: It attempts to grab a buffer from the corresponding pool's free list
+ * 3. **Fallback gracefully**: If the pool is exhausted, it falls back to regular malloc() (better slow than crashing!)
+ * 4. **Track everything**: It keeps statistics so you can tune the pool sizes if needed
+ *
+ * Here's how it works in practice:
  * @code{.c}
  * // Request 50 KB buffer
  * void *buf = buffer_pool_alloc(50 * 1024);  // Gets from medium pool (64 KB)
  *
  * // Request 300 KB buffer
- * void *buf = buffer_pool_alloc(300 * 1024); // Gets from large pool (256 KB)? No! Too small.
- *                                             // Gets from xlarge pool (2 MB)
+ * void *buf = buffer_pool_alloc(300 * 1024); // Gets from large pool (256 KB)? Nope! Too small.
+ *                                             // Gets from xlarge pool (2 MB) instead
  *
- * // When done, return to pool
+ * // When done, return to pool (important!)
  * buffer_pool_free(buf, 50 * 1024);
  * @endcode
  *
@@ -116,7 +128,8 @@
  *
  * @subsection buffer_pool_global Global Pool (Recommended)
  *
- * ascii-chat uses a global singleton pool for convenience:
+ * For most cases, you'll want to use the global singleton pool. It's simple and convenient—
+ * one pool for your whole application:
  *
  * @code{.c}
  * // Initialize at startup (in main())
@@ -140,7 +153,7 @@
  *
  * **CRITICAL**: You must pass the same size to `buffer_pool_free()` that you
  * used in `buffer_pool_alloc()`. The pool needs to know which size class to
- * return the buffer to.
+ * return the buffer to. If you mix this up, bad things happen!
  *
  * @subsection buffer_pool_custom Custom Pool
  *
@@ -211,7 +224,8 @@
  *
  * @subsection buffer_pool_benchmarks Benchmarks
  *
- * Comparison: buffer pool vs. malloc/free for video frame allocation:
+ * Okay, let's talk numbers. How much faster is the buffer pool compared to regular malloc/free?
+ * The answer: dramatically faster.
  *
  * | Operation | Buffer Pool | malloc/free | Speedup |
  * |-----------|-------------|-------------|---------|
@@ -224,15 +238,17 @@
  *
  * @subsection buffer_pool_realtime Real-Time Impact
  *
- * For 30 FPS video (33.3ms frame budget):
- * - **malloc/free**: 10.5µs per frame (0.03% of budget)
- * - **Buffer pool**: 0.35µs per frame (0.001% of budget)
- * - **Savings**: 10.15µs per frame = **305µs per second**
+ * But what does this mean for real-time video? Glad you asked!
  *
- * At 9 clients × 30 FPS = 270 frames/sec:
- * - malloc/free overhead: **2.84ms/sec**
- * - Buffer pool overhead: **0.09ms/sec**
- * - **Recovered time: 2.75ms/sec** for other processing
+ * For 30 FPS video (you've got 33.3ms per frame to do everything):
+ * - **malloc/free**: 10.5µs per frame (0.03% of your time budget)
+ * - **Buffer pool**: 0.35µs per frame (0.001% of your time budget)
+ * - **Savings**: 10.15µs per frame = **305µs per second** you get back for other work!
+ *
+ * Now scale that up to 9 clients × 30 FPS = 270 frames/sec:
+ * - malloc/free overhead: **2.84ms/sec** (oof, that adds up!)
+ * - Buffer pool overhead: **0.09ms/sec** (barely noticeable)
+ * - **Recovered time: 2.75ms/sec** for other processing (encoding, networking, rendering, etc.)
  *
  * @section buffer_pool_threading Thread Safety
  *

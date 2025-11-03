@@ -10,35 +10,43 @@
  *
  * @section hashtable_overview Overview
  *
- * The Hash Table module provides a high-performance hash table implementation
- * optimized for client ID lookup in ascii-chat's multi-client server architecture.
- * The implementation uses separate chaining with reader-writer locks for optimal
- * concurrent access performance.
+ * Welcome! Let's dive into the hash table—a data structure so fundamental that you probably use
+ * it every day without thinking about it (ever use a Python dictionary or JavaScript object?).
+ *
+ * Here's the problem: ascii-chat needs to keep track of multiple clients, each with their own ID.
+ * When a packet arrives, we need to quickly find which client it belongs to. We could loop through
+ * all clients linearly, but with 9+ clients, that gets slow fast. Enter the hash table!
+ *
+ * Think of a hash table like a library's card catalog (remember those?). Instead of searching
+ * through every book, you go straight to the drawer labeled "S" to find "Shakespeare." The hash
+ * table does something similar—it uses a client's ID to calculate exactly which "drawer" (bucket)
+ * to look in. This makes lookups incredibly fast, even with hundreds of clients.
  *
  * **Implementation**: lib/hashtable.h
  *
- * **Key Features**:
- * - Separate chaining for collision resolution
- * - Power-of-2 bucket count for fast modulo via bit masking
- * - Reader-writer locks for improved concurrent read performance
- * - Pre-allocated entry pool to eliminate malloc overhead
- * - Thread-safe operations for concurrent access
- * - Comprehensive statistics tracking (lookups, hits, collisions)
- *
+ * What makes this hash table special?
+ * ------------------------------------
+ * - **Optimized for client IDs**: Designed specifically for fast uint32_t lookups
+ * - **Separate chaining**: Handles collisions gracefully with linked lists
+ * - **Power-of-2 buckets**: Uses bit masking instead of slow modulo operations (nerd alert: it's fast!)
+ * - **Reader-writer locks**: Multiple threads can read simultaneously without blocking
+ * - **Pre-allocated pool**: No malloc overhead during normal operation
+ * - **Statistics tracking**: Monitor hit rates, collisions, and load factor
  * @section hashtable_architecture Architecture
  *
  * @subsection hashtable_structure Hash Table Structure
  *
- * The hash table uses separate chaining:
- * - **Buckets**: Array of 1024 bucket heads (power-of-2 for bit masking)
- * - **Entry Pool**: Pre-allocated array of 2048 entries (eliminates malloc)
- * - **Free List**: Stack of unused entries (LIFO for cache locality)
- * - **Locking**: Reader-writer lock for thread-safe operations
+ * The hash table uses separate chaining—a simple but effective approach. Here's what's inside:
  *
- * **Hash Function**:
- * - Optimized for 32-bit client IDs
- * - Uses bit masking instead of modulo (power-of-2 buckets)
- * - Fast collision resolution via linked lists
+ * - **Buckets**: An array of 1024 bucket heads (power-of-2 chosen deliberately for bit masking magic)
+ * - **Entry Pool**: Pre-allocated array of 2048 entries (no malloc needed—they're already there!)
+ * - **Free List**: Stack of unused entries (LIFO ordering helps with cache locality)
+ * - **Locking**: Reader-writer lock for thread-safe operations (multiple readers can party simultaneously)
+ *
+ * The hash function is dead simple but effective:
+ * - Optimized for 32-bit client IDs (what we actually use)
+ * - Uses bit masking instead of modulo (way faster—power-of-2 buckets make this possible)
+ * - When collisions happen, entries chain together in a linked list (easy to traverse)
  *
  * @subsection hashtable_optimizations Optimizations
  *
