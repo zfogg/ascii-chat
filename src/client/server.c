@@ -1,7 +1,8 @@
 /**
  * @file client/server.c
  * @ingroup client_connection
- * @brief 🌐 Client connection manager: TCP connection, reconnection with exponential backoff, and thread-safe transmission
+ * @brief 🌐 Client connection manager: TCP connection, reconnection with exponential backoff, and thread-safe
+ * transmission
  *
  * The connection management follows a robust state machine:
  * 1. **Initialization**: Socket creation and address resolution

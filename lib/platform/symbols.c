@@ -29,7 +29,8 @@
 #include "symbols.h"
 #include "system.h"
 #include "../common.h"
-#include "../hashtable.h"
+#include "util/uthash.h"
+#include "rwlock.h"
 #include "../util/path.h"
 #include "../util/string.h"
 
@@ -68,6 +69,7 @@ static atomic_bool g_symbolizer_detected = false;
  * ============
  * - addr: Memory address key (used for hashtable lookup)
  * - symbol: Resolved symbol string (allocated, owned by cache)
+ * - hh: uthash handle (required for hash table operations)
  *
  * USAGE:
  * ======
@@ -85,7 +87,7 @@ static atomic_bool g_symbolizer_detected = false;
  * ==================
  * - symbol string is allocated and owned by the cache
  * - Do not free symbol strings manually (cache manages them)
- * - Entries are stored in hashtable (pre-allocated pool)
+ * - Entries are managed by uthash
  *
  * @note This structure is used internally by the symbol cache implementation.
  *       Users should interact with the cache via symbol_cache_* functions.
@@ -97,9 +99,12 @@ typedef struct {
   void *addr;
   /** @brief Resolved symbol string (allocated, owned by cache) */
   char *symbol;
+  /** @brief uthash handle (required for hash table operations) */
+  UT_hash_handle hh;
 } symbol_entry_t;
 
-static hashtable_t *g_symbol_cache = NULL;
+static symbol_entry_t *g_symbol_cache = NULL; // uthash uses structure pointer as head
+static rwlock_t g_symbol_cache_lock = {0};    // External locking for thread safety
 static atomic_bool g_symbol_cache_initialized = false;
 
 // Statistics
@@ -109,38 +114,6 @@ static atomic_uint_fast64_t g_cache_misses = 0;
 // ============================================================================
 // Helper Functions
 // ============================================================================
-
-/**
- * @brief Hash a pointer address to uint32_t for hashtable
- */
-static inline uint32_t hash_address(void *addr) {
-  uintptr_t val = (uintptr_t)addr;
-  // Use XOR folding to avoid overflow issues
-  // This is guaranteed to not overflow and provides good distribution
-  uint32_t low = (uint32_t)val;
-  uint32_t high = (uint32_t)(val >> 32);
-
-  // Fold 64-bit address into 32-bit hash
-  // XOR folding is safe and avoids any overflow concerns
-  return low ^ high;
-}
-
-/**
- * @brief Cleanup callback for hashtable_foreach during cache cleanup
- */
-static void cleanup_symbol_entry_callback(uint32_t key, void *value, void *user_data) {
-  (void)key;
-  (void)user_data;
-  symbol_entry_t *entry = (symbol_entry_t *)value;
-  if (entry) {
-    if (entry->symbol) {
-      // Use regular free() instead of SAFE_FREE() because entry->symbol was allocated
-      // with strdup() (standard C library), not tracked by debug memory system
-      free(entry->symbol);
-    }
-    SAFE_FREE(entry);
-  }
-}
 
 /**
  * @brief Detect which symbolizer is available in PATH
@@ -179,12 +152,14 @@ asciichat_error_t symbol_cache_init(void) {
     g_symbolizer_type = detect_symbolizer();
   }
 
-  // Create hashtable (thread-safe with internal rwlocks)
-  g_symbol_cache = hashtable_create();
-  if (!g_symbol_cache) {
+  // Initialize rwlock for thread safety (uthash requires external locking)
+  if (rwlock_init(&g_symbol_cache_lock) != 0) {
     atomic_store(&g_symbol_cache_initialized, false);
-    return SET_ERRNO(ERROR_MEMORY, "Failed to create symbol cache hashtable");
+    return SET_ERRNO(ERROR_THREAD, "Failed to initialize symbol cache rwlock");
   }
+
+  // Initialize uthash head to NULL (required)
+  g_symbol_cache = NULL;
 
   atomic_store(&g_cache_hits, 0);
   atomic_store(&g_cache_misses, 0);
@@ -200,147 +175,91 @@ void symbol_cache_cleanup(void) {
   // Mark as uninitialized FIRST to prevent new inserts during cleanup
   atomic_store(&g_symbol_cache_initialized, false);
 
-  if (g_symbol_cache) {
-    // Acquire write lock to prevent any concurrent operations
-    hashtable_write_lock(g_symbol_cache);
+  // Acquire write lock to prevent any concurrent operations
+  rwlock_wrlock(&g_symbol_cache_lock);
 
-    // Free all symbol entries using hashtable_foreach
-    // We iterate through all buckets with the lock held, ensuring no new entries
-    // can be inserted (since initialized=false prevents new inserts)
-    hashtable_foreach(g_symbol_cache, cleanup_symbol_entry_callback, NULL);
-
-    // Release lock before destroying
-    hashtable_write_unlock(g_symbol_cache);
-
-    hashtable_destroy(g_symbol_cache);
-    g_symbol_cache = NULL;
+  // Free all symbol entries using HASH_ITER
+  symbol_entry_t *entry, *tmp;
+  HASH_ITER(hh, g_symbol_cache, entry, tmp) {
+    HASH_DEL(g_symbol_cache, entry);
+    if (entry->symbol) {
+      // Use regular free() instead of SAFE_FREE() because entry->symbol was allocated
+      // with strdup() (standard C library), not tracked by debug memory system
+      free(entry->symbol);
+    }
+    SAFE_FREE(entry);
   }
+
+  // Release lock and destroy rwlock
+  rwlock_wrunlock(&g_symbol_cache_lock);
+  rwlock_destroy(&g_symbol_cache_lock);
+
+  g_symbol_cache = NULL;
 
   log_debug("Symbol cache cleaned up (hits=%llu, misses=%llu)", (unsigned long long)atomic_load(&g_cache_hits),
             (unsigned long long)atomic_load(&g_cache_misses));
 }
 
 const char *symbol_cache_lookup(void *addr) {
-  if (!atomic_load(&g_symbol_cache_initialized) || !g_symbol_cache) {
+  if (!atomic_load(&g_symbol_cache_initialized) || !addr) {
     return NULL;
   }
 
-  uint32_t key = hash_address(addr);
-  symbol_entry_t *entry = (symbol_entry_t *)hashtable_lookup(g_symbol_cache, key);
+  rwlock_rdlock(&g_symbol_cache_lock);
 
-  if (entry && entry->addr == addr) {
+  symbol_entry_t *entry = NULL;
+  HASH_FIND_PTR(g_symbol_cache, &addr, entry);
+
+  if (entry) {
+    const char *symbol = entry->symbol;
     atomic_fetch_add(&g_cache_hits, 1);
-    return entry->symbol;
+    rwlock_rdunlock(&g_symbol_cache_lock);
+    return symbol;
   }
 
   atomic_fetch_add(&g_cache_misses, 1);
+  rwlock_rdunlock(&g_symbol_cache_lock);
   return NULL;
 }
 
-// Helper function to hash uint32_t (duplicated from hashtable.c to avoid dependency)
-static inline uint32_t hash_uint32_for_cache(uint32_t key) {
-  // FNV-1a hash - same as hashtable.c
-  uint64_t hash = 2166136261ULL;
-  const uint64_t fnv_prime = 16777619ULL;
-
-  hash ^= (key & 0xFF);
-  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
-  hash ^= ((key >> 8) & 0xFF);
-  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
-  hash ^= ((key >> 16) & 0xFF);
-  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
-  hash ^= ((key >> 24) & 0xFF);
-  hash = (hash * fnv_prime) & 0xFFFFFFFFULL;
-
-  // Use bit masking for power-of-2 bucket count
-  return (uint32_t)hash & (HASHTABLE_BUCKET_COUNT - 1);
-}
-
 bool symbol_cache_insert(void *addr, const char *symbol) {
-  if (!atomic_load(&g_symbol_cache_initialized) || !g_symbol_cache || !symbol) {
+  if (!atomic_load(&g_symbol_cache_initialized) || !addr || !symbol) {
     return false;
   }
-
-  uint32_t key = hash_address(addr);
 
   // Acquire write lock to make the entire operation atomic
-  // This prevents other threads from inserting between our check and insert
-  // Store local pointer before locking to avoid race with cleanup
-  hashtable_t *cache = g_symbol_cache;
-  if (!cache) {
+  rwlock_wrlock(&g_symbol_cache_lock);
+
+  // Double-check cache is still initialized after acquiring lock
+  // (cleanup might have marked it uninitialized between our check and lock acquisition)
+  if (!atomic_load(&g_symbol_cache_initialized)) {
+    rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
   }
 
-  hashtable_write_lock(cache);
+  // Check if entry already exists
+  symbol_entry_t *existing = NULL;
+  HASH_FIND_PTR(g_symbol_cache, &addr, existing);
 
-  // Double-check g_symbol_cache is still valid and initialized after acquiring lock
-  // (cleanup might have destroyed it or marked it uninitialized between our check and lock acquisition)
-  if (!g_symbol_cache || !atomic_load(&g_symbol_cache_initialized)) {
-    hashtable_write_unlock(cache);
-    return false;
-  }
-
-  // Use local cache variable for rest of function
-  cache = g_symbol_cache;
-
-  // Calculate bucket index
-  uint32_t bucket_idx = hash_uint32_for_cache(key);
-
-  // Check if entry already exists by directly accessing hashtable buckets
-  // We can do this because we hold the write lock
-  hashtable_entry_t *curr = cache->buckets[bucket_idx];
-  hashtable_entry_t *prev = NULL;
-  hashtable_entry_t *existing_entry = NULL;
-  symbol_entry_t *existing_value = NULL;
-
-  while (curr) {
-    if (curr->key == key && curr->in_use) {
-      existing_entry = curr;
-      existing_value = (symbol_entry_t *)curr->value;
-      break;
-    }
-    prev = curr;
-    curr = curr->next;
-  }
-
-  // If entry exists with same address, nothing to do
-  if (existing_value && existing_value->addr == addr) {
-    hashtable_write_unlock(cache);
-    return true;
-  }
-
-  // If key exists but address doesn't match, remove and free the old entry
-  if (existing_entry) {
-    // Free the old entry's symbol string and structure
-    if (existing_value) {
-      if (existing_value->symbol) {
-        SAFE_FREE(existing_value->symbol);
+  if (existing) {
+    // Entry exists - update symbol if different
+    if (existing->symbol && strcmp(existing->symbol, symbol) != 0) {
+      // Free old symbol and allocate new one
+      free(existing->symbol);
+      existing->symbol = platform_strdup(symbol);
+      if (!existing->symbol) {
+        rwlock_wrunlock(&g_symbol_cache_lock);
+        return false;
       }
-      SAFE_FREE(existing_value);
     }
-
-    // Remove from chain (we already have prev and existing_entry)
-    if (prev) {
-      prev->next = existing_entry->next;
-    } else {
-      cache->buckets[bucket_idx] = existing_entry->next;
-    }
-
-    // Return entry to pool
-    existing_entry->key = 0;
-    existing_entry->value = NULL;
-    existing_entry->in_use = false;
-    existing_entry->next = cache->free_list;
-    cache->free_list = existing_entry;
-
-    cache->entry_count--;
-    cache->deletions++;
+    rwlock_wrunlock(&g_symbol_cache_lock);
+    return true;
   }
 
   // Create new entry
   symbol_entry_t *entry = SAFE_MALLOC(sizeof(symbol_entry_t), symbol_entry_t *);
   if (!entry) {
-    hashtable_write_unlock(cache);
+    rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
   }
 
@@ -348,39 +267,15 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
   entry->symbol = platform_strdup(symbol);
   if (!entry->symbol) {
     SAFE_FREE(entry);
-    hashtable_write_unlock(cache);
+    rwlock_wrunlock(&g_symbol_cache_lock);
     return false;
   }
 
-  // Get a free entry from pool
-  hashtable_entry_t *ht_entry = cache->free_list;
-  if (!ht_entry) {
-    // Pool exhausted
-    SAFE_FREE(entry->symbol);
-    SAFE_FREE(entry);
-    hashtable_write_unlock(cache);
-    SET_ERRNO(ERROR_MEMORY, "Hashtable entry pool exhausted");
-    return false;
-  }
-
-  cache->free_list = ht_entry->next;
-  ht_entry->next = NULL;
-  ht_entry->in_use = true;
-
-  // Insert new entry
-  ht_entry->key = key;
-  ht_entry->value = entry;
-  ht_entry->next = cache->buckets[bucket_idx];
-  if (cache->buckets[bucket_idx]) {
-    cache->collisions++;
-  }
-  cache->buckets[bucket_idx] = ht_entry;
-
-  cache->entry_count++;
-  cache->insertions++;
+  // Add to hash table
+  HASH_ADD_PTR(g_symbol_cache, addr, entry);
 
   // Release lock
-  hashtable_write_unlock(cache);
+  rwlock_wrunlock(&g_symbol_cache_lock);
 
   return true;
 }
@@ -392,15 +287,20 @@ void symbol_cache_get_stats(uint64_t *hits_out, uint64_t *misses_out, size_t *en
   if (misses_out) {
     *misses_out = atomic_load(&g_cache_misses);
   }
-  if (entries_out && g_symbol_cache) {
-    *entries_out = hashtable_size(g_symbol_cache);
+  if (entries_out) {
+    rwlock_rdlock(&g_symbol_cache_lock);
+    *entries_out = HASH_COUNT(g_symbol_cache);
+    rwlock_rdunlock(&g_symbol_cache_lock);
   }
 }
 
 void symbol_cache_print_stats(void) {
   uint64_t hits = atomic_load(&g_cache_hits);
   uint64_t misses = atomic_load(&g_cache_misses);
-  size_t entries = g_symbol_cache ? hashtable_size(g_symbol_cache) : 0;
+
+  rwlock_rdlock(&g_symbol_cache_lock);
+  size_t entries = HASH_COUNT(g_symbol_cache);
+  rwlock_rdunlock(&g_symbol_cache_lock);
 
   uint64_t total = hits + misses;
   double hit_rate = total > 0 ? (100.0 * hits / total) : 0.0;
@@ -513,6 +413,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 #endif
 
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to build llvm-symbolizer command");
     return NULL;
   }
 
@@ -529,6 +430,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   // Execute llvm-symbolizer
   FILE *fp = popen(cmd, "r");
   if (!fp) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to execute llvm-symbolizer command");
     return NULL;
   }
 
@@ -678,6 +580,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   char cmd[4096];
   int offset = snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", ADDR2LINE_BIN, escaped_exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to build addr2line command");
     return NULL;
   }
 
@@ -685,6 +588,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   for (int i = 0; i < size; i++) {
     int n = snprintf(cmd + offset, sizeof(cmd) - offset, "0x%llx ", (unsigned long long)buffer[i]);
     if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Failed to build addr2line command");
       break;
     }
     offset += n;

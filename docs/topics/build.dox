@@ -125,9 +125,14 @@
  * cmake -B build -DCMAKE_BUILD_TYPE=Debug
  * cmake --build build
  *
- * # Release build
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
+ * # Release build on Linux or macOS
+ * cmake --preset release
+ * # Release build on Windows
+ * cmake --preset release-clang
+ * # Build
  * cmake --build build
+ * # Or configure and build in one command
+ * cmake --build --preset release
  * @endcode
  *
  * **Static musl Build** (Portable Release):

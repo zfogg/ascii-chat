@@ -8,8 +8,9 @@
 // All necessary headers are already included by the parent files
 
 #include <stdatomic.h>
-#include "../hashtable.h"
+#include "../util/uthash.h"
 #include "../common.h"
+#include "../util/fnv1a.h"
 #include "logging.h"
 
 // Platform-specific path separator and binary suffix
@@ -113,28 +114,17 @@
  * @ingroup platform
  */
 typedef struct {
-  /** @brief Binary name string (allocated, owned by cache) */
+  /** @brief Binary name string (allocated, owned by cache) - also used as uthash key */
   char *bin_name;
   /** @brief Whether binary was found in PATH (true = found, false = not found) */
   bool in_path;
+  /** @brief uthash handle */
+  UT_hash_handle hh;
 } bin_cache_entry_t;
 
-static hashtable_t *g_bin_path_cache = NULL;
+static bin_cache_entry_t *g_bin_path_cache = NULL; // uthash head pointer
+static rwlock_t g_cache_rwlock;
 static atomic_bool g_cache_initialized = false;
-
-/**
- * @brief Hash function for binary names
- * Simple XOR hash that avoids all potential overflow/shift issues
- */
-static uint32_t hash_bin_name(const char *name) {
-  uint32_t hash = 0;
-  unsigned char c;
-  while ((c = (unsigned char)*name++) != 0) {
-    // XOR with rotated hash - right shifts never overflow
-    hash = (hash >> 1) ^ (hash >> 8) ^ ((uint32_t)c << 24) ^ ((uint32_t)c << 16) ^ ((uint32_t)c << 8) ^ c;
-  }
-  return hash;
-}
 
 /**
  * @brief Check if a file exists and is executable
@@ -233,19 +223,20 @@ static void init_cache_once(void) {
     return; // Already initialized
   }
 
-  g_bin_path_cache = hashtable_create();
-  if (!g_bin_path_cache) {
-    log_error("Failed to create binary PATH cache hashtable");
+  // Initialize uthash head pointer (NULL = empty)
+  g_bin_path_cache = NULL;
+
+  // Initialize rwlock for thread-safe access
+  if (rwlock_init(&g_cache_rwlock) != 0) {
+    log_error("Failed to initialize binary PATH cache rwlock");
     atomic_store(&g_cache_initialized, false);
   }
 }
 
 /**
- * @brief Free a cache entry
+ * @brief Free a cache entry (for cleanup iteration)
  */
-static void free_cache_entry(uint32_t key __attribute__((unused)), void *value,
-                             void *user_data __attribute__((unused))) {
-  bin_cache_entry_t *entry = (bin_cache_entry_t *)value;
+static void free_cache_entry(bin_cache_entry_t *entry) {
   if (entry) {
     if (entry->bin_name) {
       SAFE_FREE(entry->bin_name);
@@ -263,13 +254,17 @@ void platform_cleanup_binary_path_cache(void) {
   }
 
   if (g_bin_path_cache) {
-    // Free all cached entries (hashtable_foreach requires external locking)
-    hashtable_write_lock(g_bin_path_cache);
-    hashtable_foreach(g_bin_path_cache, free_cache_entry, NULL);
-    hashtable_write_unlock(g_bin_path_cache);
+    rwlock_wrlock(&g_cache_rwlock);
 
-    // Destroy the hashtable
-    hashtable_destroy(g_bin_path_cache);
+    // Free all cached entries using uthash iteration
+    bin_cache_entry_t *entry, *tmp;
+    HASH_ITER(hh, g_bin_path_cache, entry, tmp) {
+      HASH_DELETE(hh, g_bin_path_cache, entry);
+      free_cache_entry(entry);
+    }
+
+    rwlock_wrunlock(&g_cache_rwlock);
+    rwlock_destroy(&g_cache_rwlock);
     g_bin_path_cache = NULL;
   }
 
@@ -294,8 +289,10 @@ bool platform_is_binary_in_path(const char *bin_name) {
   }
 
   // Check cache first
-  uint32_t key = hash_bin_name(bin_name);
-  bin_cache_entry_t *entry = (bin_cache_entry_t *)hashtable_lookup(g_bin_path_cache, key);
+  rwlock_rdlock(&g_cache_rwlock);
+  bin_cache_entry_t *entry = NULL;
+  HASH_FIND_STR(g_bin_path_cache, bin_name, entry);
+  rwlock_rdunlock(&g_cache_rwlock);
 
   const char **colors = log_get_color_array();
 
@@ -324,7 +321,11 @@ bool platform_is_binary_in_path(const char *bin_name) {
   }
 
   entry->in_path = found;
-  hashtable_insert(g_bin_path_cache, key, entry);
+
+  // Add to cache using uthash
+  rwlock_wrlock(&g_cache_rwlock);
+  HASH_ADD_KEYPTR(hh, g_bin_path_cache, entry->bin_name, strlen(entry->bin_name), entry);
+  rwlock_wrunlock(&g_cache_rwlock);
 
   log_debug("Binary '%s' %s%s%s in PATH", bin_name, colors[found ? LOGGING_COLOR_INFO : LOGGING_COLOR_ERROR],
             found ? "found" : "NOT found", colors[LOGGING_COLOR_RESET]);

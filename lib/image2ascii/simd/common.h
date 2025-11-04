@@ -24,6 +24,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "util/uthash.h"
 #include "../image.h"
 
 /** @brief RGB pixel type alias */
@@ -98,6 +99,7 @@ typedef struct {
  * @ingroup image2ascii
  */
 typedef struct utf8_palette_cache_s {
+  uint32_t key;                /**< Hash key for uthash lookup */
   utf8_char_t cache[256];      /**< 256-entry cache for direct luminance lookup (monochrome) */
   utf8_char_t cache64[64];     /**< 64-entry cache for SIMD color lookup */
   uint8_t char_index_ramp[64]; /**< Character indices for vqtbl4q_u8 lookup */
@@ -112,6 +114,9 @@ typedef struct utf8_palette_cache_s {
   /** Min-heap eviction management (protected by write lock) */
   size_t heap_index;   /**< Position in min-heap (for O(log n) updates) */
   double cached_score; /**< Last calculated eviction score */
+
+  /** uthash handle (required for hash table operations) */
+  UT_hash_handle hh;
 } utf8_palette_cache_t;
 
 /**

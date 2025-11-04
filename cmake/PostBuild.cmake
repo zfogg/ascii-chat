@@ -59,9 +59,40 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 # Then remove embedded file paths from binary using bash script (much faster than PowerShell)
                 find_program(BASH_EXECUTABLE bash)
                 if(BASH_EXECUTABLE)
+                    # Helper function to convert Windows paths to WSL/bash-compatible format
+                    # WSL mounts Windows drives at /mnt/<drive>, so C:/Users/... -> /mnt/c/Users/...
+                    function(convert_windows_to_wsl_path WINDOWS_PATH OUTPUT_VAR)
+                        if(WINDOWS_PATH MATCHES "^[A-Za-z]:")
+                            # Extract drive letter and convert to lowercase
+                            string(REGEX REPLACE "^([A-Za-z]):.*" "\\1" DRIVE_LETTER "${WINDOWS_PATH}")
+                            string(TOLOWER "${DRIVE_LETTER}" DRIVE_LETTER_LOWER)
+                            # Remove drive letter prefix
+                            string(REGEX REPLACE "^[A-Za-z]:" "" PATH_NO_DRIVE "${WINDOWS_PATH}")
+                            # Remove leading slash if present
+                            string(REGEX REPLACE "^/" "" PATH_CLEAN "${PATH_NO_DRIVE}")
+                            # Construct WSL path
+                            set(${OUTPUT_VAR} "/mnt/${DRIVE_LETTER_LOWER}/${PATH_CLEAN}" PARENT_SCOPE)
+                        else()
+                            # Not a Windows path format, use as-is
+                            set(${OUTPUT_VAR} "${WINDOWS_PATH}" PARENT_SCOPE)
+                        endif()
+                    endfunction()
+
+                    # Convert script path
+                    if(CMAKE_SOURCE_DIR MATCHES "^[A-Za-z]:")
+                        convert_windows_to_wsl_path("${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh" SCRIPT_PATH_BASH)
+                    else()
+                        set(SCRIPT_PATH_BASH "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh")
+                    endif()
+
+                    # Convert binary path, source dir, and build dir for bash to access files
+                    # Note: We need to use generator expressions, so we'll convert in the script itself
+                    # But for the script path, we can convert it here
+                    # The script will handle path conversion internally for its arguments
+
                     # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND
                     add_custom_command(TARGET ascii-chat POST_BUILD
-                        COMMAND ${BASH_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
+                        COMMAND ${BASH_EXECUTABLE} "${SCRIPT_PATH_BASH}"
                             "$<TARGET_FILE:ascii-chat>"
                             "${CMAKE_SOURCE_DIR}"
                             "${CMAKE_BINARY_DIR}"

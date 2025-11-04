@@ -126,7 +126,7 @@
 #include "audio.h"
 #include "mixer.h"
 #include "video_frame.h"
-#include "hashtable.h"
+#include "util/uthash.h"
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
@@ -208,14 +208,18 @@ void broadcast_server_state_to_all_clients(void); ///< Notify all clients of sta
  * @note Returns direct pointer to client struct - caller should use snapshot pattern
  */
 client_info_t *find_client_by_id(uint32_t client_id) {
-  if (client_id == 0 || !g_client_manager.client_hashtable) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client ID or client hashtable not initialized");
+  if (client_id == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client ID");
     return NULL;
   }
 
-  // Protect hashtable lookup with read lock to prevent concurrent access issues
+  // Protect uthash lookup with read lock to prevent concurrent access issues
   rwlock_rdlock(&g_client_manager_rwlock);
-  client_info_t *result = (client_info_t *)hashtable_lookup(g_client_manager.client_hashtable, client_id);
+
+  client_info_t *result = NULL;
+  uint32_t search_id = client_id; // uthash needs an lvalue for the key
+  HASH_FIND_INT(g_client_manager.clients_by_id, &search_id, result);
+
   rwlock_rdunlock(&g_client_manager_rwlock);
 
   if (!result) {
@@ -418,11 +422,11 @@ int add_client(socket_t socket, const char *client_ip, int port) {
   log_debug("Client count updated: now %d clients (added client_id=%u to slot %d)", g_client_manager.client_count,
             atomic_load(&client->client_id), slot);
 
-  // Add client to hash table for O(1) lookup
-  if (!hashtable_insert(g_client_manager.client_hashtable, atomic_load(&client->client_id), client)) {
-    log_error("Failed to add client %u to hash table", atomic_load(&client->client_id));
-    // Continue anyway - hash table is optimization, not critical
-  }
+  // Add client to uthash table for O(1) lookup
+  // Note: HASH_ADD_INT uses the client_id field directly from the client structure
+  uint32_t cid = atomic_load(&client->client_id);
+  HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
+  log_debug("Added client %u to uthash table", cid);
 
   // Register this client's audio buffer with the mixer
   if (g_audio_mixer && client->incoming_audio_buffer) {
@@ -673,9 +677,12 @@ int remove_client(uint32_t client_id) {
 #endif
   }
 
-  // Remove from hash table
-  if (!hashtable_remove(g_client_manager.client_hashtable, client_id)) {
-    log_warn("Failed to remove client %u from hash table", client_id);
+  // Remove from uthash table
+  if (target_client) {
+    HASH_DELETE(hh, g_client_manager.clients_by_id, target_client);
+    log_debug("Removed client %u from uthash table", client_id);
+  } else {
+    log_warn("Failed to remove client %u from hash table (client not found)", client_id);
   }
 
   // Cleanup crypto context for this client

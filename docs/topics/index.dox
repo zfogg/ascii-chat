@@ -107,7 +107,7 @@
  * - @ref topic_buffer_pool "Buffer Pool" - Pre-allocated memory buffers for efficient allocation
  * - @ref topic_ringbuffer "Ring Buffer" - Lock-free circular buffers for audio/video
  * - @ref topic_packet_queue "Packet Queue" - Thread-safe per-client packet queues
- * - @ref topic_hashtable "Hash Table" - High-performance client ID lookup
+ * - @ref uthash library "Hash Table" - High-performance client ID lookup
  *
  * @section topics_platform Platform Abstraction
  *

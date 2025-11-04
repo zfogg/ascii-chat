@@ -284,4 +284,3 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
 int av_parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 
 /** @} */
-

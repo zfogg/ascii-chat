@@ -43,7 +43,6 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             lib/options.h
             lib/buffer_pool.h
             lib/asciichat_errno.h
-            lib/hashtable.h
             lib/ringbuffer.h
             lib/palette.h
             

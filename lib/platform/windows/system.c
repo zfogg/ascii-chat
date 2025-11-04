@@ -1305,10 +1305,8 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   return 0;
 }
 
-// Include hashtable.h for binary PATH detection cache
-#include "../../hashtable.h"
-
 // Include cross-platform system utilities (binary PATH detection)
+// Note: Uses uthash for binary PATH cache (included via system.c)
 #include "../system.c"
 
 #endif // !!_WIN32
