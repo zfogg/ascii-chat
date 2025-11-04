@@ -138,6 +138,14 @@ target_include_directories(ascii-chat-crypto PRIVATE
     ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
 )
 
+# Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        PROPERTIES COMPILE_OPTIONS "-Wno-unterminated-string-initialization;-Wno-sizeof-array-div"
+    )
+endif()
+
 # -----------------------------------------------------------------------------
 # Module 4: SIMD (depends on: util, core, video)
 # Note: Circular dependency with video (simd needs video for benchmark code,

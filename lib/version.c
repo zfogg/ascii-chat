@@ -26,16 +26,6 @@ __attribute__((used, section(".ascii_chat"))) const char ascii_chat_custom_secti
 __attribute__((used, section(".comment"))) const char ascii_chat_comment_string[] = ASCII_CHAT_DOT_COMMENT_STRING;
 __attribute__((used, section(".version"))) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
 #define ASCII_CHAT_VERSION_GETTERS
-
-#elif defined(_MSC_VER)
-// MSVC: Use #pragma section and __declspec(allocate)
-#pragma section(".rdata$ascii_chat", read)
-__declspec(allocate(".rdata$ascii_chat")) const char ascii_chat_custom_section[] = ASCII_CHAT_DOT_ASCII_CHAT_STRING;
-#pragma section(".rdata$comment", read)
-__declspec(allocate(".rdata$comment")) const char ascii_chat_comment_string[] = ASCII_CHAT_DOT_COMMENT_STRING;
-#pragma section(".rdata$version", read)
-__declspec(allocate(".rdata$version")) const char ascii_chat_version_string[] = ASCII_CHAT_VERSION_FULL;
-#define ASCII_CHAT_VERSION_GETTERS
 #endif
 
 #ifdef ASCII_CHAT_VERSION_GETTERS

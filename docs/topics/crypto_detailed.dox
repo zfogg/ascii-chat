@@ -2516,7 +2516,6 @@
  * - [NaCl: Networking and Cryptography library](https://nacl.cr.yp.to/)
  * - [Signal Protocol](https://signal.org/docs/)
  * - [OpenSSH SSH Agent Protocol](https://tools.ietf.org/id/draft-miller-ssh-agent-04.html)
- * - [SSH_ASKPASS Environment Variable](https://man.openbsd.org/ssh-add.1#ENVIRONMENT)
  *
  * **Document Version:** 2.3
  * **Last Updated:** October 2025 (Session rekeying protocol implemented)

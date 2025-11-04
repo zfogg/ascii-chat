@@ -62,6 +62,16 @@ set(CRYPTO_SRCS
     deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
 )
 
+# Suppress specific Clang warnings for libsodium-bcrypt-pbkdf (third-party code)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set_source_files_properties(
+        deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+        PROPERTIES
+        COMPILE_FLAGS "-Wno-unterminated-string-initialization -Wno-sizeof-array-div"
+    )
+endif()
+
 # =============================================================================
 # Module 3: Platform Abstraction (stable - changes monthly)
 # =============================================================================

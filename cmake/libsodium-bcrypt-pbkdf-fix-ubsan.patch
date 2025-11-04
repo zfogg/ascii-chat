@@ -12,6 +12,15 @@ index 0a07f9a..d841940 100644
 
  #ifdef HAVE_STDLIB_H
  # include <stdlib.h>
+@@ -93,7 +95,7 @@ bcrypt_hash(uint8_t *sha2pass, uint8_t *sha2salt, uint8_t *out)
+ 		cdata[i] = Blowfish_stream2word(ciphertext, sizeof(ciphertext),
+ 		    &j);
+ 	for (i = 0; i < 64; i++)
+-		blf_enc(&state, cdata, sizeof(cdata) / sizeof(uint64_t));
++		blf_enc(&state, cdata, (sizeof(cdata) / sizeof(uint64_t)));
+
+ 	/* copy out */
+ 	for (i = 0; i < BCRYPT_WORDS; i++) {
 diff --git a/src/openbsd-compat/blowfish.c b/src/openbsd-compat/blowfish.c
 index e10f7e7..c088a7a 100644
 --- a/src/openbsd-compat/blowfish.c

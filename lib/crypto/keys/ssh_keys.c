@@ -387,10 +387,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // Check if key is encrypted
   bool is_encrypted = (ciphername_len > 0 && memcmp(key_blob + offset, "none", 4) != 0);
-  if (is_encrypted) {
-    log_debug("DEBUG: Encrypted key detected, ciphername_len=%u", ciphername_len);
-    // We'll handle encryption below after parsing the structure
-  }
 
   offset += ciphername_len;
 
