@@ -109,8 +109,8 @@ typedef struct {
   /** @name Frame Data
    * @{
    */
-  void *data;   ///< Frame data pointer (points to pre-allocated buffer)
-  size_t size;  ///< Size of frame data in bytes
+  void *data;  ///< Frame data pointer (points to pre-allocated buffer)
+  size_t size; ///< Size of frame data in bytes
   /** @} */
 
   /** @name Frame Dimensions
@@ -178,7 +178,7 @@ typedef struct {
    * @{
    */
   atomic_bool new_frame_available; ///< Atomic flag: true when new frame available
-  mutex_t swap_mutex;             ///< Brief mutex for pointer swap only
+  mutex_t swap_mutex;              ///< Brief mutex for pointer swap only
   /** @} */
 
   /** @name Frame Allocation
@@ -190,9 +190,9 @@ typedef struct {
   /** @name Statistics
    * @{
    */
-  atomic_ullong total_frames_received;  ///< Total frames received (atomic counter)
-  atomic_ullong total_frames_dropped;   ///< Total frames dropped (atomic counter)
-  atomic_ullong last_frame_sequence;    ///< Last frame sequence number (atomic)
+  atomic_ullong total_frames_received; ///< Total frames received (atomic counter)
+  atomic_ullong total_frames_dropped;  ///< Total frames dropped (atomic counter)
+  atomic_ullong last_frame_sequence;   ///< Last frame sequence number (atomic)
   /** @} */
 
   /** @name Quality Metrics
@@ -253,9 +253,9 @@ typedef struct {
  */
 typedef struct {
   atomic_uintptr_t current_frame; ///< Atomic pointer to current frame
-  video_frame_t frame_a;           ///< First pre-allocated frame
-  video_frame_t frame_b;           ///< Second pre-allocated frame
-  atomic_bool use_frame_a;         ///< Atomic flag: true = use frame_a next, false = use frame_b
+  video_frame_t frame_a;          ///< First pre-allocated frame
+  video_frame_t frame_b;          ///< Second pre-allocated frame
+  atomic_bool use_frame_a;        ///< Atomic flag: true = use frame_a next, false = use frame_b
 } simple_frame_swap_t;
 
 /* ============================================================================

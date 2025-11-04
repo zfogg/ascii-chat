@@ -43,8 +43,8 @@
  *   atomic_store(&client->active, true);
  *   client->socket = socket;
  *
- *   // 4. Add to hash table for O(1) lookups
- *   hashtable_insert(g_client_manager.client_hashtable, client_id, client);
+ *   // 4. Add to uthash table for O(1) lookups
+ *   HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
  *
  *   // 5. Perform cryptographic handshake
  *   crypto_handshake_result_t handshake_result =
@@ -80,9 +80,10 @@
  * @code{.c}
  * int remove_client(uint32_t client_id)
  * {
- *   // 1. Find client in hash table
+ *   // 1. Find client in uthash table
  *   rwlock_wrlock(&g_client_manager_rwlock);
- *   client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable, client_id);
+ *   client_info_t *client = NULL;
+ *   HASH_FIND_INT(g_client_manager.clients_by_id, &client_id, client);
  *
  *   // 2. Mark client as inactive (causes threads to exit)
  *   atomic_store(&client->active, false);
@@ -101,8 +102,8 @@
  *   packet_queue_destroy(client->audio_packet_queue);
  *   image_destroy(client->incoming_video_buffer);
  *
- *   // 5. Remove from hash table
- *   hashtable_remove(g_client_manager.client_hashtable, client_id);
+ *   // 5. Remove from uthash table
+ *   HASH_DELETE(hh, g_client_manager.clients_by_id, client);
  *
  *   // 6. Clear client slot
  *   memset(client, 0, sizeof(client_info_t));
@@ -203,7 +204,7 @@
  * @code{.c}
  * typedef struct {
  *   client_info_t clients[MAX_CLIENTS];      // Backing storage array
- *   hashtable_t *client_hashtable;           // O(1) client_id -> client_info_t lookup
+ *   client_info_t *clients_by_id;            // uthash head pointer for O(1) client_id lookup
  *   int client_count;                        // Current number of active clients
  *   mutex_t mutex;                           // Protects client_count updates
  * } client_manager_t;
@@ -281,7 +282,8 @@
  * @code{.c}
  * // CORRECT: Global lock first, then per-client mutex
  * rwlock_rdlock(&g_client_manager_rwlock);
- * client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable, client_id);
+ * client_info_t *client = NULL;
+ * HASH_FIND_INT(g_client_manager.clients_by_id, &client_id, client);
  * mutex_lock(&client->client_state_mutex);
  * // ... access client state ...
  * mutex_unlock(&client->client_state_mutex);
@@ -322,14 +324,15 @@
  * The client manager uses a hash table for O(1) client ID lookups:
  *
  * @code{.c}
- * // Add client to hash table
- * hashtable_insert(g_client_manager.client_hashtable, client_id, client);
+ * // Add client to uthash table
+ * HASH_ADD_INT(g_client_manager.clients_by_id, client_id, client);
  *
  * // Lookup client by ID
- * client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable, client_id);
+ * client_info_t *client = NULL;
+ * HASH_FIND_INT(g_client_manager.clients_by_id, &client_id, client);
  *
- * // Remove client from hash table
- * hashtable_remove(g_client_manager.client_hashtable, client_id);
+ * // Remove client from uthash table
+ * HASH_DELETE(hh, g_client_manager.clients_by_id, client);
  * @endcode
  *
  * **Performance**:

@@ -21,7 +21,7 @@
  * - @subpage topic_buffer_pool
  * - @subpage topic_ringbuffer
  * - @subpage topic_packet_queue
- * - @subpage topic_hashtable
+ * - @subpage uthash library
  *
  * @section topics_abstractions Abstraction Layers
  *
@@ -106,6 +106,7 @@
  *
  * @copybrief module_development
  *
+ * - @subpage topic_dependencies
  * - @subpage topic_build
  * - @subpage topic_testing
  * - @subpage topic_debug

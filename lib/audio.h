@@ -102,14 +102,14 @@
  * @ingroup audio
  */
 typedef struct {
-  PaStream *input_stream;       ///< PortAudio input stream for capture
-  PaStream *output_stream;       ///< PortAudio output stream for playback
+  PaStream *input_stream;               ///< PortAudio input stream for capture
+  PaStream *output_stream;              ///< PortAudio output stream for playback
   audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for captured audio samples
   audio_ring_buffer_t *playback_buffer; ///< Ring buffer for audio samples to play
-  bool initialized;             ///< True if context has been initialized
-  bool recording;               ///< True if audio capture is active
-  bool playing;                 ///< True if audio playback is active
-  mutex_t state_mutex;          ///< Mutex protecting context state
+  bool initialized;                     ///< True if context has been initialized
+  bool recording;                       ///< True if audio capture is active
+  bool playing;                         ///< True if audio playback is active
+  mutex_t state_mutex;                  ///< Mutex protecting context state
 } audio_context_t;
 
 /* ============================================================================
@@ -428,4 +428,3 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
 size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb);
 
 /** @} */
-

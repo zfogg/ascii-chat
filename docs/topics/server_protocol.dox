@@ -153,7 +153,8 @@
  * {
  *   // 1. Get client (with read lock)
  *   rwlock_rdlock(&g_client_manager_rwlock);
- *   client_info_t *client = hashtable_lookup(g_client_manager.client_hashtable,
+ *   client_info_t *client = NULL;
+ *   HASH_FIND_INT(g_client_manager.clients_by_id,
  *                                             client_id);
  *
  *   // 2. Acquire per-client mutex

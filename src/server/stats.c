@@ -139,7 +139,6 @@
 #include "render.h"
 #include "common.h"
 #include "buffer_pool.h"
-#include "hashtable.h"
 #include "packet_queue.h"
 #include "lock_debug.h"
 

@@ -286,6 +286,7 @@
 #include "platform/socket.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
+#include "util/uthash.h"  // Wrapper ensures common.h is included first
 #include "lock_debug.h"
 #include "platform/file.h"
 

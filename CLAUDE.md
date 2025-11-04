@@ -262,7 +262,6 @@ ascii-chat/
 │   ├── network.c/h                     # Network protocol and packet handling
 │   ├── packet_queue.c/h                # Thread-safe per-client packet queues
 │   ├── buffer_pool.c/h                 # Memory buffer pool system for efficient allocation
-│   ├── hashtable.c/h                   # Hash table implementation for client ID lookup
 │   ├── ringbuffer.c/h                  # Lock-free ring buffer implementation
 │   ├── compression.c/h                 # Frame compression with zlib
 │   ├── crc32_hw.c/h                    # Hardware-accelerated CRC32 checksums
@@ -743,7 +742,7 @@ Before committing any changes:
 3. **lib/crypto/**: Cryptographic protocol implementation
 4. **packet_queue.c**: Thread-safe per-client queue implementation
 5. **buffer_pool.c/h**: Memory buffer pool for efficient allocation
-6. **hashtable.c/h**: Hash table for client ID lookup
+6. **uthash**: Third-party hash table library for client ID and symbol lookups
 
 ### Main Application
 

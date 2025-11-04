@@ -10,7 +10,6 @@
 #include <execinfo.h>
 
 #include "tests/common.h"
-#include "hashtable.h"
 #include "image2ascii/simd/common.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "tests/logging.h"
@@ -43,8 +42,7 @@ void segfault_handler(int sig) {
 }
 
 void setup_cache_logging(void) {
-  log_set_level(LOG_FATAL);           // Reduce verbose output during tests
-  hashtable_set_stats_enabled(false); // Disable hashtable stats for this test
+  log_set_level(LOG_FATAL); // Reduce verbose output during tests
 
   // Install segfault handler
   platform_signal(SIGSEGV, segfault_handler);
@@ -54,7 +52,6 @@ void setup_cache_logging(void) {
 
 void restore_cache_logging(void) {
   log_set_level(LOG_ERROR);
-  hashtable_set_stats_enabled(true); // Re-enable hashtable stats
 
   // Restore default signal handlers
   platform_signal(SIGSEGV, SIG_DFL);
