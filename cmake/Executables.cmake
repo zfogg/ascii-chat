@@ -71,6 +71,7 @@ endif()
 
 # Print success message after ascii-chat is built (or verified up to date)
 # Use a phony target that always runs to show the message even when nothing needs rebuilding
+# This is so Claude Code doesn't get confused when ninja has nothing to do and just exits 0 without printing any message
 add_custom_target(show-build-success ALL
     COMMAND ${CMAKE_COMMAND} -E echo "ascii-chat binary compiled and linked successfully with all files and dependencies"
     DEPENDS ascii-chat
