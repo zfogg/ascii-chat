@@ -29,6 +29,20 @@
 #include "symbols.h"
 #include "system.h"
 #include "../common.h"
+#include "../util/fnv1a.h"
+
+// UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
+// Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
+#undef HASH_FUNCTION
+#define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
+  do {                                                                                                                 \
+    if (!(keyptr) || (keylen) == 0) {                                                                                  \
+      (hashv) = 1; /* Non-zero constant for safety */                                                                  \
+    } else {                                                                                                           \
+      (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
+    }                                                                                                                  \
+  } while (0)
+
 #include "util/uthash.h"
 #include "rwlock.h"
 #include "../util/path.h"
@@ -303,7 +317,7 @@ void symbol_cache_print_stats(void) {
   rwlock_rdunlock(&g_symbol_cache_lock);
 
   uint64_t total = hits + misses;
-  double hit_rate = total > 0 ? (100.0 * hits / total) : 0.0;
+  double hit_rate = total > 0 ? (100.0 * (double)hits / (double)total) : 0.0;
 
   log_info("Symbol Cache Stats: %zu entries, %llu hits, %llu misses (%.1f%% hit rate)", entries,
            (unsigned long long)hits, (unsigned long long)misses, hit_rate);
@@ -420,7 +434,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   // Add all addresses to the command
   // Use explicit hex format with 0x prefix since Windows %p doesn't include it
   for (int i = 0; i < size; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - offset, "0x%llx ", (unsigned long long)buffer[i]);
+    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
     if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
       break;
     }
@@ -586,7 +600,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
   // Use explicit hex format with 0x prefix since Windows %p doesn't include it
   for (int i = 0; i < size; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - offset, "0x%llx ", (unsigned long long)buffer[i]);
+    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
     if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to build addr2line command");
       break;

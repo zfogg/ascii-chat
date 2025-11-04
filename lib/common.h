@@ -176,8 +176,13 @@ typedef enum {
   ERROR_SIGNAL_CRASH = 101,     /**< Fatal signal (SIGSEGV, SIGABRT, etc.) */
   ERROR_ASSERTION_FAILED = 102, /**< Assertion or invariant violation */
 
+  /* Compression errors (103-104) */
+  ERROR_COMPRESSION = 103,   /**< Compression operation failed */
+  ERROR_DECOMPRESSION = 104, /**< Decompression operation failed */
+
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
+
 } asciichat_error_t;
 
 /* Forward declaration for asciichat_fatal_with_context - now after asciichat_error_t is defined */
@@ -501,6 +506,9 @@ bool shutdown_is_requested(void);
 #define ALLOC_FREE(ptr) free(ptr)
 #endif
 
+#define uthash_malloc(sz) ALLOC_MALLOC(sz)
+#define uthash_free(ptr, sz) ALLOC_FREE(ptr)
+
 /**
  * @name Memory Debugging Macros
  * @ingroup common
@@ -649,7 +657,7 @@ bool shutdown_is_requested(void);
   } while (0)
 
 /* Platform-safe environment variable access */
-#define SAFE_GETENV(name) ((char *)platform_getenv(name))
+#define SAFE_GETENV(name) platform_getenv(name)
 
 /* Platform-safe sscanf */
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
@@ -665,7 +673,16 @@ bool shutdown_is_requested(void);
 #define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
 
 /* Safe string formatting */
-#define SAFE_SNPRINTF(buffer, buffer_size, ...) safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
+#define SAFE_SNPRINTF(buffer, buffer_size, ...) (size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
+
+/**
+ * @brief Safe buffer size calculation for snprintf
+ *
+ * Casts offset to size_t to avoid sign conversion warnings when subtracting from buffer_size.
+ * Returns 0 if offset is negative or >= buffer_size (prevents underflow).
+ */
+#define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
+  ((offset) < 0 || (size_t)(offset) >= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))
 
 /* Include logging.h to provide logging macros to all files that include common.h */
 #include "logging.h"

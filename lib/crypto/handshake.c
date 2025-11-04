@@ -84,9 +84,10 @@ asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ct
   ctx->crypto_ctx.hmac_size = params->hmac_size;
   ctx->crypto_ctx.auth_challenge_size =
       AUTH_CHALLENGE_SIZE; // Auth challenge size is fixed for now, could be negotiated later
-  ctx->crypto_ctx.encryption_key_size = ctx->crypto_ctx.shared_key_size; // Use shared key size as encryption key size
-  ctx->crypto_ctx.private_key_size = ctx->crypto_ctx.public_key_size;    // Same as public key for X25519
-  ctx->crypto_ctx.salt_size = ARGON2ID_SALT_SIZE;                        // Salt size doesn't change
+  ctx->crypto_ctx.encryption_key_size =
+      (uint8_t)ctx->crypto_ctx.shared_key_size;                       // Use shared key size as encryption key size
+  ctx->crypto_ctx.private_key_size = ctx->crypto_ctx.public_key_size; // Same as public key for X25519
+  ctx->crypto_ctx.salt_size = ARGON2ID_SALT_SIZE;                     // Salt size doesn't change
 
   log_debug("Crypto parameters set: kex_key=%u, auth_key=%u, sig=%u, "
             "secret=%u, nonce=%u, mac=%u, hmac=%u",
@@ -819,8 +820,8 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
     // Send AUTH_FAILED to inform client (though they already know)
     auth_failure_packet_t failure = {0};
     failure.reason_flags = 0; // No specific auth failure, just encryption mismatch
-    int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
-    if (result != 0) {
+    int send_result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+    if (send_result != 0) {
       return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_FAILED packet");
     }
 
@@ -913,8 +914,8 @@ asciichat_error_t crypto_handshake_server_auth_challenge(crypto_handshake_contex
         // Send AUTH_FAILED with specific reason
         auth_failure_packet_t failure = {0};
         failure.reason_flags = AUTH_FAIL_SIGNATURE_INVALID;
-        int result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
-        if (result != 0) {
+        int send_result = send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+        if (send_result != 0) {
           return SET_ERRNO(ERROR_NETWORK, "Failed to send AUTH_FAILED packet");
         }
 

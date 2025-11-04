@@ -89,28 +89,36 @@ endif()
 message(STATUS "Parallel build jobs: ${CPU_CORES}")
 
 # C standard selection - intelligently detect the best available standard
-# Try C23 first (newer compilers), fall back to C2X for compatibility
+# Only set C23 for GNU/Clang compilers
 if(NOT CMAKE_C_STANDARD)
-    # Check if compiler supports C23 standard
-    include(CheckCCompilerFlag)
+    # Only configure C23 for Clang and GCC compilers
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        # Check if compiler supports C23 standard
+        include(CheckCCompilerFlag)
 
-    # First try -std=c23 (newer compilers like Clang 18+, GCC 14+)
-    check_c_compiler_flag("-std=c23" COMPILER_SUPPORTS_C23)
+        # First try -std=c23 (newer compilers like Clang 18+, GCC 14+)
+        check_c_compiler_flag("-std=c23" COMPILER_SUPPORTS_C23)
 
-    if(COMPILER_SUPPORTS_C23)
-        set(CMAKE_C_STANDARD 23)
-        message(STATUS "Compiler supports C23 standard")
+        if(COMPILER_SUPPORTS_C23)
+            set(CMAKE_C_STANDARD 23)
+            message(STATUS "Compiler supports C23 standard")
+        else()
+            # Fall back to C2X for older compilers (GitHub Actions Ubuntu 22.04)
+            set(CMAKE_C_STANDARD 23)  # CMake will translate this to c2x if c23 isn't available
+            message(STATUS "Using C2X standard (C23 preview)")
+        endif()
+
+        # Try strict C23 without GNU extensions
+        set(CMAKE_C_EXTENSIONS OFF)
     else()
-        # Fall back to C2X for older compilers (GitHub Actions Ubuntu 22.04)
-        set(CMAKE_C_STANDARD 23)  # CMake will translate this to c2x if c23 isn't available
-        message(STATUS "Using C2X standard (C23 preview)")
+        # Non-Clang/GCC compilers: use C17 (widely supported)
+        set(CMAKE_C_STANDARD 17)
+        set(CMAKE_C_EXTENSIONS ON)
+        message(STATUS "Using C17 standard for ${CMAKE_C_COMPILER_ID} compiler")
     endif()
 endif()
 
 set(CMAKE_C_STANDARD_REQUIRED ON)
-# Enable GNU extensions for POSIX compatibility (strdup, getopt_long, etc.)
-# With C23, this gives us -std=gnu23 or -std=gnu2x
-set(CMAKE_C_EXTENSIONS ON)
 
 # Option to build tests
 option(BUILD_TESTS "Build test executables" ON)

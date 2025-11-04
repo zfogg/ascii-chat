@@ -155,6 +155,7 @@
 #include "crypto/keys/keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
+#include "util/time.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -340,6 +341,8 @@ int client_crypto_handshake(socket_t socket) {
 
   log_info("Starting crypto handshake with server...");
 
+  START_TIMER("client_crypto_handshake");
+
   // Step 0a: Send protocol version to server
   protocol_version_packet_t client_version = {0};
   client_version.protocol_version = htons(1);  // Protocol version 1
@@ -352,6 +355,7 @@ int client_crypto_handshake(socket_t socket) {
   int result = send_protocol_version_packet(socket, &client_version);
   if (result != 0) {
     log_error("Failed to send protocol version to server");
+    (void)STOP_TIMER("client_crypto_handshake");
     return -1;
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Protocol version sent successfully");
@@ -372,6 +376,7 @@ int client_crypto_handshake(socket_t socket) {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
+    (void)STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
@@ -379,6 +384,7 @@ int client_crypto_handshake(socket_t socket) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
     buffer_pool_free(payload, payload_len);
+    (void)STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
@@ -395,6 +401,7 @@ int client_crypto_handshake(socket_t socket) {
 
   if (!server_version.supports_encryption) {
     log_error("Server does not support encryption");
+    (void)STOP_TIMER("client_crypto_handshake");
     return CONNECTION_ERROR_AUTH_FAILED;
   }
 
@@ -412,6 +419,7 @@ int client_crypto_handshake(socket_t socket) {
   result = send_crypto_capabilities_packet(socket, &client_caps);
   if (result != 0) {
     log_error("Failed to send crypto capabilities to server");
+    (void)STOP_TIMER("client_crypto_handshake");
     return -1;
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Crypto capabilities sent successfully");
@@ -427,6 +435,7 @@ int client_crypto_handshake(socket_t socket) {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
+    (void)STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
@@ -434,6 +443,7 @@ int client_crypto_handshake(socket_t socket) {
     log_error("Invalid crypto parameters packet size: %zu, expected %zu", payload_len,
               sizeof(crypto_parameters_packet_t));
     buffer_pool_free(payload, payload_len);
+    (void)STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
@@ -470,11 +480,13 @@ int client_crypto_handshake(socket_t socket) {
   // Validate that server chose algorithms we support
   if (server_params.selected_kex != KEX_ALGO_X25519) {
     log_error("Server selected unsupported KEX algorithm: %u", server_params.selected_kex);
+    (void)STOP_TIMER("client_crypto_handshake");
     return CONNECTION_ERROR_AUTH_FAILED;
   }
 
   if (server_params.selected_cipher != CIPHER_ALGO_XSALSA20_POLY1305) {
     log_error("Server selected unsupported cipher algorithm: %u", server_params.selected_cipher);
+    (void)STOP_TIMER("client_crypto_handshake");
     return CONNECTION_ERROR_AUTH_FAILED;
   }
 
@@ -518,6 +530,7 @@ int client_crypto_handshake(socket_t socket) {
       char response[10];
       if (fgets(response, sizeof(response), stdin) == NULL) {
         log_error("Failed to read user response");
+        (void)STOP_TIMER("client_crypto_handshake");
         return CONNECTION_ERROR_AUTH_FAILED;
       }
 
@@ -547,7 +560,8 @@ int client_crypto_handshake(socket_t socket) {
 
   // Check if handshake completed during auth response (no authentication needed)
   if (g_crypto_ctx.state == CRYPTO_HANDSHAKE_READY) {
-    log_info("Crypto handshake completed successfully (no authentication)");
+    STOP_TIMER_AND_LOG("client_crypto_handshake", log_info,
+                       "Crypto handshake completed successfully (no authentication)");
     return 0;
   }
 
@@ -558,7 +572,7 @@ int client_crypto_handshake(socket_t socket) {
     FATAL(result, "Crypto handshake completion failed");
   }
 
-  log_info("Crypto handshake completed successfully");
+  STOP_TIMER_AND_LOG("client_crypto_handshake", log_info, "Crypto handshake completed successfully");
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Handshake completed successfully, state=%d", g_crypto_ctx.state);
   return 0;
 }

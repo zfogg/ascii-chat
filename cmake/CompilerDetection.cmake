@@ -37,19 +37,7 @@ if(DEFINED ENV{LDFLAGS})
     message(STATUS "Using LDFLAGS from environment: $ENV{LDFLAGS}")
 endif()
 
-# 3. Set default compilers to Clang if not explicitly set
-# This ensures the project works with no arguments: cmake -B build && cmake --build build
-if(NOT CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
-    find_program(CLANG_EXECUTABLE clang)
-    if(CLANG_EXECUTABLE)
-        set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler")
-        message(STATUS "Set default C compiler to: ${CLANG_EXECUTABLE}")
-    else()
-        message(WARNING "clang not found in PATH. You may need to install LLVM/Clang.")
-    endif()
-endif()
-
-# 4. Set default build type to Debug if not specified
+# 3. Set default build type to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build" FORCE)
     message(STATUS "Set default build type to Debug")
@@ -146,5 +134,29 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "")
 
     message(STATUS "Cleared CMake Windows runtime flags for Clang-only build")
+endif()
+
+# =============================================================================
+# Warn if MSVC is detected (but allow build to continue)
+# =============================================================================
+# This check happens after project() has determined the compiler ID
+if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+    message(WARNING "
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                          ⚠️  COMPILER WARNING ⚠️                          ║
+╠═══════════════════════════════════════════════════════════════════════════╣
+║                                                                           ║
+║  MSVC detected. This project is designed for and tested with Clang/GCC.  ║
+║                                                                           ║
+║  MSVC is NOT officially supported and may cause build failures.           ║
+║                                                                           ║
+║  Recommended: Install Clang and use:                                      ║
+║    - Windows: scoop install llvm                                          ║
+║    - Or use: cmake -DCMAKE_C_COMPILER=clang -B build                      ║
+║                                                                           ║
+║  The build will continue but may fail or produce unexpected results.     ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+")
 endif()
 

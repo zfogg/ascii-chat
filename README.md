@@ -35,7 +35,7 @@ ascii-chat relies on several key libraries for its functionality. Each dependenc
 - **Purpose**: Modern implementation of TOML for config file interations.
 - **License**: MIT
 
-#### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
+#### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Header-only Library
 - **Purpose**: Fast O(1) lookups and persistent memory for the server's client manager, and various other things like caches
 - **License**: BSD revised
 

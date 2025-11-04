@@ -42,7 +42,7 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
-#include <uthash.h>  // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
+#include <uthash.h> // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
 
 // ============================================================================
 // Constants and Limits

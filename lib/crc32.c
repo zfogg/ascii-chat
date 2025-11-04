@@ -70,7 +70,7 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
     uint64_t chunk = 0;
     // Load bytes in reverse order for ARM's CRC32D instruction
     for (int j = 0; j < 8; j++) {
-      chunk |= ((uint64_t)bytes[i + j]) << (j * 8);
+      chunk |= ((uint64_t)bytes[i + (size_t)j]) << (j * 8);
     }
     crc = __crc32d(crc, chunk);
     i += 8;
@@ -80,7 +80,7 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
   if (i + 4 <= len) {
     uint32_t chunk = 0;
     for (int j = 0; j < 4; j++) {
-      chunk |= ((uint32_t)bytes[i + j]) << (j * 8);
+      chunk |= ((uint32_t)bytes[i + (size_t)j]) << (j * 8);
     }
     crc = __crc32w(crc, chunk);
     i += 4;
@@ -90,7 +90,7 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
   if (i + 2 <= len) {
     uint16_t chunk = 0;
     for (int j = 0; j < 2; j++) {
-      chunk |= ((uint16_t)bytes[i + j]) << (j * 8);
+      chunk |= ((uint16_t)bytes[i + (size_t)j]) << (j * 8);
     }
     crc = __crc32h(crc, chunk);
     i += 2;
@@ -120,7 +120,7 @@ static uint32_t crc32_intel_hw(const void *data, size_t len) {
     uint64_t chunk = 0;
     // Load bytes in little-endian order
     for (int j = 0; j < 8; j++) {
-      chunk |= ((uint64_t)bytes[i + j]) << (j * 8);
+      chunk |= ((uint64_t)bytes[i + (size_t)j]) << ((size_t)j * 8);
     }
     crc = (uint32_t)_mm_crc32_u64(crc, chunk);
     i += 8;
@@ -129,7 +129,7 @@ static uint32_t crc32_intel_hw(const void *data, size_t len) {
   // Process 4 bytes
   if (i + 4 <= len) {
     uint32_t chunk = 0;
-    for (int j = 0; j < 4; j++) {
+    for (size_t j = 0; j < 4; j++) {
       chunk |= ((uint32_t)bytes[i + j]) << (j * 8);
     }
     crc = _mm_crc32_u32(crc, chunk);
@@ -139,7 +139,7 @@ static uint32_t crc32_intel_hw(const void *data, size_t len) {
   // Process 2 bytes
   if (i + 2 <= len) {
     uint16_t chunk = 0;
-    for (int j = 0; j < 2; j++) {
+    for (size_t j = 0; j < 2; j++) {
       chunk |= ((uint16_t)bytes[i + j]) << (j * 8);
     }
     crc = _mm_crc32_u16(crc, chunk);
