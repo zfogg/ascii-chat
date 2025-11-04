@@ -29,7 +29,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
 
     // Handle Ctrl+C (interrupt)
     if (ch == 3) {
-      fprintf(stderr, "\n");
+      (void)fprintf(stderr, "\n");
       return -1;
     }
 
@@ -37,17 +37,16 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
     if (ch == '\b' && i > 0) {
       // Backspace: remove last character and erase asterisk
       i--;
-      fprintf(stderr, "\b \b");
-      fflush(stderr);
+      (void)fprintf(stderr, "\b \b");
     } else if (ch >= 32 && ch <= 126) {
       // Printable character: add to password and display asterisk
-      password[i++] = ch;
-      fprintf(stderr, "*");
-      fflush(stderr);
+      password[i++] = (char)ch;
+      (void)fprintf(stderr, "*");
     }
   }
   password[i] = '\0';
 
-  fprintf(stderr, "\n========================================\n\n");
+  (void)fprintf(stderr, "\n========================================\n\n");
+  (void)fflush(stderr);
   return 0;
 }

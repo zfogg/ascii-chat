@@ -169,7 +169,7 @@ void packet_queue_destroy(packet_queue_t *queue) {
     data_buffer_pool_get_stats(queue->buffer_pool, &hits, &misses);
     if (hits + misses > 0) {
       log_info("Buffer pool stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
-               (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
+               (double)hits * 100.0 / (double)(hits + misses), (unsigned long long)misses);
     }
   }
 

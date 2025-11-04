@@ -115,6 +115,17 @@ target_link_libraries(ascii-chat-crypto
     ${LIBSODIUM_LIBRARIES}
 )
 
+# Add libsodium include directory (for GCC builds from source)
+if(LIBSODIUM_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-crypto PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+endif()
+
+# Add dependency on libsodium build target if building from source
+if(DEFINED LIBSODIUM_BUILD_TARGET)
+    add_dependencies(ascii-chat-crypto ${LIBSODIUM_BUILD_TARGET})
+endif()
+
+
 # Add BearSSL if available
 if(BEARSSL_FOUND)
     target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})

@@ -44,7 +44,8 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
   }
 
   // Skip terminal control sequences in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && reset_terminal && SAFE_GETENV("TESTING") == NULL) {
+  const char *testing_env = SAFE_GETENV("TESTING");
+  if (!opt_snapshot_mode && reset_terminal && testing_env == NULL) {
     console_clear(fd);
     cursor_reset(fd);
 
@@ -110,7 +111,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
   }
 
   // Always resize to target dimensions
-  image_t *resized = image_new((int)resized_width, (int)resized_height);
+  image_t *resized = image_new((size_t)(int)resized_width, (size_t)(int)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
     return NULL;
@@ -222,7 +223,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   struct timespec prof_alloc_start, prof_alloc_end, prof_resize_start, prof_resize_end;
   (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_start);
 
-  image_t *resized = image_new((int)resized_width, (int)resized_height);
+  image_t *resized = image_new((size_t)(int)resized_width, (size_t)(int)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
     return NULL;
@@ -302,7 +303,8 @@ asciichat_error_t ascii_write(const char *frame) {
   }
 
   // Skip cursor reset in snapshot mode or when testing - just print raw ASCII
-  if (!opt_snapshot_mode && SAFE_GETENV("TESTING") == NULL) {
+  const char *testing_env = SAFE_GETENV("TESTING");
+  if (!opt_snapshot_mode && testing_env == NULL) {
     cursor_reset(STDOUT_FILENO);
   }
 
@@ -399,8 +401,8 @@ char *ascii_pad_frame_width(const char *frame, size_t pad_left) {
   while (*src) {
     if (at_line_start) {
       // Insert the requested amount of spaces in front of every visual row.
-      size_t remaining = (buffer + total_len + 1) - position;
-      SAFE_MEMSET(position, remaining, ' ', pad_left);
+      size_t remaining = (size_t)((ptrdiff_t)(buffer + total_len + 1) - (ptrdiff_t)position);
+      SAFE_MEMSET(position, remaining, ' ', (size_t)pad_left);
       position += pad_left;
       at_line_start = false;
     }
@@ -442,7 +444,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   // If only one source, center it properly to maintain aspect ratio and look good
   if (source_count == 1) {
     // Create a frame of the target size filled with spaces
-    size_t target_size = width * height + height + 1; // +height for newlines, +1 for null
+    size_t target_size = (size_t)width * (size_t)height + (size_t)height + 1; // +height for newlines, +1 for null
     char *result;
     result = SAFE_MALLOC(target_size, char *);
     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
@@ -497,8 +499,8 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int dst_pos = dst_row * (width + 1) + h_padding;
       int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
 
-      if (copy_len > 0 && dst_pos + copy_len < (int)target_size) {
-        SAFE_MEMCPY(&result[dst_pos], target_size - dst_pos, &src_data[line_start], copy_len);
+      if (copy_len > 0 && (size_t)(dst_pos + copy_len) < target_size) {
+        SAFE_MEMCPY(&result[dst_pos], target_size - (size_t)dst_pos, &src_data[line_start], (size_t)copy_len);
       }
 
       // Skip newline in source
@@ -599,7 +601,8 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // Allocate mixed frame buffer
-  size_t mixed_size = width * height + height + 1; // +1 for null terminator, +height for newlines
+  size_t mixed_size =
+      (size_t)width * (size_t)height + (size_t)height + 1; // +1 for null terminator, +height for newlines
   char *mixed_frame;
   mixed_frame = SAFE_MALLOC(mixed_size, char *);
 
@@ -638,7 +641,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       int copy_len = (line_len < cell_width) ? line_len : cell_width;
       if (copy_len > 0 && start_col + copy_len <= width) {
         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
-        SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - mixed_pos, src_data + line_start, copy_len);
+        SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - (size_t)mixed_pos, src_data + line_start, (size_t)copy_len);
       }
 
       // Move to next line

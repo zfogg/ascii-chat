@@ -290,14 +290,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   last_frame_time = current_time;
 
   // Expected frame interval in microseconds (for 60fps = 16666us)
-  uint64_t expected_interval_us = 1000000 / expected_fps;
+  uint64_t expected_interval_us = 1000000ULL / (uint64_t)expected_fps;
   uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
 
   // Log error if frame arrived too late
   if (frame_count > 1 && frame_interval_us > lag_threshold_us) {
-    log_error("CLIENT FPS LAG: Frame received %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)",
-              (float)(frame_interval_us - expected_interval_us) / 1000.0f, (float)expected_interval_us / 1000.0f,
-              (float)frame_interval_us / 1000.0f, 1000000.0f / frame_interval_us);
+    log_error("CLIENT FPS LAG: Frame received %.2lfs late (expected %.2lfs, got %.2lfs, actual fps: %.2lf)",
+              (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
+              (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
   }
 
   // Report FPS every 5 seconds
@@ -306,9 +306,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       ((uint64_t)last_fps_report_time.tv_sec * 1000000 + (uint64_t)last_fps_report_time.tv_nsec / 1000);
 
   if (elapsed_us >= 5000000) { // 5 seconds
-    float actual_fps = (float)frame_count / ((float)elapsed_us / 1000000.0f);
-    log_debug("CLIENT FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, frame_count,
-              (float)elapsed_us / 1000000.0f);
+    double actual_fps = (double)frame_count / ((double)elapsed_us / 1000000.0);
+    log_debug("CLIENT FPS: %.1f fps (%llu frames in %.1lf seconds)", actual_fps, frame_count,
+              (double)elapsed_us / 1000000.0);
 
     // Reset counters for next interval
     frame_count = 0;
@@ -337,7 +337,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   if (header.flags & FRAME_FLAG_IS_COMPRESSED && header.compressed_size > 0) {
     // Compressed frame - decompress it
     if (frame_data_len != header.compressed_size) {
-      log_error("Compressed frame size mismatch: expected %u, got %zu", header.compressed_size, frame_data_len);
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", header.compressed_size,
+                frame_data_len);
       return;
     }
 
@@ -347,7 +348,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, header.original_size);
 
     if (result != 0) {
-      log_error("Decompression failed for expected size %u", header.original_size);
+      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", header.original_size);
       SAFE_FREE(frame_data);
       return;
     }
@@ -400,9 +401,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       first_frame_time = time(NULL);
       log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...", opt_snapshot_delay);
     } else {
-      time_t current_time = time(NULL);
-      double elapsed = difftime(current_time, first_frame_time);
-      if (elapsed >= opt_snapshot_delay) {
+      time_t snapshot_time = time(NULL);
+      double elapsed = difftime(snapshot_time, first_frame_time);
+      if (elapsed >= (double)opt_snapshot_delay) {
         log_info("Snapshot captured after %.1f seconds!", elapsed);
         take_snapshot = true;
         signal_exit();
@@ -450,16 +451,16 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     // Get the client's desired FPS (what we told the server we can display)
     int client_display_fps = MAX_FPS; // This respects the --fps command line flag
     // Use microseconds for precision - avoid integer division loss
-    uint64_t render_interval_us = 1000000 / client_display_fps;
+    uint64_t render_interval_us = 1000000ULL / (uint64_t)client_display_fps;
 
-    struct timespec current_time;
-    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+    struct timespec render_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &render_time);
 
     // Calculate elapsed time since last render in microseconds (high precision)
-    uint64_t elapsed_us = 0;
+    uint64_t render_elapsed_us = 0;
     if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
-      int64_t sec_diff = (int64_t)current_time.tv_sec - (int64_t)last_render_time.tv_sec;
-      int64_t nsec_diff = (int64_t)current_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
+      int64_t sec_diff = (int64_t)render_time.tv_sec - (int64_t)last_render_time.tv_sec;
+      int64_t nsec_diff = (int64_t)render_time.tv_nsec - (int64_t)last_render_time.tv_nsec;
 
       // Handle nanosecond underflow by borrowing from seconds
       if (nsec_diff < 0) {
@@ -470,14 +471,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       // Convert to microseconds (now both values are properly normalized)
       // sec_diff should be >= 0 for forward time progression
       if (sec_diff >= 0) {
-        elapsed_us = (uint64_t)sec_diff * 1000000ULL + (uint64_t)(nsec_diff / 1000);
+        render_elapsed_us = (uint64_t)sec_diff * 1000000ULL + (uint64_t)(nsec_diff / 1000);
       }
       // If sec_diff is negative, time went backwards - treat as 0 elapsed
     }
 
     // Skip rendering if not enough time has passed (frame rate limiting)
     if (last_render_time.tv_sec != 0 || last_render_time.tv_nsec != 0) {
-      if (elapsed_us > 0 && elapsed_us < render_interval_us) {
+      if (render_elapsed_us > 0 && render_elapsed_us < render_interval_us) {
         // Drop this frame to maintain display FPS limit
         SAFE_FREE(frame_data);
         return;
@@ -677,16 +678,16 @@ static void *data_reception_thread_func(void *arg) {
       log_debug("Received REKEY_REQUEST from server");
 
       // Process the server's rekey request
-      asciichat_error_t result = crypto_client_process_rekey_request(data, len);
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_REQUEST: %d", result);
+      asciichat_error_t crypto_result = crypto_client_process_rekey_request(data, len);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_REQUEST: %d", crypto_result);
         break;
       }
 
       // Send REKEY_RESPONSE
-      result = crypto_client_send_rekey_response();
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_RESPONSE: %d", result);
+      crypto_result = crypto_client_send_rekey_response();
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
       } else {
         log_debug("Sent REKEY_RESPONSE to server");
       }
@@ -697,16 +698,16 @@ static void *data_reception_thread_func(void *arg) {
       log_debug("Received REKEY_RESPONSE from server");
 
       // Process server's response
-      asciichat_error_t result = crypto_client_process_rekey_response(data, len);
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_RESPONSE: %d", result);
+      asciichat_error_t crypto_result = crypto_client_process_rekey_response(data, len);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_RESPONSE: %d", crypto_result);
         break;
       }
 
       // Send REKEY_COMPLETE
-      result = crypto_client_send_rekey_complete();
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_COMPLETE: %d", result);
+      crypto_result = crypto_client_send_rekey_complete();
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
       } else {
         log_debug("Session rekeying completed successfully");
       }

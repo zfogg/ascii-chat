@@ -937,21 +937,22 @@ void *client_receive_thread(void *arg) {
 
       // Process the client's rekey request
       mutex_lock(&client->client_state_mutex);
-      asciichat_error_t result = crypto_handshake_process_rekey_request(&client->crypto_handshake_ctx, data, len);
+      asciichat_error_t crypto_result =
+          crypto_handshake_process_rekey_request(&client->crypto_handshake_ctx, data, len);
       mutex_unlock(&client->client_state_mutex);
 
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_REQUEST from client %u: %d", client->client_id, result);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_REQUEST from client %u: %d", client->client_id, crypto_result);
         break;
       }
 
       // Send REKEY_RESPONSE
       mutex_lock(&client->client_state_mutex);
-      result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
+      crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
       mutex_unlock(&client->client_state_mutex);
 
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, result);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_RESPONSE to client %u: %d", client->client_id, crypto_result);
       } else {
         log_debug("Sent REKEY_RESPONSE to client %u", client->client_id);
       }
@@ -963,21 +964,22 @@ void *client_receive_thread(void *arg) {
 
       // Process the client's rekey response
       mutex_lock(&client->client_state_mutex);
-      asciichat_error_t result = crypto_handshake_process_rekey_response(&client->crypto_handshake_ctx, data, len);
+      asciichat_error_t crypto_result =
+          crypto_handshake_process_rekey_response(&client->crypto_handshake_ctx, data, len);
       mutex_unlock(&client->client_state_mutex);
 
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, result);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_RESPONSE from client %u: %d", client->client_id, crypto_result);
         break;
       }
 
       // Send REKEY_COMPLETE to confirm and activate new key
       mutex_lock(&client->client_state_mutex);
-      result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
+      crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
       mutex_unlock(&client->client_state_mutex);
 
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, result);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to send REKEY_COMPLETE to client %u: %d", client->client_id, crypto_result);
       } else {
         log_debug("Sent REKEY_COMPLETE to client %u - session rekeying complete", client->client_id);
       }
@@ -989,11 +991,12 @@ void *client_receive_thread(void *arg) {
 
       // Process and commit to new key
       mutex_lock(&client->client_state_mutex);
-      asciichat_error_t result = crypto_handshake_process_rekey_complete(&client->crypto_handshake_ctx, data, len);
+      asciichat_error_t crypto_result =
+          crypto_handshake_process_rekey_complete(&client->crypto_handshake_ctx, data, len);
       mutex_unlock(&client->client_state_mutex);
 
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, result);
+      if (crypto_result != ASCIICHAT_OK) {
+        log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, crypto_result);
       } else {
         log_debug("Session rekeying completed successfully with client %u", client->client_id);
       }
@@ -1134,9 +1137,9 @@ void *client_send_thread_func(void *arg) {
 
     // Check if it's time to send a video frame (60fps rate limiting)
     // Only rate-limit the SEND operation, not frame consumption
-    struct timespec ts, frame_start, frame_end, step1, step2, step3, step4, step5;
-    (void)clock_gettime(CLOCK_MONOTONIC, &ts);
-    uint64_t current_time = (uint64_t)ts.tv_sec * 1000000 + (uint64_t)ts.tv_nsec / 1000;
+    struct timespec now_ts, frame_start, frame_end, step1, step2, step3, step4, step5;
+    (void)clock_gettime(CLOCK_MONOTONIC, &now_ts);
+    uint64_t current_time = (uint64_t)now_ts.tv_sec * 1000000 + (uint64_t)now_ts.tv_nsec / 1000;
     if (current_time - last_video_send_time >= video_send_interval_us) {
       (void)clock_gettime(CLOCK_MONOTONIC, &frame_start);
 

@@ -34,7 +34,7 @@ size_t get_current_time_formatted(char *time_buf) {
   size_t len = strftime(time_buf, 32, "%H:%M:%S", &tm_info);
   if (len <= 0 || len >= 32) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format time");
-    return -1;
+    return 0;
   }
 
   // Add microseconds manually
@@ -47,10 +47,10 @@ size_t get_current_time_formatted(char *time_buf) {
   int result = snprintf(time_buf + len, 32 - len, ".%06ld", microseconds);
   if (result < 0 || result >= (int)(32 - len)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format microseconds");
-    return -1;
+    return 0;
   }
 
-  return len + result;
+  return len + (size_t)result;
 }
 
 char *format_message(const char *format, va_list args) {
@@ -179,7 +179,7 @@ static void rotate_log_if_needed_unlocked(void) {
     ssize_t bytes_read;
     size_t new_size = 0;
     while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
-      ssize_t written = platform_write(temp_file, buffer, bytes_read);
+      ssize_t written = platform_write(temp_file, buffer, (size_t)bytes_read);
       if (written != bytes_read) {
         platform_close(read_file);
         platform_close(temp_file);
@@ -226,7 +226,7 @@ static void rotate_log_if_needed_unlocked(void) {
       return;
     }
 
-    if (platform_write(g_log.file, log_msg, log_msg_len) != log_msg_len) {
+    if (platform_write(g_log.file, log_msg, (size_t)log_msg_len) != log_msg_len) {
       LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write log message");
       return;
     }
@@ -378,7 +378,7 @@ static void write_to_log_file_unlocked(const char *buffer, int length) {
     return;
   }
 
-  ssize_t written = platform_write(g_log.file, buffer, length);
+  ssize_t written = platform_write(g_log.file, buffer, (size_t)length);
   if (written <= 0 && length > 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
     return;
@@ -392,7 +392,7 @@ static void write_to_log_file_unlocked(const char *buffer, int length) {
  */
 static void write_to_stderr_fallback_unlocked(const char *buffer, int length) {
   if (g_log.file == STDERR_FILENO) {
-    int written = platform_write(STDERR_FILENO, buffer, length);
+    ssize_t written = platform_write(STDERR_FILENO, buffer, (size_t)length);
     if (written <= 0 && length > 0) {
       LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to stderr");
       return;
@@ -556,7 +556,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   // Add the actual message
   int msg_len = header_len;
-  int formatted_len = vsnprintf(log_buffer + header_len, sizeof(log_buffer) - header_len, fmt, args);
+  int formatted_len = vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
   if (formatted_len < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
     va_end(args);

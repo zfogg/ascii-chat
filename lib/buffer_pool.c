@@ -104,7 +104,7 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
   }
 
   // Find the corresponding node
-  size_t index = (buffer - pool_start) / pool->buffer_size;
+  size_t index = (size_t)((ptrdiff_t)(buffer - pool_start) / (ptrdiff_t)(ssize_t)pool->buffer_size);
   if (index >= pool->pool_size) {
     return false;
   }
@@ -329,7 +329,7 @@ void data_buffer_pool_cleanup_global(void) {
     data_buffer_pool_get_stats(g_global_buffer_pool, &hits, &misses);
     if (hits + misses > 0) {
       log_debug("Global buffer pool final stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
-                (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
+                (double)hits * 100.0 / (double)(hits + misses), (unsigned long long)misses);
     }
 
     data_buffer_pool_destroy(g_global_buffer_pool);
@@ -456,7 +456,7 @@ void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name)
     format_bytes_pretty(stats.small_bytes, pretty_small, sizeof(pretty_small));
     log_info("  Small (1KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s", (unsigned long long)stats.small_hits,
              (unsigned long long)stats.small_misses,
-             (double)stats.small_hits * 100.0 / (stats.small_hits + stats.small_misses),
+             (double)stats.small_hits * 100.0 / (double)(stats.small_hits + stats.small_misses),
              (unsigned long long)stats.small_peak_used, BUFFER_POOL_SMALL_COUNT, pretty_small);
   }
 
@@ -465,7 +465,7 @@ void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name)
     format_bytes_pretty(stats.medium_bytes, pretty_medium, sizeof(pretty_medium));
     log_info("  Medium (64KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
              (unsigned long long)stats.medium_hits, (unsigned long long)stats.medium_misses,
-             (double)stats.medium_hits * 100.0 / (stats.medium_hits + stats.medium_misses),
+             (double)stats.medium_hits * 100.0 / (double)(stats.medium_hits + stats.medium_misses),
              (unsigned long long)stats.medium_peak_used, BUFFER_POOL_MEDIUM_COUNT, pretty_medium);
   }
 
@@ -474,7 +474,7 @@ void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name)
     format_bytes_pretty(stats.large_bytes, pretty_large, sizeof(pretty_large));
     log_info("  Large (256KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
              (unsigned long long)stats.large_hits, (unsigned long long)stats.large_misses,
-             (double)stats.large_hits * 100.0 / (stats.large_hits + stats.large_misses),
+             (double)stats.large_hits * 100.0 / (double)(stats.large_hits + stats.large_misses),
              (unsigned long long)stats.large_peak_used, BUFFER_POOL_LARGE_COUNT, pretty_large);
   }
 
@@ -483,7 +483,7 @@ void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name)
     format_bytes_pretty(stats.xlarge_bytes, pretty_xlarge, sizeof(pretty_xlarge));
     log_info("  XLarge (1.25MB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
              (unsigned long long)stats.xlarge_hits, (unsigned long long)stats.xlarge_misses,
-             (double)stats.xlarge_hits * 100.0 / (stats.xlarge_hits + stats.xlarge_misses),
+             (double)stats.xlarge_hits * 100.0 / (double)(stats.xlarge_hits + stats.xlarge_misses),
              (unsigned long long)stats.xlarge_peak_used, BUFFER_POOL_XLARGE_COUNT, pretty_xlarge);
   }
 }

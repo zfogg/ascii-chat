@@ -540,11 +540,11 @@ int validate_fps(const char *value_str, char *error_msg, size_t error_msg_size) 
 // ============================================================================
 
 // Helper function to strip equals sign from optarg if present
-static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer_size) {
-  if (!optarg)
+static char *strip_equals_prefix(const char *opt_value, char *buffer, size_t buffer_size) {
+  if (!opt_value)
     return NULL;
 
-  SAFE_SNPRINTF(buffer, buffer_size, "%s", optarg);
+  SAFE_SNPRINTF(buffer, buffer_size, "%s", opt_value);
   char *value_str = buffer;
   if (value_str[0] == '=') {
     value_str++; // Skip the equals sign
@@ -560,21 +560,21 @@ static char *strip_equals_prefix(const char *optarg, char *buffer, size_t buffer
 
 // Helper function to handle required arguments with consistent error messages
 // Returns NULL on error (caller should check and return error code)
-static char *get_required_argument(const char *optarg, char *buffer, size_t buffer_size, const char *option_name,
+static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
                                    bool is_client) {
-  // Check if optarg is NULL or empty
-  if (!optarg || strlen(optarg) == 0) {
+  // Check if opt_value is NULL or empty
+  if (!opt_value || strlen(opt_value) == 0) {
     goto error;
   }
 
   // Check if getopt_long returned the option name itself as the argument
   // This happens when a long option requiring an argument is at the end of argv
-  if (optarg && option_name && strcmp(optarg, option_name) == 0) {
+  if (opt_value && option_name && strcmp(opt_value, option_name) == 0) {
     goto error;
   }
 
   // Process the argument normally
-  char *value_str = strip_equals_prefix(optarg, buffer, buffer_size);
+  char *value_str = strip_equals_prefix(opt_value, buffer, buffer_size);
   if (!value_str) {
     goto error;
   }
@@ -1056,7 +1056,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         return ERROR_USAGE;
       }
       if (opt_snapshot_delay < 0.0f) {
-        (void)fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", opt_snapshot_delay);
+        (void)fprintf(stderr, "Snapshot delay must be non-negative (got %.2f)\n", (double)opt_snapshot_delay);
         (void)fflush(stderr);
         return ERROR_USAGE;
       }
@@ -1252,7 +1252,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
             if (eq && eq > opt_name) {
               // Use a static buffer to avoid stack issues
               static char safe_buf[256];
-              size_t len = eq - opt_name;
+              size_t len = (size_t)(eq - opt_name);
               if (len > 0 && len < sizeof(safe_buf) - 1) {
                 SAFE_STRNCPY(safe_buf, opt_name, sizeof(safe_buf));
                 safe_buf[len] = '\0';
@@ -1295,7 +1295,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           // Handle --option=value format
           const char *eq_pos = strchr(user_opt, '=');
           if (eq_pos) {
-            size_t user_opt_len = eq_pos - user_opt;
+            size_t user_opt_len = (size_t)(eq_pos - user_opt);
             if (user_opt_len > 0 && user_opt_len < 256) {
               char unsupported_opt[256];
               SAFE_STRNCPY(unsupported_opt, user_opt, sizeof(unsupported_opt));
@@ -1393,7 +1393,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "capture single frame and exit (default: [unset])\n");
   (void)fprintf(
       desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
-      SNAPSHOT_DELAY_DEFAULT);
+      (double)SNAPSHOT_DELAY_DEFAULT);
   (void)fprintf(desc,
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT

@@ -14,9 +14,9 @@ BINARY_PATH="$1"
 SOURCE_DIR="$2"
 BUILD_DIR="${3:-}"
 
-# Convert Windows paths to WSL/bash-compatible format for file operations
-# WSL mounts Windows drives at /mnt/<drive>, so C:/Users/... -> /mnt/c/Users/...
-# This conversion is needed BEFORE file existence checks
+# Convert Windows paths to bash-compatible format for file operations
+# Detects whether running under WSL or Git Bash/MSYS and uses appropriate format
+# WSL: /mnt/<drive>/path, Git Bash/MSYS: /<drive>/path
 convert_windows_to_wsl() {
     local path="$1"
     # Check if it's a Windows path (starts with drive letter)
@@ -26,10 +26,15 @@ convert_windows_to_wsl() {
         # Convert drive letter to lowercase and remove backslashes
         drive_letter="${drive_letter,,}"
         rest_of_path="${rest_of_path//\\//}"
-        # Remove leading slash if present
-        rest_of_path="${rest_of_path#/}"
-        # Construct WSL path
-        echo "/mnt/${drive_letter}/${rest_of_path}"
+
+        # Detect environment: check if /mnt exists (WSL) or not (Git Bash/MSYS)
+        if [ -d "/mnt" ] && [ -d "/mnt/c" ]; then
+            # WSL: use /mnt/<drive>/path
+            echo "/mnt/${drive_letter}${rest_of_path}"
+        else
+            # Git Bash/MSYS: use /<drive>/path
+            echo "/${drive_letter}${rest_of_path}"
+        fi
     else
         # Not a Windows path, return as-is
         echo "$path"
@@ -250,8 +255,10 @@ if [ ! -f "$TEMP_FILE" ]; then
     exit 1
 fi
 
-ORIG_SIZE=$(stat -c%s "$BINARY_PATH" 2>/dev/null || echo "0")
-NEW_SIZE=$(stat -c%s "$TEMP_FILE" 2>/dev/null || echo "0")
+# Get file sizes (portable across Linux/macOS/Git Bash)
+# Try GNU stat first (-c%s), then BSD stat (-f%z for Git Bash/macOS)
+ORIG_SIZE=$(stat -c%s "$BINARY_PATH" 2>/dev/null || stat -f%z "$BINARY_PATH" 2>/dev/null || echo "0")
+NEW_SIZE=$(stat -c%s "$TEMP_FILE" 2>/dev/null || stat -f%z "$TEMP_FILE" 2>/dev/null || echo "0")
 
 if [ "$ORIG_SIZE" = "0" ] || [ "$NEW_SIZE" = "0" ]; then
     echo "Error: Failed to get file sizes (orig=$ORIG_SIZE, new=$NEW_SIZE)" >&2

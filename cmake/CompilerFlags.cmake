@@ -30,21 +30,46 @@ function(configure_base_compiler_flags)
     # -Wextra: Enable extra warnings
     add_compile_options(-Wall -Wextra)
 
+    # Essential safety warnings (always enabled)
+    # Keep it simple - just the important stuff that catches real bugs
+    add_compile_options(
+        -Wformat=2                # Extra format string security checks
+        -Wwrite-strings           # Warn when string literals could be written to
+        -Wnull-dereference        # Warn about potential null pointer dereferences
+        -Wformat-security         # Warn about potential format string vulnerabilities
+    )
+
+    # Clang-specific warnings
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        add_compile_options(
+            -Wconditional-uninitialized  # Warn about potentially uninitialized variables
+            -Widiomatic-parentheses   # Warn about confusing precedence without parentheses
+        )
+
+        # Disable noisy Clang warnings
+        add_compile_options(
+            -Wno-comma                                       # Too noisy with comma operator in macros/third-party
+            -Wno-format-nonliteral                           # False positives in variadic format functions
+            -Wno-incompatible-pointer-types-discards-qualifiers  # Pragmatic const handling
+        )
+    endif()
+
+    # GCC-specific warnings
+    if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+        add_compile_options(
+            -Wlogical-op              # Warn about suspicious logical operations
+            -Wduplicated-cond         # Warn about duplicated if-else conditions
+            -Wduplicated-branches     # Warn about identical if/else branches
+            -Wtrampolines             # Warn about trampolines (nested functions)
+        )
+    endif()
+
     # Enable frame pointers for better backtraces (required for musl + libexecinfo)
     # Frame pointers help with stack traces and debugging, but disable in Release for performance
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(-fno-omit-frame-pointer)
         message(STATUS "Frame pointers enabled for backtraces")
     endif()
-
-    # =============================================================================
-    # Future compiler flags can be added here
-    # =============================================================================
-    # Examples:
-    #   - Additional warning flags: -Wpedantic, -Werror, etc.
-    #   - Language standard enforcement: -Wconversion, -Wsign-conversion
-    #   - Platform-specific flags
-    # =============================================================================
 endfunction()
 
 # =============================================================================
@@ -91,7 +116,25 @@ endfunction()
 # Args:
 #   BUILD_TYPE - "Debug", "Dev", or "Sanitize"
 function(configure_debug_build_flags BUILD_TYPE)
-    add_compile_options(-g -O0 -DDEBUG)
+    # Enhanced debug info with macro definitions
+    add_compile_options(-g3 -O0 -DDEBUG)
+
+    # Better debugging experience
+    add_compile_options(
+        -fno-inline                           # Disable inlining for easier stepping
+        -fno-eliminate-unused-debug-types     # Keep all debug types
+    )
+
+    # Clang-specific debug enhancements
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        add_compile_options(
+            -fstandalone-debug                # Full debug info even for headers
+            -gcolumn-info                     # Include column information
+        )
+    endif()
+
+    # Stack protection in debug builds (helps catch buffer overflows early)
+    add_compile_options(-fstack-protector-strong)
 
     # Windows-specific debug info formats
     if(WIN32)
@@ -161,6 +204,55 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         add_compile_options(-fno-omit-frame-pointer)
     else()
         add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
+
+        # Additional aggressive optimizations for Release builds (cross-platform)
+        add_compile_options(
+            -fno-math-errno              # Don't set errno for math functions (faster)
+            -fno-signed-zeros            # Allow optimizations that ignore sign of zero
+            -freciprocal-math            # Allow reciprocal approximations
+            -fassociative-math           # Allow reassociation of FP operations
+            -fno-trapping-math           # Assume no floating-point exceptions
+            -funsafe-math-optimizations  # Allow unsafe math optimizations (enables several flags at once)
+        )
+
+        # Additional safe optimizations
+        add_compile_options(
+            -foptimize-sibling-calls     # Optimize tail recursion
+        )
+
+        # GCC-specific optimizations (GCC has more aggressive tree/loop opts than Clang)
+        if(CMAKE_C_COMPILER_ID MATCHES "GNU")
+            add_compile_options(
+                -ftree-loop-distribution     # Loop distribution optimization
+                -fgcse-after-reload          # Global common subexpression elimination after reload
+                -fpredictive-commoning       # Predictive commoning optimization
+                -fsplit-loops                # Loop splitting
+                -funswitch-loops             # Loop unswitching
+                -ftree-loop-im               # Loop invariant motion
+                -fivopts                     # Induction variable optimizations
+                -ftree-partial-pre           # Partial redundancy elimination on trees
+                -fipa-pta                    # Interprocedural pointer analysis
+            )
+        endif()
+
+        # Clang-specific optimizations
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Check if Polly is available before using it
+            include(CheckCCompilerFlag)
+            check_c_compiler_flag("-mllvm -polly" COMPILER_SUPPORTS_POLLY)
+
+            if(COMPILER_SUPPORTS_POLLY)
+                add_compile_options(-mllvm -polly)  # Enable Polly loop optimizer
+            endif()
+
+            # Additional Clang optimizations
+            # Only use -fno-semantic-interposition on Unix-like systems (not Windows)
+            # This flag is for shared libraries and is unused on Windows with static linking
+            if(NOT WIN32)
+                add_compile_options(-fno-semantic-interposition)  # Allow inlining across DSO boundaries
+            endif()
+            add_compile_options(-fvisibility=hidden)  # Hide symbols by default (faster DSOs)
+        endif()
     endif()
 
     if(PLATFORM_DARWIN)
@@ -182,17 +274,84 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         else()
             add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
         endif()
+    elseif(WIN32)
+        # Windows: Use native CPU optimizations
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|X86_64")
+            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+            add_compile_options(-mcpu=native -ffp-contract=fast -ffinite-math-only)
+        else()
+            add_compile_options(-ffp-contract=fast)
+        endif()
     else()
         add_compile_options(-ffp-contract=fast)
     endif()
 
-    if(NOT WIN32)
-        add_compile_options(-flto -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+    # Link-time optimization (works on all platforms including Windows)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        add_compile_options(-flto)
         add_link_options(-flto)
+    endif()
+
+    if(NOT WIN32)
+        # Size reduction and alignment optimizations
+        add_compile_options(-fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+
+        # Dead code elimination (requires -ffunction-sections -fdata-sections)
+        add_compile_options(-ffunction-sections -fdata-sections)
+        add_link_options(-Wl,--gc-sections)
+    else()
+        # Windows-specific optimizations
+        # Dead code elimination (works with MSVC linker via Clang)
+        add_compile_options(-ffunction-sections -fdata-sections)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            add_link_options(-Wl,/OPT:REF -Wl,/OPT:ICF)  # Remove unreferenced functions and COMDAT folding
+        endif()
+
+        # Additional alignment optimizations
+        add_compile_options(-falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+
+        # Disable unwind tables for smaller binaries (can't use on Windows due to SEH)
+        # Windows exception handling requires unwind info, so we skip -fno-unwind-tables
+    endif()
+
+    # Security hardening for Unix-like platforms
+    if(NOT WIN32)
+        if(NOT WITH_DEBUG_INFO)
+            # Position Independent Executable (PIE) - better ASLR
+            add_compile_options(-fPIE)
+            add_link_options(-pie)
+
+            # Relocation hardening
+            add_link_options(-Wl,-z,relro -Wl,-z,now)
+        endif()
+
+        # Stack clash protection (GCC 8+, Clang 11+)
+        add_compile_options(-fstack-clash-protection)
+
+        # Control Flow Integrity on supported platforms (x86_64 with CET support)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+            # Intel CET (Control-flow Enforcement Technology)
+            if(CMAKE_C_COMPILER_ID MATCHES "GNU" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "8.0")
+                add_compile_options(-fcf-protection=full)
+            elseif(CMAKE_C_COMPILER_ID MATCHES "Clang" AND CMAKE_C_COMPILER_VERSION VERSION_GREATER_EQUAL "7.0")
+                add_compile_options(-fcf-protection=full)
+            endif()
+        endif()
+
         # Linux-specific flags (not supported on macOS clang)
         if(PLATFORM_LINUX)
             add_compile_options(-fno-plt -fno-semantic-interposition)
             add_link_options(-fno-plt)
+
+            # Fortify source for additional runtime checks
+            add_definitions(-D_FORTIFY_SOURCE=3)
+        endif()
+
+        # macOS-specific security features
+        if(PLATFORM_DARWIN)
+            # Fortify source (level 2 is safer for macOS)
+            add_definitions(-D_FORTIFY_SOURCE=2)
         endif()
     endif()
 endfunction()

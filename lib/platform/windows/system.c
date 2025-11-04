@@ -127,7 +127,7 @@ void platform_sleep_usec(unsigned int usec) {
   if (timeout_ms < 1)
     timeout_ms = 1;
 
-  Sleep(timeout_ms);
+  Sleep((DWORD)timeout_ms);
 }
 
 /**
@@ -402,7 +402,7 @@ static void init_windows_symbols(void) {
     char build_pdb_path[MAX_PATH];
     char *last_slash = strrchr(module_path, '\\');
     if (last_slash) {
-      size_t dir_len = last_slash - module_path;
+      size_t dir_len = (size_t)((ptrdiff_t)(last_slash - module_path));
       if (dir_len < MAX_PATH - 20) { // Leave room for "\build\bin\*.pdb"
         strncpy(build_pdb_path, module_path, dir_len);
         build_pdb_path[dir_len] = '\0';
@@ -496,7 +496,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     if (dollar_pos) {
       // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
       // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
-      size_t base_len = dollar_pos - symbol_info->Name;
+      size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - symbol_info->Name));
       if (base_len > 0 && base_len < sizeof(cleaned_name)) {
         // Remove trailing underscore if present
         if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
@@ -538,7 +538,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     if (dollar_pos) {
       // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
       // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
-      size_t base_len = dollar_pos - symbol_info->Name;
+      size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - symbol_info->Name));
       if (base_len > 0 && base_len < sizeof(cleaned_name)) {
         // Remove trailing underscore if present
         if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
@@ -607,7 +607,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
   char **cache_symbols = symbol_cache_resolve_batch(buffer, size);
 
   // Allocate array of strings (size + 1 for NULL terminator)
-  char **symbols = SAFE_MALLOC((size + 1) * sizeof(char *), char **);
+  char **symbols = SAFE_MALLOC(((size_t)(unsigned int)size + 1) * sizeof(char *), char **);
   if (!symbols) {
     if (cache_symbols) {
       symbol_cache_free_symbols(cache_symbols);
@@ -651,7 +651,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
           char cleaned_sym[1024];
           if (dollar_pos) {
             // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
-            size_t base_len = dollar_pos - sym;
+            size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - sym));
             if (base_len > 0 && base_len < sizeof(cleaned_sym)) {
               // Remove trailing underscore if present
               if (base_len > 1 && sym[base_len - 1] == '_') {
@@ -890,8 +890,8 @@ int clock_gettime(int clk_id, struct timespec *tp) {
     }
 
     // Convert to seconds and nanoseconds
-    tp->tv_sec = counter.QuadPart / freq.QuadPart;
-    tp->tv_nsec = ((counter.QuadPart % freq.QuadPart) * 1000000000) / freq.QuadPart;
+    tp->tv_sec = (time_t)(counter.QuadPart / freq.QuadPart);
+    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart));
   }
 
   return 0;
@@ -1144,7 +1144,7 @@ asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t c
 #endif
 }
 
-int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
+asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memmove");
@@ -1157,11 +1157,15 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
 #ifdef __STDC_LIB_EXT1__
   // Use memmove_s if available (C11 Annex K)
   errno_t err = memmove_s(dest, dest_size, src, count);
-  return err; // Returns 0 on success, non-zero on error
+  if (err != 0) {
+
+    return SET_ERRNO_SYS(ERROR_BUFFER_OVERFLOW, "memmove_s failed");
+  }
+  return ASCIICHAT_OK;
 #else
   // Fallback to standard memmove with bounds already checked
   memmove(dest, src, count);
-  return 0; // Success
+  return ASCIICHAT_OK;
 #endif
 }
 
@@ -1176,7 +1180,7 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
  * @param ipv4_out_size Size of the output buffer
  * @return 0 on success, -1 on failure
  */
-int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
+asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
   if (!hostname || !ipv4_out || ipv4_out_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
@@ -1207,8 +1211,11 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   }
 
   // Extract IPv4 address from first result
-  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
-  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
+  // getaddrinfo returns sockaddr*, but we know it's sockaddr_in for IPv4
+  // Use memcpy to avoid alignment cast warning - getaddrinfo guarantees proper alignment
+  struct sockaddr_in ipv4_addr;
+  memcpy(&ipv4_addr, result->ai_addr, sizeof(struct sockaddr_in));
+  if (inet_ntop(AF_INET, &(ipv4_addr.sin_addr), ipv4_out, (size_t)(socklen_t)ipv4_out_size) == NULL) {
     freeaddrinfo(result);
     WSACleanup();
     return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
@@ -1217,7 +1224,7 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   freeaddrinfo(result);
   WSACleanup();
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**

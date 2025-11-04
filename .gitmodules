@@ -12,3 +12,6 @@
 [submodule "deps/uthash"]
 	path = deps/uthash
 	url = https://github.com/troydhanson/uthash.git
+[submodule "deps/sokol"]
+	path = deps/sokol
+	url = https://github.com/floooh/sokol

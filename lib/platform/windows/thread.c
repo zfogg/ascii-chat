@@ -50,6 +50,7 @@ static void initialize_symbol_handler(void) {
   }
 }
 
+// Unused exception handling functions - kept for potential future debugging use
 // Helper function to build consolidated exception message
 static void build_exception_message(char *buffer, size_t buffer_size, DWORD exceptionCode, DWORD threadId) {
   const char *exceptionName = "UNKNOWN";
