@@ -9,7 +9,52 @@
 #   - No tags (commit only):      v0.1.0-dev-g63ae057-dirty
 #
 # Based on neovim's versioning scheme where -dev- indicates non-release builds.
+#
+# This module:
+#   1. Detects version from git at configure time (overrides PROJECT_VERSION)
+#   2. Generates version.h at build time (for runtime version display)
 # =============================================================================
+
+# =============================================================================
+# Configure-time version detection (for CMake variables like PROJECT_VERSION)
+# =============================================================================
+# Get git describe output at configure time
+execute_process(
+    COMMAND git describe --tags --long --dirty --always
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+    OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+# Parse git describe output and override PROJECT_VERSION
+# Format: v0.3.2-6-g0b715d6-dirty
+if(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?$")
+    # Has a tag with commits since - extract tag version
+    set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+    set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+    set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+    message(STATUS "Version from git: ${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH} (development)")
+    # Override PROJECT_VERSION with git-detected version
+    set(PROJECT_VERSION_MAJOR "${GIT_VERSION_MAJOR}" CACHE STRING "Major version from git" FORCE)
+    set(PROJECT_VERSION_MINOR "${GIT_VERSION_MINOR}" CACHE STRING "Minor version from git" FORCE)
+    set(PROJECT_VERSION_PATCH "${GIT_VERSION_PATCH}" CACHE STRING "Patch version from git" FORCE)
+    set(PROJECT_VERSION "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}" CACHE STRING "Version from git" FORCE)
+elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)?$")
+    # Exactly on a tag (no -N-g suffix) - release version
+    set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+    set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+    set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+    message(STATUS "Version from git: ${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH} (release)")
+    # Override PROJECT_VERSION with git-detected version
+    set(PROJECT_VERSION_MAJOR "${GIT_VERSION_MAJOR}" CACHE STRING "Major version from git" FORCE)
+    set(PROJECT_VERSION_MINOR "${GIT_VERSION_MINOR}" CACHE STRING "Minor version from git" FORCE)
+    set(PROJECT_VERSION_PATCH "${GIT_VERSION_PATCH}" CACHE STRING "Patch version from git" FORCE)
+    set(PROJECT_VERSION "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}" CACHE STRING "Version from git" FORCE)
+else()
+    # No tags or git not available - use fallback from project() or keep existing
+    message(STATUS "Version from git: not available (using fallback: ${PROJECT_VERSION})")
+endif()
 
 # Create a script that generates version.h on every build
 set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/generate_version.cmake")

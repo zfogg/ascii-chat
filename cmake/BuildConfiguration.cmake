@@ -89,36 +89,32 @@ endif()
 message(STATUS "Parallel build jobs: ${CPU_CORES}")
 
 # C standard selection - intelligently detect the best available standard
+# Uses modern CMake compiler feature detection instead of manual flag checking
 # Only set C23 for GNU/Clang compilers
 if(NOT CMAKE_C_STANDARD)
     # Only configure C23 for Clang and GCC compilers
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        # Check if compiler supports C23 standard
-        include(CheckCCompilerFlag)
-
-        # First try -std=c23 (newer compilers like Clang 18+, GCC 14+)
-        check_c_compiler_flag("-std=c23" COMPILER_SUPPORTS_C23)
-
-        if(COMPILER_SUPPORTS_C23)
-            set(CMAKE_C_STANDARD 23)
-            message(STATUS "Compiler supports C23 standard")
-        else()
-            # Fall back to C2X for older compilers (GitHub Actions Ubuntu 22.04)
-            set(CMAKE_C_STANDARD 23)  # CMake will translate this to c2x if c23 isn't available
-            message(STATUS "Using C2X standard (C23 preview)")
-        endif()
+        # Set C23 standard - CMake will automatically handle fallback to C2X if needed
+        # CMAKE_C_STANDARD_REQUIRED OFF allows CMake to gracefully fall back
+        set(CMAKE_C_STANDARD 23)
+        set(CMAKE_C_STANDARD_REQUIRED OFF)  # Allow fallback to C2X if C23 not available
 
         # Try strict C23 without GNU extensions
         set(CMAKE_C_EXTENSIONS OFF)
+
+        # Verify the standard was set (CMake will warn if it falls back)
+        message(STATUS "Using C23 standard (will fall back to C2X if not supported)")
     else()
         # Non-Clang/GCC compilers: use C17 (widely supported)
         set(CMAKE_C_STANDARD 17)
+        set(CMAKE_C_STANDARD_REQUIRED ON)
         set(CMAKE_C_EXTENSIONS ON)
         message(STATUS "Using C17 standard for ${CMAKE_C_COMPILER_ID} compiler")
     endif()
 endif()
 
-set(CMAKE_C_STANDARD_REQUIRED ON)
+# Note: CMAKE_C_STANDARD_REQUIRED is set per-compiler above
+# This ensures we get the best available standard with graceful fallback
 
 # Option to build tests
 option(BUILD_TESTS "Build test executables" ON)
