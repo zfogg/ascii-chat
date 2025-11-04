@@ -69,11 +69,12 @@ if(NOT WIN32)
     target_link_options(ascii-chat PRIVATE -Wl,--keep-section=.ascii_chat_version)
 endif()
 
-# Print success message only after ascii-chat gets linked
-add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "SUCCESS"
+# Print success message after ascii-chat is built (or verified up to date)
+# Use a phony target that always runs to show the message even when nothing needs rebuilding
+add_custom_target(show-build-success ALL
+    COMMAND ${CMAKE_COMMAND} -E echo "ascii-chat binary compiled and linked successfully with all files and dependencies"
+    DEPENDS ascii-chat
     COMMENT "Build completed"
-    VERBATIM
 )
 
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
