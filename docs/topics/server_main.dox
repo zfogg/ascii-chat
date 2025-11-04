@@ -56,7 +56,7 @@
  * mutex_init(&g_client_manager.mutex);
  *
  * // 9. Initialize client hash table for O(1) lookups
- * g_client_manager.client_hashtable = hashtable_create();
+ * g_client_manager.clients_by_id = NULL;  // uthash head pointer
  *
  * // 10. Initialize audio mixer for multi-client audio
  * g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
@@ -224,7 +224,8 @@
  * }
  *
  * // 6. Cleanup resources in reverse dependency order
- * hashtable_destroy(g_client_manager.client_hashtable);
+ * // Clean up uthash table (iterate and delete all entries)
+HASH_ITER(hh, g_client_manager.clients_by_id, ...);
  * mixer_destroy(g_audio_mixer);
  * rwlock_destroy(&g_client_manager_rwlock);
  * mutex_destroy(&g_client_manager.mutex);

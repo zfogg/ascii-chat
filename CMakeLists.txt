@@ -145,6 +145,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/LibsodiumBcryptPbkdf.cmake)
 configure_libsodium_bcrypt_pbkdf()
 
 # =============================================================================
+# uthash Configuration (header-only hash table library)
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/Uthash.cmake)
+configure_uthash()
+
+# =============================================================================
 # Include Directories Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/Include.cmake)

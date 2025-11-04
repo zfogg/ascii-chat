@@ -61,7 +61,7 @@ rwlock_unlock(&g_client_manager_rwlock);
 rwlock_wrlock(&g_client_manager_rwlock);
 // Modify client array and hash table
 g_client_manager.clients[slot] = new_client;
-hashtable_insert(g_client_manager.client_hashtable, client_id, &g_client_manager.clients[slot]);
+HASH_ADD_INT(g_client_manager.clients_by_id, client_id, &g_client_manager.clients[slot]);
 rwlock_unlock(&g_client_manager_rwlock);
 ```
 

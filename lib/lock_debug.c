@@ -8,7 +8,7 @@
 #include "lock_debug.h"
 #include "common.h"
 #include "platform/abstraction.h"
-#include "hashtable.h" // Need access to hashtable internals
+#include "util/uthash.h"
 #include <stdlib.h>
 #include <time.h>
 #include <stdatomic.h>
@@ -51,6 +51,7 @@ static lock_record_t *create_lock_record(void *lock_address, lock_type_t lock_ty
   lock_record_t *record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
 
   // Fill in basic information
+  record->key = lock_record_key(lock_address, lock_type);
   record->lock_address = lock_address;
   record->lock_type = lock_type;
   record->thread_id = ascii_thread_current_id();
@@ -116,13 +117,10 @@ static void free_lock_record(lock_record_t *record) {
 
 /**
  * @brief Callback function for collecting lock records into a buffer
- * @param key Hashtable key (unused)
- * @param value Lock record pointer
+ * @param record Lock record pointer
  * @param user_data Pointer to lock collector structure
  */
-static void collect_lock_record_callback(uint32_t key, void *value, void *user_data) {
-  UNUSED(key);
-  lock_record_t *record = (lock_record_t *)value;
+static void collect_lock_record_callback(lock_record_t *record, void *user_data) {
   struct lock_collector {
     uint32_t count;
     char *buffer;
@@ -219,14 +217,11 @@ static void collect_lock_record_callback(uint32_t key, void *value, void *user_d
 
 /**
  * @brief Callback function for cleaning up lock records
- * @param key Hashtable key (unused)
- * @param value Lock record pointer
+ * @param record Lock record pointer
  * @param user_data Pointer to counter for number of records cleaned up
  */
-static void cleanup_lock_record_callback(uint32_t key, void *value, void *user_data) {
-  UNUSED(key);
+static void cleanup_lock_record_callback(lock_record_t *record, void *user_data) {
   uint32_t *count = (uint32_t *)user_data;
-  lock_record_t *record = (lock_record_t *)value;
 
   (*count)++;
   free_lock_record(record);
@@ -234,13 +229,10 @@ static void cleanup_lock_record_callback(uint32_t key, void *value, void *user_d
 
 /**
  * @brief Callback function for printing usage statistics
- * @param key Hashtable key (unused)
- * @param value Usage statistics pointer
+ * @param stats Usage statistics pointer
  * @param user_data Pointer to total_stats counter
  */
-static void print_usage_stats_callback(uint32_t key, void *value, void *user_data) {
-  UNUSED(key);
-  lock_usage_stats_t *stats = (lock_usage_stats_t *)value;
+static void print_usage_stats_callback(lock_usage_stats_t *stats, void *user_data) {
   uint32_t *count = (uint32_t *)user_data;
   (*count)++;
 
@@ -294,26 +286,20 @@ static void print_usage_stats_callback(uint32_t key, void *value, void *user_dat
 
 /**
  * @brief Callback function for cleaning up usage statistics
- * @param key Hashtable key (unused)
- * @param value Usage statistics pointer
+ * @param stats Usage statistics pointer
  * @param user_data Unused
  */
-static void cleanup_usage_stats_callback(uint32_t key, void *value, void *user_data) {
-  UNUSED(key);
+static void cleanup_usage_stats_callback(lock_usage_stats_t *stats, void *user_data) {
   UNUSED(user_data);
-  lock_usage_stats_t *stats = (lock_usage_stats_t *)value;
   SAFE_FREE(stats);
 }
 
 /**
  * @brief Callback function for printing orphaned releases
- * @param key Hashtable key (unused)
- * @param value Orphaned release record pointer
+ * @param record Orphaned release record pointer
  * @param user_data Pointer to total_orphans counter
  */
-void print_orphaned_release_callback(uint32_t key, void *value, void *user_data) {
-  UNUSED(key);
-  lock_record_t *record = (lock_record_t *)value;
+void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
   uint32_t *count = (uint32_t *)user_data;
   (*count)++;
 
@@ -378,13 +364,13 @@ void print_all_held_locks(void) {
            (unsigned long long)ascii_thread_current_id());
 #endif
 
-  if (!g_lock_debug_manager.lock_records) {
+  if (!atomic_load(&g_lock_debug_manager.initialized)) {
     log_warn("Lock debug system not initialized.");
     return;
   }
 
-  // Use implementation function directly to avoid recursion
-  rwlock_rdlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+  // Acquire read lock for lock_records
+  rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
 
   // Read counters atomically while holding the lock to ensure consistency with lock records
   uint64_t total_acquired = atomic_load(&g_lock_debug_manager.total_locks_acquired);
@@ -402,10 +388,13 @@ void print_all_held_locks(void) {
     int *offset;
   } lock_collector = {0, log_buffer, &offset};
 
-  hashtable_foreach(g_lock_debug_manager.lock_records, collect_lock_record_callback, &lock_collector);
+  lock_record_t *entry, *tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.lock_records, entry, tmp) {
+    collect_lock_record_callback(entry, &lock_collector);
+  }
   uint32_t active_locks = lock_collector.count;
 
-  rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+  rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
 
   // Header
   offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "=== LOCK DEBUG: Lock Status Report ===\n");
@@ -442,20 +431,18 @@ void print_all_held_locks(void) {
                          "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",
                          currently_held);
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                         "  *** This may indicate a crash during lock acquisition or hashtable corruption. ***\n");
+                         "  *** This may indicate a crash during lock acquisition or hash table corruption. ***\n");
 
-      // Additional debug: Check hashtable statistics
+      // Additional debug: Check hash table statistics
       offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                         "  *** DEBUG: Hashtable stats for lock_records: ***\n");
-      if (g_lock_debug_manager.lock_records) {
-        size_t count = hashtable_size(g_lock_debug_manager.lock_records);
-        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  *** Hashtable size: %zu ***\n", count);
-        if (count > 0) {
-          offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                             "  *** Hashtable has entries but foreach didn't find them! ***\n");
-        }
-      } else {
-        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  *** Hashtable is NULL! ***\n");
+                         "  *** DEBUG: Hash table stats for lock_records: ***\n");
+      rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
+      size_t count = HASH_CNT(hash_handle, g_lock_debug_manager.lock_records);
+      rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
+      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  *** Hash table size: %zu ***\n", count);
+      if (count > 0) {
+        offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
+                           "  *** Hash table has entries but iteration didn't find them! ***\n");
       }
     }
   } else {
@@ -473,58 +460,54 @@ void print_all_held_locks(void) {
 
   // Print usage statistics by code location
   offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "Lock Usage Statistics by Code Location:\n");
-  if (g_lock_debug_manager.usage_stats) {
-    rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+  rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats_lock);
 
-    uint32_t total_usage_locations = 0;
-    hashtable_foreach(g_lock_debug_manager.usage_stats, print_usage_stats_callback, &total_usage_locations);
+  uint32_t total_usage_locations = 0;
+  lock_usage_stats_t *stats_entry, *stats_tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.usage_stats, stats_entry, stats_tmp) {
+    print_usage_stats_callback(stats_entry, &total_usage_locations);
+  }
 
-    rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+  rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats_lock);
 
-    if (total_usage_locations == 0) {
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No lock usage statistics available.\n");
-    } else {
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                         "  Total code locations with lock usage: %u\n", total_usage_locations);
-    }
+  if (total_usage_locations == 0) {
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No lock usage statistics available.\n");
   } else {
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Usage statistics not available.\n");
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Total code locations with lock usage: %u\n",
+                       total_usage_locations);
   }
 
   // Print orphaned releases (unlocks without corresponding locks)
   offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
                      "Orphaned Releases (unlocks without corresponding locks):\n");
-  if (g_lock_debug_manager.orphaned_releases) {
 #ifdef DEBUG_LOCKS
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                       "[DEBUG] About to call hashtable_foreach on orphaned_releases\n");
+  offset +=
+      snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "[DEBUG] About to iterate over orphaned_releases\n");
 #endif
-    rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+  rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
 
-    uint32_t total_orphaned_releases = 0;
-    hashtable_foreach(g_lock_debug_manager.orphaned_releases, print_orphaned_release_callback,
-                      &total_orphaned_releases);
+  uint32_t total_orphaned_releases = 0;
+  lock_record_t *orphan_entry, *orphan_tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.orphaned_releases, orphan_entry, orphan_tmp) {
+    print_orphaned_release_callback(orphan_entry, &total_orphaned_releases);
+  }
 #ifdef DEBUG_LOCKS
-    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                       "[DEBUG] hashtable_foreach completed, total_orphaned_releases=%u\n", total_orphaned_releases);
+  offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
+                     "[DEBUG] iteration completed, total_orphaned_releases=%u\n", total_orphaned_releases);
 #endif
 
-    rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+  rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
 
-    if (total_orphaned_releases == 0) {
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No orphaned releases found.\n");
-    } else {
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Total orphaned releases: %u\n",
-                         total_orphaned_releases);
-      offset +=
-          snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                   "  *** WARNING: %u releases without corresponding locks detected! ***\n", total_orphaned_releases);
-      offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
-                         "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
-    }
+  if (total_orphaned_releases == 0) {
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  No orphaned releases found.\n");
   } else {
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Total orphaned releases: %u\n",
+                       total_orphaned_releases);
     offset +=
-        snprintf(log_buffer + offset, sizeof(log_buffer) - offset, "  Orphaned release tracking not available.\n");
+        snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
+                 "  *** WARNING: %u releases without corresponding locks detected! ***\n", total_orphaned_releases);
+    offset += snprintf(log_buffer + offset, sizeof(log_buffer) - offset,
+                       "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
   }
 
   // End marker
@@ -631,36 +614,32 @@ int lock_debug_init(void) {
   // Set initialization flag to prevent tracking during init
   atomic_store(&g_initializing, true);
 
-  log_info("Creating hashtable for lock records...");
-  // Create hashtable for lock records
-  g_lock_debug_manager.lock_records = hashtable_create();
-  if (!g_lock_debug_manager.lock_records) {
+  log_info("Initializing hash tables for lock records...");
+  // Initialize uthash hash tables to NULL (required)
+  g_lock_debug_manager.lock_records = NULL;
+  g_lock_debug_manager.usage_stats = NULL;
+  g_lock_debug_manager.orphaned_releases = NULL;
+
+  log_info("Initializing rwlocks for thread safety...");
+  // Initialize rwlocks for thread safety (uthash requires external locking)
+  if (rwlock_init(&g_lock_debug_manager.lock_records_lock) != 0) {
     atomic_store(&g_initializing, false);
-    SET_ERRNO(ERROR_MEMORY, "Failed to create lock records hashtable");
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize lock_records rwlock");
     return -1;
   }
 
-  log_info("Creating hashtable for usage statistics...");
-  // Create hashtable for usage statistics
-  g_lock_debug_manager.usage_stats = hashtable_create();
-  if (!g_lock_debug_manager.usage_stats) {
-    hashtable_destroy(g_lock_debug_manager.lock_records);
-    g_lock_debug_manager.lock_records = NULL;
+  if (rwlock_init(&g_lock_debug_manager.usage_stats_lock) != 0) {
+    rwlock_destroy(&g_lock_debug_manager.lock_records_lock);
     atomic_store(&g_initializing, false);
-    SET_ERRNO(ERROR_MEMORY, "Failed to create usage statistics hashtable");
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize usage_stats rwlock");
     return -1;
   }
 
-  log_info("Creating hashtable for orphaned releases...");
-  // Create hashtable for orphaned releases
-  g_lock_debug_manager.orphaned_releases = hashtable_create();
-  if (!g_lock_debug_manager.orphaned_releases) {
-    hashtable_destroy(g_lock_debug_manager.lock_records);
-    hashtable_destroy(g_lock_debug_manager.usage_stats);
-    g_lock_debug_manager.lock_records = NULL;
-    g_lock_debug_manager.usage_stats = NULL;
+  if (rwlock_init(&g_lock_debug_manager.orphaned_releases_lock) != 0) {
+    rwlock_destroy(&g_lock_debug_manager.lock_records_lock);
+    rwlock_destroy(&g_lock_debug_manager.usage_stats_lock);
     atomic_store(&g_initializing, false);
-    SET_ERRNO(ERROR_MEMORY, "Failed to create orphaned releases hashtable");
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize orphaned_releases rwlock");
     return -1;
   }
 
@@ -703,7 +682,7 @@ int lock_debug_init(void) {
   // Note: lock_debug_cleanup() will be called during normal shutdown sequence
   // and lock_debug_cleanup_thread() will be called as one of the last things before exit
 
-  // log_info("Lock debug system initialized with hashtable");
+  // log_info("Lock debug system initialized with uthash");
   return 0;
 }
 
@@ -777,119 +756,113 @@ void lock_debug_cleanup(void) {
   log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up lock records...");
 #endif
 
-  if (g_lock_debug_manager.lock_records) {
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on lock_records hashtable...");
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on lock_records...");
 #endif
-    rwlock_wrlock_impl(&g_lock_debug_manager.lock_records->rwlock);
+  rwlock_wrlock_impl(&g_lock_debug_manager.lock_records_lock);
 
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all lock records...");
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all lock records...");
 #endif
-    // Free all lock records
-    uint32_t lock_records_cleaned = 0;
-    hashtable_foreach(g_lock_debug_manager.lock_records, cleanup_lock_record_callback, &lock_records_cleaned);
-    if (lock_records_cleaned > 0) {
-      log_info("Cleaned up %u lock records", lock_records_cleaned);
-    }
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on lock_records hashtable...");
-#endif
-    rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records->rwlock);
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying lock_records hashtable...");
-#endif
-    hashtable_destroy(g_lock_debug_manager.lock_records);
-    g_lock_debug_manager.lock_records = NULL;
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - lock_records hashtable destroyed");
-#endif
-  } else {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - lock_records hashtable was NULL");
-#endif
+  // Free all lock records using HASH_ITER
+  uint32_t lock_records_cleaned = 0;
+  lock_record_t *entry, *tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.lock_records, entry, tmp) {
+    HASH_DELETE(hash_handle, g_lock_debug_manager.lock_records, entry);
+    cleanup_lock_record_callback(entry, &lock_records_cleaned);
   }
+  if (lock_records_cleaned > 0) {
+    log_info("Cleaned up %u lock records", lock_records_cleaned);
+  }
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on lock_records...");
+#endif
+  rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying lock_records rwlock...");
+#endif
+  rwlock_destroy(&g_lock_debug_manager.lock_records_lock);
+  g_lock_debug_manager.lock_records = NULL;
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - lock_records cleaned up");
+#endif
 
   // Clean up usage statistics
 #ifdef DEBUG_LOCKS
   log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up usage statistics...");
 #endif
 
-  if (g_lock_debug_manager.usage_stats) {
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on usage_stats hashtable...");
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on usage_stats...");
 #endif
-    rwlock_wrlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
+  rwlock_wrlock_impl(&g_lock_debug_manager.usage_stats_lock);
 
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all usage statistics...");
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all usage statistics...");
 #endif
-    // Free all usage statistics
-    hashtable_foreach(g_lock_debug_manager.usage_stats, cleanup_usage_stats_callback, NULL);
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on usage_stats hashtable...");
-#endif
-    rwlock_wrunlock_impl(&g_lock_debug_manager.usage_stats->rwlock);
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying usage_stats hashtable...");
-#endif
-    hashtable_destroy(g_lock_debug_manager.usage_stats);
-    g_lock_debug_manager.usage_stats = NULL;
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - usage_stats hashtable destroyed");
-#endif
-  } else {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - usage_stats hashtable was NULL");
-#endif
+  // Free all usage statistics using HASH_ITER
+  lock_usage_stats_t *stats_entry, *stats_tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.usage_stats, stats_entry, stats_tmp) {
+    HASH_DELETE(hash_handle, g_lock_debug_manager.usage_stats, stats_entry);
+    cleanup_usage_stats_callback(stats_entry, NULL);
   }
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on usage_stats...");
+#endif
+  rwlock_wrunlock_impl(&g_lock_debug_manager.usage_stats_lock);
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying usage_stats rwlock...");
+#endif
+  rwlock_destroy(&g_lock_debug_manager.usage_stats_lock);
+  g_lock_debug_manager.usage_stats = NULL;
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - usage_stats cleaned up");
+#endif
 
   // Clean up orphaned releases
 #ifdef DEBUG_LOCKS
   log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up orphaned releases...");
 #endif
 
-  if (g_lock_debug_manager.orphaned_releases) {
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on orphaned_releases hashtable...");
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on orphaned_releases...");
 #endif
-    rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
+  rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
 
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all orphaned releases...");
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all orphaned releases...");
 #endif
 
-    // Free all orphaned release records
-    uint32_t orphaned_releases_cleaned = 0;
-    hashtable_foreach(g_lock_debug_manager.orphaned_releases, cleanup_lock_record_callback, &orphaned_releases_cleaned);
-    if (orphaned_releases_cleaned > 0) {
-      log_info("Cleaned up %u orphaned release records", orphaned_releases_cleaned);
-    }
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on orphaned_releases hashtable...");
-#endif
-    rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases->rwlock);
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying orphaned_releases hashtable...");
-#endif
-
-    hashtable_destroy(g_lock_debug_manager.orphaned_releases);
-    g_lock_debug_manager.orphaned_releases = NULL;
-
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases hashtable destroyed");
-#endif
-  } else {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases hashtable was NULL");
-#endif
+  // Free all orphaned release records using HASH_ITER
+  uint32_t orphaned_releases_cleaned = 0;
+  lock_record_t *orphan_entry, *orphan_tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.orphaned_releases, orphan_entry, orphan_tmp) {
+    HASH_DELETE(hash_handle, g_lock_debug_manager.orphaned_releases, orphan_entry);
+    cleanup_lock_record_callback(orphan_entry, &orphaned_releases_cleaned);
   }
+  if (orphaned_releases_cleaned > 0) {
+    log_info("Cleaned up %u orphaned release records", orphaned_releases_cleaned);
+  }
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on orphaned_releases...");
+#endif
+  rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying orphaned_releases rwlock...");
+#endif
+
+  rwlock_destroy(&g_lock_debug_manager.orphaned_releases_lock);
+  g_lock_debug_manager.orphaned_releases = NULL;
+
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases cleaned up");
+#endif
 
   // initialized flag already set to false at the beginning via atomic_exchange
 #ifdef DEBUG_LOCKS
@@ -998,8 +971,9 @@ static bool debug_should_skip_lock_tracking(void *lock_ptr, const char *file_nam
 
   // Filter out ALL functions that our lock debug system uses internally
   // to prevent infinite recursion
+  // Note: uthash uses macros (HASH_FIND_INT, etc.) so there are no function names to filter
   if (strstr(function_name, "log_") != NULL || strstr(function_name, "platform_") != NULL ||
-      strstr(function_name, "hashtable_") != NULL || strstr(function_name, "create_lock_record") != NULL ||
+      strstr(function_name, "create_lock_record") != NULL ||
       strstr(function_name, "update_usage_stats") != NULL || strstr(function_name, "print_") != NULL ||
       strstr(function_name, "debug_") != NULL || strstr(function_name, "lock_debug") != NULL ||
       strstr(file_name, "symbols.c") != NULL || strstr(function_name, "ascii_thread") != NULL) {
@@ -1051,36 +1025,54 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
 
   lock_record_t *record = create_lock_record(lock_address, lock_type, file_name, line_number, function_name);
   if (record) {
-    uint32_t key = lock_record_key(lock_address, lock_type);
-    bool inserted = hashtable_insert(g_lock_debug_manager.lock_records, key, record);
+    // Acquire write lock to make the entire operation atomic
+    rwlock_wrlock_impl(&g_lock_debug_manager.lock_records_lock);
 
-    if (inserted) {
-#ifdef DEBUG_LOCKS
-      uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
-      uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
-#else
-      atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
-      atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
-#endif
-#ifdef DEBUG_LOCKS
-      log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
-                lock_address, key, file_name, line_number, function_name, (unsigned long long)acquired, held);
-#endif
-      return true;
+    // Double-check cache is still initialized after acquiring lock
+    if (!atomic_load(&g_lock_debug_manager.initialized)) {
+      rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+      free_lock_record(record);
+      return false;
     }
-    // Hashtable insert failed - clean up the record and log an error
+
+    // Check if entry already exists
+    lock_record_t *existing = NULL;
+    HASH_FIND(hash_handle, g_lock_debug_manager.lock_records, &record->key, sizeof(record->key), existing);
+
+    if (existing) {
+      // Entry exists - this shouldn't happen, but handle it gracefully
+      rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+      free_lock_record(record);
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] ERROR: Failed to insert %s record for %p (key=%u) at %s:%d in %s()", lock_type_str,
-              lock_address, key, file_name, line_number, function_name);
+      log_debug("[LOCK_DEBUG] ERROR: Duplicate key %u for %s record at %p", record->key, lock_type_str, lock_address);
 #endif
-    free_lock_record(record);
-  } else {
-    // Record allocation failed - log an error
+      return false;
+    }
+
+    // Add to hash table
+    HASH_ADD(hash_handle, g_lock_debug_manager.lock_records, key, sizeof(record->key), record);
+
+    // Release lock
+    rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+
 #ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] ERROR: Failed to create lock record for %p at %s:%d in %s()", lock_address, file_name,
-              line_number, function_name);
+    uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
+    uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
+#else
+    atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
+    atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
 #endif
+#ifdef DEBUG_LOCKS
+    log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
+              lock_address, record->key, file_name, line_number, function_name, (unsigned long long)acquired, held);
+#endif
+    return true;
   }
+  // Record allocation failed - log an error
+#ifdef DEBUG_LOCKS
+  log_debug("[LOCK_DEBUG] ERROR: Failed to create lock record for %p at %s:%d in %s()", lock_address, file_name,
+            line_number, function_name);
+#endif
   return false;
 }
 
@@ -1104,24 +1096,31 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
   UNUSED(function_name);
 #endif
 
-  lock_record_t *record = (lock_record_t *)hashtable_lookup(g_lock_debug_manager.lock_records, key);
+  // Acquire write lock for removal
+  rwlock_wrlock_impl(&g_lock_debug_manager.lock_records_lock);
+
+  lock_record_t *record = NULL;
+  HASH_FIND(hash_handle, g_lock_debug_manager.lock_records, &key, sizeof(key), record);
   if (record) {
-    if (hashtable_remove(g_lock_debug_manager.lock_records, key)) {
-      free_lock_record(record);
+    HASH_DELETE(hash_handle, g_lock_debug_manager.lock_records, record);
+    rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
+
+    free_lock_record(record);
 #ifdef DEBUG_LOCKS
-      uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
-      uint32_t held = debug_decrement_lock_counter();
+    uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
+    uint32_t held = debug_decrement_lock_counter();
 #else
-      atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
-      debug_decrement_lock_counter();
+    atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
+    debug_decrement_lock_counter();
 #endif
 #ifdef DEBUG_LOCKS
-      log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str, lock_ptr,
-                key, file_name, line_number, function_name, (unsigned long long)released, held);
+    log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str, lock_ptr,
+              key, file_name, line_number, function_name, (unsigned long long)released, held);
 #endif
-      return true;
-    }
+    return true;
   }
+
+  rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
   return false;
 }
 
@@ -1168,6 +1167,7 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
   // Create an orphaned release record to track this problematic unlock
   lock_record_t *orphan_record = SAFE_CALLOC(1, sizeof(lock_record_t), lock_record_t *);
   if (orphan_record) {
+    orphan_record->key = key;
     orphan_record->lock_address = lock_ptr;
     if (strcmp(lock_type_str, "MUTEX") == 0) {
       orphan_record->lock_type = LOCK_TYPE_MUTEX;
@@ -1195,12 +1195,10 @@ static void debug_process_untracked_unlock(void *lock_ptr, uint32_t key, const c
           platform_backtrace_symbols(orphan_record->backtrace_buffer, orphan_record->backtrace_size);
     }
 
-    // Store in orphaned releases hashtable for later analysis
-    if (g_lock_debug_manager.orphaned_releases) {
-      hashtable_insert(g_lock_debug_manager.orphaned_releases, key, orphan_record);
-    } else {
-      free_lock_record(orphan_record);
-    }
+    // Store in orphaned releases hash table for later analysis
+    rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
+    HASH_ADD(hash_handle, g_lock_debug_manager.orphaned_releases, key, sizeof(orphan_record->key), orphan_record);
+    rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
   }
 }
 

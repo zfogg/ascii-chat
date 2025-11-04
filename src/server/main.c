@@ -1,7 +1,8 @@
 /**
  * @file server/main.c
  * @ingroup server_main
- * @brief 🖥️ Server main entry point: multi-client connection manager with per-client rendering threads (60fps video + 172fps audio)
+ * @brief 🖥️ Server main entry point: multi-client connection manager with per-client rendering threads (60fps video +
+ * 172fps audio)
  *
  * MODULAR COMPONENTS:
  * ===================
@@ -73,7 +74,7 @@
 
 #include "main.h"
 #include "common.h"
-#include "hashtable.h"
+#include "util/uthash.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
@@ -793,11 +794,8 @@ int server_main(int argc, char *argv[]) {
   // We only need to initialize the mutex
   mutex_init(&g_client_manager.mutex);
 
-  // Initialize client hash table for O(1) lookup
-  g_client_manager.client_hashtable = hashtable_create();
-  if (!g_client_manager.client_hashtable) {
-    FATAL(ERROR_MEMORY, "Failed to create client hash table");
-  }
+  // Initialize uthash head pointer for O(1) lookup (uthash requires NULL initialization)
+  g_client_manager.clients_by_id = NULL;
 
   // Initialize audio mixer (always enabled on server)
   if (!atomic_load(&g_server_should_exit)) {
@@ -1161,9 +1159,15 @@ main_loop:
   }
 
   // Clean up hash table
-  if (g_client_manager.client_hashtable) {
-    hashtable_destroy(g_client_manager.client_hashtable);
-    g_client_manager.client_hashtable = NULL;
+  // Clean up uthash table (uthash handles deletion when the last item is removed,
+  // but we should clear it here just in case there are stragglers)
+  if (g_client_manager.clients_by_id) {
+    client_info_t *current_client, *tmp;
+    HASH_ITER(hh, g_client_manager.clients_by_id, current_client, tmp) {
+      HASH_DELETE(hh, g_client_manager.clients_by_id, current_client);
+      // Note: We don't free current_client here because it's part of the clients[] array
+    }
+    g_client_manager.clients_by_id = NULL;
   }
 
   // Clean up audio mixer

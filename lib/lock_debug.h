@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform/thread.h" // For ascii_thread_self()
+#include "util/fnv1a.h"      // For fnv1a_hash_string, fnv1a_hash_bytes, FNV1A_32_OFFSET_BASIS, FNV1A_32_PRIME
 
 /**
  * @file lock_debug.h
@@ -41,9 +42,7 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
-
-// Forward declaration to avoid circular dependency with hashtable.h
-typedef struct hashtable hashtable_t;
+#include <uthash.h>  // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
 
 // ============================================================================
 // Constants and Limits
@@ -90,6 +89,7 @@ typedef struct lock_record lock_record_t;
  * @ingroup lock_debug
  */
 struct lock_record {
+  uint32_t key;                     ///< Hash key for uthash lookup
   void *lock_address;               ///< Address of the actual lock object
   lock_type_t lock_type;            ///< Type of lock (mutex, rwlock read/write)
   uint64_t thread_id;               ///< Thread ID that acquired the lock
@@ -102,6 +102,8 @@ struct lock_record {
   void *backtrace_buffer[MAX_BACKTRACE_FRAMES]; ///< Raw backtrace addresses
   int backtrace_size;                           ///< Number of valid backtrace frames
   char **backtrace_symbols;                     ///< Symbolized backtrace (allocated)
+
+  UT_hash_handle hash_handle; ///< Makes this structure hashable (uthash internal bookkeeping)
 };
 
 // ============================================================================
@@ -117,6 +119,7 @@ struct lock_record {
  * @ingroup lock_debug
  */
 typedef struct lock_usage_stats {
+  uint32_t key;                      ///< Hash key for uthash lookup
   const char *file_name;             ///< Source file name
   int line_number;                   ///< Source line number
   const char *function_name;         ///< Function name
@@ -127,6 +130,7 @@ typedef struct lock_usage_stats {
   uint64_t min_hold_time_ns;         ///< Minimum time spent holding a single lock
   struct timespec first_acquisition; ///< When this location first acquired a lock
   struct timespec last_acquisition;  ///< When this location last acquired a lock
+  UT_hash_handle hash_handle;        ///< Makes this structure hashable (uthash internal bookkeeping)
 } lock_usage_stats_t;
 
 // ============================================================================
@@ -137,22 +141,23 @@ typedef struct lock_usage_stats {
  * @brief Main lock debugging manager structure
  *
  * This structure manages all lock tracking functionality:
- * - Hashtable of active lock records (using existing hashtable.c)
- * - Thread-safe access using hashtable's built-in rwlock
+ * - Hashtable of active lock records (using uthash)
+ * - Thread-safe access using external rwlock
  * - Atomic counters for statistics
  * - Debug thread management
  *
  * @ingroup lock_debug
  */
 typedef struct {
-  // Hashtable for O(1) lock record lookup using existing hashtable implementation
-  hashtable_t *lock_records; ///< Hashtable storing lock records
+  // Uthash hash tables (head pointers, NULL-initialized)
+  lock_record_t *lock_records;      ///< Hash table storing lock records
+  lock_usage_stats_t *usage_stats;  ///< Hash table storing usage statistics
+  lock_record_t *orphaned_releases; ///< Hash table storing orphaned release records
 
-  // Hashtable for lock usage statistics by code location
-  hashtable_t *usage_stats; ///< Hashtable storing usage statistics
-
-  // Hashtable for tracking orphaned releases (unlocks without corresponding locks)
-  hashtable_t *orphaned_releases; ///< Hashtable storing orphaned release records
+  // External rwlocks for thread safety (uthash requires external locking)
+  rwlock_t lock_records_lock;      ///< Read-write lock for lock_records
+  rwlock_t usage_stats_lock;       ///< Read-write lock for usage_stats
+  rwlock_t orphaned_releases_lock; ///< Read-write lock for orphaned_releases
 
   // Statistics (atomic for thread safety)
   atomic_uint_fast64_t total_locks_acquired; ///< Total locks acquired (lifetime)
@@ -193,11 +198,15 @@ extern atomic_bool g_initializing;
  * - Unlock must match the exact thread that locked
  */
 static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type) {
-  // Combine lock address, type, and thread ID into a unique key
+  // Combine lock address, type, and thread ID into a unique key using FNV-1a
   // This prevents key collisions when the same lock is used by different threads
-  uintptr_t addr = (uintptr_t)lock_address;
-  uint64_t thread_id = ascii_thread_current_id();
-  return (uint32_t)((addr >> 2) ^ (uint32_t)lock_type ^ (uint32_t)(thread_id & 0xFFFFFFFF));
+  // Hash all components together using FNV-1a for consistent hashing
+  struct {
+    uintptr_t addr;
+    lock_type_t lock_type;
+    uint64_t thread_id;
+  } key_data = {.addr = (uintptr_t)lock_address, .lock_type = lock_type, .thread_id = ascii_thread_current_id()};
+  return fnv1a_hash_bytes(&key_data, sizeof(key_data));
 }
 
 /**
@@ -211,18 +220,10 @@ static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type
 static inline uint32_t usage_stats_key(const char *file_name, int line_number, const char *function_name,
                                        lock_type_t lock_type) {
   // Create a hash from file name, line number, function name, and lock type
-  // Use explicit wrapping arithmetic to avoid UBSan warnings on intentional overflow
-  uint32_t hash = 0;
-  const char *p = file_name;
-  while (*p) {
-    hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)*p++);
-  }
-  hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)line_number);
-  p = function_name;
-  while (*p) {
-    hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)*p++);
-  }
-  hash = (uint32_t)((uint64_t)hash * 31 + (uint32_t)lock_type);
+  uint32_t hash = fnv1a_hash_string(file_name);
+  hash = fnv1a_hash_bytes(&line_number, sizeof(line_number)) ^ hash;
+  hash = fnv1a_hash_string(function_name) ^ hash;
+  hash = fnv1a_hash_bytes(&lock_type, sizeof(lock_type)) ^ hash;
   return hash;
 }
 
@@ -400,10 +401,8 @@ void print_all_held_locks(void);
 
 /**
  * @brief Callback function for printing orphaned release records
- * @param key Hashtable key
- * @param value Hashtable value
+ * @param record Orphaned release record pointer
  * @param user_data User data pointer
  * @ingroup lock_debug
  */
-void print_orphaned_release_callback(uint32_t key, void *value, void *user_data);
-
+void print_orphaned_release_callback(lock_record_t *record, void *user_data);

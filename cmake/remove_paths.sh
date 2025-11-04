@@ -14,11 +14,39 @@ BINARY_PATH="$1"
 SOURCE_DIR="$2"
 BUILD_DIR="${3:-}"
 
-# Check if binary exists
-if [ ! -f "$BINARY_PATH" ]; then
-    echo "Error: Binary not found: $BINARY_PATH" >&2
+# Convert Windows paths to WSL/bash-compatible format for file operations
+# WSL mounts Windows drives at /mnt/<drive>, so C:/Users/... -> /mnt/c/Users/...
+# This conversion is needed BEFORE file existence checks
+convert_windows_to_wsl() {
+    local path="$1"
+    # Check if it's a Windows path (starts with drive letter)
+    if [[ "$path" =~ ^([A-Za-z]):(.*)$ ]]; then
+        local drive_letter="${BASH_REMATCH[1]}"
+        local rest_of_path="${BASH_REMATCH[2]}"
+        # Convert drive letter to lowercase and remove backslashes
+        drive_letter="${drive_letter,,}"
+        rest_of_path="${rest_of_path//\\//}"
+        # Remove leading slash if present
+        rest_of_path="${rest_of_path#/}"
+        # Construct WSL path
+        echo "/mnt/${drive_letter}/${rest_of_path}"
+    else
+        # Not a Windows path, return as-is
+        echo "$path"
+    fi
+}
+
+# Convert binary path for file operations (WSL format)
+BINARY_PATH_WSL=$(convert_windows_to_wsl "$BINARY_PATH")
+
+# Check if binary exists (using WSL path)
+if [ ! -f "$BINARY_PATH_WSL" ]; then
+    echo "Error: Binary not found: $BINARY_PATH (WSL path: $BINARY_PATH_WSL)" >&2
     exit 1
 fi
+
+# Use WSL path for binary operations
+BINARY_PATH="$BINARY_PATH_WSL"
 
 echo "Removing embedded paths from: $BINARY_PATH"
 

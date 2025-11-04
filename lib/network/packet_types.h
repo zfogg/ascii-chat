@@ -461,7 +461,8 @@ typedef struct {
   uint32_t client_id;
   /** @brief User display name (null-terminated, max MAX_DISPLAY_NAME_LEN bytes) */
   char display_name[MAX_DISPLAY_NAME_LEN];
-  /** @brief Client capabilities bitmask (CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH) */
+  /** @brief Client capabilities bitmask (CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH)
+   */
   uint32_t capabilities;
 } /** @cond */
 PACKED_ATTR /** @endcond */ client_info_packet_t;
@@ -832,9 +833,9 @@ PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
  * Algorithm identifiers for key exchange, authentication, and encryption.
  * Used in crypto handshake packet negotiation.
  */
-#define KEX_ALGO_X25519 0x01             /**< @brief X25519 key exchange (Curve25519) */
-#define AUTH_ALGO_ED25519 0x01           /**< @brief Ed25519 authentication (Edwards-curve signatures) */
-#define AUTH_ALGO_NONE 0x00               /**< @brief No authentication (plaintext mode) */
+#define KEX_ALGO_X25519 0x01               /**< @brief X25519 key exchange (Curve25519) */
+#define AUTH_ALGO_ED25519 0x01             /**< @brief Ed25519 authentication (Edwards-curve signatures) */
+#define AUTH_ALGO_NONE 0x00                /**< @brief No authentication (plaintext mode) */
 #define CIPHER_ALGO_XSALSA20_POLY1305 0x01 /**< @brief XSalsa20-Poly1305 authenticated encryption */
 
 /** @} */

@@ -445,4 +445,3 @@ size_t get_current_time_formatted(char *time_buf);
     platform_print_backtrace(0);                                                                                       \
   } while (0)
 #endif
-

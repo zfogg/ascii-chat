@@ -167,7 +167,7 @@
  * **Collection Process**:
  * @code{.c}
  * // Collect hash table statistics
- * hashtable_stats_t stats = hashtable_get_statistics(g_client_manager.client_hashtable);
+ * size_t client_count = HASH_COUNT(g_client_manager.clients_by_id);
  *
  * log_info("Hash Table: %zu entries, %zu capacity, %.2f%% load factor, %zu collisions",
  *          stats.entries, stats.capacity, stats.load_factor * 100.0, stats.collisions);
@@ -353,6 +353,6 @@
  * @see @ref topic_server_main "Server Main Entry Point"
  * @see topic_buffer_pool
  * @see topic_packet_queue
- * @see topic_hashtable
+ * @see uthash library for hash table implementation
  */
 

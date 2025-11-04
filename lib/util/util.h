@@ -19,6 +19,7 @@
  * - path.h: Path manipulation utilities
  * - string.h: String manipulation and shell escaping
  * - utf8.h: UTF-8 encoding and decoding utilities
+ * - fnv1a.h: FNV-1a hash function implementation
  *
  * USAGE:
  * ======
@@ -44,6 +45,7 @@
  */
 
 #include "util/aspect_ratio.h"
+#include "util/fnv1a.h"
 #include "util/format.h"
 #include "util/ip.h"
 #include "util/math.h"

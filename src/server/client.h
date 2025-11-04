@@ -16,7 +16,7 @@
 #include "video_frame.h"
 #include "platform/terminal.h"
 #include "palette.h"
-#include "hashtable.h"
+#include "util/uthash.h"
 #include "crypto/handshake.h"
 
 // Use definitions from network.h (MAX_CLIENTS, MAX_DISPLAY_NAME_LEN)
@@ -143,6 +143,9 @@ typedef struct {
   // Per-client crypto context for secure communication
   crypto_handshake_context_t crypto_handshake_ctx;
   bool crypto_initialized;
+
+  // uthash handle for hash table operations
+  UT_hash_handle hh;
 } client_info_t;
 
 /**
@@ -193,8 +196,8 @@ typedef struct {
 typedef struct {
   /** @brief Array of client_info_t structures (backing storage) */
   client_info_t clients[MAX_CLIENTS];
-  /** @brief Hashtable for O(1) client_id -> client_info_t* lookups */
-  hashtable_t *client_hashtable;
+  /** @brief uthash head pointer for O(1) client_id -> client_info_t* lookups */
+  client_info_t *clients_by_id;
   /** @brief Current number of active clients */
   int client_count;
   /** @brief Legacy mutex (mostly replaced by rwlock) */

@@ -44,8 +44,8 @@ static asciichat_error_t base64_decode_ssh_key(const char *base64, size_t base64
                                                size_t *blob_len);
 static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len,
                                                      const char *passphrase, const uint8_t *salt, size_t salt_len,
-                                                     uint32_t rounds, const char *cipher_name,
-                                                     uint8_t **decrypted_out, size_t *decrypted_len);
+                                                     uint32_t rounds, const char *cipher_name, uint8_t **decrypted_out,
+                                                     size_t *decrypted_len);
 
 /**
  * @brief Decrypt OpenSSH encrypted private key using AES-CTR or AES-CBC
@@ -66,8 +66,8 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
  */
 static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_blob, size_t blob_len,
                                                      const char *passphrase, const uint8_t *salt, size_t salt_len,
-                                                     uint32_t rounds, const char *cipher_name,
-                                                     uint8_t **decrypted_out, size_t *decrypted_len) {
+                                                     uint32_t rounds, const char *cipher_name, uint8_t **decrypted_out,
+                                                     size_t *decrypted_len) {
   // OpenSSH uses: key_len + iv_len derived from bcrypt_pbkdf
   // For AES-256: key=32 bytes, iv=16 bytes = 48 bytes total
   const size_t key_size = 32;
@@ -105,10 +105,8 @@ static asciichat_error_t decrypt_openssh_private_key(const uint8_t *encrypted_bl
     br_aes_ct_ctr_init(&aes_ctx, key, key_size);
 
     // Extract initial counter value from bytes 12-15 of derived IV (big-endian)
-    uint32_t initial_counter = ((uint32_t)derived_iv[12] << 24) |
-                              ((uint32_t)derived_iv[13] << 16) |
-                              ((uint32_t)derived_iv[14] << 8) |
-                              ((uint32_t)derived_iv[15]);
+    uint32_t initial_counter = ((uint32_t)derived_iv[12] << 24) | ((uint32_t)derived_iv[13] << 16) |
+                               ((uint32_t)derived_iv[14] << 8) | ((uint32_t)derived_iv[15]);
 
     // Decrypt in-place
     memcpy(decrypted, encrypted_blob, blob_len);
@@ -245,7 +243,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
           log_info("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
           key_out->type = KEY_TYPE_ED25519;
-          memcpy(key_out->key.ed25519 + 32, pub_key.key, 32);  // Copy public key to second half
+          memcpy(key_out->key.ed25519 + 32, pub_key.key, 32); // Copy public key to second half
           // Note: We don't have the private key material, but for signing we'll use the agent
           // For now, mark it as loaded from agent by setting a flag or returning success
           return ASCIICHAT_OK;
@@ -501,9 +499,8 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     uint32_t bcrypt_rounds = READ_BE32(key_blob, kdf_opt_offset);
 
     log_debug("DEBUG: bcrypt KDF options: salt_len=%u, rounds=%u", salt_len, bcrypt_rounds);
-    log_debug("DEBUG: Rounds bytes: %02x %02x %02x %02x",
-              key_blob[kdf_opt_offset], key_blob[kdf_opt_offset+1],
-              key_blob[kdf_opt_offset+2], key_blob[kdf_opt_offset+3]);
+    log_debug("DEBUG: Rounds bytes: %02x %02x %02x %02x", key_blob[kdf_opt_offset], key_blob[kdf_opt_offset + 1],
+              key_blob[kdf_opt_offset + 2], key_blob[kdf_opt_offset + 3]);
 
     // Check for password in environment variable first
     const char *env_password = platform_getenv("ASCII_CHAT_SSH_PASSWORD");
@@ -601,16 +598,15 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     // Extract encrypted blob (includes everything from offset onwards)
     const uint8_t *encrypted_blob = key_blob + encrypted_data_start;
 
-    log_debug("DEBUG: Decryption parameters: cipher=%s, rounds=%u, salt_len=%u, encrypted_len=%zu",
-              ciphername, bcrypt_rounds, salt_len, encrypted_data_len);
-    log_debug("DEBUG: Salt (first 8 bytes): %02x%02x%02x%02x %02x%02x%02x%02x",
-              bcrypt_salt[0], bcrypt_salt[1], bcrypt_salt[2], bcrypt_salt[3],
-              bcrypt_salt[4], bcrypt_salt[5], bcrypt_salt[6], bcrypt_salt[7]);
+    log_debug("DEBUG: Decryption parameters: cipher=%s, rounds=%u, salt_len=%u, encrypted_len=%zu", ciphername,
+              bcrypt_rounds, salt_len, encrypted_data_len);
+    log_debug("DEBUG: Salt (first 8 bytes): %02x%02x%02x%02x %02x%02x%02x%02x", bcrypt_salt[0], bcrypt_salt[1],
+              bcrypt_salt[2], bcrypt_salt[3], bcrypt_salt[4], bcrypt_salt[5], bcrypt_salt[6], bcrypt_salt[7]);
     log_debug("DEBUG: Encrypted (first 16 bytes): %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
-              encrypted_blob[0], encrypted_blob[1], encrypted_blob[2], encrypted_blob[3],
-              encrypted_blob[4], encrypted_blob[5], encrypted_blob[6], encrypted_blob[7],
-              encrypted_blob[8], encrypted_blob[9], encrypted_blob[10], encrypted_blob[11],
-              encrypted_blob[12], encrypted_blob[13], encrypted_blob[14], encrypted_blob[15]);
+              encrypted_blob[0], encrypted_blob[1], encrypted_blob[2], encrypted_blob[3], encrypted_blob[4],
+              encrypted_blob[5], encrypted_blob[6], encrypted_blob[7], encrypted_blob[8], encrypted_blob[9],
+              encrypted_blob[10], encrypted_blob[11], encrypted_blob[12], encrypted_blob[13], encrypted_blob[14],
+              encrypted_blob[15]);
 
     // Call native decryption function
     uint8_t *decrypted_blob = NULL;
@@ -619,7 +615,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     // Note: decrypt_openssh_private_key derives IV from bcrypt_pbkdf, not from encrypted data
     asciichat_error_t decrypt_result =
         decrypt_openssh_private_key(encrypted_blob, encrypted_data_len, password, bcrypt_salt, salt_len, bcrypt_rounds,
-                                     ciphername, &decrypted_blob, &decrypted_blob_len);
+                                    ciphername, &decrypted_blob, &decrypted_blob_len);
 
     // Clean up password immediately after use
     sodium_memzero(password, strlen(password));
