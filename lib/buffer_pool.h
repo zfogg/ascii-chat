@@ -436,7 +436,7 @@ typedef struct {
    * @{
    */
   uint64_t total_allocations;        ///< Total allocation requests across all pools
-  uint64_t total_bytes;             ///< Total bytes allocated across all pools
+  uint64_t total_bytes;              ///< Total bytes allocated across all pools
   uint64_t total_pool_usage_percent; ///< Percentage of allocations satisfied from pools
   /** @} */
 } buffer_pool_detailed_stats_t;

@@ -6,9 +6,9 @@
 
 #include "common.h"
 #include "image2ascii/simd/common.h"
-#include "hashtable.h"
-#include "ascii_simd.h"
+#include "uthash.h"
 #include "palette.h"
+#include "util/fnv1a.h"
 #include <time.h>
 #include <math.h>
 #include <stdatomic.h>
@@ -109,34 +109,23 @@ double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access
   return (frequency_factor * aging_factor + recency_bonus) * lifetime_penalty;
 }
 
-// Fast palette string hashing (replaces expensive CRC32)
+// Fast palette string hashing using shared FNV-1a hash function
 static inline uint32_t hash_palette_string(const char *palette) {
-  uint32_t hash = 5381; // djb2 hash algorithm
-  const char *p = palette;
-  while (*p) {
-    // Use explicit unsigned arithmetic to avoid UB warnings
-    // The wrapping behavior is intentional for hash functions
-    uint32_t c = (unsigned char)*p++;
-    // Use 64-bit arithmetic to avoid overflow, then truncate
-    // This silences UBSan while maintaining the same behavior
-    uint64_t temp = ((uint64_t)hash * 33ULL) + c;
-    hash = (uint32_t)(temp & 0xFFFFFFFFULL); // Explicit truncation
-  }
-  return hash;
+  return fnv1a_hash_string(palette);
 }
 
 // Forward declarations for eviction functions (defined after globals)
 static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache);
 
 // UTF-8 palette cache system with min-heap eviction
-static hashtable_t *g_utf8_cache_table = NULL;
+static utf8_palette_cache_t *g_utf8_cache_table = NULL; // uthash uses structure pointer as head
 static rwlock_t g_utf8_cache_rwlock = {0};
 static _Atomic(bool) g_utf8_cache_initialized = false;
 
 // Min-heap for O(log n) intelligent eviction
-static utf8_palette_cache_t **g_utf8_heap = NULL;                 // Min-heap array
-static size_t g_utf8_heap_size = 0;                               // Current entries in heap
-static const size_t g_utf8_heap_capacity = HASHTABLE_MAX_ENTRIES; // Max heap size
+static utf8_palette_cache_t **g_utf8_heap = NULL; // Min-heap array
+static size_t g_utf8_heap_size = 0;               // Current entries in heap
+static const size_t g_utf8_heap_capacity = 2048;  // Max heap size (matching uthash capacity)
 
 // char_index_ramp_cache removed - data is already stored in utf8_palette_cache_t.char_index_ramp[64]
 
@@ -164,8 +153,8 @@ static void init_utf8_cache_system(void) {
     // Initialize the cache rwlock
     rwlock_init(&g_utf8_cache_rwlock);
 
-    // Initialize hashtable and heap
-    g_utf8_cache_table = hashtable_create();
+    // Initialize uthash head to NULL (required)
+    g_utf8_cache_table = NULL;
     g_utf8_heap = SAFE_MALLOC(g_utf8_heap_capacity * sizeof(utf8_palette_cache_t *), utf8_palette_cache_t **);
     g_utf8_heap_size = 0;
 
@@ -265,13 +254,16 @@ static void utf8_heap_update_score(utf8_palette_cache_t *cache, double new_score
 // Thread-safe cache eviction implementations
 static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache) {
   // Already holding write lock
+  // Note: key should already be set by caller, but ensure it's set
+  new_cache->key = hash;
 
-  // Check if hashtable is near capacity and evict proactively (80% threshold)
-  if (g_utf8_cache_table->entry_count >= HASHTABLE_MAX_ENTRIES) {
+  // Check if hash table is near capacity and evict proactively (80% threshold)
+  size_t entry_count = HASH_COUNT(g_utf8_cache_table);
+  if (entry_count >= g_utf8_heap_capacity) {
     // Proactive eviction: free space before attempting insertion
     utf8_palette_cache_t *victim_cache = utf8_heap_extract_min();
     if (victim_cache) {
-      uint32_t victim_key = hash_palette_string(victim_cache->palette_hash);
+      uint32_t victim_key = victim_cache->key;
 
       // Log clean eviction
       uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
@@ -281,50 +273,21 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
       log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
                 victim_age, victim_access_count);
 
-      hashtable_remove(g_utf8_cache_table, victim_key);
+      // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
+      HASH_DEL(g_utf8_cache_table, victim_cache);
       SAFE_FREE(victim_cache);
     }
   }
 
   // Now attempt insertion (should succeed with freed space)
-  if (hashtable_insert(g_utf8_cache_table, hash, new_cache)) {
-    // Success: add to min-heap
-    uint64_t current_time = get_current_time_ns();
-    double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
-    utf8_heap_insert(new_cache, initial_score);
-    return true;
-  }
+  // Note: uthash doesn't have a failure path for insertion, so we handle eviction proactively
+  HASH_ADD_INT(g_utf8_cache_table, key, new_cache);
 
-  // Fallback: should rarely happen with proactive eviction
-  utf8_palette_cache_t *victim_cache = utf8_heap_extract_min();
-  if (!victim_cache) {
-    log_error("UTF8_CACHE_CRITICAL: No cache entries in heap to evict");
-    return false;
-  }
-
-  // Calculate victim key for hashtable removal
-  uint32_t victim_key = hash_palette_string(victim_cache->palette_hash);
-
-  // Log eviction for debugging
-  uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
+  // Success: add to min-heap
   uint64_t current_time = get_current_time_ns();
-  uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / 1000000000ULL;
-
-  log_debug("UTF8_CACHE_EVICTION: Min-heap evicting worst cache hash=0x%x (score=%.3f, age=%lus, count=%u)", victim_key,
-            victim_cache->cached_score, victim_age, victim_access_count);
-
-  // Remove from hashtable and free
-  hashtable_remove(g_utf8_cache_table, victim_key);
-  SAFE_FREE(victim_cache);
-
-  // Insert new cache into both hashtable and heap
-  if (hashtable_insert(g_utf8_cache_table, hash, new_cache)) {
-    double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
-    utf8_heap_insert(new_cache, initial_score);
-    return true;
-  }
-  log_error("UTF8_CACHE_CRITICAL: Failed to insert after eviction");
-  return false;
+  double initial_score = calculate_cache_eviction_score(current_time, 1, current_time, current_time);
+  utf8_heap_insert(new_cache, initial_score);
+  return true;
 }
 
 // char_ramp_cache functions removed - data already available in utf8_palette_cache_t
@@ -348,7 +311,9 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   rwlock_rdlock(&g_utf8_cache_rwlock);
 
   // Check if cache exists
-  utf8_palette_cache_t *cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
+  utf8_palette_cache_t *cache = NULL;
+  // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
+  HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
     uint64_t current_time = get_current_time_ns();
@@ -381,7 +346,9 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   rwlock_wrlock(&g_utf8_cache_rwlock);
 
   // Double-check: another thread might have created it while we upgraded locks
-  cache = (utf8_palette_cache_t *)hashtable_lookup(g_utf8_cache_table, palette_hash);
+  cache = NULL;
+  // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
+  HASH_FIND_INT(g_utf8_cache_table, &palette_hash, cache);
   if (cache) {
     // Found it! Just update access tracking and return
     uint64_t current_time = get_current_time_ns();
@@ -393,7 +360,14 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
 
   // Create new cache entry (holding write lock)
   cache = SAFE_MALLOC(sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
+  if (!cache) {
+    rwlock_wrunlock(&g_utf8_cache_rwlock);
+    return NULL;
+  }
   memset(cache, 0, sizeof(utf8_palette_cache_t));
+
+  // Set the key for uthash
+  cache->key = palette_hash;
 
   // Build both cache types
   build_utf8_luminance_cache(ascii_chars, cache->cache);
@@ -409,13 +383,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   atomic_store(&cache->access_count, 1); // First access
   cache->creation_time = current_time;
 
-  // Store in hashtable with guaranteed eviction support
-  if (!try_insert_with_eviction_utf8(palette_hash, cache)) {
-    log_error("UTF8_CACHE_CRITICAL: Failed to insert cache even after eviction - system overloaded");
-    SAFE_FREE(cache);
-    rwlock_wrunlock(&g_utf8_cache_rwlock);
-    return NULL;
-  }
+  // Store in hash table with guaranteed eviction support
+  try_insert_with_eviction_utf8(palette_hash, cache);
 
   log_debug("UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)", ascii_chars, palette_hash);
 
@@ -530,16 +499,7 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 
 // char_index_ramp_cache functions removed - data already available in utf8_palette_cache_t.char_index_ramp[64]
 
-// Callback to free individual UTF-8 cache entries during cleanup
-static void free_utf8_cache_entry(uint32_t key, void *value, void *user_data) {
-  (void)key;       // Unused
-  (void)user_data; // Unused
-
-  utf8_palette_cache_t *cache = (utf8_palette_cache_t *)value;
-  if (cache) {
-    SAFE_FREE(cache);
-  }
-}
+// No callback needed - uthash iteration handles cleanup directly
 
 // Central cleanup function for all SIMD caches
 void simd_caches_destroy_all(void) {
@@ -548,9 +508,13 @@ void simd_caches_destroy_all(void) {
   // Destroy shared UTF-8 palette cache (write lock for cleanup)
   rwlock_wrlock(&g_utf8_cache_rwlock);
   if (g_utf8_cache_table) {
-    // Free all UTF-8 cache entries before destroying hashtable
-    hashtable_foreach(g_utf8_cache_table, free_utf8_cache_entry, NULL);
-    hashtable_destroy(g_utf8_cache_table);
+    // Free all UTF-8 cache entries using HASH_ITER
+    utf8_palette_cache_t *cache, *tmp;
+    HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
+      // NOLINTNEXTLINE: uthash macros use void* casts internally (standard C practice, safe)
+      HASH_DEL(g_utf8_cache_table, cache);
+      SAFE_FREE(cache);
+    }
     g_utf8_cache_table = NULL;
     log_debug("UTF8_CACHE: Destroyed shared UTF-8 palette cache");
   }

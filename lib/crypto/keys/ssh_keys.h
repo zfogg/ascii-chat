@@ -70,8 +70,8 @@ asciichat_error_t parse_ssh_ed25519_line(const char *line, uint8_t ed25519_pk[32
  *       Format: "-----BEGIN OPENSSH PRIVATE KEY-----" ... "-----END OPENSSH PRIVATE KEY-----"
  *
  * @note Encrypted keys: If key is encrypted, prompts for password and decrypts it natively.
- *       Uses bcrypt_pbkdf (from libsodium-bcrypt-pbkdf) + BearSSL AES (aes256-ctr/aes256-cbc) for OpenSSH format decryption.
- *       No external tools (ssh-keygen) required.
+ *       Uses bcrypt_pbkdf (from libsodium-bcrypt-pbkdf) + BearSSL AES (aes256-ctr/aes256-cbc) for OpenSSH format
+ * decryption. No external tools (ssh-keygen) required.
  *
  * @note Key structure: Parses OpenSSH key structure:
  *       - Magic: "openssh-key-v1\0"

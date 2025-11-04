@@ -27,36 +27,47 @@ ascii-chat relies on several key libraries for its functionality. Each dependenc
 
 ### Core Dependencies
 
-#### [BearSSL](https://bearssl.org/) - SSL/TLS Library
-- **Purpose**: Building HTTPS client for fetching public keys from GitHub/GitLab
+#### [PortAudio](http://www.portaudio.com/) - Audio I/O Library
+- **Purpose**: So the clients can talk to and hear each other
 - **License**: MIT
 
-#### [PortAudio](http://www.portaudio.com/) - Audio I/O Library
-- **Purpose**: Cross-platform audio capture and playback for real-time audio streaming between clients
+#### [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
+- **Purpose**: Modern implementation of TOML for config file interations.
+- **License**: MIT
+
+#### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
+- **Purpose**: Fast O(1) lookups and persistent memory for the server's client manager, and various other things like caches
+- **License**: BSD revised
+
+#### [libsodium](https://libsodium.org/) - Cryptographic Library
+- **Purpose**: End-to-end encryption and authentication of protocol packets
+- **License**: ISC
+
+#### [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
+- **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys
+- **License**: [none]
+
+#### [BearSSL](https://bearssl.org/) - SSL/TLS Library
+- **Purpose**: For our custom HTTPS client to fetch public keys from GitHub/GitLab for encryption authorization
 - **License**: MIT
 
 #### [zstd](https://facebook.github.io/zstd/) - Compression Library
-- **Purpose**: Compressing video frames before transmission (level 1 for optimal real-time performance)
+- **Purpose**: To make the protocol more efficient
 - **License**: BSD/GPLv2
 
-#### [libsodium](https://libsodium.org/) - Cryptographic Library
-- **Purpose**: End-to-end encryption and authentication
-- **License**: ISC
-
-### Platform APIs (No External Dependencies)
-**Update**: OpenCV is no longer required! The project now uses ✨ native platform APIs 🪄:
+### Operating System APIs
+ascii-chat uses native platform APIs for each platform for webcam access:
 - **Linux**: V4L2 (Video4Linux2 kernel module)
 - **macOS**: AVFoundation (macOS native API)
 - **Windows**: Media Foundation (Windows native API)
 
-### Linux
-- **Ubuntu/Debian**: `apt-get install build-essential clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Arch**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zstd portaudio libsodium criterion`
 
-### macOS
-- `brew install cmake ninja zstd portaudio libsodium criterion`
+### Install Dependencies on Linux or macOS
+- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zstd portaudio libsodium criterion`
+- **macOS**: - `brew install cmake ninja zstd portaudio libsodium criterion`
 
-### Windows
+### Install Dependencies on Windows
 1. **Install Scoop** (if not already installed):
    ```powershell
    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
@@ -80,10 +91,10 @@ ascii-chat relies on several key libraries for its functionality. Each dependenc
    .\bootstrap-vcpkg.bat
 
    # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows mimalloc:x64-windows
+   vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows
 
-   # If you want to do a release build:
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static libsodium:x64-windows-static
+   # If you want to do a release build
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
@@ -160,15 +171,17 @@ cmake --preset release && cmake --build build
 - `cmake --build --preset debug --target format` - Format source code using clang-format
 - `cmake --build --preset debug --target format-check` - Check code formatting
 - `cmake --build --preset debug --target clang-tidy` - Run clang-tidy on sources
+- `cmake --build --preset debug --target docs` - Build the doxygen docs
+- `cmake --build --preset debug --target docs-open` - Open the docs in your web browser
 - `.\build.ps1` - A PowerShell script that kills running processes, cleans, configures, builds, and copies binaries to bin/. I tend to only use this to build when I develop on Windows.
 
 ### Configuration Options
 CMake supports several configuration options:
-- `-DCMAKE_C_COMPILER=clang` - Set compiler (default: auto-detected)
-- `-DSIMD_MODE=auto` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
-- `-DCRC32_HW=auto` - CRC32 hardware acceleration: auto, on, off (default: auto)
-- `-DUSE_MUSL=ON` - Build a static binary with musl libc.
-- `-DUSE_MIMALLOC=ON` - Build with Microsoft's mimalloc memory allocator (overrides malloc()/free() unless USE_MUSL is ON)
+- `-DCMAKE_C_COMPILER` - Set compiler (default: clang)
+- `-DSIMD_MODE` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
+- `-DCRC32_HW` - CRC32 hardware acceleration: auto, on, off (default: auto)
+- `-DUSE_MUSL` - Build a static binary with musl libc.
+- `-DUSE_MIMALLOC` - Build with Microsoft's mimalloc memory allocator (overrides malloc()/free() unless USE_MUSL is ON)
 - Ninja automatically uses all available CPU cores for parallel builds
 
 
@@ -178,9 +191,8 @@ ascii-chat uses a unified binary with two modes: `server` and `client`.
 
 Start the server and wait for client connections:
 ```bash
-bin/ascii-chat [--help|--version] [server|client] [options...]
-# or on windows:
-bin\ascii-chat.exe [--help|--version] [server|client] [options...]
+# NOTE: on Windows use ascii-chat.exe
+ascii-chat [--help|--version] [server|client] [options...]
 ```
 
 Start the client and connect to a running server:
@@ -199,7 +211,7 @@ ascii-chat client --help
 
 ### Client Options
 
-Run `./bin/ascii-chat client --help` to see all client options:
+Run `ascii-chat client --help` to see all client options:
 
 **Connection:**
 - `-a --address ADDRESS`: IPv4 address to connect to (default: 127.0.0.1)
@@ -298,15 +310,12 @@ ascii-chat server --key ~/.ssh/id_ed25519
 ascii-chat client --key ~/.ssh/id_ed25519
 
 # Password-based encryption
-ascii-chat server --password "my_secure_password"
-ascii-chat client --password "my_secure_password"
+ascii-chat server --password "hunter2"
+ascii-chat client --password "hunter2"
 
 # Both SSH key + password (double security)
 ascii-chat server --key ~/.ssh/id_ed25519 --password "extra_encryption"
 ascii-chat client --key ~/.ssh/id_ed25519 --password "extra_encryption"
-
-# Auto-detect SSH key from ~/.ssh/
-ascii-chat server --key ssh
 
 # Disable encryption (for local testing)
 ascii-chat server --no-encrypt
@@ -323,7 +332,7 @@ ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
 # Combine all three for maximum security!
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --password "password123"
 ascii-chat client --key ~/.ssh/id_ed25519  --server-key ~/.ssh/server1.pub --password "password123"
-# You need to know the server public key and the password before connecting, and the server needs to know your public key.
+# You need to know (1) the server public key and (2) the password before connecting, and the server needs to know (3) your public key and (4) the same password.
 ```
 
 
@@ -464,8 +473,10 @@ The project uses a unified test runner script at `tests/scripts/run_tests.sh` th
 # Run in parallel (default: number of CPU cores)
 ./tests/scripts/run_tests.sh -j 4
 
-# Verbose output
-./tests/scripts/run_tests.sh -v
+# Run specific tests
+./tests/scripts/run_tests.sh unit options
+./tests/scripts/run_tests.sh unit buffer_pool packet_queue
+
 ```
 
 ### Windows Docker Testing
@@ -475,27 +486,22 @@ On Windows, since Criterion is POSIX-based, tests must be run in a Docker contai
 # Run all tests
 ./tests/scripts/run-docker-tests.ps1
 
-# Run specific test types
+# By default run-docker-tests.ps1 just calls run_tests.sh
+# For documentation see above or check the script file
 ./tests/scripts/run-docker-tests.ps1 unit
-./tests/scripts/run-docker-tests.ps1 integration
-./tests/scripts/run-docker-tests.ps1 performance
-
-# Run specific tests
 ./tests/scripts/run-docker-tests.ps1 unit options
 ./tests/scripts/run-docker-tests.ps1 unit buffer_pool packet_queue
 
-# Run with verbose output
-./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
-
-# Run with different build types
+# Compile with a different CMake build type (you may need to clean `./build_docker/`)
 ./tests/scripts/run-docker-tests.ps1 unit -BuildType release
 
-# Run clang-tidy static analysis
+# This script can also run clang-tidy static analysis
 ./tests/scripts/run-docker-tests.ps1 clang-tidy
 ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
 
-# Interactive shell for debugging
-./tests/scripts/run-docker-tests.ps1 -Interactive
+# INFO: powershell doesn't like when you pass -Verbose to a script - use -VerboseOutput
+./tests/scripts/run-docker-tests.ps1 unit options -VerboseOutput
+
 ```
 
 The Docker script automatically:

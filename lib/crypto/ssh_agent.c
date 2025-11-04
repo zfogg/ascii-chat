@@ -35,11 +35,8 @@
 #ifdef _WIN32
 // Open the SSH agent pipe
 static HANDLE ssh_agent_open_pipe(void) {
-  HANDLE pipe = CreateFileA(
-    "\\\\.\\pipe\\openssh-ssh-agent",
-    GENERIC_READ | GENERIC_WRITE,
-    0, NULL, OPEN_EXISTING, 0, NULL
-  );
+  HANDLE pipe =
+      CreateFileA("\\\\.\\pipe\\openssh-ssh-agent", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
   if (pipe != INVALID_HANDLE_VALUE) {
     log_debug("Connected to ssh-agent via Windows named pipe");
@@ -60,7 +57,7 @@ bool ssh_agent_is_available(void) {
   if (!auth_sock || strlen(auth_sock) == 0) {
     HANDLE pipe = ssh_agent_open_pipe();
     if (pipe != INVALID_HANDLE_VALUE) {
-      CloseHandle(pipe);  // Close immediately after checking
+      CloseHandle(pipe); // Close immediately after checking
       log_debug("ssh-agent is available via Windows named pipe (SSH_AUTH_SOCK not set)");
       return true;
     } else {
@@ -99,11 +96,11 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
 
   // Build SSH2_AGENTC_REQUEST_IDENTITIES message (type 11)
   unsigned char request[5];
-  request[0] = 0;  // length: 1 (4-byte big-endian)
+  request[0] = 0; // length: 1 (4-byte big-endian)
   request[1] = 0;
   request[2] = 0;
   request[3] = 1;
-  request[4] = 11;  // SSH2_AGENTC_REQUEST_IDENTITIES
+  request[4] = 11; // SSH2_AGENTC_REQUEST_IDENTITIES
 
   // Send request
   DWORD bytes_written = 0;
@@ -135,11 +132,12 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   size_t pos = 9;
   for (uint32_t i = 0; i < num_keys && pos + 4 < bytes_read; i++) {
     // Read key blob length
-    uint32_t blob_len = (response[pos] << 24) | (response[pos+1] << 16) |
-                        (response[pos+2] << 8) | response[pos+3];
+    uint32_t blob_len =
+        (response[pos] << 24) | (response[pos + 1] << 16) | (response[pos + 2] << 8) | response[pos + 3];
     pos += 4;
 
-    if (pos + blob_len > bytes_read) break;
+    if (pos + blob_len > bytes_read)
+      break;
 
     // Parse the blob to extract the Ed25519 public key
     size_t blob_pos = pos;
@@ -148,8 +146,8 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
       pos += blob_len;
       continue;
     }
-    uint32_t type_len = (response[blob_pos] << 24) | (response[blob_pos+1] << 16) |
-                        (response[blob_pos+2] << 8) | response[blob_pos+3];
+    uint32_t type_len = (response[blob_pos] << 24) | (response[blob_pos + 1] << 16) | (response[blob_pos + 2] << 8) |
+                        response[blob_pos + 3];
     blob_pos += 4 + type_len;
 
     // Read public key data
@@ -157,8 +155,8 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
       pos += blob_len;
       continue;
     }
-    uint32_t pubkey_len = (response[blob_pos] << 24) | (response[blob_pos+1] << 16) |
-                          (response[blob_pos+2] << 8) | response[blob_pos+3];
+    uint32_t pubkey_len = (response[blob_pos] << 24) | (response[blob_pos + 1] << 16) | (response[blob_pos + 2] << 8) |
+                          response[blob_pos + 3];
     blob_pos += 4;
 
     // Compare public key (should be 32 bytes for Ed25519)
@@ -172,9 +170,10 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
     pos += blob_len;
 
     // Skip comment string length + comment
-    if (pos + 4 > bytes_read) break;
-    uint32_t comment_len = (response[pos] << 24) | (response[pos+1] << 16) |
-                           (response[pos+2] << 8) | response[pos+3];
+    if (pos + 4 > bytes_read)
+      break;
+    uint32_t comment_len =
+        (response[pos] << 24) | (response[pos + 1] << 16) | (response[pos + 2] << 8) | response[pos + 3];
     pos += 4 + comment_len;
   }
 
@@ -229,7 +228,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   buf[pos++] = (len >> 16) & 0xFF;
   buf[pos++] = (len >> 8) & 0xFF;
   buf[pos++] = len & 0xFF;
-  memcpy(buf + pos, private_key->key.ed25519 + 32, 32);  // Public key is second half
+  memcpy(buf + pos, private_key->key.ed25519 + 32, 32); // Public key is second half
   pos += 32;
 
   // Private key (64 bytes - full ed25519 key: 32-byte seed + 32-byte public)
@@ -296,4 +295,3 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   return SET_ERRNO(ERROR_NOT_IMPLEMENTED, "Unix ssh-agent auto-add not yet implemented - use ssh-add manually");
 #endif
 }
-

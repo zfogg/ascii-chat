@@ -605,4 +605,3 @@ static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
  * @ingroup image2ascii
  */
 #define ascii_zzz() nanosleep((struct timespec *)&ASCII_SLEEP_START, (struct timespec *)&ASCII_SLEEP_STOP)
-

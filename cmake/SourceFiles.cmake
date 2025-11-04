@@ -217,7 +217,6 @@ list(APPEND CORE_SRCS
 # Data Structures Module
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
-    lib/hashtable.c
     lib/ringbuffer.c
 )
 
