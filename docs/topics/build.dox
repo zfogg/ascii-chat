@@ -150,7 +150,7 @@
  * @endcode
  *
  * **Requirements**:
- * - **Compiler**: gcc or clang
+ * - **Compiler**: clang
  * - **CMake**: 3.16 or later
  * - **musl** (for static builds): `sudo apt install musl-tools musl-dev` (Ubuntu/Debian) or `sudo pacman -S musl` (Arch)
  * - **Dependencies**: PortAudio, libsodium, zstd (or use musl static builds)
@@ -278,13 +278,12 @@
  * @subsection build_gotchas_macos_vs_linux macOS vs Linux
  *
  * **C Library**:
- * - **Linux**: glibc or musl (for static builds)
+ * - **Linux**: glibc or musl (for static builds, musl is preferred)
  * - **macOS**: libSystem (system C library)
+ * - **Windows**: msvc
  * - **Gotcha**: musl is Linux-only; macOS cannot use musl static builds
  *
- * **Compiler**:
- * - **Linux**: gcc or clang available
- * - **macOS**: clang default (gcc may be an alias)
+ * **Compiler**: clang
  * - **Gotcha**: macOS gcc is often clang in disguise
  *
  * **Library Search**:
@@ -361,8 +360,7 @@
  * @subsection build_windows_script_features Key Features
  *
  * **Automatic Compiler Detection**:
- * - Prefers Clang (if available)
- * - Falls back to GCC (if Clang unavailable)
+ * - Prefers Clang (gcc untested and unsupported)
  * - Respects `CC` environment variable
  *
  * **CMake Preset Integration**:
@@ -697,7 +695,7 @@
  * **Features**:
  * - **Optimization**: `-O0` (no optimization for accurate coverage)
  * - **Debug Symbols**: Yes
- * - **Coverage Flags**: `--coverage` (gcc) or `-fprofile-instr-generate -fcoverage-mapping` (clang)
+ * - **Coverage Flags**: `-fprofile-instr-generate -fcoverage-mapping`
  * - **Sanitizers**: None (conflicts with coverage)
  * - **mimalloc**: Disabled (better coverage accuracy)
  *
@@ -709,11 +707,6 @@
  *
  * # Run tests
  * ./tests/scripts/run_tests.sh -b coverage
- *
- * # Generate report (gcc)
- * gcov src/*.c lib/**/*.c
- * lcov --capture --directory . --output-file coverage.info
- * genhtml coverage.info --output-directory coverage-report
  *
  * # Generate report (clang)
  * llvm-cov gcov src/*.c lib/**/*.c

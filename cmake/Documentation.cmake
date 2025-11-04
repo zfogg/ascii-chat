@@ -109,20 +109,8 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         )
     endif()
 
-    # Install documentation (optional)
-    install(
-        DIRECTORY ${CMAKE_BINARY_DIR}/docs/html
-        DESTINATION share/doc/ascii-chat
-        OPTIONAL
-    )
-
-    # Install manpages (optional)
-    install(
-        DIRECTORY ${CMAKE_BINARY_DIR}/docs/man/
-        DESTINATION share/man
-        OPTIONAL
-        FILES_MATCHING PATTERN "*.3"
-    )
+    # Documentation installation is handled in cmake/Install.cmake
+    # This ensures proper platform-specific paths and CPack integration
 
     message(STATUS "Documentation target 'docs' is available. Build with: cmake --build build --target docs")
 else()
