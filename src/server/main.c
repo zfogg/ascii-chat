@@ -1180,11 +1180,11 @@ main_loop:
 #ifdef NDEBUG
   // Clean up statistics system
   stats_cleanup();
-
-  // Clean up lock debugging system
-  lock_debug_print_state();
-  lock_debug_cleanup();
 #endif
+
+  // Clean up lock debugging system (always, regardless of build type)
+  // Lock debug records are allocated in debug builds too, so they must be cleaned up
+  lock_debug_cleanup();
 
   // Close listen sockets (both IPv4 and IPv6)
   socket_t current_listenfd = atomic_load(&listenfd);

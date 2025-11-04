@@ -28,25 +28,11 @@
 
 #include "symbols.h"
 #include "system.h"
-#include "../common.h"
-#include "../util/fnv1a.h"
-
-// UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
-// Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
-#undef HASH_FUNCTION
-#define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
-  do {                                                                                                                 \
-    if (!(keyptr) || (keylen) == 0) {                                                                                  \
-      (hashv) = 1; /* Non-zero constant for safety */                                                                  \
-    } else {                                                                                                           \
-      (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
-    }                                                                                                                  \
-  } while (0)
-
+#include "common.h"
 #include "util/uthash.h"
-#include "rwlock.h"
-#include "../util/path.h"
-#include "../util/string.h"
+#include "platform/rwlock.h"
+#include "util/path.h"
+#include "util/string.h"
 
 // ============================================================================
 // Constants
@@ -197,9 +183,9 @@ void symbol_cache_cleanup(void) {
   HASH_ITER(hh, g_symbol_cache, entry, tmp) {
     HASH_DEL(g_symbol_cache, entry);
     if (entry->symbol) {
-      // Use regular free() instead of SAFE_FREE() because entry->symbol was allocated
-      // with strdup() (standard C library), not tracked by debug memory system
-      free(entry->symbol);
+      // Use SAFE_FREE() because entry->symbol was allocated with platform_strdup()
+      // which uses SAFE_MALLOC(), so it's tracked by debug memory system
+      SAFE_FREE(entry->symbol);
     }
     SAFE_FREE(entry);
   }
@@ -259,7 +245,7 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
     // Entry exists - update symbol if different
     if (existing->symbol && strcmp(existing->symbol, symbol) != 0) {
       // Free old symbol and allocate new one
-      free(existing->symbol);
+      SAFE_FREE(existing->symbol);
       existing->symbol = platform_strdup(symbol);
       if (!existing->symbol) {
         rwlock_wrunlock(&g_symbol_cache_lock);

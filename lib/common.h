@@ -36,19 +36,6 @@ typedef unsigned long long uint64_t;
 #endif
 
 /* ============================================================================
- * uthash Custom Hash Function - UBSan-Safe Pointer Hashing
- * ============================================================================
- * Use shared FNV-1a hash function from util/fnv1a.h for consistency.
- * This ensures all hash functions in the codebase use the same algorithm.
- *
- * NOTE: fnv1a.h is NOT included here to avoid circular dependency:
- * common.h -> fnv1a.h -> asciichat_errno.h -> common.h
- *
- * Files that need HASH_FUNCTION should include both common.h and util/fnv1a.h,
- * then define HASH_FUNCTION themselves if needed.
- */
-
-/* ============================================================================
  * Platform Maximum Path Length
  * ============================================================================
  * Defined here (before logging.h) to avoid circular dependencies.
@@ -285,13 +272,6 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
   }
 }
 
-/* NOTE: fnv1a.h is NOT included here to avoid circular dependency:
- * common.h -> fnv1a.h -> asciichat_errno.h -> common.h
- *
- * HASH_FUNCTION is defined in files that actually need it, after including both
- * common.h and util/fnv1a.h separately.
- */
-
 /* ============================================================================
  * Fatal Error Macros - Exit with Error Message and Stack Trace
  * ============================================================================
@@ -506,9 +486,6 @@ bool shutdown_is_requested(void);
 #define ALLOC_FREE(ptr) free(ptr)
 #endif
 
-#define uthash_malloc(sz) ALLOC_MALLOC(sz)
-#define uthash_free(ptr, sz) ALLOC_FREE(ptr)
-
 /**
  * @name Memory Debugging Macros
  * @ingroup common
@@ -632,6 +609,25 @@ bool shutdown_is_requested(void);
   do {                                                                                                                 \
     if ((ptr) != NULL) {                                                                                               \
       ALLOC_FREE((void *)(ptr));                                                                                       \
+      (ptr) = NULL;                                                                                                    \
+    }                                                                                                                  \
+  } while (0)
+
+/* Untracked malloc/free - bypass memory tracking for special cases like mode_argv */
+/* These use raw malloc/free to avoid appearing in leak reports */
+#define UNTRACKED_MALLOC(size, cast)                                                                                   \
+  ({                                                                                                                   \
+    cast _ptr = (cast)malloc(size);                                                                                    \
+    if (!_ptr) {                                                                                                       \
+      FATAL(ERROR_MEMORY, "Memory allocation failed: %zu bytes", (size_t)(size));                                      \
+    }                                                                                                                  \
+    _ptr;                                                                                                              \
+  })
+
+#define UNTRACKED_FREE(ptr)                                                                                            \
+  do {                                                                                                                 \
+    if ((ptr) != NULL) {                                                                                               \
+      free((void *)(ptr));                                                                                             \
       (ptr) = NULL;                                                                                                    \
     }                                                                                                                  \
   } while (0)
