@@ -9,6 +9,7 @@
 #include "common.h"
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
+#include "util/time_format.h"
 
 // UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
 // Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
@@ -166,7 +167,7 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
   collector->count++;
   int *offset = collector->offset;
   char *buffer = collector->buffer;
-  size_t buffer_size = 16384; // Match the buffer size in print_all_held_locks
+  size_t buffer_size = 32768; // Match the buffer size in lock_debug_print_state
 
   // Print lock information
   const char *lock_type_str;
@@ -399,173 +400,86 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
 // ============================================================================
 
 /**
- * @brief Print all currently held locks with their backtraces and historical stats
+ * @brief Check for locks held longer than the warning threshold and log warnings
+ *
+ * This function iterates through all currently held locks and logs warnings
+ * for any locks held longer than LOCK_HOLD_TIME_WARNING_MS (100ms).
+ * Only logs locks that exceed the threshold - no logging for locks held <= 100ms.
+ *
+ * Called periodically from the debug thread to monitor lock hold times.
  */
-void print_all_held_locks(void) {
-#ifdef DEBUG_LOCKS
-  log_info("[LOCK_DEBUG] print_all_held_locks() called from thread %llu",
-           (unsigned long long)ascii_thread_current_id());
-#endif
-
+static void check_long_held_locks(void) {
   if (!atomic_load(&g_lock_debug_manager.initialized)) {
-    log_warn("Lock debug system not initialized.");
     return;
   }
 
   // Acquire read lock for lock_records
   rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
 
-  // Read counters atomically while holding the lock to ensure consistency with lock records
-  uint64_t total_acquired = atomic_load(&g_lock_debug_manager.total_locks_acquired);
-  uint64_t total_released = atomic_load(&g_lock_debug_manager.total_locks_released);
-  uint32_t currently_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+  struct timespec current_time;
+  if (clock_gettime(CLOCK_MONOTONIC, &current_time) != 0) {
+    rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
+    return;
+  }
 
-  // Build comprehensive log message with all information
-  char log_buffer[16384]; // Increased buffer size for lock details
-  int offset = 0;
-
-  // Collect lock information during iteration
-  struct lock_collector {
-    uint32_t count;
-    char *buffer;
-    int *offset;
-  } lock_collector = {0, log_buffer, &offset};
-
+  // Iterate through all currently held locks
+  bool found_long_held_lock = false;
   lock_record_t *entry, *tmp;
   HASH_ITER(hash_handle, g_lock_debug_manager.lock_records, entry, tmp) {
-    collect_lock_record_callback(entry, &lock_collector);
+    // Calculate how long the lock has been held in nanoseconds
+    long long held_sec = current_time.tv_sec - entry->acquisition_time.tv_sec;
+    long held_nsec = current_time.tv_nsec - entry->acquisition_time.tv_nsec;
+
+    // Handle nanosecond underflow
+    if (held_nsec < 0) {
+      held_sec--;
+      held_nsec += 1000000000;
+    }
+
+    // Convert to nanoseconds (double for format_duration_ns)
+    double held_ns = (held_sec * 1000000000.0) + held_nsec;
+
+    // Only log if held longer than 100ms (100000000 nanoseconds)
+    const double WARNING_THRESHOLD_NS = 100000000.0; // 100ms in nanoseconds
+    if (held_ns > WARNING_THRESHOLD_NS) {
+      found_long_held_lock = true;
+
+      // Get lock type string
+      const char *lock_type_str;
+      switch (entry->lock_type) {
+      case LOCK_TYPE_MUTEX:
+        lock_type_str = "MUTEX";
+        break;
+      case LOCK_TYPE_RWLOCK_READ:
+        lock_type_str = "RWLOCK_READ";
+        break;
+      case LOCK_TYPE_RWLOCK_WRITE:
+        lock_type_str = "RWLOCK_WRITE";
+        break;
+      default:
+        lock_type_str = "UNKNOWN";
+        break;
+      }
+
+      // Format duration like STOP_TIMER_AND_LOG does
+      char duration_str[32];
+      format_duration_ns(held_ns, duration_str, sizeof(duration_str));
+
+      // Log warning with formatted duration
+      log_warn_every(1000000, "Lock held for %s (threshold: 100ms) - %s at %p\n"
+               "  Acquired: %s:%d in %s()\n"
+               "  Thread ID: %llu",
+               duration_str, lock_type_str, entry->lock_address, entry->file_name, entry->line_number,
+               entry->function_name, (unsigned long long)entry->thread_id);
+    }
   }
-  uint32_t active_locks = lock_collector.count;
 
   rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
 
-  // Header
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "=== LOCK DEBUG: Lock Status Report ===\n");
-
-  // Historical Statistics
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "Historical Statistics:\n");
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "  Total locks released: %llu\n", (unsigned long long)total_released);
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Currently held: %u\n",
-                     currently_held);
-
-  // Check for underflow before subtraction to avoid UB
-  if (total_acquired >= total_released) {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Net locks (acquired - released): %lld\n", (long long)(total_acquired - total_released));
-  } else {
-    // This shouldn't happen - means more releases than acquires
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***\n",
-                       (unsigned long long)total_released, (unsigned long long)total_acquired,
-                       (long long)(total_released - total_acquired));
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** This indicates lock tracking was not enabled for some acquires ***\n");
+  // Print backtrace only once if any long-held locks were found
+  if (found_long_held_lock) {
+    platform_print_backtrace(1);
   }
-
-  // Currently Active Locks
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "Currently Active Locks:\n");
-  if (active_locks == 0) {
-    offset +=
-        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No locks currently held.\n");
-    // Check for consistency issues
-    if (currently_held > 0) {
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",
-                         currently_held);
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** This may indicate a crash during lock acquisition or hash table corruption. ***\n");
-
-      // Additional debug: Check hash table statistics
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** DEBUG: Hash table stats for lock_records: ***\n");
-      rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
-      size_t count = HASH_CNT(hash_handle, g_lock_debug_manager.lock_records);
-      rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** Hash table size: %zu ***\n", count);
-      if (count > 0) {
-        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                           "  *** Hash table has entries but iteration didn't find them! ***\n");
-      }
-    }
-  } else {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Active locks: %u\n",
-                       active_locks);
-    // Verify consistency the other way
-    if (active_locks != currently_held) {
-      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                         "  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***\n", active_locks,
-                         currently_held);
-    }
-
-    // The lock details are already in the buffer from collect_lock_record_callback
-    // No need to add them again here
-  }
-
-  // Print usage statistics by code location
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "Lock Usage Statistics by Code Location:\n");
-  rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats_lock);
-
-  uint32_t total_usage_locations = 0;
-  lock_usage_stats_t *stats_entry, *stats_tmp;
-  HASH_ITER(hash_handle, g_lock_debug_manager.usage_stats, stats_entry, stats_tmp) {
-    print_usage_stats_callback(stats_entry, &total_usage_locations);
-  }
-
-  rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats_lock);
-
-  if (total_usage_locations == 0) {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  No lock usage statistics available.\n");
-  } else {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Total code locations with lock usage: %u\n", total_usage_locations);
-  }
-
-  // Print orphaned releases (unlocks without corresponding locks)
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "Orphaned Releases (unlocks without corresponding locks):\n");
-#ifdef DEBUG_LOCKS
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "[DEBUG] About to iterate over orphaned_releases\n");
-#endif
-  rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
-
-  uint32_t total_orphaned_releases = 0;
-  lock_record_t *orphan_entry, *orphan_tmp;
-  HASH_ITER(hash_handle, g_lock_debug_manager.orphaned_releases, orphan_entry, orphan_tmp) {
-    print_orphaned_release_callback(orphan_entry, &total_orphaned_releases);
-  }
-#ifdef DEBUG_LOCKS
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                     "[DEBUG] iteration completed, total_orphaned_releases=%u\n", total_orphaned_releases);
-#endif
-
-  rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
-
-  if (total_orphaned_releases == 0) {
-    offset +=
-        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No orphaned releases found.\n");
-  } else {
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  Total orphaned releases: %u\n", total_orphaned_releases);
-    offset +=
-        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                 "  *** WARNING: %u releases without corresponding locks detected! ***\n", total_orphaned_releases);
-    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
-                       "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
-  }
-
-  // End marker
-  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "=== End Lock Debug ===");
-
-  // Single log_debug call with all the information
-  log_debug("%s", log_buffer);
 }
 
 /**
@@ -594,12 +508,15 @@ static void *debug_thread_func(void *arg) {
   }
 #endif
 
-  log_debug("Lock debug thread started - press '?' to print held locks");
+  log_debug("Lock debug thread started - press '?' to print lock state");
 
   while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
+    // Check for locks held > 100ms and log warnings
+    check_long_held_locks();
+
     // Allow external trigger via flag (non-blocking)
     if (atomic_exchange(&g_lock_debug_manager.should_print_locks, false)) {
-      print_all_held_locks();
+      lock_debug_print_state();
     }
 
     // Check for keyboard input first
@@ -607,7 +524,7 @@ static void *debug_thread_func(void *arg) {
     if (_kbhit()) {
       int ch = _getch();
       if (ch == '?') {
-        print_all_held_locks();
+        lock_debug_print_state();
       }
     }
 
@@ -628,7 +545,7 @@ static void *debug_thread_func(void *arg) {
       char input[2];
       if (read(STDIN_FILENO, input, 1) == 1) {
         if (input[0] == '?') {
-          print_all_held_locks();
+          lock_debug_print_state();
         }
       }
     }
@@ -707,24 +624,10 @@ int lock_debug_init(void) {
   // but we'll rely on the debug_thread_running flag
 #endif
 
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] System initialized: initialized=%d, initializing=%d",
-            atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing));
-#endif
-
   // Clear initialization flag FIRST, then mark as initialized
   // This prevents race condition where initialized=true but initializing=true
   atomic_store(&g_initializing, false);
   atomic_store(&g_lock_debug_manager.initialized, true);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] After clearing init flag: initialized=%d, initializing=%d",
-            atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing));
-#endif
-
-#ifdef DEBUG_LOCKS
-  log_info("[LOCK_DEBUG] *** LOCK TRACKING IS NOW ENABLED ***");
-#endif
 
   // Note: lock_debug_cleanup() will be called during normal shutdown sequence
   // and lock_debug_cleanup_thread() will be called as one of the last things before exit
@@ -765,52 +668,21 @@ void lock_debug_trigger_print(void) {
 }
 
 void lock_debug_cleanup(void) {
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() starting...");
-#endif
-
   // Use atomic exchange to ensure cleanup only runs once
   // This prevents double-cleanup from both atexit() and manual calls
   bool was_initialized = atomic_exchange(&g_lock_debug_manager.initialized, false);
   if (!was_initialized) {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - system not initialized or already cleaned up, returning");
-#endif
     return;
   }
 
   // Signal debug thread to stop but don't join it yet
   // Thread joining will happen later in lock_debug_cleanup_thread()
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - signaling debug thread to stop...");
-#endif
   if (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - setting debug thread running flag to false");
-#endif
     atomic_store(&g_lock_debug_manager.debug_thread_running, false);
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - debug thread signaled to stop (will be joined later)");
-#endif
-  } else {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup() - debug thread was not running");
-#endif
   }
 
   // Clean up all remaining lock records
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up lock records...");
-#endif
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on lock_records...");
-#endif
   rwlock_wrlock_impl(&g_lock_debug_manager.lock_records_lock);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all lock records...");
-#endif
   // Free all lock records using HASH_ITER
   uint32_t lock_records_cleaned = 0;
   lock_record_t *entry, *tmp;
@@ -822,33 +694,12 @@ void lock_debug_cleanup(void) {
     log_info("Cleaned up %u lock records", lock_records_cleaned);
   }
 
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on lock_records...");
-#endif
   rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying lock_records rwlock...");
-#endif
   rwlock_destroy(&g_lock_debug_manager.lock_records_lock);
   g_lock_debug_manager.lock_records = NULL;
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - lock_records cleaned up");
-#endif
 
   // Clean up usage statistics
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up usage statistics...");
-#endif
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on usage_stats...");
-#endif
   rwlock_wrlock_impl(&g_lock_debug_manager.usage_stats_lock);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all usage statistics...");
-#endif
   // Free all usage statistics using HASH_ITER
   lock_usage_stats_t *stats_entry, *stats_tmp;
   HASH_ITER(hash_handle, g_lock_debug_manager.usage_stats, stats_entry, stats_tmp) {
@@ -856,33 +707,12 @@ void lock_debug_cleanup(void) {
     cleanup_usage_stats_callback(stats_entry, NULL);
   }
 
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on usage_stats...");
-#endif
   rwlock_wrunlock_impl(&g_lock_debug_manager.usage_stats_lock);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying usage_stats rwlock...");
-#endif
   rwlock_destroy(&g_lock_debug_manager.usage_stats_lock);
   g_lock_debug_manager.usage_stats = NULL;
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - usage_stats cleaned up");
-#endif
 
   // Clean up orphaned releases
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - cleaning up orphaned releases...");
-#endif
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - acquiring write lock on orphaned_releases...");
-#endif
   rwlock_wrlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - freeing all orphaned releases...");
-#endif
 
   // Free all orphaned release records using HASH_ITER
   uint32_t orphaned_releases_cleaned = 0;
@@ -895,88 +725,38 @@ void lock_debug_cleanup(void) {
     log_info("Cleaned up %u orphaned release records", orphaned_releases_cleaned);
   }
 
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - releasing write lock on orphaned_releases...");
-#endif
   rwlock_wrunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - destroying orphaned_releases rwlock...");
-#endif
-
   rwlock_destroy(&g_lock_debug_manager.orphaned_releases_lock);
   g_lock_debug_manager.orphaned_releases = NULL;
 
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - orphaned_releases cleaned up");
-#endif
-
   // initialized flag already set to false at the beginning via atomic_exchange
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - calling log_info...");
-#endif
   log_info("Lock debug system cleaned up");
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup() - completed successfully");
-#endif
 }
 
 void lock_debug_cleanup_thread(void) {
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() starting...");
-#endif
-
   // Check if thread is/was running and join it
   if (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
-#ifdef DEBUG_LOCKS
-    log_warn("[LOCK_DEBUG] lock_debug_cleanup_thread() - thread still running, this shouldn't happen");
-#endif
     atomic_store(&g_lock_debug_manager.debug_thread_running, false);
   }
 
 #ifdef _WIN32
   // On Windows, check if thread handle is valid before joining
   if (g_lock_debug_manager.debug_thread != NULL) {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - joining debug thread (handle=%p)...",
-              g_lock_debug_manager.debug_thread);
-#endif
     int join_result = ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
     if (join_result == 0) {
-#ifdef DEBUG_LOCKS
-      log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
-#endif
       // Thread handle is now NULL due to cleanup in ascii_thread_join
     } else {
-#ifdef DEBUG_LOCKS
-      log_warn("[LOCK_DEBUG] lock_debug_cleanup_thread() - failed to join debug thread");
-#endif
       // Force cleanup if join failed
       g_lock_debug_manager.debug_thread = NULL;
     }
-  } else {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread handle is NULL, nothing to join");
-#endif
   }
 #else
   // On POSIX, only attempt join if thread was actually created
   // Use the debug_thread_created flag to reliably track if the thread exists
   if (atomic_load(&g_lock_debug_manager.debug_thread_created)) {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - joining debug thread...");
-#endif
     ascii_thread_join(&g_lock_debug_manager.debug_thread, NULL);
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - debug thread joined successfully");
-#endif
     // Clear the flag after joining
     atomic_store(&g_lock_debug_manager.debug_thread_created, false);
-  } else {
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - thread was never created, skipping join");
-#endif
   }
 
   // Restore terminal to original mode if it was changed
@@ -984,10 +764,6 @@ void lock_debug_cleanup_thread(void) {
     tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
     g_termios_saved = false;
   }
-#endif
-
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] lock_debug_cleanup_thread() - completed successfully");
 #endif
 }
 
@@ -1090,9 +866,6 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
       // Entry exists - this shouldn't happen, but handle it gracefully
       rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
       free_lock_record(record);
-#ifdef DEBUG_LOCKS
-      log_debug("[LOCK_DEBUG] ERROR: Duplicate key %u for %s record at %p", record->key, lock_type_str, lock_address);
-#endif
       return false;
     }
 
@@ -1102,24 +875,11 @@ static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t 
     // Release lock
     rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
 
-#ifdef DEBUG_LOCKS
-    uint64_t acquired = atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1) + 1;
-    uint32_t held = atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1) + 1;
-#else
     atomic_fetch_add(&g_lock_debug_manager.total_locks_acquired, 1);
     atomic_fetch_add(&g_lock_debug_manager.current_locks_held, 1);
-#endif
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] %s ACQUIRED: %p (key=%u) at %s:%d in %s() - total=%llu, held=%u", lock_type_str,
-              lock_address, record->key, file_name, line_number, function_name, (unsigned long long)acquired, held);
-#endif
     return true;
   }
-  // Record allocation failed - log an error
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] ERROR: Failed to create lock record for %p at %s:%d in %s()", lock_address, file_name,
-            line_number, function_name);
-#endif
+  // Record allocation failed
   return false;
 }
 
@@ -1166,7 +926,9 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
 
       // Check if lock was held too long
       if (held_ms > LOCK_HOLD_TIME_WARNING_MS) {
-        log_warn("Lock held for %lld ms (threshold: %d ms) at %s:%d in %s()", held_ms, LOCK_HOLD_TIME_WARNING_MS,
+        char duration_str[32];
+        format_duration_ms((double)held_ms, duration_str, sizeof(duration_str));
+        log_warn("Lock held for %s (threshold: %d ms) at %s:%d in %s()", duration_str, LOCK_HOLD_TIME_WARNING_MS,
                  file_name, line_number, function_name);
         log_plain("  Lock type: %s, address: %p", lock_type_str, lock_ptr);
 
@@ -1188,18 +950,8 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
     rwlock_wrunlock_impl(&g_lock_debug_manager.lock_records_lock);
 
     free_lock_record(record);
-#ifdef DEBUG_LOCKS
-    uint64_t released = atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1) + 1;
-    uint32_t held = debug_decrement_lock_counter();
-#else
     atomic_fetch_add(&g_lock_debug_manager.total_locks_released, 1);
     debug_decrement_lock_counter();
-#endif
-#ifdef DEBUG_LOCKS
-    log_debug("[LOCK_DEBUG] %s RELEASED: %p (key=%u) at %s:%d in %s() - held=%lld ms, total=%llu, current_held=%u",
-              lock_type_str, lock_ptr, key, file_name, line_number, function_name, held_ms,
-              (unsigned long long)released, held);
-#endif
     return true;
   }
 
@@ -1323,19 +1075,6 @@ int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, c
       debug_process_untracked_unlock(mutex, key, "MUTEX", file_name, line_number, function_name);
     } else {
       // No tracked locks - this means the lock was filtered during lock operation
-      static atomic_int debug_count = 0;
-
-      int current_count = atomic_fetch_add(&debug_count, 1);
-      if (current_count < 3) {
-#ifdef DEBUG_LOCKS
-        log_debug("[LOCK_DEBUG] FILTERED UNLOCK #%d: mutex=%p, key=%u at %s:%d in %s()", current_count + 1, mutex, key,
-                  file_name, line_number, function_name);
-      } else if (current_count == 50) {
-#ifdef DEBUG_LOCKS
-        log_debug("[LOCK_DEBUG] Suppressed further filtered unlock messages after 50 calls");
-#endif
-#endif
-      }
     }
   }
 
@@ -1436,14 +1175,219 @@ bool lock_debug_is_initialized(void) {
 }
 
 void lock_debug_print_state(void) {
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] State: initialized=%d, initializing=%d, result=%d",
-            atomic_load(&g_lock_debug_manager.initialized), atomic_load(&g_initializing), lock_debug_is_initialized());
-#endif
-#ifdef DEBUG_LOCKS
-  log_debug("[LOCK_DEBUG] Stats: acquired=%llu, released=%llu, held=%u",
-            (unsigned long long)atomic_load(&g_lock_debug_manager.total_locks_acquired),
-            (unsigned long long)atomic_load(&g_lock_debug_manager.total_locks_released),
-            atomic_load(&g_lock_debug_manager.current_locks_held));
-#endif
+  if (!atomic_load(&g_lock_debug_manager.initialized)) {
+    log_warn("Lock debug system not initialized.");
+    return;
+  }
+
+  // Acquire read lock for lock_records
+  rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
+
+  // Read counters atomically while holding the lock to ensure consistency with lock records
+  uint64_t total_acquired = atomic_load(&g_lock_debug_manager.total_locks_acquired);
+  uint64_t total_released = atomic_load(&g_lock_debug_manager.total_locks_released);
+  uint32_t currently_held = atomic_load(&g_lock_debug_manager.current_locks_held);
+
+  // Build comprehensive log message with all information
+  char log_buffer[32768]; // Large buffer for lock details
+  int offset = 0;
+
+  // Collect lock information during iteration
+  struct lock_collector {
+    uint32_t count;
+    char *buffer;
+    int *offset;
+  } lock_collector = {0, log_buffer, &offset};
+
+  lock_record_t *entry, *tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.lock_records, entry, tmp) {
+    collect_lock_record_callback(entry, &lock_collector);
+  }
+  uint32_t active_locks = lock_collector.count;
+
+  rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
+
+  // Header
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "=== LOCK DEBUG STATE ===\n");
+
+  // Historical Statistics
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "Historical Statistics:\n");
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                     "  Total locks acquired: %llu\n", (unsigned long long)total_acquired);
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                     "  Total locks released: %llu\n", (unsigned long long)total_released);
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Currently held: %u\n",
+                     currently_held);
+
+  // Check for underflow before subtraction to avoid UB
+  if (total_acquired >= total_released) {
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  Net locks (acquired - released): %lld\n", (long long)(total_acquired - total_released));
+  } else {
+    // This shouldn't happen - means more releases than acquires
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  *** ERROR: More releases (%llu) than acquires (%llu)! Difference: -%lld ***\n",
+                       (unsigned long long)total_released, (unsigned long long)total_acquired,
+                       (long long)(total_released - total_acquired));
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  *** This indicates lock tracking was not enabled for some acquires ***\n");
+  }
+
+  // Currently Active Locks
+  offset +=
+      snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "\n=== Currently Active Locks ===\n");
+  if (active_locks == 0) {
+    offset +=
+        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No locks currently held.\n");
+    // Check for consistency issues
+    if (currently_held > 0) {
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",
+                         currently_held);
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  *** This may indicate a crash during lock acquisition or hash table corruption. ***\n");
+
+      // Additional debug: Check hash table statistics
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  *** DEBUG: Hash table stats for lock_records: ***\n");
+      rwlock_rdlock_impl(&g_lock_debug_manager.lock_records_lock);
+      size_t count = HASH_CNT(hash_handle, g_lock_debug_manager.lock_records);
+      rwlock_rdunlock_impl(&g_lock_debug_manager.lock_records_lock);
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  *** Hash table size: %zu ***\n", count);
+      if (count > 0) {
+        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                           "  *** Hash table has entries but iteration didn't find them! ***\n");
+      }
+    }
+  } else {
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Active locks: %u\n",
+                       active_locks);
+    // Verify consistency the other way
+    if (active_locks != currently_held) {
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  *** CONSISTENCY WARNING: Found %u active locks but counter shows %u! ***\n", active_locks,
+                         currently_held);
+    }
+
+    // The lock details are already in the buffer from collect_lock_record_callback
+    // No need to add them again here
+  }
+
+  // Print usage statistics by code location
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                     "\n=== Lock Usage Statistics by Code Location ===\n");
+  rwlock_rdlock_impl(&g_lock_debug_manager.usage_stats_lock);
+
+  uint32_t total_usage_locations = 0;
+  lock_usage_stats_t *stats_entry, *stats_tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.usage_stats, stats_entry, stats_tmp) {
+    print_usage_stats_callback(stats_entry, &total_usage_locations);
+  }
+
+  rwlock_rdunlock_impl(&g_lock_debug_manager.usage_stats_lock);
+
+  if (total_usage_locations == 0) {
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  No lock usage statistics available.\n");
+  } else {
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  Total code locations with lock usage: %u\n", total_usage_locations);
+  }
+
+  // Print orphaned releases (unlocks without corresponding locks)
+  offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                     "\n=== Orphaned Releases (unlocks without corresponding locks) ===\n");
+  rwlock_rdlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
+
+  uint32_t orphan_count = 0;
+  lock_record_t *orphan_entry, *orphan_tmp;
+  HASH_ITER(hash_handle, g_lock_debug_manager.orphaned_releases, orphan_entry, orphan_tmp) {
+    orphan_count++;
+
+    // Get lock type string
+    const char *lock_type_str;
+    switch (orphan_entry->lock_type) {
+    case LOCK_TYPE_MUTEX:
+      lock_type_str = "MUTEX";
+      break;
+    case LOCK_TYPE_RWLOCK_READ:
+      lock_type_str = "RWLOCK_READ";
+      break;
+    case LOCK_TYPE_RWLOCK_WRITE:
+      lock_type_str = "RWLOCK_WRITE";
+      break;
+    default:
+      lock_type_str = "UNKNOWN";
+      break;
+    }
+
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "Orphaned Release #%u: %s at %p\n", orphan_count, lock_type_str, orphan_entry->lock_address);
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Thread ID: %llu\n",
+                       (unsigned long long)orphan_entry->thread_id);
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Released: %s:%d in %s()\n",
+                       orphan_entry->file_name, orphan_entry->line_number, orphan_entry->function_name);
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  Released at: %lld.%09ld seconds (monotonic)\n",
+                       (long long)orphan_entry->acquisition_time.tv_sec, orphan_entry->acquisition_time.tv_nsec);
+
+    // Print backtrace for orphaned release
+    if (orphan_entry->backtrace_size > 0) {
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  Release call stack (%d frames):\n", orphan_entry->backtrace_size);
+
+      char **symbols = platform_backtrace_symbols(orphan_entry->backtrace_buffer, orphan_entry->backtrace_size);
+
+      bool has_symbols = false;
+      if (symbols && symbols[0]) {
+        char addr_str[32];
+        (void)snprintf(addr_str, sizeof(addr_str), "%p", orphan_entry->backtrace_buffer[0]);
+        has_symbols = (strstr(symbols[0], "(") != NULL) || (strstr(symbols[0], "+") != NULL);
+      }
+
+      for (int j = 0; j < orphan_entry->backtrace_size; j++) {
+        if (symbols && symbols[j] && has_symbols) {
+          offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "    %2d: %s\n", j,
+                             symbols[j]);
+        } else {
+          offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "    %2d: %p\n", j,
+                             orphan_entry->backtrace_buffer[j]);
+        }
+      }
+
+      if (!has_symbols) {
+        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                           "  Resolve symbols with: addr2line -e <binary> -f -C <addresses>\n");
+      }
+
+      if (symbols) {
+        platform_backtrace_symbols_free(symbols);
+      }
+    } else {
+      offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                         "  Release call stack: <capture failed>\n");
+    }
+  }
+
+  rwlock_rdunlock_impl(&g_lock_debug_manager.orphaned_releases_lock);
+
+  if (orphan_count == 0) {
+    offset +=
+        snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No orphaned releases found.\n");
+  } else {
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  Total orphaned releases: %u\n", orphan_count);
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  *** WARNING: %u releases without corresponding locks detected! ***\n", orphan_count);
+    offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                       "  *** This indicates double unlocks or missing lock acquisitions! ***\n");
+  }
+
+  // End marker
+  offset +=
+      snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "\n=== End Lock Debug State ===\n");
+
+  // Print all at once
+  log_info("%s", log_buffer);
 }

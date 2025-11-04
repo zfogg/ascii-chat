@@ -386,7 +386,6 @@ static int initialize_client_systems() {
  *
  * @ingroup client_main
  */
-#include "main.h"
 
 int client_main(int argc, char *argv[]) {
   // Parse command line options first

@@ -79,7 +79,6 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio.h"
 
 #include "network/packet.h"
 #include "buffer_pool.h"
@@ -95,6 +94,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
                                  size_t plaintext_size, size_t *plaintext_len);
 
 #include "crypto.h"
+#include "util/time_format.h"
 
 #include <stdatomic.h>
 #include <string.h>
@@ -306,9 +306,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       ((uint64_t)last_fps_report_time.tv_sec * 1000000 + (uint64_t)last_fps_report_time.tv_nsec / 1000);
 
   if (elapsed_us >= 5000000) { // 5 seconds
-    double actual_fps = (double)frame_count / ((double)elapsed_us / 1000000.0);
-    log_debug("CLIENT FPS: %.1f fps (%llu frames in %.1lf seconds)", actual_fps, frame_count,
-              (double)elapsed_us / 1000000.0);
+    double elapsed_seconds = (double)elapsed_us / 1000000.0;
+    double actual_fps = (double)frame_count / elapsed_seconds;
+
+    char duration_str[32];
+    format_duration_s(elapsed_seconds, duration_str, sizeof(duration_str));
+    log_debug("CLIENT FPS: %.1f fps (%llu frames in %s)", actual_fps, frame_count, duration_str);
 
     // Reset counters for next interval
     frame_count = 0;
@@ -404,7 +407,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       time_t snapshot_time = time(NULL);
       double elapsed = difftime(snapshot_time, first_frame_time);
       if (elapsed >= (double)opt_snapshot_delay) {
-        log_info("Snapshot captured after %.1f seconds!", elapsed);
+        char duration_str[32];
+        format_duration_s(elapsed, duration_str, sizeof(duration_str));
+        log_info("Snapshot captured after %s!", duration_str);
         take_snapshot = true;
         signal_exit();
       }

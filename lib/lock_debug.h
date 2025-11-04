@@ -394,12 +394,6 @@ bool lock_debug_is_initialized(void);
 void lock_debug_print_state(void);
 
 /**
- * @brief Print all currently held locks with backtraces
- * @ingroup lock_debug
- */
-void print_all_held_locks(void);
-
-/**
  * @brief Callback function for printing orphaned release records
  * @param record Orphaned release record pointer
  * @param user_data User data pointer

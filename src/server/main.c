@@ -78,7 +78,6 @@
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
-#include "errno.h"
 #include "image2ascii/image.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"

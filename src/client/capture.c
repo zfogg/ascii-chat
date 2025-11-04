@@ -94,6 +94,7 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "util/time.h"
+#include "util/time_format.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
@@ -389,9 +390,12 @@ static void *webcam_capture_thread_func(void *arg) {
                            (uint64_t)last_capture_fps_report_time.tv_nsec / 1000);
 
     if (elapsed_us >= 5000000) { // 5 seconds
-      double actual_fps = (double)capture_frame_count / ((double)elapsed_us / 1000000.0);
-      log_debug("CLIENT CAPTURE FPS: %.1f fps (%llu frames in %.1f seconds)", actual_fps, capture_frame_count,
-                (double)elapsed_us / 1000000.0);
+      double elapsed_seconds = (double)elapsed_us / 1000000.0;
+      double actual_fps = (double)capture_frame_count / elapsed_seconds;
+
+      char duration_str[32];
+      format_duration_s(elapsed_seconds, duration_str, sizeof(duration_str));
+      log_debug("CLIENT CAPTURE FPS: %.1f fps (%llu frames in %s)", actual_fps, capture_frame_count, duration_str);
 
       // Reset counters for next interval
       capture_frame_count = 0;

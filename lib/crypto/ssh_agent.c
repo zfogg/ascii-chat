@@ -10,13 +10,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sodium.h>
-#include "platform/system.h"
-#include "platform/file.h"
+#include "platform/pipe.h"
 
 #ifdef _WIN32
 #include <io.h>
 #include <sys/stat.h>
-#include <windows.h>
 #include <fcntl.h>
 #define SAFE_CLOSE _close
 #define SAFE_UNLINK _unlink
@@ -32,21 +30,23 @@
 #define SAFE_PCLOSE pclose
 #endif
 
+// Open the SSH agent pipe/socket
+static pipe_t ssh_agent_open_pipe(void) {
+  const char *auth_sock = SAFE_GETENV("SSH_AUTH_SOCK");
+
 #ifdef _WIN32
-// Open the SSH agent pipe
-static HANDLE ssh_agent_open_pipe(void) {
-  HANDLE pipe =
-      CreateFileA("\\\\.\\pipe\\openssh-ssh-agent", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
-
-  if (pipe != INVALID_HANDLE_VALUE) {
-    log_debug("Connected to ssh-agent via Windows named pipe");
-  } else {
-    log_debug("Failed to connect to ssh-agent pipe: error %lu", GetLastError());
+  // On Windows, use named pipe path (default or from SSH_AUTH_SOCK)
+  const char *pipe_path = (auth_sock && strlen(auth_sock) > 0) ? auth_sock : "\\\\.\\pipe\\openssh-ssh-agent";
+  return pipe_connect(pipe_path);
+#else
+  // On Unix, use Unix domain socket path from SSH_AUTH_SOCK
+  if (!auth_sock || strlen(auth_sock) == 0) {
+    log_debug("SSH_AUTH_SOCK not set, cannot connect to ssh-agent");
+    return INVALID_PIPE_VALUE;
   }
-
-  return pipe;
-}
+  return pipe_connect(auth_sock);
 #endif
+}
 
 bool ssh_agent_is_available(void) {
   // Check if SSH_AUTH_SOCK environment variable is set
@@ -55,9 +55,9 @@ bool ssh_agent_is_available(void) {
 #ifdef _WIN32
   // On Windows, if SSH_AUTH_SOCK is not set, try to open the Windows named pipe to check availability
   if (!auth_sock || strlen(auth_sock) == 0) {
-    HANDLE pipe = ssh_agent_open_pipe();
-    if (pipe != INVALID_HANDLE_VALUE) {
-      CloseHandle(pipe); // Close immediately after checking
+    pipe_t pipe = ssh_agent_open_pipe();
+    if (pipe != INVALID_PIPE_VALUE) {
+      pipe_close(pipe); // Close immediately after checking
       log_debug("ssh-agent is available via Windows named pipe (SSH_AUTH_SOCK not set)");
       return true;
     } else {
@@ -87,10 +87,9 @@ bool ssh_agent_is_available(void) {
 }
 
 bool ssh_agent_has_key(const public_key_t *public_key) {
-#ifdef _WIN32
-  // On Windows, use SSH agent protocol to list keys
-  HANDLE pipe = ssh_agent_open_pipe();
-  if (pipe == INVALID_HANDLE_VALUE) {
+  // Use SSH agent protocol to list keys (works on both Windows and Unix)
+  pipe_t pipe = ssh_agent_open_pipe();
+  if (pipe == INVALID_PIPE_VALUE) {
     return false;
   }
 
@@ -103,21 +102,21 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   request[4] = 11; // SSH2_AGENTC_REQUEST_IDENTITIES
 
   // Send request
-  DWORD bytes_written = 0;
-  if (!WriteFile(pipe, request, 5, &bytes_written, NULL) || bytes_written != 5) {
-    CloseHandle(pipe);
+  ssize_t bytes_written = pipe_write(pipe, request, 5);
+  if (bytes_written != 5) {
+    pipe_close(pipe);
     return false;
   }
 
   // Read response
   unsigned char response[8192];
-  DWORD bytes_read = 0;
-  if (!ReadFile(pipe, response, sizeof(response), &bytes_read, NULL) || bytes_read < 9) {
-    CloseHandle(pipe);
+  ssize_t bytes_read = pipe_read(pipe, response, sizeof(response));
+  if (bytes_read < 9) {
+    pipe_close(pipe);
     return false;
   }
 
-  CloseHandle(pipe);
+  pipe_close(pipe);
 
   // Parse response: type should be SSH2_AGENT_IDENTITIES_ANSWER (12)
   uint8_t resp_type = response[4];
@@ -130,13 +129,13 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
 
   // Parse keys and check if our public key matches
   size_t pos = 9;
-  for (uint32_t i = 0; i < num_keys && pos + 4 < bytes_read; i++) {
+  for (uint32_t i = 0; i < num_keys && pos + 4 < (size_t)bytes_read; i++) {
     // Read key blob length
     uint32_t blob_len =
         (response[pos] << 24) | (response[pos + 1] << 16) | (response[pos + 2] << 8) | response[pos + 3];
     pos += 4;
 
-    if (pos + blob_len > bytes_read)
+    if (pos + blob_len > (size_t)bytes_read)
       break;
 
     // Parse the blob to extract the Ed25519 public key
@@ -170,7 +169,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
     pos += blob_len;
 
     // Skip comment string length + comment
-    if (pos + 4 > bytes_read)
+    if (pos + 4 > (size_t)bytes_read)
       break;
     uint32_t comment_len =
         (response[pos] << 24) | (response[pos + 1] << 16) | (response[pos + 2] << 8) | response[pos + 3];
@@ -178,10 +177,6 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   }
 
   return false;
-#else
-  // Unix: TODO - implement Unix domain socket version
-  return false;
-#endif
 }
 
 asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
@@ -191,10 +186,9 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
 
   log_info("Adding key to ssh-agent: %s", key_path ? key_path : "(memory)");
 
-#ifdef _WIN32
-  // Open the pipe for this operation
-  HANDLE pipe = ssh_agent_open_pipe();
-  if (pipe == INVALID_HANDLE_VALUE) {
+  // Open the pipe/socket for this operation (works on both Windows and Unix)
+  pipe_t pipe = ssh_agent_open_pipe();
+  if (pipe == INVALID_PIPE_VALUE) {
     return SET_ERRNO(ERROR_CRYPTO, "Failed to connect to ssh-agent");
   }
 
@@ -219,6 +213,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   buf[pos++] = (len >> 16) & 0xFF;
   buf[pos++] = (len >> 8) & 0xFF;
   buf[pos++] = len & 0xFF;
+  // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - Binary protocol, intentionally not null-terminated
   memcpy(buf + pos, "ssh-ed25519", 11);
   pos += 11;
 
@@ -259,24 +254,24 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   buf[3] = msg_len & 0xFF;
 
   // Send message to agent
-  DWORD bytes_written = 0;
-  if (!WriteFile(pipe, buf, pos, &bytes_written, NULL) || bytes_written != pos) {
-    CloseHandle(pipe);
+  ssize_t bytes_written = pipe_write(pipe, buf, pos);
+  if (bytes_written != (ssize_t)pos) {
+    pipe_close(pipe);
     sodium_memzero(buf, sizeof(buf));
     return SET_ERRNO_SYS(ERROR_CRYPTO, "Failed to write to ssh-agent pipe");
   }
 
   // Read response
   unsigned char response[256];
-  DWORD bytes_read = 0;
-  if (!ReadFile(pipe, response, sizeof(response), &bytes_read, NULL) || bytes_read < 5) {
-    CloseHandle(pipe);
+  ssize_t bytes_read = pipe_read(pipe, response, sizeof(response));
+  if (bytes_read < 5) {
+    pipe_close(pipe);
     sodium_memzero(buf, sizeof(buf));
     return SET_ERRNO_SYS(ERROR_CRYPTO, "Failed to read from ssh-agent pipe");
   }
 
   // Done with the pipe - close it
-  CloseHandle(pipe);
+  pipe_close(pipe);
   sodium_memzero(buf, sizeof(buf));
 
   // Check response: should be SSH_AGENT_SUCCESS (6)
@@ -290,8 +285,4 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   } else {
     return SET_ERRNO(ERROR_CRYPTO, "ssh-agent returned unexpected response: %d", response_type);
   }
-#else
-  // Unix: Use SSH agent protocol via Unix domain socket
-  return SET_ERRNO(ERROR_NOT_IMPLEMENTED, "Unix ssh-agent auto-add not yet implemented - use ssh-add manually");
-#endif
 }

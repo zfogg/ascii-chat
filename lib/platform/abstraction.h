@@ -300,6 +300,7 @@
 #include "util/uthash.h" // Wrapper ensures common.h is included first
 #include "lock_debug.h"
 #include "platform/file.h"
+#include "platform/pipe.h"
 
 // ============================================================================
 // Thread-Local Storage and Alignment Macros

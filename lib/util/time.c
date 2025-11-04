@@ -154,14 +154,14 @@ double timer_stop(const char *name) {
     return -1.0;
   }
 
-  // Calculate elapsed time
+  // Calculate elapsed time in nanoseconds for maximum precision
   uint64_t end_ticks = stm_now();
   uint64_t elapsed_ticks = stm_diff(end_ticks, timer->start_ticks);
-  double elapsed_ms = stm_ms(elapsed_ticks);
+  double elapsed_ns = stm_ns(elapsed_ticks);
 
   // Format duration for human-readable logging
   char duration_str[32];
-  format_duration_ms(elapsed_ms, duration_str, sizeof(duration_str));
+  format_duration_ns(elapsed_ns, duration_str, sizeof(duration_str));
 
   // Log the result (debug level - caller can use return value for production logging)
   log_debug("Timer '%s': %s", name, duration_str);
@@ -172,7 +172,7 @@ double timer_stop(const char *name) {
   SAFE_FREE(timer);
 
   rwlock_wrunlock(&g_timer_manager.rwlock);
-  return elapsed_ms;
+  return elapsed_ns; // Return nanoseconds
 }
 
 bool timer_is_initialized(void) {

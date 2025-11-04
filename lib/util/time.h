@@ -20,8 +20,11 @@
  * ```c
  * START_TIMER("process_frame_%d", frame_num);
  * // ... do work ...
- * double elapsed_ms = STOP_TIMER("process_frame_%d", frame_num);
- * log_info("Frame took %.2f ms", elapsed_ms);
+ * double elapsed_ns = STOP_TIMER("process_frame_%d", frame_num);
+ * // Use format_duration_ns() for human-readable output
+ * char duration_str[32];
+ * format_duration_ns(elapsed_ns, duration_str, sizeof(duration_str));
+ * log_info("Frame took %s", duration_str);
  * ```
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -39,6 +42,7 @@
 // SOKOL_IMPL is defined only in time.c to avoid duplicate symbols
 #include "../../deps/sokol/sokol_time.h"
 #include "util/uthash.h"
+#include "util/time_format.h" // For format_duration_ns() in STOP_TIMER_AND_LOG macro
 
 // ============================================================================
 // Timer Record Structure
@@ -98,7 +102,7 @@ bool timer_start(const char *name);
  * and removes the timer from the hashtable.
  *
  * @param name Timer name to stop
- * @return Elapsed time in milliseconds, or -1.0 if timer not found
+ * @return Elapsed time in nanoseconds, or -1.0 if timer not found
  * @ingroup module_utilities
  */
 double timer_stop(const char *name);
@@ -149,12 +153,12 @@ bool timer_is_initialized(void);
  * used in START_TIMER(). The formatted string is used as the hashtable key lookup.
  *
  * Usage:
- *   double ms = STOP_TIMER("lock_%p", lock_ptr);
- *   double ms = STOP_TIMER("process_frame_%d", frame_id);
+ *   double ns = STOP_TIMER("lock_%p", lock_ptr);
+ *   double ns = STOP_TIMER("process_frame_%d", frame_id);
  *
  * @param name_fmt Printf-style format string for timer name (must match START_TIMER)
  * @param ... Format arguments (must match START_TIMER to create same key)
- * @return Elapsed time in milliseconds, or -1.0 if timer not found
+ * @return Elapsed time in nanoseconds, or -1.0 if timer not found
  * @ingroup module_utilities
  */
 #define STOP_TIMER(name_fmt, ...)                                                                                      \
@@ -172,13 +176,13 @@ bool timer_is_initialized(void);
  * @brief Stop a timer and log the result with a custom message
  *
  * Combines STOP_TIMER() with logging. The timer is stopped, elapsed time is retrieved,
- * and a log message is generated with the elapsed time appended.
+ * and a log message is generated with the elapsed time appended in human-readable format.
  *
  * Usage:
  *   STOP_TIMER_AND_LOG("client_handshake", log_info, "Crypto handshake completed successfully");
  *   STOP_TIMER_AND_LOG("process_frame_%d", log_debug, "Frame %d processed", frame_id, frame_id);
  *
- * The macro will append " in X.XXms" to your message automatically.
+ * The macro will append " in X.XXms" (or appropriate unit) to your message automatically.
  *
  * @param timer_name Timer name (must match START_TIMER call)
  * @param log_func Logging function to use (log_info, log_debug, etc.)
@@ -188,8 +192,10 @@ bool timer_is_initialized(void);
  */
 #define STOP_TIMER_AND_LOG(timer_name, log_func, msg_fmt, ...)                                                         \
   do {                                                                                                                 \
-    double _elapsed_ms = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
-    if (_elapsed_ms >= 0.0) {                                                                                          \
-      log_func(msg_fmt " in %.2fms", ##__VA_ARGS__, _elapsed_ms);                                                      \
+    double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
+    if (_elapsed_ns >= 0.0) {                                                                                          \
+      char _duration_str[32];                                                                                          \
+      format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                          \
+      log_func(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                       \
     }                                                                                                                  \
   } while (0)

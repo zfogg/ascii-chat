@@ -249,7 +249,7 @@ int server_crypto_handshake(client_info_t *client) {
 
   if (socket == INVALID_SOCKET_VALUE) {
     log_debug("SERVER_CRYPTO_HANDSHAKE: Socket is invalid for client %u", atomic_load(&client->client_id));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
 
@@ -263,7 +263,7 @@ int server_crypto_handshake(client_info_t *client) {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
 
@@ -277,7 +277,7 @@ int server_crypto_handshake(client_info_t *client) {
       buffer_pool_free(payload, payload_len);
     }
     log_info("Client %u disconnected due to protocol mismatch", atomic_load(&client->client_id));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
 
@@ -285,7 +285,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
     buffer_pool_free(payload, payload_len);
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
 
@@ -308,7 +308,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (!client_version.supports_encryption) {
     log_error("Client %u does not support encryption", atomic_load(&client->client_id));
     log_info("Client %u disconnected - encryption not supported", atomic_load(&client->client_id));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
 
@@ -333,7 +333,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != 0) {
     log_error("Failed to send protocol version to client %u", atomic_load(&client->client_id));
     log_info("Client %u disconnected - failed to send protocol version", atomic_load(&client->client_id));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
   log_debug("SERVER_CRYPTO_HANDSHAKE: Protocol version sent successfully to client %u",
@@ -349,7 +349,7 @@ int server_crypto_handshake(client_info_t *client) {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
 
@@ -362,7 +362,7 @@ int server_crypto_handshake(client_info_t *client) {
       buffer_pool_free(payload, payload_len);
     }
     log_info("Client %u disconnected due to protocol mismatch in crypto capabilities", atomic_load(&client->client_id));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
 
@@ -376,7 +376,12 @@ int server_crypto_handshake(client_info_t *client) {
           sizeof(crypto_capabilities_packet_t));
   }
 
+  if (!payload) {
+    FATAL(ERROR_CRYPTO_HANDSHAKE, "Payload is NULL after validation");
+  }
+
   crypto_capabilities_packet_t client_caps;
+  // NOLINTNEXTLINE(clang-analyzer-unix.cstring.NullArg) - payload checked above, FATAL never returns
   memcpy(&client_caps, payload, sizeof(crypto_capabilities_packet_t));
   buffer_pool_free(payload, payload_len);
 
@@ -436,7 +441,7 @@ int server_crypto_handshake(client_info_t *client) {
   result = send_crypto_parameters_packet(socket, &server_params);
   if (result != 0) {
     log_error("Failed to send crypto parameters to client %u", atomic_load(&client->client_id));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
   log_info("Server selected crypto for client %u: KEX=%u, Auth=%u, Cipher=%u", atomic_load(&client->client_id),
@@ -460,7 +465,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error to disconnect client gracefully
   }
 
@@ -478,10 +483,10 @@ int server_crypto_handshake(client_info_t *client) {
     // Handle network errors (like client disconnection) gracefully
     if (result == ERROR_NETWORK) {
       log_info("Client %u disconnected during authentication", atomic_load(&client->client_id));
-      (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+      STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
       return -1; // Return error but don't crash the server
     }
-    (void)STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     FATAL(result, "Crypto authentication response failed for client %u", atomic_load(&client->client_id));
   }
 

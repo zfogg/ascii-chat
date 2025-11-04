@@ -131,6 +131,7 @@
 #include "platform/string.h"
 #include "platform/socket.h"
 #include "crc32.h"
+#include "util/time_format.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -1289,7 +1290,10 @@ void broadcast_server_state_to_all_clients(void) {
   uint64_t lock_time_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
                           ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
   if (lock_time_us > 1000) { // Log if > 1ms
-    log_warn("broadcast_server_state: rwlock_rdlock took %.2fms", lock_time_us / 1000.0);
+    double lock_time_ms = lock_time_us / 1000.0;
+    char duration_str[32];
+    format_duration_ms(lock_time_ms, duration_str, sizeof(duration_str));
+    log_warn("broadcast_server_state: rwlock_rdlock took %s", duration_str);
   }
 
   // Count active clients and snapshot client data while holding lock

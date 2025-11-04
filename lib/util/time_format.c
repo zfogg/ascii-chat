@@ -62,17 +62,25 @@ int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size) {
     int seconds = (int)((nanoseconds - (minutes * NS_PER_MIN)) / NS_PER_SEC);
     written = snprintf(buffer, buffer_size, "%dm%ds", minutes, seconds);
   }
-  // Hours (< 1d) - show hours and minutes
+  // Hours (< 1d) - show hours, minutes, and seconds
   else if (nanoseconds < NS_PER_DAY) {
     int hours = (int)(nanoseconds / NS_PER_HOUR);
-    int minutes = (int)((nanoseconds - (hours * NS_PER_HOUR)) / NS_PER_MIN);
-    written = snprintf(buffer, buffer_size, "%dh%dm", hours, minutes);
+    double remaining_ns = nanoseconds - ((double)hours * NS_PER_HOUR);
+    int minutes = (int)(remaining_ns / NS_PER_MIN);
+    double remaining_after_min = remaining_ns - ((double)minutes * NS_PER_MIN);
+    int seconds = (int)(remaining_after_min / NS_PER_SEC);
+    written = snprintf(buffer, buffer_size, "%dh%dm%ds", hours, minutes, seconds);
   }
-  // Days (< 1y) - show days and hours
+  // Days (< 1y) - show days, hours, minutes, and seconds
   else if (nanoseconds < NS_PER_YEAR) {
     int days = (int)(nanoseconds / NS_PER_DAY);
-    int hours = (int)((nanoseconds - (days * NS_PER_DAY)) / NS_PER_HOUR);
-    written = snprintf(buffer, buffer_size, "%dd%dh", days, hours);
+    double remaining_ns = nanoseconds - ((double)days * NS_PER_DAY);
+    int hours = (int)(remaining_ns / NS_PER_HOUR);
+    remaining_ns = remaining_ns - ((double)hours * NS_PER_HOUR);
+    int minutes = (int)(remaining_ns / NS_PER_MIN);
+    double remaining_after_min = remaining_ns - ((double)minutes * NS_PER_MIN);
+    int seconds = (int)(remaining_after_min / NS_PER_SEC);
+    written = snprintf(buffer, buffer_size, "%dd%dh%dm%ds", days, hours, minutes, seconds);
   }
   // Years - show years with one decimal
   else {

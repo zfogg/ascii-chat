@@ -243,10 +243,10 @@ void platform_backtrace_symbols_free(char **strings);
 void platform_install_crash_handler(void);
 
 /**
- * @brief Print a backtrace to stderr
+ * @brief Print a backtrace using log_plain
  * @param skip_frames Number of frames to skip from the top
  *
- * Prints a backtrace of the current call stack to stderr.
+ * Prints a backtrace of the current call stack using log_plain().
  * Useful for debugging crashes or errors.
  *
  * @ingroup platform
