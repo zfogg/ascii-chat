@@ -45,7 +45,7 @@ static int calculate_packet_timeout(size_t packet_size) {
   if (packet_size > LARGE_PACKET_THRESHOLD) {
     // Add extra timeout per MB above the threshold
     int extra_timeout =
-        (int)((packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) + 1;
+        (int)(((double)packet_size - LARGE_PACKET_THRESHOLD) / 1000000.0 * LARGE_PACKET_EXTRA_TIMEOUT_PER_MB) + 1;
     int total_timeout = base_timeout + extra_timeout;
 
     // Ensure client timeout is longer than server's RECV_TIMEOUT (30s) to prevent deadlock
@@ -420,12 +420,12 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
     size_t compressed_size = 0;
 
     if (compress_data(data, len, &temp_compressed, &compressed_size) == 0) {
-      float ratio = (float)compressed_size / (float)len;
+      double ratio = (double)compressed_size / (double)len;
       if (ratio < COMPRESSION_RATIO_THRESHOLD) {
         final_data = temp_compressed;
         final_len = compressed_size;
         compressed_data = temp_compressed;
-        log_debug("Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size, ratio * 100);
+        log_debug("Compressed packet: %zu -> %zu bytes (%.1f%%)", len, compressed_size, ratio * 100.0);
       } else {
         SAFE_FREE(temp_compressed);
       }

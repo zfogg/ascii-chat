@@ -959,18 +959,9 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     return NULL;
   }
 
-  // PROFILING: Time collection phase
-  struct timespec prof_collect_start, prof_collect_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_collect_start);
-
   // Collect all active clients and their image sources
   image_source_t sources[MAX_CLIENTS];
   int source_count = collect_video_sources(sources, MAX_CLIENTS);
-
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_collect_end);
-  uint64_t collect_time_us =
-      ((uint64_t)prof_collect_end.tv_sec * 1000000 + (uint64_t)prof_collect_end.tv_nsec / 1000) -
-      ((uint64_t)prof_collect_start.tv_sec * 1000000 + (uint64_t)prof_collect_start.tv_nsec / 1000);
 
   // Count sources that actually have video data
   int sources_with_video = 0;
@@ -1013,10 +1004,6 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
     return NULL;
   }
 
-  // PROFILING: Time composite generation
-  struct timespec prof_composite_start, prof_composite_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_composite_start);
-
   if (sources_with_video == 1) {
     // Single source handling
     composite = create_single_source_composite(sources, source_count, target_client_id, width, height);
@@ -1026,40 +1013,25 @@ char *create_mixed_ascii_frame_for_client(uint32_t target_client_id, unsigned sh
         create_multi_source_composite(sources, source_count, sources_with_video, target_client_id, width, height);
   }
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_composite_end);
-  uint64_t composite_time_us =
-      ((uint64_t)prof_composite_end.tv_sec * 1000000 + (uint64_t)prof_composite_end.tv_nsec / 1000) -
-      ((uint64_t)prof_composite_start.tv_sec * 1000000 + (uint64_t)prof_composite_start.tv_nsec / 1000);
+  char *out = NULL;
 
   if (!composite) {
     SET_ERRNO(ERROR_INVALID_STATE, "Per-client %u: Failed to create composite image", target_client_id);
     *out_size = 0;
-    goto cleanup;
+    out = NULL;
   }
-
-  // PROFILING: Time ASCII conversion
-  struct timespec prof_ascii_start, prof_ascii_end;
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_ascii_start);
 
   // Convert composite to ASCII using client capabilities
   char *ascii_frame = convert_composite_to_ascii(composite, target_client_id, width, height);
 
-  (void)clock_gettime(CLOCK_MONOTONIC, &prof_ascii_end);
-  uint64_t ascii_time_us = ((uint64_t)prof_ascii_end.tv_sec * 1000000 + (uint64_t)prof_ascii_end.tv_nsec / 1000) -
-                           ((uint64_t)prof_ascii_start.tv_sec * 1000000 + (uint64_t)prof_ascii_start.tv_nsec / 1000);
-  (void)collect_time_us;
-  (void)composite_time_us;
-  (void)ascii_time_us;
-
   if (ascii_frame) {
     *out_size = strlen(ascii_frame);
+    out = ascii_frame;
   } else {
     SET_ERRNO(ERROR_TERMINAL, "Per-client %u: Failed to convert image to ASCII", target_client_id);
     *out_size = 0;
-    goto cleanup;
   }
 
-cleanup:
   if (composite) {
     image_destroy_to_pool(composite);
   }
@@ -1068,7 +1040,8 @@ cleanup:
       image_destroy_to_pool(sources[i].image);
     }
   }
-  return ascii_frame;
+
+  return out;
 }
 
 /* ============================================================================

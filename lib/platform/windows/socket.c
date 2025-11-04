@@ -262,8 +262,8 @@ int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interv
     struct tcp_keepalive keepalive_params;
 
     keepalive_params.onoff = 1;
-    keepalive_params.keepalivetime = idle * 1000;         // Convert to milliseconds
-    keepalive_params.keepaliveinterval = interval * 1000; // Convert to milliseconds
+    keepalive_params.keepalivetime = ((ULONG)idle) * 1000UL;         // Convert to milliseconds
+    keepalive_params.keepaliveinterval = ((ULONG)interval) * 1000UL; // Convert to milliseconds
 
     DWORD bytes_returned;
     if (WSAIoctl(sock, SIO_KEEPALIVE_VALS, &keepalive_params, sizeof(keepalive_params), NULL, 0, &bytes_returned, NULL,
@@ -288,7 +288,7 @@ int socket_set_keepalive_params(socket_t sock, bool enable, int idle, int interv
 int socket_set_linger(socket_t sock, bool enable, int timeout) {
   struct linger ling;
   ling.l_onoff = enable ? 1 : 0;
-  ling.l_linger = timeout;
+  ling.l_linger = (u_short)(unsigned int)timeout;
   return setsockopt(sock, SOL_SOCKET, SO_LINGER, (const char *)&ling, sizeof(ling));
 }
 

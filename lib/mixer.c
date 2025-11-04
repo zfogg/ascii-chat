@@ -148,11 +148,11 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   duck->release_coeff = expf(-1.0f / (release_tau * sample_rate + 1e-12f));
 
   // Allocate arrays
-  duck->envelope = SAFE_MALLOC(num_sources * sizeof(float), float *);
-  duck->gain = SAFE_MALLOC(num_sources * sizeof(float), float *);
+  duck->envelope = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
+  duck->gain = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
 
   // Initialize
-  SAFE_MEMSET(duck->envelope, num_sources * sizeof(float), 0, num_sources * sizeof(float));
+  SAFE_MEMSET(duck->envelope, (size_t)num_sources * sizeof(float), 0, (size_t)num_sources * sizeof(float));
   for (int i = 0; i < num_sources; i++) {
     duck->gain[i] = 1.0f;
   }
@@ -234,20 +234,20 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->sample_rate = sample_rate;
 
   // Allocate source management arrays
-  mixer->source_buffers = SAFE_MALLOC(max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
+  mixer->source_buffers = SAFE_MALLOC((size_t)max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
   if (!mixer->source_buffers) {
     SAFE_FREE(mixer);
     return NULL;
   }
 
-  mixer->source_ids = SAFE_MALLOC(max_sources * sizeof(uint32_t), uint32_t *);
+  mixer->source_ids = SAFE_MALLOC((size_t)max_sources * sizeof(uint32_t), uint32_t *);
   if (!mixer->source_ids) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer);
     return NULL;
   }
 
-  mixer->source_active = SAFE_MALLOC(max_sources * sizeof(bool), bool *);
+  mixer->source_active = SAFE_MALLOC((size_t)max_sources * sizeof(bool), bool *);
   if (!mixer->source_active) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
@@ -256,10 +256,10 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   // Initialize arrays
-  SAFE_MEMSET((void *)mixer->source_buffers, max_sources * sizeof(audio_ring_buffer_t *), 0,
-              max_sources * sizeof(audio_ring_buffer_t *));
-  SAFE_MEMSET(mixer->source_ids, max_sources * sizeof(uint32_t), 0, max_sources * sizeof(uint32_t));
-  SAFE_MEMSET(mixer->source_active, max_sources * sizeof(bool), 0, max_sources * sizeof(bool));
+  SAFE_MEMSET((void *)mixer->source_buffers, (size_t)max_sources * sizeof(audio_ring_buffer_t *), 0,
+              (size_t)max_sources * sizeof(audio_ring_buffer_t *));
+  SAFE_MEMSET(mixer->source_ids, (size_t)max_sources * sizeof(uint32_t), 0, (size_t)max_sources * sizeof(uint32_t));
+  SAFE_MEMSET(mixer->source_active, (size_t)max_sources * sizeof(bool), 0, (size_t)max_sources * sizeof(bool));
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
   mixer->active_sources_mask = 0ULL; // No sources active initially
@@ -282,8 +282,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->base_gain = 0.7f;   // Base gain to prevent clipping
 
   // Initialize processing
-  ducking_init(&mixer->ducking, max_sources, sample_rate);
-  compressor_init(&mixer->compressor, sample_rate);
+  ducking_init(&mixer->ducking, max_sources, (float)sample_rate);
+  compressor_init(&mixer->compressor, (float)sample_rate);
 
   // Allocate mix buffer
   mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);

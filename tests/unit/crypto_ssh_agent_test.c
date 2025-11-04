@@ -180,8 +180,8 @@ Test(crypto_ssh_agent, full_workflow_if_agent_available, .disabled = false) {
   // Try to add key to agent
   asciichat_error_t result = ssh_agent_add_key(&test_key, NULL);
 
-  // Note: This test may fail if ssh-add is not in PATH or if OpenSSH is not installed
-  // That's expected behavior - we're testing the code path, not requiring a working ssh-agent
+  // Note: This test may fail if ssh-agent is not running That's expected
+  // behavior - we're testing the code path, not requiring a working ssh-agent
   if (result == ASCIICHAT_OK) {
     log_info("Successfully added test key to ssh-agent");
   } else {

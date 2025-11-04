@@ -5,6 +5,7 @@
 #   - Symbol stripping (removes debug info and reduces binary size)
 #   - Path removal (removes embedded source paths for privacy)
 #   - .comment section cleanup (Linux ELF only)
+#   - DLL copying (Windows dynamic builds only)
 #
 # Prerequisites (must be set before including this file):
 #   - CMAKE_BUILD_TYPE: Build type
@@ -17,6 +18,23 @@
 #   - Windows: strip, bash (for path removal - Git Bash or WSL)
 #   - macOS: strip
 # =============================================================================
+
+# Copy DLL dependencies to bin directory on Windows (for non-static builds)
+# Note: vcpkg's applocal.ps1 script automatically copies DLLs during linking,
+# so this function is mainly for documentation. If vcpkg is not used, this
+# function can be extended to handle DLL copying manually.
+function(copy_windows_dlls TARGET_NAME)
+    if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
+        # Only copy DLLs for non-static builds (Debug, Dev builds use dynamic libraries)
+        # Release builds use static libraries (x64-windows-static triplet) so no DLLs needed
+
+        # vcpkg automatically handles DLL copying via applocal.ps1 script during linking
+        # This function is kept for documentation and potential future use cases
+        # where vcpkg is not being used
+
+        message(STATUS "DLL copying: vcpkg's applocal.ps1 will handle DLL dependencies automatically")
+    endif()
+endfunction()
 
 # Strip symbols in Release builds and clean .comment section
 # Note: .comment section is ELF-specific (Linux only)
@@ -57,25 +75,32 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                     COMMENT "Stripping symbols and debug info from ascii-chat"
                 )
                 # Then remove embedded file paths from binary using bash script (much faster than PowerShell)
-                find_program(BASH_EXECUTABLE bash)
+                # On Windows, prefer Git Bash over WSL bash for consistent path handling
+                if(WIN32)
+                    find_program(BASH_EXECUTABLE
+                        NAMES bash
+                        PATHS
+                            "C:/Program Files/Git/usr/bin"
+                            "C:/Program Files/Git/bin"
+                            "$ENV{ProgramFiles}/Git/usr/bin"
+                            "$ENV{ProgramFiles}/Git/bin"
+                        NO_DEFAULT_PATH
+                    )
+                    # If Git Bash not found in standard locations, fall back to any bash
+                    if(NOT BASH_EXECUTABLE)
+                        find_program(BASH_EXECUTABLE bash)
+                    endif()
+                else()
+                    find_program(BASH_EXECUTABLE bash)
+                endif()
                 if(BASH_EXECUTABLE)
-                    # Helper function to convert Windows paths to WSL/bash-compatible format
-                    # WSL mounts Windows drives at /mnt/<drive>, so C:/Users/... -> /mnt/c/Users/...
+                    # Helper function to convert Windows paths to bash compatible format
+                    # Auto-detects WSL vs Git Bash/MSYS - the script will do runtime detection
+                    # We'll pass Windows paths as-is and let the script handle conversion
+                    # This avoids CMake needing to know which bash is being used
                     function(convert_windows_to_wsl_path WINDOWS_PATH OUTPUT_VAR)
-                        if(WINDOWS_PATH MATCHES "^[A-Za-z]:")
-                            # Extract drive letter and convert to lowercase
-                            string(REGEX REPLACE "^([A-Za-z]):.*" "\\1" DRIVE_LETTER "${WINDOWS_PATH}")
-                            string(TOLOWER "${DRIVE_LETTER}" DRIVE_LETTER_LOWER)
-                            # Remove drive letter prefix
-                            string(REGEX REPLACE "^[A-Za-z]:" "" PATH_NO_DRIVE "${WINDOWS_PATH}")
-                            # Remove leading slash if present
-                            string(REGEX REPLACE "^/" "" PATH_CLEAN "${PATH_NO_DRIVE}")
-                            # Construct WSL path
-                            set(${OUTPUT_VAR} "/mnt/${DRIVE_LETTER_LOWER}/${PATH_CLEAN}" PARENT_SCOPE)
-                        else()
-                            # Not a Windows path format, use as-is
-                            set(${OUTPUT_VAR} "${WINDOWS_PATH}" PARENT_SCOPE)
-                        endif()
+                        # Just pass through - the bash script will detect and convert
+                        set(${OUTPUT_VAR} "${WINDOWS_PATH}" PARENT_SCOPE)
                     endfunction()
 
                     # Convert script path

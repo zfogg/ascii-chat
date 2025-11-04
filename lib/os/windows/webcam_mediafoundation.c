@@ -9,6 +9,7 @@
 #define COBJMACROS
 #include "os/webcam.h"
 #include "common.h"
+#include "util/time_format.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
@@ -64,7 +65,7 @@ static HRESULT enumerate_devices_and_print(void) {
       // Convert wide string to multibyte for logging
       int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL, NULL);
       if (len > 0) {
-        char *mbName = SAFE_MALLOC(len, void *);
+        char *mbName = SAFE_MALLOC((size_t)len, void *);
         if (mbName && WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, mbName, len, NULL, NULL)) {
           log_info("  Device %d: %s", i, mbName);
         }
@@ -83,7 +84,7 @@ cleanup:
         IMFActivate_Release(devices[i]);
       }
     }
-    CoTaskMemFree(devices);
+    CoTaskMemFree((void *)devices);
   }
   if (attr) {
     IMFAttributes_Release(attr);
@@ -319,7 +320,7 @@ error:
         IMFActivate_Release(devices[i]);
       }
     }
-    CoTaskMemFree(devices);
+    CoTaskMemFree((void *)devices);
   }
   if (attr) {
     IMFAttributes_Release(attr);
@@ -387,8 +388,11 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
                                   &streamIndex, &flags, &timestamp, &sample);
 
   QueryPerformanceCounter(&end);
-  double elapsed_ms = (double)(end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
-  log_info("ReadSample took %.2f ms (hr=0x%08x, flags=0x%08x, sample=%p)", elapsed_ms, hr, flags, sample);
+  double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
+
+  char duration_str[32];
+  format_duration_ms(elapsed_ms, duration_str, sizeof(duration_str));
+  log_info("ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr, flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {
@@ -469,8 +473,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Create image_t structure
   image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
-  img->w = width;
-  img->h = height;
+  img->w = (int)(unsigned int)width;
+  img->h = (int)(unsigned int)height;
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
   img->pixels = SAFE_MALLOC_SIMD(width * height * sizeof(rgb_t), rgb_t *);
 
@@ -519,8 +523,11 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 
   QueryPerformanceCounter(&copy_end);
-  double copy_ms = (double)(copy_end.QuadPart - copy_start.QuadPart) * 1000.0 / freq.QuadPart;
-  log_info("Pixel copy took %.2f ms (%u pixels)", copy_ms, pixel_count);
+  double copy_ms = ((double)(copy_end.QuadPart - copy_start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
+
+  char copy_duration_str[32];
+  format_duration_ms(copy_ms, copy_duration_str, sizeof(copy_duration_str));
+  log_info("Pixel copy took %s (%u pixels)", copy_duration_str, pixel_count);
 
   // Unlock and cleanup
   IMFMediaBuffer_Unlock(buffer);
@@ -530,13 +537,14 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   return img;
 }
 
-int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
-  if (!ctx || !width || !height)
-    return -1;
+asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {
+  if (!ctx || !width || !height) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_get_dimensions: invalid parameters");
+  }
 
   *width = ctx->width;
   *height = ctx->height;
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 #endif

@@ -1,7 +1,7 @@
 /**
  * @file packet_queue.c
  * @ingroup packet_queue
- * @brief 📬 Thread-safe packet queue with per-client isolation and memory pooling
+ * @brief 📬 Lock-free packet queue with per-client isolation and memory pooling
  */
 
 #include "packet_queue.h"
@@ -9,6 +9,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "crc32.h"
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
@@ -131,24 +132,23 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   packet_queue_t *queue;
   queue = SAFE_MALLOC(sizeof(packet_queue_t), packet_queue_t *);
 
-  queue->head = NULL;
-  queue->tail = NULL;
-  queue->count = 0;
+  // Initialize atomic fields
+  // For atomic pointer types, use atomic_store with relaxed ordering for initialization
+  atomic_store_explicit(&queue->head, (packet_node_t *)NULL, memory_order_relaxed);
+  atomic_store_explicit(&queue->tail, (packet_node_t *)NULL, memory_order_relaxed);
+  atomic_init(&queue->count, (size_t)0);
   queue->max_size = max_size;
-  queue->bytes_queued = 0;
+  atomic_init(&queue->bytes_queued, (size_t)0);
 
   // Create memory pools if requested
   queue->node_pool = node_pool_size > 0 ? node_pool_create(node_pool_size) : NULL;
   queue->buffer_pool = use_buffer_pool ? data_buffer_pool_create() : NULL;
 
-  mutex_init(&queue->mutex);
-  cond_init(&queue->not_empty);
-  cond_init(&queue->not_full);
-
-  queue->packets_enqueued = 0;
-  queue->packets_dequeued = 0;
-  queue->packets_dropped = 0;
-  queue->shutdown = false;
+  // Initialize atomic statistics
+  atomic_init(&queue->packets_enqueued, (uint64_t)0);
+  atomic_init(&queue->packets_dequeued, (uint64_t)0);
+  atomic_init(&queue->packets_dropped, (uint64_t)0);
+  atomic_init(&queue->shutdown, false);
 
   return queue;
 }
@@ -169,7 +169,7 @@ void packet_queue_destroy(packet_queue_t *queue) {
     data_buffer_pool_get_stats(queue->buffer_pool, &hits, &misses);
     if (hits + misses > 0) {
       log_info("Buffer pool stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
-               (double)hits * 100.0 / (hits + misses), (unsigned long long)misses);
+               (double)hits * 100.0 / (double)(hits + misses), (unsigned long long)misses);
     }
   }
 
@@ -181,9 +181,7 @@ void packet_queue_destroy(packet_queue_t *queue) {
     data_buffer_pool_destroy(queue->buffer_pool);
   }
 
-  mutex_destroy(&queue->mutex);
-  cond_destroy(&queue->not_empty);
-  cond_destroy(&queue->not_full);
+  // No mutex/cond to destroy (lock-free design)
 
   SAFE_FREE(queue);
 }
@@ -193,38 +191,50 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   if (!queue)
     return -1;
 
-  mutex_lock(&queue->mutex);
-
-  // Check if shutdown
-  if (queue->shutdown) {
-    mutex_unlock(&queue->mutex);
+  // Check if shutdown (atomic read with acquire semantics)
+  if (atomic_load_explicit(&queue->shutdown, memory_order_acquire)) {
     return -1;
   }
 
-  // Check if queue is full
-  if (queue->max_size > 0 && queue->count >= queue->max_size) {
-    // Drop oldest packet (head)
-    if (queue->head) {
-      packet_node_t *old_head = queue->head;
-      queue->head = queue->head->next;
-      if (queue->head == NULL) {
-        queue->tail = NULL;
-      }
+  // Check if queue is full and drop oldest packet if needed (lock-free)
+  size_t current_count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  if (queue->max_size > 0 && current_count >= queue->max_size) {
+    // Drop oldest packet (head) using atomic compare-and-swap
+    packet_node_t *head = atomic_load_explicit(&queue->head, memory_order_acquire);
+    if (head) {
+      packet_node_t *next = head->next;
+      // Atomically update head pointer
+      if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
+        // Successfully claimed head node
+        if (next == NULL) {
+          // Queue became empty, also update tail
+          atomic_store_explicit(&queue->tail, (packet_node_t *)NULL, memory_order_release);
+        }
 
-      queue->bytes_queued -= old_head->packet.data_len;
-      if (old_head->packet.owns_data && old_head->packet.data) {
-        data_buffer_pool_free(old_head->packet.buffer_pool, old_head->packet.data, old_head->packet.data_len);
-      }
-      node_pool_put(queue->node_pool, old_head);
-      queue->count--;
-      queue->packets_dropped++;
+        // Update counters atomically
+        size_t bytes = head->packet.data_len;
+        atomic_fetch_sub(&queue->bytes_queued, bytes);
+        atomic_fetch_sub(&queue->count, (size_t)1);
+        atomic_fetch_add(&queue->packets_dropped, (uint64_t)1);
 
-      log_debug_every(1000000, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
+        // Free dropped packet data
+        if (head->packet.owns_data && head->packet.data) {
+          data_buffer_pool_free(head->packet.buffer_pool, head->packet.data, head->packet.data_len);
+        }
+        node_pool_put(queue->node_pool, head);
+
+        log_debug_every(1000000, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
+      }
+      // If CAS failed, another thread already dequeued - continue to enqueue
     }
   }
 
   // Create new node (use pool if available)
   packet_node_t *node = node_pool_get(queue->node_pool);
+  if (!node) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet node");
+    return -1;
+  }
 
   // Build packet header
   node->packet.header.magic = htonl(PACKET_MAGIC);
@@ -263,22 +273,47 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   node->packet.data_len = data_len;
   node->next = NULL;
 
-  // Add to queue
-  if (queue->tail) {
-    queue->tail->next = node;
+  // Add to queue atomically (lock-free enqueue)
+  packet_node_t *tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+  if (tail) {
+    // Queue has existing nodes - append to tail
+    tail->next = node; // Publish node before updating tail
+    atomic_store_explicit(&queue->tail, node, memory_order_release);
   } else {
-    queue->head = node;
+    // Empty queue - atomically set both head and tail
+    packet_node_t *expected = NULL;
+    if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release, memory_order_relaxed)) {
+      // Successfully set head (queue was empty)
+      atomic_store_explicit(&queue->tail, node, memory_order_release);
+    } else {
+      // Another thread added a node - append to new tail
+      packet_node_t *new_tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+      if (new_tail) {
+        new_tail->next = node;
+        atomic_store_explicit(&queue->tail, node, memory_order_release);
+      } else {
+        // Retry: tail was NULL but head was set (race condition)
+        tail = atomic_load_explicit(&queue->head, memory_order_acquire);
+        if (tail) {
+          // Find actual tail
+          while (tail->next != NULL) {
+            tail = tail->next;
+          }
+          tail->next = node;
+          atomic_store_explicit(&queue->tail, node, memory_order_release);
+        } else {
+          // Should not happen, but handle gracefully
+          node_pool_put(queue->node_pool, node);
+          return -1;
+        }
+      }
+    }
   }
-  queue->tail = node;
 
-  queue->count++;
-  queue->bytes_queued += data_len;
-  queue->packets_enqueued++;
-
-  // Signal that queue is not empty
-  cond_signal(&queue->not_empty);
-
-  mutex_unlock(&queue->mutex);
+  // Update counters atomically
+  atomic_fetch_add(&queue->count, (size_t)1);
+  atomic_fetch_add(&queue->bytes_queued, data_len);
+  atomic_fetch_add(&queue->packets_enqueued, (uint64_t)1);
 
   return 0;
 }
@@ -295,36 +330,48 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     return -1;
   }
 
-  mutex_lock(&queue->mutex);
-
-  // Check if shutdown
-  if (queue->shutdown) {
-    mutex_unlock(&queue->mutex);
+  // Check if shutdown (atomic read with acquire semantics)
+  if (atomic_load_explicit(&queue->shutdown, memory_order_acquire)) {
     return -1;
   }
 
-  // Check if queue is full
-  if (queue->max_size > 0 && queue->count >= queue->max_size) {
-    // Drop oldest packet
-    if (queue->head) {
-      packet_node_t *old_head = queue->head;
-      queue->head = queue->head->next;
-      if (queue->head == NULL) {
-        queue->tail = NULL;
-      }
+  // Check if queue is full and drop oldest packet if needed (lock-free)
+  size_t current_count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  if (queue->max_size > 0 && current_count >= queue->max_size) {
+    // Drop oldest packet (head) using atomic compare-and-swap
+    packet_node_t *head = atomic_load_explicit(&queue->head, memory_order_acquire);
+    if (head) {
+      packet_node_t *next = head->next;
+      // Atomically update head pointer
+      if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
+        // Successfully claimed head node
+        if (next == NULL) {
+          // Queue became empty, also update tail
+          atomic_store_explicit(&queue->tail, (packet_node_t *)NULL, memory_order_release);
+        }
 
-      queue->bytes_queued -= old_head->packet.data_len;
-      if (old_head->packet.owns_data && old_head->packet.data) {
-        data_buffer_pool_free(old_head->packet.buffer_pool, old_head->packet.data, old_head->packet.data_len);
+        // Update counters atomically
+        size_t bytes = head->packet.data_len;
+        atomic_fetch_sub(&queue->bytes_queued, bytes);
+        atomic_fetch_sub(&queue->count, (size_t)1);
+        atomic_fetch_add(&queue->packets_dropped, (uint64_t)1);
+
+        // Free dropped packet data
+        if (head->packet.owns_data && head->packet.data) {
+          data_buffer_pool_free(head->packet.buffer_pool, head->packet.data, head->packet.data_len);
+        }
+        node_pool_put(queue->node_pool, head);
       }
-      node_pool_put(queue->node_pool, old_head);
-      queue->count--;
-      queue->packets_dropped++;
+      // If CAS failed, another thread already dequeued - continue to enqueue
     }
   }
 
   // Create new node (use pool if available)
   packet_node_t *node = node_pool_get(queue->node_pool);
+  if (!node) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet node");
+    return -1;
+  }
 
   // Copy the packet header
   SAFE_MEMCPY(&node->packet, sizeof(queued_packet_t), packet, sizeof(queued_packet_t));
@@ -354,136 +401,124 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
 
   node->next = NULL;
 
-  // Add to queue
-  if (queue->tail) {
-    queue->tail->next = node;
+  // Add to queue atomically (lock-free enqueue - same logic as enqueue)
+  packet_node_t *tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+  if (tail) {
+    // Queue has existing nodes - append to tail
+    tail->next = node; // Publish node before updating tail
+    atomic_store_explicit(&queue->tail, node, memory_order_release);
   } else {
-    queue->head = node;
+    // Empty queue - atomically set both head and tail
+    packet_node_t *expected = NULL;
+    if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release, memory_order_relaxed)) {
+      // Successfully set head (queue was empty)
+      atomic_store_explicit(&queue->tail, node, memory_order_release);
+    } else {
+      // Another thread added a node - append to new tail
+      packet_node_t *new_tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+      if (new_tail) {
+        new_tail->next = node;
+        atomic_store_explicit(&queue->tail, node, memory_order_release);
+      } else {
+        // Retry: tail was NULL but head was set (race condition)
+        tail = atomic_load_explicit(&queue->head, memory_order_acquire);
+        if (tail) {
+          // Find actual tail
+          while (tail->next != NULL) {
+            tail = tail->next;
+          }
+          tail->next = node;
+          atomic_store_explicit(&queue->tail, node, memory_order_release);
+        } else {
+          // Should not happen, but handle gracefully
+          node_pool_put(queue->node_pool, node);
+          return -1;
+        }
+      }
+    }
   }
-  queue->tail = node;
 
-  queue->count++;
-  queue->bytes_queued += packet->data_len;
-  queue->packets_enqueued++;
-
-  // Signal that queue is not empty
-  cond_signal(&queue->not_empty);
-
-  mutex_unlock(&queue->mutex);
+  // Update counters atomically
+  atomic_fetch_add(&queue->count, (size_t)1);
+  atomic_fetch_add(&queue->bytes_queued, packet->data_len);
+  atomic_fetch_add(&queue->packets_enqueued, (uint64_t)1);
 
   return 0;
 }
 
 queued_packet_t *packet_queue_dequeue(packet_queue_t *queue) {
-  if (!queue)
-    return NULL;
-
-  mutex_lock(&queue->mutex);
-
-  // Wait while queue is empty and not shutdown
-  while (queue->count == 0 && !queue->shutdown) {
-    cond_wait(&queue->not_empty, &queue->mutex);
-  }
-
-  // Check if shutdown with empty queue
-  if (queue->count == 0 && queue->shutdown) {
-    mutex_unlock(&queue->mutex);
-    return NULL;
-  }
-
-  // Remove from head
-  packet_node_t *node = queue->head;
-  if (node) {
-    queue->head = node->next;
-    if (queue->head == NULL) {
-      queue->tail = NULL;
-    }
-
-    queue->count--;
-    queue->bytes_queued -= node->packet.data_len;
-    queue->packets_dequeued++;
-
-    // Signal that queue is not full
-    cond_signal(&queue->not_full);
-  }
-
-  mutex_unlock(&queue->mutex);
-
-  if (node) {
-    // Extract packet and return node to pool
-    // Note: Validation is handled at network boundary, not in internal queues
-    queued_packet_t *packet;
-    packet = SAFE_MALLOC(sizeof(queued_packet_t), queued_packet_t *);
-    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
-    node_pool_put(queue->node_pool, node);
-    return packet;
-  }
-
-  return NULL;
+  // Non-blocking dequeue (same as try_dequeue for lock-free design)
+  return packet_queue_try_dequeue(queue);
 }
 
 queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
   if (!queue)
     return NULL;
 
-  mutex_lock(&queue->mutex);
-
-  if (queue->count == 0) {
-    mutex_unlock(&queue->mutex);
+  // Check if shutdown (atomic read with acquire semantics)
+  if (atomic_load_explicit(&queue->shutdown, memory_order_acquire)) {
     return NULL;
   }
 
-  // Remove from head
-  packet_node_t *node = queue->head;
-  if (node) {
-    queue->head = node->next;
-    if (queue->head == NULL) {
-      queue->tail = NULL;
-    }
-
-    queue->count--;
-    queue->bytes_queued -= node->packet.data_len;
-    queue->packets_dequeued++;
-
-    // Signal that queue is not full
-    cond_signal(&queue->not_full);
+  // Check if queue is empty (atomic read with acquire semantics)
+  size_t current_count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  if (current_count == 0) {
+    return NULL;
   }
 
-  mutex_unlock(&queue->mutex);
+  // Remove from head atomically (lock-free dequeue)
+  packet_node_t *head = atomic_load_explicit(&queue->head, memory_order_acquire);
+  if (!head) {
+    return NULL;
+  }
 
-  if (node) {
+  // Atomically update head pointer
+  packet_node_t *next = head->next;
+  if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
+    // Successfully claimed head node
+    if (next == NULL) {
+      // Queue became empty, also update tail atomically
+      atomic_store_explicit(&queue->tail, (packet_node_t *)NULL, memory_order_release);
+    }
+
+    // Update counters atomically
+    size_t bytes = head->packet.data_len;
+    atomic_fetch_sub(&queue->bytes_queued, bytes);
+    atomic_fetch_sub(&queue->count, (size_t)1);
+    atomic_fetch_add(&queue->packets_dequeued, (uint64_t)1);
+
     // Verify packet magic number for corruption detection
-    uint32_t magic = ntohl(node->packet.header.magic);
+    uint32_t magic = ntohl(head->packet.header.magic);
     if (magic != PACKET_MAGIC) {
       SET_ERRNO(ERROR_BUFFER, "CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic,
-                PACKET_MAGIC, ntohs(node->packet.header.type));
+                PACKET_MAGIC, ntohs(head->packet.header.type));
       // Still return node to pool but don't return corrupted packet
-      node_pool_put(queue->node_pool, node);
+      node_pool_put(queue->node_pool, head);
       return NULL;
     }
 
     // Validate CRC if there's data
-    if (node->packet.data_len > 0 && node->packet.data) {
-      uint32_t expected_crc = ntohl(node->packet.header.crc32);
-      uint32_t actual_crc = asciichat_crc32(node->packet.data, node->packet.data_len);
+    if (head->packet.data_len > 0 && head->packet.data) {
+      uint32_t expected_crc = ntohl(head->packet.header.crc32);
+      uint32_t actual_crc = asciichat_crc32(head->packet.data, head->packet.data_len);
       if (actual_crc != expected_crc) {
         SET_ERRNO(ERROR_BUFFER,
                   "CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
-                  actual_crc, expected_crc, ntohs(node->packet.header.type), node->packet.data_len);
+                  actual_crc, expected_crc, ntohs(head->packet.header.type), head->packet.data_len);
         // Free data if packet owns it
-        if (node->packet.owns_data && node->packet.data) {
+        if (head->packet.owns_data && head->packet.data) {
           // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
-          if (node->packet.buffer_pool) {
-            data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
+          if (head->packet.buffer_pool) {
+            data_buffer_pool_free(head->packet.buffer_pool, head->packet.data, head->packet.data_len);
           } else {
             // This was allocated from global pool or malloc, use buffer_pool_free which handles both
-            buffer_pool_free(node->packet.data, node->packet.data_len);
+            buffer_pool_free(head->packet.data, head->packet.data_len);
           }
           // CRITICAL: Clear pointer to prevent double-free when packet is copied later
-          node->packet.data = NULL;
-          node->packet.owns_data = false;
+          head->packet.data = NULL;
+          head->packet.owns_data = false;
         }
-        node_pool_put(queue->node_pool, node);
+        node_pool_put(queue->node_pool, head);
         return NULL;
       }
     }
@@ -491,11 +526,12 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     // Extract packet and return node to pool
     queued_packet_t *packet;
     packet = SAFE_MALLOC(sizeof(queued_packet_t), queued_packet_t *);
-    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &node->packet, sizeof(queued_packet_t));
-    node_pool_put(queue->node_pool, node);
+    SAFE_MEMCPY(packet, sizeof(queued_packet_t), &head->packet, sizeof(queued_packet_t));
+    node_pool_put(queue->node_pool, head);
     return packet;
   }
 
+  // CAS failed - another thread dequeued, retry if needed (or return NULL for non-blocking)
   return NULL;
 }
 
@@ -528,11 +564,8 @@ size_t packet_queue_size(packet_queue_t *queue) {
   if (!queue)
     return 0;
 
-  mutex_lock(&queue->mutex);
-  size_t size = queue->count;
-  mutex_unlock(&queue->mutex);
-
-  return size;
+  // Lock-free atomic read
+  return atomic_load_explicit(&queue->count, memory_order_acquire);
 }
 
 bool packet_queue_is_empty(packet_queue_t *queue) {
@@ -543,66 +576,43 @@ bool packet_queue_is_full(packet_queue_t *queue) {
   if (!queue || queue->max_size == 0)
     return false;
 
-  mutex_lock(&queue->mutex);
-  bool full = (queue->count >= queue->max_size);
-  mutex_unlock(&queue->mutex);
-
-  return full;
+  // Lock-free atomic read
+  size_t count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  return (count >= queue->max_size);
 }
 
 void packet_queue_shutdown(packet_queue_t *queue) {
-  if (!queue)
+  if (!queue) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: queue=%p", queue);
     return;
+  }
 
-  mutex_lock(&queue->mutex);
-  queue->shutdown = true;
-  cond_broadcast(&queue->not_empty); // Wake all waiting threads
-  cond_broadcast(&queue->not_full);
-  mutex_unlock(&queue->mutex);
+  // Lock-free atomic store (release semantics ensures visibility to other threads)
+  atomic_store_explicit(&queue->shutdown, true, memory_order_release);
 }
 
 void packet_queue_clear(packet_queue_t *queue) {
   if (!queue)
     return;
 
-  mutex_lock(&queue->mutex);
-
-  while (queue->head) {
-    packet_node_t *node = queue->head;
-    queue->head = node->next;
-
-    if (node->packet.owns_data && node->packet.data) {
-      // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
-      if (node->packet.buffer_pool) {
-        data_buffer_pool_free(node->packet.buffer_pool, node->packet.data, node->packet.data_len);
-      } else {
-        // This was allocated from global pool or malloc, use buffer_pool_free which handles both
-        buffer_pool_free(node->packet.data, node->packet.data_len);
-      }
-    }
-    node_pool_put(queue->node_pool, node);
+  // Lock-free clear: drain queue by repeatedly dequeuing until empty
+  queued_packet_t *packet;
+  while ((packet = packet_queue_try_dequeue(queue)) != NULL) {
+    packet_queue_free_packet(packet);
   }
-
-  queue->head = NULL;
-  queue->tail = NULL;
-  queue->count = 0;
-  queue->bytes_queued = 0;
-
-  mutex_unlock(&queue->mutex);
 }
 
 void packet_queue_get_stats(packet_queue_t *queue, uint64_t *enqueued, uint64_t *dequeued, uint64_t *dropped) {
   if (!queue)
     return;
 
-  mutex_lock(&queue->mutex);
+  // Lock-free atomic reads (acquire semantics for consistency)
   if (enqueued)
-    *enqueued = queue->packets_enqueued;
+    *enqueued = atomic_load_explicit(&queue->packets_enqueued, memory_order_acquire);
   if (dequeued)
-    *dequeued = queue->packets_dequeued;
+    *dequeued = atomic_load_explicit(&queue->packets_dequeued, memory_order_acquire);
   if (dropped)
-    *dropped = queue->packets_dropped;
-  mutex_unlock(&queue->mutex);
+    *dropped = atomic_load_explicit(&queue->packets_dropped, memory_order_acquire);
 }
 
 bool packet_queue_validate_packet(const queued_packet_t *packet) {

@@ -32,6 +32,23 @@
 # =============================================================================
 
 function(configure_llvm_pre_project)
+    # =============================================================================
+    # Default to Clang on all platforms (before macOS-specific Homebrew LLVM)
+    # =============================================================================
+    # Only set compiler if not already set by user or environment
+    if(NOT CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
+        find_program(CLANG_EXECUTABLE clang)
+        if(CLANG_EXECUTABLE)
+            set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler" FORCE)
+            message(STATUS "Set default C compiler to Clang: ${CLANG_EXECUTABLE}")
+        else()
+            message(WARNING "Clang not found in PATH. The project is designed for Clang/GCC.")
+        endif()
+    endif()
+
+    # =============================================================================
+    # macOS-specific Homebrew LLVM configuration
+    # =============================================================================
     if(NOT APPLE)
         return()
     endif()

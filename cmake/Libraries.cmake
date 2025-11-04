@@ -115,6 +115,17 @@ target_link_libraries(ascii-chat-crypto
     ${LIBSODIUM_LIBRARIES}
 )
 
+# Add libsodium include directory (for GCC builds from source)
+if(LIBSODIUM_INCLUDE_DIRS)
+    target_include_directories(ascii-chat-crypto PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+endif()
+
+# Add dependency on libsodium build target if building from source
+if(DEFINED LIBSODIUM_BUILD_TARGET)
+    add_dependencies(ascii-chat-crypto ${LIBSODIUM_BUILD_TARGET})
+endif()
+
+
 # Add BearSSL if available
 if(BEARSSL_FOUND)
     target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
@@ -126,6 +137,14 @@ target_include_directories(ascii-chat-crypto PRIVATE
     ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
     ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
 )
+
+# Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        PROPERTIES COMPILE_OPTIONS "-Wno-unterminated-string-initialization;-Wno-sizeof-array-div"
+    )
+endif()
 
 # -----------------------------------------------------------------------------
 # Module 4: SIMD (depends on: util, core, video)

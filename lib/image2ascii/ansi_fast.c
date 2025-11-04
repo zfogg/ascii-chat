@@ -141,7 +141,7 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
       break;
     }
 
-    ctx->length = pos - ctx->buffer;
+    ctx->length = (size_t)(pos - ctx->buffer);
     ctx->last_r = r;
     ctx->last_g = g;
     ctx->last_b = b;
@@ -189,7 +189,7 @@ void ansi_fast_init_256color(void) {
 // Fast 256-color foreground
 char *append_256color_fg(char *dst, uint8_t color_index) {
   const char *color_str = color256_strings[color_index];
-  int len = strlen(color_str);
+  size_t len = strlen(color_str);
   SAFE_MEMCPY(dst, len, color_str, len);
   return dst + len;
 }
@@ -205,7 +205,7 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
   if (gray_diff < 30) {
     // Use grayscale ramp (colors 232-255)
     int gray_level = (avg * 23) / 255;
-    return 232 + gray_level;
+    return (uint8_t)(232 + gray_level);
   }
 
   // Use 6x6x6 color cube (colors 16-231)
@@ -213,7 +213,7 @@ uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
   int g6 = (g * 5) / 255;
   int b6 = (b * 5) / 255;
 
-  return 16 + (r6 * 36) + (g6 * 6) + b6;
+  return (uint8_t)(16 + (r6 * 36) + (g6 * 6) + b6);
 }
 
 // 16-color mode support
@@ -297,7 +297,7 @@ uint8_t rgb_to_16color(uint8_t r, uint8_t g, uint8_t b) {
       {255, 255, 255}  // 15: White
   };
 
-  int best_match = 0;
+  uint8_t best_match = 0;
   int min_distance = INT_MAX;
 
   for (int i = 0; i < 16; i++) {

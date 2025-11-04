@@ -110,7 +110,7 @@ if ($needsConfigure) {
           $cmakeArgs += "-DCMAKE_C_COMPILER=clang"
           $cmakeArgs += "-DCMAKE_CXX_COMPILER=clang++"
           # Force C23 standard
-          $cmakeArgs += "-DCMAKE_C_STANDARD=17"
+          $cmakeArgs += "-DCMAKE_C_STANDARD=23"
           $cmakeArgs += "-DCMAKE_C_STANDARD_REQUIRED=ON"
           # Prevent CMakeLists.txt from overriding the generator to Ninja
           $cmakeArgs += "-DCMAKE_GENERATOR=Visual Studio 17 2022"

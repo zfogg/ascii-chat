@@ -56,7 +56,7 @@ static const char *normalize_path(const char *path) {
       pos++;
     }
 
-    size_t component_len = pos - component_start;
+    size_t component_len = (size_t)(pos - component_start);
     if (component_len == 0)
       continue;
 

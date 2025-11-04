@@ -551,26 +551,38 @@ void platform_backtrace_symbols_free(char **strings) {
 // ============================================================================
 
 /**
- * @brief Print backtrace to stderr
+ * @brief Print backtrace using log_plain
  */
 void platform_print_backtrace(int skip_frames) {
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    (void)fprintf(stderr, "\n=== BACKTRACE ===\n");
+    char backtrace_buffer[16384]; // 16KB buffer for backtrace
+    int offset = 0;
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     int start_frame = 1 + skip_frames;
-    const char **colors = log_get_color_array();
-    for (int i = start_frame; i < size; i++) {
-      (void)fprintf(stderr, "[%s%2d%s] %s\n", colors[LOGGING_COLOR_INFO], i - start_frame, colors[LOGGING_COLOR_RESET],
-                    symbols ? symbols[i] : "???");
+
+    // Build header
+    offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset,
+                                "=== BACKTRACE ===\n");
+
+    // Build backtrace frames
+    for (int i = start_frame; i < size && offset < (int)sizeof(backtrace_buffer) - 256; i++) {
+      offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset,
+                                  "  #%2d: %s\n", i - start_frame, symbols ? symbols[i] : "???");
     }
 
+    // Build footer
+    offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset,
+                                "=================");
+
+    // Single log_plain call with complete backtrace
+    log_plain("%s", backtrace_buffer);
+
     platform_backtrace_symbols_free(symbols);
-    (void)fprintf(stderr, "================\n\n");
   }
 }
 
@@ -596,19 +608,28 @@ static const char *get_signal_name(int sig) {
 
 static void crash_handler(int sig, siginfo_t *info, void *context) {
   (void)context; // Suppress unused parameter warning
-  (void)fprintf(stderr, "\n*** CRASH DETECTED ***\n");
-  (void)fprintf(stderr, "Signal: %d (%s)\n", sig, get_signal_name(sig));
 
+  const char *signal_name = get_signal_name(sig);
   if (info) {
-    (void)fprintf(stderr, "Signal Info: si_code=%d, si_addr=%p\n", info->si_code, info->si_addr);
-  }
-
 #ifndef NDEBUG
-  // Only capture backtraces in Debug builds
-  platform_print_backtrace(0);
+    // Only capture backtraces in Debug builds
+    log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nSignal Info: si_code=%d, si_addr=%p", sig, signal_name,
+              info->si_code, info->si_addr);
+    platform_print_backtrace(0);
 #else
-  (void)fprintf(stderr, "Backtrace disabled in Release builds\n");
+    log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nSignal Info: si_code=%d, si_addr=%p\nBacktrace disabled in "
+              "Release builds",
+              sig, signal_name, info->si_code, info->si_addr);
 #endif
+  } else {
+#ifndef NDEBUG
+    // Only capture backtraces in Debug builds
+    log_error("*** CRASH DETECTED ***\nSignal: %d (%s)", sig, signal_name);
+    platform_print_backtrace(0);
+#else
+    log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nBacktrace disabled in Release builds", sig, signal_name);
+#endif
+  }
 
   // Restore default handler and re-raise signal
   struct sigaction sa;

@@ -31,6 +31,8 @@ set(UTIL_SRCS
     lib/util/math.c
     lib/util/ip.c
     lib/util/aspect_ratio.c
+    lib/util/time.c
+    lib/util/time_format.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -60,6 +62,16 @@ set(CRYPTO_SRCS
     deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
 )
 
+# Suppress specific Clang warnings for libsodium-bcrypt-pbkdf (third-party code)
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set_source_files_properties(
+        deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+        deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+        PROPERTIES
+        COMPILE_FLAGS "-Wno-unterminated-string-initialization -Wno-sizeof-array-div"
+    )
+endif()
+
 # =============================================================================
 # Module 3: Platform Abstraction (stable - changes monthly)
 # =============================================================================
@@ -83,6 +95,7 @@ if(WIN32)
         lib/platform/windows/symbols.c
         lib/os/windows/webcam_mediafoundation.c
         lib/platform/windows/getopt.c
+        lib/platform/windows/pipe.c
     )
 else()
     # POSIX platforms (Linux/macOS)
@@ -98,6 +111,7 @@ else()
         lib/platform/posix/string.c
         lib/platform/posix/password.c
         lib/platform/posix/symbols.c
+        lib/platform/posix/pipe.c
     )
 
     if(PLATFORM_DARWIN)

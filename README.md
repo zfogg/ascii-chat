@@ -35,7 +35,7 @@ ascii-chat relies on several key libraries for its functionality. Each dependenc
 - **Purpose**: Modern implementation of TOML for config file interations.
 - **License**: MIT
 
-#### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
+#### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Header-only Library
 - **Purpose**: Fast O(1) lookups and persistent memory for the server's client manager, and various other things like caches
 - **License**: BSD revised
 
@@ -54,6 +54,10 @@ ascii-chat relies on several key libraries for its functionality. Each dependenc
 #### [zstd](https://facebook.github.io/zstd/) - Compression Library
 - **Purpose**: To make the protocol more efficient
 - **License**: BSD/GPLv2
+
+#### [Sokol](https://github.com/floooh/sokol) - Utility Library
+- **Purpose**: Header-only C library providing simple cross-platform APIs (graphics, audio, input)
+- **License**: zlib/libpng
 
 ### Operating System APIs
 ascii-chat uses native platform APIs for each platform for webcam access:

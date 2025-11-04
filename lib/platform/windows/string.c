@@ -17,6 +17,7 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include <corecrt.h>
 #include <stdarg.h>
+#include <stdio.h> // For vsscanf
 #include <string.h>
 #include <stdlib.h> // For malloc
 
@@ -106,27 +107,31 @@ char *platform_strcat(char *dest, size_t dest_size, const char *src) {
  * @param dest Destination buffer
  * @param dest_size Size of destination buffer
  * @param src Source string
- * @return 0 on success, non-zero on error
+ * @return ASCIICHAT_OK on success, error code on failure
  */
-int platform_strcpy(char *dest, size_t dest_size, const char *src) {
+asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src) {
   if (!dest || !src) {
     SET_ERRNO(ERROR_INVALID_PARAM, "platform_strcpy: invalid parameters");
-    return -1;
+    return ERROR_INVALID_PARAM;
   }
   if (dest_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "platform_strcpy: dest_size is zero");
-    return -1;
+    return ERROR_INVALID_PARAM;
   }
 
   size_t src_len = strlen(src);
   if (src_len >= dest_size) {
     SET_ERRNO(ERROR_STRING, "platform_strcpy: source string too long for destination buffer");
-    return -1; // Not enough space including null terminator
+    return ERROR_STRING; // Not enough space including null terminator
   }
 
-  // Windows always has strcpy_s via Secure CRT
+  // Windows always has strcpy_s via Secure CRT (works with both MSVC and GCC/Clang)
   errno_t err = strcpy_s(dest, dest_size, src);
-  return err; // Returns 0 on success, non-zero on error
+  if (err != 0) {
+    SET_ERRNO_SYS(ERROR_STRING, "strcpy_s failed");
+    return ERROR_STRING;
+  }
+  return ASCIICHAT_OK;
 }
 
 // ============================================================================
@@ -243,7 +248,7 @@ size_t platform_strlcpy(char *dst, const char *src, size_t size) {
   errno_t err = strncpy_s(dst, size, src, _TRUNCATE);
   if (err != 0) {
     SET_ERRNO_SYS(ERROR_STRING, "strncpy_s failed");
-    return -1;
+    return (size_t)-1;
   }
   return strlen(src);
 }
@@ -263,7 +268,7 @@ size_t platform_strlcat(char *dst, const char *src, size_t size) {
   errno_t err = strncat_s(dst, size, src, _TRUNCATE);
   if (err != 0) {
     SET_ERRNO_SYS(ERROR_STRING, "strncat_s failed");
-    return -1;
+    return (size_t)-1;
   }
   return dst_len + strlen(src);
 }
@@ -305,9 +310,20 @@ int safe_sscanf(const char *str, const char *format, ...) {
   va_start(args, format);
 
   // Use Windows sscanf_s for enhanced security
+  // Note: GCC/Clang on Windows support sscanf_s via mingw-w64's secure CRT implementation
+  // vsscanf_s is not available in GCC, so we use sscanf_s with va_list manually
+  // For GCC/Clang compatibility, we need to use a different approach
+#ifdef __GNUC__
+  // GCC/Clang: Use vsnprintf to format then sscanf, or use sscanf_s directly
+  // For now, we'll use the standard sscanf which is safe with proper format strings
+  // Note: This is less secure than sscanf_s but works with GCC
+  int result = vsscanf(str, format, args);
+#else
+  // MSVC/Clang on Windows: Use vsscanf_s
   int result = vsscanf_s(str, format, args);
-  if (result == EOF) {
-    SET_ERRNO_SYS(ERROR_FORMAT, "sscanf_s failed");
+#endif
+  if (result == EOF || result < 0) {
+    SET_ERRNO_SYS(ERROR_FORMAT, "sscanf failed");
     va_end(args);
     return -1;
   }

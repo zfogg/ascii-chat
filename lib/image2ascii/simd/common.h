@@ -294,7 +294,7 @@ static inline size_t write_decimal(int value, char *dst) {
     dst[i] = temp[pos - 1 - i];
   }
 
-  return pos;
+  return (size_t)pos;
 }
 
 // Fast decimal for REP counts - now in output_buffer.h

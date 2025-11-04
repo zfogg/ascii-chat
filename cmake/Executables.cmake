@@ -34,16 +34,6 @@ add_executable(ascii-chat
     src/client/keepalive.c
 )
 
-# Enable dead code elimination for optimal binary size
-target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
-if(NOT WIN32)
-    if(APPLE)
-        target_link_options(ascii-chat PRIVATE -Wl,-dead_strip)
-    else()
-        target_link_options(ascii-chat PRIVATE -Wl,--gc-sections)
-    endif()
-endif()
-
 target_link_libraries(ascii-chat
     ascii-chat-core
     ascii-chat-network
@@ -56,26 +46,27 @@ target_link_libraries(ascii-chat
     ascii-chat-util
 )
 
+# Print success message after ascii-chat is built (or verified up to date)
+# Use a phony target that always runs to show the message even when nothing needs rebuilding
+# This is so Claude Code doesn't get confused when ninja has nothing to do and just exits 0 without printing any message
+add_custom_target(show-build-success ALL
+    COMMAND ${CMAKE_COMMAND} -E echo "ascii-chat binary compiled and linked successfully with all files and dependencies"
+    DEPENDS ascii-chat
+    COMMENT "Build completed"
+)
+
+# macOS Info.plist embedding (for client mode webcam access)
+if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
+    set_target_properties(ascii-chat PROPERTIES
+        LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_SOURCE_DIR}/Info.plist"
+    )
+endif()
+
 # Link mimalloc to the executable (needed for Release builds)
 if(USE_MIMALLOC)
     target_link_libraries(ascii-chat mimalloc-static)
     # Add mimalloc include directory for executable sources (they include common.h which includes mimalloc.h)
     target_include_directories(ascii-chat PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
-endif()
-
-# Preserve custom .ascii_chat_version section during linking
-if(NOT WIN32)
-    # Unix/macOS: Use linker flags to keep custom section
-    target_link_options(ascii-chat PRIVATE
-        "LINKER:--undefined=ascii_chat_version_string"
-        "LINKER:--undefined=ascii_chat_comment_string"
-    )
-endif()
-
-# Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
-# Only on Unix/Linux/macOS - Windows doesn't support -no-pie flag
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
-    target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
 endif()
 
 # Add musl dependency if building with musl
@@ -98,10 +89,24 @@ if(USE_MUSL)
     )
 endif()
 
-# macOS Info.plist embedding (for client mode webcam access)
-if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
-    set_target_properties(ascii-chat PROPERTIES
-        LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_SOURCE_DIR}/Info.plist"
-    )
+# Preserve custom .ascii_chat_version section during linking
+if(NOT WIN32)
+    # Unix/macOS: Use linker flags to keep custom section
+    target_link_options(ascii-chat PRIVATE -Wl,--keep-section=.ascii_chat_version)
 endif()
 
+# Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
+# Only on Unix/Linux/macOS - Windows doesn't support -no-pie flag
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
+    target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
+endif()
+
+# Enable dead code elimination for optimal binary size
+target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+if(NOT WIN32)
+    if(APPLE)
+        target_link_options(ascii-chat PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(ascii-chat PRIVATE -Wl,--gc-sections)
+    endif()
+endif()
