@@ -4,10 +4,10 @@
  * @brief Human-readable time duration formatting implementation
  */
 
-#include "time_format.h"
-#include "../common.h"
 #include <stdio.h>
 #include <math.h>
+#include "time_format.h"
+#include "../common.h"
 
 // ============================================================================
 // Time Formatting Implementation

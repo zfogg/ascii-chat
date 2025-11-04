@@ -44,15 +44,16 @@
  * ==============
  *
  * SYNCHRONIZATION PRIMITIVES:
- * - Mutex protects queue structure (head, tail, count, etc.)
- * - Condition variable for blocking dequeues (not_empty)
- * - Condition variable for blocking enqueues when full (not_full)
- * - Shutdown flag for graceful termination
+ * - Atomic operations for lock-free queue state (head, tail, count, etc.)
+ * - Atomic statistics fields for performance monitoring
+ * - Atomic shutdown flag for graceful termination
+ * - No mutexes or condition variables (lock-free design)
  *
- * LOCKING PATTERN:
- * - All queue operations acquire mutex before modifying queue state
- * - Condition variables are used with mutex for efficient blocking
- * - No lock-free operations (prioritizes correctness over extreme performance)
+ * LOCK-FREE PATTERN:
+ * - All queue operations use atomic operations for thread-safe access
+ * - Memory ordering (acquire/release) ensures proper synchronization
+ * - Non-blocking dequeue operations (caller should retry if needed)
+ * - Lock-free operations eliminate lock contention bottlenecks
  *
  * INTEGRATION WITH OTHER MODULES:
  * ===============================
@@ -93,6 +94,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdatomic.h>
 #include "buffer_pool.h"
 #include "network/packet_types.h"
 
@@ -179,19 +181,19 @@ typedef struct node_pool {
  * for transmission.
  *
  * QUEUE OPERATIONS:
- * - Enqueue: Add packet to tail of queue (blocks if full when max_size > 0)
- * - Dequeue: Remove packet from head of queue (blocks if empty)
- * - Try-dequeue: Non-blocking dequeue (returns NULL if empty)
+ * - Enqueue: Add packet to tail of queue (non-blocking, drops oldest if full)
+ * - Dequeue: Remove packet from head of queue (non-blocking, returns NULL if empty)
+ * - Try-dequeue: Non-blocking dequeue (returns NULL if empty) - same as dequeue
  *
  * MEMORY POOLS:
  * - node_pool: Optional pool for queue nodes (reduces malloc overhead)
  * - buffer_pool: Optional pool for packet data (enables zero-allocation)
  *
  * SYNCHRONIZATION:
- * - mutex: Protects all queue state (head, tail, count, etc.)
- * - not_empty: Condition variable signaled when queue becomes non-empty
- * - not_full: Condition variable signaled when queue becomes not full
- * - shutdown: Flag to signal graceful shutdown (causes dequeue to return NULL)
+ * - Atomic head/tail pointers: Lock-free queue state management
+ * - Atomic count: Fast size checks without locking
+ * - Atomic statistics: Lock-free performance monitoring
+ * - Atomic shutdown flag: Graceful shutdown without blocking
  *
  * @note When max_size is 0, queue is unlimited (may grow without bound).
  *       When max_size > 0, full queues drop oldest packets automatically.
@@ -204,38 +206,31 @@ typedef struct node_pool {
  * @ingroup packet_queue
  */
 typedef struct {
-  /** @brief Front of queue (dequeue from here) */
-  packet_node_t *head;
-  /** @brief Back of queue (enqueue here) */
-  packet_node_t *tail;
-  /** @brief Number of packets currently in queue */
-  size_t count;
+  /** @brief Front of queue (dequeue from here) - atomic for lock-free access */
+  _Atomic(packet_node_t *) head;
+  /** @brief Back of queue (enqueue here) - atomic for lock-free access */
+  _Atomic(packet_node_t *) tail;
+  /** @brief Number of packets currently in queue - atomic for lock-free access */
+  _Atomic size_t count;
   /** @brief Maximum queue size (0 = unlimited) */
   size_t max_size;
-  /** @brief Total bytes of data queued (for monitoring) */
-  size_t bytes_queued;
+  /** @brief Total bytes of data queued (for monitoring) - atomic for lock-free access */
+  _Atomic size_t bytes_queued;
 
   /** @brief Optional memory pool for nodes (NULL = use malloc/free) */
   node_pool_t *node_pool;
   /** @brief Optional memory pool for data buffers (NULL = use malloc/free) */
   data_buffer_pool_t *buffer_pool;
 
-  /** @brief Mutex protecting queue state */
-  mutex_t mutex;
-  /** @brief Condition variable signaled when queue becomes non-empty */
-  cond_t not_empty;
-  /** @brief Condition variable signaled when queue becomes not full */
-  cond_t not_full;
+  /** @brief Total packets enqueued (statistics) - atomic for lock-free access */
+  _Atomic uint64_t packets_enqueued;
+  /** @brief Total packets dequeued (statistics) - atomic for lock-free access */
+  _Atomic uint64_t packets_dequeued;
+  /** @brief Total packets dropped due to queue full (statistics) - atomic for lock-free access */
+  _Atomic uint64_t packets_dropped;
 
-  /** @brief Total packets enqueued (statistics) */
-  uint64_t packets_enqueued;
-  /** @brief Total packets dequeued (statistics) */
-  uint64_t packets_dequeued;
-  /** @brief Total packets dropped due to queue full (statistics) */
-  uint64_t packets_dropped;
-
-  /** @brief Shutdown flag (true = dequeue returns NULL) */
-  bool shutdown;
+  /** @brief Shutdown flag (true = dequeue returns NULL) - atomic for lock-free access */
+  _Atomic bool shutdown;
 } packet_queue_t;
 
 /**
@@ -396,7 +391,7 @@ void packet_queue_destroy(packet_queue_t *queue);
  * @note If queue is full (max_size > 0 and count >= max_size), oldest packet
  *       is automatically dropped to make room (packet count does not exceed max_size).
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @warning When copy_data is false, caller must ensure data pointer remains
  *          valid until packet is freed.
@@ -419,7 +414,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
  * @note Packet is copied into the queue, but data ownership semantics
  *       follow the packet's owns_data flag.
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @ingroup packet_queue
  */
@@ -430,15 +425,16 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
  * @param queue Packet queue
  * @return Pointer to dequeued packet, or NULL if queue is shutdown
  *
- * Removes and returns the packet at the head of the queue. Blocks if queue
- * is empty until a packet is available or queue is shut down.
+ * Removes and returns the packet at the head of the queue. Returns NULL immediately
+ * if queue is empty or shutdown (non-blocking operation).
  *
  * @note Caller must free the returned packet with packet_queue_free_packet()
  *       to properly release memory (either to pool or free()).
  *
- * @note Returns NULL when queue is shutdown (allows consumer threads to exit).
+ * @note Returns NULL when queue is empty or shutdown (allows consumer threads to exit).
+ *       Caller should retry periodically if queue is expected to have data.
  *
- * @note Thread-safe (protected by queue mutex, uses condition variable for blocking).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @warning Always free dequeued packets with packet_queue_free_packet().
  *
@@ -456,7 +452,7 @@ queued_packet_t *packet_queue_dequeue(packet_queue_t *queue);
  *
  * @note Caller must free the returned packet with packet_queue_free_packet().
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @ingroup packet_queue
  */
@@ -493,7 +489,7 @@ void packet_queue_free_packet(queued_packet_t *packet);
  * Returns the current queue size (count field). This is a snapshot and may
  * change immediately after return due to concurrent enqueue/dequeue operations.
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @ingroup packet_queue
  */
@@ -507,7 +503,7 @@ size_t packet_queue_size(packet_queue_t *queue);
  * Returns true if queue contains no packets. Snapshot value may change
  * immediately after return due to concurrent operations.
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @ingroup packet_queue
  */
@@ -521,7 +517,7 @@ bool packet_queue_is_empty(packet_queue_t *queue);
  * Returns true if queue has reached its maximum size. Unlimited queues
  * (max_size == 0) never return true from this function.
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @ingroup packet_queue
  */
@@ -557,7 +553,7 @@ void packet_queue_shutdown(packet_queue_t *queue);
  * Removes and frees all packets currently in the queue. Useful for cleanup
  * before queue destruction or when resetting queue state.
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @note This function frees all queued packets, so ensure nothing is
  *       still referencing them.
@@ -584,7 +580,7 @@ void packet_queue_clear(packet_queue_t *queue);
  * Retrieves cumulative statistics for the queue. Useful for performance
  * monitoring and debugging.
  *
- * @note Thread-safe (protected by queue mutex).
+ * @note Thread-safe (lock-free using atomic operations).
  *
  * @note All output parameters must be non-NULL.
  *

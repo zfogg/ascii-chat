@@ -66,11 +66,15 @@ endif()
 # Preserve custom .ascii_chat_version section during linking
 if(NOT WIN32)
     # Unix/macOS: Use linker flags to keep custom section
-    target_link_options(ascii-chat PRIVATE
-        "LINKER:--undefined=ascii_chat_version_string"
-        "LINKER:--undefined=ascii_chat_comment_string"
-    )
+    target_link_options(ascii-chat PRIVATE -Wl,--keep-section=.ascii_chat_version)
 endif()
+
+# Print success message only after ascii-chat gets linked
+add_custom_command(TARGET ascii-chat POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "SUCCESS"
+    COMMENT "Build completed"
+    VERBATIM
+)
 
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
 # Only on Unix/Linux/macOS - Windows doesn't support -no-pie flag
