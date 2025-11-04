@@ -51,6 +51,8 @@ function(configure_base_compiler_flags)
             -Wno-comma                                       # Too noisy with comma operator in macros/third-party
             -Wno-format-nonliteral                           # False positives in variadic format functions
             -Wno-incompatible-pointer-types-discards-qualifiers  # Pragmatic const handling
+            -Wno-unterminated-string-initialization          # False positives in string handling
+            -Wno-sizeof-array-div                            # False positives with intentional array arithmetic
         )
     endif()
 

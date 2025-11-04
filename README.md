@@ -55,6 +55,10 @@ ascii-chat relies on several key libraries for its functionality. Each dependenc
 - **Purpose**: To make the protocol more efficient
 - **License**: BSD/GPLv2
 
+#### [Sokol](https://github.com/floooh/sokol) - Utility Library
+- **Purpose**: Header-only C library providing simple cross-platform APIs (graphics, audio, input)
+- **License**: zlib/libpng
+
 ### Operating System APIs
 ascii-chat uses native platform APIs for each platform for webcam access:
 - **Linux**: V4L2 (Video4Linux2 kernel module)

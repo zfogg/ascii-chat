@@ -1497,6 +1497,10 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
     // Verify password HMAC (binds to DH shared_secret to prevent MITM)
     log_debug("Verifying password HMAC: has_password=%d, key_exchange_complete=%d", ctx->crypto_ctx.has_password,
               ctx->crypto_ctx.key_exchange_complete);
+    if (!payload) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Payload is NULL in password authentication");
+      return ERROR_CRYPTO;
+    }
     if (!crypto_verify_auth_response(&ctx->crypto_ctx, ctx->crypto_ctx.auth_nonce, payload)) {
       log_debug("Password HMAC verification failed");
       // Enhanced error message when both password and whitelist are required
@@ -1529,6 +1533,10 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
     // Note: Ed25519 verification happens during key exchange, not here. Just extract the client nonce from the payload
     size_t expected_signature_size = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
     size_t expected_password_size = ctx->crypto_ctx.hmac_size + ctx->crypto_ctx.auth_challenge_size;
+    if (!payload) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Payload is NULL in signature authentication");
+      return ERROR_CRYPTO;
+    }
     if (payload_len == expected_signature_size) {
       // Signature + client nonce
       memcpy(ctx->client_challenge_nonce, payload + ctx->crypto_ctx.signature_size,

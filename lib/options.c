@@ -763,12 +763,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         value_str = parsed_addr;
       }
 
-      // Check if it's a valid IPv4 address
-      if (is_valid_ipv4(value_str)) {
-        SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
-      }
-      // Check if it's a valid IPv6 address
-      else if (is_valid_ipv6(value_str)) {
+      // Check if it's a valid IPv4 or IPv6 address
+      if (is_valid_ipv4(value_str) || is_valid_ipv6(value_str)) {
         SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       }
       // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
@@ -1083,23 +1079,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       // --key is for file-based authentication only (SSH keys, GPG keys, GitHub/GitLab)
       // For password-based encryption, use --password instead
 
-      // Check if it's a GPG key (gpg:keyid format)
-      if (strncmp(value_str, "gpg:", 4) == 0) {
-        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-        opt_encrypt_enabled = 1;
-      }
-      // Check if it's a GitHub key (github:username format)
-      else if (strncmp(value_str, "github:", 7) == 0) {
-        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-        opt_encrypt_enabled = 1;
-      }
-      // Check if it's a GitLab key (gitlab:username format)
-      else if (strncmp(value_str, "gitlab:", 7) == 0) {
-        SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
-        opt_encrypt_enabled = 1;
-      }
       // Check if it's "ssh" or "ssh:" to auto-detect SSH key
-      else if (strcmp(value_str, "ssh") == 0 || strcmp(value_str, "ssh:") == 0) {
+      if (strcmp(value_str, "ssh") == 0 || strcmp(value_str, "ssh:") == 0) {
         char default_key[OPTIONS_BUFF_SIZE];
         if (detect_default_ssh_key(default_key, sizeof(default_key)) == ASCIICHAT_OK) {
           SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", default_key);
@@ -1111,9 +1092,9 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           return ERROR_USAGE;
         }
       }
-      // Otherwise, treat as a file path - will be validated later for existence/permissions
+      // Otherwise, treat as GPG key (gpg:keyid), GitHub key (github:username),
+      // GitLab key (gitlab:username), or file path - will be validated later
       else {
-        // Treat as SSH key file path - will be validated later for existence/permissions
         SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", value_str);
         opt_encrypt_enabled = 1;
       }

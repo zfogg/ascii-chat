@@ -9,6 +9,7 @@
 #define COBJMACROS
 #include "os/webcam.h"
 #include "common.h"
+#include "util/time_format.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>
@@ -83,7 +84,7 @@ cleanup:
         IMFActivate_Release(devices[i]);
       }
     }
-    CoTaskMemFree(devices);
+    CoTaskMemFree((void *)devices);
   }
   if (attr) {
     IMFAttributes_Release(attr);
@@ -319,7 +320,7 @@ error:
         IMFActivate_Release(devices[i]);
       }
     }
-    CoTaskMemFree(devices);
+    CoTaskMemFree((void *)devices);
   }
   if (attr) {
     IMFAttributes_Release(attr);
@@ -388,7 +389,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   QueryPerformanceCounter(&end);
   double elapsed_ms = ((double)(end.QuadPart - start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
-  log_info("ReadSample took %.2f ms (hr=0x%08x, flags=0x%08x, sample=%p)", elapsed_ms, hr, flags, sample);
+
+  char duration_str[32];
+  format_duration_ms(elapsed_ms, duration_str, sizeof(duration_str));
+  log_info("ReadSample took %s (hr=0x%08x, flags=0x%08x, sample=%p)", duration_str, hr, flags, sample);
 
   // Check for stream tick or other non-data flags
   if (SUCCEEDED(hr) && (flags & MF_SOURCE_READERF_STREAMTICK)) {
@@ -520,7 +524,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   QueryPerformanceCounter(&copy_end);
   double copy_ms = ((double)(copy_end.QuadPart - copy_start.QuadPart)) * 1000.0 / (double)freq.QuadPart;
-  log_info("Pixel copy took %.2f ms (%u pixels)", copy_ms, pixel_count);
+
+  char copy_duration_str[32];
+  format_duration_ms(copy_ms, copy_duration_str, sizeof(copy_duration_str));
+  log_info("Pixel copy took %s (%u pixels)", copy_duration_str, pixel_count);
 
   // Unlock and cleanup
   IMFMediaBuffer_Unlock(buffer);

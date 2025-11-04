@@ -963,59 +963,110 @@
  * 1. **User enters password** - Decrypts SSH key successfully
  * 2. **Key parsed** - Validates Ed25519 format
  * 3. **Check ssh-agent** - Verifies `$SSH_AUTH_SOCK` is set
- * 4. **Auto-add to agent** - Shells out to `ssh-add` with password via `SSH_ASKPASS`
+ * 4. **Auto-add to agent** - Uses the agent's pipe to add the key to the agent (Windows named pipe or Unix domain socket)
  * 5. **Future runs** - No password prompt (uses agent)
  *
  * **Implementation details:**
  *
- * The auto-add feature uses a temporary `SSH_ASKPASS` script to provide the password
- * non-interactively:
+ * The auto-add feature uses the SSH agent protocol directly via the `pipe.h` platform abstraction:
  *
  * @code{.c}
- * // lib/crypto/keys.c:1047-1090
- * if (ssh_agent_is_available()) {
- *   // 1. Create temporary askpass script with user's password
- *   char askpass_script[512];
- *   safe_snprintf(askpass_script, sizeof(askpass_script), "/tmp/ascii-chat-askpass-%d.sh", getpid());
+ * // lib/crypto/keys/ssh_keys.c:765-774
+ * // After successfully decrypting the key from file:
  *
- *   FILE *askpass_fp = fopen(askpass_script, "w");
- *   fprintf(askpass_fp, "#!/bin/sh\necho '%s'\n", passphrase);
- *   fclose(askpass_fp);
- *   chmod(askpass_script, 0700);
- *
- *   // 2. Shell out to ssh-add with SSH_ASKPASS
- *   safe_snprintf(ssh_add_cmd, sizeof(ssh_add_cmd),
- *            "SSH_ASKPASS='%s' SSH_ASKPASS_REQUIRE=force ssh-add '%s' 2>&1",
- *            askpass_script, path);
- *
- *   FILE *ssh_add_fp = popen(ssh_add_cmd, "r");
- *   // ... check for "Identity added" message ...
- *
- *   // 3. Securely delete temporary script
- *   unlink(askpass_script);
+ * // 1. Check if ssh-agent is available
+ * if (!ssh_agent_is_available()) {
+ *   log_debug("ssh-agent not available, skipping auto-add");
+ *   return ASCIICHAT_OK; // Non-fatal: key is already decrypted
  * }
+ *
+ * // 2. Check if key is already in agent (to avoid duplicate adds)
+ * public_key_t pub_key = {0};
+ * pub_key.type = KEY_TYPE_ED25519;
+ * memcpy(pub_key.key, decrypted_key + 32, 32); // Extract public key
+ *
+ * if (ssh_agent_has_key(&pub_key)) {
+ *   log_info("Key already in ssh-agent - skipping auto-add");
+ *   return ASCIICHAT_OK;
+ * }
+ *
+ * // 3. Add decrypted key to agent using SSH agent protocol
+ * log_info("Attempting to add decrypted key to ssh-agent");
+ * asciichat_error_t agent_result = ssh_agent_add_key(key_out, key_path);
+ * if (agent_result == ASCIICHAT_OK) {
+ *   log_info("Successfully added key to ssh-agent - password will not be required on next run");
+ * } else {
+ *   // Non-fatal: key is already decrypted and loaded
+ *   log_warn("Failed to add key to ssh-agent (non-fatal): %s", asciichat_error_string(agent_result));
+ * }
+ * @endcode
+ *
+ * **Platform abstraction:**
+ *
+ * The implementation uses `lib/platform/pipe.h` for cross-platform agent communication:
+ *
+ * - **POSIX (Linux/macOS):** Uses Unix domain sockets via `SSH_AUTH_SOCK` environment variable
+ *   - Path format: `/tmp/ssh-XXXXXX/agent.XXXXXX` (Unix socket)
+ *   - Implementation: `socket(AF_UNIX, SOCK_STREAM)` + `connect()`
+ *
+ * - **Windows:** Uses named pipes via `SSH_AUTH_SOCK` environment variable or default path
+ *   - Path format: `\\.\pipe\openssh-ssh-agent` (named pipe)
+ *   - Implementation: `CreateFileA()` with `GENERIC_READ | GENERIC_WRITE`
+ *
+ * **Agent communication flow:**
+ *
+ * @code{.c}
+ * // lib/crypto/ssh_agent.c: ssh_agent_open_pipe()
+ * // 1. Get agent path from environment or use default
+ * const char *auth_sock = SAFE_GETENV("SSH_AUTH_SOCK");
+ *
+ * #ifdef _WIN32
+ *   // Windows: Use named pipe path (default or from SSH_AUTH_SOCK)
+ *   const char *pipe_path = (auth_sock && strlen(auth_sock) > 0)
+ *                            ? auth_sock
+ *                            : "\\\\.\\pipe\\openssh-ssh-agent";
+ *   return pipe_connect(pipe_path); // CreateFileA() to named pipe
+ * #else
+ *   // POSIX: Use Unix domain socket from SSH_AUTH_SOCK
+ *   if (!auth_sock || strlen(auth_sock) == 0) {
+ *     return INVALID_PIPE_VALUE;
+ *   }
+ *   return pipe_connect(auth_sock); // socket() + connect() to Unix socket
+ * #endif
+ *
+ * // 2. Send SSH agent protocol messages via pipe_read/pipe_write
+ * //    - SSH2_AGENTC_REQUEST_IDENTITIES (11) - List keys
+ * //    - SSH2_AGENTC_ADD_IDENTITY (17) - Add key
+ * //    - SSH_AGENT_SUCCESS (6) - Success response
+ *
+ * // 3. Close connection when done
+ * pipe_close(pipe);
  * @endcode
  *
  * **Security considerations:**
  *
- * - ✅ **Temporary script deleted immediately** - Passphrase file removed after use
- * - ✅ **Restrictive permissions** - Script created with `chmod 0700` (owner-only)
- * - ✅ **Process-scoped** - Uses PID in filename to avoid conflicts
- * - ✅ **Memory zeroed** - Password cleared with `sodium_memzero()` after use
+ * - ✅ **Direct protocol communication** - No shell scripts or temporary files
+ * - ✅ **Memory zeroed** - Private key material cleared with `sodium_memzero()` after use
  * - ✅ **Agent session-scoped** - Key removed from agent on logout/reboot
+ * - ✅ **Idempotent operation** - Adding same key multiple times is safe (agent deduplicates)
+ * - ✅ **Non-fatal failures** - Agent add failures don't prevent key decryption/use
  *
  * **Platform support:**
  *
  * | Platform | Supported | Notes |
  * |----------|-----------|-------|
- * | **Linux** | ✅ YES | Requires OpenSSH client (`openssh-client`, `openssh`) |
+ * | **Linux** | ✅ YES | Requires SSH agent running (check `$SSH_AUTH_SOCK`) |
  * | **macOS** | ✅ YES | Built-in with macOS (ssh-agent auto-starts) |
- * | **Windows** | ❌ NO | SSH agent uses Unix domain sockets (incompatible with Windows) |
+ * | **Windows** | ✅ YES | Uses Windows named pipes (requires OpenSSH for Windows) |
  *
  * **Code locations:**
- * - `lib/crypto/keys.c:1047-1090` - Auto-add implementation after successful decryption
- * - `lib/crypto/ssh_agent.h` - `ssh_agent_is_available()` declaration
- * - `lib/crypto/ssh_agent.c` - SSH agent detection and communication
+ * - `lib/crypto/keys/ssh_keys.c:242` - Check if key already in agent (before decryption)
+ * - `lib/crypto/keys/ssh_keys.c:767` - Auto-add implementation after successful decryption
+ * - `lib/crypto/ssh_agent.h` - SSH agent interface declarations
+ * - `lib/crypto/ssh_agent.c` - SSH agent protocol implementation
+ * - `lib/platform/pipe.h` - Cross-platform pipe/agent socket abstraction
+ * - `lib/platform/posix/pipe.c` - POSIX Unix domain socket implementation
+ * - `lib/platform/windows/pipe.c` - Windows named pipe implementation
  *
  * @subsection crypto_detailed_gpg_keys GPG Key Support (Optional)
  *

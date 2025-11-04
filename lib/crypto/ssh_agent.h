@@ -27,7 +27,7 @@
  */
 
 #include "common.h"
-#include "keys/keys.h"
+#include "keys/types.h"
 #include <stdbool.h>
 
 /**
@@ -77,8 +77,15 @@ bool ssh_agent_is_available(void);
  * @param key_path Original key file path (for reference, can be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Adds private key to SSH agent by creating temporary key file and using `ssh-add`.
- * Key is added to agent and stays in agent (not loaded into application memory).
+ * Adds private key to SSH agent using the SSH agent protocol.
+ *
+ * Message format:
+ *   uint32: message length
+ *   byte:   SSH2_AGENTC_ADD_IDENTITY (17)
+ *   string: key type ("ssh-ed25519")
+ *   string: public key (32 bytes)
+ *   string: private key (64 bytes)
+ *   string: comment (key path or empty)
  *
  * @note Agent requirement: SSH agent must be running and accessible.
  *       Function returns error if agent is not available.
@@ -86,30 +93,24 @@ bool ssh_agent_is_available(void);
  * @note Key format: Only Ed25519 keys are supported.
  *       Returns error if key type is not KEY_TYPE_ED25519.
  *
- * @note Key addition: Uses `ssh-add` command to add key to agent:
- *       - Creates temporary key file with restrictive permissions (0600)
- *       - Writes OpenSSH private key format to temporary file
- *       - Executes `ssh-add <tmpfile>` to add key to agent
- *       - Deletes temporary file after adding key
+ * @note Key addition: Uses SSH agent protocol directly via `lib/platform/pipe.h` abstraction:
+ *       - Connects to agent via Unix domain socket (POSIX) or named pipe (Windows)
+ *       - Sends SSH2_AGENTC_ADD_IDENTITY (17) message with key material
+ *       - Receives SSH_AGENT_SUCCESS (6) response on success
+ *       - No temporary files or external commands required
  *
- * @note Temporary file:
- *       - Unix: `/tmp/ascii-chat-key-XXXXXX` (mkstemp)
- *       - Windows: `%TEMP%\ascii-chat-key-XXXXXX` (GetTempPathA, _mktemp_s)
+ * @note Platform abstraction: Uses `lib/platform/pipe.h` for cross-platform communication:
+ *       - POSIX: Unix domain socket via `SSH_AUTH_SOCK` environment variable
+ *       - Windows: Named pipe via `SSH_AUTH_SOCK` or default `\\.\pipe\openssh-ssh-agent`
  *
- * @note File permissions: Sets restrictive permissions (0600) on temporary key file.
- *       Windows doesn't have Unix-style permissions (uses _S_IREAD | _S_IWRITE).
- *
- * @note Idempotent: `ssh-add` is idempotent - adding same key multiple times is safe.
+ * @note Idempotent: SSH agent protocol is idempotent - adding same key multiple times is safe.
  *       Key is not duplicated in agent.
  *
- * @note Key path: key_path is only used for logging/reference.
- *       Function creates temporary file regardless of original key path.
+ * @note Key path: key_path is only used for logging/reference in agent comment field.
+ *       No temporary files are created.
  *
- * @warning Key security: Temporary key file contains private key material.
- *          File is created with restrictive permissions and deleted immediately after use.
- *
- * @warning Agent dependency: Requires `ssh-add` to be installed and in PATH.
- *          Returns error with installation instructions if `ssh-add` is not found.
+ * @warning Agent requirement: SSH agent must be running and accessible.
+ *          Returns error if agent connection fails (agent not running, wrong path, etc.).
  *
  * @warning Key format: Only Ed25519 keys are supported. Other key types will return error.
  *
@@ -122,30 +123,26 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
  * @param public_key Public key to check (must not be NULL)
  * @return true if key is in agent, false otherwise
  *
- * Checks if public key is already in SSH agent by listing agent keys.
- * Uses `ssh-add -l` to list keys and compares fingerprints.
+ * Checks if public key is already in SSH agent by listing agent keys using SSH agent protocol.
  *
  * @note Agent requirement: SSH agent must be running and accessible.
  *       Returns false if agent is not available.
  *
- * @note Key listing: Uses `ssh-add -l` to list keys in agent.
- *       Parses output to find matching key fingerprint.
+ * @note Key listing: Uses SSH agent protocol directly via `lib/platform/pipe.h` abstraction:
+ *       - Connects to agent via Unix domain socket (POSIX) or named pipe (Windows)
+ *       - Sends SSH2_AGENTC_REQUEST_IDENTITIES (11) message
+ *       - Receives SSH2_AGENT_IDENTITIES_ANSWER (12) response with key list
+ *       - Parses response to find matching Ed25519 public key (32-byte comparison)
  *
- * @note Key fingerprint: Compares SHA256 fingerprints of keys.
- *       Format: `256 SHA256:fingerprint comment (ED25519)`
+ * @note Key matching: Compares raw Ed25519 public keys (32 bytes) directly.
+ *       No fingerprint computation required - direct byte comparison.
  *
- * @note Current implementation: Function always returns false (exact matching not implemented).
- *       `ssh-add` is idempotent anyway, so duplicate adds are safe.
+ * @note Platform abstraction: Uses `lib/platform/pipe.h` for cross-platform communication:
+ *       - POSIX: Unix domain socket via `SSH_AUTH_SOCK` environment variable
+ *       - Windows: Named pipe via `SSH_AUTH_SOCK` or default `\\.\pipe\openssh-ssh-agent`
  *
- * @note Platform-specific command:
- *       - Unix: `ssh-add -l 2>/dev/null`
- *       - Windows: `ssh-add -l 2>nul`
- *
- * @warning Function currently always returns false: Exact fingerprint matching is not implemented.
- *          `ssh-add` is idempotent, so duplicate adds are safe.
- *
- * @warning Agent dependency: Requires `ssh-add` to be installed and in PATH.
- *          Returns false if `ssh-add` is not found.
+ * @warning Agent requirement: SSH agent must be running and accessible.
+ *          Returns false if agent connection fails (agent not running, wrong path, etc.).
  *
  * @ingroup crypto
  */

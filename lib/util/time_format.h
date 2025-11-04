@@ -20,7 +20,8 @@
  *   2.5 milliseconds → "2.5ms"
  *   1.5 seconds → "1.5s"
  *   90 seconds → "1m30s"
- *   5.5 hours → "5h30m"
+ *   5.5 hours → "5h30m0s"
+ *   1.2 days → "1d4h48m0s"
  *   1.2 years → "1.2y"
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -61,9 +62,9 @@
  * - For sub-millisecond durations: shows ns or µs
  * - For sub-second durations: shows ms
  * - For sub-minute durations: shows seconds with decimal
- * - For sub-hour durations: shows minutes and seconds
- * - For sub-day durations: shows hours and minutes
- * - For sub-year durations: shows days and hours
+ * - For sub-hour durations: shows minutes and seconds (e.g., "1m30s")
+ * - For sub-day durations: shows hours, minutes, and seconds (e.g., "5h30m0s")
+ * - For sub-year durations: shows days, hours, minutes, and seconds (e.g., "1d4h48m0s")
  * - For year+ durations: shows years with decimal
  *
  * @note Buffer should be at least 32 bytes for all possible outputs

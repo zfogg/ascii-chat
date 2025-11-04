@@ -323,6 +323,36 @@
  * default_key = "~/.ssh/id_ed25519"
  * @endcode
  *
+ * @subsection dependencies_sokol Sokol - Cross-Platform Graphics/Audio/Input
+ *
+ * **Purpose**: Header-only C library providing simple cross-platform APIs
+ *
+ * **Website**: https://github.com/floooh/sokol
+ *
+ * **License**: zlib/libpng License (permissive)
+ *
+ * **Version**: Git submodule at deps/sokol
+ *
+ * **Integration**: Header-only library (no compilation required)
+ *
+ * **Key Features**:
+ * - Cross-platform graphics, audio, and input APIs
+ * - Modern graphics API wrappers (OpenGL, Metal, D3D11, WebGPU)
+ * - Header-only, zero dependencies
+ * - Designed for ease of use and portability
+ * - Optimized for games and interactive applications
+ *
+ * **Current Status**:
+ * - Integrated into deps/ directory
+ * - Available for future enhancements
+ * - Potential use cases: GPU-accelerated rendering, audio improvements
+ *
+ * **Potential Future Usage**:
+ * - GPU-accelerated ASCII rendering
+ * - Hardware-accelerated video decoding
+ * - Alternative audio backend
+ * - WebAssembly/browser client support
+ *
  * @subsection dependencies_libsodium_bcrypt libsodium-bcrypt-pbkdf
  *
  * **Purpose**: OpenSSH private key decryption (bcrypt-pbkdf KDF)

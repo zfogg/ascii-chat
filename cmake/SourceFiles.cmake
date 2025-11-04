@@ -85,6 +85,7 @@ if(WIN32)
         lib/platform/windows/symbols.c
         lib/os/windows/webcam_mediafoundation.c
         lib/platform/windows/getopt.c
+        lib/platform/windows/pipe.c
     )
 else()
     # POSIX platforms (Linux/macOS)
@@ -100,6 +101,7 @@ else()
         lib/platform/posix/string.c
         lib/platform/posix/password.c
         lib/platform/posix/symbols.c
+        lib/platform/posix/pipe.c
     )
 
     if(PLATFORM_DARWIN)

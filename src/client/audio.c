@@ -337,6 +337,7 @@ static void *audio_capture_thread_func(void *arg) {
 
       // TEMPORARILY DISABLE NOISE GATE CHECK FOR TESTING
       // Only batch if gate is open (reduces network traffic for silence)
+      // NOLINTNEXTLINE(readability-simplify-boolean-expr)
       if (true || noise_gate_is_open(&noise_gate)) {
         // Copy processed samples to batch buffer using platform-safe memcpy
         size_t copy_size = samples_read * sizeof(float);

@@ -25,7 +25,6 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <time.h>
 #include <mmsystem.h> // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
 #include <stdatomic.h>
@@ -737,7 +736,7 @@ void platform_backtrace_symbols_free(char **strings) {
 // ============================================================================
 
 /**
- * @brief Print backtrace to stderr
+ * @brief Print backtrace using log_plain
  * @param skip_frames Number of additional frames to skip (beyond platform_print_backtrace itself)
  */
 void platform_print_backtrace(int skip_frames) {
@@ -745,17 +744,29 @@ void platform_print_backtrace(int skip_frames) {
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    safe_fprintf(stderr, "=== BACKTRACE ===\n");
+    char backtrace_buffer[16384]; // 16KB buffer for backtrace
+    int offset = 0;
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     int start_frame = 1 + skip_frames;
-    const char **colors = log_get_color_array();
-    for (int i = start_frame; i < size; i++) {
-      safe_fprintf(stderr, "%[s%2d%s] %s\n", colors[LOGGING_COLOR_DEBUG], i - start_frame, LOGGING_COLOR_RESET,
-                   symbols ? symbols[i] : "???");
+
+    // Build header
+    offset +=
+        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=== BACKTRACE ===\n");
+
+    // Build backtrace frames
+    for (int i = start_frame; i < size && offset < (int)sizeof(backtrace_buffer) - 256; i++) {
+      offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "  #%2d: %s\n",
+                                  i - start_frame, symbols ? symbols[i] : "???");
     }
-    safe_fprintf(stderr, "================\n");
+
+    // Build footer
+    offset +=
+        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=================");
+
+    // Single log_plain call with complete backtrace
+    log_plain("%s", backtrace_buffer);
 
     platform_backtrace_symbols_free(symbols);
   }
@@ -765,44 +776,52 @@ void platform_print_backtrace(int skip_frames) {
  * @brief Windows structured exception handler for crashes
  */
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
-  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
-  safe_fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
+  DWORD exception_code = exception_info->ExceptionRecord->ExceptionCode;
+  const char *exception_name;
 
-  switch (exception_info->ExceptionRecord->ExceptionCode) {
+  switch (exception_code) {
   case EXCEPTION_ACCESS_VIOLATION:
-    safe_fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
+    exception_name = "Access Violation (SIGSEGV)";
     break;
   case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-    safe_fprintf(stderr, "Exception: Array Bounds Exceeded\n");
+    exception_name = "Array Bounds Exceeded";
     break;
   case EXCEPTION_DATATYPE_MISALIGNMENT:
-    safe_fprintf(stderr, "Exception: Data Type Misalignment\n");
+    exception_name = "Data Type Misalignment";
     break;
   case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-    safe_fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
+    exception_name = "Floating Point Divide by Zero (SIGFPE)";
     break;
   case EXCEPTION_FLT_INVALID_OPERATION:
-    safe_fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
+    exception_name = "Floating Point Invalid Operation (SIGFPE)";
     break;
   case EXCEPTION_ILLEGAL_INSTRUCTION:
-    safe_fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
+    exception_name = "Illegal Instruction (SIGILL)";
     break;
   case EXCEPTION_INT_DIVIDE_BY_ZERO:
-    safe_fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
+    exception_name = "Integer Divide by Zero (SIGFPE)";
     break;
   case EXCEPTION_STACK_OVERFLOW:
-    safe_fprintf(stderr, "Exception: Stack Overflow\n");
+    exception_name = "Stack Overflow";
     break;
   default:
-    safe_fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
+    exception_name = "Unknown";
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
+  log_error("\n*** CRASH DETECTED ***\n"
+            "Exception Code: 0x%08lx\n"
+            "Exception: %s",
+            exception_code, exception_name);
   platform_print_backtrace(0);
 #else
-  fprintf(stderr, "Backtrace disabled in Release builds\n");
+  log_error("*** CRASH DETECTED ***\n"
+            "Exception Code: 0x%08lx\n"
+            "Exception: %s",
+            exception_code, exception_name);
+  log_error("Backtrace disabled in Release builds");
 #endif
 
   // Return EXCEPTION_EXECUTE_HANDLER to terminate the program
@@ -813,27 +832,28 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
  * @brief Signal handler for Windows C runtime exceptions
  */
 static void windows_signal_handler(int sig) {
-  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  const char *signal_name;
   switch (sig) {
   case SIGABRT:
-    safe_fprintf(stderr, "Signal: SIGABRT (Abort)\n");
+    signal_name = "SIGABRT (Abort)";
     break;
   case SIGFPE:
-    safe_fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
+    signal_name = "SIGFPE (Floating Point Exception)";
     break;
   case SIGILL:
-    safe_fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
+    signal_name = "SIGILL (Illegal Instruction)";
     break;
   default:
-    safe_fprintf(stderr, "Signal: %d (Unknown)\n", sig);
+    signal_name = "Unknown";
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
+  log_error("*** CRASH DETECTED ***\nSignal: %d (%s)", sig, signal_name);
   platform_print_backtrace(0);
 #else
-  fprintf(stderr, "Backtrace disabled in Release builds\n");
+  log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nBacktrace disabled in Release builds", sig, signal_name);
 #endif
 
   exit(1);
