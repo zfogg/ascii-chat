@@ -196,10 +196,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/Tests.cmake)
 # =============================================================================
 # Installation
 # =============================================================================
-
-install(TARGETS ascii-chat
-    RUNTIME DESTINATION bin
-)
+include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
 
 # =============================================================================
 # Documentation

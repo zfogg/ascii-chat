@@ -11,9 +11,40 @@
 # Note: cmake_minimum_required must be in CMakeLists.txt before this include
 # =============================================================================
 
-# Set policy for ExternalProject timestamp handling (CMP0135)
+# =============================================================================
+# CMake Policy Configuration
+# =============================================================================
+# Set modern CMake policies for future-proofing and best practices
+# These policies enable newer CMake features and behaviors
+
+# CMP0135: ExternalProject step targets fully imported
+# Enables proper dependency tracking for ExternalProject steps
 if(POLICY CMP0135)
     cmake_policy(SET CMP0135 NEW)
+endif()
+
+# CMP0144: FindPackage uses upper-case <PackageName>_ROOT
+# Modern way to specify package root directories
+if(POLICY CMP0144)
+    cmake_policy(SET CMP0144 NEW)
+endif()
+
+# CMP0146: ExternalProject step targets fully imported
+# Better integration with ExternalProject and FetchContent
+if(POLICY CMP0146)
+    cmake_policy(SET CMP0146 NEW)
+endif()
+
+# CMP0169: Ninja generator uses link dependencies
+# Improves build dependency tracking with Ninja
+if(POLICY CMP0169)
+    cmake_policy(SET CMP0169 NEW)
+endif()
+
+# CMP0251: CMAKE_SYSROOT is read-only
+# Prevents accidental modification of sysroot
+if(POLICY CMP0251)
+    cmake_policy(SET CMP0251 NEW)
 endif()
 
 # =============================================================================
