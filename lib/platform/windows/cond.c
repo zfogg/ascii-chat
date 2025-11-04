@@ -51,7 +51,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @note The mutex is automatically released while waiting and reacquired before returning
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
-  return SleepConditionVariableCS(cond, mutex, timeout_ms) ? 0 : -1;
+  return SleepConditionVariableCS(cond, mutex, (DWORD)timeout_ms) ? 0 : -1;
 }
 
 /**

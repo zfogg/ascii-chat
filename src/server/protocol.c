@@ -640,14 +640,14 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   if (atomic_load(&client->is_sending_audio) && data && len >= sizeof(audio_batch_packet_t)) {
     // Parse batch header
     const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-    uint32_t batch_count = ntohl(batch_header->batch_count);
+    uint32_t packet_batch_count = ntohl(batch_header->batch_count);
     uint32_t total_samples = ntohl(batch_header->total_samples);
     uint32_t sample_rate = ntohl(batch_header->sample_rate);
     // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
 
     // Suppress static analyzer warnings for conditionally used variables
-    (void)batch_count; // Used in DEBUG_AUDIO log
-    (void)sample_rate; // Used in DEBUG_AUDIO log
+    (void)packet_batch_count; // Used in DEBUG_AUDIO log
+    (void)sample_rate;        // Used in DEBUG_AUDIO log
 
     // Validate batch parameters (samples now transmitted as uint32_t for portability)
     size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));

@@ -232,9 +232,9 @@ asciichat_error_t terminal_set_raw_mode(bool enable) {
   }
 
   if (enable) {
-    mode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+    mode &= ~((DWORD)ENABLE_LINE_INPUT | (DWORD)ENABLE_ECHO_INPUT);
   } else {
-    mode |= (ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+    mode |= (DWORD)((DWORD)ENABLE_LINE_INPUT | (DWORD)ENABLE_ECHO_INPUT);
   }
 
   if (!SetConsoleMode(hStdin, mode)) {
@@ -260,9 +260,9 @@ asciichat_error_t terminal_set_echo(bool enable) {
   }
 
   if (enable) {
-    mode |= ENABLE_ECHO_INPUT;
+    mode |= (DWORD)ENABLE_ECHO_INPUT;
   } else {
-    mode &= ~ENABLE_ECHO_INPUT;
+    mode &= ~(DWORD)ENABLE_ECHO_INPUT;
   }
 
   if (!SetConsoleMode(hStdin, mode)) {
@@ -608,8 +608,8 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
 
 fallback:
   // Environment variable fallback
-  char *cols_env = SAFE_GETENV("COLUMNS");
-  char *lines_env = SAFE_GETENV("LINES");
+  const char *cols_env = SAFE_GETENV("COLUMNS");
+  const char *lines_env = SAFE_GETENV("LINES");
 
   *width = OPT_WIDTH_DEFAULT;
   *height = OPT_HEIGHT_DEFAULT;
@@ -788,8 +788,8 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   }
 
   // Store environment variables for debugging
-  char *term = SAFE_GETENV("TERM");
-  char *colorterm = SAFE_GETENV("COLORTERM");
+  const char *term = SAFE_GETENV("TERM");
+  const char *colorterm = SAFE_GETENV("COLORTERM");
 
   SAFE_STRNCPY(caps.term_type, term ? term : "windows-console", sizeof(caps.term_type) - 1);
   SAFE_STRNCPY(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm) - 1);
@@ -902,21 +902,21 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   case COLOR_MODE_MONO:
     caps.color_level = TERM_COLOR_NONE;
     caps.color_count = 2;
-    caps.capabilities &= ~(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16);
+    caps.capabilities &= ~((uint32_t)TERM_CAP_COLOR_TRUE | (uint32_t)TERM_CAP_COLOR_256 | (uint32_t)TERM_CAP_COLOR_16);
     break;
 
   case COLOR_MODE_16_COLOR:
     caps.color_level = TERM_COLOR_16;
     caps.color_count = 16;
-    caps.capabilities &= ~(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256);
-    caps.capabilities |= TERM_CAP_COLOR_16;
+    caps.capabilities &= ~((uint32_t)TERM_CAP_COLOR_TRUE | (uint32_t)TERM_CAP_COLOR_256);
+    caps.capabilities |= (uint32_t)TERM_CAP_COLOR_16;
     break;
 
   case COLOR_MODE_256_COLOR:
     caps.color_level = TERM_COLOR_256;
     caps.color_count = 256;
-    caps.capabilities &= ~TERM_CAP_COLOR_TRUE;
-    caps.capabilities |= TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
+    caps.capabilities &= ~(uint32_t)TERM_CAP_COLOR_TRUE;
+    caps.capabilities |= ((uint32_t)TERM_CAP_COLOR_256 | (uint32_t)TERM_CAP_COLOR_16);
     break;
 
   case COLOR_MODE_TRUECOLOR:

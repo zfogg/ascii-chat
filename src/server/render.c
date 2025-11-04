@@ -162,6 +162,7 @@
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "packet_queue.h"
+#include "util/time_format.h"
 #include "mixer.h"
 #include "audio.h"
 #include "util/format.h"
@@ -571,9 +572,13 @@ void *client_video_render_thread(void *arg) {
                                  (uint64_t)last_video_fps_report_time.tv_nsec / 1000);
 
           if (elapsed_us >= 5000000) { // 5 seconds
-            float actual_fps = (float)video_frame_count / ((float)elapsed_us / 1000000.0f);
-            log_debug("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %.1f seconds)", thread_client_id,
-                      actual_fps, video_frame_count, (float)elapsed_us / 1000000.0f);
+            float elapsed_seconds = (float)elapsed_us / 1000000.0f;
+            float actual_fps = (float)video_frame_count / elapsed_seconds;
+
+            char duration_str[32];
+            format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
+            log_debug("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %s)", thread_client_id, actual_fps,
+                      video_frame_count, duration_str);
             // Reset counters for next interval
             video_frame_count = 0;
             last_video_fps_report_time = current_time;
@@ -854,9 +859,13 @@ void *client_audio_render_thread(void *arg) {
                                (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
 
         if (elapsed_us >= 5000000) { // 5 seconds
-          float actual_fps = (float)audio_packet_count / ((float)elapsed_us / 1000000.0f);
-          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %.1f seconds)", thread_client_id,
-                    actual_fps, audio_packet_count, (float)elapsed_us / 1000000.0f);
+          float elapsed_seconds = (float)elapsed_us / 1000000.0f;
+          float actual_fps = (float)audio_packet_count / elapsed_seconds;
+
+          char duration_str[32];
+          format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
+          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %s)", thread_client_id, actual_fps,
+                    audio_packet_count, duration_str);
 
           // Reset counters for next interval
           audio_packet_count = 0;

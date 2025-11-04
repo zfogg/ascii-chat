@@ -42,7 +42,7 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
-#include <uthash.h>  // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
+#include <uthash.h> // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
 
 // ============================================================================
 // Constants and Limits
@@ -392,12 +392,6 @@ bool lock_debug_is_initialized(void);
  * @ingroup lock_debug
  */
 void lock_debug_print_state(void);
-
-/**
- * @brief Print all currently held locks with backtraces
- * @ingroup lock_debug
- */
-void print_all_held_locks(void);
 
 /**
  * @brief Callback function for printing orphaned release records

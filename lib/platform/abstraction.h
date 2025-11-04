@@ -272,7 +272,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <errno.h>
 #include <time.h>
 
 // ============================================================================
@@ -283,12 +282,25 @@
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
 #include "platform/cond.h"
+// Windows socket shutdown constants - define before socket.h includes winsock2.h
+#ifdef _WIN32
+#ifndef SHUT_RDWR
+/** @brief Socket shutdown: Read direction (Windows compatibility) - @ingroup platform */
+#define SHUT_RD 0
+/** @brief Socket shutdown: Write direction (Windows compatibility) - @ingroup platform */
+#define SHUT_WR 1
+/** @brief Socket shutdown: Both directions (Windows compatibility) - @ingroup platform */
+#define SHUT_RDWR 2
+#endif
+#endif
+
 #include "platform/socket.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
-#include "util/uthash.h"  // Wrapper ensures common.h is included first
+#include "util/uthash.h" // Wrapper ensures common.h is included first
 #include "lock_debug.h"
 #include "platform/file.h"
+#include "platform/pipe.h"
 
 // ============================================================================
 // Thread-Local Storage and Alignment Macros
@@ -446,6 +458,7 @@
 #define STDOUT_FILENO 1
 /** @brief Standard error file descriptor (Windows compatibility) - @ingroup platform */
 #define STDERR_FILENO 2
+#endif
 
 // Windows socket types
 /** @brief Number of file descriptors type (Windows: unsigned long)
@@ -456,15 +469,6 @@
  */
 typedef unsigned long nfds_t;
 
-// Windows socket shutdown constants
-#ifndef SHUT_RDWR
-/** @brief Socket shutdown: Read direction (Windows compatibility) - @ingroup platform */
-#define SHUT_RD 0
-/** @brief Socket shutdown: Write direction (Windows compatibility) - @ingroup platform */
-#define SHUT_WR 1
-/** @brief Socket shutdown: Both directions (Windows compatibility) - @ingroup platform */
-#define SHUT_RDWR 2
-
 // Windows socket control codes
 #ifndef SIO_KEEPALIVE_VALS
 /** @brief Socket IO control: TCP keepalive values (Windows)
@@ -474,8 +478,6 @@ typedef unsigned long nfds_t;
  * @ingroup platform
  */
 #define SIO_KEEPALIVE_VALS _WSAIOW(IOC_VENDOR, 4)
-#endif
-#endif
 #endif
 
 /** @} */

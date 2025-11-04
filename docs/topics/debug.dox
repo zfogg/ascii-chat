@@ -111,8 +111,8 @@
  * // Start debug thread to print locks on '?' key
  * lock_debug_start_thread();
  *
- * // Print all held locks
- * print_all_held_locks();
+ * // Print lock debug state (held locks, orphaned releases, statistics)
+ * lock_debug_print_state();
  * @endcode
  *
  * **Debug Thread**:
@@ -241,8 +241,8 @@
  * // ... critical section ...
  * DEBUG_MUTEX_UNLOCK(&my_mutex);
  *
- * // Print held locks anytime
- * print_all_held_locks();
+ * // Print lock debug state anytime (held locks, orphaned releases, statistics)
+ * lock_debug_print_state();
  * @endcode
  *
  * **Memory Debugging**:

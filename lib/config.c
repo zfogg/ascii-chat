@@ -1057,7 +1057,7 @@ asciichat_error_t config_create_default(const char *config_path) {
     (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
     (void)fprintf(f, "#snapshot_mode = %s\n", opt_snapshot_mode ? "true" : "false");
     (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
-    (void)fprintf(f, "#snapshot_delay = %.1f\n", opt_snapshot_delay);
+    (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opt_snapshot_delay);
     (void)fprintf(f, "# Use test pattern instead of real webcam\n");
     (void)fprintf(f, "#test_pattern = %s\n", opt_test_pattern ? "true" : "false");
     (void)fprintf(f, "# Show terminal capabilities and exit\n");

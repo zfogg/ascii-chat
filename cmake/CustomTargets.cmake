@@ -102,10 +102,38 @@ else()
     )
 endif()
 
-# Find clang-tidy executable
+# Find Python3 and run-clang-tidy.py script
+find_program(PYTHON3_EXECUTABLE NAMES python3 python)
 find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
 
-if(CLANG_TIDY_EXECUTABLE)
+# Check if run-clang-tidy.py script exists
+set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
+
+if(PYTHON3_EXECUTABLE AND EXISTS "${RUN_CLANG_TIDY_SCRIPT}" AND CLANG_TIDY_EXECUTABLE)
+    # Use run-clang-tidy.py for parallel execution and better project file filtering
+    # The script automatically filters to lib/, src/, tests/ directories (project code only)
+    # It uses compile_commands.json from the build directory
+    # Use CPU_CORES if available (set in BuildConfiguration.cmake), otherwise default to 4
+    if(DEFINED CPU_CORES)
+        set(CLANG_TIDY_JOBS ${CPU_CORES})
+    else()
+        set(CLANG_TIDY_JOBS 4)
+        message(STATUS "CPU_CORES not defined, using ${CLANG_TIDY_JOBS} parallel jobs for clang-tidy")
+    endif()
+
+    add_custom_target(clang-tidy
+        COMMAND ${PYTHON3_EXECUTABLE}
+            ${RUN_CLANG_TIDY_SCRIPT}
+            -p ${CMAKE_BINARY_DIR}
+            -config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
+            -j ${CLANG_TIDY_JOBS}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        COMMENT "Running clang-tidy static analysis on production code (excluding tests) using run-clang-tidy.py (parallel: ${CLANG_TIDY_JOBS} jobs)"
+        VERBATIM
+    )
+elseif(CLANG_TIDY_EXECUTABLE)
+    # Fallback to direct clang-tidy if script not available
+    message(STATUS "run-clang-tidy.py not found, using direct clang-tidy (slower, no parallel execution)")
     add_custom_target(clang-tidy
         COMMAND ${CLANG_TIDY_EXECUTABLE}
             --config-file ${CMAKE_SOURCE_DIR}/.clang-tidy

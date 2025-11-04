@@ -212,14 +212,14 @@ asciichat_error_t format_ip_with_port(const char *ip, uint16_t port, char *outpu
   // Check if it's IPv6 (contains ':')
   if (strchr(ip, ':') != NULL) {
     // IPv6 - use bracket notation
-    int written = SAFE_SNPRINTF(output, output_size, "[%s]:%u", ip, port);
-    if (written < 0 || (size_t)written >= output_size) {
+    size_t written = SAFE_SNPRINTF(output, output_size, "[%s]:%u", ip, port);
+    if (written >= output_size) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ip=%s or port=%u", ip, port);
     }
   } else {
     // IPv4 - no brackets
-    int written = SAFE_SNPRINTF(output, output_size, "%s:%u", ip, port);
-    if (written < 0 || (size_t)written >= output_size) {
+    size_t written = SAFE_SNPRINTF(output, output_size, "%s:%u", ip, port);
+    if (written >= output_size) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid ip=%s or port=%u", ip, port);
     }
   }

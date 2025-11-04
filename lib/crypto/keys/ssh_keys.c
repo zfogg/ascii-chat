@@ -387,10 +387,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // Check if key is encrypted
   bool is_encrypted = (ciphername_len > 0 && memcmp(key_blob + offset, "none", 4) != 0);
-  if (is_encrypted) {
-    log_debug("DEBUG: Encrypted key detected, ciphername_len=%u", ciphername_len);
-    // We'll handle encryption below after parsing the structure
-  }
 
   offset += ciphername_len;
 
@@ -420,9 +416,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // Handle encrypted keys
   if (is_encrypted) {
-    log_debug("DEBUG: Processing encrypted key, ciphername_len=%u, kdfname_len=%u, kdfoptions_len=%u", ciphername_len,
-              kdfname_len, kdfoptions_len);
-
     // Parse the cipher name from the stored position
     char ciphername[32] = {0};
     if (ciphername_len > 0 && ciphername_len < sizeof(ciphername)) {
@@ -498,10 +491,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     uint32_t bcrypt_rounds = READ_BE32(key_blob, kdf_opt_offset);
 
-    log_debug("DEBUG: bcrypt KDF options: salt_len=%u, rounds=%u", salt_len, bcrypt_rounds);
-    log_debug("DEBUG: Rounds bytes: %02x %02x %02x %02x", key_blob[kdf_opt_offset], key_blob[kdf_opt_offset + 1],
-              key_blob[kdf_opt_offset + 2], key_blob[kdf_opt_offset + 3]);
-
     // Check for password in environment variable first
     const char *env_password = platform_getenv("ASCII_CHAT_SSH_PASSWORD");
     char *password = NULL;
@@ -528,10 +517,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       }
     }
 
-    log_debug("DEBUG: Password entered, length=%zu", strlen(password));
-
     // Native OpenSSH key decryption using bcrypt_pbkdf + BearSSL AES
-    log_debug("DEBUG: Using native decryption (bcrypt_pbkdf + BearSSL AES-%s)", ciphername);
 
     // Skip past the unencrypted public key section to get to encrypted private keys
     // Format: [num_keys:4][pubkey_len:4][pubkey:N]...[encrypted_len:4][encrypted:N]
@@ -581,7 +567,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     uint32_t encrypted_len = READ_BE32(key_blob, offset);
     offset += 4;
-    log_debug("DEBUG: Encrypted private keys section: %u bytes", encrypted_len);
 
     // Now offset points to the actual encrypted data
     size_t encrypted_data_start = offset;
@@ -597,16 +582,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
     // Extract encrypted blob (includes everything from offset onwards)
     const uint8_t *encrypted_blob = key_blob + encrypted_data_start;
-
-    log_debug("DEBUG: Decryption parameters: cipher=%s, rounds=%u, salt_len=%u, encrypted_len=%zu", ciphername,
-              bcrypt_rounds, salt_len, encrypted_data_len);
-    log_debug("DEBUG: Salt (first 8 bytes): %02x%02x%02x%02x %02x%02x%02x%02x", bcrypt_salt[0], bcrypt_salt[1],
-              bcrypt_salt[2], bcrypt_salt[3], bcrypt_salt[4], bcrypt_salt[5], bcrypt_salt[6], bcrypt_salt[7]);
-    log_debug("DEBUG: Encrypted (first 16 bytes): %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x %02x%02x%02x%02x",
-              encrypted_blob[0], encrypted_blob[1], encrypted_blob[2], encrypted_blob[3], encrypted_blob[4],
-              encrypted_blob[5], encrypted_blob[6], encrypted_blob[7], encrypted_blob[8], encrypted_blob[9],
-              encrypted_blob[10], encrypted_blob[11], encrypted_blob[12], encrypted_blob[13], encrypted_blob[14],
-              encrypted_blob[15]);
 
     // Call native decryption function
     uint8_t *decrypted_blob = NULL;
@@ -627,8 +602,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       return decrypt_result;
     }
 
-    log_debug("DEBUG: Key decrypted successfully, decrypted_blob_len=%zu", decrypted_blob_len);
-
     // Parse the decrypted private key structure
     // OpenSSH format (decrypted):
     //   [checkint1:4][checkint2:4][keytype:string][pubkey:string][privkey:string][comment:string][padding:N]
@@ -644,7 +617,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     uint32_t checkint1 = READ_BE32(decrypted_blob, 0);
     uint32_t checkint2 = READ_BE32(decrypted_blob, 4);
     if (checkint1 != checkint2) {
-      log_error("Checkint verification failed: checkint1=0x%08x, checkint2=0x%08x", checkint1, checkint2);
       SAFE_FREE(decrypted_blob);
       SAFE_FREE(key_blob);
       SAFE_FREE(file_content);
@@ -653,8 +625,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
                        "Expected matching checkints, got 0x%08x != 0x%08x",
                        key_path, checkint1, checkint2);
     }
-
-    log_debug("DEBUG: Checkints match (0x%08x), password correct", checkint1);
 
     // Parse the decrypted private key structure manually
     // Format after checkints: [keytype:string][pubkey:string][privkey:string][comment:string][padding:N]
@@ -669,7 +639,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     uint32_t keytype_len = READ_BE32(decrypted_blob, dec_offset);
     dec_offset += 4;
-    log_debug("DEBUG: Decrypted keytype_len=%u", keytype_len);
 
     // Read keytype
     if (dec_offset + keytype_len > decrypted_blob_len) {
@@ -683,7 +652,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       memcpy(keytype, decrypted_blob + dec_offset, keytype_len);
     }
     dec_offset += keytype_len;
-    log_debug("DEBUG: Decrypted keytype='%s'", keytype);
 
     // Check if it's Ed25519
     if (strcmp(keytype, "ssh-ed25519") != 0) {
@@ -702,7 +670,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     uint32_t pubkey_data_len = READ_BE32(decrypted_blob, dec_offset);
     dec_offset += 4;
-    log_debug("DEBUG: Decrypted pubkey_data_len=%u", pubkey_data_len);
 
     // Read public key (32 bytes for Ed25519)
     if (pubkey_data_len != 32) {
@@ -730,7 +697,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     uint32_t privkey_data_len = READ_BE32(decrypted_blob, dec_offset);
     dec_offset += 4;
-    log_debug("DEBUG: Decrypted privkey_data_len=%u", privkey_data_len);
 
     // Read private key (64 bytes for Ed25519: 32-byte seed + 32-byte public key)
     if (privkey_data_len != 64) {
@@ -760,7 +726,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     SAFE_FREE(key_blob);
     SAFE_FREE(file_content);
 
-    log_debug("DEBUG: Successfully parsed decrypted Ed25519 key");
+    log_debug("Successfully parsed decrypted Ed25519 key");
 
     // Attempt to add the decrypted key to ssh-agent for future password-free use
     log_info("Attempting to add decrypted key to ssh-agent");
@@ -870,18 +836,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   memcpy(ed25519_pubkey, key_blob + offset, 32);
   offset += pubkey_data_len; // Skip the entire public key data
 
-  log_debug("DEBUG: Extracted public key, offset=%zu", offset);
-  log_debug("DEBUG: Raw public key bytes: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-            "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
-            ed25519_pubkey[0], ed25519_pubkey[1], ed25519_pubkey[2], ed25519_pubkey[3], ed25519_pubkey[4],
-            ed25519_pubkey[5], ed25519_pubkey[6], ed25519_pubkey[7], ed25519_pubkey[8], ed25519_pubkey[9],
-            ed25519_pubkey[10], ed25519_pubkey[11], ed25519_pubkey[12], ed25519_pubkey[13], ed25519_pubkey[14],
-            ed25519_pubkey[15], ed25519_pubkey[16], ed25519_pubkey[17], ed25519_pubkey[18], ed25519_pubkey[19],
-            ed25519_pubkey[20], ed25519_pubkey[21], ed25519_pubkey[22], ed25519_pubkey[23], ed25519_pubkey[24],
-            ed25519_pubkey[25], ed25519_pubkey[26], ed25519_pubkey[27], ed25519_pubkey[28], ed25519_pubkey[29],
-            ed25519_pubkey[30], ed25519_pubkey[31]);
-  log_debug("DEBUG: Public key data length: %u", pubkey_data_len);
-
   // Skip the rest of the public key data to get to the private key
   // We've already parsed: 4 (key_type_len) + 11 (ssh-ed25519) + 4 (pubkey_data_len) + 32 (key) = 51 bytes
   // So we need to skip the remaining pubkey_len - 51 bytes
@@ -890,8 +844,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     offset += remaining_pubkey;
   }
 
-  log_debug("DEBUG: After skipping remaining pubkey data, offset=%zu", offset);
-
   // Read private key
   if (offset + 4 > key_blob_len) {
     SAFE_FREE(key_blob);
@@ -899,13 +851,8 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey length: %s", key_path);
   }
 
-  log_debug("DEBUG: About to read privkey_len at offset=%zu, bytes: %02x %02x %02x %02x", offset, key_blob[offset],
-            key_blob[offset + 1], key_blob[offset + 2], key_blob[offset + 3]);
-
   uint32_t privkey_len = READ_BE32(key_blob, offset);
   offset += 4;
-
-  log_debug("DEBUG: privkey_len=%u, offset=%zu, key_blob_len=%zu", privkey_len, offset, key_blob_len);
 
   if (offset + privkey_len > key_blob_len) {
     SAFE_FREE(key_blob);
@@ -981,8 +928,6 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
                      privkey_data_len, key_path);
   }
 
-  log_debug("DEBUG: Private key data length: %u bytes", privkey_data_len);
-
   // Extract the Ed25519 private key (first 32 bytes)
   uint8_t ed25519_privkey[32];
   memcpy(ed25519_privkey, key_blob + offset, 32);
@@ -990,27 +935,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   // Verify the public key matches
   // The public key in the privkey section is raw Ed25519, while the one in pubkey section is SSH format
   // We need to compare the raw public key from privkey with the raw public key extracted from pubkey
-  log_debug("DEBUG: Comparing public keys - extracted from pubkey: %02x%02x%02x%02x..., stored in privkey: "
-            "%02x%02x%02x%02x...",
-            ed25519_pubkey[0], ed25519_pubkey[1], ed25519_pubkey[2], ed25519_pubkey[3], key_blob[offset + 32],
-            key_blob[offset + 33], key_blob[offset + 34], key_blob[offset + 35]);
-
   if (memcmp(key_blob + offset + 32, ed25519_pubkey, 32) != 0) {
-    // For debugging, let's print the full comparison
-    log_debug("DEBUG: Public key mismatch detected");
-    log_debug("DEBUG: Extracted pubkey (first 16 bytes): %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-              "%02x %02x %02x %02x",
-              ed25519_pubkey[0], ed25519_pubkey[1], ed25519_pubkey[2], ed25519_pubkey[3], ed25519_pubkey[4],
-              ed25519_pubkey[5], ed25519_pubkey[6], ed25519_pubkey[7], ed25519_pubkey[8], ed25519_pubkey[9],
-              ed25519_pubkey[10], ed25519_pubkey[11], ed25519_pubkey[12], ed25519_pubkey[13], ed25519_pubkey[14],
-              ed25519_pubkey[15]);
-    log_debug("DEBUG: Stored pubkey (first 16 bytes): %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
-              "%02x %02x %02x",
-              key_blob[offset + 32], key_blob[offset + 33], key_blob[offset + 34], key_blob[offset + 35],
-              key_blob[offset + 36], key_blob[offset + 37], key_blob[offset + 38], key_blob[offset + 39],
-              key_blob[offset + 40], key_blob[offset + 41], key_blob[offset + 42], key_blob[offset + 43],
-              key_blob[offset + 44], key_blob[offset + 45], key_blob[offset + 46], key_blob[offset + 47]);
-
     SAFE_FREE(key_blob);
     SAFE_FREE(file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key public key mismatch: %s", key_path);

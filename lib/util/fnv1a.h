@@ -45,9 +45,9 @@
 #define FNV1A_INIT(hash) uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
 /** @brief FNV-1a 32-bit hash macro for a single byte */
-#define FNV1A_32_HASH(hash, byte)                                                                                     \
+#define FNV1A_32_HASH(hash, byte)                                                                                      \
   do {                                                                                                                 \
-    (hash) ^= (uint64_t)(byte);                                                                                         \
+    (hash) ^= (uint64_t)(byte);                                                                                        \
     (hash) = ((hash) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                                                \
   } while (0)
 
@@ -122,8 +122,8 @@ static inline uint32_t fnv1a_hash_uint32(uint32_t value) {
   FNV1A_INIT(hash);
 
   // Hash each byte of the 32-bit value
-  FNV1A_32_HASH(hash, (value >>  0) & FNV1A_32_MASK);
-  FNV1A_32_HASH(hash, (value >>  8) & FNV1A_32_MASK);
+  FNV1A_32_HASH(hash, (value >> 0) & FNV1A_32_MASK);
+  FNV1A_32_HASH(hash, (value >> 8) & FNV1A_32_MASK);
   FNV1A_32_HASH(hash, (value >> 16) & FNV1A_32_MASK);
   FNV1A_32_HASH(hash, (value >> 24) & FNV1A_32_MASK);
 

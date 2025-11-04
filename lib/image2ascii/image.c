@@ -71,8 +71,8 @@ image_t *image_new(size_t width, size_t height) {
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
   p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_t *);
 
-  p->w = width;
-  p->h = height;
+  p->w = (int)width;
+  p->h = (int)height;
   return p;
 }
 
@@ -180,22 +180,22 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
   }
 
   // Use fixed-point arithmetic for better performance
-  const uint32_t x_ratio = ((src_w << 16) / dst_w) + 1;
-  const uint32_t y_ratio = ((src_h << 16) / dst_h) + 1;
+  const uint32_t x_ratio = (((uint32_t)(unsigned int)src_w << 16) / (uint32_t)(unsigned int)dst_w) + 1;
+  const uint32_t y_ratio = (((uint32_t)(unsigned int)src_h << 16) / (uint32_t)(unsigned int)dst_h) + 1;
 
   const rgb_t *src_pixels = source->pixels;
   rgb_t *dst_pixels = dest->pixels;
 
   for (int y = 0; y < dst_h; y++) {
-    const uint32_t src_y = (y * y_ratio) >> 16;
-    const uint32_t safe_src_y = (src_y >= (uint32_t)src_h) ? (uint32_t)(src_h - 1) : src_y;
-    const rgb_t *src_row = src_pixels + (safe_src_y * src_w);
+    const uint32_t src_y = ((uint32_t)(unsigned int)y * y_ratio) >> 16;
+    const uint32_t safe_src_y = (src_y >= (uint32_t)(unsigned int)src_h) ? (uint32_t)(src_h - 1) : src_y;
+    const rgb_t *src_row = src_pixels + (safe_src_y * (size_t)src_w);
 
-    rgb_t *dst_row = dst_pixels + (y * dst_w);
+    rgb_t *dst_row = dst_pixels + ((size_t)y * (size_t)dst_w);
 
     for (int x = 0; x < dst_w; x++) {
-      const uint32_t src_x = (x * x_ratio) >> 16;
-      const uint32_t safe_src_x = (src_x >= (uint32_t)src_w) ? (uint32_t)(src_w - 1) : src_x;
+      const uint32_t src_x = ((uint32_t)(unsigned int)x * x_ratio) >> 16;
+      const uint32_t safe_src_x = (src_x >= (uint32_t)(unsigned int)src_w) ? (uint32_t)(src_w - 1) : src_x;
       dst_row[x] = src_row[safe_src_x];
     }
   }
@@ -205,10 +205,10 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 
 void precalc_rgb_palettes(const float red, const float green, const float blue) {
   for (int n = 0; n < ASCII_LUMINANCE_LEVELS; ++n) {
-    RED[n] = ((float)n) * red;
-    GREEN[n] = ((float)n) * green;
-    BLUE[n] = ((float)n) * blue;
-    GRAY[n] = ((float)n);
+    RED[n] = (unsigned short)((float)((float)n * red));
+    GREEN[n] = (unsigned short)((float)((float)n * green));
+    BLUE[n] = (unsigned short)((float)((float)n * blue));
+    GRAY[n] = (unsigned short)((float)n);
   }
 }
 
@@ -242,7 +242,7 @@ char *image_print(const image_t *p, const char *palette) {
 
   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
   const size_t max_char_bytes = 4; // Max UTF-8 character size
-  const ssize_t len = (ssize_t)h * ((ssize_t)w * max_char_bytes + 1);
+  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   const rgb_t *pix = p->pixels;
 
@@ -270,7 +270,7 @@ char *image_print(const image_t *p, const char *palette) {
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
       // Use same 64-entry cache as SIMD for consistency
@@ -282,7 +282,7 @@ char *image_print(const image_t *p, const char *palette) {
         const rgb_t next_pixel = pix[row_offset + j];
         const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) >> 8;
         int next_safe_luminance = (next_luminance > 255) ? 255 : next_luminance;
-        uint8_t next_luma_idx = next_safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+        uint8_t next_luma_idx = (uint8_t)(next_safe_luminance >> 2);        // 0-63 index (same as SIMD)
         uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
         if (next_char_idx != char_idx)
           break;
@@ -453,7 +453,7 @@ char *image_print_color(const image_t *p, const char *palette) {
       // Note: RLE system may need updates for full UTF-8 support
       const char ascii_char = char_info->utf8_bytes[0];
 
-      ansi_rle_add_pixel(&rle_ctx, r, g, b, ascii_char);
+      ansi_rle_add_pixel(&rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
     }
 
     // Add newline between rows (except last row)
@@ -635,7 +635,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
       // Use direct palette character lookup (same as SIMD would do)
@@ -718,7 +718,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
       // Use direct palette character lookup (same as SIMD would do)
@@ -818,7 +818,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
       int safe_luminance = (luminance > 255) ? 255 : luminance;
-      uint8_t luma_idx = safe_luminance >> 2;                   // 0-63 index (same as SIMD)
+      uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
       // Use direct palette character lookup (same as SIMD would do)

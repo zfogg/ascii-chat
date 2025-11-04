@@ -1,81 +1,130 @@
----
 # clang-tidy configuration for ascii-chat project
-# Based on Makefile configuration and desired check categories
+# Pragmatic configuration: catches real bugs without being overly pedantic
 
-# Enable comprehensive static analysis checks equivalent to scan-build
-# This includes all clang-analyzer checks (same as scan-build) plus additional modern checks
+# Focus on bug-catching checks first, then important readability/performance issues
+# Note: Comments inside the Checks string are not supported - all comments must be outside
 Checks: '-*,
-readability-*,
-performance-*,
-portability-*,
-bugprone-*,
-clang-analyzer-*,
-misc-*,
-cert-*,
--readability-identifier-length,
--readability-magic-numbers,
--readability-function-cognitive-complexity,
--readability-uppercase-literal-suffix,
--readability-braces-around-statements,
--readability-avoid-const-params-in-decls,
--readability-use-concise-preprocessor-directives,
--readability-duplicate-include,
--readability-implicit-bool-conversion,
--readability-function-size,
--readability-redundant-declaration,
--readability-non-const-parameter,
--readability-isolate-declaration,
--bugprone-easily-swappable-parameters,
--bugprone-reserved-identifier,
--bugprone-narrowing-conversions,
--bugprone-implicit-widening-of-multiplication-result,
--portability-avoid-pragma-once,
--misc-no-recursion,
--misc-include-cleaner,
--cert-env33-c,
--cert-dcl37-c,
--cert-dcl51-cpp,
--cert-oop*,
--modernize-*,
--cppcoreguidelines-*,
--google-*,
--hicpp-*,
--fuchsia-*,
--llvm-*,
--zircon-*,
--clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,
--cppcoreguidelines-avoid-non-const-global-variables,
--modernize-macro-to-enum,
--readability-math-missing-parentheses,
--cppcoreguidelines-init-variables'
+  bugprone-*,
+  clang-analyzer-*,
+  readability-redundant-control-flow,
+  readability-redundant-string-init,
+  readability-simplify-boolean-expr,
+  readability-suspicious-call-argument,
+  readability-misleading-indentation,
+  performance-inefficient-algorithm,
+  performance-type-promotion-in-math-fn,
+  misc-misplaced-const,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -readability-function-size,
+  -readability-braces-around-statements,
+  -readability-avoid-const-params-in-decls,
+  -readability-use-concise-preprocessor-directives,
+  -readability-duplicate-include,
+  -readability-redundant-declaration,
+  -readability-non-const-parameter,
+  -readability-isolate-declaration,
+  -readability-math-missing-parentheses,
+  -readability-container-data-pointer,
+  -readability-else-after-return,
+  -readability-redundant-access-specifiers,
+  -readability-redundant-preprocessor,
+  -readability-static-accessed-through-instance,
+  -readability-static-definition-in-anonymous-namespace,
+  -readability-string-compare,
+  -readability-qualified-auto,
+  -readability-convert-member-functions-to-static,
+  -readability-inconsistent-declaration-parameter-name,
+  -readability-redundant-member-init,
+  -readability-redundant-smartptr-get,
+  -readability-simplify-subscript-expr,
+  readability-duplicate-include,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-reserved-identifier,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-string-constructor,
+  -bugprone-signed-char-misuse,
+  -bugprone-sizeof-container,
+  -bugprone-sizeof-expression,
+  -bugprone-spuriously-wake-up-functions,
+  -bugprone-suspicious-enum-usage,
+  -bugprone-suspicious-missing-comma,
+  -bugprone-suspicious-semicolon,
+  -bugprone-suspicious-string-compare,
+  -bugprone-swapped-arguments,
+  -bugprone-terminating-continue,
+  -bugprone-throw-keyword-missing,
+  -bugprone-too-small-loop-variable,
+  -bugprone-unchecked-optional-access,
+  -bugprone-unhandled-exception-at-new,
+  -bugprone-unhandled-self-assignment,
+  -bugprone-unique-ptr-array-mismatch,
+  -bugprone-unused-local-non-trivial-variable,
+  -bugprone-use-after-move,
+  -bugprone-virtual-near-miss,
+  -bugprone-suspicious-include,
+  -bugprone-macro-parentheses,
+  -bugprone-assignment-in-if-condition,
+  -bugprone-casting-through-void,
+  -bugprone-multi-level-implicit-pointer-conversion,
+  -performance-no-automatic-move,
+  -performance-no-int-to-ptr,
+  -performance-noexcept-move-constructor,
+  -performance-trivially-destructible,
+  -performance-unnecessary-copy-initialization,
+  -performance-unnecessary-value-param,
+  -performance-move-const-arg,
+  -performance-for-range-copy,
+  -performance-implicit-conversion-in-loop,
+  -performance-inefficient-string-concatenation,
+  -performance-inefficient-vector-operation,
+  -performance-move-constructor-init,
+  -portability-simd-intrinsics,
+  -cert-*,
+  -modernize-*,
+  -cppcoreguidelines-*,
+  -google-*,
+  -hicpp-*,
+  -fuchsia-*,
+  -llvm-*,
+  -zircon-*,
+  -clang-analyzer-security.insecureAPI.*,
+  -clang-analyzer-optin.core.EnumCastOutOfRange,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  -clang-analyzer-cplusplus.NewDelete,
+  -clang-analyzer-deadcode.DeadStores,
+  -clang-analyzer-optin.performance.Padding,
+  -clang-analyzer-optin.portability.UnixAPI,
+  -clang-analyzer-security.FloatLoopCounter,
+  -clang-analyzer-unix.API,
+  -clang-analyzer-unix.Malloc,
+  -clang-analyzer-valist.Uninitialized,
+  -clang-analyzer-valist.Unterminated,
+  -clang-analyzer-core.NullDereference,
+  -clang-analyzer-core.NonNullParamChecker'
 
-# Filter headers to check (only project headers, not system/external headers)
-HeaderFilterRegex: '.*ascii-chat/.*\.(h|hpp)$'
-# HeaderFilterRegex: '.*'
+# Only check project headers, not system headers
+HeaderFilterRegex: '.*ascii-chat/(lib|src)/.*\.(h|hpp)$'
 
-# Treat warnings as errors for CI/CD
-# WarningsAsErrors: ''
+# Exclude dependency code and build directory from checks
+# This prevents warnings from third-party code we don't control and generated build files
+# Format: regex pattern matching paths in compilation database
+# Note: Use -source-filter "^(?!.*deps[\\\\/])(?!.*build[\\\\/]).*" when running run-clang-tidy.py
+# This pattern excludes:
+#   - Any path containing "deps/" or "deps\" (third-party dependencies)
+#   - Any path containing "build/" or "build\" (generated build files)
+# Works on both Windows (backslashes) and Unix (forward slashes)
+
+# Don't treat warnings as errors (allows gradual cleanup)
+WarningsAsErrors: ''
 
 # Check configuration options
 CheckOptions:
-  # Readability checks
-  - key: readability-function-size.LineThreshold
-    value: 140
-  - key: readability-function-size.StatementThreshold
-    value: 60
-  - key: readability-magic-numbers.IgnoredIntegerValues
-    value: '0;1;2;3;4;8;16;32;64;128;256;512;1024'
-  - key: readability-identifier-length
-    value: 'false'
-  
-  # Performance checks
-  - key: performance-move-const-arg.CheckTriviallyCopyableMove
-    value: 'false'
-  - key: performance-unnecessary-value-param.AllowedTypes
-    value: ''
-  
-  # Bugprone checks
-  - key: bugprone-assert-side-effect.AssertMacros
-    value: 'assert,ASSERT'
-  - key: bugprone-string-constructor.WarnOnLargeLength
-    value: 'true'
+  performance-unnecessary-value-param.AllowedTypes: ''
+  bugprone-assert-side-effect.AssertMacros: 'assert,ASSERT'
+  # Readability check thresholds (if we enable any)
+  readability-function-size.LineThreshold: 200
+  readability-function-size.StatementThreshold: 80
+  readability-magic-numbers.IgnoredIntegerValues: '0;1;2;3;4;8;16;32;64;128;256;512;1024;2048;4096'

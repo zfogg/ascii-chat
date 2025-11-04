@@ -126,9 +126,9 @@ image_t *webcam_read(void) {
 
         // Add a moving diagonal pattern
         int diagonal = (x + y + frame_counter * 10) % 256;
-        pixel->r = (pixel->r + diagonal) / 2;
-        pixel->g = (pixel->g + diagonal) / 2;
-        pixel->b = (pixel->b + diagonal) / 2;
+        pixel->r = (uint8_t)((int)pixel->r + diagonal) / 2;
+        pixel->g = (uint8_t)((int)pixel->g + diagonal) / 2;
+        pixel->b = (uint8_t)((int)pixel->b + diagonal) / 2;
 
         // Add grid lines for visual separation (but skip center lines to avoid artifacts)
         int center_x = test_frame->w / 2;

@@ -26,7 +26,8 @@ int getopt(int argc, char *const argv[], const char *optstring) {
   if (sp == 1) {
     if (optind >= argc || argv[optind][0] != '-' || argv[optind][1] == '\0') {
       return -1;
-    } else if (strcmp(argv[optind], "--") == 0) {
+    }
+    if (strcmp(argv[optind], "--") == 0) {
       optind++;
       return -1;
     }
@@ -37,7 +38,7 @@ int getopt(int argc, char *const argv[], const char *optstring) {
 
   if (optopt == ':' || oli == NULL) {
     if (opterr && *optstring != ':') {
-      fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], optopt);
+      (void)fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], optopt);
     }
     if (argv[optind][++sp] == '\0') {
       optind++;
@@ -60,7 +61,7 @@ int getopt(int argc, char *const argv[], const char *optstring) {
         return ':';
       }
       if (opterr) {
-        fprintf(stderr, "%s: option requires an argument -- '%c'\n", argv[0], optopt);
+        (void)fprintf(stderr, "%s: option requires an argument -- '%c'\n", argv[0], optopt);
       }
       sp = 1;
       return '?';
@@ -114,7 +115,7 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
     size_t name_len;
 
     if (name_end) {
-      name_len = name_end - name_start;
+      name_len = (size_t)((ptrdiff_t)(name_end - name_start));
     } else {
       name_len = strlen(name_start);
     }
@@ -131,23 +132,25 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
           // Handle argument
           if (longopts[i].has_arg == required_argument) {
             if (name_end) {
-              optarg = (char *)(name_end + 1);
+              // Cast needed: optarg is char* per getopt API, but name_end is const char*
+              optarg = (char *)(name_end + 1); // NOLINT(cppcoreguidelines-pro-type-const-cast)
             } else if (optind + 1 < argc) {
               optarg = argv[++optind];
             } else {
               if (opterr && *optstring != ':') {
-                fprintf(stderr, "%s: option '--%s' requires an argument\n", argv[0], longopts[i].name);
+                (void)fprintf(stderr, "%s: option '--%s' requires an argument\n", argv[0], longopts[i].name);
               }
               optind++;
               return (*optstring == ':') ? ':' : '?';
             }
           } else if (longopts[i].has_arg == optional_argument) {
             if (name_end) {
-              optarg = (char *)(name_end + 1);
+              // Cast needed: optarg is char* per getopt API, but name_end is const char*
+              optarg = (char *)(name_end + 1); // NOLINT(cppcoreguidelines-pro-type-const-cast)
             }
           } else if (longopts[i].has_arg == no_argument && name_end) {
             if (opterr && *optstring != ':') {
-              fprintf(stderr, "%s: option '--%s' doesn't allow an argument\n", argv[0], longopts[i].name);
+              (void)fprintf(stderr, "%s: option '--%s' doesn't allow an argument\n", argv[0], longopts[i].name);
             }
             optind++;
             return '?';
@@ -167,7 +170,7 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
 
     // Unknown long option
     if (opterr && *optstring != ':') {
-      fprintf(stderr, "%s: unrecognized option '--%.*s'\n", argv[0], (int)name_len, name_start);
+      (void)fprintf(stderr, "%s: unrecognized option '--%.*s'\n", argv[0], (int)name_len, name_start);
     }
     optind++;
     return '?';
@@ -175,12 +178,12 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
 
   // Handle short options
   // sp == 1 means we're already positioned at the first option character after '-'
-  optopt = current_arg[sp];
+  optopt = (unsigned char)current_arg[sp];
   const char *oli = strchr(optstring, optopt);
 
   if (optopt == ':' || oli == NULL) {
     if (opterr && *optstring != ':') {
-      fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], optopt);
+      (void)fprintf(stderr, "%s: invalid option -- '%c'\n", argv[0], optopt);
     }
     if (current_arg[++sp] == '\0') {
       optind++;
@@ -200,7 +203,8 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
       optind++;
     }
     return optopt;
-  } else if (next_char == ':') {
+  }
+  if (next_char == ':') {
     // Check if it's optional (::) or required (:)
     char after_colon = *(oli + 2);
 
@@ -216,33 +220,34 @@ int getopt_long(int argc, char *const argv[], const char *optstring, const struc
         optind++;
       }
       return optopt;
-    } else {
-      // Required argument (:)
-      if (current_arg[sp + 1] != '\0') {
-        // Argument attached to option (-vARG)
-        optarg = &current_arg[sp + 1];
-        sp = 1;
-        optind++;
-        return optopt;
-      } else if (optind + 1 >= argc) {
-        // No next argument available
-        sp = 1;
-        if (*optstring == ':') {
-          return ':';
-        }
-        if (opterr) {
-          fprintf(stderr, "%s: option requires an argument -- '%c'\n", argv[0], optopt);
-        }
-        optind++;
-        return '?';
-      } else {
-        // Get argument from next argv element
-        sp = 1;
-        optind++;
-        optarg = argv[optind++];
-        return optopt;
-      }
     }
+    // Required argument (:)
+    if (current_arg[sp + 1] != '\0') {
+      // Argument attached to option (-vARG)
+      optarg = &current_arg[sp + 1];
+      sp = 1;
+      optind++;
+      return optopt;
+    }
+
+    if (optind + 1 >= argc) {
+      // No next argument available
+      sp = 1;
+      if (*optstring == ':') {
+        return ':';
+      }
+      if (opterr) {
+        (void)fprintf(stderr, "%s: option requires an argument -- '%c'\n", argv[0], optopt);
+      }
+      optind++;
+      return '?';
+    }
+
+    // Get argument from next argv element
+    sp = 1;
+    optind++;
+    optarg = argv[optind++];
+    return optopt;
   }
 
   // Should not reach here

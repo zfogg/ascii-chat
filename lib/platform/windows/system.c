@@ -25,7 +25,6 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <time.h>
 #include <mmsystem.h> // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
 #include <stdatomic.h>
@@ -127,7 +126,7 @@ void platform_sleep_usec(unsigned int usec) {
   if (timeout_ms < 1)
     timeout_ms = 1;
 
-  Sleep(timeout_ms);
+  Sleep((DWORD)timeout_ms);
 }
 
 /**
@@ -402,7 +401,7 @@ static void init_windows_symbols(void) {
     char build_pdb_path[MAX_PATH];
     char *last_slash = strrchr(module_path, '\\');
     if (last_slash) {
-      size_t dir_len = last_slash - module_path;
+      size_t dir_len = (size_t)((ptrdiff_t)(last_slash - module_path));
       if (dir_len < MAX_PATH - 20) { // Leave room for "\build\bin\*.pdb"
         strncpy(build_pdb_path, module_path, dir_len);
         build_pdb_path[dir_len] = '\0';
@@ -496,7 +495,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     if (dollar_pos) {
       // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
       // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
-      size_t base_len = dollar_pos - symbol_info->Name;
+      size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - symbol_info->Name));
       if (base_len > 0 && base_len < sizeof(cleaned_name)) {
         // Remove trailing underscore if present
         if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
@@ -538,7 +537,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
     if (dollar_pos) {
       // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
       // If there's an underscore before the $, remove it too (e.g., "memcpy_" -> "memcpy")
-      size_t base_len = dollar_pos - symbol_info->Name;
+      size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - symbol_info->Name));
       if (base_len > 0 && base_len < sizeof(cleaned_name)) {
         // Remove trailing underscore if present
         if (base_len > 1 && symbol_info->Name[base_len - 1] == '_') {
@@ -607,7 +606,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
   char **cache_symbols = symbol_cache_resolve_batch(buffer, size);
 
   // Allocate array of strings (size + 1 for NULL terminator)
-  char **symbols = SAFE_MALLOC((size + 1) * sizeof(char *), char **);
+  char **symbols = SAFE_MALLOC(((size_t)(unsigned int)size + 1) * sizeof(char *), char **);
   if (!symbols) {
     if (cache_symbols) {
       symbol_cache_free_symbols(cache_symbols);
@@ -651,7 +650,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
           char cleaned_sym[1024];
           if (dollar_pos) {
             // Extract base function name before the $ (e.g., "memcpy" from "memcpy_$fo_rvas$")
-            size_t base_len = dollar_pos - sym;
+            size_t base_len = (size_t)((ptrdiff_t)(dollar_pos - sym));
             if (base_len > 0 && base_len < sizeof(cleaned_sym)) {
               // Remove trailing underscore if present
               if (base_len > 1 && sym[base_len - 1] == '_') {
@@ -737,7 +736,7 @@ void platform_backtrace_symbols_free(char **strings) {
 // ============================================================================
 
 /**
- * @brief Print backtrace to stderr
+ * @brief Print backtrace using log_plain
  * @param skip_frames Number of additional frames to skip (beyond platform_print_backtrace itself)
  */
 void platform_print_backtrace(int skip_frames) {
@@ -745,17 +744,29 @@ void platform_print_backtrace(int skip_frames) {
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    safe_fprintf(stderr, "=== BACKTRACE ===\n");
+    char backtrace_buffer[16384]; // 16KB buffer for backtrace
+    int offset = 0;
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
     int start_frame = 1 + skip_frames;
-    const char **colors = log_get_color_array();
-    for (int i = start_frame; i < size; i++) {
-      safe_fprintf(stderr, "%[s%2d%s] %s\n", colors[LOGGING_COLOR_DEBUG], i - start_frame, LOGGING_COLOR_RESET,
-                   symbols ? symbols[i] : "???");
+
+    // Build header
+    offset +=
+        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=== BACKTRACE ===\n");
+
+    // Build backtrace frames
+    for (int i = start_frame; i < size && offset < (int)sizeof(backtrace_buffer) - 256; i++) {
+      offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "  #%2d: %s\n",
+                                  i - start_frame, symbols ? symbols[i] : "???");
     }
-    safe_fprintf(stderr, "================\n");
+
+    // Build footer
+    offset +=
+        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=================");
+
+    // Single log_plain call with complete backtrace
+    log_plain("%s", backtrace_buffer);
 
     platform_backtrace_symbols_free(symbols);
   }
@@ -765,44 +776,52 @@ void platform_print_backtrace(int skip_frames) {
  * @brief Windows structured exception handler for crashes
  */
 static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
-  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
-  safe_fprintf(stderr, "Exception Code: 0x%08lx\n", exception_info->ExceptionRecord->ExceptionCode);
+  DWORD exception_code = exception_info->ExceptionRecord->ExceptionCode;
+  const char *exception_name;
 
-  switch (exception_info->ExceptionRecord->ExceptionCode) {
+  switch (exception_code) {
   case EXCEPTION_ACCESS_VIOLATION:
-    safe_fprintf(stderr, "Exception: Access Violation (SIGSEGV)\n");
+    exception_name = "Access Violation (SIGSEGV)";
     break;
   case EXCEPTION_ARRAY_BOUNDS_EXCEEDED:
-    safe_fprintf(stderr, "Exception: Array Bounds Exceeded\n");
+    exception_name = "Array Bounds Exceeded";
     break;
   case EXCEPTION_DATATYPE_MISALIGNMENT:
-    safe_fprintf(stderr, "Exception: Data Type Misalignment\n");
+    exception_name = "Data Type Misalignment";
     break;
   case EXCEPTION_FLT_DIVIDE_BY_ZERO:
-    safe_fprintf(stderr, "Exception: Floating Point Divide by Zero (SIGFPE)\n");
+    exception_name = "Floating Point Divide by Zero (SIGFPE)";
     break;
   case EXCEPTION_FLT_INVALID_OPERATION:
-    safe_fprintf(stderr, "Exception: Floating Point Invalid Operation (SIGFPE)\n");
+    exception_name = "Floating Point Invalid Operation (SIGFPE)";
     break;
   case EXCEPTION_ILLEGAL_INSTRUCTION:
-    safe_fprintf(stderr, "Exception: Illegal Instruction (SIGILL)\n");
+    exception_name = "Illegal Instruction (SIGILL)";
     break;
   case EXCEPTION_INT_DIVIDE_BY_ZERO:
-    safe_fprintf(stderr, "Exception: Integer Divide by Zero (SIGFPE)\n");
+    exception_name = "Integer Divide by Zero (SIGFPE)";
     break;
   case EXCEPTION_STACK_OVERFLOW:
-    safe_fprintf(stderr, "Exception: Stack Overflow\n");
+    exception_name = "Stack Overflow";
     break;
   default:
-    safe_fprintf(stderr, "Exception: Unknown (0x%08lx)\n", exception_info->ExceptionRecord->ExceptionCode);
+    exception_name = "Unknown";
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
+  log_error("\n*** CRASH DETECTED ***\n"
+            "Exception Code: 0x%08lx\n"
+            "Exception: %s",
+            exception_code, exception_name);
   platform_print_backtrace(0);
 #else
-  fprintf(stderr, "Backtrace disabled in Release builds\n");
+  log_error("*** CRASH DETECTED ***\n"
+            "Exception Code: 0x%08lx\n"
+            "Exception: %s",
+            exception_code, exception_name);
+  log_error("Backtrace disabled in Release builds");
 #endif
 
   // Return EXCEPTION_EXECUTE_HANDLER to terminate the program
@@ -813,27 +832,28 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
  * @brief Signal handler for Windows C runtime exceptions
  */
 static void windows_signal_handler(int sig) {
-  safe_fprintf(stderr, "\n*** CRASH DETECTED ***\n");
+  const char *signal_name;
   switch (sig) {
   case SIGABRT:
-    safe_fprintf(stderr, "Signal: SIGABRT (Abort)\n");
+    signal_name = "SIGABRT (Abort)";
     break;
   case SIGFPE:
-    safe_fprintf(stderr, "Signal: SIGFPE (Floating Point Exception)\n");
+    signal_name = "SIGFPE (Floating Point Exception)";
     break;
   case SIGILL:
-    safe_fprintf(stderr, "Signal: SIGILL (Illegal Instruction)\n");
+    signal_name = "SIGILL (Illegal Instruction)";
     break;
   default:
-    safe_fprintf(stderr, "Signal: %d (Unknown)\n", sig);
+    signal_name = "Unknown";
     break;
   }
 
 #ifndef NDEBUG
   // Only capture backtraces in Debug builds
+  log_error("*** CRASH DETECTED ***\nSignal: %d (%s)", sig, signal_name);
   platform_print_backtrace(0);
 #else
-  fprintf(stderr, "Backtrace disabled in Release builds\n");
+  log_error("*** CRASH DETECTED ***\nSignal: %d (%s)\nBacktrace disabled in Release builds", sig, signal_name);
 #endif
 
   exit(1);
@@ -890,8 +910,8 @@ int clock_gettime(int clk_id, struct timespec *tp) {
     }
 
     // Convert to seconds and nanoseconds
-    tp->tv_sec = counter.QuadPart / freq.QuadPart;
-    tp->tv_nsec = ((counter.QuadPart % freq.QuadPart) * 1000000000) / freq.QuadPart;
+    tp->tv_sec = (time_t)(counter.QuadPart / freq.QuadPart);
+    tp->tv_nsec = (long)((long long)(((counter.QuadPart % freq.QuadPart) * 1000000000LL) / freq.QuadPart));
   }
 
   return 0;
@@ -1144,7 +1164,7 @@ asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t c
 #endif
 }
 
-int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
+asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src, size_t count) {
   // Validate parameters
   if (!dest || !src) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid pointers for memmove");
@@ -1157,11 +1177,15 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
 #ifdef __STDC_LIB_EXT1__
   // Use memmove_s if available (C11 Annex K)
   errno_t err = memmove_s(dest, dest_size, src, count);
-  return err; // Returns 0 on success, non-zero on error
+  if (err != 0) {
+
+    return SET_ERRNO_SYS(ERROR_BUFFER_OVERFLOW, "memmove_s failed");
+  }
+  return ASCIICHAT_OK;
 #else
   // Fallback to standard memmove with bounds already checked
   memmove(dest, src, count);
-  return 0; // Success
+  return ASCIICHAT_OK;
 #endif
 }
 
@@ -1176,7 +1200,7 @@ int platform_memmove(void *dest, size_t dest_size, const void *src, size_t count
  * @param ipv4_out_size Size of the output buffer
  * @return 0 on success, -1 on failure
  */
-int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
+asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size) {
   if (!hostname || !ipv4_out || ipv4_out_size == 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for hostname resolution");
   }
@@ -1207,8 +1231,11 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   }
 
   // Extract IPv4 address from first result
-  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
-  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
+  // getaddrinfo returns sockaddr*, but we know it's sockaddr_in for IPv4
+  // Use memcpy to avoid alignment cast warning - getaddrinfo guarantees proper alignment
+  struct sockaddr_in ipv4_addr;
+  memcpy(&ipv4_addr, result->ai_addr, sizeof(struct sockaddr_in));
+  if (inet_ntop(AF_INET, &(ipv4_addr.sin_addr), ipv4_out, (size_t)(socklen_t)ipv4_out_size) == NULL) {
     freeaddrinfo(result);
     WSACleanup();
     return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
@@ -1217,7 +1244,7 @@ int platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size
   freeaddrinfo(result);
   WSACleanup();
 
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 /**

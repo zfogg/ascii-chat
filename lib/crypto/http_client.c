@@ -75,7 +75,7 @@ static char *extract_http_body(const char *response, size_t response_len) {
   }
   body_start += 4; // Skip "\r\n\r\n"
 
-  size_t body_len = response_len - (body_start - response);
+  size_t body_len = response_len - (size_t)(body_start - response);
   char *body;
   body = SAFE_MALLOC(body_len + 1, char *);
   memcpy(body, body_start, body_len);
@@ -198,7 +198,7 @@ char *https_get(const char *hostname, const char *path) {
                                   path, hostname);
 
   // Send HTTP request over TLS
-  if (br_sslio_write_all(&ioc, request, request_len) != 0) {
+  if (br_sslio_write_all(&ioc, request, (size_t)request_len) != 0) {
     log_error("Failed to send HTTP request");
     SAFE_FREE(iobuf);
     socket_close(sock);
@@ -240,7 +240,7 @@ char *https_get(const char *hostname, const char *path) {
       break; // EOF
     }
 
-    response_len += n;
+    response_len += (size_t)n;
   }
 
   response_buf[response_len] = '\0';

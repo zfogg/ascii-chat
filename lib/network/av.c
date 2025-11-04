@@ -60,7 +60,7 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
   ascii_frame_packet_t packet;
   packet.width = 0;  // Will be set by receiver
   packet.height = 0; // Will be set by receiver
-  packet.original_size = frame_size;
+  packet.original_size = (uint32_t)frame_size;
   packet.compressed_size = 0;
   packet.checksum = 0;
   packet.flags = 0;
@@ -152,7 +152,7 @@ int av_send_audio(socket_t sockfd, const float *samples, int num_samples) {
   }
 
   // Send packet
-  return packet_send(sockfd, PACKET_TYPE_AUDIO, samples, num_samples * sizeof(float));
+  return packet_send(sockfd, PACKET_TYPE_AUDIO, samples, (size_t)num_samples * sizeof(float));
 }
 
 /**
@@ -173,12 +173,12 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
   // Create audio batch packet
   audio_batch_packet_t packet;
   packet.batch_count = 1;
-  packet.total_samples = num_samples;
-  packet.sample_rate = sample_rate;
+  packet.total_samples = (uint32_t)num_samples;
+  packet.sample_rate = (uint32_t)sample_rate;
   packet.channels = 1; // Assume mono
 
   // Calculate total packet size
-  size_t samples_size = num_samples * sizeof(float);
+  size_t samples_size = (size_t)num_samples * sizeof(float);
   size_t total_size = sizeof(audio_batch_packet_t) + samples_size;
 
   // Allocate buffer for complete packet
@@ -217,7 +217,7 @@ int av_send_size_message(socket_t sockfd, unsigned short width, unsigned short h
     return -1;
   }
 
-  return packet_send(sockfd, PACKET_TYPE_SIZE_MESSAGE, message, len);
+  return packet_send(sockfd, PACKET_TYPE_SIZE_MESSAGE, message, (size_t)len);
 }
 
 /**
@@ -235,7 +235,7 @@ int av_send_audio_message(socket_t sockfd, unsigned int num_samples) {
     return -1;
   }
 
-  return packet_send(sockfd, PACKET_TYPE_AUDIO_MESSAGE, message, len);
+  return packet_send(sockfd, PACKET_TYPE_AUDIO_MESSAGE, message, (size_t)len);
 }
 
 /**
@@ -350,13 +350,13 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
   // Build batch header
   audio_batch_packet_t header;
-  header.batch_count = htonl(batch_count);
-  header.total_samples = htonl(num_samples);
-  header.sample_rate = htonl(44100); // Could make this configurable
-  header.channels = htonl(1);        // Mono for now
+  header.batch_count = htonl((u_long)batch_count);
+  header.total_samples = htonl((u_long)num_samples);
+  header.sample_rate = htonl(44100UL); // Could make this configurable
+  header.channels = htonl(1UL);        // Mono for now
 
   // Calculate total payload size
-  size_t data_size = num_samples * sizeof(uint32_t); // Send as 32-bit integers for portability
+  size_t data_size = (size_t)num_samples * sizeof(uint32_t); // Send as 32-bit integers for portability
   size_t total_size = sizeof(header) + data_size;
 
   // Allocate buffer for header + data
@@ -371,18 +371,21 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
   // Convert floats to network byte order (as 32-bit integers with scaling)
   // Floats in range [-1.0, 1.0] are scaled to INT32 range for transmission
-  uint32_t *sample_data = (uint32_t *)(buffer + sizeof(header));
+  // Use memcpy to avoid alignment issues when casting from uint8_t* to uint32_t*
+  uint8_t *sample_data_ptr = buffer + sizeof(header);
   for (int i = 0; i < num_samples; i++) {
     // Scale float [-1.0, 1.0] to int32 range and convert to network byte order
     int32_t scaled = (int32_t)(samples[i] * 2147483647.0f);
-    sample_data[i] = htonl((uint32_t)scaled);
+    uint32_t network_value = htonl((uint32_t)scaled);
+    memcpy(sample_data_ptr + (size_t)i * sizeof(uint32_t), &network_value, sizeof(uint32_t));
   }
 
   // Debug: Log first few samples to verify conversion
   static int send_count = 0;
   send_count++;
   if (send_count % 100 == 0) {
-    log_info("SEND: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
+    log_info("SEND: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", (double)samples[0], (double)samples[1],
+             (double)samples[2]);
     log_info("SEND: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", (int32_t)(samples[0] * 2147483647.0f),
              (int32_t)(samples[1] * 2147483647.0f), (int32_t)(samples[2] * 2147483647.0f));
   }

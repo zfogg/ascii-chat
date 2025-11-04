@@ -8,9 +8,22 @@
 // All necessary headers are already included by the parent files
 
 #include <stdatomic.h>
-#include "../util/uthash.h"
 #include "../common.h"
 #include "../util/fnv1a.h"
+
+// UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
+// Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
+#undef HASH_FUNCTION
+#define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
+  do {                                                                                                                 \
+    if (!(keyptr) || (keylen) == 0) {                                                                                  \
+      (hashv) = 1; /* Non-zero constant for safety */                                                                  \
+    } else {                                                                                                           \
+      (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
+    }                                                                                                                  \
+  } while (0)
+
+#include "../util/uthash.h"
 #include "logging.h"
 
 // Platform-specific path separator and binary suffix

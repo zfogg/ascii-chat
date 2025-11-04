@@ -78,7 +78,6 @@
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
-#include "errno.h"
 #include "image2ascii/image.h"
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/simd/common.h"
@@ -87,7 +86,6 @@
 #include "options.h"
 #include "buffer_pool.h"
 #include "mixer.h"
-#include "palette.h"
 #include "audio.h"
 #include "client.h"
 #include "stream.h"
@@ -96,7 +94,6 @@
 #include "platform/symbols.h"
 #include "platform/system.h"
 #include "crypto/keys/keys.h"
-#include "crypto/known_hosts.h"
 
 /* ============================================================================
  * Global State
@@ -389,41 +386,41 @@ static socket_t bind_and_listen(const char *address, int family, int port) {
   socklen_t addrlen = res->ai_addrlen;
   freeaddrinfo(res);
 
-  socket_t listenfd = socket_create(address_family, SOCK_STREAM, 0);
-  if (listenfd == INVALID_SOCKET_VALUE) {
+  socket_t server_socket = socket_create(address_family, SOCK_STREAM, 0);
+  if (server_socket == INVALID_SOCKET_VALUE) {
     FATAL(ERROR_NETWORK, "Failed to create socket: %s", SAFE_STRERROR(errno));
   }
 
   // Set socket options
   int yes = 1;
-  if (socket_setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+  if (socket_setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
     FATAL(ERROR_NETWORK, "setsockopt SO_REUSEADDR failed: %s", SAFE_STRERROR(errno));
   }
 
   // For IPv6 sockets, set IPV6_V6ONLY=1 to bind separately from IPv4
   if (address_family == AF_INET6) {
     int ipv6only = 1; // 1 = IPv6 only (don't accept IPv4-mapped)
-    if (socket_setsockopt(listenfd, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
+    if (socket_setsockopt(server_socket, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6only, sizeof(ipv6only)) == -1) {
       log_warn("Failed to set IPV6_V6ONLY=1: %s", SAFE_STRERROR(errno));
     } else {
       log_debug("IPv6-only mode enabled (separate from IPv4)");
     }
   }
 
-  if (set_socket_keepalive(listenfd) < 0) {
+  if (set_socket_keepalive(server_socket) < 0) {
     log_warn("Failed to set keep-alive on listener: %s", SAFE_STRERROR(errno));
   }
 
   log_info("Server binding to %s:%d", address, port);
-  if (socket_bind(listenfd, (struct sockaddr *)&serv_addr, addrlen) < 0) {
+  if (socket_bind(server_socket, (struct sockaddr *)&serv_addr, addrlen) < 0) {
     FATAL(ERROR_NETWORK_BIND, "Socket bind failed: %s", SAFE_STRERROR(errno));
   }
 
-  if (socket_listen(listenfd, 10) < 0) {
+  if (socket_listen(server_socket, 10) < 0) {
     FATAL(ERROR_NETWORK, "Connection listen failed: %s", SAFE_STRERROR(errno));
   }
 
-  return listenfd;
+  return server_socket;
 }
 
 /**

@@ -13,7 +13,7 @@
 - **Use memory macros** from common.h rather than regular malloc/free (see Memory Management section below)
 - On macOS: use `lldb` for debugging
 - On Windows: use PowerShell build script `./build.ps1` or CMake directly
-- Use `clang` as the compiler
+- **IMPORTANT: This project uses Clang only, not MSVC** - All builds (Debug, Release, etc.) use `clang` as the compiler
 - Don't use `git add .`, add all files individually
 - Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
 - Use log\_\*() from logging.c and common.h for logging instead of printf()

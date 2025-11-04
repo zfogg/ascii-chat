@@ -73,7 +73,19 @@ void platform_cleanup(void);
 void platform_sleep_ms(unsigned int ms);
 
 #ifdef _WIN32
+// usleep macro - only define if not already declared (GCC's unistd.h declares it as a function)
+// On Windows with GCC/Clang, usleep may be available via unistd.h, so we check for that
+// If it's not available, we provide our macro wrapper
+#ifndef _WIN32_USLEEP_AVAILABLE
+// Check if usleep is declared (GCC's unistd.h provides it)
+#if defined(__GNUC__) && !defined(__clang__)
+// INFO: GCC on Windows: unistd.h declares usleep, so don't redefine it
+// Code should use usleep() directly or platform_sleep_usec() directly
+#else
+// MSVC/Clang on Windows: Define usleep macro to use platform_sleep_usec
 #define usleep(usec) platform_sleep_usec(usec)
+#endif
+#endif
 #endif
 
 /**
@@ -231,10 +243,10 @@ void platform_backtrace_symbols_free(char **strings);
 void platform_install_crash_handler(void);
 
 /**
- * @brief Print a backtrace to stderr
+ * @brief Print a backtrace using log_plain
  * @param skip_frames Number of frames to skip from the top
  *
- * Prints a backtrace of the current call stack to stderr.
+ * Prints a backtrace of the current call stack using log_plain().
  * Useful for debugging crashes or errors.
  *
  * @ingroup platform

@@ -26,7 +26,9 @@
 
 // Check if we're in a test environment
 static int is_test_environment(void) {
-  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
+  const char *criterion_test = SAFE_GETENV("CRITERION_TEST");
+  const char *testing = SAFE_GETENV("TESTING");
+  return criterion_test != NULL || testing != NULL;
 }
 
 /**
@@ -248,10 +250,12 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
       return -1; // Fatal error
     }
 
-    total_sent += sent;
+    if (sent > 0) {
+      total_sent += (size_t)sent;
+    }
   }
 
-  return total_sent;
+  return (ssize_t)total_sent;
 }
 
 /**
@@ -301,7 +305,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
     }
 
     // Calculate how much we still need to receive
-    size_t bytes_to_recv = len - total_received;
+    size_t bytes_to_recv = len - (size_t)total_received;
     ssize_t received = network_platform_recv(sockfd, data + total_received, bytes_to_recv);
 
     if (received < 0) {
