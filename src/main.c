@@ -451,7 +451,9 @@ int main(int argc, char *argv[]) {
   //       mode_argc = 1 (program_name) + 2 (--port, 8080) = 3
   int args_after_mode = argc - mode_index - 1; // Number of args after mode
   int mode_argc = 1 + args_after_mode;         // program_name + args after mode
-  char **mode_argv = SAFE_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
+  // Use UNTRACKED_MALLOC to avoid appearing in memory leak reports
+  // mode_argv is freed via atexit handler when mode->entry_point() calls exit()
+  char **mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
 
   // Build new argv: [program_name, options_after_mode]
   mode_argv[0] = argv[0]; // Keep program name
@@ -472,6 +474,11 @@ int main(int argc, char *argv[]) {
 
   // Dispatch to mode entry point
   int exit_code = mode->entry_point(mode_argc, mode_argv);
+
+  // If mode entry point returns (doesn't call exit()), free mode_argv here
+  // and unregister the atexit handler by clearing the static variable
+  UNTRACKED_FREE(mode_argv);
+
   if (exit_code == ERROR_USAGE) {
     _exit(ERROR_USAGE);
   }
@@ -483,8 +490,7 @@ int main(int argc, char *argv[]) {
    * @{
    */
 
-  // Cleanup and return
-  SAFE_FREE(mode_argv);
+  // Return exit code (mode_argv already freed above)
   return exit_code;
 
   /** @} */

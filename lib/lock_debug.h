@@ -1,8 +1,5 @@
 #pragma once
 
-#include "platform/thread.h" // For ascii_thread_self()
-#include "util/fnv1a.h"      // For fnv1a_hash_string, fnv1a_hash_bytes, FNV1A_32_OFFSET_BASIS, FNV1A_32_PRIME
-
 /**
  * @file lock_debug.h
  * @ingroup lock_debug
@@ -39,10 +36,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
-#include "platform/thread.h"
+#include "platform/thread.h" // For ascii_thread_self()
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
-#include <uthash.h> // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
+#include "util/uthash.h"
+#include "util/fnv1a.h"
 
 // ============================================================================
 // Constants and Limits
