@@ -25,11 +25,10 @@ include(FetchContent)
 set(_SAVED_ARCHIVE_OUTPUT_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
-# Use cache directory for musl deps - both PREFIX and install dir
-# MUSL_DEPS_DIR is set in Init.cmake to .deps-cache-musl/$BUILD_TYPE
-set(MUSL_PREFIX "${MUSL_DEPS_DIR}/musl-deps")
-message(STATUS "MuslDependencies.cmake: MUSL_DEPS_DIR=${MUSL_DEPS_DIR}")
-message(STATUS "MuslDependencies.cmake: MUSL_PREFIX=${MUSL_PREFIX}")
+# Use cache directory for musl deps - separate directory for each dependency
+# MUSL_DEPS_DIR_STATIC is set in Init.cmake to .deps-cache-musl/$BUILD_TYPE/static
+# Each dependency gets its own subdirectory for cleaner organization
+message(STATUS "MuslDependencies.cmake: MUSL_DEPS_DIR_STATIC=${MUSL_DEPS_DIR_STATIC}")
 
 # =============================================================================
 # Copy kernel headers to project-local directory
@@ -38,7 +37,7 @@ message(STATUS "MuslDependencies.cmake: MUSL_PREFIX=${MUSL_PREFIX}")
 # and asm-generic/ headers for ALSA and V4L2. Copy them to a project-local
 # directory so the build works on fresh installs without system modifications.
 
-set(KERNEL_HEADERS_DIR "${MUSL_PREFIX}/kernel-headers")
+set(KERNEL_HEADERS_DIR "${MUSL_DEPS_DIR_STATIC}/kernel-headers")
 
 # Find kernel headers from common locations
 set(KERNEL_HEADER_SEARCH_PATHS
@@ -96,157 +95,172 @@ endif()
 # =============================================================================
 message(STATUS "Configuring zstd from source...")
 
+set(ZSTD_PREFIX "${MUSL_DEPS_DIR_STATIC}/zstd")
+set(ZSTD_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/zstd-build")
+
 # Only add external project if library doesn't exist
-if(NOT EXISTS "${MUSL_PREFIX}/lib/libzstd.a")
+if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
     message(STATUS "  zstd library not found in cache, will build from source")
     ExternalProject_Add(zstd-musl
         URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
         URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
-        PREFIX ${FETCHCONTENT_BASE_DIR}/zstd-musl
-        STAMP_DIR ${FETCHCONTENT_BASE_DIR}/zstd-musl/stamps
+        PREFIX ${ZSTD_BUILD_DIR}
+        STAMP_DIR ${ZSTD_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR> lib-release PREFIX=${MUSL_PREFIX}
-        INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
+        BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR> lib-release PREFIX=${ZSTD_PREFIX}
+        INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${ZSTD_PREFIX}
         BUILD_IN_SOURCE 1
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libzstd.a
+        BUILD_BYPRODUCTS ${ZSTD_PREFIX}/lib/libzstd.a
     )
 else()
-    message(STATUS "  zstd library found in cache: ${MUSL_PREFIX}/lib/libzstd.a")
+    message(STATUS "  zstd library found in cache: ${ZSTD_PREFIX}/lib/libzstd.a")
     # Create a dummy target so dependencies can reference it
     add_custom_target(zstd-musl)
 endif()
 
 set(ZSTD_FOUND TRUE)
-set(ZSTD_LIBRARIES "${MUSL_PREFIX}/lib/libzstd.a")
-set(ZSTD_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
+set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 
 # =============================================================================
 # libsodium - Cryptography library
 # =============================================================================
 message(STATUS "Configuring libsodium from source...")
 
+set(LIBSODIUM_PREFIX "${MUSL_DEPS_DIR_STATIC}/libsodium")
+set(LIBSODIUM_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libsodium-build")
+
 # Only add external project if library doesn't exist
-if(NOT EXISTS "${MUSL_PREFIX}/lib/libsodium.a")
+if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     message(STATUS "  libsodium library not found in cache, will build from source")
     ExternalProject_Add(libsodium-musl
         URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
-        PREFIX ${FETCHCONTENT_BASE_DIR}/libsodium-musl
-        STAMP_DIR ${FETCHCONTENT_BASE_DIR}/libsodium-musl/stamps
+        PREFIX ${LIBSODIUM_BUILD_DIR}
+        STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared
+        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
         DEPENDS zstd-musl
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libsodium.a
+        BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
     )
 else()
-    message(STATUS "  libsodium library found in cache: ${MUSL_PREFIX}/lib/libsodium.a")
+    message(STATUS "  libsodium library found in cache: ${LIBSODIUM_PREFIX}/lib/libsodium.a")
     # Create a dummy target so dependencies can reference it
     add_custom_target(libsodium-musl DEPENDS zstd-musl)
 endif()
 
 set(LIBSODIUM_FOUND TRUE)
-set(LIBSODIUM_LIBRARIES "${MUSL_PREFIX}/lib/libsodium.a")
-set(LIBSODIUM_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+set(LIBSODIUM_LIBRARIES "${LIBSODIUM_PREFIX}/lib/libsodium.a")
+set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
 
 # =============================================================================
 # ALSA - Advanced Linux Sound Architecture
 # =============================================================================
 message(STATUS "Configuring ALSA from source...")
 
+set(ALSA_PREFIX "${MUSL_DEPS_DIR_STATIC}/alsa-lib")
+set(ALSA_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/alsa-lib-build")
+
 include(ExternalProject)
 
 # Only add external project if library doesn't exist
-if(NOT EXISTS "${MUSL_PREFIX}/lib/libasound.a")
+if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
     message(STATUS "  ALSA library not found in cache, will build from source")
     ExternalProject_Add(alsa-lib-musl
         URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
         URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
-        PREFIX ${FETCHCONTENT_BASE_DIR}/alsa-lib-musl
-        STAMP_DIR ${FETCHCONTENT_BASE_DIR}/alsa-lib-musl/stamps
+        PREFIX ${ALSA_BUILD_DIR}
+        STAMP_DIR ${ALSA_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${MUSL_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
+        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libasound.a
+        BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
     )
 else()
-    message(STATUS "  ALSA library found in cache: ${MUSL_PREFIX}/lib/libasound.a")
+    message(STATUS "  ALSA library found in cache: ${ALSA_PREFIX}/lib/libasound.a")
     # Create a dummy target so dependencies can reference it
     add_custom_target(alsa-lib-musl)
 endif()
 
 # Set ALSA variables for PortAudio to find
 set(ALSA_FOUND TRUE)
-set(ALSA_LIBRARIES "${MUSL_PREFIX}/lib/libasound.a")
-set(ALSA_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+set(ALSA_LIBRARIES "${ALSA_PREFIX}/lib/libasound.a")
+set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include")
 
 # =============================================================================
 # PortAudio - Audio I/O library
 # =============================================================================
 message(STATUS "Configuring PortAudio from source...")
 
+set(PORTAUDIO_PREFIX "${MUSL_DEPS_DIR_STATIC}/portaudio")
+set(PORTAUDIO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/portaudio-build")
+
 # Only add external project if library doesn't exist
-if(NOT EXISTS "${MUSL_PREFIX}/lib/libportaudio.a")
+if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
     message(STATUS "  PortAudio library not found in cache, will build from source")
     ExternalProject_Add(portaudio-musl
         URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
         URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
-        PREFIX ${FETCHCONTENT_BASE_DIR}/portaudio-musl
-        STAMP_DIR ${FETCHCONTENT_BASE_DIR}/portaudio-musl/stamps
+        PREFIX ${PORTAUDIO_BUILD_DIR}
+        STAMP_DIR ${PORTAUDIO_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${MUSL_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${MUSL_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
+        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
         BUILD_COMMAND env REALGCC=/usr/bin/gcc make
         INSTALL_COMMAND make install
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libportaudio.a
+        BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         DEPENDS alsa-lib-musl
     )
 else()
-    message(STATUS "  PortAudio library found in cache: ${MUSL_PREFIX}/lib/libportaudio.a")
+    message(STATUS "  PortAudio library found in cache: ${PORTAUDIO_PREFIX}/lib/libportaudio.a")
     # Create a dummy target so dependencies can reference it
     add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
 endif()
 
 set(PORTAUDIO_FOUND TRUE)
-set(PORTAUDIO_LIBRARIES "${MUSL_PREFIX}/lib/libportaudio.a")
-set(PORTAUDIO_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
+set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
 
 # =============================================================================
 # libexecinfo - Backtrace support for musl
 # =============================================================================
 message(STATUS "Configuring libexecinfo from source...")
 
+set(LIBEXECINFO_PREFIX "${MUSL_DEPS_DIR_STATIC}/libexecinfo")
+set(LIBEXECINFO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libexecinfo-build")
+
 # Only add external project if library doesn't exist
-if(NOT EXISTS "${MUSL_PREFIX}/lib/libexecinfo.a")
+if(NOT EXISTS "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
     message(STATUS "  libexecinfo library not found in cache, will build from source")
     ExternalProject_Add(libexecinfo-musl
         GIT_REPOSITORY https://github.com/mikroskeem/libexecinfo.git
         GIT_TAG master
-        PREFIX ${FETCHCONTENT_BASE_DIR}/libexecinfo-musl
-        STAMP_DIR ${FETCHCONTENT_BASE_DIR}/libexecinfo-musl/stamps
+        PREFIX ${LIBEXECINFO_BUILD_DIR}
+        STAMP_DIR ${LIBEXECINFO_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND ""
         BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR>
-        INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${MUSL_PREFIX}
+        INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
         BUILD_IN_SOURCE 1
-        BUILD_BYPRODUCTS ${MUSL_PREFIX}/lib/libexecinfo.a
+        BUILD_BYPRODUCTS ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
     )
 else()
-    message(STATUS "  libexecinfo library found in cache: ${MUSL_PREFIX}/lib/libexecinfo.a")
+    message(STATUS "  libexecinfo library found in cache: ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
     # Create a dummy target so dependencies can reference it
     add_custom_target(libexecinfo-musl)
 endif()
 
 set(LIBEXECINFO_FOUND TRUE)
-set(LIBEXECINFO_LIBRARIES "${MUSL_PREFIX}/lib/libexecinfo.a")
-set(LIBEXECINFO_INCLUDE_DIRS "${MUSL_PREFIX}/include")
+set(LIBEXECINFO_LIBRARIES "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
+set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
 
 # =============================================================================
 # BearSSL - TLS library for SSH key fetching
@@ -255,7 +269,7 @@ message(STATUS "Configuring BearSSL from source...")
 
 # BearSSL doesn't use CMake, so we build it manually
 set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
-set(BEARSSL_BUILD_DIR "${FETCHCONTENT_BASE_DIR}/bearssl-build-${CMAKE_BUILD_TYPE}")
+set(BEARSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/bearssl-build")
 set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
 if(EXISTS "${BEARSSL_SOURCE_DIR}")

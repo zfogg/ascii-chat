@@ -10,8 +10,8 @@ Options: [defaults in brackets after descriptions]
   --version         print cmake installer version
   --prefix=dir      directory in which to install
                     [default: /usr/local]
-  --include-subdir  include the @CPACK_PACKAGE_FILE_NAME@ subdirectory
-  --exclude-subdir  exclude the @CPACK_PACKAGE_FILE_NAME@ subdirectory
+  --include-subdir  include the @CPACK_PACKAGE_NAME@ subdirectory
+  --exclude-subdir  exclude the @CPACK_PACKAGE_NAME@ subdirectory
                     [default: exclude]
   --skip-license    accept license
 EOF
@@ -38,9 +38,9 @@ cpack_fix_slashes()
 
 interactive=TRUE
 cpack_skip_license=FALSE
-# Default to excluding subdirectory for FHS-compliant installation
-# This installs to /usr/local/bin/ascii-chat instead of /usr/local/ascii-chat-0.3.2-Linux/bin/ascii-chat
-cpack_include_subdir=FALSE
+# Leave cpack_include_subdir unset - will be determined by command line flags or user prompt
+# (defaults to FALSE for FHS-compliant installation when user is prompted)
+cpack_include_subdir=""
 # Default to /usr/local instead of current directory
 cpack_prefix_dir="/usr/local"
 
@@ -67,11 +67,6 @@ for a in "$@"; do
   fi
 done
 
-if [ "x${cpack_include_subdir}x" != "xx" -o "x${cpack_skip_license}x" = "xTRUEx" ]
-then
-  interactive=FALSE
-fi
-
 cpack_version
 echo "This is a self-extracting archive."
 toplevel="`pwd`"
@@ -82,54 +77,53 @@ fi
 
 echo "The archive will be extracted to: ${toplevel}"
 
-if [ "x${interactive}x" = "xTRUEx" ]
+# Show license if not skipped
+if [ "x${cpack_skip_license}x" != "xTRUEx" ]
 then
   echo ""
   echo "If you want to stop extracting, please press <ctrl-C>."
-
-  if [ "x${cpack_skip_license}x" != "xTRUEx" ]
-  then
-    more << '____cpack__here_doc____'
+  more << '____cpack__here_doc____'
 @CPACK_RESOURCE_FILE_LICENSE_CONTENT@
 ____cpack__here_doc____
-    echo
-    while true
-      do
-        echo "Do you accept the license? [yn]: "
-        read line leftover
-        case ${line} in
-          y* | Y*)
-            cpack_license_accepted=TRUE
-            break;;
-          n* | N* | q* | Q* | e* | E*)
-            echo "License not accepted. Exiting ..."
-            exit 1;;
-        esac
-      done
-  fi
+  echo
+  while true
+    do
+      echo "Do you accept the license? [yn]: "
+      read line leftover
+      case ${line} in
+        y* | Y*)
+          cpack_license_accepted=TRUE
+          break;;
+        n* | N* | q* | Q* | e* | E*)
+          echo "License not accepted. Exiting ..."
+          exit 1;;
+      esac
+    done
+fi
 
-  # Skip the subdirectory prompt since we default to FALSE (FHS-compliant)
-  # Users can override with --include-subdir flag if they want the subdirectory
-  if [ "x${cpack_include_subdir}x" = "xx" ]
-  then
-    cpack_include_subdir=FALSE
-  fi
-
-  # Show the installation directory
-  if [ "x${cpack_include_subdir}x" = "xTRUEx" ]
-  then
-    echo "The @CPACK_PACKAGE_NAME@ will be installed in:"
-    echo "  \"${toplevel}/@CPACK_PACKAGE_FILE_NAME@\""
-  else
-    echo "The @CPACK_PACKAGE_NAME@ will be installed to:"
-    echo "  \"${toplevel}/bin/@CPACK_PACKAGE_NAME@\""
-    echo "  \"${toplevel}/share/doc/@CPACK_PACKAGE_NAME@/\""
-  fi
+# Ask user about subdirectory (default to NO for FHS-compliant installation)
+# Only ask if not already specified via command line flags
+if [ "x${cpack_include_subdir}x" = "xx" ]
+then
+  echo ""
+  echo "By default the @CPACK_PACKAGE_NAME@ will be installed to:"
+  echo "  \"${toplevel}/bin/@CPACK_PACKAGE_NAME@\""
+  echo "  \"${toplevel}/share/doc/@CPACK_PACKAGE_NAME@/\""
+  echo ""
+  echo "Do you want to include the @CPACK_PACKAGE_NAME@ subdirectory?"
+  echo "Saying yes will install to: \"${toplevel}/@CPACK_PACKAGE_NAME@/\" [yn]: "
+  read line leftover
+  cpack_include_subdir=FALSE
+  case ${line} in
+    y* | Y*)
+      cpack_include_subdir=TRUE
+      ;;
+  esac
 fi
 
 if [ "x${cpack_include_subdir}x" = "xTRUEx" ]
 then
-  toplevel="${toplevel}/@CPACK_PACKAGE_FILE_NAME@"
+  toplevel="${toplevel}/@CPACK_PACKAGE_NAME@"
   mkdir -p "${toplevel}"
 fi
 echo
@@ -138,10 +132,18 @@ echo "Extracting, please wait..."
 echo ""
 
 # Take the archive portion of this file and pipe it to tar
-# NOTE: cpack_skip value is set by the packager, do not change manually
-cpack_skip=@CPACK_STGZ_HEADER_LENGTH@
+# The NUMERIC parameter in this command should be one more than the number of lines in this header file
+# There are tails which don't understand the "-n" argument (e.g. on SunOS)
+# OTOH there are tails which complain when not using the "-n" argument (e.g. GNU)
+# So at first try to tail some file to see if tail fails if used with "-n"
+# If so, don't use "-n"
+use_new_tail_syntax="-n"
+tail $use_new_tail_syntax +1 "$0" > /dev/null 2> /dev/null || use_new_tail_syntax=""
 
-tail -n +${cpack_skip} "$0" | tar xzf - -C "${toplevel}" || cpack_echo_exit "Problem unpacking the @CPACK_PACKAGE_FILE_NAME@"
+extractor="pax -r"
+command -v pax > /dev/null 2> /dev/null || extractor="tar xf -"
+
+tail $use_new_tail_syntax +###CPACK_HEADER_LENGTH### "$0" | gunzip | (cd "${toplevel}" && ${extractor}) || cpack_echo_exit "Problem unpacking the @CPACK_PACKAGE_FILE_NAME@"
 
 echo "Unpacking finished successfully"
 

@@ -137,7 +137,7 @@ endif()
 
 # Determine cache directories for different types of dependencies
 # - General FetchContent deps (like mimalloc): .deps-cache/$BUILD_TYPE/
-# - Musl-specific static deps: .deps-cache-musl/$BUILD_TYPE/
+# - Musl-specific deps: .deps-cache-musl/$BUILD_TYPE/static/ or /shared/
 # Allow override via DEPS_CACHE_BASE environment variable (useful for Docker)
 if(DEFINED ENV{DEPS_CACHE_BASE})
     set(DEPS_CACHE_BASE_DIR "$ENV{DEPS_CACHE_BASE}")
@@ -150,10 +150,17 @@ endif()
 set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
 message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
 
-# Musl-specific static dependencies use separate cache directory
+# Musl-specific dependencies use separate cache directory with static/shared subdirectories
 if(DEFINED USE_MUSL AND USE_MUSL)
-    set(MUSL_DEPS_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}" CACHE PATH "Musl-specific dependencies cache")
-    message(STATUS "Using musl dependency cache: ${MUSL_DEPS_DIR}")
+    # Static dependencies for the executable (musl-built)
+    set(MUSL_DEPS_DIR_STATIC "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}/static" CACHE PATH "Musl-specific static dependencies cache")
+    message(STATUS "Using musl static dependency cache: ${MUSL_DEPS_DIR_STATIC}")
+
+    # Shared dependencies for libasciichat.so (if needed, though we use system libs currently)
+    set(MUSL_DEPS_DIR_SHARED "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}/shared" CACHE PATH "Musl-specific shared dependencies cache")
+
+    # For backward compatibility, set MUSL_DEPS_DIR to static (most code uses this)
+    set(MUSL_DEPS_DIR "${MUSL_DEPS_DIR_STATIC}" CACHE PATH "Musl-specific dependencies cache (defaults to static)")
 endif()
 
 # =============================================================================

@@ -320,10 +320,18 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         if(NOT WITH_DEBUG_INFO)
             # Position Independent Executable (PIE) - better ASLR
             add_compile_options(-fPIE)
-            add_link_options(LINKER:-pie)
 
-            # Relocation hardening
-            add_link_options(-Wl,-z,relro -Wl,-z,now)
+            if(USE_MUSL)
+                # Static-PIE for musl builds (combines static linking with ASLR)
+                # Note: Static-PIE uses -static-pie flag (set in Musl.cmake linker flags)
+                #       and rcrt1.o startup file instead of regular -pie + crt1.o
+            else()
+                # Dynamic PIE for regular builds
+                add_link_options(LINKER:-pie)
+
+                # Relocation hardening
+                add_link_options(-Wl,-z,relro -Wl,-z,now)
+            endif()
         endif()
 
         # Stack clash protection (GCC 8+, Clang 11+)

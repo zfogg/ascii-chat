@@ -17,6 +17,147 @@ install(TARGETS ascii-chat
     COMPONENT Runtime
 )
 
+# Install uninstall script (configured with installation prefix)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/uninstall.sh.in"
+    "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
+    @ONLY
+)
+install(PROGRAMS "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
+    DESTINATION bin
+    COMPONENT Runtime
+)
+
+# Install shared library (if built with musl in Release mode)
+# The shared library is built with the 'shared-lib' target
+# It's an optional component for developers who want to use libasciichat
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    install(TARGETS ascii-chat-shared
+        EXPORT ascii-chat-targets
+        LIBRARY DESTINATION lib
+        COMPONENT Development
+    )
+    message(STATUS "Configured shared library installation for CPack (libasciichat.so)")
+endif()
+
+# Install public API headers
+# These headers are useful for developers who want to build tools/extensions for ascii-chat
+if(WIN32)
+    # Windows: Install all headers except POSIX-specific ones
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/"
+        DESTINATION include/ascii-chat
+        COMPONENT Development
+        FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*/internal/*" EXCLUDE
+        PATTERN "*/private/*" EXCLUDE
+        PATTERN "*/posix/*" EXCLUDE
+    )
+else()
+    # Unix/macOS: Install all headers except Windows-specific ones
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/"
+        DESTINATION include/ascii-chat
+        COMPONENT Development
+        FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*/internal/*" EXCLUDE
+        PATTERN "*/private/*" EXCLUDE
+        PATTERN "*/windows/*" EXCLUDE
+    )
+endif()
+
+# Install pkg-config file (only when shared library is built)
+if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    # Configure the pkgconfig file with current settings
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/cmake/ascii-chat.pc.in"
+        "${CMAKE_BINARY_DIR}/ascii-chat.pc"
+        @ONLY
+    )
+
+    install(FILES "${CMAKE_BINARY_DIR}/ascii-chat.pc"
+        DESTINATION lib/pkgconfig
+        COMPONENT Development
+    )
+    message(STATUS "Configured pkg-config file installation")
+endif()
+
+# Install CMake package config files (for find_package support)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    include(CMakePackageConfigHelpers)
+
+    # Generate the config file that includes the exports
+    configure_package_config_file(
+        "${CMAKE_SOURCE_DIR}/cmake/ascii-chat-config.cmake.in"
+        "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
+        INSTALL_DESTINATION lib/cmake/ascii-chat
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+    )
+
+    # Generate the version file for the config file
+    write_basic_package_version_file(
+        "${CMAKE_BINARY_DIR}/ascii-chat-config-version.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+
+    # Install the config files
+    install(FILES
+        "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
+        "${CMAKE_BINARY_DIR}/ascii-chat-config-version.cmake"
+        DESTINATION lib/cmake/ascii-chat
+        COMPONENT Development
+    )
+
+    # Export targets to a script
+    install(EXPORT ascii-chat-targets
+        FILE ascii-chat-targets.cmake
+        NAMESPACE ascii-chat::
+        DESTINATION lib/cmake/ascii-chat
+        COMPONENT Development
+    )
+
+    message(STATUS "Configured CMake package config installation")
+endif()
+
+# Remove mimalloc files from installation - it's statically linked so not needed
+# This CODE block runs during "cmake --install" after mimalloc is installed
+install(CODE "
+    message(STATUS \"Removing mimalloc files from installation...\")
+    message(STATUS \"  Install prefix: \${CMAKE_INSTALL_PREFIX}\")
+
+    # Check what exists before removal
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
+        message(STATUS \"  Found mimalloc headers at: \${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
+        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
+    else()
+        message(STATUS \"  No mimalloc headers found\")
+    endif()
+
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
+        message(STATUS \"  Found mimalloc libs at: \${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
+        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
+    else()
+        message(STATUS \"  No mimalloc libs found\")
+    endif()
+
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
+        message(STATUS \"  Found mimalloc cmake at: \${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
+        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
+    else()
+        message(STATUS \"  No mimalloc cmake found\")
+    endif()
+
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
+        message(STATUS \"  Found mimalloc pkgconfig at: \${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
+        file(REMOVE \"\${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
+    else()
+        message(STATUS \"  No mimalloc pkgconfig found\")
+    endif()
+
+    message(STATUS \"Finished removing mimalloc files from installation\")
+")
+
 # Install DLL dependencies on Windows (for non-static builds)
 # These DLLs are copied to build/bin by vcpkg's applocal.ps1 script during linking
 # We need to explicitly install them so CPack includes them in the installer
@@ -59,11 +200,11 @@ elseif(WIN32)
     set(INSTALL_DOC_DIR "doc" CACHE PATH "Documentation install directory")
 endif()
 
-# Install documentation (if files exist)
-# Use INSTALL_DOC_DIR which is platform-specific (doc on Windows, share/doc/ascii-chat on Unix)
+# Install documentation at root of installation directory
+# README.md and LICENSE.txt should be at the root for easy access
 if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
     install(FILES README.md
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
@@ -72,13 +213,13 @@ endif()
 # Install license (if exists)
 if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
     install(FILES LICENSE
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
     install(FILES LICENSE.txt
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
@@ -87,7 +228,7 @@ endif()
 # Install CHANGELOG if it exists
 if(EXISTS "${CMAKE_SOURCE_DIR}/CHANGELOG.md")
     install(FILES CHANGELOG.md
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
@@ -114,8 +255,7 @@ install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/html/"
 # Manpages are generated in ${CMAKE_BINARY_DIR}/docs/man/man3/ with ascii-chat- prefix
 # The install will only work if the docs target has been built first
 # Note: OPTIONAL cannot be used with FILES_MATCHING, but FILES_MATCHING handles no matches gracefully
-# Unix/macOS install to man/man3 (not share/man/man3) to avoid creating share/ directory
-# Windows installs to doc/man/man3 (no share/ directory) - check WIN32 first to ensure only one rule executes
+# FHS-compliant: Unix/macOS install to share/man/man3, Windows to doc/man/man3
 if(WIN32)
     # Windows: Install manpages to doc/man/man3 (no standard location on Windows)
     # This is the ONLY install rule for manpages on Windows - no share/ directory
@@ -129,9 +269,9 @@ if(WIN32)
         PATTERN "*.3.xz" EXCLUDE
     )
 elseif(UNIX AND NOT APPLE)
-    # Unix/Linux: Install to man/man3 (not share/man/man3 to avoid share/ directory)
+    # Unix/Linux: FHS-compliant installation to share/man/man3
     install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/man/man3/"
-        DESTINATION man/man3
+        DESTINATION share/man/man3
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
@@ -140,9 +280,9 @@ elseif(UNIX AND NOT APPLE)
         PATTERN "*.3.xz" EXCLUDE
     )
 elseif(APPLE)
-    # macOS: Install to man/man3 (not share/man/man3 to avoid share/ directory)
+    # macOS: FHS-compliant installation to share/man/man3
     install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/man/man3/"
-        DESTINATION man/man3
+        DESTINATION share/man/man3
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
@@ -201,8 +341,12 @@ if(USE_CPACK)
             set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE" CACHE FILEPATH "License file for installers" FORCE)
         endif()
 
-        # Use default CMake STGZ header (already defaults to /usr/local with no subdirectory)
-        # No custom header needed - CMake's default is FHS-compliant!
+        # Use custom STGZ header with FHS-compliant defaults (/usr/local, no subdirectory)
+        # CMake's default header uses current directory, not /usr/local
+        # CPack will substitute @CPACK_*@ variables and calculate header length automatically
+        if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/CPackSTGZHeader.sh.in")
+            set(CPACK_STGZ_HEADER_FILE "${CMAKE_SOURCE_DIR}/cmake/CPackSTGZHeader.sh.in" CACHE FILEPATH "Custom STGZ header with /usr/local default" FORCE)
+        endif()
 
         # On Windows, explicitly prevent CPack from creating share/ directory
         # CPack should only install what we explicitly tell it to via install() commands
@@ -221,6 +365,8 @@ if(USE_CPACK)
             set(CPACK_PACKAGING_INSTALL_PREFIX "" CACHE STRING "Installation prefix for CPack (empty = use CMAKE_INSTALL_PREFIX directly)" FORCE)
             # Ensure CPack installs only what we explicitly define
             set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};ALL;/" CACHE STRING "CPack install projects" FORCE)
+            # Run cleanup script to remove mimalloc files after install but before packaging
+            set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
         endif()
         include(CPack)
     endif()
@@ -485,10 +631,11 @@ if(USE_CPACK)
         "/compile_commands\\.json$"
     )
 
+
     # =========================================================================
     # Component Configuration
     # =========================================================================
-    # Configure components for installation (Runtime, Documentation)
+    # Configure components for installation (Runtime, Documentation, Development)
     set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "Binary")
     set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "ascii-chat executable")
     set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
@@ -502,12 +649,18 @@ if(USE_CPACK)
     set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix manual pages (man pages) for API documentation")
     set(CPACK_COMPONENT_MANPAGES_DEPENDS Runtime)
 
+    # Development headers component
+    set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Development Headers")
+    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "C header files for building extensions and tools")
+    set(CPACK_COMPONENT_DEVELOPMENT_DEPENDS Runtime)
+
     # Group components
     set(CPACK_COMPONENT_GROUP_APPLICATIONS_DISPLAY_NAME "Application")
     set(CPACK_COMPONENT_GROUP_APPLICATIONS_DESCRIPTION "ASCII video chat application")
     set(CPACK_COMPONENT_RUNTIME_GROUP "Applications")
     set(CPACK_COMPONENT_DOCUMENTATION_GROUP "Applications")
     set(CPACK_COMPONENT_MANPAGES_GROUP "Applications")
+    set(CPACK_COMPONENT_DEVELOPMENT_GROUP "Applications")
 
     message(STATUS "CPack: Package generation enabled")
     message(STATUS "CPack: Package will be created in: ${CPACK_PACKAGE_DIRECTORY}")
