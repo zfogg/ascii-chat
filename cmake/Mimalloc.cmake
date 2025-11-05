@@ -18,7 +18,7 @@
 if(USE_MIMALLOC)
     message(STATUS "Configuring mimalloc memory allocator...")
     set(MIMALLOC_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src")
-    set(MIMALLOC_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}/mimalloc")
+    set(MIMALLOC_BUILD_DIR "${DEPS_CACHE_DIR}/${CMAKE_BUILD_TYPE}/mimalloc")
 
     # Check if mimalloc library already exists in cache
     set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib")
