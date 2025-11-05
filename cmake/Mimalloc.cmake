@@ -17,11 +17,13 @@
 
 if(USE_MIMALLOC)
     message(STATUS "Configuring mimalloc memory allocator...")
+    set(MIMALLOC_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src")
+    set(MIMALLOC_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}/mimalloc")
 
     # Check if mimalloc library already exists in cache
-    set(_MIMALLOC_LIB_PATH "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib/mimalloc-static.lib")
+    set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib")
     if(NOT WIN32)
-        set(_MIMALLOC_LIB_PATH "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib/libmimalloc-static.a")
+        set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-static.a")
     endif()
 
     if(EXISTS "${_MIMALLOC_LIB_PATH}")
@@ -31,7 +33,7 @@ if(USE_MIMALLOC)
         add_library(mimalloc-static STATIC IMPORTED)
         set_target_properties(mimalloc-static PROPERTIES
             IMPORTED_LOCATION "${_MIMALLOC_LIB_PATH}"
-            INTERFACE_INCLUDE_DIRECTORIES "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
+            INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
         )
 
         # Skip FetchContent download/build
@@ -48,8 +50,8 @@ if(USE_MIMALLOC)
             GIT_TAG v2.1.7  # Latest stable v2.x release
             GIT_SHALLOW TRUE
             # Use persistent cache directories (survives build/ deletion)
-            SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src"
-            BINARY_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-build"
+            SOURCE_DIR "${MIMALLOC_SOURCE_DIR}"
+            BINARY_DIR "${MIMALLOC_BUILD_DIR}"
         )
 
         set(_MIMALLOC_CACHED FALSE)
@@ -96,8 +98,8 @@ if(USE_MIMALLOC)
         set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
         # Set output directories to persistent cache (so library survives build/ deletion)
-        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
-        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
 
         # Make mimalloc sources available (modern CMake approach)
         FetchContent_MakeAvailable(mimalloc)
@@ -108,7 +110,7 @@ if(USE_MIMALLOC)
 
         # Manually create mimalloc targets with different compile flags
         # Use static.c which includes all other source files (single compilation unit)
-        set(MIMALLOC_SRCS "${FETCHCONTENT_BASE_DIR}/mimalloc-src/src/static.c")
+        set(MIMALLOC_SRCS "${MIMALLOC_SOURCE_DIR}/src/static.c")
 
         # Common compile options for both targets
         set(MIMALLOC_COMMON_OPTIONS
@@ -120,29 +122,34 @@ if(USE_MIMALLOC)
         # Target 1: mimalloc-static (for executables, uses global -fPIE)
         add_library(mimalloc-static STATIC ${MIMALLOC_SRCS})
         target_include_directories(mimalloc-static PUBLIC
-            "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
+            "${MIMALLOC_SOURCE_DIR}/include"
         )
         target_compile_options(mimalloc-static PRIVATE ${MIMALLOC_COMMON_OPTIONS})
         set_target_properties(mimalloc-static PROPERTIES
             OUTPUT_NAME "mimalloc"
-            ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib"
+            ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib"
         )
 
-        # Target 2: mimalloc-shared (for shared library, uses -fPIC and global-dynamic TLS)
+        # Target 2: mimalloc-shared (for shared library, uses -fPIC and global-dynamic TLS on Unix)
         add_library(mimalloc-shared STATIC ${MIMALLOC_SRCS})
         target_include_directories(mimalloc-shared PUBLIC
-            "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
+            "${MIMALLOC_SOURCE_DIR}/include"
         )
         target_compile_options(mimalloc-shared PRIVATE
             ${MIMALLOC_COMMON_OPTIONS}
-            -fno-pie                    # Disable PIE
-            -fPIC                       # Enable PIC for shared library
-            -ftls-model=global-dynamic  # Correct TLS model for shared libraries
         )
+        # Unix-specific flags for shared library compatibility
+        if(NOT WIN32)
+            target_compile_options(mimalloc-shared PRIVATE
+                -fno-pie                    # Disable PIE
+                -fPIC                       # Enable PIC for shared library
+                -ftls-model=global-dynamic  # Correct TLS model for shared libraries
+            )
+        endif()
         set_target_properties(mimalloc-shared PROPERTIES
             POSITION_INDEPENDENT_CODE ON
             OUTPUT_NAME "mimalloc-shared"
-            ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib"
+            ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib"
         )
 
         # For musl builds, set REALGCC environment for both targets
