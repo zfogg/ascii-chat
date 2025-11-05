@@ -73,7 +73,7 @@
  * pixel brightness to ASCII characters.
  *
  * @note External variable (defined in ascii.c).
- * @note Default palette: " .:-=+*#%@$" (common ASCII art palette).
+ * @note Default palette: "   ...',;:clodxkO0KXNWM" (dark to light).
  *
  * @ingroup image2ascii
  */

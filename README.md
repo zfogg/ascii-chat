@@ -251,7 +251,7 @@ Run `ascii-chat client --help` to see all client options:
 **Misc:**
 - `-q --quiet`: Disable console logging (logs only to file)
 - `-S --snapshot`: Capture one frame and exit (useful for testing)
-- `-D --snapshot-delay SECONDS`: Delay before snapshot in seconds (default: 3.0/5.0)
+- `-D --snapshot-delay SECONDS`: Delay before snapshot in seconds (default: 3.0 on Linux/Windows, 4.0 on macOS)
 - `-L --log-file FILE`: Redirect logs to file
 - `-v --version`: Display version information
 - `-h --help`: Show help message
@@ -261,8 +261,12 @@ Run `ascii-chat client --help` to see all client options:
 Run `./bin/ascii-chat server --help` to see all server options:
 
 **Connection:**
-- `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
+- `-a --address ADDRESS`: IPv4 address to bind to (default: 127.0.0.1)
+- `   --address6 ADDRESS`: IPv6 address to bind to (default: ::1)
 - `-p --port PORT`: TCP port to listen on (default: 27224)
+
+By default the server only listens on loopback for safety. Use `--address 0.0.0.0` (and/or `--address6 ::`) when you
+intentionally want to accept remote clients.
 
 **Display:**
 - `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
@@ -297,7 +301,7 @@ ascii-chat's crypto works like your web browser's HTTPS: the client and server p
 - Supports encrypted keys (prompts for passphrase or uses ssh-agent)
 - Supports auto-detection with `--key ssh` or `--key ssh:`
 - Supports GitHub public keys with `--key github:username`
-- Future support planned for: `gpg:keyid`, `github:username.gpg`
+  - Supports `gpg:keyid` and `github:username.gpg` for GPG keys in addition to SSH key files
 
 **Password-Based Encryption** (`--password`):
 - Simple password string for encrypting connections

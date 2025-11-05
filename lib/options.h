@@ -319,7 +319,9 @@ extern ASCIICHAT_API bool auto_height;
  * - **Client mode**: Address of the server to connect to
  * - **Server mode**: IPv4 address to bind to (use "0.0.0.0" for all interfaces)
  *
- * **Default**: `"localhost"` (both client and server)
+ * **Default**:
+ * - Client mode: `"localhost"`
+ * - Server mode: `"127.0.0.1"`
  *
  * **Supported formats**:
  * - IPv4 addresses: `"192.168.1.100"`, `"127.0.0.1"`
@@ -344,7 +346,9 @@ extern ASCIICHAT_API char opt_address[];
  * specific IPv6 interfaces. Can be used alongside `opt_address` for dual-stack
  * support.
  *
- * **Default**: Empty string (IPv6 binding disabled)
+ * **Default**:
+ * - Client mode: Empty string (IPv6 disabled)
+ * - Server mode: `"::1"`
  *
  * **Supported formats**:
  * - IPv6 addresses: `"::1"` (localhost), `"::"` (all interfaces), `"2001:db8::1"`
