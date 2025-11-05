@@ -70,6 +70,8 @@ format-check:
 
 # Run clang-tidy to check code style
 clang-tidy: compile_commands.json
+	@echo "Verifying clang-tidy configuration..."
+	@clang-tidy --verify-config --config-file=.clang-tidy || exit 1
 	@echo "Running clang-tidy with compile_commands.json..."
 	clang-tidy -p . -header-filter='.*' $(C_FILES) $(M_FILES) -- $(CFLAGS)
 

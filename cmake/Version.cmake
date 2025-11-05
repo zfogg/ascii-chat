@@ -140,8 +140,68 @@ endif()
 set(VERSION_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\")
 set(VERSION_OS \"${CMAKE_SYSTEM_NAME}\")
 
+# Get git commit hash and dirty state
+execute_process(
+    COMMAND git rev-parse HEAD
+    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+    OUTPUT_VARIABLE GIT_COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT GIT_COMMIT_HASH)
+    set(GIT_COMMIT_HASH \"unknown\")
+endif()
+
+# Check if working tree is dirty
+execute_process(
+    COMMAND git diff-index --quiet HEAD --
+    WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+    RESULT_VARIABLE GIT_DIRTY_RESULT
+    ERROR_QUIET
+)
+if(GIT_DIRTY_RESULT EQUAL 0)
+    set(GIT_IS_DIRTY \"false\")
+else()
+    set(GIT_IS_DIRTY \"true\")
+endif()
+
 # Get current date in yyyy-mm-dd format
 string(TIMESTAMP BUILD_DATE \"%Y-%m-%d\" UTC)
+
+# For Release builds, compute hash of all tracked repository files
+if(\"${CMAKE_BUILD_TYPE}\" STREQUAL \"Release\")
+    # Get list of all tracked files from git
+    execute_process(
+        COMMAND git ls-files
+        WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
+        OUTPUT_VARIABLE GIT_TRACKED_FILES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(GIT_TRACKED_FILES)
+        # Convert newline-separated list to CMake list
+        string(REPLACE \"\\n\" \";\" FILE_LIST \"\${GIT_TRACKED_FILES}\")
+
+        # Compute SHA256 hash of each file and concatenate
+        set(ALL_HASHES \"\")
+        foreach(FILE_PATH \${FILE_LIST})
+            set(FULL_PATH \"${CMAKE_SOURCE_DIR}/\${FILE_PATH}\")
+            if(EXISTS \"\${FULL_PATH}\" AND NOT IS_DIRECTORY \"\${FULL_PATH}\")
+                file(SHA256 \"\${FULL_PATH}\" FILE_HASH)
+                string(APPEND ALL_HASHES \"\${FILE_HASH}\")
+            endif()
+        endforeach()
+
+        # Compute final hash of all concatenated hashes
+        string(SHA256 REPO_HASH \"\${ALL_HASHES}\")
+    else()
+        set(REPO_HASH \"unknown\")
+    endif()
+else()
+    # Non-Release builds: no repository hash (empty string)
+    set(REPO_HASH \"\")
+endif()
 
 # Generate version header
 configure_file(

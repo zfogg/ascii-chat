@@ -32,7 +32,6 @@ set(UTIL_SRCS
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c
-    lib/util/time_format.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -217,15 +216,32 @@ set(CORE_SRCS
     lib/logging.c
     lib/options.c
     lib/config.c
-    lib/lock_debug.c
     lib/version.c
     lib/palette.c
 )
+
+# Only include lock_debug in non-release builds (when NDEBUG is not defined)
+# lock_debug.c is wrapped in #ifndef NDEBUG, so it's safe to compile in release,
+# but we exclude it for clarity and to avoid unnecessary compilation
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    list(APPEND CORE_SRCS lib/lock_debug.c)
+endif()
 
 # Add tomlc17 parser source
 list(APPEND CORE_SRCS
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
+
+# Disable precompiled headers for tomlc17 (third-party code)
+# This prevents abstraction.h's _CRT_SECURE_NO_WARNINGS from interfering with
+# tomlc17's own platform-safe wrappers for fopen/strerror
+if(WIN32)
+    set_source_files_properties(
+        ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
+        PROPERTIES
+        SKIP_PRECOMPILE_HEADERS ON
+    )
+endif()
 
 # =============================================================================
 # Data Structures Module

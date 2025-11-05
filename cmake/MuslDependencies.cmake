@@ -26,8 +26,9 @@ set(_SAVED_ARCHIVE_OUTPUT_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
 # Use cache directory for musl deps - both PREFIX and install dir
-set(MUSL_PREFIX "${FETCHCONTENT_BASE_DIR}/musl-deps")
-message(STATUS "MuslDependencies.cmake: FETCHCONTENT_BASE_DIR=${FETCHCONTENT_BASE_DIR}")
+# MUSL_DEPS_DIR is set in Init.cmake to .deps-cache-musl/$BUILD_TYPE
+set(MUSL_PREFIX "${MUSL_DEPS_DIR}/musl-deps")
+message(STATUS "MuslDependencies.cmake: MUSL_DEPS_DIR=${MUSL_DEPS_DIR}")
 message(STATUS "MuslDependencies.cmake: MUSL_PREFIX=${MUSL_PREFIX}")
 
 # =============================================================================

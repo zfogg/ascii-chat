@@ -131,7 +131,7 @@
 #include "platform/string.h"
 #include "platform/socket.h"
 #include "crc32.h"
-#include "util/time_format.h"
+#include "util/time.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -209,8 +209,7 @@ void broadcast_server_state_to_all_clients(void); ///< Notify all clients of sta
  * @note Returns direct pointer to client struct - caller should use snapshot pattern
  */
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer")))
-client_info_t *find_client_by_id(uint32_t client_id) {
+__attribute__((no_sanitize("integer"))) client_info_t *find_client_by_id(uint32_t client_id) {
   if (client_id == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid client ID");
     return NULL;
@@ -276,8 +275,7 @@ client_info_t *find_client_by_socket(socket_t socket) {
  */
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer")))
-int add_client(socket_t socket, const char *client_ip, int port) {
+__attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const char *client_ip, int port) {
   rwlock_wrlock(&g_client_manager_rwlock);
 
   // Find empty slot - this is the authoritative check
@@ -587,8 +585,7 @@ int add_client(socket_t socket, const char *client_ip, int port) {
 }
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
-__attribute__((no_sanitize("integer")))
-int remove_client(uint32_t client_id) {
+__attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // Phase 1: Mark client inactive and prepare for cleanup while holding write lock
   client_info_t *target_client = NULL;
   char display_name_copy[MAX_DISPLAY_NAME_LEN];

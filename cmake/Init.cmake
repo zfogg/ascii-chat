@@ -135,27 +135,26 @@ endif()
 #
 # To force rebuild dependencies: rm -rf .deps-cache*
 
-# Determine cache directory based on build configuration and build type
+# Determine cache directories for different types of dependencies
+# - General FetchContent deps (like mimalloc): .deps-cache/$BUILD_TYPE/
+# - Musl-specific static deps: .deps-cache-musl/$BUILD_TYPE/
 # Allow override via DEPS_CACHE_BASE environment variable (useful for Docker)
-# Note: USE_MUSL may not be set yet, so we check if it's defined and ON
 if(DEFINED ENV{DEPS_CACHE_BASE})
     set(DEPS_CACHE_BASE_DIR "$ENV{DEPS_CACHE_BASE}")
     message(STATUS "Using custom dependency cache base from environment: ${DEPS_CACHE_BASE_DIR}")
-elseif(DEFINED USE_MUSL AND USE_MUSL)
-    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl")
 else()
     set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache")
 endif()
 
-# For musl, don't use per-build-type subdirectories since dependencies are static libs
-# For non-musl, use build-type-specific directories for mimalloc debug/release builds
-# Note: USE_MUSL may not be set yet, so we check if it's defined and ON
-if(DEFINED USE_MUSL AND USE_MUSL)
-    set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}" CACHE PATH "FetchContent cache directory")
-else()
-    set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
-endif()
+# FetchContent deps (mimalloc, etc.) always use .deps-cache/$BUILD_TYPE regardless of musl
+set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
 message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
+
+# Musl-specific static dependencies use separate cache directory
+if(DEFINED USE_MUSL AND USE_MUSL)
+    set(MUSL_DEPS_DIR "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}" CACHE PATH "Musl-specific dependencies cache")
+    message(STATUS "Using musl dependency cache: ${MUSL_DEPS_DIR}")
+endif()
 
 # =============================================================================
 # vcpkg Toolchain Setup

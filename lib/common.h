@@ -21,6 +21,9 @@
 
 #pragma once
 
+// DLL export/import macros (must be included first to avoid circular dependencies)
+#include "platform/api.h"
+
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
 #include <stddef.h>

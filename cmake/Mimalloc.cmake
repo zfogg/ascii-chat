@@ -108,9 +108,10 @@ if(USE_MIMALLOC)
         if(TARGET mimalloc-static)
             # Add errno.h include for C23 compatibility
             target_compile_options(mimalloc-static PRIVATE -include errno.h)
-            # Disable -Wundef for mimalloc (third-party code with many undefined macro checks)
+            # Disable warnings for mimalloc (third-party code)
             target_compile_options(mimalloc-static PRIVATE -Wno-undef)
-            message(STATUS "Added errno.h include for mimalloc C23 compatibility")
+            target_compile_options(mimalloc-static PRIVATE -Wno-strict-prototypes)
+            message(STATUS "Added errno.h include and warning suppressions for mimalloc")
         endif()
 
         # For musl builds, set REALGCC environment for mimalloc build
