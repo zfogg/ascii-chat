@@ -71,6 +71,7 @@ if(USE_MIMALLOC)
             set(MI_OVERRIDE ON CACHE BOOL "Override malloc/free globally")
         endif()
 
+        # Completely disable mimalloc installation - it's statically linked
         set(MI_INSTALL_TOPLEVEL OFF CACHE BOOL "Install in top-level")
 
         # Set debug level for mimalloc based on build type
@@ -123,14 +124,7 @@ if(USE_MIMALLOC)
             message(STATUS "Configured mimalloc build environment with REALGCC=${REAL_GCC}")
         endif()
 
-        # Prevent mimalloc from being installed - it's statically linked
-        # This must be done AFTER FetchContent_MakeAvailable() creates the target
-        if(TARGET mimalloc-static)
-            set_property(TARGET mimalloc-static PROPERTY EXCLUDE_FROM_ALL TRUE)
-            message(STATUS "Excluded mimalloc-static from installation (statically linked)")
-        endif()
-
-        message(STATUS "Built mimalloc from source (v2.1.7)")
+        message(STATUS "Built mimalloc from source (v2.1.7) with installation disabled")
     endif()
 
     set(MIMALLOC_LIBRARIES mimalloc-static)
