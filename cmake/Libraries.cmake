@@ -383,42 +383,106 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
 
     # Note: System library dependencies will be added below
 else()
-    # Unix or Windows Release: Use empty.c and link static libraries
-    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/empty.c "// Empty file for shared library\n")
-    add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL ${CMAKE_CURRENT_BINARY_DIR}/empty.c)
-    set_target_properties(ascii-chat-shared PROPERTIES OUTPUT_NAME "asciichat")
+    # Unix or Windows Release: Compile shared library from all sources with default visibility
+    # This allows the shared library to export symbols even though the project uses -fvisibility=hidden
 
-    # Link all module libraries
-    if(APPLE)
-        target_link_libraries(ascii-chat-shared PRIVATE
-            -Wl,-all_load
-            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+    # Collect all source files from all modules
+    set(ALL_LIBRARY_SRCS
+        ${UTIL_SRCS}
+        ${DATA_STRUCTURES_SRCS}
+        ${PLATFORM_SRCS}
+        ${CRYPTO_SRCS}
+        ${SIMD_SRCS}
+        ${VIDEO_SRCS}
+        ${AUDIO_SRCS}
+        ${NETWORK_SRCS}
+        ${CORE_SRCS}
+    )
+
+    # Create shared library directly from sources (not from static libraries)
+    add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL ${ALL_LIBRARY_SRCS})
+    set_target_properties(ascii-chat-shared PROPERTIES
+        OUTPUT_NAME "asciichat"
+        POSITION_INDEPENDENT_CODE ON
+    )
+
+    # CRITICAL: Override flags for shared library compatibility
+    # 1. -fvisibility=default: Export symbols despite global -fvisibility=hidden
+    # 2. -ftls-model=global-dynamic: Correct TLS model for shared libraries
+    # 3. -fPIC: Override global -fPIE (shared libraries need -fPIC, not -fPIE)
+    # 4. -fno-pie: Disable PIE mode entirely for shared library (conflicts with -shared)
+    target_compile_options(ascii-chat-shared PRIVATE
+        -fvisibility=default
+        -ftls-model=global-dynamic
+        -fno-pie
+        -fPIC
+    )
+
+    # Add version dependency
+    add_dependencies(ascii-chat-shared generate_version)
+
+    # Include paths (same as modules) - PRIVATE because these are build-time only
+    target_include_directories(ascii-chat-shared PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+    # Build directory for llvm-symbolizer --debug-file-directory (debug builds only)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+        target_compile_definitions(ascii-chat-shared PRIVATE BUILD_DIR="${CMAKE_BINARY_DIR}")
+    endif()
+
+    # MI_DEBUG for mimalloc
+    if(DEFINED MIMALLOC_DEBUG_LEVEL)
+        target_compile_definitions(ascii-chat-shared PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
+    endif()
+
+    # Mimalloc include directory
+    if(USE_MIMALLOC)
+        target_include_directories(ascii-chat-shared PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+    endif()
+
+    # Musl flag
+    if(USE_MUSL)
+        target_compile_definitions(ascii-chat-shared PRIVATE USE_MUSL=1)
+    endif()
+
+    # Crypto module dependencies (libsodium-bcrypt-pbkdf, libsodium, BearSSL)
+    target_include_directories(ascii-chat-shared PRIVATE
+        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
+        ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
+    )
+    if(LIBSODIUM_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE ${LIBSODIUM_INCLUDE_DIRS})
+    endif()
+    if(BEARSSL_FOUND)
+        target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
+    endif()
+
+    # Add dependency on libsodium build target if building from source
+    if(DEFINED LIBSODIUM_BUILD_TARGET)
+        add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
+    endif()
+
+    # Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        set_source_files_properties(
+            ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+            PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div"
         )
+    endif()
+
+    # Platform-specific linker flags
+    if(APPLE)
+        # Export all symbols on macOS
+        target_link_options(ascii-chat-shared PRIVATE -Wl,-export_dynamic)
     elseif(WIN32)
-        # Windows Release: Link static libraries (not used for Debug/Dev/Coverage)
+        # Windows Release: DLL export configuration
         set_target_properties(ascii-chat-shared PROPERTIES
             ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
             WINDOWS_EXPORT_ALL_SYMBOLS FALSE
         )
-        target_link_libraries(ascii-chat-shared PRIVATE
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-util>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-data-structures>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-platform>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-crypto>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-simd>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-video>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-audio>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-network>
-            -Wl,/WHOLEARCHIVE:$<TARGET_FILE:ascii-chat-core>
-        )
     else()
-        # Linux
-        target_link_libraries(ascii-chat-shared PRIVATE
-            -Wl,--whole-archive
-            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-            -Wl,--no-whole-archive
+        # Linux: Use version script to export all symbols
+        target_link_options(ascii-chat-shared PRIVATE
+            -Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/export_all.lds
         )
     endif()
 endif()
@@ -463,8 +527,15 @@ else()
             ${LIBSODIUM_SYS_INCLUDE_DIRS}
         )
 
-        # Don't link mimalloc - shared library users provide their own allocator
-        # Don't link BearSSL static lib - would need PIC version
+        # Link BearSSL and mimalloc static libraries into shared library
+        # These are compiled with -fPIC and correct TLS model for shared library compatibility
+        if(BEARSSL_FOUND)
+            target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+        endif()
+        if(USE_MIMALLOC)
+            # Use mimalloc-shared target (compiled with -fPIC and global-dynamic TLS)
+            target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_SHARED_LIBRARIES})
+        endif()
     else()
         # Non-musl builds use normal dependencies
         target_link_libraries(ascii-chat-shared PRIVATE

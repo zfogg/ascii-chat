@@ -57,9 +57,10 @@ if(USE_MIMALLOC)
 
     # Only configure and build if not using cached library
     if(NOT _MIMALLOC_CACHED)
-        # Configure mimalloc build options
+        # Configure mimalloc build options - disable all built-in targets
+        # We'll create our own mimalloc-static and mimalloc-shared targets
         set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library")
-        set(MI_BUILD_STATIC ON CACHE BOOL "Build static library")
+        set(MI_BUILD_STATIC OFF CACHE BOOL "Build static library")
         set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library")
         set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables")
 
@@ -98,36 +99,72 @@ if(USE_MIMALLOC)
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
 
-        # Populate and build mimalloc
-        FetchContent_MakeAvailable(mimalloc)
+        # Populate mimalloc sources only (don't build default targets)
+        FetchContent_Populate(mimalloc)
 
         # Restore original output directory settings
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${_SAVED_LIBRARY_OUTPUT_DIR})
 
-        # Fix C23 compatibility issues with mimalloc
-        if(TARGET mimalloc-static)
-            # Add errno.h include for C23 compatibility
-            target_compile_options(mimalloc-static PRIVATE -include errno.h)
-            # Disable warnings for mimalloc (third-party code)
-            target_compile_options(mimalloc-static PRIVATE -Wno-undef)
-            target_compile_options(mimalloc-static PRIVATE -Wno-strict-prototypes)
-            message(STATUS "Added errno.h include and warning suppressions for mimalloc")
-        endif()
+        # Manually create mimalloc targets with different compile flags
+        # Use static.c which includes all other source files (single compilation unit)
+        set(MIMALLOC_SRCS "${FETCHCONTENT_BASE_DIR}/mimalloc-src/src/static.c")
 
-        # For musl builds, set REALGCC environment for mimalloc build
-        if(USE_MUSL AND REAL_GCC AND TARGET mimalloc-static)
+        # Common compile options for both targets
+        set(MIMALLOC_COMMON_OPTIONS
+            -include errno.h  # C23 compatibility
+            -Wno-undef       # Suppress mimalloc warnings
+            -Wno-strict-prototypes
+        )
+
+        # Target 1: mimalloc-static (for executables, uses global -fPIE)
+        add_library(mimalloc-static STATIC ${MIMALLOC_SRCS})
+        target_include_directories(mimalloc-static PUBLIC
+            "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
+        )
+        target_compile_options(mimalloc-static PRIVATE ${MIMALLOC_COMMON_OPTIONS})
+        set_target_properties(mimalloc-static PROPERTIES
+            OUTPUT_NAME "mimalloc"
+            ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib"
+        )
+
+        # Target 2: mimalloc-shared (for shared library, uses -fPIC and global-dynamic TLS)
+        add_library(mimalloc-shared STATIC ${MIMALLOC_SRCS})
+        target_include_directories(mimalloc-shared PUBLIC
+            "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
+        )
+        target_compile_options(mimalloc-shared PRIVATE
+            ${MIMALLOC_COMMON_OPTIONS}
+            -fno-pie                    # Disable PIE
+            -fPIC                       # Enable PIC for shared library
+            -ftls-model=global-dynamic  # Correct TLS model for shared libraries
+        )
+        set_target_properties(mimalloc-shared PROPERTIES
+            POSITION_INDEPENDENT_CODE ON
+            OUTPUT_NAME "mimalloc-shared"
+            ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib"
+        )
+
+        # For musl builds, set REALGCC environment for both targets
+        if(USE_MUSL AND REAL_GCC)
             set_target_properties(mimalloc-static PROPERTIES
-                COMPILE_OPTIONS ""
+                RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
+            )
+            set_target_properties(mimalloc-shared PROPERTIES
                 RULE_LAUNCH_COMPILE "env REALGCC=${REAL_GCC}"
             )
             message(STATUS "Configured mimalloc build environment with REALGCC=${REAL_GCC}")
         endif()
 
-        message(STATUS "Built mimalloc from source (v2.1.7) with installation disabled")
+        message(STATUS "Created two mimalloc targets:")
+        message(STATUS "  - mimalloc-static: for executables (uses -fPIE from global flags)")
+        message(STATUS "  - mimalloc-shared: for shared libraries (uses -fPIC and global-dynamic TLS)")
+
+        message(STATUS "Built mimalloc from source (v2.1.7) with two targets: mimalloc-static and mimalloc-shared")
     endif()
 
     set(MIMALLOC_LIBRARIES mimalloc-static)
+    set(MIMALLOC_SHARED_LIBRARIES mimalloc-shared)
 
     # Define USE_MIMALLOC for all source files so they can use mi_malloc/mi_free directly
     # Also define MI_STATIC_LIB to tell mimalloc headers we're using static library (prevents dllimport)
