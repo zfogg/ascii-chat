@@ -17,6 +17,81 @@ install(TARGETS ascii-chat
     COMPONENT Runtime
 )
 
+# Install shared library (if built with musl in Release mode)
+# The shared library is built with the 'shared-lib' target
+# It's an optional component for developers who want to use libasciichat
+if(USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    install(TARGETS ascii-chat-shared
+        LIBRARY DESTINATION lib
+        COMPONENT Development
+    )
+    message(STATUS "Configured shared library installation for CPack (libasciichat.so)")
+endif()
+
+# Install public API headers
+# These headers are useful for developers who want to build tools/extensions for ascii-chat
+if(WIN32)
+    # Windows: Install all headers except POSIX-specific ones
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/"
+        DESTINATION include/ascii-chat
+        COMPONENT Development
+        FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*/internal/*" EXCLUDE
+        PATTERN "*/private/*" EXCLUDE
+        PATTERN "*/posix/*" EXCLUDE
+    )
+else()
+    # Unix/macOS: Install all headers except Windows-specific ones
+    install(DIRECTORY "${CMAKE_SOURCE_DIR}/lib/"
+        DESTINATION include/ascii-chat
+        COMPONENT Development
+        FILES_MATCHING
+        PATTERN "*.h"
+        PATTERN "*/internal/*" EXCLUDE
+        PATTERN "*/private/*" EXCLUDE
+        PATTERN "*/windows/*" EXCLUDE
+    )
+endif()
+
+# Remove mimalloc files from installation - it's statically linked so not needed
+# This CODE block runs during "cmake --install" after mimalloc is installed
+install(CODE "
+    message(STATUS \"Removing mimalloc files from installation...\")
+    message(STATUS \"  Install prefix: \${CMAKE_INSTALL_PREFIX}\")
+
+    # Check what exists before removal
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
+        message(STATUS \"  Found mimalloc headers at: \${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
+        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/include/mimalloc-2.1\")
+    else()
+        message(STATUS \"  No mimalloc headers found\")
+    endif()
+
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
+        message(STATUS \"  Found mimalloc libs at: \${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
+        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/mimalloc-2.1\")
+    else()
+        message(STATUS \"  No mimalloc libs found\")
+    endif()
+
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
+        message(STATUS \"  Found mimalloc cmake at: \${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
+        file(REMOVE_RECURSE \"\${CMAKE_INSTALL_PREFIX}/lib/cmake/mimalloc-2.1\")
+    else()
+        message(STATUS \"  No mimalloc cmake found\")
+    endif()
+
+    if(EXISTS \"\${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
+        message(STATUS \"  Found mimalloc pkgconfig at: \${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
+        file(REMOVE \"\${CMAKE_INSTALL_PREFIX}/lib/pkgconfig/mimalloc.pc\")
+    else()
+        message(STATUS \"  No mimalloc pkgconfig found\")
+    endif()
+
+    message(STATUS \"Finished removing mimalloc files from installation\")
+")
+
 # Install DLL dependencies on Windows (for non-static builds)
 # These DLLs are copied to build/bin by vcpkg's applocal.ps1 script during linking
 # We need to explicitly install them so CPack includes them in the installer
@@ -59,11 +134,11 @@ elseif(WIN32)
     set(INSTALL_DOC_DIR "doc" CACHE PATH "Documentation install directory")
 endif()
 
-# Install documentation (if files exist)
-# Use INSTALL_DOC_DIR which is platform-specific (doc on Windows, share/doc/ascii-chat on Unix)
+# Install documentation at root of installation directory
+# README.md and LICENSE.txt should be at the root for easy access
 if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
     install(FILES README.md
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
@@ -72,13 +147,13 @@ endif()
 # Install license (if exists)
 if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
     install(FILES LICENSE
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
     install(FILES LICENSE.txt
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
@@ -87,7 +162,7 @@ endif()
 # Install CHANGELOG if it exists
 if(EXISTS "${CMAKE_SOURCE_DIR}/CHANGELOG.md")
     install(FILES CHANGELOG.md
-        DESTINATION ${INSTALL_DOC_DIR}
+        DESTINATION .
         COMPONENT Documentation
         OPTIONAL
     )
@@ -201,8 +276,12 @@ if(USE_CPACK)
             set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE" CACHE FILEPATH "License file for installers" FORCE)
         endif()
 
-        # Use default CMake STGZ header (already defaults to /usr/local with no subdirectory)
-        # No custom header needed - CMake's default is FHS-compliant!
+        # Use custom STGZ header with FHS-compliant defaults (/usr/local, no subdirectory)
+        # CMake's default header uses current directory, not /usr/local
+        # CPack will substitute @CPACK_*@ variables and calculate header length automatically
+        if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/CPackSTGZHeader.sh.in")
+            set(CPACK_STGZ_HEADER_FILE "${CMAKE_SOURCE_DIR}/cmake/CPackSTGZHeader.sh.in" CACHE FILEPATH "Custom STGZ header with /usr/local default" FORCE)
+        endif()
 
         # On Windows, explicitly prevent CPack from creating share/ directory
         # CPack should only install what we explicitly tell it to via install() commands
@@ -485,10 +564,11 @@ if(USE_CPACK)
         "/compile_commands\\.json$"
     )
 
+
     # =========================================================================
     # Component Configuration
     # =========================================================================
-    # Configure components for installation (Runtime, Documentation)
+    # Configure components for installation (Runtime, Documentation, Development)
     set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "Binary")
     set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "ascii-chat executable")
     set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
@@ -502,12 +582,18 @@ if(USE_CPACK)
     set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix manual pages (man pages) for API documentation")
     set(CPACK_COMPONENT_MANPAGES_DEPENDS Runtime)
 
+    # Development headers component
+    set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Development Headers")
+    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "C header files for building extensions and tools")
+    set(CPACK_COMPONENT_DEVELOPMENT_DEPENDS Runtime)
+
     # Group components
     set(CPACK_COMPONENT_GROUP_APPLICATIONS_DISPLAY_NAME "Application")
     set(CPACK_COMPONENT_GROUP_APPLICATIONS_DESCRIPTION "ASCII video chat application")
     set(CPACK_COMPONENT_RUNTIME_GROUP "Applications")
     set(CPACK_COMPONENT_DOCUMENTATION_GROUP "Applications")
     set(CPACK_COMPONENT_MANPAGES_GROUP "Applications")
+    set(CPACK_COMPONENT_DEVELOPMENT_GROUP "Applications")
 
     message(STATUS "CPack: Package generation enabled")
     message(STATUS "CPack: Package will be created in: ${CPACK_PACKAGE_DIRECTORY}")
