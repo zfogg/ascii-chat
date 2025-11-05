@@ -239,6 +239,9 @@ char *get_config_dir(void) {
     return dir;
   }
 
+  // Final fallback: return NULL if no config directory can be determined
+  return NULL;
+
 #elif _WIN32
   const char *appdata = platform_getenv("APPDATA");
   if (appdata && appdata[0] != '\0') {

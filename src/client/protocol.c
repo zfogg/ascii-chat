@@ -106,6 +106,8 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 
 #include "compression.h"
 
+#include <errno.h>
+
 /* ============================================================================
  * Thread State Management
  * ============================================================================ */

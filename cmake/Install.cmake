@@ -200,6 +200,10 @@ if(USE_CPACK)
         elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
             set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE" CACHE FILEPATH "License file for installers" FORCE)
         endif()
+
+        # Use default CMake STGZ header (already defaults to /usr/local with no subdirectory)
+        # No custom header needed - CMake's default is FHS-compliant!
+
         # On Windows, explicitly prevent CPack from creating share/ directory
         # CPack should only install what we explicitly tell it to via install() commands
         # All our install() commands use doc/ (not share/doc/) on Windows, so CPack shouldn't create share/
@@ -274,8 +278,17 @@ if(USE_CPACK)
     # =========================================================================
 
     if(UNIX AND NOT APPLE)
-        # Linux: TGZ (always available), DEB, RPM (if tools found)
-        set(CPACK_GENERATOR "TGZ")
+        # Linux: STGZ (self-extracting .sh), TGZ (always available), DEB, RPM (if tools found)
+        set(CPACK_GENERATOR "STGZ;TGZ")
+
+        # CPACK_STGZ_HEADER_FILE is set before include(CPack) above
+        # CPACK_SET_DESTDIR must be OFF for STGZ to use prefix-based installation
+        set(CPACK_SET_DESTDIR OFF)
+
+        # This sets the default installation directory shown in the STGZ installer
+        # Users can override with: ./installer.sh --prefix=/custom/path
+        set(CPACK_INSTALL_PREFIX "/usr/local")
+        set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 
         # Check for package tools and enable generators if available
         find_program(DPKG_BUILDPACKAGE_EXECUTABLE dpkg-buildpackage)
@@ -338,8 +351,17 @@ if(USE_CPACK)
         message(STATUS "CPack: Enabled generators for Linux: ${CPACK_GENERATOR}")
 
     elseif(APPLE)
-        # macOS: TGZ (always available), DragNDrop/DMG (if hdiutil available)
-        set(CPACK_GENERATOR "TGZ")
+        # macOS: STGZ (self-extracting .sh), TGZ (always available), DragNDrop/DMG (if hdiutil available)
+        set(CPACK_GENERATOR "STGZ;TGZ")
+
+        # CPACK_STGZ_HEADER_FILE is set before include(CPack) above
+        # CPACK_SET_DESTDIR must be OFF for STGZ to use prefix-based installation
+        set(CPACK_SET_DESTDIR OFF)
+
+        # This sets the default installation directory shown in the STGZ installer
+        # Users can override with: ./installer.sh --prefix=/custom/path
+        set(CPACK_INSTALL_PREFIX "/usr/local")
+        set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 
         # Check for hdiutil (macOS DMG creation tool - usually always available on macOS)
         find_program(HDIUTIL_EXECUTABLE hdiutil)
