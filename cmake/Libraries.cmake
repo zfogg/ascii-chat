@@ -245,7 +245,7 @@ endif()
 
 # Special musl handling for libexecinfo
 if(USE_MUSL)
-    target_link_libraries(ascii-chat-core ${MUSL_PREFIX}/lib/libexecinfo.a)
+    target_link_libraries(ascii-chat-core ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a)
     add_dependencies(ascii-chat-core libexecinfo-musl)
 endif()
 
@@ -439,26 +439,51 @@ if(WIN32)
         target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
     endif()
 else()
-    target_link_libraries(ascii-chat-shared PRIVATE
-        ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
-    )
-    if(BEARSSL_FOUND)
-        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-    endif()
-    if(PLATFORM_DARWIN)
-        target_link_libraries(ascii-chat-shared PRIVATE
-            ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
-            ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
-        )
-    elseif(PLATFORM_LINUX)
-        target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-    endif()
+    # For musl builds, shared library links against system glibc libraries
+    # The musl-built static libraries don't work with -shared (non-PIC relocations)
+    # Shared library users will have glibc, so we use system packages
     if(USE_MUSL)
-        target_link_libraries(ascii-chat-shared PRIVATE ${MUSL_PREFIX}/lib/libexecinfo.a)
-        add_dependencies(ascii-chat-shared libexecinfo-musl)
-    endif()
-    if(USE_MIMALLOC)
-        target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+        # Use system glibc libraries for shared library (not musl static libs)
+        # Users of libasciichat.so will have glibc available
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(PORTAUDIO_SYS portaudio-2.0)
+        pkg_check_modules(ZSTD_SYS libzstd)
+        pkg_check_modules(LIBSODIUM_SYS libsodium)
+
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_SYS_LIBRARIES}
+            ${ZSTD_SYS_LIBRARIES}
+            ${LIBSODIUM_SYS_LIBRARIES}
+            m
+            ${CMAKE_THREAD_LIBS_INIT}
+        )
+        target_include_directories(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_SYS_INCLUDE_DIRS}
+            ${ZSTD_SYS_INCLUDE_DIRS}
+            ${LIBSODIUM_SYS_INCLUDE_DIRS}
+        )
+
+        # Don't link mimalloc - shared library users provide their own allocator
+        # Don't link BearSSL static lib - would need PIC version
+    else()
+        # Non-musl builds use normal dependencies
+        target_link_libraries(ascii-chat-shared PRIVATE
+            ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
+        )
+        if(BEARSSL_FOUND)
+            target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+        endif()
+        if(PLATFORM_DARWIN)
+            target_link_libraries(ascii-chat-shared PRIVATE
+                ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
+                ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
+            )
+        elseif(PLATFORM_LINUX)
+            target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+        endif()
+        if(USE_MIMALLOC)
+            target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+        endif()
     endif()
 endif()
 
