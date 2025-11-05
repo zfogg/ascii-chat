@@ -264,6 +264,7 @@ if(WIN32)
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
+        PATTERN "ascii-chat-_*.3" EXCLUDE  # Exclude path-based manpages (e.g. _home_user_...)
         PATTERN "*.3.gz" EXCLUDE  # Exclude compressed manpages if any
         PATTERN "*.3.bz2" EXCLUDE
         PATTERN "*.3.xz" EXCLUDE
@@ -275,6 +276,7 @@ elseif(UNIX AND NOT APPLE)
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
+        PATTERN "ascii-chat-_*.3" EXCLUDE  # Exclude path-based manpages (e.g. _home_user_...)
         PATTERN "*.3.gz" EXCLUDE  # Exclude compressed manpages if any
         PATTERN "*.3.bz2" EXCLUDE
         PATTERN "*.3.xz" EXCLUDE
@@ -286,6 +288,7 @@ elseif(APPLE)
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
+        PATTERN "ascii-chat-_*.3" EXCLUDE  # Exclude path-based manpages (e.g. _home_user_...)
         PATTERN "*.3.gz" EXCLUDE  # Exclude compressed manpages if any
         PATTERN "*.3.bz2" EXCLUDE
         PATTERN "*.3.xz" EXCLUDE
