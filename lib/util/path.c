@@ -187,13 +187,14 @@ char *expand_path(const char *path) {
   if (path[0] == '~') {
     const char *home = NULL;
 #ifdef _WIN32
-    // On Windows, try USERPROFILE
+    // On Windows, try USERPROFILE first, then HOME as fallback
     if (!(home = platform_getenv("USERPROFILE"))) {
       if (!(home = platform_getenv("HOME"))) {
-        return NULL;
+        return NULL;  // Both USERPROFILE and HOME failed
       }
-      return NULL;
+      // HOME found, continue to expansion below
     }
+    // USERPROFILE found, continue to expansion below
 #else
     if (!(home = platform_getenv("HOME"))) {
       return NULL;
