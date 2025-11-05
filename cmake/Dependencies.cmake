@@ -253,11 +253,12 @@ else()
             message(STATUS "BearSSL library not found in cache, will build from source: ${BEARSSL_LIB}")
 
             # For musl builds: disable getentropy() (not in musl), force /dev/urandom, disable fortification
+            # Always add -fPIC for shared library support
             if(USE_MUSL)
-                set(BEARSSL_EXTRA_CFLAGS "-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector")
+                set(BEARSSL_EXTRA_CFLAGS "-fPIC -DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector")
                 set(BEARSSL_CC "/usr/bin/musl-gcc")
             else()
-                set(BEARSSL_EXTRA_CFLAGS "")
+                set(BEARSSL_EXTRA_CFLAGS "-fPIC")
                 set(BEARSSL_CC "${CMAKE_C_COMPILER}")
             endif()
 

@@ -22,7 +22,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "asciichat_errno.h"
+// NOTE: This is a low-level hash utility. To avoid circular dependencies with
+// asciichat_errno.h and common.h, we don't log errors here. Invalid inputs return 0.
 
 /* ============================================================================
  * FNV-1a Constants
@@ -67,8 +68,8 @@
  * @ingroup util
  */
 static inline uint32_t fnv1a_hash_bytes(const void *data, size_t len) {
+  // Return 0 for invalid input (no error logging to avoid circular dependencies)
   if (!data || len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Data (ptr: %p) is NULL or length (%zu) is 0", data, len);
     return 0;
   }
 
@@ -93,8 +94,8 @@ static inline uint32_t fnv1a_hash_bytes(const void *data, size_t len) {
  * @ingroup util
  */
 static inline uint32_t fnv1a_hash_string(const char *str) {
+  // Return 0 for invalid input (no error logging to avoid circular dependencies)
   if (!str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "String is NULL");
     return 0;
   }
 
