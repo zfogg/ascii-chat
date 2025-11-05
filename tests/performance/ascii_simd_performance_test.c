@@ -12,7 +12,6 @@
 #include "image2ascii/simd/ascii_simd.h"
 #include "image2ascii/image.h"
 #include "palette.h"
-#include "hashtable.h"
 #include "buffer_pool.h"
 
 void setup_performance_quiet_logging(void);

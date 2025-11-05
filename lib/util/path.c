@@ -185,13 +185,20 @@ const char *extract_project_relative_path(const char *file) {
 
 char *expand_path(const char *path) {
   if (path[0] == '~') {
-    const char *home = platform_getenv("HOME");
-    if (!home) {
-      // On Windows, try USERPROFILE
-      home = platform_getenv("USERPROFILE");
-      if (!home)
+    const char *home = NULL;
+#ifdef _WIN32
+    // On Windows, try USERPROFILE
+    if (!(home = platform_getenv("USERPROFILE"))) {
+      if (!(home = platform_getenv("HOME"))) {
         return NULL;
+      }
+      return NULL;
     }
+#else
+    if (!(home = platform_getenv("HOME"))) {
+      return NULL;
+    }
+#endif
 
     char *expanded;
     size_t total_len = strlen(home) + strlen(path) + 1;
@@ -206,11 +213,12 @@ char *expand_path(const char *path) {
 }
 
 char *get_config_dir(void) {
+  const char *home = platform_getenv("HOME");
+
 #ifndef _WIN32
-  // Unix: Check XDG_CONFIG_HOME first
+  // Use XDG_CONFIG_HOME/ascii-chat
   const char *xdg_config_home = platform_getenv("XDG_CONFIG_HOME");
   if (xdg_config_home && xdg_config_home[0] != '\0') {
-    // Use XDG_CONFIG_HOME/ascii-chat
     size_t len = strlen(xdg_config_home) + strlen("/ascii-chat/") + 1;
     char *dir = SAFE_MALLOC(len, char *);
     if (!dir) {
@@ -221,7 +229,6 @@ char *get_config_dir(void) {
   }
 
   // Fallback to ~/.config/ascii-chat
-  const char *home = platform_getenv("HOME");
   if (home && home[0] != '\0') {
     size_t len = strlen(home) + strlen("/.config/ascii-chat/") + 1;
     char *dir = SAFE_MALLOC(len, char *);
@@ -231,26 +238,11 @@ char *get_config_dir(void) {
     safe_snprintf(dir, len, "%s/.config/ascii-chat/", home);
     return dir;
   }
-#endif
 
-  // Fallback to ~/.ascii-chat (cross-platform)
-  const char *home = platform_getenv("HOME");
-  if (!home) {
-    // On Windows, try USERPROFILE
-    home = platform_getenv("USERPROFILE");
-#ifdef _WIN32
-    // On Windows, also try APPDATA
-    if (!home) {
-      home = platform_getenv("APPDATA");
-    }
-#endif
-    if (!home) {
-      return NULL;
-    }
-  }
+  // Final fallback: return NULL if no config directory can be determined
+  return NULL;
 
-#ifdef _WIN32
-  // Windows: Use APPDATA if available, otherwise USERPROFILE
+#elif _WIN32
   const char *appdata = platform_getenv("APPDATA");
   if (appdata && appdata[0] != '\0') {
     size_t len = strlen(appdata) + strlen("\\.ascii-chat\\") + 1;
@@ -261,7 +253,7 @@ char *get_config_dir(void) {
     safe_snprintf(dir, len, "%s\\.ascii-chat\\", appdata);
     return dir;
   }
-  // Fallback to USERPROFILE
+  // Fallback to the user's home directory
   size_t len = strlen(home) + strlen("\\.ascii-chat\\") + 1;
   char *dir = SAFE_MALLOC(len, char *);
   if (!dir) {

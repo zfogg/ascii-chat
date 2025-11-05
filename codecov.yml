@@ -96,8 +96,6 @@ coverage:
           - "lib/packet_queue.h"
           - "lib/buffer_pool.c"
           - "lib/buffer_pool.h"
-          - "lib/hashtable.c"
-          - "lib/hashtable.h"
 
       # Security components
       security_crypto:

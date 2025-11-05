@@ -42,8 +42,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
     target_link_libraries(ascii-chat ascii-chat-shared)
 
-    # On Windows, explicitly add the import library directory and system libraries
-    # When using a DLL, the executable needs to link against the same system libraries
+    # Explicitly add system libraries when using shared library
+    # The executable needs to link against the same dependencies as the shared library
     if(WIN32)
         # Import library is in bin directory with the DLL
         target_link_directories(ascii-chat PRIVATE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
@@ -52,6 +52,17 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
             crypt32
             Winmm  # For timeBeginPeriod/timeEndPeriod
+            ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+        )
+        if(BEARSSL_FOUND)
+            target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
+        endif()
+        if(USE_MIMALLOC)
+            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+        endif()
+    else()
+        # Unix: Also need explicit dependencies when linking against shared library
+        target_link_libraries(ascii-chat
             ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
         )
         if(BEARSSL_FOUND)
@@ -73,7 +84,7 @@ target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
 # Use a phony target that always runs to show the message even when nothing needs rebuilding
 # This is so Claude Code doesn't get confused when ninja has nothing to do and just exits 0 without printing any message
 add_custom_target(show-build-success ALL
-    COMMAND ${CMAKE_COMMAND} -E echo "✅ Build Success! the ascii-chat binary either (1) built succesfully with all dependencies or (2) is up to date (build type: ${CMAKE_BUILD_TYPE})"
+    COMMAND ${CMAKE_COMMAND} -E echo "✅ Build Success! the ascii-chat binary either [1] built succesfully with all dependencies or [2] is up to date - build type: ${CMAKE_BUILD_TYPE}"
     DEPENDS ascii-chat
     COMMENT "Build success message"
 )
@@ -113,10 +124,12 @@ if(USE_MUSL)
 endif()
 
 # Preserve custom .ascii_chat_version section during linking
-if(NOT WIN32)
-    # Unix/macOS: Use linker flags to keep custom section
-    target_link_options(ascii-chat PRIVATE -Wl,--keep-section=.ascii_chat_version)
-endif()
+# NOTE: --keep-section is not supported by GNU ld (only gold/lld linkers)
+# Commenting out for compatibility - version info may be stripped by --gc-sections
+#if(NOT WIN32)
+#    # Unix/macOS: Use linker flags to keep custom section
+#    target_link_options(ascii-chat PRIVATE -Wl,--keep-section=.ascii_chat_version)
+#endif()
 
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
 # Only on Unix/Linux/macOS - Windows doesn't support -no-pie flag

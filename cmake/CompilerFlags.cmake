@@ -320,7 +320,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         if(NOT WITH_DEBUG_INFO)
             # Position Independent Executable (PIE) - better ASLR
             add_compile_options(-fPIE)
-            add_link_options(-pie)
+            add_link_options(LINKER:-pie)
 
             # Relocation hardening
             add_link_options(-Wl,-z,relro -Wl,-z,now)
@@ -344,8 +344,13 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             add_compile_options(-fno-plt -fno-semantic-interposition)
             add_link_options(-fno-plt)
 
-            # Fortify source for additional runtime checks
-            add_definitions(-D_FORTIFY_SOURCE=3)
+            # Fortify source for additional runtime checks (not compatible with musl)
+            if(NOT USE_MUSL)
+                add_definitions(-D_FORTIFY_SOURCE=3)
+            else()
+                # Musl doesn't provide __*_chk fortify wrappers
+                add_definitions(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+            endif()
         endif()
 
         # macOS-specific security features
