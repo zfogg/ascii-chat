@@ -190,7 +190,7 @@ char *expand_path(const char *path) {
     // On Windows, try USERPROFILE first, then HOME as fallback
     if (!(home = platform_getenv("USERPROFILE"))) {
       if (!(home = platform_getenv("HOME"))) {
-        return NULL;  // Both USERPROFILE and HOME failed
+        return NULL; // Both USERPROFILE and HOME failed
       }
       // HOME found, continue to expansion below
     }

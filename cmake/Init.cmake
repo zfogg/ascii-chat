@@ -127,41 +127,24 @@ endif()
 # them every time build/ is deleted. Dependencies are compiled once and reused.
 #
 # Separate cache directories for different build configurations:
-# - .deps-cache/<BuildType>/      : Normal glibc/system libc builds (per build type)
-# - .deps-cache-musl/<BuildType>/ : musl libc builds (different ABI, per build type)
+# - .deps-cache/<BuildType>/           : Native builds (normal glibc/system libc)
+# - .deps-cache/musl/                  : Native musl builds
+# - .deps-cache-docker/<BuildType>/    : Docker builds
+# - .deps-cache-docker/musl/           : Docker musl builds
 #
 # Build types need separate caches because dependencies like mimalloc have different
 # configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)
 #
-# To force rebuild dependencies: rm -rf .deps-cache*
+# To force rebuild dependencies: rm -rf .deps-cache* (or just .deps-cache-docker for Docker)
 
-# Determine cache directories for different types of dependencies
-# - General FetchContent deps (like mimalloc): .deps-cache/$BUILD_TYPE/
-# - Musl-specific deps: .deps-cache-musl/$BUILD_TYPE/static/ or /shared/
-# Allow override via DEPS_CACHE_BASE environment variable (useful for Docker)
-if(DEFINED ENV{DEPS_CACHE_BASE})
-    set(DEPS_CACHE_BASE_DIR "$ENV{DEPS_CACHE_BASE}")
-    message(STATUS "Using custom dependency cache base from environment: ${DEPS_CACHE_BASE_DIR}")
-else()
-    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache")
-endif()
+# Use centralized dependency cache variables from CMakeLists.txt
+# DEPS_CACHE_ROOT, DEPS_CACHE_DIR, and DEPS_CACHE_MUSL are set in CMakeLists.txt
 
-# FetchContent deps (mimalloc, etc.) always use .deps-cache/$BUILD_TYPE regardless of musl
-set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
-message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
+# FetchContent deps (mimalloc, bearssl, etc.) use the build-type-specific cache
+set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_DIR}" CACHE PATH "FetchContent cache directory")
 
-# Musl-specific dependencies use separate cache directory with static/shared subdirectories
-if(DEFINED USE_MUSL AND USE_MUSL)
-    # Static dependencies for the executable (musl-built)
-    set(MUSL_DEPS_DIR_STATIC "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}/static" CACHE PATH "Musl-specific static dependencies cache")
-    message(STATUS "Using musl static dependency cache: ${MUSL_DEPS_DIR_STATIC}")
-
-    # Shared dependencies for libasciichat.so (if needed, though we use system libs currently)
-    set(MUSL_DEPS_DIR_SHARED "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}/shared" CACHE PATH "Musl-specific shared dependencies cache")
-
-    # For backward compatibility, set MUSL_DEPS_DIR to static (most code uses this)
-    set(MUSL_DEPS_DIR "${MUSL_DEPS_DIR_STATIC}" CACHE PATH "Musl-specific dependencies cache (defaults to static)")
-endif()
+# Note: MUSL_DEPS_DIR_STATIC is set in Musl.cmake's configure_musl_post_project()
+# after USE_MUSL is defined (can't be set here since this runs before project())
 
 # =============================================================================
 # vcpkg Toolchain Setup
