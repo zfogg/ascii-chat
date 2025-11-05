@@ -606,7 +606,27 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   // Static initializers don't work reliably in Windows DLLs created from OBJECT files
   // so we must initialize them explicitly here
   SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "27224");
+
+// Set default log file paths for Release builds
+#ifdef NDEBUG
+  char temp_dir[256];
+  if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
+    SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s%sascii-chat.%s.log", temp_dir,
+#if defined(_WIN32) || defined(WIN32)
+                  "\\",
+#else
+                  "/",
+#endif
+                  is_client ? "client" : "server");
+  } else {
+    // Fallback if platform_get_temp_dir fails
+    SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
+  }
+#else
+  // Debug builds: No default log file (empty string)
   opt_log_file[0] = '\0';
+#endif
+
   opt_no_encrypt = 0;
   opt_encrypt_key[0] = '\0';
   opt_password[0] = '\0';
