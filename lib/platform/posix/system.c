@@ -857,6 +857,39 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   return SET_ERRNO(ERROR_CRYPTO, "No CA certificate bundle found in standard locations");
 }
 
+/**
+ * @brief Get the system temporary directory path (POSIX implementation)
+ *
+ * Returns /tmp for Unix systems (Linux/macOS), verifying it exists and is writable.
+ *
+ * @param temp_dir Buffer to store the temporary directory path
+ * @param path_size Size of the buffer
+ * @return true on success, false on failure
+ */
+bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
+  if (temp_dir == NULL || path_size == 0) {
+    return false;
+  }
+
+  // On Unix systems, /tmp is the standard temporary directory
+  const char *tmp = "/tmp";
+
+  // Check if buffer is large enough
+  if (strlen(tmp) >= path_size) {
+    return false;
+  }
+
+  // Verify the directory exists and is writable
+  if (access(tmp, W_OK) != 0) {
+    // /tmp doesn't exist or isn't writable
+    return false;
+  }
+
+  // Copy the path
+  SAFE_STRNCPY(temp_dir, tmp, path_size);
+  return true;
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 #include "../system.c"
 

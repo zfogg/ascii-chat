@@ -1337,6 +1337,48 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   return 0;
 }
 
+/**
+ * @brief Get the system temporary directory path (Windows implementation)
+ *
+ * Uses %TEMP% or %TMP% environment variables, with fallback to C:\Temp.
+ * Verifies the directory exists and is writable.
+ *
+ * @param temp_dir Buffer to store the temporary directory path
+ * @param path_size Size of the buffer
+ * @return true on success, false on failure
+ */
+bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
+  if (temp_dir == NULL || path_size == 0) {
+    return false;
+  }
+
+  // Try multiple temp directory candidates
+  const char *candidates[] = {SAFE_GETENV("TEMP"), SAFE_GETENV("TMP"), "C:\\Temp", NULL};
+
+  for (int i = 0; candidates[i] != NULL; i++) {
+    const char *temp = candidates[i];
+    if (temp == NULL) {
+      continue;
+    }
+
+    // Check if buffer is large enough
+    if (strlen(temp) >= path_size) {
+      continue;
+    }
+
+    // Verify the directory exists and is writable
+    // _access with mode 06 checks for read+write permission
+    if (_access(temp, 06) == 0) {
+      // Directory exists and is writable
+      SAFE_STRNCPY(temp_dir, temp, path_size);
+      return true;
+    }
+  }
+
+  // No writable temp directory found
+  return false;
+}
+
 // Include cross-platform system utilities (binary PATH detection)
 // Note: Uses uthash for binary PATH cache (included via system.c)
 #include "../system.c"
