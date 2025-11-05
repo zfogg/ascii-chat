@@ -108,18 +108,32 @@ if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
     add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
 
-    # Link against musl-built static libraries
-    target_link_directories(ascii-chat PRIVATE ${MUSL_PREFIX}/lib)
+    # Link against musl-built static libraries from individual dependency directories
+    target_link_directories(ascii-chat PRIVATE
+        ${PORTAUDIO_PREFIX}/lib
+        ${ALSA_PREFIX}/lib
+        ${LIBSODIUM_PREFIX}/lib
+        ${LIBEXECINFO_PREFIX}/lib
+    )
     # Note: -rdynamic is incompatible with -static and not needed for musl + libexecinfo
-    target_link_options(ascii-chat PRIVATE -static)
+    # Use lld linker for musl+LTO builds (handles LTO without gold plugin)
+    target_link_options(ascii-chat PRIVATE -static -fuse-ld=lld)
 
     # Link all libraries (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat
-        ${MUSL_PREFIX}/lib/libportaudio.a
-        ${MUSL_PREFIX}/lib/libasound.a
-        ${MUSL_PREFIX}/lib/libsodium.a
-        ${MUSL_PREFIX}/lib/libexecinfo.a
+        ${PORTAUDIO_PREFIX}/lib/libportaudio.a
+        ${ALSA_PREFIX}/lib/libasound.a
+        ${LIBSODIUM_PREFIX}/lib/libsodium.a
+        ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
         -lm -lpthread
+    )
+
+    # Disable RPATH changes for static musl binaries
+    # CPack fails when trying to modify RPATH on static-PIE binaries
+    set_target_properties(ascii-chat PROPERTIES
+        SKIP_BUILD_RPATH TRUE
+        INSTALL_RPATH ""
+        INSTALL_RPATH_USE_LINK_PATH FALSE
     )
 endif()
 
