@@ -35,6 +35,14 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         )
     else()
         add_library(${MODULE_NAME} STATIC ${MODULE_SRCS})
+        # For static library builds on Windows, define BUILDING_STATIC_LIB
+        # so that ASCIICHAT_API expands to nothing (not dllimport)
+        if(WIN32)
+            target_compile_definitions(${MODULE_NAME} PRIVATE
+                _WIN32_WINNT=0x0A00  # Windows 10
+                BUILDING_STATIC_LIB=1
+            )
+        endif()
         # Enable Position Independent Code for shared library builds
         # Required for thread-local storage (TLS) relocations in shared objects
         set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)

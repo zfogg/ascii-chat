@@ -46,6 +46,15 @@
  * which marks symbols for export in the DLL's export table.
  */
 #define ASCIICHAT_API __declspec(dllexport)
+#elif defined(BUILDING_STATIC_LIB)
+/**
+ * @def ASCIICHAT_API
+ * @brief No special attributes for static library builds
+ *
+ * When building static libraries, symbols don't need import/export attributes.
+ * They are linked directly into the final executable.
+ */
+#define ASCIICHAT_API
 #else
 /**
  * @def ASCIICHAT_API
@@ -53,6 +62,9 @@
  *
  * When linking against asciichat.dll, this expands to __declspec(dllimport)
  * which tells the linker to import symbols from the DLL.
+ *
+ * @note This is only used when BUILDING_STATIC_LIB is not defined, meaning
+ *       we're building code that will link against a DLL.
  */
 #define ASCIICHAT_API __declspec(dllimport)
 #endif
