@@ -118,16 +118,18 @@ function(configure_musl_post_project)
 
     # Configure clang to use musl with static-PIE
     # Based on: https://wiki.debian.org/musl
+    # Note: -fPIE is added by CompilerFlags.cmake for all PIE builds (dynamic and static)
     add_compile_options(
         -target x86_64-linux-musl
     )
 
-    # Linker flags for static linking with musl
-    # Use crt1.o for regular static (not rcrt1.o which is for static-PIE)
+    # Linker flags for static-PIE linking with musl
+    # Use rcrt1.o for static-PIE (combines static linking with ASLR security)
+    # Use lld for LTO support (lld has built-in LTO, doesn't need LLVMgold.so plugin)
     # Force retention of custom sections with -Wl,--undefined to prevent LTO from removing them
     set(CMAKE_EXE_LINKER_FLAGS
-        "-target x86_64-linux-musl -static -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/crt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section"
-        CACHE STRING "Linker flags for musl static linking" FORCE
+        "-target x86_64-linux-musl -fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section"
+        CACHE STRING "Linker flags for musl static-PIE linking" FORCE
     )
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" CACHE STRING "Shared linker flags for musl" FORCE)
 

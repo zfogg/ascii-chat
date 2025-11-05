@@ -111,7 +111,8 @@ if(USE_MUSL)
     # Link against musl-built static libraries
     target_link_directories(ascii-chat PRIVATE ${MUSL_PREFIX}/lib)
     # Note: -rdynamic is incompatible with -static and not needed for musl + libexecinfo
-    target_link_options(ascii-chat PRIVATE -static)
+    # Use lld linker for musl+LTO builds (handles LTO without gold plugin)
+    target_link_options(ascii-chat PRIVATE -static -fuse-ld=lld)
 
     # Link all libraries (LTO + dead code elimination removes unused code)
     target_link_libraries(ascii-chat
@@ -120,6 +121,14 @@ if(USE_MUSL)
         ${MUSL_PREFIX}/lib/libsodium.a
         ${MUSL_PREFIX}/lib/libexecinfo.a
         -lm -lpthread
+    )
+
+    # Disable RPATH changes for static musl binaries
+    # CPack fails when trying to modify RPATH on static-PIE binaries
+    set_target_properties(ascii-chat PROPERTIES
+        SKIP_BUILD_RPATH TRUE
+        INSTALL_RPATH ""
+        INSTALL_RPATH_USE_LINK_PATH FALSE
     )
 endif()
 
