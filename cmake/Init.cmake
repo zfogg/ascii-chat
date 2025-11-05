@@ -12,6 +12,81 @@
 # =============================================================================
 
 # =============================================================================
+# Compiler Detection (before project())
+# =============================================================================
+# Force Clang compiler - MSVC and GCC are not supported
+# Supports Windows (scoop/official LLVM), macOS (Homebrew), and Linux (system)
+if(NOT CMAKE_C_COMPILER)
+    if(WIN32)
+        # Windows: Try to find Clang from common installation locations
+        find_program(CLANG_EXECUTABLE
+            NAMES clang clang.exe
+            PATHS
+                "$ENV{PROGRAMFILES}/LLVM/bin"
+                "$ENV{LOCALAPPDATA}/Programs/LLVM/bin"
+                "C:/Program Files/LLVM/bin"
+                "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
+                "$ENV{USERPROFILE}/scoop/shims"
+        )
+
+        if(NOT CLANG_EXECUTABLE)
+            message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                               "  Windows: scoop install llvm\n"
+                               "  Or download from: https://llvm.org/builds/")
+        endif()
+    elseif(APPLE)
+        # macOS: Prefer Homebrew Clang over Apple's Clang
+        find_program(CLANG_EXECUTABLE
+            NAMES clang
+            PATHS
+                /opt/homebrew/opt/llvm/bin      # Apple Silicon Homebrew
+                /usr/local/opt/llvm/bin         # Intel Homebrew
+                /usr/bin                        # System Clang (fallback)
+            NO_DEFAULT_PATH
+        )
+
+        if(NOT CLANG_EXECUTABLE)
+            # Fallback to system clang if Homebrew not found
+            find_program(CLANG_EXECUTABLE NAMES clang)
+        endif()
+
+        if(NOT CLANG_EXECUTABLE)
+            message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                               "  macOS: brew install llvm\n"
+                               "  Or use system clang from Xcode Command Line Tools")
+        endif()
+    else()
+        # Linux/Unix: Use system Clang (support versions 21 down to 15)
+        find_program(CLANG_EXECUTABLE
+            NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
+        )
+
+        if(NOT CLANG_EXECUTABLE)
+            message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                               "  Debian/Ubuntu: sudo apt install clang\n"
+                               "  Fedora/RHEL: sudo dnf install clang\n"
+                               "  Arch: sudo pacman -S clang")
+        endif()
+    endif()
+
+    # Set the compiler (all platforms)
+    set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "C compiler" FORCE)
+
+    # Derive CXX compiler path from C compiler
+    if(WIN32)
+        # Windows: Replace clang.exe with clang++.exe
+        string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}")
+    else()
+        # Unix/macOS: Append ++ to clang
+        set(CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}++")
+    endif()
+
+    set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+    message(STATUS "Set default C compiler to Clang: ${CLANG_EXECUTABLE}")
+    message(STATUS "Set default C++ compiler to Clang++: ${CLANGXX_EXECUTABLE}")
+endif()
+
+# =============================================================================
 # CMake Policy Configuration
 # =============================================================================
 # Set modern CMake policies for future-proofing and best practices
@@ -147,6 +222,21 @@ set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_DIR}" CACHE PATH "FetchContent cache dir
 # after USE_MUSL is defined (can't be set here since this runs before project())
 
 # =============================================================================
+# Build System Generator Configuration (MUST be before vcpkg toolchain)
+# =============================================================================
+
+# Use Ninja generator by default on all platforms for faster builds
+# Only set Ninja if no generator was explicitly specified via -G flag
+# This MUST be set before vcpkg toolchain to prevent vcpkg from forcing Visual Studio generator
+if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
+    find_program(NINJA_EXECUTABLE ninja)
+    if(NINJA_EXECUTABLE)
+        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
+        message(STATUS "Using Ninja generator for faster builds")
+    endif()
+endif()
+
+# =============================================================================
 # vcpkg Toolchain Setup
 # =============================================================================
 # Set up vcpkg toolchain if available (must be before project())
@@ -154,20 +244,6 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})
         set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
         message(STATUS "Using vcpkg toolchain from environment: $ENV{VCPKG_ROOT}")
-    endif()
-endif()
-
-# =============================================================================
-# Build System Generator Configuration
-# =============================================================================
-
-# Use Ninja generator by default on all platforms for faster builds
-# Only set Ninja if no generator was explicitly specified via -G flag
-if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
-    find_program(NINJA_EXECUTABLE ninja)
-    if(NINJA_EXECUTABLE)
-        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
-        message(STATUS "Using Ninja generator for faster builds")
     endif()
 endif()
 

@@ -423,6 +423,44 @@ if(USE_CPACK)
     set(CPACK_PACKAGE_INSTALL_DIRECTORY "${CPACK_PACKAGE_NAME}" CACHE STRING "Installation directory (without version)" FORCE)
 
     # =========================================================================
+    # Component Groups Configuration (Global - applies to all generators)
+    # =========================================================================
+    # Note: Using "RuntimeGroup" and "DevelopmentGroup" as internal group IDs
+    # to avoid NSIS naming conflicts with component names "Runtime" and "Development"
+    # Component Groups (legacy API - also set via cpack_add_component_group below)
+    set(CPACK_COMPONENT_RUNTIME_GROUP "RuntimeGroup")
+    set(CPACK_COMPONENT_DEVELOPMENT_GROUP "DevelopmentGroup")
+    set(CPACK_COMPONENT_DOCUMENTATION_GROUP "RuntimeGroup")
+    set(CPACK_COMPONENT_MANPAGES_GROUP "DevelopmentGroup")
+
+    # Runtime Group
+    set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_DISPLAY_NAME "Runtime")
+    set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_DESCRIPTION "Components needed to run ascii-chat")
+    set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_EXPANDED ON)
+
+    # Development Group
+    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DISPLAY_NAME "Development")
+    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DESCRIPTION "All of the tools you'll need to develop software with ascii-chat")
+    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_EXPANDED OFF)
+
+    # Component descriptions
+    set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "Application")
+    set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "The main ascii-chat executable for video chat")
+    set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
+
+    set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Libraries and Headers")
+    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "Header files and libraries for developing with ascii-chat")
+    set(CPACK_COMPONENT_DEVELOPMENT_DISABLED OFF)
+
+    set(CPACK_COMPONENT_DOCUMENTATION_DISPLAY_NAME "Documentation")
+    set(CPACK_COMPONENT_DOCUMENTATION_DESCRIPTION "HTML documentation generated with Doxygen")
+    set(CPACK_COMPONENT_DOCUMENTATION_DISABLED OFF)
+
+    set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Manual Pages")
+    set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix-style manual pages (man pages)")
+    set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
+
+    # =========================================================================
     # Platform-Specific Package Generators
     # =========================================================================
 
@@ -544,6 +582,8 @@ if(USE_CPACK)
         # Windows: ZIP (always available), NSIS/EXE (if makensis found)
         set(CPACK_GENERATOR "ZIP")
 
+        set(CPACK_COMPONENT_MANPAGES_DISABLED TRUE)
+
         # Check for NSIS (Nullsoft Scriptable Install System)
         find_program(NSIS_EXECUTABLE makensis)
         if(NOT NSIS_EXECUTABLE)
@@ -604,23 +644,6 @@ if(USE_CPACK)
             # Enable component-based installation
             # This allows users to select which components to install
             set(CPACK_NSIS_COMPONENT_INSTALL ON)
-
-            # Component descriptions for NSIS installer
-            set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "ascii-chat Application")
-            set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "The main ascii-chat executable for video chat")
-            set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
-
-            set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Development Files")
-            set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "Header files and libraries for developing with ascii-chat (libasciichat.dll)")
-            set(CPACK_COMPONENT_DEVELOPMENT_DISABLED OFF)
-
-            set(CPACK_COMPONENT_DOCUMENTATION_DISPLAY_NAME "Documentation")
-            set(CPACK_COMPONENT_DOCUMENTATION_DESCRIPTION "HTML documentation generated with Doxygen")
-            set(CPACK_COMPONENT_DOCUMENTATION_DISABLED OFF)
-
-            set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Manual Pages")
-            set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix-style manual pages (man pages)")
-            set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
 
             # Optional: Custom installer icon
             # set(CPACK_NSIS_INSTALLED_ICON_NAME "${CMAKE_SOURCE_DIR}/resources/icon.ico")
@@ -700,17 +723,39 @@ if(USE_CPACK)
     # -------------------------------------------------------------------------
     # Component Group Definitions
     # -------------------------------------------------------------------------
+    # Note: Using "RuntimeGroup" and "DevelopmentGroup" as internal IDs
+    # to avoid NSIS naming conflicts with component names "Runtime" and "Development"
+    # Display names are still "Runtime" and "Development" for the user
+
     # Runtime group - components needed to run ascii-chat
-    cpack_add_component_group(Runtime
+    cpack_add_component_group(RuntimeGroup
         DISPLAY_NAME "Runtime"
         DESCRIPTION "Core files needed to run ascii-chat, including the executable and documentation"
         EXPANDED
     )
 
     # Development group - components needed to develop with ascii-chat
-    cpack_add_component_group(Development
+    cpack_add_component_group(DevelopmentGroup
         DISPLAY_NAME "Development"
         DESCRIPTION "All of the tools you'll ever need to develop software using ascii-chat libraries"
+    )
+
+    # -------------------------------------------------------------------------
+    # Installation Types (NSIS only)
+    # -------------------------------------------------------------------------
+    # Full: Everything (default)
+    cpack_add_install_type(Full
+        DISPLAY_NAME "Full"
+    )
+
+    # User: Just the runtime application (for end users)
+    cpack_add_install_type(User
+        DISPLAY_NAME "User"
+    )
+
+    # Developer: Runtime + libraries + documentation (for developers)
+    cpack_add_install_type(Developer
+        DISPLAY_NAME "Developer"
     )
 
     # -------------------------------------------------------------------------
@@ -720,14 +765,16 @@ if(USE_CPACK)
         DISPLAY_NAME "Application"
         DESCRIPTION "ascii-chat executable - the main application binary"
         REQUIRED
-        GROUP Runtime
+        GROUP RuntimeGroup
+        INSTALL_TYPES Full User Developer
     )
 
     cpack_add_component(Documentation
         DISPLAY_NAME "Documentation"
         DESCRIPTION "User documentation including README, LICENSE, CHANGELOG, and HTML API docs"
-        GROUP Runtime
+        GROUP RuntimeGroup
         DEPENDS Runtime
+        INSTALL_TYPES Full User Developer
     )
 
     # -------------------------------------------------------------------------
@@ -736,15 +783,17 @@ if(USE_CPACK)
     cpack_add_component(Manpages
         DISPLAY_NAME "Man Pages"
         DESCRIPTION "Unix manual pages (man pages) for API documentation and library functions"
-        GROUP Development
+        GROUP DevelopmentGroup
         DEPENDS Runtime
+        INSTALL_TYPES Full Developer
     )
 
     cpack_add_component(Development
         DISPLAY_NAME "Headers and Libraries"
         DESCRIPTION "C header files and static libraries for building extensions and tools with ascii-chat"
-        GROUP Development
+        GROUP DevelopmentGroup
         DEPENDS Runtime
+        INSTALL_TYPES Full Developer
     )
 
     message(STATUS "CPack: Package generation enabled")

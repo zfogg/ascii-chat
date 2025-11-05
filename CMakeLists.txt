@@ -53,6 +53,35 @@ project(ascii-chat
 )
 
 # =============================================================================
+# Generator Validation (after project())
+# =============================================================================
+# Only Ninja generator is supported - enforce this requirement
+if(NOT CMAKE_GENERATOR MATCHES "Ninja")
+    message(FATAL_ERROR
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "  ❌ UNSUPPORTED GENERATOR: ${CMAKE_GENERATOR}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "\n"
+        "  This project requires the Ninja build system.\n"
+        "\n"
+        "  To use Ninja:\n"
+        "    1. Install Ninja:\n"
+        "       - Windows: scoop install ninja\n"
+        "       - macOS: brew install ninja\n"
+        "       - Linux: sudo apt install ninja-build (or equivalent)\n"
+        "\n"
+        "    2. Configure with Ninja:\n"
+        "       cmake -G Ninja -B build\n"
+        "\n"
+        "  Or use the build scripts:\n"
+        "    - Windows: ./build.ps1\n"
+        "    - Unix/macOS: cmake -B build && cmake --build build\n"
+        "\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    )
+endif()
+
+# =============================================================================
 # Version Detection (after project() to override PROJECT_VERSION)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/Version.cmake)
