@@ -1,7 +1,29 @@
 cmake_minimum_required(VERSION 3.16)
 
 # =============================================================================
-# Initialization (must come first)
+# Dependency Cache Configuration (must come first)
+# =============================================================================
+# Centralized dependency cache configuration
+# Docker builds use .deps-cache-docker/, native builds use .deps-cache/
+# Musl dependencies are stored in musl/ subdirectory
+
+# Check if running in Docker (set by Dockerfile with ENV TESTING=1)
+if(DEFINED ENV{TESTING} AND "$ENV{TESTING}" STREQUAL "1")
+    set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-docker" CACHE PATH "Root directory for dependency cache (Docker)")
+else()
+    set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
+endif()
+
+# Build-type-specific cache directory
+set(DEPS_CACHE_DIR "${DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
+
+# Musl-specific cache directory
+set(DEPS_CACHE_MUSL "${DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
+
+message(STATUS "Using dependency cache: ${DEPS_CACHE_DIR}")
+
+# =============================================================================
+# Initialization
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/BuildTypes.cmake)
@@ -29,6 +51,35 @@ project(ascii-chat
     HOMEPAGE_URL "https://github.com/zfogg/ascii-chat"
     LANGUAGES ${PROJECT_LANGUAGES}
 )
+
+# =============================================================================
+# Generator Validation (after project())
+# =============================================================================
+# Only Ninja generator is supported - enforce this requirement
+if(NOT CMAKE_GENERATOR MATCHES "Ninja")
+    message(FATAL_ERROR
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "  ❌ UNSUPPORTED GENERATOR: ${CMAKE_GENERATOR}\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "\n"
+        "  This project requires the Ninja build system.\n"
+        "\n"
+        "  To use Ninja:\n"
+        "    1. Install Ninja:\n"
+        "       - Windows: scoop install ninja\n"
+        "       - macOS: brew install ninja\n"
+        "       - Linux: sudo apt install ninja-build (or equivalent)\n"
+        "\n"
+        "    2. Configure with Ninja:\n"
+        "       cmake -G Ninja -B build\n"
+        "\n"
+        "  Or use the build scripts:\n"
+        "    - Windows: ./build.ps1\n"
+        "    - Unix/macOS: cmake -B build && cmake --build build\n"
+        "\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    )
+endif()
 
 # =============================================================================
 # Version Detection (after project() to override PROJECT_VERSION)

@@ -414,23 +414,34 @@ else()
         POSITION_INDEPENDENT_CODE ON
     )
 
-    # CRITICAL: Override flags for shared library compatibility
-    # 1. -fvisibility=default: Export symbols despite global -fvisibility=hidden
+    # CRITICAL: Override flags for shared library compatibility (Unix only)
+    # 1. -fvisibility=default: Export symbols for external use
     # 2. -ftls-model=global-dynamic: Correct TLS model for shared libraries
-    # 3. -fPIC: Override global -fPIE (shared libraries need -fPIC, not -fPIE)
-    # 4. -fno-pie: Disable PIE mode entirely for shared library (conflicts with -shared)
-    target_compile_options(ascii-chat-shared PRIVATE
-        -fvisibility=default
-        -ftls-model=global-dynamic
-        -fno-pie
-        -fPIC
-    )
+    # 3. -fPIC: Position-independent code required for shared libraries
+    # 4. -fno-pie: Disable PIE mode (conflicts with -shared)
+    # Note: Windows doesn't support these flags and uses different DLL export mechanisms
+    if(NOT WIN32)
+        target_compile_options(ascii-chat-shared PRIVATE
+            -fvisibility=default
+            -ftls-model=global-dynamic
+            -fno-pie
+            -fPIC
+        )
+    endif()
 
     # Add version dependency
     add_dependencies(ascii-chat-shared generate_version)
 
     # Include paths (same as modules) - PRIVATE because these are build-time only
     target_include_directories(ascii-chat-shared PRIVATE ${CMAKE_BINARY_DIR}/generated)
+
+    # Windows DLL export flag (must be set when building the DLL)
+    if(WIN32)
+        target_compile_definitions(ascii-chat-shared PRIVATE
+            _WIN32_WINNT=0x0A00  # Windows 10
+            BUILDING_ASCIICHAT_DLL=1
+        )
+    endif()
 
     # Build directory for llvm-symbolizer --debug-file-directory (debug builds only)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
@@ -483,15 +494,27 @@ else()
         target_link_options(ascii-chat-shared PRIVATE -Wl,-export_dynamic)
     elseif(WIN32)
         # Windows Release: DLL export configuration
+        # Use WINDOWS_EXPORT_ALL_SYMBOLS to automatically export all symbols
         set_target_properties(ascii-chat-shared PROPERTIES
             ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-            WINDOWS_EXPORT_ALL_SYMBOLS FALSE
+            WINDOWS_EXPORT_ALL_SYMBOLS TRUE
         )
     else()
-        # Linux: Use version script to export all symbols
+        # Linux: Export all symbols using version script
+        # Remove executable-specific optimizations that break shared library symbol export:
+        # - No --gc-sections (removes "unused" symbols meant for external users)
+        # - No -pie (for executables, not shared libraries)
+        # - No hardening flags (breaks dynamic symbol export)
         target_link_options(ascii-chat-shared PRIVATE
             -Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/export_all.lds
         )
+        # Clear LINK_OPTIONS property to remove global flags (pie, gc-sections, hardening)
+        # then add only what we need
+        set_target_properties(ascii-chat-shared PROPERTIES
+            LINK_OPTIONS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/export_all.lds"
+        )
+        # Note: The "_start not found" linker warning is harmless for shared libraries
+        # (they don't need an entry point like executables do)
     endif()
 endif()
 
@@ -507,13 +530,14 @@ if(WIN32)
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     endif()
+    # Windows DLL needs mimalloc built in (no LD_PRELOAD mechanism)
     if(USE_MIMALLOC)
         target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
     endif()
 else()
     # For musl builds, shared library links against system glibc libraries
-    # The musl-built static libraries don't work with -shared (non-PIC relocations)
-    # Shared library users will have glibc, so we use system packages
+    # Musl-built static libraries use incompatible TLS model (local-dynamic) and cannot be embedded in .so
+    # Shared library users will have glibc, so we use system packages via pkg-config
     if(USE_MUSL)
         # Use system glibc libraries for shared library (not musl static libs)
         # Users of libasciichat.so will have glibc available
@@ -552,6 +576,9 @@ else()
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
+        # Note: mimalloc is NOT linked into shared library
+        # Users of the shared library can choose their own allocator
+        # or link mimalloc themselves if desired
         if(PLATFORM_DARWIN)
             target_link_libraries(ascii-chat-shared PRIVATE
                 ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
@@ -560,9 +587,7 @@ else()
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
         endif()
-        if(USE_MIMALLOC)
-            target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
-        endif()
+        # Note: mimalloc is NOT linked - see comment above
     endif()
 endif()
 

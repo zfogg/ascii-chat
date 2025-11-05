@@ -12,6 +12,81 @@
 # =============================================================================
 
 # =============================================================================
+# Compiler Detection (before project())
+# =============================================================================
+# Force Clang compiler - MSVC and GCC are not supported
+# Supports Windows (scoop/official LLVM), macOS (Homebrew), and Linux (system)
+if(NOT CMAKE_C_COMPILER)
+    if(WIN32)
+        # Windows: Try to find Clang from common installation locations
+        find_program(CLANG_EXECUTABLE
+            NAMES clang clang.exe
+            PATHS
+                "$ENV{PROGRAMFILES}/LLVM/bin"
+                "$ENV{LOCALAPPDATA}/Programs/LLVM/bin"
+                "C:/Program Files/LLVM/bin"
+                "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
+                "$ENV{USERPROFILE}/scoop/shims"
+        )
+
+        if(NOT CLANG_EXECUTABLE)
+            message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                               "  Windows: scoop install llvm\n"
+                               "  Or download from: https://llvm.org/builds/")
+        endif()
+    elseif(APPLE)
+        # macOS: Prefer Homebrew Clang over Apple's Clang
+        find_program(CLANG_EXECUTABLE
+            NAMES clang
+            PATHS
+                /opt/homebrew/opt/llvm/bin      # Apple Silicon Homebrew
+                /usr/local/opt/llvm/bin         # Intel Homebrew
+                /usr/bin                        # System Clang (fallback)
+            NO_DEFAULT_PATH
+        )
+
+        if(NOT CLANG_EXECUTABLE)
+            # Fallback to system clang if Homebrew not found
+            find_program(CLANG_EXECUTABLE NAMES clang)
+        endif()
+
+        if(NOT CLANG_EXECUTABLE)
+            message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                               "  macOS: brew install llvm\n"
+                               "  Or use system clang from Xcode Command Line Tools")
+        endif()
+    else()
+        # Linux/Unix: Use system Clang (support versions 21 down to 15)
+        find_program(CLANG_EXECUTABLE
+            NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
+        )
+
+        if(NOT CLANG_EXECUTABLE)
+            message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                               "  Debian/Ubuntu: sudo apt install clang\n"
+                               "  Fedora/RHEL: sudo dnf install clang\n"
+                               "  Arch: sudo pacman -S clang")
+        endif()
+    endif()
+
+    # Set the compiler (all platforms)
+    set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "C compiler" FORCE)
+
+    # Derive CXX compiler path from C compiler
+    if(WIN32)
+        # Windows: Replace clang.exe with clang++.exe
+        string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}")
+    else()
+        # Unix/macOS: Append ++ to clang
+        set(CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}++")
+    endif()
+
+    set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+    message(STATUS "Set default C compiler to Clang: ${CLANG_EXECUTABLE}")
+    message(STATUS "Set default C++ compiler to Clang++: ${CLANGXX_EXECUTABLE}")
+endif()
+
+# =============================================================================
 # CMake Policy Configuration
 # =============================================================================
 # Set modern CMake policies for future-proofing and best practices
@@ -127,40 +202,38 @@ endif()
 # them every time build/ is deleted. Dependencies are compiled once and reused.
 #
 # Separate cache directories for different build configurations:
-# - .deps-cache/<BuildType>/      : Normal glibc/system libc builds (per build type)
-# - .deps-cache-musl/<BuildType>/ : musl libc builds (different ABI, per build type)
+# - .deps-cache/<BuildType>/           : Native builds (normal glibc/system libc)
+# - .deps-cache/musl/                  : Native musl builds
+# - .deps-cache-docker/<BuildType>/    : Docker builds
+# - .deps-cache-docker/musl/           : Docker musl builds
 #
 # Build types need separate caches because dependencies like mimalloc have different
 # configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)
 #
-# To force rebuild dependencies: rm -rf .deps-cache*
+# To force rebuild dependencies: rm -rf .deps-cache* (or just .deps-cache-docker for Docker)
 
-# Determine cache directories for different types of dependencies
-# - General FetchContent deps (like mimalloc): .deps-cache/$BUILD_TYPE/
-# - Musl-specific deps: .deps-cache-musl/$BUILD_TYPE/static/ or /shared/
-# Allow override via DEPS_CACHE_BASE environment variable (useful for Docker)
-if(DEFINED ENV{DEPS_CACHE_BASE})
-    set(DEPS_CACHE_BASE_DIR "$ENV{DEPS_CACHE_BASE}")
-    message(STATUS "Using custom dependency cache base from environment: ${DEPS_CACHE_BASE_DIR}")
-else()
-    set(DEPS_CACHE_BASE_DIR "${CMAKE_SOURCE_DIR}/.deps-cache")
-endif()
+# Use centralized dependency cache variables from CMakeLists.txt
+# DEPS_CACHE_ROOT, DEPS_CACHE_DIR, and DEPS_CACHE_MUSL are set in CMakeLists.txt
 
-# FetchContent deps (mimalloc, etc.) always use .deps-cache/$BUILD_TYPE regardless of musl
-set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}" CACHE PATH "FetchContent cache directory")
-message(STATUS "Using dependency cache: ${FETCHCONTENT_BASE_DIR}")
+# FetchContent deps (mimalloc, bearssl, etc.) use the build-type-specific cache
+set(FETCHCONTENT_BASE_DIR "${DEPS_CACHE_DIR}" CACHE PATH "FetchContent cache directory")
 
-# Musl-specific dependencies use separate cache directory with static/shared subdirectories
-if(DEFINED USE_MUSL AND USE_MUSL)
-    # Static dependencies for the executable (musl-built)
-    set(MUSL_DEPS_DIR_STATIC "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}/static" CACHE PATH "Musl-specific static dependencies cache")
-    message(STATUS "Using musl static dependency cache: ${MUSL_DEPS_DIR_STATIC}")
+# Note: MUSL_DEPS_DIR_STATIC is set in Musl.cmake's configure_musl_post_project()
+# after USE_MUSL is defined (can't be set here since this runs before project())
 
-    # Shared dependencies for libasciichat.so (if needed, though we use system libs currently)
-    set(MUSL_DEPS_DIR_SHARED "${CMAKE_SOURCE_DIR}/.deps-cache-musl/${CMAKE_BUILD_TYPE}/shared" CACHE PATH "Musl-specific shared dependencies cache")
+# =============================================================================
+# Build System Generator Configuration (MUST be before vcpkg toolchain)
+# =============================================================================
 
-    # For backward compatibility, set MUSL_DEPS_DIR to static (most code uses this)
-    set(MUSL_DEPS_DIR "${MUSL_DEPS_DIR_STATIC}" CACHE PATH "Musl-specific dependencies cache (defaults to static)")
+# Use Ninja generator by default on all platforms for faster builds
+# Only set Ninja if no generator was explicitly specified via -G flag
+# This MUST be set before vcpkg toolchain to prevent vcpkg from forcing Visual Studio generator
+if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
+    find_program(NINJA_EXECUTABLE ninja)
+    if(NINJA_EXECUTABLE)
+        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
+        message(STATUS "Using Ninja generator for faster builds")
+    endif()
 endif()
 
 # =============================================================================
@@ -171,20 +244,6 @@ if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})
         set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
         message(STATUS "Using vcpkg toolchain from environment: $ENV{VCPKG_ROOT}")
-    endif()
-endif()
-
-# =============================================================================
-# Build System Generator Configuration
-# =============================================================================
-
-# Use Ninja generator by default on all platforms for faster builds
-# Only set Ninja if no generator was explicitly specified via -G flag
-if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
-    find_program(NINJA_EXECUTABLE ninja)
-    if(NINJA_EXECUTABLE)
-        set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
-        message(STATUS "Using Ninja generator for faster builds")
     endif()
 endif()
 

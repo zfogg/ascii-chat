@@ -52,7 +52,7 @@ $ContainerName = "ascii-chat-test-runner"
 
 # Volume names for persistent caching
 $CcacheVolume = "ascii-chat-ccache"
-$DepsCacheVolume = "ascii-chat-deps-cache"
+$DepsCacheVolume = "ascii-chat-deps-cache-docker"
 
 # Check if Docker is running
 Write-Host "Checking Docker..." -ForegroundColor Cyan
@@ -227,9 +227,9 @@ echo ""
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/deps-cache" `
+        -v "${DepsCacheVolume}:/app/.deps-cache-docker" `
         -e CCACHE_DIR=/ccache `
-        -e DEPS_CACHE_BASE=/deps-cache `
+        -e TESTING=1 `
         -w /app `
         $ImageName `
         bash -c "/app/temp-clang-tidy.sh$ScriptArgs"
@@ -291,16 +291,18 @@ if ($Interactive) {
         Write-Host "Clean rebuild requested - removing build_docker directory" -ForegroundColor Yellow
         $BuildCommand = @"
 echo 'Clean rebuild - removing build_docker directory...'
+chmod -R u+w build_docker 2>/dev/null || true
+rm -rf build_docker 2>/dev/null || true
 rm -rf build_docker
-    echo 'Configuring CMake with Docker-specific deps cache...'
-    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=17 -DCMAKE_C_FLAGS='-std=c17' -DUSE_MIMALLOC=OFF -DDEBUG_MEMORY=OFF -DENABLE_AUDIO=OFF -DENABLE_VIDEO=OFF -DBUILD_TESTS=ON
+    echo 'Configuring CMake using tests preset (Debug with BUILD_TESTS=ON)...'
+    cmake --preset tests -B build_docker
 echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 "@
     } else {
         $BuildCommand = @"
 if [ ! -d build_docker ]; then
-    echo 'First time setup - configuring CMake with Docker-specific deps cache...'
-    CC=clang CXX=clang++ DEPS_CACHE_BASE=/deps-cache cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=17 -DCMAKE_C_FLAGS='-std=c17' -DUSE_MIMALLOC=OFF -DDEBUG_MEMORY=OFF -DENABLE_AUDIO=OFF -DENABLE_VIDEO=OFF -DBUILD_TESTS=ON
+    echo 'First time setup - configuring CMake using tests preset (Debug with BUILD_TESTS=ON)...'
+    cmake --preset tests -B build_docker
     echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
 else
     echo 'Using existing build_docker directory (run_tests.sh will build only the test executables needed)'
@@ -337,9 +339,9 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/deps-cache" `
+        -v "${DepsCacheVolume}:/app/.deps-cache-docker" `
         -e CCACHE_DIR=/ccache `
-        -e DEPS_CACHE_BASE=/deps-cache `
+        -e TESTING=1 `
         -w /app `
         $ImageName `
         /bin/bash
@@ -350,9 +352,9 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/deps-cache" `
+        -v "${DepsCacheVolume}:/app/.deps-cache-docker" `
         -e CCACHE_DIR=/ccache `
-        -e DEPS_CACHE_BASE=/deps-cache `
+        -e TESTING=1 `
         -w /app `
         $ImageName `
         bash -c "$FullCommand"
