@@ -1084,6 +1084,63 @@
  * - Uninstall support
  * - Optional: Custom installer icon
  *
+ * @subsubsection build_installation_cpack_linux Linux Installation with CPack
+ *
+ * **Install from DEB package** (if `dpkg` is available):
+ * @code{.bash}
+ * cmake --build build --target package
+ * sudo dpkg -i build/packages/ascii-chat-<version>-Linux.deb
+ * ascii-chat --help
+ * @endcode
+ *
+ * **Install from RPM package** (if `rpmbuild` is available):
+ * @code{.bash}
+ * cmake --build build --target package
+ * sudo rpm -i build/packages/ascii-chat-<version>-Linux.rpm
+ * ascii-chat --version
+ * @endcode
+ *
+ * **Install from TGZ archive** (always available):
+ * @code{.bash}
+ * cmake --build build --target package
+ * sudo tar -xzf build/packages/ascii-chat-<version>-Linux.tar.gz -C /usr/local --strip-components=1
+ * ascii-chat --version
+ * @endcode
+ *
+ * @subsubsection build_installation_cpack_macos macOS Installation with CPack
+ *
+ * **Install from DMG** (if `hdiutil` is available):
+ * @code{.bash}
+ * cmake --build build --target package
+ * hdiutil attach build/packages/ascii-chat-<version>-macOS.dmg
+ * sudo cp -R "/Volumes/ascii-chat/ascii-chat.app" /Applications/
+ * hdiutil detach "/Volumes/ascii-chat"
+ * /Applications/ascii-chat.app/Contents/MacOS/ascii-chat --version
+ * @endcode
+ *
+ * **Install from TGZ archive** (always available):
+ * @code{.bash}
+ * cmake --build build --target package
+ * sudo tar -xzf build/packages/ascii-chat-<version>-macOS.tar.gz -C /usr/local --strip-components=1
+ * /usr/local/bin/ascii-chat --version
+ * @endcode
+ *
+ * @subsubsection build_installation_cpack_windows Windows Installation with CPack
+ *
+ * **Install with NSIS/EXE installer** (if `makensis` is available):
+ * @code{.powershell}
+ * cmake --build build --target package
+ * Start-Process -FilePath "build/packages/ascii-chat-<version>-win64.exe" -Wait
+ * ascii-chat --version
+ * @endcode
+ *
+ * **Install from ZIP archive** (always available):
+ * @code{.powershell}
+ * cmake --build build --target package
+ * Expand-Archive -Path "build/packages/ascii-chat-<version>-win64.zip" -DestinationPath "$Env:ProgramFiles\\ascii-chat"
+ * & "$Env:ProgramFiles\\ascii-chat\\bin\\ascii-chat.exe" --version
+ * @endcode
+ *
  * **Source Packages**:
  * @code{.bash}
  * # Generate source distribution package
