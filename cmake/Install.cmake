@@ -17,11 +17,23 @@ install(TARGETS ascii-chat
     COMPONENT Runtime
 )
 
+# Install uninstall script (configured with installation prefix)
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/uninstall.sh.in"
+    "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
+    @ONLY
+)
+install(PROGRAMS "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
+    DESTINATION bin
+    COMPONENT Runtime
+)
+
 # Install shared library (if built with musl in Release mode)
 # The shared library is built with the 'shared-lib' target
 # It's an optional component for developers who want to use libasciichat
-if(USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
     install(TARGETS ascii-chat-shared
+        EXPORT ascii-chat-targets
         LIBRARY DESTINATION lib
         COMPONENT Development
     )
@@ -52,6 +64,60 @@ else()
         PATTERN "*/private/*" EXCLUDE
         PATTERN "*/windows/*" EXCLUDE
     )
+endif()
+
+# Install pkg-config file (only when shared library is built)
+if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    # Configure the pkgconfig file with current settings
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/cmake/ascii-chat.pc.in"
+        "${CMAKE_BINARY_DIR}/ascii-chat.pc"
+        @ONLY
+    )
+
+    install(FILES "${CMAKE_BINARY_DIR}/ascii-chat.pc"
+        DESTINATION lib/pkgconfig
+        COMPONENT Development
+    )
+    message(STATUS "Configured pkg-config file installation")
+endif()
+
+# Install CMake package config files (for find_package support)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    include(CMakePackageConfigHelpers)
+
+    # Generate the config file that includes the exports
+    configure_package_config_file(
+        "${CMAKE_SOURCE_DIR}/cmake/ascii-chat-config.cmake.in"
+        "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
+        INSTALL_DESTINATION lib/cmake/ascii-chat
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO
+    )
+
+    # Generate the version file for the config file
+    write_basic_package_version_file(
+        "${CMAKE_BINARY_DIR}/ascii-chat-config-version.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+
+    # Install the config files
+    install(FILES
+        "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
+        "${CMAKE_BINARY_DIR}/ascii-chat-config-version.cmake"
+        DESTINATION lib/cmake/ascii-chat
+        COMPONENT Development
+    )
+
+    # Export targets to a script
+    install(EXPORT ascii-chat-targets
+        FILE ascii-chat-targets.cmake
+        NAMESPACE ascii-chat::
+        DESTINATION lib/cmake/ascii-chat
+        COMPONENT Development
+    )
+
+    message(STATUS "Configured CMake package config installation")
 endif()
 
 # Remove mimalloc files from installation - it's statically linked so not needed
@@ -189,8 +255,7 @@ install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/html/"
 # Manpages are generated in ${CMAKE_BINARY_DIR}/docs/man/man3/ with ascii-chat- prefix
 # The install will only work if the docs target has been built first
 # Note: OPTIONAL cannot be used with FILES_MATCHING, but FILES_MATCHING handles no matches gracefully
-# Unix/macOS install to man/man3 (not share/man/man3) to avoid creating share/ directory
-# Windows installs to doc/man/man3 (no share/ directory) - check WIN32 first to ensure only one rule executes
+# FHS-compliant: Unix/macOS install to share/man/man3, Windows to doc/man/man3
 if(WIN32)
     # Windows: Install manpages to doc/man/man3 (no standard location on Windows)
     # This is the ONLY install rule for manpages on Windows - no share/ directory
@@ -204,9 +269,9 @@ if(WIN32)
         PATTERN "*.3.xz" EXCLUDE
     )
 elseif(UNIX AND NOT APPLE)
-    # Unix/Linux: Install to man/man3 (not share/man/man3 to avoid share/ directory)
+    # Unix/Linux: FHS-compliant installation to share/man/man3
     install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/man/man3/"
-        DESTINATION man/man3
+        DESTINATION share/man/man3
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
@@ -215,9 +280,9 @@ elseif(UNIX AND NOT APPLE)
         PATTERN "*.3.xz" EXCLUDE
     )
 elseif(APPLE)
-    # macOS: Install to man/man3 (not share/man/man3 to avoid share/ directory)
+    # macOS: FHS-compliant installation to share/man/man3
     install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/man/man3/"
-        DESTINATION man/man3
+        DESTINATION share/man/man3
         COMPONENT Manpages
         FILES_MATCHING
         PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
@@ -300,6 +365,8 @@ if(USE_CPACK)
             set(CPACK_PACKAGING_INSTALL_PREFIX "" CACHE STRING "Installation prefix for CPack (empty = use CMAKE_INSTALL_PREFIX directly)" FORCE)
             # Ensure CPack installs only what we explicitly define
             set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};ALL;/" CACHE STRING "CPack install projects" FORCE)
+            # Run cleanup script to remove mimalloc files after install but before packaging
+            set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
         endif()
         include(CPack)
     endif()
