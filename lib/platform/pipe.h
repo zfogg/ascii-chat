@@ -119,4 +119,3 @@ ssize_t pipe_write(pipe_t pipe, const void *buf, size_t len);
  * @ingroup platform
  */
 bool pipe_is_valid(pipe_t pipe);
-

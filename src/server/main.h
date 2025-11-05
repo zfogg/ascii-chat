@@ -21,17 +21,17 @@
  * ## Mode Entry Point Contract
  *
  * Each mode entry point (server_main, client_main) must:
- * - Accept standard main() signature: `int mode_main(int argc, char *argv[])`
- * - Parse mode-specific options from argv (mode name already consumed)
+ * - Accept no arguments: `int mode_main(void)`
+ * - Options are already parsed by main dispatcher (available via global opt_* variables)
  * - Return 0 on success, non-zero error code on failure
- * - Handle --help and --version flags internally via options_init()
+ * - Perform mode-specific initialization and main loop
  * - Perform complete cleanup before returning
  *
  * ## Implementation Notes
  *
  * The server_main() function is the original main() from src/server/main.c,
- * simply renamed to integrate with the mode dispatcher pattern. All server
- * functionality remains unchanged - only the entry point name differs.
+ * adapted to the new dispatcher pattern. Common initialization (options parsing,
+ * logging setup, lock debugging) now happens in src/main.c before dispatch.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date 2025
@@ -44,24 +44,20 @@
  * @brief Server mode entry point for unified binary
  *
  * This function implements the complete server lifecycle including:
- * - Command line option parsing
- * - Platform and crypto initialization
+ * - Server-specific initialization (crypto, shutdown callback)
  * - Network socket setup and binding
  * - Main connection accept loop
  * - Client lifecycle management
  * - Graceful shutdown and cleanup
  *
- * The function signature matches standard main() to allow seamless
- * integration with the mode dispatcher.
+ * Options are already parsed by the main dispatcher before this function
+ * is called, so they are available via global opt_* variables.
  *
- * @param argc Argument count (excluding mode name)
- * @param argv Argument vector (mode name already removed by dispatcher)
  * @return 0 on success, non-zero error code on failure
  *
  * @example
- * // Invoked by dispatcher as:
+ * // Invoked by dispatcher after options are parsed:
  * // $ ascii-chat server --port 8080
- * //   ^^^^^^^^^^^          ^^^^^^^^^^^^^
- * //   (dispatcher)         (passed to server_main)
+ * //   (Options parsed in main.c, then server_main() called)
  */
-int server_main(int argc, char *argv[]);
+int server_main(void);

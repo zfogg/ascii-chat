@@ -8,9 +8,12 @@
 #define ASCII_CHAT_VERSION_PATCH @PROJECT_VERSION_PATCH@
 #define ASCII_CHAT_VERSION_STRING "@PROJECT_VERSION@"
 #define ASCII_CHAT_GIT_VERSION "@GIT_VERSION_STRING@"
+#define ASCII_CHAT_GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
+#define ASCII_CHAT_GIT_IS_DIRTY @GIT_IS_DIRTY@
 #define ASCII_CHAT_BUILD_TYPE "@VERSION_BUILD_TYPE@"
 #define ASCII_CHAT_OS "@VERSION_OS@"
 #define ASCII_CHAT_BUILD_DATE "@BUILD_DATE@"
+#define ASCII_CHAT_REPO_HASH "@REPO_HASH@"
 
 // Full version string like "v0.2.0-42+gf811525" (nvim-style)
 // On clean release tags, this will be just "v0.3.0" without trailing dash

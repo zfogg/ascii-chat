@@ -122,13 +122,16 @@ if(PYTHON3_EXECUTABLE AND EXISTS "${RUN_CLANG_TIDY_SCRIPT}" AND CLANG_TIDY_EXECU
     endif()
 
     add_custom_target(clang-tidy
+        COMMAND ${CLANG_TIDY_EXECUTABLE}
+            --verify-config
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
         COMMAND ${PYTHON3_EXECUTABLE}
             ${RUN_CLANG_TIDY_SCRIPT}
             -p ${CMAKE_BINARY_DIR}
             -config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
             -j ${CLANG_TIDY_JOBS}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running clang-tidy static analysis on production code (excluding tests) using run-clang-tidy.py (parallel: ${CLANG_TIDY_JOBS} jobs)"
+        COMMENT "Verifying clang-tidy config, then running static analysis on production code (excluding tests) using run-clang-tidy.py (parallel: ${CLANG_TIDY_JOBS} jobs)"
         VERBATIM
     )
 elseif(CLANG_TIDY_EXECUTABLE)
@@ -136,11 +139,14 @@ elseif(CLANG_TIDY_EXECUTABLE)
     message(STATUS "run-clang-tidy.py not found, using direct clang-tidy (slower, no parallel execution)")
     add_custom_target(clang-tidy
         COMMAND ${CLANG_TIDY_EXECUTABLE}
-            --config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
+            --verify-config
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+        COMMAND ${CLANG_TIDY_EXECUTABLE}
+            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             -p ${CMAKE_BINARY_DIR}
             ${PRODUCTION_SOURCE_FILES}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Running clang-tidy static analysis on production code (excluding tests)"
+        COMMENT "Verifying clang-tidy config, then running static analysis on production code (excluding tests)"
         VERBATIM
     )
 else()

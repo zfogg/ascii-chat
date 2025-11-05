@@ -5,24 +5,17 @@
  * @date September 2025
  */
 
+// Header must be included even in release builds to get inline no-op stubs
 #include "lock_debug.h"
+
+#ifndef NDEBUG
+// Only compile lock_debug implementation in debug builds
+// In release builds, lock_debug.h provides inline no-op stubs
+
 #include "common.h"
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
-#include "util/time_format.h"
-
-// UBSan-safe hash wrapper for uthash (fnv1a uses 64-bit arithmetic, no overflow)
-// Note: uthash expects HASH_FUNCTION(keyptr, keylen, hashv) where hashv is an output parameter
-#undef HASH_FUNCTION
-#define HASH_FUNCTION(keyptr, keylen, hashv)                                                                           \
-  do {                                                                                                                 \
-    if (!(keyptr) || (keylen) == 0) {                                                                                  \
-      (hashv) = 1; /* Non-zero constant for safety */                                                                  \
-    } else {                                                                                                           \
-      (hashv) = fnv1a_hash_bytes((keyptr), (keylen));                                                                  \
-    }                                                                                                                  \
-  } while (0)
-
+#include "util/time.h"
 #include "util/uthash.h"
 #include <stdlib.h>
 #include <time.h>
@@ -50,7 +43,7 @@
  * For ascii-chat with 60 FPS video (16.67ms/frame) and 172 FPS audio (5.8ms/frame),
  * 100ms is a reasonable threshold - any lock held this long could cause frame drops.
  */
-#define LOCK_HOLD_TIME_WARNING_MS 100
+#define LOCK_HOLD_TIME_WARNING_MS 500
 
 /**
  * @brief Safe buffer size calculation for snprintf
@@ -466,11 +459,12 @@ static void check_long_held_locks(void) {
       format_duration_ns(held_ns, duration_str, sizeof(duration_str));
 
       // Log warning with formatted duration
-      log_warn_every(1000000, "Lock held for %s (threshold: 100ms) - %s at %p\n"
-               "  Acquired: %s:%d in %s()\n"
-               "  Thread ID: %llu",
-               duration_str, lock_type_str, entry->lock_address, entry->file_name, entry->line_number,
-               entry->function_name, (unsigned long long)entry->thread_id);
+      log_warn_every(1000000,
+                     "Lock held for %s (threshold: 100ms) - %s at %p\n"
+                     "  Acquired: %s:%d in %s()\n"
+                     "  Thread ID: %llu",
+                     duration_str, lock_type_str, entry->lock_address, entry->file_name, entry->line_number,
+                     entry->function_name, (unsigned long long)entry->thread_id);
     }
   }
 
@@ -928,19 +922,23 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
       if (held_ms > LOCK_HOLD_TIME_WARNING_MS) {
         char duration_str[32];
         format_duration_ms((double)held_ms, duration_str, sizeof(duration_str));
-        log_warn("Lock held for %s (threshold: %d ms) at %s:%d in %s()", duration_str, LOCK_HOLD_TIME_WARNING_MS,
-                 file_name, line_number, function_name);
-        log_plain("  Lock type: %s, address: %p", lock_type_str, lock_ptr);
+        log_warn("Lock held for %s (threshold: %d ms) at %s:%d in %s()\n"
+                 "  Lock type: %s, address: %p",
+                 duration_str, LOCK_HOLD_TIME_WARNING_MS, file_name, line_number, function_name, lock_type_str,
+                 lock_ptr);
 
         // Print backtrace from when lock was acquired
         if (record->backtrace_size > 0 && record->backtrace_symbols) {
-          log_warn("  Backtrace from lock acquisition:");
+          char backtrace_str[1024];
+          int offset = 0;
           for (int i = 0; i < record->backtrace_size && i < 10; i++) { // Limit to first 10 frames
-            log_plain("    #%d: %s", i, record->backtrace_symbols[i]);
+            offset += snprintf(backtrace_str + offset, sizeof(backtrace_str) - offset, "    #%d: %s\n", i,
+                               record->backtrace_symbols[i]);
           }
+          log_warn("Backtrace from lock acquisition:\n%s", backtrace_str);
         } else {
           // No backtrace available, print current backtrace
-          log_warn("  Current backtrace:");
+          log_warn("No backtrace available. Current backtrace:");
           platform_print_backtrace(2); // Skip 2 frames (this function and debug_process_tracked_unlock)
         }
       }
@@ -1391,3 +1389,5 @@ void lock_debug_print_state(void) {
   // Print all at once
   log_info("%s", log_buffer);
 }
+
+#endif // NDEBUG - Release builds: no implementation, header provides inline stubs

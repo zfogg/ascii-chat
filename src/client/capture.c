@@ -94,7 +94,7 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "util/time.h"
-#include "util/time_format.h"
+#include "util/time.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>

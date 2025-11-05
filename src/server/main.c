@@ -467,8 +467,10 @@ static void sigterm_handler(int sigterm) {
 static void sigusr1_handler(int sigusr1) {
   (void)(sigusr1);
 
+#ifndef NDEBUG
   // Trigger lock debugging output (signal-safe)
   lock_debug_trigger_print();
+#endif
 }
 
 /* ============================================================================
@@ -598,27 +600,12 @@ static int init_server_crypto(void) {
   return 0;
 }
 
-int server_main(int argc, char *argv[]) {
-  // Parse options FIRST so --help and --version can exit immediately
-  // Note: --help and --version will exit(0) directly within options_init
-  int options_result = options_init(argc, argv, false);
-  if (options_result != ASCIICHAT_OK) {
-    // options_init returns ERROR_USAGE for invalid options (after printing error)
-    // Just exit with the returned error code
-    return options_result;
-  }
+int server_main(void) {
+  // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
+  // This function focuses on server-specific initialization
 
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
-
-  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
-  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "server.log";
-  safe_fprintf(stderr, "Initializing logging to: %s\n", log_filename);
-  asciichat_error_t init_result = asciichat_shared_init("server.log");
-  if (init_result != ASCIICHAT_OK) {
-    return init_result;
-  }
-  log_info("Logging initialized to %s", log_filename);
 
   // Initialize crypto after logging is ready
   log_info("Initializing crypto...");
@@ -628,16 +615,6 @@ int server_main(int argc, char *argv[]) {
     FATAL(ERROR_CRYPTO, "Crypto initialization failed");
   }
   log_info("Crypto initialized successfully");
-
-  // Initialize lock debugging system after logging is fully set up
-  log_debug("Initializing lock debug system...");
-  int lock_debug_result = lock_debug_init();
-  if (lock_debug_result != 0) {
-    // Print detailed error context if available
-    LOG_ERRNO_IF_SET("Lock debug system initialization failed");
-    FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
-  }
-  log_debug("Lock debug system initialized successfully");
 
   // Handle quiet mode - disable terminal output when opt_quiet is enabled
   log_set_terminal_output(!opt_quiet);
@@ -672,7 +649,7 @@ int server_main(int argc, char *argv[]) {
   platform_signal(SIGPIPE, SIG_IGN);
 #endif
 
-#ifdef NDEBUG
+#ifndef NDEBUG
   // Start the lock debug thread (system already initialized earlier)
   if (lock_debug_start_thread() != 0) {
     FATAL(ERROR_THREAD, "Failed to start lock debug thread");
@@ -1180,9 +1157,11 @@ main_loop:
 #ifdef NDEBUG
   // Clean up statistics system
   stats_cleanup();
+#endif
 
-  // Clean up lock debugging system
-  lock_debug_print_state();
+#ifndef NDEBUG
+  // Clean up lock debugging system (always, regardless of build type)
+  // Lock debug records are allocated in debug builds too, so they must be cleaned up
   lock_debug_cleanup();
 #endif
 
@@ -1222,8 +1201,10 @@ main_loop:
   timeEndPeriod(1); // Restore Windows timer resolution
 #endif
 
+#ifndef NDEBUG
   // Join the lock debug thread as one of the very last things before exit
   lock_debug_cleanup_thread();
+#endif
 
   log_info("Server shutdown complete");
 

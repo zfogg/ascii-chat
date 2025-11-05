@@ -91,4 +91,3 @@ bool pipe_is_valid(pipe_t pipe) {
 }
 
 #endif // _WIN32
-

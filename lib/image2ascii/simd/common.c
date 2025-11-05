@@ -252,7 +252,9 @@ static void utf8_heap_update_score(utf8_palette_cache_t *cache, double new_score
 // Min-heap functions now replace LRU list management
 
 // Thread-safe cache eviction implementations
-static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache) {
+// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
+__attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf8(uint32_t hash,
+                                                                                  utf8_palette_cache_t *new_cache) {
   // Already holding write lock
   // Note: key should already be set by caller, but ensure it's set
   new_cache->key = hash;
@@ -293,7 +295,8 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
 // char_ramp_cache functions removed - data already available in utf8_palette_cache_t
 
 // Get or create UTF-8 palette cache for a given palette
-utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
+// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
+__attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   if (!ascii_chars)
     return NULL;
 
@@ -502,7 +505,8 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
 // No callback needed - uthash iteration handles cleanup directly
 
 // Central cleanup function for all SIMD caches
-void simd_caches_destroy_all(void) {
+// NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
+__attribute__((no_sanitize("integer"))) void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: Starting cleanup of all SIMD caches");
 
   // Destroy shared UTF-8 palette cache (write lock for cleanup)

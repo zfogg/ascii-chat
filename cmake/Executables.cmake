@@ -34,25 +34,48 @@ add_executable(ascii-chat
     src/client/keepalive.c
 )
 
-target_link_libraries(ascii-chat
-    ascii-chat-core
-    ascii-chat-network
-    ascii-chat-video
-    ascii-chat-audio
-    ascii-chat-crypto
-    ascii-chat-simd
-    ascii-chat-platform
-    ascii-chat-data-structures
-    ascii-chat-util
-)
+# Link against the combined library instead of individual libraries
+# Ensure the combined library is built before linking
+# For Debug/Dev/Coverage: shared library (DLL on Windows)
+# For Release: static library
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
+    add_dependencies(ascii-chat ascii-chat-shared generate_version)
+    target_link_libraries(ascii-chat ascii-chat-shared)
+
+    # On Windows, explicitly add the import library directory and system libraries
+    # When using a DLL, the executable needs to link against the same system libraries
+    if(WIN32)
+        # Import library is in bin directory with the DLL
+        target_link_directories(ascii-chat PRIVATE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+        target_link_libraries(ascii-chat
+            ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
+            ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
+            crypt32
+            Winmm  # For timeBeginPeriod/timeEndPeriod
+            ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+        )
+        if(BEARSSL_FOUND)
+            target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
+        endif()
+        if(USE_MIMALLOC)
+            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+        endif()
+    endif()
+else()
+    add_dependencies(ascii-chat ascii-chat-static-build generate_version)
+    target_link_libraries(ascii-chat ascii-chat-static)
+endif()
+
+# Include directories for executable (needed for version.h and other generated headers)
+target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
 
 # Print success message after ascii-chat is built (or verified up to date)
 # Use a phony target that always runs to show the message even when nothing needs rebuilding
 # This is so Claude Code doesn't get confused when ninja has nothing to do and just exits 0 without printing any message
 add_custom_target(show-build-success ALL
-    COMMAND ${CMAKE_COMMAND} -E echo "ascii-chat binary compiled and linked successfully with all files and dependencies"
+    COMMAND ${CMAKE_COMMAND} -E echo "✅ Build Success! the ascii-chat binary either (1) built succesfully with all dependencies or (2) is up to date (build type: ${CMAKE_BUILD_TYPE})"
     DEPENDS ascii-chat
-    COMMENT "Build completed"
+    COMMENT "Build success message"
 )
 
 # macOS Info.plist embedding (for client mode webcam access)
