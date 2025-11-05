@@ -248,7 +248,7 @@ asciichat_error_t strtoint_safe(const char *str);
  *
  * @ingroup options
  */
-extern unsigned short int opt_width;
+extern ASCIICHAT_API unsigned short int opt_width;
 
 /** @brief Terminal height in characters
  *
@@ -268,7 +268,7 @@ extern unsigned short int opt_width;
  *
  * @ingroup options
  */
-extern unsigned short int opt_height;
+extern ASCIICHAT_API unsigned short int opt_height;
 
 /** @brief Auto-detect terminal width from terminal size
  *
@@ -286,7 +286,7 @@ extern unsigned short int opt_height;
  *
  * @ingroup options
  */
-extern bool auto_width;
+extern ASCIICHAT_API bool auto_width;
 
 /** @brief Auto-detect terminal height from terminal size
  *
@@ -304,7 +304,7 @@ extern bool auto_width;
  *
  * @ingroup options
  */
-extern bool auto_height;
+extern ASCIICHAT_API bool auto_height;
 
 /** @} */
 
@@ -336,7 +336,7 @@ extern bool auto_height;
  *
  * @ingroup options
  */
-extern char opt_address[];
+extern ASCIICHAT_API char opt_address[];
 
 /** @brief IPv6 bind address (server only)
  *
@@ -360,7 +360,7 @@ extern char opt_address[];
  *
  * @ingroup options
  */
-extern char opt_address6[];
+extern ASCIICHAT_API char opt_address6[];
 
 /** @brief Server port number
  *
@@ -382,7 +382,7 @@ extern char opt_address6[];
  *
  * @ingroup options
  */
-extern char opt_port[];
+extern ASCIICHAT_API char opt_port[];
 
 /** @} */
 
@@ -410,7 +410,7 @@ extern char opt_port[];
  *
  * @ingroup options
  */
-extern unsigned short int opt_webcam_index;
+extern ASCIICHAT_API unsigned short int opt_webcam_index;
 
 /** @brief Flip webcam image horizontally
  *
@@ -428,7 +428,7 @@ extern unsigned short int opt_webcam_index;
  *
  * @ingroup options
  */
-extern bool opt_webcam_flip;
+extern ASCIICHAT_API bool opt_webcam_flip;
 
 /** @brief Use test pattern instead of real webcam
  *
@@ -447,7 +447,7 @@ extern bool opt_webcam_flip;
  *
  * @ingroup options
  */
-extern bool opt_test_pattern;
+extern ASCIICHAT_API bool opt_test_pattern;
 
 /** @} */
 
@@ -588,7 +588,7 @@ typedef enum {
  *
  * @ingroup options
  */
-extern terminal_color_mode_t opt_color_mode;
+extern ASCIICHAT_API terminal_color_mode_t opt_color_mode;
 
 /** @brief Render mode override
  *
@@ -612,7 +612,7 @@ extern terminal_color_mode_t opt_color_mode;
  *
  * @ingroup options
  */
-extern render_mode_t opt_render_mode;
+extern ASCIICHAT_API render_mode_t opt_render_mode;
 
 /** @brief Show detected capabilities and exit (client only)
  *
@@ -638,7 +638,7 @@ extern render_mode_t opt_render_mode;
  *
  * @ingroup options
  */
-extern unsigned short int opt_show_capabilities;
+extern ASCIICHAT_API unsigned short int opt_show_capabilities;
 
 /** @brief Force enable UTF-8 support via --utf8
  *
@@ -660,7 +660,7 @@ extern unsigned short int opt_show_capabilities;
  *
  * @ingroup options
  */
-extern unsigned short int opt_force_utf8;
+extern ASCIICHAT_API unsigned short int opt_force_utf8;
 
 /** @} */
 
@@ -691,7 +691,7 @@ extern unsigned short int opt_force_utf8;
  *
  * @ingroup options
  */
-extern unsigned short int opt_audio_enabled;
+extern ASCIICHAT_API unsigned short int opt_audio_enabled;
 
 /** @brief Audio input device index (-1 = use default)
  *
@@ -712,7 +712,7 @@ extern unsigned short int opt_audio_enabled;
  *
  * @ingroup options
  */
-extern int opt_audio_device;
+extern ASCIICHAT_API int opt_audio_device;
 
 /** @} */
 
@@ -743,7 +743,7 @@ extern int opt_audio_device;
  *
  * @ingroup options
  */
-extern unsigned short int opt_stretch;
+extern ASCIICHAT_API unsigned short int opt_stretch;
 
 /** @} */
 
@@ -773,7 +773,7 @@ extern unsigned short int opt_stretch;
  *
  * @ingroup options
  */
-extern unsigned short int opt_quiet;
+extern ASCIICHAT_API unsigned short int opt_quiet;
 
 /** @brief Enable snapshot mode - capture one frame and exit (client only)
  *
@@ -800,7 +800,7 @@ extern unsigned short int opt_quiet;
  *
  * @ingroup options
  */
-extern unsigned short int opt_snapshot_mode;
+extern ASCIICHAT_API unsigned short int opt_snapshot_mode;
 
 /** @brief Snapshot delay in seconds (default 3.0 for webcam warmup)
  *
@@ -822,7 +822,7 @@ extern unsigned short int opt_snapshot_mode;
  *
  * @ingroup options
  */
-extern float opt_snapshot_delay;
+extern ASCIICHAT_API float opt_snapshot_delay;
 
 /** @brief Log file path (empty string means no file logging)
  *
@@ -846,7 +846,7 @@ extern float opt_snapshot_delay;
  *
  * @ingroup options
  */
-extern char opt_log_file[OPTIONS_BUFF_SIZE];
+extern ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE];
 
 /** @} */
 
@@ -877,7 +877,7 @@ extern char opt_log_file[OPTIONS_BUFF_SIZE];
  *
  * @ingroup options
  */
-extern unsigned short int opt_encrypt_enabled;
+extern ASCIICHAT_API unsigned short int opt_encrypt_enabled;
 
 /** @brief SSH/GPG key file path from --key (file-based only)
  *
@@ -905,7 +905,7 @@ extern unsigned short int opt_encrypt_enabled;
  *
  * @ingroup options
  */
-extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];
+extern ASCIICHAT_API char opt_encrypt_key[OPTIONS_BUFF_SIZE];
 
 /** @brief Password string from --password
  *
@@ -932,7 +932,7 @@ extern char opt_encrypt_key[OPTIONS_BUFF_SIZE];
  *
  * @ingroup options
  */
-extern char opt_password[OPTIONS_BUFF_SIZE];
+extern ASCIICHAT_API char opt_password[OPTIONS_BUFF_SIZE];
 
 /** @brief Key file path from --keyfile
  *
@@ -951,7 +951,7 @@ extern char opt_password[OPTIONS_BUFF_SIZE];
  *
  * @ingroup options
  */
-extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE];
+extern ASCIICHAT_API char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE];
 
 /** @brief Disable encryption (opt-out)
  *
@@ -976,7 +976,7 @@ extern char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE];
  *
  * @ingroup options
  */
-extern unsigned short int opt_no_encrypt;
+extern ASCIICHAT_API unsigned short int opt_no_encrypt;
 
 /** @brief Expected server public key (client only)
  *
@@ -1015,7 +1015,7 @@ extern unsigned short int opt_no_encrypt;
  *
  * @ingroup options
  */
-extern char opt_server_key[OPTIONS_BUFF_SIZE];
+extern ASCIICHAT_API char opt_server_key[OPTIONS_BUFF_SIZE];
 
 /** @brief Allowed client keys (server only)
  *
@@ -1069,7 +1069,7 @@ extern char opt_server_key[OPTIONS_BUFF_SIZE];
  *
  * @ingroup options
  */
-extern char opt_client_keys[OPTIONS_BUFF_SIZE];
+extern ASCIICHAT_API char opt_client_keys[OPTIONS_BUFF_SIZE];
 
 /** @} */
 
@@ -1101,7 +1101,7 @@ extern char opt_client_keys[OPTIONS_BUFF_SIZE];
  *
  * @ingroup options
  */
-extern palette_type_t opt_palette_type;
+extern ASCIICHAT_API palette_type_t opt_palette_type;
 
 /** @brief Custom palette characters
  *
@@ -1125,7 +1125,7 @@ extern palette_type_t opt_palette_type;
  *
  * @ingroup options
  */
-extern char opt_palette_custom[256];
+extern ASCIICHAT_API char opt_palette_custom[256];
 
 /** @brief True if custom palette was set via command line
  *
@@ -1143,7 +1143,7 @@ extern char opt_palette_custom[256];
  *
  * @ingroup options
  */
-extern bool opt_palette_custom_set;
+extern ASCIICHAT_API bool opt_palette_custom_set;
 
 /** @brief Red weight for luminance calculation (default weights must add up to 1.0)
  *

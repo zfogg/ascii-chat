@@ -282,7 +282,8 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   } else {
     // Empty queue - atomically set both head and tail
     packet_node_t *expected = NULL;
-    if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release, memory_order_relaxed)) {
+    if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release,
+                                              memory_order_relaxed)) {
       // Successfully set head (queue was empty)
       atomic_store_explicit(&queue->tail, node, memory_order_release);
     } else {
@@ -410,7 +411,8 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   } else {
     // Empty queue - atomically set both head and tail
     packet_node_t *expected = NULL;
-    if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release, memory_order_relaxed)) {
+    if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release,
+                                              memory_order_relaxed)) {
       // Successfully set head (queue was empty)
       atomic_store_explicit(&queue->tail, node, memory_order_release);
     } else {

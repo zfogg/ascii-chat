@@ -8,60 +8,82 @@
 #
 # Outputs:
 #   - Applies tomlc17-fix-align8-overflow.patch if needed
+#   - Applies tomlc17-fix-windows-deprecation.patch if needed
 #   - Sets up tomlc17 source files for compilation
 # =============================================================================
 
 function(configure_tomlc17)
     set(TOMLC17_DIR "${CMAKE_SOURCE_DIR}/deps/tomlc17")
-    set(TOMLC17_PATCH "${CMAKE_SOURCE_DIR}/deps/tomlc17-fix-align8-overflow.patch")
+    set(TOMLC17_PATCH1 "${CMAKE_SOURCE_DIR}/cmake/tomlc17-fix-align8-overflow.patch")
+    set(TOMLC17_PATCH2 "${CMAKE_SOURCE_DIR}/cmake/tomlc17-fix-windows-deprecation.patch")
     set(TOMLC17_SOURCE "${TOMLC17_DIR}/src/tomlc17.c")
-    set(PATCH_MARKER "${CMAKE_SOURCE_DIR}/.deps-cache/tomlc17.patch_applied")
+    set(PATCH_MARKER "${CMAKE_SOURCE_DIR}/.deps-cache/tomlc17.patches_applied")
 
-    # Check if patch needs to be applied
+    # Check if patches need to be applied
     if(NOT EXISTS "${PATCH_MARKER}")
-        message(STATUS "Applying tomlc17 fix-align8-overflow patch...")
+        set(PATCHES_APPLIED FALSE)
 
-        # Try to apply the patch
+        # Apply patch 1: align8 overflow fix
+        message(STATUS "Applying tomlc17 fix-align8-overflow patch...")
         execute_process(
-            COMMAND git apply --check "${TOMLC17_PATCH}"
+            COMMAND git apply --check "${TOMLC17_PATCH1}"
             WORKING_DIRECTORY "${TOMLC17_DIR}"
-            RESULT_VARIABLE PATCH_CHECK_RESULT
+            RESULT_VARIABLE PATCH1_CHECK_RESULT
             OUTPUT_QUIET
             ERROR_QUIET
         )
 
-        if(PATCH_CHECK_RESULT EQUAL 0)
-            # Patch can be applied cleanly
+        if(PATCH1_CHECK_RESULT EQUAL 0)
             execute_process(
-                COMMAND git apply "${TOMLC17_PATCH}"
+                COMMAND git apply "${TOMLC17_PATCH1}"
                 WORKING_DIRECTORY "${TOMLC17_DIR}"
-                RESULT_VARIABLE PATCH_RESULT
-                OUTPUT_VARIABLE PATCH_OUTPUT
-                ERROR_VARIABLE PATCH_ERROR
+                RESULT_VARIABLE PATCH1_RESULT
+                ERROR_VARIABLE PATCH1_ERROR
             )
-
-            if(PATCH_RESULT EQUAL 0)
-                # Create marker file to indicate patch was applied
-                file(WRITE "${PATCH_MARKER}" "Patch applied at ${CMAKE_CURRENT_LIST_FILE}\n")
-
-                # Tell git to ignore the patched file changes
-                execute_process(
-                    COMMAND git update-index --assume-unchanged src/tomlc17.c
-                    WORKING_DIRECTORY "${TOMLC17_DIR}"
-                    OUTPUT_QUIET
-                    ERROR_QUIET
-                )
-
-                message(STATUS "tomlc17 patch applied successfully")
+            if(PATCH1_RESULT EQUAL 0)
+                message(STATUS "tomlc17 align8 overflow patch applied successfully")
+                set(PATCHES_APPLIED TRUE)
             else()
-                message(WARNING "Failed to apply tomlc17 patch: ${PATCH_ERROR}")
+                message(WARNING "Failed to apply tomlc17 align8 overflow patch: ${PATCH1_ERROR}")
             endif()
         else()
-            # Patch already applied or source differs
-            message(STATUS "tomlc17 patch already applied or not needed")
-            file(WRITE "${PATCH_MARKER}" "Patch skipped (already applied or not needed)\n")
+            message(STATUS "tomlc17 align8 overflow patch already applied or not needed")
+            set(PATCHES_APPLIED TRUE)
+        endif()
 
-            # Still set assume-unchanged to hide the modifications
+        # Apply patch 2: Windows deprecation fix
+        message(STATUS "Applying tomlc17 fix-windows-deprecation patch...")
+        execute_process(
+            COMMAND git apply --check "${TOMLC17_PATCH2}"
+            WORKING_DIRECTORY "${TOMLC17_DIR}"
+            RESULT_VARIABLE PATCH2_CHECK_RESULT
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+
+        if(PATCH2_CHECK_RESULT EQUAL 0)
+            execute_process(
+                COMMAND git apply "${TOMLC17_PATCH2}"
+                WORKING_DIRECTORY "${TOMLC17_DIR}"
+                RESULT_VARIABLE PATCH2_RESULT
+                ERROR_VARIABLE PATCH2_ERROR
+            )
+            if(PATCH2_RESULT EQUAL 0)
+                message(STATUS "tomlc17 Windows deprecation patch applied successfully")
+                set(PATCHES_APPLIED TRUE)
+            else()
+                message(WARNING "Failed to apply tomlc17 Windows deprecation patch: ${PATCH2_ERROR}")
+            endif()
+        else()
+            message(STATUS "tomlc17 Windows deprecation patch already applied or not needed")
+            set(PATCHES_APPLIED TRUE)
+        endif()
+
+        # Create marker file if any patches were applied
+        if(PATCHES_APPLIED)
+            file(WRITE "${PATCH_MARKER}" "Patches applied at ${CMAKE_CURRENT_LIST_FILE}\n")
+
+            # Tell git to ignore the patched file changes
             execute_process(
                 COMMAND git update-index --assume-unchanged src/tomlc17.c
                 WORKING_DIRECTORY "${TOMLC17_DIR}"

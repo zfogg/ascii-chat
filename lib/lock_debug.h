@@ -1,8 +1,5 @@
 #pragma once
 
-#include "platform/thread.h" // For ascii_thread_self()
-#include "util/fnv1a.h"      // For fnv1a_hash_string, fnv1a_hash_bytes, FNV1A_32_OFFSET_BASIS, FNV1A_32_PRIME
-
 /**
  * @file lock_debug.h
  * @ingroup lock_debug
@@ -12,7 +9,10 @@
  * and lock contention issues. It tracks all mutex and rwlock acquisitions
  * with call stack backtraces and provides a debug thread to print held locks.
  *
- * FEATURES:
+ * NOTE: Lock debugging is ONLY enabled in debug builds (when NDEBUG is not defined).
+ * In release builds, all lock_debug functions become no-ops with zero overhead.
+ *
+ * FEATURES (Debug builds only):
  * =========
  * - Tracks all mutex and rwlock acquisitions with backtraces
  * - Thread-safe lock record management using rwlock and atomics
@@ -42,7 +42,11 @@
 #include "platform/thread.h"
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
-#include <uthash.h> // Use angle brackets to get deps/uthash/src/uthash.h, not util/uthash.h
+
+#ifndef NDEBUG
+// Lock debugging is enabled in debug builds
+#include "util/uthash.h"
+#include "util/fnv1a.h"
 
 // ============================================================================
 // Constants and Limits
@@ -148,7 +152,7 @@ typedef struct lock_usage_stats {
  *
  * @ingroup lock_debug
  */
-typedef struct {
+typedef struct lock_debug_manager {
   // Uthash hash tables (head pointers, NULL-initialized)
   lock_record_t *lock_records;      ///< Hash table storing lock records
   lock_usage_stats_t *usage_stats;  ///< Hash table storing usage statistics
@@ -400,3 +404,5 @@ void lock_debug_print_state(void);
  * @ingroup lock_debug
  */
 void print_orphaned_release_callback(lock_record_t *record, void *user_data);
+
+#endif // NDEBUG

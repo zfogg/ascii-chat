@@ -72,14 +72,23 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 // Mode-specific entry point headers
 #include "server/main.h"
 #include "client/main.h"
 
-// Common headers for version info
+// Common headers for version info and initialization
 #include "common.h"
 #include "version.h"
+#include "options.h"
+#include "asciichat_errno.h"
+#include "logging.h"
+#include "platform/terminal.h"
+
+#ifndef NDEBUG
+#include "lock_debug.h"
+#endif
 
 /* ============================================================================
  * Constants and Configuration
@@ -111,19 +120,17 @@
  * @brief Mode entry point function pointer type
  *
  * All mode entry points must match this signature to be callable
- * by the dispatcher. The signature is identical to standard main().
+ * by the dispatcher. Mode entry points take no arguments since
+ * options are parsed in the main dispatcher before mode dispatch.
  *
- * @param argc Argument count (at least 1, program name is always first)
- * @param argv Argument vector (argv[0] is program name, rest are options)
  * @return Exit code (0 for success, non-zero for error)
  *
- * @note The dispatcher strips the mode name from argv before calling
- *       mode entry points, so mode handlers don't need to skip it.
- * @note Mode entry points should use ERROR_USAGE for invalid arguments.
+ * @note Options are already parsed and available via global opt_* variables
+ * @note Mode entry points should use ERROR_USAGE for invalid state
  *
  * @ingroup main
  */
-typedef int (*mode_entry_point_t)(int argc, char *argv[]);
+typedef int (*mode_entry_point_t)(void);
 
 /**
  * @brief Mode descriptor structure
@@ -350,6 +357,23 @@ int main(int argc, char *argv[]) {
   /** @} */
 
   /**
+   * @name Build Integrity Check
+   * @{
+   */
+
+  // Warn if Release build was built from dirty working tree
+#if ASCII_CHAT_GIT_IS_DIRTY
+  if (strcmp(ASCII_CHAT_BUILD_TYPE, "Release") == 0) {
+    fprintf(stderr, "⚠️  WARNING: This Release build was compiled from a dirty git working tree!\n");
+    fprintf(stderr, "    Git commit: %s (dirty)\n", ASCII_CHAT_GIT_COMMIT_HASH);
+    fprintf(stderr, "    Build date: %s\n", ASCII_CHAT_BUILD_DATE);
+    fprintf(stderr, "    For reproducible builds, commit or stash changes before building.\n\n");
+  }
+#endif
+
+  /** @} */
+
+  /**
    * @name Case 1: No Arguments - Show Usage
    * @{
    */
@@ -451,7 +475,9 @@ int main(int argc, char *argv[]) {
   //       mode_argc = 1 (program_name) + 2 (--port, 8080) = 3
   int args_after_mode = argc - mode_index - 1; // Number of args after mode
   int mode_argc = 1 + args_after_mode;         // program_name + args after mode
-  char **mode_argv = SAFE_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
+  // Use UNTRACKED_MALLOC to avoid appearing in memory leak reports
+  // mode_argv is freed via atexit handler when mode->entry_point() calls exit()
+  char **mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
 
   // Build new argv: [program_name, options_after_mode]
   mode_argv[0] = argv[0]; // Keep program name
@@ -466,12 +492,68 @@ int main(int argc, char *argv[]) {
   /** @} */
 
   /**
-   * @name Case 6: Dispatch to Mode Entry Point
+   * @name Case 6: Common Initialization Before Mode Dispatch
+   * @{
+   */
+
+  // Determine if this is client or server mode
+  bool is_client = (strcmp(mode->name, "client") == 0);
+
+  // Parse command line options (common for both modes)
+  // Note: --help and --version will exit(0) directly within options_init
+  asciichat_error_t options_result = options_init(mode_argc, mode_argv, is_client);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ERROR_USAGE for invalid options (after printing error)
+    UNTRACKED_FREE(mode_argv);
+    return options_result;
+  }
+
+  // Handle client-specific --show-capabilities flag (exit after showing capabilities)
+  if (is_client && opt_show_capabilities) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    caps = apply_color_mode_override(caps);
+    print_terminal_capabilities(&caps);
+    UNTRACKED_FREE(mode_argv);
+    return 0;
+  }
+
+  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
+  const char *default_log_filename = is_client ? "client.log" : "server.log";
+  asciichat_error_t init_result = asciichat_shared_init(default_log_filename);
+  if (init_result != ASCIICHAT_OK) {
+    UNTRACKED_FREE(mode_argv);
+    return init_result;
+  }
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;
+  log_warn("Logging initialized to %s", log_filename);
+
+#ifndef NDEBUG
+  // Initialize lock debugging system after logging is fully set up
+  log_debug("Initializing lock debug system...");
+  int lock_debug_result = lock_debug_init();
+  if (lock_debug_result != 0) {
+    LOG_ERRNO_IF_SET("Lock debug system initialization failed");
+    FATAL(ERROR_PLATFORM_INIT, "Lock debug system initialization failed");
+  }
+  log_debug("Lock debug system initialized successfully");
+#endif
+
+  /** @} */
+
+  /**
+   * @name Case 7: Dispatch to Mode Entry Point
    * @{
    */
 
   // Dispatch to mode entry point
-  int exit_code = mode->entry_point(mode_argc, mode_argv);
+  // Mode-specific initialization (crypto, display, audio, etc.) happens there
+  // Note: mode_argc and mode_argv are no longer needed since options are already parsed
+  int exit_code = mode->entry_point();
+
+  // If mode entry point returns (doesn't call exit()), free mode_argv here
+  // and unregister the atexit handler by clearing the static variable
+  UNTRACKED_FREE(mode_argv);
+
   if (exit_code == ERROR_USAGE) {
     _exit(ERROR_USAGE);
   }
@@ -483,8 +565,7 @@ int main(int argc, char *argv[]) {
    * @{
    */
 
-  // Cleanup and return
-  SAFE_FREE(mode_argv);
+  // Return exit code (mode_argv already freed above)
   return exit_code;
 
   /** @} */

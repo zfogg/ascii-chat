@@ -605,6 +605,38 @@ async def main() -> None:
 
     clang_tidy_binary = find_binary(args.clang_tidy_binary, "clang-tidy", build_path)
 
+    # ALWAYS verify the .clang-tidy config in the repository root before running analysis
+    # Find the repository root by looking for .git directory
+    repo_root = os.path.abspath(build_path)
+    while not os.path.exists(os.path.join(repo_root, ".git")):
+        parent = os.path.dirname(repo_root)
+        if parent == repo_root:
+            # Reached filesystem root without finding .git, use build_path as fallback
+            repo_root = os.path.abspath(build_path)
+            break
+        repo_root = parent
+
+    repo_config_file = os.path.join(repo_root, ".clang-tidy")
+    if not args.quiet:
+        print(f"Verifying clang-tidy configuration at {repo_config_file}...")
+
+    try:
+        verify_invocation = [clang_tidy_binary, "--verify-config", f"--config-file={repo_config_file}"]
+        subprocess.check_call(
+            verify_invocation,
+            stdout=subprocess.DEVNULL,
+            stderr=None if not args.quiet else subprocess.DEVNULL
+        )
+    except subprocess.CalledProcessError:
+        print(f"Error: clang-tidy configuration verification failed for {repo_config_file}", file=sys.stderr)
+        sys.exit(1)
+    except FileNotFoundError:
+        print(f"Error: .clang-tidy config file not found at {repo_config_file}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unable to verify clang-tidy configuration: {e}", file=sys.stderr)
+        sys.exit(1)
+
     if args.fix:
         clang_apply_replacements_binary = find_binary(
             args.clang_apply_replacements_binary, "clang-apply-replacements", build_path

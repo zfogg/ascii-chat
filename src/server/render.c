@@ -162,7 +162,7 @@
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "packet_queue.h"
-#include "util/time_format.h"
+#include "util/time.h"
 #include "mixer.h"
 #include "audio.h"
 #include "util/format.h"

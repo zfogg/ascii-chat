@@ -566,18 +566,18 @@ void platform_print_backtrace(int skip_frames) {
     int start_frame = 1 + skip_frames;
 
     // Build header
-    offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset,
-                                "=== BACKTRACE ===\n");
+    offset +=
+        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=== BACKTRACE ===\n");
 
     // Build backtrace frames
     for (int i = start_frame; i < size && offset < (int)sizeof(backtrace_buffer) - 256; i++) {
-      offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset,
-                                  "  #%2d: %s\n", i - start_frame, symbols ? symbols[i] : "???");
+      offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "  #%2d: %s\n",
+                                  i - start_frame, symbols ? symbols[i] : "???");
     }
 
     // Build footer
-    offset += platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset,
-                                "=================");
+    offset +=
+        platform_snprintf(backtrace_buffer + offset, sizeof(backtrace_buffer) - (size_t)offset, "=================");
 
     // Single log_plain call with complete backtrace
     log_plain("%s", backtrace_buffer);

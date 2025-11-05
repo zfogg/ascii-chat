@@ -42,7 +42,6 @@
 // SOKOL_IMPL is defined only in time.c to avoid duplicate symbols
 #include "../../deps/sokol/sokol_time.h"
 #include "util/uthash.h"
-#include "util/time_format.h" // For format_duration_ns() in STOP_TIMER_AND_LOG macro
 
 // ============================================================================
 // Timer Record Structure
@@ -172,6 +171,83 @@ bool timer_is_initialized(void);
     _elapsed;                                                                                                          \
   })
 
+// ============================================================================
+// Time Unit Constants
+// ============================================================================
+
+#define NS_PER_US 1000.0
+#define NS_PER_MS 1000000.0
+#define NS_PER_SEC 1000000000.0
+#define NS_PER_MIN (NS_PER_SEC * 60.0)
+#define NS_PER_HOUR (NS_PER_MIN * 60.0)
+#define NS_PER_DAY (NS_PER_HOUR * 24.0)
+#define NS_PER_YEAR (NS_PER_DAY * 365.25) // Account for leap years
+
+// ============================================================================
+// Time Formatting API
+// ============================================================================
+
+/**
+ * @brief Format milliseconds as human-readable duration string
+ * @param milliseconds Duration in milliseconds
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Formats a duration in milliseconds into a human-readable string. The function
+ * automatically selects the most appropriate units and precision based on the
+ * duration magnitude.
+ *
+ * Format rules:
+ * - For sub-millisecond durations: shows ns or µs
+ * - For sub-second durations: shows ms
+ * - For sub-minute durations: shows seconds with decimal
+ * - For sub-hour durations: shows minutes and seconds (e.g., "1m30s")
+ * - For sub-day durations: shows hours, minutes, and seconds (e.g., "5h30m0s")
+ * - For sub-year durations: shows days, hours, minutes, and seconds (e.g., "1d4h48m0s")
+ * - For year+ durations: shows years with decimal
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int format_duration_ms(double milliseconds, char *buffer, size_t buffer_size);
+
+/**
+ * @brief Format nanoseconds as human-readable duration string
+ * @param nanoseconds Duration in nanoseconds
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Similar to format_duration_ms() but accepts nanosecond precision input.
+ * Useful for high-precision timing measurements.
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int format_duration_ns(double nanoseconds, char *buffer, size_t buffer_size);
+
+/**
+ * @brief Format seconds as human-readable duration string
+ * @param seconds Duration in seconds
+ * @param buffer Output buffer for formatted string
+ * @param buffer_size Size of output buffer
+ * @return Number of characters written (excluding null terminator), or -1 on error
+ *
+ * Similar to format_duration_ms() but accepts seconds as input.
+ * Useful for timing measurements already in seconds.
+ *
+ * @note Buffer should be at least 32 bytes for all possible outputs
+ * @note Thread-safe (no global state)
+ *
+ * @ingroup module_utilities
+ */
+int format_duration_s(double seconds, char *buffer, size_t buffer_size);
+
 /**
  * @brief Stop a timer and log the result with a custom message
  *
@@ -195,7 +271,7 @@ bool timer_is_initialized(void);
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0) {                                                                                          \
       char _duration_str[32];                                                                                          \
-      format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                          \
-      log_func(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                       \
+      format_duration_ns(_elapsed_ns, _duration_str, sizeof(_duration_str));                                           \
+      log_func(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                        \
     }                                                                                                                  \
   } while (0)

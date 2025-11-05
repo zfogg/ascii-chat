@@ -158,6 +158,24 @@ static void sigint_handler(int sigint) {
   server_connection_shutdown();
 }
 
+#if !defined(NDEBUG) && !defined(_WIN32)
+/**
+ * @brief Handle SIGUSR1 signal to trigger lock debugging output
+ *
+ * This signal handler triggers the lock debug thread to print all held locks
+ * and their backtraces. Useful for debugging deadlocks without modifying
+ * the running client.
+ *
+ * @param sigusr1 The signal number (unused, required by signal handler signature)
+ */
+static void sigusr1_handler(int sigusr1) {
+  (void)(sigusr1);
+
+  // Trigger lock debugging output (signal-safe)
+  lock_debug_trigger_print();
+}
+#endif
+
 /**
  * @brief Platform-compatible SIGWINCH handler for terminal resize events
  *
@@ -270,11 +288,21 @@ static void shutdown_client() {
   // Cleanup display and terminal state
   display_cleanup();
 
+#ifndef NDEBUG
+  // Cleanup lock debugging system
+  lock_debug_cleanup();
+#endif
+
   // Cleanup core systems
   data_buffer_pool_cleanup_global();
   log_destroy();
 
   log_info("Client shutdown complete");
+
+#ifndef NDEBUG
+  // Join the lock debug thread as one of the very last things
+  lock_debug_cleanup_thread();
+#endif
 }
 
 /**
@@ -289,11 +317,8 @@ static void shutdown_client() {
  * @ingroup client_main
  */
 static int initialize_client_systems() {
-  // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
-  asciichat_error_t init_result = asciichat_shared_init("client.log");
-  if (init_result != ASCIICHAT_OK) {
-    return init_result;
-  }
+  // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
+  // This function focuses on client-specific initialization
 
   // Initialize memory debugging if enabled (client-specific: handles opt_snapshot_mode)
 #ifdef DEBUG_MEMORY
@@ -387,23 +412,9 @@ static int initialize_client_systems() {
  * @ingroup client_main
  */
 
-int client_main(int argc, char *argv[]) {
-  // Parse command line options first
-  // Note: --help and --version will exit(0) directly within options_init
-  int options_result = options_init(argc, argv, true);
-  if (options_result != ASCIICHAT_OK) {
-    // options_init returns ERROR_USAGE for invalid options (after printing error)
-    // Just exit with the returned error code
-    return options_result;
-  }
-
-  // Handle --show-capabilities flag (exit after showing capabilities)
-  if (opt_show_capabilities) {
-    terminal_capabilities_t caps = detect_terminal_capabilities();
-    caps = apply_color_mode_override(caps);
-    print_terminal_capabilities(&caps);
-    return 0;
-  }
+int client_main(void) {
+  // Common initialization (options, logging, lock debugging, --show-capabilities) now happens in main.c before dispatch
+  // This function focuses on client-specific initialization and main loop
 
   // Initialize all client subsystems
   int init_result = initialize_client_systems();
@@ -429,6 +440,17 @@ int client_main(int argc, char *argv[]) {
 #ifndef _WIN32
   // Ignore SIGPIPE - we'll handle write errors ourselves (not available on Windows)
   platform_signal(SIGPIPE, SIG_IGN);
+#endif
+
+#ifndef NDEBUG
+  // Start the lock debug thread (system already initialized earlier)
+  if (lock_debug_start_thread() != 0) {
+    FATAL(ERROR_THREAD, "Failed to start lock debug thread");
+  }
+#ifndef _WIN32
+  // Register SIGUSR1 handler for lock debug trigger (Unix only)
+  platform_signal(SIGUSR1, sigusr1_handler);
+#endif
 #endif
 
   // Keep terminal logging enabled so user can see connection attempts

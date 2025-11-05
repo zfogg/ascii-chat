@@ -68,10 +68,10 @@ bool shutdown_is_requested(void) {
  * ============================================================================
  */
 
-#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG)
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
 void debug_memory_report(void);
 void debug_memory_set_quiet_mode(bool quiet);
-#elif defined(USE_MIMALLOC_DEBUG)
+#elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
 static void print_mimalloc_stats(void);
 #endif
 
@@ -109,11 +109,11 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename) {
   // Truncate log if it's already too large
   log_truncate_if_large();
 
-  // Print memory debugging stats at exit
-#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG)
+  // Print memory debugging stats at exit (only in debug builds)
+#if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   debug_memory_set_quiet_mode(opt_quiet);
   (void)atexit(debug_memory_report);
-#elif defined(USE_MIMALLOC_DEBUG)
+#elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
 #ifndef _WIN32
   // Register mimalloc stats printer at exit
   (void)atexit(print_mimalloc_stats);
@@ -130,7 +130,7 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename) {
  * ============================================================================
  */
 
-#ifdef DEBUG_MEMORY
+#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
 
 typedef struct mem_block {
   void *ptr;
@@ -679,10 +679,10 @@ void debug_memory_report(void) {
   }
 }
 
-#elif defined(USE_MIMALLOC_DEBUG)
+#elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
 // Wrapper function for mi_stats_print to use with atexit()
 // mi_stats_print takes a parameter, but atexit requires void(void)
 static void print_mimalloc_stats(void) {
   mi_stats_print(NULL); // NULL = print to stderr
 }
-#endif
+#endif // DEBUG_MEMORY || USE_MIMALLOC_DEBUG (only in debug builds)
