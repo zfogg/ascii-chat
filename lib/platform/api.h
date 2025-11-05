@@ -59,10 +59,11 @@
 #else
 /**
  * @def ASCIICHAT_API
- * @brief No-op on non-Windows platforms
+ * @brief Export symbols on Unix platforms (Linux, macOS)
  *
- * On Unix-like systems (Linux, macOS), symbols in shared libraries are
- * visible by default, so no special annotation is needed.
+ * Uses GCC/Clang visibility attributes to explicitly export symbols.
+ * This is needed when building with -fvisibility=hidden for better
+ * performance and smaller symbol tables.
  */
-#define ASCIICHAT_API
+#define ASCIICHAT_API __attribute__((visibility("default")))
 #endif

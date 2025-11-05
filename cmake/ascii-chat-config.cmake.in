@@ -1,0 +1,56 @@
+@PACKAGE_INIT@
+
+# ascii-chat CMake Package Config
+# Provides the ascii-chat::ascii-chat target for use with find_package()
+#
+# Usage:
+#   find_package(ascii-chat REQUIRED)
+#   target_link_libraries(your-target PRIVATE ascii-chat::ascii-chat)
+#
+# Components:
+#   - Development: Headers and shared library (default)
+#
+# This package provides:
+#   ascii-chat::ascii-chat - Imported target for the shared library
+
+include(CMakeFindDependencyMacro)
+
+# Find required dependencies
+# These are needed to link against libasciichat.so
+find_dependency(Threads REQUIRED)
+
+# Use pkg-config to find library dependencies
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+    # Required: libsodium for cryptography
+    pkg_check_modules(LIBSODIUM REQUIRED IMPORTED_TARGET libsodium>=1.0.18)
+
+    # Required: zstd for compression
+    pkg_check_modules(LIBZSTD REQUIRED IMPORTED_TARGET libzstd)
+
+    # Required: PortAudio for audio I/O
+    pkg_check_modules(PORTAUDIO REQUIRED IMPORTED_TARGET portaudio-2.0)
+else()
+    message(WARNING "pkg-config not found. Dependencies may not be properly located.")
+endif()
+
+# Include the targets file (defines ascii-chat::ascii-chat-shared)
+include("${CMAKE_CURRENT_LIST_DIR}/ascii-chat-targets.cmake")
+
+# Create convenient alias target
+if(NOT TARGET ascii-chat::ascii-chat)
+    add_library(ascii-chat::ascii-chat ALIAS ascii-chat::ascii-chat-shared)
+endif()
+
+# Provide package information
+set(ascii-chat_FOUND TRUE)
+set(ascii-chat_VERSION "@PROJECT_VERSION@")
+set(ascii-chat_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/include")
+set(ascii-chat_LIBRARIES ascii-chat::ascii-chat)
+
+# Print found message
+if(NOT ascii-chat_FIND_QUIETLY)
+    message(STATUS "Found ascii-chat: ${PACKAGE_PREFIX_DIR} (version @PROJECT_VERSION@)")
+endif()
+
+check_required_components(ascii-chat)
