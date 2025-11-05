@@ -193,26 +193,32 @@ add_custom_target(clean_all
 )
 
 # =============================================================================
-# Shared Library Build Target (Release + musl)
+# Shared Library Build Target (Release builds)
 # =============================================================================
-# Build shared library (libasciichat.so) with musl in Release mode
-# Usage: cmake --build build_release --target build-shared-lib
+# Build shared library (libasciichat.so/.dylib/asciichat.dll)
+# Usage: cmake --build build_release --target shared-lib
 #
-# Note: Only available when USE_MUSL=ON (Release builds on Linux)
-# The ascii-chat-shared target is EXCLUDE_FROM_ALL, so this provides
+# Note: Only available for Release builds (Debug/Dev builds already include shared library)
+# The ascii-chat-shared target is EXCLUDE_FROM_ALL in Release mode, so this provides
 # an easy way to build it explicitly.
 # =============================================================================
-if(USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(WIN32)
+        set(SHARED_LIB_OUTPUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/asciichat.dll")
+    else()
+        set(SHARED_LIB_OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    endif()
+
     add_custom_target(shared-lib
         COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat-shared
-        COMMENT "Building shared library (libasciichat.so) with musl in Release mode"
+        COMMENT "Building shared library (${SHARED_LIB_OUTPUT})"
         VERBATIM
     )
 
     message(STATUS "")
     message(STATUS "Shared library target available:")
-    message(STATUS "  cmake --build build_release --target shared-lib")
-    message(STATUS "  Output: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    message(STATUS "  cmake --build build --target shared-lib")
+    message(STATUS "  Output: ${SHARED_LIB_OUTPUT}")
     message(STATUS "")
 endif()
 

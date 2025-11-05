@@ -99,8 +99,8 @@ if(USE_MIMALLOC)
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${FETCHCONTENT_BASE_DIR}/mimalloc-build/lib")
 
-        # Populate mimalloc sources only (don't build default targets)
-        FetchContent_Populate(mimalloc)
+        # Make mimalloc sources available (modern CMake approach)
+        FetchContent_MakeAvailable(mimalloc)
 
         # Restore original output directory settings
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})

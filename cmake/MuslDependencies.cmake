@@ -104,6 +104,7 @@ if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
     ExternalProject_Add(zstd-musl
         URL https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz
         URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${ZSTD_BUILD_DIR}
         STAMP_DIR ${ZSTD_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
@@ -138,6 +139,7 @@ if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
     ExternalProject_Add(libsodium-musl
         URL https://github.com/jedisct1/libsodium/releases/download/1.0.20-RELEASE/libsodium-1.0.20.tar.gz
         URL_HASH SHA256=ebb65ef6ca439333c2bb41a0c1990587288da07f6c7fd07cb3a18cc18d30ce19
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${LIBSODIUM_BUILD_DIR}
         STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
@@ -174,6 +176,7 @@ if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
     ExternalProject_Add(alsa-lib-musl
         URL https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.12.tar.bz2
         URL_HASH SHA256=4868cd908627279da5a634f468701625be8cc251d84262c7e5b6a218391ad0d2
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${ALSA_BUILD_DIR}
         STAMP_DIR ${ALSA_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
@@ -208,6 +211,7 @@ if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
     ExternalProject_Add(portaudio-musl
         URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
         URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${PORTAUDIO_BUILD_DIR}
         STAMP_DIR ${PORTAUDIO_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1

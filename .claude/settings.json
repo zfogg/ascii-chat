@@ -1,20 +1,41 @@
 {
   "permissions": {
     "allow": [
-      "Bash(make:*)",
-      "Bash(bin/client:*)",
-      "Bash(bin/server:*)",
+      "Bash(ascii-chat:*)",
+      "Bash(./build/bin/ascii-chat:*)",
+      "Bash(./build_release/bin/ascii-chat:*)",
+      "Bash(./tests/scripts/run_tests.sh:*)",
+      "Bash(./tests/scripts/run_docker_tests.ps1:*)",
+      "Bash(./build.ps1)",
       "Bash(clang:*)",
       "Bash(clang-tidy:*)",
+      "Bash(lld:*)",
+      "Bash(gcc:*)",
       "Bash(lldb:*)",
+      "Bash(make:*)",
+      "Bash(cmake:*)",
+      "Bash(ninja:*)",
       "Bash(apt-get:*)",
       "Bash(apt:*)",
+      "Bash(python:*)",
+      "Bash(bash:*)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(cd:*)",
       "Bash(touch:*)",
-      "Bash(python:*)",
-      "Bash(grep:*)"
+      "Bash(timeout:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(pacman:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(objdump:*)",
+      "Bash(dumpbin.exe:*)",
+      "Bash(ldd:*)",
+      "Bash(llvm-nm:*)",
+      "Bash(llvm-objdump:*)",
+      "Bash(readelf:*)"
     ]
   }
 }

@@ -98,6 +98,16 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Coverage"
       }
+    },
+    {
+      "name": "tests",
+      "displayName": "Tests (Debug)",
+      "description": "Debug build with tests enabled (for running test suite)",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -136,6 +146,10 @@
     {
       "name": "coverage",
       "configurePreset": "coverage"
+    },
+    {
+      "name": "tests",
+      "configurePreset": "tests"
     }
   ]
 }

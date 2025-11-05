@@ -396,8 +396,6 @@ function ensure_tests_built() {
   local build_type="$1"
   local test_type="$2"
 
-  log_info "🔨 Ensuring tests are built with $build_type configuration..."
-
   cd "$PROJECT_ROOT"
 
   # Determine build directory based on environment
@@ -411,8 +409,7 @@ function ensure_tests_built() {
   # Check if we have a build directory with CMake cache
   if [[ -d "$cmake_build_dir" ]] && [[ -f "$cmake_build_dir/CMakeCache.txt" ]]; then
     # Build directory exists, use CMake for incremental builds
-    log_info "Using CMake for incremental build (build directory exists: $cmake_build_dir)"
-    log_verbose "CMake build directory found, doing incremental build"
+    log_verbose "Using CMake for incremental build (build directory exists: $cmake_build_dir)"
 
     # No need to build anything here - we'll build specific test targets later
     # The static library will be built automatically as a dependency
@@ -1373,15 +1370,19 @@ function main() {
   fi
 
   if [[ ${#test_targets[@]} -gt 0 ]]; then
-    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
     # Build all test targets in one command - ninja will parallelize and handle dependencies
     # Use ninja directly instead of cmake --build for faster execution
     local build_output
     local build_exit_code
     build_output=$(cd "$cmake_build_dir" && ninja "${test_targets[@]}" 2>&1)
     build_exit_code=$?
-    if [[ "$build_output" != *"ninja: no work to do"* ]] || [[ -n "$VERBOSE" ]]; then
+
+    # Only show build message and output if ninja actually did work
+    if [[ "$build_output" != *"ninja: no work to do"* ]]; then
+      log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
       echo "$build_output"
+    elif [[ -n "$VERBOSE" ]]; then
+      log_verbose "All test executables are up to date (ninja: no work to do)"
     fi
 
     # Check if build failed

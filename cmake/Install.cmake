@@ -362,7 +362,7 @@ if(USE_CPACK)
             # Since all install() commands use doc/ (not share/doc/), no share/ directory should be created
             # Note: CPACK_COMPONENTS_ALL is set later in the component configuration section,
             # but we set it here early to ensure CPack respects it
-            set(CPACK_COMPONENTS_ALL Runtime Documentation Manpages CACHE STRING "CPack components to install" FORCE)
+            set(CPACK_COMPONENTS_ALL Runtime Development Documentation Manpages CACHE STRING "CPack components to install" FORCE)
             # Explicitly set packaging install prefix to empty to prevent CPack from creating share/ structure
             # CPack will use CMAKE_INSTALL_PREFIX directly without adding share/ subdirectories
             set(CPACK_PACKAGING_INSTALL_PREFIX "" CACHE STRING "Installation prefix for CPack (empty = use CMAKE_INSTALL_PREFIX directly)" FORCE)
@@ -467,7 +467,11 @@ if(USE_CPACK)
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
                 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
             endif()
+            # Dependencies for shared library component (libasciichat.so)
+            # The static executable has no runtime dependencies
+            # These are only needed if the Development component is installed
             set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
+            set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_DEPENDS "libportaudio2, libasound2, libzstd1, libsodium23, libmimalloc2.0 | libmimalloc-dev")
             set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
             # Maintainer info (optional - can be set via environment)
             if(DEFINED ENV{DEBEMAIL})
@@ -487,7 +491,11 @@ if(USE_CPACK)
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
                 set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
             endif()
+            # Dependencies for shared library component (libasciichat.so)
+            # The static executable has no runtime dependencies
+            # These are only needed if the Development component is installed
             set(CPACK_RPM_PACKAGE_REQUIRES "")
+            set(CPACK_RPM_DEVELOPMENT_PACKAGE_REQUIRES "portaudio, alsa-lib, zstd, libsodium, mimalloc")
             set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
             # Vendor info (optional)
             if(DEFINED ENV{RPM_VENDOR})
@@ -593,8 +601,53 @@ if(USE_CPACK)
             # Enable uninstall before install (clean upgrade)
             set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 
+            # Enable component-based installation
+            # This allows users to select which components to install
+            set(CPACK_NSIS_COMPONENT_INSTALL ON)
+
+            # Component descriptions for NSIS installer
+            set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "ascii-chat Application")
+            set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "The main ascii-chat executable for video chat")
+            set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
+
+            set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Development Files")
+            set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "Header files and libraries for developing with ascii-chat (libasciichat.dll)")
+            set(CPACK_COMPONENT_DEVELOPMENT_DISABLED OFF)
+
+            set(CPACK_COMPONENT_DOCUMENTATION_DISPLAY_NAME "Documentation")
+            set(CPACK_COMPONENT_DOCUMENTATION_DESCRIPTION "HTML documentation generated with Doxygen")
+            set(CPACK_COMPONENT_DOCUMENTATION_DISABLED OFF)
+
+            set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Manual Pages")
+            set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix-style manual pages (man pages)")
+            set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
+
             # Optional: Custom installer icon
             # set(CPACK_NSIS_INSTALLED_ICON_NAME "${CMAKE_SOURCE_DIR}/resources/icon.ico")
+
+            # =====================================================================
+            # Start Menu Shortcuts
+            # =====================================================================
+            # Create shortcuts with command-line arguments using custom NSIS code
+            # NSIS CreateShortCut syntax: CreateShortCut "link.lnk" "target.exe" "parameters" "icon.file" icon_index start_options
+            # SW_SHOWMINIMIZED (7) shows the console window minimized by default
+            set(CPACK_NSIS_CREATE_ICONS_EXTRA "
+                CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"client\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" 0 SW_SHOWMINIMIZED
+                CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"server\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" 0 SW_SHOWMINIMIZED
+            ")
+
+            # Remove custom shortcuts on uninstall
+            set(CPACK_NSIS_DELETE_ICONS_EXTRA "
+                Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\"
+                Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\"
+            ")
+
+            # Add documentation link to Start Menu
+            # CPACK_NSIS_MENU_LINKS uses pairs of (source_file, display_name)
+            # The source_file path is relative to the installation directory
+            set(CPACK_NSIS_MENU_LINKS
+                "doc/html/index.html" "Documentation"
+            )
         endif()
 
         message(STATUS "CPack: Enabled generators for Windows: ${CPACK_GENERATOR}")
@@ -623,7 +676,7 @@ if(USE_CPACK)
         "/\\.git/"
         "/deps/"
         "/\\.deps-cache/"
-        "/\\.deps-cache-musl/"
+        "/\\.deps-cache-docker/"
         "/\\.vscode/"
         "/\\.idea/"
         "/CMakeFiles/"
@@ -638,32 +691,61 @@ if(USE_CPACK)
     # =========================================================================
     # Component Configuration
     # =========================================================================
-    # Configure components for installation (Runtime, Documentation, Development)
-    set(CPACK_COMPONENT_RUNTIME_DISPLAY_NAME "Binary")
-    set(CPACK_COMPONENT_RUNTIME_DESCRIPTION "ascii-chat executable")
-    set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
+    # Configure components for installation organized into Runtime and Development groups
+    # Using CPack module functions for proper component configuration
 
-    set(CPACK_COMPONENT_DOCUMENTATION_DISPLAY_NAME "Documentation")
-    set(CPACK_COMPONENT_DOCUMENTATION_DESCRIPTION "README, LICENSE, and CHANGELOG")
-    set(CPACK_COMPONENT_DOCUMENTATION_DEPENDS Runtime)
+    # Load CPack component helper functions
+    include(CPackComponent)
 
-    # Manpages component (optional - depends on docs being built)
-    set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Man Pages")
-    set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix manual pages (man pages) for API documentation")
-    set(CPACK_COMPONENT_MANPAGES_DEPENDS Runtime)
+    # -------------------------------------------------------------------------
+    # Component Group Definitions
+    # -------------------------------------------------------------------------
+    # Runtime group - components needed to run ascii-chat
+    cpack_add_component_group(Runtime
+        DISPLAY_NAME "Runtime"
+        DESCRIPTION "Core files needed to run ascii-chat, including the executable and documentation"
+        EXPANDED
+    )
 
-    # Development headers component
-    set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Development Headers")
-    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "C header files for building extensions and tools")
-    set(CPACK_COMPONENT_DEVELOPMENT_DEPENDS Runtime)
+    # Development group - components needed to develop with ascii-chat
+    cpack_add_component_group(Development
+        DISPLAY_NAME "Development"
+        DESCRIPTION "All of the tools you'll ever need to develop software using ascii-chat libraries"
+    )
 
-    # Group components
-    set(CPACK_COMPONENT_GROUP_APPLICATIONS_DISPLAY_NAME "Application")
-    set(CPACK_COMPONENT_GROUP_APPLICATIONS_DESCRIPTION "ASCII video chat application")
-    set(CPACK_COMPONENT_RUNTIME_GROUP "Applications")
-    set(CPACK_COMPONENT_DOCUMENTATION_GROUP "Applications")
-    set(CPACK_COMPONENT_MANPAGES_GROUP "Applications")
-    set(CPACK_COMPONENT_DEVELOPMENT_GROUP "Applications")
+    # -------------------------------------------------------------------------
+    # Runtime Components
+    # -------------------------------------------------------------------------
+    cpack_add_component(Runtime
+        DISPLAY_NAME "Application"
+        DESCRIPTION "ascii-chat executable - the main application binary"
+        REQUIRED
+        GROUP Runtime
+    )
+
+    cpack_add_component(Documentation
+        DISPLAY_NAME "Documentation"
+        DESCRIPTION "User documentation including README, LICENSE, CHANGELOG, and HTML API docs"
+        GROUP Runtime
+        DEPENDS Runtime
+    )
+
+    # -------------------------------------------------------------------------
+    # Development Components
+    # -------------------------------------------------------------------------
+    cpack_add_component(Manpages
+        DISPLAY_NAME "Man Pages"
+        DESCRIPTION "Unix manual pages (man pages) for API documentation and library functions"
+        GROUP Development
+        DEPENDS Runtime
+    )
+
+    cpack_add_component(Development
+        DISPLAY_NAME "Headers and Libraries"
+        DESCRIPTION "C header files and static libraries for building extensions and tools with ascii-chat"
+        GROUP Development
+        DEPENDS Runtime
+    )
 
     message(STATUS "CPack: Package generation enabled")
     message(STATUS "CPack: Package will be created in: ${CPACK_PACKAGE_DIRECTORY}")

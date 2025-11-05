@@ -1,7 +1,29 @@
 cmake_minimum_required(VERSION 3.16)
 
 # =============================================================================
-# Initialization (must come first)
+# Dependency Cache Configuration (must come first)
+# =============================================================================
+# Centralized dependency cache configuration
+# Docker builds use .deps-cache-docker/, native builds use .deps-cache/
+# Musl dependencies are stored in musl/ subdirectory
+
+# Check if running in Docker (set by Dockerfile with ENV TESTING=1)
+if(DEFINED ENV{TESTING} AND "$ENV{TESTING}" STREQUAL "1")
+    set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-docker" CACHE PATH "Root directory for dependency cache (Docker)")
+else()
+    set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
+endif()
+
+# Build-type-specific cache directory
+set(DEPS_CACHE_DIR "${DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
+
+# Musl-specific cache directory
+set(DEPS_CACHE_MUSL "${DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
+
+message(STATUS "Using dependency cache: ${DEPS_CACHE_DIR}")
+
+# =============================================================================
+# Initialization
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/BuildTypes.cmake)

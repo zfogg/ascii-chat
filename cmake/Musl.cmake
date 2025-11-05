@@ -70,7 +70,14 @@ function(configure_musl_pre_project)
         endif()
 
         # Verify musl development files are installed
-        if(NOT EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
+        # Check multiple locations (Arch vs Debian/Ubuntu)
+        if(EXISTS "/usr/lib/musl/lib/libc.a")
+            # Arch Linux location
+            set(MUSL_LIBC_PATH "/usr/lib/musl/lib/libc.a")
+        elseif(EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
+            # Debian/Ubuntu location
+            set(MUSL_LIBC_PATH "/usr/lib/x86_64-linux-musl/libc.a")
+        else()
             message(FATAL_ERROR "musl development files not found. Install musl-dev:\n"
                                 "  Arch Linux: sudo pacman -S musl\n"
                                 "  Ubuntu/Debian: sudo apt install musl-tools musl-dev")
@@ -100,27 +107,40 @@ function(configure_musl_post_project)
         return()
     endif()
 
+    # Set musl dependency cache directory for ExternalProject builds
+    # This must be done here (after USE_MUSL is defined) rather than in Init.cmake
+    set(MUSL_DEPS_DIR_STATIC "${DEPS_CACHE_MUSL}" CACHE PATH "Musl-specific dependencies cache for static builds" FORCE)
+    message(STATUS "Musl dependency cache directory: ${MUSL_DEPS_DIR_STATIC}")
+
     # Use -static-pie flag to build fully static PIE binaries with musl
     # Combines static linking with Position Independent Executable for security (ASLR)
     # Using clang directly with musl for proper static-PIE support (musl-gcc wrapper doesn't support it)
     # See: https://github.com/rust-lang/rust/issues/95926
 
-    # Find GCC version for libgcc.a
+    # Find GCC library directory for libgcc.a
+    # Use gcc -print-libgcc-file-name to get the actual path (works on all distros)
     execute_process(
-        COMMAND gcc -dumpversion
-        OUTPUT_VARIABLE GCC_VERSION
+        COMMAND gcc -print-libgcc-file-name
+        OUTPUT_VARIABLE GCC_LIBGCC_PATH
         OUTPUT_STRIP_TRAILING_WHITESPACE
     )
-    string(REGEX REPLACE "\\.[0-9]+\\.[0-9]+$" "" GCC_MAJOR_VERSION "${GCC_VERSION}")
+    get_filename_component(GCC_LIBDIR "${GCC_LIBGCC_PATH}" DIRECTORY)
 
-    set(MUSL_LIBDIR "/usr/lib/x86_64-linux-musl")
-    set(GCC_LIBDIR "/usr/lib/gcc/x86_64-linux-gnu/${GCC_MAJOR_VERSION}")
+    # Detect musl library directory (Arch vs Debian/Ubuntu)
+    if(EXISTS "/usr/lib/musl/lib")
+        # Arch Linux location
+        set(MUSL_LIBDIR "/usr/lib/musl/lib")
+    else()
+        # Debian/Ubuntu location
+        set(MUSL_LIBDIR "/usr/lib/x86_64-linux-musl")
+    endif()
 
     # Configure clang to use musl with static-PIE
     # Based on: https://wiki.debian.org/musl
     # Note: -fPIE is added by CompilerFlags.cmake for all PIE builds (dynamic and static)
     add_compile_options(
         -target x86_64-linux-musl
+        -DUSE_MUSL
     )
 
     # Linker flags for static-PIE linking with musl
