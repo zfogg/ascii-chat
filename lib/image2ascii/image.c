@@ -208,7 +208,7 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
   // Validate input parameters to prevent overflow
   // Luminance weights should typically be in range 0.0-1.0
   // But allow slightly larger values for brightness adjustment
-  const float max_weight = 255.0f; // Maximum value that won't overflow when multiplied by 255
+  const float max_weight = 255.0f;  // Maximum value that won't overflow when multiplied by 255
   const float min_weight = -255.0f; // Allow negative for color correction
 
   // Note: isfinite() checks are skipped in Release builds due to -ffinite-math-only flag
@@ -221,10 +221,11 @@ void precalc_rgb_palettes(const float red, const float green, const float blue) 
   }
 #endif
 
-  if (red < min_weight || red > max_weight || green < min_weight || green > max_weight ||
-      blue < min_weight || blue > max_weight) {
-    log_warn("precalc_rgb_palettes: Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)",
-             red, green, blue);
+  if (red < min_weight || red > max_weight || green < min_weight || green > max_weight || blue < min_weight ||
+      blue > max_weight) {
+    log_warn(
+        "precalc_rgb_palettes: Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)",
+        red, green, blue);
   }
 
   // Clamp weights to safe range to prevent overflow

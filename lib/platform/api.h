@@ -37,32 +37,32 @@
 #pragma once
 
 #ifdef _WIN32
-  #ifdef BUILDING_ASCIICHAT_DLL
-    /**
-     * @def ASCIICHAT_API
-     * @brief Export symbols when building the DLL
-     *
-     * When building the asciichat.dll, this expands to __declspec(dllexport)
-     * which marks symbols for export in the DLL's export table.
-     */
-    #define ASCIICHAT_API __declspec(dllexport)
-  #else
-    /**
-     * @def ASCIICHAT_API
-     * @brief Import symbols when using the DLL
-     *
-     * When linking against asciichat.dll, this expands to __declspec(dllimport)
-     * which tells the linker to import symbols from the DLL.
-     */
-    #define ASCIICHAT_API __declspec(dllimport)
-  #endif
+#ifdef BUILDING_ASCIICHAT_DLL
+/**
+ * @def ASCIICHAT_API
+ * @brief Export symbols when building the DLL
+ *
+ * When building the asciichat.dll, this expands to __declspec(dllexport)
+ * which marks symbols for export in the DLL's export table.
+ */
+#define ASCIICHAT_API __declspec(dllexport)
 #else
-  /**
-   * @def ASCIICHAT_API
-   * @brief No-op on non-Windows platforms
-   *
-   * On Unix-like systems (Linux, macOS), symbols in shared libraries are
-   * visible by default, so no special annotation is needed.
-   */
-  #define ASCIICHAT_API
+/**
+ * @def ASCIICHAT_API
+ * @brief Import symbols when using the DLL
+ *
+ * When linking against asciichat.dll, this expands to __declspec(dllimport)
+ * which tells the linker to import symbols from the DLL.
+ */
+#define ASCIICHAT_API __declspec(dllimport)
+#endif
+#else
+/**
+ * @def ASCIICHAT_API
+ * @brief No-op on non-Windows platforms
+ *
+ * On Unix-like systems (Linux, macOS), symbols in shared libraries are
+ * visible by default, so no special annotation is needed.
+ */
+#define ASCIICHAT_API
 #endif

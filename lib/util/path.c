@@ -185,7 +185,7 @@ const char *extract_project_relative_path(const char *file) {
 
 char *expand_path(const char *path) {
   if (path[0] == '~') {
-  const char *home = NULL;
+    const char *home = NULL;
 #ifdef _WIN32
     // On Windows, try USERPROFILE
     if (!(home = platform_getenv("USERPROFILE"))) {

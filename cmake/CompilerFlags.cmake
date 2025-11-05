@@ -320,7 +320,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         if(NOT WITH_DEBUG_INFO)
             # Position Independent Executable (PIE) - better ASLR
             add_compile_options(-fPIE)
-            add_link_options(-pie)
+            add_link_options(LINKER:-pie)
 
             # Relocation hardening
             add_link_options(-Wl,-z,relro -Wl,-z,now)
