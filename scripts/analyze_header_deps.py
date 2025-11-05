@@ -22,6 +22,11 @@ def find_headers(directories=["lib", "src"], include_source=True):
         directories: List of directories to search
         include_source: If True, also include .c files to see full dependency picture
     """
+    # Skip files that are build-generated or have unresolvable dependencies
+    skip_files = {
+        'version.c',  # Includes generated version.h from build/
+    }
+
     files = []
     for directory in directories:
         if Path(directory).exists():
@@ -29,6 +34,9 @@ def find_headers(directories=["lib", "src"], include_source=True):
             if include_source:
                 files.extend(Path(directory).rglob("*.c"))
                 files.extend(Path(directory).rglob("*.m"))  # Objective-C for macOS
+
+    # Filter out skipped files
+    files = [f for f in files if f.name not in skip_files]
     return files
 
 def extract_includes(header_path):
@@ -346,8 +354,17 @@ The graph always shows DIRECT dependencies by default (for readability).
 Statistics show both direct and transitive dependency counts.
 
 Examples:
-  # Generate direct dependency graph with default fdp layout
+  # Analyze lib and src (default)
   python3 scripts/analyze_header_deps.py
+
+  # Analyze just lib/
+  python3 scripts/analyze_header_deps.py lib
+
+  # Analyze just src/
+  python3 scripts/analyze_header_deps.py src
+
+  # Analyze lib and tests
+  python3 scripts/analyze_header_deps.py lib tests
 
   # Use compact neato layout
   python3 scripts/analyze_header_deps.py --layout neato
@@ -378,11 +395,21 @@ Examples:
         default='fdp',
         help='Graph layout algorithm (default: fdp) - neato=compact, fdp=balanced, sfdp=spread out'
     )
+    parser.add_argument(
+        'directories',
+        nargs='*',
+        default=['lib', 'src'],
+        help='Directories to analyze (default: lib src)'
+    )
     args = parser.parse_args()
 
     use_transitive = args.transitive_graph  # Only show transitive in graph if explicitly requested
 
-    print("Analyzing header dependencies in lib/ and src/...")
+    # Handle directories argument
+    dirs = args.directories if args.directories else ['lib', 'src']
+    dirs_str = ', '.join(dirs)
+
+    print(f"Analyzing header dependencies in {dirs_str}...")
     if use_transitive:
         print("Graph mode: TRANSITIVE (warning: creates very dense graph)")
     else:
@@ -392,7 +419,8 @@ Examples:
 
     dependencies, all_nodes = generate_dot_file(
         output_file=args.output,
-        use_transitive=use_transitive
+        use_transitive=use_transitive,
+        base_dirs=dirs
     )
     generate_stats(dependencies)
     render_graph(args.output, layout=args.layout)
