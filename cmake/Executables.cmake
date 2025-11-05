@@ -84,7 +84,7 @@ target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
 # Use a phony target that always runs to show the message even when nothing needs rebuilding
 # This is so Claude Code doesn't get confused when ninja has nothing to do and just exits 0 without printing any message
 add_custom_target(show-build-success ALL
-    COMMAND ${CMAKE_COMMAND} -E echo "✅ Build Success! the ascii-chat binary either (1) built succesfully with all dependencies or (2) is up to date (build type: ${CMAKE_BUILD_TYPE})"
+    COMMAND ${CMAKE_COMMAND} -E echo "✅ Build Success! the ascii-chat binary either [1] built succesfully with all dependencies or [2] is up to date - build type: ${CMAKE_BUILD_TYPE}"
     DEPENDS ascii-chat
     COMMENT "Build success message"
 )

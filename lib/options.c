@@ -92,7 +92,7 @@ ASCIICHAT_API unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT
 ASCIICHAT_API bool auto_width = true, auto_height = true;
 
 ASCIICHAT_API char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
-     opt_port[OPTIONS_BUFF_SIZE] = "27224";
+                   opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
 ASCIICHAT_API unsigned short int opt_webcam_index = 0;
 
