@@ -511,3 +511,36 @@ void platform_cleanup_binary_path_cache(void);
  * @ingroup platform
  */
 bool platform_get_executable_path(char *exe_path, size_t path_size);
+
+/**
+ * @brief Get the system temporary directory path
+ *
+ * Retrieves the path to the system's temporary directory using
+ * platform-specific methods. Verifies the directory exists and is writable.
+ *
+ * Platform-specific implementations:
+ *   - Windows: %TEMP% or %TMP% environment variable, fallback to C:\Temp
+ *   - Linux/macOS: /tmp
+ *
+ * @param temp_dir Buffer to store the temporary directory path
+ * @param path_size Size of the buffer
+ * @return true on success (directory exists and is writable), false on failure
+ *
+ * @note Thread-safe
+ * @note Returned path does not include trailing directory separator
+ * @note Buffer should be at least 256 bytes to support typical paths
+ * @note Returns false if the directory doesn't exist or lacks write permission
+ *
+ * @par Example:
+ * @code{.c}
+ * char temp_dir[256];
+ * if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
+ *   // temp_dir is valid and writable
+ *   char log_path[512];
+ *   snprintf(log_path, sizeof(log_path), "%s/myapp.log", temp_dir);
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+bool platform_get_temp_dir(char *temp_dir, size_t path_size);
