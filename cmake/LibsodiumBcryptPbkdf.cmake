@@ -16,7 +16,7 @@ function(configure_libsodium_bcrypt_pbkdf)
     set(LIBSODIUM_BCRYPT_PBKDF_DIR "${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf")
     set(LIBSODIUM_BCRYPT_PBKDF_PATCH "${CMAKE_SOURCE_DIR}/cmake/libsodium-bcrypt-pbkdf-fix-ubsan.patch")
     set(LIBSODIUM_BCRYPT_PBKDF_SOURCE "${LIBSODIUM_BCRYPT_PBKDF_DIR}/src/openbsd-compat/blowfish.c")
-    set(PATCH_MARKER "${CMAKE_SOURCE_DIR}/.deps-cache/libsodium-bcrypt-pbkdf.patch_applied")
+    set(PATCH_MARKER "${DEPS_CACHE_ROOT}/libsodium-bcrypt-pbkdf.patch_applied")
 
     # Check if patch needs to be applied
     if(NOT EXISTS "${PATCH_MARKER}")

@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: tests/Dockerfile
 
-    # Mount source code and ccache volume
+    # Mount source code and cache volumes
     volumes:
       # Source code (read/write for build artifacts)
       - ..:/app:rw
@@ -13,10 +13,15 @@ services:
       # This persists between container runs for faster rebuilds
       - ccache-data:/ccache:rw
 
+      # Dependency cache volume for FetchContent and musl builds
+      # CMakeLists.txt automatically uses .deps-cache-docker/ when TESTING=1
+      # Path structure: .deps-cache-docker/<BuildType>/ and .deps-cache-docker/<BuildType>/musl/
+      - deps-cache-data:/app/.deps-cache-docker:rw
+
     # Run tests by default
     # Use build_docker directory (build is for native OS)
     command: >
-      sh -c "cmake -B build_docker -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON &&
+      sh -c "cmake --preset default -B build_docker &&
              cmake --build build_docker &&
              ./tests/scripts/run_tests.sh"
 
@@ -41,7 +46,7 @@ services:
       # AddressSanitizer configuration
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
 
-# Named volume for ccache persistence
+# Named volumes for persistent caching
 volumes:
   ccache-data:
     driver: local
@@ -49,4 +54,15 @@ volumes:
     # driver_opts:
     #   type: none
     #   device: ${PWD}/.docker-ccache
+    #   o: bind
+
+  deps-cache-data:
+    driver: local
+    # Stores FetchContent dependencies (mimalloc, bearssl, etc.) and musl builds
+    # Separated from ccache for easier management and cleanup
+    # Path structure inside container: /app/.deps-cache-docker/<BuildType>/
+    # Optional: specify host path for easier access
+    # driver_opts:
+    #   type: none
+    #   device: ${PWD}/.deps-cache-docker
     #   o: bind

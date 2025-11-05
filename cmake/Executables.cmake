@@ -75,6 +75,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
 else()
     add_dependencies(ascii-chat ascii-chat-static-build generate_version)
     target_link_libraries(ascii-chat ascii-chat-static)
+    # Define BUILDING_STATIC_LIB for executable when using static library (Windows)
+    # This prevents LNK4217 warnings about dllimport on locally defined symbols
+    if(WIN32)
+        target_compile_definitions(ascii-chat PRIVATE
+            BUILDING_STATIC_LIB=1
+            _WIN32_WINNT=0x0A00  # Windows 10
+        )
+    endif()
 endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
@@ -153,6 +161,23 @@ endif()
 
 # Enable dead code elimination for optimal binary size
 target_compile_options(ascii-chat PRIVATE -ffunction-sections -fdata-sections)
+
+# Release-specific optimizations for executable
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Hide symbols for smaller binary and better performance
+    # Shared libraries use -fvisibility=default to export symbols
+    if(NOT WIN32)
+        target_compile_options(ascii-chat PRIVATE -fvisibility=hidden)
+    endif()
+
+    # Link-time optimization (LTO) for Release executable only
+    # Not applied to shared libraries (would strip symbols needed by external users)
+    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        target_compile_options(ascii-chat PRIVATE -flto)
+        target_link_options(ascii-chat PRIVATE -flto)
+    endif()
+endif()
+
 if(NOT WIN32)
     if(APPLE)
         target_link_options(ascii-chat PRIVATE -Wl,-dead_strip)

@@ -242,8 +242,8 @@ else()
     # Fall back to building from submodule
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
         set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
-        # Build to cache directory to keep platform-specific builds separate
-        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_BASE_DIR}/${CMAKE_BUILD_TYPE}/bearssl")
+        # Build to cache directory (DEPS_CACHE_DIR already includes build type)
+        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_DIR}/bearssl")
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")

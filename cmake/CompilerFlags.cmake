@@ -251,7 +251,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             if(NOT WIN32)
                 add_compile_options(-fno-semantic-interposition)  # Allow inlining across DSO boundaries
             endif()
-            add_compile_options(-fvisibility=hidden)  # Hide symbols by default (faster DSOs)
+            # Note: -fvisibility=hidden is applied per-target in Executables.cmake (not globally)
+            # This allows shared libraries to use -fvisibility=default while executables use hidden
         endif()
     endif()
 
@@ -287,11 +288,9 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         add_compile_options(-ffp-contract=fast)
     endif()
 
-    # Link-time optimization (works on all platforms including Windows)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        add_compile_options(-flto)
-        add_link_options(-flto)
-    endif()
+    # Link-time optimization is applied per-target in Executables.cmake
+    # Not applied globally to allow shared libraries to export all symbols
+    # (LTO strips "unused" symbols which are actually needed by external users)
 
     if(NOT WIN32)
         # Size reduction and alignment optimizations
