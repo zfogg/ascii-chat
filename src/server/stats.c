@@ -345,6 +345,7 @@ void *stats_logger_thread(void *arg) {
     }
 
     // Collect all statistics data first
+#ifndef NDEBUG
     char lock_debug_info[512] = {0};
     // CRITICAL: Check exit condition again before accessing lock_debug
     // lock_debug might be destroyed during shutdown
@@ -362,6 +363,7 @@ void *stats_logger_thread(void *arg) {
                     (unsigned long long)total_acquired, (unsigned long long)total_released, currently_held,
                     (long long)total_acquired - (long long)total_released);
     }
+#endif
 
     // Collect client statistics
     // CRITICAL: Check exit condition again before accessing rwlock

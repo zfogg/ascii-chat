@@ -1091,7 +1091,12 @@ int platform_close(int fd) {
  * @return File pointer on success, NULL on failure
  */
 FILE *platform_fopen(const char *filename, const char *mode) {
-  return fopen(filename, mode);
+  FILE *file = NULL;
+  errno_t err = fopen_s(&file, filename, mode);
+  if (err != 0 || file == NULL) {
+    return NULL;
+  }
+  return file;
 }
 
 /**

@@ -347,17 +347,17 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
 
   if (context->has_system_error) {
     log_plain("  System error: %s (code: %d, meaning: %s)", SAFE_STRERROR(context->system_errno), context->system_errno,
-              strerror(context->system_errno));
+              SAFE_STRERROR(context->system_errno));
   }
 
   // Print timestamp
   if (context->timestamp > 0) {
     time_t sec = (time_t)(context->timestamp / 1000000);
     long usec = (long)(context->timestamp % 1000000);
-    struct tm *tm_info = localtime(&sec);
-    if (tm_info) {
+    struct tm tm_info;
+    if (platform_localtime(&sec, &tm_info) == ASCIICHAT_OK) {
       char time_str[64];
-      (void)strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+      (void)strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &tm_info);
       log_plain("  Timestamp: %s.%06ld", time_str, usec);
     }
   }
@@ -412,11 +412,10 @@ void asciichat_error_stats_print(void) {
 
   if (error_stats.last_error_time > 0) {
     time_t sec = (time_t)(error_stats.last_error_time / 1000000);
-    struct tm *tm_info = localtime(&sec);
-    if (tm_info) {
+    struct tm tm_info;
+    if (platform_localtime(&sec, &tm_info) == ASCIICHAT_OK) {
       char time_str[64];
-      size_t result6 = strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
-      (void)result6; // Suppress unused result warning
+      strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &tm_info);
       log_plain("Last error: %s (code %d)\n", time_str, (int)error_stats.last_error_code);
     }
   }

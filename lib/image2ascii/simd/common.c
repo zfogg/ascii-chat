@@ -253,8 +253,8 @@ static void utf8_heap_update_score(utf8_palette_cache_t *cache, double new_score
 
 // Thread-safe cache eviction implementations
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) static bool
-try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache) {
+__attribute__((no_sanitize("integer"))) static bool try_insert_with_eviction_utf8(uint32_t hash,
+                                                                                  utf8_palette_cache_t *new_cache) {
   // Already holding write lock
   // Note: key should already be set by caller, but ensure it's set
   new_cache->key = hash;
@@ -296,8 +296,7 @@ try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *new_cache) {
 
 // Get or create UTF-8 palette cache for a given palette
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow and shifts for hash operations
-__attribute__((no_sanitize("integer"))) utf8_palette_cache_t *
-get_utf8_palette_cache(const char *ascii_chars) {
+__attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   if (!ascii_chars)
     return NULL;
 

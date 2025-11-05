@@ -88,35 +88,35 @@ static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size
       "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
 }
 
-unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
-bool auto_width = true, auto_height = true;
+ASCIICHAT_API unsigned short int opt_width = OPT_WIDTH_DEFAULT, opt_height = OPT_HEIGHT_DEFAULT;
+ASCIICHAT_API bool auto_width = true, auto_height = true;
 
-char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
+ASCIICHAT_API char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
      opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
-unsigned short int opt_webcam_index = 0;
+ASCIICHAT_API unsigned short int opt_webcam_index = 0;
 
-bool opt_webcam_flip = true;
+ASCIICHAT_API bool opt_webcam_flip = true;
 
-bool opt_test_pattern = false; // Use test pattern instead of real webcam
+ASCIICHAT_API bool opt_test_pattern = false; // Use test pattern instead of real webcam
 
 // Terminal color mode and capability options
-terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
-render_mode_t opt_render_mode = RENDER_MODE_FOREGROUND; // Foreground by default
-unsigned short int opt_show_capabilities = 0;           // Don't show capabilities by default
-unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
+ASCIICHAT_API terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
+ASCIICHAT_API render_mode_t opt_render_mode = RENDER_MODE_FOREGROUND; // Foreground by default
+ASCIICHAT_API unsigned short int opt_show_capabilities = 0;           // Don't show capabilities by default
+ASCIICHAT_API unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
 
-unsigned short int opt_audio_enabled = 0;
-int opt_audio_device = -1; // -1 means use default device
+ASCIICHAT_API unsigned short int opt_audio_enabled = 0;
+ASCIICHAT_API int opt_audio_device = -1; // -1 means use default device
 
 // Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
-unsigned short int opt_stretch = 0;
+ASCIICHAT_API unsigned short int opt_stretch = 0;
 
 // Disable console logging when set via -q/--quiet (logs only to file)
-unsigned short int opt_quiet = 0;
+ASCIICHAT_API unsigned short int opt_quiet = 0;
 
 // Enable snapshot mode when set via --snapshot (client only - capture one frame and exit)
-unsigned short int opt_snapshot_mode = 0;
+ASCIICHAT_API unsigned short int opt_snapshot_mode = 0;
 
 // Snapshot delay in seconds (float) - default 3.0 for webcam warmup
 #if defined(__APPLE__)
@@ -125,26 +125,26 @@ unsigned short int opt_snapshot_mode = 0;
 #else
 #define SNAPSHOT_DELAY_DEFAULT 3.0f
 #endif
-float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
+ASCIICHAT_API float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
 
 // Log file path for file logging (empty string means no file logging)
-char opt_log_file[OPTIONS_BUFF_SIZE] = "";
+ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
 // Encryption options
-unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
-char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // SSH/GPG key file from --key (file-based only)
-char opt_password[OPTIONS_BUFF_SIZE] = "";        // Password string from --password
-char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
+ASCIICHAT_API unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
+ASCIICHAT_API char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // SSH/GPG key file from --key (file-based only)
+ASCIICHAT_API char opt_password[OPTIONS_BUFF_SIZE] = "";        // Password string from --password
+ASCIICHAT_API char opt_encrypt_keyfile[OPTIONS_BUFF_SIZE] = ""; // Key file path from --keyfile
 
 // New crypto options (Phase 2)
-unsigned short int opt_no_encrypt = 0;        // Disable encryption (opt-out)
-char opt_server_key[OPTIONS_BUFF_SIZE] = "";  // Expected server public key (client only)
-char opt_client_keys[OPTIONS_BUFF_SIZE] = ""; // Allowed client keys (server only)
+ASCIICHAT_API unsigned short int opt_no_encrypt = 0;        // Disable encryption (opt-out)
+ASCIICHAT_API char opt_server_key[OPTIONS_BUFF_SIZE] = "";  // Expected server public key (client only)
+ASCIICHAT_API char opt_client_keys[OPTIONS_BUFF_SIZE] = ""; // Allowed client keys (server only)
 
 // Palette options
-palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
-char opt_palette_custom[256] = "";                  // Custom palette characters
-bool opt_palette_custom_set = false;                // True if custom palette was set
+ASCIICHAT_API palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to standard palette
+ASCIICHAT_API char opt_palette_custom[256] = "";                  // Custom palette characters
+ASCIICHAT_API bool opt_palette_custom_set = false;                // True if custom palette was set
 
 // Default weights; must add up to 1.0
 const float weight_red = 0.2989f;
@@ -601,6 +601,19 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       return SET_ERRNO(ERROR_INVALID_PARAM, "argv[%d] is NULL (argc=%d)", i, argc);
     }
   }
+
+  // Initialize global variables at runtime (Windows DLL workaround)
+  // Static initializers don't work reliably in Windows DLLs created from OBJECT files
+  // so we must initialize them explicitly here
+  SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "27224");
+  opt_log_file[0] = '\0';
+  opt_no_encrypt = 0;
+  opt_encrypt_key[0] = '\0';
+  opt_password[0] = '\0';
+  opt_encrypt_keyfile[0] = '\0';
+  opt_server_key[0] = '\0';
+  opt_client_keys[0] = '\0';
+  opt_palette_custom[0] = '\0';
 
   // Set different default addresses for client vs server (before config load)
   if (is_client) {

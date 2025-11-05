@@ -39,58 +39,58 @@
 // 64-bit arithmetic for intermediate calculations, then casting back to 32-bit
 // Must be defined AFTER including uthash.h since uthash.h unconditionally defines it
 #undef HASH_JEN_MIX
-#define HASH_JEN_MIX(a, b, c)                                                                      \
-  do {                                                                                             \
-    /* Use 64-bit arithmetic for shifts to avoid undefined behavior, then mask back to 32-bit */  \
-    uint64_t _a = (uint64_t)(a), _b = (uint64_t)(b), _c = (uint64_t)(c);                          \
-    _a -= _b;                                                                                      \
-    _a -= _c;                                                                                      \
-    _a ^= (_c >> 13);                                                                              \
-    a = (unsigned)(_a & 0xFFFFFFFFU);                                                              \
-                                                                                                   \
-    _b -= _c;                                                                                      \
-    _b -= (uint64_t)a;                                                                             \
-    _b ^= (((uint64_t)a << 8) & 0xFFFFFFFFU);                                                     \
-    b = (unsigned)(_b & 0xFFFFFFFFU);                                                              \
-                                                                                                   \
-    _c -= (uint64_t)a;                                                                             \
-    _c -= (uint64_t)b;                                                                             \
-    _c ^= ((uint64_t)b >> 13);                                                                     \
-    c = (unsigned)(_c & 0xFFFFFFFFU);                                                             \
-                                                                                                   \
-    _a = (uint64_t)a;                                                                              \
-    _a -= (uint64_t)b;                                                                             \
-    _a -= (uint64_t)c;                                                                             \
-    _a ^= ((uint64_t)c >> 12);                                                                     \
-    a = (unsigned)(_a & 0xFFFFFFFFU);                                                              \
-                                                                                                   \
-    _b = (uint64_t)b;                                                                              \
-    _b -= (uint64_t)c;                                                                             \
-    _b -= (uint64_t)a;                                                                             \
-    _b ^= (((uint64_t)a << 16) & 0xFFFFFFFFU);                                                    \
-    b = (unsigned)(_b & 0xFFFFFFFFU);                                                               \
-                                                                                                   \
-    _c = (uint64_t)c;                                                                              \
-    _c -= (uint64_t)a;                                                                             \
-    _c -= (uint64_t)b;                                                                             \
-    _c ^= ((uint64_t)b >> 5);                                                                      \
-    c = (unsigned)(_c & 0xFFFFFFFFU);                                                               \
-                                                                                                   \
-    _a = (uint64_t)a;                                                                              \
-    _a -= (uint64_t)b;                                                                             \
-    _a -= (uint64_t)c;                                                                             \
-    _a ^= ((uint64_t)c >> 3);                                                                      \
-    a = (unsigned)(_a & 0xFFFFFFFFU);                                                               \
-                                                                                                   \
-    _b = (uint64_t)b;                                                                              \
-    _b -= (uint64_t)c;                                                                             \
-    _b -= (uint64_t)a;                                                                             \
-    _b ^= (((uint64_t)a << 10) & 0xFFFFFFFFU);                                                     \
-    b = (unsigned)(_b & 0xFFFFFFFFU);                                                               \
-                                                                                                   \
-    _c = (uint64_t)c;                                                                              \
-    _c -= (uint64_t)a;                                                                             \
-    _c -= (uint64_t)b;                                                                             \
-    _c ^= ((uint64_t)b >> 15);                                                                     \
-    c = (unsigned)(_c & 0xFFFFFFFFU);                                                               \
+#define HASH_JEN_MIX(a, b, c)                                                                                          \
+  do {                                                                                                                 \
+    /* Use 64-bit arithmetic for shifts to avoid undefined behavior, then mask back to 32-bit */                       \
+    uint64_t _a = (uint64_t)(a), _b = (uint64_t)(b), _c = (uint64_t)(c);                                               \
+    _a -= _b;                                                                                                          \
+    _a -= _c;                                                                                                          \
+    _a ^= (_c >> 13);                                                                                                  \
+    a = (unsigned)(_a & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _b -= _c;                                                                                                          \
+    _b -= (uint64_t)a;                                                                                                 \
+    _b ^= (((uint64_t)a << 8) & 0xFFFFFFFFU);                                                                          \
+    b = (unsigned)(_b & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _c -= (uint64_t)a;                                                                                                 \
+    _c -= (uint64_t)b;                                                                                                 \
+    _c ^= ((uint64_t)b >> 13);                                                                                         \
+    c = (unsigned)(_c & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _a = (uint64_t)a;                                                                                                  \
+    _a -= (uint64_t)b;                                                                                                 \
+    _a -= (uint64_t)c;                                                                                                 \
+    _a ^= ((uint64_t)c >> 12);                                                                                         \
+    a = (unsigned)(_a & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _b = (uint64_t)b;                                                                                                  \
+    _b -= (uint64_t)c;                                                                                                 \
+    _b -= (uint64_t)a;                                                                                                 \
+    _b ^= (((uint64_t)a << 16) & 0xFFFFFFFFU);                                                                         \
+    b = (unsigned)(_b & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _c = (uint64_t)c;                                                                                                  \
+    _c -= (uint64_t)a;                                                                                                 \
+    _c -= (uint64_t)b;                                                                                                 \
+    _c ^= ((uint64_t)b >> 5);                                                                                          \
+    c = (unsigned)(_c & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _a = (uint64_t)a;                                                                                                  \
+    _a -= (uint64_t)b;                                                                                                 \
+    _a -= (uint64_t)c;                                                                                                 \
+    _a ^= ((uint64_t)c >> 3);                                                                                          \
+    a = (unsigned)(_a & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _b = (uint64_t)b;                                                                                                  \
+    _b -= (uint64_t)c;                                                                                                 \
+    _b -= (uint64_t)a;                                                                                                 \
+    _b ^= (((uint64_t)a << 10) & 0xFFFFFFFFU);                                                                         \
+    b = (unsigned)(_b & 0xFFFFFFFFU);                                                                                  \
+                                                                                                                       \
+    _c = (uint64_t)c;                                                                                                  \
+    _c -= (uint64_t)a;                                                                                                 \
+    _c -= (uint64_t)b;                                                                                                 \
+    _c ^= ((uint64_t)b >> 15);                                                                                         \
+    c = (unsigned)(_c & 0xFFFFFFFFU);                                                                                  \
   } while (0)

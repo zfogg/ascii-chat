@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -204,11 +205,61 @@ void image_resize_interpolation(const image_t *source, image_t *dest) {
 // Note: luminance_palette is now handled by ascii_simd.c via g_ascii_cache.luminance_palette
 
 void precalc_rgb_palettes(const float red, const float green, const float blue) {
+  // Validate input parameters to prevent overflow
+  // Luminance weights should typically be in range 0.0-1.0
+  // But allow slightly larger values for brightness adjustment
+  const float max_weight = 255.0f; // Maximum value that won't overflow when multiplied by 255
+  const float min_weight = -255.0f; // Allow negative for color correction
+
+  if (!isfinite(red) || !isfinite(green) || !isfinite(blue)) {
+    log_error("Invalid weight values (non-finite): red=%f, green=%f, blue=%f", red, green, blue);
+    SET_ERRNO(ERROR_INVALID_PARAM, "precalc_rgb_palettes: non-finite weight values");
+    return;
+  }
+
+  if (red < min_weight || red > max_weight || green < min_weight || green > max_weight ||
+      blue < min_weight || blue > max_weight) {
+    log_warn("precalc_rgb_palettes: Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)",
+             red, green, blue);
+  }
+
+  // Clamp weights to safe range to prevent overflow
+  const float safe_red = (red < min_weight) ? min_weight : ((red > max_weight) ? max_weight : red);
+  const float safe_green = (green < min_weight) ? min_weight : ((green > max_weight) ? max_weight : green);
+  const float safe_blue = (blue < min_weight) ? min_weight : ((blue > max_weight) ? max_weight : blue);
+
+  const unsigned short max_ushort = 65535;
+  const unsigned short min_ushort = 0;
+
   for (int n = 0; n < ASCII_LUMINANCE_LEVELS; ++n) {
-    RED[n] = (unsigned short)((float)((float)n * red));
-    GREEN[n] = (unsigned short)((float)((float)n * green));
-    BLUE[n] = (unsigned short)((float)((float)n * blue));
-    GRAY[n] = (unsigned short)((float)n);
+    // Compute with float, then clamp to unsigned short range
+    float red_val = (float)n * safe_red;
+    float green_val = (float)n * safe_green;
+    float blue_val = (float)n * safe_blue;
+
+    // Clamp to unsigned short range before assignment
+    if (red_val < (float)min_ushort) {
+      red_val = (float)min_ushort;
+    } else if (red_val > (float)max_ushort) {
+      red_val = (float)max_ushort;
+    }
+
+    if (green_val < (float)min_ushort) {
+      green_val = (float)min_ushort;
+    } else if (green_val > (float)max_ushort) {
+      green_val = (float)max_ushort;
+    }
+
+    if (blue_val < (float)min_ushort) {
+      blue_val = (float)min_ushort;
+    } else if (blue_val > (float)max_ushort) {
+      blue_val = (float)max_ushort;
+    }
+
+    RED[n] = (unsigned short)red_val;
+    GREEN[n] = (unsigned short)green_val;
+    BLUE[n] = (unsigned short)blue_val;
+    GRAY[n] = (unsigned short)n;
   }
 }
 

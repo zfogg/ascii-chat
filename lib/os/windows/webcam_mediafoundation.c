@@ -9,7 +9,7 @@
 #define COBJMACROS
 #include "os/webcam.h"
 #include "common.h"
-#include "util/time_format.h"
+#include "util/time.h"
 #include <mfapi.h>
 #include <mfidl.h>
 #include <mfreadwrite.h>

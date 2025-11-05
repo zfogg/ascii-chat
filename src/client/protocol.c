@@ -94,7 +94,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
                                  size_t plaintext_size, size_t *plaintext_len);
 
 #include "crypto.h"
-#include "util/time_format.h"
+#include "util/time.h"
 
 #include <stdatomic.h>
 #include <string.h>

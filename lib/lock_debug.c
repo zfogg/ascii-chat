@@ -5,13 +5,17 @@
  * @date September 2025
  */
 
+// Header must be included even in release builds to get inline no-op stubs
 #include "lock_debug.h"
+
+#ifndef NDEBUG
+// Only compile lock_debug implementation in debug builds
+// In release builds, lock_debug.h provides inline no-op stubs
+
 #include "common.h"
 #include "platform/abstraction.h"
 #include "util/fnv1a.h"
-#include "util/time_format.h"
-
-
+#include "util/time.h"
 #include "util/uthash.h"
 #include <stdlib.h>
 #include <time.h>
@@ -928,7 +932,8 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
           char backtrace_str[1024];
           int offset = 0;
           for (int i = 0; i < record->backtrace_size && i < 10; i++) { // Limit to first 10 frames
-            offset += snprintf(backtrace_str + offset, sizeof(backtrace_str) - offset, "    #%d: %s\n", i, record->backtrace_symbols[i]);
+            offset += snprintf(backtrace_str + offset, sizeof(backtrace_str) - offset, "    #%d: %s\n", i,
+                               record->backtrace_symbols[i]);
           }
           log_warn("Backtrace from lock acquisition:\n%s", backtrace_str);
         } else {
@@ -1384,3 +1389,5 @@ void lock_debug_print_state(void) {
   // Print all at once
   log_info("%s", log_buffer);
 }
+
+#endif // NDEBUG - Release builds: no implementation, header provides inline stubs
