@@ -10,6 +10,7 @@
 #include "util/string.h"
 
 #include <ctype.h>
+#include <errno.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>

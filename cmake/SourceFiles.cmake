@@ -67,7 +67,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
         deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
         PROPERTIES
-        COMPILE_FLAGS "-Wno-unterminated-string-initialization -Wno-sizeof-array-div"
+        COMPILE_FLAGS "-Wno-sizeof-array-div"
     )
 endif()
 

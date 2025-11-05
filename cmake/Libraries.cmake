@@ -35,6 +35,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         )
     else()
         add_library(${MODULE_NAME} STATIC ${MODULE_SRCS})
+        # Enable Position Independent Code for shared library builds
+        # Required for thread-local storage (TLS) relocations in shared objects
+        set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
     # Version dependency
@@ -169,7 +172,7 @@ target_include_directories(ascii-chat-crypto PRIVATE
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     set_source_files_properties(
         ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-        PROPERTIES COMPILE_OPTIONS "-Wno-unterminated-string-initialization;-Wno-sizeof-array-div"
+        PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div"
     )
 endif()
 
