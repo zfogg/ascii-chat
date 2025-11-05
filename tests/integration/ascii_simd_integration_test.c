@@ -11,7 +11,6 @@
 #include "image2ascii/simd/common.h"
 #include "image2ascii/image.h"
 #include "palette.h"
-#include "hashtable.h"
 
 void setup_simd_quiet_logging(void);
 void restore_simd_logging(void);
@@ -20,12 +19,10 @@ TestSuite(ascii_simd_integration, .init = setup_simd_quiet_logging, .fini = rest
 
 void setup_simd_quiet_logging(void) {
   log_set_level(LOG_FATAL);
-  hashtable_set_stats_enabled(false); // Disable hashtable stats for this test
 }
 
 void restore_simd_logging(void) {
   log_set_level(LOG_DEBUG);
-  hashtable_set_stats_enabled(true); // Re-enable hashtable stats
 }
 
 // Helper function to generate test images that guarantee full palette coverage

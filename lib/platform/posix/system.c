@@ -857,9 +857,6 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
   return SET_ERRNO(ERROR_CRYPTO, "No CA certificate bundle found in standard locations");
 }
 
-// Include hashtable.h for binary PATH detection cache
-#include "../../hashtable.h"
-
 // Include cross-platform system utilities (binary PATH detection)
 #include "../system.c"
 
