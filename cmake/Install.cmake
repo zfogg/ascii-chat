@@ -28,16 +28,38 @@ install(PROGRAMS "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
     COMPONENT Runtime
 )
 
-# Install shared library (if built with musl in Release mode)
+# Install shared library (if built in Release mode)
 # The shared library is built with the 'shared-lib' target
 # It's an optional component for developers who want to use libasciichat
-if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
-    install(TARGETS ascii-chat-shared
+# Note: We create a dummy export target so CMake doesn't complain about missing EXPORT
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Create a dummy interface target to hold the export
+    # This allows install(EXPORT ...) to work even if ascii-chat-shared wasn't built
+    add_library(ascii-chat-dummy INTERFACE)
+    install(TARGETS ascii-chat-dummy
         EXPORT ascii-chat-targets
-        LIBRARY DESTINATION lib
-        COMPONENT Development
     )
-    message(STATUS "Configured shared library installation for CPack (libasciichat.so)")
+
+    if(WIN32)
+        # Windows: DLL and import library both go to lib/ (development-only, runtime is statically linked)
+        install(FILES
+            "${CMAKE_BINARY_DIR}/bin/asciichat.dll"
+            "${CMAKE_BINARY_DIR}/lib/libasciichat.a"
+            DESTINATION lib
+            COMPONENT Development
+            OPTIONAL
+        )
+        message(STATUS "Configured shared library installation for CPack (asciichat.dll in lib/)")
+    else()
+        # Unix/macOS: Shared library goes to lib/
+        install(FILES
+            "${CMAKE_BINARY_DIR}/lib/libasciichat.so"
+            DESTINATION lib
+            COMPONENT Development
+            OPTIONAL
+        )
+        message(STATUS "Configured shared library installation for CPack (libasciichat.so)")
+    endif()
 endif()
 
 # Install public API headers
@@ -205,31 +227,16 @@ endif()
 if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
     install(FILES README.md
         DESTINATION .
-        COMPONENT Documentation
+        COMPONENT Runtime
         OPTIONAL
     )
 endif()
 
 # Install license (if exists)
-if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
-    install(FILES LICENSE
-        DESTINATION .
-        COMPONENT Documentation
-        OPTIONAL
-    )
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
+if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
     install(FILES LICENSE.txt
         DESTINATION .
-        COMPONENT Documentation
-        OPTIONAL
-    )
-endif()
-
-# Install CHANGELOG if it exists
-if(EXISTS "${CMAKE_SOURCE_DIR}/CHANGELOG.md")
-    install(FILES CHANGELOG.md
-        DESTINATION .
-        COMPONENT Documentation
+        COMPONENT Runtime
         OPTIONAL
     )
 endif()
@@ -340,8 +347,6 @@ if(USE_CPACK)
         # Set license file BEFORE include(CPack) to prevent CPack from using default
         if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
             set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt" CACHE FILEPATH "License file for installers" FORCE)
-        elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
-            set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE" CACHE FILEPATH "License file for installers" FORCE)
         endif()
 
         # Use custom STGZ header with FHS-compliant defaults (/usr/local, no subdirectory)
@@ -362,7 +367,8 @@ if(USE_CPACK)
             # Since all install() commands use doc/ (not share/doc/), no share/ directory should be created
             # Note: CPACK_COMPONENTS_ALL is set later in the component configuration section,
             # but we set it here early to ensure CPack respects it
-            set(CPACK_COMPONENTS_ALL Runtime Development Documentation Manpages CACHE STRING "CPack components to install" FORCE)
+            # Manpages component is Unix-only, so exclude it on Windows
+            set(CPACK_COMPONENTS_ALL Runtime Development Documentation CACHE STRING "CPack components to install" FORCE)
             # Explicitly set packaging install prefix to empty to prevent CPack from creating share/ structure
             # CPack will use CMAKE_INSTALL_PREFIX directly without adding share/ subdirectories
             set(CPACK_PACKAGING_INSTALL_PREFIX "" CACHE STRING "Installation prefix for CPack (empty = use CMAKE_INSTALL_PREFIX directly)" FORCE)
@@ -428,19 +434,21 @@ if(USE_CPACK)
     # Note: Using "RuntimeGroup" and "DevelopmentGroup" as internal group IDs
     # to avoid NSIS naming conflicts with component names "Runtime" and "Development"
     # Component Groups (legacy API - also set via cpack_add_component_group below)
-    set(CPACK_COMPONENT_RUNTIME_GROUP "RuntimeGroup")
-    set(CPACK_COMPONENT_DEVELOPMENT_GROUP "DevelopmentGroup")
-    set(CPACK_COMPONENT_DOCUMENTATION_GROUP "RuntimeGroup")
-    set(CPACK_COMPONENT_MANPAGES_GROUP "DevelopmentGroup")
+    set(CPACK_COMPONENT_RUNTIME_GROUP "RUNTIMEGROUP")
+    set(CPACK_COMPONENT_DEVELOPMENT_GROUP "DEVELOPMENTGROUP")
+    set(CPACK_COMPONENT_DOCUMENTATION_GROUP "RUNTIMEGROUP")
+    if(NOT WIN32)
+        set(CPACK_COMPONENT_MANPAGES_GROUP "MANPAGESGROUP")
+    endif()
 
     # Runtime Group
     set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_DISPLAY_NAME "Runtime")
-    set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_DESCRIPTION "Components needed to run ascii-chat")
+    set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_DESCRIPTION "The ascii-chat executable")
     set(CPACK_COMPONENT_GROUP_RUNTIMEGROUP_EXPANDED ON)
 
     # Development Group
     set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DISPLAY_NAME "Development")
-    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DESCRIPTION "All of the tools you'll need to develop software with ascii-chat")
+    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DESCRIPTION "All of the tools you'll need to develop software with libasciichat")
     set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_EXPANDED OFF)
 
     # Component descriptions
@@ -449,16 +457,19 @@ if(USE_CPACK)
     set(CPACK_COMPONENT_RUNTIME_REQUIRED ON)
 
     set(CPACK_COMPONENT_DEVELOPMENT_DISPLAY_NAME "Libraries and Headers")
-    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "Header files and libraries for developing with ascii-chat")
+    set(CPACK_COMPONENT_DEVELOPMENT_DESCRIPTION "ascii-chat's shared library and C header Files for development")
     set(CPACK_COMPONENT_DEVELOPMENT_DISABLED OFF)
 
-    set(CPACK_COMPONENT_DOCUMENTATION_DISPLAY_NAME "Documentation")
-    set(CPACK_COMPONENT_DOCUMENTATION_DESCRIPTION "HTML documentation generated with Doxygen")
+    set(CPACK_COMPONENT_DOCUMENTATION_DISPLAY_NAME "Developer Documentation")
+    set(CPACK_COMPONENT_DOCUMENTATION_DESCRIPTION "Developer HTML documentation generated with Doxygen")
     set(CPACK_COMPONENT_DOCUMENTATION_DISABLED OFF)
 
-    set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Manual Pages")
-    set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix-style manual pages (man pages)")
-    set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
+    # Manpages component - only on Unix platforms
+    if(NOT WIN32)
+        set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Manual Pages")
+        set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix-style manual pages (man pages) generated with Doxygen")
+        set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
+    endif()
 
     # =========================================================================
     # Platform-Specific Package Generators
@@ -582,8 +593,6 @@ if(USE_CPACK)
         # Windows: ZIP (always available), NSIS/EXE (if makensis found)
         set(CPACK_GENERATOR "ZIP")
 
-        set(CPACK_COMPONENT_MANPAGES_DISABLED TRUE)
-
         # Check for NSIS (Nullsoft Scriptable Install System)
         find_program(NSIS_EXECUTABLE makensis)
         if(NOT NSIS_EXECUTABLE)
@@ -632,11 +641,27 @@ if(USE_CPACK)
             set(CPACK_NSIS_URL_INFO_ABOUT "${CPACK_PACKAGE_HOMEPAGE_URL}")
             set(CPACK_NSIS_CONTACT "${CPACK_PACKAGE_CONTACT}")
 
-            # Add installation directory to PATH
+            # Add bin directory to PATH using custom NSIS code
+            # CPACK_NSIS_MODIFY_PATH only adds $INSTDIR, but we need $INSTDIR\bin
             # This ensures 'ascii-chat' can be run from any directory
             # The installer will add to system PATH if running with admin privileges,
             # or user PATH if running without admin (per-user installation)
-            set(CPACK_NSIS_MODIFY_PATH ON)
+            set(CPACK_NSIS_MODIFY_PATH ON)  # We'll also handle PATH manually
+
+            # Custom NSIS code to add bin directory to PATH
+            set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+                ; Add bin directory to PATH
+                EnVar::SetHKCU
+                EnVar::AddValue \\\"PATH\\\" \\\"$INSTDIR\\\\bin\\\"
+                Pop \\\$0
+            ")
+
+            set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+                ; Remove bin directory from PATH
+                EnVar::SetHKCU
+                EnVar::DeleteValue \\\"PATH\\\" \\\"$INSTDIR\\\\bin\\\"
+                Pop \\\$0
+            ")
 
             # Enable uninstall before install (clean upgrade)
             set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
@@ -655,15 +680,15 @@ if(USE_CPACK)
             # NSIS CreateShortCut syntax: CreateShortCut "link.lnk" "target.exe" "parameters" "icon.file" icon_index start_options
             # SW_SHOWMINIMIZED (7) shows the console window minimized by default
             set(CPACK_NSIS_CREATE_ICONS_EXTRA "
-                CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"client\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" 0 SW_SHOWMINIMIZED
-                CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"server\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" 0 SW_SHOWMINIMIZED
-            ")
+  CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"client\\\"
+  CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"server\\\"
+")
 
             # Remove custom shortcuts on uninstall
             set(CPACK_NSIS_DELETE_ICONS_EXTRA "
-                Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\"
-                Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\"
-            ")
+  Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\"
+  Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\"
+")
 
             # Add documentation link to Start Menu
             # CPACK_NSIS_MENU_LINKS uses pairs of (source_file, display_name)
@@ -764,35 +789,35 @@ if(USE_CPACK)
     cpack_add_component(Runtime
         DISPLAY_NAME "Application"
         DESCRIPTION "ascii-chat executable - the main application binary"
-        REQUIRED
         GROUP RuntimeGroup
-        INSTALL_TYPES Full User Developer
-    )
-
-    cpack_add_component(Documentation
-        DISPLAY_NAME "Documentation"
-        DESCRIPTION "User documentation including README, LICENSE, CHANGELOG, and HTML API docs"
-        GROUP RuntimeGroup
-        DEPENDS Runtime
-        INSTALL_TYPES Full User Developer
+        INSTALL_TYPES Full User
     )
 
     # -------------------------------------------------------------------------
     # Development Components
     # -------------------------------------------------------------------------
-    cpack_add_component(Manpages
-        DISPLAY_NAME "Man Pages"
-        DESCRIPTION "Unix manual pages (man pages) for API documentation and library functions"
-        GROUP DevelopmentGroup
-        DEPENDS Runtime
-        INSTALL_TYPES Full Developer
-    )
+    # Manpages component - only on Unix platforms (not meaningful on Windows)
+    if(NOT WIN32)
+        cpack_add_component(Manpages
+            DISPLAY_NAME "Man Pages"
+            DESCRIPTION "Unix manual pages (man pages) for API documentation and library functions"
+            GROUP DevelopmentGroup
+            DEPENDS Runtime
+            INSTALL_TYPES Full Developer
+        )
+    endif()
 
     cpack_add_component(Development
         DISPLAY_NAME "Headers and Libraries"
-        DESCRIPTION "C header files and static libraries for building extensions and tools with ascii-chat"
+        DESCRIPTION "C header files and libraries for writing code that uses libasciichat"
         GROUP DevelopmentGroup
-        DEPENDS Runtime
+        INSTALL_TYPES Full Developer
+    )
+
+    cpack_add_component(Documentation
+        DISPLAY_NAME "Documentation"
+        DESCRIPTION "Developer documentation including README, LICENSE, HTML docs"
+        GROUP DevelopmentGroup
         INSTALL_TYPES Full Developer
     )
 
