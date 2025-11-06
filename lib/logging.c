@@ -272,7 +272,7 @@ void log_init(const char *filename, log_level_t level) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
     int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
     g_log.file = fd;
-    if (g_log.file < 0) {  /* Check for error: fd < 0, not fd == 0 (STDIN is valid!) */
+    if (g_log.file < 0) { /* Check for error: fd < 0, not fd == 0 (STDIN is valid!) */
       if (preserve_terminal_output) {
         safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
       }

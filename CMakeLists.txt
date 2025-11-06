@@ -153,7 +153,7 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildTiming.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)

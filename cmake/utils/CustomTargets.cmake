@@ -193,27 +193,25 @@ add_custom_target(clean_all
 )
 
 # =============================================================================
-# Shared Library Build Target (Release builds)
+# Shared Library Build Target (All build types)
 # =============================================================================
 # Build shared library (libasciichat.so/.dylib/asciichat.dll)
-# Usage: cmake --build build_release --target shared-lib
+# Usage: cmake --build build --target shared-lib
 #
-# Note: Only available for Release builds (Debug/Dev builds already include shared library)
-# The ascii-chat-shared target is EXCLUDE_FROM_ALL in Release mode, so this provides
-# an easy way to build it explicitly.
+# Note:
+# - Debug/Dev/Coverage: shared library is built by default (part of ascii-chat-static)
+# - Release: shared library is EXCLUDE_FROM_ALL, use this target to build it explicitly
 # =============================================================================
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    if(WIN32)
-        set(SHARED_LIB_OUTPUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/asciichat.dll")
-    else()
-        set(SHARED_LIB_OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    endif()
-
-    # Wrapper target that builds shared library
-    add_custom_target(shared-lib
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-        DEPENDS ascii-chat-shared build-timer-start
-        VERBATIM
-    )
+if(WIN32)
+    set(SHARED_LIB_OUTPUT "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/asciichat.dll")
+else()
+    set(SHARED_LIB_OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
 endif()
+
+# Wrapper target that builds shared library
+add_custom_target(shared-lib
+    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+    DEPENDS ascii-chat-shared build-timer-start
+    VERBATIM
+)
 

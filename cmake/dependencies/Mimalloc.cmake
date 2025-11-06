@@ -32,7 +32,14 @@ if(USE_MIMALLOC)
         find_path(MIMALLOC_INCLUDE_DIR NAMES mimalloc.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
 
         if(MIMALLOC_LIBRARY_RELEASE OR MIMALLOC_LIBRARY_DEBUG)
-            message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg: ${BoldCyan}${MIMALLOC_LIBRARY_RELEASE}${ColorReset}")
+            # Try to get version from vcpkg (version is in directory path)
+            string(REGEX MATCH "mimalloc_([0-9]+\\.[0-9]+\\.[0-9]+)" MIMALLOC_VERSION_MATCH "${MIMALLOC_LIBRARY_RELEASE}")
+            if(CMAKE_MATCH_1)
+                set(MIMALLOC_VERSION "${CMAKE_MATCH_1}")
+                message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${MIMALLOC_LIBRARY_RELEASE}${ColorReset}")
+            else()
+                message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} from vcpkg: ${BoldCyan}${MIMALLOC_LIBRARY_RELEASE}${ColorReset}")
+            endif()
 
             # Create imported target
             add_library(mimalloc-static STATIC IMPORTED)
@@ -92,7 +99,9 @@ if(USE_MIMALLOC)
         endif()
 
         if(EXISTS "${_MIMALLOC_LIB_PATH}")
-            message(STATUS "Using cached ${BoldGreen}mimalloc${ColorReset} library: ${BoldCyan}${_MIMALLOC_LIB_PATH}${ColorReset}")
+            # Extract version from FetchContent declaration above (v2.1.7)
+            set(MIMALLOC_VERSION "2.1.7")
+            message(STATUS "Using cached ${BoldGreen}mimalloc${ColorReset}, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${_MIMALLOC_LIB_PATH}${ColorReset}")
 
             # Create an imported target for the cached library
             add_library(mimalloc-static STATIC IMPORTED)
@@ -100,6 +109,22 @@ if(USE_MIMALLOC)
                 IMPORTED_LOCATION "${_MIMALLOC_LIB_PATH}"
                 INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
             )
+
+            # Also create mimalloc-shared target for shared library builds
+            # Determine the shared library file path
+            get_filename_component(_MIMALLOC_LIB_DIR "${_MIMALLOC_LIB_PATH}" DIRECTORY)
+            get_filename_component(_MIMALLOC_LIB_NAME "${_MIMALLOC_LIB_PATH}" NAME_WE)
+            # Replace "mimalloc" with "mimalloc-shared" in the filename
+            string(REPLACE "libmimalloc" "libmimalloc-shared" _MIMALLOC_SHARED_NAME "${_MIMALLOC_LIB_NAME}")
+            set(_MIMALLOC_SHARED_LIB_PATH "${_MIMALLOC_LIB_DIR}/${_MIMALLOC_SHARED_NAME}.a")
+
+            if(EXISTS "${_MIMALLOC_SHARED_LIB_PATH}")
+                add_library(mimalloc-shared STATIC IMPORTED)
+                set_target_properties(mimalloc-shared PROPERTIES
+                    IMPORTED_LOCATION "${_MIMALLOC_SHARED_LIB_PATH}"
+                    INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
+                )
+            endif()
 
             # Skip FetchContent download/build
             set(_MIMALLOC_CACHED TRUE)
@@ -260,16 +285,17 @@ if(USE_MIMALLOC)
         endif()
 
         # Update status messages based on ASAN support
+        set(MIMALLOC_VERSION "2.1.7")
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             message(STATUS "Created two ${BoldGreen}mimalloc${ColorReset} targets with ${BoldCyan}AddressSanitizer${ColorReset} support:")
             message(STATUS "  - ${BoldCyan}mimalloc-static${ColorReset} → ${BoldBlue}${_MIMALLOC_OUTPUT_NAME}.a${ColorReset}: for executables (uses -fPIE from global flags)")
             message(STATUS "  - ${BoldCyan}mimalloc-shared${ColorReset} → ${BoldBlue}${_MIMALLOC_SHARED_OUTPUT_NAME}.a${ColorReset}: for shared libraries (uses -fPIC and global-dynamic TLS)")
-            message(STATUS "Built ${BoldGreen}mimalloc${ColorReset} from source (v2.1.7) with ${BoldCyan}ASAN${ColorReset} tracking enabled")
+            message(STATUS "Built ${BoldGreen}mimalloc${ColorReset} from source, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}, with ${BoldCyan}ASAN${ColorReset} tracking enabled")
         else()
             message(STATUS "Created two ${BoldGreen}mimalloc${ColorReset} targets:")
             message(STATUS "  - ${BoldCyan}mimalloc-static${ColorReset}: for executables (uses -fPIE from global flags)")
             message(STATUS "  - ${BoldCyan}mimalloc-shared${ColorReset}: for shared libraries (uses -fPIC and global-dynamic TLS)")
-            message(STATUS "Built ${BoldGreen}mimalloc${ColorReset} from source (v2.1.7) with two targets: mimalloc-static and mimalloc-shared")
+            message(STATUS "Built ${BoldGreen}mimalloc${ColorReset} from source, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}")
         endif()
 
         # Only set these for FetchContent builds (vcpkg already set MIMALLOC_LIBRARIES)

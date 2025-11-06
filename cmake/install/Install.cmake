@@ -469,6 +469,46 @@ if(USE_CPACK)
     # Output directory
     set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}/packages")
 
+    # =========================================================================
+    # Binary Stripping Configuration
+    # =========================================================================
+    # Strip binaries and libraries to reduce package size
+    # This removes debugging symbols and other unnecessary data
+    # CPACK_STRIP_FILES is a list of files (relative to install prefix) that CPack will strip
+    # When this list is populated, CPack automatically strips the files during packaging
+
+    # On Unix platforms, explicitly list files to strip
+    # CPack uses the 'strip' command (or CMAKE_STRIP if set)
+    if(UNIX AND NOT APPLE)
+        # List of files to strip (relative to install prefix)
+        set(CPACK_STRIP_FILES
+            "bin/ascii-chat"                    # Main executable
+            "lib/libasciichat.so"               # Shared library (Linux)
+        )
+        message(STATUS "${Yellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
+    elseif(APPLE)
+        set(CPACK_STRIP_FILES
+            "bin/ascii-chat"                    # Main executable
+            "lib/libasciichat.dylib"            # Shared library (macOS)
+        )
+        message(STATUS "${Yellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
+    elseif(WIN32)
+        # Windows: Use llvm-strip if available (for Clang builds)
+        # Note: MSVC uses different tools, but this project uses Clang
+        find_program(LLVM_STRIP llvm-strip)
+        if(LLVM_STRIP)
+            set(CMAKE_STRIP "${LLVM_STRIP}" CACHE FILEPATH "Strip tool for CPack" FORCE)
+            set(CPACK_STRIP_FILES
+                "bin/ascii-chat.exe"            # Main executable
+                "bin/asciichat.dll"             # Shared library (if dynamic build)
+                "lib/asciichat.dll"             # Shared library (development copy)
+            )
+            message(STATUS "${BoldYellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} using ${BoldBlue}llvm-strip${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
+        else()
+            message(STATUS "${BoldRed}CPack:${ColorReset} Binary stripping ${Yellow}disabled${ColorReset} ${BoldRed}(llvm-strip not found)${ColorReset}")
+        endif()
+    endif()
+
     # Installation directory (without version for NSIS)
     # Set again after include(CPack) to ensure it overrides CPack's default
     # CPack's default is "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}" which we don't want

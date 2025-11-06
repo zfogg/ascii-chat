@@ -74,7 +74,7 @@ static struct log_context_t {
   bool terminal_output_enabled;            /* Control stderr output to terminal */
   bool level_manually_set;                 /* Track if level was set manually */
 } g_log = {
-    .file = 2,  /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
+    .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .level = DEFAULT_LOG_LEVEL,
     .initialized = false,
     .filename = {0},

@@ -43,7 +43,19 @@ if(BEARSSL_SYSTEM_LIB AND BEARSSL_SYSTEM_INC)
     set(BEARSSL_LIBRARIES bearssl_static)
     set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SYSTEM_INC}")
     set(BEARSSL_FOUND TRUE)
-    message(STATUS "Using system ${BoldGreen}BearSSL${ColorReset} library: ${BEARSSL_SYSTEM_LIB}")
+
+    # Try to get version from system package manager
+    execute_process(
+        COMMAND pkg-config --modversion bearssl
+        OUTPUT_VARIABLE BEARSSL_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(BEARSSL_VERSION)
+        message(STATUS "Using system ${BoldGreen}BearSSL${ColorReset}, version ${BoldGreen}${BEARSSL_VERSION}${ColorReset}: ${BEARSSL_SYSTEM_LIB}")
+    else()
+        message(STATUS "Using system ${BoldGreen}BearSSL${ColorReset} library: ${BEARSSL_SYSTEM_LIB}")
+    endif()
 
 # Fall back to building from submodule
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
@@ -169,9 +181,21 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
     set(BEARSSL_LIBRARIES bearssl_static)
     set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
     set(BEARSSL_FOUND TRUE)
-    message(STATUS "${BoldGreen}BearSSL${ColorReset} configured: ${BEARSSL_LIB}")
+
+    # Get version from git submodule
+    execute_process(
+        COMMAND git -C "${BEARSSL_SOURCE_DIR}" describe --tags --always
+        OUTPUT_VARIABLE BEARSSL_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(BEARSSL_VERSION)
+        message(STATUS "${BoldGreen}BearSSL${ColorReset} configured, version ${BoldGreen}${BEARSSL_VERSION}${ColorReset}: ${BEARSSL_LIB}")
+    else()
+        message(STATUS "${BoldGreen}BearSSL${ColorReset} configured: ${BEARSSL_LIB}")
+    endif()
 else()
-    message(WARNING "${BoldRed}BearSSL${ColorReset} submodule not found - GitHub/GitLab key fetching will be disabled")
+    message(FATAL_ERROR "${BoldRed}BearSSL submodule not found${ColorReset}")
     set(BEARSSL_FOUND FALSE)
     set(BEARSSL_LIBRARIES "")
     set(BEARSSL_INCLUDE_DIRS "")

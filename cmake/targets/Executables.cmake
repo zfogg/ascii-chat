@@ -57,9 +57,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         endif()
-        if(USE_MIMALLOC)
-            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
-        endif()
+        # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
     else()
         # Unix: Also need explicit dependencies when linking against shared library
         target_link_libraries(ascii-chat
@@ -68,9 +66,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         endif()
-        if(USE_MIMALLOC)
-            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
-        endif()
+        # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
     endif()
 else()
     add_dependencies(ascii-chat ascii-chat-static-build generate_version)
@@ -83,15 +79,24 @@ else()
             _WIN32_WINNT=0x0A00  # Windows 10
         )
     endif()
+    # Link mimalloc for static library builds (it's not in the shared library)
+    if(USE_MIMALLOC)
+        target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+    endif()
 endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
 target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
 
+# Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
+if(USE_MIMALLOC)
+    target_include_directories(ascii-chat PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+endif()
+
 # Add build timing for ascii-chat executable
 # Record start time before linking (only when actually building)
 add_custom_command(TARGET ascii-chat PRE_LINK
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMENT ""
     VERBATIM
 )
@@ -99,7 +104,7 @@ add_custom_command(TARGET ascii-chat PRE_LINK
 # Show timing and success message after build completes
 # This runs whenever ascii-chat is actually rebuilt (POST_BUILD)
 add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMENT ""
     VERBATIM
 )
@@ -107,7 +112,7 @@ add_custom_command(TARGET ascii-chat POST_BUILD
 # Custom target wrapper for ALL builds (when no explicit --target is used)
 # This shows "up to date" message when ascii-chat doesn't need rebuilding
 add_custom_target(show-ascii-chat-success ALL
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMAND_ECHO NONE
     DEPENDS ascii-chat
     VERBATIM
@@ -118,13 +123,6 @@ if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
     set_target_properties(ascii-chat PROPERTIES
         LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_SOURCE_DIR}/Info.plist"
     )
-endif()
-
-# Link mimalloc to the executable (needed for Release builds)
-if(USE_MIMALLOC)
-    target_link_libraries(ascii-chat mimalloc-static)
-    # Add mimalloc include directory for executable sources (they include common.h which includes mimalloc.h)
-    target_include_directories(ascii-chat PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
 endif()
 
 # Add musl dependency if building with musl
@@ -170,8 +168,8 @@ endif()
 #endif()
 
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
-# Only on Unix/Linux/macOS - Windows doesn't support -no-pie flag
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
+# Only on Linux - Windows and macOS don't support -no-pie flag
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
 endif()
 
@@ -208,7 +206,7 @@ endif()
 # Show total build time after the final target is built
 # ascii-chat is always built last, so attach the timer there
 add_custom_command(TARGET ascii-chat POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMENT ""
     VERBATIM
 )
@@ -234,7 +232,7 @@ if(NOT BUILDING_OBJECT_LIBS)
 endif()
 
 add_custom_target(build-all
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMAND_ECHO NONE
     DEPENDS ${BUILD_ALL_DEPS}
     COMMENT ""
