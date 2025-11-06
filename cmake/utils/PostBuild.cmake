@@ -155,16 +155,23 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             else()
                 # macOS: strip symbols
                 add_custom_command(TARGET ascii-chat POST_BUILD
-                    COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                    COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols from ascii-chat"
                 )
             endif()
         endif()
     elseif(STRIP_EXECUTABLE)
         # Fallback: just strip symbols if objcopy not available
-        add_custom_command(TARGET ascii-chat POST_BUILD
-            COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
-            COMMENT "Stripping symbols from ascii-chat"
-        )
+        if (APPLE)
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
+                COMMENT "Stripping symbols from ascii-chat"
+            )
+        else()
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>
+                COMMENT "Stripping symbols from ascii-chat"
+            )
+        endif()
     endif()
 endif()

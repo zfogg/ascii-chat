@@ -136,6 +136,14 @@ function(configure_debug_build_flags BUILD_TYPE)
     # Stack protection in debug builds (helps catch buffer overflows early)
     add_compile_options(-fstack-protector-strong)
 
+    # Use LLD linker for faster link times in Debug/Dev builds
+    # LLD is 2-3x faster than default linker (ld64 on macOS, GNU ld on Linux)
+    # Only for Debug/Dev - Release uses default linker for maximum stability
+    if(NOT WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
+        add_link_options(-fuse-ld=lld)
+        message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds")
+    endif()
+
     # Windows-specific debug info formats
     if(WIN32)
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")

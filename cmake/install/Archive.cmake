@@ -24,12 +24,16 @@
 if(UNIX AND NOT APPLE)
     # Linux: TGZ is always available, add ZIP if zip command exists
     list(APPEND CPACK_GENERATOR "TGZ")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
     message(STATUS "${Yellow}CPack:${ColorReset} TGZ generator enabled (always available)")
 
     # Check for zip command
     find_program(ZIP_EXECUTABLE zip)
     if(ZIP_EXECUTABLE)
         list(APPEND CPACK_GENERATOR "ZIP")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
         message(STATUS "${Yellow}CPack:${ColorReset} ZIP generator enabled (${BoldBlue}zip${ColorReset} found)")
     else()
         message(STATUS "${Yellow}CPack:${ColorReset} ZIP generator disabled (${BoldBlue}zip${ColorReset} not found)")
@@ -38,6 +42,8 @@ if(UNIX AND NOT APPLE)
 elseif(APPLE)
     # macOS: TGZ is always available
     list(APPEND CPACK_GENERATOR "TGZ")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
     message(STATUS "${Yellow}CPack:${ColorReset} TGZ generator enabled (always available)")
 
 elseif(WIN32)
@@ -45,12 +51,16 @@ elseif(WIN32)
     # Only add if not already in the list (it may have been set as default if WiX not found)
     if(NOT "ZIP" IN_LIST CPACK_GENERATOR)
         list(APPEND CPACK_GENERATOR "ZIP")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
         message(STATUS "${Yellow}CPack:${ColorReset} ZIP generator enabled (always available)")
     endif()
 
 else()
     # Unknown platform: fallback to TGZ
     list(APPEND CPACK_GENERATOR "TGZ")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
     message(STATUS "${Yellow}CPack:${ColorReset} Using fallback generator ${Magenta}TGZ${ColorReset} for unknown platform")
 endif()
 

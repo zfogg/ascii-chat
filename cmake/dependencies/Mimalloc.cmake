@@ -74,7 +74,7 @@ if(USE_MIMALLOC)
     # Fall back to FetchContent if not using vcpkg or vcpkg didn't have mimalloc
     if(NOT _MIMALLOC_FROM_VCPKG)
         set(MIMALLOC_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src")
-        set(MIMALLOC_BUILD_DIR "${DEPS_CACHE_DIR}/${CMAKE_BUILD_TYPE}/mimalloc")
+        set(MIMALLOC_BUILD_DIR "${DEPS_CACHE_DIR}/mimalloc")
 
         # Check if mimalloc library already exists in cache
         # For Debug builds with ASAN, look for ASAN-enabled library first

@@ -147,6 +147,7 @@ function(configure_llvm_pre_project)
     # Set the compiler (all platforms)
     set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
     set(CMAKE_CXX_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang++" CACHE FILEPATH "CXX compiler" FORCE)
+    set(CMAKE_OBJC_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "Objective-C compiler" FORCE)
 
 
     if(HOMEBREW_LLVM_PREFIX)
@@ -266,9 +267,21 @@ function(configure_llvm_post_project)
 
             # Add the full LDFLAGS as recommended by brew info llvm
             # This includes libc++, libunwind which are needed for full LLVM toolchain
-            # Use -lunwind explicitly to link against Homebrew LLVM's libunwind
-            set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib/unwind -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind")
-            set(HOMEBREW_LLVM_LINK_FLAGS "${HOMEBREW_LLVM_LINK_DIRS} -lunwind")
+            # For Release builds: Link libunwind statically
+            # For Debug/Dev builds: Link dynamically for faster iteration
+            if(CMAKE_BUILD_TYPE STREQUAL "Release")
+                # Use absolute path to static libunwind.a for Release builds
+                if(EXISTS "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
+                    set(HOMEBREW_LLVM_LINK_FLAGS "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}static libunwind${ColorReset}: ${HOMEBREW_LLVM_LINK_FLAGS}")
+                else()
+                    message(FATAL_ERROR "Could not find static ${BoldRed}libunwind.a${ColorReset} in ${COMPILER_PREFIX}/lib/unwind/")
+                endif()
+            else()
+                # Debug/Dev builds: Use dynamic linking for faster development
+                set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib/unwind -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind")
+                set(HOMEBREW_LLVM_LINK_FLAGS "${HOMEBREW_LLVM_LINK_DIRS} -lunwind")
+            endif()
 
             # Export to cache for later use
             set(HOMEBREW_LLVM_LIB_DIR "${COMPILER_PREFIX}/lib" CACHE INTERNAL "Homebrew LLVM library directory")

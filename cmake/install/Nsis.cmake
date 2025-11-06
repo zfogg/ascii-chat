@@ -56,6 +56,8 @@ endif()
 
 # Add NSIS to generator list
 list(APPEND CPACK_GENERATOR "NSIS")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
 message(STATUS "${Yellow}CPack:${ColorReset} NSIS generator enabled (${BoldBlue}makensis${ColorReset} found at ${BoldBlue}${NSIS_EXECUTABLE}${ColorReset})")
 
 # =============================================================================

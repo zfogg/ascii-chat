@@ -26,6 +26,8 @@ endif()
 
 # Add RPM to generator list
 list(APPEND CPACK_GENERATOR "RPM")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
 message(STATUS "${Yellow}CPack:${ColorReset} RPM generator enabled (${BoldBlue}rpmbuild${ColorReset} found)")
 
 # =============================================================================

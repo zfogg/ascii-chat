@@ -49,6 +49,7 @@ endif()
 add_library(ascii-chat-dummy INTERFACE)
 install(TARGETS ascii-chat-dummy
     EXPORT ascii-chat-targets
+    COMPONENT Development
 )
 
 if(WIN32)
@@ -381,6 +382,50 @@ if(USE_CPACK)
             set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt" CACHE FILEPATH "License file for installers" FORCE)
         endif()
 
+        # macOS: Create custom Welcome and ReadMe files for productbuild installer
+        if(APPLE)
+            file(WRITE "${CMAKE_BINARY_DIR}/ProductbuildWelcome.txt"
+"Welcome to ascii-chat Installer
+
+This installer will guide you through installing ascii-chat - the first command line video chat program.
+
+ascii-chat converts webcam video into ASCII art in real-time, enabling video chat right in your terminal.")
+
+            file(WRITE "${CMAKE_BINARY_DIR}/ProductbuildReadMe.txt"
+"ascii-chat - 💻📸 video chat in your terminal 🔡💬
+https://github.com/zfogg/ascii-chat
+
+Probably the first command line video chat program. ascii-chat converts webcam video into ASCII art in real-time, enabling video chat right in your terminal - whether you're using rxvt-unicode in OpenBox, iTerm on macOS, or even a remote SSH session via PuTTY.
+
+FEATURES
+========
+• Multi-party video chat with automatic grid layout (like Zoom/Google Hangouts)
+• Real-time video to ASCII conversion with color support
+• Audio streaming with custom mixer (compression, ducking, noise gating, filtering)
+• End-to-end encryption with SSH key authentication
+• Cross-platform: Linux, macOS, Windows
+• Works in any terminal that supports ANSI escape sequences
+
+WHAT'S INCLUDED
+===============
+This package includes:
+• ascii-chat: The main executable for running video chat sessions
+• libasciichat: Shared library (.dylib) and static library (.a) for developers
+• C header files for integrating ascii-chat into your own projects
+• CMake and pkg-config files for easy build system integration
+• Developer documentation (HTML and man pages)
+
+USAGE
+=====
+After installation, run:
+  ascii-chat server     # Start a video chat server
+  ascii-chat client     # Connect to a server
+  ascii-chat --help     # Show all options")
+
+            set(CPACK_RESOURCE_FILE_WELCOME "${CMAKE_BINARY_DIR}/ProductbuildWelcome.txt" CACHE FILEPATH "Welcome file for productbuild" FORCE)
+            set(CPACK_RESOURCE_FILE_README "${CMAKE_BINARY_DIR}/ProductbuildReadMe.txt" CACHE FILEPATH "ReadMe file for productbuild" FORCE)
+        endif()
+
         # Use custom STGZ header with FHS-compliant defaults (/usr/local, no subdirectory)
         # CMake's default header uses current directory, not /usr/local
         # CPack will substitute @CPACK_*@ variables and calculate header length automatically
@@ -422,8 +467,41 @@ if(USE_CPACK)
             if (NOT WIN32)
                 set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
             endif()
+        else()
+            # On macOS/Unix, explicitly set which components to package
+            # This prevents CPack from creating an "Unspecified" component for unassigned files
+            # Manpages component is Unix/macOS only
+            set(CPACK_COMPONENTS_ALL Runtime Development Documentation Manpages CACHE STRING "CPack components to install" FORCE)
+
+            # On macOS, don't use CPACK_PACKAGE_INSTALL_DIRECTORY (it causes /Applications/ prefix)
+            # This variable is for Windows installers (NSIS/WIX) and productbuild doesn't use it correctly
+            if(APPLE)
+                set(CPACK_PACKAGE_INSTALL_DIRECTORY "" CACHE STRING "Installation directory (empty for macOS)" FORCE)
+                # Set productbuild install prefix BEFORE include(CPack)
+                set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local" CACHE STRING "productbuild install location" FORCE)
+            endif()
         endif()
         include(CPack)
+
+        # After include(CPack), enable binary generators for desired package types
+        # CPack sets all CPACK_BINARY_* to OFF by default, we need to enable the ones we want
+        # These control which generators actually run when "make package" is called
+        if(APPLE)
+            set(CPACK_BINARY_STGZ ON CACHE BOOL "Enable STGZ generator" FORCE)
+            set(CPACK_BINARY_TGZ ON CACHE BOOL "Enable TGZ generator" FORCE)
+            set(CPACK_BINARY_PRODUCTBUILD ON CACHE BOOL "Enable productbuild generator" FORCE)
+        elseif(UNIX)
+            set(CPACK_BINARY_STGZ ON CACHE BOOL "Enable STGZ generator" FORCE)
+            set(CPACK_BINARY_TGZ ON CACHE BOOL "Enable TGZ generator" FORCE)
+            set(CPACK_BINARY_DEB ON CACHE BOOL "Enable DEB generator" FORCE)
+            set(CPACK_BINARY_RPM ON CACHE BOOL "Enable RPM generator" FORCE)
+        elseif(WIN32)
+            # Windows generators are handled separately (WIX/NSIS/ZIP)
+            set(CPACK_BINARY_ZIP ON CACHE BOOL "Enable ZIP generator" FORCE)
+            if(WIX_FOUND)
+                set(CPACK_BINARY_WIX ON CACHE BOOL "Enable WIX generator" FORCE)
+            endif()
+        endif()
 
         # After include(CPack), restore CPACK_GENERATOR with our desired default
         # CPack auto-detects generators and overwrites our setting
@@ -432,9 +510,6 @@ if(USE_CPACK)
             set(CPACK_GENERATOR "${_DESIRED_CPACK_GENERATOR}")
         endif()
     endif()
-endif()
-
-if(USE_CPACK)
 
     # =========================================================================
     # Basic CPack Configuration

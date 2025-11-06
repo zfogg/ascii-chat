@@ -26,6 +26,8 @@ endif()
 
 # Add productbuild to generator list
 list(APPEND CPACK_GENERATOR "productbuild")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
 message(STATUS "${Yellow}CPack:${ColorReset} productbuild generator enabled (${BoldBlue}productbuild${ColorReset} found)")
 
 # =============================================================================
@@ -38,6 +40,13 @@ set(CPACK_PRODUCTBUILD_IDENTIFIER "${PROJECT_BUNDLE_ID}")
 # Installation location
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
 
+# Override CPACK_PACKAGE_INSTALL_DIRECTORY for macOS
+# This variable is primarily for Windows installers and causes issues with productbuild
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "" CACHE STRING "Installation directory override for productbuild" FORCE)
+
+# Note: Welcome and ReadMe files are created in Install.cmake before include(CPack)
+# This is required because CPack needs them to be set before it's included
+
 # Background image for installer
 if(EXISTS "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
     set(CPACK_PRODUCTBUILD_BACKGROUND "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
@@ -47,9 +56,9 @@ endif()
 # set(CPACK_PRODUCTBUILD_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/packaging/resources")
 
 # Code signing identity (if you want to sign the package)
-# set(CPACK_PRODUCTBUILD_IDENTITY_NAME "Developer ID Installer: Your Name (TEAM_ID)")
+ set(CPACK_PRODUCTBUILD_IDENTITY_NAME "Zachary Fogg")
 
 # Keychain to use for signing
-# set(CPACK_PRODUCTBUILD_KEYCHAIN_PATH "")
+set(CPACK_PRODUCTBUILD_KEYCHAIN_PATH "~/Library/Keychains/ascii-chat-master.keychain")
 
 message(STATUS "${Yellow}CPack:${ColorReset} productbuild configuration complete")
