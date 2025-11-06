@@ -249,6 +249,7 @@ GENERATE_OPTIONS_TEST(
       cr_assert_str_eq(opt_address, "127.0.0.1");
       cr_assert_str_eq(opt_port, "3000");
       // Server should use default values for client-only options
+      log_info("opt_width: %d", opt_width);
       if (getenv("TERM") && getenv("TTY") || getenv("COLUMNS") && getenv("LINES")) {
         unsigned short int width;
         unsigned short int height;

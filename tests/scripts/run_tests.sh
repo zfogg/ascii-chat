@@ -264,13 +264,19 @@ function get_test_executables() {
   local category="$1"
   local build_type="${2:-debug}" # Optional build type parameter
 
-  # Try different bin directories in order of preference
-  local bin_dirs=(
-    "$PROJECT_ROOT/build_docker/bin"    # Docker CMake build
-    "$PROJECT_ROOT/build_clang/bin"     # Windows CMake build
-    "$PROJECT_ROOT/build/bin"           # Standard CMake build
-    "$PROJECT_ROOT/bin"                 # Make build (legacy)
-  )
+  if ls /.docker 2>/dev/null; then
+    # Try different bin directories in order of preference
+    local bin_dirs=(
+      "$PROJECT_ROOT/build_docker/bin"    # Docker CMake build
+      "$PROJECT_ROOT/build_clang/bin"     # Windows CMake build
+      "$PROJECT_ROOT/build/bin"           # Standard CMake build
+      "$PROJECT_ROOT/bin"                 # Make build (legacy)
+    )
+  else
+    local bin_dirs=(
+      "$PROJECT_ROOT/build/bin"           # Standard CMake build
+    )
+  fi
 
   local bin_dir=""
   for dir in "${bin_dirs[@]}"; do
@@ -400,10 +406,8 @@ function ensure_tests_built() {
 
   # Determine build directory based on environment
   local cmake_build_dir="build"
-  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
+  if ls /.docker 2>/dev/null; then
     cmake_build_dir="build_docker"
-  elif [[ -d "build_clang" ]]; then
-    cmake_build_dir="build_clang"
   fi
 
   # Ensure build directory exists
@@ -464,7 +468,7 @@ function ensure_tests_built() {
     esac
 
     log_info "Configuring CMake build in $cmake_build_dir (build type: $cmake_build_type)..."
-    CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
+    echo CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
       -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
       -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags
 
@@ -1026,10 +1030,10 @@ function build_test_executable() {
 
   # Determine build directory based on environment
   local cmake_build_dir="build"
-  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "$PROJECT_ROOT/build_docker" ]]; then
-    cmake_build_dir="build_docker"
-  elif [[ -d "$PROJECT_ROOT/build_clang" ]]; then
-    cmake_build_dir="build_clang"
+  if ls /.docker 2>/dev/null; then
+    if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "$PROJECT_ROOT/build_docker" ]]; then
+      cmake_build_dir="build_docker"
+    fi
   fi
 
   # Ensure build directory exists
@@ -1283,12 +1287,18 @@ function main() {
 
   if [[ -n "$SINGLE_TEST" ]]; then
     # Single test mode - determine which bin directory to use
-    local bin_dirs=(
-      "$PROJECT_ROOT/build_docker/bin"
-      "$PROJECT_ROOT/build_clang/bin"
-      "$PROJECT_ROOT/build/bin"
-      "$PROJECT_ROOT/bin"
-    )
+    if ls /.docker 2>/dev/null; then
+      local bin_dirs=(
+        "$PROJECT_ROOT/build_docker/bin"
+        "$PROJECT_ROOT/build_clang/bin"
+        "$PROJECT_ROOT/build/bin"
+        "$PROJECT_ROOT/bin"
+      )
+    else
+      local bin_dirs=(
+        "$PROJECT_ROOT/bin"
+      )
+    fi
     local bin_dir=""
     for dir in "${bin_dirs[@]}"; do
       if [[ -d "$dir" ]]; then
@@ -1304,12 +1314,18 @@ function main() {
     all_tests_to_run=("$bin_dir/$SINGLE_TEST")
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
     # Multiple specific tests mode - determine which bin directory to use
-    local bin_dirs=(
-      "$PROJECT_ROOT/build_docker/bin"
-      "$PROJECT_ROOT/build_clang/bin"
-      "$PROJECT_ROOT/build/bin"
-      "$PROJECT_ROOT/bin"
-    )
+    if ls /.docker 2>/dev/null; then
+      local bin_dirs=(
+        "$PROJECT_ROOT/build_docker/bin"
+        "$PROJECT_ROOT/build_clang/bin"
+        "$PROJECT_ROOT/build/bin"
+        "$PROJECT_ROOT/bin"
+      )
+    else
+      local bin_dirs=(
+        "$PROJECT_ROOT/bin"
+      )
+    fi
     local bin_dir=""
     for dir in "${bin_dirs[@]}"; do
       if [[ -d "$dir" ]]; then
@@ -1369,16 +1385,17 @@ function main() {
   # Extract just the test target names from full paths
   local test_targets=()
   for test_path in "${all_tests_to_run[@]}"; do
+    echo $test_path
     local test_name=$(basename "$test_path")
     test_targets+=("$test_name")
   done
 
   # Determine build directory
   local cmake_build_dir="build"
-  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
-    cmake_build_dir="build_docker"
-  elif [[ -d "build_clang" ]]; then
-    cmake_build_dir="build_clang"
+  if ls /.docker 2>/dev/null; then
+    if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
+      cmake_build_dir="build_docker"
+    fi
   fi
 
   if [[ ${#test_targets[@]} -gt 0 ]]; then
