@@ -210,8 +210,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     endif()
 
     add_custom_target(shared-lib
-        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat-shared
-        COMMENT "Building shared library (${SHARED_LIB_OUTPUT})"
+        DEPENDS ascii-chat-shared
         VERBATIM
     )
 
