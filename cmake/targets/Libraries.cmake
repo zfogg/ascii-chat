@@ -610,14 +610,15 @@ endif()
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
     COMMENT "Recording build start time for ascii-chat-shared"
+    COMMAND_ECHO NONE
     VERBATIM
 )
 
 # Show timing after build completes (only when actually building)
 add_custom_command(TARGET ascii-chat-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
     COMMENT ""
+    COMMAND_ECHO NONE
     VERBATIM
 )
 
@@ -645,11 +646,11 @@ if(APPLE)
             $<TARGET_FILE:ascii-chat-network>
             $<TARGET_FILE:ascii-chat-core>
         COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
         COMMENT "Combining module libraries into libasciichat.a"
+        COMMAND_ECHO NONE
         COMMAND_EXPAND_LISTS
     )
 else()
@@ -672,7 +673,6 @@ else()
         COMMAND ${CMAKE_COMMAND} -E echo "END" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core

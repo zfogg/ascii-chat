@@ -218,3 +218,23 @@ add_custom_target(build-timer-end ALL
     DEPENDS show-ascii-chat-success
     VERBATIM
 )
+
+# =============================================================================
+# Build-All Target - Shows Total Time After All Common Targets Built
+# =============================================================================
+# Usage: cmake --build build --target build-all
+# This builds common targets (executable and libraries),
+# then shows the total build time including all .o compilation
+
+# Determine dependencies based on build configuration
+set(BUILD_ALL_DEPS ascii-chat ascii-chat-shared)
+if(NOT BUILDING_OBJECT_LIBS)
+    list(APPEND BUILD_ALL_DEPS static-lib)
+endif()
+
+add_custom_target(build-all
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    DEPENDS ${BUILD_ALL_DEPS}
+    COMMENT ""
+    VERBATIM
+)
