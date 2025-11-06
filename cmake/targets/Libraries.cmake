@@ -590,9 +590,10 @@ else()
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
-        # Note: mimalloc is NOT linked into shared library
-        # Users of the shared library can choose their own allocator
-        # or link mimalloc themselves if desired
+        # Link mimalloc into shared library (required for SAFE_MALLOC macros)
+        if(USE_MIMALLOC AND TARGET mimalloc-shared)
+            target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
+        endif()
         if(PLATFORM_DARWIN)
             target_link_libraries(ascii-chat-shared PRIVATE
                 ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
@@ -601,7 +602,6 @@ else()
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
         endif()
-        # Note: mimalloc is NOT linked - see comment above
     endif()
 endif()
 
@@ -705,6 +705,11 @@ target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
 target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES})
 if(UNIX AND NOT APPLE AND NOT USE_MUSL)
     target_link_libraries(ascii-chat-static-lib INTERFACE jack)
+endif()
+
+# Memory allocator (mimalloc)
+if(MIMALLOC_LIBRARIES)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${MIMALLOC_LIBRARIES})
 endif()
 
 # Platform-specific system libraries (from ascii-chat-platform)
