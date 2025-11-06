@@ -26,7 +26,7 @@ function(fix_windows_clang_linking)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" PARENT_SCOPE)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}" PARENT_SCOPE)
 
-    message(STATUS "Applied Windows-Clang linking fixes for normal userspace application")
+    message(STATUS "Applied ${BoldGreen}Windows-Clang${ColorReset} linking fixes for normal userspace application")
 endfunction()
 
 # Find and configure MSVC libraries for Windows builds
@@ -69,7 +69,7 @@ function(find_msvc_libraries)
 
     if(MSVC_LIB_PATH)
         link_directories("${MSVC_LIB_PATH}")
-        message(STATUS "Added MSVC library path: ${MSVC_LIB_PATH}")
+        message(STATUS "Added ${BoldGreen}MSVC${ColorReset} library path: ${BoldCyan}${MSVC_LIB_PATH}${ColorReset}")
     else()
         message(FATAL_ERROR "Visual Studio MSVC libraries not found! Windows builds require Visual Studio runtime libraries.\n"
                           "Please install Visual Studio 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, Build Tools, or Insiders).")

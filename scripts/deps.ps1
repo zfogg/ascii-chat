@@ -9,22 +9,61 @@
     but you need to configure CMake to know what deps to install.
 
 .PARAMETER Triplet
-    The vcpkg triplet to use (default: x64-windows for Debug, x64-windows-static for Release)
+    The vcpkg triplet to use (e.g., x64-windows-static, arm64-windows, x86-windows)
+    If not specified, automatically determined based on Config and Architecture
 
 .PARAMETER Config
     Build configuration: Debug, Release, or Dev (default: Debug)
 
+.PARAMETER Architecture
+    Target architecture: x64, x86, arm64, or arm (default: auto-detect)
+
+.PARAMETER Release
+    Convenience switch to install Release dependencies (equivalent to -Config Release)
+
 .EXAMPLE
     ./deps.ps1
+    ./deps.ps1 -Release
     ./deps.ps1 -Config Release
+    ./deps.ps1 -Architecture arm64
     ./deps.ps1 -Triplet x64-windows-static
 #>
 
 param(
     [string]$Triplet = "",
     [ValidateSet("Debug", "Release", "Dev")]
-    [string]$Config = "Debug"
+    [string]$Config = "Debug",
+    [ValidateSet("x64", "x86", "arm64", "arm", "")]
+    [string]$Architecture = "",
+    [switch]$Release
 )
+
+# Handle -Release convenience switch
+if ($Release) {
+    $Config = "Release"
+}
+
+# Detect architecture if not specified
+if (-not $Architecture) {
+    $Architecture = if ([Environment]::Is64BitOperatingSystem) {
+        # Check if running on ARM64
+        $ProcessorArch = $env:PROCESSOR_ARCHITECTURE
+        if ($ProcessorArch -eq "ARM64") {
+            "arm64"
+        } else {
+            "x64"
+        }
+    } else {
+        # 32-bit OS
+        $ProcessorArch = $env:PROCESSOR_ARCHITECTURE
+        if ($ProcessorArch -eq "ARM") {
+            "arm"
+        } else {
+            "x86"
+        }
+    }
+    Write-Host "Auto-detected architecture: $Architecture" -ForegroundColor Cyan
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -50,55 +89,97 @@ if (-not (Test-Path $VcpkgExe)) {
 
 Write-Host "Found vcpkg at: $VcpkgRoot" -ForegroundColor Green
 
-# Determine triplet based on config
+# Determine triplet based on config and architecture
 if (-not $Triplet) {
+    $BaseTriplet = "$Architecture-windows"
     if ($Config -eq "Release") {
-        $Triplet = "x64-windows-static"
+        $Triplet = "$BaseTriplet-static"
     } else {
-        $Triplet = "x64-windows"
+        $Triplet = $BaseTriplet
     }
 }
 
+Write-Host "Target architecture: $Architecture" -ForegroundColor Green
 Write-Host "Using triplet: $Triplet" -ForegroundColor Green
 Write-Host "Build configuration: $Config" -ForegroundColor Green
 
+# Show what type of libraries will be installed
+if ($Triplet -like "*-static") {
+    Write-Host "Installing STATIC libraries (no DLLs required)" -ForegroundColor Cyan
+} else {
+    Write-Host "Installing DYNAMIC libraries (DLLs required)" -ForegroundColor Cyan
+}
+
 # Define required packages
 # These match what CMakeLists.txt looks for
+# Note: For Release builds with x64-windows-static triplet, these will be static libraries
 $RequiredPackages = @(
-    "zstd",        # Compression
-    "libsodium",   # Cryptography
-    "portaudio"    # Audio I/O
+    "mimalloc",    # Memory allocator (high-performance replacement for malloc)
+    "zstd",        # Compression library for frame data
+    "libsodium",   # Cryptography library for encryption
+    "portaudio"    # Audio I/O library for capture/playback
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan
 
 foreach ($Package in $RequiredPackages) {
-    Write-Host "  Installing: $Package" -ForegroundColor Yellow
+    $PackageSpec = "${Package}:${Triplet}"
+    Write-Host "`n  Installing: $PackageSpec" -ForegroundColor Yellow
 
-    # Check if already installed
-    $CheckCmd = "& `"$VcpkgExe`" list $Package`:$Triplet"
-    $Installed = Invoke-Expression $CheckCmd 2>$null
+    # Check if already installed using direct command execution
+    $Installed = & $VcpkgExe list $PackageSpec 2>$null
 
-    if ($Installed -match "$Package`:$Triplet") {
-        Write-Host "    Already installed: $Package`:$Triplet" -ForegroundColor DarkGray
+    if ($Installed -match [regex]::Escape($PackageSpec)) {
+        Write-Host "    ✓ Already installed: $PackageSpec" -ForegroundColor DarkGray
         continue
     }
 
-    # Install the package
-    $InstallCmd = "& `"$VcpkgExe`" install $Package`:$Triplet"
+    # Install the package using direct command execution (not Invoke-Expression)
+    Write-Host "    Running: vcpkg install $PackageSpec" -ForegroundColor Gray
     try {
-        Invoke-Expression $InstallCmd
+        & $VcpkgExe install $PackageSpec
         if ($LASTEXITCODE -ne 0) {
             throw "vcpkg install failed with exit code $LASTEXITCODE"
         }
-        Write-Host "    Installed: $Package`:$Triplet" -ForegroundColor Green
+        Write-Host "    ✓ Installed: $PackageSpec" -ForegroundColor Green
     } catch {
-        Write-Host "    ERROR: Failed to install $Package`:$Triplet" -ForegroundColor Red
+        Write-Host "    ✗ ERROR: Failed to install $PackageSpec" -ForegroundColor Red
         Write-Host "    $_" -ForegroundColor Red
         exit 1
     }
 }
 
-Write-Host "`nAll dependencies installed successfully!" -ForegroundColor Green
-Write-Host "`nYou can now run:" -ForegroundColor Cyan
-Write-Host "  ./build.ps1 -Config $Config" -ForegroundColor White
+Write-Host "`n=== Verifying Installation ===" -ForegroundColor Cyan
+Write-Host ""
+
+$AllInstalled = $true
+foreach ($Package in $RequiredPackages) {
+    $PackageSpec = "${Package}:${Triplet}"
+    $Installed = & $VcpkgExe list $PackageSpec 2>$null
+
+    if ($Installed -match [regex]::Escape($PackageSpec)) {
+        Write-Host "  ✓ $PackageSpec" -ForegroundColor Green
+    } else {
+        Write-Host "  ✗ $PackageSpec (NOT INSTALLED)" -ForegroundColor Red
+        $AllInstalled = $false
+    }
+}
+
+Write-Host ""
+if ($AllInstalled) {
+    Write-Host "All dependencies installed successfully!" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "You can now run:" -ForegroundColor Cyan
+    Write-Host "  ./build.ps1 -Config $Config" -ForegroundColor White
+
+    if ($Triplet -like "*-static") {
+        Write-Host ""
+        Write-Host "Note: Your $Architecture Release build will be fully static with no DLL dependencies." -ForegroundColor Yellow
+    } else {
+        Write-Host ""
+        Write-Host "Note: Your $Architecture build will require DLLs from vcpkg." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Some dependencies failed to install!" -ForegroundColor Red
+    exit 1
+}

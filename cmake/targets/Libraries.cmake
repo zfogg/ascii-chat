@@ -48,8 +48,8 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
-    # Version dependency
-    add_dependencies(${MODULE_NAME} generate_version)
+    # Version dependency and global build timer
+    add_dependencies(${MODULE_NAME} generate_version build-timer-start)
 
     # Include paths
     target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_BINARY_DIR}/generated)
@@ -180,7 +180,7 @@ target_include_directories(ascii-chat-crypto PRIVATE
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     set_source_files_properties(
         ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-        PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div"
+        PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div;-Wno-unterminated-string-initialization"
     )
 endif()
 
@@ -347,7 +347,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
             -DMODULE_TARGETS=${MODULE_TARGETS_STR}
             -DOUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/asciichat_generated.def
             -DLIBRARY_NAME=asciichat
-            -P ${CMAKE_SOURCE_DIR}/cmake/GenerateDefFile.cmake
+            -P ${CMAKE_SOURCE_DIR}/cmake/targets/GenerateDefFile.cmake
         DEPENDS ${MODULE_TARGETS}
         COMMENT "Generating Windows .def file from object files"
         VERBATIM
@@ -484,7 +484,7 @@ else()
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         set_source_files_properties(
             ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-            PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div"
+            PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div;-Wno-unterminated-string-initialization"
         )
     endif()
 
@@ -506,12 +506,12 @@ else()
         # - No -pie (for executables, not shared libraries)
         # - No hardening flags (breaks dynamic symbol export)
         target_link_options(ascii-chat-shared PRIVATE
-            -Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/export_all.lds
+            -Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/install/export_all.lds
         )
         # Clear LINK_OPTIONS property to remove global flags (pie, gc-sections, hardening)
         # then add only what we need
         set_target_properties(ascii-chat-shared PROPERTIES
-            LINK_OPTIONS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/export_all.lds"
+            LINK_OPTIONS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/cmake/install/export_all.lds"
         )
         # Note: The "_start not found" linker warning is harmless for shared libraries
         # (they don't need an entry point like executables do)
@@ -589,6 +589,38 @@ else()
         endif()
         # Note: mimalloc is NOT linked - see comment above
     endif()
+endif()
+
+# Add build timing for ascii-chat-shared library
+# Record start time before linking (only when actually building)
+add_custom_command(TARGET ascii-chat-shared PRE_LINK
+    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMENT "Recording build start time for ascii-chat-shared"
+    VERBATIM
+)
+
+# Show timing after build completes (only when actually building)
+add_custom_command(TARGET ascii-chat-shared POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMENT ""
+    VERBATIM
+)
+
+# Only show message when shared library is part of default build (Debug/Dev/Coverage)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
+    # Shared library is built by default - show success message
+    add_custom_target(show-ascii-chat-shared-success ALL
+        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        DEPENDS ascii-chat-shared
+        VERBATIM
+    )
+else()
+    # Shared library is EXCLUDE_FROM_ALL - only show message when explicitly built
+    add_custom_target(show-ascii-chat-shared-success
+        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        DEPENDS ascii-chat-shared
+        VERBATIM
+    )
 endif()
 
 # Unified library (shared for Debug/Dev/Coverage, static for Release)

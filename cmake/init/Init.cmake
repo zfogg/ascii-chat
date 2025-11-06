@@ -82,8 +82,8 @@ if(NOT CMAKE_C_COMPILER)
     endif()
 
     set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
-    message(STATUS "Set default C compiler to Clang: ${CLANG_EXECUTABLE}")
-    message(STATUS "Set default C++ compiler to Clang++: ${CLANGXX_EXECUTABLE}")
+    message(STATUS "Set default C compiler to ${BoldCyan}Clang${ColorReset}: ${CLANG_EXECUTABLE}")
+    message(STATUS "Set default C++ compiler to ${BoldCyan}Clang++${ColorReset}: ${CLANGXX_EXECUTABLE}")
 endif()
 
 # =============================================================================
@@ -93,53 +93,14 @@ endif()
 # These policies enable newer CMake features and behaviors
 
 # Define colors for terminal output
-# Modern Windows terminals (Windows Terminal, PowerShell 7+, ConEmu) support ANSI colors
-# Windows 10+ natively supports ANSI escape codes, so enable colors by default
-if(WIN32)
-    # Enable colors on Windows - modern terminals (Windows Terminal, PowerShell 7+, ConEmu)
-    # and Windows 10+ native console all support ANSI escape codes
-    string(ASCII 27 Esc)
-    set(ColorReset "${Esc}[m")
-    set(ColorBold "${Esc}[1m")
-    set(Red "${Esc}[31m")
-    set(Green "${Esc}[32m")
-    set(Yellow "${Esc}[33m")
-    set(Blue "${Esc}[34m")
-    set(Magenta "${Esc}[35m")
-    set(Cyan "${Esc}[36m")
-    set(White "${Esc}[37m")
-    set(BoldRed "${Esc}[1;31m")
-    set(BoldGreen "${Esc}[1;32m")
-    set(BoldYellow "${Esc}[1;33m")
-    set(BoldBlue "${Esc}[1;34m")
-    set(BoldMagenta "${Esc}[1;35m")
-    set(BoldCyan "${Esc}[1;36m")
-    set(BoldWhite "${Esc}[1;37m")
-else()
-    # Non-Windows: Always enable colors (standard ANSI support)
-    string(ASCII 27 Esc)
-    set(ColorReset "${Esc}[m")
-    set(ColorBold "${Esc}[1m")
-    set(Red "${Esc}[31m")
-    set(Green "${Esc}[32m")
-    set(Yellow "${Esc}[33m")
-    set(Blue "${Esc}[34m")
-    set(Magenta "${Esc}[35m")
-    set(Cyan "${Esc}[36m")
-    set(White "${Esc}[37m")
-    set(BoldRed "${Esc}[1;31m")
-    set(BoldGreen "${Esc}[1;32m")
-    set(BoldYellow "${Esc}[1;33m")
-    set(BoldBlue "${Esc}[1;34m")
-    set(BoldMagenta "${Esc}[1;35m")
-    set(BoldCyan "${Esc}[1;36m")
-    set(BoldWhite "${Esc}[1;37m")
-endif()
+# Import color definitions from Colors.cmake
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
 # Detect CPU cores for parallel builds
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+# Note: Use CMAKE_HOST_SYSTEM_NAME because CMAKE_SYSTEM_NAME is not set until after project()
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
     execute_process(COMMAND sysctl -n hw.logicalcpu OUTPUT_VARIABLE CPU_CORES OUTPUT_STRIP_TRAILING_WHITESPACE)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
     execute_process(COMMAND nproc OUTPUT_VARIABLE CPU_CORES OUTPUT_STRIP_TRAILING_WHITESPACE)
 elseif(WIN32)
     # Windows: Use environment variable or wmic
@@ -163,7 +124,7 @@ endif()
 if(NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
     set(ENV{CMAKE_BUILD_PARALLEL_LEVEL} ${CPU_CORES})
 endif()
-message(STATUS "Parallel build jobs: ${CPU_CORES}")
+message(STATUS "Parallel build jobs: ${BoldCyan}${CPU_CORES}${ColorReset}")
 
 # CMP0135: ExternalProject step targets fully imported
 # Enables proper dependency tracking for ExternalProject steps
@@ -232,7 +193,7 @@ if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
     find_program(NINJA_EXECUTABLE ninja)
     if(NINJA_EXECUTABLE)
         set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
-        message(STATUS "Using Ninja generator for faster builds")
+        message(STATUS "Using ${BoldGreen}Ninja${ColorReset} generator for faster builds")
     endif()
 endif()
 
