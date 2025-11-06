@@ -83,7 +83,7 @@ else()
 
         message(STATUS "Kernel headers copied successfully")
     else()
-        message(STATUS "Using cached kernel headers from ${KERNEL_HEADERS_DIR}")
+        message(STATUS "Using cached ${BoldBlue}kernel headers${ColorReset} from ${BoldMagenta}${KERNEL_HEADERS_DIR}${ColorReset}")
     endif()
 
     # Set CFLAGS to include kernel headers for ALSA and PortAudio builds
@@ -93,7 +93,7 @@ endif()
 # =============================================================================
 # zstd - Compression library
 # =============================================================================
-message(STATUS "Configuring zstd from source...")
+message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source...")
 
 set(ZSTD_PREFIX "${MUSL_DEPS_DIR_STATIC}/zstd")
 set(ZSTD_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/zstd-build")
@@ -116,7 +116,7 @@ if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
         BUILD_BYPRODUCTS ${ZSTD_PREFIX}/lib/libzstd.a
     )
 else()
-    message(STATUS "  zstd library found in cache: ${ZSTD_PREFIX}/lib/libzstd.a")
+    message(STATUS "  ${BoldBlue}zstd${ColorReset} library found in cache: ${BoldMagenta}${ZSTD_PREFIX}/lib/libzstd.a${ColorReset}")
     # Create a dummy target so dependencies can reference it
     add_custom_target(zstd-musl)
 endif()
@@ -128,7 +128,7 @@ set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 # =============================================================================
 # libsodium - Cryptography library
 # =============================================================================
-message(STATUS "Configuring libsodium from source...")
+message(STATUS "Configuring ${BoldBlue}libsodium${ColorReset} from source...")
 
 set(LIBSODIUM_PREFIX "${MUSL_DEPS_DIR_STATIC}/libsodium")
 set(LIBSODIUM_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libsodium-build")
@@ -151,7 +151,7 @@ if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
     )
 else()
-    message(STATUS "  libsodium library found in cache: ${LIBSODIUM_PREFIX}/lib/libsodium.a")
+    message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
     # Create a dummy target so dependencies can reference it
     add_custom_target(libsodium-musl DEPENDS zstd-musl)
 endif()
@@ -163,7 +163,7 @@ set(LIBSODIUM_INCLUDE_DIRS "${LIBSODIUM_PREFIX}/include")
 # =============================================================================
 # ALSA - Advanced Linux Sound Architecture
 # =============================================================================
-message(STATUS "Configuring ALSA from source...")
+message(STATUS "Configuring ${BoldBlue}ALSA${ColorReset} from source...")
 
 set(ALSA_PREFIX "${MUSL_DEPS_DIR_STATIC}/alsa-lib")
 set(ALSA_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/alsa-lib-build")
@@ -187,7 +187,7 @@ if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
         BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
     )
 else()
-    message(STATUS "  ALSA library found in cache: ${ALSA_PREFIX}/lib/libasound.a")
+    message(STATUS "  ${BoldBlue}ALSA${ColorReset} library found in cache: ${BoldMagenta}${ALSA_PREFIX}/lib/libasound.a${ColorReset}")
     # Create a dummy target so dependencies can reference it
     add_custom_target(alsa-lib-musl)
 endif()
@@ -200,7 +200,7 @@ set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include")
 # =============================================================================
 # PortAudio - Audio I/O library
 # =============================================================================
-message(STATUS "Configuring PortAudio from source...")
+message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} from source...")
 
 set(PORTAUDIO_PREFIX "${MUSL_DEPS_DIR_STATIC}/portaudio")
 set(PORTAUDIO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/portaudio-build")
@@ -223,7 +223,7 @@ if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
         DEPENDS alsa-lib-musl
     )
 else()
-    message(STATUS "  PortAudio library found in cache: ${PORTAUDIO_PREFIX}/lib/libportaudio.a")
+    message(STATUS "  ${BoldBlue}PortAudio${ColorReset} library found in cache: ${BoldMagenta}${PORTAUDIO_PREFIX}/lib/libportaudio.a${ColorReset}")
     # Create a dummy target so dependencies can reference it
     add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
 endif()
@@ -235,7 +235,7 @@ set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
 # =============================================================================
 # libexecinfo - Backtrace support for musl
 # =============================================================================
-message(STATUS "Configuring libexecinfo from source...")
+message(STATUS "Configuring ${BoldBlue}libexecinfo${ColorReset} from source...")
 
 set(LIBEXECINFO_PREFIX "${MUSL_DEPS_DIR_STATIC}/libexecinfo")
 set(LIBEXECINFO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libexecinfo-build")
@@ -257,7 +257,7 @@ if(NOT EXISTS "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
         BUILD_BYPRODUCTS ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
     )
 else()
-    message(STATUS "  libexecinfo library found in cache: ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
+    message(STATUS "  ${BoldBlue}libexecinfo${ColorReset} library found in cache: ${BoldMagenta}${LIBEXECINFO_PREFIX}/lib/libexecinfo.a${ColorReset}")
     # Create a dummy target so dependencies can reference it
     add_custom_target(libexecinfo-musl)
 endif()
@@ -269,7 +269,7 @@ set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
 # =============================================================================
 # BearSSL - TLS library for SSH key fetching
 # =============================================================================
-message(STATUS "Configuring BearSSL from source...")
+message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source...")
 
 # BearSSL doesn't use CMake, so we build it manually
 set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
@@ -308,7 +308,7 @@ if(EXISTS "${BEARSSL_SOURCE_DIR}")
             message(FATAL_ERROR "BearSSL build failed with exit code ${BEARSSL_MAKE_RESULT}\nOutput: ${BEARSSL_MAKE_OUTPUT}\nError: ${BEARSSL_MAKE_ERROR}")
         endif()
     else()
-        message(STATUS "Using cached BearSSL library: ${BEARSSL_LIB}")
+        message(STATUS "Using cached ${BoldBlue}BearSSL${ColorReset} library: ${BoldMagenta}${BEARSSL_LIB}${ColorReset}")
     endif()
 
     set(BEARSSL_FOUND TRUE)

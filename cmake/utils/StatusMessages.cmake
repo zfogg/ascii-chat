@@ -15,9 +15,7 @@
 
 # Status Messages (matching Makefile help output)
 message(STATUS "")
-message(STATUS "${BoldMagenta}========================================${ColorReset}")
 message(STATUS "${BoldMagenta}ascii-chat Configuration:${ColorReset}")
-message(STATUS "${BoldMagenta}========================================${ColorReset}")
 message(STATUS "  Build type:        ${BoldYellow}${CMAKE_BUILD_TYPE}${ColorReset}")
 message(STATUS "  C Standard:        ${BoldCyan}C${CMAKE_C_STANDARD}${ColorReset}")
 message(STATUS "  C Compiler:        ${Cyan}${CMAKE_C_COMPILER}${ColorReset}")
