@@ -252,11 +252,11 @@ char *convert_pixels_scalar_with_newlines(image_t *image, const char luminance_p
 char *image_print_simd(image_t *image, const char *ascii_chars) {
 #if SIMD_SUPPORT_AVX2
   return render_ascii_image_monochrome_avx2(image, ascii_chars);
-#elif defined(SIMD_SUPPORT_SSSE3)
+#elif SIMD_SUPPORT_SSSE3
   return render_ascii_image_monochrome_ssse3(image, ascii_chars);
-#elif defined(SIMD_SUPPORT_SSE2)
+#elif SIMD_SUPPORT_SSE2
   return render_ascii_image_monochrome_sse2(image, ascii_chars);
-#elif defined(SIMD_SUPPORT_NEON)
+#elif SIMD_SUPPORT_NEON
   return render_ascii_image_monochrome_neon(image, ascii_chars);
 #else
   log_debug("COMPILED WITHOUT SPECIFIC SIMD");

@@ -106,7 +106,7 @@ CITE_BIB_FILES         =
 # Configuration options related to warning and progress messages
 #---------------------------------------------------------------------------
 
-QUIET                  = NO
+QUIET                  = YES
 WARNINGS               = YES
 WARN_IF_UNDOCUMENTED   = YES
 WARN_IF_DOC_ERROR      = YES
@@ -227,7 +227,6 @@ ENUM_VALUES_PER_LINE   = 4
 TREEVIEW_WIDTH         = 350
 EXT_LINKS_IN_WINDOW    = YES
 FORMULA_FONTSIZE       = 10
-FORMULA_TRANSPARENT    = YES
 USE_MATHJAX            = YES
 MATHJAX_FORMAT         = HTML-CSS
 MATHJAX_RELPATH        = 
@@ -306,21 +305,15 @@ GENERATE_TAGFILE       = @CMAKE_BINARY_DIR@/docs/ascii-chat.tag
 ALLEXTERNALS           = NO
 EXTERNAL_GROUPS        = YES
 EXTERNAL_PAGES         = YES
-PERL_PATH              = /usr/bin/perl
 
 #---------------------------------------------------------------------------
 # Configuration options related to the dot tool
 #---------------------------------------------------------------------------
 
-CLASS_DIAGRAMS            = YES
-MSCGEN_PATH               = 
-DIA_PATH                  = 
+DIA_PATH                  =
 HIDE_UNDOC_RELATIONS      = YES
 HAVE_DOT                  = NO
 DOT_NUM_THREADS           = 0
-DOT_COMMON_ATTR           = "fontname=Helvetica,fontsize=10"
-DOT_EDGE_ATTR             = "labelfontname=Helvetica,labelfontsize=10"
-DOT_NODE_ATTR             = "shape=box,height=0.2,width=0.4"
 DOT_FONTPATH              = 
 CLASS_GRAPH               = YES
 COLLABORATION_GRAPH       = YES
@@ -334,7 +327,6 @@ CALL_GRAPH                = YES
 CALLER_GRAPH              = YES
 GRAPHICAL_HIERARCHY       = YES
 DIRECTORY_GRAPH           = YES
-DIRECTORY_GRAPH_MAX_DEPTH = 1
 DOT_IMAGE_FORMAT          = png
 INTERACTIVE_SVG           = NO
 DOT_PATH                  = 
@@ -349,4 +341,3 @@ MAX_DOT_GRAPH_DEPTH       = 0
 DOT_MULTI_TARGETS         = NO
 GENERATE_LEGEND           = YES
 DOT_CLEANUP               = YES
-MSCGEN_PATH               = 

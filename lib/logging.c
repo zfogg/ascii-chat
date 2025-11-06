@@ -120,7 +120,7 @@ static log_level_t parse_log_level_from_env(void) {
 
 /* Log rotation function - keeps the tail (recent entries) (assumes mutex held) */
 static void rotate_log_if_needed_unlocked(void) {
-  if (!g_log.file || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
+  if (g_log.file < 0 || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
     return;
   }
 
@@ -246,7 +246,7 @@ void log_init(const char *filename, log_level_t level) {
   // Preserve the terminal output setting
   bool preserve_terminal_output = g_log.terminal_output_enabled;
 
-  if (g_log.initialized && g_log.file && g_log.file != STDERR_FILENO) {
+  if (g_log.initialized && g_log.file >= 0 && g_log.file != STDERR_FILENO) {
     platform_close(g_log.file);
   }
 
@@ -272,7 +272,7 @@ void log_init(const char *filename, log_level_t level) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
     int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
     g_log.file = fd;
-    if (!g_log.file) {
+    if (g_log.file < 0) { /* Check for error: fd < 0, not fd == 0 (STDIN is valid!) */
       if (preserve_terminal_output) {
         safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
       }
@@ -309,10 +309,10 @@ void log_init(const char *filename, log_level_t level) {
 
 void log_destroy(void) {
   mutex_lock(&g_log.mutex);
-  if (g_log.file && g_log.file != STDERR_FILENO) {
+  if (g_log.file >= 0 && g_log.file != STDERR_FILENO) {
     platform_close(g_log.file);
   }
-  g_log.file = 0;
+  g_log.file = -1;
   g_log.initialized = false;
   mutex_unlock(&g_log.mutex);
 }
@@ -346,7 +346,7 @@ bool log_get_terminal_output(void) {
 
 void log_truncate_if_large(void) {
   mutex_lock(&g_log.mutex);
-  if (g_log.file && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
+  if (g_log.file >= 0 && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     /* Check if current log is too large */
     struct stat st;
     if (fstat(g_log.file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
@@ -373,7 +373,7 @@ static void write_to_log_file_unlocked(const char *buffer, int length) {
     return;
   }
 
-  if (g_log.file <= 0 || g_log.file == STDERR_FILENO) {
+  if (g_log.file < 0 || g_log.file == STDERR_FILENO) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
     return;
   }
@@ -385,20 +385,6 @@ static void write_to_log_file_unlocked(const char *buffer, int length) {
   }
 
   g_log.current_size += (size_t)written;
-}
-
-/* Helper: Write formatted log entry to stderr fallback (assumes mutex held)
- * Used when no log file is configured
- */
-static void write_to_stderr_fallback_unlocked(const char *buffer, int length) {
-  if (g_log.file == STDERR_FILENO) {
-    ssize_t written = platform_write(STDERR_FILENO, buffer, (size_t)length);
-    if (written <= 0 && length > 0) {
-      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to stderr");
-      return;
-    }
-    (void)fflush(stderr);
-  }
 }
 
 /* Helper: Format log message header (timestamp, level, location info)
@@ -580,13 +566,13 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   va_end(args);
 
-  /* Write to log file if configured */
-  write_to_log_file_unlocked(log_buffer, msg_len);
+  /* Write to log file if configured (not STDERR) */
+  if (g_log.file != STDERR_FILENO) {
+    write_to_log_file_unlocked(log_buffer, msg_len);
+  }
 
-  /* Write to stderr if no log file configured */
-  write_to_stderr_fallback_unlocked(log_buffer, msg_len);
-
-  /* Also write to terminal with colors if terminal output enabled */
+  /* Write to terminal with colors if terminal output enabled */
+  /* Note: This handles both stderr (when no file configured) and terminal output */
   va_list args_terminal;
   va_start(args_terminal, fmt);
   write_to_terminal_unlocked(level, time_buf, file, line, func, fmt, args_terminal);
@@ -615,9 +601,11 @@ void log_plain_msg(const char *fmt, ...) {
   va_end(args);
 
   if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
-    /* Write to log file if configured */
-    write_to_log_file_unlocked(log_buffer, msg_len);
-    write_to_log_file_unlocked("\n", 1);
+    /* Write to log file if configured (not STDERR) */
+    if (g_log.file != STDERR_FILENO) {
+      write_to_log_file_unlocked(log_buffer, msg_len);
+      write_to_log_file_unlocked("\n", 1);
+    }
 
     /* Always write to stderr for log_plain_msg */
     safe_fprintf(stderr, "%s\n", log_buffer);
@@ -647,8 +635,11 @@ void log_file_msg(const char *fmt, ...) {
   }
 
   /* Write to log file only - no stderr output */
-  write_to_log_file_unlocked(log_buffer, msg_len);
-  write_to_log_file_unlocked("\n", 1);
+  /* Only write if a log file is actually configured (not STDERR) */
+  if (g_log.file != STDERR_FILENO) {
+    write_to_log_file_unlocked(log_buffer, msg_len);
+    write_to_log_file_unlocked("\n", 1);
+  }
 
   mutex_unlock(&g_log.mutex);
 }

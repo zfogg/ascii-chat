@@ -69,8 +69,7 @@ if ($needsConfigure) {
   # Map Config parameter to preset name
   $presetName = switch ($Config.ToLower()) {
     "debug" { "debug" }
-    "release" { "release-clang" }
-    "release-clang" { "release-clang" }
+    "release" { "release" }
     "dev" { "dev" }
     "coverage" { "coverage" }
     "relwithdebinfo" { "relwithdebinfo" }

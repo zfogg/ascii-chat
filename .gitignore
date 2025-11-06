@@ -28,7 +28,7 @@ coverage_html/
 
 # Dependency cache directories (persist across build/ deletions)
 /.deps-cache/
-/.deps-cache-docker/
+/.deps-cache-*/
 
 # tomlc17 patch artifacts (created by CMake during build)
 /deps/tomlc17/.patch_applied

@@ -1,0 +1,54 @@
+# Dockerfile for building DEB packages
+# Uses Debian Bookworm for apt-get/dpkg-buildpackage compatibility
+
+FROM debian:bookworm-slim
+
+# Set environment for non-interactive installs
+ENV DEBIAN_FRONTEND=noninteractive \
+  CC=clang \
+  CXX=clang++ \
+  LANG=C.UTF-8 \
+  LC_ALL=C.UTF-8 \
+  TESTING=1 \
+  DOCKER_OS=debian
+
+# Configure ccache for Docker volume caching
+ENV CCACHE_DIR=/ccache \
+  CCACHE_UMASK=002 \
+  CCACHE_HARDLINK=true \
+  CCACHE_NLEVELS=2
+
+# Install base dependencies and LLVM apt repository
+RUN apt-get update && apt-get install -y \
+  sudo \
+  ca-certificates \
+  git \
+  wget \
+  gnupg \
+  lsb-release \
+  software-properties-common \
+  && rm -rf /var/lib/apt/lists/*
+
+# Add LLVM repository and install clang-21
+RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
+  echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-21 main" > /etc/apt/sources.list.d/llvm.list && \
+  apt-get update && \
+  apt-get install -y clang-21 llvm-21 lld-21 && \
+  for tool in /usr/bin/*-21; do \
+    base=$(basename "$tool" -21); \
+    update-alternatives --install "/usr/bin/$base" "$base" "$tool" 100; \
+  done && \
+  rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy deps script
+COPY scripts/deps.sh /tmp/deps.sh
+RUN chmod +x /tmp/deps.sh
+
+# Run deps script to install build dependencies
+RUN /tmp/deps.sh
+
+# Default to bash for interactive use
+CMD ["/bin/bash"]
