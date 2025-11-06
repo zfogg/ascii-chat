@@ -1,11 +1,11 @@
 # =============================================================================
-# Build Timer Script
+# Timer Script
 # =============================================================================
 # Records build start/end time and prints colored timing message
 #
 # Usage:
-#   cmake -DACTION=start -DTARGET_NAME=<name> -P build_timer.cmake
-#   cmake -DACTION=end -DTARGET_NAME=<name> -P build_timer.cmake
+#   cmake -DACTION=start -DTARGET_NAME=<name> -P Timer.cmake
+#   cmake -DACTION=end -DTARGET_NAME=<name> -P Timer.cmake
 #
 # Requires:
 #   - ACTION: "start" or "end"
@@ -18,6 +18,163 @@ include(${SOURCE_DIR}/cmake/utils/Colors.cmake)
 # Time file path
 set(TIME_FILE "${CMAKE_BINARY_DIR}/.build_time_${TARGET_NAME}.txt")
 
+# =============================================================================
+# Function: get_timestamp_ms
+# Gets current timestamp in milliseconds since epoch
+# Tries multiple methods with fallbacks if tools aren't available
+# Sets the output variable to the timestamp value
+# =============================================================================
+function(get_timestamp_ms OUTPUT_VAR)
+    set(TIMESTAMP "")
+
+    if(WIN32)
+        # Windows: Try multiple methods
+
+        # Method 1: PowerShell (most common)
+        execute_process(
+            COMMAND powershell -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
+            OUTPUT_VARIABLE TIMESTAMP
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE POWERSHELL_RESULT
+        )
+
+        if(NOT POWERSHELL_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 2: Try pwsh (PowerShell Core)
+            execute_process(
+                COMMAND pwsh -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PWSH_RESULT
+            )
+        endif()
+
+        if(NOT PWSH_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 3: Try Python
+            execute_process(
+                COMMAND python -c "import time; print(int(time.time() * 1000))"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PYTHON_RESULT
+            )
+        endif()
+
+        if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 4: Fallback to seconds with cmd.exe
+            execute_process(
+                COMMAND cmd /c "echo %time:~0,2%%time:~3,2%%time:~6,2%"
+                OUTPUT_VARIABLE TIME_STR
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            # This gives rough timestamp, multiply by 1000 for milliseconds
+            # (Note: This is not epoch time, just for relative timing)
+            if(NOT TIME_STR STREQUAL "")
+                set(TIMESTAMP "${TIME_STR}000")
+            endif()
+        endif()
+    elseif(APPLE)
+        # macOS: BSD date doesn't support %N, try multiple methods
+
+        # Method 1: Try Python3 (most accurate, milliseconds)
+        execute_process(
+            COMMAND python3 -c "import time; print(int(time.time() * 1000))"
+            OUTPUT_VARIABLE TIMESTAMP
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE PYTHON3_RESULT
+        )
+
+        if(NOT PYTHON3_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 2: Try Python2 fallback
+            execute_process(
+                COMMAND python -c "import time; print(int(time.time() * 1000))"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PYTHON_RESULT
+            )
+        endif()
+
+        if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 3: Try Perl (usually available on macOS)
+            execute_process(
+                COMMAND perl -MTime::HiRes=time -e "print int(time() * 1000)"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PERL_RESULT
+            )
+        endif()
+
+        if(NOT PERL_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 4: Try Ruby (usually available on macOS)
+            execute_process(
+                COMMAND ruby -e "puts (Time.now.to_f * 1000).to_i"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE RUBY_RESULT
+            )
+        endif()
+
+        if(NOT RUBY_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 5: Fallback to seconds only (multiply by 1000)
+            execute_process(
+                COMMAND date +%s
+                OUTPUT_VARIABLE TIMESTAMP_SEC
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(NOT TIMESTAMP_SEC STREQUAL "")
+                math(EXPR TIMESTAMP "${TIMESTAMP_SEC} * 1000")
+            endif()
+        endif()
+    else()
+        # Linux: Use date with milliseconds
+        execute_process(
+            COMMAND date +%s%3N
+            OUTPUT_VARIABLE TIMESTAMP
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE DATE_RESULT
+        )
+
+        if(NOT DATE_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Fallback: Try Python
+            execute_process(
+                COMMAND python3 -c "import time; print(int(time.time() * 1000))"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PYTHON3_RESULT
+            )
+        endif()
+
+        if(NOT PYTHON3_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Fallback: Try seconds only
+            execute_process(
+                COMMAND date +%s
+                OUTPUT_VARIABLE TIMESTAMP_SEC
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(NOT TIMESTAMP_SEC STREQUAL "")
+                math(EXPR TIMESTAMP "${TIMESTAMP_SEC} * 1000")
+            endif()
+        endif()
+    endif()
+
+    # Final fallback: If all methods failed, use a fixed value
+    if(TIMESTAMP STREQUAL "")
+        set(TIMESTAMP "0")
+    endif()
+
+    set(${OUTPUT_VAR} "${TIMESTAMP}" PARENT_SCOPE)
+endfunction()
+
 if(ACTION STREQUAL "start")
     # Clear the total build time printed marker at the start of each build
     if(TARGET_NAME STREQUAL "build-total")
@@ -26,21 +183,7 @@ if(ACTION STREQUAL "start")
     endif()
 
     # Record start time with millisecond precision
-    if(WIN32)
-        # Windows: Use PowerShell to get milliseconds since epoch
-        execute_process(
-            COMMAND powershell -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
-            OUTPUT_VARIABLE START_TIME
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-    else()
-        # Unix: Use date with milliseconds
-        execute_process(
-            COMMAND date +%s%3N
-            OUTPUT_VARIABLE START_TIME
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-    endif()
+    get_timestamp_ms(START_TIME)
     file(WRITE "${TIME_FILE}" "${START_TIME}")
 elseif(ACTION STREQUAL "check")
     # Show success message only if target was NOT just rebuilt (POST_BUILD didn't run)
@@ -52,19 +195,7 @@ elseif(ACTION STREQUAL "check")
         file(READ "${MARKER_FILE}" MARKER_TIME)
 
         # Get current time in milliseconds
-        if(WIN32)
-            execute_process(
-                COMMAND powershell -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
-                OUTPUT_VARIABLE CURRENT_TIME
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-        else()
-            execute_process(
-                COMMAND date +%s%3N
-                OUTPUT_VARIABLE CURRENT_TIME
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-        endif()
+        get_timestamp_ms(CURRENT_TIME)
 
         # Handle decimal point in PowerShell output
         string(REGEX REPLACE "\\.[0-9]+$" "" MARKER_TIME_INT "${MARKER_TIME}")
@@ -108,19 +239,7 @@ elseif(ACTION STREQUAL "end")
         file(READ "${TIME_FILE}" START_TIME)
 
         # Get end time with millisecond precision
-        if(WIN32)
-            execute_process(
-                COMMAND powershell -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
-                OUTPUT_VARIABLE END_TIME
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-        else()
-            execute_process(
-                COMMAND date +%s%3N
-                OUTPUT_VARIABLE END_TIME
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-            )
-        endif()
+        get_timestamp_ms(END_TIME)
 
         # Calculate elapsed in milliseconds
         # Handle decimal point in PowerShell output

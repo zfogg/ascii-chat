@@ -246,9 +246,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             endif()
 
             # Additional Clang optimizations
-            # Only use -fno-semantic-interposition on Unix-like systems (not Windows)
-            # This flag is for shared libraries and is unused on Windows with static linking
-            if(NOT WIN32)
+            # Only use -fno-semantic-interposition on Linux
+            # - macOS: Not supported (causes warning with Homebrew clang)
+            # - Windows: Unused (not a shared library platform for this flag)
+            if(PLATFORM_LINUX)
                 add_compile_options(-fno-semantic-interposition)  # Allow inlining across DSO boundaries
             endif()
             # Note: -fvisibility=hidden is applied per-target in Executables.cmake (not globally)
@@ -292,27 +293,37 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Not applied globally to allow shared libraries to export all symbols
     # (LTO strips "unused" symbols which are actually needed by external users)
 
-    if(NOT WIN32)
-        # Size reduction and alignment optimizations
-        add_compile_options(-fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables -fno-trapping-math -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+    # =============================================================================
+    # Dead Code Elimination (all platforms)
+    # =============================================================================
+    # Requires -ffunction-sections -fdata-sections to separate each function/data into sections
+    add_compile_options(-ffunction-sections -fdata-sections)
 
-        # Dead code elimination (requires -ffunction-sections -fdata-sections)
-        add_compile_options(-ffunction-sections -fdata-sections)
+    if(PLATFORM_LINUX)
+        # GNU ld: Use --gc-sections to remove unused sections
         add_link_options(-Wl,--gc-sections)
-    else()
-        # Windows-specific optimizations
-        # Dead code elimination (works with MSVC linker via Clang)
-        add_compile_options(-ffunction-sections -fdata-sections)
+    elseif(APPLE)
+        # Apple ld: Use -dead_strip to remove unused sections
+        add_link_options(-Wl,-dead_strip)
+    elseif(WIN32)
+        # MSVC linker: Use /OPT:REF and /OPT:ICF for dead code elimination and COMDAT folding
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            add_link_options(-Wl,/OPT:REF -Wl,/OPT:ICF)  # Remove unreferenced functions and COMDAT folding
+            add_link_options(-Wl,/OPT:REF -Wl,/OPT:ICF)
         endif()
-
-        # Additional alignment optimizations
-        add_compile_options(-falign-loops=32 -falign-functions=32 -fmerge-all-constants)
-
-        # Disable unwind tables for smaller binaries (can't use on Windows due to SEH)
-        # Windows exception handling requires unwind info, so we skip -fno-unwind-tables
     endif()
+
+    # =============================================================================
+    # Size reduction and alignment optimizations (platform-specific)
+    # =============================================================================
+    if(NOT WIN32)
+        # Unix: Disable stack protector and unwind tables for smaller binaries
+        add_compile_options(-fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables)
+    else()
+        # Windows: Can't disable unwind tables (required for SEH exception handling)
+    endif()
+
+    # All platforms: Math and alignment optimizations
+    add_compile_options(-fno-trapping-math -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
 
     # Security hardening for Unix-like platforms
     if(NOT WIN32)
@@ -326,15 +337,16 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
                 #       and rcrt1.o startup file instead of regular -pie + crt1.o
             else()
                 # Dynamic PIE for regular builds
-                add_link_options(LINKER:-pie)
-
-                # Relocation hardening
-                add_link_options(-Wl,-z,relro -Wl,-z,now)
+                # Note: Windows is excluded by parent if(NOT WIN32) at line 318
+                if(PLATFORM_LINUX)
+                    add_link_options(LINKER:-pie)
+                    # Relocation hardening (Linux/ELF only - not supported on macOS Mach-O)
+                    add_link_options(-Wl,-z,relro -Wl,-z,now)
+                elseif(APPLE)
+                    add_link_options(-Wl,-pie)
+                endif()
             endif()
         endif()
-
-        # Stack clash protection (GCC 8+, Clang 11+)
-        add_compile_options(-fstack-clash-protection)
 
         # Control Flow Integrity on supported platforms (x86_64 with CET support)
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
@@ -346,8 +358,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             endif()
         endif()
 
-        # Linux-specific flags (not supported on macOS clang)
+        # Linux-specific flags (not supported on macOS clang, Windows already excluded by parent if(NOT WIN32))
         if(PLATFORM_LINUX)
+            # Stack clash protection (GCC 8+, Clang 11+) - not supported on macOS (causes warning)
+            add_compile_options(-fstack-clash-protection)
             add_compile_options(-fno-plt -fno-semantic-interposition)
             add_link_options(-fno-plt)
 

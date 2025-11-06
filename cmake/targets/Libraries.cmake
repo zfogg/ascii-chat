@@ -441,6 +441,8 @@ else()
             -fno-pie
             -fPIC
         )
+        # Also disable PIE at link time (override global LINKER:-pie from CompilerFlags.cmake)
+        target_link_options(ascii-chat-shared PRIVATE -Wl,-no_pie)
     endif()
 
     # Add version dependency
@@ -591,8 +593,9 @@ else()
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
+        # Use PUBLIC linkage so executable gets it transitively (avoids duplicate library warning)
         if(USE_MIMALLOC AND TARGET mimalloc-shared)
-            target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
+            target_link_libraries(ascii-chat-shared PUBLIC mimalloc-shared)
         endif()
         if(PLATFORM_DARWIN)
             target_link_libraries(ascii-chat-shared PRIVATE
@@ -608,14 +611,14 @@ endif()
 # Add build timing for ascii-chat-shared library
 # Record start time before linking (only when actually building)
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMENT ""
     VERBATIM
 )
 
 # Show timing after build completes (only when actually building)
 add_custom_command(TARGET ascii-chat-shared POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMENT ""
     VERBATIM
 )
@@ -629,10 +632,22 @@ add_custom_command(TARGET ascii-chat-shared POST_BUILD
 if(NOT BUILDING_OBJECT_LIBS)
 if(APPLE)
     # macOS: Use libtool to combine static libraries
+    # Create a script that renames all object files before combining
+    set(RENAME_ALL_SCRIPT "${CMAKE_BINARY_DIR}/rename_all_objects.sh")
+    file(WRITE "${RENAME_ALL_SCRIPT}" "#!/bin/bash\n")
+    file(APPEND "${RENAME_ALL_SCRIPT}" "# Rename all object files in all library directories\n")
+    file(APPEND "${RENAME_ALL_SCRIPT}" "set -e\n")
+    foreach(module_lib ${ALL_MODULE_LIBS})
+        file(APPEND "${RENAME_ALL_SCRIPT}" "${CMAKE_SOURCE_DIR}/cmake/scripts/rename_objects.sh \"${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${module_lib}.dir\" \"${CMAKE_SOURCE_DIR}\" || true\n")
+    endforeach()
+    execute_process(COMMAND chmod +x "${RENAME_ALL_SCRIPT}")
+
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+        # Rename all object files before combining archives
+        COMMAND ${RENAME_ALL_SCRIPT}
         COMMAND libtool -static -o ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
             $<TARGET_FILE:ascii-chat-util>
             $<TARGET_FILE:ascii-chat-data-structures>
@@ -643,7 +658,7 @@ if(APPLE)
             $<TARGET_FILE:ascii-chat-audio>
             $<TARGET_FILE:ascii-chat-network>
             $<TARGET_FILE:ascii-chat-core>
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
@@ -654,7 +669,7 @@ else()
     # Linux/Windows: Use ar MRI script to combine archives
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
         COMMAND ${CMAKE_COMMAND} -E echo "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a" > ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-util>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
@@ -669,7 +684,7 @@ else()
         COMMAND ${CMAKE_COMMAND} -E echo "SAVE" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_COMMAND} -E echo "END" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
         COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
@@ -740,7 +755,7 @@ endif()
 
 # User-friendly 'static-lib' target - builds the static library
 add_custom_target(static-lib
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMAND_ECHO NONE
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a build-timer-start
     VERBATIM
@@ -802,23 +817,25 @@ target_link_libraries(ascii-chat-lib INTERFACE
     ascii-chat-core
 )
 
-message(STATUS "")
-message(STATUS "=== Modular Library Architecture ===")
-message(STATUS "Individual modules: ascii-chat-util, ascii-chat-platform, ascii-chat-crypto,")
-message(STATUS "                    ascii-chat-simd, ascii-chat-video, ascii-chat-audio,")
-message(STATUS "                    ascii-chat-network, ascii-chat-core")
-message(STATUS "")
-message(STATUS "Unified libraries:")
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
-    if(WIN32)
-        message(STATUS "  Default (${CMAKE_BUILD_TYPE}): ${BoldCyan}ascii-chat-static${ColorReset} → ${BoldBlue}asciichat.dll${ColorReset} (shared)")
-    else()
-        message(STATUS "  Default (${CMAKE_BUILD_TYPE}): ${BoldCyan}ascii-chat-static${ColorReset} → ${BoldBlue}libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}${ColorReset} (shared)")
-    endif()
-else()
-    message(STATUS "  Default (${CMAKE_BUILD_TYPE}): ${BoldCyan}ascii-chat-static${ColorReset} → ${BoldBlue}libasciichat.a${ColorReset} (static)")
-endif()
-message(STATUS "  Static library:       ${BoldGreen}static-lib${ColorReset} → ${BoldBlue}libasciichat.a${ColorReset} (always static)")
-message(STATUS "  Optional shared:      ${BoldCyan}ascii-chat-shared${ColorReset} → ${BoldBlue}libasciichat.so/.dylib/.dll${ColorReset} (EXCLUDE_FROM_ALL)")
-message(STATUS "")
+# =============================================================================
+# Set Custom Object File Names (to avoid conflicts in static library)
+# =============================================================================
+# Use CMake's RULE_LAUNCH_COMPILE to rename object files after compilation
+# Example: lib/common.c → lib_common.c.o, lib/image2ascii/simd/common.c → lib_image2ascii_simd_common.c.o
+
+# Wrap the archiver to rename objects before archiving
+# Save the real archiver path before overriding CMAKE_AR
+set(REAL_AR "${CMAKE_AR}" CACHE STRING "Real archiver path" FORCE)
+
+# Configure the wrapper script from template
+set(AR_WRAPPER "${CMAKE_BINARY_DIR}/cmake/scripts/ar_wrapper.sh")
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/scripts/ar_wrapper.sh.in"
+    "${AR_WRAPPER}"
+    @ONLY
+)
+execute_process(COMMAND chmod +x "${AR_WRAPPER}")
+
+# Override CMAKE_AR to use our wrapper
+set(CMAKE_AR "${AR_WRAPPER}" CACHE STRING "Archiver with object renaming" FORCE)
 

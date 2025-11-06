@@ -185,6 +185,13 @@ endfunction()
 
 # Fix ASan runtime linking for Homebrew LLVM on macOS
 function(fix_macos_asan_runtime)
+    # Guard against multiple calls using global property
+    get_property(_already_fixed GLOBAL PROPERTY _MACOS_ASAN_RUNTIME_FIXED)
+    if(_already_fixed)
+        return()
+    endif()
+    set_property(GLOBAL PROPERTY _MACOS_ASAN_RUNTIME_FIXED TRUE)
+
     if(APPLE AND DEFINED HOMEBREW_LLVM_LIB_DIR)
         # Find the clang version directory dynamically
         file(GLOB CLANG_VERSION_DIRS "${HOMEBREW_LLVM_LIB_DIR}/clang/*")
@@ -193,8 +200,7 @@ function(fix_macos_asan_runtime)
             get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
             # Explicitly link against the correct ASan runtime from Homebrew LLVM
             add_link_options(-L${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
-            # Force rpath for ASan runtime
-            add_link_options(-rpath ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+            # NOTE: Don't add -rpath explicitly - clang automatically adds it when using -fsanitize
             message(STATUS "Using ASan runtime from: ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin")
         endif()
     endif()

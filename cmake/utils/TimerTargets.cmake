@@ -1,8 +1,8 @@
 # =============================================================================
-# Build Timing Utilities
+# Timer Targets
 # =============================================================================
-# This module sets up global build timing that tracks the entire build process
-# from first compilation to final linking.
+# This module sets up custom targets for global build timing that tracks the
+# entire build process from first compilation to final linking.
 #
 # Usage:
 #   - Include this file early (before Libraries.cmake) to create build-timer-start
@@ -19,7 +19,7 @@
 # =============================================================================
 # This target runs BEFORE any compilation begins to record the build start time
 add_custom_target(build-timer-start ALL
-    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMAND_ECHO NONE
     VERBATIM
 )

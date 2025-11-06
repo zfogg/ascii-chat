@@ -8,8 +8,16 @@
 # Test Static Library
 # =============================================================================
 # Only available when building STATIC libraries (not OBJECT libraries)
+# For Debug/Dev/Coverage: EXCLUDE_FROM_ALL (build only on explicit request)
+# For Release: Build by default (since Release uses static library)
 if(NOT BUILDING_OBJECT_LIBS)
-    add_executable(test-static-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        add_executable(test-static-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
+        set(TEST_STATIC_DEFAULT "built by default")
+    else()
+        add_executable(test-static-lib EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
+        set(TEST_STATIC_DEFAULT "explicit target only")
+    endif()
 
     # Link against the static library (mimalloc is transitively linked)
     target_link_libraries(test-static-lib PRIVATE
@@ -21,7 +29,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )
 
-    message(STATUS "Added test-static-lib target to test libasciichat.a")
+    message(STATUS "Added test-static-lib target to test libasciichat.a (${TEST_STATIC_DEFAULT})")
 else()
     message(STATUS "Skipping test-static-lib (not available with OBJECT libraries)")
 endif()
