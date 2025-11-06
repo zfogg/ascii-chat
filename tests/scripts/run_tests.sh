@@ -406,6 +406,12 @@ function ensure_tests_built() {
     cmake_build_dir="build_clang"
   fi
 
+  # Ensure build directory exists
+  if [[ ! -d "$cmake_build_dir" ]]; then
+    log_info "Creating build directory: $cmake_build_dir"
+    mkdir -p "$cmake_build_dir"
+  fi
+
   # Check if we have a build directory with CMake cache
   if [[ -d "$cmake_build_dir" ]] && [[ -f "$cmake_build_dir/CMakeCache.txt" ]]; then
     # Build directory exists, use CMake for incremental builds
@@ -434,7 +440,7 @@ function ensure_tests_built() {
     case "$build_type" in
     debug)
       cmake_build_type="Debug"
-      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x -fsanitize=address'"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x'"
       ;;
     dev)
       cmake_build_type="Debug"
@@ -1024,6 +1030,12 @@ function build_test_executable() {
     cmake_build_dir="build_docker"
   elif [[ -d "$PROJECT_ROOT/build_clang" ]]; then
     cmake_build_dir="build_clang"
+  fi
+
+  # Ensure build directory exists
+  if [[ ! -d "$PROJECT_ROOT/$cmake_build_dir" ]]; then
+    log_info "Creating build directory: $cmake_build_dir"
+    mkdir -p "$PROJECT_ROOT/$cmake_build_dir"
   fi
 
   # Check if we have a build directory with CMake cache
