@@ -67,8 +67,8 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 
 
 ### Install Dependencies on Linux or macOS
-- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zstd portaudio libsodium criterion`
+- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc zstd portaudio libsodium criterion`
 - **macOS**: - `brew install cmake ninja zstd portaudio libsodium criterion`
 
 ### Install Dependencies on Windows
