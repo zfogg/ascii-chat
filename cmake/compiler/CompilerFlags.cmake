@@ -15,6 +15,33 @@
 #   - Other functions called based on build type
 # =============================================================================
 
+# Include CMake modules for compiler/linker flag checking
+include(CheckCCompilerFlag)
+include(CheckLinkerFlag)
+include(CheckPIESupported)
+
+# =============================================================================
+# Helper Functions for Safe Flag Addition
+# =============================================================================
+
+# Check and add compiler flag if supported
+function(add_compiler_flag_if_supported flag)
+    string(MAKE_C_IDENTIFIER "HAVE_CFLAG_${flag}" flag_var)
+    check_c_compiler_flag("${flag}" ${flag_var})
+    if(${flag_var})
+        add_compile_options(${flag})
+    endif()
+endfunction()
+
+# Check and add linker flag if supported
+function(add_linker_flag_if_supported flag)
+    string(MAKE_C_IDENTIFIER "HAVE_LFLAG_${flag}" flag_var)
+    check_linker_flag(C "${flag}" ${flag_var})
+    if(${flag_var})
+        add_link_options(${flag})
+    endif()
+endfunction()
+
 # =============================================================================
 # Base Compiler Flags
 # =============================================================================

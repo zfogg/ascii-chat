@@ -167,10 +167,16 @@ endif()
 #    target_link_options(ascii-chat PRIVATE -Wl,--keep-section=.ascii_chat_version)
 #endif()
 
+# Check if PIE is supported before using PIE-related flags
+include(CheckPIESupported)
+check_pie_supported(OUTPUT_VARIABLE PIE_OUTPUT LANGUAGES C)
+
 # Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
 # Only on Linux - Windows and macOS don't support -no-pie flag
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
+    if(CMAKE_C_LINK_PIE_SUPPORTED)
+        target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
+    endif()
 endif()
 
 # Enable dead code elimination for optimal binary size
