@@ -209,8 +209,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(SHARED_LIB_OUTPUT "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
     endif()
 
+    # Wrapper target that builds shared library
     add_custom_target(shared-lib
-        DEPENDS ascii-chat-shared
+        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        DEPENDS ascii-chat-shared build-timer-start
         VERBATIM
     )
 endif()

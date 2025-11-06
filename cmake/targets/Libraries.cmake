@@ -307,11 +307,14 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     )
     set_target_properties(ascii-chat-shared PROPERTIES
         OUTPUT_NAME "asciichat"
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
-        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # Import lib goes with DLL
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .so goes in lib/
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # Import .lib goes in lib/
         WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file instead
     )
+
+    # Explicitly set import library location for Windows
+    target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
 
     # Auto-generate .def file from OBJECT libraries
     # Use a wrapper script to collect object files and generate .def
@@ -413,6 +416,17 @@ else()
         OUTPUT_NAME "asciichat"
         POSITION_INDEPENDENT_CODE ON
     )
+
+    # Import library location for Windows Release builds
+    # Release: .lib goes in lib/ (standard convention)
+    # This applies to the else block which handles Release/non-Debug builds
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" AND WIN32)
+        set_target_properties(ascii-chat-shared PROPERTIES
+            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .lib → lib/
+        )
+        target_link_options(ascii-chat-shared PRIVATE "LINKER:/implib:${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+        message(STATUS "Release build: Import library will go to lib/")
+    endif()
 
     # CRITICAL: Override flags for shared library compatibility (Unix only)
     # 1. -fvisibility=default: Export symbols for external use
@@ -602,28 +616,143 @@ add_custom_command(TARGET ascii-chat-shared PRE_LINK
 # Show timing after build completes (only when actually building)
 add_custom_command(TARGET ascii-chat-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
     COMMENT ""
     VERBATIM
 )
 
-# Only show message when shared library is part of default build (Debug/Dev/Coverage)
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
-    # Shared library is built by default - show success message
-    add_custom_target(show-ascii-chat-shared-success ALL
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-        DEPENDS ascii-chat-shared
-        VERBATIM
+# =============================================================================
+# Combined Static Library (only when building STATIC libs, not OBJECT libs)
+# =============================================================================
+# Create libasciichat.a by combining all module static libraries
+# Only available when modules are STATIC libraries (not OBJECT libraries)
+# On Windows Debug/Dev/Coverage, modules are OBJECT libraries for DLL building
+if(NOT BUILDING_OBJECT_LIBS)
+if(APPLE)
+    # macOS: Use libtool to combine static libraries
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+        COMMAND libtool -static -o ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+            $<TARGET_FILE:ascii-chat-util>
+            $<TARGET_FILE:ascii-chat-data-structures>
+            $<TARGET_FILE:ascii-chat-platform>
+            $<TARGET_FILE:ascii-chat-crypto>
+            $<TARGET_FILE:ascii-chat-simd>
+            $<TARGET_FILE:ascii-chat-video>
+            $<TARGET_FILE:ascii-chat-audio>
+            $<TARGET_FILE:ascii-chat-network>
+            $<TARGET_FILE:ascii-chat-core>
+        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        DEPENDS
+            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
+            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+        COMMENT "Combining module libraries into libasciichat.a"
+        COMMAND_EXPAND_LISTS
     )
 else()
-    # Shared library is EXCLUDE_FROM_ALL - only show message when explicitly built
-    add_custom_target(show-ascii-chat-shared-success
-        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-        DEPENDS ascii-chat-shared
-        VERBATIM
+    # Linux/Windows: Use ar MRI script to combine archives
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+        COMMAND ${CMAKE_COMMAND} -E echo "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a" > ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-util>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-data-structures>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-platform>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-crypto>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-simd>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-video>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-audio>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-network>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-core>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "SAVE" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -E echo "END" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
+        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+        DEPENDS
+            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
+            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
+        COMMENT "Combining module libraries into libasciichat.a"
+        COMMAND_EXPAND_LISTS
     )
 endif()
 
-# Unified library (shared for Debug/Dev/Coverage, static for Release)
+# Create interface library target that wraps the combined static library
+# and propagates all external dependencies
+add_library(ascii-chat-static-lib INTERFACE)
+target_link_libraries(ascii-chat-static-lib INTERFACE
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+)
+
+# Propagate external dependencies from individual libraries
+# These are needed because the combined library only contains object files
+# External dependencies must be linked separately
+
+# Cryptography dependencies (from ascii-chat-crypto)
+target_link_libraries(ascii-chat-static-lib INTERFACE ${LIBSODIUM_LIBRARIES})
+if(BEARSSL_FOUND)
+    target_link_libraries(ascii-chat-static-lib INTERFACE ${BEARSSL_LIBRARIES})
+endif()
+
+# Network dependencies (from ascii-chat-network)
+target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
+
+# Audio dependencies (from ascii-chat-audio)
+target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES})
+if(UNIX AND NOT APPLE AND NOT USE_MUSL)
+    target_link_libraries(ascii-chat-static-lib INTERFACE jack)
+endif()
+
+# Platform-specific system libraries (from ascii-chat-platform)
+if(WIN32)
+    target_link_libraries(ascii-chat-static-lib INTERFACE
+        ${WS2_32_LIB}
+        ${USER32_LIB}
+        ${ADVAPI32_LIB}
+        ${DBGHELP_LIB}
+        ${MF_LIB}
+        ${MFPLAT_LIB}
+        ${MFREADWRITE_LIB}
+        ${MFUUID_LIB}
+        ${OLE32_LIB}
+        crypt32
+    )
+else()
+    if(PLATFORM_DARWIN)
+        target_link_libraries(ascii-chat-static-lib INTERFACE
+            ${FOUNDATION_FRAMEWORK}
+            ${AVFOUNDATION_FRAMEWORK}
+            ${COREMEDIA_FRAMEWORK}
+            ${COREVIDEO_FRAMEWORK}
+        )
+    elseif(PLATFORM_LINUX)
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${CMAKE_THREAD_LIBS_INIT})
+    endif()
+    # Math library (from ascii-chat-core)
+    target_link_libraries(ascii-chat-static-lib INTERFACE m)
+endif()
+
+# User-friendly 'static-lib' target - builds the static library
+add_custom_target(static-lib
+    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a build-timer-start
+    VERBATIM
+)
+
+# Build target for Release builds (referenced by Executables.cmake)
+add_custom_target(ascii-chat-static-build
+    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+    VERBATIM
+)
+endif() # NOT BUILDING_OBJECT_LIBS
+
+# =============================================================================
+# Unified Library (ascii-chat-static for backward compatibility)
+# =============================================================================
 # Debug/Dev/Coverage: Shared library (DLL on Windows) for faster linking during development
 # Release: Static library for distribution
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
@@ -639,115 +768,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
     # Build target name for consistency
     set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-shared)
 else()
-    # Static library for Release builds
-    if(APPLE)
-        # macOS: Use libtool to combine static libraries
-        add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-            COMMAND libtool -static -o ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-                $<TARGET_FILE:ascii-chat-util>
-                $<TARGET_FILE:ascii-chat-data-structures>
-                $<TARGET_FILE:ascii-chat-platform>
-                $<TARGET_FILE:ascii-chat-crypto>
-                $<TARGET_FILE:ascii-chat-simd>
-                $<TARGET_FILE:ascii-chat-video>
-                $<TARGET_FILE:ascii-chat-audio>
-                $<TARGET_FILE:ascii-chat-network>
-                $<TARGET_FILE:ascii-chat-core>
-            DEPENDS
-                ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-                ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-            COMMENT "Combining module libraries into libasciichat.a"
-            COMMAND_EXPAND_LISTS
-        )
-    else()
-        # Linux/Windows: Use ar MRI script to combine archives
-        add_custom_command(
-            OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-            COMMAND ${CMAKE_COMMAND} -E echo "CREATE ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a" > ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-util>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-data-structures>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-platform>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-crypto>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-simd>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-video>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-audio>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-network>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "ADDLIB $<TARGET_FILE:ascii-chat-core>" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "SAVE" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_COMMAND} -E echo "END" >> ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            COMMAND ${CMAKE_AR} -M < ${CMAKE_CURRENT_BINARY_DIR}/combine.mri
-            DEPENDS
-                ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-                ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-            COMMENT "Combining module libraries into libasciichat.a"
-            COMMAND_EXPAND_LISTS
-        )
-    endif()
-
-    # Create interface library target that wraps the combined static library
-    # and propagates all external dependencies
+    # Release builds: ascii-chat-static wraps the combined static library
     add_library(ascii-chat-static INTERFACE)
-    target_link_libraries(ascii-chat-static INTERFACE
-        ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-    )
-
-    # Propagate external dependencies from individual libraries
-    # These are needed because the combined library only contains object files
-    # External dependencies must be linked separately
-
-    # Cryptography dependencies (from ascii-chat-crypto)
-    target_link_libraries(ascii-chat-static INTERFACE ${LIBSODIUM_LIBRARIES})
-    if(BEARSSL_FOUND)
-        target_link_libraries(ascii-chat-static INTERFACE ${BEARSSL_LIBRARIES})
-    endif()
-
-    # Network dependencies (from ascii-chat-network)
-    target_link_libraries(ascii-chat-static INTERFACE ${ZSTD_LIBRARIES})
-
-    # Audio dependencies (from ascii-chat-audio)
-    target_link_libraries(ascii-chat-static INTERFACE ${PORTAUDIO_LIBRARIES})
-    if(UNIX AND NOT APPLE AND NOT USE_MUSL)
-        target_link_libraries(ascii-chat-static INTERFACE jack)
-    endif()
-
-    # Platform-specific system libraries (from ascii-chat-platform)
-    if(WIN32)
-        target_link_libraries(ascii-chat-static INTERFACE
-            ${WS2_32_LIB}
-            ${USER32_LIB}
-            ${ADVAPI32_LIB}
-            ${DBGHELP_LIB}
-            ${MF_LIB}
-            ${MFPLAT_LIB}
-            ${MFREADWRITE_LIB}
-            ${MFUUID_LIB}
-            ${OLE32_LIB}
-            crypt32
-        )
-    else()
-        if(PLATFORM_DARWIN)
-            target_link_libraries(ascii-chat-static INTERFACE
-                ${FOUNDATION_FRAMEWORK}
-                ${AVFOUNDATION_FRAMEWORK}
-                ${COREMEDIA_FRAMEWORK}
-                ${COREVIDEO_FRAMEWORK}
-            )
-        elseif(PLATFORM_LINUX)
-            target_link_libraries(ascii-chat-static INTERFACE ${CMAKE_THREAD_LIBS_INIT})
-        endif()
-        # Math library (from ascii-chat-core)
-        target_link_libraries(ascii-chat-static INTERFACE m)
-    endif()
+    target_link_libraries(ascii-chat-static INTERFACE ascii-chat-static-lib)
 
     # Build target name for consistency
     set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-static-build)
-    add_custom_target(ascii-chat-static-build
-        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMENT "Building combined static library"
-    )
 endif()
 
 # Note: External dependencies (mimalloc, libsodium, portaudio, etc.) are linked
@@ -779,17 +805,17 @@ message(STATUS "Individual modules: ascii-chat-util, ascii-chat-platform, ascii-
 message(STATUS "                    ascii-chat-simd, ascii-chat-video, ascii-chat-audio,")
 message(STATUS "                    ascii-chat-network, ascii-chat-core")
 message(STATUS "")
+message(STATUS "Unified libraries:")
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
-    message(STATUS "Unified library (${CMAKE_BUILD_TYPE}):")
     if(WIN32)
-        message(STATUS "  Shared:  ascii-chat-static  → asciichat.dll (DLL on Windows)")
+        message(STATUS "  Default (${CMAKE_BUILD_TYPE}): ${BoldCyan}ascii-chat-static${ColorReset} → ${BoldBlue}asciichat.dll${ColorReset} (shared)")
     else()
-        message(STATUS "  Shared:  ascii-chat-static  → libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        message(STATUS "  Default (${CMAKE_BUILD_TYPE}): ${BoldCyan}ascii-chat-static${ColorReset} → ${BoldBlue}libasciichat${CMAKE_SHARED_LIBRARY_SUFFIX}${ColorReset} (shared)")
     endif()
 else()
-    message(STATUS "Unified library (${CMAKE_BUILD_TYPE}):")
-    message(STATUS "  Static:  ascii-chat-static  → libasciichat.a")
+    message(STATUS "  Default (${CMAKE_BUILD_TYPE}): ${BoldCyan}ascii-chat-static${ColorReset} → ${BoldBlue}libasciichat.a${ColorReset} (static)")
 endif()
-message(STATUS "  Optional:  ascii-chat-shared  → libasciichat.so/.dylib/.dll (EXCLUDE_FROM_ALL)")
+message(STATUS "  Static library:       ${BoldGreen}static-lib${ColorReset} → ${BoldBlue}libasciichat.a${ColorReset} (always static)")
+message(STATUS "  Optional shared:      ${BoldCyan}ascii-chat-shared${ColorReset} → ${BoldBlue}libasciichat.so/.dylib/.dll${ColorReset} (EXCLUDE_FROM_ALL)")
 message(STATUS "")
 
