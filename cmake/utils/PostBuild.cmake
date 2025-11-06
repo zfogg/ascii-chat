@@ -36,6 +36,32 @@ function(copy_windows_dlls TARGET_NAME)
     endif()
 endfunction()
 
+# Check if Release build is statically linked (warns if not)
+# - Linux: Uses ldd to verify binary has no dynamic dependencies (must be "statically linked")
+# - Windows: Checks that only system DLLs are linked (ntdll, kernel32, etc.)
+# - macOS: Uses otool to verify only system frameworks are linked
+function(check_static_linking TARGET_NAME)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        find_program(BASH_EXECUTABLE bash HINTS "C:/Program Files/Git/usr/bin")
+        if(BASH_EXECUTABLE)
+            # Determine platform
+            if(UNIX AND NOT APPLE)
+                set(PLATFORM "linux")
+            elseif(WIN32)
+                set(PLATFORM "windows")
+            elseif(APPLE)
+                set(PLATFORM "macos")
+            endif()
+
+            add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                COMMAND ${BASH_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/utils/check_static_linking.sh" "$<TARGET_FILE:${TARGET_NAME}>" "${PLATFORM}"
+                COMMENT "Verifying static linking for Release build"
+                VERBATIM
+            )
+        endif()
+    endif()
+endfunction()
+
 # Strip symbols in Release builds and clean .comment section
 # Note: .comment section is ELF-specific (Linux only)
 # Windows uses PE format (no .comment section)

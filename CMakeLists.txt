@@ -158,6 +158,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
 if(WIN32)
     copy_windows_dlls(ascii-chat)
 endif()
+# Check static linking for Release builds
+check_static_linking(ascii-chat)
 
 # =============================================================================
 # Project meta stuff like documentation, installation packages, and custom targets like clang-tidy and clang-format
