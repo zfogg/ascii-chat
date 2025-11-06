@@ -1,5 +1,9 @@
 #!/usr/bin/env pwsh
 # PowerShell script to run ascii-chat tests via Docker
+#
+# BUILD DIRECTORY: This script always uses build_docker/ for Docker builds.
+# The underlying run_tests.sh script automatically detects Docker and uses build_docker/.
+#
 # Usage:
 #   ./tests/scripts/run-docker-tests.ps1                          # Run all tests
 #   ./tests/scripts/run-docker-tests.ps1 unit                     # Run all unit tests

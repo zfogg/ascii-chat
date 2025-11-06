@@ -48,8 +48,8 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
-    # Version dependency and global build timer
-    add_dependencies(${MODULE_NAME} generate_version build-timer-start)
+    # Version dependency (build-timer-start removed to prevent unnecessary rebuilds)
+    add_dependencies(${MODULE_NAME} generate_version)
 
     # Include paths
     target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_BINARY_DIR}/generated)

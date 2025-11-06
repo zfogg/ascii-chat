@@ -15,9 +15,24 @@
 #include "crypto/known_hosts.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with debug logging enabled
-// This keeps stdout/stderr enabled and sets log level to DEBUG for debugging
-TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(crypto_known_hosts, LOG_DEBUG, LOG_DEBUG, false, false);
+// Custom setup function that combines logging setup and known_hosts cleanup
+void setup_crypto_known_hosts_tests(void) {
+  log_set_level(LOG_DEBUG);
+  test_logging_disable(false, false);
+  // Clean up any existing cache from previous tests to prevent parallel test conflicts
+  known_hosts_cleanup();
+}
+
+// Custom teardown function that combines logging restore and known_hosts cleanup
+void teardown_crypto_known_hosts_tests(void) {
+  log_set_level(LOG_DEBUG);
+  test_logging_restore();
+  // Clean up cache after test completes
+  known_hosts_cleanup();
+}
+
+// Declare test suite with custom init/fini functions
+TestSuite(crypto_known_hosts, .init = setup_crypto_known_hosts_tests, .fini = teardown_crypto_known_hosts_tests);
 
 // =============================================================================
 // Known Hosts Path Tests
@@ -71,10 +86,19 @@ static add_known_host_test_case_t add_known_host_cases[] = {
 
 ParameterizedTestParameters(crypto_known_hosts, add_known_host_tests) {
   size_t nb_cases = sizeof(add_known_host_cases) / sizeof(add_known_host_cases[0]);
+  // Debug: log the struct size and array size
+  log_debug("sizeof(add_known_host_test_case_t) = %zu", sizeof(add_known_host_test_case_t));
+  log_debug("sizeof(add_known_host_cases) = %zu", sizeof(add_known_host_cases));
+  log_debug("nb_cases = %zu", nb_cases);
   return cr_make_param_array(add_known_host_test_case_t, add_known_host_cases, nb_cases);
 }
 
 ParameterizedTest(add_known_host_test_case_t *tc, crypto_known_hosts, add_known_host_tests) {
+  // Validate the test case pointer is not NULL
+  cr_assert_not_null(tc, "Test case pointer should not be NULL");
+  cr_assert_not_null(tc->hostname, "Hostname should not be NULL");
+  cr_assert_not_null(tc->description, "Description should not be NULL");
+
   asciichat_error_t result = add_known_host(tc->hostname, tc->port, tc->server_key);
 
   if (tc->expected_result == 0) {
