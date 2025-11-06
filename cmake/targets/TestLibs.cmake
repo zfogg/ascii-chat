@@ -63,6 +63,29 @@ if(NOT USE_MUSL)
     add_dependencies(test-shared-lib ascii-chat-shared)
 
     message(STATUS "Added test-shared-lib target to test asciichat.dll/.so")
+
+    # Add a custom test that runs test-shared-lib to verify it works
+    add_custom_target(run-test-shared-lib
+        COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib
+        DEPENDS test-shared-lib
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running test-shared-lib to verify shared library works"
+        VERBATIM
+    )
 else()
     message(STATUS "Skipping test-shared-lib (not compatible with musl static builds)")
+endif()
+
+# =============================================================================
+# Test Library Execution Verification
+# =============================================================================
+# Add custom target to run test-static-lib if it exists
+if(NOT BUILDING_OBJECT_LIBS)
+    add_custom_target(run-test-static-lib
+        COMMAND ${CMAKE_BINARY_DIR}/bin/test-static-lib
+        DEPENDS test-static-lib
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running test-static-lib to verify static library works"
+        VERBATIM
+    )
 endif()
