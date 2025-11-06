@@ -20,5 +20,6 @@
 # This target runs BEFORE any compilation begins to record the build start time
 add_custom_target(build-timer-start ALL
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND_ECHO NONE
     VERBATIM
 )
