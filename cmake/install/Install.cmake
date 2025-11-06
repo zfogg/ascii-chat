@@ -17,49 +17,88 @@ install(TARGETS ascii-chat
     COMPONENT Runtime
 )
 
-# Install uninstall script (configured with installation prefix)
-configure_file(
-    "${CMAKE_SOURCE_DIR}/cmake/uninstall.sh.in"
-    "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
-    @ONLY
-)
-install(PROGRAMS "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
-    DESTINATION bin
-    COMPONENT Runtime
+# Install uninstall script (Unix only - not needed on Windows with uninstaller)
+if(UNIX)
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/cmake/install/uninstall.sh.in"
+        "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
+        @ONLY
+    )
+    install(PROGRAMS "${CMAKE_BINARY_DIR}/ascii-chat-uninstall.sh"
+        DESTINATION bin
+        COMPONENT Runtime
+    )
+endif()
+
+# =============================================================================
+# Install shared library and static libraries
+# =============================================================================
+# Library installation strategy:
+#   - Static libraries (.a/.lib): Always install to lib/ (Development component)
+#   - Shared libraries (DLL/.so/.dylib): Always install to lib/ (Development component)
+#   - Dynamic builds (Debug/Dev on Windows): ALSO install DLLs to bin/ (Runtime component)
+#
+# Windows library structure:
+#   - Release (static): libasciichat.a in lib/ only
+#   - Debug/Dev (dynamic): asciichat.dll in lib/ (Development) AND bin/ (Runtime)
+#
+# Note: We create a dummy export target so CMake doesn't complain about missing EXPORT
+# =============================================================================
+
+# Create a dummy interface target to hold the export for find_package support
+add_library(ascii-chat-dummy INTERFACE)
+install(TARGETS ascii-chat-dummy
+    EXPORT ascii-chat-targets
 )
 
-# Install shared library (if built in Release mode)
-# The shared library is built with the 'shared-lib' target
-# It's an optional component for developers who want to use libasciichat
-# Note: We create a dummy export target so CMake doesn't complain about missing EXPORT
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    # Create a dummy interface target to hold the export
-    # This allows install(EXPORT ...) to work even if ascii-chat-shared wasn't built
-    add_library(ascii-chat-dummy INTERFACE)
-    install(TARGETS ascii-chat-dummy
-        EXPORT ascii-chat-targets
+if(WIN32)
+    # =============================================================================
+    # Windows Library Installation
+    # =============================================================================
+
+    # Install static library (.a) to lib/ - always available for linking
+    install(FILES
+        "${CMAKE_BINARY_DIR}/lib/libasciichat.a"
+        DESTINATION lib
+        COMPONENT Development
+        OPTIONAL
     )
 
-    if(WIN32)
-        # Windows: DLL and import library both go to lib/ (development-only, runtime is statically linked)
+    # Install DLL to lib/ for development (all build types)
+    # Developers linking against libasciichat.dll need it in lib/
+    install(FILES
+        "${CMAKE_BINARY_DIR}/bin/asciichat.dll"
+        DESTINATION lib
+        COMPONENT Development
+        OPTIONAL
+    )
+
+    if(CMAKE_BUILD_TYPE MATCHES "Release")
+        message(STATUS "Configured library installation: ${BoldBlue}libasciichat.a${ColorReset} and ${BoldBlue}asciichat.dll${ColorReset} → lib/ ${Magenta}(static build)${ColorReset}")
+    else()
+        # For dynamic builds (Debug/Dev), ALSO install asciichat.dll to bin/ for runtime
+        # The executable needs to find asciichat.dll at runtime
         install(FILES
             "${CMAKE_BINARY_DIR}/bin/asciichat.dll"
-            "${CMAKE_BINARY_DIR}/lib/libasciichat.a"
-            DESTINATION lib
-            COMPONENT Development
+            DESTINATION bin
+            COMPONENT Runtime
             OPTIONAL
         )
-        message(STATUS "Configured shared library installation for CPack (asciichat.dll in lib/)")
-    else()
-        # Unix/macOS: Shared library goes to lib/
-        install(FILES
-            "${CMAKE_BINARY_DIR}/lib/libasciichat.so"
-            DESTINATION lib
-            COMPONENT Development
-            OPTIONAL
-        )
-        message(STATUS "Configured shared library installation for CPack (libasciichat.so)")
+        message(STATUS "Configured library installation: ${BoldBlue}asciichat.dll${ColorReset} → lib/ (dev) and bin/ (runtime), ${BoldBlue}libasciichat.a${ColorReset} → lib/ ${Magenta}(dynamic build)${ColorReset}")
     endif()
+else()
+    # =============================================================================
+    # Unix/macOS Library Installation
+    # =============================================================================
+
+    # Shared library (.so/.dylib) goes to lib/
+    install(FILES
+        "${CMAKE_BINARY_DIR}/lib/libasciichat.so"
+        DESTINATION lib
+        COMPONENT Development
+        OPTIONAL
+    )
+    message(STATUS "Configured library installation: libasciichat.so → lib/")
 endif()
 
 # Install public API headers
@@ -92,7 +131,7 @@ endif()
 if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
     # Configure the pkgconfig file with current settings
     configure_file(
-        "${CMAKE_SOURCE_DIR}/cmake/ascii-chat.pc.in"
+        "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.pc.in"
         "${CMAKE_BINARY_DIR}/ascii-chat.pc"
         @ONLY
     )
@@ -110,7 +149,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
 
     # Generate the config file that includes the exports
     configure_package_config_file(
-        "${CMAKE_SOURCE_DIR}/cmake/ascii-chat-config.cmake.in"
+        "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat-config.cmake.in"
         "${CMAKE_BINARY_DIR}/ascii-chat-config.cmake"
         INSTALL_DESTINATION lib/cmake/ascii-chat
         NO_CHECK_REQUIRED_COMPONENTS_MACRO
@@ -180,18 +219,23 @@ install(CODE "
     message(STATUS \"Finished removing mimalloc files from installation\")
 ")
 
-# Install DLL dependencies on Windows (for non-static builds)
-# These DLLs are copied to build/bin by vcpkg's applocal.ps1 script during linking
-# We need to explicitly install them so CPack includes them in the installer
+# =============================================================================
+# Install dependency DLLs on Windows (for dynamic builds only)
+# =============================================================================
+# Dynamic builds (Debug/Dev) require dependency DLLs in bin/ directory:
+#   - zstd.dll, libsodium.dll, portaudio.dll, etc.
+#   - asciichat.dll (already handled above, but also matched here)
+#
+# These DLLs are copied to build/bin by vcpkg's applocal.ps1 during linking.
+# We install them to bin/ so the executable can find them at runtime.
+#
+# Release builds use static libraries, so no dependency DLLs are needed.
+# =============================================================================
 if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
-    # Only install DLLs for non-static builds (Debug, Dev builds use dynamic libraries)
-    # Release builds use static libraries so no DLLs needed
-
-    # Install DLLs from build/bin directory
-    # vcpkg's applocal.ps1 script copies DLLs to build/bin during linking
-    # We install them here so CPack includes them in the installer
-    # Use trailing slash to install contents of bin directory, not bin directory itself
-    # Note: FILES_MATCHING handles the case where no DLLs exist (no files match)
+    # Install all DLLs from build/bin directory to bin/ (Runtime component)
+    # This includes both dependency DLLs (zstd, libsodium, etc.) AND asciichat.dll
+    # Note: asciichat.dll is already installed to lib/ above (Development component)
+    # but we also need it in bin/ for the executable to run
     install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
         DESTINATION bin
         COMPONENT Runtime
@@ -199,7 +243,7 @@ if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
         PATTERN "*.dll"
         PATTERN "*.exe" EXCLUDE  # Exclude exe (already installed by install(TARGETS))
     )
-    message(STATUS "Configured DLL installation for CPack (non-static builds only)")
+    message(STATUS "Configured dependency DLL installation: all DLLs → bin/ (runtime, dynamic build)")
 endif()
 
 # Platform-specific installation paths (must be set before using INSTALL_DOC_DIR)
@@ -352,8 +396,8 @@ if(USE_CPACK)
         # Use custom STGZ header with FHS-compliant defaults (/usr/local, no subdirectory)
         # CMake's default header uses current directory, not /usr/local
         # CPack will substitute @CPACK_*@ variables and calculate header length automatically
-        if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/CPackSTGZHeader.sh.in")
-            set(CPACK_STGZ_HEADER_FILE "${CMAKE_SOURCE_DIR}/cmake/CPackSTGZHeader.sh.in" CACHE FILEPATH "Custom STGZ header with /usr/local default" FORCE)
+        if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/install/CPackSTGZHeader.sh.in")
+            set(CPACK_STGZ_HEADER_FILE "${CMAKE_SOURCE_DIR}/cmake/install/CPackSTGZHeader.sh.in" CACHE FILEPATH "Custom STGZ header with /usr/local default" FORCE)
         endif()
 
         # On Windows, explicitly prevent CPack from creating share/ directory
@@ -375,7 +419,7 @@ if(USE_CPACK)
             # Ensure CPack installs only what we explicitly define
             set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};ALL;/" CACHE STRING "CPack install projects" FORCE)
             # Run cleanup script to remove mimalloc files after install but before packaging
-            set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
+            set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
         endif()
         include(CPack)
     endif()
@@ -399,7 +443,7 @@ if(USE_CPACK)
     set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Package version" FORCE)
 
     # Log version being used for packages
-    message(STATUS "CPack: Using version ${CPACK_PACKAGE_VERSION} for packages (from PROJECT_VERSION=${PROJECT_VERSION})")
+    message(STATUS "${Yellow}CPack:${ColorReset} Using version ${BoldGreen}${CPACK_PACKAGE_VERSION}${ColorReset} for packages (from PROJECT_VERSION=${BoldGreen}${PROJECT_VERSION}${ColorReset})")
 
     # Package metadata
     set(CPACK_PACKAGE_CONTACT "https://github.com/zfogg/ascii-chat")
@@ -411,10 +455,10 @@ if(USE_CPACK)
     # Re-set with CACHE FORCE to ensure CPack doesn't override it
     if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
         set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE.txt" CACHE FILEPATH "License file for installers" FORCE)
-        message(STATUS "CPack: Using LICENSE.txt for installers")
+        message(STATUS "${Yellow}CPack:${ColorReset} Using ${BoldBlue}LICENSE.txt${ColorReset} for installers")
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
         set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE" CACHE FILEPATH "License file for installers" FORCE)
-        message(STATUS "CPack: Using LICENSE for installers")
+        message(STATUS "${Yellow}CPack:${ColorReset} Using ${BoldBlue}LICENSE${ColorReset} for installers")
     endif()
 
     # Package file name format (use PROJECT_VERSION directly to ensure git version is used)
@@ -494,16 +538,16 @@ if(USE_CPACK)
 
         if(DPKG_BUILDPACKAGE_EXECUTABLE)
             list(APPEND CPACK_GENERATOR "DEB")
-            message(STATUS "CPack: DEB generator enabled (dpkg-buildpackage found)")
+            message(STATUS "${Yellow}CPack:${ColorReset} DEB generator enabled (${BoldBlue}dpkg-buildpackage${ColorReset} found)")
         else()
-            message(STATUS "CPack: DEB generator disabled (dpkg-buildpackage not found)")
+            message(STATUS "${Red}CPack:${ColorReset} DEB generator disabled (${BoldBlue}dpkg-buildpackage${ColorReset} not found)")
         endif()
 
         if(RPMBUILD_EXECUTABLE)
             list(APPEND CPACK_GENERATOR "RPM")
-            message(STATUS "CPack: RPM generator enabled (rpmbuild found)")
+            message(STATUS "${Yellow}CPack:${ColorReset} RPM generator enabled (${BoldBlue}rpmbuild${ColorReset} found)")
         else()
-            message(STATUS "CPack: RPM generator disabled (rpmbuild not found)")
+            message(STATUS "${Red}CPack:${ColorReset} RPM generator disabled (${BoldBlue}rpmbuild${ColorReset} not found)")
         endif()
 
         # DEB package configuration
@@ -554,8 +598,6 @@ if(USE_CPACK)
             endif()
         endif()
 
-        message(STATUS "CPack: Enabled generators for Linux: ${CPACK_GENERATOR}")
-
     elseif(APPLE)
         # macOS: STGZ (self-extracting .sh), TGZ (always available), DragNDrop/DMG (if hdiutil available)
         set(CPACK_GENERATOR "STGZ;TGZ")
@@ -573,9 +615,9 @@ if(USE_CPACK)
         find_program(HDIUTIL_EXECUTABLE hdiutil)
         if(HDIUTIL_EXECUTABLE)
             list(APPEND CPACK_GENERATOR "DragNDrop")
-            message(STATUS "CPack: DMG generator enabled (hdiutil found)")
+            message(STATUS "${Yellow}CPack:${ColorReset} DMG generator enabled (${BoldBlue}hdiutil${ColorReset} found)")
         else()
-            message(STATUS "CPack: DMG generator disabled (hdiutil not found)")
+            message(STATUS "${Red}CPack:${ColorReset} DMG generator disabled (${BoldBlue}hdiutil${ColorReset} not found)")
         endif()
 
         # DMG package configuration
@@ -586,8 +628,6 @@ if(USE_CPACK)
             set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "")  # Optional: custom setup script
             set(CPACK_DMG_SLA_DIR "")  # Optional: Software License Agreement directory
         endif()
-
-        message(STATUS "CPack: Enabled generators for macOS: ${CPACK_GENERATOR}")
 
     elseif(WIN32)
         # Windows: ZIP (always available), NSIS/EXE (if makensis found)
@@ -624,9 +664,9 @@ if(USE_CPACK)
 
         if(NSIS_EXECUTABLE)
             list(APPEND CPACK_GENERATOR "NSIS")
-            message(STATUS "CPack: NSIS generator enabled (makensis found at ${NSIS_EXECUTABLE})")
+            message(STATUS "${Yellow}CPack:${ColorReset} NSIS generator enabled (${BoldBlue}makensis${ColorReset} found at ${BoldBlue}${NSIS_EXECUTABLE}${ColorReset})")
         else()
-            message(STATUS "CPack: NSIS generator disabled (makensis not found - install NSIS to create EXE installers)")
+            message(STATUS "${Red}CPack:${ColorReset} NSIS generator disabled (${BoldBlue}makensis${ColorReset} not found - install NSIS to create EXE installers)")
         endif()
 
         # NSIS installer configuration
@@ -698,12 +738,10 @@ if(USE_CPACK)
             )
         endif()
 
-        message(STATUS "CPack: Enabled generators for Windows: ${CPACK_GENERATOR}")
-
     else()
         # Unknown platform: fallback to TGZ
         set(CPACK_GENERATOR "TGZ")
-        message(STATUS "CPack: Using fallback generator TGZ for unknown platform")
+        message(STATUS "${Yellow}CPack:${ColorReset} Using fallback generator ${Magenta}TGZ${ColorReset} for unknown platform")
     endif()
 
     # =========================================================================
@@ -821,10 +859,10 @@ if(USE_CPACK)
         INSTALL_TYPES Full Developer
     )
 
-    message(STATUS "CPack: Package generation enabled")
-    message(STATUS "CPack: Package will be created in: ${CPACK_PACKAGE_DIRECTORY}")
-    message(STATUS "CPack: Generators: ${CPACK_GENERATOR}")
+    message(STATUS "${Yellow}CPack:${ColorReset} Package generation enabled")
+    message(STATUS "${Yellow}CPack:${ColorReset} Package will be created in: ${BoldBlue}${CPACK_PACKAGE_DIRECTORY}${ColorReset}")
+    message(STATUS "${Yellow}CPack:${ColorReset} Generators: ${Magenta}${CPACK_GENERATOR}${ColorReset}")
 else()
-    message(STATUS "CPack: Package generation disabled (set USE_CPACK=ON to enable)")
+    message(STATUS "${Red}CPack:${ColorReset} Package generation disabled (set USE_CPACK=ON to enable)")
 endif()
 

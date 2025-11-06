@@ -40,7 +40,7 @@ endif()
 # 3. Set default build type to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Choose the type of build" FORCE)
-    message(STATUS "Set default build type to Debug")
+    message(STATUS "Set default build type to ${BoldYellow}Debug${ColorReset}")
 endif()
 
 # 4. Handle ccache wrapper if present
@@ -90,7 +90,7 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
             )
 
             if(symlink_result EQUAL 0)
-                message(STATUS "Created symlink for compile_commands.json in project root")
+                message(STATUS "Created symlink for ${BoldCyan}compile_commands.json${ColorReset} in project root")
             else()
                 # Symlink failed, we'll copy it as a custom target instead
                 message(STATUS "Will copy compile_commands.json to project root after build")
@@ -116,7 +116,7 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
             )
 
             if(symlink_result EQUAL 0)
-                message(STATUS "Created symlink for compile_commands.json in project root")
+                message(STATUS "Created symlink for ${BoldCyan}compile_commands.json${ColorReset} in project root")
             endif()
         endif()
     endif()
@@ -133,7 +133,7 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
     # Clear the runtime library setting that adds -D_DEBUG -D_DLL -D_MT
     set(CMAKE_MSVC_RUNTIME_LIBRARY "")
 
-    message(STATUS "Cleared CMake Windows runtime flags for Clang-only build")
+    message(STATUS "Cleared CMake Windows runtime flags for ${BoldGreen}Clang-only${ColorReset} build")
 endif()
 
 # =============================================================================

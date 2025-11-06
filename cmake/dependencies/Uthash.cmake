@@ -23,6 +23,6 @@ function(configure_uthash)
         message(FATAL_ERROR "uthash header file not found: ${UTHASH_HEADER}")
     endif()
 
-    message(STATUS "Configured uthash from ${UTHASH_DIR}")
+    message(STATUS "Configured ${BoldGreen}uthash${ColorReset} from ${BoldCyan}${UTHASH_DIR}${ColorReset}")
 endfunction()
 

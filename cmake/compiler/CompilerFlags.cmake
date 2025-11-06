@@ -68,7 +68,7 @@ function(configure_base_compiler_flags)
     # Frame pointers help with stack traces and debugging, but disable in Release for performance
     if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         add_compile_options(-fno-omit-frame-pointer)
-        message(STATUS "Frame pointers enabled for backtraces")
+        message(STATUS "${BoldGreen}Frame pointers${ColorReset} enabled for backtraces")
     endif()
 endfunction()
 
@@ -104,11 +104,11 @@ function(configure_debug_memory USE_MIMALLOC_ARG USE_MUSL_ARG)
         add_definitions(-DUSE_MIMALLOC_DEBUG)
         set(MIMALLOC_DEBUG_LEVEL 2 PARENT_SCOPE)  # MI_DEBUG level 2: basic checks + internal assertions
     elseif(USE_MUSL_ARG)
-        message(STATUS "DEBUG_MEMORY disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
+        message(STATUS "${BoldYellow}DEBUG_MEMORY${ColorReset} disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
     else()
         # Enable DEBUG_MEMORY only when no conflicts exist
         add_definitions(-DDEBUG_MEMORY)
-        message(STATUS "DEBUG_MEMORY enabled for detailed memory leak tracking")
+        message(STATUS "${BoldGreen}DEBUG_MEMORY${ColorReset} enabled for detailed memory leak tracking")
     endif()
 endfunction()
 
@@ -190,7 +190,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
 
         # NOTE: On Windows, this doesn't work. We use the bash script
-        # "cmake/remove_paths.sh" (via Git Bash or WSL) that edits strings with paths from the
+        # "cmake/utils/remove_paths.sh" (via Git Bash or WSL) that edits strings with paths from the
         # builder's machine in them found in the release binary for after it's
         # built.
         add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")

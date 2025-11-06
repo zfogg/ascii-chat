@@ -20,20 +20,21 @@ set(DEPS_CACHE_DIR "${DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependen
 # Musl-specific cache directory
 set(DEPS_CACHE_MUSL "${DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
 
-message(STATUS "Using dependency cache: ${DEPS_CACHE_DIR}")
-
 # =============================================================================
 # Initialization
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/Init.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/BuildTypes.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
+
+# Print dependency cache message (after Init.cmake defines colors)
+message(STATUS "Using dependency cache: ${BoldCyan}${DEPS_CACHE_DIR}${ColorReset}")
 
 # =============================================================================
 # Pre project() Configuration
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/Musl.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project()
-include(${CMAKE_SOURCE_DIR}/cmake/LLVM.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
 # =============================================================================
@@ -84,25 +85,25 @@ endif()
 # =============================================================================
 # Version Detection (after project() to override PROJECT_VERSION)
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/Version.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/Options.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/PlatformDetection.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/CCache.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/CompilerDetection.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/BuildConfiguration.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/CompilerFlags.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
 configure_base_compiler_flags()
 configure_llvm_post_project()
 fix_llvm_ranlib()
 configure_musl_post_project()
-include(${CMAKE_SOURCE_DIR}/cmake/WindowsWorkarounds.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/platform/WindowsWorkarounds.cmake)
 fix_windows_clang_linking()
 find_msvc_libraries()
-include(${CMAKE_SOURCE_DIR}/cmake/Sanitizers.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/platform/Sanitizers.cmake)
 
 # Configure build type after both CompilerFlags.cmake and Sanitizers.cmake are included
 # (configure_build_type_post_project needs functions from both modules)
@@ -112,26 +113,26 @@ configure_build_type_post_project()
 # Hardware Acceleration Detection (must be before build type configuration)
 # =============================================================================
 # Note: CRC32 detection depends on SIMD detection, so SIMD must come first
-include(${CMAKE_SOURCE_DIR}/cmake/SIMD.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/CRC32.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/SIMD.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
 
 # =============================================================================
 # Dependencies
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/Dependencies.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Tomlc17.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Dependencies.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Tomlc17.cmake)
 configure_tomlc17()
-include(${CMAKE_SOURCE_DIR}/cmake/LibsodiumBcryptPbkdf.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/LibsodiumBcryptPbkdf.cmake)
 configure_libsodium_bcrypt_pbkdf()
-include(${CMAKE_SOURCE_DIR}/cmake/Uthash.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Uthash.cmake)
 configure_uthash()
-include(${CMAKE_SOURCE_DIR}/cmake/Include.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 configure_include_directories()
 
-include(${CMAKE_SOURCE_DIR}/cmake/Mimalloc.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mimalloc.cmake)
 
 # When USE_MUSL=ON, build all dependencies from source and cache them
-include(${CMAKE_SOURCE_DIR}/cmake/MuslDependencies.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
 
 if(USE_MUSL)
     message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
@@ -141,16 +142,17 @@ endif()
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/SourceFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Libraries.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/PCH.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Executables.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Tests.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildTiming.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
 
 # =============================================================================
 # Post-Build Processing (must come after Executables.cmake)
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/PostBuild.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
 # Copy DLL dependencies to bin directory on Windows (for non-static builds)
 if(WIN32)
     copy_windows_dlls(ascii-chat)
@@ -159,7 +161,7 @@ endif()
 # =============================================================================
 # Project meta stuff like documentation, installation packages, and custom targets like clang-tidy and clang-format
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/Documentation.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/Install.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/CustomTargets.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/StatusMessages.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/install/Documentation.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/install/Install.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CustomTargets.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)

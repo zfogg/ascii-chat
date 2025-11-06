@@ -50,7 +50,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         if(UNIX AND NOT APPLE AND NOT WIN32)
             add_custom_command(TARGET ascii-chat POST_BUILD
                 # Clean .comment section BEFORE stripping (remove duplicates, keep version string)
-                COMMAND ${CMAKE_SOURCE_DIR}/cmake/clean_comment.sh $<TARGET_FILE:ascii-chat>
+                COMMAND ${CMAKE_SOURCE_DIR}/cmake/utils/clean_comment.sh $<TARGET_FILE:ascii-chat>
                 # Strip symbols but keep custom sections
                 # Use --strip-debug instead of --strip-unneeded to preserve custom sections
                 COMMAND ${STRIP_EXECUTABLE} --strip-debug --keep-section=.comment --keep-section=.ascii_chat --keep-section=.version $<TARGET_FILE:ascii-chat>
@@ -59,7 +59,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             # Remove embedded file paths from binary using bash script (much faster than PowerShell)
             # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND
             add_custom_command(TARGET ascii-chat POST_BUILD
-                COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh"
+                COMMAND bash "${CMAKE_SOURCE_DIR}/cmake/utils/remove_paths.sh"
                     "$<TARGET_FILE:ascii-chat>"
                     "${CMAKE_SOURCE_DIR}"
                     "${CMAKE_BINARY_DIR}"
@@ -105,9 +105,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 
                     # Convert script path
                     if(CMAKE_SOURCE_DIR MATCHES "^[A-Za-z]:")
-                        convert_windows_to_wsl_path("${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh" SCRIPT_PATH_BASH)
+                        convert_windows_to_wsl_path("${CMAKE_SOURCE_DIR}/cmake/utils/remove_paths.sh" SCRIPT_PATH_BASH)
                     else()
-                        set(SCRIPT_PATH_BASH "${CMAKE_SOURCE_DIR}/cmake/remove_paths.sh")
+                        set(SCRIPT_PATH_BASH "${CMAKE_SOURCE_DIR}/cmake/utils/remove_paths.sh")
                     endif()
 
                     # Convert binary path, source dir, and build dir for bash to access files

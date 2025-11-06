@@ -88,13 +88,28 @@ endif()
 # Include directories for executable (needed for version.h and other generated headers)
 target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
 
-# Print success message after ascii-chat is built (or verified up to date)
-# Use a phony target that always runs to show the message even when nothing needs rebuilding
-# This is so Claude Code doesn't get confused when ninja has nothing to do and just exits 0 without printing any message
-add_custom_target(show-build-success ALL
-    COMMAND ${CMAKE_COMMAND} -E echo "✅ Build Success! the ascii-chat binary either [1] built succesfully with all dependencies or [2] is up to date - build type: ${CMAKE_BUILD_TYPE}"
+# Add build timing for ascii-chat executable
+# Record start time before linking (only when actually building)
+add_custom_command(TARGET ascii-chat PRE_LINK
+    COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMENT "Recording build start time for ascii-chat"
+    VERBATIM
+)
+
+# Show timing and success message after build completes
+# This runs whenever ascii-chat is actually rebuilt (POST_BUILD)
+add_custom_command(TARGET ascii-chat POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMENT ""
+    VERBATIM
+)
+
+# Custom target wrapper for ALL builds (when no explicit --target is used)
+# This shows "up to date" message when ascii-chat doesn't need rebuilding
+add_custom_target(show-ascii-chat-success ALL
+    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
     DEPENDS ascii-chat
-    COMMENT "Build success message"
+    VERBATIM
 )
 
 # macOS Info.plist embedding (for client mode webcam access)
@@ -184,4 +199,27 @@ if(NOT WIN32)
     else()
         target_link_options(ascii-chat PRIVATE -Wl,--gc-sections)
     endif()
+endif()
+
+# =============================================================================
+# Global Build Timer - End Marker
+# =============================================================================
+# Show total build time after the final target is built
+# ascii-chat is always built last, so attach the timer there
+add_custom_command(TARGET ascii-chat POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMENT ""
+    VERBATIM
+)
+
+# Custom target wrapper for ALL builds (when no explicit --target)
+# This only runs for default builds and prevents duplicate messages
+add_custom_target(build-timer-end ALL
+    DEPENDS show-ascii-chat-success
+    VERBATIM
+)
+
+# If shared library was also built, wait for it too
+if(TARGET show-ascii-chat-shared-success)
+    add_dependencies(build-timer-end show-ascii-chat-shared-success)
 endif()

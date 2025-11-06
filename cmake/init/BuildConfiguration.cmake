@@ -30,7 +30,7 @@ if(NOT CMAKE_C_STANDARD)
         set(CMAKE_C_EXTENSIONS OFF)
 
         # Verify the standard was set (CMake will warn if it falls back)
-        message(STATUS "Using C23 standard (will fall back to C2X if not supported)")
+        message(STATUS "Using ${BoldCyan}C23${ColorReset} standard (will fall back to ${Yellow}C2X${ColorReset} if not supported)")
     else()
         # Non-Clang/GCC compilers: use C17 (widely supported)
         set(CMAKE_C_STANDARD 17)

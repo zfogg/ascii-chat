@@ -72,7 +72,7 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
             )
-            message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
         elseif(APPLE)
             # macOS - sanitizers except thread and leak (not supported on ARM64)
             add_compile_options(
@@ -94,7 +94,7 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
             )
-            message(STATUS "Debug build: Enabled ASan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
         else()
             # Linux - includes LeakSanitizer
             add_compile_options(
@@ -118,7 +118,7 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
             )
-            message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan + Integer + Nullability + ImplicitConversion sanitizers")
+            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
         endif()
     elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
         # GCC on Unix - disable ALL sanitizers if mimalloc is enabled (same spinlock issue as Clang)
@@ -136,7 +136,7 @@ function(configure_asan_ubsan_sanitizers)
             -fsanitize=undefined
             -fsanitize=leak
         )
-        message(STATUS "Debug build: Enabled ASan + LeakSan + UBSan (GCC)")
+        message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} (GCC)")
     endif()
 endfunction()
 
@@ -176,7 +176,7 @@ function(copy_asan_runtime_dll)
             # Copy ASAN DLL to build output directory
             list(GET ASAN_DLL 0 ASAN_DLL_PATH)
             file(COPY ${ASAN_DLL_PATH} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-            message(STATUS "Copied ASAN runtime DLL: ${ASAN_DLL_PATH}")
+            message(STATUS "Copied ${BoldGreen}ASAN${ColorReset} runtime DLL: ${BoldCyan}${ASAN_DLL_PATH}${ColorReset}")
         else()
             message(WARNING "Could not find ASAN runtime DLL in Clang installation")
         endif()

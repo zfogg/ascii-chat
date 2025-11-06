@@ -7,12 +7,27 @@
 # - Windows: Directs to deps.ps1
 #
 # Usage:
-#   ./deps.sh
+#   ./deps.sh           # Install Debug dependencies
+#   ./deps.sh -Release  # Install Release dependencies (static libraries)
+#
+# Note: On Unix systems, -dev packages include both static (.a) and dynamic (.so) libraries.
+#       The actual static/dynamic linking is controlled by CMake based on build type.
 
 set -e
 
+# Parse arguments
+CONFIG="Debug"
+if [[ "$1" == "-Release" ]] || [[ "$1" == "--release" ]]; then
+    CONFIG="Release"
+fi
+
 echo ""
 echo "=== ascii-chat Dependency Installer ==="
+echo ""
+echo "Build configuration: $CONFIG"
+if [[ "$CONFIG" == "Release" ]]; then
+    echo "Note: Release builds will use static linking where available"
+fi
 echo ""
 
 # Detect platform
@@ -39,11 +54,15 @@ if [[ "$PLATFORM" == "macos" ]]; then
     fi
 
     echo "Installing dependencies via Homebrew..."
-    brew install zstd libsodium portaudio
+    brew install mimalloc zstd libsodium portaudio
 
     echo ""
     echo "Dependencies installed successfully!"
-    echo "You can now run: cmake -B build && cmake --build build"
+    if [[ "$CONFIG" == "Release" ]]; then
+        echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build"
+    else
+        echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build"
+    fi
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
@@ -52,6 +71,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         echo "Installing dependencies..."
         sudo apt-get update
         sudo apt-get install -y \
+            libmimalloc-dev \
             libzstd-dev \
             libsodium-dev \
             portaudio19-dev \
@@ -61,6 +81,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         echo "Detected yum package manager"
         echo "Installing dependencies..."
         sudo yum install -y \
+            mimalloc-devel \
             libzstd-devel \
             libsodium-devel \
             portaudio-devel \
@@ -79,6 +100,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     else
         echo "ERROR: No supported package manager found (apt-get, yum, or pacman)"
         echo "Please install dependencies manually:"
+        echo "  - mimalloc (optional, high-performance allocator)"
         echo "  - zstd"
         echo "  - libsodium"
         echo "  - portaudio"
@@ -88,11 +110,19 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     echo ""
     echo "Dependencies installed successfully!"
-    echo "You can now run: cmake -B build && cmake --build build"
+    if [[ "$CONFIG" == "Release" ]]; then
+        echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build"
+    else
+        echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build"
+    fi
 
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
     echo "On Windows, please use the PowerShell script instead:"
-    echo "  ./scripts/deps.ps1"
+    if [[ "$CONFIG" == "Release" ]]; then
+        echo "  ./scripts/deps.ps1 -Release"
+    else
+        echo "  ./scripts/deps.ps1"
+    fi
     exit 1
 fi

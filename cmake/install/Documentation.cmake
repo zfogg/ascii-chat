@@ -15,7 +15,7 @@
 find_program(DOXYGEN_EXECUTABLE NAMES doxygen)
 
 if(DOXYGEN_EXECUTABLE)
-    message(STATUS "Doxygen found: ${DOXYGEN_EXECUTABLE}")
+    message(STATUS "Found ${BoldGreen}Doxygen${ColorReset}: ${DOXYGEN_EXECUTABLE}")
 
     # Configure Doxyfile from template
     set(DOXYFILE_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
@@ -69,7 +69,7 @@ endforeach()
 message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} already prefixed\")
 ")
 
-    # Create documentation target
+    # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
     add_custom_target(docs
         COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
@@ -109,12 +109,12 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
         )
     endif()
 
-    # Documentation installation is handled in cmake/Install.cmake
+    # Documentation installation is handled in cmake/install/Install.cmake
     # This ensures proper platform-specific paths and CPack integration
 
-    message(STATUS "Documentation target 'docs' is available. Build with: cmake --build build --target docs")
+    message(STATUS "Documentation target ${BoldCyan}'docs'${ColorReset} is available. Build with: ${BoldYellow}cmake --build build --target docs${ColorReset}")
 else()
-    message(WARNING "Doxygen not found. Documentation target will not be available.")
+    message(WARNING "${BoldRed}Doxygen${ColorReset} not found. Documentation target will not be available.")
     message(WARNING "Install Doxygen to generate API documentation:")
     message(WARNING "  - macOS: brew install doxygen")
     message(WARNING "  - Ubuntu/Debian: sudo apt-get install doxygen")

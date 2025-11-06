@@ -89,7 +89,7 @@ function(configure_musl_pre_project)
 
         # Set LLVM archiver and ranlib for proper archive handling
         # Use helper function from LLVM.cmake
-        include(${CMAKE_SOURCE_DIR}/cmake/LLVM.cmake)
+        include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
         find_llvm_tools()
 
         message(STATUS "Using clang with musl for static-PIE support")
