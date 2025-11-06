@@ -38,7 +38,11 @@ else()
     # Unix/Linux/macOS: Use pkg-config
     # Skip pkg-config when using musl - dependencies are built from source
     if(NOT USE_MUSL)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+        find_package(PkgConfig QUIET REQUIRED)
+        pkg_check_modules(PORTAUDIO REQUIRED QUIET portaudio-2.0)
+        if(PORTAUDIO_FOUND)
+            message(STATUS "Checking for module '${BoldBlue}portaudio-2.0${ColorReset}'")
+            message(STATUS "  Found ${BoldBlue}portaudio-2.0${ColorReset}, version ${BoldGreen}${PORTAUDIO_VERSION}${ColorReset}")
+        endif()
     endif()
 endif()

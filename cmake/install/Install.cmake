@@ -366,6 +366,8 @@ if(USE_CPACK)
         message(WARNING "CPack requires CMake 3.16+ (current: ${CMAKE_VERSION}). Disabling CPack.")
         set(USE_CPACK OFF)
     else()
+        set(CPACK_THREADS ${CMAKE_BUILD_PARALLEL_LEVEL})
+
         # Set CPack variables BEFORE including CPack to prevent defaults
         # This ensures CPack uses the correct version and install directory
         set(CPACK_PACKAGE_INSTALL_DIRECTORY "ascii-chat" CACHE STRING "Installation directory (without version)" FORCE)
@@ -395,11 +397,13 @@ if(USE_CPACK)
             include("${CMAKE_SOURCE_DIR}/cmake/install/Wix.cmake")
 
             # Set default generator to WIX (must be before include(CPack))
+            # Save the desired generator before include(CPack) overwrites it
             if(WIX_FOUND)
-                set(CPACK_GENERATOR "WIX")
+                set(_DESIRED_CPACK_GENERATOR "WIX")
             else()
-                set(CPACK_GENERATOR "ZIP")
+                set(_DESIRED_CPACK_GENERATOR "ZIP")
             endif()
+            set(CPACK_GENERATOR "${_DESIRED_CPACK_GENERATOR}")
 
             # Ensure CPack only installs explicitly defined components
             # This prevents CPack from creating empty directories based on CMAKE_INSTALL_PREFIX structure
@@ -420,6 +424,13 @@ if(USE_CPACK)
             endif()
         endif()
         include(CPack)
+
+        # After include(CPack), restore CPACK_GENERATOR with our desired default
+        # CPack auto-detects generators and overwrites our setting
+        if(WIN32 AND DEFINED _DESIRED_CPACK_GENERATOR)
+            # Start with the desired default generator
+            set(CPACK_GENERATOR "${_DESIRED_CPACK_GENERATOR}")
+        endif()
     endif()
 endif()
 
@@ -428,10 +439,9 @@ if(USE_CPACK)
     # =========================================================================
     # Basic CPack Configuration
     # =========================================================================
-    set(CPACK_PACKAGE_NAME "ascii-chat")
-    set(CPACK_PACKAGE_VENDOR "zfogg")
-    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "📸 Video chat in your terminal 🔠")
-    set(CPACK_PACKAGE_DESCRIPTION "ascii-chat is a terminal-based video chat application that converts webcam video to ASCII art in real-time. It supports multiple clients connecting to a single server, with video mixing and audio streaming capabilities.")
+    # Note: CPACK_PACKAGE_NAME, CPACK_PACKAGE_VENDOR, CPACK_PACKAGE_DESCRIPTION_SUMMARY,
+    # CPACK_PACKAGE_DESCRIPTION, CPACK_PACKAGE_CONTACT, and CPACK_PACKAGE_HOMEPAGE_URL
+    # are all set in cmake/ProjectConstants.cmake
 
     # Version is already set before include(CPack) above
     # Re-set with CACHE FORCE to ensure it's not overridden
@@ -442,12 +452,6 @@ if(USE_CPACK)
 
     # Log version being used for packages
     message(STATUS "${Yellow}CPack:${ColorReset} Using version ${BoldGreen}${CPACK_PACKAGE_VERSION}${ColorReset} for packages (from PROJECT_VERSION=${BoldGreen}${PROJECT_VERSION}${ColorReset})")
-
-    # Package metadata
-    set(CPACK_PACKAGE_CONTACT "https://github.com/zfogg/ascii-chat")
-    if(DEFINED PROJECT_HOMEPAGE_URL)
-        set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
-    endif()
 
     # License file is already set before include(CPack) above
     # Re-set with CACHE FORCE to ensure CPack doesn't override it
@@ -516,172 +520,47 @@ if(USE_CPACK)
     # =========================================================================
     # Platform-Specific Package Generators
     # =========================================================================
+    # Each generator is configured in its own module file in cmake/install/
+    # This keeps Install.cmake clean and makes it easy to maintain each format
+
+    # Initialize generator list (will be appended by each module)
+    # On Windows, preserve the WIX generator that was set before include(CPack)
+    if(NOT WIN32)
+        set(CPACK_GENERATOR "")
+    endif()
 
     if(UNIX AND NOT APPLE)
-        # Linux: STGZ (self-extracting .sh), TGZ (always available), DEB, RPM (if tools found)
-        set(CPACK_GENERATOR "STGZ;TGZ")
-
-        # CPACK_STGZ_HEADER_FILE is set before include(CPack) above
-        # CPACK_SET_DESTDIR must be OFF for STGZ to use prefix-based installation
-        set(CPACK_SET_DESTDIR OFF)
-
-        # This sets the default installation directory shown in the STGZ installer
-        # Users can override with: ./installer.sh --prefix=/custom/path
-        set(CPACK_INSTALL_PREFIX "/usr/local")
-        set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
-
-        # Check for package tools and enable generators if available
-        find_program(DPKG_BUILDPACKAGE_EXECUTABLE dpkg-buildpackage)
-        find_program(RPMBUILD_EXECUTABLE rpmbuild)
-
-        if(DPKG_BUILDPACKAGE_EXECUTABLE)
-            list(APPEND CPACK_GENERATOR "DEB")
-            message(STATUS "${Yellow}CPack:${ColorReset} DEB generator enabled (${BoldBlue}dpkg-buildpackage${ColorReset} found)")
-        else()
-            message(STATUS "${Red}CPack:${ColorReset} DEB generator disabled (${BoldBlue}dpkg-buildpackage${ColorReset} not found)")
-        endif()
-
-        if(RPMBUILD_EXECUTABLE)
-            list(APPEND CPACK_GENERATOR "RPM")
-            message(STATUS "${Yellow}CPack:${ColorReset} RPM generator enabled (${BoldBlue}rpmbuild${ColorReset} found)")
-        else()
-            message(STATUS "${Red}CPack:${ColorReset} RPM generator disabled (${BoldBlue}rpmbuild${ColorReset} not found)")
-        endif()
-
-        # DEB package configuration
-        if("DEB" IN_LIST CPACK_GENERATOR)
-            set(CPACK_DEBIAN_PACKAGE_NAME "ascii-chat")
-            set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
-            set(CPACK_DEBIAN_PACKAGE_SECTION "net")
-            set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
-            set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-            if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-                set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
-            endif()
-            # Dependencies for shared library component (libasciichat.so)
-            # The static executable has no runtime dependencies
-            # These are only needed if the Development component is installed
-            set(CPACK_DEBIAN_PACKAGE_DEPENDS "")
-            set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_DEPENDS "libportaudio2, libasound2, libzstd1, libsodium23, libmimalloc2.0 | libmimalloc-dev")
-            set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
-            # Maintainer info (optional - can be set via environment)
-            if(DEFINED ENV{DEBEMAIL})
-                set(CPACK_DEBIAN_PACKAGE_MAINTAINER "$ENV{DEBEMAIL}")
-            else()
-                set(CPACK_DEBIAN_PACKAGE_MAINTAINER "ascii-chat <${CPACK_PACKAGE_CONTACT}>")
-            endif()
-        endif()
-
-        # RPM package configuration
-        if("RPM" IN_LIST CPACK_GENERATOR)
-            set(CPACK_RPM_PACKAGE_NAME "ascii-chat")
-            set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
-            set(CPACK_RPM_PACKAGE_GROUP "Applications/Networking")
-            set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-            set(CPACK_RPM_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
-            set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
-            if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-                set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
-            endif()
-            # Dependencies for shared library component (libasciichat.so)
-            # The static executable has no runtime dependencies
-            # These are only needed if the Development component is installed
-            set(CPACK_RPM_PACKAGE_REQUIRES "")
-            set(CPACK_RPM_DEVELOPMENT_PACKAGE_REQUIRES "portaudio, alsa-lib, zstd, libsodium, mimalloc")
-            set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
-            # Vendor info (optional)
-            if(DEFINED ENV{RPM_VENDOR})
-                set(CPACK_RPM_PACKAGE_VENDOR "$ENV{RPM_VENDOR}")
-            else()
-                set(CPACK_RPM_PACKAGE_VENDOR "${CPACK_PACKAGE_VENDOR}")
-            endif()
-        endif()
+        # Linux: STGZ, TGZ, DEB, RPM
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Stgz.cmake")
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Deb.cmake")
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Rpm.cmake")
 
     elseif(APPLE)
-        # macOS: STGZ (self-extracting .sh), TGZ (always available), DragNDrop/DMG (if hdiutil available)
-        set(CPACK_GENERATOR "STGZ;TGZ")
-
-        # CPACK_STGZ_HEADER_FILE is set before include(CPack) above
-        # CPACK_SET_DESTDIR must be OFF for STGZ to use prefix-based installation
-        set(CPACK_SET_DESTDIR OFF)
-
-        # This sets the default installation directory shown in the STGZ installer
-        # Users can override with: ./installer.sh --prefix=/custom/path
-        set(CPACK_INSTALL_PREFIX "/usr/local")
-        set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
-
-        # Check for hdiutil (macOS DMG creation tool - usually always available on macOS)
-        find_program(HDIUTIL_EXECUTABLE hdiutil)
-        if(HDIUTIL_EXECUTABLE)
-            list(APPEND CPACK_GENERATOR "DragNDrop")
-            message(STATUS "${Yellow}CPack:${ColorReset} DMG generator enabled (${BoldBlue}hdiutil${ColorReset} found)")
-        else()
-            message(STATUS "${Red}CPack:${ColorReset} DMG generator disabled (${BoldBlue}hdiutil${ColorReset} not found)")
-        endif()
-
-        # DMG package configuration
-        if("DragNDrop" IN_LIST CPACK_GENERATOR)
-            set(CPACK_DMG_FORMAT "UDZO")  # Compressed UDIF (read-only)
-            set(CPACK_DMG_VOLUME_NAME "${CPACK_PACKAGE_NAME}")
-            set(CPACK_DMG_BACKGROUND_IMAGE "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
-            # Note: For macOS app bundles, create .icns from PNG using:
-            #   mkdir icon.iconset && sips -z 16 16 installer_icon.png --out icon.iconset/icon_16x16.png
-            #   (repeat for sizes: 32, 64, 128, 256, 512, 1024 with @2x variants)
-            #   iconutil -c icns icon.iconset
-            # set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/images/installer_icon.icns")
-            set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "")  # Optional: custom setup script
-            set(CPACK_DMG_SLA_DIR "")  # Optional: Software License Agreement directory
-        endif()
+        # macOS: STGZ, TGZ, productbuild
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Stgz.cmake")
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Productbuild.cmake")
 
     elseif(WIN32)
-        # Windows: WiX/MSI (default), ZIP, NSIS/EXE
-        # Generator was already set before include(CPack) above
-        # Add additional generators here
+        # Windows: WIX, NSIS, ZIP
+        # WiX was already included before include(CPack) for CPACK_WIX_VERSION to work
+        # CPACK_GENERATOR was reset after include(CPack) to start with WIX (or ZIP if WiX not found)
+        # NSIS and Archive modules append to generator list
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Nsis.cmake")
+
+        # Set default message for Windows
         if(WIX_FOUND)
             message(STATUS "${Yellow}CPack:${ColorReset} Default generator: WIX (MSI installer)")
-            list(APPEND CPACK_GENERATOR "ZIP")
         else()
             message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ZIP (WiX not found)")
         endif()
 
-        # Include NSIS configuration module (appends NSIS to generator list)
-        # WiX was already included before include(CPack) for CPACK_WIX_VERSION to work
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Nsis.cmake")
-
     else()
-        # Unknown platform: fallback to TGZ
-        set(CPACK_GENERATOR "TGZ")
-        message(STATUS "${Yellow}CPack:${ColorReset} Using fallback generator ${Magenta}TGZ${ColorReset} for unknown platform")
+        # Unknown platform: fallback to archive formats
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
     endif()
-
-    # =========================================================================
-    # Source Package Configuration (optional)
-    # =========================================================================
-    set(CPACK_SOURCE_GENERATOR "TGZ")
-    if(UNIX AND NOT APPLE)
-        find_program(ZIP_EXECUTABLE zip)
-        if(ZIP_EXECUTABLE)
-            list(APPEND CPACK_SOURCE_GENERATOR "ZIP")
-        endif()
-    endif()
-
-    # Source package ignore patterns
-    set(CPACK_SOURCE_IGNORE_FILES
-        "/build/"
-        "/build_release/"
-        "/\\.git/"
-        "/deps/"
-        "/\\.deps-cache/"
-        "/\\.deps-cache-docker/"
-        "/\\.vscode/"
-        "/\\.idea/"
-        "/CMakeFiles/"
-        "/CMakeCache\\.txt$"
-        "/cmake_install\\.cmake$"
-        "/\\.ninja_log$"
-        "/\\.ninja_deps$"
-        "/compile_commands\\.json$"
-    )
 
 
     # =========================================================================
@@ -787,7 +666,7 @@ if(USE_CPACK)
         STGZ                     # Self-extracting shell script (Unix)
         DEB RPM                  # Linux package managers
         WIX NSIS                 # Windows installers
-        DragNDrop ProductBuild   # macOS installers
+        productbuild             # macOS installers
         7Z                       # 7-Zip archive
         IFW                      # Qt Installer Framework
         FREEBSD                  # FreeBSD pkg

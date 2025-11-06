@@ -30,6 +30,11 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 message(STATUS "Using dependency cache: ${BoldCyan}${DEPS_CACHE_DIR}${ColorReset}")
 
 # =============================================================================
+# Project Constants (must come before project() for DESCRIPTION/HOMEPAGE_URL)
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
+
+# =============================================================================
 # Pre project() Configuration
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
@@ -46,10 +51,10 @@ else()
     set(PROJECT_LANGUAGES C)
 endif()
 
-project(ascii-chat
+project(${PROJECT_NAME_FULL}
     VERSION 0.3.2
-    DESCRIPTION "Real-time terminal-based video chat with ASCII art conversion"
-    HOMEPAGE_URL "https://github.com/zfogg/ascii-chat"
+    DESCRIPTION "${PROJECT_DESCRIPTION_ONELINE}"
+    HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}"
     LANGUAGES ${PROJECT_LANGUAGES}
 )
 

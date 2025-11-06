@@ -126,7 +126,7 @@ Each release includes package installers for all Linux, macOS, and Windows.
 Package Installers
   - **Windows**: `.msi` (Windows Installer) and `.exe` (self-extracting installer)
   - **Linux**: `.deb` (Debian/Ubuntu) and `.rpm` (RedHat/Fedora) packages
-  - **macOS**: `.dmg` disk image
+  - **macOS**: `.pkg` installer
 
 Each pakage installs
 - **bin/ascii-chat or ascii-chat.exe**: Optimized executables for your operating system
@@ -182,10 +182,9 @@ ascii-chat client
 ```
 
 #### macOS
-1. Download the `.dmg` disk image from the [releases page](https://github.com/zfogg/ascii-chat/releases)
-2. Open the `.dmg` file
-3. Drag `ascii-chat` to your Applications folder
-4. Run from Terminal: `ascii-chat server` or `ascii-chat client`
+1. Download the `.pkg` installer from the [releases page](https://github.com/zfogg/ascii-chat/releases)
+2. Double-click the `.pkg` file to install
+3. Run from Terminal: `ascii-chat server` or `ascii-chat client`
 
 ### Using ascii-chat as a Library
 

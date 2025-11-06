@@ -1,0 +1,55 @@
+# =============================================================================
+# ProductBuild Package Configuration (macOS)
+# =============================================================================
+# Configures CPack to generate .pkg installers for macOS using productbuild
+#
+# Prerequisites:
+#   - productbuild must be available in PATH (part of Xcode Command Line Tools)
+#   - CPack variables must be set (CPACK_PACKAGE_NAME, etc.)
+#   - Must be included after basic CPack configuration
+#
+# Outputs:
+#   - Adds "productbuild" to CPACK_GENERATOR if productbuild is found
+#   - Configures productbuild-specific CPack variables
+# =============================================================================
+
+if(NOT APPLE)
+    return()
+endif()
+
+# Check for productbuild (macOS package creation tool)
+find_program(PRODUCTBUILD_EXECUTABLE productbuild)
+if(NOT PRODUCTBUILD_EXECUTABLE)
+    message(STATUS "${Red}CPack:${ColorReset} productbuild generator disabled (${BoldBlue}productbuild${ColorReset} not found)")
+    return()
+endif()
+
+# Add productbuild to generator list
+list(APPEND CPACK_GENERATOR "productbuild")
+message(STATUS "${Yellow}CPack:${ColorReset} productbuild generator enabled (${BoldBlue}productbuild${ColorReset} found)")
+
+# =============================================================================
+# ProductBuild Package Configuration
+# =============================================================================
+
+# Package identifier (reverse DNS notation)
+set(CPACK_PRODUCTBUILD_IDENTIFIER "${PROJECT_BUNDLE_ID}")
+
+# Installation location
+set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+
+# Background image for installer
+if(EXISTS "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
+    set(CPACK_PRODUCTBUILD_BACKGROUND "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
+endif()
+
+# Resources directory (can contain background images, license files, etc.)
+# set(CPACK_PRODUCTBUILD_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/packaging/resources")
+
+# Code signing identity (if you want to sign the package)
+# set(CPACK_PRODUCTBUILD_IDENTITY_NAME "Developer ID Installer: Your Name (TEAM_ID)")
+
+# Keychain to use for signing
+# set(CPACK_PRODUCTBUILD_KEYCHAIN_PATH "")
+
+message(STATUS "${Yellow}CPack:${ColorReset} productbuild configuration complete")

@@ -314,9 +314,6 @@ DIA_PATH                  =
 HIDE_UNDOC_RELATIONS      = YES
 HAVE_DOT                  = NO
 DOT_NUM_THREADS           = 0
-DOT_COMMON_ATTR           = "fontname=Helvetica,fontsize=10"
-DOT_EDGE_ATTR             = "labelfontname=Helvetica,labelfontsize=10"
-DOT_NODE_ATTR             = "shape=box,height=0.2,width=0.4"
 DOT_FONTPATH              = 
 CLASS_GRAPH               = YES
 COLLABORATION_GRAPH       = YES

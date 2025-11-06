@@ -120,7 +120,7 @@ static log_level_t parse_log_level_from_env(void) {
 
 /* Log rotation function - keeps the tail (recent entries) (assumes mutex held) */
 static void rotate_log_if_needed_unlocked(void) {
-  if (!g_log.file || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
+  if (g_log.file <= 0 || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
     return;
   }
 
@@ -309,10 +309,10 @@ void log_init(const char *filename, log_level_t level) {
 
 void log_destroy(void) {
   mutex_lock(&g_log.mutex);
-  if (g_log.file && g_log.file != STDERR_FILENO) {
+  if (g_log.file >= 0 && g_log.file != STDERR_FILENO) {
     platform_close(g_log.file);
   }
-  g_log.file = 0;
+  g_log.file = -1;
   g_log.initialized = false;
   mutex_unlock(&g_log.mutex);
 }

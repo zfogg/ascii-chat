@@ -47,7 +47,11 @@ else()
     # Unix/Linux/macOS: Use pkg-config
     # Skip pkg-config when using musl - dependencies are built from source
     if(NOT USE_MUSL)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(LIBSODIUM REQUIRED libsodium)
+        find_package(PkgConfig QUIET REQUIRED)
+        pkg_check_modules(LIBSODIUM REQUIRED QUIET libsodium)
+        if(LIBSODIUM_FOUND)
+            message(STATUS "Checking for module '${BoldBlue}libsodium${ColorReset}'")
+            message(STATUS "  Found ${BoldBlue}libsodium${ColorReset}, version ${BoldGreen}${LIBSODIUM_VERSION}${ColorReset}")
+        endif()
     endif()
 endif()

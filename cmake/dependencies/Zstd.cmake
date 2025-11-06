@@ -55,7 +55,11 @@ else()
 
     # Skip pkg-config when using musl - dependencies are built from source
     if(NOT USE_MUSL)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(ZSTD REQUIRED libzstd)
+        find_package(PkgConfig QUIET REQUIRED)
+        pkg_check_modules(ZSTD REQUIRED QUIET libzstd)
+        if(ZSTD_FOUND)
+            message(STATUS "Checking for module '${BoldBlue}libzstd${ColorReset}'")
+            message(STATUS "  Found ${BoldBlue}libzstd${ColorReset}, version ${BoldGreen}${ZSTD_VERSION}${ColorReset}")
+        endif()
     endif()
 endif()

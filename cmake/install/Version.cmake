@@ -57,8 +57,9 @@ else()
 endif()
 
 # Create a script that generates version.h on every build
-set(VERSION_SCRIPT "${CMAKE_BINARY_DIR}/generate_version.cmake")
-file(WRITE "${VERSION_SCRIPT}" "
+# Use absolute path to avoid issues when switching build directories
+set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
+file(WRITE "${VERSION_SCRIPT_PATH}" "
 # Get git describe output (includes commits since last tag)
 execute_process(
     COMMAND git describe --tags --long --dirty --always
@@ -213,7 +214,7 @@ configure_file(
 
 # Add custom target that runs the version script on every build
 add_custom_target(generate_version
-    COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT}"
+    COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT_PATH}"
     BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/version.h"
     COMMENT "Generating version header with current git state..."
     VERBATIM
