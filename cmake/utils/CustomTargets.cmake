@@ -90,15 +90,15 @@ if(CLANG_FORMAT_EXECUTABLE)
         VERBATIM
     )
 else()
-    message(WARNING "clang-format not found. Format targets will not be available.")
+    message(WARNING "${BoldRed}clang-format not found.${ColorReset} Format targets will not be available.")
     add_custom_target(format
-        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+        COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
     )
     add_custom_target(clang-format
-        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+        COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
     )
     add_custom_target(format-check
-        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found. Please install clang-format."
+        COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
     )
 endif()
 
@@ -118,7 +118,7 @@ if(PYTHON3_EXECUTABLE AND EXISTS "${RUN_CLANG_TIDY_SCRIPT}" AND CLANG_TIDY_EXECU
         set(CLANG_TIDY_JOBS ${CPU_CORES})
     else()
         set(CLANG_TIDY_JOBS 4)
-        message(STATUS "CPU_CORES not defined, using ${CLANG_TIDY_JOBS} parallel jobs for clang-tidy")
+        message(STATUS "CPU_CORES not defined, using ${BoldYellow}${CLANG_TIDY_JOBS}${ColorReset} parallel jobs for clang-tidy")
     endif()
 
     add_custom_target(clang-tidy
@@ -213,11 +213,5 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         DEPENDS ascii-chat-shared
         VERBATIM
     )
-
-    message(STATUS "")
-    message(STATUS "Shared library target available:")
-    message(STATUS "  cmake --build build --target shared-lib")
-    message(STATUS "  Output: ${SHARED_LIB_OUTPUT}")
-    message(STATUS "")
 endif()
 

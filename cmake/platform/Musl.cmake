@@ -110,7 +110,7 @@ function(configure_musl_post_project)
     # Set musl dependency cache directory for ExternalProject builds
     # This must be done here (after USE_MUSL is defined) rather than in Init.cmake
     set(MUSL_DEPS_DIR_STATIC "${DEPS_CACHE_MUSL}" CACHE PATH "Musl-specific dependencies cache for static builds" FORCE)
-    message(STATUS "Musl dependency cache directory: ${MUSL_DEPS_DIR_STATIC}")
+    message(STATUS "${BoldBlue}Musl${ColorReset} dependency cache directory: ${BoldMagenta}${MUSL_DEPS_DIR_STATIC}${ColorReset}")
 
     # Use -static-pie flag to build fully static PIE binaries with musl
     # Combines static linking with Position Independent Executable for security (ASLR)
@@ -167,8 +167,8 @@ function(configure_musl_post_project)
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
 
-    message(STATUS "musl C library enabled (static linking with clang)")
-    message(STATUS "Using GCC ${GCC_VERSION} libgcc from: ${GCC_LIBDIR}")
+    message(STATUS "${BoldBlue}musl${ColorReset} C library enabled (static linking with ${BoldCyan}clang${ColorReset})")
+    message(STATUS "Using ${BoldCyan}GCC ${GCC_VERSION}${ColorReset} libgcc from: ${BoldMagenta}${GCC_LIBDIR}${ColorReset}")
     message(STATUS "")
     message(STATUS "NOTE: Static linking enabled - will build static dependencies with musl")
 
@@ -182,7 +182,7 @@ function(configure_musl_post_project)
     else()
         set(MUSL_CC "${CMAKE_C_COMPILER}")
     endif()
-    message(STATUS "Using compiler for musl dependencies: ${MUSL_CC}")
+    message(STATUS "Using compiler for ${BoldBlue}musl${ColorReset} dependencies: ${BoldCyan}${MUSL_CC}${ColorReset}")
 
     # Note: zstd-musl, libsodium-musl, alsa-lib-musl, portaudio-musl, and libexecinfo-musl are now built in MuslDependencies.cmake
 endfunction()

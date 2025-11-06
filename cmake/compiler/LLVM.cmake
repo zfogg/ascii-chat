@@ -37,12 +37,11 @@ function(configure_llvm_pre_project)
     # =============================================================================
     # Only set compiler if not already set by user or environment
     if(NOT CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
-        find_program(CLANG_EXECUTABLE clang)
+        find_program(CLANG_EXECUTABLE clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15)
         if(CLANG_EXECUTABLE)
             set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler" FORCE)
-            message(STATUS "Set default C compiler to Clang: ${CLANG_EXECUTABLE}")
         else()
-            message(WARNING "Clang not found in PATH. The project is designed for Clang/GCC.")
+            message(FATAL_ERROR "${BoldRed}Clang not found in PATH.${ColorReset} The project is designed for ${BoldGreen}Clang${ColorReset}.")
         endif()
     endif()
 
@@ -64,24 +63,23 @@ function(configure_llvm_pre_project)
     endif()
 
     if(HOMEBREW_LLVM_PREFIX)
-        message(STATUS "Found Homebrew LLVM at: ${HOMEBREW_LLVM_PREFIX}")
+        message(STATUS "${BoldGreen}Found${ColorReset} ${BoldPurple}Homebrew LLVM${ColorReset} at: ${BoldCyan}${HOMEBREW_LLVM_PREFIX}${ColorReset}")
         set(USE_HOMEBREW_LLVM TRUE)
 
         if(USE_HOMEBREW_LLVM)
             # Check if compiler is already set to Homebrew LLVM
             if(CMAKE_C_COMPILER MATCHES "${HOMEBREW_LLVM_PREFIX}")
-                message(STATUS "Using user-specified Homebrew LLVM compiler: ${CMAKE_C_COMPILER}")
+                message(STATUS "${BoldGreen}Using${ColorReset} user-specified ${BoldBlue}Homebrew LLVM${ColorReset} compiler: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
             else()
                 message(STATUS "Configuring to use Homebrew LLVM")
 
                 # Check for ccache and use it if available
                 find_program(CCACHE_PROGRAM ccache)
                 if(CCACHE_PROGRAM)
-                    message(STATUS "Found ccache: ${CCACHE_PROGRAM}")
                     set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
                     # Set the actual compilers (ccache will wrap them via the launcher)
                     set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
-                    message(STATUS "Using ccache with Homebrew LLVM")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldPurple}ccache${ColorReset} with ${BoldBlue}Homebrew LLVM${ColorReset}")
                 else()
                     # No ccache, use LLVM directly
                     set(CMAKE_C_COMPILER "${HOMEBREW_LLVM_PREFIX}/bin/clang" CACHE FILEPATH "C compiler" FORCE)
@@ -94,7 +92,7 @@ function(configure_llvm_pre_project)
             # Add LLVM CMake modules to module path for advanced features
             if(EXISTS "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
                 list(APPEND CMAKE_MODULE_PATH "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
-                message(STATUS "Added LLVM CMake modules: ${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
+                message(STATUS "${BoldGreen}Added${ColorReset} ${BoldPurple}LLVM CMake${BoldBlue} modules:${ColorReset} ${BoldCyan}$${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm${ColorReset}")
             endif()
 
             # Set LLVM tool paths
@@ -126,7 +124,7 @@ function(configure_llvm_pre_project)
                 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
                 set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
             else()
-                message(WARNING "Could not find Clang resource directory at: ${CLANG_RESOURCE_DIR}")
+                message(WARNING "${BoldRed}Could not find Clang resource directory at: ${CLANG_RESOURCE_DIR}${ColorReset}")
             endif()
 
             # Get macOS SDK path for standard headers
@@ -138,7 +136,7 @@ function(configure_llvm_pre_project)
             )
 
             if(MACOS_SDK_PATH)
-                message(STATUS "Found macOS SDK at: ${MACOS_SDK_PATH}")
+                message(STATUS "${BoldGreen}Found${ColorReset} ${BoldYellow}macOS SDK${ColorReset} at: ${BoldCyan}${MACOS_SDK_PATH}${ColorReset}")
                 # Append SDK flags to CMAKE_*_FLAGS before project()
                 string(APPEND CMAKE_C_FLAGS " -isysroot ${MACOS_SDK_PATH}")
                 string(APPEND CMAKE_CXX_FLAGS " -isysroot ${MACOS_SDK_PATH}")
@@ -153,10 +151,10 @@ function(configure_llvm_pre_project)
                 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}" PARENT_SCOPE)
             endif()
 
-            message(STATUS "Configured Homebrew LLVM: ${CMAKE_C_COMPILER}")
+            message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset}: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
         endif()
     else()
-        message(STATUS "Homebrew LLVM not found, using system compiler")
+        message(STATUS "${BoldBlue}Homebrew LLVM${ColorReset} not found, using system compiler")
     endif()
 endfunction()
 
@@ -210,18 +208,18 @@ function(configure_llvm_post_project)
                 if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib/unwind")
                     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_DIRS}" CACHE STRING "Linker flags" FORCE)
                     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_DIRS}" CACHE STRING "Shared linker flags" FORCE)
-                    message(STATUS "Added Homebrew LLVM library paths (not in environment)")
+                    message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} library paths (not in environment)")
                 else()
-                    message(STATUS "Homebrew LLVM library paths already present in linker flags")
+                    message(STATUS "${BoldYellow}Homebrew LLVM${ColorReset} library paths already present in linker flags")
                 endif()
             else()
-                message(STATUS "Skipping Homebrew LLVM library paths (already in LDFLAGS environment variable)")
+                message(STATUS "${BoldBlue}Homebrew LLVM${ColorReset} library paths ${BoldGreen}already present${ColorReset} in LDFLAGS environment variable")
             endif()
 
-            message(STATUS "Applied Homebrew LLVM toolchain flags:")
+            message(STATUS "${BoldGreen}Applied${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} toolchain flags:")
             message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
             if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
-                message(STATUS "  Link: ${HOMEBREW_LLVM_LINK_DIRS}")
+                message(STATUS "  Link: ${BoldCyan}${HOMEBREW_LLVM_LINK_DIRS}${ColorReset}")
             else()
                 message(STATUS "  Link: (from LDFLAGS environment variable)")
             endif()
@@ -254,8 +252,6 @@ function(find_llvm_tools)
             OUTPUT_VARIABLE LLVM_BINDIR
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
-        message(STATUS "Found LLVM via llvm-config: ${LLVM_CONFIG}")
-        message(STATUS "LLVM binary directory: ${LLVM_BINDIR}")
 
         # Find llvm-ar and llvm-ranlib in LLVM's binary directory
         find_program(LLVM_AR
@@ -270,7 +266,6 @@ function(find_llvm_tools)
         )
     else()
         # Fallback: search in common LLVM installation directories
-        message(STATUS "llvm-config not found, searching common paths")
         find_program(LLVM_AR
             NAMES llvm-ar
             PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
@@ -285,11 +280,9 @@ function(find_llvm_tools)
 
     if(LLVM_AR)
         set(CMAKE_AR "${LLVM_AR}" CACHE FILEPATH "Archiver" FORCE)
-        message(STATUS "Using LLVM archiver: ${LLVM_AR}")
     endif()
     if(LLVM_RANLIB)
         set(CMAKE_RANLIB "${LLVM_RANLIB}" CACHE FILEPATH "Ranlib" FORCE)
-        message(STATUS "Using LLVM ranlib: ${LLVM_RANLIB}")
     endif()
 endfunction()
 
