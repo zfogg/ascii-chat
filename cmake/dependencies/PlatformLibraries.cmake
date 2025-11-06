@@ -56,6 +56,12 @@ else()
         find_library(COREMEDIA_FRAMEWORK CoreMedia REQUIRED)
         find_library(COREVIDEO_FRAMEWORK CoreVideo REQUIRED)
 
+        # Audio frameworks (required for static portaudio)
+        find_library(COREAUDIO_FRAMEWORK CoreAudio REQUIRED)
+        find_library(AUDIOUNIT_FRAMEWORK AudioUnit REQUIRED)
+        find_library(AUDIOTOOLBOX_FRAMEWORK AudioToolbox REQUIRED)
+        find_library(CORESERVICES_FRAMEWORK CoreServices REQUIRED)
+
     elseif(PLATFORM_LINUX)
         # =============================================================================
         # Linux System Libraries

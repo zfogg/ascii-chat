@@ -44,14 +44,37 @@ if(WIN32)
         set(LIBSODIUM_INCLUDE_DIRS "")
     endif()
 else()
-    # Unix/Linux/macOS: Use pkg-config
+    # Unix/Linux/macOS: Use pkg-config or find static libraries
     # Skip pkg-config when using musl - dependencies are built from source
     if(NOT USE_MUSL)
-        find_package(PkgConfig QUIET REQUIRED)
-        pkg_check_modules(LIBSODIUM REQUIRED QUIET libsodium)
-        if(LIBSODIUM_FOUND)
-            message(STATUS "Checking for module '${BoldBlue}libsodium${ColorReset}'")
-            message(STATUS "  Found ${BoldBlue}libsodium${ColorReset}, version ${BoldGreen}${LIBSODIUM_VERSION}${ColorReset}")
+        # For Release builds on macOS, prefer static libraries
+        if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
+            # Find static library directly from Homebrew
+            find_library(LIBSODIUM_STATIC_LIBRARY NAMES libsodium.a
+                PATHS /usr/local/opt/libsodium/lib /opt/homebrew/opt/libsodium/lib
+                NO_DEFAULT_PATH
+            )
+            find_path(LIBSODIUM_INCLUDE_DIR NAMES sodium.h
+                PATHS /usr/local/opt/libsodium/include /opt/homebrew/opt/libsodium/include
+                NO_DEFAULT_PATH
+            )
+
+            if(LIBSODIUM_STATIC_LIBRARY)
+                set(LIBSODIUM_LIBRARIES ${LIBSODIUM_STATIC_LIBRARY})
+                set(LIBSODIUM_INCLUDE_DIRS ${LIBSODIUM_INCLUDE_DIR})
+                set(LIBSODIUM_FOUND TRUE)
+                message(STATUS "Found ${BoldBlue}libsodium${ColorReset} (static): ${BoldGreen}${LIBSODIUM_STATIC_LIBRARY}${ColorReset}")
+            else()
+                message(FATAL_ERROR "Could not find static ${BoldRed}libsodium${ColorReset} for Release build")
+            endif()
+        else()
+            # Debug/Dev builds: Use pkg-config (dynamic linking is fine)
+            find_package(PkgConfig QUIET REQUIRED)
+            pkg_check_modules(LIBSODIUM REQUIRED QUIET libsodium)
+            if(LIBSODIUM_FOUND)
+                message(STATUS "Checking for module '${BoldBlue}libsodium${ColorReset}'")
+                message(STATUS "  Found ${BoldBlue}libsodium${ColorReset}, version ${BoldGreen}${LIBSODIUM_VERSION}${ColorReset}")
+            endif()
         endif()
     endif()
 endif()

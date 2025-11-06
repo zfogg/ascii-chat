@@ -1362,7 +1362,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
 void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - client options\n");
-  (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
+  (void)fprintf(desc, ASCII_CHAT_DESCRIPTION "\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help                    " USAGE_INDENT "print this help\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-a --address ADDRESS         " USAGE_INDENT "server address (default: localhost)\n");
@@ -1430,7 +1430,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
 
 void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, "ascii-chat - server options\n");
-  (void)fprintf(desc, "💻📸 video chat in your terminal 🔡💬\n\n");
+  (void)fprintf(desc, ASCII_CHAT_DESCRIPTION "\n\n");
   (void)fprintf(desc, USAGE_INDENT "-h --help            " USAGE_INDENT "print this help\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-a --address ADDRESS " USAGE_INDENT "IPv4 address to bind to (default: 127.0.0.1)\n");

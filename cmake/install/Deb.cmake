@@ -26,6 +26,8 @@ endif()
 
 # Add DEB to generator list
 list(APPEND CPACK_GENERATOR "DEB")
+# Force update the cache so it persists
+set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
 message(STATUS "${Yellow}CPack:${ColorReset} DEB generator enabled (${BoldBlue}dpkg-buildpackage${ColorReset} found)")
 
 # =============================================================================

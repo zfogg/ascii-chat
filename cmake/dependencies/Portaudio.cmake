@@ -35,14 +35,37 @@ if(WIN32)
         message(FATAL_ERROR "Could not find ${BoldRed}portaudio${ColorReset} - required dependency")
     endif()
 else()
-    # Unix/Linux/macOS: Use pkg-config
+    # Unix/Linux/macOS: Use pkg-config or find static libraries
     # Skip pkg-config when using musl - dependencies are built from source
     if(NOT USE_MUSL)
-        find_package(PkgConfig QUIET REQUIRED)
-        pkg_check_modules(PORTAUDIO REQUIRED QUIET portaudio-2.0)
-        if(PORTAUDIO_FOUND)
-            message(STATUS "Checking for module '${BoldBlue}portaudio-2.0${ColorReset}'")
-            message(STATUS "  Found ${BoldBlue}portaudio-2.0${ColorReset}, version ${BoldGreen}${PORTAUDIO_VERSION}${ColorReset}")
+        # For Release builds on macOS, prefer static libraries
+        if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
+            # Find static library directly from Homebrew
+            find_library(PORTAUDIO_STATIC_LIBRARY NAMES libportaudio.a
+                PATHS /usr/local/opt/portaudio/lib /opt/homebrew/opt/portaudio/lib
+                NO_DEFAULT_PATH
+            )
+            find_path(PORTAUDIO_INCLUDE_DIR NAMES portaudio.h
+                PATHS /usr/local/opt/portaudio/include /opt/homebrew/opt/portaudio/include
+                NO_DEFAULT_PATH
+            )
+
+            if(PORTAUDIO_STATIC_LIBRARY)
+                set(PORTAUDIO_LIBRARIES ${PORTAUDIO_STATIC_LIBRARY})
+                set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIR})
+                set(PORTAUDIO_FOUND TRUE)
+                message(STATUS "Found ${BoldBlue}portaudio-2.0${ColorReset} (static): ${BoldGreen}${PORTAUDIO_STATIC_LIBRARY}${ColorReset}")
+            else()
+                message(FATAL_ERROR "Could not find static ${BoldRed}portaudio${ColorReset} for Release build")
+            endif()
+        else()
+            # Debug/Dev builds: Use pkg-config (dynamic linking is fine)
+            find_package(PkgConfig QUIET REQUIRED)
+            pkg_check_modules(PORTAUDIO REQUIRED QUIET portaudio-2.0)
+            if(PORTAUDIO_FOUND)
+                message(STATUS "Checking for module '${BoldBlue}portaudio-2.0${ColorReset}'")
+                message(STATUS "  Found ${BoldBlue}portaudio-2.0${ColorReset}, version ${BoldGreen}${PORTAUDIO_VERSION}${ColorReset}")
+            endif()
         endif()
     endif()
 endif()

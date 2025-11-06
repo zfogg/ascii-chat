@@ -228,10 +228,19 @@ else()
     target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES})
 endif()
 
-# Link JACK on Linux (system PortAudio is built with JACK support)
-# macOS uses CoreAudio, Windows uses WASAPI/DirectSound
+# Link platform-specific audio libraries
+# macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
+# Linux: JACK (system PortAudio is built with JACK support)
+# Windows: WASAPI/DirectSound (handled by platform module)
 # Note: musl builds use PortAudio with ALSA only (no JACK) to avoid static lib dependency
-if(UNIX AND NOT APPLE AND NOT USE_MUSL)
+if(APPLE)
+    target_link_libraries(ascii-chat-audio
+        ${COREAUDIO_FRAMEWORK}
+        ${AUDIOUNIT_FRAMEWORK}
+        ${AUDIOTOOLBOX_FRAMEWORK}
+        ${CORESERVICES_FRAMEWORK}
+    )
+elseif(UNIX AND NOT USE_MUSL)
     target_link_libraries(ascii-chat-audio jack)
 endif()
 
@@ -601,6 +610,8 @@ else()
             target_link_libraries(ascii-chat-shared PRIVATE
                 ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
                 ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
+                ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
+                ${CORESERVICES_FRAMEWORK}
             )
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
@@ -715,7 +726,14 @@ target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
 
 # Audio dependencies (from ascii-chat-audio)
 target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES})
-if(UNIX AND NOT APPLE AND NOT USE_MUSL)
+if(APPLE)
+    target_link_libraries(ascii-chat-static-lib INTERFACE
+        ${COREAUDIO_FRAMEWORK}
+        ${AUDIOUNIT_FRAMEWORK}
+        ${AUDIOTOOLBOX_FRAMEWORK}
+        ${CORESERVICES_FRAMEWORK}
+    )
+elseif(UNIX AND NOT USE_MUSL)
     target_link_libraries(ascii-chat-static-lib INTERFACE jack)
 endif()
 
