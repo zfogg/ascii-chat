@@ -29,13 +29,15 @@ RUN apt-get update && apt-get install -y \
   software-properties-common \
   && rm -rf /var/lib/apt/lists/*
 
-# Add LLVM repository and install clang-18
+# Add LLVM repository and install clang-21
 RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
   echo "deb http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-21 main" > /etc/apt/sources.list.d/llvm.list && \
   apt-get update && \
-  apt-get install -y clang-21 llvm-21 && \
-  update-alternatives --install /usr/bin/clang clang /usr/bin/clang-21 100 && \
-  update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-21 100 && \
+  apt-get install -y clang-21 llvm-21 lld-21 && \
+  for tool in /usr/bin/*-21; do \
+    base=$(basename "$tool" -21); \
+    update-alternatives --install "/usr/bin/$base" "$base" "$tool" 100; \
+  done && \
   rm -rf /var/lib/apt/lists/*
 
 # Set working directory
