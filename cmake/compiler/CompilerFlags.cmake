@@ -167,8 +167,14 @@ function(configure_debug_build_flags BUILD_TYPE)
     # LLD is 2-3x faster than default linker (ld64 on macOS, GNU ld on Linux)
     # Only for Debug/Dev - Release uses default linker for maximum stability
     if(NOT WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
-        add_link_options(-fuse-ld=lld)
-        message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds")
+        # Check if lld is available before trying to use it
+        find_program(LLD_LINKER NAMES ld.lld lld)
+        if(LLD_LINKER)
+            add_link_options(-fuse-ld=lld)
+            message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds")
+        else()
+            message(STATUS "${Yellow}LLD linker not found${ColorReset} - using default linker")
+        endif()
     endif()
 
     # Windows-specific debug info formats
