@@ -99,7 +99,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
-        "DUSE_CPACK": "OFF"
+        "USE_CPACK": "OFF"
       }
     }
   ],
