@@ -62,14 +62,15 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "USE_MUSL": "OFF",
         "USE_MIMALLOC": "ON"
       }
     },
     {
       "name": "release",
-      "displayName": "Release (default: musl)",
-      "description": "Alias for release-musl",
-      "inherits": "release-musl"
+      "displayName": "Release (default: clang)",
+      "description": "Alias for release-clang - supports both shared and static libraries",
+      "inherits": "release-clang"
     },
     {
       "name": "relwithdebinfo",

@@ -405,6 +405,16 @@ if(USE_CPACK)
         # All our install() commands use doc/ (not share/doc/) on Windows, so CPack shouldn't create share/
         # Explicitly set CPack to not create empty directories or use share/ structure
         if(WIN32)
+            # Detect WiX BEFORE including CPack (required for CPACK_WIX_VERSION to work)
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Wix.cmake")
+
+            # Set default generator to WIX (must be before include(CPack))
+            if(WIX_FOUND)
+                set(CPACK_GENERATOR "WIX")
+            else()
+                set(CPACK_GENERATOR "ZIP")
+            endif()
+
             # Ensure CPack only installs explicitly defined components
             # This prevents CPack from creating empty directories based on CMAKE_INSTALL_PREFIX structure
             # CPack will only install files/directories we explicitly install via install() commands
@@ -419,7 +429,9 @@ if(USE_CPACK)
             # Ensure CPack installs only what we explicitly define
             set(CPACK_INSTALL_CMAKE_PROJECTS "${CMAKE_BINARY_DIR};${PROJECT_NAME};ALL;/" CACHE STRING "CPack install projects" FORCE)
             # Run cleanup script to remove mimalloc files after install but before packaging
-            set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
+            if (NOT WIN32)
+                set(CPACK_INSTALL_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/install/CPackRemoveMimalloc.cmake" CACHE FILEPATH "Post-install cleanup script" FORCE)
+            endif()
         endif()
         include(CPack)
     endif()
@@ -580,6 +592,7 @@ if(USE_CPACK)
             set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
             set(CPACK_RPM_PACKAGE_GROUP "Applications/Networking")
             set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+            set(CPACK_RPM_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
             set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
             if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
                 set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
@@ -624,119 +637,30 @@ if(USE_CPACK)
         if("DragNDrop" IN_LIST CPACK_GENERATOR)
             set(CPACK_DMG_FORMAT "UDZO")  # Compressed UDIF (read-only)
             set(CPACK_DMG_VOLUME_NAME "${CPACK_PACKAGE_NAME}")
-            set(CPACK_DMG_BACKGROUND_IMAGE "")  # Optional: path to background image
+            set(CPACK_DMG_BACKGROUND_IMAGE "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
+            # Note: For macOS app bundles, create .icns from PNG using:
+            #   mkdir icon.iconset && sips -z 16 16 installer_icon.png --out icon.iconset/icon_16x16.png
+            #   (repeat for sizes: 32, 64, 128, 256, 512, 1024 with @2x variants)
+            #   iconutil -c icns icon.iconset
+            # set(CPACK_BUNDLE_ICON "${CMAKE_SOURCE_DIR}/images/installer_icon.icns")
             set(CPACK_DMG_DS_STORE_SETUP_SCRIPT "")  # Optional: custom setup script
             set(CPACK_DMG_SLA_DIR "")  # Optional: Software License Agreement directory
         endif()
 
     elseif(WIN32)
-        # Windows: ZIP (always available), NSIS/EXE (if makensis found)
-        set(CPACK_GENERATOR "ZIP")
-
-        # Check for NSIS (Nullsoft Scriptable Install System)
-        find_program(NSIS_EXECUTABLE makensis)
-        if(NOT NSIS_EXECUTABLE)
-            # Try alternative NSIS locations (common Windows install paths)
-            # Handle ProgramFiles(x86) separately due to CMake variable parsing
-            if(DEFINED ENV{ProgramFiles})
-                set(PROGRAM_FILES_PATH "$ENV{ProgramFiles}")
-            else()
-                set(PROGRAM_FILES_PATH "C:/Program Files")
-            endif()
-
-            if(DEFINED ENV{ProgramFiles\(x86\)})
-                set(PROGRAM_FILES_X86_PATH "$ENV{ProgramFiles\(x86\)}")
-            else()
-                set(PROGRAM_FILES_X86_PATH "C:/Program Files (x86)")
-            endif()
-
-            find_program(NSIS_EXECUTABLE
-                NAMES makensis
-                PATHS
-                    "${PROGRAM_FILES_PATH}/NSIS"
-                    "${PROGRAM_FILES_X86_PATH}/NSIS"
-                    "C:/Program Files/NSIS"
-                    "C:/Program Files (x86)/NSIS"
-                PATH_SUFFIXES bin
-                NO_DEFAULT_PATH
-            )
-        endif()
-
-        if(NSIS_EXECUTABLE)
-            list(APPEND CPACK_GENERATOR "NSIS")
-            message(STATUS "${Yellow}CPack:${ColorReset} NSIS generator enabled (${BoldBlue}makensis${ColorReset} found at ${BoldBlue}${NSIS_EXECUTABLE}${ColorReset})")
+        # Windows: WiX/MSI (default), ZIP, NSIS/EXE
+        # Generator was already set before include(CPack) above
+        # Add additional generators here
+        if(WIX_FOUND)
+            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: WIX (MSI installer)")
+            list(APPEND CPACK_GENERATOR "ZIP")
         else()
-            message(STATUS "${Red}CPack:${ColorReset} NSIS generator disabled (${BoldBlue}makensis${ColorReset} not found - install NSIS to create EXE installers)")
+            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ZIP (WiX not found)")
         endif()
 
-        # NSIS installer configuration
-        if("NSIS" IN_LIST CPACK_GENERATOR)
-            set(CPACK_NSIS_PACKAGE_NAME "${CPACK_PACKAGE_NAME}")
-            # Display name without version (just "ascii-chat")
-            set(CPACK_NSIS_DISPLAY_NAME "${CPACK_PACKAGE_NAME}")
-            # CPACK_PACKAGE_INSTALL_DIRECTORY is set above and controls the install directory
-            # This ensures NSIS installs to "ascii-chat" instead of "ascii-chat 0.3.2"
-            # Note: CPACK_PACKAGE_INSTALL_DIRECTORY is already set to "${CPACK_PACKAGE_NAME}" above
-            set(CPACK_NSIS_HELP_LINK "${CPACK_PACKAGE_HOMEPAGE_URL}")
-            set(CPACK_NSIS_URL_INFO_ABOUT "${CPACK_PACKAGE_HOMEPAGE_URL}")
-            set(CPACK_NSIS_CONTACT "${CPACK_PACKAGE_CONTACT}")
-
-            # Add bin directory to PATH using custom NSIS code
-            # CPACK_NSIS_MODIFY_PATH only adds $INSTDIR, but we need $INSTDIR\bin
-            # This ensures 'ascii-chat' can be run from any directory
-            # The installer will add to system PATH if running with admin privileges,
-            # or user PATH if running without admin (per-user installation)
-            set(CPACK_NSIS_MODIFY_PATH ON)  # We'll also handle PATH manually
-
-            # Custom NSIS code to add bin directory to PATH
-            set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
-                ; Add bin directory to PATH
-                EnVar::SetHKCU
-                EnVar::AddValue \\\"PATH\\\" \\\"$INSTDIR\\\\bin\\\"
-                Pop \\\$0
-            ")
-
-            set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
-                ; Remove bin directory from PATH
-                EnVar::SetHKCU
-                EnVar::DeleteValue \\\"PATH\\\" \\\"$INSTDIR\\\\bin\\\"
-                Pop \\\$0
-            ")
-
-            # Enable uninstall before install (clean upgrade)
-            set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
-
-            # Enable component-based installation
-            # This allows users to select which components to install
-            set(CPACK_NSIS_COMPONENT_INSTALL ON)
-
-            # Optional: Custom installer icon
-            # set(CPACK_NSIS_INSTALLED_ICON_NAME "${CMAKE_SOURCE_DIR}/resources/icon.ico")
-
-            # =====================================================================
-            # Start Menu Shortcuts
-            # =====================================================================
-            # Create shortcuts with command-line arguments using custom NSIS code
-            # NSIS CreateShortCut syntax: CreateShortCut "link.lnk" "target.exe" "parameters" "icon.file" icon_index start_options
-            # SW_SHOWMINIMIZED (7) shows the console window minimized by default
-            set(CPACK_NSIS_CREATE_ICONS_EXTRA "
-  CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"client\\\"
-  CreateShortCut \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\" \\\"$INSTDIR\\\\bin\\\\ascii-chat.exe\\\" \\\"server\\\"
-")
-
-            # Remove custom shortcuts on uninstall
-            set(CPACK_NSIS_DELETE_ICONS_EXTRA "
-  Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Client.lnk\\\"
-  Delete \\\"$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\ascii-chat Server.lnk\\\"
-")
-
-            # Add documentation link to Start Menu
-            # CPACK_NSIS_MENU_LINKS uses pairs of (source_file, display_name)
-            # The source_file path is relative to the installation directory
-            set(CPACK_NSIS_MENU_LINKS
-                "doc/html/index.html" "Documentation"
-            )
-        endif()
+        # Include NSIS configuration module (appends NSIS to generator list)
+        # WiX was already included before include(CPack) for CPACK_WIX_VERSION to work
+        include("${CMAKE_SOURCE_DIR}/cmake/install/Nsis.cmake")
 
     else()
         # Unknown platform: fallback to TGZ
@@ -862,6 +786,53 @@ if(USE_CPACK)
     message(STATUS "${Yellow}CPack:${ColorReset} Package generation enabled")
     message(STATUS "${Yellow}CPack:${ColorReset} Package will be created in: ${BoldBlue}${CPACK_PACKAGE_DIRECTORY}${ColorReset}")
     message(STATUS "${Yellow}CPack:${ColorReset} Generators: ${Magenta}${CPACK_GENERATOR}${ColorReset}")
+
+    # =========================================================================
+    # Custom Package Generator Targets
+    # =========================================================================
+    # Create individual targets for each package type
+    # Usage: cmake --build build --target package-wix
+    #        cmake --build build --target package-nsis
+    #        etc.
+
+    # All supported CPack generators
+    set(ALL_CPACK_GENERATORS
+        ZIP TGZ TBZ2 TXZ        # Archive formats (cross-platform)
+        STGZ                     # Self-extracting shell script (Unix)
+        DEB RPM                  # Linux package managers
+        WIX NSIS                 # Windows installers
+        DragNDrop ProductBuild   # macOS installers
+        7Z                       # 7-Zip archive
+        IFW                      # Qt Installer Framework
+        FREEBSD                  # FreeBSD pkg
+    )
+
+    # Create a target for each generator
+    foreach(GENERATOR ${ALL_CPACK_GENERATORS})
+        string(TOLOWER "${GENERATOR}" generator_lower)
+        add_custom_target(package-${generator_lower}
+            COMMAND ${CMAKE_CPACK_COMMAND} -G ${GENERATOR}
+            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+            COMMENT "Creating ${GENERATOR} package..."
+            VERBATIM
+        )
+    endforeach()
+
+    # Main package target - builds everything then creates packages
+    # Builds: executable, static lib, shared lib, docs, then all enabled packages
+    # Note: CMake reserves "package" target name, so we use "package-all"
+    add_custom_target(package-all
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ascii-chat-shared
+        COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target docs
+        COMMAND ${CMAKE_CPACK_COMMAND}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Building all targets and creating packages..."
+        VERBATIM
+    )
+
+    message(STATUS "${Yellow}CPack:${ColorReset} Package targets: ${BoldBlue}package${ColorReset} (default), ${BoldBlue}package-all${ColorReset} (builds all first), ${BoldBlue}package-wix${ColorReset}, ${BoldBlue}package-nsis${ColorReset}, etc.")
+
 else()
     message(STATUS "${Red}CPack:${ColorReset} Package generation disabled (set USE_CPACK=ON to enable)")
 endif()
