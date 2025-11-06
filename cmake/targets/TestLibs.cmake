@@ -11,10 +11,9 @@
 if(NOT BUILDING_OBJECT_LIBS)
     add_executable(test-static-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
 
-    # Link against the static library and mimalloc
-    target_link_libraries(test-static-lib
+    # Link against the static library (mimalloc is transitively linked)
+    target_link_libraries(test-static-lib PRIVATE
         ascii-chat-static-lib
-        ${MIMALLOC_LIBRARIES}
     )
 
     # Set output directory
@@ -35,10 +34,9 @@ endif()
 if(NOT USE_MUSL)
     add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
 
-    # Link against the shared library and mimalloc
-    target_link_libraries(test-shared-lib
+    # Link against the shared library (mimalloc is in the shared library)
+    target_link_libraries(test-shared-lib PRIVATE
         ascii-chat-shared
-        ${MIMALLOC_LIBRARIES}
     )
 
     # Include necessary headers
