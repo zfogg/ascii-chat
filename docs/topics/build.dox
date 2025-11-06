@@ -718,6 +718,155 @@
  * - Finding untested code paths
  * - Continuous integration coverage reporting
  *
+ * @section build_philosophy Compilation Philosophy
+ *
+ * ascii-chat uses different linking strategies depending on the build mode and target platform.
+ * This ensures optimal development experience while providing production-ready, portable releases.
+ *
+ * @subsection build_philosophy_dev Development Builds
+ *
+ * **Purpose**: Fast iteration, easy debugging, comprehensive error detection
+ *
+ * **Linking Strategy**:
+ * - **Windows**: Dynamic linking against vcpkg DLLs
+ *   - Uses x64-windows vcpkg triplet
+ *   - Links against Windows UCRT (Universal C Runtime)
+ *   - Dependencies: asciichat.dll, libsodium.dll, portaudio.dll, zstd.dll
+ *   - AddressSanitizer runtime (clang_rt.asan_dynamic-x86_64.dll) in Debug builds
+ * - **Linux**: Dynamic linking against system shared libraries (.so files)
+ *   - Links against glibc (GNU C Library)
+ *   - Generates asciichat.so shared library for testing
+ * - **macOS**: Dynamic linking against system frameworks
+ *   - Links against libSystem (system C library)
+ *   - Generates asciichat.dylib for testing
+ *
+ * **Build Modes**:
+ * - **Debug** (`CMAKE_BUILD_TYPE=Debug`): Maximum debugging, AddressSanitizer enabled
+ * - **Dev** (`CMAKE_BUILD_TYPE=Dev`): Fast builds without sanitizers
+ *
+ * **Why Dynamic Linking for Development?**
+ * - **Faster builds**: Shared libraries reduce link time
+ * - **Easier debugging**: Sanitizers work better with dynamic linking
+ * - **Quick iteration**: Rebuild only what changed
+ * - **Memory debugging**: AddressSanitizer detects use-after-free, buffer overflows, leaks
+ *
+ * @subsection build_philosophy_prod Production Builds
+ *
+ * **Purpose**: Portable, optimized, self-contained binaries for distribution
+ *
+ * **Linking Strategy**:
+ * - **Windows** (`CMAKE_BUILD_TYPE=Release`):
+ *   - Static linking against vcpkg libraries (x64-windows-static triplet)
+ *   - Links statically against Windows UCRT (Universal C Runtime)
+ *   - Single .exe file with minimal external dependencies
+ *   - Only depends on core Windows system DLLs (KERNEL32.dll, WS2_32.dll, etc.)
+ *
+ * - **Linux** (`CMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON`):
+ *   - Static linking with musl libc (lightweight, security-focused C library)
+ *   - Static-PIE (Position Independent Executable) for ASLR security
+ *   - Fully static binary - no external dependencies except Linux kernel
+ *   - Portable across all Linux distributions
+ *
+ * - **macOS** (`CMAKE_BUILD_TYPE=Release`):
+ *   - Currently uses dynamic linking against system frameworks
+ *   - Links against libSystem
+ *   - **Static linking planned** for future releases
+ *   - Universal binaries (x86_64 + arm64) for Intel and Apple Silicon
+ *
+ * **Why Static Linking for Production?**
+ * - **Portability**: Works on any target system without dependency hell
+ * - **Security**: No vulnerable shared libraries to exploit
+ * - **Reliability**: No runtime library version mismatches
+ * - **Simplicity**: Single binary deployment (especially critical for musl on Linux)
+ *
+ * **Build Configuration**:
+ * @code{.bash}
+ * # Windows Release (static vcpkg libraries)
+ * .\build.ps1 -Config Release
+ *
+ * # Linux Release (static musl)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
+ * cmake --build build
+ *
+ * # macOS Release (currently dynamic, static planned)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release
+ * cmake --build build
+ * @endcode
+ *
+ * @subsection build_philosophy_releases Release Distribution
+ *
+ * **What We Provide in Releases**:
+ *
+ * When you download an ascii-chat release from GitHub, you get:
+ * - **Binaries**: Optimized executables for your platform
+ *   - Windows: `ascii-chat.exe` (static)
+ *   - Linux: `ascii-chat` (static musl)
+ *   - macOS: `ascii-chat` (universal binary)
+ *
+ * - **Static Library** (`libasciichat.a`):
+ *   - For embedding ascii-chat into your own projects
+ *   - Link with `gcc -o myapp myapp.c -L/path/to/lib -lasciichat-static`
+ *
+ * - **Shared Library**:
+ *   - Windows: `asciichat.dll` + `asciichat.lib` (import library)
+ *   - Linux: `libasciichat.so`
+ *   - macOS: `libasciichat.dylib`
+ *   - For dynamic linking at runtime
+ *
+ * - **C Headers**:
+ *   - `lib/logging.h`, `lib/common.h`, `lib/network.h`, etc.
+ *   - Public API for library integration
+ *
+ * - **Package Installers** (via CPack):
+ *   - Windows: `.msi` (WiX-based MSI) and `.exe` (NSIS self-extracting)
+ *   - Linux: `.deb` (Debian/Ubuntu), `.rpm` (RedHat/Fedora)
+ *   - macOS: `.dmg` disk image
+ *   - All installers include binaries, libraries, and headers
+ *
+ * **Using ascii-chat as a Library**:
+ *
+ * Static linking example:
+ * @code{.c}
+ * #include <asciichat/logging.h>
+ * #include <asciichat/common.h>
+ *
+ * int main(void) {
+ *     log_init(NULL, LOG_INFO);
+ *     log_info("Hello from my app!");
+ *     log_destroy();
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * Compile:
+ * @code{.bash}
+ * # Link against static library
+ * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat-static -lsodium -lportaudio
+ *
+ * # Link against shared library (Linux)
+ * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat
+ * @endcode
+ *
+ * **Installation Methods**:
+ * 1. **Package Manager** (recommended): Install via `.deb`, `.rpm`, or `.msi`
+ * 2. **Manual**: Extract tarball/zip to `/usr/local` or `C:\Program Files`
+ * 3. **Build from source**: Clone repo and build yourself
+ *
+ * @subsection build_philosophy_summary Summary
+ *
+ * | Platform | Development | Production | Release Artifacts |
+ * |----------|-------------|------------|-------------------|
+ * | **Windows** | DLL (x64-windows) | Static (x64-windows-static) | .exe binary, .dll, .lib, .msi, .exe installer |
+ * | **Linux** | .so (glibc) | Static (musl) | binary, .so, .a, .deb/.rpm |
+ * | **macOS** | .dylib | Static (planned) | binary, .dylib, .a, .dmg |
+ *
+ * | Build Mode | Optimization | Debug Info | Sanitizers | C Runtime |
+ * |------------|--------------|------------|------------|-----------|
+ * | **Debug** | -O0 | Full | ASan,UBSan | glibc/UCRT/libSystem |
+ * | **Dev** | -O0 | Full | None | glibc/UCRT/libSystem |
+ * | **Release** | -O3 | None | None | musl/UCRT(static)/libSystem |
+ * | **RelWithDebInfo** | -O3 | Full | None | musl/UCRT/libSystem |
+ *
  * @section build_caches Dependency Caches
  *
  * @subsection build_caches_overview Cache Overview

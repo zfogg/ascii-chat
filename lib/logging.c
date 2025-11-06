@@ -387,20 +387,6 @@ static void write_to_log_file_unlocked(const char *buffer, int length) {
   g_log.current_size += (size_t)written;
 }
 
-/* Helper: Write formatted log entry to stderr fallback (assumes mutex held)
- * Used when no log file is configured
- */
-static void write_to_stderr_fallback_unlocked(const char *buffer, int length) {
-  if (g_log.file == STDERR_FILENO) {
-    ssize_t written = platform_write(STDERR_FILENO, buffer, (size_t)length);
-    if (written <= 0 && length > 0) {
-      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to stderr");
-      return;
-    }
-    (void)fflush(stderr);
-  }
-}
-
 /* Helper: Format log message header (timestamp, level, location info)
  * Returns the number of characters written to the buffer
  */
