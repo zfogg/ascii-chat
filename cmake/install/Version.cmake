@@ -34,7 +34,7 @@ if(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g(
     set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
     set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
     set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-    message(STATUS "Version from git: ${BoldGreen}${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}${ColorReset} ${Yellow}(development)${ColorReset}")
+    message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}${ColorReset} ${Yellow}(development)${ColorReset}")
     # Override PROJECT_VERSION with git-detected version
     set(PROJECT_VERSION_MAJOR "${GIT_VERSION_MAJOR}" CACHE STRING "Major version from git" FORCE)
     set(PROJECT_VERSION_MINOR "${GIT_VERSION_MINOR}" CACHE STRING "Minor version from git" FORCE)
@@ -45,7 +45,7 @@ elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)
     set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
     set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
     set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-    message(STATUS "Version from git: ${BoldGreen}${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}${ColorReset} ${BoldCyan}(release)${ColorReset}")
+    message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}${ColorReset} ${BoldCyan}(release)${ColorReset}")
     # Override PROJECT_VERSION with git-detected version
     set(PROJECT_VERSION_MAJOR "${GIT_VERSION_MAJOR}" CACHE STRING "Major version from git" FORCE)
     set(PROJECT_VERSION_MINOR "${GIT_VERSION_MINOR}" CACHE STRING "Minor version from git" FORCE)
@@ -53,7 +53,7 @@ elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)
     set(PROJECT_VERSION "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}" CACHE STRING "Version from git" FORCE)
 else()
     # No tags or git not available - use fallback from project() or keep existing
-    message(STATUS "Version from git: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION}${ColorReset})")
+    message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION}${ColorReset})")
 endif()
 
 # Create a script that generates version.h on every build

@@ -97,14 +97,14 @@ function(configure_debug_memory USE_MIMALLOC_ARG USE_MUSL_ARG)
     # Don't add DEBUG_MEMORY if musl is enabled - musl's strict aliasing breaks the macros
     # Don't add DEBUG_MEMORY if sanitizers are enabled - ASan conflicts with mutex initialization during static init
     if(USE_SANITIZERS_ARG)
-        message(STATUS "DEBUG_MEMORY disabled - AddressSanitizer provides comprehensive memory checking (conflicts with mutex init)")
+        message(STATUS "DEBUG_MEMORY disabled - ${BoldBlue}AddressSanitizer${ColorReset} provides comprehensive memory checking (conflicts with mutex init)")
     elseif(USE_MIMALLOC_ARG)
-        message(STATUS "DEBUG_MEMORY disabled - using mimalloc's memory tracking instead")
+        message(STATUS "DEBUG_MEMORY disabled - using ${BoldBlue}mimalloc${ColorReset}'s memory tracking instead")
         # Enable mimalloc debugging features (MI_DEBUG will be set per-target to avoid conflicts)
         add_definitions(-DUSE_MIMALLOC_DEBUG)
         set(MIMALLOC_DEBUG_LEVEL 2 PARENT_SCOPE)  # MI_DEBUG level 2: basic checks + internal assertions
     elseif(USE_MUSL_ARG)
-        message(STATUS "${BoldYellow}DEBUG_MEMORY${ColorReset} disabled - musl's strict aliasing is incompatible with DEBUG_MEMORY macros")
+        message(STATUS "${BoldYellow}DEBUG_MEMORY${ColorReset} disabled - ${BoldBlue}musl${ColorReset}'s strict aliasing is incompatible with DEBUG_MEMORY macros")
     else()
         # Enable DEBUG_MEMORY only when no conflicts exist
         add_definitions(-DDEBUG_MEMORY)

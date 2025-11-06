@@ -32,7 +32,7 @@ function(copy_windows_dlls TARGET_NAME)
         # This function is kept for documentation and potential future use cases
         # where vcpkg is not being used
 
-        message(STATUS "DLL copying: vcpkg's applocal.ps1 will handle DLL dependencies automatically")
+        message(STATUS "DLL copying: ${BoldBlue}vcpkg${ColorReset}'s ${BoldBlue}applocal.ps1${ColorReset} will handle DLL dependencies automatically")
     endif()
 endfunction()
 

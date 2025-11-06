@@ -30,7 +30,7 @@
 # Tests can be run with standard glibc builds instead
 if(USE_MUSL)
     set(BUILD_TESTS OFF)
-    message(STATUS "Tests disabled for musl builds (Criterion requires glibc)")
+    message(STATUS "Tests disabled for musl builds (${BoldBlue}Criterion${ColorReset} requires ${BoldBlue}glibc${ColorReset})")
 endif()
 
 # Windows doesn't use pkg-config, so skip Criterion detection on Windows

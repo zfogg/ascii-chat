@@ -50,11 +50,10 @@ set(CPACK_DEBIAN_DEVELOPMENT_PACKAGE_DEPENDS "libportaudio2, libasound2, libzstd
 # Use Debian default package naming (ascii-chat_version_arch.deb)
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 
-# Maintainer info (optional - can be set via environment)
+# Maintainer info is set in ProjectConstants.cmake
+# Can be overridden via environment variable DEBEMAIL
 if(DEFINED ENV{DEBEMAIL})
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "$ENV{DEBEMAIL}")
-else()
-    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "ascii-chat <${CPACK_PACKAGE_CONTACT}>")
 endif()
 
 message(STATUS "${Yellow}CPack:${ColorReset} DEB configuration complete")

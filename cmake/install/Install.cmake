@@ -552,9 +552,9 @@ if(USE_CPACK)
 
         # Set default message for Windows
         if(WIX_FOUND)
-            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: WIX (MSI installer)")
+            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ${Magenta}WIX${ColorReset} (MSI installer)")
         else()
-            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ZIP (WiX not found)")
+            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ${Magenta}ZIP${ColorReset} (${BoldBlue}WiX${ColorReset} not found)")
         endif()
 
     else()

@@ -189,7 +189,7 @@ function(configure_llvm_pre_project)
             set(CLANG_RESOURCE_DIR "${HOMEBREW_LLVM_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
 
             if(EXISTS "${CLANG_RESOURCE_DIR}/include")
-                message(STATUS "Found Clang resource directory: ${CLANG_RESOURCE_DIR}")
+                message(STATUS "Found ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
                 # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
                 string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
                 string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
