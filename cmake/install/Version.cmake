@@ -204,18 +204,53 @@ else()
     set(REPO_HASH \"\")
 endif()
 
-# Generate version header
+# Generate version header to temp file first
+# This will be copied to final location only if content changed
 configure_file(
     \"${CMAKE_SOURCE_DIR}/lib/version.h.in\"
-    \"${CMAKE_BINARY_DIR}/generated/version.h\"
+    \"${CMAKE_BINARY_DIR}/generated/version.h.tmp\"
     @ONLY
 )
 ")
 
-# Add custom target that runs the version script on every build
-add_custom_target(generate_version
+# Add custom command that regenerates version.h smartly based on build type
+# - Debug/Dev: Only regenerate when .git/HEAD changes (commits/branch changes)
+# - Release: Regenerate when any tracked files change (for reproducible builds)
+#
+# Strategy: Always generate to temp file, then copy_if_different to preserve timestamps
+if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+    # Debug/Dev: Only depend on .git/HEAD (commits/branches), NOT .git/index
+    # This prevents rebuilds from uncommitted changes or staging
+    set(VERSION_DEPENDENCIES
+        "${CMAKE_SOURCE_DIR}/.git/HEAD"
+        "${CMAKE_SOURCE_DIR}/lib/version.h.in"
+    )
+else()
+    # Release: Also depend on .git/index for dirty state tracking
+    set(VERSION_DEPENDENCIES
+        "${CMAKE_SOURCE_DIR}/.git/HEAD"
+        "${CMAKE_SOURCE_DIR}/.git/index"
+        "${CMAKE_SOURCE_DIR}/lib/version.h.in"
+    )
+endif()
+
+add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/generated/version.h"
+    # Generate to temp file first
     COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT_PATH}"
-    BYPRODUCTS "${CMAKE_BINARY_DIR}/generated/version.h"
+    # Copy temp to final location only if different (preserves timestamp if unchanged)
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
+        "${CMAKE_BINARY_DIR}/generated/version.h"
+    # Clean up temp file
+    COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
+    DEPENDS ${VERSION_DEPENDENCIES}
     COMMENT "Generating version header with current git state..."
     VERBATIM
+)
+
+# Add custom target that depends on the generated header
+# Note: NOT using ALL here - only regenerates when dependencies change
+add_custom_target(generate_version
+    DEPENDS "${CMAKE_BINARY_DIR}/generated/version.h"
 )
