@@ -38,7 +38,8 @@ elseif(CRC32_HW STREQUAL "auto")
                     set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
                 endif()
             else()
-                # Cross-compiling - try compile test
+                # Cross-compiling - try compile test with required flags
+                set(CMAKE_REQUIRED_FLAGS "-march=armv8-a+crc")
                 check_c_source_compiles("
                     #include <arm_acle.h>
                     #include <stdint.h>
@@ -49,6 +50,7 @@ elseif(CRC32_HW STREQUAL "auto")
                         return 0;
                     }
                 " CAN_COMPILE_ARM_CRC32)
+                unset(CMAKE_REQUIRED_FLAGS)
                 if(CAN_COMPILE_ARM_CRC32)
                     set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
                 endif()
@@ -100,7 +102,8 @@ elseif(CRC32_HW STREQUAL "auto")
                 set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
             endif()
         else()
-            # Try compile test as fallback
+            # Try compile test as fallback with required flags
+            set(CMAKE_REQUIRED_FLAGS "-march=armv8-a+crc")
             check_c_source_compiles("
                 #include <arm_acle.h>
                 #include <stdint.h>
@@ -111,6 +114,7 @@ elseif(CRC32_HW STREQUAL "auto")
                     return 0;
                 }
             " CAN_COMPILE_ARM_CRC32)
+            unset(CMAKE_REQUIRED_FLAGS)
             if(CAN_COMPILE_ARM_CRC32)
                 set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
             endif()
@@ -125,13 +129,26 @@ endif()
 
 if(ENABLE_CRC32_HW)
     add_definitions(-DHAVE_CRC32_HW)
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+
+    # Determine architecture more reliably
+    if(PLATFORM_DARWIN AND IS_APPLE_SILICON EQUAL 1)
+        # Apple Silicon - use ARM flags
+        set(CRC32_ARCH "ARM")
+    elseif(PLATFORM_DARWIN)
+        # Intel Mac - use x86_64 flags
+        set(CRC32_ARCH "X86_64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64|aarch64|arm64")
+        set(CRC32_ARCH "ARM")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+        set(CRC32_ARCH "X86_64")
+    endif()
+
+    # Apply architecture-specific flags
+    if(CRC32_ARCH STREQUAL "X86_64")
         add_compile_options(-msse4.2)
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64|aarch64")
+    elseif(CRC32_ARCH STREQUAL "ARM")
         # ARM CRC32 requires specific compiler flags
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            add_compile_options(-march=armv8-a+crc)
-        elseif(CMAKE_C_COMPILER_ID MATCHES "GNU")
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
             add_compile_options(-march=armv8-a+crc)
         endif()
     endif()
