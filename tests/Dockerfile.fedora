@@ -1,14 +1,15 @@
 # Dockerfile for building RPM packages
 # Uses Fedora for yum/rpmbuild compatibility
 
-FROM fedora:latest
+FROM fedora:rawhide
 
 # Set environment
 ENV CC=clang \
   CXX=clang++ \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
-  TESTING=1
+  TESTING=1 \
+  DOCKER_OS=fedora
 
 # Configure ccache for Docker volume caching
 ENV CCACHE_DIR=/ccache \
@@ -22,18 +23,11 @@ RUN dnf install -y \
   ca-certificates \
   git \
   wget \
-  && dnf clean all
-
-# Install clang-21 and llvm-21 from Fedora repos
-RUN dnf install -y \
   clang \
   llvm \
   lld \
-  && dnf clean all && \
-  if command -v clang-21 >/dev/null 2>&1; then \
-    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-21 100 && \
-    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-21 100; \
-  fi
+  && clang --version \
+  && dnf clean all
 
 # Set working directory
 WORKDIR /app

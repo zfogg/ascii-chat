@@ -9,7 +9,12 @@ cmake_minimum_required(VERSION 3.16)
 
 # Check if running in Docker (set by Dockerfile with ENV TESTING=1)
 if(DEFINED ENV{TESTING} AND "$ENV{TESTING}" STREQUAL "1")
-    set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-docker" CACHE PATH "Root directory for dependency cache (Docker)")
+    # Use OS-specific cache directory for Docker builds
+    if(DEFINED ENV{DOCKER_OS})
+        set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
+    else()
+        set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-docker" CACHE PATH "Root directory for dependency cache (Docker)")
+    endif()
 else()
     set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
 endif()
