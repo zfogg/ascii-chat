@@ -230,7 +230,7 @@ endif()
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
-# Linux: JACK (system PortAudio is built with JACK support)
+# Linux: JACK (if PortAudio is built with JACK support)
 # Windows: WASAPI/DirectSound (handled by platform module)
 # Note: musl builds use PortAudio with ALSA only (no JACK) to avoid static lib dependency
 if(APPLE)
@@ -241,7 +241,14 @@ if(APPLE)
         ${CORESERVICES_FRAMEWORK}
     )
 elseif(UNIX AND NOT USE_MUSL)
-    target_link_libraries(ascii-chat-audio jack)
+    # Check if JACK is available (PortAudio may or may not be built with JACK support)
+    find_library(JACK_LIBRARY NAMES jack)
+    if(JACK_LIBRARY)
+        target_link_libraries(ascii-chat-audio ${JACK_LIBRARY})
+        message(STATUS "Found ${BoldBlue}JACK${ColorReset}: ${BoldGreen}${JACK_LIBRARY}${ColorReset}")
+    else()
+        message(STATUS "${BoldYellow}JACK not found${ColorReset} - PortAudio will use ALSA/OSS only")
+    endif()
 endif()
 
 # -----------------------------------------------------------------------------
@@ -615,6 +622,10 @@ else()
             )
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+            # Link JACK if it was found earlier (PortAudio may be built with JACK support)
+            if(JACK_LIBRARY AND NOT USE_MUSL)
+                target_link_libraries(ascii-chat-shared PRIVATE ${JACK_LIBRARY})
+            endif()
         endif()
     endif()
 endif()
@@ -734,7 +745,10 @@ if(APPLE)
         ${CORESERVICES_FRAMEWORK}
     )
 elseif(UNIX AND NOT USE_MUSL)
-    target_link_libraries(ascii-chat-static-lib INTERFACE jack)
+    # Link JACK if it was found earlier
+    if(JACK_LIBRARY)
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${JACK_LIBRARY})
+    endif()
 endif()
 
 # Memory allocator (mimalloc)
