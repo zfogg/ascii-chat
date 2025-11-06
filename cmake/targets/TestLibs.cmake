@@ -35,8 +35,11 @@ endif()
 if(NOT USE_MUSL)
     add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
 
-    # Link against the shared library
-    target_link_libraries(test-shared-lib ascii-chat-shared)
+    # Link against the shared library and mimalloc
+    target_link_libraries(test-shared-lib
+        ascii-chat-shared
+        ${MIMALLOC_LIBRARIES}
+    )
 
     # Include necessary headers
     target_include_directories(test-shared-lib PRIVATE
