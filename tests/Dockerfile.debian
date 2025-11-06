@@ -9,7 +9,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
   CXX=clang++ \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
-  TESTING=1
+  TESTING=1 \
+  DOCKER_OS=debian
 
 # Configure ccache for Docker volume caching
 ENV CCACHE_DIR=/ccache \

@@ -72,6 +72,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo apt-get update
     sudo apt-get install -y \
       clang \
+      llvm \
       cmake \
       ninja-build \
       pkg-config \
@@ -89,6 +90,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
     sudo yum install -y \
       clang \
+      llvm \
       musl-devel \
       cmake \
       ninja-build \
