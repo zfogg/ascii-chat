@@ -55,7 +55,7 @@ if(CMAKE_C_COMPILER)
             ERROR_QUIET
         )
         if(REAL_C_COMPILER AND NOT REAL_C_COMPILER STREQUAL "clang")
-            message(STATUS "Detected ccache wrapper, real compiler: ${REAL_C_COMPILER}")
+            message(STATUS "Detected ${BoldBlue}ccache${ColorReset} wrapper, real compiler: ${REAL_C_COMPILER}")
             # Don't override CMAKE_C_COMPILER but note for sanitizer setup
             set(CCACHE_DETECTED TRUE)
         endif()

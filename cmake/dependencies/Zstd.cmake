@@ -46,10 +46,10 @@ else()
         # Check for Homebrew zstd first
         if(EXISTS "/usr/local/opt/zstd/lib/pkgconfig/libzstd.pc")
             set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-            message(STATUS "Using Homebrew zstd from /usr/local/opt/zstd")
+            message(STATUS "Using ${BoldBlue}Homebrew${ColorReset} ${BoldBlue}zstd${ColorReset} from /usr/local/opt/zstd")
         elseif(EXISTS "/opt/homebrew/opt/zstd/lib/pkgconfig/libzstd.pc")
             set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-            message(STATUS "Using Homebrew zstd from /opt/homebrew/opt/zstd")
+            message(STATUS "Using ${BoldBlue}Homebrew${ColorReset} ${BoldBlue}zstd${ColorReset} from /opt/homebrew/opt/zstd")
         endif()
     endif()
 

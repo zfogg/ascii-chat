@@ -17,13 +17,13 @@
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
 #if SIMD_SUPPORT_NEON
 #include "neon.h"
-#elif defined(SIMD_SUPPORT_AVX2)
+#elif SIMD_SUPPORT_AVX2
 #include "avx2.h"
-#elif defined(SIMD_SUPPORT_SSSE3)
+#elif SIMD_SUPPORT_SSSE3
 #include "ssse3.h"
-#elif defined(SIMD_SUPPORT_SSE2)
+#elif SIMD_SUPPORT_SSE2
 #include "sse2.h"
-#elif defined(SIMD_SUPPORT_SVE)
+#elif SIMD_SUPPORT_SVE
 #include "sve.h"
 #endif
 
@@ -537,13 +537,13 @@ __attribute__((no_sanitize("integer"))) void simd_caches_destroy_all(void) {
   // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
 #if SIMD_SUPPORT_NEON
   neon_caches_destroy();
-#elif defined(SIMD_SUPPORT_AVX2)
+#elif SIMD_SUPPORT_AVX2
   avx2_caches_destroy();
-#elif defined(SIMD_SUPPORT_SSSE3)
+#elif SIMD_SUPPORT_SSSE3
   ssse3_caches_destroy();
-#elif defined(SIMD_SUPPORT_SSE2)
+#elif SIMD_SUPPORT_SSE2
   sse2_caches_destroy();
-#elif defined(SIMD_SUPPORT_SVE)
+#elif SIMD_SUPPORT_SVE
   sve_caches_destroy();
 #endif
 

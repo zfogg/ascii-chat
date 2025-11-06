@@ -32,7 +32,7 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
     # Check if Visual Studio has a preferred SDK version via MSBuild
     if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION)
         set(PREFERRED_SDK_VERSION ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
-        message(STATUS "Visual Studio preferred SDK version: ${PREFERRED_SDK_VERSION}")
+        message(STATUS "${BoldBlue}Visual Studio${ColorReset} preferred SDK version: ${PREFERRED_SDK_VERSION}")
     endif()
 
     # Check standard Windows Kits locations
@@ -58,9 +58,9 @@ if(WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
                 set(PREFERRED_SDK_PATH "${WINDOWS_KITS_DIR}/Lib/${PREFERRED_SDK_VERSION}")
                 if(EXISTS "${PREFERRED_SDK_PATH}")
                     set(WINDOWS_SDK_VERSION ${PREFERRED_SDK_VERSION})
-                    message(STATUS "Using Visual Studio preferred SDK version: ${WINDOWS_SDK_VERSION}")
+                    message(STATUS "Using ${BoldBlue}Visual Studio${ColorReset} preferred SDK version: ${WINDOWS_SDK_VERSION}")
                 else()
-                    message(STATUS "Visual Studio preferred SDK version ${PREFERRED_SDK_VERSION} not found, selecting latest available")
+                    message(STATUS "${BoldBlue}Visual Studio${ColorReset} preferred SDK version ${PREFERRED_SDK_VERSION} not found, selecting latest available")
                 endif()
             endif()
 
