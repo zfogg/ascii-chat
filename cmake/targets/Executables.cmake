@@ -218,8 +218,3 @@ add_custom_target(build-timer-end ALL
     DEPENDS show-ascii-chat-success
     VERBATIM
 )
-
-# If shared library was also built, wait for it too
-if(TARGET show-ascii-chat-shared-success)
-    add_dependencies(build-timer-end show-ascii-chat-shared-success)
-endif()

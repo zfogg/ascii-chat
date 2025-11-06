@@ -31,13 +31,89 @@
 # This section must run before project() to set CMAKE_C_COMPILER
 # =============================================================================
 
+if (WIN32)
+    set(LLVM_ROOT_DIRS "$ENV{PROGRAMFILES}/LLVM" "$ENV{LOCALAPPDATA}/Programs/LLVM/bin" "C:/Program Files/LLVM/bin" "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "$ENV{USERPROFILE}/scoop/shims")
+elseif(APPLE)
+    set(LLVM_ROOT_DIRS /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin /usr/bin)
+elseif(LINUX)
+    set(LLVM_ROOT_DIRS /usr/local/bin /usr/lib/llvm/bin /usr/lib/llvm-21/bin /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin /usr/lib/llvm-17/bin /usr/lib/llvm-16/bin /usr/lib/llvm-15/bin)
+endif()
+
 function(configure_llvm_pre_project)
+    # Compiler Detection (before project())
+    # Force Clang compiler - MSVC and GCC are not supported
+    # Supports Windows (scoop/official LLVM), macOS (Homebrew), and Linux (system)
+    if(NOT CMAKE_C_COMPILER)
+        if(WIN32)
+            # Windows: Try to find Clang from common installation locations
+            find_program(CLANG_EXECUTABLE
+                NAMES clang clang.exe
+                PATHS ${LLVM_ROOT_DIRS}
+            )
+            if(NOT CLANG_EXECUTABLE)
+                message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                "  Windows: scoop install llvm\n"
+                                "  Or download from: https://llvm.org/builds/")
+            endif()
+        elseif(APPLE)
+            # macOS: Prefer Homebrew Clang over Apple's Clang
+            find_program(CLANG_EXECUTABLE
+                NAMES clang
+                PATHS ${LLVM_ROOT_DIRS}
+            )
+
+            if(NOT CLANG_EXECUTABLE)
+                # Fallback to system clang if Homebrew not found
+                find_program(CLANG_EXECUTABLE NAMES clang
+                    PATHS ${LLVM_ROOT_DIRS}
+                )
+            endif()
+
+            if(NOT CLANG_EXECUTABLE)
+                message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                "  macOS: brew install llvm\n"
+                                "  Or use system clang from Xcode Command Line Tools")
+            endif()
+        else()
+            # Linux/Unix: Use system Clang (support versions 21 down to 15)
+            find_program(CLANG_EXECUTABLE
+                NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
+                PATHS ${LLVM_ROOT_DIRS}
+            )
+
+            if(NOT CLANG_EXECUTABLE)
+                message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                "  Debian/Ubuntu: sudo apt install clang\n"
+                                "  Fedora/RHEL: sudo dnf install clang\n"
+                                "  Arch: sudo pacman -S clang")
+            endif()
+        endif()
+
+        # Set the compiler (all platforms)
+        set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "C compiler" FORCE)
+
+        # Derive CXX compiler path from C compiler
+        if(WIN32)
+            # Windows: Replace clang.exe with clang++.exe
+            string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}")
+        else()
+            # Unix/macOS: Append ++ to clang
+            set(CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}++")
+        endif()
+
+        set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+        message(STATUS "Set default ${BoldYellow}C${ColorReset} compiler to ${BoldCyan}Clang${ColorReset}: ${CLANG_EXECUTABLE}")
+        message(STATUS "Set default ${BoldYellow}C++${ColorReset} compiler to ${BoldCyan}Clang++${ColorReset}: ${CLANGXX_EXECUTABLE}")
+    endif()
+
     # =============================================================================
     # Default to Clang on all platforms (before macOS-specific Homebrew LLVM)
     # =============================================================================
     # Only set compiler if not already set by user or environment
     if(NOT CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
-        find_program(CLANG_EXECUTABLE clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15)
+        find_program(CLANG_EXECUTABLE clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
+            PATHS ${LLVM_ROOT_DIRS}
+        )
         if(CLANG_EXECUTABLE)
             set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler" FORCE)
         else()
@@ -71,7 +147,7 @@ function(configure_llvm_pre_project)
             if(CMAKE_C_COMPILER MATCHES "${HOMEBREW_LLVM_PREFIX}")
                 message(STATUS "${BoldGreen}Using${ColorReset} user-specified ${BoldBlue}Homebrew LLVM${ColorReset} compiler: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
             else()
-                message(STATUS "Configuring to use Homebrew LLVM")
+                message(STATUS "Configuring to use ${BoldBlue}Homebrew LLVM${ColorReset}")
 
                 # Check for ccache and use it if available
                 find_program(CCACHE_PROGRAM ccache)
@@ -105,7 +181,6 @@ function(configure_llvm_pre_project)
                 COMMAND "${HOMEBREW_LLVM_PREFIX}/bin/clang" --version
                 OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
                 OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
             )
             string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
             set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
@@ -221,7 +296,7 @@ function(configure_llvm_post_project)
             if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
                 message(STATUS "  Link: ${BoldCyan}${HOMEBREW_LLVM_LINK_DIRS}${ColorReset}")
             else()
-                message(STATUS "  Link: (from LDFLAGS environment variable)")
+                message(STATUS "  Link: from ${BoldCyan}LDFLAGS${ColorReset}=${BoldYellow}$ENV{LDFLAGS}${ColorReset} environment variable")
             endif()
         endif()
     endif()
@@ -241,8 +316,9 @@ endfunction()
 function(find_llvm_tools)
     # Use llvm-config to find the correct LLVM installation
     find_program(LLVM_CONFIG
-        NAMES llvm-config-20 llvm-config-19 llvm-config-18 llvm-config
+        NAMES llvm-config llvm-config-21 llvm-config-20 llvm-config-19 llvm-config-18 llvm-config-17 llvm-config-16 llvm-config-15
         DOC "Path to llvm-config"
+        PATHS ${LLVM_ROOT_DIRS}
     )
 
     if(LLVM_CONFIG)
@@ -257,24 +333,20 @@ function(find_llvm_tools)
         find_program(LLVM_AR
             NAMES llvm-ar
             PATHS ${LLVM_BINDIR}
-            NO_DEFAULT_PATH
         )
         find_program(LLVM_RANLIB
             NAMES llvm-ranlib
             PATHS ${LLVM_BINDIR}
-            NO_DEFAULT_PATH
         )
     else()
         # Fallback: search in common LLVM installation directories
         find_program(LLVM_AR
-            NAMES llvm-ar
-            PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
-            NO_DEFAULT_PATH
+            NAMES llvm-ar llvm-ar-21 llvm-ar-20 llvm-ar-19 llvm-ar-18 llvm-ar-17 llvm-ar-16 llvm-ar-15
+            PATHS ${LLVM_ROOT_DIRS}
         )
         find_program(LLVM_RANLIB
-            NAMES llvm-ranlib
-            PATHS /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin
-            NO_DEFAULT_PATH
+            NAMES llvm-ranlib llvm-ranlib-21 llvm-ranlib-20 llvm-ranlib-19 llvm-ranlib-18 llvm-ranlib-17 llvm-ranlib-16 llvm-ranlib-15
+            PATHS ${LLVM_ROOT_DIRS}
         )
     endif()
 

@@ -19,6 +19,12 @@ include(${SOURCE_DIR}/cmake/utils/Colors.cmake)
 set(TIME_FILE "${CMAKE_BINARY_DIR}/.build_time_${TARGET_NAME}.txt")
 
 if(ACTION STREQUAL "start")
+    # Clear the total build time printed marker at the start of each build
+    if(TARGET_NAME STREQUAL "build-total")
+        set(TOTAL_MARKER_FILE "${CMAKE_BINARY_DIR}/.build_total_printed.txt")
+        file(REMOVE "${TOTAL_MARKER_FILE}")
+    endif()
+
     # Record start time with millisecond precision
     if(WIN32)
         # Windows: Use PowerShell to get milliseconds since epoch
@@ -82,6 +88,21 @@ elseif(ACTION STREQUAL "check")
         endif()
     endif()
 elseif(ACTION STREQUAL "end")
+    # For build-total, use a marker to ensure it only prints once
+    # The marker is cleared at the start of each build by build-timer-start
+    if(TARGET_NAME STREQUAL "build-total")
+        set(TOTAL_MARKER_FILE "${CMAKE_BINARY_DIR}/.build_total_printed.txt")
+
+        # Check if we already printed total time in this build
+        if(EXISTS "${TOTAL_MARKER_FILE}")
+            # Already printed, skip
+            return()
+        endif()
+
+        # Mark that we're about to print total build time
+        file(WRITE "${TOTAL_MARKER_FILE}" "1")
+    endif()
+
     # Calculate elapsed time with millisecond precision
     if(EXISTS "${TIME_FILE}")
         file(READ "${TIME_FILE}" START_TIME)
@@ -128,17 +149,13 @@ elseif(ACTION STREQUAL "end")
         # Format message string with ANSI codes
         # Special formatting for build-total target
         if(TARGET_NAME STREQUAL "build-total")
-            set(MSG2 "${BoldGreen}✓${ColorReset} ${BoldCyan}Total${ColorReset} build time: ${TIME_STR}")
+            set(MSG "${BoldGreen}✓${ColorReset} ${BoldCyan}Total${ColorReset} build time: ${TIME_STR}")
 
             # Output using execute_process to preserve ANSI codes
             if(WIN32)
                 execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG}')")
-                execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG2}')")
-                execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG3}')")
             else()
                 execute_process(COMMAND printf "%b\n" "${MSG}")
-                execute_process(COMMAND printf "%b\n" "${MSG2}")
-                execute_process(COMMAND printf "%b\n" "${MSG3}")
             endif()
         else()
             set(MSG "${BoldGreen}✓${ColorReset} Built ${BoldCyan}${TARGET_NAME}${ColorReset} in ${TIME_STR}")

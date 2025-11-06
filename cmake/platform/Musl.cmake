@@ -92,7 +92,7 @@ function(configure_musl_pre_project)
         include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
         find_llvm_tools()
 
-        message(STATUS "Using clang with musl for static-PIE support")
+        message(STATUS "Using ${BoldCyan}clang${ColorReset} with ${BoldYellow}musl${ColorReset} for static-PIE support")
     endif()
 endfunction()
 

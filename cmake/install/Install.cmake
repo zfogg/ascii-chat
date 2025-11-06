@@ -98,7 +98,7 @@ else()
         COMPONENT Development
         OPTIONAL
     )
-    message(STATUS "Configured library installation: libasciichat.so → lib/")
+    message(STATUS "${BoldGreen}Configured${ColorReset} library installation: ${BoldBlue}libasciichat.so${ColorReset} → ${BoldYellow}lib/${ColorReset}")
 endif()
 
 # Install public API headers
@@ -140,7 +140,7 @@ if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-
         DESTINATION lib/pkgconfig
         COMPONENT Development
     )
-    message(STATUS "Configured pkg-config file installation")
+    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file installation")
 endif()
 
 # Install CMake package config files (for find_package support)
@@ -178,7 +178,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
         COMPONENT Development
     )
 
-    message(STATUS "Configured CMake package config installation")
+    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}CMake${ColorReset} package config installation")
 endif()
 
 # Remove mimalloc files from installation - it's statically linked so not needed

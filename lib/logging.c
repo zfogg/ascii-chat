@@ -246,7 +246,7 @@ void log_init(const char *filename, log_level_t level) {
   // Preserve the terminal output setting
   bool preserve_terminal_output = g_log.terminal_output_enabled;
 
-  if (g_log.initialized && g_log.file && g_log.file != STDERR_FILENO) {
+  if (g_log.initialized && g_log.file >= 0 && g_log.file != STDERR_FILENO) {
     platform_close(g_log.file);
   }
 
@@ -272,7 +272,7 @@ void log_init(const char *filename, log_level_t level) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
     int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
     g_log.file = fd;
-    if (!g_log.file) {
+    if (g_log.file < 0) {  /* Check for error: fd < 0, not fd == 0 (STDIN is valid!) */
       if (preserve_terminal_output) {
         safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
       }
@@ -580,13 +580,13 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   va_end(args);
 
-  /* Write to log file if configured */
-  write_to_log_file_unlocked(log_buffer, msg_len);
+  /* Write to log file if configured (not STDERR) */
+  if (g_log.file != STDERR_FILENO) {
+    write_to_log_file_unlocked(log_buffer, msg_len);
+  }
 
-  /* Write to stderr if no log file configured */
-  write_to_stderr_fallback_unlocked(log_buffer, msg_len);
-
-  /* Also write to terminal with colors if terminal output enabled */
+  /* Write to terminal with colors if terminal output enabled */
+  /* Note: This handles both stderr (when no file configured) and terminal output */
   va_list args_terminal;
   va_start(args_terminal, fmt);
   write_to_terminal_unlocked(level, time_buf, file, line, func, fmt, args_terminal);
@@ -615,9 +615,11 @@ void log_plain_msg(const char *fmt, ...) {
   va_end(args);
 
   if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
-    /* Write to log file if configured */
-    write_to_log_file_unlocked(log_buffer, msg_len);
-    write_to_log_file_unlocked("\n", 1);
+    /* Write to log file if configured (not STDERR) */
+    if (g_log.file != STDERR_FILENO) {
+      write_to_log_file_unlocked(log_buffer, msg_len);
+      write_to_log_file_unlocked("\n", 1);
+    }
 
     /* Always write to stderr for log_plain_msg */
     safe_fprintf(stderr, "%s\n", log_buffer);
@@ -647,8 +649,11 @@ void log_file_msg(const char *fmt, ...) {
   }
 
   /* Write to log file only - no stderr output */
-  write_to_log_file_unlocked(log_buffer, msg_len);
-  write_to_log_file_unlocked("\n", 1);
+  /* Only write if a log file is actually configured (not STDERR) */
+  if (g_log.file != STDERR_FILENO) {
+    write_to_log_file_unlocked(log_buffer, msg_len);
+    write_to_log_file_unlocked("\n", 1);
+  }
 
   mutex_unlock(&g_log.mutex);
 }
