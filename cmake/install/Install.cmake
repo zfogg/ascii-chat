@@ -11,6 +11,20 @@
 #   - Install rules for binary, documentation, and optional files
 # =============================================================================
 
+# =============================================================================
+# Install Required System Libraries
+# =============================================================================
+# Automatically install runtime dependencies (MSVC runtime on Windows, etc.)
+# Only relevant for Windows and macOS. Linux Release builds should be musl static.
+include(InstallRequiredSystemLibraries)
+
+# Warn if trying to use this on Linux Release builds (should be musl static instead)
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND PLATFORM_LINUX AND NOT USE_MUSL)
+    message(WARNING "${BoldYellow}Release build on Linux without USE_MUSL${ColorReset}")
+    message(WARNING "  Linux releases should use musl static builds for portability")
+    message(WARNING "  Use: ${BoldCyan}cmake -B build -DUSE_MUSL=ON -DCMAKE_BUILD_TYPE=Release${ColorReset}")
+endif()
+
 # Install binary
 install(TARGETS ascii-chat
     RUNTIME DESTINATION bin
