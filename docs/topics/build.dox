@@ -128,12 +128,11 @@
  * cmake -B build -DCMAKE_BUILD_TYPE=Debug
  * cmake --build build
  *
- * # Release build on Linux or macOS
+ * # Release build (static - auto-detects musl on Linux, vcpkg static on Windows)
  * cmake --preset release
- * # Release build on Windows
- * cmake --preset release-clang
- * # Build
  * cmake --build build
+ * # Or explicitly force musl on Linux
+ * cmake --preset release-musl
  * # Or configure and build in one command
  * cmake --build --preset release
  * @endcode
@@ -1015,9 +1014,8 @@
  * - `debug-musl` - Debug build with musl (Linux only, no sanitizers)
  *
  * **Release Presets**:
- * - `release` - Release build (defaults to musl on Linux)
- * - `release-musl` - Static musl release build (Linux only)
- * - `release-clang` - Dynamic release build with clang and mimalloc
+ * - `release` - Static release build (auto-detects musl on Linux, vcpkg static on Windows)
+ * - `release-musl` - Explicitly force musl static build (Linux only)
  *
  * **Development Presets**:
  * - `dev` - Debug without sanitizers (faster iteration)

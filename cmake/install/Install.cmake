@@ -306,21 +306,8 @@ install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/html/"
 # Manpages are generated in ${CMAKE_BINARY_DIR}/docs/man/man3/ with ascii-chat- prefix
 # The install will only work if the docs target has been built first
 # Note: OPTIONAL cannot be used with FILES_MATCHING, but FILES_MATCHING handles no matches gracefully
-# FHS-compliant: Unix/macOS install to share/man/man3, Windows to doc/man/man3
-if(WIN32)
-    # Windows: Install manpages to doc/man/man3 (no standard location on Windows)
-    # This is the ONLY install rule for manpages on Windows - no share/ directory
-    install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/man/man3/"
-        DESTINATION ${INSTALL_DOC_DIR}/man/man3
-        COMPONENT Manpages
-        FILES_MATCHING
-        PATTERN "ascii-chat-*.3"  # Only install prefixed manpages (section 3)
-        PATTERN "ascii-chat-_*.3" EXCLUDE  # Exclude path-based manpages (e.g. _home_user_...)
-        PATTERN "*.3.gz" EXCLUDE  # Exclude compressed manpages if any
-        PATTERN "*.3.bz2" EXCLUDE
-        PATTERN "*.3.xz" EXCLUDE
-    )
-elseif(UNIX AND NOT APPLE)
+# FHS-compliant: Unix/macOS install to share/man/man3
+if(UNIX AND NOT APPLE)
     # Unix/Linux: FHS-compliant installation to share/man/man3
     install(DIRECTORY "${CMAKE_BINARY_DIR}/docs/man/man3/"
         DESTINATION share/man/man3
@@ -367,7 +354,6 @@ endif()
 #
 # Usage:
 #   cmake --build build --target package
-#   cmake --build build --target package_source
 #
 # Disable with: -DUSE_CPACK=OFF
 # =============================================================================
@@ -444,7 +430,7 @@ if(USE_CPACK)
     # =========================================================================
     set(CPACK_PACKAGE_NAME "ascii-chat")
     set(CPACK_PACKAGE_VENDOR "zfogg")
-    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Real-time terminal-based video chat with ASCII art conversion")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "📸 Video chat in your terminal 🔠")
     set(CPACK_PACKAGE_DESCRIPTION "ascii-chat is a terminal-based video chat application that converts webcam video to ASCII art in real-time. It supports multiple clients connecting to a single server, with video mixing and audio streaming capabilities.")
 
     # Version is already set before include(CPack) above
@@ -504,7 +490,7 @@ if(USE_CPACK)
 
     # Development Group
     set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DISPLAY_NAME "Development")
-    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DESCRIPTION "All of the tools you'll need to develop software with libasciichat")
+    set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_DESCRIPTION "Code with libasciichat")
     set(CPACK_COMPONENT_GROUP_DEVELOPMENTGROUP_EXPANDED OFF)
 
     # Component descriptions
@@ -523,7 +509,7 @@ if(USE_CPACK)
     # Manpages component - only on Unix platforms
     if(NOT WIN32)
         set(CPACK_COMPONENT_MANPAGES_DISPLAY_NAME "Manual Pages")
-        set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix-style manual pages (man pages) generated with Doxygen")
+        set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix man pages generated with Doxygen")
         set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
     endif()
 
