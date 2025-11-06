@@ -609,8 +609,7 @@ endif()
 # Record start time before linking (only when actually building)
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-    COMMENT "Recording build start time for ascii-chat-shared"
-    COMMAND_ECHO NONE
+    COMMENT ""
     VERBATIM
 )
 
@@ -618,7 +617,6 @@ add_custom_command(TARGET ascii-chat-shared PRE_LINK
 add_custom_command(TARGET ascii-chat-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
     COMMENT ""
-    COMMAND_ECHO NONE
     VERBATIM
 )
 
@@ -649,8 +647,7 @@ if(APPLE)
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-        COMMENT "Combining module libraries into libasciichat.a"
-        COMMAND_ECHO NONE
+        COMMENT ""
         COMMAND_EXPAND_LISTS
     )
 else()
@@ -676,7 +673,7 @@ else()
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-        COMMENT "Combining module libraries into libasciichat.a"
+        COMMENT ""
         COMMAND_EXPAND_LISTS
     )
 endif()
@@ -744,6 +741,7 @@ endif()
 # User-friendly 'static-lib' target - builds the static library
 add_custom_target(static-lib
     COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND_ECHO NONE
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a build-timer-start
     VERBATIM
 )

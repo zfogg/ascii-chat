@@ -33,7 +33,8 @@ if(WIN32)
         message(STATUS "Found ${BoldGreen}libsodium${ColorReset}: ${LIBSODIUM_LIBRARY_RELEASE}")
 
         # Define SODIUM_STATIC for static builds to prevent dllimport
-        if(CMAKE_BUILD_TYPE MATCHES "Release")
+        # vcpkg x64-windows-static triplet uses static libraries for all build types
+        if(VCPKG_TRIPLET MATCHES "static")
             add_compile_definitions(SODIUM_STATIC)
         endif()
     else()

@@ -92,7 +92,7 @@ target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
 # Record start time before linking (only when actually building)
 add_custom_command(TARGET ascii-chat PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
-    COMMENT "Recording build start time for ascii-chat"
+    COMMENT ""
     VERBATIM
 )
 
@@ -108,6 +108,7 @@ add_custom_command(TARGET ascii-chat POST_BUILD
 # This shows "up to date" message when ascii-chat doesn't need rebuilding
 add_custom_target(show-ascii-chat-success ALL
     COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND_ECHO NONE
     DEPENDS ascii-chat
     VERBATIM
 )
@@ -234,6 +235,7 @@ endif()
 
 add_custom_target(build-all
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/BuildTimer.cmake
+    COMMAND_ECHO NONE
     DEPENDS ${BUILD_ALL_DEPS}
     COMMENT ""
     VERBATIM
