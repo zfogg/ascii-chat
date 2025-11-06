@@ -1,0 +1,43 @@
+# Dockerfile for building RPM packages
+# Uses Fedora for yum/rpmbuild compatibility
+
+FROM fedora:rawhide
+
+# Set environment
+ENV CC=clang \
+  CXX=clang++ \
+  LANG=C.UTF-8 \
+  LC_ALL=C.UTF-8 \
+  TESTING=1 \
+  DOCKER_OS=fedora
+
+# Configure ccache for Docker volume caching
+ENV CCACHE_DIR=/ccache \
+  CCACHE_UMASK=002 \
+  CCACHE_HARDLINK=true \
+  CCACHE_NLEVELS=2
+
+# Install base dependencies
+RUN dnf install -y \
+  sudo \
+  ca-certificates \
+  git \
+  wget \
+  clang \
+  llvm \
+  lld \
+  && clang --version \
+  && dnf clean all
+
+# Set working directory
+WORKDIR /app
+
+# Copy deps script
+COPY scripts/deps.sh /tmp/deps.sh
+RUN chmod +x /tmp/deps.sh
+
+# Run deps script to install build dependencies
+RUN /tmp/deps.sh
+
+# Default to bash for interactive use
+CMD ["/bin/bash"]

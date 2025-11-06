@@ -462,7 +462,7 @@
  * - Drop-in replacement for malloc/free
  *
  * **Usage in ascii-chat**:
- * - Used in release builds (`release`, `release-clang`, `relwithdebinfo`)
+ * - Used in release builds (`release`, `release-musl`, `relwithdebinfo`)
  * - Overrides system malloc/free/realloc
  * - Transparent to application code
  *

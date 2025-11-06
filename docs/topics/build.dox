@@ -26,6 +26,616 @@
  * - CMake presets for common configurations
  * - Windows build script for convenience
  *
+ * @section build_requirements Build Tool Requirements
+ *
+ * ascii-chat requires various build tools beyond just the compiler and CMake.
+ * This section documents **all** external commands and utilities needed for building,
+ * testing, and packaging the project.
+ *
+ * **Note**: This section covers **build tools only**. For library dependencies
+ * (zstd, libsodium, PortAudio, etc.), see @ref topic_dependencies.
+ *
+ * @subsection build_requirements_core Core Build Tools
+ *
+ * **Required for All Builds**:
+ *
+ * | Tool | Purpose | Minimum Version | Where Used |
+ * |------|---------|-----------------|------------|
+ * | **cmake** | Build system generator | 3.16+ | Configure and generate build files |
+ * | **clang** | C compiler (primary) | 10+ | Compile C source files |
+ * | **ninja** or **make** | Build executor | Any | Execute build commands |
+ * | **ar** | Static library archiver | Any | Create .a static libraries |
+ * | **ranlib** | Static library indexer | Any | Index .a static libraries |
+ *
+ * **Alternative Archivers** (used by LLVM toolchain):
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **llvm-ar** | LLVM static library archiver | musl builds, LLVM toolchain |
+ * | **llvm-ranlib** | LLVM static library indexer | musl builds, LLVM toolchain |
+ * | **llvm-lib** | LLVM library tool (Windows) | Windows Clang builds (BearSSL) |
+ *
+ * On most systems, `ar` and `ranlib` are provided by:
+ * - **Linux**: GNU Binutils or LLVM
+ * - **macOS**: Xcode Command Line Tools (Apple's ar/ranlib)
+ * - **Windows**: LLVM (llvm-ar, llvm-ranlib, llvm-lib) or MinGW (ar, ranlib)
+ *
+ * @subsection build_requirements_llvm LLVM Toolchain Configuration
+ *
+ * **LLVM Tools** (for advanced builds and musl):
+ *
+ * | Tool | Purpose | Where Used | Required For |
+ * |------|---------|------------|--------------|
+ * | **llvm-config** | Query LLVM configuration | LLVM.cmake | Homebrew LLVM, musl builds |
+ * | **llvm-ar** | LLVM static archiver | LLVM.cmake | musl builds (alternative to ar) |
+ * | **llvm-ranlib** | LLVM library indexer | LLVM.cmake | musl builds (alternative to ranlib) |
+ * | **llvm-symbolizer** | Symbolize stack traces | Sanitizer builds | Better ASan/UBSan output |
+ * | **llvm-profdata** | Profile data tool | Coverage builds | Generate coverage data |
+ * | **llvm-cov** | Coverage visualization | Coverage builds | HTML coverage reports |
+ *
+ * **llvm-config Usage**:
+ * - Queries LLVM installation paths and version
+ * - Used to detect LLVM toolchain on Homebrew (macOS)
+ * - Provides library paths for linking
+ * - Not required for basic builds (only Homebrew LLVM)
+ *
+ * @code{.bash}
+ * # Check llvm-config availability
+ * llvm-config --version
+ *
+ * # Show LLVM installation prefix
+ * llvm-config --prefix
+ *
+ * # Show LLVM library directory
+ * llvm-config --libdir
+ * @endcode
+ *
+ * @subsection build_requirements_linker Linker Tools
+ *
+ * **Linker Selection** (platform-specific):
+ *
+ * | Tool | Purpose | Platform | When Used |
+ * |------|---------|----------|-----------|
+ * | **lld** | LLVM linker | Linux | musl static builds (via `-fuse-ld=lld`) |
+ * | **ld** | GNU linker | Linux | glibc builds (default) |
+ * | **lld-link** | LLVM linker (Windows) | Windows | Clang builds (default) |
+ * | **link.exe** | MSVC linker | Windows | MSVC builds |
+ *
+ * The build system automatically selects the appropriate linker based on:
+ * - Compiler toolchain (Clang prefers lld)
+ * - Build type (musl requires lld for static-PIE)
+ * - Platform (Windows uses lld-link or link.exe)
+ *
+ * @subsection build_requirements_binary Binary Analysis Tools
+ *
+ * **Optional but Recommended**:
+ *
+ * | Tool | Purpose | Where Used | Required For |
+ * |------|---------|------------|--------------|
+ * | **strip** | Remove debug symbols | PostBuild.cmake | Release stripping (optional) |
+ * | **objcopy** | Copy/modify object files | PostBuild.cmake | Debug info extraction (optional) |
+ * | **ldd** | Show dynamic dependencies | Manual verification | Verify static linking |
+ * | **file** | Identify file types | Manual verification | Check binary format |
+ * | **nm** | List symbol table | Debugging | Symbol analysis |
+ * | **objdump** | Disassemble binaries | Debugging | Assembly inspection |
+ * | **readelf** | Display ELF info | Debugging (Linux) | ELF header analysis |
+ * | **dumpbin.exe** | Display PE info | Debugging (Windows) | PE header analysis |
+ *
+ * **Usage Examples**:
+ * @code{.bash}
+ * # Verify static linking (Linux)
+ * ldd build/bin/ascii-chat
+ * # Expected: "not a dynamic executable" for musl static builds
+ *
+ * # Check binary type
+ * file build/bin/ascii-chat
+ * # Expected: "ELF 64-bit LSB pie executable, statically linked"
+ *
+ * # List symbols
+ * nm build/bin/ascii-chat | grep malloc
+ * # Shows malloc implementation (mi_malloc for mimalloc builds)
+ *
+ * # Check shared library dependencies (non-static)
+ * objdump -p build/bin/ascii-chat | grep NEEDED
+ * # Lists dynamic libraries required
+ * @endcode
+ *
+ * @subsection build_requirements_documentation Documentation Tools
+ *
+ * **For Building Documentation**:
+ *
+ * | Tool | Purpose | Required For | Notes |
+ * |------|---------|--------------|-------|
+ * | **doxygen** | Generate API docs | `docs` target, Release packages | **Required for releases** |
+ * | **dot** (Graphviz) | Generate diagrams | Enhanced docs (optional) | Improves documentation |
+ *
+ * **Why Doxygen is Required for Releases**:
+ * - Release packages (`make package`) **include documentation**
+ * - Documentation includes HTML API reference and Unix manpages
+ * - Manpages are generated by Doxygen and installed to `share/man/man3/`
+ * - Without Doxygen, releases will be missing documentation files
+ *
+ * **Building Documentation**:
+ * @code{.bash}
+ * # Check if doxygen is available
+ * doxygen --version
+ *
+ * # Build documentation
+ * cmake --build build --target docs
+ *
+ * # Documentation output
+ * ls build/docs/html/       # HTML documentation
+ * ls build/docs/man/man3/   # Unix manpages
+ *
+ * # Build release package (includes documentation)
+ * cmake --build build --target package
+ * @endcode
+ *
+ * @subsection build_requirements_packaging Packaging Tools
+ *
+ * **Platform-Specific Package Generators**:
+ *
+ * **Linux**:
+ * | Tool | Package Format | Distributions | Auto-Detected |
+ * |------|----------------|---------------|---------------|
+ * | **dpkg-buildpackage** | .deb | Debian, Ubuntu, Mint | Yes |
+ * | **rpmbuild** | .rpm | Fedora, RHEL, CentOS, SUSE | Yes |
+ * | **tar** | .tar.gz | All (universal) | Always available |
+ * | **zip** | .zip | All (optional) | If `zip` found |
+ *
+ * **macOS**:
+ * | Tool | Package Format | Purpose | Auto-Detected |
+ * |------|----------------|---------|---------------|
+ * | **productbuild** | .pkg | macOS installer | Yes |
+ * | **tar** | .tar.gz | Universal archive | Always available |
+ *
+ * **Windows**:
+ * | Tool | Package Format | Purpose | Auto-Detected |
+ * |------|----------------|---------|---------------|
+ * | **wix** / **candle** / **light** | .msi | Windows Installer | Yes (WiX v3 or v4) |
+ * | **makensis** | .exe | Self-extracting installer | Yes (NSIS) |
+ * | **tar** (CMake built-in) | .zip | Portable archive | Always available |
+ *
+ * **Automatic Package Generation**:
+ * - CPack automatically detects available packaging tools
+ * - Generates all available package formats for your platform
+ * - Missing tools are skipped (not required, just fewer package formats)
+ *
+ * **Installing Package Generators**:
+ * @code{.bash}
+ * # Debian/Ubuntu
+ * sudo apt install dpkg-dev rpm
+ *
+ * # Fedora
+ * sudo dnf install rpm-build dpkg-dev
+ *
+ * # Arch Linux
+ * sudo pacman -S dpkg rpm-tools
+ *
+ * # macOS (Xcode Command Line Tools includes productbuild)
+ * xcode-select --install
+ *
+ * # Windows (WiX v4 via dotnet)
+ * dotnet tool install --global wix --version 4.0.4
+ * wix extension add --global WixToolset.UI.wixext/4.0.4
+ *
+ * # Windows (NSIS)
+ * # Download from https://nsis.sourceforge.io/Download
+ * @endcode
+ *
+ * @subsection build_requirements_utilities System Utilities
+ *
+ * **Shell and Text Processing**:
+ *
+ * | Tool | Purpose | Platform | Where Used |
+ * |------|---------|----------|------------|
+ * | **bash** | Shell scripts | All (Unix), Windows* | Test runner, build scripts, PostBuild.cmake |
+ * | **sh** | POSIX shell | Unix | CMake execute_process() calls |
+ * | **printf** | Format output | Unix | BuildTimer.cmake |
+ * | **powershell** | Windows shell | Windows | BuildTimer.cmake, build.ps1 |
+ * | **env** | Set environment vars | Unix | Build commands (musl, configure) |
+ * | **date** | Get timestamp | Unix | BuildTimer.cmake |
+ *
+ * **System Information**:
+ *
+ * | Tool | Purpose | Platform | Where Used |
+ * |------|---------|----------|------------|
+ * | **sysctl** | Query system info | macOS | CPU/architecture detection (Init.cmake, PlatformDetection.cmake, CRC32.cmake, SIMD.cmake) |
+ * | **nproc** | Query CPU count | Linux | CPU core detection (Init.cmake) |
+ * | **wmic** | Query system info | Windows | CPU core detection (Init.cmake) |
+ * | **pkg-config** | Query library flags | Linux/macOS | Dependency detection (libsodium, zstd, portaudio) |
+ *
+ * **macOS-Specific Tools**:
+ *
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **xcrun** | Xcode run tool | LLVM.cmake (--show-sdk-path for SDK detection) |
+ * | **open** | Open files/URLs | Documentation.cmake, CustomTargets.cmake |
+ *
+ * **Linux-Specific Tools**:
+ *
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **xdg-open** | Open files/URLs | Documentation.cmake, CustomTargets.cmake |
+ *
+ * **Windows-Specific Tools**:
+ *
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **start** | Open files/URLs | CustomTargets.cmake |
+ *
+ * **Version Control**:
+ *
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **git** | Version control | Version.cmake, BearSSL.cmake, Tomlc17.cmake |
+ *
+ * **Git Usage in Build System**:
+ * - **Version Detection**: `git describe --tags --long --dirty --always` (Version.cmake)
+ * - **Commit Hash**: `git rev-parse HEAD` (Version.cmake)
+ * - **Dirty Check**: `git diff-index --quiet HEAD --` (Version.cmake)
+ * - **File Listing**: `git ls-files` (Version.cmake)
+ * - **Patching Dependencies**: `git apply`, `git diff` (BearSSL.cmake, Tomlc17.cmake)
+ * - **Index Management**: `git update-index --assume-unchanged` (Tomlc17.cmake)
+ *
+ * Git is **recommended** but not strictly required. If git is not available:
+ * - Version defaults to `PROJECT_VERSION` from CMakeLists.txt
+ * - Build continues normally (no version detection warning)
+ * - Dependency patching may fail (affects BearSSL, tomlc17 if building from source)
+ *
+ * **Build Tool Variations**:
+ *
+ * | Tool | Purpose | Platform | Where Used |
+ * |------|---------|----------|------------|
+ * | **make** | GNU Make | Unix | Default build tool, dependency building |
+ * | **gmake** | GNU Make (BSD) | BSD systems | Alternative to 'make' on BSD |
+ * | **nmake** | Microsoft Make | Windows | BearSSL Windows build |
+ * | **ninja** | Ninja build | All | Preferred fast build tool |
+ *
+ * **musl-Specific Tools** (Linux static builds only):
+ *
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **musl-gcc** | musl C compiler wrapper | MuslDependencies.cmake (building static deps) |
+ * | **gcc** | Used with musl-gcc | MuslDependencies.cmake (REALGCC variable) |
+ *
+ * @subsection build_requirements_scripting Scripting Languages
+ *
+ * **Python** (optional):
+ *
+ * | Tool | Purpose | Where Used | Required For |
+ * |------|---------|------------|--------------|
+ * | **python3** or **python** | Python interpreter | CustomTargets.cmake | `run-clang-tidy.py` (parallel tidy) |
+ *
+ * Python is only needed for parallel `clang-tidy` execution. Without it:
+ * - clang-tidy still works (but runs serially, slower)
+ * - All other features work normally
+ *
+ * @subsection build_requirements_windows Windows-Specific Requirements
+ *
+ * **Bash on Windows**:
+ *
+ * Windows builds require bash for running test scripts and certain build operations.
+ * The build system automatically detects bash from common locations.
+ *
+ * **Recommended Bash Providers**:
+ *
+ * 1. **Git Bash** (Recommended):
+ *    - Bundled with Git for Windows
+ *    - Download: https://git-scm.com/download/win
+ *    - Default location: `C:\Program Files\Git\usr\bin\bash.exe`
+ *    - Automatically detected by CMake
+ *
+ * 2. **WSL (Windows Subsystem for Linux)**:
+ *    - Full Linux environment on Windows
+ *    - Install: `wsl --install` (PowerShell as admin)
+ *    - Access: `wsl bash` or `bash.exe` (if in PATH)
+ *    - Provides complete Unix toolset
+ *
+ * 3. **MSYS2**:
+ *    - Unix-like environment for Windows
+ *    - Download: https://www.msys2.org/
+ *    - Includes bash, make, and other Unix tools
+ *
+ * **Detection and Configuration**:
+ * @code{.cmake}
+ * # CMake automatically searches for bash in:
+ * # 1. C:/Program Files/Git/usr/bin/bash.exe  (Git Bash)
+ * # 2. C:/Program Files/Git/bin/bash.exe      (Git Bash alternate)
+ * # 3. bash.exe in PATH                        (WSL, MSYS2, etc.)
+ * @endcode
+ *
+ * **PowerShell Commands**:
+ *
+ * | Tool | Purpose | Where Used |
+ * |------|---------|------------|
+ * | **powershell.exe** | Windows scripting | build.ps1, BuildTimer.cmake |
+ * | **cmd.exe** | Windows command shell | Legacy script support (optional) |
+ *
+ * PowerShell is built into Windows (no installation needed).
+ *
+ * @subsection build_requirements_formatter Code Formatting Tools
+ *
+ * **Optional Development Tools**:
+ *
+ * | Tool | Purpose | Where Used | Required For |
+ * |------|---------|------------|--------------|
+ * | **clang-format** | Format C code | `format` target | Code formatting (optional) |
+ * | **clang-tidy** | Static analysis | `tidy` target | Code linting (optional) |
+ * | **scan-build** | Static analyzer | `analyze` target | Deeper analysis (optional) |
+ *
+ * **Code Formatting**:
+ * @code{.bash}
+ * # Format all source files
+ * cmake --build build --target format
+ *
+ * # Check formatting without modifying files
+ * cmake --build build --target format-check
+ * @endcode
+ *
+ * @subsection build_requirements_optional Optional Tools
+ *
+ * **Performance and Optimization**:
+ *
+ * | Tool | Purpose | Where Used | Benefit |
+ * |------|---------|------------|---------|
+ * | **ccache** | Compiler cache | CCache.cmake | 5-10x faster rebuilds |
+ *
+ * ccache is automatically detected and enabled. See @ref build_caches_ccache for configuration.
+ *
+ * **Debugging Tools**:
+ *
+ * | Tool | Purpose | Platform | Usage |
+ * |------|---------|----------|-------|
+ * | **lldb** | LLVM debugger | macOS, Linux, Windows | Interactive debugging, better for Clang |
+ * | **gdb** | GNU debugger | Linux | Interactive debugging, traditional choice |
+ * | **valgrind** | Memory checker | Linux (x86_64, ARM64) | Memory leak detection, heap profiling |
+ * | **leaks** | Memory checker | macOS | Memory leak detection (Apple tool) |
+ *
+ * **LLVM tools** (llvm-symbolizer, llvm-profdata, llvm-cov) are documented in @ref build_requirements_llvm.
+ *
+ * @subsection build_requirements_differences Platform Differences
+ *
+ * **Tool Availability by Platform**:
+ *
+ * | Tool Category | Linux | macOS | Windows |
+ * |---------------|-------|-------|---------|
+ * | **Compiler** | clang, gcc | clang (default) | clang, MSVC |
+ * | **Build Tool** | ninja, make, gmake | ninja, make, gmake | ninja, nmake, MSBuild |
+ * | **Archiver** | ar, llvm-ar | ar (Apple) | llvm-ar, llvm-lib |
+ * | **Linker** | ld, lld | ld (Apple) | lld-link, link.exe |
+ * | **Shell** | bash, sh, env | bash, sh | Git Bash, WSL, PowerShell, cmd |
+ * | **Package** | dpkg, rpm, tar, zip | productbuild, tar | wix, makensis, zip (CMake) |
+ * | **Debugger** | gdb, lldb, valgrind | lldb (default), leaks | lldb, Visual Studio |
+ * | **LLVM Tools** | llvm-config, llvm-ar, llvm-ranlib | llvm-config, llvm-ar, llvm-ranlib | llvm-lib, llvm-ar, llvm-ranlib |
+ * | **System Info** | nproc, date, xdg-open | sysctl, xcrun, open | wmic, start |
+ * | **Pkg Config** | pkg-config (native) | pkg-config (Homebrew) | N/A (uses vcpkg) |
+ * | **Version Control** | git | git | git |
+ * | **Static Builds** | musl-gcc, gcc, lld | Limited (dynamic preferred) | vcpkg static triplet |
+ *
+ * **Key Differences**:
+ *
+ * 1. **Compiler Ecosystem**:
+ *    - **Linux**: Flexible (GCC or Clang), but ascii-chat uses Clang
+ *    - **macOS**: Clang is default (`gcc` often symlinks to clang)
+ *    - **Windows**: Clang preferred (MSVC supported but not primary)
+ *
+ * 2. **Build Systems**:
+ *    - **Linux/macOS**: Ninja (fast) or Make (traditional)
+ *    - **Windows**: Ninja (recommended), NMake (MSVC), or MSBuild (Visual Studio)
+ *
+ * 3. **Binary Tools**:
+ *    - **Linux**: Rich GNU Binutils (objdump, readelf, nm, etc.)
+ *    - **macOS**: Apple tools (otool, dyldinfo, etc.) or LLVM tools
+ *    - **Windows**: Limited (dumpbin.exe with Visual Studio, or LLVM tools)
+ *
+ * 4. **Static Linking**:
+ *    - **Linux**: Excellent (musl libc fully static)
+ *    - **macOS**: Limited (system libraries usually dynamic)
+ *    - **Windows**: Good (static UCRT available with vcpkg)
+ *
+ * 5. **Package Managers**:
+ *    - **Linux**: apt, dnf, pacman (native)
+ *    - **macOS**: Homebrew (third-party but universal)
+ *    - **Windows**: vcpkg (Microsoft), scoop, chocolatey
+ *
+ * @subsection build_requirements_by_build Requirements by Build Type
+ *
+ * This section breaks down what's **required** vs **optional** for each build type.
+ *
+ * @subsubsection build_requirements_debug Debug Build (CMAKE_BUILD_TYPE=Debug)
+ *
+ * **Purpose**: Development with sanitizers (ASan, UBSan) for catching bugs
+ *
+ * **Required Tools** (all platforms):
+ * - **cmake** (3.16+)
+ * - **clang** (10+) - compiler
+ * - **ninja** or **make** - build executor
+ * - **ar** and **ranlib** (or llvm-ar/llvm-ranlib) - static library tools
+ * - System libraries: see @ref topic_dependencies
+ *
+ * **Required Tools** (platform-specific):
+ * - **pkg-config** (Linux/macOS only) - finds dependency flags
+ * - **bash** (Windows only) - Git Bash or WSL for test scripts
+ * - **nproc** (Linux), **sysctl** (macOS), **wmic** (Windows) - CPU detection
+ * - **date** (Unix) - build timing
+ * - **powershell** (Windows) - build timing and scripts
+ *
+ * **Optional but Recommended**:
+ * - **llvm-symbolizer** (all platforms) - symbolizes ASan/UBSan stack traces
+ * - **addr2line** (all platforms) - alternative to llvm-symbolizer for backtraces
+ * - **ccache** (all platforms) - 5-10x faster rebuilds
+ * - **git** (all platforms) - version detection, dependency patching
+ * - **lldb** or **gdb** (all platforms) - interactive debugging
+ * - **valgrind** (Linux) or **leaks** (macOS) - additional memory checking
+ *
+ * **Not Needed**:
+ * - lld, musl-gcc, doxygen, package tools - these are for release builds
+ *
+ * @subsubsection build_requirements_dev Dev Build (CMAKE_BUILD_TYPE=Dev)
+ *
+ * **Purpose**: Fast development without sanitizers (faster than Debug)
+ *
+ * **Required Tools**: Same as Debug build
+ *
+ * **Optional but Recommended**: Same as Debug build, except:
+ * - llvm-symbolizer and addr2line are **not needed** (no sanitizers)
+ *
+ * @subsubsection build_requirements_release Release Build (CMAKE_BUILD_TYPE=Release)
+ *
+ * **Purpose**: Production deployment, static binaries, portable packages
+ *
+ * **Required Tools** (all platforms - same as Debug):
+ * - **cmake** (3.16+)
+ * - **clang** (10+)
+ * - **ninja** or **make**
+ * - **ar** and **ranlib** (or llvm-ar/llvm-ranlib)
+ * - System libraries: see @ref topic_dependencies
+ *
+ * **Required Tools** (Linux musl static builds ONLY):
+ * - **lld** - LLVM linker (for static-PIE linking)
+ * - **musl-gcc** - musl C compiler wrapper
+ * - **gcc** - used by musl-gcc (REALGCC variable)
+ * - **env** - set environment variables for build
+ *
+ * **Required Tools** (macOS with Homebrew LLVM ONLY):
+ * - **llvm-config** - query LLVM paths and version
+ * - **xcrun** - find SDK paths
+ *
+ * **Required Tools** (Windows ONLY):
+ * - **nmake** - Microsoft Make (for BearSSL build)
+ * - **clang-cl** - Clang with MSVC compatibility (for BearSSL)
+ * - **llvm-lib** - LLVM library tool (for BearSSL)
+ *
+ * **Required for Release Packages**:
+ * - **doxygen** (all platforms) - generates documentation for packages
+ * - **tar** (Unix) - create .tar.gz archives
+ * - **git** (all platforms) - version detection and tagging
+ *
+ * **Optional Package Generators** (create installers):
+ * - **dpkg-buildpackage** (Linux) - .deb packages
+ * - **rpmbuild** (Linux) - .rpm packages
+ * - **wix** (Windows) - .msi installers
+ * - **makensis** (Windows) - .exe self-extracting installers
+ * - **productbuild** (macOS) - .pkg installers
+ * - **zip** (all platforms) - .zip archives
+ *
+ * **Optional but Recommended**:
+ * - **ccache** (all platforms) - faster rebuilds
+ * - **strip** (Unix) - strip debug symbols (reduce binary size)
+ * - **ldd** (Linux), **otool** (macOS), **dumpbin** (Windows) - verify linking
+ *
+ * **Not Needed**:
+ * - llvm-symbolizer, addr2line - no sanitizers in release builds
+ * - Debuggers - release builds are optimized (use RelWithDebInfo for debugging)
+ *
+ * @subsubsection build_requirements_relwithdebinfo RelWithDebInfo Build
+ *
+ * **Purpose**: Optimized build with debug symbols (for production debugging)
+ *
+ * **Required Tools**: Same as Release build
+ *
+ * **Optional but Recommended**:
+ * - **lldb** or **gdb** (all platforms) - debug optimized code
+ * - **llvm-symbolizer** (all platforms) - symbolize stack traces
+ * - **addr2line** (all platforms) - alternative backtrace tool
+ * - **strip** (Unix) - can strip symbols later if needed
+ * - All Release build optional tools
+ *
+ * @subsubsection build_requirements_coverage Coverage Build (CMAKE_BUILD_TYPE=Coverage)
+ *
+ * **Purpose**: Measure test coverage with instrumentation
+ *
+ * **Required Tools** (all platforms - same as Debug):
+ * - **cmake** (3.16+)
+ * - **clang** (10+)
+ * - **ninja** or **make**
+ * - **ar** and **ranlib**
+ * - Platform-specific system tools (pkg-config, bash, etc.)
+ *
+ * **Required for Coverage Reports**:
+ * - **llvm-profdata** (all platforms) - process coverage data
+ * - **llvm-cov** (all platforms) - generate coverage reports
+ *
+ * **Optional**:
+ * - **git** (all platforms) - version detection
+ * - **ccache** (all platforms) - faster rebuilds
+ *
+ * **Not Needed**:
+ * - llvm-symbolizer, addr2line - no sanitizers in coverage builds
+ * - Package tools, doxygen - coverage is not for distribution
+ *
+ * @subsection build_requirements_symbolizers Stack Trace Symbolizers
+ *
+ * **llvm-symbolizer vs addr2line**:
+ *
+ * Both tools convert addresses to source locations in stack traces:
+ *
+ * | Feature | llvm-symbolizer | addr2line |
+ * |---------|-----------------|-----------|
+ * | **Platform** | All (Linux, macOS, Windows) | All (Linux, macOS, Windows) |
+ * | **Provider** | LLVM/Clang | GNU Binutils |
+ * | **Speed** | Faster | Slower |
+ * | **Accuracy** | Better with Clang | Better with GCC |
+ * | **ASan/UBSan** | Preferred | Fallback |
+ * | **Required** | No (optional) | No (optional) |
+ *
+ * **How Symbolizers Work**:
+ * - Sanitizers (ASan, UBSan) print raw addresses by default
+ * - Symbolizer converts addresses to `file:line:function` format
+ * - Makes crash reports much more readable
+ * - Works with debug symbols (`-g` flag)
+ *
+ * **Using Symbolizers**:
+ * @code{.bash}
+ * # Without symbolizer (raw addresses)
+ * ./build/bin/ascii-chat
+ * # Output: #0 0x7f8b9c3d4e20 in ?? ??:0
+ *
+ * # With llvm-symbolizer (readable)
+ * export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+ * ./build/bin/ascii-chat
+ * # Output: #0 0x7f8b9c3d4e20 in process_frame lib/image.c:123
+ *
+ * # With addr2line (alternative)
+ * export ASAN_SYMBOLIZER_PATH=/usr/bin/addr2line
+ * ./build/bin/ascii-chat
+ * @endcode
+ *
+ * **Availability**:
+ * - **llvm-symbolizer**: Comes with LLVM/Clang installation
+ * - **addr2line**: Comes with GNU Binutils (gcc, ld, etc.)
+ * - Both are **optional** - builds work without them
+ * - Debug builds are **much more useful** with symbolizers
+ *
+ * @subsection build_requirements_minimal Minimal Build Summary
+ *
+ * **Absolute Minimum** (works on all platforms):
+ * - cmake, clang, ninja (or make), ar, ranlib
+ * - Platform system tools (sysctl/nproc/wmic, etc.)
+ * - pkg-config (Linux/macOS) or vcpkg (Windows)
+ * - bash (Windows only)
+ *
+ * **Recommended for Development**:
+ * - Add: git, ccache, llvm-symbolizer (or addr2line)
+ * - Debugger: lldb (all platforms) or gdb (Linux)
+ *
+ * **For Release Builds**:
+ * - Add: doxygen (documentation)
+ * - Linux: lld, musl-gcc, gcc (for static builds)
+ * - macOS: llvm-config (for Homebrew LLVM)
+ * - Windows: nmake, clang-cl, llvm-lib (for BearSSL)
+ *
+ * **For Release Packages**:
+ * - Add package generators: dpkg-buildpackage, rpmbuild, wix, makensis, productbuild
+ * - All are optional (fallback to .tar.gz or .zip)
+ *
+ * **Everything Else is Optional**:
+ * - clang-format, clang-tidy, scan-build: Code quality
+ * - strip, objcopy: Binary manipulation
+ * - ldd, file, nm, objdump, readelf, dumpbin: Verification
+ * - valgrind, leaks: Additional memory checking
+ * - python3: Parallel clang-tidy
+ *
  * @section build_modularity CMakeLists.txt Modularity
  *
  * @subsection build_modularity_structure Modular Architecture
@@ -128,12 +738,11 @@
  * cmake -B build -DCMAKE_BUILD_TYPE=Debug
  * cmake --build build
  *
- * # Release build on Linux or macOS
+ * # Release build (static - auto-detects musl on Linux, vcpkg static on Windows)
  * cmake --preset release
- * # Release build on Windows
- * cmake --preset release-clang
- * # Build
  * cmake --build build
+ * # Or explicitly force musl on Linux
+ * cmake --preset release-musl
  * # Or configure and build in one command
  * cmake --build --preset release
  * @endcode
@@ -718,6 +1327,155 @@
  * - Finding untested code paths
  * - Continuous integration coverage reporting
  *
+ * @section build_philosophy Compilation Philosophy
+ *
+ * ascii-chat uses different linking strategies depending on the build mode and target platform.
+ * This ensures optimal development experience while providing production-ready, portable releases.
+ *
+ * @subsection build_philosophy_dev Development Builds
+ *
+ * **Purpose**: Fast iteration, easy debugging, comprehensive error detection
+ *
+ * **Linking Strategy**:
+ * - **Windows**: Dynamic linking against vcpkg DLLs
+ *   - Uses x64-windows vcpkg triplet
+ *   - Links against Windows UCRT (Universal C Runtime)
+ *   - Dependencies: asciichat.dll, libsodium.dll, portaudio.dll, zstd.dll
+ *   - AddressSanitizer runtime (clang_rt.asan_dynamic-x86_64.dll) in Debug builds
+ * - **Linux**: Dynamic linking against system shared libraries (.so files)
+ *   - Links against glibc (GNU C Library)
+ *   - Generates asciichat.so shared library for testing
+ * - **macOS**: Dynamic linking against system frameworks
+ *   - Links against libSystem (system C library)
+ *   - Generates asciichat.dylib for testing
+ *
+ * **Build Modes**:
+ * - **Debug** (`CMAKE_BUILD_TYPE=Debug`): Maximum debugging, AddressSanitizer enabled
+ * - **Dev** (`CMAKE_BUILD_TYPE=Dev`): Fast builds without sanitizers
+ *
+ * **Why Dynamic Linking for Development?**
+ * - **Faster builds**: Shared libraries reduce link time
+ * - **Easier debugging**: Sanitizers work better with dynamic linking
+ * - **Quick iteration**: Rebuild only what changed
+ * - **Memory debugging**: AddressSanitizer detects use-after-free, buffer overflows, leaks
+ *
+ * @subsection build_philosophy_prod Production Builds
+ *
+ * **Purpose**: Portable, optimized, self-contained binaries for distribution
+ *
+ * **Linking Strategy**:
+ * - **Windows** (`CMAKE_BUILD_TYPE=Release`):
+ *   - Static linking against vcpkg libraries (x64-windows-static triplet)
+ *   - Links statically against Windows UCRT (Universal C Runtime)
+ *   - Single .exe file with minimal external dependencies
+ *   - Only depends on core Windows system DLLs (KERNEL32.dll, WS2_32.dll, etc.)
+ *
+ * - **Linux** (`CMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON`):
+ *   - Static linking with musl libc (lightweight, security-focused C library)
+ *   - Static-PIE (Position Independent Executable) for ASLR security
+ *   - Fully static binary - no external dependencies except Linux kernel
+ *   - Portable across all Linux distributions
+ *
+ * - **macOS** (`CMAKE_BUILD_TYPE=Release`):
+ *   - Currently uses dynamic linking against system frameworks
+ *   - Links against libSystem
+ *   - **Static linking planned** for future releases
+ *   - Universal binaries (x86_64 + arm64) for Intel and Apple Silicon
+ *
+ * **Why Static Linking for Production?**
+ * - **Portability**: Works on any target system without dependency hell
+ * - **Security**: No vulnerable shared libraries to exploit
+ * - **Reliability**: No runtime library version mismatches
+ * - **Simplicity**: Single binary deployment (especially critical for musl on Linux)
+ *
+ * **Build Configuration**:
+ * @code{.bash}
+ * # Windows Release (static vcpkg libraries)
+ * .\build.ps1 -Config Release
+ *
+ * # Linux Release (static musl)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
+ * cmake --build build
+ *
+ * # macOS Release (currently dynamic, static planned)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release
+ * cmake --build build
+ * @endcode
+ *
+ * @subsection build_philosophy_releases Release Distribution
+ *
+ * **What We Provide in Releases**:
+ *
+ * When you download an ascii-chat release from GitHub, you get:
+ * - **Binaries**: Optimized executables for your platform
+ *   - Windows: `ascii-chat.exe` (static)
+ *   - Linux: `ascii-chat` (static musl)
+ *   - macOS: `ascii-chat` (universal binary)
+ *
+ * - **Static Library** (`libasciichat.a`):
+ *   - For embedding ascii-chat into your own projects
+ *   - Link with `gcc -o myapp myapp.c -L/path/to/lib -lasciichat-static`
+ *
+ * - **Shared Library**:
+ *   - Windows: `asciichat.dll` + `asciichat.lib` (import library)
+ *   - Linux: `libasciichat.so`
+ *   - macOS: `libasciichat.dylib`
+ *   - For dynamic linking at runtime
+ *
+ * - **C Headers**:
+ *   - `lib/logging.h`, `lib/common.h`, `lib/network.h`, etc.
+ *   - Public API for library integration
+ *
+ * - **Package Installers** (via CPack):
+ *   - Windows: `.msi` (WiX-based MSI) and `.exe` (NSIS self-extracting)
+ *   - Linux: `.deb` (Debian/Ubuntu), `.rpm` (RedHat/Fedora)
+ *   - macOS: `.dmg` disk image
+ *   - All installers include binaries, libraries, and headers
+ *
+ * **Using ascii-chat as a Library**:
+ *
+ * Static linking example:
+ * @code{.c}
+ * #include <asciichat/logging.h>
+ * #include <asciichat/common.h>
+ *
+ * int main(void) {
+ *     log_init(NULL, LOG_INFO);
+ *     log_info("Hello from my app!");
+ *     log_destroy();
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * Compile:
+ * @code{.bash}
+ * # Link against static library
+ * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat-static -lsodium -lportaudio
+ *
+ * # Link against shared library (Linux)
+ * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat
+ * @endcode
+ *
+ * **Installation Methods**:
+ * 1. **Package Manager** (recommended): Install via `.deb`, `.rpm`, or `.msi`
+ * 2. **Manual**: Extract tarball/zip to `/usr/local` or `C:\Program Files`
+ * 3. **Build from source**: Clone repo and build yourself
+ *
+ * @subsection build_philosophy_summary Summary
+ *
+ * | Platform | Development | Production | Release Artifacts |
+ * |----------|-------------|------------|-------------------|
+ * | **Windows** | DLL (x64-windows) | Static (x64-windows-static) | .exe binary, .dll, .lib, .msi, .exe installer |
+ * | **Linux** | .so (glibc) | Static (musl) | binary, .so, .a, .deb/.rpm |
+ * | **macOS** | .dylib | Static (planned) | binary, .dylib, .a, .dmg |
+ *
+ * | Build Mode | Optimization | Debug Info | Sanitizers | C Runtime |
+ * |------------|--------------|------------|------------|-----------|
+ * | **Debug** | -O0 | Full | ASan,UBSan | glibc/UCRT/libSystem |
+ * | **Dev** | -O0 | Full | None | glibc/UCRT/libSystem |
+ * | **Release** | -O3 | None | None | musl/UCRT(static)/libSystem |
+ * | **RelWithDebInfo** | -O3 | Full | None | musl/UCRT/libSystem |
+ *
  * @section build_caches Dependency Caches
  *
  * @subsection build_caches_overview Cache Overview
@@ -866,9 +1624,8 @@
  * - `debug-musl` - Debug build with musl (Linux only, no sanitizers)
  *
  * **Release Presets**:
- * - `release` - Release build (defaults to musl on Linux)
- * - `release-musl` - Static musl release build (Linux only)
- * - `release-clang` - Dynamic release build with clang and mimalloc
+ * - `release` - Static release build (auto-detects musl on Linux, vcpkg static on Windows)
+ * - `release-musl` - Explicitly force musl static build (Linux only)
  *
  * **Development Presets**:
  * - `dev` - Debug without sanitizers (faster iteration)
@@ -1083,63 +1840,6 @@
  * - Adds executable to PATH automatically
  * - Uninstall support
  * - Optional: Custom installer icon
- *
- * @subsubsection build_installation_cpack_linux Linux Installation with CPack
- *
- * **Install from DEB package** (if `dpkg` is available):
- * @code{.bash}
- * cmake --build build --target package
- * sudo dpkg -i build/packages/ascii-chat-<version>-Linux.deb
- * ascii-chat --help
- * @endcode
- *
- * **Install from RPM package** (if `rpmbuild` is available):
- * @code{.bash}
- * cmake --build build --target package
- * sudo rpm -i build/packages/ascii-chat-<version>-Linux.rpm
- * ascii-chat --version
- * @endcode
- *
- * **Install from TGZ archive** (always available):
- * @code{.bash}
- * cmake --build build --target package
- * sudo tar -xzf build/packages/ascii-chat-<version>-Linux.tar.gz -C /usr/local --strip-components=1
- * ascii-chat --version
- * @endcode
- *
- * @subsubsection build_installation_cpack_macos macOS Installation with CPack
- *
- * **Install from DMG** (if `hdiutil` is available):
- * @code{.bash}
- * cmake --build build --target package
- * hdiutil attach build/packages/ascii-chat-<version>-macOS.dmg
- * sudo cp -R "/Volumes/ascii-chat/ascii-chat.app" /Applications/
- * hdiutil detach "/Volumes/ascii-chat"
- * /Applications/ascii-chat.app/Contents/MacOS/ascii-chat --version
- * @endcode
- *
- * **Install from TGZ archive** (always available):
- * @code{.bash}
- * cmake --build build --target package
- * sudo tar -xzf build/packages/ascii-chat-<version>-macOS.tar.gz -C /usr/local --strip-components=1
- * /usr/local/bin/ascii-chat --version
- * @endcode
- *
- * @subsubsection build_installation_cpack_windows Windows Installation with CPack
- *
- * **Install with NSIS/EXE installer** (if `makensis` is available):
- * @code{.powershell}
- * cmake --build build --target package
- * Start-Process -FilePath "build/packages/ascii-chat-<version>-win64.exe" -Wait
- * ascii-chat --version
- * @endcode
- *
- * **Install from ZIP archive** (always available):
- * @code{.powershell}
- * cmake --build build --target package
- * Expand-Archive -Path "build/packages/ascii-chat-<version>-win64.zip" -DestinationPath "$Env:ProgramFiles\\ascii-chat"
- * & "$Env:ProgramFiles\\ascii-chat\\bin\\ascii-chat.exe" --version
- * @endcode
  *
  * **Source Packages**:
  * @code{.bash}

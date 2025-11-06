@@ -67,8 +67,8 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 
 
 ### Install Dependencies on Linux or macOS
-- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libv4l-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc v4l-utils zstd portaudio libsodium criterion`
+- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc zstd portaudio libsodium criterion`
 - **macOS**: - `brew install cmake ninja zstd portaudio libsodium criterion`
 
 ### Install Dependencies on Windows
@@ -115,23 +115,118 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 
 Check the `CMakeLists.txt` to see how it works.
 
+## Downloads (Pre-built Packages)
+
+Want to just download ascii-chat? Go to the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases).
+
+### Releases
+
+Each release includes package installers for all Linux, macOS, and Windows.
+
+Package Installers
+  - **Windows**: `.msi` (Windows Installer) and `.exe` (self-extracting installer)
+  - **Linux**: `.deb` (Debian/Ubuntu) and `.rpm` (RedHat/Fedora) packages
+  - **macOS**: `.pkg` installer
+
+Each pakage installs
+- **bin/ascii-chat or ascii-chat.exe**: Optimized executables for your operating system
+- **libasciichat**: ascii-chat's Library for Open Source Development
+  - Static library (`.a` file)
+  - Shared library (`.dll`, `.so`, or `.dylib`)
+  - C header files for you to include in your project.
+  - CMake and pkg-config config files so your build system can nicely integrate libasciichat.
+- **Developer Documentation**: Generated via Doxygen
+  - HTML documents. On Windows there will be a link to the index.html in the start menu.
+  - UNIX man pages. On Linux and macOS these are installed so you can run man 3 ascii-chat\<TAB\> (press tab to autocomplete in your terminal) and almost 400 manpages will be available.
+
+### Installation Instructions
+
+#### Windows
+1. Download either installer from the [releases page](https://github.com/zfogg/ascii-chat/releases):
+   - **`.msi` (recommended)**: Windows Installer package - better for enterprise/corporate environments
+   - **`.exe`**: Self-extracting installer - works without admin privileges
+2. Run the installer
+3. ascii-chat will be installed to `C:\Program Files\ascii-chat\` (or your chosen directory)
+4. Run from PowerShell: `ascii-chat server` or `ascii-chat client`
+
+**Which installer should I choose?**
+- **MSI (`.msi`)**: If you have admin rights or need Group Policy deployment (enterprises)
+- **EXE (`.exe`)**: If you don't have admin rights or want a simpler single-file installer
+
+#### Linux
+```bash
+#  Debian/Ubuntu
+wget https://github.com/zfogg/ascii-chat/releases/download/vX.Y.Z/ascii-chat_X.Y.Z_amd64.deb
+#  RedHat/Fedora
+wget https://github.com/zfogg/ascii-chat/releases/download/vX.Y.Z/ascii-chat-X.Y.Z.x86_64.rpm
+#  Arch or any Linux
+wget https://github.com/zfogg/ascii-chat/releases/download/vX.Y.Z/ascii-chat-X.Y.Z.x86_64.tar.Z
+
+# Install with apt
+sudo apt install ./ascii-chat_X.Y.Z_amd64.deb
+
+# Run it
+ascii-chat server
+ascii-chat client
+```
+
+#### Linux
+```bash
+
+# Install with dnf or yum
+sudo dnf install ./ascii-chat-X.Y.Z.x86_64.rpm
+
+# Run it
+ascii-chat server
+ascii-chat client
+```
+
+#### macOS
+1. Download the `.pkg` installer from the [releases page](https://github.com/zfogg/ascii-chat/releases)
+2. Double-click the `.pkg` file to install
+3. Run from Terminal: `ascii-chat server` or `ascii-chat client`
+
+### Using ascii-chat as a Library
+
+If you're a developer and want to use ascii-chat's components in your own project, the release packages include both static and shared libraries with C headers.
+
+**Example - Link against the static library:**
+```c
+#include <asciichat/logging.h>
+#include <asciichat/common.h>
+
+int main(void) {
+    log_init(NULL, LOG_INFO);
+    log_info("Hello from my app!");
+    log_destroy();
+    return 0;
+}
+```
+
+**Compile:**
+```bash
+# Linux/macOS
+gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat-static -lsodium -lportaudio
+
+# Windows
+clang -o myapp.exe myapp.c -IC:\Program Files\ascii-chat\include -LC:\Program Files\ascii-chat\lib -lasciichat-static
+```
+
+The package installers automatically install libraries to `/usr/lib` (Linux), `/usr/local/lib` (macOS), or `C:\Program Files\ascii-chat\lib` (Windows), and headers to the corresponding `include/asciichat/` directories.
+
 ## Available CMake Presets
 
 ### Development Builds
-- **`default`** / **`debug`** - Debug build with AddressSanitizer (slowest, catches most bugs)
+- **`default`** / **`debug`** - Debug build with sanitizers (slowest, catches most bugs)
 - **`dev`** - Debug symbols without sanitizers (faster iteration)
 - **`coverage`** - Build with coverage instrumentation
 
 ### Production Builds
-- **`release`** - Optimized static release build with musl + mimalloc (Linux deployment)
-  - Produces stripped static binaries (~700KB) using musl libc
+- **`release`** - Static release build
+  - Produces stripped static binaries
   - Best for Linux production deployment - single binary, no dependencies
-  - Uses mimalloc for optimal memory performance
-
-- **`release-clang`** - Optimized dynamic release build with clang + mimalloc (Windows/macOS)
-  - Produces stripped dynamic binaries (~200KB) using system libc
-  - Best for Windows/macOS where musl isn't available
-  - Uses mimalloc for optimal memory performance
+  - Uses mimalloc performance
+  - Uses musl libc
 
 - **`release-musl`** - Alias for `release` (static musl build)
 
@@ -139,8 +234,8 @@ Check the `CMakeLists.txt` to see how it works.
 - **`relwithdebinfo`** - Optimized build with debug symbols (for profiling and debugging production issues)
   - Optimized with `-O2` but keeps debug symbols (not stripped, ~1.3MB)
   - Use with `gdb`, `lldb`, `perf`, `valgrind` for profiling
-  - Uses clang + glibc for best debugging experience
-  - Includes mimalloc for realistic performance profiling
+  - Uses clang + glibc for the best debugging experience (stack traces)
+  - Includes mimalloc
 
 ### Building
 ```bash
@@ -149,9 +244,6 @@ cmake --preset default && cmake --build build
 
 # Production release (Linux static binary)
 cmake --preset release && cmake --build build
-
-# Production release (Windows/macOS dynamic binary)
-cmake --preset release-clang && cmake --build build
 
 # Profiling/debugging production issues
 cmake --preset relwithdebinfo && cmake --build build
@@ -173,7 +265,6 @@ cmake --preset release && cmake --build build
 
 ### Development Tools
 - `cmake --build --preset debug --target format` - Format source code using clang-format
-- `cmake --build --preset debug --target format-check` - Check code formatting
 - `cmake --build --preset debug --target clang-tidy` - Run clang-tidy on sources
 - `cmake --build --preset debug --target docs` - Build the doxygen docs
 - `cmake --build --preset debug --target docs-open` - Open the docs in your web browser

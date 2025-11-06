@@ -114,12 +114,9 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename) {
   debug_memory_set_quiet_mode(opt_quiet);
   (void)atexit(debug_memory_report);
 #elif defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
-#ifndef _WIN32
   // Register mimalloc stats printer at exit
   (void)atexit(print_mimalloc_stats);
-#else
   UNUSED(print_mimalloc_stats);
-#endif
 #endif
 
   return ASCIICHAT_OK;
@@ -154,13 +151,8 @@ static struct {
   atomic_size_t free_calls;
   atomic_size_t calloc_calls;
   atomic_size_t realloc_calls;
-#if PLATFORM_WINDOWS
   mutex_t mutex; /* Only for linked list operations */
   bool mutex_initialized;
-#else
-  // On POSIX, use static initialization to avoid malloc during debug_malloc
-  pthread_mutex_t mutex;
-#endif
   bool quiet_mode; /* Control stderr output for memory report */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
@@ -171,11 +163,8 @@ static struct {
            .free_calls = 0,
            .calloc_calls = 0,
            .realloc_calls = 0,
-#if PLATFORM_WINDOWS
            .mutex_initialized = false,
-#else
            .mutex = PTHREAD_MUTEX_INITIALIZER,
-#endif
            .quiet_mode = false};
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
@@ -184,19 +173,12 @@ static struct {
 #undef calloc
 #undef realloc
 
-#if PLATFORM_WINDOWS
 static void ensure_mutex_initialized(void) {
   if (!g_mem.mutex_initialized) {
     mutex_init(&g_mem.mutex);
     g_mem.mutex_initialized = true;
   }
 }
-#else
-// On POSIX, mutex is statically initialized, no lazy init needed
-static inline void ensure_mutex_initialized(void) {
-  // No-op on POSIX - already initialized
-}
-#endif
 
 void *debug_malloc(size_t size, const char *file, int line) {
   void *ptr = (void *)malloc(size);
@@ -224,11 +206,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
 
   /* Track individual allocations for detailed leak reporting */
   ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
-#else
-  pthread_mutex_lock(&g_mem.mutex);
-#endif
 
   // Use raw malloc here to avoid recursion - we're already inside debug_malloc!
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
@@ -244,11 +222,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
     g_mem.head = block;
   }
 
-#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
-#else
-  pthread_mutex_unlock(&g_mem.mutex);
-#endif
 
   g_in_debug_memory = false;
   return ptr;
@@ -281,11 +255,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
 
   /* Track individual allocations for detailed leak reporting */
   ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
-#else
-  pthread_mutex_lock(&g_mem.mutex);
-#endif
 
   // Use raw malloc here to avoid recursion
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
@@ -301,11 +271,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
     g_mem.head = block;
   }
 
-#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
-#else
-  pthread_mutex_unlock(&g_mem.mutex);
-#endif
 
   g_in_debug_memory = false;
 }
@@ -329,15 +295,10 @@ void debug_free(void *ptr, const char *file, int line) {
 
   size_t freed_size = 0;
   bool found = false;
-  bool is_aligned = false;
 
   /* Search for allocation in linked list */
   ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
-#else
-  pthread_mutex_lock(&g_mem.mutex);
-#endif
 
   mem_block_t *prev = NULL;
   mem_block_t *curr = g_mem.head;
@@ -351,7 +312,6 @@ void debug_free(void *ptr, const char *file, int line) {
       }
 
       freed_size = curr->size;
-      is_aligned = curr->is_aligned;
       found = true;
       free(curr); // Use raw free to avoid recursion
       break;
@@ -367,11 +327,7 @@ void debug_free(void *ptr, const char *file, int line) {
     platform_print_backtrace(1);
   }
 
-#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
-#else
-  pthread_mutex_unlock(&g_mem.mutex);
-#endif
 
   /* Update freed stats - use exact size from tracking or platform function */
   if (found) {
@@ -443,11 +399,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
   /* Track individual allocations for detailed leak reporting */
   ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
-#else
-  pthread_mutex_lock(&g_mem.mutex);
-#endif
 
   // Use raw malloc to avoid recursion
   mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
@@ -461,11 +413,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
     g_mem.head = block;
   }
 
-#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
-#else
-  pthread_mutex_unlock(&g_mem.mutex);
-#endif
 
   g_in_debug_memory = false;
   return ptr;
@@ -497,11 +445,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
 
   /* Find the old allocation */
   ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
-#else
-  pthread_mutex_lock(&g_mem.mutex);
-#endif
 
   mem_block_t *prev = NULL;
   curr = g_mem.head;
@@ -513,11 +457,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     old_size = curr->size;
   }
   (void)prev; // Unused variable (for now 🤔 what could i do with this...)
-#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
-#else
-  pthread_mutex_unlock(&g_mem.mutex);
-#endif
 
   void *new_ptr = SAFE_REALLOC(ptr, size, void *);
   if (!new_ptr) {
@@ -558,11 +498,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
 
   /* Update the linked list */
   ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
   mutex_lock(&g_mem.mutex);
-#else
-  pthread_mutex_lock(&g_mem.mutex);
-#endif
 
   /* Find the block again (it might have changed) */
   curr = g_mem.head;
@@ -591,11 +527,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     }
   }
 
-#if PLATFORM_WINDOWS
   mutex_unlock(&g_mem.mutex);
-#else
-  pthread_mutex_unlock(&g_mem.mutex);
-#endif
 
   g_in_debug_memory = false;
   return new_ptr;
@@ -654,11 +586,7 @@ void debug_memory_report(void) {
     /* Show current allocations if any exist */
     if (g_mem.head) {
       ensure_mutex_initialized();
-#if PLATFORM_WINDOWS
       mutex_lock(&g_mem.mutex);
-#else
-      pthread_mutex_lock(&g_mem.mutex);
-#endif
 
       SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\nCurrent allocations:\n"));
       mem_block_t *curr = g_mem.head;
@@ -670,11 +598,7 @@ void debug_memory_report(void) {
         curr = curr->next;
       }
 
-#if PLATFORM_WINDOWS
       mutex_unlock(&g_mem.mutex);
-#else
-      pthread_mutex_unlock(&g_mem.mutex);
-#endif
     }
   }
 }
