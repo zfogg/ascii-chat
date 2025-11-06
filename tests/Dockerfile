@@ -39,7 +39,6 @@ RUN pacman -Sy --noconfirm \
   make \
   ccache \
   mimalloc \
-  v4l-utils \
   zstd \
   portaudio \
   libsodium \
