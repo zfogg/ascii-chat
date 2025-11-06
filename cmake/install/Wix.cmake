@@ -100,7 +100,7 @@ if(NOT WIX_EXECUTABLE)
         message(STATUS "${Yellow}CPack:${ColorReset} WiX generator will be enabled using WiX Toolset v3")
     else()
         # Neither v3 nor v4 found
-        message(STATUS "${Red}CPack:${ColorReset} WiX generator disabled - no WiX installation found")
+        message(STATUS "${Red}CPack:${ColorReset} WiX generator disabled - no ${BoldBlue}WiX${ColorReset} installation found")
         message(STATUS "${Yellow}CPack:${ColorReset} Install WiX v4: ${BoldBlue}dotnet tool install --global wix --version 4.0.4${ColorReset}")
         message(STATUS "${Yellow}CPack:${ColorReset} Then install UI extension: ${BoldBlue}wix extension add --global WixToolset.UI.wixext/4.0.4${ColorReset}")
         message(STATUS "${Yellow}CPack:${ColorReset} Or download WiX v3.14: ${BoldBlue}https://github.com/wixtoolset/wix3/releases/tag/wix3141rtm${ColorReset}")

@@ -50,7 +50,7 @@ if(NOT NSIS_EXECUTABLE)
 endif()
 
 if(NOT NSIS_EXECUTABLE)
-    message(STATUS "${Red}CPack:${ColorReset} NSIS generator disabled (${BoldBlue}makensis${ColorReset} not found - install NSIS to create EXE installers)")
+    message(STATUS "${Red}CPack:${ColorReset} NSIS generator disabled (${BoldBlue}makensis${ColorReset} not found - install ${BoldBlue}NSIS${ColorReset} to create EXE installers)")
     return()
 endif()
 

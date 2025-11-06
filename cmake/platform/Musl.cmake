@@ -77,10 +77,14 @@ function(configure_musl_pre_project)
         elseif(EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
             # Debian/Ubuntu location
             set(MUSL_LIBC_PATH "/usr/lib/x86_64-linux-musl/libc.a")
+        elseif(EXISTS "/usr/x86_64-linux-musl/lib64/libc.a")
+            # Fedora location
+            set(MUSL_LIBC_PATH "/usr/x86_64-linux-musl/lib64/libc.a")
         else()
             message(FATAL_ERROR "musl development files not found. Install musl-dev:\n"
                                 "  Arch Linux: sudo pacman -S musl\n"
-                                "  Ubuntu/Debian: sudo apt install musl-tools musl-dev")
+                                "  Ubuntu/Debian: sudo apt install musl-tools musl-dev\n"
+                                "  Fedora: sudo dnf install musl-devel")
         endif()
 
         # Set compiler to clang BEFORE project()
@@ -126,10 +130,13 @@ function(configure_musl_post_project)
     )
     get_filename_component(GCC_LIBDIR "${GCC_LIBGCC_PATH}" DIRECTORY)
 
-    # Detect musl library directory (Arch vs Debian/Ubuntu)
+    # Detect musl library directory (Arch vs Debian/Ubuntu vs Fedora)
     if(EXISTS "/usr/lib/musl/lib")
         # Arch Linux location
         set(MUSL_LIBDIR "/usr/lib/musl/lib")
+    elseif(EXISTS "/usr/x86_64-linux-musl/lib64")
+        # Fedora location
+        set(MUSL_LIBDIR "/usr/x86_64-linux-musl/lib64")
     else()
         # Debian/Ubuntu location
         set(MUSL_LIBDIR "/usr/lib/x86_64-linux-musl")
