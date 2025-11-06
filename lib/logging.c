@@ -120,7 +120,7 @@ static log_level_t parse_log_level_from_env(void) {
 
 /* Log rotation function - keeps the tail (recent entries) (assumes mutex held) */
 static void rotate_log_if_needed_unlocked(void) {
-  if (g_log.file <= 0 || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
+  if (g_log.file < 0 || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
     return;
   }
 
@@ -346,7 +346,7 @@ bool log_get_terminal_output(void) {
 
 void log_truncate_if_large(void) {
   mutex_lock(&g_log.mutex);
-  if (g_log.file && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
+  if (g_log.file >= 0 && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     /* Check if current log is too large */
     struct stat st;
     if (fstat(g_log.file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
@@ -373,7 +373,7 @@ static void write_to_log_file_unlocked(const char *buffer, int length) {
     return;
   }
 
-  if (g_log.file <= 0 || g_log.file == STDERR_FILENO) {
+  if (g_log.file < 0 || g_log.file == STDERR_FILENO) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
     return;
   }
