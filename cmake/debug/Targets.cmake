@@ -136,10 +136,7 @@ function(ascii_add_debug_targets)
             ${CMAKE_BINARY_DIR}/generated
     )
     target_link_libraries(ascii-instr-report
-        PRIVATE
-            ascii-chat-core
-            ascii-chat-platform
-            ascii-chat-util
+        ascii-chat-static
     )
     set_target_properties(ascii-instr-report PROPERTIES OUTPUT_NAME "ascii-instr-report")
 endfunction()

@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "logging.h"
+#include "debug/instrument_log.h"
 
 #include "util/uthash.h"
 
@@ -48,6 +49,18 @@ typedef struct thread_entry {
   log_record_t record;
   UT_hash_handle hh;
 } thread_entry_t;
+
+static const char *macro_flag_label(uint32_t flag) {
+  switch (flag) {
+  case ASCII_INSTR_MACRO_EXPANSION:
+    return "expansion";
+  case ASCII_INSTR_MACRO_INVOCATION:
+    return "invocation";
+  case ASCII_INSTR_MACRO_NONE:
+  default:
+    return "none";
+  }
+}
 
 static void thread_filter_list_destroy(thread_filter_list_t *list) {
   if (list == NULL) {
@@ -320,7 +333,7 @@ static void print_summary(const report_config_t *config, thread_entry_t **entrie
     printf("  elapsed   : %s\n", record->elapsed);
     printf("  location  : %s:%u\n", record->file != NULL ? record->file : "<unknown>", record->line);
     printf("  function  : %s\n", record->function != NULL ? record->function : "<unknown>");
-    printf("  macro     : %u\n", record->macro_flag);
+    printf("  macro     : %s (%u)\n", macro_flag_label(record->macro_flag), record->macro_flag);
     printf("  snippet   : %s\n", record->snippet != NULL ? record->snippet : "<missing>");
     printf("----------------------------------------------------------------------\n");
   }

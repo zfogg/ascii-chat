@@ -256,6 +256,7 @@ set(DATA_STRUCTURES_SRCS
 # =============================================================================
 set(DEBUG_RUNTIME_SRCS
     lib/debug/instrument_log.c
+    lib/debug/instrument_cov.c
 )
 
 set(DEBUG_TOOL_SRCS

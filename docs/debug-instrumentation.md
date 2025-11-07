@@ -21,6 +21,12 @@
 - `build/instrumented/.stamp` — sentinel touched after a successful run.
 - Only files that required instrumentation appear; directories are created lazily alongside rewritten files.
 
+### Macro Instrumentation Controls
+
+- Pass `--log-macro-expansions` to record statements that originate from macro bodies (disabled by default to limit noise).
+- Pass `--log-macro-invocations` to emit a synthetic record for each macro call site (deduplicated per expansion). The log entry is tagged with `macro=2` and contains the invocation snippet.
+- The legacy flag `--include-macro-expansions` remains accepted as an alias for `--log-macro-expansions` but prints a warning. Update any scripts to the new flag names.
+
 Inspect instrumented files whenever you need to confirm macro expansion handling or verify that inserted snippets match expectations.
 
 ## Runtime Logging
@@ -38,7 +44,10 @@ pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=l
 ```
 
 - `elapsed` displays monotonic time since the runtime initialized inside the process.
-- `macro=1` identifies statements originating from macro expansions; macro call sites can emit additional logs, so review both when debugging.
+- `macro` values distinguish statement origin:
+  - `0` — standard source statements.
+  - `1` — statements emitted from macro expansions.
+  - `2` — synthetic macro invocation records (enabled via `--log-macro-invocations`).
 - `snippet` escapes control characters (`\n`, `\t`, `\r`) and truncates to 2048 characters to stay within the 4 KiB atomic write budget.
 
 ### Environment Filters
@@ -48,14 +57,37 @@ pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=l
 | `ASCII_INSTR_INCLUDE` | Substring filter applied to `file=`; emit only when the substring is present. |
 | `ASCII_INSTR_EXCLUDE` | Suppresses logs when the substring matches the file path. |
 | `ASCII_INSTR_THREAD` | Comma-separated decimal thread IDs to keep. IDs must match those printed in log headers. |
+| `ASCII_INSTR_INCLUDE_REGEX` | POSIX extended-regular-expression include filter on `file=`. Takes precedence over substring filters. |
+| `ASCII_INSTR_EXCLUDE_REGEX` | POSIX extended-regular-expression exclude filter on `file=`. |
+| `ASCII_INSTR_FUNCTION_INCLUDE` | Substring filter on `func=`. |
+| `ASCII_INSTR_FUNCTION_EXCLUDE` | Substring exclusion filter on `func=`. |
+| `ASCII_INSTR_FUNCTION_INCLUDE_REGEX` | POSIX extended regex include filter for function names. |
+| `ASCII_INSTR_FUNCTION_EXCLUDE_REGEX` | POSIX extended regex exclusion filter for function names. |
 | `ASCII_INSTR_OUTPUT_DIR` | Override log directory. The runtime creates it with mode 0700 when absent. |
+| `ASCII_INSTR_ONLY` | Comma-separated allow-list selectors (`file=<glob>`, `func=<glob>`, `module=<name>[:<glob>]`, or shorthand `module:pattern` such as `server:*`). |
+| `ASCII_INSTR_RATE` | Positive integer; log the first statement and every Nth subsequent statement per thread (helps throttle noisy traces). |
+| `ASCII_INSTR_ENABLE_COVERAGE` | Set to `1`, `true`, `on`, or `yes` to enable SanitizerCoverage logging callbacks (requires building with `-fsanitize-coverage=trace-pc-guard`). |
+
+> Regex filters rely on `regcomp(3)` and are available on POSIX platforms. On Windows they are ignored gracefully.
 
 Unset variables disable the corresponding filter. Checks happen before log formatting to reduce overhead.
+
+`ASCII_INSTR_ONLY` is useful when you want to lock tracing to a narrow slice of the project:
+
+- `ASCII_INSTR_ONLY=file=lib/network/*,func=enforce_*` keeps only logs whose file path matches the glob and whose function names match `enforce_*`.
+- `ASCII_INSTR_ONLY=module=server:render_*` restricts logging to files under any `/server/` directory whose basename matches `render_*`.
+- `ASCII_INSTR_ONLY=server:*` is shorthand for “any file living under a `/server/` directory”.
 
 ### Startup & Shutdown
 
 - `ascii_instr_runtime_get()` uses `pthread_once` to create TLS keys and picks up environment filters. Memory is allocated through the SAFE_ macros, ensuring leak tracking when `DEBUG_MEMORY` is enabled.
 - `ascii_instr_runtime_global_shutdown()` tears down TLS entries and halts logging—useful in unit tests that spawn threads.
+
+### Sanitizer Coverage Mode
+
+- Build with `-fsanitize-coverage=trace-pc-guard` (or enable the equivalent CMake option) and export `ASCII_INSTR_ENABLE_COVERAGE=1`.
+- The runtime registers `__sanitizer_cov_trace_pc_guard` and logs a compact `pc=0x...` snippet for each sampled edge, sharing the same per-thread files as statement logs.
+- Combine with `llvm-symbolizer` or `addr2line` in post-processing to map PCs back to `file:line`. Coverage entries respect `ASCII_INSTR_RATE` so you can throttle high-volume traces.
 
 ## Usage Workflows
 
@@ -105,6 +137,20 @@ The final `seq=` value indicates the last statement that thread executed before 
 ```
 
 The formatted output highlights timestamp, file/line, function, macro flag, and snippet for each thread’s last recorded statement.
+
+## Signal Handler Annotations
+
+- Mark functions that must remain async-signal-safe with `ASCII_INSTR_SIGNAL_HANDLER` before the declaration:
+
+```c
+ASCII_INSTR_SIGNAL_HANDLER
+void handle_sigint(int signum) {
+    /* ... */
+}
+```
+
+- The instrumentation tool skips any function carrying that annotation, ensuring inserted logging calls never appear inside signal handlers.
+- Combine this with the runtime filters to keep critical paths free from additional I/O.
 
 ## Safety Guarantees
 

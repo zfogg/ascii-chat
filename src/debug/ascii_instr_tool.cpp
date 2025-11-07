@@ -67,6 +67,24 @@ static llvm::cl::opt<std::string>
 static llvm::cl::opt<std::string>
     InputRootOption("input-root", llvm::cl::desc("Root directory of original sources (used to compute relative paths)"),
                     llvm::cl::value_desc("path"), llvm::cl::init(""), llvm::cl::cat(ToolCategory));
+static llvm::cl::opt<bool>
+    LogMacroExpansionsOption("log-macro-expansions",
+                             llvm::cl::desc("Instrument statements originating from macro expansions"),
+                             llvm::cl::init(false), llvm::cl::cat(ToolCategory));
+
+static llvm::cl::opt<bool> LogMacroInvocationsOption(
+    "log-macro-invocations",
+    llvm::cl::desc("Emit a synthetic record for the macro invocation site when expansions are instrumented"),
+    llvm::cl::init(false), llvm::cl::cat(ToolCategory));
+
+static llvm::cl::opt<bool> LegacyIncludeMacroExpansionsOption(
+    "include-macro-expansions",
+    llvm::cl::desc("Deprecated alias for --log-macro-expansions (kept for backward compatibility)"),
+    llvm::cl::init(false), llvm::cl::cat(ToolCategory), llvm::cl::Hidden);
+
+constexpr unsigned kMacroFlagNone = 0U;
+constexpr unsigned kMacroFlagExpansion = 1U;
+constexpr unsigned kMacroFlagInvocation = 2U;
 
 static llvm::cl::list<std::string>
     FileIncludeFilters("filter-file", llvm::cl::desc("Only instrument files whose path contains the given substring"),
@@ -91,9 +109,11 @@ static llvm::cl::opt<std::string> SignalHandlerAnnotation(
 class InstrumentationVisitor : public clang::RecursiveASTVisitor<InstrumentationVisitor> {
 public:
   InstrumentationVisitor(clang::ASTContext &context, clang::Rewriter &rewriter, const fs::path &outputDir,
-                         const fs::path &inputRoot, bool enableFileFilters, bool enableFunctionFilters)
+                         const fs::path &inputRoot, bool enableFileFilters, bool enableFunctionFilters,
+                         bool logMacroInvocations, bool logMacroExpansions)
       : context_(context), rewriter_(rewriter), outputDir_(outputDir), inputRoot_(inputRoot),
-        enableFileFilters_(enableFileFilters), enableFunctionFilters_(enableFunctionFilters) {}
+        enableFileFilters_(enableFileFilters), enableFunctionFilters_(enableFunctionFilters),
+        logMacroInvocations_(logMacroInvocations), logMacroExpansions_(logMacroExpansions) {}
 
   bool TraverseFunctionDecl(clang::FunctionDecl *funcDecl) {
     const bool previousSkipState = skipCurrentFunction_;
@@ -108,11 +128,7 @@ public:
   }
 
   bool VisitStmt(clang::Stmt *statement) {
-    if (!statement) {
-      return true;
-    }
-
-    if (!currentFunction_) {
+    if (!statement || !currentFunction_) {
       return true;
     }
 
@@ -165,45 +181,53 @@ public:
       return true;
     }
 
+    const std::string relativePath = makeRelativePath(filePath);
     const std::string uniqueKey = buildUniqueKey(filePath, expansionLocation, sourceManager);
     if (!instrumentedLocations_.insert(uniqueKey).second) {
-      return true;
-    }
-
-    if (sourceManager.isMacroBodyExpansion(beginLocation) || sourceManager.isMacroArgExpansion(beginLocation)) {
       return true;
     }
 
     const bool isMacroExpansion =
         sourceManager.isMacroBodyExpansion(beginLocation) || sourceManager.isMacroArgExpansion(beginLocation);
 
+    std::string instrumentationBlock;
+
     if (isMacroExpansion) {
+      if (logMacroInvocations_) {
+        const std::optional<MacroInvocationMetadata> invocationMetadata =
+            buildMacroInvocationMetadata(*statement, sourceManager, langOptions);
+        if (invocationMetadata.has_value()) {
+          if (macroInvocationLocations_.insert(invocationMetadata->uniqueKey).second) {
+            instrumentationBlock.append(buildInstrumentationLine(invocationMetadata->relativePath,
+                                                                 invocationMetadata->lineNumber,
+                                                                 invocationMetadata->snippet, kMacroFlagInvocation));
+          }
+        }
+      }
+
+      if (logMacroExpansions_) {
+        const unsigned lineNumber = sourceManager.getSpellingLineNumber(expansionLocation);
+        const std::optional<std::string> snippetOpt = extractSnippet(*statement, sourceManager, langOptions);
+        const llvm::StringRef snippetRef = snippetOpt ? llvm::StringRef(*snippetOpt) : llvm::StringRef("<unavailable>");
+        instrumentationBlock.append(
+            buildInstrumentationLine(relativePath, lineNumber, snippetRef, kMacroFlagExpansion));
+      }
+
+      if (instrumentationBlock.empty()) {
+        return true;
+      }
+    } else {
+      const unsigned lineNumber = sourceManager.getSpellingLineNumber(expansionLocation);
+      const std::optional<std::string> snippetOpt = extractSnippet(*statement, sourceManager, langOptions);
+      const llvm::StringRef snippetRef = snippetOpt ? llvm::StringRef(*snippetOpt) : llvm::StringRef("<unavailable>");
+      instrumentationBlock.append(buildInstrumentationLine(relativePath, lineNumber, snippetRef, kMacroFlagNone));
+    }
+
+    if (instrumentationBlock.empty()) {
       return true;
     }
 
-    const std::optional<std::string> snippetOpt = extractSnippet(*statement, sourceManager, langOptions);
-    const std::string snippetValue = snippetOpt ? *snippetOpt : std::string("<unavailable>");
-    std::string escapedSnippet = escapeSnippet(snippetValue);
-
-    const unsigned lineNumber = sourceManager.getSpellingLineNumber(expansionLocation);
-    const std::string relativePath = makeRelativePath(filePath);
-
-    std::string instrumentationLine;
-    instrumentationLine.reserve(escapedSnippet.size() + 256);
-    instrumentationLine.append("ascii_instr_log_line(\"");
-    instrumentationLine.append(relativePath);
-    instrumentationLine.append("\", ");
-    instrumentationLine.append(std::to_string(lineNumber));
-    instrumentationLine.append(", __func__, \"");
-    instrumentationLine.append(escapedSnippet);
-    instrumentationLine.append("\", ");
-    instrumentationLine.append(isMacroExpansion ? "1" : "0");
-    instrumentationLine.append(");\n");
-
-    const clang::SourceLocation insertLocation = expansionLocation;
-    const bool insertBefore = true;
-    const bool indentNewLines = true;
-    rewriter_.InsertText(insertLocation, instrumentationLine, insertBefore, indentNewLines);
+    rewriter_.InsertText(expansionLocation, instrumentationBlock, true, true);
     includeNeeded_ = true;
     return true;
   }
@@ -213,9 +237,92 @@ public:
   }
 
   std::string buildUniqueKey(const fs::path &filePath, clang::SourceLocation location,
-                             const clang::SourceManager &sourceManager) {
+                             const clang::SourceManager &sourceManager) const {
     const unsigned offset = sourceManager.getFileOffset(location);
     return (filePath.string() + ":" + std::to_string(offset));
+  }
+
+  std::string buildInstrumentationLine(const std::string &relativePath, unsigned lineNumber, llvm::StringRef snippet,
+                                       unsigned macroFlag) const {
+    std::string escapedSnippet = escapeSnippet(snippet);
+    std::string instrumentationLine;
+    instrumentationLine.reserve(escapedSnippet.size() + 256);
+    instrumentationLine.append("ascii_instr_log_line(\"");
+    instrumentationLine.append(relativePath);
+    instrumentationLine.append("\", ");
+    instrumentationLine.append(std::to_string(lineNumber));
+    instrumentationLine.append(", __func__, \"");
+    instrumentationLine.append(escapedSnippet);
+    instrumentationLine.append("\", ");
+    instrumentationLine.append(std::to_string(macroFlag));
+    instrumentationLine.append(");\n");
+    return instrumentationLine;
+  }
+
+  struct MacroInvocationMetadata {
+    std::string relativePath;
+    unsigned lineNumber = 0;
+    std::string snippet;
+    std::string uniqueKey;
+  };
+
+  std::optional<MacroInvocationMetadata> buildMacroInvocationMetadata(const clang::Stmt &statement,
+                                                                      clang::SourceManager &sourceManager,
+                                                                      const clang::LangOptions &langOptions) const {
+    clang::SourceLocation beginLocation = statement.getBeginLoc();
+    if (!(sourceManager.isMacroBodyExpansion(beginLocation) || sourceManager.isMacroArgExpansion(beginLocation))) {
+      return std::nullopt;
+    }
+
+    clang::SourceLocation callerLocation = sourceManager.getImmediateMacroCallerLoc(beginLocation);
+    if (!callerLocation.isValid()) {
+      return std::nullopt;
+    }
+
+    callerLocation = sourceManager.getExpansionLoc(callerLocation);
+    if (!callerLocation.isValid() || !sourceManager.isWrittenInMainFile(callerLocation)) {
+      return std::nullopt;
+    }
+
+    const clang::FileID callerFileId = sourceManager.getFileID(callerLocation);
+    const clang::FileEntry *callerFileEntry = sourceManager.getFileEntryForID(callerFileId);
+    if (callerFileEntry == nullptr) {
+      return std::nullopt;
+    }
+
+    const llvm::StringRef callerPathRef = callerFileEntry->tryGetRealPathName();
+    if (callerPathRef.empty()) {
+      return std::nullopt;
+    }
+
+    MacroInvocationMetadata metadata;
+    const fs::path callerPath = fs::path(callerPathRef.str());
+    metadata.relativePath = makeRelativePath(callerPath);
+    metadata.lineNumber = sourceManager.getSpellingLineNumber(callerLocation);
+    metadata.uniqueKey = buildUniqueKey(callerPath, callerLocation, sourceManager);
+
+    clang::CharSourceRange expansionRange = sourceManager.getImmediateExpansionRange(beginLocation);
+    if (expansionRange.isValid()) {
+      bool invalid = false;
+      llvm::StringRef invocationSource =
+          clang::Lexer::getSourceText(expansionRange, sourceManager, langOptions, &invalid);
+      if (!invalid && !invocationSource.empty()) {
+        metadata.snippet = invocationSource.str();
+      }
+    }
+
+    if (metadata.snippet.empty()) {
+      bool invalid = false;
+      clang::CharSourceRange tokenRange = clang::CharSourceRange::getTokenRange(callerLocation, callerLocation);
+      llvm::StringRef fallback = clang::Lexer::getSourceText(tokenRange, sourceManager, langOptions, &invalid);
+      if (!invalid && !fallback.empty()) {
+        metadata.snippet = fallback.str();
+      } else {
+        metadata.snippet = "<macro invocation>";
+      }
+    }
+
+    return metadata;
   }
 
   bool matchesFileFilters(const fs::path &filePath) const {
@@ -381,10 +488,13 @@ private:
   fs::path inputRoot_;
   bool enableFileFilters_;
   bool enableFunctionFilters_;
+  bool logMacroInvocations_;
+  bool logMacroExpansions_;
   const clang::FunctionDecl *currentFunction_ = nullptr;
   bool skipCurrentFunction_ = false;
   bool includeNeeded_ = false;
   std::unordered_set<std::string> instrumentedLocations_;
+  std::unordered_set<std::string> macroInvocationLocations_;
 
   bool isDirectChildOfCompound(const clang::Stmt &statement) const {
     const auto parents = context_.getParents(statement);
@@ -412,9 +522,10 @@ private:
 class InstrumentationFrontendAction : public clang::ASTFrontendAction {
 public:
   explicit InstrumentationFrontendAction(const fs::path &outputDir, const fs::path &inputRoot, bool enableFileFilters,
-                                         bool enableFunctionFilters)
+                                         bool enableFunctionFilters, bool logMacroInvocations, bool logMacroExpansions)
       : outputDir_(outputDir), inputRoot_(inputRoot), enableFileFilters_(enableFileFilters),
-        enableFunctionFilters_(enableFunctionFilters) {}
+        enableFunctionFilters_(enableFunctionFilters), logMacroInvocations_(logMacroInvocations),
+        logMacroExpansions_(logMacroExpansions) {}
 
   void EndSourceFileAction() override {
     clang::SourceManager &sourceManager = rewriter_.getSourceMgr();
@@ -496,7 +607,8 @@ protected:
   std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(clang::CompilerInstance &compiler, llvm::StringRef) override {
     rewriter_.setSourceMgr(compiler.getSourceManager(), compiler.getLangOpts());
     visitor_ = std::make_unique<InstrumentationVisitor>(compiler.getASTContext(), rewriter_, outputDir_, inputRoot_,
-                                                        enableFileFilters_, enableFunctionFilters_);
+                                                        enableFileFilters_, enableFunctionFilters_,
+                                                        logMacroInvocations_, logMacroExpansions_);
     return std::make_unique<InstrumentationASTConsumer>(*visitor_);
   }
 
@@ -522,6 +634,8 @@ private:
   fs::path inputRoot_;
   bool enableFileFilters_;
   bool enableFunctionFilters_;
+  bool logMacroInvocations_;
+  bool logMacroExpansions_;
   std::unique_ptr<InstrumentationVisitor> visitor_;
   bool hadWriteError_ = false;
 };
@@ -529,13 +643,14 @@ private:
 class InstrumentationActionFactory : public clang::tooling::FrontendActionFactory {
 public:
   InstrumentationActionFactory(const fs::path &outputDir, const fs::path &inputRoot, bool enableFileFilters,
-                               bool enableFunctionFilters)
+                               bool enableFunctionFilters, bool logMacroInvocations, bool logMacroExpansions)
       : outputDir_(outputDir), inputRoot_(inputRoot), enableFileFilters_(enableFileFilters),
-        enableFunctionFilters_(enableFunctionFilters) {}
+        enableFunctionFilters_(enableFunctionFilters), logMacroInvocations_(logMacroInvocations),
+        logMacroExpansions_(logMacroExpansions) {}
 
   std::unique_ptr<clang::FrontendAction> create() {
-    return std::make_unique<InstrumentationFrontendAction>(outputDir_, inputRoot_, enableFileFilters_,
-                                                           enableFunctionFilters_);
+    return std::make_unique<InstrumentationFrontendAction>(
+        outputDir_, inputRoot_, enableFileFilters_, enableFunctionFilters_, logMacroInvocations_, logMacroExpansions_);
   }
 
 private:
@@ -543,6 +658,8 @@ private:
   fs::path inputRoot_;
   bool enableFileFilters_;
   bool enableFunctionFilters_;
+  bool logMacroInvocations_;
+  bool logMacroExpansions_;
 };
 
 } // namespace
@@ -595,10 +712,6 @@ int main(int argc, const char **argv) {
       llvm::errs() << "Output path exists and is not a directory: " << outputDir.c_str() << "\n";
       return 1;
     }
-    if (!fs::is_empty(outputDir)) {
-      llvm::errs() << "Output directory is not empty: " << outputDir.c_str() << "\n";
-      return 1;
-    }
   } else {
     std::error_code errorCode;
     fs::create_directories(outputDir, errorCode);
@@ -607,6 +720,13 @@ int main(int argc, const char **argv) {
                    << "\n";
       return 1;
     }
+  }
+
+  const bool logMacroExpansions = LogMacroExpansionsOption.getValue() || LegacyIncludeMacroExpansionsOption.getValue();
+  const bool logMacroInvocations = LogMacroInvocationsOption.getValue();
+
+  if (!LogMacroExpansionsOption.getValue() && LegacyIncludeMacroExpansionsOption.getValue()) {
+    llvm::errs() << "warning: --include-macro-expansions is deprecated; use --log-macro-expansions instead\n";
   }
 
   clang::tooling::ClangTool tool(optionsParser.getCompilations(), optionsParser.getSourcePathList());
@@ -641,7 +761,7 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(stripPchAdjuster);
 
   InstrumentationActionFactory actionFactory(outputDir, inputRoot, !FileIncludeFilters.empty(),
-                                             !FunctionIncludeFilters.empty());
+                                             !FunctionIncludeFilters.empty(), logMacroInvocations, logMacroExpansions);
   const int executionResult = tool.run(&actionFactory);
   if (executionResult != 0) {
     llvm::errs() << "Instrumenter failed with code " << executionResult << "\n";

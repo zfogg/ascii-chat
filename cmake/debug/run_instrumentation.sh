@@ -100,6 +100,9 @@ rsync -a \
     --exclude 'build_docker/' \
     --exclude 'deps/bearssl/build/' \
     --exclude 'deps/mimalloc/build/' \
+    --exclude '*.c' \
+    --exclude '*.m' \
+    --exclude '*.mm' \
     --exclude 'cmake/debug/run_instrumentation.sh' \
     ./ "${OUTPUT_DIR}/"
 
@@ -169,8 +172,20 @@ find lib src \
     while IFS= read -r -d '' header; do
         dest="${OUTPUT_DIR}/${header}"
         mkdir -p "$(dirname "${dest}")"
-        if [[ ! -e "${dest}" ]]; then
-            ln -s "${PWD}/${header}" "${dest}"
+        if [[ -e "${dest}" || -L "${dest}" ]]; then
+            rm -f "${dest}"
         fi
+        ln -s "${PWD}/${header}" "${dest}"
     done
+
+extra_source_links=(
+    "lib/platform/system.c"
+)
+
+for source_path in "${extra_source_links[@]}"; do
+    dest="${OUTPUT_DIR}/${source_path}"
+    mkdir -p "$(dirname "${dest}")"
+    rm -f "${dest}"
+    ln -s "${PWD}/${source_path}" "${dest}"
+done
 
