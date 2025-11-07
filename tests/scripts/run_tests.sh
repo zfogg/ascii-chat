@@ -279,6 +279,30 @@ function detect_cpu_cores() {
 # Test Discovery and File Management
 # =============================================================================
 
+# Convert a test source file path to its test executable name (must match CMake)
+function _ascii_source_to_test_executable() {
+  local source_path="$1"
+  local rel="${source_path#$PROJECT_ROOT/tests/}"
+
+  # Normalize path separators and strip extension
+  rel="${rel//\\/\/}"
+  rel="${rel%.c}"
+
+  # Flatten nested directories and remove trailing _test suffix
+  rel="${rel//\//_}"
+  rel="${rel%_test}"
+
+  echo "test_${rel}"
+}
+
+# Extract the top-level test category (unit/integration/performance)
+function _ascii_source_to_test_category() {
+  local source_path="$1"
+  local rel="${source_path#$PROJECT_ROOT/tests/}"
+  rel="${rel//\\/\/}"
+  echo "${rel%%/*}"
+}
+
 # Get test executables for a specific category
 function get_test_executables() {
   local category="$1"
@@ -300,39 +324,45 @@ function get_test_executables() {
     case "$category" in
     unit)
       # For coverage, discover test source files and build coverage executables
-      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_unit_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/unit" -type f -name '*_test.c' -print | sort)
       ;;
     integration)
       # For coverage, discover test source files and build coverage executables
-      for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_integration_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/integration" -type f -name '*_test.c' -print | sort)
       ;;
     performance)
       # For coverage, discover test source files and build coverage executables
-      for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_performance_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/performance" -type f -name '*_test.c' -print | sort)
       ;;
     all)
       # All coverage tests
-      for f in "$bin_dir"/test_*; do
-        [[ -f "$f" ]] && echo "$f"
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local category
+        category=$(_ascii_source_to_test_category "$test_file")
+        case "$category" in
+        unit|integration|performance)
+          local executable_name
+          executable_name=$(_ascii_source_to_test_executable "$test_file")
+          echo "$bin_dir/$executable_name"
+          ;;
+        esac
+      done < <(find "$PROJECT_ROOT/tests" -type f -name '*_test.c' -print | sort)
       ;;
     *)
       log_error "Unknown test category: $category"
@@ -345,52 +375,45 @@ function get_test_executables() {
     case "$category" in
     unit)
       # Discover test source files and build executables
-      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_unit_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/unit" -type f -name '*_test.c' -print | sort)
       ;;
     integration)
       # Discover test source files and build executables
-      for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_integration_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/integration" -type f -name '*_test.c' -print | sort)
       ;;
     performance)
       # Discover test source files and build executables
-      for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_performance_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/performance" -type f -name '*_test.c' -print | sort)
       ;;
     all)
       # For "all", discover all test source files
-      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c "$PROJECT_ROOT/tests/integration"/*_test.c "$PROJECT_ROOT/tests/performance"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          # Determine category from path
-          if [[ "$test_file" == */unit/* ]]; then
-            executable_name="test_unit_${test_name}"
-          elif [[ "$test_file" == */integration/* ]]; then
-            executable_name="test_integration_${test_name}"
-          elif [[ "$test_file" == */performance/* ]]; then
-            executable_name="test_performance_${test_name}"
-          else
-            continue
-          fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local category
+        category=$(_ascii_source_to_test_category "$test_file")
+        case "$category" in
+        unit|integration|performance)
+          local executable_name
+          executable_name=$(_ascii_source_to_test_executable "$test_file")
           echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+          ;;
+        esac
+      done < <(find "$PROJECT_ROOT/tests" -type f -name '*_test.c' -print | sort)
       ;;
     *)
       log_error "Unknown test category: $category"

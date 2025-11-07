@@ -92,7 +92,19 @@ else
     mkdir -p "${OUTPUT_DIR}"
 fi
 
-declare -a SOURCE_PATHS
+rsync -a \
+    --exclude '.git/' \
+    --exclude 'build/' \
+    --exclude 'build_instr/' \
+    --exclude 'build_instrumented/' \
+    --exclude 'build_docker/' \
+    --exclude 'deps/bearssl/build/' \
+    --exclude 'deps/mimalloc/build/' \
+    --exclude 'cmake/debug/run_instrumentation.sh' \
+    ./ "${OUTPUT_DIR}/"
+
+
+declare -a SOURCE_PATHS=()
 if [[ $# -gt 0 ]]; then
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == "--" ]]; then
@@ -112,6 +124,34 @@ if [[ ${#SOURCE_PATHS[@]} -eq 0 ]]; then
         -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -print0)
 fi
 
+declare -A SEEN_SOURCE_PATHS=()
+deduped_paths=()
+for path in "${SOURCE_PATHS[@]}"; do
+    if [[ -n "${SEEN_SOURCE_PATHS[$path]:-}" ]]; then
+        continue
+    fi
+    SEEN_SOURCE_PATHS["$path"]=1
+    deduped_paths+=("$path")
+done
+SOURCE_PATHS=("${deduped_paths[@]}")
+
+filtered_paths=()
+for path in "${SOURCE_PATHS[@]}"; do
+    case "$path" in
+        lib/platform/system.c)
+            continue
+            ;;
+        lib/platform/windows/*|lib/platform/windows\\*)
+            continue
+            ;;
+        lib/os/windows/*|lib/os/windows\\*)
+            continue
+            ;;
+    esac
+    filtered_paths+=("$path")
+done
+SOURCE_PATHS=("${filtered_paths[@]}")
+
 CMD=("${TOOL_PATH}" -p "${BUILD_DIR}" --output-dir "${OUTPUT_DIR}" --input-root "${PWD}")
 CMD+=("${SOURCE_PATHS[@]}")
 
@@ -121,4 +161,16 @@ fi
 
 echo "Running instrumentation tool: ${CMD[*]}"
 "${CMD[@]}"
+
+echo "Linking header files into instrumented tree..."
+find lib src \
+    \( -path 'lib/debug' -o -path 'lib/debug/*' \) -prune -o \
+    -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.hxx' -o -name '*.inc' -o -name '*.inl' \) -print0 |
+    while IFS= read -r -d '' header; do
+        dest="${OUTPUT_DIR}/${header}"
+        mkdir -p "$(dirname "${dest}")"
+        if [[ ! -e "${dest}" ]]; then
+            ln -s "${PWD}/${header}" "${dest}"
+        fi
+    done
 
