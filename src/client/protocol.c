@@ -532,6 +532,19 @@ static void handle_audio_packet(const void *data, size_t len) {
 #endif
 }
 
+static void handle_error_message_packet(const void *data, size_t len) {
+  asciichat_error_t remote_error = ASCIICHAT_OK;
+  char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
+
+  asciichat_error_t parse_result = packet_parse_error_message(data, len, &remote_error, message, sizeof(message), NULL);
+  if (parse_result != ASCIICHAT_OK) {
+    log_error("Failed to parse error packet from server: %s", asciichat_error_string(parse_result));
+    return;
+  }
+
+  log_error("Server reported error %d (%s): %s", remote_error, asciichat_error_string(remote_error), message);
+}
+
 /**
  * @brief Handle incoming server state packet
  *
@@ -678,6 +691,10 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_SERVER_STATE:
       handle_server_state_packet(data, len);
+      break;
+
+    case PACKET_TYPE_ERROR_MESSAGE:
+      handle_error_message_packet(data, len);
       break;
 
     // Session rekeying packets

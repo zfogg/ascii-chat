@@ -17,7 +17,7 @@
  * **Implementation**: lib/network/packet_types.h
  *
  * **Key Features**:
- * - Comprehensive packet type enumeration (31 packet types)
+* - Comprehensive packet type enumeration (32 packet types)
  * - Packed structures for wire format compatibility
  * - Protocol versioning and capability negotiation
  * - Handshake packet detection for crypto routing
@@ -70,10 +70,11 @@
  * - PACKET_TYPE_CRYPTO_REKEY_RESPONSE (26): Responder → Initiator: New ephemeral key
  * - PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27): Encrypted with NEW key (but still handshake)
  *
- * **Message Packets** (Types 29-31):
+ * **Message Packets** (Types 29-32):
  * - PACKET_TYPE_SIZE_MESSAGE (29): Terminal size notification
  * - PACKET_TYPE_AUDIO_MESSAGE (30): Audio metadata message
  * - PACKET_TYPE_TEXT_MESSAGE (31): Text chat message (future)
+ * - PACKET_TYPE_ERROR_MESSAGE (32): Protocol/handshake error reporting
  *
  * @section packet_types_structure Packet Structure
  *
@@ -129,6 +130,7 @@
  *
  * Returns `false` for:
  * - All other packet types (including PACKET_TYPE_ENCRYPTED = 24)
+ * - PACKET_TYPE_ERROR_MESSAGE (32) – sent plaintext only before encryption is active
  *
  * **Usage**:
  * @code{.c}
@@ -145,7 +147,9 @@
  * @endcode
  *
  * **Warning**: Encrypting handshake packets will break the crypto handshake.
- * Always check with `packet_is_handshake_type()` before encryption.
+ * Always check with `packet_is_handshake_type()` before encryption. Error packets may
+ * be sent plaintext prior to handshake completion (or when encryption is disabled),
+ * but must be encrypted once a session key is established.
  *
  * @section packet_types_protocol_negotiation Protocol Negotiation
  *

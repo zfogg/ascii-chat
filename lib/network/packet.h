@@ -387,6 +387,35 @@ int send_pong_packet(socket_t sockfd);
 int send_clear_console_packet(socket_t sockfd);
 
 /**
+ * @brief Send an error packet with optional encryption context
+ * @param sockfd Socket file descriptor
+ * @param crypto_ctx Crypto context for encryption (NULL or not ready sends plaintext)
+ * @param error_code Error code from asciichat_error_t enumeration
+ * @param message Human-readable message to accompany the error (can be NULL)
+ * @return ASCIICHAT_OK on success, error code otherwise
+ *
+ * When the crypto context is ready, the packet is encrypted automatically.
+ * During the handshake (or when encryption is disabled), the packet is sent
+ * in plaintext so protocol errors can be delivered before encryption is active.
+ */
+asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
+                                    const char *message);
+
+/**
+ * @brief Parse an error packet payload into components
+ * @param data Packet payload buffer
+ * @param len Payload length in bytes
+ * @param out_error_code Output pointer for asciichat_error_t value (must not be NULL)
+ * @param message_buffer Destination buffer for message string (must not be NULL)
+ * @param message_buffer_size Size of destination buffer in bytes (must be > 0)
+ * @param out_message_length Optional output for message length reported by sender
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code,
+                                             char *message_buffer, size_t message_buffer_size,
+                                             size_t *out_message_length);
+
+/**
  * @brief Send protocol version negotiation packet
  * @param sockfd Socket file descriptor
  * @param version Protocol version packet structure
