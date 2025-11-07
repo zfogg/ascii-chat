@@ -108,6 +108,9 @@ if ($IsClangTidy) {
 #!/bin/bash
 set -e
 
+export CC=clang
+export CXX=clang++ 
+
 echo '=== Starting ascii-chat clang-tidy Analysis ==='
 echo ""
 
@@ -118,9 +121,7 @@ if [ ! -d "build_tidy" ] || [ ! -f "build_tidy/compile_commands.json" ] || \
 
     echo 'Configuring build for clang-tidy...'
     # Configure with clang to generate compile_commands.json
-    CC=clang CXX=clang++ cmake -B build_tidy -G Ninja \
-        -DCMAKE_C_COMPILER=clang \
-        -DCMAKE_CXX_COMPILER=clang++ \
+    cmake -B build_tidy -G Ninja \
         -DCMAKE_BUILD_TYPE=Debug \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DBUILD_TESTS=OFF

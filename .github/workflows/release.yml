@@ -21,6 +21,10 @@ on:
         type: boolean
         default: false
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   create-release:
     # Only run on master/main branches, not feature branches

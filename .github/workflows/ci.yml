@@ -14,6 +14,10 @@ on:
       - '**.h'
       - '**.m'
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
 
   memory-check:
@@ -33,13 +37,13 @@ jobs:
         os: ubuntu
         extra-packages: 'libc6-dbg valgrind'
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Run tests with AddressSanitizer
       run: |
         # Use CMake build system
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        cmake --preset github
         cmake --build build
         ./tests/scripts/run_tests.sh -t unit -b debug
 
@@ -59,13 +63,13 @@ jobs:
         os: ubuntu
         extra-packages: clang-tools
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Run static analysis
       run: |
         # Build with CMake for static analysis
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        cmake --preset github -DBUILD_TESTS=OFF
         # Run clang-tidy on source files
         find src lib -name "*.c" -exec clang-tidy {} -- -std=c2x \;
         # Run clang static analyzer
