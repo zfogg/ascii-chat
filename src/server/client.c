@@ -766,6 +766,12 @@ void *client_receive_thread(void *arg) {
     return NULL;
   }
 
+  if (atomic_load(&client->protocol_disconnect_requested)) {
+    log_debug("Receive thread for client %u exiting before start (protocol disconnect requested)",
+              atomic_load(&client->client_id));
+    return NULL;
+  }
+
   // Check if client_id is 0 (client struct has been zeroed by remove_client)
   // This must be checked BEFORE accessing any client fields
   if (atomic_load(&client->client_id) == 0) {
@@ -1534,7 +1540,7 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     break;
 
   default:
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown decrypted packet type: %d from client %u", type, client->client_id);
+    disconnect_client_for_bad_data(client, "Unknown packet type: %d (len=%zu)", type, len);
     break;
   }
 }

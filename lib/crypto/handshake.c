@@ -108,6 +108,7 @@ asciichat_error_t crypto_handshake_validate_packet_size(const crypto_handshake_c
   switch (packet_type) {
   case PACKET_TYPE_CRYPTO_CAPABILITIES:
     if (packet_size != sizeof(crypto_capabilities_packet_t)) {
+      // Don't  return an error code, just set the errno and return the error code
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid crypto capabilities packet size: %zu (expected %zu)",
                        packet_size, sizeof(crypto_capabilities_packet_t));
     }

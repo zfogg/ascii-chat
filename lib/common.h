@@ -671,6 +671,21 @@ bool shutdown_is_requested(void);
 #define SAFE_MEMMOVE(dest, dest_size, src, count) platform_memmove((dest), (dest_size), (src), (count))
 #define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
 
+/* Safe size_t multiplication with overflow detection */
+static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
+  if (result == NULL) {
+    return true;
+  }
+
+  if (a != 0 && b > SIZE_MAX / a) {
+    *result = 0;
+    return true;
+  }
+
+  *result = a * b;
+  return false;
+}
+
 /* Safe string formatting */
 #define SAFE_SNPRINTF(buffer, buffer_size, ...) (size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
 

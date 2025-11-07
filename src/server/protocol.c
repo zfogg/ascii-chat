@@ -109,6 +109,7 @@
  * @see network.h For packet structure definitions
  */
 
+#include <stdarg.h>
 #include <stdatomic.h>
 #include <stdio.h>
 #include <string.h>
@@ -133,6 +134,56 @@
  * helps handlers distinguish between genuine errors and shutdown conditions.
  */
 extern atomic_bool g_server_should_exit;
+
+static void protocol_cleanup_thread_locals(void) {
+  // Placeholder for thread-local resources owned by the receive thread.
+  // Add cleanup logic here if future protocol changes introduce
+  // thread-local allocations that must be released before disconnecting.
+}
+
+void disconnect_client_for_bad_data(client_info_t *client, const char *format, ...) {
+  if (!client) {
+    return;
+  }
+
+  protocol_cleanup_thread_locals();
+
+  bool already_requested = atomic_exchange(&client->protocol_disconnect_requested, true);
+  if (already_requested) {
+    return;
+  }
+
+  char reason[256] = {0};
+  if (format) {
+    va_list args;
+    va_start(args, format);
+    (void)vsnprintf(reason, sizeof(reason), format, args);
+    va_end(args);
+  } else {
+    SAFE_STRNCPY(reason, "Protocol violation", sizeof(reason));
+  }
+
+  uint32_t client_id = atomic_load(&client->client_id);
+  FATAL(ERROR_NETWORK_PROTOCOL, "Disconnecting client %u due to protocol violation: %s", client_id, reason);
+
+  atomic_store(&client->active, false);
+  atomic_store(&client->shutting_down, true);
+  atomic_store(&client->send_thread_running, false);
+  atomic_store(&client->video_render_thread_running, false);
+  atomic_store(&client->audio_render_thread_running, false);
+
+  if (client->audio_queue) {
+    packet_queue_shutdown(client->audio_queue);
+  }
+
+  mutex_lock(&client->client_state_mutex);
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    socket_shutdown(client->socket, 2);
+    socket_close(client->socket);
+    client->socket = INVALID_SOCKET_VALUE;
+  }
+  mutex_unlock(&client->client_state_mutex);
+}
 
 /* ============================================================================
  * Client Lifecycle Packet Handlers
@@ -177,18 +228,27 @@ extern atomic_bool g_server_should_exit;
  */
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
-  if (len == sizeof(client_info_packet_t)) {
-    const client_info_packet_t *join_info = (const client_info_packet_t *)data;
-
-    SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
-
-    client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
-    client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
-    client->wants_stretch = (join_info->capabilities & CLIENT_CAP_STRETCH) != 0;
-
-    log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", atomic_load(&client->client_id),
-             client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
+  if (!data) {
+    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload missing");
+    return;
   }
+
+  if (len != sizeof(client_info_packet_t)) {
+    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload size %zu (expected %zu)", len,
+                                   sizeof(client_info_packet_t));
+    return;
+  }
+
+  const client_info_packet_t *join_info = (const client_info_packet_t *)data;
+
+  SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+
+  client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
+  client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
+  client->wants_stretch = (join_info->capabilities & CLIENT_CAP_STRETCH) != 0;
+
+  log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", atomic_load(&client->client_id),
+           client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
 }
 
 /**
@@ -228,33 +288,37 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
+  if (!data) {
+    disconnect_client_for_bad_data(client, "STREAM_START payload missing");
+    return;
+  }
 
-  // Handle stream start request
-  if (len == sizeof(uint32_t)) {
-    // Use memcpy to avoid unaligned access
-    uint32_t stream_type_net;
-    memcpy(&stream_type_net, data, sizeof(uint32_t));
-    uint32_t stream_type = ntohl(stream_type_net);
+  if (len != sizeof(uint32_t)) {
+    disconnect_client_for_bad_data(client, "STREAM_START payload size %zu (expected %zu)", len, sizeof(uint32_t));
+    return;
+  }
 
-    // FIXED: No locks needed - use atomic operations for thread-safe state updates
-    // The is_sending_video and is_sending_audio flags are atomic, so no mutex is required
+  uint32_t stream_type_net;
+  memcpy(&stream_type_net, data, sizeof(uint32_t));
+  uint32_t stream_type = ntohl(stream_type_net);
 
-    if (stream_type & STREAM_TYPE_VIDEO) {
-      // Don't set is_sending_video=true here - wait for first IMAGE_FRAME
-      // This prevents the race condition where server tries to generate frames
-      // before client has sent any video data
-    }
-    if (stream_type & STREAM_TYPE_AUDIO) {
-      atomic_store(&client->is_sending_audio, true);
-    }
+  if ((stream_type & (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)) == 0) {
+    disconnect_client_for_bad_data(client, "STREAM_START with invalid stream type flags: 0x%x", stream_type);
+    return;
+  }
 
-    // Log after releasing locks to avoid holding locks during I/O
-    if (stream_type & STREAM_TYPE_VIDEO) {
-      log_info("Client %u announced video stream (waiting for first frame)", atomic_load(&client->client_id));
-    }
-    if (stream_type & STREAM_TYPE_AUDIO) {
-      log_info("Client %u started audio stream", atomic_load(&client->client_id));
-    }
+  if (stream_type & STREAM_TYPE_VIDEO) {
+    // Wait for first IMAGE_FRAME before marking sending_video true (avoids race)
+  }
+  if (stream_type & STREAM_TYPE_AUDIO) {
+    atomic_store(&client->is_sending_audio, true);
+  }
+
+  if (stream_type & STREAM_TYPE_VIDEO) {
+    log_info("Client %u announced video stream (waiting for first frame)", atomic_load(&client->client_id));
+  }
+  if (stream_type & STREAM_TYPE_AUDIO) {
+    log_info("Client %u started audio stream", atomic_load(&client->client_id));
   }
 }
 
@@ -294,30 +358,37 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  * @see handle_stream_start_packet() For starting media transmission
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
-  // Handle stream stop request
-  if (len == sizeof(uint32_t)) {
-    // Use memcpy to avoid unaligned access
-    uint32_t stream_type_net;
-    memcpy(&stream_type_net, data, sizeof(uint32_t));
-    uint32_t stream_type = ntohl(stream_type_net);
+  if (!data) {
+    disconnect_client_for_bad_data(client, "STREAM_STOP payload missing");
+    return;
+  }
 
-    // LOCK OPTIMIZATION: No locks needed - is_sending_video and is_sending_audio are atomic
-    // We already have a stable client pointer from receive thread
+  if (len != sizeof(uint32_t)) {
+    disconnect_client_for_bad_data(client, "STREAM_STOP payload size %zu (expected %zu)", len, sizeof(uint32_t));
+    return;
+  }
 
-    if (stream_type & STREAM_TYPE_VIDEO) {
-      atomic_store(&client->is_sending_video, false);
-    }
-    if (stream_type & STREAM_TYPE_AUDIO) {
-      atomic_store(&client->is_sending_audio, false);
-    }
+  uint32_t stream_type_net;
+  memcpy(&stream_type_net, data, sizeof(uint32_t));
+  uint32_t stream_type = ntohl(stream_type_net);
 
-    // Log after releasing locks to avoid holding locks during I/O
-    if (stream_type & STREAM_TYPE_VIDEO) {
-      log_info("Client %u stopped video stream", atomic_load(&client->client_id));
-    }
-    if (stream_type & STREAM_TYPE_AUDIO) {
-      log_info("Client %u stopped audio stream", atomic_load(&client->client_id));
-    }
+  if ((stream_type & (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)) == 0) {
+    disconnect_client_for_bad_data(client, "STREAM_STOP with invalid stream type flags: 0x%x", stream_type);
+    return;
+  }
+
+  if (stream_type & STREAM_TYPE_VIDEO) {
+    atomic_store(&client->is_sending_video, false);
+  }
+  if (stream_type & STREAM_TYPE_AUDIO) {
+    atomic_store(&client->is_sending_audio, false);
+  }
+
+  if (stream_type & STREAM_TYPE_VIDEO) {
+    log_info("Client %u stopped video stream", atomic_load(&client->client_id));
+  }
+  if (stream_type & STREAM_TYPE_AUDIO) {
+    log_info("Client %u stopped audio stream", atomic_load(&client->client_id));
   }
 }
 
@@ -386,6 +457,10 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
   // CRITICAL FIX: Use atomic compare-and-swap to avoid race condition
   // This ensures thread-safe auto-enabling of video stream
+  if (!data || len < sizeof(uint32_t) * 2) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
+    return;
+  }
   bool was_sending_video = atomic_load(&client->is_sending_video);
   if (!was_sending_video) {
     // Try to atomically enable video sending
@@ -411,9 +486,42 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width = ntohl(img_width_net);
   uint32_t img_height = ntohl(img_height_net);
 
+  if (img_width == 0 || img_height == 0) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME invalid dimensions %ux%u", img_width, img_height);
+    return;
+  }
+
+  if (img_width > IMAGE_MAX_WIDTH || img_height > IMAGE_MAX_HEIGHT) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME dimensions exceed max: %ux%u (max %ux%u)", img_width,
+                                   img_height, IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
+    return;
+  }
+
+  size_t pixel_count = 0;
+  if (safe_size_mul((size_t)img_width, (size_t)img_height, &pixel_count)) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME dimension overflow: %ux%u", img_width, img_height);
+    return;
+  }
+
+  size_t rgb_size = 0;
+  if (safe_size_mul(pixel_count, sizeof(rgb_t), &rgb_size)) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME RGB size overflow for %ux%u", img_width, img_height);
+    return;
+  }
+
+  if (rgb_size > IMAGE_MAX_PIXELS_SIZE) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME RGB data too large: %zu bytes (max %zu)", rgb_size,
+                                   (size_t)IMAGE_MAX_PIXELS_SIZE);
+    return;
+  }
+
   // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
-  size_t rgb_size = (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
-  size_t old_format_size = sizeof(uint32_t) * 2 + rgb_size;
+  const size_t legacy_header_size = sizeof(uint32_t) * 2;
+  if (rgb_size > SIZE_MAX - legacy_header_size) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %zu", rgb_size);
+    return;
+  }
+  size_t old_format_size = legacy_header_size + rgb_size;
   bool is_new_format = (len != old_format_size) && (len > sizeof(uint32_t) * 4);
 
   void *rgb_data = NULL;
@@ -423,8 +531,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   if (is_new_format) {
     // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
     if (len < sizeof(uint32_t) * 4) {
-      log_error("Invalid new format image packet from client %u: too small for headers",
-                atomic_load(&client->client_id));
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format header too small (%zu bytes)", len);
       return;
     }
 
@@ -436,24 +543,35 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     uint32_t data_size = ntohl(data_size_net);
     void *frame_data = (char *)data + sizeof(uint32_t) * 4;
 
-    size_t expected_total = sizeof(uint32_t) * 4 + data_size;
+    const size_t new_header_size = sizeof(uint32_t) * 4;
+    size_t data_size_sz = (size_t)data_size;
+    if (data_size_sz > IMAGE_MAX_PIXELS_SIZE) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME compressed data too large: %zu bytes", data_size_sz);
+      return;
+    }
+    if (data_size_sz > SIZE_MAX - new_header_size) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format packet size overflow");
+      return;
+    }
+    size_t expected_total = new_header_size + data_size_sz;
     if (len != expected_total) {
-      log_error("Invalid new format image packet from client %u: expected %zu bytes, got %zu",
-                atomic_load(&client->client_id), expected_total, len);
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format length mismatch: expected %zu got %zu",
+                                     expected_total, len);
       return;
     }
 
     if (compressed_flag) {
       // Decompress the data
-      rgb_data = SAFE_MALLOC(rgb_size, void *);
+      rgb_data = ALLOC_MALLOC(rgb_size);
       if (!rgb_data) {
-        log_error("Failed to allocate decompression buffer for client %u", atomic_load(&client->client_id));
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate decompression buffer for client %u",
+                  atomic_load(&client->client_id));
         return;
       }
 
       if (decompress_data(frame_data, data_size, rgb_data, rgb_size) != 0) {
-        log_error("Failed to decompress frame data from client %u", atomic_load(&client->client_id));
         SAFE_FREE(rgb_data);
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes", data_size_sz);
         return;
       }
 
@@ -464,16 +582,16 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
       rgb_data = frame_data;
       rgb_data_size = data_size;
       if (rgb_data_size != rgb_size) {
-        log_error("Invalid uncompressed data size from client %u: expected %zu, got %zu",
-                  atomic_load(&client->client_id), rgb_size, rgb_data_size);
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME uncompressed size mismatch: expected %zu got %zu", rgb_size,
+                                       rgb_data_size);
         return;
       }
     }
   } else {
     // Old format: [width:4][height:4][rgb_data:w*h*3]
     if (len != old_format_size) {
-      log_error("Invalid old format image packet from client %u: expected %zu bytes, got %zu",
-                atomic_load(&client->client_id), old_format_size, len);
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy length mismatch: expected %zu got %zu",
+                                     old_format_size, len);
       return;
     }
     rgb_data = (char *)data + sizeof(uint32_t) * 2;
@@ -486,7 +604,15 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
     if (frame && frame->data) {
       // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
-      size_t old_packet_size = sizeof(uint32_t) * 2 + rgb_data_size;
+      if (rgb_data_size > SIZE_MAX - legacy_header_size) {
+        if (needs_free && rgb_data) {
+          SAFE_FREE(rgb_data);
+        }
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%zu",
+                                       rgb_data_size);
+        return;
+      }
+      size_t old_packet_size = legacy_header_size + rgb_data_size;
 
       if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
         uint32_t width_net = htonl(img_width);
@@ -504,7 +630,11 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         frame->sequence_number = ++client->frames_received;
         video_frame_commit(client->incoming_video_buffer);
       } else {
-        log_warn("Frame from client %u too large (%zu bytes)", atomic_load(&client->client_id), old_packet_size);
+        if (needs_free && rgb_data) {
+          SAFE_FREE(rgb_data);
+        }
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME repacked frame too large (%zu bytes)", old_packet_size);
+        return;
       }
     } else {
       log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)", atomic_load(&client->client_id),
@@ -513,7 +643,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   } else {
     // During shutdown, this is expected - don't spam error logs
     if (!atomic_load(&g_server_should_exit)) {
-      log_error("Client %u has no incoming video buffer!", atomic_load(&client->client_id));
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no incoming video buffer!", atomic_load(&client->client_id));
     } else {
       log_debug("Client %u: ignoring video packet during shutdown", atomic_load(&client->client_id));
     }
@@ -567,18 +697,41 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
  * @see audio_ring_buffer_write() For storage implementation
  */
 void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
-  // Handle incoming audio samples from client (old single-packet format)
-  if (atomic_load(&client->is_sending_audio) && data && len > 0) {
-    // Convert data to float samples
-    int num_samples = len / sizeof(float);
-    if (num_samples > 0 && client->incoming_audio_buffer) {
-      const float *samples = (const float *)data;
-      int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
-      // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
-      (void)written;
-      // log_debug("Stored %d audio samples from client %u", num_samples, client->client_id);
-    }
+  if (!data || len == 0) {
+    disconnect_client_for_bad_data(client, "AUDIO payload empty or missing (len=%zu)", len);
+    return;
   }
+
+  if (!atomic_load(&client->is_sending_audio)) {
+    disconnect_client_for_bad_data(client, "AUDIO packet received before audio stream enabled");
+    return;
+  }
+
+  if (len % sizeof(float) != 0) {
+    disconnect_client_for_bad_data(client, "AUDIO payload not aligned to float samples (len=%zu)", len);
+    return;
+  }
+
+  int num_samples = (int)(len / sizeof(float));
+  if (num_samples <= 0) {
+    disconnect_client_for_bad_data(client, "AUDIO payload produced zero samples (len=%zu)", len);
+    return;
+  }
+
+  if (num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    disconnect_client_for_bad_data(client, "AUDIO packet too large: %d samples (max %d)", num_samples,
+                                   AUDIO_SAMPLES_PER_PACKET);
+    return;
+  }
+
+  if (!client->incoming_audio_buffer) {
+    log_error("Client %u audio buffer unavailable", atomic_load(&client->client_id));
+    return;
+  }
+
+  const float *samples = (const float *)data;
+  int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
+  (void)written;
 }
 
 /**
@@ -636,72 +789,85 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
               atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
   }
 
-  // Handles batched audio samples from client (new efficient format)
-  if (atomic_load(&client->is_sending_audio) && data && len >= sizeof(audio_batch_packet_t)) {
-    // Parse batch header
-    const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-    uint32_t packet_batch_count = ntohl(batch_header->batch_count);
-    uint32_t total_samples = ntohl(batch_header->total_samples);
-    uint32_t sample_rate = ntohl(batch_header->sample_rate);
-    // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
-
-    // Suppress static analyzer warnings for conditionally used variables
-    (void)packet_batch_count; // Used in DEBUG_AUDIO log
-    (void)sample_rate;        // Used in DEBUG_AUDIO log
-
-    // Validate batch parameters (samples now transmitted as uint32_t for portability)
-    size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
-    if (len != expected_size) {
-      log_error("Invalid audio batch size from client %u: got %zu, expected %zu", atomic_load(&client->client_id), len,
-                expected_size);
-      return;
-    }
-
-    if (total_samples > AUDIO_BATCH_SAMPLES * 2) { // Sanity check
-      log_error("Audio batch too large from client %u: %u samples", atomic_load(&client->client_id), total_samples);
-      return;
-    }
-
-    // Extract samples (they follow the header as network byte order uint32_t)
-    const uint32_t *network_samples = (const uint32_t *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
-
-    // Convert from network byte order integers back to floats
-    // Allocate temporary buffer for converted samples
-    float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
-    if (!samples) {
-      log_error("Failed to allocate memory for audio sample conversion");
-      return;
-    }
-
-    for (uint32_t i = 0; i < total_samples; i++) {
-      // Convert from network byte order and scale back to [-1.0, 1.0]
-      int32_t scaled = (int32_t)ntohl(network_samples[i]);
-      samples[i] = (float)scaled / 2147483647.0f;
-    }
-
-    // Debug: Log first few samples to verify conversion
-    static int recv_count = 0;
-    recv_count++;
-    if (recv_count % 100 == 0) {
-      int32_t scaled0 = (int32_t)ntohl(network_samples[0]);
-      int32_t scaled1 = (int32_t)ntohl(network_samples[1]);
-      int32_t scaled2 = (int32_t)ntohl(network_samples[2]);
-      log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", network_samples[0], network_samples[1],
-               network_samples[2]);
-      log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
-      log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
-    }
-
-    // Write all samples to the ring buffer
-    if (client->incoming_audio_buffer) {
-      int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
-      // Note: audio_ring_buffer_write now always writes all samples, dropping old ones if needed
-      (void)written;
-    }
-
-    // Free temporary buffer
-    SAFE_FREE(samples);
+  if (!data) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH payload missing (len=%zu)", len);
+    return;
   }
+
+  if (len < sizeof(audio_batch_packet_t)) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH payload too small (len=%zu)", len);
+    return;
+  }
+
+  if (!atomic_load(&client->is_sending_audio)) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH received before audio stream enabled");
+    return;
+  }
+
+  // Parse batch header
+  const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+  uint32_t packet_batch_count = ntohl(batch_header->batch_count);
+  uint32_t total_samples = ntohl(batch_header->total_samples);
+  uint32_t sample_rate = ntohl(batch_header->sample_rate);
+  // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
+
+  (void)packet_batch_count;
+  (void)sample_rate;
+
+  if (packet_batch_count == 0 || total_samples == 0) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH empty batch (batch_count=%u, total_samples=%u)",
+                                   packet_batch_count, total_samples);
+    return;
+  }
+
+  size_t samples_bytes = 0;
+  if (safe_size_mul(total_samples, sizeof(uint32_t), &samples_bytes)) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH sample size overflow (samples=%u)", total_samples);
+    return;
+  }
+
+  size_t expected_size = sizeof(audio_batch_packet_t) + samples_bytes;
+  if (len != expected_size) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH length mismatch: got %zu expected %zu", len, expected_size);
+    return;
+  }
+
+  if (total_samples > AUDIO_BATCH_SAMPLES * 2) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH too many samples: %u", total_samples);
+    return;
+  }
+
+  const uint32_t *network_samples = (const uint32_t *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+
+  float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+  if (!samples) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio sample conversion");
+    return;
+  }
+
+  for (uint32_t i = 0; i < total_samples; i++) {
+    int32_t scaled = (int32_t)ntohl(network_samples[i]);
+    samples[i] = (float)scaled / 2147483647.0f;
+  }
+
+  static int recv_count = 0;
+  recv_count++;
+  if (recv_count % 100 == 0) {
+    int32_t scaled0 = (int32_t)ntohl(network_samples[0]);
+    int32_t scaled1 = (int32_t)ntohl(network_samples[1]);
+    int32_t scaled2 = (int32_t)ntohl(network_samples[2]);
+    log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", network_samples[0], network_samples[1],
+             network_samples[2]);
+    log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
+    log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
+  }
+
+  if (client->incoming_audio_buffer) {
+    int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
+    (void)written;
+  }
+
+  SAFE_FREE(samples);
 }
 
 /* ============================================================================
@@ -774,80 +940,74 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  // Handle terminal capabilities from client
-  if (len == sizeof(terminal_capabilities_packet_t)) {
-    const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
-
-    // LOCK OPTIMIZATION: Only need client_state_mutex for non-atomic fields
-    // We already have a stable client pointer from receive thread
-    mutex_lock(&client->client_state_mutex);
-
-    // Convert from network byte order and store dimensions
-    atomic_store(&client->width, ntohs(caps->width));
-    atomic_store(&client->height, ntohs(caps->height));
-
-    log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
-              client->height, caps->desired_fps);
-
-    // Store terminal capabilities
-    client->terminal_caps.capabilities = ntohl(caps->capabilities);
-    client->terminal_caps.color_level = ntohl(caps->color_level);
-    client->terminal_caps.color_count = ntohl(caps->color_count);
-    client->terminal_caps.render_mode = ntohl(caps->render_mode);
-    client->terminal_caps.detection_reliable = caps->detection_reliable;
-    client->terminal_caps.wants_background = (ntohl(caps->render_mode) == RENDER_MODE_BACKGROUND);
-
-    // Copy terminal type strings safely
-    SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
-    SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
-
-    // NEW: Store client's palette preferences
-    client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
-    client->terminal_caps.palette_type = ntohl(caps->palette_type);
-    SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
-                 sizeof(client->terminal_caps.palette_custom));
-
-    // Store client's desired FPS
-    client->terminal_caps.desired_fps = caps->desired_fps;
-
-    // Initialize client's per-client palette cache
-    const char *custom_chars =
-        (client->terminal_caps.palette_type == PALETTE_CUSTOM && client->terminal_caps.palette_custom[0])
-            ? client->terminal_caps.palette_custom
-            : NULL;
-
-    if (initialize_client_palette((palette_type_t)client->terminal_caps.palette_type, custom_chars,
-                                  client->client_palette_chars, &client->client_palette_len,
-                                  client->client_luminance_palette) == 0) {
-      client->client_palette_type = (palette_type_t)client->terminal_caps.palette_type;
-      client->client_palette_initialized = true;
-      log_info("Client %d palette initialized: type=%u, %zu chars, utf8=%u", atomic_load(&client->client_id),
-               client->terminal_caps.palette_type, client->client_palette_len, client->terminal_caps.utf8_support);
-    } else {
-      log_error("Failed to initialize palette for client %d, using server default", atomic_load(&client->client_id));
-      client->client_palette_initialized = false;
-    }
-
-    // Mark that we have received capabilities for this client
-    client->has_terminal_caps = true;
-
-    log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
-             "render_mode=%s, reliable=%s, fps=%u",
-             atomic_load(&client->client_id), client->width, client->height,
-             terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
-             client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
-             (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
-                  ? "half-block"
-                  : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
-             client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
-
-    // Release lock acquired at function start
-    mutex_unlock(&client->client_state_mutex);
-
-  } else {
-    log_error("Invalid client capabilities packet size: %zu, expected %zu", len,
-              sizeof(terminal_capabilities_packet_t));
+  if (!data) {
+    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES payload missing");
+    return;
   }
+
+  if (len != sizeof(terminal_capabilities_packet_t)) {
+    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid size: %zu (expected %zu)", len,
+                                   sizeof(terminal_capabilities_packet_t));
+    return;
+  }
+
+  const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
+
+  mutex_lock(&client->client_state_mutex);
+
+  atomic_store(&client->width, ntohs(caps->width));
+  atomic_store(&client->height, ntohs(caps->height));
+
+  log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
+            client->height, caps->desired_fps);
+
+  client->terminal_caps.capabilities = ntohl(caps->capabilities);
+  client->terminal_caps.color_level = ntohl(caps->color_level);
+  client->terminal_caps.color_count = ntohl(caps->color_count);
+  client->terminal_caps.render_mode = ntohl(caps->render_mode);
+  client->terminal_caps.detection_reliable = caps->detection_reliable;
+  client->terminal_caps.wants_background = (ntohl(caps->render_mode) == RENDER_MODE_BACKGROUND);
+
+  SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
+  SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
+
+  client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
+  client->terminal_caps.palette_type = ntohl(caps->palette_type);
+  SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
+               sizeof(client->terminal_caps.palette_custom));
+
+  client->terminal_caps.desired_fps = caps->desired_fps;
+
+  const char *custom_chars =
+      (client->terminal_caps.palette_type == PALETTE_CUSTOM && client->terminal_caps.palette_custom[0])
+          ? client->terminal_caps.palette_custom
+          : NULL;
+
+  if (initialize_client_palette((palette_type_t)client->terminal_caps.palette_type, custom_chars,
+                                client->client_palette_chars, &client->client_palette_len,
+                                client->client_luminance_palette) == 0) {
+    client->client_palette_type = (palette_type_t)client->terminal_caps.palette_type;
+    client->client_palette_initialized = true;
+    log_info("Client %d palette initialized: type=%u, %zu chars, utf8=%u", atomic_load(&client->client_id),
+             client->terminal_caps.palette_type, client->client_palette_len, client->terminal_caps.utf8_support);
+  } else {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to initialize palette for client %d", atomic_load(&client->client_id));
+    client->client_palette_initialized = false;
+  }
+
+  client->has_terminal_caps = true;
+
+  log_info("Client %u capabilities: %ux%u, color_level=%s (%u colors), caps=0x%x, term=%s, colorterm=%s, "
+           "render_mode=%s, reliable=%s, fps=%u",
+           atomic_load(&client->client_id), client->width, client->height,
+           terminal_color_level_name(client->terminal_caps.color_level), client->terminal_caps.color_count,
+           client->terminal_caps.capabilities, client->terminal_caps.term_type, client->terminal_caps.colorterm,
+           (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+                ? "half-block"
+                : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
+           client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
+
+  mutex_unlock(&client->client_state_mutex);
 }
 
 /**
@@ -885,19 +1045,24 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  * @note No validation of reasonable dimension ranges
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
-  // Handle terminal size update from client
-  if (len == sizeof(size_packet_t)) {
-    const size_packet_t *size_pkt = (const size_packet_t *)data;
-
-    // LOCK OPTIMIZATION: Only need client_state_mutex for dimension updates
-    // Width and height are atomics, but mutex provides consistency
-    mutex_lock(&client->client_state_mutex);
-    client->width = ntohs(size_pkt->width);   // Regular assignment under mutex protection
-    client->height = ntohs(size_pkt->height); // Regular assignment under mutex protection
-    mutex_unlock(&client->client_state_mutex);
-
-    log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), client->width, client->height);
+  if (!data) {
+    disconnect_client_for_bad_data(client, "SIZE payload missing");
+    return;
   }
+
+  if (len != sizeof(size_packet_t)) {
+    disconnect_client_for_bad_data(client, "SIZE payload size %zu (expected %zu)", len, sizeof(size_packet_t));
+    return;
+  }
+
+  const size_packet_t *size_pkt = (const size_packet_t *)data;
+
+  mutex_lock(&client->client_state_mutex);
+  client->width = ntohs(size_pkt->width);
+  client->height = ntohs(size_pkt->height);
+  mutex_unlock(&client->client_state_mutex);
+
+  log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), client->width, client->height);
 }
 
 /* ============================================================================
@@ -1067,7 +1232,7 @@ int send_server_state_to_client(client_info_t *client) {
                                   (crypto_context_t *)crypto_ctx);
 
   if (result != 0) {
-    log_error("Failed to send server state to client %u", client->client_id);
+    SET_ERRNO(ERROR_NETWORK, "Failed to send server state to client %u", client->client_id);
     return -1;
   }
 
@@ -1105,6 +1270,6 @@ int send_server_state_to_client(client_info_t *client) {
 // from each client's render thread when it detects a grid layout change.
 // Keeping this for reference but it should not be called.
 void broadcast_clear_console_to_all_clients(void) {
-  log_error("broadcast_clear_console_to_all_clients() called - this should not happen!");
-  log_error("CLEAR_CONSOLE is now sent from render threads, not broadcast");
+  SET_ERRNO(ERROR_INVALID_STATE, "broadcast_clear_console_to_all_clients() called - unexpected usage");
+  log_warn("CLEAR_CONSOLE is now sent from render threads, not broadcast");
 }

@@ -20,6 +20,8 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len);
 void handle_client_leave_packet(client_info_t *client);
 
+void disconnect_client_for_bad_data(client_info_t *client, const char *format, ...);
+
 // Protocol utility functions
 int send_server_state_to_client(client_info_t *client);
 void broadcast_clear_console_to_all_clients(void);
