@@ -53,17 +53,17 @@ jobs:
       run: |
         echo "Testing binary memory usage..."
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat server > valgrind.log || true & # NOTE: notice this "&"
+          ./build/bin/ascii-chat server > valgrind-server.log || true & # WARN: notice this "&"
         # Run server in the background so the command doesn't block until the process is dead so we can start the client.
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat client --test-pattern > valgrind.log || true
+          ./build/bin/ascii-chat client --test-pattern > valgrind-client.log || true
 
     - name: Analyze memory reports
       run: |
         echo "=== Binary Memory Analysis ==="
-        if grep -q "definitely lost" valgrind.log; then
+        if grep -q "definitely lost" valgrind-*.log; then
           echo "❌ Memory leaks detected"
-          grep "definitely lost" valgrind.log
+          grep "definitely lost" valgrind-*.log
         else
           echo "✅ No memory leaks detected"
         fi
@@ -72,7 +72,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: memory-analysis-reports
-        path: valgrind.log
+        path: valgrind-*.log
         retention-days: 30
 
   build-optimization:
