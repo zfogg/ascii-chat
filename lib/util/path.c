@@ -8,6 +8,7 @@
 #include "common.h"
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -271,4 +272,104 @@ char *get_config_dir(void) {
   safe_snprintf(dir, len, "%s/.ascii-chat/", home);
   return dir;
 #endif
+}
+
+bool path_normalize_copy(const char *path, char *out, size_t out_len) {
+  if (!path || !out || out_len == 0) {
+    return false;
+  }
+
+  const char *normalized = normalize_path(path);
+  if (!normalized) {
+    return false;
+  }
+
+  size_t len = strlen(normalized);
+  if (len + 1 > out_len) {
+    return false;
+  }
+
+  memcpy(out, normalized, len + 1);
+  return true;
+}
+
+bool path_is_absolute(const char *path) {
+  if (!path || !*path) {
+    return false;
+  }
+
+#ifdef _WIN32
+  if ((path[0] == '\\' && path[1] == '\\')) {
+    return true; // UNC path
+  }
+  if (isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+    return true;
+  }
+  return false;
+#else
+  return path[0] == '/';
+#endif
+}
+
+bool path_is_within_base(const char *path, const char *base) {
+  if (!path || !base) {
+    return false;
+  }
+
+  if (!path_is_absolute(path) || !path_is_absolute(base)) {
+    return false;
+  }
+
+  char normalized_path[PLATFORM_MAX_PATH_LENGTH];
+  char normalized_base[PLATFORM_MAX_PATH_LENGTH];
+
+  if (!path_normalize_copy(path, normalized_path, sizeof(normalized_path))) {
+    return false;
+  }
+  if (!path_normalize_copy(base, normalized_base, sizeof(normalized_base))) {
+    return false;
+  }
+
+  size_t base_len = strlen(normalized_base);
+  if (base_len == 0) {
+    return false;
+  }
+
+#ifdef _WIN32
+  if (_strnicmp(normalized_path, normalized_base, base_len) != 0) {
+    return false;
+  }
+  char next = normalized_path[base_len];
+  if (next == '\0') {
+    return true;
+  }
+  return next == '\\' || next == '/';
+#else
+  if (strncmp(normalized_path, normalized_base, base_len) != 0) {
+    return false;
+  }
+  char next = normalized_path[base_len];
+  if (next == '\0') {
+    return true;
+  }
+  return next == '/';
+#endif
+}
+
+bool path_is_within_any_base(const char *path, const char *const *bases, size_t base_count) {
+  if (!path || !bases || base_count == 0) {
+    return false;
+  }
+
+  for (size_t i = 0; i < base_count; ++i) {
+    const char *base = bases[i];
+    if (!base) {
+      continue;
+    }
+    if (path_is_within_base(path, base)) {
+      return true;
+    }
+  }
+
+  return false;
 }

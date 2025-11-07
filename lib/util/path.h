@@ -41,6 +41,7 @@
  */
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /* ============================================================================
  * Path Constants
@@ -147,5 +148,50 @@ char *expand_path(const char *path);
  * @ingroup util
  */
 char *get_config_dir(void);
+
+/**
+ * @brief Normalize a path and copy it into the provided buffer.
+ *
+ * Resolves '.' and '..' components without requiring the path to exist on disk.
+ * The output buffer receives a canonicalized representation using platform
+ * preferred separators.
+ *
+ * @param path     Input path string (must not be NULL)
+ * @param out      Destination buffer for normalized path
+ * @param out_len  Size of destination buffer in bytes
+ * @return true on success, false on failure (invalid arguments or buffer too small)
+ */
+bool path_normalize_copy(const char *path, char *out, size_t out_len);
+
+/**
+ * @brief Determine whether a path is absolute on the current platform.
+ *
+ * @param path Path string to test (may be NULL)
+ * @return true if the path is absolute, false otherwise
+ */
+bool path_is_absolute(const char *path);
+
+/**
+ * @brief Check whether a path resides within a specified base directory.
+ *
+ * Both the candidate path and the base directory are normalized before
+ * comparison. The base directory must be absolute. The comparison honours the
+ * platform's case sensitivity rules (case-insensitive on Windows).
+ *
+ * @param path Candidate path to validate (must be absolute)
+ * @param base Absolute base directory to compare against
+ * @return true if @p path is inside @p base (or exactly equal), false otherwise
+ */
+bool path_is_within_base(const char *path, const char *base);
+
+/**
+ * @brief Check whether a path resides within any of several base directories.
+ *
+ * @param path        Candidate path to validate (must be absolute)
+ * @param bases       Array of base directory strings
+ * @param base_count  Number of entries in @p bases
+ * @return true if @p path is inside any allowed base, false otherwise
+ */
+bool path_is_within_any_base(const char *path, const char *const *bases, size_t base_count);
 
 /** @} */
