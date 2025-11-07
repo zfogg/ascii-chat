@@ -66,7 +66,7 @@
     {
       "name": "relwithdebinfo",
       "displayName": "RelWithDebInfo",
-      "description": "Optimized build with debug symbols (for profiling/debugging production issues)",
+      "description": "Optimized build with debug symbols (if you want to build and install ascii-chat yourself probably choose this to start)",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
@@ -100,6 +100,22 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF"
+      }
+    },
+    {
+      "name": "github",
+      "displayName": "GitHub CI",
+      "description": "Configuration used by GitHub Actions workflows (tests enabled, C23)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/$env{GITHUB_CMAKE_BINARY_DIR}",
+      "environment": {
+        "GITHUB_CMAKE_BINARY_DIR": "build"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTS": "ON",
+        "CMAKE_C_STANDARD": "23",
+        "CMAKE_C_FLAGS": "-std=c2x"
       }
     }
   ],
@@ -139,6 +155,10 @@
     {
       "name": "tests",
       "configurePreset": "tests"
+    },
+    {
+      "name": "github",
+      "configurePreset": "github"
     }
   ]
 }

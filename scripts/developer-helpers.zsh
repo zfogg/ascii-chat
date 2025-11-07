@@ -8,15 +8,39 @@
 # Pipe-able when it makes sense, so you can 2>&1 or | tee or | grep or | sed.
 #
 # How to use: `source ./scripts/developer-helpers.zsh && dtbash ls build_docker`
-_ascii_chat_repo_root=$(git rev-parse --show-toplevel)
-_ascii_chat_repo_basename=$(basename $_ascii_chat_repo_root)
+
+
+# Variables and Helpers
+_scripts_dir=${0:a:h}
+_repo_root=$(git rev-parse --show-toplevel)
+
+source "$_scripts_dir/color.zsh"
+
+# Alias and function helper API
+
+# CMake
+alias c='cmake' # specify your build dir
+alias cpd='cmake --preset default'
+alias cpr='cmake --preset release'
+alias cb='cmake --build' # specify your build dir
+alias cbb='cmake --build build'
+alias cbr='cmake --build build_release'
+
+# Ninja
+alias n='ninja'
+
+# Make
+alias m='make'
+
+# CPack
+alias cpg='cpack -G' # specify your generator
 
 # t - Test - Run the test defined in $test with a convenient one-letter command
 # Run it from anywhere in the repo - you can be in the build dir running ninjas 
 # or the repo root running cmake --build build
 function t() {
-  _src=$_ascii_chat_repo_root
-  _test=$test
+  _src="$_repo_root"
+  _test="$test"
   if [ -z "$_test" ]; then
     echo "Error: define they \"test\" environment variable to use the 't' command"
     exit 1
@@ -29,15 +53,15 @@ function t() {
 # Mostly to quickly iterate in Linux from macOS or Windows. I like showing Claude Code this one.
 # You don't have to quote the arguments to it.
 function dtbash() {
-  docker-compose -f tests/docker-compose.yml \
+  docker-compose -f "$_repo_root"/tests/docker-compose.yml \
     run --rm ascii-chat-tests \
     bash -c "$*"
 }
 
 # dt - Docker Tests Test - Build and run a single test "$test" in the Docker tests container
-# Like `t` but for Docker
+# Like `t` (check the description) but for Docker
 function dt() {
-  docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash \
+  docker-compose -f "$_repo_root"/tests/docker-compose.yml run --rm ascii-chat-tests bash \
     -c '
   _dir=build_docker
   _test="$0"
@@ -50,3 +74,4 @@ function dt() {
   cd .. && $_dir/bin/$_test' \
       "$test"
 }
+

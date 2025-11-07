@@ -24,6 +24,10 @@ permissions:
   checks: write
   pull-requests: write
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   unit-tests:
     name: Unit Tests
@@ -52,17 +56,19 @@ jobs:
         os: ${{ matrix.os-name }}
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Build test suite (${{ matrix.build_type }})
       run: |
         # Use CMake build system
         BUILD_TYPE=${{ matrix.build_type == 'debug' && 'Debug' || 'Release' }}
 
-        # Set C flags based on build type
-        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
+        # Set additional C flags based on build type
         if [ "${{ matrix.build_type }}" = "debug" ]; then
-          C_FLAGS="--coverage"
+          EXTRA_FLAGS="--coverage"
         else
-          C_FLAGS=""
+          EXTRA_FLAGS=""
         fi
 
         # Use Homebrew LLVM on macOS for better standards support
@@ -84,13 +90,16 @@ jobs:
           CLANGXX_BIN="clang++"
         fi
 
+        FLAGS="-std=c2x"
+        if [ -n "${EXTRA_FLAGS}" ]; then
+          FLAGS="${FLAGS} ${EXTRA_FLAGS}"
+        fi
+
         echo "Building with CMake build type: ${BUILD_TYPE}"
-        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
-          -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS="${C_FLAGS}" \
-          -DBUILD_TESTS=ON
+          -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
 
         echo "Test executables built:"
@@ -234,11 +243,13 @@ jobs:
         os: ${{ matrix.os-name }}
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr' || 'gcovr' }}
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Build and run integration tests with coverage
       run: |
         echo "Running integration tests with coverage build..."
         # Use CMake build system with coverage
-        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
         # Use Homebrew LLVM on macOS for better standards support
         # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
         if [ "${{ matrix.os-name }}" = "macos" ]; then
@@ -258,10 +269,12 @@ jobs:
           CLANGXX_BIN="clang++"
         fi
 
-        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+        FLAGS="-std=c2x --coverage"
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='--coverage' -DBUILD_TESTS=ON
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
         LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
         ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
@@ -316,10 +329,12 @@ jobs:
       with:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Build performance tests with coverage
       run: |
         # Build performance tests with Release mode + coverage for accurate performance
-        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
         # Use Homebrew LLVM on macOS for better standards support
         # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
         if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
@@ -340,10 +355,12 @@ jobs:
         fi
 
         echo "Building performance tests with Release optimization and coverage instrumentation..."
-        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+        FLAGS="-std=c2x -O3 --coverage"
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-O3 --coverage' -DBUILD_TESTS=ON
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
         echo "Performance test executables built:"
         ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
@@ -401,14 +418,17 @@ jobs:
         os: ubuntu
         extra-packages: valgrind
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Build with AddressSanitizer
       run: |
         # Use CMake build system with AddressSanitizer
-        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-fsanitize=address' -DBUILD_TESTS=ON
+        FLAGS="-std=c2x -fsanitize=address"
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
 
     - name: Run tests with AddressSanitizer
@@ -460,10 +480,12 @@ jobs:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
         extra-packages: ${{ startsWith(matrix.os, 'macos') && 'coreutils' || '' }}
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Build project
       run: |
         # Use CMake build system
-        # Note: CMAKE_C_STANDARD=23 handles -std=c2x, don't duplicate in CMAKE_C_FLAGS
         # Use Homebrew LLVM on macOS for better standards support
         # Detect Homebrew prefix (ARM Mac uses /opt/homebrew, Intel uses /usr/local)
         if [ "${{ startsWith(matrix.os, 'macos') && 'macos' || 'ubuntu' }}" = "macos" ]; then
@@ -483,10 +505,13 @@ jobs:
           CLANGXX_BIN="clang++"
         fi
 
-        CC="${CLANG_BIN}" CXX="${CLANGXX_BIN}" cmake -B build -G Ninja \
+        FLAGS="-std=c2x"
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DBUILD_TESTS=ON
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_FLAGS="${FLAGS}" \
+          -DBUILD_TESTS=OFF
         cmake --build build
 
     - name: Test binary help and modes

@@ -615,6 +615,8 @@ else()
         endif()
     else()
         # Non-musl builds use normal dependencies
+        # Note: PORTAUDIO_LIBRARIES, ZSTD_LIBRARIES, and LIBSODIUM_LIBRARIES are
+        # PkgConfig::* IMPORTED targets that include library paths automatically
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
         )

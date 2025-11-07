@@ -15,6 +15,10 @@ on:
     #   - '.github/**'
     #   - '.cursor/**'
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   claude-review:
     # Optional: Filter by PR author

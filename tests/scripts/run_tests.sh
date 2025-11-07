@@ -23,6 +23,9 @@ if [[ -t 0 ]]; then
   stty isig 2>/dev/null || true
 fi
 
+export CC=clang
+export CXX=clang++
+
 # =============================================================================
 # Signal Handling
 # =============================================================================
@@ -465,8 +468,7 @@ function ensure_tests_built() {
     esac
 
     log_info "Configuring CMake build in $cmake_build_dir (build type: $cmake_build_type)..."
-    echo CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
-      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+    cmake -B "$cmake_build_dir" -G Ninja \
       -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags
 
     # Build with CMake

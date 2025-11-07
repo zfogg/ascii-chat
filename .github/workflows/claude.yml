@@ -10,6 +10,10 @@ on:
   pull_request_review:
     types: [submitted]
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   claude:
     if: |
