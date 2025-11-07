@@ -14,19 +14,39 @@ _ascii_chat_repo_basename=$(basename $_ascii_chat_repo_root)
 # t - Test - Run the test defined in $test with a convenient one-letter command
 # Run it from anywhere in the repo - you can be in the build dir running ninjas 
 # or the repo root running cmake --build build
-alias t='_src=$_ascii_chat_repo_root; _test=$test; cd $_src/build && ninja bin/$_test; cd .. && build/bin/$_test'
+function t() {
+  _src=$_ascii_chat_repo_root
+  _test=$test
+  if [ -z "$_test" ]; then
+    echo "Error: define they \"test\" environment variable to use the 't' command"
+    exit 1
+  fi
+  cd "$_src"/build && ninja bin/"$_test"
+  cd .. && build/bin/"$_test"
+}
 
 # dtbash - Docker Tests Bash - Run a bash command in the tests docker container
 # Mostly to quickly iterate in Linux from macOS or Windows. I like showing Claude Code this one.
+# You don't have to quote the arguments to it.
 function dtbash() {
-  docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -c "$*"
+  docker-compose -f tests/docker-compose.yml \
+    run --rm ascii-chat-tests \
+    bash -c "$*"
 }
 
 # dt - Docker Tests Test - Build and run a single test "$test" in the Docker tests container
 # Like `t` but for Docker
 function dt() {
-  echo "$test"
   docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash \
-    -c '_dir=build_docker; _test="$0"; set -x; cd $_dir && ninja bin/$_test; cd .. && $_dir/bin/$_test' \
+    -c '
+  _dir=build_docker
+  _test="$0"
+  if [ -z "$_test" ]; then
+    echo "Error: define the \"test\" environment variable to use the '"'"'dt'"'"' command"
+    exit 1
+  fi
+  [ -f $_dir/build.ninja ] || cmake --preset default -B $_dir
+  cd $_dir && ninja bin/$_test
+  cd .. && $_dir/bin/$_test' \
       "$test"
 }
