@@ -53,6 +53,12 @@ typedef enum {
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
 static atomic_bool g_symbolizer_detected = false;
+static atomic_bool g_llvm_symbolizer_checked = false;
+static atomic_bool g_llvm_symbolizer_available = false;
+static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
+static atomic_bool g_addr2line_checked = false;
+static atomic_bool g_addr2line_available = false;
+static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
 
 // ============================================================================
 // Cache State
@@ -119,16 +125,114 @@ static atomic_uint_fast64_t g_cache_misses = 0;
  * @brief Detect which symbolizer is available in PATH
  * @return symbolizer_type_t indicating which tool to use
  */
+static bool symbolizer_path_is_executable(const char *path) {
+#ifdef _WIN32
+  if (!path || path[0] == '\0') {
+    return false;
+  }
+
+  DWORD attrs = GetFileAttributesA(path);
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
+    return false;
+  }
+  if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+    return false;
+  }
+
+  HANDLE handle = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+  if (handle == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+
+  CloseHandle(handle);
+  return true;
+#else
+  return (path && path[0] != '\0' && access(path, X_OK) == 0);
+#endif
+}
+
+static const char *get_llvm_symbolizer_command(void) {
+  if (!atomic_load(&g_llvm_symbolizer_checked)) {
+    const char *env_path = SAFE_GETENV("LLVM_SYMBOLIZER_PATH");
+    bool available = false;
+
+    if (env_path && env_path[0] != '\0') {
+      if (symbolizer_path_is_executable(env_path)) {
+        SAFE_STRNCPY(g_llvm_symbolizer_cmd, env_path, sizeof(g_llvm_symbolizer_cmd));
+        available = true;
+        log_debug("Using llvm-symbolizer from LLVM_SYMBOLIZER_PATH: %s", env_path);
+      } else {
+        log_warn("LLVM_SYMBOLIZER_PATH is set but not executable: %s", env_path);
+      }
+    }
+
+    if (!available && platform_is_binary_in_path(LLVM_SYMBOLIZER_BIN)) {
+      available = true;
+      g_llvm_symbolizer_cmd[0] = '\0'; // Use binary name from PATH
+      log_debug("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
+    }
+
+    atomic_store(&g_llvm_symbolizer_available, available);
+    atomic_store(&g_llvm_symbolizer_checked, true);
+  }
+
+  if (!atomic_load(&g_llvm_symbolizer_available)) {
+    return NULL;
+  }
+
+  if (g_llvm_symbolizer_cmd[0] != '\0') {
+    return g_llvm_symbolizer_cmd;
+  }
+
+  return LLVM_SYMBOLIZER_BIN;
+}
+
+static const char *get_addr2line_command(void) {
+  if (!atomic_load(&g_addr2line_checked)) {
+    const char *env_path = SAFE_GETENV("ADDR2LINE_PATH");
+    bool available = false;
+
+    if (env_path && env_path[0] != '\0') {
+      if (symbolizer_path_is_executable(env_path)) {
+        SAFE_STRNCPY(g_addr2line_cmd, env_path, sizeof(g_addr2line_cmd));
+        available = true;
+        log_debug("Using addr2line from ADDR2LINE_PATH: %s", env_path);
+      } else {
+        log_warn("ADDR2LINE_PATH is set but not executable: %s", env_path);
+      }
+    }
+
+    if (!available && platform_is_binary_in_path(ADDR2LINE_BIN)) {
+      available = true;
+      g_addr2line_cmd[0] = '\0'; // Use binary name from PATH
+      log_debug("Found %s in PATH", ADDR2LINE_BIN);
+    }
+
+    atomic_store(&g_addr2line_available, available);
+    atomic_store(&g_addr2line_checked, true);
+  }
+
+  if (!atomic_load(&g_addr2line_available)) {
+    return NULL;
+  }
+
+  if (g_addr2line_cmd[0] != '\0') {
+    return g_addr2line_cmd;
+  }
+
+  return ADDR2LINE_BIN;
+}
+
 static symbolizer_type_t detect_symbolizer(void) {
-  // Try llvm-symbolizer first (preferred)
-  if (platform_is_binary_in_path("llvm-symbolizer")) {
-    log_debug("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
+  const char *llvm_symbolizer = get_llvm_symbolizer_command();
+  if (llvm_symbolizer) {
     return SYMBOLIZER_LLVM;
   }
 
-  // Fall back to addr2line
-  if (platform_is_binary_in_path("addr2line")) {
-    log_debug("Found %s in PATH (%s not available)", ADDR2LINE_BIN, LLVM_SYMBOLIZER_BIN);
+  const char *addr2line_cmd = get_addr2line_command();
+  if (addr2line_cmd) {
+    log_debug("Using addr2line command: %s", addr2line_cmd);
     return SYMBOLIZER_ADDR2LINE;
   }
 
@@ -324,6 +428,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
+  const char *symbolizer_cmd = get_llvm_symbolizer_command();
+  if (!symbolizer_cmd) {
+    log_debug("llvm-symbolizer not available - skipping symbolization");
+    return NULL;
+  }
+
   // Get executable path
   char exe_path[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
@@ -362,6 +472,38 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     }
 #endif
     escaped_exe_path = escaped_exe_path_buf;
+  }
+
+  // Validate and escape llvm-symbolizer path if needed
+  if (!validate_shell_safe(symbolizer_cmd, ".-/\\:_")) {
+    log_warn("llvm-symbolizer path contains unsafe characters: %s", symbolizer_cmd);
+    return NULL;
+  }
+
+  const char *escaped_symbolizer_cmd = symbolizer_cmd;
+  char escaped_symbolizer_buf[PLATFORM_MAX_PATH_LENGTH * 2];
+  bool symbolizer_needs_quoting = false;
+  for (size_t i = 0; symbolizer_cmd[i] != '\0'; i++) {
+    if (symbolizer_cmd[i] == ' ' || symbolizer_cmd[i] == '\t' || symbolizer_cmd[i] == '"' ||
+        symbolizer_cmd[i] == '\'') {
+      symbolizer_needs_quoting = true;
+      break;
+    }
+  }
+
+  if (symbolizer_needs_quoting) {
+#ifdef _WIN32
+    if (!escape_shell_double_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
+      SET_ERRNO(ERROR_STRING, "Failed to escape llvm-symbolizer path for shell command");
+      return NULL;
+    }
+#else
+    if (!escape_shell_single_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
+      SET_ERRNO(ERROR_STRING, "Failed to escape llvm-symbolizer path for shell command");
+      return NULL;
+    }
+#endif
+    escaped_symbolizer_cmd = escaped_symbolizer_buf;
   }
 
   // Build llvm-symbolizer command with --demangle, --output-style=LLVM, --relativenames, --inlining,
@@ -405,11 +547,11 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   offset = snprintf(cmd, sizeof(cmd),
                     "%s --demangle --output-style=LLVM --relativenames --inlining "
                     "--debug-file-directory=%s -e %s ",
-                    LLVM_SYMBOLIZER_BIN, escaped_build_dir, escaped_exe_path);
+                    escaped_symbolizer_cmd, escaped_build_dir, escaped_exe_path);
 #else
   // Note: Use platform-appropriate quotes (already escaped)
   offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames --inlining -e %s ",
-                    LLVM_SYMBOLIZER_BIN, escaped_exe_path);
+                    escaped_symbolizer_cmd, escaped_exe_path);
 #endif
 
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
@@ -536,6 +678,12 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     return NULL;
   }
 
+  const char *addr2line_cmd = get_addr2line_command();
+  if (!addr2line_cmd) {
+    log_debug("addr2line not available - skipping symbolization");
+    return NULL;
+  }
+
   // Get executable path
   char exe_path[PLATFORM_MAX_PATH_LENGTH];
   if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
@@ -576,9 +724,39 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     escaped_exe_path = escaped_exe_path_buf;
   }
 
+  if (!validate_shell_safe(addr2line_cmd, ".-/\\:_")) {
+    log_warn("addr2line path contains unsafe characters: %s", addr2line_cmd);
+    return NULL;
+  }
+
+  const char *escaped_addr2line_cmd = addr2line_cmd;
+  char escaped_addr2line_buf[PLATFORM_MAX_PATH_LENGTH * 2];
+  bool addr2line_needs_quoting = false;
+  for (size_t i = 0; addr2line_cmd[i] != '\0'; i++) {
+    if (addr2line_cmd[i] == ' ' || addr2line_cmd[i] == '\t' || addr2line_cmd[i] == '"' || addr2line_cmd[i] == '\'') {
+      addr2line_needs_quoting = true;
+      break;
+    }
+  }
+
+  if (addr2line_needs_quoting) {
+#ifdef _WIN32
+    if (!escape_shell_double_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
+      SET_ERRNO(ERROR_STRING, "Failed to escape addr2line path for shell command");
+      return NULL;
+    }
+#else
+    if (!escape_shell_single_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
+      SET_ERRNO(ERROR_STRING, "Failed to escape addr2line path for shell command");
+      return NULL;
+    }
+#endif
+    escaped_addr2line_cmd = escaped_addr2line_buf;
+  }
+
   // Build addr2line command
   char cmd[4096];
-  int offset = snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", ADDR2LINE_BIN, escaped_exe_path);
+  int offset = snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", escaped_addr2line_cmd, escaped_exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     SET_ERRNO(ERROR_INVALID_STATE, "Failed to build addr2line command");
     return NULL;

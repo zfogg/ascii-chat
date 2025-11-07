@@ -27,12 +27,12 @@
 - [x] Add cache option `ASCII_BUILD_WITH_INSTRUMENTATION` and integrate `cmake/debug/run_instrumentation.sh` to generate instrumented sources safely into `build/instrumented/`.
 
 ### Developer Documentation & Usage
-- [ ] Document workflow in `docs/debug-instrumentation.md`: configuration, environment filters, per-thread logs.
-- [ ] Highlight safety guarantees (no overwrites/deletions of source/.git) and recommended manual checks before use.
-- [ ] Note limitations (performance overhead, sanitizers, signal-handler opt-outs) and post-processing tips.
+- [x] Document workflow in `docs/debug-instrumentation.md`: configuration, environment filters, per-thread logs.
+- [x] Highlight safety guarantees (no overwrites/deletions of source/.git) and recommended manual checks before use.
+- [x] Note limitations (performance overhead, sanitizers, signal-handler opt-outs) and post-processing tips.
 
 ## Optional Enhancements (time permitting)
-- [ ] Provide a small post-processing helper in `src/debug/` that summarizes the last log per thread.
+- [x] Provide a small post-processing helper in `src/debug/` that summarizes the last log per thread.
 - [ ] Add unit tests (Criterion) for the logging runtime to ensure env filters behave correctly (skipped in macOS CI if needed).
 
 ---
@@ -40,30 +40,30 @@
 ## Part Two – Expanded Ideas from NOTES.md
 
 1. **Macro-Aware Logging Enhancements**
-   - Instrument both macro invocation sites and the expanded statements, tagging each log with `macro_invocation` / `macro_expansion` markers.
-   - Add CLI toggles (`--log-macro-invocations`, `--log-macro-expansions`) to control noise levels.
-   - Research `SourceManager::getImmediateMacroCallerLoc()` to improve correlation between invocation and expansion logs.
+   - [x] Instrument both macro invocation sites and the expanded statements, tagging each log with `macro_invocation` / `macro_expansion` markers.
+   - [x] Add CLI toggles (`--log-macro-invocations`, `--log-macro-expansions`) to control noise levels.
+   - [x] Research `SourceManager::getImmediateMacroCallerLoc()` to improve correlation between invocation and expansion logs.
 
 2. **Advanced Filtering & Noise Control**
-   - Extend runtime filters to support regular-expression includes/excludes for files and functions.
-   - Add rate limiting (e.g., `ASCII_INSTR_RATE=10` to log every Nth statement per thread).
-   - Support `ASCII_INSTR_ONLY=server:*` to scope logging to module prefixes or glob patterns.
+   - [x] Extend runtime filters to support regular-expression includes/excludes for files and functions.
+   - [x] Add rate limiting (e.g., `ASCII_INSTR_RATE=10` to log every Nth statement per thread).
+   - [x] Support `ASCII_INSTR_ONLY=server:*` to scope logging to module prefixes or glob patterns.
 
 3. **Signal-Safe Postmortem Tooling**
-   - Create a small analyzer that parses per-thread log files and reports the last executed statement per TID, highlighting divergence between threads.
-   - Hook into crash handlers (where safe) to emit the last statement snapshot automatically.
+   - [x] Create a small analyzer that parses per-thread log files and reports the last executed statement per TID, highlighting divergence between threads.
+   - [ ] Hook into crash handlers (where safe) to emit the last statement snapshot automatically.
 
 4. **SanitizerCoverage Mode (Alternate Path)**
-   - Prototype the lightweight `__sanitizer_cov_trace_pc_guard` variant to cross-check crash locations without source rewriting.
-   - Build a symbolizer helper that resolves PCs to `file:line` and optionally prints the on-disk source snippet for parity with the source-to-source path.
+   - [x] Prototype the lightweight `__sanitizer_cov_trace_pc_guard` variant to cross-check crash locations without source rewriting.
+   - [ ] Build a symbolizer helper that resolves PCs to `file:line` and optionally prints the on-disk source snippet for parity with the source-to-source path.
 
 5. **Signal Handler Opt-In/Out Support**
-   - Implement optional annotation macros (e.g., `#define ASCII_INSTR_SIGNAL_HANDLER`) that map to Clang attributes for exclusion.
-   - Document guidelines for marking async-signal-safe sections to avoid interference from inserted logging.
+   - [x] Implement optional annotation macros (e.g., `#define ASCII_INSTR_SIGNAL_HANDLER`) that map to Clang attributes for exclusion.
+   - [x] Document guidelines for marking async-signal-safe sections to avoid interference from inserted logging.
 
 6. **Documentation & Examples**
-   - Add `docs/debug-instrumentation.md` with configuration walk-throughs, env var reference, and example workflows (e.g., "instrument only client display code").
-   - Provide scripts/snippets for tailing logs, filtering by thread, and mapping macros to expansions.
+   - [x] Add `docs/debug-instrumentation.md` with configuration walk-throughs, env var reference, and example workflows (e.g., "instrument only client display code").
+   - [x] Provide scripts/snippets for tailing logs, filtering by thread, and mapping macros to expansions.
 
 7. **Future Ideas (Backlog)**
    - Explore dynamic instrumentation with `rr`/`dynamorio` for environments where recompilation is not possible.
@@ -100,3 +100,41 @@
 7. **Community / External Tooling**
    - Package the instrumentation tool as a standalone utility (future repo) so other projects can reuse it with minimal integration.
    - Provide example patches/scripts for popular build systems (meson, bazel) to ease adoption beyond ascii-chat.
+
+---
+
+## Part Four – Execution Roadmap (Next 2 Sprints)
+
+1. **Finalize Documentation**
+   - [x] Complete `docs/debug-instrumentation.md` with end-to-end workflow, env var reference, and troubleshooting.
+   - [ ] Record a short asciinema or GIF walkthrough demonstrating instrumentation on a simple crash.
+2. **Stabilize Build Integration**
+   - [ ] Add CI job that configures with `-DASCII_BUILD_WITH_INSTRUMENTATION=ON` to validate the pipeline builds on macOS/Linux.
+   - [ ] Create a convenience script (`scripts/instrumented-build.sh`) that wraps preset configuration, emphasizing no overwrite guarantees.
+3. **Runtime Validation**
+   - [ ] Write deterministic unit tests covering filter combinations (include/exclude, rate, thread selection) using mock log sinks.
+   - [ ] Stress-test per-thread logging on a synthetic multi-thread workload and document sustained throughput limits.
+4. **Developer Onboarding Materials**
+   - [ ] Publish a sample workflow showing how to diff instrumented vs. non-instrumented timing to gauge overhead.
+   - [ ] Add FAQ entries addressing common integration questions (macros, signal handlers, sanitizer interplay).
+
+---
+
+## Part Five – Risks, Mitigations, and Success Metrics
+
+1. **Risk: Excessive Overhead in Hot Paths**
+   - *Mitigation:* Encourage scoped instrumentation via filters; document rate limiting defaults and provide profiling guidance.
+   - *Metric:* Instrumented build should remain within 5× runtime of baseline for targeted modules.
+2. **Risk: Log Volume Overwhelms Storage or Pipelines**
+   - *Mitigation:* Default to per-thread rolling logs with size caps; expose `ASCII_INSTR_MAX_BYTES` env var; integrate optional gzip rotation.
+   - *Metric:* Demonstrate a 10-minute instrumented session stays under 500 MB with defaults.
+3. **Risk: Developer Misuse in Signal Handlers**
+   - *Mitigation:* Enforce compiler warnings when `ASCII_INSTR_SIGNAL_HANDLER` functions are instrumented; highlight safe patterns in docs.
+   - *Metric:* Zero known incidents of instrumented signal handlers in postmortems.
+4. **Risk: Divergence Between Original and Instrumented Trees**
+   - *Mitigation:* Add automated sanity checks comparing hashes of non-instrumented files; gate merges on clean diffs.
+   - *Metric:* CI guardrail that fails if non-instrumented sources are mutated by the pipeline.
+5. **Success Criteria**
+   - First production bug localized primarily via instrumentation logs.
+   - Positive developer feedback captured in `notes/IMPROVEMENTS.md` (at least two entries).
+   - Optional sanitizercov mode adopted for nightly fuzzing runs with documented wins.
