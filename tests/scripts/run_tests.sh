@@ -1337,7 +1337,6 @@ function main() {
   # Extract just the test target names from full paths
   local test_targets=()
   for test_path in "${all_tests_to_run[@]}"; do
-    echo $test_path
     local test_name=$(basename "$test_path")
     test_targets+=("$test_name")
   done

@@ -59,3 +59,10 @@ if(USE_MUSL)
     # in configure_sanitizers() - no need to change build type
 endif()
 
+# Release tuning controls
+set(ASCIICHAT_RELEASE_CPU_TUNE "portable" CACHE STRING "CPU tuning profile for Release builds (portable, native, x86-64-v2, x86-64-v3, custom)")
+set_property(CACHE ASCIICHAT_RELEASE_CPU_TUNE PROPERTY STRINGS "portable;x86-64-v2;x86-64-v3;native;custom")
+set(ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS "" CACHE STRING "Custom CPU compiler flags for Release builds (used when ASCIICHAT_RELEASE_CPU_TUNE=custom)")
+option(ASCIICHAT_RELEASE_ENABLE_FAST_MATH "Enable aggressive fast-math optimizations in Release builds" OFF)
+option(ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS "Preserve frame pointers in Release builds for better diagnostics" ON)
+
