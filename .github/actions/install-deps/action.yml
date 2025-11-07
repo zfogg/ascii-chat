@@ -199,11 +199,40 @@ runs:
       if: inputs.os == 'macos'
       shell: bash
       run: |
+        detect_brew_prefix() {
+          if command -v brew >/dev/null 2>&1; then
+            brew --prefix
+          elif [ -d "/opt/homebrew" ]; then
+            echo "/opt/homebrew"
+          elif [ -d "/usr/local" ]; then
+            echo "/usr/local"
+          else
+            echo "/opt/homebrew"
+          fi
+        }
+
+        BREW_PREFIX="$(detect_brew_prefix)"
+        echo "Detected Homebrew prefix: ${BREW_PREFIX}"
+
         # NOTE: `brew info make` says "make" is installed as "gmake", but they give us gnubin
-        export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
-        export PATH="/usr/local/opt/llvm/bin:$PATH"
+        if [ -d "${BREW_PREFIX}/opt/make/libexec/gnubin" ]; then
+          export PATH="${BREW_PREFIX}/opt/make/libexec/gnubin:$PATH"
+        fi
+        if [ -d "${BREW_PREFIX}/opt/llvm/bin" ]; then
+          export PATH="${BREW_PREFIX}/opt/llvm/bin:$PATH"
+        fi
 
         export PKG_CONFIG_LIBS="portaudio-2.0 criterion zstd libsodium"
+        export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/share/pkgconfig"
+        export CPPFLAGS="-I${BREW_PREFIX}/include"
+        export LDFLAGS="-L${BREW_PREFIX}/lib"
+
+        if [ -d "${BREW_PREFIX}/opt/llvm/lib/unwind" ]; then
+          export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/unwind -lunwind"
+        fi
+        if [ -d "${BREW_PREFIX}/opt/llvm/lib/c++" ]; then
+          export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/c++"
+        fi
 
         # Set up PATH
         echo "PATH=$PATH" >> $GITHUB_ENV
@@ -226,10 +255,10 @@ runs:
         # Debug: Check if .pc files exist
         echo "Debug: Checking .pc files existence..."
         for lib in $PKG_CONFIG_LIBS; do
-          ls -la /opt/homebrew/lib/pkgconfig/"$lib".pc || (
-            echo "ERROR: No $lib .pc files in /opt/homebrew/lib/pkgconfig/"
+          if ! ls -la "${BREW_PREFIX}/lib/pkgconfig/${lib}.pc"; then
+            echo "ERROR: No $lib .pc files in ${BREW_PREFIX}/lib/pkgconfig/"
             exit 1
-          )
+          fi
         done
 
         # Configure clang to work without Command Line Tools
@@ -246,7 +275,7 @@ runs:
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
-        -resource-dir /usr/local/opt/llvm/lib/clang/21
+        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/21
         EOF
 
         # Create ARM64 config
@@ -255,7 +284,7 @@ runs:
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
-        -resource-dir /usr/local/opt/llvm/lib/clang/21
+        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/21
         EOF
 
         echo "Created clang config files for darwin${DARWIN_VERSION}"
