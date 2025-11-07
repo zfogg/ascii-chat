@@ -24,6 +24,7 @@ elseif(CRC32_HW STREQUAL "auto")
             # ARMv8-A includes optional CRC32, but not all implementations have it
             if(NOT CMAKE_CROSSCOMPILING)
                 # Try runtime detection for ARM CRC32
+                include(CheckCSourceRuns)
                 check_c_source_runs("
                     #include <arm_acle.h>
                     #include <stdint.h>
@@ -40,6 +41,7 @@ elseif(CRC32_HW STREQUAL "auto")
             else()
                 # Cross-compiling - try compile test with required flags
                 set(CMAKE_REQUIRED_FLAGS "-march=armv8-a+crc")
+                include(CheckCSourceCompiles)
                 check_c_source_compiles("
                     #include <arm_acle.h>
                     #include <stdint.h>
