@@ -119,7 +119,53 @@ runs:
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
-        $basePackages = @('cmake', 'ninja', 'llvm', 'git', '7zip')
+        $ErrorActionPreference = 'Stop'
+
+        function Ensure-Scoop {
+          if (Get-Command scoop -ErrorAction SilentlyContinue) {
+            Write-Host "Scoop already installed"
+            return
+          }
+
+          Write-Host "Scoop not found. Installing scoop..."
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          Invoke-RestMethod get.scoop.sh | Invoke-Expression
+        }
+
+        function Ensure-ScoopBucket {
+          param(
+            [string]$Bucket
+          )
+
+          if (-not (scoop bucket list | Select-String -SimpleMatch $Bucket)) {
+            Write-Host "Adding scoop bucket: $Bucket"
+            scoop bucket add $Bucket | Out-Null
+          }
+        }
+
+        function Install-ScoopPackage {
+          param(
+            [string]$Package
+          )
+
+          if ([string]::IsNullOrWhiteSpace($Package)) {
+            return
+          }
+
+          if (scoop list | Select-String -SimpleMatch "^$Package\s") {
+            Write-Host "✓ $Package already installed via scoop"
+          }
+          else {
+            Write-Host "Installing scoop package: $Package"
+            scoop install $Package --global
+          }
+        }
+
+        Ensure-Scoop
+        Ensure-ScoopBucket -Bucket 'main'
+        Ensure-ScoopBucket -Bucket 'extras'
+
+        $basePackages = @('git', '7zip', 'cmake', 'ninja', 'llvm')
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
           $extra = '${{ inputs.extra-packages }}'.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
@@ -127,14 +173,26 @@ runs:
         $packages = $basePackages + $extra
 
         foreach ($pkg in $packages) {
-          Write-Host "Ensuring Chocolatey package '$pkg' is installed"
-          choco install $pkg --no-progress -y
+          Install-ScoopPackage -Package $pkg
+        }
+
+        $scoopShims = Join-Path $env:USERPROFILE 'scoop\shims'
+        if (Test-Path $scoopShims) {
+          Write-Host "Adding scoop shims to PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $scoopShims
         }
 
         $llvmPath = 'C:\Program Files\LLVM\bin'
         if (Test-Path $llvmPath) {
           Write-Host "Adding LLVM to PATH"
           Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
+        }
+
+        # Fallback: ensure cmake & ninja exist
+        foreach ($tool in @('cmake', 'ninja')) {
+          if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+            Write-Host "WARNING: $tool not found after scoop installation" -ForegroundColor Yellow
+          }
         }
 
     - name: Set up build environment (macOS)
