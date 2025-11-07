@@ -4,6 +4,18 @@
 # This module provides unified sanitizer configuration for all platforms
 # and handles conflicts with mimalloc's malloc override and spinlock issues.
 
+# Include compiler flag checking utilities
+include(CheckCCompilerFlag)
+
+# Helper function to safely add compiler flags
+function(add_compiler_flag_if_supported flag)
+    string(MAKE_C_IDENTIFIER "HAVE_CFLAG_${flag}" flag_var)
+    check_c_compiler_flag("${flag}" ${flag_var})
+    if(${flag_var})
+        add_compile_options(${flag})
+    endif()
+endfunction()
+
 # Configure sanitizers based on platform, compiler, and options
 # Args:
 #   USE_MIMALLOC - Whether mimalloc is enabled (disables all sanitizers if true)
@@ -47,10 +59,17 @@ endfunction()
 # Configure AddressSanitizer + UndefinedBehaviorSanitizer + extras
 function(configure_asan_ubsan_sanitizers)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        # Base debug flags (always supported)
+        add_compile_options(-g -fno-omit-frame-pointer)
+
         # INFO: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
-        add_compile_options(-g -fno-sanitize-merge -fno-omit-frame-pointer)
+        # Check for -fno-sanitize-merge support (not available in all Clang versions)
+        add_compiler_flag_if_supported(-fno-sanitize-merge)
+
         # INFO: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#disabling-instrumentation-for-common-overflow-patterns
-        add_compile_options(-fsanitize-recover=unsigned-integer-overflow -fsanitize-undefined-ignore-overflow-pattern=all)
+        # Check for overflow pattern flags (newer Clang feature)
+        add_compiler_flag_if_supported(-fsanitize-recover=unsigned-integer-overflow)
+        add_compiler_flag_if_supported(-fsanitize-undefined-ignore-overflow-pattern=all)
         if(WIN32)
             # Windows with Clang
             add_compile_options(

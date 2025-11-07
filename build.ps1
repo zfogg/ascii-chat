@@ -6,7 +6,6 @@
 #   .\build.ps1 -Config Dev        # Build using dev preset (debug without sanitizers)
 #   .\build.ps1 -Config Coverage   # Build using coverage preset
 #   .\build.ps1 -Clean             # Clean and reconfigure from scratch
-#   .\build.ps1 -VSWithClang       # Use custom config with Visual Studio + ClangCL
 #   .\build.ps1 -NoMimalloc        # Disable mimalloc allocator (use system malloc)
 #   .\build.ps1 -BuildDir mybuild  # Use custom build directory (disables presets)
 #   .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"  # Add compiler flags (disables presets)
@@ -19,7 +18,6 @@ param(
   [string]$Config = "Debug",
   [string]$BuildDir = "build",
   [switch]$Verbose,
-  [switch]$VSWithClang,
   [switch]$NoMimalloc,
   [string[]]$CFlags = @()
 )
@@ -77,7 +75,7 @@ if ($needsConfigure) {
   }
     
   # Check if using special modes that require custom configuration
-  $useCustomConfig = $VSWithClang -or ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
+  $useCustomConfig = ($CFlags.Count -gt 0) -or ($BuildDir -ne "build") -or $NoMimalloc
     
   if ($useCustomConfig) {
     Write-Host "Using custom configuration (preset not applicable with current flags)" -ForegroundColor Yellow
@@ -95,44 +93,17 @@ if ($needsConfigure) {
 
     # Set compiler based on mode
     if (-not $env:CC) {
-      if ($VSWithClang) {
-        # Visual Studio generator with Clang toolset
-        if (Get-Command clang -ErrorAction SilentlyContinue) {
-          $env:CC = "clang"
-          $env:CXX = "clang++"
-          # Remove Ninja generator and use Visual Studio generator with Clang toolset
-          $cmakeArgs = $cmakeArgs | Where-Object { $_ -ne "Ninja" -and $_ -ne "-G" }
-          $cmakeArgs += "-G", "Visual Studio 17 2022"
-          # Use Clang toolset for Visual Studio generator
-          $cmakeArgs += "-T", "ClangCL"
-          # Explicitly set Clang compiler for Visual Studio generator
-          $cmakeArgs += "-DCMAKE_C_COMPILER=clang"
-          $cmakeArgs += "-DCMAKE_CXX_COMPILER=clang++"
-          # Force C23 standard
-          $cmakeArgs += "-DCMAKE_C_STANDARD=23"
-          $cmakeArgs += "-DCMAKE_C_STANDARD_REQUIRED=ON"
-          # Prevent CMakeLists.txt from overriding the generator to Ninja
-          $cmakeArgs += "-DCMAKE_GENERATOR=Visual Studio 17 2022"
-          Write-Host "Using Clang compiler with Visual Studio 17 2022 generator (ClangCL toolset, C23 standard)" -ForegroundColor Yellow
-        }
-        else {
-          Write-Host "ERROR: Clang not found! Please install Clang via Scoop: scoop install llvm" -ForegroundColor Red
-          exit 1
-        }
+      # Native Windows mode - prefer Clang  
+      if (Get-Command clang -ErrorAction SilentlyContinue) {
+        $env:CC = "clang"
+        $env:CXX = "clang++"
+        Write-Host "Using Clang compiler" -ForegroundColor Yellow
       }
-      else {
-        # Native Windows mode - prefer Clang  
-        if (Get-Command clang -ErrorAction SilentlyContinue) {
-          $env:CC = "clang"
-          $env:CXX = "clang++"
-          Write-Host "Using Clang compiler" -ForegroundColor Yellow
-        }
-        elseif (Get-Command gcc -ErrorAction SilentlyContinue) {
-          # Fall back to GCC
-          $env:CC = "gcc"
-          $env:CXX = "g++"
-          Write-Host "Using GCC compiler (Clang's fallback)" -ForegroundColor Yellow
-        }
+      elseif (Get-Command gcc -ErrorAction SilentlyContinue) {
+        # Fall back to GCC
+        $env:CC = "gcc"
+        $env:CXX = "g++"
+        Write-Host "Using GCC compiler (Clang's fallback)" -ForegroundColor Yellow
       }
     }
     else {

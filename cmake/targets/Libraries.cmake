@@ -48,11 +48,22 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
-    # Version dependency and global build timer
-    add_dependencies(${MODULE_NAME} generate_version build-timer-start)
+    if(ASCIICHAT_ENABLE_UNITY_BUILDS)
+        set_target_properties(${MODULE_NAME} PROPERTIES UNITY_BUILD ON)
+    endif()
+
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ${MODULE_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+
+    # Version dependency (build-timer-start removed to prevent unnecessary rebuilds)
+    add_dependencies(${MODULE_NAME} generate_version)
 
     # Include paths
-    target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_BINARY_DIR}/generated)
+    target_include_directories(${MODULE_NAME} PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
+        $<INSTALL_INTERFACE:include/ascii-chat>
+    )
 
     # Build directory for llvm-symbolizer --debug-file-directory (debug builds only)
     # Only include BUILD_DIR in debug builds to avoid embedding build paths in release binaries
@@ -230,7 +241,7 @@ endif()
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
-# Linux: JACK (system PortAudio is built with JACK support)
+# Linux: JACK (if PortAudio is built with JACK support)
 # Windows: WASAPI/DirectSound (handled by platform module)
 # Note: musl builds use PortAudio with ALSA only (no JACK) to avoid static lib dependency
 if(APPLE)
@@ -241,7 +252,30 @@ if(APPLE)
         ${CORESERVICES_FRAMEWORK}
     )
 elseif(UNIX AND NOT USE_MUSL)
-    target_link_libraries(ascii-chat-audio jack)
+    # Check if JACK is available (PortAudio may or may not be built with JACK support)
+    # Try pkg-config first (more reliable on Linux), then fall back to find_library
+    # Ensure JACK variables are defined even if detection fails (avoids undefined-variable checks)
+    set(JACK_FOUND FALSE)
+    set(JACK_LIBRARY JACK_LIBRARY-NOTFOUND)
+    find_package(PkgConfig QUIET)
+    if(PKG_CONFIG_FOUND)
+        pkg_check_modules(JACK QUIET jack)
+        if(JACK_FOUND)
+            set(JACK_LIBRARY ${JACK_LIBRARIES})
+            target_link_libraries(ascii-chat-audio ${JACK_LIBRARIES})
+            message(STATUS "Found ${BoldBlue}JACK${ColorReset} via pkg-config: ${BoldGreen}${JACK_LIBRARIES}${ColorReset}")
+        endif()
+    endif()
+
+    if(NOT JACK_FOUND)
+        find_library(JACK_LIBRARY NAMES jack)
+        if(JACK_LIBRARY)
+            target_link_libraries(ascii-chat-audio ${JACK_LIBRARY})
+            message(STATUS "Found ${BoldBlue}JACK${ColorReset}: ${BoldGreen}${JACK_LIBRARY}${ColorReset}")
+        else()
+            message(STATUS "${BoldYellow}JACK not found${ColorReset} - PortAudio will use ALSA/OSS only")
+        endif()
+    endif()
 endif()
 
 # -----------------------------------------------------------------------------
@@ -268,7 +302,14 @@ endif()
 
 # mimalloc for core
 if(USE_MIMALLOC)
-    target_link_libraries(ascii-chat-core ${MIMALLOC_LIB})
+    if(TARGET mimalloc-static)
+        add_dependencies(ascii-chat-core mimalloc-static)
+    endif()
+    if(ASCIICHAT_MIMALLOC_LINK_LIB)
+        target_link_libraries(ascii-chat-core ${ASCIICHAT_MIMALLOC_LINK_LIB})
+    elseif(MIMALLOC_LIBRARIES)
+        target_link_libraries(ascii-chat-core ${MIMALLOC_LIBRARIES})
+    endif()
 endif()
 
 # -----------------------------------------------------------------------------
@@ -314,6 +355,12 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
     )
+    if(ASCIICHAT_ENABLE_UNITY_BUILDS)
+        set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
+    endif()
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
     set_target_properties(ascii-chat-shared PROPERTIES
         OUTPUT_NAME "asciichat"
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
@@ -378,7 +425,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
 
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
-        ${CMAKE_BINARY_DIR}/generated
+        $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
         ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/include
         ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src
     )
@@ -392,7 +439,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
     endif()
 
     if(USE_MIMALLOC)
-        target_include_directories(ascii-chat-shared PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${FETCHCONTENT_BASE_DIR}/mimalloc-src/include>)
     endif()
 
     # Add dependencies from modules
@@ -425,6 +472,14 @@ else()
         OUTPUT_NAME "asciichat"
         POSITION_INDEPENDENT_CODE ON
     )
+
+    if(ASCIICHAT_ENABLE_UNITY_BUILDS)
+        set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
+    endif()
+
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
 
     # Import library location for Windows Release builds
     # Release: .lib goes in lib/ (standard convention)
@@ -480,7 +535,7 @@ else()
 
     # Mimalloc include directory
     if(USE_MIMALLOC)
-        target_include_directories(ascii-chat-shared PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${FETCHCONTENT_BASE_DIR}/mimalloc-src/include>)
     endif()
 
     # Musl flag
@@ -590,11 +645,19 @@ else()
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
         if(USE_MIMALLOC)
-            # Use mimalloc-shared target (compiled with -fPIC and global-dynamic TLS)
-            target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_SHARED_LIBRARIES})
+            if(TARGET mimalloc-shared)
+                add_dependencies(ascii-chat-shared mimalloc-shared)
+            endif()
+            if(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
+                target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
+            elseif(MIMALLOC_SHARED_LIBRARIES)
+                target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_SHARED_LIBRARIES})
+            endif()
         endif()
     else()
         # Non-musl builds use normal dependencies
+        # Note: PORTAUDIO_LIBRARIES, ZSTD_LIBRARIES, and LIBSODIUM_LIBRARIES are
+        # PkgConfig::* IMPORTED targets that include library paths automatically
         target_link_libraries(ascii-chat-shared PRIVATE
             ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
         )
@@ -603,8 +666,15 @@ else()
         endif()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use PUBLIC linkage so executable gets it transitively (avoids duplicate library warning)
-        if(USE_MIMALLOC AND TARGET mimalloc-shared)
-            target_link_libraries(ascii-chat-shared PUBLIC mimalloc-shared)
+        if(USE_MIMALLOC)
+            if(TARGET mimalloc-shared)
+                add_dependencies(ascii-chat-shared mimalloc-shared)
+            endif()
+            if(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
+                target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
+            elseif(MIMALLOC_SHARED_LIBRARIES)
+                target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_SHARED_LIBRARIES})
+            endif()
         endif()
         if(PLATFORM_DARWIN)
             target_link_libraries(ascii-chat-shared PRIVATE
@@ -615,6 +685,10 @@ else()
             )
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+            # Link JACK if it was found earlier (PortAudio may be built with JACK support)
+            if(JACK_LIBRARY AND NOT USE_MUSL)
+                target_link_libraries(ascii-chat-shared PRIVATE ${JACK_LIBRARY})
+            endif()
         endif()
     endif()
 endif()
@@ -641,43 +715,7 @@ add_custom_command(TARGET ascii-chat-shared POST_BUILD
 # Only available when modules are STATIC libraries (not OBJECT libraries)
 # On Windows Debug/Dev/Coverage, modules are OBJECT libraries for DLL building
 if(NOT BUILDING_OBJECT_LIBS)
-if(APPLE)
-    # macOS: Use libtool to combine static libraries
-    # Create a script that renames all object files before combining
-    set(RENAME_ALL_SCRIPT "${CMAKE_BINARY_DIR}/rename_all_objects.sh")
-    file(WRITE "${RENAME_ALL_SCRIPT}" "#!/bin/bash\n")
-    file(APPEND "${RENAME_ALL_SCRIPT}" "# Rename all object files in all library directories\n")
-    file(APPEND "${RENAME_ALL_SCRIPT}" "set -e\n")
-    foreach(module_lib ${ALL_MODULE_LIBS})
-        file(APPEND "${RENAME_ALL_SCRIPT}" "${CMAKE_SOURCE_DIR}/cmake/scripts/rename_objects.sh \"${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${module_lib}.dir\" \"${CMAKE_SOURCE_DIR}\" || true\n")
-    endforeach()
-    execute_process(COMMAND chmod +x "${RENAME_ALL_SCRIPT}")
-
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-        # Rename all object files before combining archives
-        COMMAND ${RENAME_ALL_SCRIPT}
-        COMMAND libtool -static -o ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-            $<TARGET_FILE:ascii-chat-util>
-            $<TARGET_FILE:ascii-chat-data-structures>
-            $<TARGET_FILE:ascii-chat-platform>
-            $<TARGET_FILE:ascii-chat-crypto>
-            $<TARGET_FILE:ascii-chat-simd>
-            $<TARGET_FILE:ascii-chat-video>
-            $<TARGET_FILE:ascii-chat-audio>
-            $<TARGET_FILE:ascii-chat-network>
-            $<TARGET_FILE:ascii-chat-core>
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        DEPENDS
-            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-        COMMENT ""
-        COMMAND_EXPAND_LISTS
-    )
-else()
-    # Linux/Windows: Use ar MRI script to combine archives
+    # Use ar MRI script to combine archives across platforms
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
         COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
@@ -702,13 +740,13 @@ else()
         COMMENT ""
         COMMAND_EXPAND_LISTS
     )
-endif()
 
 # Create interface library target that wraps the combined static library
 # and propagates all external dependencies
 add_library(ascii-chat-static-lib INTERFACE)
 target_link_libraries(ascii-chat-static-lib INTERFACE
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a>
+    $<INSTALL_INTERFACE:lib/libasciichat.a>
 )
 
 # Propagate external dependencies from individual libraries
@@ -734,7 +772,10 @@ if(APPLE)
         ${CORESERVICES_FRAMEWORK}
     )
 elseif(UNIX AND NOT USE_MUSL)
-    target_link_libraries(ascii-chat-static-lib INTERFACE jack)
+    # Link JACK if it was found earlier
+    if(JACK_LIBRARY)
+        target_link_libraries(ascii-chat-static-lib INTERFACE ${JACK_LIBRARY})
+    endif()
 endif()
 
 # Memory allocator (mimalloc)
@@ -823,16 +864,23 @@ endif()
 # =============================================================================
 # Create an alias that links all modules for test compatibility
 # This allows tests to link against ascii-chat-lib instead of individual modules
+# Note: Libraries with circular dependencies must be listed in correct order:
+# - core needs symbols from network (buffer_pool) and crypto (known_hosts)
+# - network needs symbols from core
+# Solution: List consumers before providers, with circulars listed twice
 add_library(ascii-chat-lib INTERFACE)
 target_link_libraries(ascii-chat-lib INTERFACE
-    ascii-chat-util
-    ascii-chat-platform
-    ascii-chat-crypto
     ascii-chat-simd
     ascii-chat-video
     ascii-chat-audio
+    ascii-chat-core
+    ascii-chat-network
+    ascii-chat-crypto
     ascii-chat-network
     ascii-chat-core
+    ascii-chat-platform
+    ascii-chat-data-structures
+    ascii-chat-util
 )
 
 # =============================================================================

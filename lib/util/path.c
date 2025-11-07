@@ -6,8 +6,11 @@
 
 #include "path.h"
 #include "common.h"
+#include "platform/system.h"
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 /* Normalize a path by resolving .. and . components
  * Handles both Windows (\) and Unix (/) separators
@@ -271,4 +274,316 @@ char *get_config_dir(void) {
   safe_snprintf(dir, len, "%s/.ascii-chat/", home);
   return dir;
 #endif
+}
+
+bool path_normalize_copy(const char *path, char *out, size_t out_len) {
+  if (!path || !out || out_len == 0) {
+    return false;
+  }
+
+  const char *normalized = normalize_path(path);
+  if (!normalized) {
+    return false;
+  }
+
+  size_t len = strlen(normalized);
+  if (len + 1 > out_len) {
+    return false;
+  }
+
+  memcpy(out, normalized, len + 1);
+  return true;
+}
+
+bool path_is_absolute(const char *path) {
+  if (!path || !*path) {
+    return false;
+  }
+
+#ifdef _WIN32
+  if ((path[0] == '\\' && path[1] == '\\')) {
+    return true; // UNC path
+  }
+  if (isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+    return true;
+  }
+  return false;
+#else
+  return path[0] == '/';
+#endif
+}
+
+bool path_is_within_base(const char *path, const char *base) {
+  if (!path || !base) {
+    return false;
+  }
+
+  if (!path_is_absolute(path) || !path_is_absolute(base)) {
+    return false;
+  }
+
+  char normalized_path[PLATFORM_MAX_PATH_LENGTH];
+  char normalized_base[PLATFORM_MAX_PATH_LENGTH];
+
+  if (!path_normalize_copy(path, normalized_path, sizeof(normalized_path))) {
+    return false;
+  }
+  if (!path_normalize_copy(base, normalized_base, sizeof(normalized_base))) {
+    return false;
+  }
+
+  size_t base_len = strlen(normalized_base);
+  if (base_len == 0) {
+    return false;
+  }
+
+#ifdef _WIN32
+  if (_strnicmp(normalized_path, normalized_base, base_len) != 0) {
+    return false;
+  }
+  char next = normalized_path[base_len];
+  if (next == '\0') {
+    return true;
+  }
+  return next == '\\' || next == '/';
+#else
+  if (strncmp(normalized_path, normalized_base, base_len) != 0) {
+    return false;
+  }
+  char next = normalized_path[base_len];
+  if (next == '\0') {
+    return true;
+  }
+  return next == '/';
+#endif
+}
+
+bool path_is_within_any_base(const char *path, const char *const *bases, size_t base_count) {
+  if (!path || !bases || base_count == 0) {
+    return false;
+  }
+
+  for (size_t i = 0; i < base_count; ++i) {
+    const char *base = bases[i];
+    if (!base) {
+      continue;
+    }
+    if (path_is_within_base(path, base)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool path_looks_like_path(const char *value) {
+  if (!value || *value == '\0') {
+    return false;
+  }
+
+  if (value[0] == '/' || value[0] == '\\' || value[0] == '.' || value[0] == '~') {
+    return true;
+  }
+
+  if (strchr(value, '/') || strchr(value, '\\')) {
+    return true;
+  }
+
+#ifdef _WIN32
+  if (isalpha((unsigned char)value[0]) && value[1] == ':' && (value[2] == '\\' || value[2] == '/')) {
+    return true;
+  }
+#endif
+
+  return false;
+}
+
+static asciichat_error_t map_role_to_error(path_role_t role) {
+  switch (role) {
+  case PATH_ROLE_CONFIG_FILE:
+    return ERROR_CONFIG;
+  case PATH_ROLE_LOG_FILE:
+    return ERROR_LOGGING_INIT;
+  case PATH_ROLE_KEY_PRIVATE:
+  case PATH_ROLE_KEY_PUBLIC:
+  case PATH_ROLE_CLIENT_KEYS:
+    return ERROR_CRYPTO_KEY;
+  }
+  return ERROR_GENERAL;
+}
+
+static void append_base_if_valid(const char *candidate, const char **bases, size_t *count) {
+  if (!candidate || *candidate == '\0' || *count >= 16) {
+    return;
+  }
+  if (!path_is_absolute(candidate)) {
+    return;
+  }
+  bases[*count] = candidate;
+  (*count)++;
+}
+
+static void build_ascii_chat_path(const char *base, const char *suffix, char *out, size_t out_len) {
+  if (!base || !suffix || out_len == 0) {
+    out[0] = '\0';
+    return;
+  }
+
+  const char sep =
+#ifdef _WIN32
+      '\\';
+#else
+      '/';
+#endif
+
+  size_t base_len = strlen(base);
+  bool needs_sep = base_len > 0 && base[base_len - 1] != '/' && base[base_len - 1] != '\\';
+
+  safe_snprintf(out, out_len, "%s%s%s", base, needs_sep ? (sep == '/' ? "/" : "\\") : "", suffix);
+}
+
+asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out) {
+  if (!normalized_out) {
+    return SET_ERRNO(map_role_to_error(role), "path_validate_user_path requires output pointer");
+  }
+  *normalized_out = NULL;
+
+  if (!input || *input == '\0') {
+    return SET_ERRNO(map_role_to_error(role), "Path is empty for role %d", role);
+  }
+
+  if (!path_looks_like_path(input)) {
+    return SET_ERRNO(map_role_to_error(role), "Value does not look like a filesystem path: %s", input);
+  }
+
+  char *expanded = expand_path(input);
+  if (!expanded) {
+    return SET_ERRNO(map_role_to_error(role), "Failed to expand path: %s", input);
+  }
+
+  char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
+  const char *candidate_path = expanded;
+
+  if (!path_is_absolute(candidate_path)) {
+    char cwd_buf[PLATFORM_MAX_PATH_LENGTH];
+    if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+      SAFE_FREE(expanded);
+      return SET_ERRNO(map_role_to_error(role), "Failed to determine current working directory");
+    }
+
+    char sep =
+#ifdef _WIN32
+        '\\';
+#else
+        '/';
+#endif
+
+    size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
+    if (total_len >= sizeof(candidate_buf)) {
+      SAFE_FREE(expanded);
+      return SET_ERRNO(map_role_to_error(role), "Resolved path is too long: %s/%s", cwd_buf, candidate_path);
+    }
+    if (strlen(candidate_path) > 0 && (candidate_path[0] == '/' || candidate_path[0] == '\\')) {
+      safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%s", cwd_buf, candidate_path);
+    } else {
+      safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%c%s", cwd_buf, sep, candidate_path);
+    }
+    candidate_path = candidate_buf;
+  }
+
+  char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
+  if (!path_normalize_copy(candidate_path, normalized_buf, sizeof(normalized_buf))) {
+    SAFE_FREE(expanded);
+    return SET_ERRNO(map_role_to_error(role), "Failed to normalize path: %s", candidate_path);
+  }
+
+  if (!path_is_absolute(normalized_buf)) {
+    SAFE_FREE(expanded);
+    return SET_ERRNO(map_role_to_error(role), "Normalized path is not absolute: %s", normalized_buf);
+  }
+
+  const char *bases[16] = {0};
+  size_t base_count = 0;
+
+  char cwd_base[PLATFORM_MAX_PATH_LENGTH];
+  if (platform_get_cwd(cwd_base, sizeof(cwd_base))) {
+    append_base_if_valid(cwd_base, bases, &base_count);
+  }
+
+  char temp_base[PLATFORM_MAX_PATH_LENGTH];
+  if (platform_get_temp_dir(temp_base, sizeof(temp_base))) {
+    append_base_if_valid(temp_base, bases, &base_count);
+  }
+
+  char *config_dir = get_config_dir();
+  if (config_dir) {
+    append_base_if_valid(config_dir, bases, &base_count);
+  }
+
+  const char *home_env = platform_getenv("HOME");
+#ifdef _WIN32
+  if (!home_env) {
+    home_env = platform_getenv("USERPROFILE");
+  }
+#endif
+  if (home_env) {
+    append_base_if_valid(home_env, bases, &base_count);
+  }
+
+  char ascii_chat_home[PLATFORM_MAX_PATH_LENGTH];
+  if (home_env) {
+    build_ascii_chat_path(home_env, ".ascii-chat", ascii_chat_home, sizeof(ascii_chat_home));
+    append_base_if_valid(ascii_chat_home, bases, &base_count);
+  }
+
+  char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
+#ifndef _WIN32
+  build_ascii_chat_path("/tmp", ".ascii-chat", ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
+  append_base_if_valid(ascii_chat_home_tmp, bases, &base_count);
+#endif
+
+  char ssh_home[PLATFORM_MAX_PATH_LENGTH];
+  if (home_env) {
+    build_ascii_chat_path(home_env, ".ssh", ssh_home, sizeof(ssh_home));
+    append_base_if_valid(ssh_home, bases, &base_count);
+  }
+
+#ifdef _WIN32
+  const char *program_data = platform_getenv("PROGRAMDATA");
+  if (program_data) {
+    char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
+    build_ascii_chat_path(program_data, "ascii-chat", program_data_logs, sizeof(program_data_logs));
+    append_base_if_valid(program_data_logs, bases, &base_count);
+  }
+#else
+  append_base_if_valid("/var/log", bases, &base_count);
+  append_base_if_valid("/var/tmp", bases, &base_count);
+#endif
+
+  bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+
+  if (!allowed) {
+    SAFE_FREE(expanded);
+    if (config_dir) {
+      SAFE_FREE(config_dir);
+    }
+    return SET_ERRNO(map_role_to_error(role), "Path %s is outside allowed directories", normalized_buf);
+  }
+
+  char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
+  if (!result) {
+    SAFE_FREE(expanded);
+    if (config_dir) {
+      SAFE_FREE(config_dir);
+    }
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate normalized path");
+  }
+  safe_snprintf(result, strlen(normalized_buf) + 1, "%s", normalized_buf);
+  *normalized_out = result;
+
+  SAFE_FREE(expanded);
+  if (config_dir) {
+    SAFE_FREE(config_dir);
+  }
+  return ASCIICHAT_OK;
 }

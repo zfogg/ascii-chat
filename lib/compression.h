@@ -6,14 +6,14 @@
  * @brief Network Packet Compression Utilities
  *
  * This header provides compression and decompression utilities for network
- * packets in ascii-chat. The system uses zlib deflate compression to reduce
+ * packets in ascii-chat. The system uses zstd compression to reduce
  * bandwidth usage for large packets like video frames.
  *
  * CORE FEATURES:
  * ==============
+ * - zstd compression algorithm
  * - Automatic compression ratio checking (only use if beneficial)
  * - Minimum size threshold to avoid compressing small packets
- * - zlib deflate compression algorithm
  * - Memory-efficient compression/decompression
  * - Pure utility functions (no state management)
  *
@@ -30,8 +30,7 @@
  *
  * ALGORITHM:
  * ==========
- * - Uses zlib deflate for compression
- * - Compatible with standard zlib/gzip decompression
+ * - Uses Facebook's zstd deflate for compression
  * - Provides good compression ratio for text/ASCII data
  * - Reasonable CPU overhead for real-time streaming
  *
@@ -61,15 +60,15 @@
 /** @} */
 
 /**
- * @brief Compress data using zlib deflate
+ * @brief Compress data using zstd
  * @param input Input data to compress (must not be NULL)
  * @param input_size Size of input data in bytes
  * @param output Output buffer pointer (allocated by function, must not be NULL)
  * @param output_size Size of compressed data in bytes (output parameter, must not be NULL)
  * @return 0 on success, non-zero on error
  *
- * Compresses input data using zlib deflate algorithm. The output buffer is
- * automatically allocated by the function and must be freed by the caller
+ * Compresses input data using zstd's compression algorithm. The output buffer
+ * is automatically allocated by the function and must be freed by the caller
  * using free() or the appropriate memory management function.
  *
  * @note The output buffer is allocated using malloc(). Caller must free it
@@ -86,22 +85,22 @@
 int compress_data(const void *input, size_t input_size, void **output, size_t *output_size);
 
 /**
- * @brief Decompress data using zlib inflate
+ * @brief Decompress data using zstd
  * @param input Compressed input data (must not be NULL)
  * @param input_size Size of compressed data in bytes
  * @param output Pre-allocated output buffer (must not be NULL)
  * @param output_size Size of output buffer in bytes (must be >= decompressed size)
  * @return 0 on success, non-zero on error
  *
- * Decompresses zlib deflate-compressed data into a pre-allocated output buffer.
+ * Decompresses zstd-compressed data into a pre-allocated output buffer.
  * The output buffer must be large enough to hold the decompressed data.
  *
  * @note The output buffer size must be known in advance (typically from packet
  *       header or protocol specification). This function does not dynamically
  *       allocate the output buffer.
  *
- * @note This function uses zlib inflate algorithm, compatible with standard
- *       zlib/gzip compression.
+ * @note This function uses zstd inflate algorithm, compatible with standard
+ *       zstd compression.
  *
  * @warning Output buffer must be large enough for decompressed data or buffer
  *          overflow will occur. Ensure output_size is correct before calling.

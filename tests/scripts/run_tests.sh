@@ -5,6 +5,12 @@
 # =============================================================================
 # This script unifies all the common test running patterns from the Makefile
 # into a single, reusable script that can be called from various contexts.
+#
+# BUILD DIRECTORY DETECTION:
+#   - Docker environment (/.dockerenv exists): always uses build_docker/
+#   - Native environment: uses build/
+#   - Centralized in get_build_directory() function - use that instead of
+#     hardcoding paths or adding environment detection logic
 
 set -uo pipefail # Remove 'e' flag so we can handle errors ourselves
 set -m           # Enable job control for better signal handling
@@ -16,6 +22,9 @@ if [[ -t 0 ]]; then
   # We have a TTY, ensure we can receive signals
   stty isig 2>/dev/null || true
 fi
+
+export CC=clang
+export CXX=clang++
 
 # =============================================================================
 # Signal Handling
@@ -222,6 +231,17 @@ EOF
 # Note: colored_make function removed - now using CMake exclusively
 # CMake handles both initial builds and incremental updates efficiently
 
+# Determine build directory based on environment
+# In Docker: always use build_docker
+# Otherwise: use build
+function get_build_directory() {
+  if [ -e /.dockerenv ]; then
+    echo "build_docker"
+  else
+    echo "build"
+  fi
+}
+
 # Run cmake --build with optional grc colorization
 function cmake_build() {
   local build_dir="$1"
@@ -264,27 +284,16 @@ function get_test_executables() {
   local category="$1"
   local build_type="${2:-debug}" # Optional build type parameter
 
-  # Try different bin directories in order of preference
-  local bin_dirs=(
-    "$PROJECT_ROOT/build_docker/bin"    # Docker CMake build
-    "$PROJECT_ROOT/build_clang/bin"     # Windows CMake build
-    "$PROJECT_ROOT/build/bin"           # Standard CMake build
-    "$PROJECT_ROOT/bin"                 # Make build (legacy)
-  )
+  # Use centralized build directory detection
+  local cmake_build_dir=$(get_build_directory)
+  local bin_dir="$PROJECT_ROOT/$cmake_build_dir/bin"
 
-  local bin_dir=""
-  for dir in "${bin_dirs[@]}"; do
-    if [[ -d "$dir" ]]; then
-      bin_dir="$dir"
-      log_verbose "Using test executables from: $bin_dir"
-      break
-    fi
-  done
-
-  if [[ -z "$bin_dir" ]]; then
-    log_verbose "No bin directory found. Tried: ${bin_dirs[*]}"
+  if [[ ! -d "$bin_dir" ]]; then
+    log_verbose "No bin directory found: $bin_dir"
     return
   fi
+
+  log_verbose "Using test executables from: $bin_dir"
 
   # Handle coverage builds differently
   if [[ "$build_type" == "coverage" ]]; then
@@ -398,12 +407,13 @@ function ensure_tests_built() {
 
   cd "$PROJECT_ROOT"
 
-  # Determine build directory based on environment
-  local cmake_build_dir="build"
-  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
-    cmake_build_dir="build_docker"
-  elif [[ -d "build_clang" ]]; then
-    cmake_build_dir="build_clang"
+  # Use centralized build directory detection
+  local cmake_build_dir=$(get_build_directory)
+
+  # Ensure build directory exists
+  if [[ ! -d "$cmake_build_dir" ]]; then
+    log_info "Creating build directory: $cmake_build_dir"
+    mkdir -p "$cmake_build_dir"
   fi
 
   # Check if we have a build directory with CMake cache
@@ -434,7 +444,7 @@ function ensure_tests_built() {
     case "$build_type" in
     debug)
       cmake_build_type="Debug"
-      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x -fsanitize=address'"
+      cmake_flags="$cmake_flags -DCMAKE_C_FLAGS='-std=c2x'"
       ;;
     dev)
       cmake_build_type="Debug"
@@ -458,8 +468,7 @@ function ensure_tests_built() {
     esac
 
     log_info "Configuring CMake build in $cmake_build_dir (build type: $cmake_build_type)..."
-    CC=clang CXX=clang++ cmake -B "$cmake_build_dir" -G Ninja \
-      -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+    cmake -B "$cmake_build_dir" -G Ninja \
       -DCMAKE_BUILD_TYPE="$cmake_build_type" $cmake_flags
 
     # Build with CMake
@@ -1018,12 +1027,13 @@ function build_test_executable() {
 
   log_info "🔨 Building test: $test_name in $build_type mode"
 
-  # Determine build directory based on environment
-  local cmake_build_dir="build"
-  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "$PROJECT_ROOT/build_docker" ]]; then
-    cmake_build_dir="build_docker"
-  elif [[ -d "$PROJECT_ROOT/build_clang" ]]; then
-    cmake_build_dir="build_clang"
+  # Use centralized build directory detection
+  local cmake_build_dir=$(get_build_directory)
+
+  # Ensure build directory exists
+  if [[ ! -d "$PROJECT_ROOT/$cmake_build_dir" ]]; then
+    log_info "Creating build directory: $cmake_build_dir"
+    mkdir -p "$PROJECT_ROOT/$cmake_build_dir"
   fi
 
   # Check if we have a build directory with CMake cache
@@ -1269,46 +1279,16 @@ function main() {
   local all_tests_to_run=()
   local overall_start_time=$(date +%s.%N)
 
+  # Use centralized build directory detection for single and multiple test modes
+  local cmake_build_dir=$(get_build_directory)
+  local bin_dir="$PROJECT_ROOT/$cmake_build_dir/bin"
+
   if [[ -n "$SINGLE_TEST" ]]; then
-    # Single test mode - determine which bin directory to use
-    local bin_dirs=(
-      "$PROJECT_ROOT/build_docker/bin"
-      "$PROJECT_ROOT/build_clang/bin"
-      "$PROJECT_ROOT/build/bin"
-      "$PROJECT_ROOT/bin"
-    )
-    local bin_dir=""
-    for dir in "${bin_dirs[@]}"; do
-      if [[ -d "$dir" ]]; then
-        bin_dir="$dir"
-        break
-      fi
-    done
-    if [[ -z "$bin_dir" ]]; then
-      log_error "No bin directory found (build_docker, build_clang, build, or bin)"
-      exit 1
-    fi
+    # Single test mode
     # Queue test to be built - don't check if it exists yet
     all_tests_to_run=("$bin_dir/$SINGLE_TEST")
   elif [[ -n "$MULTIPLE_TEST_MODE" ]]; then
-    # Multiple specific tests mode - determine which bin directory to use
-    local bin_dirs=(
-      "$PROJECT_ROOT/build_docker/bin"
-      "$PROJECT_ROOT/build_clang/bin"
-      "$PROJECT_ROOT/build/bin"
-      "$PROJECT_ROOT/bin"
-    )
-    local bin_dir=""
-    for dir in "${bin_dirs[@]}"; do
-      if [[ -d "$dir" ]]; then
-        bin_dir="$dir"
-        break
-      fi
-    done
-    if [[ -z "$bin_dir" ]]; then
-      log_error "No bin directory found for tests"
-      exit 1
-    fi
+    # Multiple specific tests mode
     # Queue tests to be built - don't check if they exist yet
     for test in "${MULTIPLE_TESTS[@]}"; do
       all_tests_to_run+=("$bin_dir/$test")
@@ -1361,29 +1341,17 @@ function main() {
     test_targets+=("$test_name")
   done
 
-  # Determine build directory
-  local cmake_build_dir="build"
-  if [[ -n "${DOCKER_BUILD:-}" ]] || [[ -d "build_docker" ]]; then
-    cmake_build_dir="build_docker"
-  elif [[ -d "build_clang" ]]; then
-    cmake_build_dir="build_clang"
-  fi
+  # cmake_build_dir already set above using get_build_directory()
 
   if [[ ${#test_targets[@]} -gt 0 ]]; then
     # Build all test targets in one command - ninja will parallelize and handle dependencies
     # Use ninja directly instead of cmake --build for faster execution
-    local build_output
-    local build_exit_code
-    build_output=$(cd "$cmake_build_dir" && ninja "${test_targets[@]}" 2>&1)
-    build_exit_code=$?
+    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
 
-    # Only show build message and output if ninja actually did work
-    if [[ "$build_output" != *"ninja: no work to do"* ]]; then
-      log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
-      echo "$build_output"
-    elif [[ -n "$VERBOSE" ]]; then
-      log_verbose "All test executables are up to date (ninja: no work to do)"
-    fi
+    # Show ninja output in real-time
+    local build_exit_code
+    (cd "$cmake_build_dir" && ninja "${test_targets[@]}")
+    build_exit_code=$?
 
     # Check if build failed
     if [[ $build_exit_code -ne 0 ]]; then

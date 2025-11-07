@@ -563,16 +563,6 @@ PACKED_ATTR /** @endcond */ auth_failure_packet_t;
  */
 
 /**
- * @brief Compression algorithm flags
- *
- * Bitmask values for supported compression algorithms.
- * Multiple algorithms can be advertised for negotiation.
- */
-#define COMPRESS_ALGO_NONE 0x00 /**< @brief No compression */
-#define COMPRESS_ALGO_ZLIB 0x01 /**< @brief zlib deflate compression */
-#define COMPRESS_ALGO_LZ4 0x02  /**< @brief LZ4 fast compression (future) */
-
-/**
  * @brief Feature flags for protocol_version_packet_t
  *
  * Bitmask values for optional protocol features.
@@ -619,7 +609,7 @@ PACKED_ATTR /** @endcond */ protocol_version_packet_t;
  * Used for both client->server (camera input) and server->client (mixed output) transmission.
  *
  * @note ASCII frame data follows this header in the packet payload.
- * @note If compressed_size > 0, data is zlib compressed.
+ * @note If compressed_size > 0, data is zstd compressed.
  * @note Format: char data[original_size] or compressed_data[compressed_size]
  *
  * @ingroup packet

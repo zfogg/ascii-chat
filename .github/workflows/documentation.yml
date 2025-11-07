@@ -10,11 +10,15 @@ on:
     paths:
       - '**.md'
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   check-links:
     name: Check Documentation Links
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -38,7 +42,7 @@ jobs:
   spell-check:
     name: Spell Check Documentation
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

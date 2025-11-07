@@ -210,6 +210,31 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             ${TEST_LDFLAGS}
         )
 
+        # Handle circular dependencies between libraries
+        # This is needed because core→network→core and core→crypto have circular refs
+        if(NOT WIN32 AND NOT APPLE)
+            # Linux: Use --start-group/--end-group
+            target_link_options(${test_exe_name} PRIVATE
+                -Wl,--start-group
+            )
+            target_link_libraries(${test_exe_name}
+                ascii-chat-core
+                ascii-chat-network
+                ascii-chat-crypto
+            )
+            target_link_options(${test_exe_name} PRIVATE
+                -Wl,--end-group
+            )
+        elseif(APPLE)
+            # macOS: List libraries multiple times (ld64 doesn't have --start-group)
+            target_link_libraries(${test_exe_name}
+                ascii-chat-core
+                ascii-chat-util
+                ascii-chat-network
+                ascii-chat-crypto
+            )
+        endif()
+
         # For musl static builds, allow undefined boxfort references (they won't be called)
         if(USE_MUSL)
             target_link_options(${test_exe_name} PRIVATE

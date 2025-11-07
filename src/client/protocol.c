@@ -38,9 +38,9 @@
  *
  * ## Compression Support
  *
- * Frame packets support optional zlib compression:
+ * Frame packets support optional zstd compression:
  * - **Detection**: Frame flags indicate compression status
- * - **Decompression**: zlib inflation with size validation
+ * - **Decompression**: zstd inflation with size validation
  * - **Fallback**: Graceful handling when compression disabled
  * - **Integrity**: CRC32 verification of decompressed data
  *
@@ -226,7 +226,7 @@ static bool g_should_clear_before_next_frame = false;
  * @brief Handle incoming ASCII frame packet from server
  *
  * Processes unified ASCII frame packets that contain both header information
- * and frame data. Supports optional zlib compression with integrity verification.
+ * and frame data. Supports optional zstd compression with integrity verification.
  * Manages frame display timing for snapshot mode and console clearing logic.
  *
  * Frame Processing Pipeline:

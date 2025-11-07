@@ -1249,7 +1249,37 @@
  * - **Sanitizers**: None (maximum performance)
  * - **mimalloc**: Enabled by default
  * - **musl**: Enabled on Linux (for Release/RelWithDebInfo)
+* - **Stack Protection**: `-fstack-protector-strong` kept enabled on Unix
+* - **PIE / ASLR**: Enabled on all platforms (Linux static-PIE, macOS `-Wl,-pie`, Windows `/dynamicbase` + `/highentropyva`)
+* - **Control-Flow Guard (Windows)**: `/guard:cf` and `/nxcompat` enforced when using clang-cl
+* - **Dead Dylib Stripping (macOS)**: `-Wl,-dead_strip_dylibs` removes unused framework deps
+* - **Interprocedural Optimization**: Automatically enabled when the toolchain supports IPO/LTO
  *
+* **Security & Portability Philosophy**:
+* - Release artefacts must run everywhere: we default to a **portable CPU baseline** (`-march=x86-64` or `-march=armv8-a`) so a build from a modern workstation still runs on older hosts. Opt-in profiles let you trade reach for throughput when you know your deployment target.
+* - Harden first, tune second: stack protectors, NX, ASLR, and CFG stay enabled even when chasing size or perf. They are cheap insurance, so we only let you dial them back after an explicit, auditable choice.
+* - Keep crash forensics viable: frame pointers remain on by default, unwind tables are preserved, and we build symbol bundles so answering “why did it crash?” never requires reproducing the exact build tree.
+* - Cross-module performance is intentional: interprocedural optimization (IPO/LTO) now spans the shared library, static SDK archive, and main executable so users linking against the SDK get the same scalar/SIMD inlining the app does. The build automatically falls back when IPO is unsupported.
+*
+* **Configurable Release Knobs**:
+* - `-DASCIICHAT_RELEASE_CPU_TUNE=portable|x86-64-v2|x86-64-v3|native|custom`
+*   - Controls the CPU baseline used for Release compilation.
+*   - `portable` (default) prioritizes broad compatibility.
+*   - `x86-64-v2`/`x86-64-v3` target newer Intel/AMD micro-architectures.
+*   - `native` mirrors the build host for lab benchmarking (not portable).
+*   - `custom` consumes additional switches from `ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS`.
+* - `-DASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS="-msse4.2 ..."`
+*   - Additional compiler switches applied when `ASCIICHAT_RELEASE_CPU_TUNE=custom`.
+*   - Space-separated flags are supported; quote the whole string for the shell.
+* - `-DASCIICHAT_RELEASE_ENABLE_FAST_MATH=ON`
+*   - Opt-in for the aggressive fast-math bundle (reciprocal approximations, associative FP, etc.).
+*   - Default is `OFF` to keep IEEE semantics for audio mixing and crypto code; toggle only after profiling the hot loops you own.
+* - `-DASCIICHAT_RELEASE_KEEP_FRAME_POINTERS=OFF`
+*   - Lets you trade unwindable stacks for slightly smaller/faster code.
+*   - Default `ON` keeps frame pointers so postmortem tooling (Crashpad, addr2line, symbolicators) can reconstruct stacks from field crashes.
+*
+* The release toolchain prints the resolved choices during configuration. For CI/CD, pin them in your preset so the resulting artefacts are reproducible and reviewers can tell which trade-offs you made.
+*
  * **When to Use**:
  * - Production deployments
  * - Performance benchmarking
@@ -1404,62 +1434,8 @@
  *
  * @subsection build_philosophy_releases Release Distribution
  *
- * **What We Provide in Releases**:
- *
- * When you download an ascii-chat release from GitHub, you get:
- * - **Binaries**: Optimized executables for your platform
- *   - Windows: `ascii-chat.exe` (static)
- *   - Linux: `ascii-chat` (static musl)
- *   - macOS: `ascii-chat` (universal binary)
- *
- * - **Static Library** (`libasciichat.a`):
- *   - For embedding ascii-chat into your own projects
- *   - Link with `gcc -o myapp myapp.c -L/path/to/lib -lasciichat-static`
- *
- * - **Shared Library**:
- *   - Windows: `asciichat.dll` + `asciichat.lib` (import library)
- *   - Linux: `libasciichat.so`
- *   - macOS: `libasciichat.dylib`
- *   - For dynamic linking at runtime
- *
- * - **C Headers**:
- *   - `lib/logging.h`, `lib/common.h`, `lib/network.h`, etc.
- *   - Public API for library integration
- *
- * - **Package Installers** (via CPack):
- *   - Windows: `.msi` (WiX-based MSI) and `.exe` (NSIS self-extracting)
- *   - Linux: `.deb` (Debian/Ubuntu), `.rpm` (RedHat/Fedora)
- *   - macOS: `.dmg` disk image
- *   - All installers include binaries, libraries, and headers
- *
- * **Using ascii-chat as a Library**:
- *
- * Static linking example:
- * @code{.c}
- * #include <asciichat/logging.h>
- * #include <asciichat/common.h>
- *
- * int main(void) {
- *     log_init(NULL, LOG_INFO);
- *     log_info("Hello from my app!");
- *     log_destroy();
- *     return 0;
- * }
- * @endcode
- *
- * Compile:
- * @code{.bash}
- * # Link against static library
- * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat-static -lsodium -lportaudio
- *
- * # Link against shared library (Linux)
- * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat
- * @endcode
- *
- * **Installation Methods**:
- * 1. **Package Manager** (recommended): Install via `.deb`, `.rpm`, or `.msi`
- * 2. **Manual**: Extract tarball/zip to `/usr/local` or `C:\Program Files`
- * 3. **Build from source**: Clone repo and build yourself
+ * **Download binaries**: Grab ascii-chat from the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases). Each release ships ready-to-run binaries, installers, and SDK artifacts for Linux, macOS, and Windows.
+ * **Build from source**: Clone the repository, install the dependencies documented in @ref topic_dependencies and the project README, then run `make CMAKE_BUILD_TYPE=RelWithDebInfo` to produce a working copy in `build/bin/`.
  *
  * @subsection build_philosophy_summary Summary
  *

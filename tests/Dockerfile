@@ -30,6 +30,8 @@ ENV CCACHE_DIR=/ccache \
 RUN pacman -Sy --noconfirm \
   which \
   pkg-config \
+  dpkg \
+  rpm-tools \
   llvm \
   clang \
   lld \
