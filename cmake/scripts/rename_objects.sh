@@ -30,10 +30,10 @@ find "$OBJ_DIR" -name "*.o" -type f | while read -r obj_file; do
         continue
     fi
 
-    # Only rename and move to root if necessary
+    # Only rename and copy to root if necessary
     if [[ "$basename_obj" != "$new_name" ]]; then
-        # Move to root of OBJ_DIR with new name
-        mv "$obj_file" "$OBJ_DIR/$new_name"
+        # Copy to root of OBJ_DIR with new name (preserve original for Ninja)
+        cp "$obj_file" "$OBJ_DIR/$new_name"
         echo "Renamed: $basename_obj -> $new_name"
     fi
 done

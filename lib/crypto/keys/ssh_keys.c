@@ -11,6 +11,7 @@
 #include "platform/password.h"
 #include "platform/internal.h"
 #include "util/string.h"
+#include "util/path.h"
 #include "../ssh_agent.h"
 #include <sodium.h>
 #include <bearssl.h>
@@ -967,9 +968,21 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: key_path=%p", key_path);
   }
 
+  if (!path_looks_like_path(key_path)) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid SSH key path: %s", key_path);
+  }
+
+  char *normalized_path = NULL;
+  asciichat_error_t path_result = path_validate_user_path(key_path, PATH_ROLE_KEY_PRIVATE, &normalized_path);
+  if (path_result != ASCIICHAT_OK) {
+    SAFE_FREE(normalized_path);
+    return path_result;
+  }
+
   // Check if file exists and is readable
-  FILE *test_file = platform_fopen(key_path, "r");
+  FILE *test_file = platform_fopen(normalized_path, "r");
   if (test_file == NULL) {
+    SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Cannot read key file: %s", key_path);
   }
 
@@ -985,21 +998,24 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   (void)fclose(test_file);
 
   if (!is_ssh_key_file) {
+    SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "File is not a valid SSH key: %s", key_path);
   }
 
   // Check permissions for SSH key files (should be 600 or 400)
 #ifndef _WIN32
   struct stat st;
-  if (stat(key_path, &st) == 0) {
+  if (stat(normalized_path, &st) == 0) {
     if ((st.st_mode & SSH_KEY_PERMISSIONS_MASK) != 0) {
       log_error("SSH key file %s has overly permissive permissions: %o", key_path, st.st_mode & 0777);
       log_error("Run 'chmod 600 %s' to fix this", key_path);
+      SAFE_FREE(normalized_path);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "SSH key file has overly permissive permissions: %s", key_path);
     }
   }
 #endif
 
+  SAFE_FREE(normalized_path);
   return ASCIICHAT_OK;
 }
 

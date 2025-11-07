@@ -630,10 +630,10 @@ static void apply_palette_config_from_toml(toml_datum_t toptab) {
  *
  * @ingroup config
  */
-static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
+static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client) {
   toml_datum_t crypto = toml_seek(toptab, "crypto");
   if (crypto.type != TOML_TABLE) {
-    return; // No crypto section
+    return ASCIICHAT_OK; // No crypto section
   }
 
   // Encrypt enabled
@@ -647,9 +647,18 @@ static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
   toml_datum_t key = toml_seek(toptab, "crypto.key");
   const char *key_str = get_toml_string(key);
   if (key_str && strlen(key_str) > 0 && !config_encrypt_key_set) {
-    // Note: We don't validate key formats here (gpg:, github:, etc.)
-    // Just store it - validation happens later when key is used
-    SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", key_str);
+    if (path_looks_like_path(key_str)) {
+      char *normalized_key = NULL;
+      asciichat_error_t key_result = path_validate_user_path(key_str, PATH_ROLE_KEY_PRIVATE, &normalized_key);
+      if (key_result != ASCIICHAT_OK) {
+        SAFE_FREE(normalized_key);
+        return key_result;
+      }
+      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", normalized_key);
+      SAFE_FREE(normalized_key);
+    } else {
+      SAFE_SNPRINTF(opt_encrypt_key, OPTIONS_BUFF_SIZE, "%s", key_str);
+    }
     opt_encrypt_enabled = 1; // Auto-enable encryption when key provided
     config_encrypt_key_set = true;
   }
@@ -675,7 +684,19 @@ static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
   toml_datum_t keyfile = toml_seek(toptab, "crypto.keyfile");
   const char *keyfile_str = get_toml_string(keyfile);
   if (keyfile_str && strlen(keyfile_str) > 0 && !config_encrypt_keyfile_set) {
-    SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", keyfile_str);
+    if (path_looks_like_path(keyfile_str)) {
+      char *normalized_keyfile = NULL;
+      asciichat_error_t keyfile_result =
+          path_validate_user_path(keyfile_str, PATH_ROLE_KEY_PRIVATE, &normalized_keyfile);
+      if (keyfile_result != ASCIICHAT_OK) {
+        SAFE_FREE(normalized_keyfile);
+        return keyfile_result;
+      }
+      SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", normalized_keyfile);
+      SAFE_FREE(normalized_keyfile);
+    } else {
+      SAFE_SNPRINTF(opt_encrypt_keyfile, OPTIONS_BUFF_SIZE, "%s", keyfile_str);
+    }
     opt_encrypt_enabled = 1; // Auto-enable encryption when keyfile provided
     config_encrypt_keyfile_set = true;
   }
@@ -695,7 +716,19 @@ static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
     toml_datum_t server_key = toml_seek(toptab, "crypto.server_key");
     const char *server_key_str = get_toml_string(server_key);
     if (server_key_str && strlen(server_key_str) > 0 && !config_server_key_set) {
-      SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", server_key_str);
+      if (path_looks_like_path(server_key_str)) {
+        char *normalized_server_key = NULL;
+        asciichat_error_t server_key_result =
+            path_validate_user_path(server_key_str, PATH_ROLE_KEY_PUBLIC, &normalized_server_key);
+        if (server_key_result != ASCIICHAT_OK) {
+          SAFE_FREE(normalized_server_key);
+          return server_key_result;
+        }
+        SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", normalized_server_key);
+        SAFE_FREE(normalized_server_key);
+      } else {
+        SAFE_SNPRINTF(opt_server_key, OPTIONS_BUFF_SIZE, "%s", server_key_str);
+      }
       config_server_key_set = true;
     }
   }
@@ -705,10 +738,24 @@ static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
     toml_datum_t client_keys = toml_seek(toptab, "crypto.client_keys");
     const char *client_keys_str = get_toml_string(client_keys);
     if (client_keys_str && strlen(client_keys_str) > 0 && !config_client_keys_set) {
-      SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", client_keys_str);
+      if (path_looks_like_path(client_keys_str)) {
+        char *normalized_client_keys = NULL;
+        asciichat_error_t client_keys_result =
+            path_validate_user_path(client_keys_str, PATH_ROLE_CLIENT_KEYS, &normalized_client_keys);
+        if (client_keys_result != ASCIICHAT_OK) {
+          SAFE_FREE(normalized_client_keys);
+          return client_keys_result;
+        }
+        SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", normalized_client_keys);
+        SAFE_FREE(normalized_client_keys);
+      } else {
+        SAFE_SNPRINTF(opt_client_keys, OPTIONS_BUFF_SIZE, "%s", client_keys_str);
+      }
       config_client_keys_set = true;
     }
   }
+
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -723,7 +770,7 @@ static void apply_crypto_config(toml_datum_t toptab, bool is_client) {
  *
  * @ingroup config
  */
-static void apply_log_config(toml_datum_t toptab) {
+static asciichat_error_t apply_log_config(toml_datum_t toptab) {
   // Log file can be in root or in a [logging] section
   toml_datum_t log_file = toml_seek(toptab, "log_file");
   if (log_file.type == TOML_UNKNOWN) {
@@ -732,9 +779,17 @@ static void apply_log_config(toml_datum_t toptab) {
 
   const char *log_file_str = get_toml_string(log_file);
   if (log_file_str && strlen(log_file_str) > 0 && !config_log_file_set) {
-    SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", log_file_str);
+    char *normalized_log = NULL;
+    asciichat_error_t log_result = path_validate_user_path(log_file_str, PATH_ROLE_LOG_FILE, &normalized_log);
+    if (log_result != ASCIICHAT_OK) {
+      SAFE_FREE(normalized_log);
+      return log_result;
+    }
+    SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", normalized_log);
+    SAFE_FREE(normalized_log);
     config_log_file_set = true;
   }
+  return ASCIICHAT_OK;
 }
 
 /** @} */
@@ -808,6 +863,15 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     return ASCIICHAT_OK;
   }
 
+  char *validated_config_path = NULL;
+  asciichat_error_t validate_result =
+      path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+  SAFE_FREE(config_path_expanded);
+  if (validate_result != ASCIICHAT_OK) {
+    return validate_result;
+  }
+  config_path_expanded = validated_config_path;
+
   // Determine display path for error messages (before any early returns)
   const char *display_path = config_path ? config_path : config_path_expanded;
 
@@ -859,8 +923,18 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   apply_client_config(result.toptab, is_client);
   apply_audio_config(result.toptab, is_client);
   apply_palette_config_from_toml(result.toptab);
-  apply_crypto_config(result.toptab, is_client);
-  apply_log_config(result.toptab);
+  asciichat_error_t crypto_result = apply_crypto_config(result.toptab, is_client);
+  if (crypto_result != ASCIICHAT_OK) {
+    toml_free(result);
+    SAFE_FREE(config_path_expanded);
+    return crypto_result;
+  }
+  asciichat_error_t log_result = apply_log_config(result.toptab);
+  if (log_result != ASCIICHAT_OK) {
+    toml_free(result);
+    SAFE_FREE(config_path_expanded);
+    return log_result;
+  }
 
   // Reset config flags for next call
   config_address_set = false;
@@ -932,6 +1006,15 @@ asciichat_error_t config_create_default(const char *config_path) {
   if (!config_path_expanded) {
     return SET_ERRNO(ERROR_CONFIG, "Failed to resolve config file path");
   }
+
+  char *validated_config_path = NULL;
+  asciichat_error_t validate_result =
+      path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
+  SAFE_FREE(config_path_expanded);
+  if (validate_result != ASCIICHAT_OK) {
+    return validate_result;
+  }
+  config_path_expanded = validated_config_path;
 
   // Check if file already exists
   struct stat st;

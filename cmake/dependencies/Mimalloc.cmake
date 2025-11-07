@@ -62,6 +62,11 @@ if(USE_MIMALLOC)
             endif()
 
             set(MIMALLOC_LIBRARIES mimalloc-static)
+            get_target_property(_mimalloc_vcpkg_static mimalloc-static IMPORTED_LOCATION)
+            if(_mimalloc_vcpkg_static)
+            set(MIMALLOC_LIBRARIES "${_mimalloc_vcpkg_static}")
+            set(ASCIICHAT_MIMALLOC_LINK_LIB "${_mimalloc_vcpkg_static}")
+            endif()
             set(_MIMALLOC_FROM_VCPKG TRUE)
         else()
             message(WARNING "Could not find ${BoldYellow}mimalloc${ColorReset} from vcpkg - falling back to FetchContent")
@@ -95,10 +100,16 @@ if(USE_MIMALLOC)
             set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib")
             if(NOT WIN32)
                 set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-static.a")
+                if(NOT EXISTS "${_MIMALLOC_LIB_PATH}")
+                    set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/libmimalloc.a")
+                endif()
+            elseif(NOT EXISTS "${_MIMALLOC_LIB_PATH}")
+                set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/mimalloc.lib")
             endif()
         endif()
 
         if(EXISTS "${_MIMALLOC_LIB_PATH}")
+            message(STATUS "Detected mimalloc archive: ${_MIMALLOC_LIB_PATH}")
             # Extract version from FetchContent declaration above (v2.1.7)
             set(MIMALLOC_VERSION "2.1.7")
             message(STATUS "Using cached ${BoldGreen}mimalloc${ColorReset}, version ${BoldGreen}${MIMALLOC_VERSION}${ColorReset}: ${BoldCyan}${_MIMALLOC_LIB_PATH}${ColorReset}")
@@ -109,6 +120,12 @@ if(USE_MIMALLOC)
                 IMPORTED_LOCATION "${_MIMALLOC_LIB_PATH}"
                 INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
             )
+
+            # Propagate cached static library location to downstream consumers
+            set(MIMALLOC_LIBRARIES "${_MIMALLOC_LIB_PATH}")
+            if(NOT ASCIICHAT_MIMALLOC_LINK_LIB)
+                set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_LIB_PATH}")
+            endif()
 
             # Also create mimalloc-shared target for shared library builds
             # Determine the shared library file path
@@ -124,6 +141,10 @@ if(USE_MIMALLOC)
                     IMPORTED_LOCATION "${_MIMALLOC_SHARED_LIB_PATH}"
                     INTERFACE_INCLUDE_DIRECTORIES "${MIMALLOC_SOURCE_DIR}/include"
                 )
+                set(MIMALLOC_SHARED_LIBRARIES "${_MIMALLOC_SHARED_LIB_PATH}")
+                if(NOT ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
+                    set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB "${_MIMALLOC_SHARED_LIB_PATH}")
+                endif()
             endif()
 
             # Skip FetchContent download/build
@@ -299,13 +320,40 @@ if(USE_MIMALLOC)
         endif()
 
         # Only set these for FetchContent builds (vcpkg already set MIMALLOC_LIBRARIES)
-        set(MIMALLOC_LIBRARIES mimalloc-static)
-        set(MIMALLOC_SHARED_LIBRARIES mimalloc-shared)
+        set(MIMALLOC_LIBRARIES "${_MIMALLOC_LIB_PATH}")
+        set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_LIB_PATH}")
+        if(EXISTS "${_MIMALLOC_SHARED_LIB_PATH}")
+            set(MIMALLOC_SHARED_LIBRARIES "${_MIMALLOC_SHARED_LIB_PATH}")
+            set(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB "${_MIMALLOC_SHARED_LIB_PATH}")
+        endif()
+    endif()
+
+    if(NOT ASCIICHAT_MIMALLOC_LINK_LIB)
+        set(_ascii_chat_mimalloc_candidates
+            "${_MIMALLOC_LIB_PATH}"
+            "${MIMALLOC_BUILD_DIR}/lib/libmimalloc.a"
+            "${MIMALLOC_BUILD_DIR}/lib/libmimalloc-static.a"
+            "${MIMALLOC_BUILD_DIR}/lib/mimalloc-static.lib"
+            "${MIMALLOC_BUILD_DIR}/lib/mimalloc.lib"
+        )
+        foreach(candidate IN LISTS _ascii_chat_mimalloc_candidates)
+            if(candidate AND EXISTS "${candidate}")
+                set(ASCIICHAT_MIMALLOC_LINK_LIB "${candidate}")
+                break()
+            endif()
+        endforeach()
     endif()
 
     # Define USE_MIMALLOC for all source files so they can use mi_malloc/mi_free directly
     # Also define MI_STATIC_LIB to tell mimalloc headers we're using static library (prevents dllimport)
     add_compile_definitions(USE_MIMALLOC MI_STATIC_LIB)
+
+    if(MIMALLOC_LIBRARIES)
+        message(STATUS "mimalloc static library resolved to: ${MIMALLOC_LIBRARIES}")
+    endif()
+    if(MIMALLOC_SHARED_LIBRARIES)
+        message(STATUS "mimalloc shared library resolved to: ${MIMALLOC_SHARED_LIBRARIES}")
+    endif()
 
     message(STATUS "${BoldGreen}mimalloc${ColorReset} will override malloc/free globally")
     message(STATUS "Your existing SAFE_MALLOC macros will automatically use ${BoldGreen}mimalloc${ColorReset}")

@@ -42,36 +42,170 @@
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;
 
+static char *duplicate_normalized_path(const char *path) {
+  if (!path) {
+    return NULL;
+  }
+
+  char normalized[PLATFORM_MAX_PATH_LENGTH];
+  if (!path_normalize_copy(path, normalized, sizeof(normalized))) {
+    return NULL;
+  }
+
+  size_t len = strlen(normalized) + 1;
+  char *copy = SAFE_MALLOC(len, char *);
+  if (!copy) {
+    return NULL;
+  }
+  memcpy(copy, normalized, len);
+  return copy;
+}
+
+static bool try_set_known_hosts_path(const char *candidate, const char *const *allowed_bases,
+                                     size_t allowed_base_count) {
+  if (!candidate || g_known_hosts_path_cache) {
+    return false;
+  }
+
+  if (!path_is_absolute(candidate)) {
+    log_warn("Rejected known_hosts path (not absolute): %s", candidate);
+    return false;
+  }
+
+  if (!path_is_within_any_base(candidate, allowed_bases, allowed_base_count)) {
+    log_warn("Rejected known_hosts path (outside allowed base): %s", candidate);
+    return false;
+  }
+
+  char *normalized = duplicate_normalized_path(candidate);
+  if (!normalized) {
+    log_error("Failed to normalize known_hosts path candidate: %s", candidate);
+    return false;
+  }
+
+  g_known_hosts_path_cache = normalized;
+  log_debug("KNOWN_HOSTS: Using path %s", g_known_hosts_path_cache);
+  return true;
+}
+
 const char *get_known_hosts_path(void) {
   if (!g_known_hosts_path_cache) {
-    // Get config directory with XDG support
     char *config_dir = get_config_dir();
-    if (config_dir) {
-      // Build known_hosts path in config directory
-      size_t len = strlen(config_dir) + strlen("known_hosts") + 1;
-      g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
-      if (g_known_hosts_path_cache) {
-        safe_snprintf(g_known_hosts_path_cache, len, "%sknown_hosts", config_dir);
-      }
-      SAFE_FREE(config_dir);
+    char *home_dir = expand_path("~");
+
+    const char *allowed_bases[6] = {0};
+    size_t allowed_base_count = 0;
+
+    if (config_dir && path_is_absolute(config_dir)) {
+      allowed_bases[allowed_base_count++] = config_dir;
+    }
+    if (home_dir && path_is_absolute(home_dir)) {
+      allowed_bases[allowed_base_count++] = home_dir;
     }
 
-    // Fallback if config_dir failed
-    if (!g_known_hosts_path_cache) {
-      g_known_hosts_path_cache = expand_path(KNOWN_HOSTS_PATH);
-      // If expand_path fails, fall back to a default path
-      if (!g_known_hosts_path_cache) {
-        // Use /tmp/.ascii-chat/known_hosts as fallback if HOME expansion fails
-        const char *fallback = "/tmp/.ascii-chat/known_hosts";
-        size_t len = strlen(fallback) + 1;
-        g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
-        if (g_known_hosts_path_cache) {
-          // Use memcpy instead of SAFE_STRNCPY for safety
-          memcpy(g_known_hosts_path_cache, fallback, len);
-          g_known_hosts_path_cache[len - 1] = '\0'; // Ensure null termination
-        }
+    const char *temp_base = NULL;
+#ifdef _WIN32
+    temp_base = platform_getenv("TEMP");
+    if (!temp_base || !path_is_absolute(temp_base)) {
+      temp_base = platform_getenv("TMP");
+    }
+    if (!temp_base || !path_is_absolute(temp_base)) {
+      temp_base = "C:\\Windows\\Temp";
+    }
+#else
+    temp_base = "/tmp/.ascii-chat";
+#endif
+    if (temp_base && path_is_absolute(temp_base)) {
+      allowed_bases[allowed_base_count++] = temp_base;
+    }
+
+    char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
+
+    if (config_dir && !g_known_hosts_path_cache) {
+      size_t config_len = strlen(config_dir);
+      size_t total_len = config_len + strlen("known_hosts") + 1;
+      if (total_len < sizeof(candidate_buf)) {
+        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%sknown_hosts", config_dir);
+        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
+      } else {
+        log_warn("Config directory path too long when constructing known_hosts path");
       }
     }
+
+    if (!g_known_hosts_path_cache) {
+      char *expanded = expand_path(KNOWN_HOSTS_PATH);
+      if (expanded) {
+        (void)try_set_known_hosts_path(expanded, allowed_bases, allowed_base_count);
+        SAFE_FREE(expanded);
+      }
+    }
+
+    if (!g_known_hosts_path_cache && home_dir && path_is_absolute(home_dir)) {
+      size_t home_len = strlen(home_dir);
+      const char *suffix =
+#ifdef _WIN32
+          ".ascii-chat\\known_hosts";
+#else
+          ".ascii-chat/known_hosts";
+#endif
+      bool needs_sep = (home_len > 0) &&
+#ifdef _WIN32
+                       (home_dir[home_len - 1] != '\\' && home_dir[home_len - 1] != '/');
+#else
+                       (home_dir[home_len - 1] != '/');
+#endif
+      size_t total_len = home_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
+      if (total_len < sizeof(candidate_buf)) {
+        safe_snprintf(candidate_buf, sizeof(candidate_buf),
+#ifdef _WIN32
+                      "%s%s%s", home_dir, needs_sep ? "\\" : "", suffix);
+#else
+                      "%s%s%s", home_dir, needs_sep ? "/" : "", suffix);
+#endif
+        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
+      }
+    }
+
+    if (!g_known_hosts_path_cache && temp_base && path_is_absolute(temp_base)) {
+      size_t temp_len = strlen(temp_base);
+      const char *suffix =
+#ifdef _WIN32
+          "ascii-chat\\known_hosts";
+#else
+          "known_hosts";
+#endif
+      bool needs_sep = (temp_len > 0) &&
+#ifdef _WIN32
+                       (temp_base[temp_len - 1] != '\\' && temp_base[temp_len - 1] != '/');
+#else
+                       (temp_base[temp_len - 1] != '/');
+#endif
+      size_t total_len = temp_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
+      if (total_len < sizeof(candidate_buf)) {
+        safe_snprintf(candidate_buf, sizeof(candidate_buf),
+#ifdef _WIN32
+                      "%s%s%s", temp_base, needs_sep ? "\\" : "", suffix);
+#else
+                      "%s%s%s", temp_base, needs_sep ? "/" : "", suffix);
+#endif
+        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
+      }
+    }
+
+    if (!g_known_hosts_path_cache) {
+#ifdef _WIN32
+      const char *safe_default = "C:\\Windows\\Temp\\ascii-chat\\known_hosts";
+#else
+      const char *safe_default = "/tmp/.ascii-chat/known_hosts";
+#endif
+      if (!try_set_known_hosts_path(safe_default, allowed_bases, allowed_base_count)) {
+        log_error("Fallback known_hosts path %s failed validation; known_hosts will not be available", safe_default);
+        g_known_hosts_path_cache = NULL;
+      }
+    }
+
+    SAFE_FREE(config_dir);
+    SAFE_FREE(home_dir);
   }
   return g_known_hosts_path_cache;
 }
@@ -294,6 +428,75 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
   return ASCIICHAT_OK; // Not found = first connection
 }
 
+/**
+ * @brief Recursively create directories (like mkdir -p)
+ * @param path Full directory path to create
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t mkdir_recursive(const char *path) {
+  if (!path || !*path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path for mkdir_recursive");
+  }
+
+  // Make a mutable copy of the path
+  size_t len = strlen(path);
+  char *tmp = SAFE_MALLOC(len + 1, char *);
+  if (!tmp) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for path");
+  }
+  memcpy(tmp, path, len + 1);
+
+  // Handle absolute paths (skip leading / or drive letter on Windows)
+  char *p = tmp;
+#ifdef _WIN32
+  // Skip drive letter (e.g., "C:")
+  if (len >= 2 && tmp[1] == ':') {
+    p += 2;
+  }
+#endif
+  // Skip leading slashes
+  while (*p == '/' || *p == '\\') {
+    p++;
+  }
+
+  // Create directories one level at a time
+  for (; *p; p++) {
+    if (*p == '/' || *p == '\\') {
+      *p = '\0'; // Temporarily truncate
+
+      // Try to create this directory level
+      int result = mkdir(tmp, 0700);
+      if (result != 0 && errno != EEXIST) {
+        // mkdir failed - check if directory actually exists (Windows quirk)
+        int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
+        if (test_fd < 0) {
+          asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
+          SAFE_FREE(tmp);
+          return err;
+        }
+        platform_close(test_fd);
+      }
+
+      *p = '/'; // Restore path separator (normalize to Unix style)
+    }
+  }
+
+  // Create the final directory
+  int result = mkdir(tmp, 0700);
+  if (result != 0 && errno != EEXIST) {
+    int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
+    if (test_fd < 0) {
+      asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
+      SAFE_FREE(tmp);
+      return err;
+    }
+    platform_close(test_fd);
+  }
+
+  SAFE_FREE(tmp);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
   // Validate parameters first
   if (!server_ip || !server_key) {
@@ -312,8 +515,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
     return ERROR_CONFIG;
   }
 
-  // Create directory if needed - handle both Windows and Unix paths
-  // Use strlen to safely get the length before duplicating
+  // Create parent directories recursively (like mkdir -p)
   size_t path_len = strlen(path);
   if (path_len == 0) {
     SET_ERRNO(ERROR_CONFIG, "Empty known hosts file path");
@@ -332,22 +534,15 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
 
   if (last_sep) {
-    *last_sep = '\0';
-    int mkdir_result = mkdir(dir, 0700);
-    if (mkdir_result != 0 && errno != EEXIST) {
-      // mkdir failed and it's not because the directory already exists
-      // Verify if directory actually exists despite the error (Windows compatibility)
-      int test_fd = platform_open(dir, PLATFORM_O_RDONLY, 0);
-      if (test_fd < 0) {
-        // Directory doesn't exist and we couldn't create it
-        SAFE_FREE(dir);
-        return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", dir);
-      }
-      // Directory exists despite error, close the test fd
-      platform_close(test_fd);
+    *last_sep = '\0'; // Truncate to get directory path
+    asciichat_error_t result = mkdir_recursive(dir);
+    SAFE_FREE(dir);
+    if (result != ASCIICHAT_OK) {
+      return result; // Error already set by mkdir_recursive
     }
+  } else {
+    SAFE_FREE(dir);
   }
-  SAFE_FREE(dir);
 
   // Create the file if it doesn't exist, then append to it
   // Note: Temporarily removed log_debug to avoid potential crashes during debugging
@@ -423,8 +618,13 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
 
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
+  if (fd < 0) {
+    // File doesn't exist - nothing to remove, return success
+    return ASCIICHAT_OK;
+  }
   FILE *f = platform_fdopen(fd, "r");
   if (!f) {
+    platform_close(fd);
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open known hosts file: %s", path);
     return ERROR_CONFIG;
   }

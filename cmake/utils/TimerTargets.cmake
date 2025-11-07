@@ -18,8 +18,17 @@
 # Global Build Timer - Start Marker
 # =============================================================================
 # This target runs BEFORE any compilation begins to record the build start time
-add_custom_target(build-timer-start ALL
+# Use add_custom_command with OUTPUT to create a real file dependency
+# This prevents Ninja from always considering it out-of-date
+add_custom_command(
+    OUTPUT "${CMAKE_BINARY_DIR}/.build_timer_start.stamp"
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMAND_ECHO NONE
+    COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/.build_timer_start.stamp"
+    COMMENT "Starting build timer..."
     VERBATIM
+)
+
+# Create the target that depends on the stamp file
+add_custom_target(build-timer-start ALL
+    DEPENDS "${CMAKE_BINARY_DIR}/.build_timer_start.stamp"
 )

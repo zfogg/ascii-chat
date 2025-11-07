@@ -6,8 +6,17 @@ services:
 
     # Mount source code and cache volumes
     volumes:
-      # Source code (read/write for build artifacts)
-      - ..:/app:rw
+      # Source code (read-only to prevent accidental modifications)
+      # Build artifacts stored in named volume to avoid macOS timestamp issues
+      - ..:/app:ro
+
+      # Build directory as named volume (fixes Ninja .ninja_deps timestamp issues)
+      # On macOS, volume mounts lose timestamp precision, invalidating Ninja's deps
+      # By keeping build artifacts in container filesystem, timestamps stay consistent
+      - build-data:/app/build_docker:rw
+
+      # Secondary build directory for ad-hoc docker builds (read-write)
+      - docker-build-data:/app/docker_build:rw
 
       # ccache volume for persistent compilation cache
       # This persists between container runs for faster rebuilds
@@ -48,6 +57,12 @@ services:
 
 # Named volumes for persistent caching
 volumes:
+  build-data:
+    driver: local
+    # Stores build artifacts (object files, .ninja_deps, executables)
+    # Must be in container filesystem to avoid macOS timestamp precision issues
+    # that cause Ninja to rebuild everything on every invocation
+
   ccache-data:
     driver: local
     # Optional: specify host path for easier access
@@ -66,3 +81,8 @@ volumes:
     #   type: none
     #   device: ${PWD}/.deps-cache-docker
     #   o: bind
+
+  docker-build-data:
+    driver: local
+    # Stores ad-hoc build trees created under /app/docker_build (e.g. docker_build/extra_test_build)
+    # Allows writable mount separate from primary build_docker directory

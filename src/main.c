@@ -74,7 +74,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-// Mode-specific entry point headers
+// Mode-specific entry point
 #include "server/main.h"
 #include "client/main.h"
 
@@ -82,11 +82,11 @@
 #include "common.h"
 #include "version.h"
 #include "options.h"
-#include "asciichat_errno.h"
 #include "logging.h"
 #include "platform/terminal.h"
 
 #ifndef NDEBUG
+#include "asciichat_errno.h"
 #include "lock_debug.h"
 #endif
 

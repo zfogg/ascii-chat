@@ -49,7 +49,9 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "USE_MIMALLOC": "ON"
+        "USE_MIMALLOC": "ON",
+        "ASCIICHAT_RELEASE_CPU_TUNE": "portable",
+        "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "OFF"
       }
     },
     {
@@ -64,9 +66,18 @@
       }
     },
     {
+      "name": "release-x86-64-v3",
+      "displayName": "Release (x86-64-v3)",
+      "description": "Release build targeting modern AVX2 CPUs",
+      "inherits": "release",
+      "cacheVariables": {
+        "ASCIICHAT_RELEASE_CPU_TUNE": "x86-64-v3"
+      }
+    },
+    {
       "name": "relwithdebinfo",
       "displayName": "RelWithDebInfo",
-      "description": "Optimized build with debug symbols (for profiling/debugging production issues)",
+      "description": "Optimized build with debug symbols (if you want to build and install ascii-chat yourself probably choose this to start)",
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
@@ -80,6 +91,15 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Dev"
+      }
+    },
+    {
+      "name": "dev-analyzers",
+      "displayName": "Dev (Analyzers)",
+      "description": "Debug build with static analyzers enabled (clang-tidy/cppcheck)",
+      "inherits": "dev",
+      "cacheVariables": {
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
       }
     },
     {
@@ -101,6 +121,22 @@
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF"
       }
+    },
+    {
+      "name": "github",
+      "displayName": "GitHub CI",
+      "description": "Configuration used by GitHub Actions workflows (tests enabled, C23)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/$env{GITHUB_CMAKE_BINARY_DIR}",
+      "environment": {
+        "GITHUB_CMAKE_BINARY_DIR": "build"
+      },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTS": "ON",
+        "CMAKE_C_STANDARD": "23",
+        "CMAKE_C_FLAGS": "-std=c2x"
+      }
     }
   ],
   "buildPresets": [
@@ -121,6 +157,10 @@
       "configurePreset": "release"
     },
     {
+      "name": "release-x86-64-v3",
+      "configurePreset": "release-x86-64-v3"
+    },
+    {
       "name": "release-musl",
       "configurePreset": "release-musl"
     },
@@ -133,12 +173,20 @@
       "configurePreset": "dev"
     },
     {
+      "name": "dev-analyzers",
+      "configurePreset": "dev-analyzers"
+    },
+    {
       "name": "coverage",
       "configurePreset": "coverage"
     },
     {
       "name": "tests",
       "configurePreset": "tests"
+    },
+    {
+      "name": "github",
+      "configurePreset": "github"
     }
   ]
 }

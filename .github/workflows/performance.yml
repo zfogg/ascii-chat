@@ -17,6 +17,10 @@ on:
     # Run performance tests weekly
     - cron: '0 4 * * 1'
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   memory-profiling:
     name: Memory Usage Analysis
@@ -35,26 +39,35 @@ jobs:
         os: ubuntu
         extra-packages: valgrind
 
+    - name: Cache build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+
     - name: Build with debug symbols
       run: |
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=ON
+        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_TESTS=OFF
         cmake --build build
 
     - name: Run memory leak detection
       run: |
         echo "Testing binary memory usage..."
+        # NOTE: THese are started with "&" and run in the background with no logs.
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat --help > valgrind.log 2>&1 || true
+          ./build/bin/ascii-chat server > valgrind-server.log 2>&1 &
+        SERVER_PID=$!
+        # Run server in the background so the command doesn't block until the process is dead so we can start the client.
+        timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+          ./build/bin/ascii-chat client --test-pattern > valgrind-client.log 2>&1 &
+        CLIENT_PID=$!
+        wait $SERVER_PID $CLIENT_PID
 
     - name: Analyze memory reports
       run: |
         echo "=== Binary Memory Analysis ==="
-        if grep -q "definitely lost" valgrind.log; then
+        if grep -q "definitely lost" valgrind-*.log; then
           echo "❌ Memory leaks detected"
-          grep "definitely lost" valgrind.log
+          grep "definitely lost" valgrind-*.log
         else
           echo "✅ No memory leaks detected"
         fi
@@ -63,7 +76,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: memory-analysis-reports
-        path: valgrind.log
+        path: valgrind-*.log
         retention-days: 30
 
   build-optimization:
@@ -82,21 +95,31 @@ jobs:
       with:
         os: ubuntu
 
+    - name: Cache debug build, dependencies, and ccache
+      uses: ./.github/actions/cache-build
+      with:
+        build-directory: ${{ github.workspace }}/build_debug
+        build-cache-key: performance-debug
+    - name: Cache release build directory
+      uses: ./.github/actions/cache-build
+      with:
+        build-directory: ${{ github.workspace }}/build_release
+        build-cache-key: performance-release
+
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
-        CC=clang CXX=clang++ cmake -B build_debug -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
+        GITHUB_CMAKE_BINARY_DIR=build_debug cmake --preset github \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DBUILD_TESTS=OFF
         cmake --build build_debug
         DEBUG_SIZE=$(stat -f%z build_debug/bin/ascii-chat 2>/dev/null || stat -c%s build_debug/bin/ascii-chat)
 
         echo "Building release version..."
-        CC=clang CXX=clang++ cmake -B build_release --preset release -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_C_STANDARD=23 \
-          -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
+        GITHUB_CMAKE_BINARY_DIR=build_release cmake --preset github \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DUSE_MIMALLOC=ON \
+          -DBUILD_TESTS=OFF
         cmake --build build_release
         RELEASE_SIZE=$(stat -f%z build_release/bin/ascii-chat 2>/dev/null || stat -c%s build_release/bin/ascii-chat)
 
@@ -130,12 +153,12 @@ jobs:
     - name: Install tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y cloc sloccount
+        sudo apt-get install -y make cloc sloccount
 
     - name: Generate code metrics
       run: |
         echo "=== Lines of Code Analysis ==="
-        cloc --exclude-dir=ext,build,bin,.github,.claude,.cursor .
+        make cloc
 
         echo "=== Detailed File Analysis ==="
         wc -l *.c *.h *.m 2>/dev/null | sort -n || true

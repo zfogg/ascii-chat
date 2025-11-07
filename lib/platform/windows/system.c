@@ -16,6 +16,7 @@
 
 #include <dbghelp.h>
 #include <wincrypt.h>
+#include <windows.h>
 #include <io.h>
 #include <fcntl.h>
 #include <process.h>
@@ -1377,6 +1378,19 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
 
   // No writable temp directory found
   return false;
+}
+
+bool platform_get_cwd(char *cwd, size_t path_size) {
+  if (!cwd || path_size == 0) {
+    return false;
+  }
+
+  DWORD len = GetCurrentDirectoryA((DWORD)path_size, cwd);
+  if (len == 0 || len >= path_size) {
+    return false;
+  }
+
+  return true;
 }
 
 // Include cross-platform system utilities (binary PATH detection)

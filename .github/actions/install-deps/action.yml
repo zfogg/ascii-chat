@@ -2,12 +2,28 @@ name: 'Install Dependencies'
 description: 'Install and cache build dependencies for ascii-chat'
 inputs:
   os:
-    description: 'Operating system (ubuntu or macos)'
+    description: 'Operating system (ubuntu, macos, or windows)'
     required: true
   extra-packages:
     description: 'Additional packages to install (space-separated)'
     required: false
     default: ''
+  vcpkg-packages:
+    description: 'Space-separated vcpkg packages to install for the primary triplet (Windows only)'
+    required: false
+    default: ''
+  vcpkg-triplet:
+    description: 'vcpkg triplet to use for primary packages (Windows only)'
+    required: false
+    default: 'x64-windows'
+  vcpkg-static-packages:
+    description: 'Space-separated vcpkg packages to install for the static triplet (Windows only)'
+    required: false
+    default: ''
+  vcpkg-static-triplet:
+    description: 'vcpkg triplet to use for static packages (Windows only)'
+    required: false
+    default: 'x64-windows-static'
 
 runs:
   using: 'composite'
@@ -23,6 +39,7 @@ runs:
         restore-keys: |
           ${{ runner.os }}-cmake-deps-v1-
           ${{ runner.os }}-cmake-deps-
+        save-always: true
 
     - name: Set up Homebrew cache (macOS)
       if: inputs.os == 'macos'
@@ -36,6 +53,7 @@ runs:
         restore-keys: |
           ${{ runner.os }}-homebrew-v2-
           ${{ runner.os }}-homebrew-
+        save-always: true
 
     - name: Install Homebrew packages (macOS)
       if: inputs.os == 'macos'
@@ -64,10 +82,24 @@ runs:
       if: inputs.os == 'ubuntu'
       uses: tecolicom/actions-use-apt-tools@v1
       with:
-        tools: clang cmake ninja-build zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libboxfort-dev libsodium-dev libcriterion-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libssl-dev libssh2-1-dev libhttp-parser-dev libpcre2-dev libpcre2-8-0 libkrb5-dev krb5-multidev libgssapi-krb5-2 libkrb5-3 libk5crypto3 libcom-err2 libnanopb-dev pkg-config libxml2-utils python3-pip llvm musl-tools musl-dev ${{ inputs.extra-packages }}
+        tools: clang cmake ninja-build zstd portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libboxfort-dev libsodium-dev libcriterion-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libssl-dev libssh2-1-dev libhttp-parser-dev libpcre2-dev libpcre2-8-0 libkrb5-dev krb5-multidev libgssapi-krb5-2 libkrb5-3 libk5crypto3 libcom-err2 libnanopb-dev pkg-config libxml2-utils python3-pip llvm musl-tools musl-dev ${{ inputs.extra-packages }}
         cache: yes
 
-    - name: Set CSDT env var
+    - name: Cache vcpkg packages (Windows)
+      if: inputs.os == 'windows' && env.VCPKG_ROOT != ''
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_ROOT }}/installed
+          ${{ env.VCPKG_ROOT }}/packages
+          ${{ env.VCPKG_ROOT }}/buildtrees
+        key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-v1-
+        save-always: true
+
+    - name: Set CSTD env var (POSIX)
+      if: inputs.os != 'windows'
       shell: bash
       run: |
         # Setup CSTD
@@ -75,21 +107,132 @@ runs:
         echo "CSTD=$CSTD" >> $GITHUB_ENV
         echo "Set CSTD to $CSTD"
 
+    - name: Set CSTD env var (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $value = 'c2x'
+        Add-Content -Path $env:GITHUB_ENV -Value "CSTD=$value"
+        Write-Host "Set CSTD to $value"
+
+    - name: Install Windows build tools
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        function Ensure-Scoop {
+          if (Get-Command scoop -ErrorAction SilentlyContinue) {
+            Write-Host "Scoop already installed"
+            return
+          }
+
+          Write-Host "Scoop not found. Installing scoop..."
+          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          Invoke-RestMethod get.scoop.sh | Invoke-Expression
+        }
+
+        function Ensure-ScoopBucket {
+          param(
+            [string]$Bucket
+          )
+
+          if (-not (scoop bucket list | Select-String -SimpleMatch $Bucket)) {
+            Write-Host "Adding scoop bucket: $Bucket"
+            scoop bucket add $Bucket | Out-Null
+          }
+        }
+
+        function Install-ScoopPackage {
+          param(
+            [string]$Package
+          )
+
+          if ([string]::IsNullOrWhiteSpace($Package)) {
+            return
+          }
+
+          if (scoop list | Select-String -SimpleMatch "^$Package\s") {
+            Write-Host "✓ $Package already installed via scoop"
+          }
+          else {
+            Write-Host "Installing scoop package: $Package"
+            scoop install $Package --global
+          }
+        }
+
+        Ensure-Scoop
+        Ensure-ScoopBucket -Bucket 'main'
+        Ensure-ScoopBucket -Bucket 'extras'
+
+        $basePackages = @('git', '7zip', 'cmake', 'ninja', 'llvm')
+        $extra = @()
+        if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
+          $extra = '${{ inputs.extra-packages }}'.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+        }
+        $packages = $basePackages + $extra
+
+        foreach ($pkg in $packages) {
+          Install-ScoopPackage -Package $pkg
+        }
+
+        $scoopShims = Join-Path $env:USERPROFILE 'scoop\shims'
+        if (Test-Path $scoopShims) {
+          Write-Host "Adding scoop shims to PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $scoopShims
+        }
+
+        $llvmPath = 'C:\Program Files\LLVM\bin'
+        if (Test-Path $llvmPath) {
+          Write-Host "Adding LLVM to PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
+        }
+
+        # Fallback: ensure cmake & ninja exist
+        foreach ($tool in @('cmake', 'ninja')) {
+          if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+            Write-Host "WARNING: $tool not found after scoop installation" -ForegroundColor Yellow
+          }
+        }
+
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
       shell: bash
       run: |
+        detect_brew_prefix() {
+          if command -v brew >/dev/null 2>&1; then
+            brew --prefix
+          elif [ -d "/opt/homebrew" ]; then
+            echo "/opt/homebrew"
+          elif [ -d "/usr/local" ]; then
+            echo "/usr/local"
+          else
+            echo "/opt/homebrew"
+          fi
+        }
+
+        BREW_PREFIX="$(detect_brew_prefix)"
+        echo "Detected Homebrew prefix: ${BREW_PREFIX}"
+
         # NOTE: `brew info make` says "make" is installed as "gmake", but they give us gnubin
-        export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
-        export PATH="/usr/local/opt/llvm/bin:$PATH"
+        if [ -d "${BREW_PREFIX}/opt/make/libexec/gnubin" ]; then
+          export PATH="${BREW_PREFIX}/opt/make/libexec/gnubin:$PATH"
+        fi
+        if [ -d "${BREW_PREFIX}/opt/llvm/bin" ]; then
+          export PATH="${BREW_PREFIX}/opt/llvm/bin:$PATH"
+        fi
 
-        export PKG_CONFIG_PATH=/opt/homebrew/lib/pkgconfig:/opt/homebrew/share/pkgconfig
-        export CPPFLAGS=-I/opt/homebrew/include
-        export LDFLAGS=-L/opt/homebrew/lib
-        export LDFLAGS="$LDFLAGS -L/opt/homebrew/opt/llvm/lib/unwind -lunwind"
-        export LDFLAGS="$LDFLAGS -L/opt/homebrew/opt/llvm/lib/c++"
+        export PKG_CONFIG_LIBS="portaudio-2.0 criterion zstd libsodium"
+        export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${BREW_PREFIX}/share/pkgconfig"
+        export CPPFLAGS="-I${BREW_PREFIX}/include"
+        export LDFLAGS="-L${BREW_PREFIX}/lib"
 
-        export PKG_CONFIG_LIBS=portaudio-2.0 criterion zlib
+        if [ -d "${BREW_PREFIX}/opt/llvm/lib/unwind" ]; then
+          export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/unwind -lunwind"
+        fi
+        if [ -d "${BREW_PREFIX}/opt/llvm/lib/c++" ]; then
+          export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/c++"
+        fi
 
         # Set up PATH
         echo "PATH=$PATH" >> $GITHUB_ENV
@@ -112,10 +255,10 @@ runs:
         # Debug: Check if .pc files exist
         echo "Debug: Checking .pc files existence..."
         for lib in $PKG_CONFIG_LIBS; do
-          ls -la /opt/homebrew/lib/pkgconfig/"$lib".pc || (
-            echo "ERROR: No $lib .pc files in /opt/homebrew/lib/pkgconfig/"
+          if ! ls -la "${BREW_PREFIX}/lib/pkgconfig/${lib}.pc"; then
+            echo "ERROR: No $lib .pc files in ${BREW_PREFIX}/lib/pkgconfig/"
             exit 1
-          )
+          fi
         done
 
         # Configure clang to work without Command Line Tools
@@ -132,7 +275,7 @@ runs:
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
-        -resource-dir /usr/local/opt/llvm/lib/clang/21
+        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/21
         EOF
 
         # Create ARM64 config
@@ -141,8 +284,37 @@ runs:
         -isysroot ${SDK_PATH}
         -isystem ${SDK_PATH}/usr/include
         -stdlib=libc++
-        -resource-dir /usr/local/opt/llvm/lib/clang/21
+        -resource-dir ${BREW_PREFIX}/opt/llvm/lib/clang/21
         EOF
 
         echo "Created clang config files for darwin${DARWIN_VERSION}"
         ls -la ~/.config/clang/
+
+    - name: Install vcpkg packages (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        if (-not $env:VCPKG_ROOT) {
+          Write-Host "VCPKG_ROOT is not set. Please run lukka/run-vcpkg before install-deps." -ForegroundColor Red
+          exit 1
+        }
+
+        function Install-VcpkgPackages {
+          param(
+            [string]$PackageList,
+            [string]$Triplet
+          )
+
+          if ([string]::IsNullOrWhiteSpace($PackageList)) {
+            return
+          }
+
+          $packages = $PackageList.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+          foreach ($pkg in $packages) {
+            Write-Host "Installing vcpkg package: $pkg:$Triplet"
+            vcpkg install "$pkg`:$Triplet"
+          }
+        }
+
+        Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-packages }}' -Triplet '${{ inputs.vcpkg-triplet }}'
+        Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-static-packages }}' -Triplet '${{ inputs.vcpkg-static-triplet }}'

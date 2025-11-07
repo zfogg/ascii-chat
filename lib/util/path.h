@@ -41,6 +41,9 @@
  */
 
 #include <stddef.h>
+#include <stdbool.h>
+
+#include "common.h"
 
 /* ============================================================================
  * Path Constants
@@ -147,5 +150,83 @@ char *expand_path(const char *path);
  * @ingroup util
  */
 char *get_config_dir(void);
+
+/**
+ * @brief Normalize a path and copy it into the provided buffer.
+ *
+ * Resolves '.' and '..' components without requiring the path to exist on disk.
+ * The output buffer receives a canonicalized representation using platform
+ * preferred separators.
+ *
+ * @param path     Input path string (must not be NULL)
+ * @param out      Destination buffer for normalized path
+ * @param out_len  Size of destination buffer in bytes
+ * @return true on success, false on failure (invalid arguments or buffer too small)
+ */
+bool path_normalize_copy(const char *path, char *out, size_t out_len);
+
+/**
+ * @brief Determine whether a path is absolute on the current platform.
+ *
+ * @param path Path string to test (may be NULL)
+ * @return true if the path is absolute, false otherwise
+ */
+bool path_is_absolute(const char *path);
+
+/**
+ * @brief Check whether a path resides within a specified base directory.
+ *
+ * Both the candidate path and the base directory are normalized before
+ * comparison. The base directory must be absolute. The comparison honours the
+ * platform's case sensitivity rules (case-insensitive on Windows).
+ *
+ * @param path Candidate path to validate (must be absolute)
+ * @param base Absolute base directory to compare against
+ * @return true if @p path is inside @p base (or exactly equal), false otherwise
+ */
+bool path_is_within_base(const char *path, const char *base);
+
+/**
+ * @brief Check whether a path resides within any of several base directories.
+ *
+ * @param path        Candidate path to validate (must be absolute)
+ * @param bases       Array of base directory strings
+ * @param base_count  Number of entries in @p bases
+ * @return true if @p path is inside any allowed base, false otherwise
+ */
+bool path_is_within_any_base(const char *path, const char *const *bases, size_t base_count);
+
+/**
+ * @brief Classification for user-supplied filesystem paths.
+ */
+typedef enum {
+  PATH_ROLE_CONFIG_FILE, /**< Configuration files such as config.toml */
+  PATH_ROLE_LOG_FILE,    /**< Log file destinations */
+  PATH_ROLE_KEY_PRIVATE, /**< Private key files (SSH/GPG) */
+  PATH_ROLE_KEY_PUBLIC,  /**< Public key files or expected server keys */
+  PATH_ROLE_CLIENT_KEYS  /**< Client key whitelist files */
+} path_role_t;
+
+/**
+ * @brief Determine if a string is likely intended to reference the filesystem.
+ *
+ * Heuristics include presence of path separators, leading ~, relative prefixes,
+ * or Windows drive designators. Used to avoid treating tokens like
+ * "github:user" or raw hex keys as file paths.
+ */
+bool path_looks_like_path(const char *value);
+
+/**
+ * @brief Validate and canonicalize a user-supplied filesystem path.
+ *
+ * Resolves ~, relative segments, and enforces that the resulting absolute path
+ * resides within the trusted base directories for the supplied role.
+ *
+ * @param input          Original user-provided path (must not be NULL)
+ * @param role           Intended usage category
+ * @param normalized_out Output pointer receiving SAFE_MALLOC'd canonical path
+ * @return ASCIICHAT_OK on success, error code on failure (and normalized_out is NULL)
+ */
+asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out);
 
 /** @} */

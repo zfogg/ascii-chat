@@ -544,3 +544,15 @@ bool platform_get_executable_path(char *exe_path, size_t path_size);
  * @ingroup platform
  */
 bool platform_get_temp_dir(char *temp_dir, size_t path_size);
+
+/**
+ * @brief Get the current working directory of the process.
+ *
+ * Normalizes the result using platform-specific semantics and does not append
+ * a trailing directory separator.
+ *
+ * @param cwd Buffer to store the current working directory
+ * @param path_size Size of the buffer in bytes
+ * @return true on success, false on failure (buffer too small or API error)
+ */
+bool platform_get_cwd(char *cwd, size_t path_size);

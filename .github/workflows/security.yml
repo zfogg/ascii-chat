@@ -14,6 +14,10 @@ on:
       - '**.h'
       - '**.m'
 
+env:
+  CC: clang
+  CXX: clang++
+
 jobs:
   codeql:
     name: CodeQL Analysis
@@ -48,9 +52,8 @@ jobs:
 
     - name: Build for analysis
       run: |
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS='-std=c2x' -DBUILD_TESTS=OFF
         cmake --build build
 
@@ -83,10 +86,10 @@ jobs:
           echo "libv4l2 version: $libv4l2_version"
         fi
 
-        # Check zlib version
-        if pkg-config --exists zlib; then
-          zlib_version=$(pkg-config --modversion zlib)
-          echo "zlib version: $zlib_version"
+        # Check zstd version
+        if pkg-config --exists zstd; then
+          zstd_version=$(pkg-config --modversion zstd)
+          echo "zstd version: $zstd_version"
         fi
 
         # Check portaudio version
@@ -146,8 +149,7 @@ jobs:
     - name: Run static security analysis
       run: |
         # Use clang static analyzer for security issues
-        CC=clang CXX=clang++ cmake -B build -G Ninja \
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
-          -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_STANDARD=23 \
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS='-std=c2x -Wformat -Wformat-security -Werror=format-security' -DBUILD_TESTS=OFF
         scan-build cmake --build build || true

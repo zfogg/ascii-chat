@@ -262,9 +262,6 @@ function(configure_llvm_post_project)
         endif()
 
         if(IS_HOMEBREW_LLVM)
-            # Add LLVM library paths and libraries (equivalent to LDFLAGS from brew info llvm)
-            link_directories("${COMPILER_PREFIX}/lib")
-
             # Add the full LDFLAGS as recommended by brew info llvm
             # This includes libc++, libunwind which are needed for full LLVM toolchain
             # For Release builds: Link libunwind statically
@@ -272,11 +269,46 @@ function(configure_llvm_post_project)
             if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 # Use absolute path to static libunwind.a for Release builds
                 if(EXISTS "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
-                    set(HOMEBREW_LLVM_LINK_FLAGS "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
-                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}static libunwind${ColorReset}: ${HOMEBREW_LLVM_LINK_FLAGS}")
+                    set(ASCIICHAT_LLVM_STATIC_LIBUNWIND "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}static libunwind${ColorReset}: ${ASCIICHAT_LLVM_STATIC_LIBUNWIND}")
                 else()
                     message(FATAL_ERROR "Could not find static ${BoldRed}libunwind.a${ColorReset} in ${COMPILER_PREFIX}/lib/unwind/")
                 endif()
+                set(HOMEBREW_LLVM_LINK_FLAGS "")
+
+                foreach(_llvm_flag_var CMAKE_EXE_LINKER_FLAGS CMAKE_SHARED_LINKER_FLAGS)
+                    set(_current_flags "${${_llvm_flag_var}}")
+                    if(NOT _current_flags)
+                        continue()
+                    endif()
+
+                    # Split current flags respecting shell quoting (macOS toolchain flags use commas)
+                    separate_arguments(_llvm_flags_list NATIVE_COMMAND "${_current_flags}")
+
+                    set(_filtered_flags "")
+                    set(_added_static_lib FALSE)
+                    foreach(_flag IN LISTS _llvm_flags_list)
+                        if(_flag MATCHES "^-L${COMPILER_PREFIX}/lib/(unwind|c\\+\\+)$")
+                            continue()
+                        elseif(_flag STREQUAL "-lunwind")
+                            continue()
+                        elseif(_flag STREQUAL "${ASCIICHAT_LLVM_STATIC_LIBUNWIND}")
+                            if(_added_static_lib)
+                                continue()
+                            endif()
+                            set(_added_static_lib TRUE)
+                        endif()
+                        list(APPEND _filtered_flags "${_flag}")
+                    endforeach()
+
+                    if(_filtered_flags)
+                        list(REMOVE_DUPLICATES _filtered_flags)
+                        string(REPLACE ";" " " _filtered_flags "${_filtered_flags}")
+                        set(${_llvm_flag_var} "${_filtered_flags}" CACHE STRING "Linker flags" FORCE)
+                    else()
+                        set(${_llvm_flag_var} "" CACHE STRING "Linker flags" FORCE)
+                    endif()
+                endforeach()
             else()
                 # Debug/Dev builds: Use dynamic linking for faster development
                 set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib/unwind -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind")
@@ -286,7 +318,7 @@ function(configure_llvm_post_project)
             # Export to cache for later use
             set(HOMEBREW_LLVM_LIB_DIR "${COMPILER_PREFIX}/lib" CACHE INTERNAL "Homebrew LLVM library directory")
 
-            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
+            if(HOMEBREW_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
                 # Add library search paths and -lunwind flag globally
                 # Check if paths are already present to avoid duplication
                 if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib/unwind")
@@ -302,7 +334,7 @@ function(configure_llvm_post_project)
 
             message(STATUS "${BoldGreen}Applied${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} toolchain flags:")
             message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
-            if(NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm")
+            if(HOMEBREW_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
                 message(STATUS "  Link: ${BoldCyan}${HOMEBREW_LLVM_LINK_FLAGS}${ColorReset}")
             else()
                 message(STATUS "  Link: from ${BoldCyan}LDFLAGS${ColorReset}=${BoldYellow}$ENV{LDFLAGS}${ColorReset} environment variable")

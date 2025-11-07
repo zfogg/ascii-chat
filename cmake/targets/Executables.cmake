@@ -34,6 +34,14 @@ add_executable(ascii-chat
     src/client/keepalive.c
 )
 
+if(ASCIICHAT_ENABLE_UNITY_BUILDS)
+    set_target_properties(ascii-chat PROPERTIES UNITY_BUILD ON)
+endif()
+
+if(ASCIICHAT_ENABLE_IPO)
+    set_property(TARGET ascii-chat PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev/Coverage: shared library (DLL on Windows)
@@ -79,14 +87,10 @@ else()
             _WIN32_WINNT=0x0A00  # Windows 10
         )
     endif()
-    # Link mimalloc for static library builds (it's not in the shared library)
-    if(USE_MIMALLOC)
-        target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
-    endif()
 endif()
 
 # Include directories for executable (needed for version.h and other generated headers)
-target_include_directories(ascii-chat PRIVATE ${CMAKE_BINARY_DIR}/generated)
+target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
 
 # Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
 if(USE_MIMALLOC)
@@ -189,13 +193,21 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     if(NOT WIN32)
         target_compile_options(ascii-chat PRIVATE -fvisibility=hidden)
     endif()
+endif()
 
-    # Link-time optimization (LTO) for Release executable only
-    # Not applied to shared libraries (would strip symbols needed by external users)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        target_compile_options(ascii-chat PRIVATE -flto)
-        target_link_options(ascii-chat PRIVATE -flto)
+if(USE_MIMALLOC)
+    message(STATUS "ascii-chat linking mimalloc: ${ASCIICHAT_MIMALLOC_LINK_LIB}")
+    message(STATUS "ascii-chat MIMALLOC_LIBRARIES raw: ${MIMALLOC_LIBRARIES}")
+    if(TARGET mimalloc-static)
+        add_dependencies(ascii-chat mimalloc-static)
     endif()
+    if(TARGET mimalloc-shared)
+        add_dependencies(ascii-chat mimalloc-shared)
+    endif()
+endif()
+
+if(ASCIICHAT_LLVM_STATIC_LIBUNWIND)
+    target_link_libraries(ascii-chat ${ASCIICHAT_LLVM_STATIC_LIBUNWIND})
 endif()
 
 if(NOT WIN32)
