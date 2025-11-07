@@ -294,6 +294,75 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
   return ASCIICHAT_OK; // Not found = first connection
 }
 
+/**
+ * @brief Recursively create directories (like mkdir -p)
+ * @param path Full directory path to create
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+static asciichat_error_t mkdir_recursive(const char *path) {
+  if (!path || !*path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path for mkdir_recursive");
+  }
+
+  // Make a mutable copy of the path
+  size_t len = strlen(path);
+  char *tmp = SAFE_MALLOC(len + 1, char *);
+  if (!tmp) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for path");
+  }
+  memcpy(tmp, path, len + 1);
+
+  // Handle absolute paths (skip leading / or drive letter on Windows)
+  char *p = tmp;
+#ifdef _WIN32
+  // Skip drive letter (e.g., "C:")
+  if (len >= 2 && tmp[1] == ':') {
+    p += 2;
+  }
+#endif
+  // Skip leading slashes
+  while (*p == '/' || *p == '\\') {
+    p++;
+  }
+
+  // Create directories one level at a time
+  for (; *p; p++) {
+    if (*p == '/' || *p == '\\') {
+      *p = '\0'; // Temporarily truncate
+
+      // Try to create this directory level
+      int result = mkdir(tmp, 0700);
+      if (result != 0 && errno != EEXIST) {
+        // mkdir failed - check if directory actually exists (Windows quirk)
+        int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
+        if (test_fd < 0) {
+          asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
+          SAFE_FREE(tmp);
+          return err;
+        }
+        platform_close(test_fd);
+      }
+
+      *p = '/'; // Restore path separator (normalize to Unix style)
+    }
+  }
+
+  // Create the final directory
+  int result = mkdir(tmp, 0700);
+  if (result != 0 && errno != EEXIST) {
+    int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
+    if (test_fd < 0) {
+      asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", tmp);
+      SAFE_FREE(tmp);
+      return err;
+    }
+    platform_close(test_fd);
+  }
+
+  SAFE_FREE(tmp);
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
   // Validate parameters first
   if (!server_ip || !server_key) {
@@ -312,8 +381,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
     return ERROR_CONFIG;
   }
 
-  // Create directory if needed - handle both Windows and Unix paths
-  // Use strlen to safely get the length before duplicating
+  // Create parent directories recursively (like mkdir -p)
   size_t path_len = strlen(path);
   if (path_len == 0) {
     SET_ERRNO(ERROR_CONFIG, "Empty known hosts file path");
@@ -332,22 +400,15 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
 
   if (last_sep) {
-    *last_sep = '\0';
-    int mkdir_result = mkdir(dir, 0700);
-    if (mkdir_result != 0 && errno != EEXIST) {
-      // mkdir failed and it's not because the directory already exists
-      // Verify if directory actually exists despite the error (Windows compatibility)
-      int test_fd = platform_open(dir, PLATFORM_O_RDONLY, 0);
-      if (test_fd < 0) {
-        // Directory doesn't exist and we couldn't create it
-        SAFE_FREE(dir);
-        return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create directory: %s", dir);
-      }
-      // Directory exists despite error, close the test fd
-      platform_close(test_fd);
+    *last_sep = '\0'; // Truncate to get directory path
+    asciichat_error_t result = mkdir_recursive(dir);
+    SAFE_FREE(dir);
+    if (result != ASCIICHAT_OK) {
+      return result; // Error already set by mkdir_recursive
     }
+  } else {
+    SAFE_FREE(dir);
   }
-  SAFE_FREE(dir);
 
   // Create the file if it doesn't exist, then append to it
   // Note: Temporarily removed log_debug to avoid potential crashes during debugging
@@ -423,8 +484,13 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
 
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
+  if (fd < 0) {
+    // File doesn't exist - nothing to remove, return success
+    return ASCIICHAT_OK;
+  }
   FILE *f = platform_fdopen(fd, "r");
   if (!f) {
+    platform_close(fd);
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open known hosts file: %s", path);
     return ERROR_CONFIG;
   }
