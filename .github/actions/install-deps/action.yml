@@ -203,7 +203,7 @@ runs:
         export PATH="/usr/local/opt/make/libexec/gnubin:$PATH"
         export PATH="/usr/local/opt/llvm/bin:$PATH"
 
-        export PKG_CONFIG_LIBS=portaudio-2.0 criterion zstd libsodium
+        export PKG_CONFIG_LIBS="portaudio-2.0 criterion zstd libsodium"
 
         # Set up PATH
         echo "PATH=$PATH" >> $GITHUB_ENV
