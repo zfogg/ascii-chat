@@ -18,9 +18,26 @@ CMAKE_BUILD_TYPE ?= RelWithDebInfo
 CMAKE_ARGS ?=
 EXTRA_CMAKE_ARGS ?=
 
+INSTALL_PREFIX_FROM_ARGS := $(strip $(shell printf '%s %s\n' "$(CMAKE_ARGS)" "$(EXTRA_CMAKE_ARGS)" | tr ' ' '\n' | grep -E '^-DCMAKE_INSTALL_PREFIX=' | tail -n1 | cut -d '=' -f2- ))
+
+ifneq ($(strip $(INSTALL_PREFIX_FROM_ARGS)),)
+  CMAKE_INSTALL_PREFIX ?= $(INSTALL_PREFIX_FROM_ARGS)
+endif
+
 # Compiler configuration helpers used by analysis targets
 CC := clang
 override CFLAGS += -I$(LIB_DIR) -I$(SRC_DIR)
+
+
+Black   = "\e[1;30m"
+Red     = "\e[1;31m"
+Green   = "\e[1;32m"
+Yellow  = "\e[1;33m"
+Blue    = "\e[1;34m"
+Purple  = "\e[1;35m"
+Cyan    = "\e[1;36m"
+White   = "\e[1;37m"
+Reset   = "\e[0m"
 
 
 # =============================================================================
@@ -47,9 +64,15 @@ ifneq ($(strip $(EXTRA_CMAKE_ARGS)),)
 CONFIGURE_ARGS += $(EXTRA_CMAKE_ARGS)
 endif
 
+ifneq ($(strip $(CMAKE_INSTALL_PREFIX)),)
+ifneq ($(strip $(INSTALL_PREFIX_FROM_ARGS)),$(strip $(CMAKE_INSTALL_PREFIX)))
+CONFIGURE_ARGS += -DCMAKE_INSTALL_PREFIX="$(CMAKE_INSTALL_PREFIX)"
+endif
+endif
+
 .DEFAULT_GOAL := build
 
-.PHONY: all build configure reconfigure clean distclean install ninja
+.PHONY: all build configure reconfigure clean distclean install ninja checkprefix
 
 all: build
 
@@ -60,6 +83,9 @@ configure:
 build: configure
 	@echo "Building ascii-chat..."
 	@env MAKEFLAGS= $(CMAKE) --build "$(BUILD_DIR)"
+
+ninja: build
+	@cd "$(BUILD_DIR)" && ninja $(NINJA_ARGS)
 
 reconfigure:
 	@echo "Forcing a fresh CMake configure..."
@@ -77,12 +103,18 @@ distclean:
 	@echo "Removing build directory '$(BUILD_DIR)'..."
 	@rm -rf "$(BUILD_DIR)"
 
-install: build
-	@$(CMAKE) --build "$(BUILD_DIR)" --target install
+checkprefix:
+	@if [ -f "$(BUILD_DIR)/CMakeCache.txt" ] && [ -n "$(strip $(CMAKE_INSTALL_PREFIX))" ]; then \
+		cached_prefix=$$($(CMAKE) -L -N "$(BUILD_DIR)" 2>/dev/null | grep 'CMAKE_INSTALL_PREFIX' | cut -d '=' -f2); \
+		if [ "$(CMAKE_INSTALL_PREFIX)" != "$$cached_prefix" ]; then \
+			printf "Re-running CMake: CMAKE_INSTALL_PREFIX '%s' does not match cached value '%s'.\n" "$(CMAKE_INSTALL_PREFIX)" "$$cached_prefix"; \
+			rm -f "$(BUILD_DIR)/CMakeCache.txt"; \
+		fi; \
+	fi
 
-ninja: build
-	@cd "$(BUILD_DIR)" && ninja $(NINJA_ARGS)
-
+install: checkprefix build
+	@echo "Installing ascii-chat..."
+	@env MAKEFLAGS= $(CMAKE) --install "$(BUILD_DIR)"
 
 # =============================================================================
 # File Discovery (for tooling targets)
@@ -144,12 +176,16 @@ analyze:
 		$(C_FILES) $(C_HEADERS)
 
 cloc:
-	@echo "src/ dir:"
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
-	@echo "lib/ dir:"
-	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
-	@echo "docs/ dir:"
+	@printf $(Purple)"\n\ndocumentation:\n"$(Reset)
 	@cloc --progress=1 --force-lang='Markdown,dox' --force-lang='XML,in' "$(DOCS_DIR)"
+	@printf $(Purple)"\n\nbuild configuration and developer scripts:\n"$(Reset)
+	@cloc --progress=1 --include-lang='C,C/C++,CMake,CMakeLists.txt,JSON,Bash,Bourne Shell,Zsh,RTF' --force-lang='Bourne Shell,sh.in' --force-lang='XML,in' CMakeLists.txt cmake/ Makefile tests/scripts scripts/
+	@printf $(Purple)"\n\ntests:\n"$(Reset)
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Bash,Bourne Shell,PowerShell,Dockerfile,YAML' tests/unit tests/performance tests/integration
+	@printf $(Purple)"\n\nlibasciichat:\n"$(Reset)
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' "$(LIB_DIR)"
+	@printf $(Purple)"\n\nascii-chat executable:\n"$(Reset)
+	@cloc --progress=1 --include-lang='C,C/C++ Header,Objective-C' "$(SRC_DIR)"
 
 
 # =============================================================================
