@@ -239,12 +239,11 @@ jobs:
 
       - name: Configure and package with CPack
         run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DUSE_MIMALLOC=ON \
-            -DUSE_MUSL=OFF \
+          cmake -S . -B build --preset release \
             -DCPACK_GENERATOR="TGZ;STGZ;DEB;RPM"
           cmake --build build --target all
+          cmake --build build --target run-test-static-lib
+          cmake --build build --target run-test-shared-lib
           cmake --build build --target package
 
       - name: Collect artifacts
@@ -318,12 +317,12 @@ jobs:
 
       - name: Configure and package with CPack
         run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DUSE_MIMALLOC=ON \
+          cmake -S . -B build --preset release \
             -DCPACK_GENERATOR="productbuild;TGZ" \
             -DCPACK_PRODUCTBUILD_IDENTITY_NAME=""
           cmake --build build --target all
+          cmake --build build --target run-test-static-lib
+          cmake --build build --target run-test-shared-lib
           cmake --build build --target package
 
       - name: Collect artifacts
@@ -393,12 +392,12 @@ jobs:
         shell: pwsh
         run: |
           $toolchain = "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
+          cmake -S . -B build --preset release \
             -DCMAKE_TOOLCHAIN_FILE="$toolchain" \
-            -DUSE_MIMALLOC=ON \
             -DCPACK_GENERATOR="WIX;ZIP"
           cmake --build build --target all
+          cmake --build build --target run-test-static-lib
+          cmake --build build --target run-test-shared-lib
           cmake --build build --target package
 
       - name: Collect artifacts
