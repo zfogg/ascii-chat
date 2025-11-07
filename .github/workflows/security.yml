@@ -86,10 +86,10 @@ jobs:
           echo "libv4l2 version: $libv4l2_version"
         fi
 
-        # Check zlib version
-        if pkg-config --exists zlib; then
-          zlib_version=$(pkg-config --modversion zlib)
-          echo "zlib version: $zlib_version"
+        # Check zstd version
+        if pkg-config --exists zstd; then
+          zstd_version=$(pkg-config --modversion zstd)
+          echo "zstd version: $zstd_version"
         fi
 
         # Check portaudio version

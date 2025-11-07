@@ -18,17 +18,14 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
     option(USE_PRECOMPILED_HEADERS "Use precompiled headers for faster builds" ON)
 
     if(USE_PRECOMPILED_HEADERS AND NOT USE_MUSL)
-        # Add most commonly included headers as precompiled for the core module
-        # Based on analysis: these headers appear in 30+ source files
-        #
-        # NOTE: We CANNOT use precompiled headers with common.h because it defines
-        # malloc/free macros that conflict with system headers. When a PCH includes
-        # common.h, every file using the PCH tries to redefine malloc/free when
-        # system headers like <malloc.h> are included, causing compiler errors.
-        #
-        # Instead, we precompile only safe headers that don't have macro conflicts.
-        target_precompile_headers(ascii-chat-core PRIVATE
-            # Platform abstraction (safe - no conflicting macros)
+        set(_ascii_chat_pch_targets
+            ascii-chat-core
+            ascii-chat-network
+            ascii-chat-platform
+            ascii-chat-util
+        )
+
+        set(_ascii_chat_pch_headers
             lib/platform/abstraction.h
             lib/platform/system.h
             lib/platform/init.h
@@ -37,27 +34,23 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             lib/platform/string.h
             lib/platform/socket.h
             lib/platform/terminal.h
-            
-            # Core library headers (safe - no conflicting macros)
+
             lib/logging.h
             lib/options.h
             lib/buffer_pool.h
             lib/asciichat_errno.h
             lib/ringbuffer.h
             lib/palette.h
-            
-            # Utility headers (frequently used)
+
             lib/util/path.h
             lib/util/format.h
             lib/util/math.h
             lib/util/parsing.h
             lib/util/aspect_ratio.h
             lib/util/ip.h
-            
-            # Crypto headers (commonly used)
+
             lib/crypto/known_hosts.h
-            
-            # Standard C headers (most frequently used, safe from macro conflicts)
+
             <stdio.h>
             <stdlib.h>
             <string.h>
@@ -73,7 +66,17 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ctype.h>
             <assert.h>
         )
-        message(STATUS "${BoldGreen}Precompiled headers enabled (excluding common.h due to macro conflicts)${ColorReset}")
+
+        foreach(_pch_target IN LISTS _ascii_chat_pch_targets)
+            if(TARGET ${_pch_target})
+                get_target_property(_pch_existing ${_pch_target} PRECOMPILE_HEADERS)
+                if(NOT _pch_existing)
+                    target_precompile_headers(${_pch_target} PRIVATE ${_ascii_chat_pch_headers})
+                endif()
+            endif()
+        endforeach()
+
+        message(STATUS "${BoldGreen}Precompiled headers enabled for core libraries (excluding common.h due to macro conflicts)${ColorReset}")
     elseif(USE_MUSL)
         message(STATUS "Precompiled headers disabled for ${BoldBlue}musl${ColorReset} builds")
     endif()

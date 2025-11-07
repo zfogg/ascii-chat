@@ -158,7 +158,7 @@
  *     uint16_t protocol_version;      // Major version (e.g., 1)
  *     uint16_t protocol_revision;     // Minor revision (e.g., 0)
  *     uint8_t supports_encryption;    // 1=yes, 0=no (plaintext mode)
- *     uint8_t compression_algorithms; // Bitmap: COMPRESS_ALGO_ZLIB, etc.
+ *     uint8_t compression_algorithms; // Bitmap: COMPRESS_ALGO_ZSTD, etc.
  *     uint8_t compression_threshold; // 0-100 percentage (80 = 80%)
  *     uint16_t feature_flags;         // FEATURE_RLE_ENCODING, etc.
  *     uint8_t reserved[7];            // Padding to 16 bytes
@@ -172,7 +172,7 @@
  *     .protocol_version = 1,
  *     .protocol_revision = 0,
  *     .supports_encryption = 1,
- *     .compression_algorithms = COMPRESS_ALGO_ZLIB,
+ *     .compression_algorithms = COMPRESS_ALGO_ZSTD,
  *     .compression_threshold = 80,
  *     .feature_flags = FEATURE_RLE_ENCODING
  * };
@@ -183,7 +183,7 @@
  *     .protocol_version = 1,  // Must match client
  *     .protocol_revision = 1,  // Server supports newer revision
  *     .supports_encryption = 1,
- *     .compression_algorithms = COMPRESS_ALGO_ZLIB,
+ *     .compression_algorithms = COMPRESS_ALGO_ZSTD,
  *     .compression_threshold = 80,
  *     .feature_flags = FEATURE_RLE_ENCODING
  * };
@@ -230,7 +230,7 @@
  *
  * // Compress if beneficial
  * if (header.original_size > COMPRESS_THRESHOLD) {
- *     compress_zlib(ascii_data, header.original_size,
+ *     compress_data(ascii_data, header.original_size,
  *                    compressed_buf, &header.compressed_size);
  *     if (header.compressed_size < header.original_size * 0.8) {
  *         header.flags |= FLAG_IS_COMPRESSED;

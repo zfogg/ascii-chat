@@ -66,3 +66,10 @@ set(ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS "" CACHE STRING "Custom CPU compiler flag
 option(ASCIICHAT_RELEASE_ENABLE_FAST_MATH "Enable aggressive fast-math optimizations in Release builds" OFF)
 option(ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS "Preserve frame pointers in Release builds for better diagnostics" ON)
 
+option(ASCIICHAT_ENABLE_ANALYZERS "Run clang-tidy and cppcheck during builds" OFF)
+set(ASCIICHAT_CLANG_TIDY "" CACHE STRING "Override clang-tidy executable (leave empty for auto-detect)")
+set(ASCIICHAT_CPPCHECK "" CACHE STRING "Override cppcheck executable (leave empty for auto-detect)")
+
+option(ASCIICHAT_ENABLE_UNITY_BUILDS "Enable unity builds (batch compilation) for faster rebuilds" OFF)
+option(ASCIICHAT_ENABLE_CTEST_DASHBOARD "Configure CTest dashboards (include(CTest))" OFF)
+

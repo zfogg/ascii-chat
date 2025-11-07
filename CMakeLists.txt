@@ -116,6 +116,12 @@ fix_windows_clang_linking()
 find_msvc_libraries()
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Sanitizers.cmake)
 
+# Optional CTest dashboard integration
+if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
+    include(CTest)
+    include(${CMAKE_SOURCE_DIR}/cmake/test/CTest.cmake)
+endif()
+
 # Configure build type after both CompilerFlags.cmake and Sanitizers.cmake are included
 # (configure_build_type_post_project needs functions from both modules)
 configure_build_type_post_project()
@@ -138,9 +144,9 @@ configure_libsodium_bcrypt_pbkdf()
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Uthash.cmake)
 configure_uthash()
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
-configure_include_directories()
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mimalloc.cmake)
+configure_include_directories()
 
 # When USE_MUSL=ON, build all dependencies from source and cache them
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
