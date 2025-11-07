@@ -96,10 +96,19 @@ jobs:
         fi
 
         echo "Building with CMake build type: ${BUILD_TYPE}"
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
-          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+        cmake_args=(
+          --preset github
+          -DCMAKE_C_COMPILER="${CLANG_BIN}"
+          -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
           -DCMAKE_C_FLAGS="${FLAGS}"
+        )
+
+        if [ "${BUILD_TYPE}" = "Release" ]; then
+          cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
+        fi
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
         cmake --build build
 
         echo "Test executables built:"
@@ -357,10 +366,16 @@ jobs:
         echo "Building performance tests with Release optimization and coverage instrumentation..."
         FLAGS="-std=c2x -O3 --coverage"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
-          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=Release \
+        cmake_args=(
+          --preset github
+          -DCMAKE_C_COMPILER="${CLANG_BIN}"
+          -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
+          -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_C_FLAGS="${FLAGS}"
+          -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
+        )
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
         cmake --build build
         echo "Performance test executables built:"
         ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
