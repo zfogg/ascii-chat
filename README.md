@@ -21,263 +21,40 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 
 
-## Dependencies
+## Table of Contents
 
-ascii-chat relies on several key libraries for its functionality. Each dependency serves a specific purpose in the application:
-
-### Core Dependencies
-
-#### [PortAudio](http://www.portaudio.com/) - Audio I/O Library
-- **Purpose**: So the clients can talk to and hear each other
-- **License**: MIT
-
-#### [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
-- **Purpose**: Modern implementation of TOML for config file interations.
-- **License**: MIT
-
-#### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Header-only Library
-- **Purpose**: Fast O(1) lookups and persistent memory for the server's client manager, and various other things like caches
-- **License**: BSD revised
-
-#### [libsodium](https://libsodium.org/) - Cryptographic Library
-- **Purpose**: End-to-end encryption and authentication of protocol packets
-- **License**: ISC
-
-#### [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
-- **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys
-- **License**: [none]
-
-#### [BearSSL](https://bearssl.org/) - SSL/TLS Library
-- **Purpose**: For our custom HTTPS client to fetch public keys from GitHub/GitLab for encryption authorization
-- **License**: MIT
-
-#### [zstd](https://facebook.github.io/zstd/) - Compression Library
-- **Purpose**: To make the protocol more efficient
-- **License**: BSD/GPLv2
-
-#### [Sokol](https://github.com/floooh/sokol) - Utility Library
-- **Purpose**: Header-only C library providing simple cross-platform APIs (graphics, audio, input)
-- **License**: zlib/libpng
-
-### Operating System APIs
-ascii-chat uses native platform APIs for each platform for webcam access:
-- **Linux**: V4L2 (Video4Linux2 kernel module)
-- **macOS**: AVFoundation (macOS native API)
-- **Windows**: Media Foundation (Windows native API)
+- [Get ascii-chat](#get-ascii-chat)
+- [Usage](#usage)
+- [Command line flags](#command-line-flags)
+- [Cryptography](#cryptography)
+- [Environment Variables](#environment-variables)
+- [Open Source](#open-source)
+  - [Dependencies](#dependencies)
+    - [Core Dependencies](#core-dependencies)
+    - [Operating System APIs](#operating-system-apis)
+    - [Install Dependencies on Linux or macOS](#install-dependencies-on-linux-or-macos)
+    - [Install Dependencies on Windows](#install-dependencies-on-windows)
+  - [Build from source](#build-from-source)
+    - [What is musl and mimalloc?](#what-is-musl-and-mimalloc)
+    - [Development Tools](#development-tools)
+    - [Configuration Options](#configuration-options)
+    - [Documentation](#documentation)
+  - [Testing](#testing)
+    - [Quick Start](#quick-start)
+    - [Test Types](#test-types)
+    - [Using the Test Script Directly](#using-the-test-script-directly)
+    - [Windows Docker Testing](#windows-docker-testing)
+    - [Manual Test Execution](#manual-test-execution)
+    - [Testing Framework](#testing-framework)
+- [TODO](#todo)
+- [Notes](#notes)
 
 
-### Install Dependencies on Linux or macOS
-- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc zstd portaudio libsodium criterion`
-- **macOS**: - `brew install cmake ninja zstd portaudio libsodium criterion`
+## Get ascii-chat
 
-### Install Dependencies on Windows
-1. **Install Scoop** (if not already installed):
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   irm get.scoop.sh | iex
-   ```
-
-2. **Install build tools via Scoop**:
-   ```powershell
-   scoop install cmake ninja llvm
-   ```
-
-3. **Install Windows SDK**:
-   - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
-   - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
-
-4. **Install dependencies via vcpkg**:
-   ```powershell
-   # Install vcpkg (if not already installed)
-   git clone https://github.com/Microsoft/vcpkg.git
-   cd vcpkg
-   .\bootstrap-vcpkg.bat
-
-   # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows
-
-   # If you want to do a release build
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
-   ```
-
-‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
-
-
-## Build and run
-1. Clone this repo onto a computer with a webcam and `cd` to its directory.
-2. Install the dependencies for your OS (instructions listed above).
-3. Run `cmake --preset default && cmake --build --preset default`.
-4. Run `./build/bin/ascii-chat server`.
-5. Open a second terminal window, tab, split, or pane. Or go to another computer.
-6. Run `./build/bin/ascii-chat client`.
-7. 👯 *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
-
-Check the `CMakeLists.txt` to see how it works.
-
-## Downloads (Pre-built Packages)
-
-Want to just download ascii-chat? Go to the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases).
-
-### Releases
-
-Each release includes package installers for all Linux, macOS, and Windows.
-
-Package Installers
-  - **Windows**: `.msi` (Windows Installer) and `.exe` (self-extracting installer)
-  - **Linux**: `.deb` (Debian/Ubuntu) and `.rpm` (RedHat/Fedora) packages
-  - **macOS**: `.pkg` installer
-
-Each pakage installs
-- **bin/ascii-chat or ascii-chat.exe**: Optimized executables for your operating system
-- **libasciichat**: ascii-chat's Library for Open Source Development
-  - Static library (`.a` file)
-  - Shared library (`.dll`, `.so`, or `.dylib`)
-  - C header files for you to include in your project.
-  - CMake and pkg-config config files so your build system can nicely integrate libasciichat.
-- **Developer Documentation**: Generated via Doxygen
-  - HTML documents. On Windows there will be a link to the index.html in the start menu.
-  - UNIX man pages. On Linux and macOS these are installed so you can run man 3 ascii-chat\<TAB\> (press tab to autocomplete in your terminal) and almost 400 manpages will be available.
-
-### Installation Instructions
-
-#### Windows
-1. Download either installer from the [releases page](https://github.com/zfogg/ascii-chat/releases):
-   - **`.msi` (recommended)**: Windows Installer package - better for enterprise/corporate environments
-   - **`.exe`**: Self-extracting installer - works without admin privileges
-2. Run the installer
-3. ascii-chat will be installed to `C:\Program Files\ascii-chat\` (or your chosen directory)
-4. Run from PowerShell: `ascii-chat server` or `ascii-chat client`
-
-**Which installer should I choose?**
-- **MSI (`.msi`)**: If you have admin rights or need Group Policy deployment (enterprises)
-- **EXE (`.exe`)**: If you don't have admin rights or want a simpler single-file installer
-
-#### Linux
-```bash
-#  Debian/Ubuntu
-wget https://github.com/zfogg/ascii-chat/releases/download/vX.Y.Z/ascii-chat_X.Y.Z_amd64.deb
-#  RedHat/Fedora
-wget https://github.com/zfogg/ascii-chat/releases/download/vX.Y.Z/ascii-chat-X.Y.Z.x86_64.rpm
-#  Arch or any Linux
-wget https://github.com/zfogg/ascii-chat/releases/download/vX.Y.Z/ascii-chat-X.Y.Z.x86_64.tar.Z
-
-# Install with apt
-sudo apt install ./ascii-chat_X.Y.Z_amd64.deb
-
-# Run it
-ascii-chat server
-ascii-chat client
-```
-
-#### Linux
-```bash
-
-# Install with dnf or yum
-sudo dnf install ./ascii-chat-X.Y.Z.x86_64.rpm
-
-# Run it
-ascii-chat server
-ascii-chat client
-```
-
-#### macOS
-1. Download the `.pkg` installer from the [releases page](https://github.com/zfogg/ascii-chat/releases)
-2. Double-click the `.pkg` file to install
-3. Run from Terminal: `ascii-chat server` or `ascii-chat client`
-
-### Using ascii-chat as a Library
-
-If you're a developer and want to use ascii-chat's components in your own project, the release packages include both static and shared libraries with C headers.
-
-**Example - Link against the static library:**
-```c
-#include <asciichat/logging.h>
-#include <asciichat/common.h>
-
-int main(void) {
-    log_init(NULL, LOG_INFO);
-    log_info("Hello from my app!");
-    log_destroy();
-    return 0;
-}
-```
-
-**Compile:**
-```bash
-# Linux/macOS
-gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat-static -lsodium -lportaudio
-
-# Windows
-clang -o myapp.exe myapp.c -IC:\Program Files\ascii-chat\include -LC:\Program Files\ascii-chat\lib -lasciichat-static
-```
-
-The package installers automatically install libraries to `/usr/lib` (Linux), `/usr/local/lib` (macOS), or `C:\Program Files\ascii-chat\lib` (Windows), and headers to the corresponding `include/asciichat/` directories.
-
-## Available CMake Presets
-
-### Development Builds
-- **`default`** / **`debug`** - Debug build with sanitizers (slowest, catches most bugs)
-- **`dev`** - Debug symbols without sanitizers (faster iteration)
-- **`coverage`** - Build with coverage instrumentation
-
-### Production Builds
-- **`release`** - Static release build
-  - Produces stripped static binaries
-  - Best for Linux production deployment - single binary, no dependencies
-  - Uses mimalloc performance
-  - Uses musl libc
-
-- **`release-musl`** - Alias for `release` (static musl build)
-
-### Profiling/Production Debugging
-- **`relwithdebinfo`** - Optimized build with debug symbols (for profiling and debugging production issues)
-  - Optimized with `-O2` but keeps debug symbols (not stripped, ~1.3MB)
-  - Use with `gdb`, `lldb`, `perf`, `valgrind` for profiling
-  - Uses clang + glibc for the best debugging experience (stack traces)
-  - Includes mimalloc
-
-### Building
-```bash
-# Development (default)
-cmake --preset default && cmake --build build
-
-# Production release (Linux static binary)
-cmake --preset release && cmake --build build
-
-# Profiling/debugging production issues
-cmake --preset relwithdebinfo && cmake --build build
-
-# Clean rebuild
-rm -rf build
-cmake --preset release && cmake --build build
-```
-
-### What is musl and mimalloc?
-
-**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. The `release` preset uses musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
-
-**mimalloc**: Microsoft's high-performance memory allocator. All release and profiling builds use mimalloc instead of the system allocator for better performance. It provides:
-- Up to 2x faster allocation/deallocation
-- Better memory locality and cache performance
-- Lower memory fragmentation
-- Optimized for multi-threaded workloads
-
-### Development Tools
-- `cmake --build --preset debug --target format` - Format source code using clang-format
-- `cmake --build --preset debug --target clang-tidy` - Run clang-tidy on sources
-- `cmake --build --preset debug --target docs` - Build the doxygen docs
-- `cmake --build --preset debug --target docs-open` - Open the docs in your web browser
-- `.\build.ps1` - A PowerShell script that kills running processes, cleans, configures, builds, and copies binaries to bin/. I tend to only use this to build when I develop on Windows.
-
-### Configuration Options
-CMake supports several configuration options:
-- `-DCMAKE_C_COMPILER` - Set compiler (default: clang)
-- `-DSIMD_MODE` - SIMD mode: auto, sse2, ssse3, avx2, avx512, neon, sve (default: auto)
-- `-DCRC32_HW` - CRC32 hardware acceleration: auto, on, off (default: auto)
-- `-DUSE_MUSL` - Build a static binary with musl libc.
-- `-DUSE_MIMALLOC` - Build with Microsoft's mimalloc memory allocator (overrides malloc()/free() unless USE_MUSL is ON)
-- Ninja automatically uses all available CPU cores for parallel builds
+- Latest release: [v0.3.5](https://github.com/zfogg/ascii-chat/releases/tag/v0.3.5)
+- All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
+- Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps
 
 
 ## Usage
@@ -286,7 +63,7 @@ ascii-chat uses a unified binary with two modes: `server` and `client`.
 
 Start the server and wait for client connections:
 ```bash
-# NOTE: on Windows use ascii-chat.exe
+# NOTE: on Windows the filename is ascii-chat.exe
 ascii-chat [--help|--version] [server|client] [options...]
 ```
 
@@ -372,7 +149,6 @@ Run `./bin/ascii-chat server --help` to see all server options:
 - `-L --log-file FILE`: Redirect logs to file
 - `-v --version`: Display version information
 - `-h --help`: Show help message
-
 
 
 ## Cryptography
@@ -532,22 +308,176 @@ changing command-line arguments.
 - **Used for**: Reducing test data sizes and adjusting performance expectations
 
 
-## Testing
+## Open Source
+
+ascii-chat is an open source project with an MIT license, meaning you can and should use our code to make cool stuff. Follow through this Open Source section of the README and you'll be compiling against libasciichat in no time.
+
+The first thing you need to do is get the dependencies. Some of them are git submodules of the repo. When you clone the repo get the submodules too.
+
+```bash
+git submodule init
+git submodule update --recursive
+```
+
+Now let's list out and talk about the dependencies before we install them.
+
+### Dependencies
+
+ascii-chat relies on several libraries.
+
+#### Core Dependencies
+
+##### [PortAudio](http://www.portaudio.com/) - Audio I/O Library
+- **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
+- **License**: MIT
+
+##### [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
+- **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
+- **License**: MIT
+
+##### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
+- **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
+- **License**: BSD revised
+
+##### [libsodium](https://libsodium.org/) - Cryptographic Library
+- **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
+- **License**: ISC
+
+##### [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
+- **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This library for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
+- **License**: [none]
+
+##### [BearSSL](https://bearssl.org/) - SSL/TLS Library
+- **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
+- **License**: MIT
+
+##### [zstd](https://facebook.github.io/zstd/) - Compression Library
+- **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
+- **License**: BSD/GPLv2
+
+##### [Sokol](https://github.com/floooh/sokol) - Utility Library
+- **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
+- **License**: zlib/libpng
+
+#### Operating System APIs
+ascii-chat uses native platform APIs for each platform for webcam access:
+- **Linux**: V4L2 Linux kernel module
+- **macOS**: AVFoundation native macOS API
+- **Windows**: Media Foundation native Windows API
+
+#### Install Dependencies on Linux or macOS
+- **Plain old Ubuntu**: `apt-get install clang clang-tidy clang-format cmake ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
+- **Glorious Arch Linux**: `pacman -S pkg-config clang cmake ninja musl mimalloc zstd portaudio libsodium criterion`
+- **macOS**: - `brew install cmake ninja zstd portaudio libsodium criterion`
+
+#### Install Dependencies on Windows
+1. **Install Scoop** (if not already installed):
+   ```powershell
+   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+   irm get.scoop.sh | iex
+   ```
+
+2. **Install build tools via Scoop**:
+   ```powershell
+   scoop install cmake ninja llvm
+   ```
+
+3. **Install Windows SDK**:
+   - Download and install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+   - Or install via Scoop: `scoop install windows-sdk-10-version-2004`
+
+4. **Install dependencies via vcpkg**:
+   ```powershell
+   # Install vcpkg (if not already installed)
+   git clone https://github.com/Microsoft/vcpkg.git
+   cd vcpkg
+   .\bootstrap-vcpkg.bat
+
+   # Install required packages for a development build
+   vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows
+
+   # If you want to do a release build
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
+   ```
+
+‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
+
+### Build from source
+
+For open source developers who want a working copy:
+
+1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
+2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or the docs).
+3. Build an optimized-with-debug build: `make CMAKE_BUILD_TYPE=RelWithDebInfo`.
+4. Run `./build/bin/ascii-chat server`.
+5. Open a second terminal window, tab, split, or pane. Or go to another computer.
+6. Run `./build/bin/ascii-chat client`.
+7. 👯 *Optional:* open more terminals and run more clients! ascii-chat is multiplayer 🔢. They'll all connect and show in a grid. On macOS you can just open multiple terminals and run `ascii-chat client` in each one. On Windows and Linux computers only one program can use a webcam at a time, so use multiple computers to test connecting multiple clients to the server (call a friend).
+
+`make` configures CMake for you; if you prefer manual steps, you can still run cmake directly: `cmake --preset default && cmake --build --preset default` (or choose another --preset).
+
+#### What is musl and mimalloc?
+
+**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. The `release` preset uses musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
+
+**mimalloc**: Microsoft's high-performance memory allocator. All release and profiling builds use mimalloc instead of the system allocator for better performance. It provides:
+- Up to 2x faster allocation/deallocation
+- Better memory locality and cache performance
+- Lower memory fragmentation
+- Optimized for multi-threaded workloads
+
+#### Development Tools
+- `cmake --build --preset dev --target ascii-chat` - Build `ascii-chat` without sanitizers
+- `cmake --build --preset debug --target format` - Format all source code using clang-format
+- `cmake --build --preset debug --target clang-tidy` - Run clang-tidy across the tree
+- `cmake --build --preset debug --target docs` - Generate the Doxygen API reference into `build/docs/html`
+- `cmake --build --preset debug --target docs-open` - Build and open the docs in your default browser
+- `cmake --build --preset release --target package-productbuild` - Build a release and make a `.pkg` installer for macOS (analogous targets exist per platform)
+- `./build.ps1` - PowerShell helper that stops running binaries, cleans, configures, builds, and syncs artifacts into `bin/` when developing on Windows
+- `./scripts/*` - Developer utilities (dependency installers, helper scripts, etc.)
+
+#### Configuration Options
+Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for example `cmake -B build -DASCIICHAT_ENABLE_ANALYZERS=ON`). Defaults reflect the logic in our CMake modules.
+
+- `USE_MUSL` (Linux only): defaults to `ON` for `Release`/`RelWithDebInfo` builds to produce static PIE binaries with musl + mimalloc; `OFF` for other build types and on non-Linux hosts.
+- `USE_MIMALLOC`: defaults to `ON` whenever we're optimizing for performance (Release/RelWithDebInfo or musl builds), and `OFF` for `Debug`/`Dev` configurations to keep debugging predictable.
+- `BUILD_TESTS`: defaults to `ON` so Criterion unit/integration/performance tests are compiled.
+- `USE_PRECOMPILED_HEADERS`: defaults to `ON` (requires CMake ≥ 3.16 and is disabled automatically for musl builds) to accelerate core library builds.
+- `USE_CCACHE`: defaults to `ON` to speed up rebuilds with `ccache` (forced `OFF` when musl is enabled).
+- `USE_CPACK`: defaults to `ON` to make packaging targets (`package`, `package-productbuild`, etc.) available.
+- `ASCIICHAT_RELEASE_ENABLE_FAST_MATH`: defaults to `OFF`; flip to `ON` to allow aggressive fast-math optimizations in Release builds.
+- `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS`: defaults to `ON`; set `OFF` if you want slightly tighter Release binaries and are okay with poorer stack traces.
+- `ASCIICHAT_ENABLE_ANALYZERS`: defaults to `OFF`; enable to wire clang-tidy/cppcheck into the build (respecting `ASCIICHAT_CLANG_TIDY`/`ASCIICHAT_CPPCHECK` overrides).
+- `ASCIICHAT_ENABLE_UNITY_BUILDS`: defaults to `OFF`; enable to batch-compile sources for faster rebuilds on some toolchains.
+- `ASCIICHAT_ENABLE_CTEST_DASHBOARD`: defaults to `OFF`; enable to include CTest dashboard configuration (`include(CTest)`).
+
+#### Documentation
+- Install Doxygen (`brew install doxygen`, `apt-get install doxygen`, etc.) to enable the documentation targets.
+- Run `cmake --build build --target docs` to generate HTML + manpage docs in `build/docs/`.
+- Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
+
+### Testing
+
+#### Testing Framework
+- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
+- **Coverage**: Code coverage reports generated in CI
+- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
+- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
 The project uses a unified test runner script at `tests/scripts/run_tests.sh` that consolidates all test execution logic. It accepts all sorts of arguments and auto-builds the test executables it's gonna run beforehand with ninja, which is convenient because it allows you to simply iterate on code and then run this script, going between those two things.
 
-### Quick Start
+#### Quick Start
 * Have the dependencies installed.
 * Choose:
   1. Linux or macOS: run test runner script: `./tests/scripts/run_tests.sh`
   2. Windows: use Docker: `./tests/scripts/run-docker-tests.ps1` (just calls `run_tests.sh` in a container)
 
-### Test Types
+#### Test Types
 - **Unit Tests**: Test individual components in isolation
 - **Integration Tests**: Test component interactions and full workflows
 - **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
 
-### Using the Test Script Directly
+#### Using the Test Script Directly
 ```bash
 # Run all tests in debug mode
 ./tests/scripts/run_tests.sh
@@ -574,7 +504,7 @@ The project uses a unified test runner script at `tests/scripts/run_tests.sh` th
 
 ```
 
-### Windows Docker Testing
+#### Windows Docker Testing
 On Windows, since Criterion is POSIX-based, tests must be run in a Docker container. Use the PowerShell wrapper script:
 
 ```powershell
@@ -605,7 +535,7 @@ The Docker script automatically:
 - Handles incremental builds
 - Provides the same test interface as the native script
 
-### Manual Test Execution
+#### Manual Test Execution
 You can also run individual test executables directly:
 ```bash
 # Build the project first
@@ -615,12 +545,6 @@ cmake --preset debug && cmake --build --preset debug
 build/bin/test_unit_mixer --verbose
 build/bin/test_performance_ascii_simd --filter "*monochrome*"
 ```
-
-### Testing Framework
-- **Framework**: [libcriterion](https://criterion.readthedocs.io/en/master/)
-- **Coverage**: Code coverage reports generated in CI
-- **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
-- **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
 
 ## TODO
@@ -639,17 +563,22 @@ build/bin/test_performance_ascii_simd --filter "*monochrome*"
 - [ ] Compile to WASM/WASI and run in the browser
 - [x] Socket multiplexing.
 - [ ] Edge detection and other things like that to make the image nicer.
+- [ ] Square packing / grid packing / putting multiple squares into one square efficiently. For the multi-client grid layout system.
 - [x] Multiple clients. Grid to display them.
 - [x] Snapshot mode for clients with --snapshot to "take a photo" of a call and print it to the terminal or a file, rather than rendering video for a long time.
 - [x] Audio mixing for multiple clients with compression and ducking.
 - [ ] Color filters so you can pick a color for all the ascii so it can look like the matrix when you pick green (Gurpreet suggested).
-- [ ] Lock-free packet send queues.
+- [x] Lock-free packet send queues.
 - [x] Hardware-accelerated ASCII-conversion via SIMD.
 - [x] Windows support.
 - [x] Linux support.
 - [x] Crypto.
 - [ ] GPG key support for crypto (there's a bug upstream in libgcrypt).
+= [ ] ascii-chat internet protocol rfc
+= [ ] ascii-chat discovery service
+= [ ] zalgo text generator
 - [ ] v4l2 webcam images working.
+- [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)
 
 
 ## Notes
