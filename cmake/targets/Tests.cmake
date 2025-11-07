@@ -159,6 +159,22 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         endif()
     endif()
 
+    # Determine mimalloc include directories for tests (tests include common.h directly)
+    set(_ascii_tests_mimalloc_include "")
+    if(TARGET mimalloc-static)
+        get_target_property(_ascii_mimalloc_iface mimalloc-static INTERFACE_INCLUDE_DIRECTORIES)
+        if(_ascii_mimalloc_iface)
+            list(APPEND _ascii_tests_mimalloc_include ${_ascii_mimalloc_iface})
+        endif()
+    endif()
+    if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
+        list(APPEND _ascii_tests_mimalloc_include "${MIMALLOC_SOURCE_DIR}/include")
+    endif()
+    if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
+        list(APPEND _ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIR}")
+    endif()
+    list(REMOVE_DUPLICATES _ascii_tests_mimalloc_include)
+
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
     set(TEST_EXCLUDES
@@ -197,7 +213,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
         # Add Criterion include directories
-        target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
+        target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS} ${_ascii_tests_mimalloc_include})
 
         # For musl builds, disable subprocess isolation (no forking)
         if(USE_MUSL)

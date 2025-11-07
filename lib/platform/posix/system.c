@@ -128,6 +128,19 @@ asciichat_error_t platform_localtime(const time_t *timer, struct tm *result) {
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t platform_gtime(const time_t *timer, struct tm *result) {
+  if (!timer || !result) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for gmtime");
+  }
+
+  struct tm *tm_result = gmtime_r(timer, result);
+  if (!tm_result) {
+    return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to convert time to UTC");
+  }
+
+  return ASCIICHAT_OK;
+}
+
 /**
  * @brief Get current process ID
  * @return Process ID as integer

@@ -160,11 +160,18 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/debug/Instrumentation.cmake)
+ascii_instrumentation_prepare()
+
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
+ascii_instrumentation_finalize()
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
 
 # =============================================================================

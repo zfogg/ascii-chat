@@ -251,3 +251,34 @@ set(DATA_STRUCTURES_SRCS
     lib/ringbuffer.c
 )
 
+# =============================================================================
+# Instrumentation Runtime (debug utilities)
+# =============================================================================
+set(DEBUG_RUNTIME_SRCS
+    lib/debug/instrument_log.c
+)
+
+# =============================================================================
+# Application Sources (main executable)
+# =============================================================================
+set(APP_SRCS
+    src/main.c
+    # Server mode sources
+    src/server/main.c
+    src/server/client.c
+    src/server/protocol.c
+    src/server/crypto.c
+    src/server/stream.c
+    src/server/render.c
+    src/server/stats.c
+    # Client mode sources
+    src/client/main.c
+    src/client/server.c
+    src/client/protocol.c
+    src/client/crypto.c
+    src/client/display.c
+    src/client/capture.c
+    src/client/audio.c
+    src/client/keepalive.c
+)
+

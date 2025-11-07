@@ -13,26 +13,7 @@
 # =============================================================================
 
 # Unified binary with both server and client modes
-add_executable(ascii-chat
-    src/main.c
-    # Server mode sources
-    src/server/main.c
-    src/server/client.c
-    src/server/protocol.c
-    src/server/crypto.c
-    src/server/stream.c
-    src/server/render.c
-    src/server/stats.c
-    # Client mode sources
-    src/client/main.c
-    src/client/server.c
-    src/client/protocol.c
-    src/client/crypto.c
-    src/client/display.c
-    src/client/capture.c
-    src/client/audio.c
-    src/client/keepalive.c
-)
+add_executable(ascii-chat ${APP_SRCS})
 
 if(ASCIICHAT_ENABLE_UNITY_BUILDS)
     set_target_properties(ascii-chat PROPERTIES UNITY_BUILD ON)

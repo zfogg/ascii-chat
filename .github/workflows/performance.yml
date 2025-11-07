@@ -119,6 +119,7 @@ jobs:
         GITHUB_CMAKE_BINARY_DIR=build_release cmake --preset github \
           -DCMAKE_BUILD_TYPE=Release \
           -DUSE_MIMALLOC=ON \
+          -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
           -DBUILD_TESTS=OFF
         cmake --build build_release
         RELEASE_SIZE=$(stat -f%z build_release/bin/ascii-chat 2>/dev/null || stat -c%s build_release/bin/ascii-chat)

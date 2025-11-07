@@ -46,6 +46,9 @@ endif()
 # Option to build tests
 option(BUILD_TESTS "Build test executables" ON)
 
+# Enforce static linking for Release builds by default
+option(ASCIICHAT_ENFORCE_STATIC_RELEASE "Fail Release builds if binaries are not statically linked" ON)
+
 # Build type (matches Makefile modes)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, Coverage" FORCE)
