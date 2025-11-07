@@ -1,7 +1,18 @@
 /**
- * @file client/main.c
- * @ingroup client_main
- * @brief 🖥️ Client main entry point: connection management, event loop, and multi-threaded lifecycle orchestration
+ * @file main.c
+ * @brief ASCII-Chat Client Main Entry Point
+ *
+ * This module serves as the main entry point for the ASCII-Chat client application.
+ * It orchestrates the entire client lifecycle including initialization, connection
+ * management, and the primary event loop that manages reconnection logic.
+ *
+ * ## Architecture Overview
+ *
+ * The client follows a modular threading architecture:
+ * - **Main thread**: Connection management and event coordination
+ * - **Data reception thread**: Handles incoming packets from server
+ * - **Ping thread**: Maintains connection keepalive
+ * - **Webcam capture thread**: Captures and transmits video frames
  * - **Audio capture thread**: Captures and transmits audio data (optional)
  *
  * ## Connection Management
@@ -64,10 +75,7 @@
 #include "platform/init.h"
 #include "platform/terminal.h"
 #include "common.h"
-#include "asciichat_errno.h"
 #include "options.h"
-#include "crypto/keys/keys.h"
-#include "crypto/known_hosts.h"
 #include "buffer_pool.h"
 #include "palette.h"
 #include "network/network.h"
@@ -81,54 +89,32 @@
  * Global State Variables
  * ============================================================================ */
 
-/**
- * @brief Global atomic flag indicating shutdown has been requested
- *
- * Primary coordination mechanism for clean client shutdown. Set to true by
- * signal handlers (SIGINT) or main loop on error conditions. All worker threads
- * check this flag in their main loops to exit gracefully.
- *
- * @note Must be atomic for thread-safe access without mutexes
- * @ingroup client_main
- */
-static atomic_bool g_client_should_exit = false;
+/** Global flag indicating shutdown has been requested */
+atomic_bool g_should_exit = false;
 
 /**
- * @brief Check if shutdown has been requested
- *
- * This function is also registered as the shutdown check callback for
- * library code via shutdown_register_callback(). Thread-safe check of
- * the global exit flag used by all client threads.
+ * Check if shutdown has been requested
  *
  * @return true if shutdown requested, false otherwise
- *
- * @ingroup client_main
  */
 bool should_exit() {
-  return atomic_load(&g_client_should_exit);
+  return atomic_load(&g_should_exit);
 }
 
 /**
- * @brief Signal that shutdown should be requested
- *
- * Sets the global exit flag to trigger graceful shutdown of all client
- * threads. Thread-safe and can be called from signal handlers.
- *
- * @ingroup client_main
+ * Signal that shutdown should be requested
  */
 void signal_exit() {
-  atomic_store(&g_client_should_exit, true);
+  atomic_store(&g_should_exit, true);
 }
 
 /**
- * @brief Signal handler for SIGINT (Ctrl-C)
+ * Signal handler for SIGINT (Ctrl-C)
  *
  * Implements double-tap behavior: first SIGINT requests graceful shutdown,
  * second SIGINT within the same session forces immediate exit.
  *
  * @param sigint The signal number (unused)
- *
- * @ingroup client_main
  */
 static void sigint_handler(int sigint) {
   (void)(sigint);
@@ -145,46 +131,24 @@ static void sigint_handler(int sigint) {
   }
 
   if (!opt_quiet) {
-    const char **colors = log_get_color_array();
-    char *message = "Shutdown requested...\n  (Press Ctrl-c again to force quit)";
-    safe_fprintf(stderr, "\n%s%s%s\n", colors[LOGGING_COLOR_FATAL], message, colors[LOGGING_COLOR_RESET]);
-    log_file(message);
+    printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
   }
 
   // Signal all subsystems to shutdown
-  atomic_store(&g_client_should_exit, true);
+  atomic_store(&g_should_exit, true);
 
   // Trigger server connection module to close socket
   server_connection_shutdown();
 }
 
-#if !defined(NDEBUG) && !defined(_WIN32)
 /**
- * @brief Handle SIGUSR1 signal to trigger lock debugging output
- *
- * This signal handler triggers the lock debug thread to print all held locks
- * and their backtraces. Useful for debugging deadlocks without modifying
- * the running client.
- *
- * @param sigusr1 The signal number (unused, required by signal handler signature)
- */
-static void sigusr1_handler(int sigusr1) {
-  (void)(sigusr1);
-
-  // Trigger lock debugging output (signal-safe)
-  lock_debug_trigger_print();
-}
-#endif
-
-/**
- * @brief Platform-compatible SIGWINCH handler for terminal resize events
+ * Platform-compatible SIGWINCH handler for terminal resize events
  *
  * Automatically updates terminal dimensions and notifies server when
- * both width and height are set to auto-detect mode.
+ * both width and height are set to auto-detect mode. On Windows, this
+ * is a no-op since SIGWINCH is not available.
  *
  * @param sigwinch The signal number (unused)
- *
- * @ingroup client_main
  */
 #ifndef _WIN32
 static void sigwinch_handler(int sigwinch) {
@@ -207,76 +171,23 @@ static void sigwinch_handler(int sigwinch) {
   }
 }
 #else
-// Windows-compatible signal handler (placeholder - actual resize detection uses callback)
-/**
- * @brief Windows-compatible SIGWINCH handler (placeholder)
- *
- * On Windows, SIGWINCH is not a real signal - resize detection uses
- * ReadConsoleInput. See terminal_resize_callback() for the actual Windows
- * resize handling.
- *
- * @param sigwinch The signal number (unused)
- *
- * @ingroup client_main
- */
+// Windows-compatible signal handler (no-op implementation)
 static void sigwinch_handler(int sigwinch) {
   (void)(sigwinch);
-  // On Windows, SIGWINCH is not a real signal - resize detection uses ReadConsoleInput
-  // See terminal_resize_callback() for the actual Windows resize handling
-}
-
-/**
- * @brief Windows console resize callback function
- *
- * Called by the Windows console resize detection thread when terminal size changes.
- * This provides equivalent functionality to Unix SIGWINCH signal handling.
- *
- * @param cols New terminal width in columns
- * @param rows New terminal height in rows
- *
- * @ingroup client_main
- */
-static void terminal_resize_callback(int cols, int rows) {
-  (void)cols;
-  (void)rows;
-
-  log_debug("Windows console resized to %dx%d", cols, rows);
-
-  // Terminal was resized, update dimensions and recalculate aspect ratio
-  // ONLY if both width and height are auto (not manually set)
-  if (auto_width && auto_height) {
-    update_dimensions_to_terminal_size();
-
-    // Send new size to server if connected
-    if (server_connection_is_active()) {
-      if (threaded_send_terminal_size_with_auto_detect(opt_width, opt_height) < 0) {
-        log_warn("Failed to send terminal capabilities to server: %s", network_error_string());
-      } else {
-        display_full_reset();
-        log_set_terminal_output(false);
-      }
-    }
-  }
+  log_debug("SIGWINCH received (Windows no-op implementation)");
 }
 #endif
 
 /**
- * @brief Perform complete client shutdown and resource cleanup
+ * Perform complete client shutdown and resource cleanup
  *
  * This function is registered with atexit() to ensure proper cleanup
  * regardless of how the program terminates. Order of cleanup is important
  * to prevent race conditions and resource leaks.
- *
- * @ingroup client_main
  */
 static void shutdown_client() {
   // Set global shutdown flag to stop all threads
-  atomic_store(&g_client_should_exit, true);
-
-#ifdef _WIN32
-  // Stop Windows console resize detection thread
-  terminal_stop_resize_detection();
-#endif
+  atomic_store(&g_should_exit, true);
 
   // Shutdown server connection and all associated threads
   server_connection_cleanup();
@@ -288,39 +199,53 @@ static void shutdown_client() {
   // Cleanup display and terminal state
   display_cleanup();
 
-#ifndef NDEBUG
-  // Cleanup lock debugging system
-  lock_debug_cleanup();
-#endif
-
   // Cleanup core systems
   data_buffer_pool_cleanup_global();
   log_destroy();
 
   log_info("Client shutdown complete");
-
-#ifndef NDEBUG
-  // Join the lock debug thread as one of the very last things
-  lock_debug_cleanup_thread();
-#endif
 }
 
 /**
- * @brief Initialize all client subsystems
+ * Initialize all client subsystems
  *
  * Performs initialization in dependency order, with error checking
  * and cleanup on failure. This function must be called before
  * entering the main connection loop.
  *
  * @return 0 on success, non-zero error code on failure
- *
- * @ingroup client_main
  */
 static int initialize_client_systems() {
-  // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
-  // This function focuses on client-specific initialization
+  // Initialize platform-specific functionality (Winsock, etc)
+  if (platform_init() != 0) {
+    (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
+    return 1;
+  }
+  (void)atexit(platform_cleanup);
 
-  // Initialize memory debugging if enabled (client-specific: handles opt_snapshot_mode)
+  // Initialize palette based on command line options
+  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
+  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
+    log_error("Failed to apply palette configuration");
+    return 1;
+  }
+
+  // Initialize display subsystem
+  if (display_init() != 0) {
+    log_fatal("Failed to initialize display subsystem");
+    return ERROR_DISPLAY;
+  }
+
+  // Initialize logging with appropriate settings
+  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
+  log_init(log_filename, LOG_DEBUG);
+
+  // Start with terminal output disabled for clean ASCII display
+  // It will be enabled only for initial connection attempts and errors
+  log_set_terminal_output(true);
+  log_truncate_if_large();
+
+  // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
   debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
   if (!opt_snapshot_mode) {
@@ -328,40 +253,14 @@ static int initialize_client_systems() {
   }
 #endif
 
-  // Initialize display subsystem
-  if (display_init() != 0) {
-    FATAL(ERROR_DISPLAY, "Failed to initialize display subsystem");
-  }
-
-  // Register shutdown check callback for library code
-  shutdown_register_callback(should_exit);
-
-  // Start with terminal output disabled for clean ASCII display
-  // It will be enabled only for initial connection attempts and errors
-  log_set_terminal_output(true);
+  // Initialize global shared buffer pool
+  data_buffer_pool_init_global();
+  (void)atexit(data_buffer_pool_cleanup_global);
 
   // Initialize server connection management
   if (server_connection_init() != 0) {
-    FATAL(ERROR_NETWORK, "Failed to initialize server connection");
-  }
-
-  // Validate and load encryption key early (before connecting to server)
-  if (strlen(opt_encrypt_key) > 0) {
-    log_info("Validating encryption key: %s", opt_encrypt_key);
-
-    // For SSH key files (not gpg:keyid format), validate the file exists and is readable
-    if (strncmp(opt_encrypt_key, "gpg:", 4) != 0) {
-      if (validate_ssh_key_file(opt_encrypt_key) != 0) {
-        FATAL(ERROR_CRYPTO, "Failed to validate SSH key file: %s", opt_encrypt_key);
-      }
-      log_info("SSH key file validated successfully");
-    } else {
-      log_info("GPG key specified: %s", opt_encrypt_key);
-    }
-  } else if (strlen(opt_password) > 0) {
-    log_info("Password authentication will be used");
-  } else if (!opt_no_encrypt) {
-    log_info("No encryption key or password provided - using unencrypted connection");
+    log_fatal("Failed to initialize server connection");
+    return ERROR_NETWORK;
   }
 
   // Initialize capture subsystems
@@ -372,27 +271,27 @@ static int initialize_client_systems() {
   }
 
   // Initialize audio if enabled
-  // Note: Audio capture thread will be started later in protocol_start_connection()
-  // after the server connection is established
   if (opt_audio_enabled) {
     if (audio_client_init() != 0) {
-      FATAL(ERROR_AUDIO, "Failed to initialize audio system");
+      log_fatal("Failed to initialize audio system");
+      return ERROR_AUDIO;
     }
   }
-
-#ifdef _WIN32
-  // Start Windows console resize detection thread
-  if (terminal_start_resize_detection(terminal_resize_callback) != 0) {
-    log_warn("Failed to start Windows console resize detection");
-    // Not fatal - terminal resizing will just not work
-  }
-#endif
 
   return 0;
 }
 
+#ifdef USE_MIMALLOC_DEBUG
+// Wrapper function for mi_stats_print to use with atexit()
+// mi_stats_print takes a parameter, but atexit requires void(void)
+extern void mi_stats_print(void *out);
+static void print_mimalloc_stats(void) {
+  mi_stats_print(NULL); // NULL = print to stderr
+}
+#endif
+
 /**
- * @brief Main application entry point
+ * Main application entry point
  *
  * Orchestrates the complete client lifecycle:
  * 1. Command line parsing and option validation
@@ -408,13 +307,24 @@ static int initialize_client_systems() {
  * @param argc Command line argument count
  * @param argv Command line argument vector
  * @return 0 on success, error code on failure
- *
- * @ingroup client_main
  */
+int main(int argc, char *argv[]) {
+  // Parse command line options first
+  int options_result = options_init(argc, argv, true);
+  if (options_result != ASCIICHAT_OK) {
+    // options_init returns ASCIICHAT_OK for --help/--version (after printing)
+    // or ERROR_USAGE for invalid options (after printing error)
+    // In both cases, just exit with the returned code
+    return options_result;
+  }
 
-int client_main(void) {
-  // Common initialization (options, logging, lock debugging, --show-capabilities) now happens in main.c before dispatch
-  // This function focuses on client-specific initialization and main loop
+  // Handle --show-capabilities flag (exit after showing capabilities)
+  if (opt_show_capabilities) {
+    terminal_capabilities_t caps = detect_terminal_capabilities();
+    caps = apply_color_mode_override(caps);
+    print_terminal_capabilities(&caps);
+    return 0;
+  }
 
   // Initialize all client subsystems
   int init_result = initialize_client_systems();
@@ -422,16 +332,19 @@ int client_main(void) {
     // Check if this is a webcam-related error and print help
     if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
       webcam_print_init_error_help(init_result);
-      FATAL(init_result, "Client initialization failed");
+      FATAL(init_result, "%s", asciichat_error_string(init_result));
     }
-    // For other errors, check if we have detailed error context
-    LOG_ERRNO_IF_SET("Client initialization failed");
     // For other errors, just exit with the error code
     return init_result;
   }
 
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
+
+#ifdef USE_MIMALLOC_DEBUG
+  // Register mimalloc stats printer at exit
+  (void)atexit(print_mimalloc_stats);
+#endif
 
   // Install signal handlers for graceful shutdown and terminal resize
   platform_signal(SIGINT, sigint_handler);
@@ -440,17 +353,6 @@ int client_main(void) {
 #ifndef _WIN32
   // Ignore SIGPIPE - we'll handle write errors ourselves (not available on Windows)
   platform_signal(SIGPIPE, SIG_IGN);
-#endif
-
-#ifndef NDEBUG
-  // Start the lock debug thread (system already initialized earlier)
-  if (lock_debug_start_thread() != 0) {
-    FATAL(ERROR_THREAD, "Failed to start lock debug thread");
-  }
-#ifndef _WIN32
-  // Register SIGUSR1 handler for lock debug trigger (Unix only)
-  platform_signal(SIGUSR1, sigusr1_handler);
-#endif
 #endif
 
   // Keep terminal logging enabled so user can see connection attempts
@@ -475,16 +377,10 @@ int client_main(void) {
                                                         first_connection, has_ever_connected);
 
     if (connection_result != 0) {
-      // Check for authentication failure or host key verification failure - exit immediately without retry
-      if (connection_result == CONNECTION_ERROR_AUTH_FAILED) {
+      // Check for authentication failure (code -2) - exit immediately without retry
+      if (connection_result == -2) {
         // Detailed error message already printed by crypto handshake code
-        // Check if we have additional error context from the errno system
-        FATAL(ERROR_CRYPTO_AUTH, "Authentication error occurred. Cannot proceed.");
-      }
-      if (connection_result == CONNECTION_ERROR_HOST_KEY_FAILED) {
-        // Host key verification failed or user declined - MITM warning already shown
-        // User declining security prompt is not an error - exit cleanly with code 0
-        exit(0);
+        return 1;
       }
 
       // Connection failed - increment attempt counter and retry
@@ -504,9 +400,6 @@ int client_main(void) {
         log_info("Connection attempt #%d...", reconnect_attempt);
       }
 
-      // Log detailed error context if available
-      LOG_ERRNO_IF_SET("Connection attempt failed");
-
       // Continue retrying forever until user cancels (Ctrl+C)
       continue;
     }
@@ -520,7 +413,7 @@ int client_main(void) {
       log_info("Connected successfully, starting worker threads");
       has_ever_connected = true;
     } else {
-      log_debug("Reconnected successfully, starting worker threads");
+      log_info("Reconnected successfully, starting worker threads");
     }
 
     // Start all worker threads for this connection
@@ -561,6 +454,7 @@ int client_main(void) {
     // Re-enable terminal logging when connection is lost for debugging reconnection
     // (but only if we've ever successfully connected before)
     if (has_ever_connected) {
+      printf("\n");
       log_set_terminal_output(true);
     }
 
@@ -576,6 +470,6 @@ int client_main(void) {
     log_info("Cleanup complete, will attempt reconnection");
   }
 
-  log_info("ascii-chat client shutting down");
+  log_info("ASCII-Chat client shutting down");
   return 0;
 }
