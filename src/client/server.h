@@ -14,6 +14,7 @@
 
 #include "platform/socket.h"
 #include "network/packet_types.h"
+#include "logging.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -61,12 +62,6 @@ int server_connection_init();
 int server_connection_establish(const char *address, int port, int reconnect_attempt, bool first_connection,
                                 bool has_ever_connected);
 
-/**
- * @brief Check if server connection is currently active
- * @return true if connected, false otherwise
- *
- * @ingroup client_connection
- */
 bool server_connection_is_active();
 
 /**

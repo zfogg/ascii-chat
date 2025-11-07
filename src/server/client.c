@@ -954,6 +954,7 @@ void *client_receive_thread(void *arg) {
     case PACKET_TYPE_CLIENT_CAPABILITIES:
     case PACKET_TYPE_PING:
     case PACKET_TYPE_PONG:
+    case PACKET_TYPE_REMOTE_LOG:
       // Process all packet types using the unified function
       process_decrypted_packet(client, type, data, len);
       break;
@@ -1558,6 +1559,10 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_PONG:
     // Client acknowledged our PING - no action needed
+    break;
+
+  case PACKET_TYPE_REMOTE_LOG:
+    handle_remote_log_packet_from_client(client, data, len);
     break;
 
   default:

@@ -17,6 +17,7 @@
 
 #include "logging.h"
 #include "platform/terminal.h"
+#include "network/packet.h"
 
 /* Terminal capabilities cache */
 static terminal_capabilities_t g_terminal_caps = {0};
@@ -642,6 +643,77 @@ void log_file_msg(const char *fmt, ...) {
   }
 
   mutex_unlock(&g_log.mutex);
+}
+
+static const char *log_network_direction_label(remote_log_direction_t direction) {
+  switch (direction) {
+  case REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT:
+    return "server→client";
+  case REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER:
+    return "client→server";
+  default:
+    return "network";
+  }
+}
+
+static asciichat_error_t log_network_message_internal(socket_t sockfd, const struct crypto_context_t *crypto_ctx,
+                                                      log_level_t level, remote_log_direction_t direction,
+                                                      const char *file, int line, const char *func, const char *fmt,
+                                                      va_list args) {
+  if (!fmt) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Format string is NULL");
+  }
+
+  va_list args_copy;
+  va_copy(args_copy, args);
+  char *formatted = format_message(fmt, args_copy);
+  va_end(args_copy);
+
+  if (!formatted) {
+    asciichat_error_t current_error = GET_ERRNO();
+    if (current_error == ASCIICHAT_OK) {
+      current_error = SET_ERRNO(ERROR_MEMORY, "Failed to format network log message");
+    }
+    return current_error;
+  }
+
+  asciichat_error_t send_result = ASCIICHAT_OK;
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    send_result = SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
+    log_msg(LOG_WARN, file, line, func, "Skipping remote log message: invalid socket descriptor");
+  } else {
+    send_result = packet_send_remote_log(sockfd, (const crypto_context_t *)crypto_ctx, level, direction, 0, formatted);
+    if (send_result != ASCIICHAT_OK) {
+      log_msg(LOG_WARN, file, line, func, "Failed to send remote log message: %s", asciichat_error_string(send_result));
+    }
+  }
+
+  const char *direction_label = log_network_direction_label(direction);
+  log_msg(level, file, line, func, "[NET %s] %s", direction_label, formatted);
+
+  SAFE_FREE(formatted);
+  return send_result;
+}
+
+asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+                                      remote_log_direction_t direction, const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  asciichat_error_t result =
+      log_network_message_internal(sockfd, crypto_ctx, level, direction, NULL, 0, NULL, fmt, args);
+  va_end(args);
+  return result;
+}
+
+asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+                                  remote_log_direction_t direction, const char *file, int line, const char *func,
+                                  const char *fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  asciichat_error_t result =
+      log_network_message_internal(sockfd, crypto_ctx, level, direction, file, line, func, fmt, args);
+  va_end(args);
+  return result;
 }
 
 /* ============================================================================

@@ -74,6 +74,7 @@
 #include "platform/socket.h"
 #include "packet_types.h"
 #include "crypto/crypto.h"
+#include "logging.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -414,6 +415,35 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
 asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code,
                                              char *message_buffer, size_t message_buffer_size,
                                              size_t *out_message_length);
+
+/**
+ * @brief Send a remote log packet with optional encryption context
+ * @param sockfd Socket file descriptor
+ * @param crypto_ctx Crypto context for encryption (NULL or not ready sends plaintext)
+ * @param level Log level to transmit
+ * @param direction Direction flag (REMOTE_LOG_DIRECTION_*)
+ * @param flags Additional flags (REMOTE_LOG_FLAG_*)
+ * @param message Log message text
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t *crypto_ctx, log_level_t level,
+                                         remote_log_direction_t direction, uint16_t flags, const char *message);
+
+/**
+ * @brief Parse a remote log packet payload into components
+ * @param data Packet payload buffer
+ * @param len Payload length in bytes
+ * @param out_level Output pointer for log level (must not be NULL)
+ * @param out_direction Output pointer for direction (must not be NULL)
+ * @param out_flags Output pointer for flags (must not be NULL)
+ * @param message_buffer Destination buffer for message string (must not be NULL)
+ * @param message_buffer_size Size of destination buffer in bytes (must be > 0)
+ * @param out_message_length Optional output for message length reported by sender
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_level_t *out_level,
+                                          remote_log_direction_t *out_direction, uint16_t *out_flags,
+                                          char *message_buffer, size_t message_buffer_size, size_t *out_message_length);
 
 /**
  * @brief Send protocol version negotiation packet
