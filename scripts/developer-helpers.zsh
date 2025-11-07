@@ -18,21 +18,39 @@ source "$_repo_root/scripts/color.zsh"
 # Alias and function helper API
 
 # CMake
-alias c='cmake' # specify your build dir
-alias cpd='cmake --preset default -B'
-alias cpr='cmake --preset release -B'
-alias cb='cmake --build' # specify your build dir
-alias cbb='cmake --build build'
-alias cbr='cmake --build build_release'
+c() {
+  cmake "$@"
+}
+
+cpd() {
+  cmake --preset default -B "$@"
+}
+
+cpr() {
+  cmake --preset release -B "$@"
+}
+
+cb() {
+  cmake --build "$@"
+}
+
+cbb() {
+  cmake --build build "$@"
+}
+
+cbr() {
+  cmake --build build_release "$@"
+}
 
 # Ninja
-alias n='ninja'
+n() {
+  ninja "$@"
+}
 
 # Make
-alias m='make'
-
-# CPack
-alias cpg='cpack -G' # specify your generator
+m() {
+  make "$@"
+}
 
 # t - Test - Run the test defined in $test with a convenient one-letter command
 # Run it from anywhere in the repo - you can be in the build dir running ninjas 
