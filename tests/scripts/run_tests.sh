@@ -235,7 +235,7 @@ EOF
 # In Docker: always use build_docker
 # Otherwise: use build
 function get_build_directory() {
-  if [ -f /.dockerenv ]; then
+  if [ -e /.dockerenv ]; then
     echo "build_docker"
   else
     echo "build"
