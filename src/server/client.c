@@ -138,6 +138,23 @@
 #define DEBUG_THREADS 1
 #define DEBUG_MEMORY 1
 
+static void handle_client_error_packet(client_info_t *client, const void *data, size_t len) {
+  asciichat_error_t reported_error = ASCIICHAT_OK;
+  char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
+
+  asciichat_error_t parse_result =
+      packet_parse_error_message(data, len, &reported_error, message, sizeof(message), NULL);
+  uint32_t client_id = client ? atomic_load(&client->client_id) : 0;
+
+  if (parse_result != ASCIICHAT_OK) {
+    log_warn("Failed to parse error packet from client %u: %s", client_id, asciichat_error_string(parse_result));
+    return;
+  }
+
+  log_error("Client %u reported error %d (%s): %s", client_id, reported_error, asciichat_error_string(reported_error),
+            message);
+}
+
 /**
  * @brief Global client manager singleton - central coordination point
  *
@@ -766,6 +783,12 @@ void *client_receive_thread(void *arg) {
     return NULL;
   }
 
+  if (atomic_load(&client->protocol_disconnect_requested)) {
+    log_debug("Receive thread for client %u exiting before start (protocol disconnect requested)",
+              atomic_load(&client->client_id));
+    return NULL;
+  }
+
   // Check if client_id is 0 (client struct has been zeroed by remove_client)
   // This must be checked BEFORE accessing any client fields
   if (atomic_load(&client->client_id) == 0) {
@@ -931,8 +954,13 @@ void *client_receive_thread(void *arg) {
     case PACKET_TYPE_CLIENT_CAPABILITIES:
     case PACKET_TYPE_PING:
     case PACKET_TYPE_PONG:
+    case PACKET_TYPE_REMOTE_LOG:
       // Process all packet types using the unified function
       process_decrypted_packet(client, type, data, len);
+      break;
+
+    case PACKET_TYPE_ERROR_MESSAGE:
+      handle_client_error_packet(client, data, len);
       break;
 
     // Session rekeying packets
@@ -1533,8 +1561,12 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     // Client acknowledged our PING - no action needed
     break;
 
+  case PACKET_TYPE_REMOTE_LOG:
+    handle_remote_log_packet_from_client(client, data, len);
+    break;
+
   default:
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Unknown decrypted packet type: %d from client %u", type, client->client_id);
+    disconnect_client_for_bad_data(client, "Unknown packet type: %d (len=%zu)", type, len);
     break;
   }
 }

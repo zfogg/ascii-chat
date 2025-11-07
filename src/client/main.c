@@ -1,8 +1,8 @@
 /**
  * @file main.c
- * @brief ASCII-Chat Client Main Entry Point
+ * @brief ascii-chat Client Main Entry Point
  *
- * This module serves as the main entry point for the ASCII-Chat client application.
+ * This module serves as the main entry point for the ascii-chat client application.
  * It orchestrates the entire client lifecycle including initialization, connection
  * management, and the primary event loop that manages reconnection logic.
  *
@@ -59,7 +59,7 @@
  * - Terminal I/O and control sequences
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date 2025
+ * @date October 2025
  * @version 2.0
  */
 
@@ -79,6 +79,10 @@
 #include "buffer_pool.h"
 #include "palette.h"
 #include "network/network.h"
+
+#ifndef NDEBUG
+#include "lock_debug.h"
+#endif
 
 #include <signal.h>
 #include <stdlib.h>
@@ -215,47 +219,48 @@ static void shutdown_client() {
  *
  * @return 0 on success, non-zero error code on failure
  */
-static int initialize_client_systems() {
-  // Initialize platform-specific functionality (Winsock, etc)
-  if (platform_init() != 0) {
-    (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
-    return 1;
-  }
-  (void)atexit(platform_cleanup);
+static int initialize_client_systems(bool shared_init_completed) {
+  if (!shared_init_completed) {
+    // Initialize platform-specific functionality (Winsock, etc)
+    if (platform_init() != 0) {
+      (void)fprintf(stderr, "FATAL: Failed to initialize platform\n");
+      return 1;
+    }
+    (void)atexit(platform_cleanup);
 
-  // Initialize palette based on command line options
-  const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
-  if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
-    log_error("Failed to apply palette configuration");
-    return 1;
+    // Initialize palette based on command line options
+    const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
+    if (apply_palette_config(opt_palette_type, custom_chars) != 0) {
+      log_error("Failed to apply palette configuration");
+      return 1;
+    }
+
+    // Initialize logging with appropriate settings
+    const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
+    log_init(log_filename, LOG_DEBUG);
+
+    // Initialize memory debugging if enabled
+#ifdef DEBUG_MEMORY
+    debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
+    if (!opt_snapshot_mode) {
+      (void)atexit(debug_memory_report);
+    }
+#endif
+
+    // Initialize global shared buffer pool
+    data_buffer_pool_init_global();
+    (void)atexit(data_buffer_pool_cleanup_global);
   }
+
+  // Ensure logging output is available for connection attempts
+  log_set_terminal_output(true);
+  log_truncate_if_large();
 
   // Initialize display subsystem
   if (display_init() != 0) {
     log_fatal("Failed to initialize display subsystem");
     return ERROR_DISPLAY;
   }
-
-  // Initialize logging with appropriate settings
-  const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
-  log_init(log_filename, LOG_DEBUG);
-
-  // Start with terminal output disabled for clean ASCII display
-  // It will be enabled only for initial connection attempts and errors
-  log_set_terminal_output(true);
-  log_truncate_if_large();
-
-  // Initialize memory debugging if enabled
-#ifdef DEBUG_MEMORY
-  debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
-  if (!opt_snapshot_mode) {
-    (void)atexit(debug_memory_report);
-  }
-#endif
-
-  // Initialize global shared buffer pool
-  data_buffer_pool_init_global();
-  (void)atexit(data_buffer_pool_cleanup_global);
 
   // Initialize server connection management
   if (server_connection_init() != 0) {
@@ -291,34 +296,18 @@ static void print_mimalloc_stats(void) {
 #endif
 
 /**
- * Main application entry point
+ * Client mode entry point for unified binary
  *
  * Orchestrates the complete client lifecycle:
- * 1. Command line parsing and option validation
- * 2. System initialization and resource allocation
- * 3. Signal handler registration
- * 4. Main connection/reconnection loop
- * 5. Graceful shutdown and cleanup
+ *  - System initialization and resource allocation
+ *  - Signal handler registration
+ *  - Main connection/reconnection loop
+ *  - Graceful shutdown and cleanup
  *
- * The main loop implements robust connection management with exponential
- * backoff reconnection attempts. Each connection cycle spawns all necessary
- * worker threads and monitors their health.
- *
- * @param argc Command line argument count
- * @param argv Command line argument vector
  * @return 0 on success, error code on failure
  */
-int main(int argc, char *argv[]) {
-  // Parse command line options first
-  int options_result = options_init(argc, argv, true);
-  if (options_result != ASCIICHAT_OK) {
-    // options_init returns ASCIICHAT_OK for --help/--version (after printing)
-    // or ERROR_USAGE for invalid options (after printing error)
-    // In both cases, just exit with the returned code
-    return options_result;
-  }
-
-  // Handle --show-capabilities flag (exit after showing capabilities)
+int client_main(void) {
+  // Dispatcher already printed capabilities, but honor flag defensively
   if (opt_show_capabilities) {
     terminal_capabilities_t caps = detect_terminal_capabilities();
     caps = apply_color_mode_override(caps);
@@ -326,8 +315,8 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  // Initialize all client subsystems
-  int init_result = initialize_client_systems();
+  // Initialize all client subsystems (shared init already completed)
+  int init_result = initialize_client_systems(true);
   if (init_result != 0) {
     // Check if this is a webcam-related error and print help
     if (init_result == ERROR_WEBCAM || init_result == ERROR_WEBCAM_IN_USE || init_result == ERROR_WEBCAM_PERMISSION) {
@@ -470,6 +459,6 @@ int main(int argc, char *argv[]) {
     log_info("Cleanup complete, will attempt reconnection");
   }
 
-  log_info("ASCII-Chat client shutting down");
+  log_info("ascii-chat client shutting down");
   return 0;
 }

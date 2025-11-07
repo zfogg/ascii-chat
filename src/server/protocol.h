@@ -19,6 +19,9 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len);
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len);
 void handle_client_leave_packet(client_info_t *client);
+void handle_remote_log_packet_from_client(client_info_t *client, const void *data, size_t len);
+
+void disconnect_client_for_bad_data(client_info_t *client, const char *format, ...);
 
 // Protocol utility functions
 int send_server_state_to_client(client_info_t *client);

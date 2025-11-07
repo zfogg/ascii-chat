@@ -69,6 +69,7 @@
 #pragma once
 
 #include "platform/abstraction.h"
+#include "network/logging.h" // IWYU pragma: keep (re-export remote log direction type)
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -102,6 +103,25 @@
  * @ingroup packet
  */
 #define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)
+
+/**
+ * @brief Maximum error message length (512 bytes)
+ *
+ * Error packets include a message payload. This defines the maximum number of
+ * bytes allowed in the message portion to prevent excessive allocations and
+ * potential abuse.
+ */
+#define MAX_ERROR_MESSAGE_LENGTH 512
+
+/**
+ * @brief Maximum remote log message length (512 bytes)
+ *
+ * Remote logging packets mirror the error packet structure but are intended for
+ * diagnostic log forwarding between client and server. Limiting the payload
+ * size keeps allocations predictable and prevents log flooding over the
+ * network.
+ */
+#define MAX_REMOTE_LOG_MESSAGE_LENGTH 512
 
 /** @} */
 
@@ -319,7 +339,11 @@ typedef enum {
   /** @brief Audio message */
   PACKET_TYPE_AUDIO_MESSAGE = 30,
   /** @brief Text message */
-  PACKET_TYPE_TEXT_MESSAGE = 31
+  PACKET_TYPE_TEXT_MESSAGE = 31,
+  /** @brief Error packet with asciichat_error_t code and human-readable message */
+  PACKET_TYPE_ERROR_MESSAGE = 32,
+  /** @brief Bidirectional remote logging packet */
+  PACKET_TYPE_REMOTE_LOG = 33
 } packet_type_t;
 
 /**
@@ -518,6 +542,43 @@ typedef struct {
   uint32_t reserved[6];
 } /** @cond */
 PACKED_ATTR /** @endcond */ server_state_packet_t;
+
+/**
+ * @brief Error packet structure carrying error code and textual description
+ *
+ * Error packets allow either side of the connection to report a specific
+ * `asciichat_error_t` along with a human-readable message describing the
+ * failure. The message payload follows the structure in the packet and is not
+ * guaranteed to be null-terminated on the wire. Consumers should rely on the
+ * `message_length` field when copying. Error packets may be transmitted in
+ * plaintext before the crypto handshake completes (and whenever encryption is
+ * disabled), but MUST be encrypted once a session key is active.
+ */
+typedef struct {
+  /** @brief Error code from asciichat_error_t enumeration */
+  uint32_t error_code;
+  /** @brief Length of message payload in bytes (0-512) */
+  uint32_t message_length;
+} /** @cond */
+PACKED_ATTR /** @endcond */ error_packet_t;
+
+/** @brief Remote log packet flag definitions */
+#define REMOTE_LOG_FLAG_TRUNCATED 0x0001U /**< @brief Message payload was truncated to fit the maximum length */
+
+/**
+ * @brief Remote log packet structure carrying log level and message text
+ */
+typedef struct {
+  /** @brief Log level associated with the message (log_level_t cast to uint8_t) */
+  uint8_t log_level;
+  /** @brief Direction hint so receivers can annotate origin */
+  uint8_t direction;
+  /** @brief Additional flags (REMOTE_LOG_FLAG_*) */
+  uint16_t flags;
+  /** @brief Message payload length in bytes (0-512) */
+  uint32_t message_length;
+} /** @cond */
+PACKED_ATTR /** @endcond */ remote_log_packet_t;
 
 /**
  * @brief Authentication failure reason flags

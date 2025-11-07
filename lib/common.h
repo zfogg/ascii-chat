@@ -22,12 +22,20 @@
 #pragma once
 
 // DLL export/import macros (must be included first to avoid circular dependencies)
-#include "platform/api.h"
+#include "platform/api.h" // IWYU pragma: keep
 
 /* Feature test macros for POSIX functions */
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+
+#if (defined(__clang__) || defined(__GNUC__)) && !defined(__builtin_c23_va_start)
+#define __builtin_c23_va_start(ap, param) __builtin_va_start(ap, param)
+#endif
+
+#if (defined(__clang__) || defined(__GNUC__)) && !defined(__builtin_c23_va_end)
+#define __builtin_c23_va_end(ap) __builtin_va_end(ap)
+#endif
 
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough.
@@ -286,7 +294,7 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
  */
 
 /* Include platform system header for platform_print_backtrace */
-#include "platform/system.h"
+#include "platform/system.h" // IWYU pragma: keep
 
 /**
  * @brief Exit with error code and custom message, with stack trace in debug builds
@@ -662,7 +670,7 @@ bool shutdown_is_requested(void);
 #define SAFE_SSCANF(str, format, ...) sscanf(str, format, __VA_ARGS__)
 
 /* Platform-safe strerror */
-#include "platform/abstraction.h"
+#include "platform/abstraction.h" // IWYU pragma: keep
 #define SAFE_STRERROR(errnum) platform_strerror(errnum)
 
 /* Safe memory functions */
@@ -670,6 +678,21 @@ bool shutdown_is_requested(void);
 #define SAFE_MEMSET(dest, dest_size, ch, count) platform_memset((dest), (dest_size), (ch), (count))
 #define SAFE_MEMMOVE(dest, dest_size, src, count) platform_memmove((dest), (dest_size), (src), (count))
 #define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
+
+/* Safe size_t multiplication with overflow detection */
+static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
+  if (result == NULL) {
+    return true;
+  }
+
+  if (a != 0 && b > SIZE_MAX / a) {
+    *result = 0;
+    return true;
+  }
+
+  *result = a * b;
+  return false;
+}
 
 /* Safe string formatting */
 #define SAFE_SNPRINTF(buffer, buffer_size, ...) (size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
@@ -684,7 +707,7 @@ bool shutdown_is_requested(void);
   ((offset) < 0 || (size_t)(offset) >= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))
 
 /* Include logging.h to provide logging macros to all files that include common.h */
-#include "logging.h"
+#include "logging.h" // IWYU pragma: keep
 
 /* Memory debugging (only in debug builds, disabled when mimalloc override is active) */
 #if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
