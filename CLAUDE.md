@@ -1,4 +1,4 @@
-# ascii-chat Development Guide for Claude
+uu# ascii-chat Development Guide for Claude
 
 ## Repository Information
 
@@ -7,19 +7,19 @@
 
 ## Essential First Steps
 
-- **ALWAYS** read and understand the `README.md` and `CMakeLists.txt` files first
+- **ALWAYS** read and understand the files in this repo first to understand ascii-chat. As Claude you mostly need the files in `src/`, `lib/`, `docs/`
 - Use the test runner script `./tests/scripts/run_tests.sh` for running tests
-- Format code with `cmake --build build --target format` after you edit it
 - **Use memory macros** from common.h rather than regular malloc/free (see Memory Management section below)
-- On macOS: use `lldb` for debugging
-- On Windows: use PowerShell build script `./build.ps1` or CMake directly
-- **IMPORTANT: This project uses Clang only, not MSVC** - All builds (Debug, Release, etc.) use `clang` as the compiler
-- Don't use `git add .`, add all files individually
-- Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build`
+- Use `lldb` for debugging
+- On Windows: use PowerShell build script `./build.ps1` which kills any processes, rebuilds, and copies the dlls and executable to bin/.
+- **IMPORTANT: This project uses Clang only, not MSVC or GCC** - `clang` is the compiler we support
+- Do NOT use `git add .`. Add files individually and make per-file commits or add hunks and commit them.
+- Use AddressSanitizer (ASan) and memory reports from common.c for memory debugging: `cmake --preset debug -B build && cmake --build build`
 - Use log\_\*() from logging.c and common.h for logging instead of printf()
 - **Use asciichat_error_t instead of int for return types**
 - **Use asciichat_errno for error handling instead of system errno**
 - When debugging and testing, make a test_whatever.sh and use that so you don't bother the developer by requesting to run commands over and over
+- Use `cmake --preset` by  default. Use `cmake --preset default` as much as possible so you don't get confused and try to use UNIX Makefiles or Visual Studio 2017, when the build dir is supposed to be configured for Ninja files. This causes scripting errorrs which painfully slow down Claude's development progress and confuses him. Stick with Ninja.
 
 ## Memory Management Macros (CRITICAL)
 
@@ -336,8 +336,8 @@ The build script automatically:
 Manual CMake build (if not using build.ps1):
 
 ```bash
-# Use CMake with Clang (recommended)
-cmake -B build -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Debug
+# Use CMake with Clang and Ninja
+cmake --preset default -B build
 cmake --build build
 
 # Run server and client (unified binary)
@@ -472,6 +472,9 @@ The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -
 # Custom logging
 ./tests/scripts/run_tests.sh --log-file=/tmp/custom_test.log
 ```
+
+# ❌ Criterion on macOS for Claude Code is NOT Supported
+Criterion tests don't work for Claude Code on macOS for some reason. The executables crash. They log something about forking failures in his environment when he runs them. They error immediately and print nasty messages and then he always tries to use CRITERION_NO_FORK but it never works, poor Claude.. Stop trying to use CRITERION_NO_FORK and instead just use Docker: `docker-compose -f ./tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_crypto_handshake'`. tests/docker-compose.yml is the CORRECT way to deal with the Criterion issue for Claude and ascii-chat.
 
 ## Platform Abstraction Layer (NEW)
 
