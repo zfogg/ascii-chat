@@ -17,7 +17,7 @@
  * **Implementation**: lib/network/packet_types.h
  *
  * **Key Features**:
- * - Comprehensive packet type enumeration (31 packet types)
+* - Comprehensive packet type enumeration (32 packet types)
  * - Packed structures for wire format compatibility
  * - Protocol versioning and capability negotiation
  * - Handshake packet detection for crypto routing
@@ -70,10 +70,40 @@
  * - PACKET_TYPE_CRYPTO_REKEY_RESPONSE (26): Responder → Initiator: New ephemeral key
  * - PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27): Encrypted with NEW key (but still handshake)
  *
- * **Message Packets** (Types 29-31):
+* **Message Packets** (Types 29-33):
  * - PACKET_TYPE_SIZE_MESSAGE (29): Terminal size notification
  * - PACKET_TYPE_AUDIO_MESSAGE (30): Audio metadata message
  * - PACKET_TYPE_TEXT_MESSAGE (31): Text chat message (future)
+ * - PACKET_TYPE_ERROR_MESSAGE (32): Protocol/handshake error reporting
+ * - PACKET_TYPE_REMOTE_LOG (33): Bidirectional remote logging payload
+
+@subsection packet_types_remote_log Remote Log Packet (Type 33)
+
+Remote logging packets allow the server and client to forward diagnostic log
+entries to each other over the established connection. They carry the log
+level, direction hint, optional flags, and a UTF-8 text payload limited to 512
+bytes.
+
+```
+typedef struct {
+    uint8_t  log_level;      // Matches log_level_t (LOG_DEV .. LOG_FATAL)
+    uint8_t  direction;      // REMOTE_LOG_DIRECTION_* value
+    uint16_t flags;          // REMOTE_LOG_FLAG_* bitmask
+    uint32_t message_length; // Payload size (0-512)
+} PACKED_ATTR remote_log_packet_t;
+```
+
+**Direction values**:
+- `REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT (1)` – Sent by the server to a client
+- `REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER (2)` – Sent by the client to the server
+
+**Flags**:
+- `REMOTE_LOG_FLAG_TRUNCATED` – Sender truncated the payload to fit the limit
+
+Messages are encrypted automatically once the crypto handshake completes, but
+fall back to plaintext during handshake so early errors can still be reported.
+Receivers must always prefix their local log output with a “remote” annotation
+to make the source of the message obvious.
  *
  * @section packet_types_structure Packet Structure
  *
@@ -93,7 +123,7 @@
  *
  * **Header fields**:
  * - `magic`: Must be `PACKET_MAGIC` (0xDEADBEEF) or packet is invalid
- * - `type`: Packet type enumeration value (1-31)
+ * - `type`: Packet type enumeration value (1-33)
  * - `length`: Payload data length in bytes (0 for header-only packets)
  * - `crc32`: CRC32 checksum of payload data (not including header)
  * - `client_id`: Identifies source (0 for server, 1-9 for clients)
@@ -128,7 +158,9 @@
  * - Rekey packets (types 25-27)
  *
  * Returns `false` for:
- * - All other packet types (including PACKET_TYPE_ENCRYPTED = 24)
+* - All other packet types (including PACKET_TYPE_ENCRYPTED = 24)
+* - PACKET_TYPE_ERROR_MESSAGE (32) – sent plaintext only before encryption is active
+* - PACKET_TYPE_REMOTE_LOG (33) – encrypted when session keys are ready, plaintext otherwise
  *
  * **Usage**:
  * @code{.c}
@@ -145,7 +177,9 @@
  * @endcode
  *
  * **Warning**: Encrypting handshake packets will break the crypto handshake.
- * Always check with `packet_is_handshake_type()` before encryption.
+ * Always check with `packet_is_handshake_type()` before encryption. Error packets may
+ * be sent plaintext prior to handshake completion (or when encryption is disabled),
+ * but must be encrypted once a session key is established.
  *
  * @section packet_types_protocol_negotiation Protocol Negotiation
  *

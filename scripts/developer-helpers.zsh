@@ -18,16 +18,16 @@ source "$_repo_root/scripts/color.zsh"
 # Alias and function helper API
 
 # CMake
+unalias c 2>/dev/null || true
 c() {
   cmake "$@"
 }
 
 cpd() {
-  cmake --preset default -B "$@"
+  cmake --preset default -B build "$@"
 }
-
 cpr() {
-  cmake --preset release -B "$@"
+  cmake --preset release -B build_release "$@"
 }
 
 cb() {

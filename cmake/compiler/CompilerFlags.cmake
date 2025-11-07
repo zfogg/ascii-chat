@@ -284,6 +284,25 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
     endif()
 
+    # When IPO/LTO is enabled we want to retain native code in the object files
+    # so developer tooling (e.g. `otool`) still recognises them as regular
+    # objects. `-ffat-lto-objects` keeps the LLVM IR for link-time optimization
+    # while also emitting machine code into the archive members.
+    if(ASCIICHAT_ENABLE_IPO)
+        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+            if(NOT DEFINED ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
+                include(CheckCCompilerFlag)
+                check_c_compiler_flag("-ffat-lto-objects" ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
+            endif()
+            if(ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
+                add_compile_options(-ffat-lto-objects)
+                message(STATUS "Release build: embedding native code in LTO objects (-ffat-lto-objects)")
+            else()
+                message(WARNING "Release build: compiler does not support -ffat-lto-objects; static archives may contain pure LLVM bitcode")
+            endif()
+        endif()
+    endif()
+
     # CPU-aware optimization flags
     # For RelWithDebInfo, use -O2 instead of -O3 to maintain better debug info quality
     if(WITH_DEBUG_INFO)

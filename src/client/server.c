@@ -63,6 +63,7 @@
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
+#include "platform/system.h"
 #include "network/packet.h"
 #include "network/network.h"
 #include "network/av.h"
@@ -72,6 +73,7 @@
 #include "palette.h"
 
 #include <string.h>
+#include <stdarg.h>
 #include <time.h>
 #include <sys/types.h>
 #include <stdatomic.h>
@@ -989,5 +991,18 @@ int threaded_send_client_join_packet(const char *display_name, uint32_t capabili
   join_packet.capabilities = capabilities;
 
   // Use threaded_send_packet() which handles encryption
-  return threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
+  int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
+  if (send_result == 0) {
+    mutex_lock(&g_send_mutex);
+    bool active = atomic_load(&g_connection_active);
+    socket_t socket_snapshot = g_sockfd;
+    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+    if (active && socket_snapshot != INVALID_SOCKET_VALUE) {
+      (void)log_network_message(
+          socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
+          "CLIENT_JOIN sent (display=\"%s\", capabilities=0x%x)", join_packet.display_name, capabilities);
+    }
+    mutex_unlock(&g_send_mutex);
+  }
+  return send_result;
 }
