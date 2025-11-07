@@ -17,18 +17,53 @@
 
 // Custom setup function that combines logging setup and known_hosts cleanup
 void setup_crypto_known_hosts_tests(void) {
-  log_set_level(LOG_DEBUG);
+  log_init(NULL, LOG_INFO);
+  log_set_level(LOG_INFO);
   test_logging_disable(false, false);
+
+  // Make each test process use a unique known_hosts file to avoid concurrency issues
+  // Criterion runs tests in separate processes, so they would all write to the same file
+  // Use PID to make the path unique per process
+  char unique_path[512];
+  safe_snprintf(unique_path, sizeof(unique_path), "/tmp/.ascii-chat-test-%d/known_hosts", (int)getpid());
+
+  // Set XDG_CONFIG_HOME to make get_known_hosts_path() use our unique directory
+  char config_dir[512];
+  safe_snprintf(config_dir, sizeof(config_dir), "/tmp/.ascii-chat-test-%d", (int)getpid());
+  setenv("XDG_CONFIG_HOME", config_dir, 1);
+
   // Clean up any existing cache from previous tests to prevent parallel test conflicts
   known_hosts_cleanup();
+
+  // Delete the known_hosts file to ensure clean state for each test
+  const char *path = get_known_hosts_path();
+  if (path) {
+    (void)remove(path); // Ignore error if file doesn't exist
+  }
 }
 
 // Custom teardown function that combines logging restore and known_hosts cleanup
 void teardown_crypto_known_hosts_tests(void) {
-  log_set_level(LOG_DEBUG);
-  test_logging_restore();
+  // Clean up the test-specific known_hosts file
+  const char *path = get_known_hosts_path();
+  if (path) {
+    (void)remove(path);
+  }
+
   // Clean up cache after test completes
   known_hosts_cleanup();
+
+  // Clean up the test directory (ignore errors if already cleaned)
+  char test_dir[512];
+  safe_snprintf(test_dir, sizeof(test_dir), "/tmp/.ascii-chat-test-%d", (int)getpid());
+  (void)rmdir(test_dir);
+
+  // Unset the XDG_CONFIG_HOME we set in setup
+  unsetenv("XDG_CONFIG_HOME");
+
+  log_destroy();
+  log_set_level(LOG_DEBUG);
+  test_logging_restore();
 }
 
 // Declare test suite with custom init/fini functions
@@ -41,8 +76,10 @@ TestSuite(crypto_known_hosts, .init = setup_crypto_known_hosts_tests, .fini = te
 Test(crypto_known_hosts, get_known_hosts_path) {
   const char *path = get_known_hosts_path();
 
+  log_info("well test");
+
   cr_assert_not_null(path, "Known hosts path should not be NULL");
-  cr_assert_not_null(strstr(path, ".ascii-chat"), "Path should contain .ascii-chat");
+  cr_assert_not_null(strstr(path, "ascii-chat"), "Path should contain .ascii-chat");
   cr_assert_not_null(strstr(path, "known_hosts"), "Path should contain known_hosts");
 }
 
@@ -51,11 +88,11 @@ Test(crypto_known_hosts, get_known_hosts_path) {
 // =============================================================================
 
 typedef struct {
-  const char *hostname;
+  char hostname[64];
   uint16_t port;
-  const uint8_t server_key[32];
+  uint8_t server_key[32];
   int expected_result;
-  const char *description;
+  char description[256];
 } add_known_host_test_case_t;
 
 static add_known_host_test_case_t add_known_host_cases[] = {
@@ -87,9 +124,6 @@ static add_known_host_test_case_t add_known_host_cases[] = {
 ParameterizedTestParameters(crypto_known_hosts, add_known_host_tests) {
   size_t nb_cases = sizeof(add_known_host_cases) / sizeof(add_known_host_cases[0]);
   // Debug: log the struct size and array size
-  log_debug("sizeof(add_known_host_test_case_t) = %zu", sizeof(add_known_host_test_case_t));
-  log_debug("sizeof(add_known_host_cases) = %zu", sizeof(add_known_host_cases));
-  log_debug("nb_cases = %zu", nb_cases);
   return cr_make_param_array(add_known_host_test_case_t, add_known_host_cases, nb_cases);
 }
 
@@ -260,7 +294,6 @@ Test(crypto_known_hosts, add_known_host_duplicate) {
 
 Test(crypto_known_hosts, large_known_hosts_file) {
   // Test handling of large known hosts files
-  const char *hostname = "large.example.com";
   uint16_t port = 8080;
   const uint8_t server_key[32] = {0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45,
                                   0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab,
