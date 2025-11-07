@@ -100,12 +100,12 @@ jobs:
       with:
         build-directory: ${{ github.workspace }}/build_debug
         build-cache-key: performance-debug
-
     - name: Cache release build directory
       uses: ./.github/actions/cache-build
       with:
         build-directory: ${{ github.workspace }}/build_release
         build-cache-key: performance-release
+
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
@@ -153,12 +153,12 @@ jobs:
     - name: Install tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y cloc sloccount
+        sudo apt-get install -y make cloc sloccount
 
     - name: Generate code metrics
       run: |
         echo "=== Lines of Code Analysis ==="
-        cloc --exclude-dir=ext,build,bin,.github,.claude,.cursor .
+        make cloc
 
         echo "=== Detailed File Analysis ==="
         wc -l *.c *.h *.m 2>/dev/null | sort -n || true
