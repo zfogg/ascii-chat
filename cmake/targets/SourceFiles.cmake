@@ -258,6 +258,10 @@ set(DEBUG_RUNTIME_SRCS
     lib/debug/instrument_log.c
 )
 
+set(DEBUG_TOOL_SRCS
+    src/debug/ascii_instr_report.c
+)
+
 # =============================================================================
 # Application Sources (main executable)
 # =============================================================================

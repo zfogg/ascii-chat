@@ -1,24 +1,134 @@
 ## Instrumented Builds
 
-- **Enable** by configuring CMake with `-DASCII_BUILD_WITH_INSTRUMENTATION=ON` (available on every preset). The flag builds the `ascii-instr-tool`, generates an instrumented source tree inside `build/instrumented/`, and rewrites targets to compile those files instead of the originals.
-- **Artifacts**: every instrumented translation unit emits per-statement calls to `ascii_instr_log_line`. At link time the executable (and any exported libraries) pull in `ascii-debug-runtime`, so no additional manual linking is required.
-- **Regeneration** happens automatically: touching a source or rebuilding `ascii-instr-tool` invalidates `instrumented/.instrumented.stamp`, forcing the tool to rerun before any module compiles. You can inspect the transformed sources or tail the per-thread logs directly from that directory.
+### When to Enable
 
-### Runtime Filters
+- Configure any preset with `-DASCII_BUILD_WITH_INSTRUMENTATION=ON`. Examples:
+  - `cmake --preset default -B build -DASCII_BUILD_WITH_INSTRUMENTATION=ON`
+  - `cmake --build build`
+- The configure step adds the `ascii-instr-tool` (Clang libTooling rewriter) and the `ascii-debug-runtime` library to the build graph. When the flag is on, targets listed in `cmake/debug/Instrumentation.cmake` are rebuilt from an instrumented source tree under `build/instrumented/`.
+- The generated tree mirrors project layout but skips third-party code (`deps/`) and the instrumentation runtime itself to avoid recursive logging.
 
-- `ASCII_INSTR_INCLUDE`/`ASCII_INSTR_EXCLUDE`: substring filters applied to the source path recorded by the tool.
-- `ASCII_INSTR_THREAD`: restrict output to specific thread IDs (multiple IDs can be comma-separated).
-- `ASCII_INSTR_OUTPUT_DIR`: override the directory the runtime uses for per-thread log files. Default falls back to `TMPDIR`, `TEMP`, or `/tmp`.
+### Build Flow
 
-The runtime writes one file per PID/TID and rate-limits I/O through `platform_write`, so it remains safe in high-frequency code paths.
+1. `ascii-instr-tool` rewrites each translation unit, inserting `ascii_instr_log_line()` before every executable statement.
+2. `cmake/debug/run_instrumentation.sh` orchestrates the pass, refuses to reuse populated directories, and writes outputs only to `build/instrumented/`.
+3. A stamp file (`build/instrumented/.stamp`) records successful completion. Modifying sources or the tool invalidates the stamp and triggers regeneration.
+4. Library/executable targets acquire an explicit dependency on the generation step and link against `ascii-debug-runtime` when required.
 
-### Manual Invocations
+### Generated Layout
 
-- The helper script `cmake/debug/run_instrumentation.sh` remains available when you need to instrument a custom subset of files (e.g., targeting an experimental branch outside the CMake flow). Export `ASCII_INSTR_TOOL` to point at a different binary if required.
-- You can also call `ascii-instr-tool` directly: `build/bin/ascii-instr-tool -p build --output-dir /tmp/instrumented --input-root $(pwd) --file-list sources.txt` (the CMake integration auto-generates `sources.txt`).
+- `build/instrumented/<relative/path>.c` — instrumented copy of each source file.
+- `build/instrumented/.stamp` — sentinel touched after a successful run.
+- Only files that required instrumentation appear; directories are created lazily alongside rewritten files.
 
-### Caveats
+Inspect instrumented files whenever you need to confirm macro expansion handling or verify that inserted snippets match expectations.
 
-- Third-party code under `deps/` and the instrumentation runtime itself are deliberately excluded to avoid recursive logging.
-- Instrumented builds still honor sanitizers and presets; however, expect significantly more logging output, so consider redirecting with `--log-file` during interactive tests.
+## Runtime Logging
+
+### Per-thread Log Files
+
+- Each thread lazily allocates a runtime state block the first time it logs. Logs live in `${ASCII_INSTR_OUTPUT_DIR:-$TMPDIR:-$TEMP:/tmp}` and use the pattern `ascii-instr-<pid>-<tid>.log`.
+- Files open with `O_CREAT|O_EXCL`, so stale logs are never appended to. Rename or archive log files between runs if you want to keep history.
+- If file creation fails, the runtime flips into `stderr` mode while keeping the same record format.
+
+### Log Record Format
+
+```
+pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=lib/network.c line=512 func=socket_send macro=0 snippet=send_packet(queue, payload)
+```
+
+- `elapsed` displays monotonic time since the runtime initialized inside the process.
+- `macro=1` identifies statements originating from macro expansions; macro call sites can emit additional logs, so review both when debugging.
+- `snippet` escapes control characters (`\n`, `\t`, `\r`) and truncates to 2048 characters to stay within the 4 KiB atomic write budget.
+
+### Environment Filters
+
+| Variable | Purpose |
+| --- | --- |
+| `ASCII_INSTR_INCLUDE` | Substring filter applied to `file=`; emit only when the substring is present. |
+| `ASCII_INSTR_EXCLUDE` | Suppresses logs when the substring matches the file path. |
+| `ASCII_INSTR_THREAD` | Comma-separated decimal thread IDs to keep. IDs must match those printed in log headers. |
+| `ASCII_INSTR_OUTPUT_DIR` | Override log directory. The runtime creates it with mode 0700 when absent. |
+
+Unset variables disable the corresponding filter. Checks happen before log formatting to reduce overhead.
+
+### Startup & Shutdown
+
+- `ascii_instr_runtime_get()` uses `pthread_once` to create TLS keys and picks up environment filters. Memory is allocated through the SAFE_ macros, ensuring leak tracking when `DEBUG_MEMORY` is enabled.
+- `ascii_instr_runtime_global_shutdown()` tears down TLS entries and halts logging—useful in unit tests that spawn threads.
+
+## Usage Workflows
+
+### CMake-managed builds
+
+1. Configure with instrumentation enabled (see above).
+2. Build normally (`cmake --build build`). Compilers will consume the instrumented sources transparently.
+3. Export runtime filters as needed, e.g.:
+   - `export ASCII_INSTR_INCLUDE=network.c`
+   - `export ASCII_INSTR_OUTPUT_DIR=/tmp/ascii-instr`
+4. Run the binary and inspect `/tmp/ascii-instr/ascii-instr-<pid>-<tid>.log`. `tail -n1` reveals the last executed statement per thread.
+
+### Manual instrumentation
+
+Use the helper script when experimenting with subsets of files or out-of-tree builds:
+
+```
+./cmake/debug/run_instrumentation.sh -b build -o /tmp/ascii-instrumented -- lib/audio/audio.c src/server/server.c
+```
+
+- Additional clang-tool flags can follow the `--` delimiter (e.g., `--filter-file server`).
+- The script reuses the repository root as `--input-root`, keeping relative paths stable.
+
+### Thread-focused inspection
+
+When diagnosing a multi-threaded crash, identify the failing thread ID from the crash report or sanitizer output, then:
+
+```
+grep "tid=1234" /tmp/ascii-instr-*.log | tail -n1
+```
+
+The final `seq=` value indicates the last statement that thread executed before the fault.
+
+### Summaries with `ascii-instr-report`
+
+- Build the helper with `cmake --build build --target ascii-instr-report`.
+- By default the tool scans `${ASCII_INSTR_OUTPUT_DIR}` (or falls back to `/tmp`) and prints the most recent record per thread.
+- Common flags:
+  - `--log-dir /path/to/logs` – override the directory
+  - `--thread 1234` – focus on one or more thread IDs (repeat flag to add more)
+  - `--include network.c` / `--exclude image2ascii` – apply the same substring filters as the runtime
+  - `--raw` – emit the original log line instead of the formatted summary
+- Example:
+
+```
+./build/bin/ascii-instr-report --log-dir /tmp/ascii-instr --thread 6789
+```
+
+The formatted output highlights timestamp, file/line, function, macro flag, and snippet for each thread’s last recorded statement.
+
+## Safety Guarantees
+
+- **Original sources remain untouched.** The tool writes only to new files under `build/instrumented/` and aborts if the destination already exists.
+- **Atomic writes.** Each log line is emitted with a single `platform_write()` call, so concurrent threads cannot interleave records, and logs survive abrupt crashes.
+- **Signal tolerance.** Once initialized, the runtime avoids non signal-safe functions inside the hot path, making it reliable even when a crash occurs between statements.
+- **Thread isolation.** Separate files per thread prevent interleaving and simplify postmortem analysis.
+
+## Limitations & Best Practices
+
+- **Performance cost.** Logging every statement carries significant overhead. Narrow the instrumentation scope using `ASCII_INSTR_INCLUDE` or clang-tool filters when chasing specific bugs.
+- **Timing changes.** Heavy I/O can mask race conditions (Heisenbugs). After localizing the failure, confirm with sanitizers (`-fsanitize=address,undefined`) or record/replay (`rr`).
+- **Macros and generated code.** Macro bodies receive logs, but the failing line may still reside in called functions. Combine logs with traditional debugging techniques for accuracy.
+- **Binary size and build time.** Expect larger binaries and longer links because every statement introduces a logging call and associated string literal.
+- **Thread IDs differ by platform.** Always copy the numeric ID from log headers when using `ASCII_INSTR_THREAD`; pthread IDs and system thread IDs are not interchangeable.
+
+## Troubleshooting
+
+- **No logs emitted:** verify the output directory exists and is writable, and double-check that filters are not over-restrictive. Clearing `ASCII_INSTR_INCLUDE` entirely disables the include filter.
+- **`Refusing to overwrite` errors during instrumentation:** remove the existing `build/instrumented/` directory or specify a fresh output directory.
+- **Partial log files:** ensure disks are not full. The runtime permanently disables logging if `platform_write()` fails with a non-recoverable error.
+- **Missing include warnings:** custom extensions may be skipped by `run_instrumentation.sh`. Update the script’s `find` expression if you have non-standard source suffixes.
+
+## Roadmap Follow-ups
+
+- Cover runtime filtering and formatting with Criterion tests executed via `./tests/scripts/run_tests.sh` (Docker on macOS).
 

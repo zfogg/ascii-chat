@@ -196,12 +196,19 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         # Transform test file paths to executable names with flattened structure
         # tests/unit/common_test.c -> test_unit_common
         # tests/integration/crypto_network_test.c -> test_integration_crypto_network
-        get_filename_component(test_name ${test_src} NAME_WE)
-        get_filename_component(test_dir ${test_src} DIRECTORY)
-        get_filename_component(test_subdir ${test_dir} NAME)
+        # Determine the top-level test category (unit/integration/performance)
+        file(RELATIVE_PATH test_rel ${PROJECT_SOURCE_DIR}/tests ${test_src})
+        string(REPLACE "\\" "/" test_rel ${test_rel})
+        string(REGEX MATCH "^[^/]+" test_category ${test_rel})
+        if(NOT test_category)
+            message(FATAL_ERROR "Failed to determine test category for ${test_src}")
+        endif()
 
-        string(REPLACE "_test" "" test_base ${test_name})
-        set(test_exe_name "test_${test_subdir}_${test_base}")
+        # Create a flattened executable name that preserves subdirectory information
+        string(REPLACE ".c" "" test_rel_noext ${test_rel})
+        string(REPLACE "/" "_" test_rel_flat ${test_rel_noext})
+        string(REGEX REPLACE "_test$" "" test_rel_flat ${test_rel_flat})
+        set(test_exe_name "test_${test_rel_flat}")
         list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
         # Add test executable with test utilities (EXCLUDE_FROM_ALL = not built by default)
@@ -260,7 +267,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         endif()
 
         # Use release objects for performance tests
-        if(test_subdir STREQUAL "performance")
+        if(test_category STREQUAL "performance")
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
 

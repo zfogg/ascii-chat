@@ -5,9 +5,11 @@
 #include "clang/Frontend/FrontendActions.h"
 #include "clang/Lex/Lexer.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
-#include "llvm/ADT/Optional.h"
+#include "clang/AST/ParentMapContext.h"
+#include "llvm/ADT/RewriteBuffer.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Errc.h"
@@ -20,11 +22,37 @@
 #include <cctype>
 #include <filesystem>
 #include <fstream>
-#include <system_error>
+#include <iomanip>
+#include <iostream>
+#include <mutex>
+#include <optional>
+#include <sstream>
 #include <string>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+std::mutex &outputRegistryMutex() {
+  static std::mutex mutex;
+  return mutex;
+}
+
+std::unordered_set<std::string> &outputRegistry() {
+  static std::unordered_set<std::string> registry;
+  return registry;
+}
+
+bool registerOutputPath(const std::string &path) {
+  std::lock_guard<std::mutex> guard(outputRegistryMutex());
+  auto &registry = outputRegistry();
+  auto [_, inserted] = registry.insert(path);
+  return inserted;
+}
+
+void unregisterOutputPath(const std::string &path) {
+  std::lock_guard<std::mutex> guard(outputRegistryMutex());
+  outputRegistry().erase(path);
+}
 
 namespace {
 
@@ -84,6 +112,18 @@ public:
       return true;
     }
 
+    if (!currentFunction_) {
+      return true;
+    }
+
+    if (!isDirectChildOfCompound(*statement)) {
+      return true;
+    }
+
+    if (llvm::isa<clang::CompoundStmt>(statement) || llvm::isa<clang::NullStmt>(statement)) {
+      return true;
+    }
+
     if (skipCurrentFunction_) {
       return true;
     }
@@ -130,18 +170,23 @@ public:
       return true;
     }
 
+    if (sourceManager.isMacroBodyExpansion(beginLocation) || sourceManager.isMacroArgExpansion(beginLocation)) {
+      return true;
+    }
+
     const bool isMacroExpansion =
         sourceManager.isMacroBodyExpansion(beginLocation) || sourceManager.isMacroArgExpansion(beginLocation);
 
-    llvm::Optional<std::string> snippet = extractSnippet(*statement, sourceManager, langOptions);
-    if (!snippet) {
-      snippet = std::string("<unavailable>");
+    if (isMacroExpansion) {
+      return true;
     }
+
+    const std::optional<std::string> snippetOpt = extractSnippet(*statement, sourceManager, langOptions);
+    const std::string snippetValue = snippetOpt ? *snippetOpt : std::string("<unavailable>");
+    std::string escapedSnippet = escapeSnippet(snippetValue);
 
     const unsigned lineNumber = sourceManager.getSpellingLineNumber(expansionLocation);
     const std::string relativePath = makeRelativePath(filePath);
-
-    std::string escapedSnippet = escapeSnippet(*snippet);
 
     std::string instrumentationLine;
     instrumentationLine.reserve(escapedSnippet.size() + 256);
@@ -213,7 +258,7 @@ public:
       return false;
     }
 
-    if (!matchesFunctionFilters(currentFunction_)) {
+    if (enableFunctionFilters_ && !matchesFunctionFilters(currentFunction_)) {
       return false;
     }
 
@@ -272,6 +317,7 @@ public:
         break;
       }
       processed++;
+      const unsigned char uch = static_cast<unsigned char>(ch);
       switch (ch) {
       case '\\':
         result.append("\\\\");
@@ -289,13 +335,13 @@ public:
         result.append("\\t");
         break;
       default:
-        if (std::isprint(static_cast<unsigned char>(ch)) != 0) {
-          result.push_back(ch);
+        if (std::isprint(uch) != 0 || uch >= 0x80) {
+          result.push_back(static_cast<char>(uch));
         } else {
-          result.append("\\x");
+          result.append("\\\\x");
           constexpr char hexDigits[] = "0123456789ABCDEF";
-          result.push_back(hexDigits[(static_cast<unsigned char>(ch) >> 4) & 0xF]);
-          result.push_back(hexDigits[static_cast<unsigned char>(ch) & 0xF]);
+          result.push_back(hexDigits[(uch >> 4) & 0xF]);
+          result.push_back(hexDigits[uch & 0xF]);
         }
         break;
       }
@@ -303,27 +349,27 @@ public:
     return result;
   }
 
-  static llvm::Optional<std::string> extractSnippet(const clang::Stmt &statement,
-                                                    const clang::SourceManager &sourceManager,
-                                                    const clang::LangOptions &langOptions) {
+  static std::optional<std::string> extractSnippet(const clang::Stmt &statement,
+                                                   const clang::SourceManager &sourceManager,
+                                                   const clang::LangOptions &langOptions) {
     clang::SourceLocation begin = statement.getBeginLoc();
     clang::SourceLocation end = statement.getEndLoc();
 
     if (begin.isInvalid() || end.isInvalid()) {
-      return llvm::None;
+      return std::nullopt;
     }
 
     clang::SourceLocation expansionBegin = sourceManager.getExpansionLoc(begin);
     clang::SourceLocation expansionEnd = sourceManager.getExpansionLoc(end);
     if (!expansionBegin.isValid() || !expansionEnd.isValid()) {
-      return llvm::None;
+      return std::nullopt;
     }
 
     clang::CharSourceRange range = clang::CharSourceRange::getTokenRange(expansionBegin, expansionEnd);
     bool invalid = false;
     llvm::StringRef text = clang::Lexer::getSourceText(range, sourceManager, langOptions, &invalid);
     if (invalid || text.empty()) {
-      return llvm::None;
+      return std::nullopt;
     }
     return text.str();
   }
@@ -339,6 +385,16 @@ private:
   bool skipCurrentFunction_ = false;
   bool includeNeeded_ = false;
   std::unordered_set<std::string> instrumentedLocations_;
+
+  bool isDirectChildOfCompound(const clang::Stmt &statement) const {
+    const auto parents = context_.getParents(statement);
+    for (const auto &parent : parents) {
+      if (parent.get<clang::CompoundStmt>()) {
+        return true;
+      }
+    }
+    return false;
+  }
 };
 
 class InstrumentationASTConsumer : public clang::ASTConsumer {
@@ -382,9 +438,15 @@ public:
     const fs::path originalPath = fs::path(filePathRef.str());
     const std::string relativePath = visitor_->makeRelativePath(originalPath);
     const fs::path destinationPath = outputDir_ / relativePath;
+    const std::string destinationString = destinationPath.string();
+
+    if (!registerOutputPath(destinationString)) {
+      return;
+    }
 
     if (fs::exists(destinationPath)) {
       llvm::errs() << "Refusing to overwrite existing file: " << destinationPath.c_str() << "\n";
+      unregisterOutputPath(destinationString);
       hadWriteError_ = true;
       return;
     }
@@ -395,6 +457,7 @@ public:
     if (directoryError) {
       llvm::errs() << "Failed to create output directory: " << parent.c_str() << " - " << directoryError.message()
                    << "\n";
+      unregisterOutputPath(destinationString);
       hadWriteError_ = true;
       return;
     }
@@ -402,7 +465,7 @@ public:
     ensureIncludeInserted(originalPath);
 
     std::string rewrittenContents;
-    if (const clang::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(sourceManager.getMainFileID())) {
+    if (const llvm::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(sourceManager.getMainFileID())) {
       rewrittenContents.assign(buffer->begin(), buffer->end());
     } else {
       rewrittenContents = sourceManager.getBufferData(sourceManager.getMainFileID()).str();
@@ -412,11 +475,17 @@ public:
     llvm::raw_fd_ostream outputStream(destinationPath.string(), fileError, llvm::sys::fs::OF_Text);
     if (fileError) {
       llvm::errs() << "Failed to open output file: " << destinationPath.c_str() << " - " << fileError.message() << "\n";
+      unregisterOutputPath(destinationString);
       hadWriteError_ = true;
       return;
     }
     outputStream << rewrittenContents;
     outputStream.close();
+    if (outputStream.has_error()) {
+      llvm::errs() << "Error while writing instrumented file: " << destinationPath.c_str() << "\n";
+      unregisterOutputPath(destinationString);
+      hadWriteError_ = true;
+    }
   }
 
   bool hadWriteError() const {
@@ -464,7 +533,7 @@ public:
       : outputDir_(outputDir), inputRoot_(inputRoot), enableFileFilters_(enableFileFilters),
         enableFunctionFilters_(enableFunctionFilters) {}
 
-  std::unique_ptr<clang::FrontendAction> create() override {
+  std::unique_ptr<clang::FrontendAction> create() {
     return std::make_unique<InstrumentationFrontendAction>(outputDir_, inputRoot_, enableFileFilters_,
                                                            enableFunctionFilters_);
   }
@@ -540,7 +609,36 @@ int main(int argc, const char **argv) {
     }
   }
 
-  clang::tooling::ClangTool tool(optionsParser.getCompilations(), sourcePaths);
+  clang::tooling::ClangTool tool(optionsParser.getCompilations(), optionsParser.getSourcePathList());
+
+  auto stripPchAdjuster = [](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
+    clang::tooling::CommandLineArguments result;
+    const auto containsCMakePch = [](llvm::StringRef value) { return value.contains("cmake_pch"); };
+
+    for (std::size_t i = 0; i < args.size(); ++i) {
+      const std::string &arg = args[i];
+      llvm::StringRef argRef(arg);
+
+      if ((argRef == "-include" || argRef == "--include" || argRef == "-include-pch" || argRef == "--include-pch") &&
+          (i + 1) < args.size()) {
+        if (containsCMakePch(args[i + 1])) {
+          ++i;
+          continue;
+        }
+      }
+
+      if ((argRef.starts_with("-include=") || argRef.starts_with("--include=") || argRef.starts_with("-include-pch=") ||
+           argRef.starts_with("--include-pch=")) &&
+          containsCMakePch(argRef)) {
+        continue;
+      }
+
+      result.push_back(arg);
+    }
+
+    return result;
+  };
+  tool.appendArgumentsAdjuster(stripPchAdjuster);
 
   InstrumentationActionFactory actionFactory(outputDir, inputRoot, !FileIncludeFilters.empty(),
                                              !FunctionIncludeFilters.empty());

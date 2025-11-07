@@ -3,6 +3,7 @@ include_guard(GLOBAL)
 option(ASCII_BUILD_WITH_INSTRUMENTATION "Generate and build instrumented sources with per-statement logging" OFF)
 
 include(${CMAKE_CURRENT_LIST_DIR}/Targets.cmake)
+set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/run_instrumentation.sh")
 
 set(ASCII_INSTRUMENTATION_LIBRARY_TARGETS
     ascii-chat-util
@@ -30,8 +31,9 @@ function(ascii_instrumentation_prepare)
 
     ascii_add_debug_targets()
 
+    set(USE_PRECOMPILED_HEADERS OFF CACHE BOOL "Disable PCH when instrumentation is enabled" FORCE)
+
     set(instrumented_dir "${CMAKE_BINARY_DIR}/instrumented")
-    set(script_path "${CMAKE_CURRENT_LIST_DIR}/run_instrumentation.sh")
 
     set(candidate_vars
         UTIL_SRCS
@@ -48,6 +50,7 @@ function(ascii_instrumentation_prepare)
 
     set(instrumented_abs_paths "")
     set(instrumented_rel_paths "")
+    set(instrumented_generated_paths "")
 
     foreach(var IN LISTS candidate_vars)
         if(NOT DEFINED ${var})
@@ -72,13 +75,16 @@ function(ascii_instrumentation_prepare)
                 continue()
             endif()
 
+            set(generated_path "${instrumented_dir}/${rel_path}")
             list(APPEND instrumented_abs_paths "${abs_path}")
             list(APPEND instrumented_rel_paths "${rel_path}")
+            list(APPEND instrumented_generated_paths "${generated_path}")
         endforeach()
     endforeach()
 
     list(REMOVE_DUPLICATES instrumented_abs_paths)
     list(REMOVE_DUPLICATES instrumented_rel_paths)
+    list(REMOVE_DUPLICATES instrumented_generated_paths)
 
     add_custom_command(
         OUTPUT "${instrumented_dir}/.stamp"
@@ -86,9 +92,10 @@ function(ascii_instrumentation_prepare)
         COMMAND ${CMAKE_COMMAND} -E make_directory "${instrumented_dir}"
         COMMAND ${CMAKE_COMMAND} -E env
             ASCII_INSTR_TOOL=$<TARGET_FILE:ascii-instr-tool>
-            bash "${script_path}" -b "${CMAKE_BINARY_DIR}" -o "${instrumented_dir}"
+            bash "${_ASCII_INSTRUMENTATION_SCRIPT}" -b "${CMAKE_BINARY_DIR}" -o "${instrumented_dir}"
         COMMAND ${CMAKE_COMMAND} -E touch "${instrumented_dir}/.stamp"
         DEPENDS ascii-instr-tool ${instrumented_abs_paths}
+        BYPRODUCTS ${instrumented_generated_paths}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Generating instrumented source tree"
         VERBATIM
@@ -114,7 +121,9 @@ function(ascii_instrumentation_prepare)
             endif()
             string(REPLACE "\\" "/" rel_path "${rel_path}")
             if(rel_path IN_LIST instrumented_rel_paths)
-                list(APPEND updated_list "${instrumented_dir}/${rel_path}")
+                set(generated_path "${instrumented_dir}/${rel_path}")
+                list(APPEND updated_list "${generated_path}")
+                set_source_files_properties("${generated_path}" PROPERTIES GENERATED TRUE)
             else()
                 list(APPEND updated_list "${item}")
             endif()
@@ -144,28 +153,15 @@ function(ascii_instrumentation_finalize)
         if(TARGET ${exe_target})
             add_dependencies(${exe_target} ascii-generate-instrumented-sources)
             if(TARGET ascii-debug-runtime)
-                target_link_libraries(${exe_target} PRIVATE ascii-debug-runtime)
+                # Use plain signature to match existing target_link_libraries usage
+                target_link_libraries(${exe_target} ascii-debug-runtime)
             endif()
         endif()
     endforeach()
 
-    if(TARGET ascii-chat-shared)
+    if(TARGET ascii-chat-shared AND TARGET ascii-debug-runtime)
         add_dependencies(ascii-chat-shared ascii-generate-instrumented-sources)
-        if(TARGET ascii-debug-runtime)
-            target_link_libraries(ascii-chat-shared PRIVATE ascii-debug-runtime)
-        endif()
-    endif()
-    if(TARGET ascii-chat-static)
-        add_dependencies(ascii-chat-static ascii-generate-instrumented-sources)
-        if(TARGET ascii-debug-runtime)
-            target_link_libraries(ascii-chat-static INTERFACE ascii-debug-runtime)
-        endif()
-    endif()
-    if(TARGET ascii-chat-static-lib)
-        add_dependencies(ascii-chat-static-lib ascii-generate-instrumented-sources)
-        if(TARGET ascii-debug-runtime)
-            target_link_libraries(ascii-chat-static-lib INTERFACE ascii-debug-runtime)
-        endif()
+        target_link_libraries(ascii-chat-shared PRIVATE ascii-debug-runtime)
     endif()
 
 endfunction()
