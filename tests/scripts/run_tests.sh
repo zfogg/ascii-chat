@@ -1345,18 +1345,12 @@ function main() {
   if [[ ${#test_targets[@]} -gt 0 ]]; then
     # Build all test targets in one command - ninja will parallelize and handle dependencies
     # Use ninja directly instead of cmake --build for faster execution
-    local build_output
-    local build_exit_code
-    build_output=$(cd "$cmake_build_dir" && ninja "${test_targets[@]}" 2>&1)
-    build_exit_code=$?
+    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
 
-    # Only show build message and output if ninja actually did work
-    if [[ "$build_output" != *"ninja: no work to do"* ]]; then
-      log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
-      echo "$build_output"
-    elif [[ -n "$VERBOSE" ]]; then
-      log_verbose "All test executables are up to date (ninja: no work to do)"
-    fi
+    # Show ninja output in real-time
+    local build_exit_code
+    (cd "$cmake_build_dir" && ninja "${test_targets[@]}")
+    build_exit_code=$?
 
     # Check if build failed
     if [[ $build_exit_code -ne 0 ]]; then
