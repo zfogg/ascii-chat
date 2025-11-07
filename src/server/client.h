@@ -96,7 +96,8 @@ typedef struct {
 
   // Statistics
   atomic_bool active;
-  atomic_bool shutting_down; // Set when client is being removed
+  atomic_bool shutting_down;                 // Set when client is being removed
+  atomic_bool protocol_disconnect_requested; // Set when protocol violation requires disconnect
   time_t connected_at;
   uint64_t frames_sent;
   uint64_t frames_received; // Track incoming frames from this client

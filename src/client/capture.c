@@ -222,7 +222,7 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
   // Create new image for resized frame
   image_t *resized = image_new(resized_width, resized_height);
   if (!resized) {
-    log_error("Failed to allocate resized image buffer");
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate resized image buffer");
     return NULL;
   }
 
@@ -316,8 +316,54 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Create image frame packet in new format: [width:4][height:4][compressed_flag:4][data_size:4][pixel_data]
     // This matches what the server expects in handle_image_frame_packet()
-    size_t pixel_size = (size_t)processed_image->w * processed_image->h * sizeof(rgb_t);
+    if (processed_image->w <= 0 || processed_image->h <= 0) {
+      SET_ERRNO(ERROR_INVALID_FRAME, "Processed image has invalid dimensions: %dx%d", processed_image->w,
+                processed_image->h);
+      image_destroy(processed_image);
+      continue;
+    }
+
+    if (processed_image->w > IMAGE_MAX_WIDTH || processed_image->h > IMAGE_MAX_HEIGHT) {
+      SET_ERRNO(ERROR_INVALID_FRAME, "Processed image dimensions exceed maximum: %dx%d (max %ux%u)", processed_image->w,
+                processed_image->h, IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
+      image_destroy(processed_image);
+      continue;
+    }
+
+    size_t pixel_count = 0;
+    if (safe_size_mul((size_t)processed_image->w, (size_t)processed_image->h, &pixel_count)) {
+      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Pixel count overflow for processed image dimensions: %dx%d", processed_image->w,
+                processed_image->h);
+      image_destroy(processed_image);
+      continue;
+    }
+
+    size_t pixel_size = 0;
+    if (safe_size_mul(pixel_count, sizeof(rgb_t), &pixel_size)) {
+      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Pixel size overflow while preparing frame (%zu pixels)", pixel_count);
+      image_destroy(processed_image);
+      continue;
+    }
+
+    if (pixel_size > IMAGE_MAX_PIXELS_SIZE) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds maximum size: %zu bytes (max %zu)", pixel_size,
+                (size_t)IMAGE_MAX_PIXELS_SIZE);
+      image_destroy(processed_image);
+      continue;
+    }
+
+    if (pixel_size > UINT32_MAX) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds protocol limit: %zu bytes (> UINT32_MAX)", pixel_size);
+      image_destroy(processed_image);
+      continue;
+    }
+
     size_t header_size = sizeof(uint32_t) * 4; // width, height, compressed_flag, data_size
+    if (pixel_size > SIZE_MAX - header_size) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Packet size overflow while preparing frame");
+      image_destroy(processed_image);
+      continue;
+    }
     size_t packet_size = header_size + pixel_size;
 
     // Check packet size limits
@@ -463,7 +509,7 @@ int capture_start_thread() {
   log_warn("THREAD_CREATE: ascii_thread_create() returned %d, thread handle = %p", result, g_capture_thread);
 
   if (result != 0) {
-    log_error("THREAD_CREATE: Webcam capture thread creation FAILED with result=%d", result);
+    SET_ERRNO(ERROR_THREAD, "THREAD_CREATE: Webcam capture thread creation FAILED with result=%d", result);
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;
   }
@@ -508,7 +554,7 @@ void capture_stop_thread() {
   int join_result = ascii_thread_join_timeout(&g_capture_thread, &thread_retval, 5000); // 5 second timeout
 
   if (join_result == -2) {
-    log_error("Capture thread join timed out - thread may be stuck, forcing termination");
+    SET_ERRNO(ERROR_THREAD, "Capture thread join timed out - thread may be stuck, forcing termination");
     // Force close the thread handle to prevent resource leak
 #ifdef _WIN32
     if (g_capture_thread) {
@@ -520,7 +566,7 @@ void capture_stop_thread() {
     g_capture_thread = 0;
 #endif
   } else if (join_result != 0) {
-    log_error("Failed to join capture thread, result=%d", join_result);
+    SET_ERRNO(ERROR_THREAD, "Failed to join capture thread, result=%d", join_result);
     // Still force close the handle to prevent leak
 #ifdef _WIN32
     if (g_capture_thread) {

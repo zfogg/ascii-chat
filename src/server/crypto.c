@@ -203,6 +203,7 @@ int server_crypto_handshake(client_info_t *client) {
 
   if (init_result != ASCIICHAT_OK) {
     FATAL(init_result, "Failed to initialize crypto handshake for client %u", atomic_load(&client->client_id));
+    return -1;
   }
   client->crypto_initialized = true;
 
@@ -249,6 +250,7 @@ int server_crypto_handshake(client_info_t *client) {
 
   if (socket == INVALID_SOCKET_VALUE) {
     log_debug("SERVER_CRYPTO_HANDSHAKE: Socket is invalid for client %u", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
@@ -263,6 +265,7 @@ int server_crypto_handshake(client_info_t *client) {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
@@ -277,6 +280,7 @@ int server_crypto_handshake(client_info_t *client) {
       buffer_pool_free(payload, payload_len);
     }
     log_info("Client %u disconnected due to protocol mismatch", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
@@ -285,6 +289,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
     buffer_pool_free(payload, payload_len);
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
@@ -308,6 +313,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (!client_version.supports_encryption) {
     log_error("Client %u does not support encryption", atomic_load(&client->client_id));
     log_info("Client %u disconnected - encryption not supported", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
@@ -333,6 +339,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != 0) {
     log_error("Failed to send protocol version to client %u", atomic_load(&client->client_id));
     log_info("Client %u disconnected - failed to send protocol version", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
@@ -349,6 +356,7 @@ int server_crypto_handshake(client_info_t *client) {
     if (payload) {
       buffer_pool_free(payload, payload_len);
     }
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
@@ -362,6 +370,7 @@ int server_crypto_handshake(client_info_t *client) {
       buffer_pool_free(payload, payload_len);
     }
     log_info("Client %u disconnected due to protocol mismatch in crypto capabilities", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error but don't crash the server
   }
@@ -370,13 +379,11 @@ int server_crypto_handshake(client_info_t *client) {
     SET_ERRNO(ERROR_NETWORK_PROTOCOL,
               "Invalid crypto capabilities packet size: %zu (expected %zu) - we should disconnect this client",
               payload_len, sizeof(crypto_capabilities_packet_t));
-    log_error("Client %u sent invalid crypto capabilities packet size: %zu (expected %zu)",
-              atomic_load(&client->client_id), payload_len, sizeof(crypto_capabilities_packet_t));
-    LOG_ERRNO_IF_SET("Crypto handshake: invalid capabilities payload size");
     if (payload) {
       buffer_pool_free(payload, payload_len);
       payload = NULL;
     }
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
@@ -386,6 +393,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Client %u crypto capabilities payload is NULL after validation - disconnecting",
               atomic_load(&client->client_id));
     LOG_ERRNO_IF_SET("Crypto handshake: missing capabilities payload");
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
@@ -451,6 +459,7 @@ int server_crypto_handshake(client_info_t *client) {
   result = send_crypto_parameters_packet(socket, &server_params);
   if (result != 0) {
     log_error("Failed to send crypto parameters to client %u", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
@@ -460,7 +469,10 @@ int server_crypto_handshake(client_info_t *client) {
   // Set the crypto parameters in the handshake context
   result = crypto_handshake_set_parameters(&client->crypto_handshake_ctx, &server_params);
   if (result != ASCIICHAT_OK) {
+    client->crypto_initialized = false;
+    STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     FATAL(result, "Failed to set crypto parameters for client %u", atomic_load(&client->client_id));
+    return -1;
   }
 
   // Step 1: Send our public key to client
@@ -470,6 +482,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Crypto handshake start failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
     LOG_ERRNO_IF_SET("Crypto handshake: failed to send KEY_EXCHANGE_INIT");
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
   }
@@ -479,6 +492,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != ASCIICHAT_OK) {
     log_error("Crypto authentication challenge failed for client %u: %s", atomic_load(&client->client_id),
               asciichat_error_string(result));
+    client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1; // Return error to disconnect client gracefully
   }
@@ -503,11 +517,14 @@ int server_crypto_handshake(client_info_t *client) {
                   asciichat_error_string(result));
       }
       LOG_ERRNO_IF_SET("Crypto handshake completion failed");
+      client->crypto_initialized = false;
       STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
       return -1;
     }
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     FATAL(result, "Crypto authentication response failed for client %u", atomic_load(&client->client_id));
+    client->crypto_initialized = false;
+    return -1;
   }
 
   uint32_t cid = atomic_load(&client->client_id);
