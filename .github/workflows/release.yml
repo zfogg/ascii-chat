@@ -2,13 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [ master, main ]
-    paths:
-      - '**.c'
-      - '**.h'
-      - '**.m'
-      - 'CMakeLists.txt'
-      - 'Makefile'
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
@@ -27,8 +22,8 @@ env:
 
 jobs:
   create-release:
-    # Only run on master/main branches, not feature branches
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+    # Only run for tagged builds or manual dispatch
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -47,16 +42,16 @@ jobs:
     - name: Determine version
       id: version
       run: |
-        # If manual version provided, use it
-        if [[ -n "${{ github.event.inputs.version }}" ]]; then
+        if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+          VERSION="${GITHUB_REF#refs/tags/}"
+          echo "Using tag-derived version: $VERSION"
+        elif [[ -n "${{ github.event.inputs.version }}" ]]; then
           VERSION="${{ github.event.inputs.version }}"
           echo "Using manual version: $VERSION"
         else
-          # Get last tag
-          LAST_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo "v0.0.0")
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
           echo "Last tag: $LAST_TAG"
 
-          # Parse version components
           if [[ $LAST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             MAJOR="${BASH_REMATCH[1]}"
             MINOR="${BASH_REMATCH[2]}"
@@ -67,24 +62,12 @@ jobs:
             PATCH=0
           fi
 
-          # Count commits by type since last tag
-          echo "Analyzing commits since $LAST_TAG..."
-
-          # Get all commits since last tag
           COMMITS=$(git log --format=%s $LAST_TAG..HEAD)
-
-          # Count breaking changes
           BREAKING_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature)\!|^breaking' || true)
           BREAKING_BODY_COUNT=$(git log --format=%B $LAST_TAG..HEAD | grep -ic 'BREAKING CHANGE' || true)
           TOTAL_BREAKING=$((BREAKING_COUNT + BREAKING_BODY_COUNT))
-
-          # Count features
           FEAT_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature):' || true)
-
-          # Count fixes
           FIX_COUNT=$(echo "$COMMITS" | grep -icE '^(fix|bugfix):' || true)
-
-          # Count other commits
           TOTAL_COMMITS=$(echo "$COMMITS" | wc -l)
           OTHER_COUNT=$((TOTAL_COMMITS - TOTAL_BREAKING - FEAT_COUNT - FIX_COUNT))
 
@@ -95,43 +78,25 @@ jobs:
           echo "  Other: $OTHER_COUNT"
           echo "  Total: $TOTAL_COMMITS"
 
-          # Check for manual major bump override
           if [[ "${{ github.event.inputs.major_bump }}" == "true" ]]; then
-            # Manual major bump requested (workflow_dispatch only)
             MAJOR=$((MAJOR + 1))
             MINOR=0
             PATCH=0
             BUMP_TYPE="major (manual override)"
-          # Determine version bump based on ALL commits
-          # Note: Breaking change commits are IGNORED for auto-release
-          # Major bumps require manual workflow dispatch with major_bump=true
           elif [[ $FEAT_COUNT -gt 0 ]]; then
-            # Minor bump - increment for each feature
             MINOR=$((MINOR + FEAT_COUNT))
             PATCH=0
             BUMP_TYPE="minor (${FEAT_COUNT} features)"
-            if [[ $TOTAL_BREAKING -gt 0 ]]; then
-              echo "WARNING: ${TOTAL_BREAKING} breaking change commits detected but ignored."
-              echo "For major version bump, use workflow_dispatch with major_bump=true"
-            fi
           elif [[ $FIX_COUNT -gt 0 || $OTHER_COUNT -gt 0 ]]; then
-            # Patch bump - increment for each fix/other commit
             PATCH=$((PATCH + FIX_COUNT + OTHER_COUNT))
             BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
-            if [[ $TOTAL_BREAKING -gt 0 ]]; then
-              echo "WARNING: ${TOTAL_BREAKING} breaking change commits detected but ignored."
-              echo "For major version bump, use workflow_dispatch with major_bump=true"
-            fi
           else
-            # No commits? Default to patch
             PATCH=$((PATCH + 1))
             BUMP_TYPE="patch (default)"
           fi
 
           echo "Bump type: $BUMP_TYPE"
-
           VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-          echo "New version: $VERSION"
         fi
 
         echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -140,7 +105,7 @@ jobs:
       id: changelog
       run: |
         VERSION="${{ steps.version.outputs.version }}"
-        LAST_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo "")
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
         if [[ -n "$LAST_TAG" ]]; then
           echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
@@ -185,51 +150,47 @@ jobs:
 
           ## Download
 
-          **Linux x86_64 (Recommended - Static musl build):**
-          - Fully static binary, no dependencies
-          - Portable across all Linux distributions
-          - Download: `ascii-chat-linux-x86_64.tar.gz`
+          **Linux Installers (x86_64 & arm64):**
+          - Debian/Ubuntu `.deb`
+          - Fedora/RHEL `.rpm`
+          - Self-extracting `.sh` installer
+          - Portable `.tar.gz`
 
-          **Linux ARM64 (Static musl build):**
-          - For Raspberry Pi, ARM servers, etc.
-          - Download: `ascii-chat-linux-aarch64.tar.gz`
+          **macOS Installers (x86_64 & arm64):**
+          - Signed-compatible `.pkg` (productbuild)
+          - Portable `.tar.gz`
 
-          **Windows x86_64:**
-          - Native MSVC build with included DLLs
-          - Download: `ascii-chat-windows-x86_64.tar.gz`
-
-          **macOS Intel (x86_64):**
-          - Requires Homebrew dependencies
-          - Download: `ascii-chat-macos-x86_64.tar.gz`
-
-          **macOS Apple Silicon (ARM64):**
-          - Native ARM64 build
-          - Download: `ascii-chat-macos-arm64.tar.gz`
+          **Windows Installers (x86_64):**
+          - WiX `.msi` installer
+          - Portable `.zip`
 
           ## Quick Start
 
           **Linux (no dependencies required):**
           ```bash
-          tar xzf ascii-chat-linux-*.tar.gz
-          cd release-*
-          ./ascii-chat server  # Start server
-          ./ascii-chat client  # Start client (in another terminal)
+          sudo dpkg -i ascii-chat_*_amd64.deb   # Debian/Ubuntu
+          # or
+          sudo rpm -i ascii-chat-*.rpm          # Fedora/RHEL
+
+          ascii-chat server  # Start server
+          ascii-chat client  # Start client (in another terminal)
           ```
 
           **macOS (install dependencies first):**
           ```bash
           brew install portaudio libsodium
-          tar xzf ascii-chat-macos-*.tar.gz
-          cd release-*
-          ./ascii-chat server  # Start server
-          ./ascii-chat client  # Start client (in another terminal)
+          sudo installer -pkg ascii-chat-*.pkg -target /
+
+          ascii-chat server  # Start server
+          ascii-chat client  # Start client (in another terminal)
           ```
 
           **Windows (DLLs included):**
           ```
-          Extract ascii-chat-windows-x86_64.tar.gz
-          Run: ascii-chat.exe server  (start server)
-          Run: ascii-chat.exe client  (start client in another terminal)
+          msiexec /i ascii-chat-*.msi
+
+          ascii-chat.exe server  # Start server
+          ascii-chat.exe client  # Start client (in another terminal)
           ```
 
           ## Features
@@ -247,9 +208,9 @@ jobs:
         prerelease: false
         token: ${{ secrets.GITHUB_TOKEN }}
 
-  build-linux:
-    # Only run on master/main branches, not feature branches
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+  package-linux:
+    name: Package Linux installers
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -257,259 +218,214 @@ jobs:
         include:
           - runner: ubuntu-latest
             arch: x86_64
+            artifact_suffix: amd64
           - runner: ubuntu-latest-arm64
-            arch: aarch64
+            arch: arm64
+            artifact_suffix: arm64
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        submodules: true
-      with:
-        fetch-depth: 1
-        ref: ${{ needs.create-release.outputs.version }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+          ref: ${{ needs.create-release.outputs.version }}
 
-    - name: Install musl and dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y musl-tools musl-dev clang cmake ninja-build
+      - name: Install build dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+          extra-packages: 'rpm dpkg-dev fakeroot'
 
-    - name: Build musl static release
-      run: |
-        VERSION="${{ needs.create-release.outputs.version }}"
-        ./release.sh "$VERSION"
+      - name: Configure and package with CPack
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUSE_MIMALLOC=ON \
+            -DUSE_MUSL=OFF \
+            -DCPACK_GENERATOR="TGZ;STGZ;DEB;RPM"
+          cmake --build build --target all
+          cmake --build build --target package
 
-    - name: Generate checksums
-      run: |
-        VERSION="${{ needs.create-release.outputs.version }}"
-        TARBALL="ascii-chat-linux-${{ matrix.arch }}.tar.gz"
-        PLATFORM="linux-${{ matrix.arch }}"
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          shopt -s nullglob
+          for artifact in build/*.deb build/*.rpm build/*.tar.gz build/*.sh build/*.tar.Z build/*.run; do
+            [[ -e "$artifact" ]] || continue
+            filename=$(basename "$artifact")
+            case "$filename" in
+              *.tar.gz)
+                new_name="${filename%.tar.gz}-${{ matrix.artifact_suffix }}.tar.gz"
+                ;;
+              *.tar.Z)
+                new_name="${filename%.tar.Z}-${{ matrix.artifact_suffix }}.tar.Z"
+                ;;
+              *.sh)
+                new_name="${filename%.sh}-${{ matrix.artifact_suffix }}.sh"
+                ;;
+              *.run)
+                new_name="${filename%.run}-${{ matrix.artifact_suffix }}.run"
+                ;;
+              *.deb)
+                new_name="${filename%.deb}-${{ matrix.artifact_suffix }}.deb"
+                ;;
+              *.rpm)
+                new_name="${filename%.rpm}-${{ matrix.artifact_suffix }}.rpm"
+                ;;
+              *)
+                new_name="${filename}-${{ matrix.artifact_suffix }}"
+                ;;
+            esac
+            cp "$artifact" "dist/$new_name"
+          done
+          ls -l dist
 
-        .github/scripts/generate-checksums.sh "$TARBALL" "$PLATFORM" "$VERSION"
+      - name: Upload Linux packages to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.version }}
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload Linux release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ needs.create-release.outputs.version }}
-        files: |
-          ascii-chat-linux-*.tar.gz*
-          checksums-*.txt
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  build-macos:
-    # Only run on master/main branches, not feature branches
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+  package-macos:
+    name: Package macOS installers
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          - os: macos-13       # Intel
+          - os: macos-13
             arch: x86_64
-          - os: macos-14       # Apple Silicon
+          - os: macos-14
             arch: arm64
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        submodules: true
-      with:
-        fetch-depth: 1
-        ref: ${{ needs.create-release.outputs.version }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+          ref: ${{ needs.create-release.outputs.version }}
 
-    - name: Install dependencies
-      run: |
-        brew install portaudio libsodium cmake ninja pkg-config
+      - name: Install build dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: macos
+          extra-packages: ''
 
-    - name: Build release
-      run: |
-        VERSION="${{ needs.create-release.outputs.version }}"
+      - name: Configure and package with CPack
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DUSE_MIMALLOC=ON \
+            -DCPACK_GENERATOR="productbuild;TGZ" \
+            -DCPACK_PRODUCTBUILD_IDENTITY_NAME=""
+          cmake --build build --target all
+          cmake --build build --target package
 
-        # Build (without musl on macOS)
-        cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MIMALLOC=ON -GNinja
-        cmake --build build
+      - name: Collect artifacts
+        run: |
+          mkdir -p dist
+          shopt -s nullglob
+          for artifact in build/*.pkg build/*.tar.gz build/*.zip; do
+            [[ -e "$artifact" ]] || continue
+            filename=$(basename "$artifact")
+            case "$filename" in
+              *.tar.gz)
+                new_name="${filename%.tar.gz}-${{ matrix.arch }}.tar.gz"
+                ;;
+              *.pkg)
+                new_name="${filename%.pkg}-${{ matrix.arch }}.pkg"
+                ;;
+              *.zip)
+                new_name="${filename%.zip}-${{ matrix.arch }}.zip"
+                ;;
+              *)
+                new_name="${filename}-${{ matrix.arch }}"
+                ;;
+            esac
+            cp "$artifact" "dist/$new_name"
+          done
+          ls -l dist
 
-        # Package
-        RELEASE_DIR="release-${VERSION}-macos-${{ matrix.arch }}"
-        mkdir -p "$RELEASE_DIR"
-        cp build/bin/ascii-chat "$RELEASE_DIR/"
-        cp README.md "$RELEASE_DIR/" 2>/dev/null || true
-        cp LICENSE "$RELEASE_DIR/" 2>/dev/null || true
+      - name: Upload macOS packages to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.version }}
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-        # Create release notes
-        cat > "$RELEASE_DIR/RELEASE_NOTES.md" <<EOF
-        # ascii-chat $VERSION
-
-        ## Build Information
-        - Built: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-        - Architecture: ${{ matrix.arch }}
-        - OS: macOS
-        - Compiler: clang $(clang --version | head -1)
-        - Optimization: Release (-O3 + LTO)
-        - Memory Allocator: mimalloc
-
-        ## Installation
-
-        Install dependencies via Homebrew:
-        \`\`\`bash
-        brew install portaudio libsodium
-        \`\`\`
-
-        Then run:
-        \`\`\`bash
-        ./ascii-chat server  # Start server
-        ./ascii-chat client  # Start client (in another terminal)
-        \`\`\`
-        EOF
-
-        # Create tarball
-        tar czf "ascii-chat-macos-${{ matrix.arch }}.tar.gz" "$RELEASE_DIR"
-
-    - name: Generate checksums
-      run: |
-        VERSION="${{ needs.create-release.outputs.version }}"
-        TARBALL="ascii-chat-macos-${{ matrix.arch }}.tar.gz"
-        PLATFORM="macos-${{ matrix.arch }}"
-
-        .github/scripts/generate-checksums.sh "$TARBALL" "$PLATFORM" "$VERSION"
-
-    - name: Upload macOS release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ needs.create-release.outputs.version }}
-        files: |
-          ascii-chat-macos-${{ matrix.arch }}.tar.gz*
-          checksums-*.txt
-        token: ${{ secrets.GITHUB_TOKEN }}
-
-  build-windows:
-    # Only run on master/main branches, not feature branches
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+  package-windows:
+    name: Package Windows installers
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
     needs: create-release
     runs-on: windows-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        submodules: true
-      with:
-        fetch-depth: 1
-        ref: ${{ needs.create-release.outputs.version }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+          ref: ${{ needs.create-release.outputs.version }}
 
-    - name: Setup vcpkg
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
 
-    - name: Install dependencies via vcpkg
-      run: |
-        vcpkg install portaudio:x64-windows libsodium:x64-windows zlib:x64-windows
+      - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: windows
+          vcpkg-packages: 'zstd portaudio libsodium'
+          vcpkg-static-packages: 'zstd portaudio libsodium mimalloc'
 
-    - name: Build Windows release
-      shell: pwsh
-      run: |
-        $VERSION = "${{ needs.create-release.outputs.version }}"
-        $ARCH = "x86_64"
-        $RELEASE_DIR = "release-$VERSION"
-        $RELEASE_NAME = "ascii-chat-windows-$ARCH"
+      - name: Install WiX toolset
+        run: |
+          choco install wixtoolset --version=3.11.2 --no-progress -y
 
-        # Build with MSVC using build.ps1
-        ./build.ps1 -Config Release
+      - name: Configure and package with CPack
+        shell: pwsh
+        run: |
+          $toolchain = "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$toolchain" \
+            -DUSE_MIMALLOC=ON \
+            -DCPACK_GENERATOR="WIX;ZIP"
+          cmake --build build --target all
+          cmake --build build --target package
 
-        # Create release directory
-        New-Item -ItemType Directory -Force -Path $RELEASE_DIR
-
-        # Copy binary
-        Copy-Item build/bin/ascii-chat.exe $RELEASE_DIR/
-
-        # Copy runtime DLLs from vcpkg
-        $vcpkgRoot = $env:VCPKG_ROOT
-        if ($vcpkgRoot) {
-            $dllPath = "$vcpkgRoot/installed/x64-windows/bin"
-            if (Test-Path $dllPath) {
-                Copy-Item "$dllPath/*.dll" $RELEASE_DIR/ -ErrorAction SilentlyContinue
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $suffix = "x86_64"
+          $patterns = @("build/*.msi", "build/*.zip")
+          foreach ($pattern in $patterns) {
+            foreach ($artifact in Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue) {
+              $name = $artifact.Name
+              if ($name.EndsWith(".msi")) {
+                $newName = "$($name.Substring(0, $name.Length - 4))-$suffix.msi"
+              } elseif ($name.EndsWith(".zip")) {
+                $newName = "$($name.Substring(0, $name.Length - 4))-$suffix.zip"
+              } else {
+                $newName = "$name-$suffix"
+              }
+              Copy-Item $artifact.FullName (Join-Path dist $newName)
             }
-        }
+          }
+          Get-ChildItem dist
 
-        # Copy documentation
-        Copy-Item README.md $RELEASE_DIR/ -ErrorAction SilentlyContinue
-        Copy-Item LICENSE $RELEASE_DIR/ -ErrorAction SilentlyContinue
-
-        # Create release notes
-        $timestamp = (Get-Date).ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss UTC")
-        @"
-# ascii-chat $VERSION
-
-## Build Information
-- Built: $timestamp
-- Architecture: $ARCH
-- OS: Windows
-- Compiler: MSVC (Visual Studio)
-- Optimization: Release (-O2)
-- Memory Allocator: mimalloc
-
-## Installation
-
-Extract the archive and run:
-``````
-ascii-chat.exe server  # Start server
-ascii-chat.exe client  # Start client (in another terminal)
-``````
-
-All required DLLs are included.
-"@ | Out-File -FilePath "$RELEASE_DIR/RELEASE_NOTES.md" -Encoding utf8
-
-        # Create tarball (use tar.exe which is built into Windows 10+)
-        tar.exe -czf "$RELEASE_NAME.tar.gz" $RELEASE_DIR
-
-    - name: Generate checksums
-      shell: pwsh
-      run: |
-        $VERSION = "${{ needs.create-release.outputs.version }}"
-        $TARBALL = "ascii-chat-windows-x86_64.tar.gz"
-        $PLATFORM = "windows-x86_64"
-
-        # Generate SHA256
-        $hash256 = (Get-FileHash -Path $TARBALL -Algorithm SHA256).Hash.ToLower()
-        "$hash256  $TARBALL" | Out-File -FilePath "$TARBALL.sha256" -Encoding ascii
-
-        # Generate SHA512
-        $hash512 = (Get-FileHash -Path $TARBALL -Algorithm SHA512).Hash.ToLower()
-        "$hash512  $TARBALL" | Out-File -FilePath "$TARBALL.sha512" -Encoding ascii
-
-        # Generate MD5
-        $hash_md5 = (Get-FileHash -Path $TARBALL -Algorithm MD5).Hash.ToLower()
-        "$hash_md5  $TARBALL" | Out-File -FilePath "$TARBALL.md5" -Encoding ascii
-
-        # Create combined checksum file
-        @"
-# ascii-chat $VERSION - $PLATFORM build
-# Checksums generated on $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') UTC
-
-## SHA-256
-$hash256  $TARBALL
-
-## SHA-512
-$hash512  $TARBALL
-
-## MD5
-$hash_md5  $TARBALL
-"@ | Out-File -FilePath "checksums-$PLATFORM.txt" -Encoding utf8
-
-        Write-Host "Checksums:"
-        Get-Content "checksums-$PLATFORM.txt"
-
-    - name: Upload Windows release
-      uses: softprops/action-gh-release@v1
-      with:
-        fetch-depth: 1
-        tag_name: ${{ needs.create-release.outputs.version }}
-        files: |
-          ascii-chat-windows-*.tar.gz*
-          checksums-*.txt
-        token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload Windows packages to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.version }}
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

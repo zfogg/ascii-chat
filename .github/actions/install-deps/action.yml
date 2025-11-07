@@ -2,12 +2,28 @@ name: 'Install Dependencies'
 description: 'Install and cache build dependencies for ascii-chat'
 inputs:
   os:
-    description: 'Operating system (ubuntu or macos)'
+    description: 'Operating system (ubuntu, macos, or windows)'
     required: true
   extra-packages:
     description: 'Additional packages to install (space-separated)'
     required: false
     default: ''
+  vcpkg-packages:
+    description: 'Space-separated vcpkg packages to install for the primary triplet (Windows only)'
+    required: false
+    default: ''
+  vcpkg-triplet:
+    description: 'vcpkg triplet to use for primary packages (Windows only)'
+    required: false
+    default: 'x64-windows'
+  vcpkg-static-packages:
+    description: 'Space-separated vcpkg packages to install for the static triplet (Windows only)'
+    required: false
+    default: ''
+  vcpkg-static-triplet:
+    description: 'vcpkg triplet to use for static packages (Windows only)'
+    required: false
+    default: 'x64-windows-static'
 
 runs:
   using: 'composite'
@@ -23,6 +39,7 @@ runs:
         restore-keys: |
           ${{ runner.os }}-cmake-deps-v1-
           ${{ runner.os }}-cmake-deps-
+        save-always: true
 
     - name: Set up Homebrew cache (macOS)
       if: inputs.os == 'macos'
@@ -36,6 +53,7 @@ runs:
         restore-keys: |
           ${{ runner.os }}-homebrew-v2-
           ${{ runner.os }}-homebrew-
+        save-always: true
 
     - name: Install Homebrew packages (macOS)
       if: inputs.os == 'macos'
@@ -67,13 +85,57 @@ runs:
         tools: clang cmake ninja-build zlib1g-dev portaudio19-dev libjack-jackd2-0 libjack-jackd2-dev libasound2-dev libboxfort-dev libsodium-dev libcriterion-dev libgit2-dev libnanomsg-dev libnanomsg5 libprotobuf-c-dev libprotobuf-c1 libprotobuf-dev libssl-dev libssh2-1-dev libhttp-parser-dev libpcre2-dev libpcre2-8-0 libkrb5-dev krb5-multidev libgssapi-krb5-2 libkrb5-3 libk5crypto3 libcom-err2 libnanopb-dev pkg-config libxml2-utils python3-pip llvm musl-tools musl-dev ${{ inputs.extra-packages }}
         cache: yes
 
-    - name: Set CSDT env var
+    - name: Cache vcpkg packages (Windows)
+      if: inputs.os == 'windows' && env.VCPKG_ROOT != ''
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_ROOT }}/installed
+          ${{ env.VCPKG_ROOT }}/packages
+          ${{ env.VCPKG_ROOT }}/buildtrees
+        key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-v1-
+        save-always: true
+
+    - name: Set CSTD env var (POSIX)
+      if: inputs.os != 'windows'
       shell: bash
       run: |
         # Setup CSTD
         export CSTD=c2x
         echo "CSTD=$CSTD" >> $GITHUB_ENV
         echo "Set CSTD to $CSTD"
+
+    - name: Set CSTD env var (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $value = 'c2x'
+        Add-Content -Path $env:GITHUB_ENV -Value "CSTD=$value"
+        Write-Host "Set CSTD to $value"
+
+    - name: Install Windows build tools
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $basePackages = @('cmake', 'ninja', 'llvm', 'git', '7zip')
+        $extra = @()
+        if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
+          $extra = '${{ inputs.extra-packages }}'.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+        }
+        $packages = $basePackages + $extra
+
+        foreach ($pkg in $packages) {
+          Write-Host "Ensuring Chocolatey package '$pkg' is installed"
+          choco install $pkg --no-progress -y
+        }
+
+        $llvmPath = 'C:\Program Files\LLVM\bin'
+        if (Test-Path $llvmPath) {
+          Write-Host "Adding LLVM to PATH"
+          Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
+        }
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
@@ -146,3 +208,32 @@ runs:
 
         echo "Created clang config files for darwin${DARWIN_VERSION}"
         ls -la ~/.config/clang/
+
+    - name: Install vcpkg packages (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        if (-not $env:VCPKG_ROOT) {
+          Write-Host "VCPKG_ROOT is not set. Please run lukka/run-vcpkg before install-deps." -ForegroundColor Red
+          exit 1
+        }
+
+        function Install-VcpkgPackages {
+          param(
+            [string]$PackageList,
+            [string]$Triplet
+          )
+
+          if ([string]::IsNullOrWhiteSpace($PackageList)) {
+            return
+          }
+
+          $packages = $PackageList.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
+          foreach ($pkg in $packages) {
+            Write-Host "Installing vcpkg package: $pkg:$Triplet"
+            vcpkg install "$pkg`:$Triplet"
+          }
+        }
+
+        Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-packages }}' -Triplet '${{ inputs.vcpkg-triplet }}'
+        Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-static-packages }}' -Triplet '${{ inputs.vcpkg-static-triplet }}'
