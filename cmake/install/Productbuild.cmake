@@ -61,4 +61,6 @@ endif()
 # Keychain to use for signing
 set(CPACK_PRODUCTBUILD_KEYCHAIN_PATH "~/Library/Keychains/ascii-chat-master.keychain")
 
+set(CPACK_PRODUCTBUILD_DOMAINS true)
+
 message(STATUS "${Yellow}CPack:${ColorReset} productbuild configuration complete")

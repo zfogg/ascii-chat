@@ -4,6 +4,14 @@
 # Simple test programs to verify both static and shared libraries work correctly
 # Both targets use the same source file but link against different libraries
 
+# Helper: detect mimalloc include directory for test harnesses
+set(_asciichat_mimalloc_include "")
+if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
+    list(APPEND _asciichat_mimalloc_include ${MIMALLOC_INCLUDE_DIR})
+elseif(DEFINED MIMALLOC_SOURCE_DIR AND MIMALLOC_SOURCE_DIR)
+    list(APPEND _asciichat_mimalloc_include "${MIMALLOC_SOURCE_DIR}/include")
+endif()
+
 # =============================================================================
 # Test Static Library
 # =============================================================================
@@ -24,9 +32,26 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-static-lib
     )
 
+    # Include necessary headers
+    target_include_directories(test-static-lib PRIVATE
+        ${CMAKE_SOURCE_DIR}/lib
+        ${CMAKE_SOURCE_DIR}/lib/platform
+        ${CMAKE_BINARY_DIR}/generated
+        ${_asciichat_mimalloc_include}
+    )
+
     # Set output directory
     set_target_properties(test-static-lib PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+
+    # Simple runtime check for the static library
+    add_custom_target(run-test-static-lib
+        COMMAND ${CMAKE_BINARY_DIR}/bin/test-static-lib
+        DEPENDS test-static-lib
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Running test-static-lib to verify static library works"
+        VERBATIM
     )
 
     message(STATUS "Added test-static-lib target to test libasciichat.a (${TEST_STATIC_DEFAULT})")
@@ -52,6 +77,7 @@ if(NOT USE_MUSL)
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/lib/platform
         ${CMAKE_BINARY_DIR}/generated
+        ${_asciichat_mimalloc_include}
     )
 
     # Set output directory
@@ -72,20 +98,9 @@ if(NOT USE_MUSL)
         COMMENT "Running test-shared-lib to verify shared library works"
         VERBATIM
     )
+
+    add_test(NAME shared-lib-runtime
+             COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
 else()
     message(STATUS "Skipping test-shared-lib (not compatible with musl static builds)")
-endif()
-
-# =============================================================================
-# Test Library Execution Verification
-# =============================================================================
-# Add custom target to run test-static-lib if it exists
-if(NOT BUILDING_OBJECT_LIBS)
-    add_custom_target(run-test-static-lib
-        COMMAND ${CMAKE_BINARY_DIR}/bin/test-static-lib
-        DEPENDS test-static-lib
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Running test-static-lib to verify static library works"
-        VERBATIM
-    )
 endif()
