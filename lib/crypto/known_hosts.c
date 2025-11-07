@@ -198,9 +198,9 @@ const char *get_known_hosts_path(void) {
 #else
       const char *safe_default = "/tmp/.ascii-chat/known_hosts";
 #endif
-      g_known_hosts_path_cache = duplicate_normalized_path(safe_default);
-      if (!g_known_hosts_path_cache) {
-        log_error("Failed to allocate fallback known_hosts path");
+      if (!try_set_known_hosts_path(safe_default, allowed_bases, allowed_base_count)) {
+        log_error("Fallback known_hosts path %s failed validation; known_hosts will not be available", safe_default);
+        g_known_hosts_path_cache = NULL;
       }
     }
 
