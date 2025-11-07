@@ -114,14 +114,31 @@ else()
     # Unix/macOS Library Installation
     # =============================================================================
 
-    # Shared library (.so/.dylib) goes to lib/
+    # Always install static library if it was generated
     install(FILES
-        "${CMAKE_BINARY_DIR}/lib/libasciichat.so"
+        "${CMAKE_BINARY_DIR}/lib/libasciichat.a"
         DESTINATION lib
         COMPONENT Development
         OPTIONAL
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} library installation: ${BoldBlue}libasciichat.so${ColorReset} → ${BoldYellow}lib/${ColorReset}")
+
+    # Install platform-specific shared library (if present)
+    if(APPLE)
+        set(_ascii_chat_shared_lib "${CMAKE_BINARY_DIR}/lib/libasciichat.dylib")
+        set(_ascii_chat_shared_label "libasciichat.dylib")
+    else()
+        set(_ascii_chat_shared_lib "${CMAKE_BINARY_DIR}/lib/libasciichat.so")
+        set(_ascii_chat_shared_label "libasciichat.so")
+    endif()
+
+    install(FILES
+        "${_ascii_chat_shared_lib}"
+        DESTINATION lib
+        COMPONENT Development
+        OPTIONAL
+    )
+
+    message(STATUS "${BoldGreen}Configured${ColorReset} library installation: ${BoldBlue}libasciichat.a${ColorReset} (optional) and ${BoldBlue}${_ascii_chat_shared_label}${ColorReset} (optional) → ${BoldYellow}lib/${ColorReset}")
 endif()
 
 # Install public API headers
