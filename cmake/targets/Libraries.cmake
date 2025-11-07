@@ -48,6 +48,10 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         set_target_properties(${MODULE_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
     endif()
 
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ${MODULE_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+
     # Version dependency (build-timer-start removed to prevent unnecessary rebuilds)
     add_dependencies(${MODULE_NAME} generate_version)
 
@@ -334,6 +338,9 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
     )
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
     set_target_properties(ascii-chat-shared PROPERTIES
         OUTPUT_NAME "asciichat"
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}  # DLL goes in bin/
@@ -445,6 +452,10 @@ else()
         OUTPUT_NAME "asciichat"
         POSITION_INDEPENDENT_CODE ON
     )
+
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ascii-chat-shared PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
 
     # Import library location for Windows Release builds
     # Release: .lib goes in lib/ (standard convention)
@@ -667,43 +678,7 @@ add_custom_command(TARGET ascii-chat-shared POST_BUILD
 # Only available when modules are STATIC libraries (not OBJECT libraries)
 # On Windows Debug/Dev/Coverage, modules are OBJECT libraries for DLL building
 if(NOT BUILDING_OBJECT_LIBS)
-if(APPLE)
-    # macOS: Use libtool to combine static libraries
-    # Create a script that renames all object files before combining
-    set(RENAME_ALL_SCRIPT "${CMAKE_BINARY_DIR}/rename_all_objects.sh")
-    file(WRITE "${RENAME_ALL_SCRIPT}" "#!/bin/bash\n")
-    file(APPEND "${RENAME_ALL_SCRIPT}" "# Rename all object files in all library directories\n")
-    file(APPEND "${RENAME_ALL_SCRIPT}" "set -e\n")
-    foreach(module_lib ${ALL_MODULE_LIBS})
-        file(APPEND "${RENAME_ALL_SCRIPT}" "${CMAKE_SOURCE_DIR}/cmake/scripts/rename_objects.sh \"${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${module_lib}.dir\" \"${CMAKE_SOURCE_DIR}\" || true\n")
-    endforeach()
-    execute_process(COMMAND chmod +x "${RENAME_ALL_SCRIPT}")
-
-    add_custom_command(
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-        COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-        # Rename all object files before combining archives
-        COMMAND ${RENAME_ALL_SCRIPT}
-        COMMAND libtool -static -o ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
-            $<TARGET_FILE:ascii-chat-util>
-            $<TARGET_FILE:ascii-chat-data-structures>
-            $<TARGET_FILE:ascii-chat-platform>
-            $<TARGET_FILE:ascii-chat-crypto>
-            $<TARGET_FILE:ascii-chat-simd>
-            $<TARGET_FILE:ascii-chat-video>
-            $<TARGET_FILE:ascii-chat-audio>
-            $<TARGET_FILE:ascii-chat-network>
-            $<TARGET_FILE:ascii-chat-core>
-        COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        DEPENDS
-            ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
-            ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-        COMMENT ""
-        COMMAND_EXPAND_LISTS
-    )
-else()
-    # Linux/Windows: Use ar MRI script to combine archives
+    # Use ar MRI script to combine archives across platforms
     add_custom_command(
         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
         COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
@@ -728,7 +703,6 @@ else()
         COMMENT ""
         COMMAND_EXPAND_LISTS
     )
-endif()
 
 # Create interface library target that wraps the combined static library
 # and propagates all external dependencies

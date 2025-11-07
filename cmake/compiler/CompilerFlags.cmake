@@ -244,22 +244,31 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         # Keep frame pointers in RelWithDebInfo for better backtraces
         add_compile_options(-fno-omit-frame-pointer)
     else()
-        add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -fomit-frame-pointer -pipe)
+        add_compile_options(-O3 -funroll-loops -fstrict-aliasing -ftree-vectorize -pipe)
 
-        # Additional aggressive optimizations for Release builds (cross-platform)
-        add_compile_options(
-            -fno-math-errno              # Don't set errno for math functions (faster)
-            -fno-signed-zeros            # Allow optimizations that ignore sign of zero
-            -freciprocal-math            # Allow reciprocal approximations
-            -fassociative-math           # Allow reassociation of FP operations
-            -fno-trapping-math           # Assume no floating-point exceptions
-            -funsafe-math-optimizations  # Allow unsafe math optimizations (enables several flags at once)
-        )
+        if(ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS)
+            add_compile_options(-fno-omit-frame-pointer)
+        else()
+            add_compile_options(-fomit-frame-pointer)
+        endif()
 
         # Additional safe optimizations
         add_compile_options(
             -foptimize-sibling-calls     # Optimize tail recursion
         )
+
+        if(ASCIICHAT_RELEASE_ENABLE_FAST_MATH)
+            add_compile_options(
+                -fno-math-errno              # Don't set errno for math functions (faster)
+                -fno-signed-zeros            # Allow optimizations that ignore sign of zero
+                -freciprocal-math            # Allow reciprocal approximations
+                -fassociative-math           # Allow reassociation of FP operations
+                -fno-trapping-math           # Assume no floating-point exceptions
+                -funsafe-math-optimizations  # Allow unsafe math optimizations (enables several flags at once)
+                -ffp-contract=fast
+                -ffinite-math-only
+            )
+        endif()
 
         # GCC-specific optimizations (GCC has more aggressive tree/loop opts than Clang)
         if(CMAKE_C_COMPILER_ID MATCHES "GNU")
@@ -298,36 +307,63 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         endif()
     endif()
 
-    if(PLATFORM_DARWIN)
-        if(IS_ROSETTA EQUAL 1)
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-        elseif(IS_APPLE_SILICON EQUAL 1)
-            # Apple Silicon: add +crc if CRC32 hardware is enabled
-            if(ENABLE_CRC32_HW)
-                add_compile_options(-march=armv8-a+crc -mcpu=native -ffast-math -ffp-contract=fast)
-            else()
-                add_compile_options(-march=native -mcpu=native -ffast-math -ffp-contract=fast)
-            endif()
+    # CPU tuning selection
+    set(__asciichat_cpu_flags "")
+
+    if(ASCIICHAT_RELEASE_CPU_TUNE STREQUAL "native")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+            list(APPEND __asciichat_cpu_flags -mcpu=native)
         else()
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
+            list(APPEND __asciichat_cpu_flags -march=native)
         endif()
-    elseif(PLATFORM_LINUX)
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-            add_compile_options(-mcpu=native -ffp-contract=fast -ffinite-math-only)
-        else()
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-        endif()
-    elseif(WIN32)
-        # Windows: Use native CPU optimizations
+    elseif(ASCIICHAT_RELEASE_CPU_TUNE STREQUAL "x86-64-v2")
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|X86_64")
-            add_compile_options(-march=native -ffp-contract=fast -ffinite-math-only)
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
-            add_compile_options(-mcpu=native -ffp-contract=fast -ffinite-math-only)
-        else()
-            add_compile_options(-ffp-contract=fast)
+            list(APPEND __asciichat_cpu_flags -march=x86-64-v2)
+        endif()
+    elseif(ASCIICHAT_RELEASE_CPU_TUNE STREQUAL "x86-64-v3")
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|X86_64")
+            list(APPEND __asciichat_cpu_flags -march=x86-64-v3)
+        endif()
+    elseif(ASCIICHAT_RELEASE_CPU_TUNE STREQUAL "custom")
+        if(ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS)
+            separate_arguments(__asciichat_custom_flags UNIX_COMMAND "${ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS}")
+            list(APPEND __asciichat_cpu_flags ${__asciichat_custom_flags})
         endif()
     else()
-        add_compile_options(-ffp-contract=fast)
+        # portable baseline (default)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|X86_64")
+            list(APPEND __asciichat_cpu_flags -march=x86-64)
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+            set(__asciichat_baseline "armv8-a")
+            if(ENABLE_CRC32_HW)
+                set(__asciichat_baseline "${__asciichat_baseline}+crc")
+            endif()
+            list(APPEND __asciichat_cpu_flags "-march=${__asciichat_baseline}")
+        endif()
+    endif()
+
+    if(__asciichat_cpu_flags)
+        add_compile_options(${__asciichat_cpu_flags})
+        if(NOT ASCIICHAT_RELEASE_CPU_TUNE STREQUAL "portable")
+            list(JOIN __asciichat_cpu_flags ", " __asciichat_cpu_flags_joined)
+            message(STATUS "Release CPU tuning: ${BoldCyan}${ASCIICHAT_RELEASE_CPU_TUNE}${ColorReset} (${__asciichat_cpu_flags_joined})")
+        else()
+            message(STATUS "Release CPU tuning: ${BoldCyan}portable baseline${ColorReset} (${__asciichat_cpu_flags})")
+        endif()
+    else()
+        message(STATUS "Release CPU tuning: ${BoldCyan}${ASCIICHAT_RELEASE_CPU_TUNE}${ColorReset} (no additional CPU flags)")
+    endif()
+
+    if(APPLE)
+        add_link_options(-Wl,-dead_strip_dylibs)
+    elseif(WIN32)
+        add_link_options(
+            "LINKER:/dynamicbase"
+            "LINKER:/nxcompat"
+            "LINKER:/highentropyva"
+            "LINKER:/guard:cf"
+            "LINKER:/Brepro"
+        )
     endif()
 
     # Link-time optimization is applied per-target in Executables.cmake
@@ -357,14 +393,11 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Size reduction and alignment optimizations (platform-specific)
     # =============================================================================
     if(NOT WIN32)
-        # Unix: Disable stack protector and unwind tables for smaller binaries
-        add_compile_options(-fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables)
-    else()
-        # Windows: Can't disable unwind tables (required for SEH exception handling)
+        add_compile_options(-fstack-protector-strong)
     endif()
 
-    # All platforms: Math and alignment optimizations
-    add_compile_options(-fno-trapping-math -falign-loops=32 -falign-functions=32 -fmerge-all-constants)
+    # All platforms: Alignment optimizations
+    add_compile_options(-falign-loops=32 -falign-functions=32 -fmerge-all-constants)
 
     # Security hardening for Unix-like platforms
     if(NOT WIN32)

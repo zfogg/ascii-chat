@@ -34,6 +34,10 @@ add_executable(ascii-chat
     src/client/keepalive.c
 )
 
+if(ASCIICHAT_ENABLE_IPO)
+    set_property(TARGET ascii-chat PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+endif()
+
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
 # For Debug/Dev/Coverage: shared library (DLL on Windows)
@@ -188,13 +192,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
     # Shared libraries use -fvisibility=default to export symbols
     if(NOT WIN32)
         target_compile_options(ascii-chat PRIVATE -fvisibility=hidden)
-    endif()
-
-    # Link-time optimization (LTO) for Release executable only
-    # Not applied to shared libraries (would strip symbols needed by external users)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        target_compile_options(ascii-chat PRIVATE -flto)
-        target_link_options(ascii-chat PRIVATE -flto)
     endif()
 endif()
 
