@@ -59,7 +59,7 @@
  * - Terminal I/O and control sequences
  *
  * @author Zachary Fogg <me@zfo.gg>
- * @date 2025
+ * @date October 2025
  * @version 2.0
  */
 

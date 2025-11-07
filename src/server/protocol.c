@@ -117,7 +117,6 @@
 
 #include "protocol.h"
 #include "client.h"
-#include "crypto.h"
 #include "common.h"
 #include "video_frame.h"
 #include "audio.h"
@@ -125,6 +124,7 @@
 #include "image2ascii/image.h"
 #include "compression.h"
 #include "util/format.h"
+#include "platform/system.h"
 
 /**
  * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown
@@ -163,8 +163,34 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
     SAFE_STRNCPY(reason, "Protocol violation", sizeof(reason));
   }
 
+  const char *reason_str = reason[0] != '\0' ? reason : "Protocol violation";
   uint32_t client_id = atomic_load(&client->client_id);
-  FATAL(ERROR_NETWORK_PROTOCOL, "Disconnecting client %u due to protocol violation: %s", client_id, reason);
+
+  socket_t socket_snapshot = INVALID_SOCKET_VALUE;
+  const crypto_context_t *crypto_ctx = NULL;
+
+  mutex_lock(&client->client_state_mutex);
+  if (client->socket != INVALID_SOCKET_VALUE) {
+    socket_snapshot = client->socket;
+    if (client->crypto_initialized) {
+      crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    }
+  }
+  mutex_unlock(&client->client_state_mutex);
+
+  // NOTE: Disconnecting a client due to the client's own bad behavior isn't an
+  // error for us, it's desired behavior for us, so we simply warn and do not
+  // have a need for asciichat_errno here.
+  log_warn("Disconnecting client %u due to protocol violation: %s", client_id, reason_str);
+
+  if (socket_snapshot != INVALID_SOCKET_VALUE) {
+    asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
+    if (send_result != ASCIICHAT_OK) {
+      log_warn("Failed to send error packet to client %u: %s", client_id, asciichat_error_string(send_result));
+    }
+  }
+
+  platform_sleep_ms(500);
 
   atomic_store(&client->active, false);
   atomic_store(&client->shutting_down, true);

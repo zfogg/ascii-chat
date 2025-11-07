@@ -183,6 +183,16 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
       return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid text message packet size: %u", len);
     }
     break;
+  case PACKET_TYPE_ERROR_MESSAGE:
+    if (len < sizeof(error_packet_t)) {
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid error packet size: %u (minimum %zu)", len,
+                       sizeof(error_packet_t));
+    }
+    if (len > sizeof(error_packet_t) + MAX_ERROR_MESSAGE_LENGTH) {
+      return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error packet message too large: %u (max %zu)", len,
+                       sizeof(error_packet_t) + (size_t)MAX_ERROR_MESSAGE_LENGTH);
+    }
+    break;
   // All crypto handshake packet types - validate using session parameters
   case PACKET_TYPE_CRYPTO_CAPABILITIES:
   case PACKET_TYPE_CRYPTO_PARAMETERS:
@@ -751,6 +761,96 @@ int send_pong_packet(socket_t sockfd) {
  */
 int send_clear_console_packet(socket_t sockfd) {
   return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
+}
+
+asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *crypto_ctx, asciichat_error_t error_code,
+                                    const char *message) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
+  }
+
+  if (!message) {
+    message = "";
+  }
+
+  size_t message_len = strnlen(message, MAX_ERROR_MESSAGE_LENGTH);
+  if (message_len == MAX_ERROR_MESSAGE_LENGTH) {
+    log_warn("Error message truncated to %zu bytes", (size_t)MAX_ERROR_MESSAGE_LENGTH);
+  }
+
+  size_t payload_len = sizeof(error_packet_t) + message_len;
+  uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
+  if (!payload) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes for error packet", payload_len);
+  }
+
+  error_packet_t *packet = (error_packet_t *)payload;
+  packet->error_code = htonl((uint32_t)error_code);
+  packet->message_length = htonl((uint32_t)message_len);
+
+  if (message_len > 0) {
+    memcpy(payload + sizeof(error_packet_t), message, message_len);
+  }
+
+  bool encryption_ready = crypto_ctx && crypto_is_ready(crypto_ctx);
+  asciichat_error_t send_result;
+
+  if (encryption_ready) {
+    int secure_result =
+        send_packet_secure(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len, (crypto_context_t *)crypto_ctx);
+    send_result = secure_result == ASCIICHAT_OK ? ASCIICHAT_OK : ERROR_NETWORK;
+  } else {
+    send_result = packet_send(sockfd, PACKET_TYPE_ERROR_MESSAGE, payload, payload_len);
+  }
+  SAFE_FREE(payload);
+
+  if (send_result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send error packet: %d", send_result);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_parse_error_message(const void *data, size_t len, asciichat_error_t *out_error_code,
+                                             char *message_buffer, size_t message_buffer_size,
+                                             size_t *out_message_length) {
+  if (!data || len < sizeof(error_packet_t) || !out_error_code || !message_buffer || message_buffer_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "Invalid parameters: data=%p len=%zu out_error_code=%p message_buffer=%p buffer_size=%zu", data,
+                     len, out_error_code, message_buffer, message_buffer_size);
+  }
+
+  const error_packet_t *packet = (const error_packet_t *)data;
+  uint32_t raw_error_code = ntohl(packet->error_code);
+  uint32_t raw_message_length = ntohl(packet->message_length);
+
+  if (raw_message_length > MAX_ERROR_MESSAGE_LENGTH) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error message length too large: %u", raw_message_length);
+  }
+
+  size_t total_required = sizeof(error_packet_t) + (size_t)raw_message_length;
+  if (total_required > len) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error packet truncated: expected %zu bytes, have %zu", total_required,
+                     len);
+  }
+
+  const uint8_t *message_bytes = (const uint8_t *)data + sizeof(error_packet_t);
+  size_t copy_len = raw_message_length;
+  if (copy_len >= message_buffer_size) {
+    copy_len = message_buffer_size - 1;
+  }
+
+  if (copy_len > 0) {
+    memcpy(message_buffer, message_bytes, copy_len);
+  }
+  message_buffer[copy_len] = '\0';
+
+  if (out_message_length) {
+    *out_message_length = raw_message_length;
+  }
+
+  *out_error_code = (asciichat_error_t)raw_error_code;
+  return ASCIICHAT_OK;
 }
 
 /**
