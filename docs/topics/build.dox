@@ -1434,62 +1434,8 @@
  *
  * @subsection build_philosophy_releases Release Distribution
  *
- * **What We Provide in Releases**:
- *
- * When you download an ascii-chat release from GitHub, you get:
- * - **Binaries**: Optimized executables for your platform
- *   - Windows: `ascii-chat.exe` (static)
- *   - Linux: `ascii-chat` (static musl)
- *   - macOS: `ascii-chat` (universal binary)
- *
- * - **Static Library** (`libasciichat.a`):
- *   - For embedding ascii-chat into your own projects
- *   - Link with `gcc -o myapp myapp.c -L/path/to/lib -lasciichat-static`
- *
- * - **Shared Library**:
- *   - Windows: `asciichat.dll` + `asciichat.lib` (import library)
- *   - Linux: `libasciichat.so`
- *   - macOS: `libasciichat.dylib`
- *   - For dynamic linking at runtime
- *
- * - **C Headers**:
- *   - `lib/logging.h`, `lib/common.h`, `lib/network.h`, etc.
- *   - Public API for library integration
- *
- * - **Package Installers** (via CPack):
- *   - Windows: `.msi` (WiX-based MSI) and `.exe` (NSIS self-extracting)
- *   - Linux: `.deb` (Debian/Ubuntu), `.rpm` (RedHat/Fedora)
- *   - macOS: `.dmg` disk image
- *   - All installers include binaries, libraries, and headers
- *
- * **Using ascii-chat as a Library**:
- *
- * Static linking example:
- * @code{.c}
- * #include <asciichat/logging.h>
- * #include <asciichat/common.h>
- *
- * int main(void) {
- *     log_init(NULL, LOG_INFO);
- *     log_info("Hello from my app!");
- *     log_destroy();
- *     return 0;
- * }
- * @endcode
- *
- * Compile:
- * @code{.bash}
- * # Link against static library
- * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat-static -lsodium -lportaudio
- *
- * # Link against shared library (Linux)
- * gcc -o myapp myapp.c -I/usr/include/asciichat -L/usr/lib -lasciichat
- * @endcode
- *
- * **Installation Methods**:
- * 1. **Package Manager** (recommended): Install via `.deb`, `.rpm`, or `.msi`
- * 2. **Manual**: Extract tarball/zip to `/usr/local` or `C:\Program Files`
- * 3. **Build from source**: Clone repo and build yourself
+ * **Download binaries**: Grab ascii-chat from the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases). Each release ships ready-to-run binaries, installers, and SDK artifacts for Linux, macOS, and Windows.
+ * **Build from source**: Clone the repository, install the dependencies documented in @ref topic_dependencies and the project README, then run `make CMAKE_BUILD_TYPE=RelWithDebInfo` to produce a working copy in `build/bin/`.
  *
  * @subsection build_philosophy_summary Summary
  *
