@@ -42,36 +42,170 @@
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;
 
+static char *duplicate_normalized_path(const char *path) {
+  if (!path) {
+    return NULL;
+  }
+
+  char normalized[PLATFORM_MAX_PATH_LENGTH];
+  if (!path_normalize_copy(path, normalized, sizeof(normalized))) {
+    return NULL;
+  }
+
+  size_t len = strlen(normalized) + 1;
+  char *copy = SAFE_MALLOC(len, char *);
+  if (!copy) {
+    return NULL;
+  }
+  memcpy(copy, normalized, len);
+  return copy;
+}
+
+static bool try_set_known_hosts_path(const char *candidate, const char *const *allowed_bases,
+                                     size_t allowed_base_count) {
+  if (!candidate || g_known_hosts_path_cache) {
+    return false;
+  }
+
+  if (!path_is_absolute(candidate)) {
+    log_warn("Rejected known_hosts path (not absolute): %s", candidate);
+    return false;
+  }
+
+  if (!path_is_within_any_base(candidate, allowed_bases, allowed_base_count)) {
+    log_warn("Rejected known_hosts path (outside allowed base): %s", candidate);
+    return false;
+  }
+
+  char *normalized = duplicate_normalized_path(candidate);
+  if (!normalized) {
+    log_error("Failed to normalize known_hosts path candidate: %s", candidate);
+    return false;
+  }
+
+  g_known_hosts_path_cache = normalized;
+  log_debug("KNOWN_HOSTS: Using path %s", g_known_hosts_path_cache);
+  return true;
+}
+
 const char *get_known_hosts_path(void) {
   if (!g_known_hosts_path_cache) {
-    // Get config directory with XDG support
     char *config_dir = get_config_dir();
-    if (config_dir) {
-      // Build known_hosts path in config directory
-      size_t len = strlen(config_dir) + strlen("known_hosts") + 1;
-      g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
-      if (g_known_hosts_path_cache) {
-        safe_snprintf(g_known_hosts_path_cache, len, "%sknown_hosts", config_dir);
-      }
-      SAFE_FREE(config_dir);
+    char *home_dir = expand_path("~");
+
+    const char *allowed_bases[6] = {0};
+    size_t allowed_base_count = 0;
+
+    if (config_dir && path_is_absolute(config_dir)) {
+      allowed_bases[allowed_base_count++] = config_dir;
+    }
+    if (home_dir && path_is_absolute(home_dir)) {
+      allowed_bases[allowed_base_count++] = home_dir;
     }
 
-    // Fallback if config_dir failed
-    if (!g_known_hosts_path_cache) {
-      g_known_hosts_path_cache = expand_path(KNOWN_HOSTS_PATH);
-      // If expand_path fails, fall back to a default path
-      if (!g_known_hosts_path_cache) {
-        // Use /tmp/.ascii-chat/known_hosts as fallback if HOME expansion fails
-        const char *fallback = "/tmp/.ascii-chat/known_hosts";
-        size_t len = strlen(fallback) + 1;
-        g_known_hosts_path_cache = SAFE_MALLOC(len, char *);
-        if (g_known_hosts_path_cache) {
-          // Use memcpy instead of SAFE_STRNCPY for safety
-          memcpy(g_known_hosts_path_cache, fallback, len);
-          g_known_hosts_path_cache[len - 1] = '\0'; // Ensure null termination
-        }
+    const char *temp_base = NULL;
+#ifdef _WIN32
+    temp_base = platform_getenv("TEMP");
+    if (!temp_base || !path_is_absolute(temp_base)) {
+      temp_base = platform_getenv("TMP");
+    }
+    if (!temp_base || !path_is_absolute(temp_base)) {
+      temp_base = "C:\\Windows\\Temp";
+    }
+#else
+    temp_base = "/tmp/.ascii-chat";
+#endif
+    if (temp_base && path_is_absolute(temp_base)) {
+      allowed_bases[allowed_base_count++] = temp_base;
+    }
+
+    char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
+
+    if (config_dir && !g_known_hosts_path_cache) {
+      size_t config_len = strlen(config_dir);
+      size_t total_len = config_len + strlen("known_hosts") + 1;
+      if (total_len < sizeof(candidate_buf)) {
+        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%sknown_hosts", config_dir);
+        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
+      } else {
+        log_warn("Config directory path too long when constructing known_hosts path");
       }
     }
+
+    if (!g_known_hosts_path_cache) {
+      char *expanded = expand_path(KNOWN_HOSTS_PATH);
+      if (expanded) {
+        (void)try_set_known_hosts_path(expanded, allowed_bases, allowed_base_count);
+        SAFE_FREE(expanded);
+      }
+    }
+
+    if (!g_known_hosts_path_cache && home_dir && path_is_absolute(home_dir)) {
+      size_t home_len = strlen(home_dir);
+      const char *suffix =
+#ifdef _WIN32
+          ".ascii-chat\\known_hosts";
+#else
+          ".ascii-chat/known_hosts";
+#endif
+      bool needs_sep = (home_len > 0) &&
+#ifdef _WIN32
+                       (home_dir[home_len - 1] != '\\' && home_dir[home_len - 1] != '/');
+#else
+                       (home_dir[home_len - 1] != '/');
+#endif
+      size_t total_len = home_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
+      if (total_len < sizeof(candidate_buf)) {
+        safe_snprintf(candidate_buf, sizeof(candidate_buf),
+#ifdef _WIN32
+                      "%s%s%s", home_dir, needs_sep ? "\\" : "", suffix);
+#else
+                      "%s%s%s", home_dir, needs_sep ? "/" : "", suffix);
+#endif
+        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
+      }
+    }
+
+    if (!g_known_hosts_path_cache && temp_base && path_is_absolute(temp_base)) {
+      size_t temp_len = strlen(temp_base);
+      const char *suffix =
+#ifdef _WIN32
+          "ascii-chat\\known_hosts";
+#else
+          "known_hosts";
+#endif
+      bool needs_sep = (temp_len > 0) &&
+#ifdef _WIN32
+                       (temp_base[temp_len - 1] != '\\' && temp_base[temp_len - 1] != '/');
+#else
+                       (temp_base[temp_len - 1] != '/');
+#endif
+      size_t total_len = temp_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
+      if (total_len < sizeof(candidate_buf)) {
+        safe_snprintf(candidate_buf, sizeof(candidate_buf),
+#ifdef _WIN32
+                      "%s%s%s", temp_base, needs_sep ? "\\" : "", suffix);
+#else
+                      "%s%s%s", temp_base, needs_sep ? "/" : "", suffix);
+#endif
+        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
+      }
+    }
+
+    if (!g_known_hosts_path_cache) {
+#ifdef _WIN32
+      const char *safe_default = "C:\\Windows\\Temp\\ascii-chat\\known_hosts";
+#else
+      const char *safe_default = "/tmp/.ascii-chat/known_hosts";
+#endif
+      g_known_hosts_path_cache = duplicate_normalized_path(safe_default);
+      if (!g_known_hosts_path_cache) {
+        log_error("Failed to allocate fallback known_hosts path");
+      }
+    }
+
+    SAFE_FREE(config_dir);
+    SAFE_FREE(home_dir);
   }
   return g_known_hosts_path_cache;
 }
