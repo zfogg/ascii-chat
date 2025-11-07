@@ -53,7 +53,7 @@ typedef struct {
 ```c
 // Heartbeat protocol
 #define PING_MESSAGE "PING\n"
-#define PONG_MESSAGE "PONG\n" 
+#define PONG_MESSAGE "PONG\n"
 #define HEARTBEAT_INTERVAL 10  // seconds
 
 int send_ping(int sockfd);
@@ -63,7 +63,7 @@ bool receive_pong(int sockfd, int timeout);
 ### 3. Frame Compression (MEDIUM IMPACT)
 
 **Problem**: Large ASCII frames (1-16MB) consume bandwidth
-**Solution**: LZ4 or zlib compression
+**Solution**: LZ4 or zstd compression
 
 ```c
 // Compressed frame protocol
@@ -154,7 +154,7 @@ typedef struct {
 2. Heartbeat mechanism
 3. Enhanced message protocol
 
-### Phase 2: Performance (Week 2)  
+### Phase 2: Performance (Week 2)
 1. Frame compression
 2. Adaptive quality control
 3. Connection statistics
@@ -198,7 +198,7 @@ int compress_frame(const char* input, char** output, size_t* output_size);
 ## Benefits of These Improvements
 
 1. **Scalability**: Support multiple simultaneous clients
-2. **Performance**: 50-80% bandwidth reduction with compression  
+2. **Performance**: 50-80% bandwidth reduction with compression
 3. **Reliability**: Faster dead connection detection (10s vs 60s+)
 4. **Robustness**: Frame validation and error recovery
 5. **Monitoring**: Real-time network performance visibility
