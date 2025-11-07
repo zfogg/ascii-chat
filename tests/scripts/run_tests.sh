@@ -1204,16 +1204,50 @@ function main() {
       # First arg is a test type, rest are test names within that type
       local type_arg="$first_arg"
       if [[ ${#positional_args[@]} -eq 2 ]]; then
-        # Two arguments: type and single test name
+        # Two arguments: type and single test name (or subdirectory)
         local name_arg="${positional_args[1]}"
-        SINGLE_TEST="test_${type_arg}_${name_arg}"
+        local subdir_path="$PROJECT_ROOT/tests/$type_arg/$name_arg"
+        if [[ -d "$subdir_path" ]]; then
+          # Treat as a subgroup directory containing multiple tests
+          local subdir_sources=()
+          mapfile -t subdir_sources < <(find "$subdir_path" -type f -name '*_test.c' -print | sort)
+          if [[ ${#subdir_sources[@]} -eq 0 ]]; then
+            log_error "No tests found in subgroup: $type_arg/$name_arg"
+            exit 1
+          fi
+          MULTIPLE_TESTS=()
+          for test_src in "${subdir_sources[@]}"; do
+            local exec_name
+            exec_name=$(_ascii_source_to_test_executable "$test_src")
+            MULTIPLE_TESTS+=("$exec_name")
+          done
+          MULTIPLE_TEST_MODE=1
+        else
+          SINGLE_TEST="test_${type_arg}_${name_arg}"
+        fi
       else
         # Three or more: type and multiple test names
         MULTIPLE_TESTS=()
         for ((i = 1; i < ${#positional_args[@]}; i++)); do
           local test_name="${positional_args[i]}"
-          # Construct the full test name
-          MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+          local subdir_path="$PROJECT_ROOT/tests/$type_arg/$test_name"
+          if [[ -d "$subdir_path" ]]; then
+            # Append all tests from this subgroup directory
+            local subdir_sources=()
+            mapfile -t subdir_sources < <(find "$subdir_path" -type f -name '*_test.c' -print | sort)
+            if [[ ${#subdir_sources[@]} -eq 0 ]]; then
+              log_warning "No tests found in subgroup: $type_arg/$test_name"
+              continue
+            fi
+            for test_src in "${subdir_sources[@]}"; do
+              local exec_name
+              exec_name=$(_ascii_source_to_test_executable "$test_src")
+              MULTIPLE_TESTS+=("$exec_name")
+            done
+          else
+            # Construct the full test name
+            MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+          fi
         done
         MULTIPLE_TEST_MODE=1
       fi
