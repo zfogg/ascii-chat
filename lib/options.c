@@ -32,6 +32,7 @@
 #include "config.h"
 #include "common.h"
 #include "util/ip.h"
+#include "util/path.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/password.h"
@@ -611,13 +612,22 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 #ifdef NDEBUG
   char temp_dir[256];
   if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
-    SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s%sascii-chat.%s.log", temp_dir,
+    char default_log_path[PLATFORM_MAX_PATH_LENGTH];
+    safe_snprintf(default_log_path, sizeof(default_log_path), "%s%sascii-chat.%s.log", temp_dir,
 #if defined(_WIN32) || defined(WIN32)
                   "\\",
 #else
                   "/",
 #endif
                   is_client ? "client" : "server");
+
+    char *normalized_default_log = NULL;
+    if (path_validate_user_path(default_log_path, PATH_ROLE_LOG_FILE, &normalized_default_log) == ASCIICHAT_OK) {
+      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", normalized_default_log);
+      SAFE_FREE(normalized_default_log);
+    } else {
+      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", default_log_path);
+    }
   } else {
     // Fallback if platform_get_temp_dir fails
     SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "ascii-chat.log");
@@ -1096,7 +1106,15 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-file", is_client);
       if (!value_str)
         return ERROR_USAGE;
-      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", value_str);
+      char *normalized_log = NULL;
+      asciichat_error_t log_result = path_validate_user_path(value_str, PATH_ROLE_LOG_FILE, &normalized_log);
+      if (log_result != ASCIICHAT_OK) {
+        SAFE_FREE(normalized_log);
+        fprintf(stderr, "Invalid log file path: %s\n", value_str);
+        return ERROR_USAGE;
+      }
+      SAFE_SNPRINTF(opt_log_file, OPTIONS_BUFF_SIZE, "%s", normalized_log);
+      SAFE_FREE(normalized_log);
       break;
     }
 

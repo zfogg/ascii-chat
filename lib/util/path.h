@@ -43,6 +43,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#include "common.h"
+
 /* ============================================================================
  * Path Constants
  * ============================================================================
@@ -193,5 +195,38 @@ bool path_is_within_base(const char *path, const char *base);
  * @return true if @p path is inside any allowed base, false otherwise
  */
 bool path_is_within_any_base(const char *path, const char *const *bases, size_t base_count);
+
+/**
+ * @brief Classification for user-supplied filesystem paths.
+ */
+typedef enum {
+  PATH_ROLE_CONFIG_FILE, /**< Configuration files such as config.toml */
+  PATH_ROLE_LOG_FILE,    /**< Log file destinations */
+  PATH_ROLE_KEY_PRIVATE, /**< Private key files (SSH/GPG) */
+  PATH_ROLE_KEY_PUBLIC,  /**< Public key files or expected server keys */
+  PATH_ROLE_CLIENT_KEYS  /**< Client key whitelist files */
+} path_role_t;
+
+/**
+ * @brief Determine if a string is likely intended to reference the filesystem.
+ *
+ * Heuristics include presence of path separators, leading ~, relative prefixes,
+ * or Windows drive designators. Used to avoid treating tokens like
+ * "github:user" or raw hex keys as file paths.
+ */
+bool path_looks_like_path(const char *value);
+
+/**
+ * @brief Validate and canonicalize a user-supplied filesystem path.
+ *
+ * Resolves ~, relative segments, and enforces that the resulting absolute path
+ * resides within the trusted base directories for the supplied role.
+ *
+ * @param input          Original user-provided path (must not be NULL)
+ * @param role           Intended usage category
+ * @param normalized_out Output pointer receiving SAFE_MALLOC'd canonical path
+ * @return ASCIICHAT_OK on success, error code on failure (and normalized_out is NULL)
+ */
+asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out);
 
 /** @} */

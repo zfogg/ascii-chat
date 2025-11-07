@@ -11,6 +11,7 @@
 #include "https_keys.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
+#include "../../util/path.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -112,17 +113,27 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     }
   }
 
-  // Try reading from file
-  FILE *f = platform_fopen(input, "r");
-  if (f) {
-    char line[1024];
-    if (fgets(line, sizeof(line), f)) {
-      (void)fclose(f);
-      // Remove newline
-      line[strcspn(line, "\r\n")] = 0;
-      return parse_public_key(line, key_out);
+  if (path_looks_like_path(input)) {
+    char *normalized_path = NULL;
+    asciichat_error_t path_result = path_validate_user_path(input, PATH_ROLE_KEY_PUBLIC, &normalized_path);
+    if (path_result != ASCIICHAT_OK) {
+      SAFE_FREE(normalized_path);
+      return path_result;
     }
-    (void)fclose(f);
+
+    FILE *f = platform_fopen(normalized_path, "r");
+    if (f) {
+      char line[1024];
+      if (fgets(line, sizeof(line), f)) {
+        (void)fclose(f);
+        SAFE_FREE(normalized_path);
+        // Remove newline
+        line[strcspn(line, "\r\n")] = 0;
+        return parse_public_key(line, key_out);
+      }
+      (void)fclose(f);
+    }
+    SAFE_FREE(normalized_path);
   }
 
   return SET_ERRNO(ERROR_CRYPTO_KEY, "Unsupported key format: %s", input);
@@ -137,7 +148,15 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   memset(key_out, 0, sizeof(private_key_t));
 
   // Try SSH private key parsing
-  return parse_ssh_private_key(key_path, key_out);
+  char *normalized_path = NULL;
+  asciichat_error_t path_result = path_validate_user_path(key_path, PATH_ROLE_KEY_PRIVATE, &normalized_path);
+  if (path_result != ASCIICHAT_OK) {
+    SAFE_FREE(normalized_path);
+    return path_result;
+  }
+  asciichat_error_t result = parse_ssh_private_key(normalized_path, key_out);
+  SAFE_FREE(normalized_path);
+  return result;
 }
 
 asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys, size_t max_keys) {
@@ -199,9 +218,20 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     return ASCIICHAT_OK;
   }
 
-  // Otherwise, treat as a file path
-  FILE *f = platform_fopen(keys_file, "r");
+  if (!path_looks_like_path(keys_file)) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse client key source: %s", keys_file);
+  }
+
+  char *normalized_keys_path = NULL;
+  asciichat_error_t path_result = path_validate_user_path(keys_file, PATH_ROLE_CLIENT_KEYS, &normalized_keys_path);
+  if (path_result != ASCIICHAT_OK) {
+    SAFE_FREE(normalized_keys_path);
+    return path_result;
+  }
+
+  FILE *f = platform_fopen(normalized_keys_path, "r");
   if (!f) {
+    SAFE_FREE(normalized_keys_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open client keys file: %s", keys_file);
   }
 
@@ -219,11 +249,13 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     if (parse_public_key(line, &keys_out[*num_keys]) == ASCIICHAT_OK) {
       (*num_keys)++;
     } else {
+      SAFE_FREE(normalized_keys_path);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse client key: %s, keys: %d", line, num_keys);
     }
   }
 
   (void)fclose(f);
+  SAFE_FREE(normalized_keys_path);
   return ASCIICHAT_OK;
 }
 
@@ -308,8 +340,20 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
 
   *num_keys = 0;
 
-  FILE *f = platform_fopen(path, "r");
+  if (!path_looks_like_path(path)) {
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid keys file path: %s", path);
+  }
+
+  char *normalized_path = NULL;
+  asciichat_error_t path_result = path_validate_user_path(path, PATH_ROLE_CLIENT_KEYS, &normalized_path);
+  if (path_result != ASCIICHAT_OK) {
+    SAFE_FREE(normalized_path);
+    return path_result;
+  }
+
+  FILE *f = platform_fopen(normalized_path, "r");
   if (!f) {
+    SAFE_FREE(normalized_path);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open keys file: %s", path);
   }
 
@@ -329,6 +373,7 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
   }
 
   (void)fclose(f);
+  SAFE_FREE(normalized_path);
   return ASCIICHAT_OK;
 }
 
