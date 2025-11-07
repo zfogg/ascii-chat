@@ -11,6 +11,7 @@
 #include <time.h>
 #include "network/network.h"
 #include "network/packet.h"
+#include "logging.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
 #include "video_frame.h"

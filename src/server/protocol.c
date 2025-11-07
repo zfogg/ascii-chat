@@ -184,6 +184,13 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   log_warn("Disconnecting client %u due to protocol violation: %s", client_id, reason_str);
 
   if (socket_snapshot != INVALID_SOCKET_VALUE) {
+    asciichat_error_t log_result =
+        log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
+                            REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Protocol violation: %s", reason_str);
+    if (log_result != ASCIICHAT_OK) {
+      log_warn("Failed to send remote log to client %u: %s", client_id, asciichat_error_string(log_result));
+    }
+
     asciichat_error_t send_result = packet_send_error(socket_snapshot, crypto_ctx, ERROR_NETWORK_PROTOCOL, reason_str);
     if (send_result != ASCIICHAT_OK) {
       log_warn("Failed to send error packet to client %u: %s", client_id, asciichat_error_string(send_result));
@@ -758,6 +765,41 @@ void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
   const float *samples = (const float *)data;
   int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
   (void)written;
+}
+
+void handle_remote_log_packet_from_client(client_info_t *client, const void *data, size_t len) {
+  if (!client) {
+    return;
+  }
+
+  log_level_t remote_level = LOG_INFO;
+  remote_log_direction_t direction = REMOTE_LOG_DIRECTION_UNKNOWN;
+  uint16_t flags = 0;
+  char message[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1] = {0};
+
+  asciichat_error_t parse_result =
+      packet_parse_remote_log(data, len, &remote_level, &direction, &flags, message, sizeof(message), NULL);
+  if (parse_result != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "Invalid REMOTE_LOG packet: %s", asciichat_error_string(parse_result));
+    return;
+  }
+
+  if (direction != REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
+    disconnect_client_for_bad_data(client, "REMOTE_LOG direction mismatch: %u", direction);
+    return;
+  }
+
+  const bool truncated = (flags & REMOTE_LOG_FLAG_TRUNCATED) != 0;
+  const char *display_name = client->display_name[0] ? client->display_name : "(unnamed)";
+  uint32_t client_id = atomic_load(&client->client_id);
+
+  if (truncated) {
+    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE CLIENT %u \"%s\"] %s [message truncated]", client_id,
+            display_name, message);
+  } else {
+    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE CLIENT %u \"%s\"] %s", client_id, display_name,
+            message);
+  }
 }
 
 /**

@@ -23,6 +23,9 @@
 
 #include <stdarg.h>
 #include "platform/mutex.h"
+#include "platform/socket.h"
+#include "network/logging.h"
+struct crypto_context_t;
 
 /* PLATFORM_MAX_PATH_LENGTH is defined in common.h but we can't include it here
  * to avoid circular dependencies. Define it here to match the definition pattern.
@@ -271,6 +274,36 @@ char *format_message(const char *format, va_list args);
 size_t get_current_time_formatted(char *time_buf);
 
 /**
+ * @brief Send a formatted log message over the network.
+ * @param sockfd Destination socket
+ * @param crypto_ctx Optional crypto context for encryption (NULL if not ready)
+ * @param level Log severity used for remote and local logging
+ * @param direction Remote log direction metadata
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+                                      remote_log_direction_t direction, const char *fmt, ...);
+
+/**
+ * @brief Log a message to all destinations (network, file, and terminal).
+ * @param sockfd Destination socket
+ * @param crypto_ctx Optional crypto context for encryption (NULL if not ready)
+ * @param level Log severity used for remote and local logging
+ * @param direction Remote log direction metadata
+ * @param file Source file name (or NULL to omit)
+ * @param line Source line number (or 0 to omit)
+ * @param func Function name (or NULL to omit)
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ * @return ASCIICHAT_OK on success, error code otherwise
+ */
+asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+                                  remote_log_direction_t direction, const char *file, int line, const char *func,
+                                  const char *fmt, ...);
+
+/**
  * @name Logging Macros
  * @{
  */
@@ -418,6 +451,61 @@ size_t get_current_time_formatted(char *time_buf);
 #define log_fatal_every(interval_us, fmt, ...) log_every(FATAL, interval_us, fmt, ##__VA_ARGS__)
 
 /** @} */
+
+/**
+ * @brief Log a DEBUG message to all destinations (network, file, and terminal)
+ */
+#ifdef NDEBUG
+#define log_debug_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
+  log_all_message(sockfd, crypto_ctx, LOG_DEBUG, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
+#else
+#define log_debug_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
+  log_all_message(sockfd, crypto_ctx, LOG_DEBUG, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
+#endif
+
+/**
+ * @brief Log an INFO message to all destinations (network, file, and terminal)
+ */
+#ifdef NDEBUG
+#define log_info_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
+  log_all_message(sockfd, crypto_ctx, LOG_INFO, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
+#else
+#define log_info_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
+  log_all_message(sockfd, crypto_ctx, LOG_INFO, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
+#endif
+
+/**
+ * @brief Log a WARN message to all destinations (network, file, and terminal)
+ */
+#ifdef NDEBUG
+#define log_warn_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
+  log_all_message(sockfd, crypto_ctx, LOG_WARN, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
+#else
+#define log_warn_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
+  log_all_message(sockfd, crypto_ctx, LOG_WARN, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
+#endif
+
+/**
+ * @brief Log an ERROR message to all destinations (network, file, and terminal)
+ */
+#ifdef NDEBUG
+#define log_error_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
+  log_all_message(sockfd, crypto_ctx, LOG_ERROR, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
+#else
+#define log_error_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
+  log_all_message(sockfd, crypto_ctx, LOG_ERROR, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
+#endif
+
+/**
+ * @brief Log a FATAL message to all destinations (network, file, and terminal)
+ */
+#ifdef NDEBUG
+#define log_fatal_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
+  log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
+#else
+#define log_fatal_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
+  log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
+#endif
 
 // Don't use the logging functions to log errors about the logging system itself to avoid recursion.
 #ifdef NDEBUG

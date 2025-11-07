@@ -853,6 +853,120 @@ asciichat_error_t packet_parse_error_message(const void *data, size_t len, ascii
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t *crypto_ctx, log_level_t level,
+                                         remote_log_direction_t direction, uint16_t flags, const char *message) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid socket descriptor");
+  }
+
+  if (level < LOG_DEV || level > LOG_FATAL) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid log level: %d", level);
+  }
+
+  const char *safe_message = message ? message : "";
+  bool truncated = false;
+  size_t message_len = strnlen(safe_message, MAX_REMOTE_LOG_MESSAGE_LENGTH);
+  if (message_len == MAX_REMOTE_LOG_MESSAGE_LENGTH && safe_message[message_len] != '\0') {
+    truncated = true;
+  }
+
+  size_t payload_len = sizeof(remote_log_packet_t) + message_len;
+  uint8_t *payload = SAFE_MALLOC(payload_len, uint8_t *);
+  if (!payload) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes for remote log packet", payload_len);
+  }
+
+  remote_log_packet_t *packet = (remote_log_packet_t *)payload;
+  packet->log_level = (uint8_t)level;
+  packet->direction = (uint8_t)direction;
+  uint16_t final_flags = flags;
+  if (truncated) {
+    final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
+  }
+  packet->flags = htons(final_flags);
+  packet->message_length = htonl((uint32_t)message_len);
+
+  if (message_len > 0) {
+    memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
+  }
+
+  bool encryption_ready = crypto_ctx && crypto_is_ready(crypto_ctx);
+  asciichat_error_t send_result;
+
+  if (encryption_ready) {
+    int secure_result =
+        send_packet_secure(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len, (crypto_context_t *)crypto_ctx);
+    send_result = secure_result == 0 ? ASCIICHAT_OK : ERROR_NETWORK;
+  } else {
+    send_result = packet_send(sockfd, PACKET_TYPE_REMOTE_LOG, payload, payload_len);
+  }
+
+  SAFE_FREE(payload);
+
+  if (send_result != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to send remote log packet: %d", send_result);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_level_t *out_level,
+                                          remote_log_direction_t *out_direction, uint16_t *out_flags,
+                                          char *message_buffer, size_t message_buffer_size,
+                                          size_t *out_message_length) {
+  if (!data || len < sizeof(remote_log_packet_t) || !out_level || !out_direction || !out_flags || !message_buffer ||
+      message_buffer_size == 0) {
+    return SET_ERRNO(
+        ERROR_INVALID_PARAM,
+        "Invalid parameters: data=%p len=%zu out_level=%p out_direction=%p out_flags=%p buffer=%p size=%zu", data, len,
+        out_level, out_direction, out_flags, message_buffer, message_buffer_size);
+  }
+
+  const remote_log_packet_t *packet = (const remote_log_packet_t *)data;
+  uint8_t raw_level = packet->log_level;
+  if (raw_level > LOG_FATAL) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid remote log level: %u", raw_level);
+  }
+  *out_level = (log_level_t)raw_level;
+
+  uint8_t raw_direction = packet->direction;
+  if (raw_direction > REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER) {
+    raw_direction = REMOTE_LOG_DIRECTION_UNKNOWN;
+  }
+  *out_direction = (remote_log_direction_t)raw_direction;
+
+  uint16_t raw_flags = ntohs(packet->flags);
+  *out_flags = raw_flags;
+
+  uint32_t raw_message_length = ntohl(packet->message_length);
+  if (raw_message_length > MAX_REMOTE_LOG_MESSAGE_LENGTH) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Remote log message length too large: %u", raw_message_length);
+  }
+
+  size_t total_required = sizeof(remote_log_packet_t) + (size_t)raw_message_length;
+  if (total_required > len) {
+    return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Remote log packet truncated: expected %zu bytes, have %zu",
+                     total_required, len);
+  }
+
+  const uint8_t *message_bytes = (const uint8_t *)data + sizeof(remote_log_packet_t);
+  size_t copy_len = raw_message_length;
+  if (copy_len >= message_buffer_size) {
+    copy_len = message_buffer_size - 1;
+  }
+
+  if (copy_len > 0) {
+    memcpy(message_buffer, message_bytes, copy_len);
+  }
+  message_buffer[copy_len] = '\0';
+
+  if (out_message_length) {
+    *out_message_length = raw_message_length;
+  }
+
+  return ASCIICHAT_OK;
+}
+
 /**
  * @brief Send protocol version packet
  * @param sockfd Socket file descriptor

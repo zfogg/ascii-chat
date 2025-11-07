@@ -532,17 +532,48 @@ static void handle_audio_packet(const void *data, size_t len) {
 #endif
 }
 
-static void handle_error_message_packet(const void *data, size_t len) {
+static bool handle_error_message_packet(const void *data, size_t len) {
   asciichat_error_t remote_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
 
   asciichat_error_t parse_result = packet_parse_error_message(data, len, &remote_error, message, sizeof(message), NULL);
   if (parse_result != ASCIICHAT_OK) {
     log_error("Failed to parse error packet from server: %s", asciichat_error_string(parse_result));
-    return;
+    return false;
   }
 
   log_error("Server reported error %d (%s): %s", remote_error, asciichat_error_string(remote_error), message);
+  log_warn("Server signaled protocol error; closing connection");
+  server_connection_shutdown();
+  server_connection_lost();
+  return true;
+}
+
+static void handle_remote_log_packet(const void *data, size_t len) {
+  log_level_t remote_level = LOG_INFO;
+  remote_log_direction_t direction = REMOTE_LOG_DIRECTION_UNKNOWN;
+  uint16_t flags = 0;
+  char message[MAX_REMOTE_LOG_MESSAGE_LENGTH + 1] = {0};
+
+  asciichat_error_t parse_result =
+      packet_parse_remote_log(data, len, &remote_level, &direction, &flags, message, sizeof(message), NULL);
+  if (parse_result != ASCIICHAT_OK) {
+    log_error("Failed to parse remote log packet from server: %s", asciichat_error_string(parse_result));
+    return;
+  }
+
+  if (direction != REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT) {
+    log_error("Remote log packet direction mismatch (direction=%u)", direction);
+    return;
+  }
+
+  bool truncated = (flags & REMOTE_LOG_FLAG_TRUNCATED) != 0;
+
+  if (truncated) {
+    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE SERVER] %s [message truncated]", message);
+  } else {
+    log_msg(remote_level, __FILE__, __LINE__, __func__, "[REMOTE SERVER] %s", message);
+  }
 }
 
 /**
@@ -663,6 +694,8 @@ static void *data_reception_thread_func(void *arg) {
     void *data = envelope.data;
     size_t len = envelope.len;
 
+    bool should_disconnect = false;
+
     switch (type) {
     case PACKET_TYPE_ASCII_FRAME:
       handle_ascii_frame_packet(data, len);
@@ -694,7 +727,11 @@ static void *data_reception_thread_func(void *arg) {
       break;
 
     case PACKET_TYPE_ERROR_MESSAGE:
-      handle_error_message_packet(data, len);
+      should_disconnect = handle_error_message_packet(data, len);
+      break;
+
+    case PACKET_TYPE_REMOTE_LOG:
+      handle_remote_log_packet(data, len);
       break;
 
     // Session rekeying packets
@@ -747,6 +784,11 @@ static void *data_reception_thread_func(void *arg) {
     // The data pointer is offset into the buffer, but we need to free the actual allocated buffer
     if (envelope.allocated_buffer && envelope.allocated_size > 0) {
       buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+    }
+
+    if (should_disconnect) {
+      log_info("Terminating data reception thread due to server error packet");
+      break;
     }
   }
 
