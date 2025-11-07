@@ -10,8 +10,7 @@
 #include "../internal.h"
 #include "../../common.h" // For log_error()
 #include "../../asciichat_errno.h"
-#include "../../util/path.h" // For extract_project_relative_path()
-#include "../symbols.h"      // For symbol cache
+#include "../symbols.h" // For symbol cache
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -31,6 +30,7 @@ extern int backtrace(void **buffer, int size) __attribute__((weak));
 extern char **backtrace_symbols(void *const *buffer, int size) __attribute__((weak));
 #endif
 #include <pthread.h>
+#include <stdarg.h>
 #include <stdatomic.h>
 #include <sys/stat.h>
 #include <netdb.h>
@@ -887,6 +887,18 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size) {
 
   // Copy the path
   SAFE_STRNCPY(temp_dir, tmp, path_size);
+  return true;
+}
+
+bool platform_get_cwd(char *cwd, size_t path_size) {
+  if (!cwd || path_size == 0) {
+    return false;
+  }
+
+  if (getcwd(cwd, path_size) == NULL) {
+    return false;
+  }
+
   return true;
 }
 
