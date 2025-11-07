@@ -263,7 +263,7 @@ ascii-chat/
 │   ├── packet_queue.c/h                # Thread-safe per-client packet queues
 │   ├── buffer_pool.c/h                 # Memory buffer pool system for efficient allocation
 │   ├── ringbuffer.c/h                  # Lock-free ring buffer implementation
-│   ├── compression.c/h                 # Frame compression with zlib
+│   ├── compression.c/h                 # Frame compression with zstd
 │   ├── crc32_hw.c/h                    # Hardware-accelerated CRC32 checksums
 │   ├── mixer.c/h                       # Audio mixing for multiple clients
 │   ├── audio.c/h                       # Audio capture/playback (PortAudio)
