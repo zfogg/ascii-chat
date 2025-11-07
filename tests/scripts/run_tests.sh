@@ -7,7 +7,7 @@
 # into a single, reusable script that can be called from various contexts.
 #
 # BUILD DIRECTORY DETECTION:
-#   - Docker environment (/.docker exists): always uses build_docker/
+#   - Docker environment (/.dockerenv exists): always uses build_docker/
 #   - Native environment: uses build/
 #   - Centralized in get_build_directory() function - use that instead of
 #     hardcoding paths or adding environment detection logic
