@@ -49,7 +49,9 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "USE_MIMALLOC": "ON"
+        "USE_MIMALLOC": "ON",
+        "ASCIICHAT_RELEASE_CPU_TUNE": "portable",
+        "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "OFF"
       }
     },
     {
@@ -61,6 +63,15 @@
         "CMAKE_BUILD_TYPE": "Release",
         "USE_MUSL": "ON",
         "USE_MIMALLOC": "ON"
+      }
+    },
+    {
+      "name": "release-x86-64-v3",
+      "displayName": "Release (x86-64-v3)",
+      "description": "Release build targeting modern AVX2 CPUs",
+      "inherits": "release",
+      "cacheVariables": {
+        "ASCIICHAT_RELEASE_CPU_TUNE": "x86-64-v3"
       }
     },
     {
@@ -80,6 +91,15 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Dev"
+      }
+    },
+    {
+      "name": "dev-analyzers",
+      "displayName": "Dev (Analyzers)",
+      "description": "Debug build with static analyzers enabled (clang-tidy/cppcheck)",
+      "inherits": "dev",
+      "cacheVariables": {
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
       }
     },
     {
@@ -137,6 +157,10 @@
       "configurePreset": "release"
     },
     {
+      "name": "release-x86-64-v3",
+      "configurePreset": "release-x86-64-v3"
+    },
+    {
       "name": "release-musl",
       "configurePreset": "release-musl"
     },
@@ -147,6 +171,10 @@
     {
       "name": "dev",
       "configurePreset": "dev"
+    },
+    {
+      "name": "dev-analyzers",
+      "configurePreset": "dev-analyzers"
     },
     {
       "name": "coverage",

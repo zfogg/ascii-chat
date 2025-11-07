@@ -54,13 +54,11 @@ jobs:
         echo "Testing binary memory usage..."
         # NOTE: THese are started with "&" and run in the background with no logs.
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat server > valgrind-server.log >/dev/null \
-          2>&1 &
+          ./build/bin/ascii-chat server > valgrind-server.log 2>&1 &
         SERVER_PID=$!
         # Run server in the background so the command doesn't block until the process is dead so we can start the client.
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
-          ./build/bin/ascii-chat client --test-pattern > valgrind-client.log \
-          >/dev/null 2>&1 &
+          ./build/bin/ascii-chat client --test-pattern > valgrind-client.log 2>&1 &
         CLIENT_PID=$!
         wait $SERVER_PID $CLIENT_PID
 

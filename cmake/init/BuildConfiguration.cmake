@@ -69,6 +69,40 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebI
     endif()
 endif()
 
+if(USE_MUSL)
+    set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    list(APPEND _ascii_chat_try_compile_vars USE_MUSL)
+endif()
+
+list(APPEND _ascii_chat_try_compile_vars
+    ASCIICHAT_RELEASE_CPU_TUNE
+    ASCIICHAT_RELEASE_ENABLE_FAST_MATH
+    ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS
+    ASCIICHAT_ENABLE_UNITY_BUILDS
+)
+
+set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES "${_ascii_chat_try_compile_vars}")
+
+if(ASCIICHAT_ENABLE_ANALYZERS)
+    find_program(_asciichat_clang_tidy NAMES "${ASCIICHAT_CLANG_TIDY}" clang-tidy PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
+    if(NOT _asciichat_clang_tidy)
+        message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but clang-tidy not found")
+    else()
+        set(CMAKE_C_CLANG_TIDY "${_asciichat_clang_tidy}" CACHE STRING "" FORCE)
+    endif()
+
+    find_program(_asciichat_cppcheck NAMES "${ASCIICHAT_CPPCHECK}" cppcheck PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
+    if(_asciichat_cppcheck)
+        set(CMAKE_C_CPPCHECK "${_asciichat_cppcheck}" CACHE STRING "" FORCE)
+    elseif(ASCIICHAT_CPPCHECK)
+        message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but specified cppcheck binary '${ASCIICHAT_CPPCHECK}' not found")
+    endif()
+
+    if(NOT DEFINED ENV{ASCIICHAT_ANALYZER_SUPPRESS_WARNINGS})
+        set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    endif()
+endif()
+
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

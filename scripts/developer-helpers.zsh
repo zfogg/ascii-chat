@@ -11,17 +11,16 @@
 
 
 # Variables and Helpers
-_scripts_dir=${0:a:h}
 _repo_root=$(git rev-parse --show-toplevel)
 
-source "$_scripts_dir/color.zsh"
+source "$_repo_root/scripts/color.zsh"
 
 # Alias and function helper API
 
 # CMake
 alias c='cmake' # specify your build dir
-alias cpd='cmake --preset default'
-alias cpr='cmake --preset release'
+alias cpd='cmake --preset default -B'
+alias cpr='cmake --preset release -B'
 alias cb='cmake --build' # specify your build dir
 alias cbb='cmake --build build'
 alias cbr='cmake --build build_release'

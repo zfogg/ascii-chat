@@ -27,9 +27,24 @@ endif()
 
 # Install binary
 install(TARGETS ascii-chat
+    EXPORT ascii-chat-targets
     RUNTIME DESTINATION bin
     COMPONENT Runtime
 )
+
+set(_ascii_chat_exportable_targets ascii-chat-shared ascii-chat-static ascii-chat-static-lib)
+foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
+    if(TARGET ${_ascii_target})
+        install(TARGETS ${_ascii_target}
+            EXPORT ascii-chat-targets
+            RUNTIME DESTINATION bin
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib
+            INCLUDES DESTINATION include/ascii-chat
+            COMPONENT Development
+        )
+    endif()
+endforeach()
 
 # Install uninstall script (Unix only - not needed on Windows with uninstaller)
 if(UNIX)
@@ -58,13 +73,6 @@ endif()
 #
 # Note: We create a dummy export target so CMake doesn't complain about missing EXPORT
 # =============================================================================
-
-# Create a dummy interface target to hold the export for find_package support
-add_library(ascii-chat-dummy INTERFACE)
-install(TARGETS ascii-chat-dummy
-    EXPORT ascii-chat-targets
-    COMPONENT Development
-)
 
 if(WIN32)
     # =============================================================================
@@ -192,6 +200,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
         DESTINATION lib/cmake/ascii-chat
         COMPONENT Development
     )
+
+    export(EXPORT ascii-chat-targets
+        FILE ${CMAKE_BINARY_DIR}/ascii-chat-targets.cmake
+        NAMESPACE ascii-chat::)
 
     message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}CMake${ColorReset} package config installation")
 endif()
