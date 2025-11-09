@@ -131,4 +131,46 @@ void ascii_thread_init(asciithread_t *thread) {
   }
 }
 
+// ============================================================================
+// Thread-Local Storage (TLS) Functions
+// ============================================================================
+
+/**
+ * @brief Create a thread-local storage key
+ * @param key Pointer to TLS key (output parameter)
+ * @param destructor Optional destructor function called when thread exits
+ * @return 0 on success, non-zero on error
+ */
+int ascii_tls_key_create(tls_key_t *key, void (*destructor)(void *)) {
+  return pthread_key_create(key, destructor);
+}
+
+/**
+ * @brief Delete a thread-local storage key
+ * @param key TLS key to delete
+ * @return 0 on success, non-zero on error
+ */
+int ascii_tls_key_delete(tls_key_t key) {
+  return pthread_key_delete(key);
+}
+
+/**
+ * @brief Get thread-local value for a key
+ * @param key TLS key
+ * @return Thread-local value, or NULL if not set
+ */
+void *ascii_tls_get(tls_key_t key) {
+  return pthread_getspecific(key);
+}
+
+/**
+ * @brief Set thread-local value for a key
+ * @param key TLS key
+ * @param value Value to store
+ * @return 0 on success, non-zero on error
+ */
+int ascii_tls_set(tls_key_t key, void *value) {
+  return pthread_setspecific(key, value);
+}
+
 #endif // !_WIN32

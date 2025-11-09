@@ -5,6 +5,7 @@
 
 #include "common.h"
 #include "platform/internal.h"
+#include "platform/mutex.h"
 #include "platform/system.h"
 #include "platform/thread.h"
 #include "util/time.h"
@@ -13,7 +14,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <pthread.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -22,13 +22,18 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <time.h>
+
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 #if !defined(_WIN32)
 #define ASCII_INSTR_HAVE_REGEX 1
 #include <regex.h>
 #else
 #define ASCII_INSTR_HAVE_REGEX 0
+// Windows doesn't have mode_t
+typedef int mode_t;
 #endif
 
 #ifdef _WIN32
@@ -98,10 +103,10 @@ typedef struct ascii_instr_runtime {
   ascii_instr_only_list_t only_selectors;
 } ascii_instr_runtime_t;
 
-static pthread_key_t g_runtime_key;
-static pthread_once_t g_runtime_once = PTHREAD_ONCE_INIT;
-static pthread_mutex_t g_runtime_mutex = PTHREAD_MUTEX_INITIALIZER;
+static tls_key_t g_runtime_key;
+static mutex_t g_runtime_mutex;
 static bool g_runtime_initialized = false;
+static bool g_runtime_mutex_initialized = false;
 static char g_output_dir[PATH_MAX];
 static bool g_output_dir_set = false;
 static bool g_disable_write = false;
@@ -137,9 +142,22 @@ ascii_instr_runtime_t *ascii_instr_runtime_get(void) {
     return NULL;
   }
 
-  pthread_once(&g_runtime_once, ascii_instr_runtime_init_once);
+  // Initialize runtime once using mutex-protected initialization
+  if (!g_runtime_initialized) {
+    // Initialize mutex if needed
+    if (!g_runtime_mutex_initialized) {
+      mutex_init(&g_runtime_mutex);
+      g_runtime_mutex_initialized = true;
+    }
 
-  ascii_instr_runtime_t *runtime = pthread_getspecific(g_runtime_key);
+    mutex_lock(&g_runtime_mutex);
+    if (!g_runtime_initialized) {
+      ascii_instr_runtime_init_once();
+    }
+    mutex_unlock(&g_runtime_mutex);
+  }
+
+  ascii_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
   if (runtime != NULL) {
     return runtime;
   }
@@ -165,7 +183,7 @@ ascii_instr_runtime_t *ascii_instr_runtime_get(void) {
 
   ascii_instr_runtime_configure(runtime);
 
-  if (pthread_setspecific(g_runtime_key, runtime) != 0) {
+  if (ascii_tls_set(g_runtime_key, runtime) != 0) {
     SAFE_FREE(runtime);
     return NULL;
   }
@@ -207,16 +225,24 @@ void ascii_instr_runtime_destroy(ascii_instr_runtime_t *runtime) {
 }
 
 void ascii_instr_runtime_global_shutdown(void) {
-  pthread_mutex_lock(&g_runtime_mutex);
+  if (g_runtime_mutex_initialized) {
+    mutex_lock(&g_runtime_mutex);
+  }
+
   if (g_runtime_initialized) {
     g_disable_write = true;
-    pthread_key_delete(g_runtime_key);
+    ascii_tls_key_delete(g_runtime_key);
     g_runtime_initialized = false;
     g_ticks_initialized = false;
     g_start_ticks = 0;
     g_coverage_enabled = false;
   }
-  pthread_mutex_unlock(&g_runtime_mutex);
+
+  if (g_runtime_mutex_initialized) {
+    mutex_unlock(&g_runtime_mutex);
+    mutex_destroy(&g_runtime_mutex);
+    g_runtime_mutex_initialized = false;
+  }
 }
 
 void ascii_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name, const char *snippet,
@@ -331,7 +357,20 @@ bool ascii_instr_coverage_enabled(void) {
     return false;
   }
 
-  pthread_once(&g_runtime_once, ascii_instr_runtime_init_once);
+  // Initialize runtime once using mutex-protected initialization
+  if (!g_runtime_initialized) {
+    if (!g_runtime_mutex_initialized) {
+      mutex_init(&g_runtime_mutex);
+      g_runtime_mutex_initialized = true;
+    }
+
+    mutex_lock(&g_runtime_mutex);
+    if (!g_runtime_initialized) {
+      ascii_instr_runtime_init_once();
+    }
+    mutex_unlock(&g_runtime_mutex);
+  }
+
   return g_coverage_enabled;
 }
 
@@ -346,9 +385,10 @@ void ascii_instr_log_pc(uintptr_t program_counter) {
 }
 
 static void ascii_instr_runtime_init_once(void) {
-  pthread_mutex_lock(&g_runtime_mutex);
+  // NOTE: This function is always called with g_runtime_mutex held by the caller
+  // so we don't need to lock/unlock here
   if (!g_runtime_initialized) {
-    (void)pthread_key_create(&g_runtime_key, ascii_instr_runtime_tls_destructor);
+    (void)ascii_tls_key_create(&g_runtime_key, ascii_instr_runtime_tls_destructor);
     const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_OUTPUT_DIR");
     if (output_dir_env != NULL) {
       const size_t len = strnlen(output_dir_env, sizeof(g_output_dir) - 1);
@@ -363,7 +403,6 @@ static void ascii_instr_runtime_init_once(void) {
     g_ticks_initialized = true;
     g_runtime_initialized = true;
   }
-  pthread_mutex_unlock(&g_runtime_mutex);
 }
 
 static void ascii_instr_runtime_tls_destructor(void *ptr) {
