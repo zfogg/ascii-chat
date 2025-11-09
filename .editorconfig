@@ -13,7 +13,7 @@ indent_size = 2
 
 # Matches multiple files with brace expansion notation
 # Set default charset
-[*.{c,h,cpp,hpp,cc,cxx}]
+[*.{c,h,cc,cpp,cxx,hpp,hxx,inl,c.in,h.in}]
 indent_style = space
 indent_size = 2
 trim_trailing_whitespace = true
@@ -27,9 +27,23 @@ trim_trailing_whitespace = true
 max_line_length = 120
 
 # Shell scripts
-[*.{sh,bash}]
+[*.{sh,bash,zsh}]
 indent_style = space
 indent_size = 2
+trim_trailing_whitespace = true
+max_line_length = 120
+
+# Python scripts
+[*.py]
+indent_style = space
+indent_size = 4
+trim_trailing_whitespace = true
+max_line_length = 120
+
+# PowerShell scripts
+[*.{ps1,psm1,psd1}]
+indent_style = space
+indent_size = 4
 trim_trailing_whitespace = true
 max_line_length = 120
 
@@ -46,8 +60,20 @@ indent_size = 2
 trim_trailing_whitespace = true
 max_line_length = 120
 
+# Doxygen documentation
+[*.{dox,doxygen,doxy}]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+max_line_length = 120
+
+[Doxyfile*]
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+
 # Configuration files
-[*.{json,yml,yaml}]
+[*.{json,yml,yaml,toml,ini,cfg,conf}]
 indent_style = space
 indent_size = 2
 trim_trailing_whitespace = true
@@ -68,6 +94,13 @@ trim_trailing_whitespace = true
 [{CMakeLists.txt,*.cmake}]
 indent_style = space
 indent_size = 4
+trim_trailing_whitespace = true
+max_line_length = 120
+
+# XML layouts
+[*.{xml,xml.in}]
+indent_style = space
+indent_size = 2
 trim_trailing_whitespace = true
 max_line_length = 120
 
