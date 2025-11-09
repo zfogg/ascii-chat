@@ -70,6 +70,17 @@ else()
     endif()
 endif()
 
+# Ensure build directory takes precedence in rpath for all build types
+# This prevents conflicts with installed libraries in system directories
+if(APPLE OR UNIX)
+    # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
+    # This ensures we use the freshly built library, not any installed version
+    set_target_properties(ascii-chat PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
+        INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
+endif()
+
 # Include directories for executable (needed for version.h and other generated headers)
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
 
