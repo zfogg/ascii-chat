@@ -100,21 +100,31 @@ OUTPUT_DIR_ABS=$(cd "${OUTPUT_DIR}" && pwd)
 
 # Copy each top-level item except build directories and .git
 for item in *; do
+  # Skip empty, '.', '..' entries
+  if [[ -z "$item" ]] || [[ "$item" == "." ]] || [[ "$item" == ".." ]]; then
+    continue
+  fi
+
   # Skip build directories, .git, and the output directory itself
-  if [[ "$item" == "build" ]] || [[ "$item" == ".git" ]] || [ -f "$item"/CMakeCache.txt ]; then
+  if [[ "$item" == "build" ]] || [[ "$item" == "build"* ]] || [[ "$item" == ".git" ]] || [ -f "$item"/CMakeCache.txt ]; then
     continue
   fi
 
   # Skip if this item contains the output directory
   if [[ -d "$item" ]]; then
-    item_abs=$(cd "$item" && pwd || echo "")
-    if [[ "$OUTPUT_DIR_ABS" == "$item_abs"* ]]; then
+    item_abs=$(cd "$item" && pwd 2>/dev/null || echo "")
+    if [[ -n "$item_abs" ]] && [[ "$OUTPUT_DIR_ABS" == "$item_abs"* ]]; then
       continue
     fi
   fi
 
+  # Extra safety check - never copy current/parent directory
+  if [[ "$item" == "." ]] || [[ "$item" == ".." ]] || [[ "$item" == "./"* ]]; then
+    continue
+  fi
+
   echo "  Copying $item..."
-  cp -r "$item" "${OUTPUT_DIR}/" 2>/dev/null || true
+  cp -r "$item" "${OUTPUT_DIR}/" 2>&1 || true
 done
 
 # Remove additional unwanted build directories if they got copied
@@ -227,18 +237,9 @@ fi
 echo "Running instrumentation tool: ${CMD[*]}"
 "${CMD[@]}"
 
-echo "Linking header files into instrumented tree..."
-find lib src \
-  \( -path 'lib/debug' -o -path 'lib/debug/*' \) -prune -o \
-  -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.hxx' -o -name '*.inc' -o -name '*.inl' \) -print0 |
-  while IFS= read -r -d '' header; do
-    dest="${OUTPUT_DIR}/${header}"
-    mkdir -p "$(dirname "${dest}")"
-    if [[ -e "${dest}" || -L "${dest}" ]]; then
-      rm -f "${dest}"
-    fi
-    ln -s "${PWD}/${header}" "${dest}"
-  done
+# Headers are not symlinked - the build will use original headers via include paths
+# This avoids #pragma once issues with symlinks on Windows
+echo "Skipping header symlinking (using original headers via include paths)"
 
 extra_source_links=(
   "lib/platform/system.c"
