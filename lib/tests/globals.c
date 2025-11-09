@@ -6,7 +6,16 @@
 
 #include <stdatomic.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include "options.h"
+
+/**
+ * @brief Test environment initialization (runs before main)
+ * Sets CRITERION_TEST environment variable so libraries can detect test mode at runtime.
+ */
+__attribute__((constructor)) static void init_test_environment(void) {
+  setenv("CRITERION_TEST", "1", 0); // Don't overwrite if already set
+}
 
 /**
  * Global shutdown flag referenced by lib/logging.c and lib/lock_debug.c

@@ -26,9 +26,13 @@
 
 // Check if we're in a test environment
 static int is_test_environment(void) {
+#if defined(CRITERION_TEST) || defined(__CRITERION__) || defined(TESTING)
+  return 1; // Compile-time test environment detection
+#else
   const char *criterion_test = SAFE_GETENV("CRITERION_TEST");
   const char *testing = SAFE_GETENV("TESTING");
   return criterion_test != NULL || testing != NULL;
+#endif
 }
 
 /**
