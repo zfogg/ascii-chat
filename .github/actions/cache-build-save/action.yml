@@ -48,6 +48,28 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Ensure build directory exists
+      if: always() && inputs.build-directory != ''
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.build-directory }}"
+
+    - name: Ensure dependency directories exist
+      if: always() && inputs.cache-deps-enabled == 'true' && inputs.deps-cache-directory != ''
+      shell: bash
+      run: |
+        while IFS= read -r deps_dir; do
+          if [ -n "${deps_dir}" ]; then
+            mkdir -p "${deps_dir}"
+          fi
+        done <<< "${{ inputs.deps-cache-directory }}"
+
+    - name: Ensure ccache directory exists
+      if: always() && inputs.cache-ccache-enabled == 'true' && inputs.ccache-directory != ''
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.ccache-directory }}"
+
     - name: Save build directory cache
       if: always() && inputs.build-cache-key != '' && inputs.build-cache-hit != 'true'
       uses: actions/cache/save@v4
