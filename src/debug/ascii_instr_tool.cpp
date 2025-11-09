@@ -15,6 +15,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <cctype>
@@ -49,11 +50,14 @@ void unregisterOutputPath(const std::string &path) {
   outputRegistry().erase(path);
 }
 
-namespace {
-
+// LLVM command line options MUST be declared at file scope (not in anonymous namespace)
+// to ensure proper static initialization
 namespace fs = std::filesystem;
 
 static llvm::cl::OptionCategory ToolCategory("ascii-chat instrumentation options");
+
+static llvm::cl::extrahelp CommonHelp(clang::tooling::CommonOptionsParser::HelpMessage);
+static llvm::cl::extrahelp MoreHelp("\nInstrumentation tool for ascii-chat debugging\n");
 
 static llvm::cl::opt<std::string>
     OutputDirectoryOption("output-dir", llvm::cl::desc("Directory where instrumented sources will be written"),
@@ -77,10 +81,6 @@ static llvm::cl::opt<bool> LegacyIncludeMacroExpansionsOption(
     llvm::cl::desc("Deprecated alias for --log-macro-expansions (kept for backward compatibility)"),
     llvm::cl::init(false), llvm::cl::cat(ToolCategory), llvm::cl::Hidden);
 
-constexpr unsigned kMacroFlagNone = 0U;
-constexpr unsigned kMacroFlagExpansion = 1U;
-constexpr unsigned kMacroFlagInvocation = 2U;
-
 static llvm::cl::list<std::string>
     FileIncludeFilters("filter-file", llvm::cl::desc("Only instrument files whose path contains the given substring"),
                        llvm::cl::value_desc("substring"), llvm::cl::cat(ToolCategory));
@@ -100,6 +100,12 @@ static llvm::cl::opt<std::string> SignalHandlerAnnotation(
     llvm::cl::desc(
         "Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_SIGNAL_HANDLER)"),
     llvm::cl::value_desc("annotation"), llvm::cl::init("ASCII_INSTR_SIGNAL_HANDLER"), llvm::cl::cat(ToolCategory));
+
+constexpr unsigned kMacroFlagNone = 0U;
+constexpr unsigned kMacroFlagExpansion = 1U;
+constexpr unsigned kMacroFlagInvocation = 2U;
+
+namespace {
 
 class InstrumentationVisitor : public clang::RecursiveASTVisitor<InstrumentationVisitor> {
 public:
@@ -660,6 +666,9 @@ private:
 } // namespace
 
 int main(int argc, const char **argv) {
+  // Initialize LLVM infrastructure (this triggers command-line option registration!)
+  llvm::InitLLVM InitLLVM(argc, argv);
+
   llvm::Expected<clang::tooling::CommonOptionsParser> optionsParserOrError =
       clang::tooling::CommonOptionsParser::create(argc, argv, ToolCategory);
   if (!optionsParserOrError) {
