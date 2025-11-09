@@ -34,7 +34,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
             BUILDING_ASCIICHAT_DLL=1
         )
     else()
-        add_library(${MODULE_NAME} STATIC ${MODULE_SRCS})
+        # Module libraries are intermediate build artifacts
+        # They should not be in the 'all' target by default
+        add_library(${MODULE_NAME} STATIC EXCLUDE_FROM_ALL ${MODULE_SRCS})
         # For static library builds on Windows, define BUILDING_STATIC_LIB
         # so that ASCIICHAT_API expands to nothing (not dllimport)
         if(WIN32)
