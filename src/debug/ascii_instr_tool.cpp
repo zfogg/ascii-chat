@@ -1,4 +1,6 @@
 #include "clang/AST/ASTConsumer.h"
+#include "clang/AST/ASTContext.h"
+#include "clang/AST/ASTTypeTraits.h"
 #include "clang/AST/Attr.h"
 #include "clang/AST/ParentMapContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -490,7 +492,7 @@ private:
   std::unordered_set<std::string> macroInvocationLocations_;
 
   bool isDirectChildOfCompound(const clang::Stmt &statement) const {
-    const auto parents = context_.getParents(statement);
+    clang::DynTypedNodeList parents = context_.getParents(statement);
     for (const auto &parent : parents) {
       if (parent.get<clang::CompoundStmt>()) {
         return true;
