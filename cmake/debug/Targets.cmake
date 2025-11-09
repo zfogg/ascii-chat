@@ -48,11 +48,15 @@ function(ascii_add_debug_targets)
     target_compile_features(ascii-instr-tool PRIVATE cxx_std_17)
 
     # Build ascii-instr-tool without sanitizers and with Release runtime to match LLVM libraries
+    # LLVM is built with -fno-rtti, so we must match that
+    # Use -O0 to prevent optimizer from stripping static initializers for command line options
     target_compile_options(ascii-instr-tool PRIVATE
-        -O2
-        -DNDEBUG
+        -O0
+        -g
         -D_ITERATOR_DEBUG_LEVEL=0
         -fno-sanitize=all
+        -fno-rtti
+        -fexceptions
     )
 
     # Remove debug/sanitizer linker flags
