@@ -20,7 +20,6 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 ![Animated demonstration: color](https://github.com/user-attachments/assets/3bbaaad0-2e62-46e8-9653-bd5201c4b7df)
 
 
-
 ## Table of Contents
 
 - [ascii-chat 📸](#ascii-chat-)
@@ -35,18 +34,10 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
     - [Usage Examples](#usage-examples)
   - [Open Source](#open-source)
     - [Dependencies](#dependencies)
-      - [Core Dependencies](#core-dependencies)
-        - [PortAudio - Audio I/O Library](#portaudio---audio-io-library)
-        - [tomlc17 - TOML File Library](#tomlc17---toml-file-library)
-        - [uthash - Hash Table Library](#uthash---hash-table-library)
-        - [libsodium - Cryptographic Library](#libsodium---cryptographic-library)
-        - [libsodium-bcrypt-pbkdf - libsodium-Compatible Code](#libsodium-bcrypt-pbkdf---libsodium-compatible-code)
-        - [BearSSL - SSL/TLS Library](#bearssl---ssltls-library)
-        - [zstd - Compression Library](#zstd---compression-library)
-        - [Sokol - Utility Library](#sokol---utility-library)
       - [Operating System APIs](#operating-system-apis)
       - [Install Dependencies on Linux or macOS](#install-dependencies-on-linux-or-macos)
       - [Install Dependencies on Windows](#install-dependencies-on-windows)
+      - [Core Dependencies](#core-dependencies)
     - [Build from source](#build-from-source)
       - [What is musl and mimalloc?](#what-is-musl-and-mimalloc)
       - [Development Tools](#development-tools)
@@ -61,25 +52,10 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
       - [Manual Test Execution](#manual-test-execution)
   - [Environment Variables](#environment-variables)
     - [Security Variables](#security-variables)
-      - [`ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`](#ascii_chat_insecure_no_host_identity_check)
-      - [`SSH_AUTH_SOCK`](#ssh_auth_sock)
-      - [`ASCII_CHAT_SSH_PASSWORD`](#ascii_chat_ssh_password)
     - [Terminal Variables (Used for Display Detection)](#terminal-variables-used-for-display-detection)
-      - [`TERM`](#term)
-      - [`COLORTERM`](#colorterm)
-      - [`LANG`, `LC_ALL`, `LC_CTYPE`](#lang-lc_all-lc_ctype)
-      - [`TTY`](#tty)
-      - [`LINES`, `COLUMNS`](#lines-columns)
     - [POSIX-Specific Variables](#posix-specific-variables)
-      - [`USER`](#user)
-      - [`HOME`](#home)
     - [Windows-Specific Variables](#windows-specific-variables)
-      - [`USERNAME`](#username)
-      - [`USERPROFILE`](#userprofile)
-      - [`_NT_SYMBOL_PATH`](#_nt_symbol_path)
     - [Development/Testing Variables](#developmenttesting-variables)
-      - [`CI`](#ci)
-      - [`TESTING`, `CRITERION_TEST`](#testing-criterion_test)
   - [TODO](#todo)
   - [Notes](#notes)
 
@@ -250,41 +226,7 @@ Now let's list out and talk about the dependencies before we install them.
 
 ### Dependencies
 
-ascii-chat relies on several libraries.
-
-#### Core Dependencies
-
-##### [PortAudio](http://www.portaudio.com/) - Audio I/O Library
-- **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
-- **License**: MIT
-
-##### [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
-- **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
-- **License**: MIT
-
-##### [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
-- **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
-- **License**: BSD revised
-
-##### [libsodium](https://libsodium.org/) - Cryptographic Library
-- **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
-- **License**: ISC
-
-##### [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
-- **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This code for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
-- **License**: [none]
-
-##### [BearSSL](https://bearssl.org/) - SSL/TLS Library
-- **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
-- **License**: MIT
-
-##### [zstd](https://facebook.github.io/zstd/) - Compression Library
-- **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
-- **License**: BSD/GPLv2
-
-##### [Sokol](https://github.com/floooh/sokol) - Utility Library
-- **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
-- **License**: zlib/libpng
+ascii-chat is built on operating system code and several libraries.
 
 #### Operating System APIs
 ascii-chat uses native platform APIs for each platform for webcam access:
@@ -293,9 +235,25 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 - **Windows**: Media Foundation native Windows API
 
 #### Install Dependencies on Linux or macOS
-- **Plain old Ubuntu**: `apt-get install cmake ninja clang llvm clang-tidy clang-format ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev`
-- **Glorious Arch Linux**: `pacman -S pkg-config cmake ninja clang llvm musl mimalloc zstd portaudio libsodium criterion`
-- **macOS**: - `brew install cmake ninja llvm zstd portaudio libsodium criterion`
+**Plain old Ubuntu**:
+```bash
+apt-get install make cmake pkg-config ninja clang llvm clang-tidy clang-format ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev
+
+```
+**Glorious Arch Linux**:
+```bash
+pacman -S make cmake pkg-config ninja clang llvm musl mimalloc zstd portaudio libsodium criterion rpm-tools dpkg
+```
+
+**Fedora**:
+```bash
+yum install -y make cmake pkg-config ninja clang llvm musl-devel musl-gcc musl-lib-static mimalloc-devel libzstd-devel libsodium-devel portaudio-devel jack-audio-connection-kit-devel rpm-build
+```
+
+**macOS**:
+```bash
+brew install make cmake ninja llvm zstd portaudio libsodium criterion
+```
 
 #### Install Dependencies on Windows
 1. **Install Scoop** (if not already installed):
@@ -328,6 +286,41 @@ ascii-chat uses native platform APIs for each platform for webcam access:
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
+
+#### Core Dependencies
+
+* [PortAudio](http://www.portaudio.com/) - Audio I/O Library
+  - **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
+  - **License**: MIT
+
+* [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
+  - **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
+  - **License**: MIT
+
+* [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
+  - **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
+  - **License**: BSD revised
+
+* [libsodium](https://libsodium.org/) - Cryptographic Library
+  - **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
+  - **License**: ISC
+
+* [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
+  - **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This code for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
+  - **License**: [none]
+
+* [BearSSL](https://bearssl.org/) - SSL/TLS Library
+  - **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
+  - **License**: MIT
+
+* [zstd](https://facebook.github.io/zstd/) - Compression Library
+  - **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
+  - **License**: BSD/GPLv2
+
+* [Sokol](https://github.com/floooh/sokol) - Utility Library
+  - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
+  - **License**: zlib/libpng
+
 
 ### Build from source
 
@@ -482,97 +475,97 @@ changing command-line arguments.
 
 ### Security Variables
 
-#### `ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`
-- **Purpose**: Disables host identity verification (known_hosts checking)
-- **Values**: `1` (enable), unset or any other value (disable, default)
-- **⚠️ DANGER**: This completely bypasses security checks and makes connections vulnerable to man-in-the-middle attacks
+* `ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK`
+  - **Purpose**: Disables host identity verification (known_hosts checking)
+  - **Values**: `1` (enable), unset or any other value (disable, default)
+  - **⚠️ DANGER**: This completely bypasses security checks and makes connections vulnerable to man-in-the-middle attacks
 
-#### `SSH_AUTH_SOCK`
-- **Purpose**: SSH agent socket for secure key authentication
-- **Values**: Path to SSH agent socket (e.g., `/tmp/ssh-XXXXXX/agent.12345`)
-- **Security**: ✅ **Secure** - uses SSH agent for key management
-- **When to use**: Preferred method for SSH key authentication (automatically detected)
-- **Used for**: SSH key authentication without storing passphrases in environment
+* `SSH_AUTH_SOCK`
+  - **Purpose**: SSH agent socket for secure key authentication
+  - **Values**: Path to SSH agent socket (e.g., `/tmp/ssh-XXXXXX/agent.12345`)
+  - **Security**: ✅ **Secure** - uses SSH agent for key management
+  - **When to use**: Preferred method for SSH key authentication (automatically detected)
+  - **Used for**: SSH key authentication without storing passphrases in environment
 
-#### `ASCII_CHAT_SSH_PASSWORD`
-- **Purpose**: Provides SSH key passphrase for encrypted SSH keys passed to --key
-- **Values**: The passphrase string for your encrypted SSH key
-- **Security**: ⚠️ **Sensitive data** - contains your SSH key passphrase - prefer ssh-agent over this (we support it)
-- **When to use**: When using encrypted SSH keys and you want to avoid interactive passphrase prompts
+* `ASCII_CHAT_SSH_PASSWORD`
+  - **Purpose**: Provides SSH key passphrase for encrypted SSH keys passed to --key
+  - **Values**: The passphrase string for your encrypted SSH key
+  - **Security**: ⚠️ **Sensitive data** - contains your SSH key passphrase - prefer ssh-agent over this (we support it)
+  - **When to use**: When using encrypted SSH keys and you want to avoid interactive passphrase prompts
 
 ### Terminal Variables (Used for Display Detection)
 
-#### `TERM`
-- **Purpose**: Terminal type detection for display capabilities
-- **Usage**: Automatically set by terminal emulators
-- **Used for**: Determining color support, character encoding, and display features
+* `TERM`
+  - **Purpose**: Terminal type detection for display capabilities
+  - **Usage**: Automatically set by terminal emulators
+  - **Used for**: Determining color support, character encoding, and display features
 
-#### `COLORTERM`
-- **Purpose**: Additional terminal color capability detection
-- **Usage**: Automatically set by modern terminal emulators
-- **Used for**: Enhanced color support detection beyond `TERM`
+* `COLORTERM`
+  - **Purpose**: Additional terminal color capability detection
+  - **Usage**: Automatically set by modern terminal emulators
+  - **Used for**: Enhanced color support detection beyond `TERM`
 
-#### `LANG`, `LC_ALL`, `LC_CTYPE`
-- **Purpose**: Locale and character encoding detection
-- **Usage**: Automatically set by system locale
-- **Used for**: UTF-8 support detection and character encoding
+* `LANG`, `LC_ALL`, `LC_CTYPE`
+  - **Purpose**: Locale and character encoding detection
+  - **Usage**: Automatically set by system locale
+  - **Used for**: UTF-8 support detection and character encoding
 
-#### `TTY`
-- **Purpose**: Terminal device detection
-- **Usage**: Automatically set by terminal sessions
-- **Used for**: Determining if running in a real terminal vs. script
+* `TTY`
+  - **Purpose**: Terminal device detection
+  - **Usage**: Automatically set by terminal sessions
+  - **Used for**: Determining if running in a real terminal vs. script
 
-#### `LINES`, `COLUMNS`
-- **Purpose**: Terminal size detection for display dimensions
-- **Usage**: Automatically set by terminal emulators
-- **Used for**: Auto-detecting optimal video dimensions
+* `LINES`, `COLUMNS`
+  - **Purpose**: Terminal size detection for display dimensions
+  - **Usage**: Automatically set by terminal emulators
+  - **Used for**: Auto-detecting optimal video dimensions
 
 ### POSIX-Specific Variables
 
-#### `USER`
-- **Purpose**: Username detection for system identification on POSIX systems
-- **Usage**: Automatically set by POSIX systems
-- **Used for**: System user identification and logging
+* `USER`
+  - **Purpose**: Username detection for system identification on POSIX systems
+  - **Usage**: Automatically set by POSIX systems
+  - **Used for**: System user identification and logging
 
-#### `HOME`
-- **Purpose**: Determines user home directory for configuration files on POSIX systems
-- **Usage**: Automatically detected by the system
-- **Used for**:
-  - SSH key auto-detection (`~/.ssh/`)
-  - Configuration file paths (`~/.ascii-chat/`)
-  - Path expansion with `~` prefix
+* `HOME`
+  - **Purpose**: Determines user home directory for configuration files on POSIX systems
+  - **Usage**: Automatically detected by the system
+  - **Used for**:
+    - SSH key auto-detection (`~/.ssh/`)
+    - Configuration file paths (`~/.ascii-chat/`)
+    - Path expansion with `~` prefix
 
 ### Windows-Specific Variables
 
-#### `USERNAME`
-- **Purpose**: Username detection for system identification on Windows
-- **Usage**: Automatically set by Windows system
-- **Used for**: System user identification and logging
+* `USERNAME`
+  - **Purpose**: Username detection for system identification on Windows
+  - **Usage**: Automatically set by Windows system
+  - **Used for**: System user identification and logging
 
-#### `USERPROFILE`
-- **Purpose**: Determines user home directory for configuration files on Windows
-- **Usage**: Automatically detected by the Windows system
-- **Used for**:
-  - SSH key auto-detection (`~/.ssh/`)
-  - Configuration file paths (`~/.ascii-chat/`)
-  - Path expansion with `~` prefix
+* `USERPROFILE`
+  - **Purpose**: Determines user home directory for configuration files on Windows
+  - **Usage**: Automatically detected by the Windows system
+  - **Used for**:
+    - SSH key auto-detection (`~/.ssh/`)
+    - Configuration file paths (`~/.ascii-chat/`)
+    - Path expansion with `~` prefix
 
-#### `_NT_SYMBOL_PATH`
-- **Purpose**: Windows debug symbol path for crash analysis
-- **Usage**: Automatically set by Windows debug tools
-- **Used for**: Enhanced crash reporting and debugging
+* `_NT_SYMBOL_PATH`
+  - **Purpose**: Windows debug symbol path for crash analysis
+  - **Usage**: Automatically set by Windows debug tools
+  - **Used for**: Enhanced crash reporting and debugging
 
 ### Development/Testing Variables
 
-#### `CI`
-- **Purpose**: Continuous Integration environment detection
-- **Values**: Any non-empty value indicates CI environment
-- **Used for**: Adjusting test behavior and terminal detection in automated environments
+* `CI`
+  - **Purpose**: Continuous Integration environment detection
+  - **Values**: Any non-empty value indicates CI environment
+  - **Used for**: Adjusting test behavior and terminal detection in automated environments
 
-#### `TESTING`, `CRITERION_TEST`
-- **Purpose**: Test environment detection
-- **Values**: Any non-empty value indicates test environment
-- **Used for**: Reducing test data sizes and adjusting performance expectations
+* `TESTING`, `CRITERION_TEST`
+  - **Purpose**: Test environment detection
+  - **Values**: Any non-empty value indicates test environment
+  - **Used for**: Reducing test data sizes and adjusting performance expectations
 
 
 ## TODO
