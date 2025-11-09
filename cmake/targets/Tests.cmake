@@ -239,16 +239,12 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         # Handle circular dependencies between libraries
         # This is needed because core→network→core and core→crypto have circular refs
         if(NOT WIN32 AND NOT APPLE)
-            # Linux: Use --start-group/--end-group
-            target_link_options(${test_exe_name} PRIVATE
-                -Wl,--start-group
-            )
+            # Linux: Use --start-group/--end-group to resolve circular dependencies
             target_link_libraries(${test_exe_name}
+                -Wl,--start-group
                 ascii-chat-core
                 ascii-chat-network
                 ascii-chat-crypto
-            )
-            target_link_options(${test_exe_name} PRIVATE
                 -Wl,--end-group
             )
         elseif(APPLE)

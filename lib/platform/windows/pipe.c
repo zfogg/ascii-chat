@@ -15,7 +15,7 @@
 #include "common.h"
 #include "platform/pipe.h"
 
-pipe_t pipe_connect(const char *path) {
+pipe_t platform_pipe_connect(const char *path) {
   if (!path) {
     return INVALID_PIPE_VALUE;
   }
@@ -32,7 +32,7 @@ pipe_t pipe_connect(const char *path) {
   return pipe;
 }
 
-int pipe_close(pipe_t pipe) {
+int platform_pipe_close(pipe_t pipe) {
   if (pipe == INVALID_PIPE_VALUE) {
     return 0;
   }
@@ -45,7 +45,7 @@ int pipe_close(pipe_t pipe) {
   }
 }
 
-ssize_t pipe_read(pipe_t pipe, void *buf, size_t len) {
+ssize_t platform_pipe_read(pipe_t pipe, void *buf, size_t len) {
   if (pipe == INVALID_PIPE_VALUE || !buf || len == 0) {
     return -1;
   }
@@ -67,7 +67,7 @@ ssize_t pipe_read(pipe_t pipe, void *buf, size_t len) {
   return (ssize_t)bytes_read;
 }
 
-ssize_t pipe_write(pipe_t pipe, const void *buf, size_t len) {
+ssize_t platform_pipe_write(pipe_t pipe, const void *buf, size_t len) {
   if (pipe == INVALID_PIPE_VALUE || !buf || len == 0) {
     return -1;
   }
@@ -86,7 +86,7 @@ ssize_t pipe_write(pipe_t pipe, const void *buf, size_t len) {
   return (ssize_t)bytes_written;
 }
 
-bool pipe_is_valid(pipe_t pipe) {
+bool platform_pipe_is_valid(pipe_t pipe) {
   return pipe != INVALID_PIPE_VALUE;
 }
 

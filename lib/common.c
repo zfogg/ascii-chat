@@ -152,7 +152,7 @@ static struct {
   atomic_size_t calloc_calls;
   atomic_size_t realloc_calls;
   mutex_t mutex; /* Only for linked list operations */
-  bool mutex_initialized;
+  atomic_int mutex_state; /* 0 = uninitialized, 1 = initializing, 2 = initialized */
   bool quiet_mode; /* Control stderr output for memory report */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
@@ -163,8 +163,7 @@ static struct {
            .free_calls = 0,
            .calloc_calls = 0,
            .realloc_calls = 0,
-           .mutex_initialized = false,
-           .mutex = PTHREAD_MUTEX_INITIALIZER,
+           .mutex_state = 0,
            .quiet_mode = false};
 
 /* Use real libc allocators inside debug allocator to avoid recursion */
@@ -174,9 +173,23 @@ static struct {
 #undef realloc
 
 static void ensure_mutex_initialized(void) {
-  if (!g_mem.mutex_initialized) {
-    mutex_init(&g_mem.mutex);
-    g_mem.mutex_initialized = true;
+  int state = atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire);
+  if (state == 2) {
+    return;
+  }
+
+  int expected = 0;
+  if (state == 0 && atomic_compare_exchange_strong_explicit(&g_mem.mutex_state, &expected, 1, memory_order_acq_rel,
+                                                            memory_order_acquire)) {
+    if (mutex_init(&g_mem.mutex) == 0) {
+      atomic_store_explicit(&g_mem.mutex_state, 2, memory_order_release);
+      return;
+    }
+    atomic_store_explicit(&g_mem.mutex_state, 0, memory_order_release);
+  }
+
+  while (atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire) != 2) {
+    platform_sleep_ms(1);
   }
 }
 
@@ -295,6 +308,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
   size_t freed_size = 0;
   bool found = false;
+  bool was_aligned = false;
 
   /* Search for allocation in linked list */
   ensure_mutex_initialized();
@@ -313,6 +327,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
       freed_size = curr->size;
       found = true;
+      was_aligned = curr->is_aligned;
       free(curr); // Use raw free to avoid recursion
       break;
     }
@@ -329,20 +344,16 @@ void debug_free(void *ptr, const char *file, int line) {
 
   mutex_unlock(&g_mem.mutex);
 
-  /* Update freed stats - use exact size from tracking or platform function */
+  /* Update freed stats - use exact size from tracking or best-effort platform function */
   if (found) {
     /* We know the exact size from tracking */
     atomic_fetch_add(&g_mem.total_freed, freed_size);
     atomic_fetch_sub(&g_mem.current_usage, freed_size);
   } else {
-    /* No tracking - use platform functions to get real allocation size */
     size_t real_size = 0;
 #ifdef _WIN32
-    /* Windows: Use _msize to get actual allocation size (only works for regular malloc) */
-    /* For aligned allocations, we can't determine size if not tracked */
-    if (!is_aligned) {
-      real_size = _msize(ptr);
-    }
+    /* Windows: Without tracking information we cannot safely determine the allocation size */
+    real_size = 0;
 #elif defined(__APPLE__)
     /* macOS: Use malloc_size */
     real_size = malloc_size(ptr);
@@ -359,7 +370,7 @@ void debug_free(void *ptr, const char *file, int line) {
 
   // Use the correct free function based on whether this was an aligned allocation
 #ifdef _WIN32
-  if (is_aligned) {
+  if (was_aligned) {
     _aligned_free(ptr);
   } else {
     free(ptr);

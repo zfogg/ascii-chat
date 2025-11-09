@@ -60,7 +60,7 @@ typedef int pipe_t;
  *
  * @ingroup platform
  */
-pipe_t pipe_connect(const char *path);
+pipe_t platform_pipe_connect(const char *path);
 
 /**
  * @brief Close a pipe connection
@@ -73,7 +73,7 @@ pipe_t pipe_connect(const char *path);
  *
  * @ingroup platform
  */
-int pipe_close(pipe_t pipe);
+int platform_pipe_close(pipe_t pipe);
 
 /**
  * @brief Read data from a pipe
@@ -91,7 +91,7 @@ int pipe_close(pipe_t pipe);
  *
  * @ingroup platform
  */
-ssize_t pipe_read(pipe_t pipe, void *buf, size_t len);
+ssize_t platform_pipe_read(pipe_t pipe, void *buf, size_t len);
 
 /**
  * @brief Write data to a pipe
@@ -109,7 +109,7 @@ ssize_t pipe_read(pipe_t pipe, void *buf, size_t len);
  *
  * @ingroup platform
  */
-ssize_t pipe_write(pipe_t pipe, const void *buf, size_t len);
+ssize_t platform_pipe_write(pipe_t pipe, const void *buf, size_t len);
 
 /**
  * @brief Check if a pipe handle is valid
@@ -118,4 +118,4 @@ ssize_t pipe_write(pipe_t pipe, const void *buf, size_t len);
  *
  * @ingroup platform
  */
-bool pipe_is_valid(pipe_t pipe);
+bool platform_pipe_is_valid(pipe_t pipe);
