@@ -105,10 +105,10 @@ for item in *; do
     continue
   fi
 
-  # Skip if this item is the output directory
+  # Skip if this item contains the output directory
   if [[ -d "$item" ]]; then
     item_abs=$(cd "$item" && pwd || echo "")
-    if [[ "$item_abs" == "$OUTPUT_DIR_ABS"* ]]; then
+    if [[ "$OUTPUT_DIR_ABS" == "$item_abs"* ]]; then
       continue
     fi
   fi
