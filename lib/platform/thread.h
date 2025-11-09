@@ -30,12 +30,16 @@
 typedef HANDLE asciithread_t;
 /** @brief Thread ID type (Windows: DWORD) */
 typedef DWORD thread_id_t;
+/** @brief Thread-local storage key type (Windows: DWORD) */
+typedef DWORD tls_key_t;
 #else
 #include <pthread.h>
 /** @brief Thread handle type (POSIX: pthread_t) */
 typedef pthread_t asciithread_t;
 /** @brief Thread ID type (POSIX: pthread_t) */
 typedef pthread_t thread_id_t;
+/** @brief Thread-local storage key type (POSIX: pthread_key_t) */
+typedef pthread_key_t tls_key_t;
 #endif
 
 // ============================================================================
@@ -143,3 +147,57 @@ bool ascii_thread_is_initialized(asciithread_t *thread);
  * @ingroup platform
  */
 void ascii_thread_init(asciithread_t *thread);
+
+// ============================================================================
+// Thread-Local Storage (TLS) Functions
+// ============================================================================
+
+/**
+ * @brief Create a thread-local storage key
+ * @param key Pointer to TLS key (output parameter)
+ * @param destructor Optional destructor function called when thread exits (may be NULL)
+ * @return 0 on success, non-zero on error
+ *
+ * Creates a new TLS key that can be used to store thread-specific data.
+ * If a destructor is provided, it will be called with the stored value when
+ * a thread terminates (if the value is non-NULL).
+ *
+ * @ingroup platform
+ */
+int ascii_tls_key_create(tls_key_t *key, void (*destructor)(void *));
+
+/**
+ * @brief Delete a thread-local storage key
+ * @param key TLS key to delete
+ * @return 0 on success, non-zero on error
+ *
+ * Deletes the specified TLS key. Does NOT call destructors for existing
+ * thread-local values. The caller is responsible for cleanup before deletion.
+ *
+ * @ingroup platform
+ */
+int ascii_tls_key_delete(tls_key_t key);
+
+/**
+ * @brief Get thread-local value for a key
+ * @param key TLS key
+ * @return Thread-local value, or NULL if not set
+ *
+ * Returns the thread-local value associated with the specified key
+ * for the calling thread.
+ *
+ * @ingroup platform
+ */
+void *ascii_tls_get(tls_key_t key);
+
+/**
+ * @brief Set thread-local value for a key
+ * @param key TLS key
+ * @param value Value to store
+ * @return 0 on success, non-zero on error
+ *
+ * Associates the specified value with the key for the calling thread.
+ *
+ * @ingroup platform
+ */
+int ascii_tls_set(tls_key_t key, void *value);
