@@ -2,7 +2,7 @@
 set -euo pipefail
 
 show_usage() {
-    cat <<'EOF'
+  cat <<'EOF'
 Usage: run_instrumentation.sh -b <build-dir> -o <output-dir> [-- <extra clang-tool args...>]
 
 Options:
@@ -23,135 +23,190 @@ BUILD_DIR=""
 OUTPUT_DIR=""
 
 while getopts ":b:o:h" opt; do
-    case "${opt}" in
-        b)
-            BUILD_DIR="${OPTARG}"
-            ;;
-        o)
-            OUTPUT_DIR="${OPTARG}"
-            ;;
-        h)
-            show_usage
-            exit 0
-            ;;
-        :)
-            echo "Missing argument for -${OPTARG}" >&2
-            show_usage >&2
-            exit 1
-            ;;
-        ?)
-            echo "Unknown option: -${OPTARG}" >&2
-            show_usage >&2
-            exit 1
-            ;;
-    esac
+  case "${opt}" in
+  b)
+    BUILD_DIR="${OPTARG}"
+    ;;
+  o)
+    OUTPUT_DIR="${OPTARG}"
+    ;;
+  h)
+    show_usage
+    exit 0
+    ;;
+  :)
+    echo "Missing argument for -${OPTARG}" >&2
+    show_usage >&2
+    exit 1
+    ;;
+  ?)
+    echo "Unknown option: -${OPTARG}" >&2
+    show_usage >&2
+    exit 1
+    ;;
+  esac
 done
 shift $((OPTIND - 1))
 
 if [[ -z "${OUTPUT_DIR}" ]]; then
-    echo "Error: output directory (-o) is required" >&2
-    show_usage >&2
-    exit 1
+  echo "Error: output directory (-o) is required" >&2
+  show_usage >&2
+  exit 1
 fi
 
 if [[ -z "${BUILD_DIR}" ]]; then
-    BUILD_DIR="${PWD}/build"
+  BUILD_DIR="${PWD}/build"
 fi
 
 TOOL_PATH="${ASCII_INSTR_TOOL:-}"
 if [[ -z "${TOOL_PATH}" ]]; then
-    TOOL_PATH="${BUILD_DIR}/bin/ascii-instr-tool"
+  TOOL_PATH="${BUILD_DIR}/bin/ascii-instr-tool"
 fi
 
 if [[ ! -x "${TOOL_PATH}" ]]; then
-    echo "Error: ascii-instr-tool not found or not executable at '${TOOL_PATH}'" >&2
-    exit 1
+  echo "Error: ascii-instr-tool not found or not executable at '${TOOL_PATH}'" >&2
+  exit 1
 fi
 
 if [[ ! -d "${BUILD_DIR}" ]]; then
-    echo "Error: build directory '${BUILD_DIR}' does not exist" >&2
-    exit 1
+  echo "Error: build directory '${BUILD_DIR}' does not exist" >&2
+  exit 1
 fi
 
 COMPILE_COMMANDS="${BUILD_DIR}/compile_commands.json"
 if [[ ! -f "${COMPILE_COMMANDS}" ]]; then
-    echo "Error: compile_commands.json not found in '${BUILD_DIR}'. Run CMake with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON" >&2
-    exit 1
+  echo "Error: compile_commands.json not found in '${BUILD_DIR}'. Run CMake with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON" >&2
+  exit 1
 fi
 
 if [[ -e "${OUTPUT_DIR}" ]]; then
-    if [[ ! -d "${OUTPUT_DIR}" ]]; then
-        echo "Error: output path '${OUTPUT_DIR}' exists and is not a directory" >&2
-        exit 1
-    fi
-    if find "${OUTPUT_DIR}" -mindepth 1 -print -quit | grep -q .; then
-        echo "Error: output directory '${OUTPUT_DIR}' must be empty" >&2
-        exit 1
-    fi
+  if [[ ! -d "${OUTPUT_DIR}" ]]; then
+    echo "Error: output path '${OUTPUT_DIR}' exists and is not a directory" >&2
+    exit 1
+  fi
+  if find "${OUTPUT_DIR}" -mindepth 1 -print -quit | grep -q .; then
+    echo "Error: output directory '${OUTPUT_DIR}' must be empty" >&2
+    exit 1
+  fi
 else
-    mkdir -p "${OUTPUT_DIR}"
+  mkdir -p "${OUTPUT_DIR}"
 fi
 
-rsync -a \
-    --exclude '.git/' \
-    --exclude 'build/' \
-    --exclude 'build_instr/' \
-    --exclude 'build_instrumented/' \
-    --exclude 'build_docker/' \
-    --exclude 'deps/bearssl/build/' \
-    --exclude 'deps/mimalloc/build/' \
-    --exclude '*.c' \
-    --exclude '*.m' \
-    --exclude '*.mm' \
-    --exclude 'cmake/debug/run_instrumentation.sh' \
-    ./ "${OUTPUT_DIR}/"
+# Copy directory structure and non-source files to output directory
+echo "Copying source tree to ${OUTPUT_DIR}..."
 
+# Get absolute path of output directory to avoid copying into itself
+OUTPUT_DIR_ABS=$(cd "${OUTPUT_DIR}" && pwd)
+
+# Copy each top-level item except build directories and .git
+for item in *; do
+  # Skip build directories, .git, and the output directory itself
+  if [[ "$item" == "build" ]] || [[ "$item" == ".git" ]] || [ -f "$item"/CMakeCache.txt ]; then
+    continue
+  fi
+
+  # Skip if this item is the output directory
+  if [[ -d "$item" ]]; then
+    item_abs=$(cd "$item" && pwd || echo "")
+    if [[ "$item_abs" == "$OUTPUT_DIR_ABS"* ]]; then
+      continue
+    fi
+  fi
+
+  echo "  Copying $item..."
+  cp -r "$item" "${OUTPUT_DIR}/" 2>/dev/null || true
+done
+
+# Remove additional unwanted build directories if they got copied
+rm -rf "${OUTPUT_DIR}/deps/bearssl/build" 2>/dev/null || true
+rm -rf "${OUTPUT_DIR}/deps/mimalloc/build" 2>/dev/null || true
+
+# Remove source files (they'll be replaced by instrumented versions)
+find "${OUTPUT_DIR}" -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -delete 2>/dev/null || true
+
+# Remove this script itself
+rm -f "${OUTPUT_DIR}/cmake/debug/run_instrumentation.sh" 2>/dev/null || true
+
+echo "Source tree copied (excluding source files and build artifacts)"
 
 declare -a SOURCE_PATHS=()
 if [[ $# -gt 0 ]]; then
-    while [[ $# -gt 0 ]]; do
-        if [[ "$1" == "--" ]]; then
-            shift
-            break
-        fi
-        SOURCE_PATHS+=("$1")
-        shift
-    done
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == "--" ]]; then
+      shift
+      break
+    fi
+    SOURCE_PATHS+=("$1")
+    shift
+  done
 fi
 
 if [[ ${#SOURCE_PATHS[@]} -eq 0 ]]; then
-    while IFS= read -r -d '' file; do
-        SOURCE_PATHS+=("${file}")
-    done < <(find lib src \
-        \( -path 'lib/debug' -o -path 'lib/debug/*' \) -prune -o \
-        -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -print0)
+  # Find all CMake build directories (directories containing CMakeCache.txt)
+  BUILD_DIRS=()
+  while IFS= read -r -d '' cache_file; do
+    build_dir=$(dirname "${cache_file}")
+    BUILD_DIRS+=("${build_dir}")
+  done < <(find . -type f -name 'CMakeCache.txt' -print0 2>/dev/null)
+
+  # Build exclusion patterns for find command
+  EXCLUDE_ARGS=()
+  # Exclude debug and test directories
+  EXCLUDE_ARGS+=(\( -path 'lib/debug' -o -path 'lib/debug/*' -o)
+  EXCLUDE_ARGS+=(-path 'lib/tests' -o -path 'lib/tests/*' -o)
+  EXCLUDE_ARGS+=(-path 'src/debug' -o -path 'src/debug/*')
+
+  # Exclude platform-specific directories that don't match current platform
+  # Detect OS
+  if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]] || uname -s | grep -qi "mingw\|msys"; then
+    # On Windows: exclude POSIX-specific directories
+    EXCLUDE_ARGS+=(-o -path 'lib/platform/posix' -o -path 'lib/platform/posix/*')
+    EXCLUDE_ARGS+=(-o -path 'lib/os/macos' -o -path 'lib/os/macos/*')
+    EXCLUDE_ARGS+=(-o -path 'lib/os/linux' -o -path 'lib/os/linux/*')
+  else
+    # On POSIX: exclude Windows-specific directories
+    EXCLUDE_ARGS+=(-o -path 'lib/platform/windows' -o -path 'lib/platform/windows/*')
+    EXCLUDE_ARGS+=(-o -path 'lib/os/windows' -o -path 'lib/os/windows/*')
+  fi
+
+  # Exclude all CMake build directories
+  for build_dir in "${BUILD_DIRS[@]}"; do
+    EXCLUDE_ARGS+=(-o -path "${build_dir}" -o -path "${build_dir}/*")
+  done
+  EXCLUDE_ARGS+=(\) -prune -o)
+
+  # Find all source files, excluding the directories above
+  while IFS= read -r -d '' file; do
+    SOURCE_PATHS+=("${file}")
+  done < <(find lib src "${EXCLUDE_ARGS[@]}" \
+    -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -print0 2>/dev/null)
 fi
 
 declare -A SEEN_SOURCE_PATHS=()
 deduped_paths=()
 for path in "${SOURCE_PATHS[@]}"; do
-    if [[ -n "${SEEN_SOURCE_PATHS[$path]:-}" ]]; then
-        continue
-    fi
-    SEEN_SOURCE_PATHS["$path"]=1
-    deduped_paths+=("$path")
+  if [[ -n "${SEEN_SOURCE_PATHS[$path]:-}" ]]; then
+    continue
+  fi
+  SEEN_SOURCE_PATHS["$path"]=1
+  deduped_paths+=("$path")
 done
 SOURCE_PATHS=("${deduped_paths[@]}")
 
 filtered_paths=()
 for path in "${SOURCE_PATHS[@]}"; do
-    case "$path" in
-        lib/platform/system.c)
-            continue
-            ;;
-        lib/platform/windows/*|lib/platform/windows\\*)
-            continue
-            ;;
-        lib/os/windows/*|lib/os/windows\\*)
-            continue
-            ;;
-    esac
-    filtered_paths+=("$path")
+  case "$path" in
+  lib/platform/system.c)
+    continue
+    ;;
+  lib/platform/windows/* | lib/platform/windows\\*)
+    continue
+    ;;
+  lib/os/windows/* | lib/os/windows\\*)
+    continue
+    ;;
+  esac
+  filtered_paths+=("$path")
 done
 SOURCE_PATHS=("${filtered_paths[@]}")
 
@@ -159,7 +214,7 @@ CMD=("${TOOL_PATH}" -p "${BUILD_DIR}" --output-dir "${OUTPUT_DIR}" --input-root 
 CMD+=("${SOURCE_PATHS[@]}")
 
 if [[ $# -gt 0 ]]; then
-    CMD+=("$@")
+  CMD+=("$@")
 fi
 
 echo "Running instrumentation tool: ${CMD[*]}"
@@ -167,25 +222,24 @@ echo "Running instrumentation tool: ${CMD[*]}"
 
 echo "Linking header files into instrumented tree..."
 find lib src \
-    \( -path 'lib/debug' -o -path 'lib/debug/*' \) -prune -o \
-    -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.hxx' -o -name '*.inc' -o -name '*.inl' \) -print0 |
-    while IFS= read -r -d '' header; do
-        dest="${OUTPUT_DIR}/${header}"
-        mkdir -p "$(dirname "${dest}")"
-        if [[ -e "${dest}" || -L "${dest}" ]]; then
-            rm -f "${dest}"
-        fi
-        ln -s "${PWD}/${header}" "${dest}"
-    done
+  \( -path 'lib/debug' -o -path 'lib/debug/*' \) -prune -o \
+  -type f \( -name '*.h' -o -name '*.hh' -o -name '*.hpp' -o -name '*.hxx' -o -name '*.inc' -o -name '*.inl' \) -print0 |
+  while IFS= read -r -d '' header; do
+    dest="${OUTPUT_DIR}/${header}"
+    mkdir -p "$(dirname "${dest}")"
+    if [[ -e "${dest}" || -L "${dest}" ]]; then
+      rm -f "${dest}"
+    fi
+    ln -s "${PWD}/${header}" "${dest}"
+  done
 
 extra_source_links=(
-    "lib/platform/system.c"
+  "lib/platform/system.c"
 )
 
 for source_path in "${extra_source_links[@]}"; do
-    dest="${OUTPUT_DIR}/${source_path}"
-    mkdir -p "$(dirname "${dest}")"
-    rm -f "${dest}"
-    ln -s "${PWD}/${source_path}" "${dest}"
+  dest="${OUTPUT_DIR}/${source_path}"
+  mkdir -p "$(dirname "${dest}")"
+  rm -f "${dest}"
+  ln -s "${PWD}/${source_path}" "${dest}"
 done
-
