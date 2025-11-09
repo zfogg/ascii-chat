@@ -57,7 +57,7 @@ bool ssh_agent_is_available(void) {
   if (!auth_sock || strlen(auth_sock) == 0) {
     pipe_t pipe = ssh_agent_open_pipe();
     if (pipe != INVALID_PIPE_VALUE) {
-    platform_pipe_close(pipe); // Close immediately after checking
+      platform_pipe_close(pipe); // Close immediately after checking
       log_debug("ssh-agent is available via Windows named pipe (SSH_AUTH_SOCK not set)");
       return true;
     } else {

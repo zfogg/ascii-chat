@@ -127,6 +127,9 @@ function(ascii_add_debug_targets)
         target_link_libraries(ascii-instr-tool PRIVATE clang-cpp)
     endif()
 
+    # Link LLVMSupport EXPLICITLY and FIRST to ensure command-line static initialization works
+    target_link_libraries(ascii-instr-tool PRIVATE LLVMSupport)
+
     target_link_libraries(ascii-instr-tool PRIVATE
         clangTooling
         clangFrontend
