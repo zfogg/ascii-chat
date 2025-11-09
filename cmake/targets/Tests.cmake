@@ -199,6 +199,9 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         # Add Criterion include directories
         target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
 
+        # Define CRITERION_TEST for test environment detection
+        target_compile_definitions(${test_exe_name} PRIVATE CRITERION_TEST=1)
+
         # For musl builds, disable subprocess isolation (no forking)
         if(USE_MUSL)
             target_compile_definitions(${test_exe_name} PRIVATE CRITERION_NO_EARLY_EXIT=1)
