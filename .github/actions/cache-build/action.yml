@@ -1,5 +1,5 @@
 name: 'Cache CMake Build'
-description: 'Cache the configured CMake build directory and ccache outputs across workflow runs.'
+description: 'Restore the configured CMake build and dependency caches, and expose cache metadata for later save steps.'
 
 inputs:
   build-directory:
@@ -40,6 +40,41 @@ inputs:
     description: 'Version string used to invalidate both caches when inputs change.'
     required: false
     default: v1
+
+outputs:
+  build-cache-key:
+    description: 'Fully qualified cache key for the build directory.'
+    value: ${{ format('{0}-build-{1}-{2}-{3}-{4}', inputs.cache-version, runner.os, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
+  build-cache-hit:
+    description: 'Whether the build directory cache was restored.'
+    value: ${{ steps.cache-build-dir.outputs.cache-hit }}
+  build-directory-path:
+    description: 'Path to the build directory.'
+    value: ${{ inputs.build-directory }}
+  deps-cache-key:
+    description: 'Fully qualified cache key for dependency directories.'
+    value: ${{ format('{0}-deps-{1}-{2}-{3}-{4}', inputs.cache-version, runner.os, github.workflow, github.job, steps.cache-config.outputs.deps_suffix) }}
+  deps-cache-hit:
+    description: 'Whether the dependency cache was restored.'
+    value: ${{ steps.cache-deps.outputs.cache-hit }}
+  deps-cache-path:
+    description: 'Dependency cache directory list, if caching is enabled.'
+    value: ${{ inputs.deps-cache-directory }}
+  cache-deps-enabled:
+    description: 'Whether dependency caching is enabled.'
+    value: ${{ inputs.cache-deps }}
+  ccache-cache-key:
+    description: 'Fully qualified cache key for ccache.'
+    value: ${{ format('{0}-ccache-{1}-{2}', inputs.cache-version, runner.os, steps.cache-config.outputs.ccache_suffix) }}
+  ccache-cache-hit:
+    description: 'Whether the ccache directory was restored.'
+    value: ${{ steps.cache-ccache.outputs.cache-hit }}
+  cache-ccache-enabled:
+    description: 'Whether ccache caching is enabled.'
+    value: ${{ inputs.cache-ccache }}
+  ccache-directory-path:
+    description: 'Path to the ccache directory.'
+    value: ${{ inputs.ccache-directory }}
 
 runs:
   using: composite
@@ -120,25 +155,3 @@ runs:
         key: ${{ format('{0}-ccache-{1}-{2}', inputs.cache-version, runner.os, steps.cache-config.outputs.ccache_suffix) }}
         restore-keys: |
           ${{ format('{0}-ccache-{1}-', inputs.cache-version, runner.os) }}
-
-    - name: Save build directory cache
-      if: always() && steps.cache-build-dir.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ inputs.build-directory }}
-        key: ${{ format('{0}-build-{1}-{2}-{3}-{4}', inputs.cache-version, runner.os, github.workflow, github.job, steps.cache-config.outputs.build_suffix) }}
-
-    - name: Save dependency cache
-      if: always() && inputs.cache-deps == 'true' && inputs.deps-cache-directory != '' && steps.cache-deps.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ inputs.deps-cache-directory }}
-        key: ${{ format('{0}-deps-{1}-{2}-{3}-{4}', inputs.cache-version, runner.os, github.workflow, github.job, steps.cache-config.outputs.deps_suffix) }}
-
-    - name: Save ccache directory
-      if: always() && inputs.cache-ccache == 'true' && steps.cache-ccache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ inputs.ccache-directory }}
-        key: ${{ format('{0}-ccache-{1}-{2}', inputs.cache-version, runner.os, steps.cache-config.outputs.ccache_suffix) }}
-

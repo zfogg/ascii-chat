@@ -40,6 +40,7 @@ jobs:
         extra-packages: valgrind
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Build with debug symbols
@@ -72,6 +73,22 @@ jobs:
           echo "✅ No memory leaks detected"
         fi
 
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
     - name: Upload memory reports
       uses: actions/upload-artifact@v4
       with:
@@ -96,11 +113,13 @@ jobs:
         os: ubuntu
 
     - name: Cache debug build, dependencies, and ccache
+      id: cache-build-debug
       uses: ./.github/actions/cache-build
       with:
         build-directory: ${{ github.workspace }}/build_debug
         build-cache-key: performance-debug
     - name: Cache release build directory
+      id: cache-build-release
       uses: ./.github/actions/cache-build
       with:
         build-directory: ${{ github.workspace }}/build_release
@@ -139,6 +158,38 @@ jobs:
         # Test help command performance (safe to run without dependencies)
         echo "Help command startup time:"
         time ./build_release/bin/ascii-chat --help
+
+    - name: Save debug build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build-debug.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build-debug.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build-debug.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build-debug.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build-debug.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build-debug.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build-debug.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build-debug.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build-debug.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build-debug.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build-debug.outputs['ccache-cache-hit'] }}
+
+    - name: Save release build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build-release.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build-release.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build-release.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build-release.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build-release.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build-release.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build-release.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build-release.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build-release.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build-release.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build-release.outputs['ccache-cache-hit'] }}
 
   code-metrics:
     name: Code Quality Metrics
