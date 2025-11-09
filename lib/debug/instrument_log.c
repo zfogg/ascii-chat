@@ -137,6 +137,8 @@ static bool ascii_instr_match_glob(const char *pattern, const char *value);
 static const char *ascii_instr_basename(const char *path);
 static bool ascii_instr_path_contains_module(const char *file_path, const char *module_name);
 
+static _Thread_local bool g_logging_reentry_guard = false;
+
 ascii_instr_runtime_t *ascii_instr_runtime_get(void) {
   if (g_disable_write) {
     return NULL;
@@ -251,20 +253,26 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
     return;
   }
 
-  ascii_instr_runtime_t *runtime = ascii_instr_runtime_get();
-  if (runtime == NULL) {
+  if (g_logging_reentry_guard) {
     return;
   }
 
+  g_logging_reentry_guard = true;
+
+  ascii_instr_runtime_t *runtime = ascii_instr_runtime_get();
+  if (runtime == NULL) {
+    goto cleanup;
+  }
+
   if (!ascii_instr_should_log(runtime, file_path, line_number, function_name)) {
-    return;
+    goto cleanup;
   }
 
   runtime->call_counter++;
   if (runtime->rate_enabled) {
     const uint64_t counter = runtime->call_counter;
     if (((counter - 1U) % runtime->rate) != 0U) {
-      return;
+      goto cleanup;
     }
   }
 
@@ -350,6 +358,9 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
   buffer[pos] = '\0';
 
   ascii_instr_write_full(fd, buffer, pos);
+
+cleanup:
+  g_logging_reentry_guard = false;
 }
 
 bool ascii_instr_coverage_enabled(void) {
