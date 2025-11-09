@@ -459,6 +459,38 @@ function(configure_llvm_post_project)
                 message(STATUS "${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths ${BoldGreen}already present${ColorReset} in LDFLAGS environment variable")
             endif()
 
+            # Add LLVM library paths to rpath for Debug/Dev builds (for dynamic linking)
+            # This ensures libunwind.dylib and other LLVM libraries can be found at runtime
+            if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+                # Determine the correct library path based on layout
+                if(EXISTS "${COMPILER_PREFIX}/lib/unwind" AND EXISTS "${COMPILER_PREFIX}/lib/c++")
+                    # Homebrew layout: separate subdirectories
+                    set(LLVM_RPATH_UNWIND "${COMPILER_PREFIX}/lib/unwind")
+                    set(LLVM_RPATH_CXX "${COMPILER_PREFIX}/lib/c++")
+                elseif(EXISTS "${COMPILER_PREFIX}/lib/libunwind.dylib")
+                    # Git-built layout: flat lib directory
+                    set(LLVM_RPATH_UNWIND "${COMPILER_PREFIX}/lib")
+                    set(LLVM_RPATH_CXX "${COMPILER_PREFIX}/lib")
+                endif()
+
+                # Add to build rpath if directories exist
+                if(LLVM_RPATH_UNWIND)
+                    if(NOT CMAKE_BUILD_RPATH MATCHES "${LLVM_RPATH_UNWIND}")
+                        list(APPEND CMAKE_BUILD_RPATH "${LLVM_RPATH_UNWIND}")
+                        set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" CACHE INTERNAL "Build RPATH" FORCE)
+                        message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM unwind${ColorReset} to build rpath: ${BoldCyan}${LLVM_RPATH_UNWIND}${ColorReset}")
+                    endif()
+                endif()
+
+                if(LLVM_RPATH_CXX AND NOT LLVM_RPATH_CXX STREQUAL LLVM_RPATH_UNWIND)
+                    if(NOT CMAKE_BUILD_RPATH MATCHES "${LLVM_RPATH_CXX}")
+                        list(APPEND CMAKE_BUILD_RPATH "${LLVM_RPATH_CXX}")
+                        set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" CACHE INTERNAL "Build RPATH" FORCE)
+                        message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM c++${ColorReset} to build rpath: ${BoldCyan}${LLVM_RPATH_CXX}${ColorReset}")
+                    endif()
+                endif()
+            endif()
+
             message(STATUS "${BoldGreen}Applied${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} toolchain flags:")
             message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
             if(HOMEBREW_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
