@@ -1,0 +1,17 @@
+@echo off
+setlocal enabledelayedexpansion
+
+set "BASH_EXE=@ASCIICHAT_BASH_EXECUTABLE@"
+if not exist "!BASH_EXE!" (
+    echo ascii-chat: could not locate bash executable at "!BASH_EXE!".
+    echo Please install Git for Windows or another bash shell and ensure it is in PATH.
+    exit /b 1
+)
+
+set "SCRIPT_PATH=@AR_WRAPPER_SH_FOR_BASH@"
+"!BASH_EXE!" --version >nul 2>&1
+if /I "!BASH_EXE!"=="C:\Windows\System32\bash.exe" (
+    for /f "usebackq delims=" %%i in (`wsl.exe wslpath -a "!SCRIPT_PATH!"`) do set "SCRIPT_PATH=%%i"
+)
+"!BASH_EXE!" "!SCRIPT_PATH!" %*
+

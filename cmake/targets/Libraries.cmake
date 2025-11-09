@@ -889,19 +889,7 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # Use CMake's RULE_LAUNCH_COMPILE to rename object files after compilation
 # Example: lib/common.c → lib_common.c.o, lib/image2ascii/simd/common.c → lib_image2ascii_simd_common.c.o
 
-# Wrap the archiver to rename objects before archiving
-# Save the real archiver path before overriding CMAKE_AR
-set(REAL_AR "${CMAKE_AR}" CACHE STRING "Real archiver path" FORCE)
-
-# Configure the wrapper script from template
-set(AR_WRAPPER "${CMAKE_BINARY_DIR}/cmake/scripts/ar_wrapper.sh")
-configure_file(
-    "${CMAKE_SOURCE_DIR}/cmake/scripts/ar_wrapper.sh.in"
-    "${AR_WRAPPER}"
-    @ONLY
-)
-execute_process(COMMAND chmod +x "${AR_WRAPPER}")
-
-# Override CMAKE_AR to use our wrapper
-set(CMAKE_AR "${AR_WRAPPER}" CACHE STRING "Archiver with object renaming" FORCE)
+# Note: Archiver wrapper configuration moved to cmake/init/ArchiverWrapper.cmake
+# and is now included BEFORE Libraries.cmake in CMakeLists.txt to ensure
+# CMAKE_AR is properly set before any static libraries are created.
 
