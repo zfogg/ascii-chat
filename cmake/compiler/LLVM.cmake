@@ -46,6 +46,49 @@ function(configure_llvm_pre_project)
         set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
     endif()
 
+    # Use llvm-config to detect LLVM installation (if available in PATH)
+    find_program(LLVM_CONFIG_EXECUTABLE
+        NAMES llvm-config llvm-config.exe
+        DOC "Path to llvm-config"
+    )
+
+    if(LLVM_CONFIG_EXECUTABLE)
+        # Get LLVM installation prefix
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix
+            OUTPUT_VARIABLE LLVM_DETECTED_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        # Get LLVM CMake directory
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir
+            OUTPUT_VARIABLE LLVM_DETECTED_CMAKEDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        if(LLVM_DETECTED_PREFIX AND LLVM_DETECTED_CMAKEDIR)
+            message(STATUS "Detected LLVM via llvm-config: ${LLVM_DETECTED_PREFIX}")
+            message(STATUS "LLVM CMake directory: ${LLVM_DETECTED_CMAKEDIR}")
+
+            # Add LLVM prefix and cmake directory to CMAKE_PREFIX_PATH for find_package()
+            list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_PREFIX}")
+            list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_CMAKEDIR}")
+
+            # Export to parent scope for find_package(LLVM) and find_package(Clang)
+            set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+
+            # Add Clang cmake directory as well
+            if(EXISTS "${LLVM_DETECTED_PREFIX}/lib/cmake/clang")
+                list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_PREFIX}/lib/cmake/clang")
+                set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+                message(STATUS "Clang CMake directory: ${LLVM_DETECTED_PREFIX}/lib/cmake/clang")
+            endif()
+        endif()
+    endif()
+
     # Compiler Detection (before project())
     # Force Clang compiler - MSVC and GCC are not supported
     # Supports Windows (scoop/official LLVM), macOS (Homebrew), and Linux (system)

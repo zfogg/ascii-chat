@@ -23,6 +23,13 @@ function(ascii_add_debug_targets)
     find_package(Clang REQUIRED CONFIG)
     find_package(Threads REQUIRED)
 
+    # Find llvm-config for library information
+    find_program(LLVM_CONFIG
+        NAMES llvm-config llvm-config.exe
+        HINTS ${LLVM_TOOLS_BINARY_DIR}
+        DOC "Path to llvm-config"
+    )
+
     list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
     include(AddLLVM)
     include(HandleLLVMOptions)
@@ -39,8 +46,25 @@ function(ascii_add_debug_targets)
     )
 
     target_compile_features(ascii-instr-tool PRIVATE cxx_std_17)
-    target_compile_options(ascii-instr-tool PRIVATE -stdlib=libc++)
-    target_link_options(ascii-instr-tool PRIVATE -stdlib=libc++)
+
+    # Build ascii-instr-tool without sanitizers and with Release runtime to match LLVM libraries
+    target_compile_options(ascii-instr-tool PRIVATE
+        -O2
+        -DNDEBUG
+        -D_ITERATOR_DEBUG_LEVEL=0
+        -fno-sanitize=all
+    )
+
+    # Remove debug/sanitizer linker flags
+    target_link_options(ascii-instr-tool PRIVATE
+        -fno-sanitize=all
+    )
+
+    # Override global debug runtime settings for this target specifically
+    # Use MultiThreadedDLL (MD) instead of MultiThreadedDebugDLL (MDd) to match LLVM build
+    set_target_properties(ascii-instr-tool PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+    )
 
     add_library(ascii-debug-runtime STATIC ${DEBUG_RUNTIME_SRCS})
     target_include_directories(ascii-debug-runtime
@@ -79,8 +103,24 @@ function(ascii_add_debug_targets)
         endif()
     endif()
 
+    # Add LLVM library directory
+    if(DEFINED LLVM_LIBRARY_DIRS)
+        link_directories(${LLVM_LIBRARY_DIRS})
+    endif()
+
+    # Get LLVM libraries from llvm-config if available
+    if(LLVM_CONFIG)
+        execute_process(
+            COMMAND ${LLVM_CONFIG} --libs
+            OUTPUT_VARIABLE LLVM_CONFIG_LIBS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        # Convert to list and extract library names
+        string(REPLACE " " ";" LLVM_LIB_LIST "${LLVM_CONFIG_LIBS}")
+    endif()
+
     if(TARGET clang-cpp)
-        target_link_libraries(ascii-instr-tool PRIVATE clang-cpp LLVM)
+        target_link_libraries(ascii-instr-tool PRIVATE clang-cpp ${LLVM_LIB_LIST})
     else()
         target_link_libraries(ascii-instr-tool PRIVATE
             clangTooling
@@ -97,7 +137,7 @@ function(ascii_add_debug_targets)
             clangSema
             clangEdit
             clangAnalysis
-            LLVM
+            ${LLVM_LIB_LIST}
         )
     endif()
 
