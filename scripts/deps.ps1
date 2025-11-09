@@ -69,6 +69,10 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "`n=== ascii-chat Dependency Installer ===`n" -ForegroundColor Cyan
 
+Write-Host "Getting submodules" -ForegroundColor Yellow
+& git submodule init
+& git submodule update --recursive
+
 # Check if vcpkg is available
 if (-not $env:VCPKG_ROOT) {
     Write-Host "ERROR: VCPKG_ROOT environment variable not set" -ForegroundColor Red

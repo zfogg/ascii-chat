@@ -30,6 +30,10 @@ if [[ "$CONFIG" == "Release" ]]; then
 fi
 echo ""
 
+echo "Getting submodules"
+git submodule init
+git submodule update --recursive
+
 # Detect platform
 if [[ "$OSTYPE" == "darwin"* ]]; then
   PLATFORM="macos"
