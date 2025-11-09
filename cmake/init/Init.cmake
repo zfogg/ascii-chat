@@ -23,26 +23,61 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
 # Detect CPU cores for parallel builds
 # Note: Use CMAKE_HOST_SYSTEM_NAME because CMAKE_SYSTEM_NAME is not set until after project()
+set(_ASCII_CPU_FALLBACK 4)
+set(CPU_CORES "")
+
 if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
-    execute_process(COMMAND sysctl -n hw.logicalcpu OUTPUT_VARIABLE CPU_CORES OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+        COMMAND sysctl -n hw.logicalcpu
+        OUTPUT_VARIABLE CPU_CORES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _cpu_cmd_status
+    )
+    if(NOT _cpu_cmd_status EQUAL 0)
+        message(WARNING "Failed to query CPU core count via sysctl; falling back to ${_ASCII_CPU_FALLBACK}")
+        set(CPU_CORES "")
+    endif()
 elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-    execute_process(COMMAND nproc OUTPUT_VARIABLE CPU_CORES OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(
+        COMMAND nproc
+        OUTPUT_VARIABLE CPU_CORES
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _cpu_cmd_status
+    )
+    if(NOT _cpu_cmd_status EQUAL 0)
+        message(WARNING "Failed to query CPU core count via nproc; falling back to ${_ASCII_CPU_FALLBACK}")
+        set(CPU_CORES "")
+    endif()
 elseif(WIN32)
     # Windows: Use environment variable or wmic
-    if(DEFINED ENV{NUMBER_OF_PROCESSORS})
+    if(DEFINED ENV{NUMBER_OF_PROCESSORS} AND NOT "$ENV{NUMBER_OF_PROCESSORS}" STREQUAL "")
         set(CPU_CORES $ENV{NUMBER_OF_PROCESSORS})
     else()
-        execute_process(COMMAND wmic cpu get NumberOfLogicalProcessors /value
-                       OUTPUT_VARIABLE CPU_INFO OUTPUT_STRIP_TRAILING_WHITESPACE)
-        string(REGEX MATCH "NumberOfLogicalProcessors=([0-9]+)" _ ${CPU_INFO})
-        if(CMAKE_MATCH_1)
-            set(CPU_CORES ${CMAKE_MATCH_1})
+        execute_process(
+            COMMAND wmic cpu get NumberOfLogicalProcessors /value
+            OUTPUT_VARIABLE CPU_INFO
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE _cpu_cmd_status
+        )
+        if(_cpu_cmd_status EQUAL 0)
+            string(REGEX MATCH "NumberOfLogicalProcessors=([0-9]+)" _ ${CPU_INFO})
+            if(CMAKE_MATCH_1)
+                set(CPU_CORES ${CMAKE_MATCH_1})
+            endif()
         else()
-            set(CPU_CORES 4)
+            message(WARNING "Failed to query CPU core count via wmic; falling back to ${_ASCII_CPU_FALLBACK}")
         endif()
     endif()
-else()
-    set(CPU_CORES 4)
+endif()
+
+if(CPU_CORES STREQUAL "" OR NOT CPU_CORES MATCHES "^[0-9]+$")
+    if(NOT CPU_CORES STREQUAL "")
+        message(WARNING "CPU core detection returned unexpected value '${CPU_CORES}'; falling back to ${_ASCII_CPU_FALLBACK}")
+    endif()
+    set(CPU_CORES ${_ASCII_CPU_FALLBACK})
+elseif(CPU_CORES LESS 1)
+    message(WARNING "CPU core detection returned non-positive value '${CPU_CORES}'; falling back to ${_ASCII_CPU_FALLBACK}")
+    set(CPU_CORES ${_ASCII_CPU_FALLBACK})
 endif()
 
 # Set parallel build level automatically if not already set
@@ -151,4 +186,5 @@ endif()
 # =============================================================================
 # Speed up CMake's compiler tests by avoiding linking issues
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
 
