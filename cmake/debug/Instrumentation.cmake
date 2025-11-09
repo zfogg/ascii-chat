@@ -19,8 +19,6 @@ set(ASCII_INSTRUMENTATION_LIBRARY_TARGETS
 
 set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
     ascii-chat
-    ascii-chat-client
-    ascii-chat-server
     ascii-instr-report
 )
 
