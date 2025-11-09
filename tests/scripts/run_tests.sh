@@ -324,6 +324,10 @@ function get_test_executables() {
     case "$category" in
     unit)
       # For coverage, discover test source files and build coverage executables
+      if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
+        log_warning "Skipping unit coverage tests: directory '$PROJECT_ROOT/tests/unit' not found"
+        return
+      fi
       while IFS= read -r test_file; do
         [[ -f "$test_file" ]] || continue
         local executable_name
@@ -333,6 +337,10 @@ function get_test_executables() {
       ;;
     integration)
       # For coverage, discover test source files and build coverage executables
+      if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
+        log_warning "Skipping integration coverage tests: directory '$PROJECT_ROOT/tests/integration' not found"
+        return
+      fi
       while IFS= read -r test_file; do
         [[ -f "$test_file" ]] || continue
         local executable_name
@@ -342,6 +350,10 @@ function get_test_executables() {
       ;;
     performance)
       # For coverage, discover test source files and build coverage executables
+      if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
+        log_warning "Skipping performance coverage tests: directory '$PROJECT_ROOT/tests/performance' not found"
+        return
+      fi
       while IFS= read -r test_file; do
         [[ -f "$test_file" ]] || continue
         local executable_name
@@ -375,6 +387,10 @@ function get_test_executables() {
     case "$category" in
     unit)
       # Discover test source files and build executables
+      if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
+        log_warning "Skipping unit tests: directory '$PROJECT_ROOT/tests/unit' not found"
+        return
+      fi
       while IFS= read -r test_file; do
         [[ -f "$test_file" ]] || continue
         local executable_name
@@ -384,6 +400,10 @@ function get_test_executables() {
       ;;
     integration)
       # Discover test source files and build executables
+      if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
+        log_warning "Skipping integration tests: directory '$PROJECT_ROOT/tests/integration' not found"
+        return
+      fi
       while IFS= read -r test_file; do
         [[ -f "$test_file" ]] || continue
         local executable_name
@@ -393,6 +413,10 @@ function get_test_executables() {
       ;;
     performance)
       # Discover test source files and build executables
+      if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
+        log_warning "Skipping performance tests: directory '$PROJECT_ROOT/tests/performance' not found"
+        return
+      fi
       while IFS= read -r test_file; do
         [[ -f "$test_file" ]] || continue
         local executable_name
@@ -1375,6 +1399,14 @@ function main() {
 
   # Now we have all tests - build and run them
   if [[ ${#all_tests_to_run[@]} -eq 0 ]]; then
+    if [[ -z "$SINGLE_TEST" && -z "$MULTIPLE_TEST_MODE" && "$TEST_TYPE" == "performance" ]]; then
+      log_warning "No performance tests detected; skipping performance test suite."
+      if [[ -n "$GENERATE_JUNIT" ]]; then
+        echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
+        echo "<testsuites name=\"ascii-chat Tests\" tests=\"0\" failures=\"0\" errors=\"0\" time=\"0\"/>" >>"$junit_file"
+      fi
+      exit 0
+    fi
     log_error "No tests found to run!"
     exit 1
   fi
