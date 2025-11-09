@@ -1025,22 +1025,22 @@
  *   const char *pipe_path = (auth_sock && strlen(auth_sock) > 0)
  *                            ? auth_sock
  *                            : "\\\\.\\pipe\\openssh-ssh-agent";
- *   return pipe_connect(pipe_path); // CreateFileA() to named pipe
+ *   return platform_pipe_connect(pipe_path); // CreateFileA() to named pipe
  * #else
  *   // POSIX: Use Unix domain socket from SSH_AUTH_SOCK
  *   if (!auth_sock || strlen(auth_sock) == 0) {
  *     return INVALID_PIPE_VALUE;
  *   }
- *   return pipe_connect(auth_sock); // socket() + connect() to Unix socket
+ *   return platform_pipe_connect(auth_sock); // socket() + connect() to Unix socket
  * #endif
  *
- * // 2. Send SSH agent protocol messages via pipe_read/pipe_write
+ * // 2. Send SSH agent protocol messages via platform_pipe_read/platform_pipe_write
  * //    - SSH2_AGENTC_REQUEST_IDENTITIES (11) - List keys
  * //    - SSH2_AGENTC_ADD_IDENTITY (17) - Add key
  * //    - SSH_AGENT_SUCCESS (6) - Success response
  *
  * // 3. Close connection when done
- * pipe_close(pipe);
+ * platform_pipe_close(pipe);
  * @endcode
  *
  * **Security considerations:**

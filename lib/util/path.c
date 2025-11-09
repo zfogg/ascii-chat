@@ -536,8 +536,8 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(ascii_chat_home, bases, &base_count);
   }
 
-  char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
 #ifndef _WIN32
+  char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
   build_ascii_chat_path("/tmp", ".ascii-chat", ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
   append_base_if_valid(ascii_chat_home_tmp, bases, &base_count);
 #endif
