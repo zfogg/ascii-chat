@@ -34,10 +34,10 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
     - [Usage Examples](#usage-examples)
   - [Open Source](#open-source)
     - [Dependencies](#dependencies)
+      - [List of Dependencies and What We Use Them For](#list-of-dependencies-and-what-we-use-them-for)
       - [Operating System APIs](#operating-system-apis)
       - [Install Dependencies on Linux or macOS](#install-dependencies-on-linux-or-macos)
       - [Install Dependencies on Windows](#install-dependencies-on-windows)
-      - [Core Dependencies](#core-dependencies)
     - [Build from source](#build-from-source)
       - [What is musl and mimalloc?](#what-is-musl-and-mimalloc)
       - [Development Tools](#development-tools)
@@ -228,6 +228,48 @@ Now let's list out and talk about the dependencies before we install them.
 
 ascii-chat is built on operating system code and several libraries.
 
+#### List of Dependencies and What We Use Them For
+
+* [musl libc](https://musl.libc.org/) - A small and focused implementation of the C standard library for Linux
+  - **Purpose**: This enables us to nicely make static builds that work on any Linux system. This is just for Linux releases - you can build ascii-chat with your system libc if you don't want to use musl (`cmake -B build -DUSE_MUSL=OFF`).
+  - **License**: MIT
+
+* [mimalloc](https://github.com/microsoft/mimalloc) - A drop-in replacement for `malloc()`
+  - **Purpose**: Better performing memory allocation. ascii-chat releases are build with mimalloc but you can build without it if you want to use the system default allocator (`cmake -B build -DUSE_MIMALLOC=OFF`).
+  - **License**: MIT
+
+* [PortAudio](http://www.portaudio.com/) - Audio I/O Library
+  - **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
+  - **License**: MIT
+
+* [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
+  - **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
+  - **License**: MIT
+
+* [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
+  - **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
+  - **License**: BSD revised
+
+* [libsodium](https://libsodium.org/) - Cryptographic Library
+  - **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
+  - **License**: ISC
+
+* [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
+  - **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This code for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
+  - **License**: [none]
+
+* [BearSSL](https://bearssl.org/) - SSL/TLS Library
+  - **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
+  - **License**: MIT
+
+* [zstd](https://facebook.github.io/zstd/) - Compression Library
+  - **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
+  - **License**: BSD/GPLv2
+
+* [Sokol](https://github.com/floooh/sokol) - Utility Library
+  - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
+  - **License**: zlib/libpng
+
 #### Operating System APIs
 ascii-chat uses native platform APIs for each platform for webcam access:
 - **Linux**: V4L2 Linux kernel module
@@ -287,40 +329,6 @@ brew install make cmake ninja llvm zstd portaudio libsodium criterion
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
 
-#### Core Dependencies
-
-* [PortAudio](http://www.portaudio.com/) - Audio I/O Library
-  - **Purpose**: So the clients can talk to and hear each other. This library provides audio via the same interface on all three major operating systems, which is really neat because for webcam code I have to work with three different operating system APIs to build ascii-chat.
-  - **License**: MIT
-
-* [tomlc17](https://github.com/cktan/tomlc17) - TOML File Library
-  - **Purpose**: Modern implementation of TOML for config file parsing and editing. For `~/.config/ascii-chat/config.toml`.
-  - **License**: MIT
-
-* [uthash](https://troydhanson.github.io/uthash/) - Hash Table Library
-  - **Purpose**: Gives us fast O(1) lookups for the server's client manager, and persistent memory for caching data
-  - **License**: BSD revised
-
-* [libsodium](https://libsodium.org/) - Cryptographic Library
-  - **Purpose**: I use this for the crypto protocol, which you can read more about below. End-to-end encryption and authentication of the protocol's packets, with features like password protection and re-keying.
-  - **License**: ISC
-
-* [libsodium-bcrypt-pbkdf](https://github.com/imaami/libsodium-bcrypt-pbkdf) - libsodium-Compatible Code
-  - **Purpose**: Exports a single function that does the blowfish cipher key derivation needed for decrypting ed25519 keys. This code for bcrypt + BearSSL for aes-ctr and aes-cbc + libsodium crypto algorithms = the ability to decrypt and use password-protected ~/.ssh/id_ed25519 files.
-  - **License**: [none]
-
-* [BearSSL](https://bearssl.org/) - SSL/TLS Library
-  - **Purpose**: We need this for our custom HTTPS client, to fetch public keys from GitHub/GitLab for encryption authorization. We also use its aes-ctr and aes-cbc functions with libsodium-bcrypt-pkdf to decrypt ed25519 keys.
-  - **License**: MIT
-
-* [zstd](https://facebook.github.io/zstd/) - Compression Library
-  - **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
-  - **License**: BSD/GPLv2
-
-* [Sokol](https://github.com/floooh/sokol) - Utility Library
-  - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
-  - **License**: zlib/libpng
-
 
 ### Build from source
 
@@ -338,9 +346,9 @@ For open source developers who want a working copy:
 
 #### What is musl and mimalloc?
 
-**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. The `release` preset uses musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
+**musl libc**: A lightweight, fast, and simple C standard library alternative to glibc. `Release` builds (`cmake --preset release`) use musl to create **statically linked binaries** that have no external dependencies - perfect for deployment as they work on any Linux system without requiring specific libraries to be installed.
 
-**mimalloc**: Microsoft's high-performance memory allocator. All release and profiling builds use mimalloc instead of the system allocator for better performance. It provides:
+**mimalloc**: Microsoft's high-performance memory allocator. Release builds use mimalloc instead of the system allocator for better performance. It provides:
 - Up to 2x faster allocation/deallocation
 - Better memory locality and cache performance
 - Lower memory fragmentation
