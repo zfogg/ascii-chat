@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # Debian build service for DEB packages + tarball
+  debian-release:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile.debian
+    image: ascii-chat-debian
+    volumes:
+      - ..:/app:rw
+      - debian-deps:/deps:rw
+    working_dir: /app
+    environment:
+      - DEPS_CACHE_ROOT=/deps
+    command: >
+      sh -c "rm -rf build_deb &&
+             rm -rf /deps/Release/musl/*-build &&
+             cmake -B build_deb -G Ninja -DCMAKE_BUILD_TYPE=Release &&
+             cmake --build build_deb --target docs --target ascii-chat --target shared-lib --target static-lib &&
+             cd build_deb &&
+             cpack -G 'DEB;TGZ' &&
+             cp *.deb *.tar.gz /app/ 2>/dev/null || true"
+
+  # Fedora build service for RPM packages
+  fedora-release:
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile.fedora
+    image: ascii-chat-fedora
+    volumes:
+      - ..:/app:rw
+      - fedora-deps:/deps:rw
+    working_dir: /app
+    environment:
+      - DEPS_CACHE_ROOT=/deps
+    command: >
+      sh -c "rm -rf build_rpm &&
+             rm -rf /deps/Release/musl/*-build &&
+             cmake -B build_rpm -G Ninja -DCMAKE_BUILD_TYPE=Release &&
+             cmake --build build_rpm --target docs --target ascii-chat --target shared-lib --target static-lib &&
+             cd build_rpm &&
+             cpack -G RPM &&
+             cp *.rpm /app/ 2>/dev/null || true"
+
+  # Build all release packages in parallel
+  all-packages:
+    image: alpine:latest
+    volumes:
+      - ..:/app:rw
+    working_dir: /app
+    command: >
+      sh -c "echo 'Build debian-release and fedora-release services separately' &&
+             echo 'Run: docker-compose -f tests/docker-compose.packages.yml up debian-release fedora-release' &&
+             exit 1"
+    depends_on:
+      - debian-release
+      - fedora-release
+
+volumes:
+  debian-deps:
+    name: ascii-chat-debian-deps
+  fedora-deps:
+    name: ascii-chat-fedora-deps
