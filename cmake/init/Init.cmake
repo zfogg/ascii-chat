@@ -49,10 +49,10 @@ endif()
 if(NOT DEFINED ENV{CMAKE_BUILD_PARALLEL_LEVEL})
     set(ENV{CMAKE_BUILD_PARALLEL_LEVEL} ${CPU_CORES})
 endif()
-if(CPU_CORES GREATER 1)
+if(CPU_CORES GREATER 0)
     message(STATUS "Parallel build jobs: ${BoldCyan}${CPU_CORES}${ColorReset}")
 else()
-    message(FATAL_ERROR "CPU_CORES is not set, please set it to the number of CPU cores you want to use for parallel builds")
+    message(FATAL_ERROR "Failed to detect CPU core count; please set CPU_CORES to the number of cores for parallel builds")
 endif()
 
 # CMP0135: ExternalProject step targets fully imported
