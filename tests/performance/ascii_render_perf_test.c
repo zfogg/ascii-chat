@@ -79,4 +79,3 @@ Test(performance_ascii_render, convert_full_hd_color_batch) {
 
   image_destroy(image);
 }
-

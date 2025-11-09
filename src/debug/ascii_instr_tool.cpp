@@ -28,6 +28,9 @@
 #include <utility>
 #include <vector>
 
+using namespace llvm;
+using namespace clang;
+
 std::mutex &outputRegistryMutex() {
   static std::mutex mutex;
   return mutex;
@@ -54,52 +57,54 @@ void unregisterOutputPath(const std::string &path) {
 // to ensure proper static initialization
 namespace fs = std::filesystem;
 
-static llvm::cl::OptionCategory ToolCategory("ascii-chat instrumentation options");
+static cl::OptionCategory ToolCategory("ascii-chat instrumentation options");
 
-static llvm::cl::extrahelp CommonHelp(clang::tooling::CommonOptionsParser::HelpMessage);
-static llvm::cl::extrahelp MoreHelp("\nInstrumentation tool for ascii-chat debugging\n");
+static cl::extrahelp CommonHelp(tooling::CommonOptionsParser::HelpMessage);
+static cl::extrahelp MoreHelp("\nInstrumentation tool for ascii-chat debugging\n");
 
-static llvm::cl::opt<std::string>
-    OutputDirectoryOption("output-dir", llvm::cl::desc("Directory where instrumented sources will be written"),
-                          llvm::cl::value_desc("path"), llvm::cl::Required, llvm::cl::cat(ToolCategory));
+static cl::opt<std::string> OutputDirectoryOption("output-dir",
+                                                  cl::desc("Directory where instrumented sources will be written"),
+                                                  cl::value_desc("path"), cl::Required, cl::cat(ToolCategory));
 
-static llvm::cl::opt<std::string>
-    InputRootOption("input-root", llvm::cl::desc("Root directory of original sources (used to compute relative paths)"),
-                    llvm::cl::value_desc("path"), llvm::cl::init(""), llvm::cl::cat(ToolCategory));
-static llvm::cl::opt<bool>
-    LogMacroExpansionsOption("log-macro-expansions",
-                             llvm::cl::desc("Instrument statements originating from macro expansions"),
-                             llvm::cl::init(false), llvm::cl::cat(ToolCategory));
+static cl::opt<std::string>
+    InputRootOption("input-root", cl::desc("Root directory of original sources (used to compute relative paths)"),
+                    cl::value_desc("path"), cl::init(""), cl::cat(ToolCategory));
 
-static llvm::cl::opt<bool> LogMacroInvocationsOption(
+static cl::opt<std::string> BuildPath("p", cl::desc("Build path (directory containing compile_commands.json)"),
+                                      cl::Optional, cl::cat(ToolCategory));
+static cl::opt<bool> LogMacroExpansionsOption("log-macro-expansions",
+                                              cl::desc("Instrument statements originating from macro expansions"),
+                                              cl::init(false), cl::cat(ToolCategory));
+
+static cl::opt<bool> LogMacroInvocationsOption(
     "log-macro-invocations",
-    llvm::cl::desc("Emit a synthetic record for the macro invocation site when expansions are instrumented"),
-    llvm::cl::init(false), llvm::cl::cat(ToolCategory));
+    cl::desc("Emit a synthetic record for the macro invocation site when expansions are instrumented"), cl::init(false),
+    cl::cat(ToolCategory));
 
-static llvm::cl::opt<bool> LegacyIncludeMacroExpansionsOption(
+static cl::opt<bool> LegacyIncludeMacroExpansionsOption(
     "include-macro-expansions",
-    llvm::cl::desc("Deprecated alias for --log-macro-expansions (kept for backward compatibility)"),
-    llvm::cl::init(false), llvm::cl::cat(ToolCategory), llvm::cl::Hidden);
+    cl::desc("Deprecated alias for --log-macro-expansions (kept for backward compatibility)"), cl::init(false),
+    cl::cat(ToolCategory), cl::Hidden);
 
-static llvm::cl::list<std::string>
-    FileIncludeFilters("filter-file", llvm::cl::desc("Only instrument files whose path contains the given substring"),
-                       llvm::cl::value_desc("substring"), llvm::cl::cat(ToolCategory));
+static cl::list<std::string>
+    FileIncludeFilters("filter-file", cl::desc("Only instrument files whose path contains the given substring"),
+                       cl::value_desc("substring"), cl::cat(ToolCategory));
 
-static llvm::cl::list<std::string>
+static cl::list<std::string>
     FunctionIncludeFilters("filter-function",
-                           llvm::cl::desc("Only instrument functions whose name matches the given substring"),
-                           llvm::cl::value_desc("substring"), llvm::cl::cat(ToolCategory));
+                           cl::desc("Only instrument functions whose name matches the given substring"),
+                           cl::value_desc("substring"), cl::cat(ToolCategory));
 
-static llvm::cl::opt<std::string>
-    FileListOption("file-list",
-                   llvm::cl::desc("Path to file containing newline-delimited translation units to instrument"),
-                   llvm::cl::value_desc("path"), llvm::cl::init(""), llvm::cl::cat(ToolCategory));
+static cl::opt<std::string>
+    FileListOption("file-list", cl::desc("Path to file containing newline-delimited translation units to instrument"),
+                   cl::value_desc("path"), cl::init(""), cl::cat(ToolCategory));
 
-static llvm::cl::opt<std::string> SignalHandlerAnnotation(
+static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [... <sourceN>]"), cl::cat(ToolCategory));
+
+static cl::opt<std::string> SignalHandlerAnnotation(
     "signal-handler-annotation",
-    llvm::cl::desc(
-        "Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_SIGNAL_HANDLER)"),
-    llvm::cl::value_desc("annotation"), llvm::cl::init("ASCII_INSTR_SIGNAL_HANDLER"), llvm::cl::cat(ToolCategory));
+    cl::desc("Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_SIGNAL_HANDLER)"),
+    cl::value_desc("annotation"), cl::init("ASCII_INSTR_SIGNAL_HANDLER"), cl::cat(ToolCategory));
 
 constexpr unsigned kMacroFlagNone = 0U;
 constexpr unsigned kMacroFlagExpansion = 1U;
@@ -669,14 +674,9 @@ int main(int argc, const char **argv) {
   // Initialize LLVM infrastructure (this triggers command-line option registration!)
   llvm::InitLLVM InitLLVM(argc, argv);
 
-  llvm::Expected<clang::tooling::CommonOptionsParser> optionsParserOrError =
-      clang::tooling::CommonOptionsParser::create(argc, argv, ToolCategory);
-  if (!optionsParserOrError) {
-    llvm::errs() << optionsParserOrError.takeError();
-    return 1;
-  }
+  // Parse command-line options
+  cl::ParseCommandLineOptions(argc, argv, "ascii-chat instrumentation tool\n");
 
-  clang::tooling::CommonOptionsParser &optionsParser = *optionsParserOrError;
   const fs::path outputDir = fs::path(OutputDirectoryOption.getValue());
   fs::path inputRoot;
   if (!InputRootOption.getValue().empty()) {
@@ -685,7 +685,10 @@ int main(int argc, const char **argv) {
     inputRoot = fs::current_path();
   }
 
-  std::vector<std::string> sourcePaths = optionsParser.getSourcePathList();
+  std::vector<std::string> sourcePaths;
+  for (const auto &path : SourcePaths) {
+    sourcePaths.push_back(path);
+  }
   if (!FileListOption.getValue().empty()) {
     std::ifstream listStream(FileListOption.getValue());
     if (!listStream.is_open()) {
@@ -733,7 +736,20 @@ int main(int argc, const char **argv) {
     llvm::errs() << "warning: --include-macro-expansions is deprecated; use --log-macro-expansions instead\n";
   }
 
-  clang::tooling::ClangTool tool(optionsParser.getCompilations(), optionsParser.getSourcePathList());
+  // Load compilation database
+  std::string buildPath = BuildPath.getValue();
+  if (buildPath.empty()) {
+    buildPath = ".";
+  }
+  std::string errorMessage;
+  std::unique_ptr<tooling::CompilationDatabase> compilations =
+      tooling::CompilationDatabase::loadFromDirectory(buildPath, errorMessage);
+  if (!compilations) {
+    llvm::errs() << "Error loading compilation database from '" << buildPath << "': " << errorMessage << "\n";
+    return 1;
+  }
+
+  clang::tooling::ClangTool tool(*compilations, sourcePaths);
 
   auto stripPchAdjuster = [](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
     clang::tooling::CommandLineArguments result;
