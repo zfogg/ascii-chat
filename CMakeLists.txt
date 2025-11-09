@@ -167,6 +167,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/debug/Instrumentation.cmake)
 ascii_instrumentation_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
+# Configure archiver wrapper BEFORE creating any static libraries
+include(${CMAKE_SOURCE_DIR}/cmake/init/ArchiverWrapper.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)

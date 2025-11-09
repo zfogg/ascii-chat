@@ -12,13 +12,14 @@ if [[ ! -d "$OBJ_DIR" ]]; then
     exit 0
 fi
 
-# Find all .o files recursively
-find "$OBJ_DIR" -name "*.o" -type f | while read -r obj_file; do
+# Find all object files (.o / .obj) recursively
+find "$OBJ_DIR" \( -name "*.o" -o -name "*.obj" \) -type f | while read -r obj_file; do
     # Get the relative path from OBJ_DIR
     rel_path="${obj_file#$OBJ_DIR/}"
 
     # Convert path separators to underscores
     new_name="${rel_path//\//_}"
+    new_name="${new_name//\\/_}"
 
     # Get directory of object file
     obj_dir="$(dirname "$obj_file")"
