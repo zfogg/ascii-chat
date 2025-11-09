@@ -151,9 +151,9 @@ static struct {
   atomic_size_t free_calls;
   atomic_size_t calloc_calls;
   atomic_size_t realloc_calls;
-  mutex_t mutex; /* Only for linked list operations */
+  mutex_t mutex;          /* Only for linked list operations */
   atomic_int mutex_state; /* 0 = uninitialized, 1 = initializing, 2 = initialized */
-  bool quiet_mode; /* Control stderr output for memory report */
+  bool quiet_mode;        /* Control stderr output for memory report */
 } g_mem = {.head = NULL,
            .total_allocated = 0,
            .total_freed = 0,
@@ -308,7 +308,9 @@ void debug_free(void *ptr, const char *file, int line) {
 
   size_t freed_size = 0;
   bool found = false;
+#ifdef _WIN32
   bool was_aligned = false;
+#endif
 
   /* Search for allocation in linked list */
   ensure_mutex_initialized();
@@ -327,7 +329,9 @@ void debug_free(void *ptr, const char *file, int line) {
 
       freed_size = curr->size;
       found = true;
+#ifdef _WIN32
       was_aligned = curr->is_aligned;
+#endif
       free(curr); // Use raw free to avoid recursion
       break;
     }
