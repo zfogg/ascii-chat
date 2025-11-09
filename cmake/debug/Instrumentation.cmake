@@ -34,6 +34,17 @@ function(ascii_instrumentation_prepare)
 
     set(instrumented_dir "${CMAKE_BINARY_DIR}/instrumented")
 
+    set(_ascii_instr_excluded_sources
+        "lib/platform/system.c"
+        "lib/platform/posix/system.c"
+        "lib/platform/posix/mutex.c"
+        "lib/platform/posix/thread.c"
+        "lib/platform/windows/system.c"
+        "lib/platform/windows/mutex.c"
+        "lib/platform/windows/thread.c"
+        "lib/lock_debug.c"
+    )
+
     set(candidate_vars
         UTIL_SRCS
         CRYPTO_SRCS
@@ -71,6 +82,9 @@ function(ascii_instrumentation_prepare)
                 continue()
             endif()
             if(rel_path MATCHES "^lib/debug/")
+                continue()
+            endif()
+            if(rel_path IN_LIST _ascii_instr_excluded_sources)
                 continue()
             endif()
 

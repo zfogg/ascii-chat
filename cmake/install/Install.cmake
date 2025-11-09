@@ -522,6 +522,12 @@ After installation, run:
                 set(CPACK_PACKAGE_INSTALL_DIRECTORY "" CACHE STRING "Installation directory (empty for macOS)" FORCE)
                 # Set productbuild install prefix BEFORE include(CPack)
                 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local" CACHE STRING "productbuild install location" FORCE)
+
+                # Set CMP0161 policy to suppress warning about CPACK_PRODUCTBUILD_DOMAINS
+                # NEW behavior: CPACK_PRODUCTBUILD_DOMAINS defaults to true
+                if(POLICY CMP0161)
+                    cmake_policy(SET CMP0161 NEW)
+                endif()
             endif()
         endif()
         include(CPack)

@@ -196,7 +196,14 @@ SOURCE_PATHS=("${deduped_paths[@]}")
 filtered_paths=()
 for path in "${SOURCE_PATHS[@]}"; do
   case "$path" in
-  lib/platform/system.c)
+  lib/lock_debug.c | \
+  lib/platform/system.c | \
+  lib/platform/posix/system.c | \
+  lib/platform/posix/mutex.c | \
+  lib/platform/posix/thread.c | \
+  lib/platform/windows/system.c | \
+  lib/platform/windows/mutex.c | \
+  lib/platform/windows/thread.c)
     continue
     ;;
   lib/platform/windows/* | lib/platform/windows\\*)
@@ -235,6 +242,13 @@ find lib src \
 
 extra_source_links=(
   "lib/platform/system.c"
+  "lib/lock_debug.c"
+  "lib/platform/posix/system.c"
+  "lib/platform/posix/mutex.c"
+  "lib/platform/posix/thread.c"
+  "lib/platform/windows/system.c"
+  "lib/platform/windows/mutex.c"
+  "lib/platform/windows/thread.c"
 )
 
 for source_path in "${extra_source_links[@]}"; do

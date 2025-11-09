@@ -120,26 +120,26 @@ function(ascii_add_debug_targets)
     endif()
 
     if(TARGET clang-cpp)
-        target_link_libraries(ascii-instr-tool PRIVATE clang-cpp ${LLVM_LIB_LIST})
-    else()
-        target_link_libraries(ascii-instr-tool PRIVATE
-            clangTooling
-            clangFrontend
-            clangAST
-            clangASTMatchers
-            clangBasic
-            clangRewrite
-            clangRewriteFrontend
-            clangLex
-            clangSerialization
-            clangDriver
-            clangParse
-            clangSema
-            clangEdit
-            clangAnalysis
-            ${LLVM_LIB_LIST}
-        )
+        target_link_libraries(ascii-instr-tool PRIVATE clang-cpp)
     endif()
+
+    target_link_libraries(ascii-instr-tool PRIVATE
+        clangTooling
+        clangFrontend
+        clangAST
+        clangASTMatchers
+        clangBasic
+        clangRewrite
+        clangRewriteFrontend
+        clangLex
+        clangSerialization
+        clangDriver
+        clangParse
+        clangSema
+        clangEdit
+        clangAnalysis
+        ${LLVM_LIB_LIST}
+    )
 
     set_target_properties(ascii-instr-tool PROPERTIES
         OUTPUT_NAME "ascii-instr-tool"
