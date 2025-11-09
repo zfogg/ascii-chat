@@ -591,7 +591,7 @@ bool shutdown_is_requested(void);
 /* Linux/other platforms use aligned_alloc() (C11) */
 #define SAFE_MALLOC_ALIGNED(size, alignment, cast)                                                                     \
   ({                                                                                                                   \
-    size_t aligned_size = (((size) + (alignment)-1) / (alignment)) * (alignment);                                      \
+    size_t aligned_size = (((size) + (alignment) - 1) / (alignment)) * (alignment);                                    \
     cast _ptr = (cast)aligned_alloc((alignment), aligned_size);                                                        \
     if (!_ptr) {                                                                                                       \
       FATAL(ERROR_MEMORY, "Aligned memory allocation failed: %zu bytes, %zu alignment", aligned_size,                  \
@@ -695,7 +695,7 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
 }
 
 /* Safe string formatting */
-#define SAFE_SNPRINTF(buffer, buffer_size, ...) (size_t) safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
+#define SAFE_SNPRINTF(buffer, buffer_size, ...) (size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
 
 /**
  * @brief Safe buffer size calculation for snprintf
@@ -809,5 +809,3 @@ void debug_memory_set_quiet_mode(bool quiet);
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t asciichat_shared_init(const char *default_log_filename);
-
-#endif // ASCII_CHAT_COMMON_H
