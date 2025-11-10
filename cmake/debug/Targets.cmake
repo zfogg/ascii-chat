@@ -40,12 +40,13 @@ function(ascii_add_debug_targets)
         )
     endif()
 
-    target_include_directories(ascii-instr-tool PRIVATE
+    # Use SYSTEM to suppress warnings from LLVM/Clang headers
+    target_include_directories(ascii-instr-tool SYSTEM PRIVATE
         ${LLVM_INCLUDE_DIRS}
         ${CLANG_INCLUDE_DIRS}
     )
 
-    target_compile_features(ascii-instr-tool PRIVATE cxx_std_17)
+    target_compile_features(ascii-instr-tool PRIVATE cxx_std_20)
 
     # Build ascii-instr-tool without sanitizers and with Release runtime to match LLVM libraries
     # LLVM is built with -fno-rtti, so we must match that
@@ -70,9 +71,9 @@ function(ascii_add_debug_targets)
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
     )
 
-    if(TARGET ascii-chat-instrumentation)
+    if(TARGET ascii-chat-debug)
         add_library(ascii-debug-runtime INTERFACE)
-        target_link_libraries(ascii-debug-runtime INTERFACE ascii-chat-instrumentation)
+        target_link_libraries(ascii-debug-runtime INTERFACE ascii-chat-debug)
     else()
         add_library(ascii-debug-runtime STATIC ${DEBUG_RUNTIME_SRCS})
         target_include_directories(ascii-debug-runtime
@@ -182,16 +183,19 @@ function(ascii_add_debug_targets)
         endif()
     endif()
 
-    add_executable(ascii-instr-report
-        ${DEBUG_TOOL_SRCS}
-    )
-    target_include_directories(ascii-instr-report
-        PRIVATE
-            ${CMAKE_SOURCE_DIR}/lib
-            ${CMAKE_BINARY_DIR}/generated
-    )
-    target_link_libraries(ascii-instr-report
-        ascii-chat-static
-    )
-    set_target_properties(ascii-instr-report PROPERTIES OUTPUT_NAME "ascii-instr-report")
+    # ascii-instr-report uses POSIX headers (dirent.h, getopt.h) - skip on Windows
+    if(NOT WIN32)
+        add_executable(ascii-instr-report
+            ${DEBUG_TOOL_SRCS}
+        )
+        target_include_directories(ascii-instr-report
+            PRIVATE
+                ${CMAKE_SOURCE_DIR}/lib
+                ${CMAKE_BINARY_DIR}/generated
+        )
+        target_link_libraries(ascii-instr-report
+            ascii-chat-static
+        )
+        set_target_properties(ascii-instr-report PROPERTIES OUTPUT_NAME "ascii-instr-report")
+    endif()
 endfunction()

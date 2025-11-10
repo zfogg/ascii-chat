@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eu
+set -o pipefail 2>/dev/null || true
 
 is_wsl_env() {
   if grep -qi "microsoft" /proc/version 2>/dev/null; then
@@ -147,6 +148,16 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
   exit 1
 fi
 
+# Use original compilation database (without instrumentation) for the instrumentation tool
+COMPILE_COMMANDS_ORIG="${BUILD_DIR}/compile_commands_original.json"
+if [[ -f "${COMPILE_COMMANDS_ORIG}" ]]; then
+  # Copy original compile commands over the instrumented one for the tool to use
+  cp "${COMPILE_COMMANDS_ORIG}" "${BUILD_DIR}/compile_commands.json"
+  # Ensure the temporary build directory referenced by the compilation database exists
+  # The instrumentation tool chdirs into these paths even if the full build tree isn't present.
+  mkdir -p "${BUILD_DIR}/compile_db_temp" 2>/dev/null || true
+fi
+
 COMPILE_COMMANDS="${BUILD_DIR}/compile_commands.json"
 if [[ ! -f "${COMPILE_COMMANDS}" ]]; then
   echo "Error: compile_commands.json not found in '${BUILD_DIR}'. Run CMake with -DCMAKE_EXPORT_COMPILE_COMMANDS=ON" >&2
@@ -223,14 +234,26 @@ rm -rf "${OUTPUT_DIR}/deps/mimalloc/build" 2>/dev/null || true
 # Remove source files (they'll be replaced by instrumented versions)
 find "${OUTPUT_DIR}" -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -delete 2>/dev/null || true
 
-# Remove headers BEFORE instrumentation to avoid pragma once issues during tool run
-# We'll copy them back AFTER instrumentation
+# Remove headers - they'll be copied after instrumentation
 find "${OUTPUT_DIR}" -type f -name '*.h' -delete 2>/dev/null || true
 
 # Remove this script itself
 rm -f "${OUTPUT_DIR}/cmake/debug/run_instrumentation.sh" 2>/dev/null || true
 
 echo "Source tree copied (excluding source files, headers, and build artifacts)"
+
+# Copy version.h to instrumented tree so the instrumentation tool can find it
+# version.h is generated at build time and needs to be available for parsing
+if [[ -f "${BUILD_DIR}/generated/version.h" ]]; then
+  mkdir -p "${OUTPUT_DIR}/lib"
+  cp "${BUILD_DIR}/generated/version.h" "${OUTPUT_DIR}/lib/version.h"
+  echo "Copied version.h to instrumented tree"
+fi
+
+remaining_c_files=$(find "${OUTPUT_DIR}" -type f -name '*.c' | wc -l | tr -d '[:space:]')
+remaining_h_files=$(find "${OUTPUT_DIR}" -type f -name '*.h' | wc -l | tr -d '[:space:]')
+echo "DEBUG: Remaining .c files before instrumentation: ${remaining_c_files}"
+echo "DEBUG: Remaining .h files before instrumentation: ${remaining_h_files}"
 
 declare -a SOURCE_PATHS=()
 if [[ $# -gt 0 ]]; then
@@ -299,14 +322,22 @@ SOURCE_PATHS=("${deduped_paths[@]}")
 filtered_paths=()
 for path in "${SOURCE_PATHS[@]}"; do
   case "$path" in
-  lib/lock_debug.c | \
+  lib/debug/lock.c | \
   lib/platform/system.c | \
   lib/platform/posix/system.c | \
   lib/platform/posix/mutex.c | \
   lib/platform/posix/thread.c | \
   lib/platform/windows/system.c | \
   lib/platform/windows/mutex.c | \
-  lib/platform/windows/thread.c)
+  lib/platform/windows/thread.c | \
+  lib/image2ascii/simd/ascii_simd.c | \
+  lib/image2ascii/simd/ascii_simd_color.c | \
+  lib/image2ascii/simd/common.c | \
+  lib/image2ascii/simd/avx2.c | \
+  lib/image2ascii/simd/sse2.c | \
+  lib/image2ascii/simd/ssse3.c | \
+  lib/image2ascii/simd/neon.c | \
+  lib/image2ascii/simd/sve.c)
     continue
     ;;
   esac
@@ -314,38 +345,126 @@ for path in "${SOURCE_PATHS[@]}"; do
 done
 SOURCE_PATHS=("${filtered_paths[@]}")
 
-CMD=("${TOOL_PATH}" -p "${BUILD_DIR_WIN}" --output-dir "${OUTPUT_DIR_WIN}" --input-root "${INPUT_ROOT_WIN}")
-CMD+=("${SOURCE_PATHS[@]}")
+# Incremental build: filter out unchanged files
+CHANGED_SOURCES=()
+SKIPPED_COUNT=0
 
-if [[ $# -gt 0 ]]; then
-  CMD+=("$@")
+for source_path in "${SOURCE_PATHS[@]}"; do
+  # Get absolute source path
+  if [[ "${source_path}" = /* ]]; then
+    abs_source="${source_path}"
+  else
+    abs_source="${PWD}/${source_path}"
+  fi
+
+  # Get corresponding instrumented file path
+  instrumented_file="${OUTPUT_DIR}/${source_path}"
+
+  # Check if instrumented file exists and is newer than source
+  if [[ -f "${instrumented_file}" ]] && [[ "${instrumented_file}" -nt "${abs_source}" ]]; then
+    ((SKIPPED_COUNT++))
+    continue
+  fi
+
+  CHANGED_SOURCES+=("${source_path}")
+done
+
+if [[ ${#CHANGED_SOURCES[@]} -eq 0 ]]; then
+  echo "All ${#SOURCE_PATHS[@]} source files are up to date, skipping instrumentation"
+else
+  echo "Instrumenting ${#CHANGED_SOURCES[@]} changed files (${SKIPPED_COUNT} unchanged, skipped)"
+
+  # Parallel processing: instrument files in parallel
+  # Detect number of CPU cores (Windows-compatible)
+  NPROC=4  # Default fallback
+
+  # Try Windows environment variable first (works in WSL and native)
+  if [[ -n "${NUMBER_OF_PROCESSORS:-}" ]]; then
+    NPROC="${NUMBER_OF_PROCESSORS}"
+  # Try nproc (Linux/Unix)
+  elif command -v nproc >/dev/null 2>&1; then
+    NPROC=$(nproc)
+  # Try /proc/cpuinfo (Linux)
+  elif [[ -f /proc/cpuinfo ]]; then
+    NPROC=$(grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 4)
+  # Try sysctl (macOS)
+  elif command -v sysctl >/dev/null 2>&1; then
+    NPROC=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
+  fi
+
+  # Use 75% of cores to avoid overloading system
+  PARALLEL_JOBS=$((NPROC * 3 / 4))
+  [[ ${PARALLEL_JOBS} -lt 1 ]] && PARALLEL_JOBS=1
+
+  echo "Using ${PARALLEL_JOBS} parallel jobs (${NPROC} CPU cores detected)"
+
+  # Build extra arguments
+  EXTRA_ARGS=()
+  if [[ $# -gt 0 ]]; then
+    EXTRA_ARGS+=("$@")
+  fi
+
+  # Process files in parallel using xargs
+  # Each invocation processes one file for better parallelism
+  if command -v xargs >/dev/null 2>&1; then
+    printf '%s\n' "${CHANGED_SOURCES[@]}" | xargs -P "${PARALLEL_JOBS}" -I {} \
+      "${TOOL_PATH}" -p "${BUILD_DIR_WIN}" --output-dir "${OUTPUT_DIR_WIN}" --input-root "${INPUT_ROOT_WIN}" {} "${EXTRA_ARGS[@]}"
+    INSTRUMENT_EXIT=$?
+  else
+    # Fallback to sequential if xargs not available
+    echo "Warning: xargs not found, falling back to sequential processing"
+    CMD=("${TOOL_PATH}" -p "${BUILD_DIR_WIN}" --output-dir "${OUTPUT_DIR_WIN}" --input-root "${INPUT_ROOT_WIN}")
+    CMD+=("${CHANGED_SOURCES[@]}")
+    CMD+=("${EXTRA_ARGS[@]}")
+    "${CMD[@]}"
+    INSTRUMENT_EXIT=$?
+  fi
+
+  if [[ ${INSTRUMENT_EXIT} -ne 0 ]]; then
+    echo "Instrumentation failed with exit code ${INSTRUMENT_EXIT}"
+    exit ${INSTRUMENT_EXIT}
+  fi
 fi
-
-echo "Running instrumentation tool: ${CMD[*]}"
-"${CMD[@]}"
 
 echo "Instrumentation complete. Now copying headers to instrumented tree..."
 # Copy all headers to instrumented tree AFTER instrumentation
 # This ensures they're available for compilation with instrumented .c files
-find "${PWD}" -type f -name '*.h' \
+while IFS= read -r -d '' header_file; do
+  rel_path="${header_file#${PWD}/}"
+  dest_file="${OUTPUT_DIR}/${rel_path}"
+  dest_dir="$(dirname "${dest_file}")"
+  mkdir -p "${dest_dir}"
+  cp "${header_file}" "${dest_file}"
+done < <(find "${PWD}" -type f -name '*.h' \
   ! -path "*/build/*" \
   ! -path "*/build_*/*" \
   ! -path "*/.git/*" \
+  ! -path "*/.deps-cache/*" \
+  ! -path "*/.deps-cache-docker/*" \
   ! -path "*/deps/bearssl/build/*" \
   ! -path "*/deps/mimalloc/build/*" \
-  -exec bash -c 'rel=$(realpath --relative-to='"${PWD}"' "$1"); mkdir -p "'"${OUTPUT_DIR}"'/$(dirname "$rel")"; cp "$1" "'"${OUTPUT_DIR}"'/$rel"' _ {} \;
+  -print0 2>/dev/null || printf '')
 
 echo "Headers copied to instrumented tree"
 
 extra_source_files=(
   "lib/platform/system.c"
-  "lib/lock_debug.c"
+  "lib/debug/lock.c"
   "lib/platform/posix/system.c"
   "lib/platform/posix/mutex.c"
   "lib/platform/posix/thread.c"
   "lib/platform/windows/system.c"
   "lib/platform/windows/mutex.c"
   "lib/platform/windows/thread.c"
+  # SIMD files use intrinsics that confuse the instrumentation tool
+  "lib/image2ascii/simd/ascii_simd.c"
+  "lib/image2ascii/simd/ascii_simd_color.c"
+  "lib/image2ascii/simd/common.c"
+  "lib/image2ascii/simd/avx2.c"
+  "lib/image2ascii/simd/sse2.c"
+  "lib/image2ascii/simd/ssse3.c"
+  "lib/image2ascii/simd/neon.c"
+  "lib/image2ascii/simd/sve.c"
 )
 
 echo "Copying excluded source files to instrumented tree..."

@@ -18,7 +18,7 @@ __attribute__((constructor)) static void init_test_environment(void) {
 }
 
 /**
- * Global shutdown flag referenced by lib/logging.c and lib/lock_debug.c
+ * Global shutdown flag referenced by lib/logging.c and lib/debug/lock.c
  * In production builds, this is defined in main.c and set during shutdown.
  * For tests, we stub it out as false (tests don't perform shutdown).
  */
