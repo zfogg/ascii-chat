@@ -8,6 +8,9 @@
 // Platform-specific malloc size headers - MUST come before common.h
 // to avoid conflicts with debug memory macros
 #ifdef _WIN32
+#if defined(_MSC_VER)
+#include <excpt.h>
+#endif
 #include <malloc.h> // For _msize
 #elif defined(__APPLE__)
 #include <malloc/malloc.h> // For malloc_size on macOS
@@ -22,7 +25,7 @@ extern size_t malloc_usable_size(void *ptr);
 #endif
 
 #include "common.h"
-#include "platform/abstraction.h"
+#include "platform/mutex.h"
 #include "platform/system.h"
 #include "platform/init.h"
 #include "util/path.h"
@@ -172,23 +175,33 @@ static struct {
 #undef calloc
 #undef realloc
 
-static void ensure_mutex_initialized(void) {
-  int state = atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire);
-  if (state == 2) {
-    return;
-  }
+static atomic_flag g_logged_mutex_init_failure = ATOMIC_FLAG_INIT;
 
-  int expected = 0;
-  if (state == 0 && atomic_compare_exchange_strong_explicit(&g_mem.mutex_state, &expected, 1, memory_order_acq_rel,
-                                                            memory_order_acquire)) {
-    if (mutex_init(&g_mem.mutex) == 0) {
-      atomic_store_explicit(&g_mem.mutex_state, 2, memory_order_release);
-      return;
+static bool ensure_mutex_initialized(void) {
+  for (;;) {
+    int state = atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire);
+    if (state == 2) {
+      return true;
     }
-    atomic_store_explicit(&g_mem.mutex_state, 0, memory_order_release);
-  }
 
-  while (atomic_load_explicit(&g_mem.mutex_state, memory_order_acquire) != 2) {
+    if (state == 0) {
+      int expected = 0;
+      if (atomic_compare_exchange_strong_explicit(&g_mem.mutex_state, &expected, 1, memory_order_acq_rel,
+                                                  memory_order_acquire)) {
+        if (mutex_init(&g_mem.mutex) == 0) {
+          atomic_store_explicit(&g_mem.mutex_state, 2, memory_order_release);
+          return true;
+        }
+
+        atomic_store_explicit(&g_mem.mutex_state, 0, memory_order_release);
+        if (!atomic_flag_test_and_set(&g_logged_mutex_init_failure)) {
+          log_error("Failed to initialize debug memory mutex; memory tracking will run without locking");
+        }
+        return false;
+      }
+      continue;
+    }
+
     platform_sleep_ms(1);
   }
 }
@@ -218,24 +231,26 @@ void *debug_malloc(size_t size, const char *file, int line) {
   }
 
   /* Track individual allocations for detailed leak reporting */
-  ensure_mutex_initialized();
-  mutex_lock(&g_mem.mutex);
+  bool have_mutex = ensure_mutex_initialized();
+  if (have_mutex) {
+    mutex_lock(&g_mem.mutex);
 
-  // Use raw malloc here to avoid recursion - we're already inside debug_malloc!
-  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-  if (block) {
-    block->ptr = ptr;
-    block->size = size;
-    block->is_aligned = false; /* Regular allocation, not aligned */
-    // Normalize file path to resolve .. components and extract relative path
-    const char *normalized_file = extract_project_relative_path(file);
-    SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
-    block->line = line;
-    block->next = g_mem.head;
-    g_mem.head = block;
+    // Use raw malloc here to avoid recursion - we're already inside debug_malloc!
+    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+    if (block) {
+      block->ptr = ptr;
+      block->size = size;
+      block->is_aligned = false; /* Regular allocation, not aligned */
+      // Normalize file path to resolve .. components and extract relative path
+      const char *normalized_file = extract_project_relative_path(file);
+      SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
+      block->line = line;
+      block->next = g_mem.head;
+      g_mem.head = block;
+    }
+
+    mutex_unlock(&g_mem.mutex);
   }
-
-  mutex_unlock(&g_mem.mutex);
 
   g_in_debug_memory = false;
   return ptr;
@@ -267,24 +282,26 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
   }
 
   /* Track individual allocations for detailed leak reporting */
-  ensure_mutex_initialized();
-  mutex_lock(&g_mem.mutex);
+  bool have_mutex = ensure_mutex_initialized();
+  if (have_mutex) {
+    mutex_lock(&g_mem.mutex);
 
-  // Use raw malloc here to avoid recursion
-  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-  if (block) {
-    block->ptr = ptr;
-    block->size = size;
-    block->is_aligned = true; /* Mark as aligned allocation */
-    // Normalize file path to resolve .. components and extract relative path
-    const char *normalized_file = extract_project_relative_path(file);
-    SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
-    block->line = line;
-    block->next = g_mem.head;
-    g_mem.head = block;
+    // Use raw malloc here to avoid recursion
+    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+    if (block) {
+      block->ptr = ptr;
+      block->size = size;
+      block->is_aligned = true; /* Mark as aligned allocation */
+      // Normalize file path to resolve .. components and extract relative path
+      const char *normalized_file = extract_project_relative_path(file);
+      SAFE_STRNCPY(block->file, normalized_file, sizeof(block->file) - 1);
+      block->line = line;
+      block->next = g_mem.head;
+      g_mem.head = block;
+    }
+
+    mutex_unlock(&g_mem.mutex);
   }
-
-  mutex_unlock(&g_mem.mutex);
 
   g_in_debug_memory = false;
 }
@@ -313,40 +330,45 @@ void debug_free(void *ptr, const char *file, int line) {
 #endif
 
   /* Search for allocation in linked list */
-  ensure_mutex_initialized();
-  mutex_lock(&g_mem.mutex);
+  bool have_mutex = ensure_mutex_initialized();
+  if (have_mutex) {
+    mutex_lock(&g_mem.mutex);
 
-  mem_block_t *prev = NULL;
-  mem_block_t *curr = g_mem.head;
+    mem_block_t *prev = NULL;
+    mem_block_t *curr = g_mem.head;
 
-  while (curr) {
-    if (curr->ptr == ptr) {
-      if (prev) {
-        prev->next = curr->next;
-      } else {
-        g_mem.head = curr->next;
-      }
+    while (curr) {
+      if (curr->ptr == ptr) {
+        if (prev) {
+          prev->next = curr->next;
+        } else {
+          g_mem.head = curr->next;
+        }
 
-      freed_size = curr->size;
-      found = true;
+        freed_size = curr->size;
+        found = true;
 #ifdef _WIN32
-      was_aligned = curr->is_aligned;
+        was_aligned = curr->is_aligned;
 #endif
-      free(curr); // Use raw free to avoid recursion
-      break;
+        free(curr); // Use raw free to avoid recursion
+        break;
+      }
+      prev = curr;
+      curr = curr->next;
     }
-    prev = curr;
-    curr = curr->next;
-  }
 
-  if (!found) {
-    // NOTE: Backtrace disabled - it's EXTREMELY expensive (20-30ms per call) and destroys FPS
-    // Only log once per second to avoid spam
-    log_warn_every(1000000, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
-    platform_print_backtrace(1);
-  }
+    if (!found) {
+      // NOTE: Backtrace disabled - it's EXTREMELY expensive (20-30ms per call) and destroys FPS
+      // Only log once per second to avoid spam
+      log_warn_every(1000000, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
+      platform_print_backtrace(1);
+    }
 
-  mutex_unlock(&g_mem.mutex);
+    mutex_unlock(&g_mem.mutex);
+  } else {
+    // If we cannot acquire the mutex, we conservatively treat the pointer as untracked.
+    log_warn_every(1000000, "Debug memory mutex unavailable while freeing %p at %s:%d", ptr, file, line);
+  }
 
   /* Update freed stats - use exact size from tracking or best-effort platform function */
   if (found) {
@@ -356,8 +378,16 @@ void debug_free(void *ptr, const char *file, int line) {
   } else {
     size_t real_size = 0;
 #ifdef _WIN32
-    /* Windows: Without tracking information we cannot safely determine the allocation size */
-    real_size = 0;
+    /* Windows: Best effort using _msize for non-aligned allocations */
+#if defined(_MSC_VER)
+    __try {
+      real_size = _msize(ptr);
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+      real_size = 0;
+    }
+#else
+    real_size = _msize(ptr);
+#endif
 #elif defined(__APPLE__)
     /* macOS: Use malloc_size */
     real_size = malloc_size(ptr);
@@ -413,22 +443,24 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   }
 
   /* Track individual allocations for detailed leak reporting */
-  ensure_mutex_initialized();
-  mutex_lock(&g_mem.mutex);
+  bool have_mutex = ensure_mutex_initialized();
+  if (have_mutex) {
+    mutex_lock(&g_mem.mutex);
 
-  // Use raw malloc to avoid recursion
-  mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-  if (block) {
-    block->ptr = ptr;
-    block->size = total;
-    block->is_aligned = false; /* calloc is not aligned */
-    SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-    block->line = line;
-    block->next = g_mem.head;
-    g_mem.head = block;
+    // Use raw malloc to avoid recursion
+    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+    if (block) {
+      block->ptr = ptr;
+      block->size = total;
+      block->is_aligned = false; /* calloc is not aligned */
+      SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+      block->line = line;
+      block->next = g_mem.head;
+      g_mem.head = block;
+    }
+
+    mutex_unlock(&g_mem.mutex);
   }
-
-  mutex_unlock(&g_mem.mutex);
 
   g_in_debug_memory = false;
   return ptr;
@@ -456,23 +488,24 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   }
 
   size_t old_size = 0;
-  mem_block_t *curr = NULL;
+  bool have_mutex = ensure_mutex_initialized();
 
   /* Find the old allocation */
-  ensure_mutex_initialized();
-  mutex_lock(&g_mem.mutex);
+  if (have_mutex) {
+    mutex_lock(&g_mem.mutex);
 
-  mem_block_t *prev = NULL;
-  curr = g_mem.head;
-  while (curr && curr->ptr != ptr) {
-    prev = curr;
-    curr = curr->next;
+    mem_block_t *curr = g_mem.head;
+    while (curr && curr->ptr != ptr) {
+      curr = curr->next;
+    }
+    if (curr) {
+      old_size = curr->size;
+    }
+
+    mutex_unlock(&g_mem.mutex);
+  } else {
+    log_warn_every(1000000, "Debug memory mutex unavailable while reallocating %p at %s:%d", ptr, file, line);
   }
-  if (curr) {
-    old_size = curr->size;
-  }
-  (void)prev; // Unused variable (for now 🤔 what could i do with this...)
-  mutex_unlock(&g_mem.mutex);
 
   void *new_ptr = SAFE_REALLOC(ptr, size, void *);
   if (!new_ptr) {
@@ -512,37 +545,41 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   }
 
   /* Update the linked list */
-  ensure_mutex_initialized();
-  mutex_lock(&g_mem.mutex);
+  if (ensure_mutex_initialized()) {
+    mutex_lock(&g_mem.mutex);
 
-  /* Find the block again (it might have changed) */
-  curr = g_mem.head;
-  while (curr && curr->ptr != ptr) {
-    curr = curr->next;
-  }
-
-  if (curr) {
-    curr->ptr = new_ptr;
-    curr->size = size;
-    curr->is_aligned = false; /* realloc always produces non-aligned allocation */
-    SAFE_STRNCPY(curr->file, file, sizeof(curr->file) - 1);
-    curr->file[sizeof(curr->file) - 1] = '\0';
-    curr->line = line;
-  } else {
-    // Use raw malloc to avoid recursion
-    mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
-    if (block) {
-      block->ptr = new_ptr;
-      block->size = size;
-      block->is_aligned = false; /* realloc always produces non-aligned allocation */
-      SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
-      block->line = line;
-      block->next = g_mem.head;
-      g_mem.head = block;
+    /* Find the block again (it might have changed) */
+    mem_block_t *curr = g_mem.head;
+    while (curr && curr->ptr != ptr) {
+      curr = curr->next;
     }
-  }
 
-  mutex_unlock(&g_mem.mutex);
+    if (curr) {
+      curr->ptr = new_ptr;
+      curr->size = size;
+      curr->is_aligned = false; /* realloc always produces non-aligned allocation */
+      SAFE_STRNCPY(curr->file, file, sizeof(curr->file) - 1);
+      curr->file[sizeof(curr->file) - 1] = '\0';
+      curr->line = line;
+    } else {
+      // Use raw malloc to avoid recursion
+      mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
+      if (block) {
+        block->ptr = new_ptr;
+        block->size = size;
+        block->is_aligned = false; /* realloc always produces non-aligned allocation */
+        SAFE_STRNCPY(block->file, file, sizeof(block->file) - 1);
+        block->line = line;
+        block->next = g_mem.head;
+        g_mem.head = block;
+      }
+    }
+
+    mutex_unlock(&g_mem.mutex);
+  } else {
+    log_warn_every(1000000, "Debug memory mutex unavailable while updating realloc block %p -> %p at %s:%d", ptr,
+                   new_ptr, file, line);
+  }
 
   g_in_debug_memory = false;
   return new_ptr;
@@ -587,33 +624,36 @@ void debug_memory_report(void) {
     format_bytes_pretty(current_usage, pretty_current, sizeof(pretty_current));
     format_bytes_pretty(peak_usage, pretty_peak, sizeof(pretty_peak));
 
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total allocated: %s\n", pretty_total));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Total freed: %s\n", pretty_freed));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Current usage: %s\n", pretty_current));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "Peak usage: %s\n", pretty_peak));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "malloc calls: %zu\n", malloc_calls));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "calloc calls: %zu\n", calloc_calls));
+    safe_fprintf(stderr, "Total allocated: %s\n", pretty_total);
+    safe_fprintf(stderr, "Total freed: %s\n", pretty_freed);
+    safe_fprintf(stderr, "Current usage: %s\n", pretty_current);
+    safe_fprintf(stderr, "Peak usage: %s\n", pretty_peak);
+    safe_fprintf(stderr, "malloc calls: %zu\n", malloc_calls);
+    safe_fprintf(stderr, "calloc calls: %zu\n", calloc_calls);
     // fprintf(stderr, "realloc calls: %zu\n", atomic_load(&g_mem.realloc_calls));
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "free calls: %zu\n", free_calls));
+    safe_fprintf(stderr, "free calls: %zu\n", free_calls);
     size_t diff = (malloc_calls + calloc_calls) - free_calls;
-    SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff));
+    safe_fprintf(stderr, "(malloc calls + calloc calls) - free calls = %zu\n", diff);
 
     /* Show current allocations if any exist */
     if (g_mem.head) {
-      ensure_mutex_initialized();
-      mutex_lock(&g_mem.mutex);
+      if (ensure_mutex_initialized()) {
+        mutex_lock(&g_mem.mutex);
 
-      SAFE_IGNORE_PRINTF_RESULT(safe_fprintf(stderr, "\nCurrent allocations:\n"));
-      mem_block_t *curr = g_mem.head;
-      while (curr) {
-        char pretty_size[64];
-        format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
-        SAFE_IGNORE_PRINTF_RESULT(
-            safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
-        curr = curr->next;
+        safe_fprintf(stderr, "\nCurrent allocations:\n");
+        mem_block_t *curr = g_mem.head;
+        while (curr) {
+          char pretty_size[64];
+          format_bytes_pretty(curr->size, pretty_size, sizeof(pretty_size));
+          SAFE_IGNORE_PRINTF_RESULT(
+              safe_fprintf(stderr, "  - %s:%d - %s\n", strip_project_path(curr->file), curr->line, pretty_size));
+          curr = curr->next;
+        }
+
+        mutex_unlock(&g_mem.mutex);
+      } else {
+        safe_fprintf(stderr, "\nCurrent allocations unavailable: failed to initialize debug memory mutex\n");
       }
-
-      mutex_unlock(&g_mem.mutex);
     }
   }
 }
@@ -624,4 +664,4 @@ void debug_memory_report(void) {
 static void print_mimalloc_stats(void) {
   mi_stats_print(NULL); // NULL = print to stderr
 }
-#endif // DEBUG_MEMORY || USE_MIMALLOC_DEBUG (only in debug builds)
+#endif // (only in debug builds)
