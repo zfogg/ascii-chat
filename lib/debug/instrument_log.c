@@ -9,6 +9,7 @@
 #include "platform/mutex.h"
 #include "platform/system.h"
 #include "platform/thread.h"
+#include "util/path.h"
 #include "util/time.h"
 
 #include <ctype.h>

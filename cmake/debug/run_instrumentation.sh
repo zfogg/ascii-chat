@@ -62,6 +62,12 @@ to_windows_path() {
   printf '%s\n' "${input}"
 }
 
+# Ensure POSIX toolchain precedence on Windows environments (Git Bash, MSYS, etc.)
+if is_windows_env; then
+  PATH="/usr/bin:/bin:/mingw64/bin:/mingw32/bin:$PATH"
+  export PATH
+fi
+
 show_usage() {
   cat <<'EOF'
 Usage: run_instrumentation.sh -b <build-dir> -o <output-dir> [-- <extra clang-tool args...>]
@@ -216,7 +222,7 @@ for item in *; do
 
   echo "  Copying $item..."
   if [ -e "$item" ]; then
-    cp -r "$item" "${OUTPUT_DIR}/" 2>&1 || true
+    cp -r "$item" "${OUTPUT_DIR}" 2>&1 || true
   else
     echo "  WARNING: $item does not exist, skipping" >&2
   fi
@@ -422,13 +428,7 @@ fi
 echo "Instrumentation complete. Now copying headers to instrumented tree..."
 # Copy all headers to instrumented tree AFTER instrumentation
 # This ensures they're available for compilation with instrumented .c files
-while IFS= read -r -d '' header_file; do
-  rel_path="${header_file#${PWD}/}"
-  dest_file="${OUTPUT_DIR}/${rel_path}"
-  dest_dir="$(dirname "${dest_file}")"
-  mkdir -p "${dest_dir}"
-  cp "${header_file}" "${dest_file}"
-done < <(find "${PWD}" -type f -name '*.h' \
+find "${PWD}" -type f -name '*.h' \
   ! -path "*/build/*" \
   ! -path "*/build_*/*" \
   ! -path "*/.git/*" \
@@ -436,7 +436,13 @@ done < <(find "${PWD}" -type f -name '*.h' \
   ! -path "*/.deps-cache-docker/*" \
   ! -path "*/deps/bearssl/build/*" \
   ! -path "*/deps/mimalloc/build/*" \
-  -print0 2>/dev/null || printf '')
+  -print0 2>/dev/null | while IFS= read -r -d '' header_file; do
+  rel_path="${header_file#${PWD}/}"
+  dest_file="${OUTPUT_DIR}/${rel_path}"
+  dest_dir="$(dirname "${dest_file}")"
+  mkdir -p "${dest_dir}"
+  cp "${header_file}" "${dest_file}"
+done
 
 echo "Headers copied to instrumented tree"
 
