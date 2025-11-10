@@ -155,42 +155,48 @@ function(ascii_instrumentation_prepare)
     list(REMOVE_DUPLICATES instrumented_rel_paths)
     list(REMOVE_DUPLICATES instrumented_generated_paths)
 
-    set(_ascii_bash_executable "")
     if(DEFINED ASCII_INSTRUMENTATION_BASH AND ASCII_INSTRUMENTATION_BASH)
         set(_ascii_bash_executable "${ASCII_INSTRUMENTATION_BASH}")
     else()
-        find_program(_ascii_bash_executable
-            NAMES bash.exe bash
-            HINTS
-                "$ENV{ProgramFiles}/Git/usr/bin"
-                "$ENV{ProgramFiles}/Git/bin"
-                "$ENV{ProgramFiles}/Git/cmd"
-                "$ENV{ProgramW6432}/Git/usr/bin"
-                "$ENV{ProgramW6432}/Git/bin"
-                "$ENV{ProgramW6432}/Git/cmd"
-                "$ENV{LOCALAPPDATA}/Programs/Git/usr/bin"
-                "$ENV{LOCALAPPDATA}/Programs/Git/bin"
-                "$ENV{LOCALAPPDATA}/Programs/Git/cmd"
-            PATHS
-                "$ENV{SystemRoot}/system32"
-                "$ENV{SystemRoot}"
-        )
-        if(NOT _ascii_bash_executable)
-            set(_ascii_candidate_bash_paths
-                "$ENV{SystemRoot}/system32/bash.exe"
-                "$ENV{ProgramFiles}/Git/usr/bin/bash.exe"
-                "$ENV{ProgramFiles}/Git/bin/bash.exe"
-                "$ENV{ProgramW6432}/Git/usr/bin/bash.exe"
-                "$ENV{ProgramW6432}/Git/bin/bash.exe"
-                "$ENV{LOCALAPPDATA}/Programs/Git/usr/bin/bash.exe"
-                "$ENV{LOCALAPPDATA}/Programs/Git/bin/bash.exe"
+        unset(_ascii_bash_executable CACHE)  # Clear any cached value
+        if(WIN32)
+            # Windows-specific search for Git Bash or WSL
+            find_program(_ascii_bash_executable
+                NAMES bash.exe bash
+                HINTS
+                    "$ENV{ProgramFiles}/Git/usr/bin"
+                    "$ENV{ProgramFiles}/Git/bin"
+                    "$ENV{ProgramFiles}/Git/cmd"
+                    "$ENV{ProgramW6432}/Git/usr/bin"
+                    "$ENV{ProgramW6432}/Git/bin"
+                    "$ENV{ProgramW6432}/Git/cmd"
+                    "$ENV{LOCALAPPDATA}/Programs/Git/usr/bin"
+                    "$ENV{LOCALAPPDATA}/Programs/Git/bin"
+                    "$ENV{LOCALAPPDATA}/Programs/Git/cmd"
+                PATHS
+                    "$ENV{SystemRoot}/system32"
+                    "$ENV{SystemRoot}"
             )
-            foreach(_ascii_candidate_path IN LISTS _ascii_candidate_bash_paths)
-                if(_ascii_candidate_path AND EXISTS "${_ascii_candidate_path}")
-                    set(_ascii_bash_executable "${_ascii_candidate_path}")
-                    break()
-                endif()
-            endforeach()
+            if(NOT _ascii_bash_executable)
+                set(_ascii_candidate_bash_paths
+                    "$ENV{SystemRoot}/system32/bash.exe"
+                    "$ENV{ProgramFiles}/Git/usr/bin/bash.exe"
+                    "$ENV{ProgramFiles}/Git/bin/bash.exe"
+                    "$ENV{ProgramW6432}/Git/usr/bin/bash.exe"
+                    "$ENV{ProgramW6432}/Git/bin/bash.exe"
+                    "$ENV{LOCALAPPDATA}/Programs/Git/usr/bin/bash.exe"
+                    "$ENV{LOCALAPPDATA}/Programs/Git/bin/bash.exe"
+                )
+                foreach(_ascii_candidate_path IN LISTS _ascii_candidate_bash_paths)
+                    if(_ascii_candidate_path AND EXISTS "${_ascii_candidate_path}")
+                        set(_ascii_bash_executable "${_ascii_candidate_path}")
+                        break()
+                    endif()
+                endforeach()
+            endif()
+        else()
+            # Unix (Linux/macOS) - use standard find_program with system PATH
+            find_program(_ascii_bash_executable NAMES bash)
         endif()
     endif()
 
