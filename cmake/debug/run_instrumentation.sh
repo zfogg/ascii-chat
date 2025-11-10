@@ -183,10 +183,6 @@ echo "Copying source tree to ${OUTPUT_DIR}..."
 # Get absolute path of output directory to avoid copying into itself
 OUTPUT_DIR_ABS=$(cd "${OUTPUT_DIR}" && pwd)
 
-echo "DEBUG: About to start copying. PWD=$PWD OUTPUT_DIR_ABS=$OUTPUT_DIR_ABS"
-echo "DEBUG: Contents of current directory:"
-ls -la | head -20
-
 # Copy each top-level item except build directories and .git
 for item in *; do
   # Skip empty, '.', '..' entries
@@ -219,7 +215,6 @@ for item in *; do
   fi
 
   echo "  Copying $item..."
-  echo "  DEBUG: item='$item' OUTPUT_DIR='${OUTPUT_DIR}'" >&2
   if [ -e "$item" ]; then
     cp -r "$item" "${OUTPUT_DIR}/" 2>&1 || true
   else
@@ -252,8 +247,6 @@ fi
 
 remaining_c_files=$(find "${OUTPUT_DIR}" -type f -name '*.c' | wc -l | tr -d '[:space:]')
 remaining_h_files=$(find "${OUTPUT_DIR}" -type f -name '*.h' | wc -l | tr -d '[:space:]')
-echo "DEBUG: Remaining .c files before instrumentation: ${remaining_c_files}"
-echo "DEBUG: Remaining .h files before instrumentation: ${remaining_h_files}"
 
 declare -a SOURCE_PATHS=()
 if [[ $# -gt 0 ]]; then
