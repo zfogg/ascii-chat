@@ -307,6 +307,33 @@ runs:
           export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/c++"
         fi
 
+        map_pkg_to_formula() {
+          case "$1" in
+            portaudio-2.0) echo "portaudio" ;;
+            libzstd) echo "zstd" ;;
+            libsodium) echo "libsodium" ;;
+            criterion) echo "criterion" ;;
+            *) echo "$1" ;;
+          esac
+        }
+
+        append_pkgconfig_path_if_exists() {
+          local dir="$1"
+          if [ -d "$dir" ]; then
+            if [[ ":$PKG_CONFIG_PATH:" != *":$dir:"* ]]; then
+              PKG_CONFIG_PATH="${PKG_CONFIG_PATH}:$dir"
+            fi
+          fi
+        }
+
+        for lib in $PKG_CONFIG_LIBS; do
+          formula="$(map_pkg_to_formula "$lib")"
+          if prefix="$(brew --prefix "$formula" 2>/dev/null)"; then
+            append_pkgconfig_path_if_exists "${prefix}/lib/pkgconfig"
+            append_pkgconfig_path_if_exists "${prefix}/share/pkgconfig"
+          fi
+        done
+
         # Set up PATH
         echo "PATH=$PATH" >> $GITHUB_ENV
 
@@ -328,8 +355,13 @@ runs:
         # Debug: Check if .pc files exist
         echo "Debug: Checking .pc files existence..."
         for lib in $PKG_CONFIG_LIBS; do
-          if ! ls -la "${BREW_PREFIX}/lib/pkgconfig/${lib}.pc"; then
-            echo "ERROR: No $lib .pc files in ${BREW_PREFIX}/lib/pkgconfig/"
+          if ! pkg-config --exists "$lib"; then
+            echo "ERROR: pkg-config could not locate $lib"
+            echo "       PKG_CONFIG_PATH=$PKG_CONFIG_PATH"
+            echo "       pkg-config --variable=pc_path pkg-config:"
+            pkg-config --variable=pc_path pkg-config || true
+            echo "       Contents of $(brew --prefix "$(map_pkg_to_formula "$lib")" 2>/dev/null)/lib/pkgconfig:"
+            ls -la "$(brew --prefix "$(map_pkg_to_formula "$lib")" 2>/dev/null)/lib/pkgconfig" || true
             exit 1
           fi
         done
