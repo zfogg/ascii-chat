@@ -16,6 +16,7 @@
 
 function(configure_include_directories)
     # Base include directories
+    # Note: Instrumented builds use original headers (deleted from instrumented tree to avoid #pragma once issues)
     include_directories(
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/src

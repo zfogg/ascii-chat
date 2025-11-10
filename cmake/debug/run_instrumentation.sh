@@ -1,6 +1,66 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+is_wsl_env() {
+  if grep -qi "microsoft" /proc/version 2>/dev/null; then
+    return 0
+  fi
+  return 1
+}
+
+is_windows_env() {
+  if is_wsl_env; then
+    return 0
+  fi
+  case "${OSTYPE:-}" in
+    msys* | mingw* | cygwin* | win32*)
+      return 0
+      ;;
+  esac
+  if uname -s 2>/dev/null | grep -qi "mingw\|msys\|cygwin"; then
+    return 0
+  fi
+  return 1
+}
+
+normalize_path() {
+  local input="$1"
+  if [[ -z "${input}" ]]; then
+    printf '%s' ""
+    return
+  fi
+
+  if is_wsl_env && [[ "${input}" =~ ^[A-Za-z]: ]]; then
+    if command -v wslpath >/dev/null 2>&1; then
+      wslpath -a "${input}"
+      return
+    fi
+  fi
+
+  # Fall back to replacing backslashes with forward slashes
+  local sanitized="${input//\\//}"
+  sanitized="${sanitized%$'\r'}"
+  printf '%s\n' "${sanitized}"
+}
+
+to_windows_path() {
+  local input="$1"
+  if [[ -z "${input}" ]]; then
+    printf '%s' ""
+    return
+  fi
+  if is_wsl_env; then
+    if command -v wslpath >/dev/null 2>&1; then
+      local converted
+      converted="$(wslpath -w "${input}" 2>/dev/null || true)"
+      converted="${converted%$'\r'}"
+      printf '%s\n' "${converted}"
+      return
+    fi
+  fi
+  printf '%s\n' "${input}"
+}
+
 show_usage() {
   cat <<'EOF'
 Usage: run_instrumentation.sh -b <build-dir> -o <output-dir> [-- <extra clang-tool args...>]
@@ -63,6 +123,20 @@ if [[ -z "${TOOL_PATH}" ]]; then
   TOOL_PATH="${BUILD_DIR}/bin/ascii-instr-tool"
 fi
 
+BUILD_DIR="$(normalize_path "${BUILD_DIR}")"
+OUTPUT_DIR="$(normalize_path "${OUTPUT_DIR}")"
+TOOL_PATH="$(normalize_path "${TOOL_PATH}")"
+
+BUILD_DIR_WIN="$(to_windows_path "${BUILD_DIR}")"
+OUTPUT_DIR_WIN="$(to_windows_path "${OUTPUT_DIR}")"
+INPUT_ROOT_WIN="$(to_windows_path "${PWD}")"
+
+if is_wsl_env && [[ "${TOOL_PATH}" =~ ^/mnt/[a-z]/ ]] && [[ ! "${TOOL_PATH}" =~ \.exe$ ]]; then
+  if [[ -e "${TOOL_PATH}.exe" ]]; then
+    TOOL_PATH="${TOOL_PATH}.exe"
+  fi
+fi
+
 if [[ ! -x "${TOOL_PATH}" ]]; then
   echo "Error: ascii-instr-tool not found or not executable at '${TOOL_PATH}'" >&2
   exit 1
@@ -98,6 +172,10 @@ echo "Copying source tree to ${OUTPUT_DIR}..."
 # Get absolute path of output directory to avoid copying into itself
 OUTPUT_DIR_ABS=$(cd "${OUTPUT_DIR}" && pwd)
 
+echo "DEBUG: About to start copying. PWD=$PWD OUTPUT_DIR_ABS=$OUTPUT_DIR_ABS"
+echo "DEBUG: Contents of current directory:"
+ls -la | head -20
+
 # Copy each top-level item except build directories and .git
 for item in *; do
   # Skip empty, '.', '..' entries
@@ -123,8 +201,19 @@ for item in *; do
     continue
   fi
 
+  # Skip if item is the output directory name itself
+  if [[ "$item" == "$(basename "${OUTPUT_DIR}")" ]]; then
+    echo "  Skipping $item (output directory)"
+    continue
+  fi
+
   echo "  Copying $item..."
-  cp -r "$item" "${OUTPUT_DIR}/" 2>&1 || true
+  echo "  DEBUG: item='$item' OUTPUT_DIR='${OUTPUT_DIR}'" >&2
+  if [ -e "$item" ]; then
+    cp -r "$item" "${OUTPUT_DIR}/" 2>&1 || true
+  else
+    echo "  WARNING: $item does not exist, skipping" >&2
+  fi
 done
 
 # Remove additional unwanted build directories if they got copied
@@ -134,10 +223,14 @@ rm -rf "${OUTPUT_DIR}/deps/mimalloc/build" 2>/dev/null || true
 # Remove source files (they'll be replaced by instrumented versions)
 find "${OUTPUT_DIR}" -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -delete 2>/dev/null || true
 
+# Remove headers BEFORE instrumentation to avoid pragma once issues during tool run
+# We'll copy them back AFTER instrumentation
+find "${OUTPUT_DIR}" -type f -name '*.h' -delete 2>/dev/null || true
+
 # Remove this script itself
 rm -f "${OUTPUT_DIR}/cmake/debug/run_instrumentation.sh" 2>/dev/null || true
 
-echo "Source tree copied (excluding source files and build artifacts)"
+echo "Source tree copied (excluding source files, headers, and build artifacts)"
 
 declare -a SOURCE_PATHS=()
 if [[ $# -gt 0 ]]; then
@@ -168,7 +261,7 @@ if [[ ${#SOURCE_PATHS[@]} -eq 0 ]]; then
 
   # Exclude platform-specific directories that don't match current platform
   # Detect OS
-  if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" || "$OSTYPE" == "cygwin" ]] || uname -s | grep -qi "mingw\|msys"; then
+  if is_windows_env; then
     # On Windows: exclude POSIX-specific directories
     EXCLUDE_ARGS+=(-o -path 'lib/platform/posix' -o -path 'lib/platform/posix/*')
     EXCLUDE_ARGS+=(-o -path 'lib/os/macos' -o -path 'lib/os/macos/*')
@@ -216,18 +309,12 @@ for path in "${SOURCE_PATHS[@]}"; do
   lib/platform/windows/thread.c)
     continue
     ;;
-  lib/platform/windows/* | lib/platform/windows\\*)
-    continue
-    ;;
-  lib/os/windows/* | lib/os/windows\\*)
-    continue
-    ;;
   esac
   filtered_paths+=("$path")
 done
 SOURCE_PATHS=("${filtered_paths[@]}")
 
-CMD=("${TOOL_PATH}" -p "${BUILD_DIR}" --output-dir "${OUTPUT_DIR}" --input-root "${PWD}")
+CMD=("${TOOL_PATH}" -p "${BUILD_DIR_WIN}" --output-dir "${OUTPUT_DIR_WIN}" --input-root "${INPUT_ROOT_WIN}")
 CMD+=("${SOURCE_PATHS[@]}")
 
 if [[ $# -gt 0 ]]; then
@@ -237,11 +324,20 @@ fi
 echo "Running instrumentation tool: ${CMD[*]}"
 "${CMD[@]}"
 
-# Headers are not symlinked - the build will use original headers via include paths
-# This avoids #pragma once issues with symlinks on Windows
-echo "Skipping header symlinking (using original headers via include paths)"
+echo "Instrumentation complete. Now copying headers to instrumented tree..."
+# Copy all headers to instrumented tree AFTER instrumentation
+# This ensures they're available for compilation with instrumented .c files
+find "${PWD}" -type f -name '*.h' \
+  ! -path "*/build/*" \
+  ! -path "*/build_*/*" \
+  ! -path "*/.git/*" \
+  ! -path "*/deps/bearssl/build/*" \
+  ! -path "*/deps/mimalloc/build/*" \
+  -exec bash -c 'rel=$(realpath --relative-to='"${PWD}"' "$1"); mkdir -p "'"${OUTPUT_DIR}"'/$(dirname "$rel")"; cp "$1" "'"${OUTPUT_DIR}"'/$rel"' _ {} \;
 
-extra_source_links=(
+echo "Headers copied to instrumented tree"
+
+extra_source_files=(
   "lib/platform/system.c"
   "lib/lock_debug.c"
   "lib/platform/posix/system.c"
@@ -252,9 +348,12 @@ extra_source_links=(
   "lib/platform/windows/thread.c"
 )
 
-for source_path in "${extra_source_links[@]}"; do
-  dest="${OUTPUT_DIR}/${source_path}"
-  mkdir -p "$(dirname "${dest}")"
-  rm -f "${dest}"
-  ln -s "${PWD}/${source_path}" "${dest}"
+echo "Copying excluded source files to instrumented tree..."
+for source_path in "${extra_source_files[@]}"; do
+  if [ -f "${PWD}/${source_path}" ]; then
+    dest="${OUTPUT_DIR}/${source_path}"
+    mkdir -p "$(dirname "${dest}")"
+    cp "${PWD}/${source_path}" "${dest}"
+    echo "  Copied ${source_path}"
+  fi
 done
