@@ -444,8 +444,9 @@ static const char *strip_project_path(const char *full_path) {
   return extract_project_relative_path(full_path);
 }
 
+extern void asciichat_errno_cleanup(void);
+
 void debug_memory_report(void) {
-  extern void asciichat_errno_cleanup(void);
   asciichat_errno_cleanup();
 
   bool quiet = g_mem.quiet_mode;
