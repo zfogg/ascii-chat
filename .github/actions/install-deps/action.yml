@@ -46,10 +46,12 @@ runs:
       id: homebrew-cache
       uses: actions/cache/restore@v4
       with:
+        # NOTE: GitHub-hosted macOS runners already populate /opt/homebrew with
+        # a Homebrew installation. Restoring cached copies of /opt/homebrew/*
+        # causes tar extractions to fail when a package (e.g. pydantic-core) is
+        # already present, so only cache the download artifacts.
         path: |
           ~/Library/Caches/Homebrew
-          /opt/homebrew/Cellar
-          /opt/homebrew/opt
         key: ${{ runner.os }}-homebrew-v2-${{ inputs.extra-packages }}
         restore-keys: |
           ${{ runner.os }}-homebrew-v2-
@@ -406,8 +408,6 @@ runs:
       with:
         path: |
           ~/Library/Caches/Homebrew
-          /opt/homebrew/Cellar
-          /opt/homebrew/opt
         key: ${{ runner.os }}-homebrew-v2-${{ inputs.extra-packages }}
 
     - name: Save vcpkg packages (Windows)
