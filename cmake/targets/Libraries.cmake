@@ -317,16 +317,21 @@ endif()
 # -----------------------------------------------------------------------------
 # Module 9: Debug Instrumentation Runtime (depends on: util, platform, core)
 # -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-instrumentation "${DEBUG_RUNTIME_SRCS}")
+create_ascii_chat_module(ascii-chat-debug "${DEBUG_RUNTIME_SRCS}")
+target_include_directories(ascii-chat-debug PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/src
+)
 if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-instrumentation
-        ascii-chat-util
-        ascii-chat-platform
-        ascii-chat-core
+    target_link_libraries(ascii-chat-debug
+        PRIVATE
+            ascii-chat-util
+            ascii-chat-platform
+            ascii-chat-core
     )
 endif()
 if(NOT WIN32 AND TARGET Threads::Threads)
-    target_link_libraries(ascii-chat-instrumentation PUBLIC Threads::Threads)
+    target_link_libraries(ascii-chat-debug PUBLIC Threads::Threads)
 endif()
 
 # -----------------------------------------------------------------------------
@@ -895,7 +900,7 @@ target_link_libraries(ascii-chat-lib INTERFACE
     ascii-chat-crypto
     ascii-chat-network
     ascii-chat-core
-    ascii-chat-instrumentation
+    ascii-chat-debug
     ascii-chat-platform
     ascii-chat-data-structures
     ascii-chat-util

@@ -18,6 +18,7 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
@@ -620,6 +621,7 @@ protected:
 
 private:
   void ensureIncludeInserted(const fs::path &originalPath) {
+    (void)originalPath; // Unused parameter - kept for future use
     if (!visitor_ || !visitor_->includeNeeded()) {
       return;
     }
@@ -685,9 +687,34 @@ int main(int argc, const char **argv) {
     inputRoot = fs::current_path();
   }
 
-  std::vector<std::string> sourcePaths;
+  std::vector<std::string> rawSourceArgs;
+  rawSourceArgs.reserve(SourcePaths.size());
   for (const auto &path : SourcePaths) {
-    sourcePaths.push_back(path);
+    rawSourceArgs.push_back(path);
+  }
+  std::vector<std::string> sourcePaths;
+  std::vector<std::string> extraCompilerArgs;
+  for (std::size_t i = 0; i < rawSourceArgs.size(); ++i) {
+    const std::string &entry = rawSourceArgs[i];
+    if (entry.empty()) {
+      continue;
+    }
+    if (entry == "--") {
+      continue;
+    }
+    if (entry[0] == '-') {
+      extraCompilerArgs.push_back(entry);
+      const bool consumesNext =
+          (entry == "-I" || entry == "-isystem" || entry == "-include" || entry == "-include-pch" ||
+           entry == "-imacros" || entry == "-idirafter" || entry == "-iprefix" || entry == "-iwithprefix" ||
+           entry == "-iwithprefixbefore" || entry == "-resource-dir" || entry == "-Xclang" || entry == "-Xpreprocessor");
+      if (consumesNext && (i + 1) < rawSourceArgs.size()) {
+        extraCompilerArgs.push_back(rawSourceArgs[i + 1]);
+        ++i;
+      }
+      continue;
+    }
+    sourcePaths.push_back(entry);
   }
   if (!FileListOption.getValue().empty()) {
     std::ifstream listStream(FileListOption.getValue());
@@ -751,6 +778,16 @@ int main(int argc, const char **argv) {
 
   clang::tooling::ClangTool tool(*compilations, sourcePaths);
 
+  if (!extraCompilerArgs.empty()) {
+    const std::vector<std::string> extraArgsCopy(extraCompilerArgs.begin(), extraCompilerArgs.end());
+    tool.appendArgumentsAdjuster(
+        [extraArgsCopy](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
+          clang::tooling::CommandLineArguments adjusted = args;
+          adjusted.insert(adjusted.end(), extraArgsCopy.begin(), extraArgsCopy.end());
+          return adjusted;
+        });
+  }
+
   auto stripPchAdjuster = [](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
     clang::tooling::CommandLineArguments result;
     const auto containsCMakePch = [](llvm::StringRef value) { return value.contains("cmake_pch"); };
@@ -779,6 +816,88 @@ int main(int argc, const char **argv) {
     return result;
   };
   tool.appendArgumentsAdjuster(stripPchAdjuster);
+
+  auto ensureSourceIncludeAdjuster = [&inputRoot](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
+    clang::tooling::CommandLineArguments result = args;
+
+    const auto hasInclude = [&result](const std::string &dir) {
+      const std::string combined = "-I" + dir;
+      if (std::find(result.begin(), result.end(), combined) != result.end()) {
+        return true;
+      }
+      for (std::size_t i = 0; i + 1 < result.size(); ++i) {
+        if (result[i] == "-I" && result[i + 1] == dir) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    const auto appendInclude = [&result](const std::string &dir) {
+      result.push_back("-I");
+      result.push_back(dir);
+    };
+
+    const std::string libDir = (inputRoot / "lib").generic_string();
+    const std::string srcDir = (inputRoot / "src").generic_string();
+
+    if (!hasInclude(libDir)) {
+      appendInclude(libDir);
+    }
+    if (!hasInclude(srcDir)) {
+      appendInclude(srcDir);
+    }
+
+    return result;
+  };
+  tool.appendArgumentsAdjuster(ensureSourceIncludeAdjuster);
+
+  // Instrumented headers are now hard-linked into the output tree, so we can
+  // rely on the original include paths without further adjustment.
+
+  // NOTE: -skip-function-bodies optimization removed - it was causing errors with LibTooling
+  // LibTooling handles arguments differently than the clang driver, so -Xclang flags don't work
+  // The optimization wasn't providing significant benefit anyway
+
+  // Optimization: strip unnecessary compilation flags
+  auto stripUnnecessaryFlags = [](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
+    clang::tooling::CommandLineArguments result;
+
+    for (size_t i = 0; i < args.size(); ++i) {
+      const std::string &arg = args[i];
+
+      // Skip sanitizer flags (not needed for instrumentation, slow down parsing)
+      if (arg.find("-fsanitize") != std::string::npos) continue;
+      if (arg.find("-fno-sanitize") != std::string::npos) continue;
+      if (arg.find("sanitize") != std::string::npos) continue;
+
+      // Skip debug info generation flags (not needed, slow down codegen)
+      if (arg == "-g" || arg == "-g2" || arg == "-g3") continue;
+      if (arg == "-gcolumn-info") continue;
+      if (arg == "-fstandalone-debug") continue;
+      if (arg.find("-gcodeview") != std::string::npos) continue;
+      if (arg.find("-gdwarf") != std::string::npos) continue;
+
+      // Skip stack protector (not needed for instrumentation)
+      if (arg.find("-fstack-protector") != std::string::npos) continue;
+
+      // Skip frame pointer flags
+      if (arg.find("-fno-omit-frame-pointer") != std::string::npos) continue;
+      if (arg.find("-fomit-frame-pointer") != std::string::npos) continue;
+
+      // Skip optimization-related debug flags
+      if (arg == "-fno-inline") continue;
+      if (arg == "-fno-eliminate-unused-debug-types") continue;
+
+      result.push_back(arg);
+    }
+
+    // NOTE: -w flag removed - it was causing "no such file or directory" errors with LibTooling
+    // Warnings are already suppressed by the stripped flags above
+
+    return result;
+  };
+  tool.appendArgumentsAdjuster(stripUnnecessaryFlags);
 
   InstrumentationActionFactory actionFactory(outputDir, inputRoot, !FileIncludeFilters.empty(),
                                              !FunctionIncludeFilters.empty(), logMacroInvocations, logMacroExpansions);

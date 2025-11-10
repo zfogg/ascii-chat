@@ -5,6 +5,31 @@ option(ASCII_BUILD_WITH_INSTRUMENTATION "Generate and build instrumented sources
 include(${CMAKE_CURRENT_LIST_DIR}/Targets.cmake)
 set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/run_instrumentation.sh")
 
+function(_ascii_strip_source_include_dirs target_name)
+    if(NOT TARGET ${target_name})
+        return()
+    endif()
+    get_target_property(_ascii_existing_includes ${target_name} INCLUDE_DIRECTORIES)
+    if(NOT _ascii_existing_includes OR _ascii_existing_includes STREQUAL "NOTFOUND")
+        return()
+    endif()
+    set(_ascii_filtered_includes "")
+    foreach(_ascii_dir IN LISTS _ascii_existing_includes)
+        if(NOT _ascii_dir)
+            continue()
+        endif()
+        string(REPLACE "\\" "/" _ascii_normalized "${_ascii_dir}")
+        if(_ascii_normalized STREQUAL "${CMAKE_SOURCE_DIR}/lib")
+            continue()
+        endif()
+        if(_ascii_normalized STREQUAL "${CMAKE_SOURCE_DIR}/src")
+            continue()
+        endif()
+        list(APPEND _ascii_filtered_includes "${_ascii_dir}")
+    endforeach()
+    set_target_properties(${target_name} PROPERTIES INCLUDE_DIRECTORIES "${_ascii_filtered_includes}")
+endfunction()
+
 function(_ascii_convert_path_for_shell input_path output_var)
     if(NOT input_path)
         set(${output_var} "" PARENT_SCOPE)
@@ -32,10 +57,17 @@ set(ASCII_INSTRUMENTATION_LIBRARY_TARGETS
     ascii-chat-network
 )
 
-set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
-    ascii-chat
-    ascii-instr-report
-)
+# ascii-instr-report uses POSIX headers - only available on Unix/Linux/macOS
+if(WIN32)
+    set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
+        ascii-chat
+    )
+else()
+    set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
+        ascii-chat
+        ascii-instr-report
+    )
+endif()
 
 function(ascii_instrumentation_prepare)
     if(NOT ASCII_BUILD_WITH_INSTRUMENTATION)
@@ -57,7 +89,16 @@ function(ascii_instrumentation_prepare)
         "lib/platform/windows/system.c"
         "lib/platform/windows/mutex.c"
         "lib/platform/windows/thread.c"
-        "lib/lock_debug.c"
+        "lib/debug/lock.c"
+        # SIMD files use intrinsics that confuse the instrumentation tool
+        "lib/image2ascii/simd/ascii_simd.c"
+        "lib/image2ascii/simd/ascii_simd_color.c"
+        "lib/image2ascii/simd/common.c"
+        "lib/image2ascii/simd/avx2.c"
+        "lib/image2ascii/simd/sse2.c"
+        "lib/image2ascii/simd/ssse3.c"
+        "lib/image2ascii/simd/neon.c"
+        "lib/image2ascii/simd/sve.c"
     )
 
     set(candidate_vars
@@ -172,6 +213,29 @@ function(ascii_instrumentation_prepare)
         _ascii_convert_path_for_shell("${_ascii_instrumented_dir_for_shell}" _ascii_instrumented_dir_for_shell)
     endif()
 
+    # Generate compilation database with original source paths for instrumentation tool
+    # The regular compile_commands.json has instrumented paths, but the tool needs original paths
+    set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp")
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
+        COMMAND ${CMAKE_COMMAND} -G Ninja
+            -S "${CMAKE_SOURCE_DIR}"
+            -B "${_ascii_temp_build_dir}"
+            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DASCII_BUILD_WITH_INSTRUMENTATION=OFF
+            -DUSE_PRECOMPILED_HEADERS=OFF
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "${_ascii_temp_build_dir}/compile_commands.json"
+            "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+        COMMENT "Generating compilation database for instrumentation tool"
+        VERBATIM
+    )
+
     add_custom_command(
         OUTPUT "${instrumented_dir}/.stamp"
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${instrumented_dir}"
@@ -180,7 +244,7 @@ function(ascii_instrumentation_prepare)
             ASCII_INSTR_TOOL=$<TARGET_FILE:ascii-instr-tool>
             "${_ascii_bash_executable}" "${_ascii_instr_script_for_shell}" -b "${_ascii_binary_dir_for_shell}" -o "${_ascii_instrumented_dir_for_shell}"
         COMMAND ${CMAKE_COMMAND} -E touch "${instrumented_dir}/.stamp"
-        DEPENDS ascii-instr-tool ${instrumented_abs_paths}
+        DEPENDS ascii-instr-tool ${instrumented_abs_paths} "${CMAKE_BINARY_DIR}/compile_commands_original.json"
         BYPRODUCTS ${instrumented_generated_paths}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMENT "Generating instrumented source tree"
@@ -238,19 +302,43 @@ function(ascii_instrumentation_finalize)
 
     set(instrumented_dir "${CMAKE_BINARY_DIR}/instrumented")
 
+    set(instrumented_include_dirs
+        "${instrumented_dir}/lib"
+        "${instrumented_dir}/src"
+    )
+
+    # Debug/instrumentation runtime targets that are built before instrumentation
+    # need the original lib/ headers, not instrumented ones
+    if(TARGET ascii-chat-debug)
+        target_include_directories(ascii-chat-debug PRIVATE
+            ${CMAKE_SOURCE_DIR}/lib
+            ${CMAKE_SOURCE_DIR}/src
+        )
+    endif()
+    if(TARGET ascii-debug-runtime AND NOT TARGET ascii-chat-debug)
+        target_include_directories(ascii-debug-runtime PRIVATE
+            ${CMAKE_SOURCE_DIR}/lib
+            ${CMAKE_SOURCE_DIR}/src
+        )
+    endif()
+
     foreach(lib_target IN LISTS ASCII_INSTRUMENTATION_LIBRARY_TARGETS)
         if(TARGET ${lib_target})
             add_dependencies(${lib_target} ascii-generate-instrumented-sources)
-            # Prepend instrumented lib path so instrumented headers are found FIRST
-            target_include_directories(${lib_target} BEFORE PRIVATE "${instrumented_dir}/lib")
+            _ascii_strip_source_include_dirs(${lib_target})
+            # Prepend instrumented include paths so instrumented headers are found first
+            target_include_directories(${lib_target} BEFORE PRIVATE ${instrumented_include_dirs})
         endif()
     endforeach()
 
     foreach(exe_target IN LISTS ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS)
         if(TARGET ${exe_target})
-            add_dependencies(${exe_target} ascii-generate-instrumented-sources)
-            # Prepend instrumented lib path for executables too
-            target_include_directories(${exe_target} BEFORE PRIVATE "${instrumented_dir}/lib")
+            if(NOT exe_target IN_LIST _ascii_skip_strip_targets)
+                add_dependencies(${exe_target} ascii-generate-instrumented-sources)
+                _ascii_strip_source_include_dirs(${exe_target})
+                # Prepend instrumented include paths for executables too
+                target_include_directories(${exe_target} BEFORE PRIVATE ${instrumented_include_dirs})
+            endif()
             if(TARGET ascii-debug-runtime)
                 # Use plain signature to match existing target_link_libraries usage
                 target_link_libraries(${exe_target} ascii-debug-runtime)
@@ -260,7 +348,8 @@ function(ascii_instrumentation_finalize)
 
     if(TARGET ascii-chat-shared AND TARGET ascii-debug-runtime)
         add_dependencies(ascii-chat-shared ascii-generate-instrumented-sources)
-        target_include_directories(ascii-chat-shared BEFORE PRIVATE "${instrumented_dir}/lib")
+        _ascii_strip_source_include_dirs(ascii-chat-shared)
+        target_include_directories(ascii-chat-shared BEFORE PRIVATE ${instrumented_include_dirs})
         target_link_libraries(ascii-chat-shared PRIVATE ascii-debug-runtime)
     endif()
 

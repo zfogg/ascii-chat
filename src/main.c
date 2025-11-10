@@ -87,7 +87,7 @@
 
 #ifndef NDEBUG
 #include "asciichat_errno.h"
-#include "lock_debug.h"
+#include "debug/lock.h"
 #endif
 
 /* ============================================================================

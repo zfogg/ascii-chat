@@ -249,6 +249,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             target_link_libraries(${test_exe_name}
                 -Wl,--start-group
                 ascii-chat-core
+                ascii-chat-debug
                 ascii-chat-network
                 ascii-chat-crypto
                 -Wl,--end-group
@@ -257,6 +258,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             # macOS: List libraries multiple times (ld64 doesn't have --start-group)
             target_link_libraries(${test_exe_name}
                 ascii-chat-core
+                ascii-chat-debug
                 ascii-chat-util
                 ascii-chat-network
                 ascii-chat-crypto

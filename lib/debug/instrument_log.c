@@ -4,6 +4,7 @@
 #include "debug/instrument_log.h"
 
 #include "common.h"
+#include "debug/memory.h"
 #include "platform/internal.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
@@ -23,7 +24,9 @@
 #include <sys/types.h>
 #include <time.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <io.h>
+#else
 #include <unistd.h>
 #endif
 
@@ -41,6 +44,13 @@ typedef int mode_t;
 #ifndef mkdir
 #define mkdir(path, mode) _mkdir(path)
 #endif
+// Windows uses _write instead of write
+#define posix_write _write
+#ifndef STDERR_FILENO
+#define STDERR_FILENO 2
+#endif
+#else
+#define posix_write write
 #endif
 
 #ifndef ASCII_INSTR_DEFAULT_BASENAME
@@ -113,6 +123,8 @@ static bool g_disable_write = false;
 static uint64_t g_start_ticks = 0;
 static bool g_ticks_initialized = false;
 static bool g_coverage_enabled = false;
+static bool g_echo_to_stderr = false;
+static bool g_echo_to_stderr_initialized = false;
 
 static void ascii_instr_runtime_init_once(void);
 static void ascii_instr_runtime_tls_destructor(void *ptr);
@@ -359,6 +371,26 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
 
   ascii_instr_write_full(fd, buffer, pos);
 
+  // Also echo to stderr if requested via environment variable
+  if (!g_echo_to_stderr_initialized) {
+    const char *echo_env = SAFE_GETENV("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR");
+    g_echo_to_stderr = ascii_instr_env_is_enabled(echo_env);
+    g_echo_to_stderr_initialized = true;
+  }
+
+  if (g_echo_to_stderr && !runtime->stderr_fallback) {
+    // Write to stderr in addition to the log file
+    // Suppress Windows deprecation warning for POSIX write function
+#ifdef _WIN32
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+    (void)posix_write(STDERR_FILENO, buffer, pos);
+#ifdef _WIN32
+#pragma clang diagnostic pop
+#endif
+  }
+
 cleanup:
   g_logging_reentry_guard = false;
 }
@@ -421,35 +453,48 @@ static void ascii_instr_runtime_tls_destructor(void *ptr) {
 }
 
 static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
-  char dir_buf[PATH_MAX];
-  const char *output_dir = g_output_dir_set ? g_output_dir : SAFE_GETENV("TMPDIR");
-  if (output_dir == NULL) {
-    output_dir = SAFE_GETENV("TEMP");
-  }
-  if (output_dir == NULL) {
-    output_dir = SAFE_GETENV("TMP");
-  }
+  // Check for custom log file path first
+  const char *custom_log_file = SAFE_GETENV("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE");
+  if (custom_log_file != NULL && custom_log_file[0] != '\0') {
+    const size_t custom_len = strnlen(custom_log_file, sizeof(runtime->log_path) - 1);
+    if (custom_len == 0 || custom_len >= sizeof(runtime->log_path)) {
+      return false;
+    }
+    memcpy(runtime->log_path, custom_log_file, custom_len);
+    runtime->log_path[custom_len] = '\0';
+    // Don't check if file exists - allow appending to existing file
+  } else {
+    // Auto-generate log path in temp directory
+    char dir_buf[PATH_MAX];
+    const char *output_dir = g_output_dir_set ? g_output_dir : SAFE_GETENV("TMPDIR");
+    if (output_dir == NULL) {
+      output_dir = SAFE_GETENV("TEMP");
+    }
+    if (output_dir == NULL) {
+      output_dir = SAFE_GETENV("TMP");
+    }
 
-  if (output_dir == NULL) {
-    output_dir = "/tmp";
-  }
+    if (output_dir == NULL) {
+      output_dir = "/tmp";
+    }
 
-  const size_t dir_len = strnlen(output_dir, sizeof(dir_buf) - 1);
-  if (dir_len == 0 || dir_len >= sizeof(dir_buf)) {
-    return false;
-  }
+    const size_t dir_len = strnlen(output_dir, sizeof(dir_buf) - 1);
+    if (dir_len == 0 || dir_len >= sizeof(dir_buf)) {
+      return false;
+    }
 
-  memcpy(dir_buf, output_dir, dir_len);
-  dir_buf[dir_len] = '\0';
+    memcpy(dir_buf, output_dir, dir_len);
+    dir_buf[dir_len] = '\0';
 
-  if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf, ASCII_INSTR_DEFAULT_BASENAME,
-               runtime->pid, (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
-    return false;
-  }
+    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf, ASCII_INSTR_DEFAULT_BASENAME,
+                 runtime->pid, (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
+      return false;
+    }
 
-  struct stat st;
-  if (stat(runtime->log_path, &st) == 0) {
-    return false;
+    struct stat st;
+    if (stat(runtime->log_path, &st) == 0) {
+      return false;
+    }
   }
 
   const char *last_sep = strrchr(runtime->log_path, '/');
@@ -479,7 +524,19 @@ static int ascii_instr_open_log_file(ascii_instr_runtime_t *runtime) {
     return -1;
   }
 
-  const int flags = PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_EXCL | PLATFORM_O_APPEND | PLATFORM_O_BINARY;
+  // Check if this is a custom log file (env var was set)
+  const char *custom_log_file = SAFE_GETENV("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE");
+  const bool is_custom_file = (custom_log_file != NULL && custom_log_file[0] != '\0');
+
+  // For custom files, allow appending to existing file (no O_EXCL)
+  // For auto-generated files, use O_EXCL to avoid conflicts
+  int flags;
+  if (is_custom_file) {
+    flags = PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_APPEND | PLATFORM_O_BINARY;
+  } else {
+    flags = PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_EXCL | PLATFORM_O_APPEND | PLATFORM_O_BINARY;
+  }
+
   const mode_t mode = S_IRUSR | S_IWUSR;
   int fd = platform_open(runtime->log_path, flags, mode);
   if (fd < 0) {

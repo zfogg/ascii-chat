@@ -214,6 +214,7 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
+    lib/debug/memory.c
     lib/logging.c
     lib/options.c
     lib/config.c
@@ -221,11 +222,11 @@ set(CORE_SRCS
     lib/palette.c
 )
 
-# Only include lock_debug in non-release builds (when NDEBUG is not defined)
-# lock_debug.c is wrapped in #ifndef NDEBUG, so it's safe to compile in release,
+# Only include lock debugging runtime in non-release builds (when NDEBUG is not defined)
+# debug/lock.c is wrapped in #ifndef NDEBUG, so it's safe to compile in release,
 # but we exclude it for clarity and to avoid unnecessary compilation
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    list(APPEND CORE_SRCS lib/lock_debug.c)
+    list(APPEND CORE_SRCS lib/debug/lock.c)
 endif()
 
 # Add tomlc17 parser source
