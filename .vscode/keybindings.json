@@ -1,16 +1,8 @@
 [
   {
     "key": "ctrl+w",
-    "command": "-extension.vim_ctrl+w"
-  },
-  {
-    "key": "ctrl+w",
     "command": "workbench.action.closeActiveEditor",
     "when": "editorTextFocus"
-  },
-  {
-    "key": "ctrl+p",
-    "command": "-extension.vim_ctrl+p"
   },
   {
     "key": "ctrl+p",
@@ -64,5 +56,10 @@
   {
     "key": "f9",
     "command": "cmake.outline.clean"
+  },
+  {
+    "key": "ctrl+f",
+    "command": "actions.find",
+    "when": "editorTextFocus"
   }
 ]

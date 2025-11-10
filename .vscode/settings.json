@@ -2,6 +2,7 @@
   "vim.handleKeys": {
     "<C-w>": false,
     "<C-p>": false,
+    "<C-f>": false,
     "<D-p>": false
   }
 }
