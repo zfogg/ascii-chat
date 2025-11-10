@@ -122,6 +122,12 @@ runs:
         archive="${{ steps.apt-metadata.outputs.archive }}"
         if [ -f "$archive" ]; then
           sudo tar -C / -xzf "$archive"
+          # Clean up any leftover lock files that could block apt/dpkg
+          sudo rm -f /var/lib/apt/lists/lock \
+            /var/lib/apt/lists/lock-frontend \
+            /var/cache/apt/archives/lock \
+            /var/lib/dpkg/lock \
+            /var/lib/dpkg/lock-frontend
         fi
 
     - name: Install APT packages (Ubuntu)
@@ -139,17 +145,45 @@ runs:
         archive="${{ steps.apt-metadata.outputs.archive }}"
         tools="${{ steps.apt-metadata.outputs.tools }}"
         list_file=$(mktemp)
-        trap 'rm -f "$list_file"' EXIT
-        dpkg -L $tools | while read -r f; do
-          [ -d "$f" ] && continue
-          if [ -e "$f" ]; then
-            echo "${f#/}"
-          else
-            echo "not found: $f" >&2
+        metadata_file=$(mktemp)
+        combined_file=$(mktemp)
+        trap 'rm -f "$list_file" "$metadata_file" "$combined_file"' EXIT
+
+        dpkg-query -L $tools > "$list_file"
+
+        cat <<'EOF' > "$metadata_file"
+/var/lib/dpkg
+/var/lib/apt/lists
+/var/cache/apt/archives
+EOF
+
+        while read -r path; do
+          if [ -z "$path" ]; then
+            continue
           fi
-        done > "$list_file"
+          if [ ! -e "$path" ]; then
+            echo "not found: $path" >&2
+            continue
+          fi
+          # Strip leading slash for tar -T consistency
+          echo "${path#/}" >> "$combined_file"
+        done < "$list_file"
+
+        while read -r path; do
+          if [ -z "$path" ]; then
+            continue
+          fi
+          if [ ! -e "$path" ]; then
+            echo "metadata path missing (skipping): $path" >&2
+            continue
+          fi
+          echo "${path#/}" >> "$combined_file"
+        done < "$metadata_file"
+
+        sort -u "$combined_file" -o "$combined_file"
+
         mkdir -p "$(dirname "$archive")"
-        tar -czf "$archive" -C / -T "$list_file"
+        sudo tar -czf "$archive" -C / -T "$combined_file"
 
     - name: Save APT archive (Ubuntu)
       if: inputs.os == 'ubuntu' && steps.restore-apt.outputs.cache-hit != 'true'
