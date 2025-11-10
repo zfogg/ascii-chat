@@ -433,11 +433,18 @@ static void ascii_instr_runtime_init_once(void) {
   if (!g_runtime_initialized) {
     (void)ascii_tls_key_create(&g_runtime_key, ascii_instr_runtime_tls_destructor);
     const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_OUTPUT_DIR");
-    if (output_dir_env != NULL) {
-      const size_t len = strnlen(output_dir_env, sizeof(g_output_dir) - 1);
-      memcpy(g_output_dir, output_dir_env, len);
-      g_output_dir[len] = '\0';
-      g_output_dir_set = true;
+    if (output_dir_env != NULL && output_dir_env[0] != '\0') {
+      char *normalized_output_dir = NULL;
+      asciichat_error_t validation_result =
+          path_validate_user_path(output_dir_env, PATH_ROLE_LOG_FILE, &normalized_output_dir);
+      if (validation_result == ASCIICHAT_OK && normalized_output_dir != NULL) {
+        SAFE_STRNCPY(g_output_dir, normalized_output_dir, sizeof(g_output_dir));
+        g_output_dir[sizeof(g_output_dir) - 1] = '\0';
+        g_output_dir_set = true;
+      } else {
+        log_warn("Ignoring invalid ASCII_INSTR_OUTPUT_DIR path: %s", output_dir_env);
+      }
+      SAFE_FREE(normalized_output_dir);
     }
     const char *coverage_env = SAFE_GETENV("ASCII_INSTR_ENABLE_COVERAGE");
     g_coverage_enabled = ascii_instr_env_is_enabled(coverage_env);
@@ -456,12 +463,17 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
   // Check for custom log file path first
   const char *custom_log_file = SAFE_GETENV("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE");
   if (custom_log_file != NULL && custom_log_file[0] != '\0') {
-    const size_t custom_len = strnlen(custom_log_file, sizeof(runtime->log_path) - 1);
-    if (custom_len == 0 || custom_len >= sizeof(runtime->log_path)) {
+    char *normalized_log_path = NULL;
+    asciichat_error_t validation_result =
+        path_validate_user_path(custom_log_file, PATH_ROLE_LOG_FILE, &normalized_log_path);
+    if (validation_result != ASCIICHAT_OK || normalized_log_path == NULL) {
+      SAFE_FREE(normalized_log_path);
+      log_warn("Rejected ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE path: %s", custom_log_file);
       return false;
     }
-    memcpy(runtime->log_path, custom_log_file, custom_len);
-    runtime->log_path[custom_len] = '\0';
+    SAFE_STRNCPY(runtime->log_path, normalized_log_path, sizeof(runtime->log_path));
+    runtime->log_path[sizeof(runtime->log_path) - 1] = '\0';
+    SAFE_FREE(normalized_log_path);
     // Don't check if file exists - allow appending to existing file
   } else {
     // Auto-generate log path in temp directory
@@ -496,6 +508,18 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
       return false;
     }
   }
+
+  char *validated_log_path = NULL;
+  asciichat_error_t validate_result =
+      path_validate_user_path(runtime->log_path, PATH_ROLE_LOG_FILE, &validated_log_path);
+  if (validate_result != ASCIICHAT_OK || validated_log_path == NULL) {
+    SAFE_FREE(validated_log_path);
+    log_warn("Failed to validate instrumentation log path: %s", runtime->log_path);
+    return false;
+  }
+  SAFE_STRNCPY(runtime->log_path, validated_log_path, sizeof(runtime->log_path));
+  runtime->log_path[sizeof(runtime->log_path) - 1] = '\0';
+  SAFE_FREE(validated_log_path);
 
   const char *last_sep = strrchr(runtime->log_path, '/');
 #ifdef _WIN32
