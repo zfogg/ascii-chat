@@ -281,7 +281,7 @@ elseif(UNIX AND NOT USE_MUSL)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 7: Core Infrastructure (depends on: util, platform)
+# Module 8: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
 if(NOT BUILDING_OBJECT_LIBS)
@@ -315,7 +315,22 @@ if(USE_MIMALLOC)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 8: Network (depends on: util, platform, crypto, core)
+# Module 9: Debug Instrumentation Runtime (depends on: util, platform, core)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-instrumentation "${DEBUG_RUNTIME_SRCS}")
+if(NOT BUILDING_OBJECT_LIBS)
+    target_link_libraries(ascii-chat-instrumentation
+        ascii-chat-util
+        ascii-chat-platform
+        ascii-chat-core
+    )
+endif()
+if(NOT WIN32 AND TARGET Threads::Threads)
+    target_link_libraries(ascii-chat-instrumentation PUBLIC Threads::Threads)
+endif()
+
+# -----------------------------------------------------------------------------
+# Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 if(NOT BUILDING_OBJECT_LIBS)
@@ -880,6 +895,7 @@ target_link_libraries(ascii-chat-lib INTERFACE
     ascii-chat-crypto
     ascii-chat-network
     ascii-chat-core
+    ascii-chat-instrumentation
     ascii-chat-platform
     ascii-chat-data-structures
     ascii-chat-util

@@ -159,6 +159,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
                 "-L/opt/homebrew/opt/criterion/lib"
                 "-L/usr/local/opt/criterion/lib"
                 "-L/opt/homebrew/lib"
+                "-L/usr/local/lib"
                 criterion
             )
         endif()
