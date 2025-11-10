@@ -154,8 +154,13 @@ if(BUILD_TESTS AND CRITERION_FOUND)
     elseif(PLATFORM_DARWIN)
         # macOS test linking (simpler, matches Makefile)
         if(NOT CRITERION_LIBRARIES)
-            # Fallback for Homebrew
-            list(APPEND TEST_LDFLAGS "-L/opt/homebrew/lib" criterion)
+            # Fallback for Homebrew (Criterion is keg-only, so provide both opt prefixes)
+            list(APPEND TEST_LDFLAGS
+                "-L/opt/homebrew/opt/criterion/lib"
+                "-L/usr/local/opt/criterion/lib"
+                "-L/opt/homebrew/lib"
+                criterion
+            )
         endif()
     endif()
 
