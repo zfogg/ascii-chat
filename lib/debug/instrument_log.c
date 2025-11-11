@@ -151,6 +151,8 @@ static const char *ascii_instr_basename(const char *path);
 static bool ascii_instr_path_contains_module(const char *file_path, const char *module_name);
 
 static _Thread_local bool g_logging_reentry_guard = false;
+static bool g_instrumentation_enabled = false;
+static bool g_instrumentation_enabled_checked = false;
 
 ascii_instr_runtime_t *ascii_instr_runtime_get(void) {
   if (g_disable_write) {
@@ -262,6 +264,17 @@ void ascii_instr_runtime_global_shutdown(void) {
 
 void ascii_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name, const char *snippet,
                           uint8_t is_macro_expansion) {
+  // Check if instrumentation is globally enabled via environment variable
+  if (!g_instrumentation_enabled_checked) {
+    const char *enable_env = SAFE_GETENV("ASCII_INSTR_ENABLE");
+    g_instrumentation_enabled = ascii_instr_env_is_enabled(enable_env);
+    g_instrumentation_enabled_checked = true;
+  }
+
+  if (!g_instrumentation_enabled) {
+    return;
+  }
+
   if (g_disable_write) {
     return;
   }
