@@ -452,7 +452,9 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Path is empty for role %d", role);
   }
 
-  if (!path_looks_like_path(input)) {
+  // For log files, allow simple filenames (e.g., "trace.log") without path separators
+  // They will be treated as relative to the current directory
+  if (role != PATH_ROLE_LOG_FILE && !path_looks_like_path(input)) {
     return SET_ERRNO(map_role_to_error(role), "Value does not look like a filesystem path: %s", input);
   }
 
