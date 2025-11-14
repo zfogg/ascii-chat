@@ -214,6 +214,7 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
+    lib/debug/memory.c
     lib/logging.c
     lib/options.c
     lib/config.c
@@ -221,11 +222,11 @@ set(CORE_SRCS
     lib/palette.c
 )
 
-# Only include lock_debug in non-release builds (when NDEBUG is not defined)
-# lock_debug.c is wrapped in #ifndef NDEBUG, so it's safe to compile in release,
+# Only include lock debugging runtime in non-release builds (when NDEBUG is not defined)
+# debug/lock.c is wrapped in #ifndef NDEBUG, so it's safe to compile in release,
 # but we exclude it for clarity and to avoid unnecessary compilation
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    list(APPEND CORE_SRCS lib/lock_debug.c)
+    list(APPEND CORE_SRCS lib/debug/lock.c)
 endif()
 
 # Add tomlc17 parser source
@@ -249,5 +250,41 @@ endif()
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
     lib/ringbuffer.c
+)
+
+# =============================================================================
+# Instrumentation Runtime (debug utilities)
+# =============================================================================
+set(DEBUG_RUNTIME_SRCS
+    lib/debug/instrument_log.c
+    lib/debug/instrument_cov.c
+)
+
+set(DEBUG_TOOL_SRCS
+    src/debug/ascii_instr_report.c
+)
+
+# =============================================================================
+# Application Sources (main executable)
+# =============================================================================
+set(APP_SRCS
+    src/main.c
+    # Server mode sources
+    src/server/main.c
+    src/server/client.c
+    src/server/protocol.c
+    src/server/crypto.c
+    src/server/stream.c
+    src/server/render.c
+    src/server/stats.c
+    # Client mode sources
+    src/client/main.c
+    src/client/server.c
+    src/client/protocol.c
+    src/client/crypto.c
+    src/client/display.c
+    src/client/capture.c
+    src/client/audio.c
+    src/client/keepalive.c
 )
 

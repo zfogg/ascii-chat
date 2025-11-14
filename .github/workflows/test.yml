@@ -57,6 +57,7 @@ jobs:
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr libc6-dbg' || 'gcovr' }}
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Build test suite (${{ matrix.build_type }})
@@ -96,10 +97,19 @@ jobs:
         fi
 
         echo "Building with CMake build type: ${BUILD_TYPE}"
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
-          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+        cmake_args=(
+          --preset github
+          -DCMAKE_C_COMPILER="${CLANG_BIN}"
+          -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
+          -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
           -DCMAKE_C_FLAGS="${FLAGS}"
+        )
+
+        if [ "${BUILD_TYPE}" = "Release" ]; then
+          cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
+        fi
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
         cmake --build build
 
         echo "Test executables built:"
@@ -194,6 +204,22 @@ jobs:
           echo "No .gcda files found (this is expected for non-coverage builds)"
         fi
 
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
       if: always()
@@ -244,6 +270,7 @@ jobs:
         extra-packages: ${{ matrix.os-name == 'ubuntu' && 'lcov gcovr' || 'gcovr' }}
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Build and run integration tests with coverage
@@ -286,6 +313,22 @@ jobs:
       uses: ./.github/actions/generate-coverage
       with:
         os-type: ${{ matrix.os-name }}
+
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
     - name: Publish Test Results and Coverage
       uses: ./.github/actions/publish-test-results
@@ -330,6 +373,7 @@ jobs:
         os: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Build performance tests with coverage
@@ -357,10 +401,16 @@ jobs:
         echo "Building performance tests with Release optimization and coverage instrumentation..."
         FLAGS="-std=c2x -O3 --coverage"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
-          -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
-          -DCMAKE_BUILD_TYPE=Release \
+        cmake_args=(
+          --preset github
+          -DCMAKE_C_COMPILER="${CLANG_BIN}"
+          -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}"
+          -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_C_FLAGS="${FLAGS}"
+          -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
+        )
+
+        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
         cmake --build build
         echo "Performance test executables built:"
         ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
@@ -373,6 +423,22 @@ jobs:
         ./tests/scripts/run_tests.sh -t performance -b release -J --log-file="${LOG_FILE}"
         echo "Performance tests completed successfully"
         echo "Test logs saved to: ${LOG_FILE}"
+
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
     - name: Generate coverage report for performance tests
       if: always()
@@ -419,6 +485,7 @@ jobs:
         extra-packages: valgrind
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Build with AddressSanitizer
@@ -449,6 +516,22 @@ jobs:
         [ $? -eq 124 ] && echo "Help command timed out" || echo "Help command completed"
 
         echo "Memory leak detection completed"
+
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
     - name: Upload memory test artifacts
       if: always()
@@ -481,6 +564,7 @@ jobs:
         extra-packages: ${{ startsWith(matrix.os, 'macos') && 'coreutils' || '' }}
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Build project
@@ -533,3 +617,20 @@ jobs:
       run: |
         # Test client capabilities detection
         ./build/bin/ascii-chat client --show-capabilities
+        echo "✅ Client capability detection test passed"
+
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}

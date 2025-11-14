@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "ms-vscode.cmake-tools",
+    "llvm-vs-code-extensions.vscode-clangd",
+    "xaver.clang-format",
+    "bbenoist.doxygen"
+  ]
+}

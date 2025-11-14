@@ -44,6 +44,54 @@ function(configure_llvm_pre_project)
     find_program(CCACHE_PROGRAM ccache)
     if(CCACHE_PROGRAM)
         set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
+    else()
+        if(DEFINED CMAKE_C_COMPILER_LAUNCHER AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
+            message(STATUS "${BoldYellow}ccache${ColorReset} not found; clearing compiler launcher.")
+            unset(CMAKE_C_COMPILER_LAUNCHER CACHE)
+        endif()
+    endif()
+
+    # Use llvm-config to detect LLVM installation (if available in PATH)
+    find_program(LLVM_CONFIG_EXECUTABLE
+        NAMES llvm-config llvm-config.exe
+        DOC "Path to llvm-config"
+    )
+
+    if(LLVM_CONFIG_EXECUTABLE)
+        # Get LLVM installation prefix
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix
+            OUTPUT_VARIABLE LLVM_DETECTED_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        # Get LLVM CMake directory
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir
+            OUTPUT_VARIABLE LLVM_DETECTED_CMAKEDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        if(LLVM_DETECTED_PREFIX AND LLVM_DETECTED_CMAKEDIR)
+            message(STATUS "${BoldGreen}Detected${ColorReset} ${BoldBlue}LLVM${ColorReset} via llvm-config: ${BoldCyan}${LLVM_DETECTED_PREFIX}${ColorReset}")
+            message(STATUS "${BoldGreen}Detected${ColorReset} ${BoldBlue}LLVM CMake${ColorReset} directory: ${BoldCyan}${LLVM_DETECTED_CMAKEDIR}${ColorReset}")
+
+            # Add LLVM prefix and cmake directory to CMAKE_PREFIX_PATH for find_package()
+            list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_PREFIX}")
+            list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_CMAKEDIR}")
+
+            # Export to parent scope for find_package(LLVM) and find_package(Clang)
+            set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+
+            # Add Clang cmake directory as well
+            if(EXISTS "${LLVM_DETECTED_PREFIX}/lib/cmake/clang")
+                list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_PREFIX}/lib/cmake/clang")
+                set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+                message(STATUS "${BoldGreen}Detected${ColorReset} ${BoldBlue}Clang CMake${ColorReset} directory: ${BoldCyan}${LLVM_DETECTED_PREFIX}/lib/cmake/clang${ColorReset}")
+            endif()
+        endif()
     endif()
 
     # Compiler Detection (before project())
@@ -134,14 +182,23 @@ function(configure_llvm_pre_project)
         return()
     endif()
 
-    # Check if Homebrew LLVM is installed
+    # Check if LLVM is installed (either via llvm-config or Homebrew)
     set(HOMEBREW_LLVM_PREFIX "")
+    set(LLVM_SOURCE "")  # Track whether LLVM is from llvm-config or Homebrew
 
-    # Check common Homebrew installation paths
-    if(EXISTS "/usr/local/opt/llvm/bin/clang")
+    # First priority: If llvm-config was detected and points to a valid LLVM installation,
+    # use that instead of Homebrew paths. This allows git-built LLVM to take precedence.
+    if(LLVM_DETECTED_PREFIX AND EXISTS "${LLVM_DETECTED_PREFIX}/bin/clang")
+        set(HOMEBREW_LLVM_PREFIX "${LLVM_DETECTED_PREFIX}")
+        set(LLVM_SOURCE "llvm-config")
+        message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}LLVM${ColorReset} (from llvm-config): ${BoldCyan}${LLVM_DETECTED_PREFIX}${ColorReset}")
+    # Second priority: Check common Homebrew installation paths
+    elseif(EXISTS "/usr/local/opt/llvm/bin/clang")
         set(HOMEBREW_LLVM_PREFIX "/usr/local/opt/llvm")
+        set(LLVM_SOURCE "Homebrew")
     elseif(EXISTS "/opt/homebrew/opt/llvm/bin/clang")
         set(HOMEBREW_LLVM_PREFIX "/opt/homebrew/opt/llvm")
+        set(LLVM_SOURCE "Homebrew")
     endif()
 
     # Set the compiler (all platforms)
@@ -151,15 +208,28 @@ function(configure_llvm_pre_project)
 
 
     if(HOMEBREW_LLVM_PREFIX)
-        message(STATUS "${BoldGreen}Found${ColorReset} ${BoldPurple}Homebrew LLVM${ColorReset} at: ${BoldCyan}${HOMEBREW_LLVM_PREFIX}${ColorReset}")
+        # Display appropriate message based on LLVM source
+        if(LLVM_SOURCE STREQUAL "llvm-config")
+            message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}LLVM${ColorReset} (from llvm-config) at: ${BoldCyan}${HOMEBREW_LLVM_PREFIX}${ColorReset}")
+        else()
+            message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} at: ${BoldCyan}${HOMEBREW_LLVM_PREFIX}${ColorReset}")
+        endif()
         set(USE_HOMEBREW_LLVM TRUE)
 
         if(USE_HOMEBREW_LLVM)
-            # Check if compiler is already set to Homebrew LLVM
+            # Check if compiler is already set
             if(CMAKE_C_COMPILER MATCHES "${HOMEBREW_LLVM_PREFIX}")
-                message(STATUS "${BoldGreen}Using${ColorReset} user-specified ${BoldBlue}Homebrew LLVM${ColorReset} compiler: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+                if(LLVM_SOURCE STREQUAL "llvm-config")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}LLVM${ColorReset} (from llvm-config) compiler: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+                else()
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} compiler: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+                endif()
             else()
-                message(STATUS "Configuring to use ${BoldBlue}Homebrew LLVM${ColorReset}")
+                if(LLVM_SOURCE STREQUAL "llvm-config")
+                    message(STATUS "Configuring to use ${BoldBlue}LLVM${ColorReset} (from llvm-config)")
+                else()
+                    message(STATUS "Configuring to use ${BoldBlue}Homebrew LLVM${ColorReset}")
+                endif()
             endif()
 
             # Add LLVM bin directory to PATH for tools like llvm-ar, llvm-ranlib, etc.
@@ -168,7 +238,7 @@ function(configure_llvm_pre_project)
             # Add LLVM CMake modules to module path for advanced features
             if(EXISTS "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
                 list(APPEND CMAKE_MODULE_PATH "${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm")
-                message(STATUS "${BoldGreen}Added${ColorReset} ${BoldPurple}LLVM CMake${BoldBlue} modules:${ColorReset} ${BoldCyan}$${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm${ColorReset}")
+                message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM CMake${ColorReset} modules:${ColorReset} ${BoldCyan}${HOMEBREW_LLVM_PREFIX}/lib/cmake/llvm${ColorReset}")
             endif()
 
             # Set LLVM tool paths
@@ -176,17 +246,25 @@ function(configure_llvm_pre_project)
             set(CMAKE_RANLIB "${HOMEBREW_LLVM_PREFIX}/bin/llvm-ranlib" CACHE FILEPATH "Ranlib" FORCE)
 
             # Configure resource directory BEFORE project() so flags are set early
-            # Get Clang version to construct resource directory path
+            # Use -print-resource-dir to get the actual resource directory
             execute_process(
-                COMMAND "${HOMEBREW_LLVM_PREFIX}/bin/clang" --version
-                OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
+                COMMAND "${HOMEBREW_LLVM_PREFIX}/bin/clang" -print-resource-dir
+                OUTPUT_VARIABLE CLANG_RESOURCE_DIR
                 OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
             )
-            string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
-            set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
 
-            # Construct resource directory (don't trust -print-resource-dir, it returns wrong path)
-            set(CLANG_RESOURCE_DIR "${HOMEBREW_LLVM_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
+            # Fallback: construct from version if -print-resource-dir failed
+            if(NOT CLANG_RESOURCE_DIR OR NOT EXISTS "${CLANG_RESOURCE_DIR}/include")
+                execute_process(
+                    COMMAND "${HOMEBREW_LLVM_PREFIX}/bin/clang" --version
+                    OUTPUT_VARIABLE CLANG_VERSION_OUTPUT
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                )
+                string(REGEX MATCH "clang version ([0-9]+)\\.([0-9]+)" CLANG_VERSION_MATCH "${CLANG_VERSION_OUTPUT}")
+                set(CLANG_MAJOR_VERSION "${CMAKE_MATCH_1}")
+                set(CLANG_RESOURCE_DIR "${HOMEBREW_LLVM_PREFIX}/lib/clang/${CLANG_MAJOR_VERSION}")
+            endif()
 
             if(EXISTS "${CLANG_RESOURCE_DIR}/include")
                 message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
@@ -226,10 +304,14 @@ function(configure_llvm_pre_project)
                 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}" PARENT_SCOPE)
             endif()
 
-            message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset}: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+            if(LLVM_SOURCE STREQUAL "llvm-config")
+                message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}LLVM${ColorReset} (from llvm-config): ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+            else()
+                message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset}: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+            endif()
         endif()
     else()
-        message(STATUS "${BoldBlue}Homebrew LLVM${ColorReset} not found, using system compiler")
+        message(STATUS "${BoldBlue}LLVM${ColorReset} not found (neither llvm-config nor Homebrew), using system compiler")
     endif()
 endfunction()
 
@@ -244,21 +326,54 @@ function(configure_llvm_post_project)
         return()
     endif()
 
-    # Check if we're using Homebrew LLVM (either auto-detected or user-specified)
+    # Check if we're using LLVM (either from llvm-config, Homebrew, or user-specified)
     if(CMAKE_C_COMPILER)
         get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
         get_filename_component(COMPILER_PREFIX "${COMPILER_DIR}" DIRECTORY)
 
-        # Also check for ccache wrapper pointing to Homebrew LLVM
+        # Detect LLVM source (llvm-config vs Homebrew)
         set(IS_HOMEBREW_LLVM FALSE)
+        set(LLVM_SOURCE_NAME "LLVM")
+
+        # Check for Homebrew LLVM installations first (more specific paths)
         if(COMPILER_PREFIX MATCHES "/opt/homebrew/opt/llvm" OR COMPILER_PREFIX MATCHES "/usr/local/opt/llvm")
             set(IS_HOMEBREW_LLVM TRUE)
-        elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/usr/local/opt/llvm/bin/clang")
-            set(COMPILER_PREFIX "/usr/local/opt/llvm")
-            set(IS_HOMEBREW_LLVM TRUE)
-        elseif(COMPILER_PREFIX MATCHES "ccache" AND EXISTS "/opt/homebrew/opt/llvm/bin/clang")
-            set(COMPILER_PREFIX "/opt/homebrew/opt/llvm")
-            set(IS_HOMEBREW_LLVM TRUE)
+            set(LLVM_SOURCE_NAME "Homebrew LLVM")
+        # Check for ccache wrappers
+        elseif(COMPILER_PREFIX MATCHES "ccache")
+            if(EXISTS "/usr/local/opt/llvm/bin/clang")
+                set(COMPILER_PREFIX "/usr/local/opt/llvm")
+                set(IS_HOMEBREW_LLVM TRUE)
+                set(LLVM_SOURCE_NAME "Homebrew LLVM")
+            elseif(EXISTS "/opt/homebrew/opt/llvm/bin/clang")
+                set(COMPILER_PREFIX "/opt/homebrew/opt/llvm")
+                set(IS_HOMEBREW_LLVM TRUE)
+                set(LLVM_SOURCE_NAME "Homebrew LLVM")
+            elseif(EXISTS "/usr/local/bin/llvm-config")
+                set(COMPILER_PREFIX "/usr/local")
+                set(IS_HOMEBREW_LLVM TRUE)
+                set(LLVM_SOURCE_NAME "LLVM (from llvm-config)")
+            endif()
+        # Check for git-built LLVM at /usr/local (no ccache)
+        # Also check /opt/homebrew for Apple Silicon git-built LLVM
+        elseif((COMPILER_PREFIX STREQUAL "/usr/local" OR COMPILER_PREFIX STREQUAL "/opt/homebrew") AND EXISTS "${COMPILER_PREFIX}/bin/llvm-config")
+            # Check if compiler is actually from Homebrew path or from /usr/local
+            # If CMAKE_C_COMPILER is /usr/local/bin/clang or /opt/homebrew/bin/clang, it's git-built
+            # If it's /usr/local/opt/llvm/bin/clang, it's Homebrew
+            if(CMAKE_C_COMPILER MATCHES "/opt/llvm/" OR CMAKE_C_COMPILER MATCHES "Cellar/llvm/")
+                # Compiler is from Homebrew, determine which prefix
+                if(EXISTS "/usr/local/opt/llvm/bin/clang")
+                    set(COMPILER_PREFIX "/usr/local/opt/llvm")
+                else()
+                    set(COMPILER_PREFIX "/opt/homebrew/opt/llvm")
+                endif()
+                set(IS_HOMEBREW_LLVM TRUE)
+                set(LLVM_SOURCE_NAME "Homebrew LLVM")
+            else()
+                # Compiler is from /usr/local/bin or /opt/homebrew/bin directly (git-built)
+                set(IS_HOMEBREW_LLVM TRUE)
+                set(LLVM_SOURCE_NAME "LLVM (from llvm-config)")
+            endif()
         endif()
 
         if(IS_HOMEBREW_LLVM)
@@ -268,11 +383,15 @@ function(configure_llvm_post_project)
             # For Debug/Dev builds: Link dynamically for faster iteration
             if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 # Use absolute path to static libunwind.a for Release builds
+                # Check both Homebrew layout (lib/unwind/) and git-built layout (lib/)
                 if(EXISTS "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
                     set(ASCIICHAT_LLVM_STATIC_LIBUNWIND "${COMPILER_PREFIX}/lib/unwind/libunwind.a")
-                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}static libunwind${ColorReset}: ${ASCIICHAT_LLVM_STATIC_LIBUNWIND}")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}static libunwind${ColorReset} (Homebrew): ${ASCIICHAT_LLVM_STATIC_LIBUNWIND}")
+                elseif(EXISTS "${COMPILER_PREFIX}/lib/libunwind.a")
+                    set(ASCIICHAT_LLVM_STATIC_LIBUNWIND "${COMPILER_PREFIX}/lib/libunwind.a")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}static libunwind${ColorReset} (git-built): ${ASCIICHAT_LLVM_STATIC_LIBUNWIND}")
                 else()
-                    message(FATAL_ERROR "Could not find static ${BoldRed}libunwind.a${ColorReset} in ${COMPILER_PREFIX}/lib/unwind/")
+                    message(FATAL_ERROR "Could not find static ${BoldRed}libunwind.a${ColorReset} in ${COMPILER_PREFIX}/lib/unwind/ or ${COMPILER_PREFIX}/lib/")
                 endif()
                 set(HOMEBREW_LLVM_LINK_FLAGS "")
 
@@ -311,7 +430,20 @@ function(configure_llvm_post_project)
                 endforeach()
             else()
                 # Debug/Dev builds: Use dynamic linking for faster development
-                set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib/unwind -L${COMPILER_PREFIX}/lib/c++ -L${COMPILER_PREFIX}/lib/unwind")
+                # Check library layout: Homebrew uses subdirectories, git-built uses flat lib/
+                set(HOMEBREW_LLVM_LINK_DIRS "")
+                if(EXISTS "${COMPILER_PREFIX}/lib/unwind" AND EXISTS "${COMPILER_PREFIX}/lib/c++")
+                    # Homebrew layout: lib/unwind/ and lib/c++/
+                    set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib/unwind -L${COMPILER_PREFIX}/lib/c++")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} library layout")
+                elseif(EXISTS "${COMPILER_PREFIX}/lib/libunwind.a" OR EXISTS "${COMPILER_PREFIX}/lib/libunwind.dylib")
+                    # Git-built layout: lib/ (flat)
+                    set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib")
+                    message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}git-built LLVM${ColorReset} library layout")
+                else()
+                    message(WARNING "Could not detect LLVM library layout, defaulting to ${COMPILER_PREFIX}/lib")
+                    set(HOMEBREW_LLVM_LINK_DIRS "-L${COMPILER_PREFIX}/lib")
+                endif()
                 set(HOMEBREW_LLVM_LINK_FLAGS "${HOMEBREW_LLVM_LINK_DIRS} -lunwind")
             endif()
 
@@ -324,15 +456,47 @@ function(configure_llvm_post_project)
                 if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib/unwind")
                     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_FLAGS}" CACHE STRING "Linker flags" FORCE)
                     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${HOMEBREW_LLVM_LINK_FLAGS}" CACHE STRING "Shared linker flags" FORCE)
-                    message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} library paths and -lunwind (not in environment)")
+                    message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths and -lunwind (not in environment)")
                 else()
-                    message(STATUS "${BoldYellow}Homebrew LLVM${ColorReset} library paths already present in linker flags")
+                    message(STATUS "${BoldYellow}${LLVM_SOURCE_NAME}${ColorReset} library paths already present in linker flags")
                 endif()
             else()
-                message(STATUS "${BoldBlue}Homebrew LLVM${ColorReset} library paths ${BoldGreen}already present${ColorReset} in LDFLAGS environment variable")
+                message(STATUS "${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths ${BoldGreen}already present${ColorReset} in LDFLAGS environment variable")
             endif()
 
-            message(STATUS "${BoldGreen}Applied${ColorReset} ${BoldBlue}Homebrew LLVM${ColorReset} toolchain flags:")
+            # Add LLVM library paths to rpath for Debug/Dev builds (for dynamic linking)
+            # This ensures libunwind.dylib and other LLVM libraries can be found at runtime
+            if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+                # Determine the correct library path based on layout
+                if(EXISTS "${COMPILER_PREFIX}/lib/unwind" AND EXISTS "${COMPILER_PREFIX}/lib/c++")
+                    # Homebrew layout: separate subdirectories
+                    set(LLVM_RPATH_UNWIND "${COMPILER_PREFIX}/lib/unwind")
+                    set(LLVM_RPATH_CXX "${COMPILER_PREFIX}/lib/c++")
+                elseif(EXISTS "${COMPILER_PREFIX}/lib/libunwind.dylib")
+                    # Git-built layout: flat lib directory
+                    set(LLVM_RPATH_UNWIND "${COMPILER_PREFIX}/lib")
+                    set(LLVM_RPATH_CXX "${COMPILER_PREFIX}/lib")
+                endif()
+
+                # Add to build rpath if directories exist
+                if(LLVM_RPATH_UNWIND)
+                    if(NOT CMAKE_BUILD_RPATH MATCHES "${LLVM_RPATH_UNWIND}")
+                        list(APPEND CMAKE_BUILD_RPATH "${LLVM_RPATH_UNWIND}")
+                        set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" CACHE INTERNAL "Build RPATH" FORCE)
+                        message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM unwind${ColorReset} to build rpath: ${BoldCyan}${LLVM_RPATH_UNWIND}${ColorReset}")
+                    endif()
+                endif()
+
+                if(LLVM_RPATH_CXX AND NOT LLVM_RPATH_CXX STREQUAL LLVM_RPATH_UNWIND)
+                    if(NOT CMAKE_BUILD_RPATH MATCHES "${LLVM_RPATH_CXX}")
+                        list(APPEND CMAKE_BUILD_RPATH "${LLVM_RPATH_CXX}")
+                        set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" CACHE INTERNAL "Build RPATH" FORCE)
+                        message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM c++${ColorReset} to build rpath: ${BoldCyan}${LLVM_RPATH_CXX}${ColorReset}")
+                    endif()
+                endif()
+            endif()
+
+            message(STATUS "${BoldGreen}Applied${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} toolchain flags:")
             message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
             if(HOMEBREW_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
                 message(STATUS "  Link: ${BoldCyan}${HOMEBREW_LLVM_LINK_FLAGS}${ColorReset}")

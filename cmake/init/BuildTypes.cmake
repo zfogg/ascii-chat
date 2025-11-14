@@ -43,12 +43,16 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
-        # Configure sanitizers (automatically handles mimalloc conflicts)
-        configure_sanitizers(${USE_MIMALLOC} "Debug")
+        if(ASCII_BUILD_WITH_INSTRUMENTATION)
+            message(STATUS "Debug instrumentation build: skipping sanitizers (incompatible with instrumentation pipeline)")
+        else()
+            # Configure sanitizers (automatically handles mimalloc conflicts)
+            configure_sanitizers(${USE_MIMALLOC} "Debug")
 
-        # Platform-specific sanitizer runtime fixes
-        fix_macos_asan_runtime()
-        copy_asan_runtime_dll()
+            # Platform-specific sanitizer runtime fixes
+            fix_macos_asan_runtime()
+            copy_asan_runtime_dll()
+        endif()
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Dev")
         # Dev mode - debug WITHOUT sanitizers (faster iteration)

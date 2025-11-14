@@ -1,12 +1,12 @@
 /**
- * @file lock_debug.c
+ * @file lock.c
  * @ingroup lock_debug
  * @brief 🔒 Lock debugging and deadlock detection with call stack backtraces and lock ordering validation
  * @date September 2025
  */
 
 // Header must be included even in release builds to get inline no-op stubs
-#include "lock_debug.h"
+#include "debug/lock.h"
 
 #ifndef NDEBUG
 // Only compile lock_debug implementation in debug builds

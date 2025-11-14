@@ -452,7 +452,9 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Path is empty for role %d", role);
   }
 
-  if (!path_looks_like_path(input)) {
+  // For log files, allow simple filenames (e.g., "trace.log") without path separators
+  // They will be treated as relative to the current directory
+  if (role != PATH_ROLE_LOG_FILE && !path_looks_like_path(input)) {
     return SET_ERRNO(map_role_to_error(role), "Value does not look like a filesystem path: %s", input);
   }
 
@@ -536,8 +538,8 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(ascii_chat_home, bases, &base_count);
   }
 
-  char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
 #ifndef _WIN32
+  char ascii_chat_home_tmp[PLATFORM_MAX_PATH_LENGTH];
   build_ascii_chat_path("/tmp", ".ascii-chat", ascii_chat_home_tmp, sizeof(ascii_chat_home_tmp));
   append_base_if_valid(ascii_chat_home_tmp, bases, &base_count);
 #endif

@@ -76,44 +76,71 @@ if(CLANG_FORMAT_EXECUTABLE)
         VERBATIM
     )
 
-    # Alias target: clang-format (same as format)
-    add_custom_target(clang-format
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
-        COMMENT "Formatting source code with clang-format"
-        VERBATIM
-    )
+    if(NOT TARGET clang-format)
+        add_custom_target(clang-format
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} -i ${ALL_SOURCE_FILES}
+            COMMENT "Formatting source code with clang-format"
+            VERBATIM
+        )
+    endif()
 
-    # Format check target
-    add_custom_target(format-check
-        COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run -Werror ${ALL_SOURCE_FILES}
-        COMMENT "Checking code formatting"
-        VERBATIM
-    )
+    if(NOT TARGET format-check)
+        add_custom_target(format-check
+            COMMAND ${CLANG_FORMAT_EXECUTABLE} --dry-run -Werror ${ALL_SOURCE_FILES}
+            COMMENT "Checking code formatting"
+            VERBATIM
+        )
+    endif()
 else()
     message(WARNING "${BoldRed}clang-format not found.${ColorReset} Format targets will not be available.")
     add_custom_target(format
         COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
     )
+    if(NOT TARGET clang-format)
+        add_custom_target(clang-format
+            COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
+        )
+    endif()
+    if(NOT TARGET format-check)
+        add_custom_target(format-check
+            COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
+        )
+    endif()
+endif()
+
+if(NOT TARGET clang-format)
     add_custom_target(clang-format
-        COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
-    )
-    add_custom_target(format-check
-        COMMAND ${CMAKE_COMMAND} -E echo "${BoldRed}clang-format not found.${ColorReset} Please install clang-format."
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunClangFormat.cmake
+        COMMENT "Running clang-format on source files"
+        VERBATIM
     )
 endif()
 
-# Find Python3 and run-clang-tidy.py script
+if(NOT TARGET clang-format-check)
+    add_custom_target(clang-format-check
+        COMMAND ${CMAKE_COMMAND} -DONLY_CHECK=ON -P ${CMAKE_SOURCE_DIR}/cmake/utils/RunClangFormat.cmake
+        COMMENT "Checking clang-format formatting"
+        VERBATIM
+    )
+endif()
+
+# Find Python3, clang-tidy, and the accompanying run-clang-tidy.py helper
 find_program(PYTHON3_EXECUTABLE NAMES python3 python)
 find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
-
-# Check if run-clang-tidy.py script exists
 set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
 
-if(PYTHON3_EXECUTABLE AND EXISTS "${RUN_CLANG_TIDY_SCRIPT}" AND CLANG_TIDY_EXECUTABLE)
-    # Use run-clang-tidy.py for parallel execution and better project file filtering
-    # The script automatically filters to lib/, src/, tests/ directories (project code only)
-    # It uses compile_commands.json from the build directory
-    # Use CPU_CORES if available (set in BuildConfiguration.cmake), otherwise default to 4
+set(_clang_tidy_missing_deps "")
+if(NOT PYTHON3_EXECUTABLE)
+    list(APPEND _clang_tidy_missing_deps "python3 interpreter")
+endif()
+if(NOT CLANG_TIDY_EXECUTABLE)
+    list(APPEND _clang_tidy_missing_deps "clang-tidy executable")
+endif()
+if(NOT EXISTS "${RUN_CLANG_TIDY_SCRIPT}")
+    list(APPEND _clang_tidy_missing_deps "scripts/run-clang-tidy.py helper")
+endif()
+
+if(NOT _clang_tidy_missing_deps)
     if(DEFINED CPU_CORES)
         set(CLANG_TIDY_JOBS ${CPU_CORES})
     else()
@@ -121,39 +148,29 @@ if(PYTHON3_EXECUTABLE AND EXISTS "${RUN_CLANG_TIDY_SCRIPT}" AND CLANG_TIDY_EXECU
         message(STATUS "CPU_CORES not defined, using ${BoldYellow}${CLANG_TIDY_JOBS}${ColorReset} parallel jobs for clang-tidy")
     endif()
 
-    add_custom_target(clang-tidy
-        COMMAND ${CLANG_TIDY_EXECUTABLE}
-            --verify-config
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-        COMMAND ${PYTHON3_EXECUTABLE}
-            ${RUN_CLANG_TIDY_SCRIPT}
-            -p ${CMAKE_BINARY_DIR}
-            -config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
-            -j ${CLANG_TIDY_JOBS}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Verifying clang-tidy config, then running static analysis on production code (excluding tests) using run-clang-tidy.py (parallel: ${CLANG_TIDY_JOBS} jobs)"
-        VERBATIM
-    )
-elseif(CLANG_TIDY_EXECUTABLE)
-    # Fallback to direct clang-tidy if script not available
-    message(STATUS "run-clang-tidy.py not found, using direct clang-tidy (slower, no parallel execution)")
-    add_custom_target(clang-tidy
-        COMMAND ${CLANG_TIDY_EXECUTABLE}
-            --verify-config
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-        COMMAND ${CLANG_TIDY_EXECUTABLE}
-            --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-            -p ${CMAKE_BINARY_DIR}
-            ${PRODUCTION_SOURCE_FILES}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Verifying clang-tidy config, then running static analysis on production code (excluding tests)"
-        VERBATIM
-    )
+    if(NOT TARGET clang-tidy)
+        add_custom_target(clang-tidy
+            COMMAND ${CLANG_TIDY_EXECUTABLE}
+                --verify-config
+                --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
+            COMMAND ${PYTHON3_EXECUTABLE}
+                ${RUN_CLANG_TIDY_SCRIPT}
+                -p ${CMAKE_BINARY_DIR}
+                -config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
+                -j ${CLANG_TIDY_JOBS}
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            COMMENT "Verifying clang-tidy config, then running static analysis on production code (excluding tests) via scripts/run-clang-tidy.py (parallel: ${CLANG_TIDY_JOBS} jobs)"
+            VERBATIM
+        )
+    endif()
 else()
-    message(WARNING "clang-tidy not found. Clang-tidy target will not be available.")
-    add_custom_target(clang-tidy
-        COMMAND ${CMAKE_COMMAND} -E echo "clang-tidy not found. Please install clang-tidy."
-    )
+    list(JOIN _clang_tidy_missing_deps ", " _clang_tidy_missing_deps_msg)
+    message(WARNING "clang-tidy target disabled: missing ${_clang_tidy_missing_deps_msg}.")
+    if(NOT TARGET clang-tidy)
+        add_custom_target(clang-tidy
+            COMMAND ${CMAKE_COMMAND} -E echo "clang-tidy target unavailable: missing ${_clang_tidy_missing_deps_msg}."
+        )
+    endif()
 endif()
 
 # Find scan-build executable

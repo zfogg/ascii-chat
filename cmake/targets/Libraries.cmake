@@ -34,7 +34,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
             BUILDING_ASCIICHAT_DLL=1
         )
     else()
-        add_library(${MODULE_NAME} STATIC ${MODULE_SRCS})
+        # Module libraries are intermediate build artifacts
+        # They should not be in the 'all' target by default
+        add_library(${MODULE_NAME} STATIC EXCLUDE_FROM_ALL ${MODULE_SRCS})
         # For static library builds on Windows, define BUILDING_STATIC_LIB
         # so that ASCIICHAT_API expands to nothing (not dllimport)
         if(WIN32)
@@ -279,7 +281,7 @@ elseif(UNIX AND NOT USE_MUSL)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 7: Core Infrastructure (depends on: util, platform)
+# Module 8: Core Infrastructure (depends on: util, platform)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-core "${CORE_SRCS}")
 if(NOT BUILDING_OBJECT_LIBS)
@@ -313,7 +315,27 @@ if(USE_MIMALLOC)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 8: Network (depends on: util, platform, crypto, core)
+# Module 9: Debug Instrumentation Runtime (depends on: util, platform, core)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-debug "${DEBUG_RUNTIME_SRCS}")
+target_include_directories(ascii-chat-debug PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/src
+)
+if(NOT BUILDING_OBJECT_LIBS)
+    target_link_libraries(ascii-chat-debug
+        PRIVATE
+            ascii-chat-util
+            ascii-chat-platform
+            ascii-chat-core
+    )
+endif()
+if(NOT WIN32 AND TARGET Threads::Threads)
+    target_link_libraries(ascii-chat-debug PUBLIC Threads::Threads)
+endif()
+
+# -----------------------------------------------------------------------------
+# Module 10: Network (depends on: util, platform, crypto, core)
 # -----------------------------------------------------------------------------
 create_ascii_chat_module(ascii-chat-network "${NETWORK_SRCS}")
 if(NOT BUILDING_OBJECT_LIBS)
@@ -878,6 +900,7 @@ target_link_libraries(ascii-chat-lib INTERFACE
     ascii-chat-crypto
     ascii-chat-network
     ascii-chat-core
+    ascii-chat-debug
     ascii-chat-platform
     ascii-chat-data-structures
     ascii-chat-util
@@ -889,19 +912,7 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # Use CMake's RULE_LAUNCH_COMPILE to rename object files after compilation
 # Example: lib/common.c → lib_common.c.o, lib/image2ascii/simd/common.c → lib_image2ascii_simd_common.c.o
 
-# Wrap the archiver to rename objects before archiving
-# Save the real archiver path before overriding CMAKE_AR
-set(REAL_AR "${CMAKE_AR}" CACHE STRING "Real archiver path" FORCE)
-
-# Configure the wrapper script from template
-set(AR_WRAPPER "${CMAKE_BINARY_DIR}/cmake/scripts/ar_wrapper.sh")
-configure_file(
-    "${CMAKE_SOURCE_DIR}/cmake/scripts/ar_wrapper.sh.in"
-    "${AR_WRAPPER}"
-    @ONLY
-)
-execute_process(COMMAND chmod +x "${AR_WRAPPER}")
-
-# Override CMAKE_AR to use our wrapper
-set(CMAKE_AR "${AR_WRAPPER}" CACHE STRING "Archiver with object renaming" FORCE)
+# Note: Archiver wrapper configuration moved to cmake/init/ArchiverWrapper.cmake
+# and is now included BEFORE Libraries.cmake in CMakeLists.txt to ensure
+# CMAKE_AR is properly set before any static libraries are created.
 

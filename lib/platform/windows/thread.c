@@ -754,4 +754,67 @@ void ascii_thread_init(asciithread_t *thread) {
   }
 }
 
+// ============================================================================
+// Thread-Local Storage (TLS) Functions
+// ============================================================================
+
+/**
+ * @brief Create a thread-local storage key
+ * @param key Pointer to TLS key (output parameter)
+ * @param destructor Optional destructor function called when thread exits
+ * @return 0 on success, non-zero on error
+ *
+ * Uses Windows Fiber Local Storage (FLS) which works for both threads and fibers.
+ * FLS supports destructors unlike TlsAlloc.
+ */
+int ascii_tls_key_create(tls_key_t *key, void (*destructor)(void *)) {
+  if (!key) {
+    return -1;
+  }
+
+  // FlsAlloc allocates a FLS index and registers a destructor callback
+  // The destructor is called automatically when a thread terminates
+  *key = FlsAlloc((PFLS_CALLBACK_FUNCTION)destructor);
+
+  if (*key == FLS_OUT_OF_INDEXES) {
+    return -1;
+  }
+
+  return 0;
+}
+
+/**
+ * @brief Delete a thread-local storage key
+ * @param key TLS key to delete
+ * @return 0 on success, non-zero on error
+ */
+int ascii_tls_key_delete(tls_key_t key) {
+  if (FlsFree(key)) {
+    return 0;
+  }
+  return -1;
+}
+
+/**
+ * @brief Get thread-local value for a key
+ * @param key TLS key
+ * @return Thread-local value, or NULL if not set
+ */
+void *ascii_tls_get(tls_key_t key) {
+  return FlsGetValue(key);
+}
+
+/**
+ * @brief Set thread-local value for a key
+ * @param key TLS key
+ * @param value Value to store
+ * @return 0 on success, non-zero on error
+ */
+int ascii_tls_set(tls_key_t key, void *value) {
+  if (FlsSetValue(key, value)) {
+    return 0;
+  }
+  return -1;
+}
+
 #endif // _WIN32

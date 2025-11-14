@@ -1,0 +1,93 @@
+name: 'Save CMake Build Cache'
+description: 'Save build, dependency, and ccache directories using actions/cache/save@v4.'
+
+inputs:
+  build-directory:
+    description: 'Absolute or relative path to the configured CMake build directory.'
+    required: true
+  build-cache-key:
+    description: 'Fully qualified cache key for the build directory.'
+    required: true
+  build-cache-hit:
+    description: 'Whether the build directory cache was restored.'
+    required: false
+    default: ''
+  cache-deps-enabled:
+    description: 'Set to true to save dependency caches.'
+    required: false
+    default: 'true'
+  deps-cache-directory:
+    description: 'Newline-separated list of dependency cache directories.'
+    required: false
+    default: ''
+  deps-cache-key:
+    description: 'Fully qualified cache key for dependency directories.'
+    required: false
+    default: ''
+  deps-cache-hit:
+    description: 'Whether the dependency cache was restored.'
+    required: false
+    default: ''
+  cache-ccache-enabled:
+    description: 'Set to true to save the ccache directory.'
+    required: false
+    default: 'true'
+  ccache-directory:
+    description: 'Path to the ccache directory.'
+    required: false
+    default: ''
+  ccache-cache-key:
+    description: 'Fully qualified cache key for ccache.'
+    required: false
+    default: ''
+  ccache-cache-hit:
+    description: 'Whether the ccache directory cache was restored.'
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Ensure build directory exists
+      if: always() && inputs.build-directory != ''
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.build-directory }}"
+
+    - name: Ensure dependency directories exist
+      if: always() && inputs.cache-deps-enabled == 'true' && inputs.deps-cache-directory != ''
+      shell: bash
+      run: |
+        while IFS= read -r deps_dir; do
+          if [ -n "${deps_dir}" ]; then
+            mkdir -p "${deps_dir}"
+          fi
+        done <<< "${{ inputs.deps-cache-directory }}"
+
+    - name: Ensure ccache directory exists
+      if: always() && inputs.cache-ccache-enabled == 'true' && inputs.ccache-directory != ''
+      shell: bash
+      run: |
+        mkdir -p "${{ inputs.ccache-directory }}"
+
+    - name: Save build directory cache
+      if: always() && inputs.build-cache-key != '' && inputs.build-cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.build-directory }}
+        key: ${{ inputs.build-cache-key }}
+
+    - name: Save dependency cache
+      if: always() && inputs.cache-deps-enabled == 'true' && inputs.deps-cache-directory != '' && inputs.deps-cache-key != '' && inputs.deps-cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.deps-cache-directory }}
+        key: ${{ inputs.deps-cache-key }}
+
+    - name: Save ccache directory
+      if: always() && inputs.cache-ccache-enabled == 'true' && inputs.ccache-directory != '' && inputs.ccache-cache-key != '' && inputs.ccache-cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.ccache-directory }}
+        key: ${{ inputs.ccache-cache-key }}
+

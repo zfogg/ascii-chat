@@ -409,7 +409,7 @@ extern int g_max_fps;
  *   Application (server.c/client.c):
  *     shutdown_register_callback(my_shutdown_check_fn);
  *
- *   Library code (logging.c, lock_debug.c, etc.):
+ *   Library code (logging.c, debug/lock.c, etc.):
  *     if (shutdown_is_requested()) { return; }
  */
 
@@ -479,6 +479,7 @@ bool shutdown_is_requested(void);
 #define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
 #define ALLOC_FREE(ptr) mi_free(ptr)
 #elif defined(DEBUG_MEMORY)
+#include "debug/memory.h"
 #ifdef NDEBUG
 #define ALLOC_MALLOC(size) debug_malloc(size, NULL, 0)
 #define ALLOC_CALLOC(count, size) debug_calloc((count), (size), NULL, 0)
@@ -708,77 +709,6 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
 
 /* Include logging.h to provide logging macros to all files that include common.h */
 #include "logging.h" // IWYU pragma: keep
-
-/* Memory debugging (only in debug builds, disabled when mimalloc override is active) */
-#if defined(DEBUG_MEMORY) && !defined(MI_MALLOC_OVERRIDE)
-/**
- * @brief Debug memory allocation function
- * @param size Size to allocate in bytes
- * @param file Source file name (for leak tracking)
- * @param line Line number (for leak tracking)
- * @return Allocated pointer, or NULL on failure
- * @ingroup common
- */
-void *debug_malloc(size_t size, const char *file, int line);
-
-/**
- * @brief Debug memory deallocation function
- * @param ptr Pointer to free
- * @param file Source file name (for leak tracking)
- * @param line Line number (for leak tracking)
- * @ingroup common
- */
-void debug_free(void *ptr, const char *file, int line);
-
-/**
- * @brief Debug zero-initialized memory allocation
- * @param count Number of elements
- * @param size Size of each element
- * @param file Source file name (for leak tracking)
- * @param line Line number (for leak tracking)
- * @return Allocated pointer, or NULL on failure
- * @ingroup common
- */
-void *debug_calloc(size_t count, size_t size, const char *file, int line);
-
-/**
- * @brief Debug memory reallocation function
- * @param ptr Pointer to reallocate
- * @param size New size in bytes
- * @param file Source file name (for leak tracking)
- * @param line Line number (for leak tracking)
- * @return Reallocated pointer, or NULL on failure
- * @ingroup common
- */
-void *debug_realloc(void *ptr, size_t size, const char *file, int line);
-
-/**
- * @brief Track aligned allocation for leak detection
- * @param ptr Pointer to aligned allocation
- * @param size Size in bytes
- * @param file Source file name (for leak tracking)
- * @param line Line number (for leak tracking)
- * @ingroup common
- */
-void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
-
-/**
- * @brief Print memory leak report
- *
- * Prints comprehensive memory leak report including all unfreed allocations
- * with file, line, and size information.
- *
- * @ingroup common
- */
-void debug_memory_report(void);
-
-/**
- * @brief Control stderr output for memory report
- * @param quiet If true, suppress stderr output (still logs to file)
- * @ingroup common
- */
-void debug_memory_set_quiet_mode(bool quiet);
-#endif /* DEBUG_MEMORY && !MI_MALLOC_OVERRIDE */
 
 /** @} */
 
