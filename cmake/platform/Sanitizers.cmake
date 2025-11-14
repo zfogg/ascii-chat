@@ -59,6 +59,21 @@ endfunction()
 # Configure AddressSanitizer + UndefinedBehaviorSanitizer + extras
 function(configure_asan_ubsan_sanitizers)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+        # Check if ASan runtime is available on Windows
+        set(ASAN_AVAILABLE TRUE)
+        if(WIN32)
+            get_filename_component(CLANG_DIR ${CMAKE_C_COMPILER} DIRECTORY)
+            get_filename_component(CLANG_ROOT ${CLANG_DIR} DIRECTORY)
+            file(GLOB_RECURSE ASAN_LIB "${CLANG_ROOT}/lib/clang/*/lib/*/clang_rt.asan_dynamic*.lib")
+            if(NOT ASAN_LIB)
+                set(ASAN_AVAILABLE FALSE)
+                message(WARNING "ASan runtime libraries not found in LLVM installation - sanitizers disabled")
+                message(STATUS "  Searched: ${CLANG_ROOT}/lib/clang/*/lib/*/clang_rt.asan_dynamic*.lib")
+                message(STATUS "  To enable sanitizers, install LLVM with sanitizer runtimes or use Dev build")
+                return()
+            endif()
+        endif()
+
         # Base debug flags (always supported)
         add_compile_options(-g -fno-omit-frame-pointer)
 
