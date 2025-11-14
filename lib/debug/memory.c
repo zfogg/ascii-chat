@@ -9,6 +9,7 @@
 
 #include "debug/memory.h"
 #include "common.h"
+#include "asciichat_errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
 #include "util/format.h"
@@ -327,31 +328,81 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   return ptr;
 }
 
+/**
+ * @brief Custom realloc implementation for debug memory tracking
+ *
+ * Reallocates a previously allocated memory block, updating internal
+ * debug tracking structures. Records call counts, memory usage, and
+ * maintains a linked list of allocation blocks for leak tracking.
+ *
+ * BEHAVIOR:
+ * - If ptr is NULL, behaves like debug_malloc (allocate new block)
+ * - If size is 0, behaves like debug_free (free block and return NULL)
+ * - Otherwise, reallocates existing block and updates tracking
+ *
+ * MEMORY TRACKING:
+ * - Tracks reallocation count globally
+ * - Updates total allocated/freed based on size change
+ * - Updates current memory usage (increasing or decreasing)
+ * - Updates peak memory usage if new usage exceeds previous peak
+ * - Maintains allocation metadata (file, line, size)
+ *
+ * THREAD SAFETY:
+ * - Uses thread-local recursion guard (g_in_debug_memory)
+ * - Mutex-protected access to allocation list
+ * - Falls back to standard realloc if mutex unavailable
+ * - Atomic operations for memory statistics
+ *
+ * RECURSION PREVENTION:
+ * - Detects nested debug_realloc calls
+ * - Falls back to standard realloc to prevent infinite recursion
+ * - Uses thread-local storage for recursion detection
+ *
+ * @param ptr  Pointer to the memory block to reallocate, or NULL to allocate new
+ * @param size New size for the allocation (if 0, frees the block)
+ * @param file Source filename where realloc was requested
+ * @param line Source line number of the allocation request
+ *
+ * @return Pointer to the new allocation, or NULL if allocation fails or size==0
+ *
+ * @note If size==0, the memory is freed and NULL is returned
+ * @note If ptr==NULL, behaves like debug_malloc
+ * @note If in nested debug tracking, falls back to standard realloc
+ * @note Thread-safe when mutex is properly initialized
+ *
+ * @ingroup debug
+ */
 void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
+  // Prevent recursion if we're already in debug memory logic
   if (g_in_debug_memory) {
     return realloc(ptr, size);
   }
 
   g_in_debug_memory = true;
 
+  // Track number of realloc calls
   atomic_fetch_add(&g_mem.realloc_calls, 1);
 
+  // If ptr == NULL, realloc behaves like malloc
   if (ptr == NULL) {
     g_in_debug_memory = false;
     return debug_malloc(size, file, line);
   }
+  // If size == 0, realloc behaves like free
   if (size == 0) {
     g_in_debug_memory = false;
     debug_free(ptr, file, line);
     return NULL;
   }
 
+  // Look up old allocation size from tracking list
   size_t old_size = 0;
   bool have_mutex = ensure_mutex_initialized();
 
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
+    // Find the existing allocation block in the linked list
     mem_block_t *curr = g_mem.head;
     while (curr && curr->ptr != ptr) {
       curr = curr->next;
@@ -365,32 +416,40 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     log_warn_every(1000000, "Debug memory mutex unavailable while reallocating %p at %s:%d", ptr, file, line);
   }
 
+  // Perform actual reallocation
   void *new_ptr = SAFE_REALLOC(ptr, size, void *);
   if (!new_ptr) {
     g_in_debug_memory = false;
     return NULL;
   }
 
+  // Update memory statistics based on size change
   if (old_size > 0) {
+    // Block was tracked - update statistics
     if (size >= old_size) {
+      // Growing: track additional allocation
       size_t delta = size - old_size;
       atomic_fetch_add(&g_mem.total_allocated, delta);
       size_t new_usage = atomic_fetch_add(&g_mem.current_usage, delta) + delta;
 
+      // Update peak usage if new usage exceeds previous peak
       size_t peak = atomic_load(&g_mem.peak_usage);
       while (new_usage > peak) {
         if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
           break;
       }
     } else {
+      // Shrinking: track freed memory
       size_t delta = old_size - size;
       atomic_fetch_add(&g_mem.total_freed, delta);
       atomic_fetch_sub(&g_mem.current_usage, delta);
     }
   } else {
+    // Block was not tracked - treat as new allocation
     atomic_fetch_add(&g_mem.total_allocated, size);
     size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
 
+    // Update peak usage
     size_t peak = atomic_load(&g_mem.peak_usage);
     while (new_usage > peak) {
       if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
@@ -398,15 +457,18 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     }
   }
 
+  // Update tracking list with new pointer and metadata
   if (ensure_mutex_initialized()) {
     mutex_lock(&g_mem.mutex);
 
+    // Find existing block in linked list
     mem_block_t *curr = g_mem.head;
     while (curr && curr->ptr != ptr) {
       curr = curr->next;
     }
 
     if (curr) {
+      // Update existing block with new metadata
       curr->ptr = new_ptr;
       curr->size = size;
       curr->is_aligned = false;
@@ -414,6 +476,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       curr->file[sizeof(curr->file) - 1] = '\0';
       curr->line = line;
     } else {
+      // Block not found - create new tracking entry
       mem_block_t *block = (mem_block_t *)malloc(sizeof(mem_block_t));
       if (block) {
         block->ptr = new_ptr;
@@ -443,8 +506,6 @@ void debug_memory_set_quiet_mode(bool quiet) {
 static const char *strip_project_path(const char *full_path) {
   return extract_project_relative_path(full_path);
 }
-
-extern void asciichat_errno_cleanup(void);
 
 void debug_memory_report(void) {
   asciichat_errno_cleanup();
