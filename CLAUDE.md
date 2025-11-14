@@ -576,6 +576,135 @@ valgrind ./build/bin/ascii-chat server               # Linux
 lldb ./build/bin/ascii-chat server                   # macOS/Linux
 ```
 
+### Debug Instrumentation for "Mystery Crashes"
+
+When debugging crashes without clear error messages or backtraces, ascii-chat provides a **debug instrumentation system** that logs every executed statement before it runs. This is especially useful for:
+
+- Segfaults with no backtrace or unclear stack traces
+- Silent crashes in multi-threaded code
+- "Works on my machine" bugs that are hard to reproduce
+- Race conditions that disappear with traditional debugging
+- Crashes deep in third-party libraries or generated code
+
+**How it works:** The build system uses Clang libTooling to rewrite your source code, inserting logging calls before every statement. When the program crashes, the last logged line per thread shows exactly where execution stopped.
+
+#### Quick Start
+
+```bash
+# Build with instrumentation
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCII_BUILD_WITH_INSTRUMENTATION=ON
+cmake --build build
+
+# Run with instrumentation enabled (required!)
+export ASCII_INSTR_ENABLE=1
+
+# Optional: Focus on specific module to reduce noise
+export ASCII_INSTR_INCLUDE=network  # Only instrument files with "network" in path
+export ASCII_INSTR_OUTPUT_DIR=/tmp/ascii-logs
+
+# Run the program
+./build/bin/ascii-chat server
+
+# After crash, find last executed line per thread
+./build/bin/ascii-instr-report --log-dir /tmp/ascii-logs
+```
+
+#### Environment Variables (Quick Reference)
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| `ASCII_INSTR_ENABLE` | **REQUIRED** - Enable logging (set to `1`, `true`, `yes`, or `on`) | `ASCII_INSTR_ENABLE=1` |
+| `ASCII_INSTR_INCLUDE` | Substring filter for file paths | `ASCII_INSTR_INCLUDE=network` |
+| `ASCII_INSTR_EXCLUDE` | Exclude files matching substring | `ASCII_INSTR_EXCLUDE=deps` |
+| `ASCII_INSTR_ONLY` | Advanced filters (see below) | `ASCII_INSTR_ONLY=server:*` |
+| `ASCII_INSTR_RATE` | Log every Nth statement (reduce noise) | `ASCII_INSTR_RATE=10` |
+| `ASCII_INSTR_OUTPUT_DIR` | Directory for log files (default: `/tmp`) | `ASCII_INSTR_OUTPUT_DIR=/tmp/logs` |
+| `ASCII_INSTR_THREAD` | Filter by thread IDs | `ASCII_INSTR_THREAD=12345,67890` |
+| `ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE` | Custom log file path | See docs |
+
+**Advanced filtering with `ASCII_INSTR_ONLY`:**
+
+```bash
+# Only instrument files in network/ module
+export ASCII_INSTR_ONLY=network:*
+
+# Only instrument specific functions
+export ASCII_INSTR_ONLY=func=send_*,func=receive_*
+
+# Combine file and function filters
+export ASCII_INSTR_ONLY=file=lib/network/*,func=enforce_*
+
+# Module-based: any file under server/ directory matching render_*
+export ASCII_INSTR_ONLY=module=server:render_*
+```
+
+#### Performance Notes
+
+- **Overhead:** 5-50x slowdown (depends on I/O volume and filter scope)
+- **Mitigation:** Use filters to instrument only suspect modules
+- **Best Practice:** Start narrow (single file/function), expand if needed
+- **Log Volume:** Can generate GB of logs quickly - use `ASCII_INSTR_RATE` for hot loops
+
+#### Workflow Example
+
+```bash
+# 1. Reproduce crash with narrow instrumentation
+export ASCII_INSTR_ENABLE=1
+export ASCII_INSTR_INCLUDE=network.c  # Focus on suspect file
+export ASCII_INSTR_OUTPUT_DIR=/tmp/crash-logs
+./build/bin/ascii-chat server
+
+# 2. After crash, find last executed line per thread
+./build/bin/ascii-instr-report --log-dir /tmp/crash-logs
+
+# Output shows:
+# Thread 12345: lib/network.c:512 in socket_send() | send_packet(queue, payload)
+# Thread 67890: lib/mixer.c:128 in mix_audio() | memcpy(output, samples, size)
+
+# 3. The crash is in thread 12345 at network.c:512 in the send_packet() call
+```
+
+#### Limitations
+
+- **Does not capture variable values** - only logs source code text
+- **Heavy I/O can mask race conditions** (Heisenbugs) - confirm findings with ASan/rr
+- **Regex filters unavailable on Windows** - use glob patterns instead
+- **Not suitable for production** - debug builds only
+- **macOS Criterion issue** - unit tests must run in Docker (see CLAUDE.md testing section)
+
+#### When to Use vs Alternatives
+
+**Use Debug Instrumentation when:**
+- Crash location is completely unknown
+- Traditional debuggers don't show useful backtraces
+- Bug only reproduces in production-like builds (not under gdb)
+- Multi-threaded crashes with unclear thread synchronization
+
+**Use AddressSanitizer (ASan) when:**
+- Suspect memory corruption (buffer overflow, use-after-free)
+- Need to detect memory errors, not just locate crashes
+- Can tolerate 2-3x slowdown (faster than instrumentation)
+
+**Use rr (record-replay) when:**
+- Need deterministic replay with breakpoints
+- Want to inspect program state at any point (not just last line)
+- Linux-only workflow is acceptable
+
+**Use manual printf() when:**
+- Bug is localized to a small function
+- Need to inspect variable values
+- Instrumentation overhead is prohibitive
+
+#### Complete Documentation
+
+See `docs/debug-instrumentation.md` for:
+- Complete environment variable reference
+- Signal handler annotation (`ASCII_INSTR_SIGNAL_HANDLER`)
+- Macro instrumentation options
+- SanitizerCoverage mode
+- Post-processing tools
+- Safety guarantees and limitations
+
 ## Network Protocol
 
 ### Packet Structure
