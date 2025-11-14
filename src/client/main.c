@@ -79,6 +79,7 @@
 #include "buffer_pool.h"
 #include "palette.h"
 #include "network/network.h"
+#include "util/path.h"
 
 #ifndef NDEBUG
 #include "debug/lock.h"
@@ -236,8 +237,20 @@ static int initialize_client_systems(bool shared_init_completed) {
     }
 
     // Initialize logging with appropriate settings
-    const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : "client.log";
-    log_init(log_filename, LOG_DEBUG);
+    char *validated_log_file = NULL;
+    if (strlen(opt_log_file) > 0) {
+        asciichat_error_t log_path_result = path_validate_user_path(opt_log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
+        if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
+            // Invalid log file path, fall back to default and warn
+            (void)fprintf(stderr, "WARNING: Invalid log file path specified, using default 'client.log'\n");
+            log_init("client.log", LOG_DEBUG);
+        } else {
+            log_init(validated_log_file, LOG_DEBUG);
+        }
+        SAFE_FREE(validated_log_file);
+    } else {
+        log_init("client.log", LOG_DEBUG);
+    }
 
     // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
