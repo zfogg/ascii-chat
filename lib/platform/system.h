@@ -103,6 +103,20 @@ void platform_sleep_ms(unsigned int ms);
 asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
 
 /**
+ * @brief Platform-safe gmtime wrapper
+ *
+ * Uses gmtime_s on Windows and gmtime_r on POSIX.
+ * Thread-safe on all platforms.
+ *
+ * @param timer Pointer to time_t value
+ * @param result Pointer to struct tm to receive result
+ * @return ASCIICHAT_OK on success, error code on error
+ *
+ * @ingroup platform
+ */
+asciichat_error_t platform_gtime(const time_t *timer, struct tm *result);
+
+/**
  * @brief Get the current process ID
  * @return Process ID of the calling process
  *

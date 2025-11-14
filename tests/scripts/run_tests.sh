@@ -279,6 +279,30 @@ function detect_cpu_cores() {
 # Test Discovery and File Management
 # =============================================================================
 
+# Convert a test source file path to its test executable name (must match CMake)
+function _ascii_source_to_test_executable() {
+  local source_path="$1"
+  local rel="${source_path#$PROJECT_ROOT/tests/}"
+
+  # Normalize path separators and strip extension
+  rel="${rel//\\/\/}"
+  rel="${rel%.c}"
+
+  # Flatten nested directories and remove trailing _test suffix
+  rel="${rel//\//_}"
+  rel="${rel%_test}"
+
+  echo "test_${rel}"
+}
+
+# Extract the top-level test category (unit/integration/performance)
+function _ascii_source_to_test_category() {
+  local source_path="$1"
+  local rel="${source_path#$PROJECT_ROOT/tests/}"
+  rel="${rel//\\/\/}"
+  echo "${rel%%/*}"
+}
+
 # Get test executables for a specific category
 function get_test_executables() {
   local category="$1"
@@ -300,39 +324,57 @@ function get_test_executables() {
     case "$category" in
     unit)
       # For coverage, discover test source files and build coverage executables
-      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_unit_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
+        log_warning "Skipping unit coverage tests: directory '$PROJECT_ROOT/tests/unit' not found"
+        return
+      fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/unit" -type f -name '*_test.c' -print | sort)
       ;;
     integration)
       # For coverage, discover test source files and build coverage executables
-      for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_integration_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
+        log_warning "Skipping integration coverage tests: directory '$PROJECT_ROOT/tests/integration' not found"
+        return
+      fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/integration" -type f -name '*_test.c' -print | sort)
       ;;
     performance)
       # For coverage, discover test source files and build coverage executables
-      for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_performance_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
+        log_warning "Skipping performance coverage tests: directory '$PROJECT_ROOT/tests/performance' not found"
+        return
+      fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/performance" -type f -name '*_test.c' -print | sort)
       ;;
     all)
       # All coverage tests
-      for f in "$bin_dir"/test_*; do
-        [[ -f "$f" ]] && echo "$f"
-      done | sort
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local category
+        category=$(_ascii_source_to_test_category "$test_file")
+        case "$category" in
+        unit|integration|performance)
+          local executable_name
+          executable_name=$(_ascii_source_to_test_executable "$test_file")
+          echo "$bin_dir/$executable_name"
+          ;;
+        esac
+      done < <(find "$PROJECT_ROOT/tests" -type f -name '*_test.c' -print | sort)
       ;;
     *)
       log_error "Unknown test category: $category"
@@ -345,52 +387,57 @@ function get_test_executables() {
     case "$category" in
     unit)
       # Discover test source files and build executables
-      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_unit_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
+        log_warning "Skipping unit tests: directory '$PROJECT_ROOT/tests/unit' not found"
+        return
+      fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/unit" -type f -name '*_test.c' -print | sort)
       ;;
     integration)
       # Discover test source files and build executables
-      for test_file in "$PROJECT_ROOT/tests/integration"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_integration_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
+        log_warning "Skipping integration tests: directory '$PROJECT_ROOT/tests/integration' not found"
+        return
+      fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/integration" -type f -name '*_test.c' -print | sort)
       ;;
     performance)
       # Discover test source files and build executables
-      for test_file in "$PROJECT_ROOT/tests/performance"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          executable_name="test_performance_${test_name}"
-          echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+      if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
+        log_warning "Skipping performance tests: directory '$PROJECT_ROOT/tests/performance' not found"
+        return
+      fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local executable_name
+        executable_name=$(_ascii_source_to_test_executable "$test_file")
+        echo "$bin_dir/$executable_name"
+      done < <(find "$PROJECT_ROOT/tests/performance" -type f -name '*_test.c' -print | sort)
       ;;
     all)
       # For "all", discover all test source files
-      for test_file in "$PROJECT_ROOT/tests/unit"/*_test.c "$PROJECT_ROOT/tests/integration"/*_test.c "$PROJECT_ROOT/tests/performance"/*_test.c; do
-        if [[ -f "$test_file" ]]; then
-          test_name=$(basename "$test_file" _test.c)
-          # Determine category from path
-          if [[ "$test_file" == */unit/* ]]; then
-            executable_name="test_unit_${test_name}"
-          elif [[ "$test_file" == */integration/* ]]; then
-            executable_name="test_integration_${test_name}"
-          elif [[ "$test_file" == */performance/* ]]; then
-            executable_name="test_performance_${test_name}"
-          else
-            continue
-          fi
+      while IFS= read -r test_file; do
+        [[ -f "$test_file" ]] || continue
+        local category
+        category=$(_ascii_source_to_test_category "$test_file")
+        case "$category" in
+        unit|integration|performance)
+          local executable_name
+          executable_name=$(_ascii_source_to_test_executable "$test_file")
           echo "$bin_dir/$executable_name"
-        fi
-      done | sort
+          ;;
+        esac
+      done < <(find "$PROJECT_ROOT/tests" -type f -name '*_test.c' -print | sort)
       ;;
     *)
       log_error "Unknown test category: $category"
@@ -1181,16 +1228,50 @@ function main() {
       # First arg is a test type, rest are test names within that type
       local type_arg="$first_arg"
       if [[ ${#positional_args[@]} -eq 2 ]]; then
-        # Two arguments: type and single test name
+        # Two arguments: type and single test name (or subdirectory)
         local name_arg="${positional_args[1]}"
-        SINGLE_TEST="test_${type_arg}_${name_arg}"
+        local subdir_path="$PROJECT_ROOT/tests/$type_arg/$name_arg"
+        if [[ -d "$subdir_path" ]]; then
+          # Treat as a subgroup directory containing multiple tests
+          local subdir_sources=()
+          mapfile -t subdir_sources < <(find "$subdir_path" -type f -name '*_test.c' -print | sort)
+          if [[ ${#subdir_sources[@]} -eq 0 ]]; then
+            log_error "No tests found in subgroup: $type_arg/$name_arg"
+            exit 1
+          fi
+          MULTIPLE_TESTS=()
+          for test_src in "${subdir_sources[@]}"; do
+            local exec_name
+            exec_name=$(_ascii_source_to_test_executable "$test_src")
+            MULTIPLE_TESTS+=("$exec_name")
+          done
+          MULTIPLE_TEST_MODE=1
+        else
+          SINGLE_TEST="test_${type_arg}_${name_arg}"
+        fi
       else
         # Three or more: type and multiple test names
         MULTIPLE_TESTS=()
         for ((i = 1; i < ${#positional_args[@]}; i++)); do
           local test_name="${positional_args[i]}"
-          # Construct the full test name
-          MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+          local subdir_path="$PROJECT_ROOT/tests/$type_arg/$test_name"
+          if [[ -d "$subdir_path" ]]; then
+            # Append all tests from this subgroup directory
+            local subdir_sources=()
+            mapfile -t subdir_sources < <(find "$subdir_path" -type f -name '*_test.c' -print | sort)
+            if [[ ${#subdir_sources[@]} -eq 0 ]]; then
+              log_warning "No tests found in subgroup: $type_arg/$test_name"
+              continue
+            fi
+            for test_src in "${subdir_sources[@]}"; do
+              local exec_name
+              exec_name=$(_ascii_source_to_test_executable "$test_src")
+              MULTIPLE_TESTS+=("$exec_name")
+            done
+          else
+            # Construct the full test name
+            MULTIPLE_TESTS+=("test_${type_arg}_${test_name}")
+          fi
         done
         MULTIPLE_TEST_MODE=1
       fi
@@ -1318,6 +1399,14 @@ function main() {
 
   # Now we have all tests - build and run them
   if [[ ${#all_tests_to_run[@]} -eq 0 ]]; then
+    if [[ -z "$SINGLE_TEST" && -z "$MULTIPLE_TEST_MODE" && "$TEST_TYPE" == "performance" ]]; then
+      log_warning "No performance tests detected; skipping performance test suite."
+      if [[ -n "$GENERATE_JUNIT" ]]; then
+        echo '<?xml version="1.0" encoding="UTF-8"?>' >"$junit_file"
+        echo "<testsuites name=\"ascii-chat Tests\" tests=\"0\" failures=\"0\" errors=\"0\" time=\"0\"/>" >>"$junit_file"
+      fi
+      exit 0
+    fi
     log_error "No tests found to run!"
     exit 1
   fi

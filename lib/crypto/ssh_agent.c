@@ -37,14 +37,14 @@ static pipe_t ssh_agent_open_pipe(void) {
 #ifdef _WIN32
   // On Windows, use named pipe path (default or from SSH_AUTH_SOCK)
   const char *pipe_path = (auth_sock && strlen(auth_sock) > 0) ? auth_sock : "\\\\.\\pipe\\openssh-ssh-agent";
-  return pipe_connect(pipe_path);
+  return platform_pipe_connect(pipe_path);
 #else
   // On Unix, use Unix domain socket path from SSH_AUTH_SOCK
   if (!auth_sock || strlen(auth_sock) == 0) {
     log_debug("SSH_AUTH_SOCK not set, cannot connect to ssh-agent");
     return INVALID_PIPE_VALUE;
   }
-  return pipe_connect(auth_sock);
+  return platform_pipe_connect(auth_sock);
 #endif
 }
 
@@ -57,7 +57,7 @@ bool ssh_agent_is_available(void) {
   if (!auth_sock || strlen(auth_sock) == 0) {
     pipe_t pipe = ssh_agent_open_pipe();
     if (pipe != INVALID_PIPE_VALUE) {
-      pipe_close(pipe); // Close immediately after checking
+      platform_pipe_close(pipe); // Close immediately after checking
       log_debug("ssh-agent is available via Windows named pipe (SSH_AUTH_SOCK not set)");
       return true;
     } else {
@@ -102,21 +102,21 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   request[4] = 11; // SSH2_AGENTC_REQUEST_IDENTITIES
 
   // Send request
-  ssize_t bytes_written = pipe_write(pipe, request, 5);
+  ssize_t bytes_written = platform_pipe_write(pipe, request, 5);
   if (bytes_written != 5) {
-    pipe_close(pipe);
+    platform_pipe_close(pipe);
     return false;
   }
 
   // Read response
   unsigned char response[8192];
-  ssize_t bytes_read = pipe_read(pipe, response, sizeof(response));
+  ssize_t bytes_read = platform_pipe_read(pipe, response, sizeof(response));
   if (bytes_read < 9) {
-    pipe_close(pipe);
+    platform_pipe_close(pipe);
     return false;
   }
 
-  pipe_close(pipe);
+  platform_pipe_close(pipe);
 
   // Parse response: type should be SSH2_AGENT_IDENTITIES_ANSWER (12)
   uint8_t resp_type = response[4];
@@ -254,24 +254,24 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   buf[3] = msg_len & 0xFF;
 
   // Send message to agent
-  ssize_t bytes_written = pipe_write(pipe, buf, pos);
+  ssize_t bytes_written = platform_pipe_write(pipe, buf, pos);
   if (bytes_written != (ssize_t)pos) {
-    pipe_close(pipe);
+    platform_pipe_close(pipe);
     sodium_memzero(buf, sizeof(buf));
     return SET_ERRNO_SYS(ERROR_CRYPTO, "Failed to write to ssh-agent pipe");
   }
 
   // Read response
   unsigned char response[256];
-  ssize_t bytes_read = pipe_read(pipe, response, sizeof(response));
+  ssize_t bytes_read = platform_pipe_read(pipe, response, sizeof(response));
   if (bytes_read < 5) {
-    pipe_close(pipe);
+    platform_pipe_close(pipe);
     sodium_memzero(buf, sizeof(buf));
     return SET_ERRNO_SYS(ERROR_CRYPTO, "Failed to read from ssh-agent pipe");
   }
 
   // Done with the pipe - close it
-  pipe_close(pipe);
+  platform_pipe_close(pipe);
   sodium_memzero(buf, sizeof(buf));
 
   // Check response: should be SSH_AGENT_SUCCESS (6)

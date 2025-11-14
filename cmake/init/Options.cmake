@@ -73,3 +73,4 @@ set(ASCIICHAT_CPPCHECK "" CACHE STRING "Override cppcheck executable (leave empt
 option(ASCIICHAT_ENABLE_UNITY_BUILDS "Enable unity builds (batch compilation) for faster rebuilds" OFF)
 option(ASCIICHAT_ENABLE_CTEST_DASHBOARD "Configure CTest dashboards (include(CTest))" OFF)
 
+

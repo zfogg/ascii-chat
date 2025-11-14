@@ -288,8 +288,9 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # so developer tooling (e.g. `otool`) still recognises them as regular
     # objects. `-ffat-lto-objects` keeps the LLVM IR for link-time optimization
     # while also emitting machine code into the archive members.
+    # NOTE: This is a GCC-specific flag not supported by Clang
     if(ASCIICHAT_ENABLE_IPO)
-        if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
+        if(CMAKE_C_COMPILER_ID MATCHES "GNU")
             if(NOT DEFINED ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
                 include(CheckCCompilerFlag)
                 check_c_compiler_flag("-ffat-lto-objects" ASCIICHAT_SUPPORTS_FFAT_LTO_OBJECTS)
@@ -300,6 +301,9 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             else()
                 message(WARNING "Release build: compiler does not support -ffat-lto-objects; static archives may contain pure LLVM bitcode")
             endif()
+        elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+            # Clang doesn't support -ffat-lto-objects, but ThinLTO archives already contain object code
+            message(STATUS "Release build: using Clang ThinLTO (object code preserved in archives)")
         endif()
     endif()
 

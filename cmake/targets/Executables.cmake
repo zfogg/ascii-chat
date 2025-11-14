@@ -13,26 +13,7 @@
 # =============================================================================
 
 # Unified binary with both server and client modes
-add_executable(ascii-chat
-    src/main.c
-    # Server mode sources
-    src/server/main.c
-    src/server/client.c
-    src/server/protocol.c
-    src/server/crypto.c
-    src/server/stream.c
-    src/server/render.c
-    src/server/stats.c
-    # Client mode sources
-    src/client/main.c
-    src/client/server.c
-    src/client/protocol.c
-    src/client/crypto.c
-    src/client/display.c
-    src/client/capture.c
-    src/client/audio.c
-    src/client/keepalive.c
-)
+add_executable(ascii-chat ${APP_SRCS})
 
 if(ASCIICHAT_ENABLE_UNITY_BUILDS)
     set_target_properties(ascii-chat PROPERTIES UNITY_BUILD ON)
@@ -87,6 +68,17 @@ else()
             _WIN32_WINNT=0x0A00  # Windows 10
         )
     endif()
+endif()
+
+# Ensure build directory takes precedence in rpath for all build types
+# This prevents conflicts with installed libraries in system directories
+if(APPLE OR UNIX)
+    # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
+    # This ensures we use the freshly built library, not any installed version
+    set_target_properties(ascii-chat PROPERTIES
+        BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
+        INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
 endif()
 
 # Include directories for executable (needed for version.h and other generated headers)

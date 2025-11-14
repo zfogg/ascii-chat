@@ -749,7 +749,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
                 "\n"
                 "Are you sure you want to continue connecting (yes/no)? ",
                 ip_with_port, fingerprint);
-  safe_fprintf(stderr, message);
+  safe_fprintf(stderr,"%s", message);
   log_file(message);
 
   char response[10];

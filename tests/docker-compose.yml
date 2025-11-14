@@ -6,26 +6,26 @@ services:
 
     # Mount source code and cache volumes
     volumes:
-      # Source code (read-only to prevent accidental modifications)
+      # Source code (read-write needed for Docker to create nested mount points)
       # Build artifacts stored in named volume to avoid macOS timestamp issues
-      - ..:/app:ro
+      - ..:/app
 
       # Build directory as named volume (fixes Ninja .ninja_deps timestamp issues)
       # On macOS, volume mounts lose timestamp precision, invalidating Ninja's deps
       # By keeping build artifacts in container filesystem, timestamps stay consistent
-      - build-data:/app/build_docker:rw
+      - build-data:/app/build_docker
 
       # Secondary build directory for ad-hoc docker builds (read-write)
-      - docker-build-data:/app/docker_build:rw
+      - docker-build-data:/app/docker_build
 
       # ccache volume for persistent compilation cache
       # This persists between container runs for faster rebuilds
-      - ccache-data:/ccache:rw
+      - ccache-data:/ccache
 
       # Dependency cache volume for FetchContent and musl builds
       # CMakeLists.txt automatically uses .deps-cache-docker/ when TESTING=1
       # Path structure: .deps-cache-docker/<BuildType>/ and .deps-cache-docker/<BuildType>/musl/
-      - deps-cache-data:/app/.deps-cache-docker:rw
+      - deps-cache-data:/app/.deps-cache-docker
 
     # Run tests by default
     # Use build_docker directory (build is for native OS)

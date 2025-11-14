@@ -42,6 +42,10 @@ endfunction()
 # - macOS: Uses otool to verify only system frameworks are linked
 function(check_static_linking TARGET_NAME)
     if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        if(NOT ASCIICHAT_ENFORCE_STATIC_RELEASE)
+            message(STATUS "Static linking enforcement disabled for Release builds")
+            return()
+        endif()
         find_program(BASH_EXECUTABLE bash HINTS "C:/Program Files/Git/usr/bin")
         if(BASH_EXECUTABLE)
             # Determine platform

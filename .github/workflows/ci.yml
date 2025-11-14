@@ -38,6 +38,7 @@ jobs:
         extra-packages: 'libc6-dbg valgrind'
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Run tests with AddressSanitizer
@@ -46,6 +47,22 @@ jobs:
         cmake --preset github
         cmake --build build
         ./tests/scripts/run_tests.sh -t unit -b debug
+
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
   static-analysis:
     runs-on: ubuntu-latest
@@ -64,6 +81,7 @@ jobs:
         extra-packages: clang-tools
 
     - name: Cache build, dependencies, and ccache
+      id: cache-build
       uses: ./.github/actions/cache-build
 
     - name: Run static analysis
@@ -81,6 +99,22 @@ jobs:
         echo "Checking for potential memory leaks..."
         ! grep -n "malloc\|calloc\|realloc" *.c | grep -v "free\|DEBUG_MEMORY"
         echo "Memory leak check completed"
+
+    - name: Save build caches
+      if: always()
+      uses: ./.github/actions/cache-build-save
+      with:
+        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
   format-check:
     runs-on: ubuntu-latest

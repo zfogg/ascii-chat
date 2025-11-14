@@ -81,7 +81,7 @@
 #include "network/network.h"
 
 #ifndef NDEBUG
-#include "lock_debug.h"
+#include "debug/lock.h"
 #endif
 
 #include <signal.h>

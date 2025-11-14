@@ -154,10 +154,32 @@ if(BUILD_TESTS AND CRITERION_FOUND)
     elseif(PLATFORM_DARWIN)
         # macOS test linking (simpler, matches Makefile)
         if(NOT CRITERION_LIBRARIES)
-            # Fallback for Homebrew
-            list(APPEND TEST_LDFLAGS "-L/opt/homebrew/lib" criterion)
+            # Fallback for Homebrew (Criterion is keg-only, so provide both opt prefixes)
+            list(APPEND TEST_LDFLAGS
+                "-L/opt/homebrew/opt/criterion/lib"
+                "-L/usr/local/opt/criterion/lib"
+                "-L/opt/homebrew/lib"
+                "-L/usr/local/lib"
+                criterion
+            )
         endif()
     endif()
+
+    # Determine mimalloc include directories for tests (tests include common.h directly)
+    set(_ascii_tests_mimalloc_include "")
+    if(TARGET mimalloc-static)
+        get_target_property(_ascii_mimalloc_iface mimalloc-static INTERFACE_INCLUDE_DIRECTORIES)
+        if(_ascii_mimalloc_iface)
+            list(APPEND _ascii_tests_mimalloc_include ${_ascii_mimalloc_iface})
+        endif()
+    endif()
+    if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
+        list(APPEND _ascii_tests_mimalloc_include "${MIMALLOC_SOURCE_DIR}/include")
+    endif()
+    if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
+        list(APPEND _ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIR}")
+    endif()
+    list(REMOVE_DUPLICATES _ascii_tests_mimalloc_include)
 
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
@@ -180,12 +202,19 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         # Transform test file paths to executable names with flattened structure
         # tests/unit/common_test.c -> test_unit_common
         # tests/integration/crypto_network_test.c -> test_integration_crypto_network
-        get_filename_component(test_name ${test_src} NAME_WE)
-        get_filename_component(test_dir ${test_src} DIRECTORY)
-        get_filename_component(test_subdir ${test_dir} NAME)
+        # Determine the top-level test category (unit/integration/performance)
+        file(RELATIVE_PATH test_rel ${PROJECT_SOURCE_DIR}/tests ${test_src})
+        string(REPLACE "\\" "/" test_rel ${test_rel})
+        string(REGEX MATCH "^[^/]+" test_category ${test_rel})
+        if(NOT test_category)
+            message(FATAL_ERROR "Failed to determine test category for ${test_src}")
+        endif()
 
-        string(REPLACE "_test" "" test_base ${test_name})
-        set(test_exe_name "test_${test_subdir}_${test_base}")
+        # Create a flattened executable name that preserves subdirectory information
+        string(REPLACE ".c" "" test_rel_noext ${test_rel})
+        string(REPLACE "/" "_" test_rel_flat ${test_rel_noext})
+        string(REGEX REPLACE "_test$" "" test_rel_flat ${test_rel_flat})
+        set(test_exe_name "test_${test_rel_flat}")
         list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
         # Add test executable with test utilities (EXCLUDE_FROM_ALL = not built by default)
@@ -197,7 +226,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
         # Add Criterion include directories
-        target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS})
+        target_include_directories(${test_exe_name} PRIVATE ${CRITERION_INCLUDE_DIRS} ${_ascii_tests_mimalloc_include})
 
         # Define CRITERION_TEST for test environment detection
         target_compile_definitions(${test_exe_name} PRIVATE CRITERION_TEST=1)
@@ -216,22 +245,20 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         # Handle circular dependencies between libraries
         # This is needed because core→network→core and core→crypto have circular refs
         if(NOT WIN32 AND NOT APPLE)
-            # Linux: Use --start-group/--end-group
-            target_link_options(${test_exe_name} PRIVATE
-                -Wl,--start-group
-            )
+            # Linux: Use --start-group/--end-group to resolve circular dependencies
             target_link_libraries(${test_exe_name}
+                -Wl,--start-group
                 ascii-chat-core
+                ascii-chat-debug
                 ascii-chat-network
                 ascii-chat-crypto
-            )
-            target_link_options(${test_exe_name} PRIVATE
                 -Wl,--end-group
             )
         elseif(APPLE)
             # macOS: List libraries multiple times (ld64 doesn't have --start-group)
             target_link_libraries(${test_exe_name}
                 ascii-chat-core
+                ascii-chat-debug
                 ascii-chat-util
                 ascii-chat-network
                 ascii-chat-crypto
@@ -247,7 +274,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         endif()
 
         # Use release objects for performance tests
-        if(test_subdir STREQUAL "performance")
+        if(test_category STREQUAL "performance")
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
 

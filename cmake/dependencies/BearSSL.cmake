@@ -102,7 +102,10 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
                 COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with nmake..."
-                COMMAND "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib
+                COMMAND ${CMAKE_COMMAND} -E env
+                        MAKEFLAGS=
+                        NMAKEFLAGS=
+                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"

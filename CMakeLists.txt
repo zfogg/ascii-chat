@@ -55,6 +55,9 @@ if(APPLE)
 else()
     set(PROJECT_LANGUAGES C)
 endif()
+if(DEFINED ASCII_BUILD_WITH_INSTRUMENTATION AND ASCII_BUILD_WITH_INSTRUMENTATION)
+    list(APPEND PROJECT_LANGUAGES CXX)
+endif()
 
 project(${PROJECT_NAME_FULL}
     VERSION 0.3.2
@@ -160,11 +163,20 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/debug/Instrumentation.cmake)
+ascii_instrumentation_prepare()
+
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
+# Configure archiver wrapper BEFORE creating any static libraries
+include(${CMAKE_SOURCE_DIR}/cmake/init/ArchiverWrapper.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
+ascii_instrumentation_finalize()
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
 
 # =============================================================================

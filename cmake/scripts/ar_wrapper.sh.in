@@ -6,15 +6,22 @@ set -e
 # Extract the output archive and object directory from args
 OUTPUT_ARCHIVE=""
 for arg in "$@"; do
-    if [[ "$arg" == *.a ]]; then
-        OUTPUT_ARCHIVE="$arg"
-        break
-    fi
+    case "$arg" in
+        *.a|*.lib)
+            OUTPUT_ARCHIVE="$arg"
+            break
+            ;;
+    esac
 done
 
 if [[ -n "$OUTPUT_ARCHIVE" ]]; then
     # Get the object directory from the archive path
-    LIB_NAME="$(basename "$OUTPUT_ARCHIVE" .a)"
+    LIB_BASENAME="$(basename "$OUTPUT_ARCHIVE")"
+    case "$LIB_BASENAME" in
+        *.a) LIB_NAME="${LIB_BASENAME%.a}" ;;
+        *.lib) LIB_NAME="${LIB_BASENAME%.lib}" ;;
+        *) LIB_NAME="$LIB_BASENAME" ;;
+    esac
     # Strip 'lib' prefix if present
     LIB_NAME="${LIB_NAME#lib}"
     OBJ_DIR="@CMAKE_BINARY_DIR@/CMakeFiles/${LIB_NAME}.dir"
@@ -25,10 +32,11 @@ if [[ -n "$OUTPUT_ARCHIVE" ]]; then
         # Update arguments to use renamed files
         NEW_ARGS=()
         for arg in "$@"; do
-            if [[ "$arg" == *.o ]] && [[ "$arg" == CMakeFiles/* ]]; then
+            if [[ "$arg" == *.o || "$arg" == *.obj ]] && [[ "$arg" == CMakeFiles/* ]]; then
                 # Get the relative path after CMakeFiles/target.dir/
                 rel_path="${arg#CMakeFiles/*/}"
                 new_name="${rel_path//\//_}"
+                new_name="${new_name//\\/_}"
                 new_path="${OBJ_DIR}/${new_name}"
                 if [[ -f "$new_path" ]]; then
                     NEW_ARGS+=("$new_path")
@@ -47,4 +55,17 @@ fi
 
 # Run the actual archiver (use REAL_AR from environment or default)
 REAL_AR="${REAL_AR:-@REAL_AR@}"
-exec "$REAL_AR" "$@"
+AR_ARGS=("$@")
+if [[ -n "$OUTPUT_ARCHIVE" ]]; then
+    NORMALIZED_ARCHIVE="${OUTPUT_ARCHIVE//\\//}"
+    for i in "${!AR_ARGS[@]}"; do
+        if [[ "${AR_ARGS[$i]}" == "$OUTPUT_ARCHIVE" ]]; then
+            AR_ARGS[$i]="$NORMALIZED_ARCHIVE"
+            break
+        fi
+    done
+fi
+if [[ "$OUTPUT_ARCHIVE" == *.lib ]]; then
+    AR_ARGS=("--format=coff" "${AR_ARGS[@]}")
+fi
+exec "$REAL_AR" "${AR_ARGS[@]}"

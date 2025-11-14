@@ -1,0 +1,65 @@
+[
+  {
+    "key": "ctrl+w",
+    "command": "workbench.action.closeActiveEditor",
+    "when": "editorTextFocus"
+  },
+  {
+    "key": "ctrl+p",
+    "command": "workbench.action.quickOpen"
+  },
+  {
+    "key": "cmd+p",
+    "command": "workbench.action.quickOpen",
+    "when": "isMac"
+  },
+  {
+    "key": "cmd+i",
+    "command": "composerMode.agent"
+  },
+  {
+    "key": "ctrl+k",
+    "command": "workbench.action.focusActiveEditorGroup"
+  },
+  {
+    "key": "ctrl+j",
+    "command": "workbench.action.terminal.focus"
+  },
+  {
+    "key": "ctrl+h",
+    "command": "workbench.action.focusLeftGroup"
+  },
+  {
+    "key": "ctrl+l",
+    "command": "workbench.action.focusRightGroup"
+  },
+  {
+    "key": "ctrl+shift+b",
+    "command": "-composer.toggleBrowserTab",
+    "when": "!isMac"
+  },
+  {
+    "key": "command+shift+b",
+    "command": "-composer.toggleBrowserTab",
+    "when": "isMac"
+  },
+  {
+      "key": "ctrl+shift+b",
+      "command": "cmake.build",
+      "when": "!isMac && cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
+  },
+  {
+      "key": "command+shift+b",
+      "command": "cmake.build",
+      "when": "isMac && cmake:enableFullFeatureSet && !cmake:hideBuildCommand"
+  },
+  {
+    "key": "f9",
+    "command": "cmake.outline.clean"
+  },
+  {
+    "key": "ctrl+f",
+    "command": "actions.find",
+    "when": "editorTextFocus"
+  }
+]

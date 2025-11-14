@@ -140,7 +140,7 @@
 #include "common.h"
 #include "buffer_pool.h"
 #include "packet_queue.h"
-#include "lock_debug.h"
+#include "debug/lock.h"
 
 /**
  * @brief Global server statistics structure

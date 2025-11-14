@@ -13,7 +13,11 @@
 #define ARCH_ARM64
 #elif defined(__x86_64__) && defined(HAVE_CRC32_HW)
 #include <immintrin.h>
+#ifdef _WIN32
+#include <intrin.h>
+#else
 #include <cpuid.h>
+#endif
 #define ARCH_X86_64
 #endif
 
@@ -38,12 +42,19 @@ static void check_crc32_hw_support(void) {
   // log_debug("ARM CRC32 hardware acceleration: %s", crc32_hw_available ? "enabled" : "disabled");
 #elif defined(ARCH_X86_64)
   // Check for SSE4.2 support (includes CRC32 instruction)
+#ifdef _WIN32
+  int cpu_info[4];
+  __cpuid(cpu_info, 1);
+  // SSE4.2 is bit 20 of ECX
+  crc32_hw_available = (cpu_info[2] & (1 << 20)) != 0;
+#else
   unsigned int eax, ebx, ecx, edx;
   if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
     crc32_hw_available = (ecx & bit_SSE4_2) != 0;
   } else {
     crc32_hw_available = false;
   }
+#endif
   // log_debug("Intel CRC32 hardware acceleration (SSE4.2): %s", crc32_hw_available ? "enabled" : "disabled");
 #else
   crc32_hw_available = false;
