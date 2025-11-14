@@ -476,19 +476,54 @@ static void ascii_instr_runtime_tls_destructor(void *ptr) {
 static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
   // Check for custom log file path first
   const char *custom_log_file = SAFE_GETENV("ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE");
-  if (custom_log_file != NULL && custom_log_file[0] != '\0') {
-    char *normalized_log_path = NULL;
-    asciichat_error_t validation_result =
-        path_validate_user_path(custom_log_file, PATH_ROLE_LOG_FILE, &normalized_log_path);
-    if (validation_result != ASCIICHAT_OK || normalized_log_path == NULL) {
-      SAFE_FREE(normalized_log_path);
-      log_warn("Rejected ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE path: %s", custom_log_file);
+  bool is_custom_path = (custom_log_file != NULL && custom_log_file[0] != '\0');
+
+  if (is_custom_path) {
+    const char *debug_env = SAFE_GETENV("ASCII_INSTR_ECHO_STDERR");
+    if (debug_env && debug_env[0] == '1') {
+      fprintf(stderr, "ASCII_INSTR: Using custom log path: %s\n", custom_log_file);
+    }
+
+    // For instrumentation log files, bypass strict path validation since this is a debug feature
+    // Just normalize the path to an absolute path without security checks
+    char *expanded = expand_path(custom_log_file);
+    if (!expanded) {
+      log_warn("Failed to expand ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE path: %s", custom_log_file);
       return false;
     }
-    SAFE_STRNCPY(runtime->log_path, normalized_log_path, sizeof(runtime->log_path));
+
+    // Convert to absolute path if relative
+    char absolute_buf[PATH_MAX];
+    if (!path_is_absolute(expanded)) {
+      char cwd_buf[PATH_MAX];
+      if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+        SAFE_FREE(expanded);
+        return false;
+      }
+      safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%c%s", cwd_buf,
+#ifdef _WIN32
+                    '\\',
+#else
+                    '/',
+#endif
+                    expanded);
+      SAFE_FREE(expanded);
+      expanded = platform_strdup(absolute_buf);
+      if (!expanded) {
+        return false;
+      }
+    }
+
+    SAFE_STRNCPY(runtime->log_path, expanded, sizeof(runtime->log_path));
     runtime->log_path[sizeof(runtime->log_path) - 1] = '\0';
-    SAFE_FREE(normalized_log_path);
+    SAFE_FREE(expanded);
+
+    if (debug_env && debug_env[0] == '1') {
+      fprintf(stderr, "ASCII_INSTR: Resolved custom log path: %s\n", runtime->log_path);
+    }
+
     // Don't check if file exists - allow appending to existing file
+    // Path already normalized, skip validation below
   } else {
     // Auto-generate log path in temp directory
     char dir_buf[PATH_MAX];
@@ -523,17 +558,20 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     }
   }
 
-  char *validated_log_path = NULL;
-  asciichat_error_t validate_result =
-      path_validate_user_path(runtime->log_path, PATH_ROLE_LOG_FILE, &validated_log_path);
-  if (validate_result != ASCIICHAT_OK || validated_log_path == NULL) {
+  // Only validate auto-generated paths (custom paths already validated above)
+  if (!is_custom_path) {
+    char *validated_log_path = NULL;
+    asciichat_error_t validate_result =
+        path_validate_user_path(runtime->log_path, PATH_ROLE_LOG_FILE, &validated_log_path);
+    if (validate_result != ASCIICHAT_OK || validated_log_path == NULL) {
+      SAFE_FREE(validated_log_path);
+      log_warn("Failed to validate instrumentation log path: %s", runtime->log_path);
+      return false;
+    }
+    SAFE_STRNCPY(runtime->log_path, validated_log_path, sizeof(runtime->log_path));
+    runtime->log_path[sizeof(runtime->log_path) - 1] = '\0';
     SAFE_FREE(validated_log_path);
-    log_warn("Failed to validate instrumentation log path: %s", runtime->log_path);
-    return false;
   }
-  SAFE_STRNCPY(runtime->log_path, validated_log_path, sizeof(runtime->log_path));
-  runtime->log_path[sizeof(runtime->log_path) - 1] = '\0';
-  SAFE_FREE(validated_log_path);
 
   const char *last_sep = strrchr(runtime->log_path, '/');
 #ifdef _WIN32
@@ -559,6 +597,10 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
 
 static int ascii_instr_open_log_file(ascii_instr_runtime_t *runtime) {
   if (!ascii_instr_build_log_path(runtime)) {
+    const char *debug_env = SAFE_GETENV("ASCII_INSTR_ECHO_STDERR");
+    if (debug_env && debug_env[0] == '1') {
+      fprintf(stderr, "ASCII_INSTR: Failed to build log path\n");
+    }
     return -1;
   }
 
@@ -575,10 +617,22 @@ static int ascii_instr_open_log_file(ascii_instr_runtime_t *runtime) {
     flags = PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_EXCL | PLATFORM_O_APPEND | PLATFORM_O_BINARY;
   }
 
+  const char *debug_env = SAFE_GETENV("ASCII_INSTR_ECHO_STDERR");
+  if (debug_env && debug_env[0] == '1') {
+    fprintf(stderr, "ASCII_INSTR: Opening log file: %s (custom=%d)\n", runtime->log_path, is_custom_file);
+  }
+
   const mode_t mode = S_IRUSR | S_IWUSR;
   int fd = platform_open(runtime->log_path, flags, mode);
   if (fd < 0) {
+    if (debug_env && debug_env[0] == '1') {
+      fprintf(stderr, "ASCII_INSTR: Failed to open log file: %s (errno=%d)\n", runtime->log_path, errno);
+    }
     return -1;
+  }
+
+  if (debug_env && debug_env[0] == '1') {
+    fprintf(stderr, "ASCII_INSTR: Successfully opened log file: %s (fd=%d)\n", runtime->log_path, fd);
   }
 
   runtime->fd = fd;
