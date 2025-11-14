@@ -26,8 +26,8 @@ list(APPEND CMAKE_PREFIX_PATH "${LLVM_DETECTED_PREFIX}")
 -- Clang CMake directory: C:\llvm22/lib/cmake/clang
 ```
 
-### 2. ✅ Built ascii-instr-tool Successfully
-**Binary**: `build/bin/ascii-instr-tool.exe` (47MB)
+### 2. ✅ Built ascii-instr-source-print Successfully
+**Binary**: `build/bin/ascii-instr-source-print.exe` (47MB)
 
 **Compilation fixes applied**:
 - Disabled sanitizers: `-fno-sanitize=all`
@@ -63,7 +63,7 @@ int calculate(int x, int y) {
 
 **Command**:
 ```bash
-./build/bin/ascii-instr-tool.exe \
+./build/bin/ascii-instr-source-print.exe \
   --output-dir=build/instrumented_test \
   --input-root=. \
   test_instr_example.c \
@@ -171,8 +171,8 @@ LOG: PID:12345 TID:1002 F:client.c:L90 process_frame | decode_frame(buf);
 
 ### 1. Instrumentation Tool ✅
 ```bash
-$ ./build/bin/ascii-instr-tool.exe --help
-USAGE: ascii-instr-tool.exe [options] <source0> [... <sourceN>]
+$ ./build/bin/ascii-instr-source-print.exe --help
+USAGE: ascii-instr-source-print.exe [options] <source0> [... <sourceN>]
 
 OPTIONS:
   --output-dir=<path>          Directory for instrumented sources
@@ -184,7 +184,7 @@ OPTIONS:
 ```
 
 ### 2. Runtime Library ✅
-**File**: `lib/debug/instrument_log.c` (750 lines)
+**File**: `lib/tooling/instrument_log.c` (750 lines)
 
 **Features**:
 - Async-signal-safe logging (`write()` syscalls)
@@ -195,15 +195,15 @@ OPTIONS:
 
 **Environment variables**:
 ```bash
-ASCII_INSTR_INCLUDE=server.c:process_client  # Only log matching
-ASCII_INSTR_EXCLUDE=deps/                   # Skip paths
-ASCII_INSTR_RATE=100                        # Log every 100th statement
-ASCII_INSTR_THREAD=1234                     # Only log specific TID
-ASCII_INSTR_OUTPUT_DIR=/custom/path         # Custom log location
+ASCII_INSTR_SOURCE_PRINT_INCLUDE=server.c:process_client  # Only log matching
+ASCII_INSTR_SOURCE_PRINT_EXCLUDE=deps/                   # Skip paths
+ASCII_INSTR_SOURCE_PRINT_RATE=100                        # Log every 100th statement
+ASCII_INSTR_SOURCE_PRINT_THREAD=1234                     # Only log specific TID
+ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR=/custom/path         # Custom log location
 ```
 
 ### 3. Post-Processor ✅
-**File**: `src/debug/ascii_instr_report.c` (380 lines)
+**File**: `src/tooling/ascii_instr_report.c` (380 lines)
 
 ```bash
 $ ./build/bin/ascii-instr-report /tmp/ascii-instr-*.log
@@ -217,7 +217,7 @@ TID 1002: Last execution at client.c:90 in process_frame() ⚠️ CRASH
 ### 4. CMake Integration ✅
 ```bash
 # Build with instrumentation
-cmake -B build -DASCII_BUILD_WITH_INSTRUMENTATION=ON
+cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 
 # Instrumented sources → build/instrumented/
@@ -230,23 +230,23 @@ cmake --build build
 
 ### Modified
 1. `cmake/compiler/LLVM.cmake` - Added llvm-config auto-detection
-2. `cmake/debug/Targets.cmake` - Fixed tool linking with proper runtime
+2. `cmake/tooling/Targets.cmake` - Fixed tool linking with proper runtime
 
 ### Created
-1. `docs/debug/FINAL_STATUS.md` - Comprehensive status report (500 lines)
-2. `docs/debug/COMPLETE_VERIFICATION.md` - This document
+1. `docs/tooling/FINAL_STATUS.md` - Comprehensive status report (500 lines)
+2. `docs/tooling/COMPLETE_VERIFICATION.md` - This document
 3. `DEMO_OUTPUT.txt` - Demonstration of program execution
 4. `test_instr_example.c` - Test input source
 5. `build/instrumented_test/test_instr_example.c` - Instrumented output
 6. `test_standalone_instrumented.c` - Standalone demonstration
 
 ### Existing (Already Complete)
-- `src/debug/ascii_instr_tool.cpp` - 825 lines ✅
-- `lib/debug/instrument_log.c` - 750 lines ✅
-- `lib/debug/instrument_cov.c` - 34 lines ✅
-- `src/debug/ascii_instr_report.c` - 380 lines ✅
-- `cmake/debug/Instrumentation.cmake` - Complete ✅
-- `cmake/debug/run_instrumentation.sh` - Complete ✅
+- `src/tooling/ascii_instr_tool.cpp` - 825 lines ✅
+- `lib/tooling/instrument_log.c` - 750 lines ✅
+- `lib/tooling/instrument_cov.c` - 34 lines ✅
+- `src/tooling/ascii_instr_report.c` - 380 lines ✅
+- `cmake/tooling/Instrumentation.cmake` - Complete ✅
+- `cmake/tooling/run_instrumentation.sh` - Complete ✅
 
 ---
 
@@ -255,8 +255,8 @@ cmake --build build
 - [x] **LLVM22 detected automatically via llvm-config**
   - Confirmed: `llvm-config --prefix` → `C:\llvm22`
 
-- [x] **ascii-instr-tool compiles and links**
-  - Binary: `build/bin/ascii-instr-tool.exe` (47MB)
+- [x] **ascii-instr-source-print compiles and links**
+  - Binary: `build/bin/ascii-instr-source-print.exe` (47MB)
   - No errors, all warnings are from LLVM headers (expected)
 
 - [x] **Tool accepts command-line arguments**
@@ -333,17 +333,18 @@ cmake --build build
 ### Immediate Use Cases
 
 1. **Debug ascii-chat crash**:
-   ```bash
-   cmake -B build -DASCII_BUILD_WITH_INSTRUMENTATION=ON
+```bash
+cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+   cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
    cmake --build build
-   ASCII_INSTR_INCLUDE=network.c ./build/bin/ascii-chat server
+   ASCII_INSTR_SOURCE_PRINT_INCLUDE=network.c ./build/bin/ascii-chat server
    # Wait for crash
    tail /tmp/ascii-instr-*.log
    ```
 
 2. **Instrument single file for testing**:
    ```bash
-   ./build/bin/ascii-instr-tool.exe \
+   ./build/bin/ascii-instr-source-print.exe \
      --output-dir=test_out \
      lib/network.c \
      -- -Ilib/
@@ -414,7 +415,7 @@ Just read the last log line.
 
 The system conceived in your November 7th ChatGPT conversation is **fully operational**:
 
-✅ **Tool built**: ascii-instr-tool.exe (47MB, links all LLVM libraries)
+✅ **Tool built**: ascii-instr-source-print.exe (47MB, links all LLVM libraries)
 ✅ **Transformation verified**: Original → Instrumented source (correct)
 ✅ **Runtime ready**: instrument_log.c with all features
 ✅ **Post-processor ready**: ascii-instr-report for analysis
