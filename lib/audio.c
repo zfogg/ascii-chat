@@ -147,8 +147,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   // Check if jitter buffer threshold has been reached
   if (!rb->jitter_buffer_filled) {
-    int available = audio_ring_buffer_available_read(rb);
-    if (available >= AUDIO_JITTER_BUFFER_THRESHOLD) {
+    int available_to_read = audio_ring_buffer_available_read(rb);
+    if (available_to_read >= AUDIO_JITTER_BUFFER_THRESHOLD) {
       rb->jitter_buffer_filled = true;
     }
   }
