@@ -315,9 +315,9 @@ if(USE_MIMALLOC)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 9: Debug Instrumentation Runtime (depends on: util, platform, core)
+# Module 9: Source Print Instrumentation Runtime (depends on: util, platform, core)
 # -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-debug "${DEBUG_RUNTIME_SRCS}")
+create_ascii_chat_module(ascii-chat-debug "${TOOLING_SOURCE_PRINT_SRCS}")
 target_include_directories(ascii-chat-debug PRIVATE
     ${CMAKE_SOURCE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/src
@@ -332,6 +332,22 @@ if(NOT BUILDING_OBJECT_LIBS)
 endif()
 if(NOT WIN32 AND TARGET Threads::Threads)
     target_link_libraries(ascii-chat-debug PUBLIC Threads::Threads)
+endif()
+
+# -----------------------------------------------------------------------------
+# Module 9b: Defer Statement Runtime (depends on: util, core)
+# -----------------------------------------------------------------------------
+create_ascii_chat_module(ascii-chat-defer "${TOOLING_DEFER_SRCS}")
+target_include_directories(ascii-chat-defer PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/src
+)
+if(NOT BUILDING_OBJECT_LIBS)
+    target_link_libraries(ascii-chat-defer
+        PRIVATE
+            ascii-chat-util
+            ascii-chat-core
+    )
 endif()
 
 # -----------------------------------------------------------------------------

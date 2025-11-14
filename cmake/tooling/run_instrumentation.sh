@@ -72,13 +72,15 @@ show_usage() {
   cat <<'EOF'
 Usage: run_instrumentation.sh -b <build-dir> -o <output-dir> [-- <extra clang-tool args...>]
 
+Driver for the source_print instrumentation tool.
+
 Options:
   -b <build-dir>   Path to the CMake build directory containing compile_commands.json (default: ./build)
-  -o <output-dir>  Destination directory for instrumented sources (must be empty or not exist)
+  -o <output-dir>  Destination directory for source_print-instrumented sources (must be empty or not exist)
   -h               Show this help message
 
 Environment variables:
-  ASCII_INSTR_TOOL  Override path to the ascii-instr-tool executable
+  ASCII_SOURCE_PRINT_TOOL  Override path to the ascii-instr-source-print executable
 
 Examples:
   run_instrumentation.sh -b build -o build/instrumented
@@ -125,9 +127,9 @@ if [[ -z "${BUILD_DIR}" ]]; then
   BUILD_DIR="${PWD}/build"
 fi
 
-TOOL_PATH="${ASCII_INSTR_TOOL:-}"
+TOOL_PATH="${ASCII_SOURCE_PRINT_TOOL:-}"
 if [[ -z "${TOOL_PATH}" ]]; then
-  TOOL_PATH="${BUILD_DIR}/bin/ascii-instr-tool"
+  TOOL_PATH="${BUILD_DIR}/bin/ascii-instr-source-print"
 fi
 
 BUILD_DIR="$(normalize_path "${BUILD_DIR}")"
@@ -145,7 +147,7 @@ if is_wsl_env && [[ "${TOOL_PATH}" =~ ^/mnt/[a-z]/ ]] && [[ ! "${TOOL_PATH}" =~ 
 fi
 
 if [[ ! -x "${TOOL_PATH}" ]]; then
-  echo "Error: ascii-instr-tool not found or not executable at '${TOOL_PATH}'" >&2
+  echo "Error: ascii-instr-source-print not found or not executable at '${TOOL_PATH}'" >&2
   exit 1
 fi
 
@@ -154,13 +156,13 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
   exit 1
 fi
 
-# Use original compilation database (without instrumentation) for the instrumentation tool
+# Use the original compilation database (without source_print instrumentation) for the source_print instrumentation tool
 COMPILE_COMMANDS_ORIG="${BUILD_DIR}/compile_commands_original.json"
 if [[ -f "${COMPILE_COMMANDS_ORIG}" ]]; then
-  # Copy original compile commands over the instrumented one for the tool to use
+  # Copy original compile commands over the instrumented one for the source_print tool to use
   cp "${COMPILE_COMMANDS_ORIG}" "${BUILD_DIR}/compile_commands.json"
   # Ensure the temporary build directory referenced by the compilation database exists
-  # The instrumentation tool chdirs into these paths even if the full build tree isn't present.
+  # The source_print instrumentation tool chdirs into these paths even if the full build tree isn't present.
   mkdir -p "${BUILD_DIR}/compile_db_temp" 2>/dev/null || true
 fi
 
@@ -235,15 +237,15 @@ rm -rf "${OUTPUT_DIR}/deps/mimalloc/build" 2>/dev/null || true
 # Remove source files (they'll be replaced by instrumented versions)
 find "${OUTPUT_DIR}" -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -delete 2>/dev/null || true
 
-# Remove headers - they'll be copied after instrumentation
+# Remove headers - they'll be copied after source_print instrumentation
 find "${OUTPUT_DIR}" -type f -name '*.h' -delete 2>/dev/null || true
 
 # Remove this script itself
-rm -f "${OUTPUT_DIR}/cmake/debug/run_instrumentation.sh" 2>/dev/null || true
+rm -f "${OUTPUT_DIR}/cmake/tooling/run_instrumentation.sh" 2>/dev/null || true
 
 echo "Source tree copied (excluding source files, headers, and build artifacts)"
 
-# Copy version.h to instrumented tree so the instrumentation tool can find it
+# Copy version.h to the instrumented tree so the source_print instrumentation tool can find it
 # version.h is generated at build time and needs to be available for parsing
 if [[ -f "${BUILD_DIR}/generated/version.h" ]]; then
   mkdir -p "${OUTPUT_DIR}/lib"
@@ -276,10 +278,10 @@ if [[ ${#SOURCE_PATHS[@]} -eq 0 ]]; then
 
   # Build exclusion patterns for find command
   EXCLUDE_ARGS=()
-  # Exclude debug and test directories
-  EXCLUDE_ARGS+=(\( -path 'lib/debug' -o -path 'lib/debug/*' -o)
+# Exclude debug and test directories
+  EXCLUDE_ARGS+=(\( -path 'lib/debug' -o -path 'lib/debug/*' -o -path 'lib/tooling' -o -path 'lib/tooling/*' -o)
   EXCLUDE_ARGS+=(-path 'lib/tests' -o -path 'lib/tests/*' -o)
-  EXCLUDE_ARGS+=(-path 'src/debug' -o -path 'src/debug/*')
+  EXCLUDE_ARGS+=(-path 'src/tooling' -o -path 'src/tooling/*')
 
   # Exclude platform-specific directories that don't match current platform
   # Detect OS
@@ -369,9 +371,9 @@ for source_path in "${SOURCE_PATHS[@]}"; do
 done
 
 if [[ ${#CHANGED_SOURCES[@]} -eq 0 ]]; then
-  echo "All ${#SOURCE_PATHS[@]} source files are up to date, skipping instrumentation"
+  echo "All ${#SOURCE_PATHS[@]} source files are up to date, skipping source_print instrumentation"
 else
-  echo "Instrumenting ${#CHANGED_SOURCES[@]} changed files (${SKIPPED_COUNT} unchanged, skipped)"
+  echo "Instrumenting ${#CHANGED_SOURCES[@]} changed files with source_print instrumentation (${SKIPPED_COUNT} unchanged, skipped)"
 
   # Parallel processing: instrument files in parallel
   # Detect number of CPU cores (Windows-compatible)
@@ -420,13 +422,13 @@ else
   fi
 
   if [[ ${INSTRUMENT_EXIT} -ne 0 ]]; then
-    echo "Instrumentation failed with exit code ${INSTRUMENT_EXIT}"
+    echo "Source_print instrumentation failed with exit code ${INSTRUMENT_EXIT}"
     exit ${INSTRUMENT_EXIT}
   fi
 fi
 
-echo "Instrumentation complete. Now copying headers to instrumented tree..."
-# Copy all headers to instrumented tree AFTER instrumentation
+echo "Source_print instrumentation complete. Now copying headers to instrumented tree..."
+# Copy all headers to instrumented tree AFTER source_print instrumentation
 # This ensures they're available for compilation with instrumented .c files
 find "${PWD}" -type f -name '*.h' \
   ! -path "*/build/*" \
@@ -456,7 +458,7 @@ extra_source_files=(
   "lib/platform/windows/system.c"
   "lib/platform/windows/mutex.c"
   "lib/platform/windows/thread.c"
-  # SIMD files use intrinsics that confuse the instrumentation tool
+  # SIMD files use intrinsics that confuse the source_print instrumentation tool
   "lib/image2ascii/simd/ascii_simd.c"
   "lib/image2ascii/simd/ascii_simd_color.c"
   "lib/image2ascii/simd/common.c"

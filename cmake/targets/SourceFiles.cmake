@@ -253,15 +253,22 @@ set(DATA_STRUCTURES_SRCS
 )
 
 # =============================================================================
-# Instrumentation Runtime (debug utilities)
+# Source Print Instrumentation Runtime
 # =============================================================================
-set(DEBUG_RUNTIME_SRCS
-    lib/debug/instrument_log.c
-    lib/debug/instrument_cov.c
+set(TOOLING_SOURCE_PRINT_SRCS
+    lib/tooling/source_print/instrument_log.c
+    lib/tooling/source_print/instrument_cov.c
 )
 
-set(DEBUG_TOOL_SRCS
-    src/debug/ascii_instr_report.c
+set(TOOLING_SOURCE_PRINT_REPORT_SRCS
+    src/tooling/source_print/report.c
+)
+
+# =============================================================================
+# Defer Statement Runtime
+# =============================================================================
+set(TOOLING_DEFER_SRCS
+    lib/tooling/defer/defer.c
 )
 
 # =============================================================================

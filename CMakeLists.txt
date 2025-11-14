@@ -55,7 +55,9 @@ if(APPLE)
 else()
     set(PROJECT_LANGUAGES C)
 endif()
-if(DEFINED ASCII_BUILD_WITH_INSTRUMENTATION AND ASCII_BUILD_WITH_INSTRUMENTATION)
+# Enable C++ if any instrumentation type requires it (for Clang tooling)
+if((DEFINED ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION AND ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION) OR
+   (DEFINED ASCII_BUILD_WITH_DEFER AND ASCII_BUILD_WITH_DEFER))
     list(APPEND PROJECT_LANGUAGES CXX)
 endif()
 
@@ -163,7 +165,7 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/debug/Instrumentation.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Instrumentation.cmake)
 ascii_instrumentation_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
