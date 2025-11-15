@@ -62,13 +62,65 @@ function(configure_asan_ubsan_sanitizers)
         # Check if ASan runtime is available on Windows
         set(ASAN_AVAILABLE TRUE)
         if(WIN32)
-            get_filename_component(CLANG_DIR ${CMAKE_C_COMPILER} DIRECTORY)
-            get_filename_component(CLANG_ROOT ${CLANG_DIR} DIRECTORY)
+            # Resolve compiler path (CMAKE_C_COMPILER can be just "clang")
+            set(_clang_compiler_path "${CMAKE_C_COMPILER}")
+            if(NOT IS_ABSOLUTE "${_clang_compiler_path}")
+                set(_clang_search_paths)
+                if(CMAKE_CXX_COMPILER AND IS_ABSOLUTE "${CMAKE_CXX_COMPILER}")
+                    get_filename_component(_clang_cxx_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+                    list(APPEND _clang_search_paths "${_clang_cxx_dir}")
+                endif()
+                if(_clang_search_paths)
+                    find_program(_clang_resolved
+                        NAMES ${_clang_compiler_path} clang clang-cl
+                        HINTS ${_clang_search_paths}
+                    )
+                else()
+                    find_program(_clang_resolved
+                        NAMES ${_clang_compiler_path} clang clang-cl
+                    )
+                endif()
+                if(_clang_resolved)
+                    set(_clang_compiler_path "${_clang_resolved}")
+                elseif(CMAKE_CXX_COMPILER)
+                    set(_clang_compiler_path "${CMAKE_CXX_COMPILER}")
+                endif()
+            endif()
+
+            if(NOT IS_ABSOLUTE "${_clang_compiler_path}")
+                message(WARNING "Unable to resolve absolute path for Clang compiler (${CMAKE_C_COMPILER}) - sanitizers disabled")
+                return()
+            endif()
+
+            get_filename_component(CLANG_DIR "${_clang_compiler_path}" DIRECTORY)
+            get_filename_component(CLANG_ROOT "${CLANG_DIR}" DIRECTORY)
             file(GLOB_RECURSE ASAN_LIB "${CLANG_ROOT}/lib/clang/*/lib/*/clang_rt.asan_dynamic*.lib")
+
+            if(NOT ASAN_LIB)
+                # Fallback to clang --print-resource-dir which is the authoritative location
+                execute_process(
+                    COMMAND ${_clang_compiler_path} --print-resource-dir
+                    OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+                    RESULT_VARIABLE CLANG_RESOURCE_RESULT
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(CLANG_RESOURCE_RESULT EQUAL 0 AND CLANG_RESOURCE_DIR)
+                    file(GLOB ASAN_LIB
+                        "${CLANG_RESOURCE_DIR}/lib/windows*/clang_rt.asan_dynamic*.lib"
+                        "${CLANG_RESOURCE_DIR}/lib/windows*/clang_rt.asan_dbg_dynamic*.lib"
+                        "${CLANG_RESOURCE_DIR}/lib/windows*/clang_rt.asan_cxx_dynamic*.lib"
+                    )
+                endif()
+            endif()
+
             if(NOT ASAN_LIB)
                 set(ASAN_AVAILABLE FALSE)
                 message(WARNING "ASan runtime libraries not found in LLVM installation - sanitizers disabled")
                 message(STATUS "  Searched: ${CLANG_ROOT}/lib/clang/*/lib/*/clang_rt.asan_dynamic*.lib")
+                if(CLANG_RESOURCE_DIR)
+                    message(STATUS "  Also checked resource dir: ${CLANG_RESOURCE_DIR}/lib/windows*")
+                endif()
                 message(STATUS "  To enable sanitizers, install LLVM with sanitizer runtimes or use Dev build")
                 return()
             endif()

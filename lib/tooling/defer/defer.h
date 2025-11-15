@@ -1,5 +1,4 @@
-#ifndef ASCII_TOOLING_DEFER_H
-#define ASCII_TOOLING_DEFER_H
+#pragma once
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -109,7 +108,15 @@ void ascii_defer_execute_all(ascii_defer_scope_t *scope);
  *       return;            // fclose(f) runs here too
  *   }
  */
-#ifndef ASCII_BUILD_WITH_DEFER
+#ifdef ASCII_DEFER_TOOL_PARSING
+    // Special mode for the transformation tool - no-op macro for parsing only
+    // The tool detects this textually and replaces it before runtime
+    #define defer(expr) do { (void)0; } while(0)
+#elif defined(ASCII_DEFER_TRANSFORMED_BUILD)
+    // Transformed builds compile the rewritten sources; residual defer() calls
+    // must compile cleanly (they should be no-ops after transformation).
+    #define defer(expr) do { (void)0; } while(0)
+#elif !defined(ASCII_BUILD_WITH_DEFER)
     // Normal build: Cause a COMPILE-TIME error to prevent shipping untransformed defer code
     // Uses an incomplete type to force a compile error (not just link error)
     #define defer(expr) \
@@ -142,5 +149,3 @@ void ascii_defer_execute_all(ascii_defer_scope_t *scope);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // ASCII_TOOLING_DEFER_H
