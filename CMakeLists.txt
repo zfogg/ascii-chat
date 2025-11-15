@@ -166,7 +166,9 @@ endif()
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Instrumentation.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 ascii_instrumentation_prepare()
+ascii_defer_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 # Configure archiver wrapper BEFORE creating any static libraries
@@ -178,6 +180,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
 ascii_instrumentation_finalize()
+ascii_defer_finalize()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
 

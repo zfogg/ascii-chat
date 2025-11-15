@@ -214,7 +214,6 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
-    lib/debug/memory.c
     lib/logging.c
     lib/options.c
     lib/config.c
@@ -227,6 +226,13 @@ set(CORE_SRCS
 # but we exclude it for clarity and to avoid unnecessary compilation
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS lib/debug/lock.c)
+    list(APPEND CORE_SRCS lib/debug/memory.c)
+endif()
+
+if(ASCII_BUILD_WITH_DEFER)
+    list(APPEND CORE_SRCS
+        lib/tooling/defer/defer.c
+    )
 endif()
 
 # Add tomlc17 parser source

@@ -13,6 +13,7 @@
 #include "crypto/crypto.h"
 #include "logging.h"
 #include "version.h"
+#include "tooling/defer/defer.h"
 
 #include "tomlc17.h"
 #include <string.h>
@@ -826,6 +827,7 @@ static asciichat_error_t apply_log_config(toml_datum_t toptab) {
  */
 asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict) {
   char *config_path_expanded = NULL;
+  defer(free(config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -837,6 +839,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
+    defer(free(config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -847,7 +850,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
 #endif
       }
-      SAFE_FREE(config_dir);
     }
 
     // Fallback to ~/.ascii-chat/config.toml
@@ -866,10 +868,10 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   char *validated_config_path = NULL;
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  SAFE_FREE(config_path_expanded);
   if (validate_result != ASCIICHAT_OK) {
     return validate_result;
   }
+  SAFE_FREE(config_path_expanded);
   config_path_expanded = validated_config_path;
 
   // Determine display path for error messages (before any early returns)
@@ -878,7 +880,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   // Check if config file exists
   struct stat st;
   if (stat(config_path_expanded, &st) != 0) {
-    SAFE_FREE(config_path_expanded);
     if (strict) {
       return SET_ERRNO(ERROR_CONFIG, "Config file does not exist: '%s'", display_path);
     }
@@ -889,11 +890,9 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   // Verify it's a regular file
   if (!S_ISREG(st.st_mode)) {
     if (strict) {
-      SAFE_FREE(config_path_expanded);
       return SET_ERRNO(ERROR_CONFIG, "Config file exists but is not a regular file: '%s'", display_path);
     }
     CONFIG_WARN("Config file exists but is not a regular file: '%s' (skipping)", display_path);
-    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
 
@@ -905,7 +904,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     const char *errmsg = (strlen(result.errmsg) > 0) ? result.errmsg : "Unknown parse error";
 
     if (strict) {
-      SAFE_FREE(config_path_expanded);
       // For strict mode, return detailed error message directly
       // Note: SET_ERRNO stores the message in context, but asciichat_error_string() only returns generic codes
       // So we need to format the error message ourselves here
@@ -914,7 +912,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
-    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK; // Non-fatal error
   }
 
@@ -925,14 +922,10 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   apply_palette_config_from_toml(result.toptab);
   asciichat_error_t crypto_result = apply_crypto_config(result.toptab, is_client);
   if (crypto_result != ASCIICHAT_OK) {
-    toml_free(result);
-    SAFE_FREE(config_path_expanded);
     return crypto_result;
   }
   asciichat_error_t log_result = apply_log_config(result.toptab);
   if (log_result != ASCIICHAT_OK) {
-    toml_free(result);
-    SAFE_FREE(config_path_expanded);
     return log_result;
   }
 
@@ -940,10 +933,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   config_address_set = false;
   config_address6_set = false;
   config_port_set = false;
-
-  // Free TOML result
-  toml_free(result);
-  SAFE_FREE(config_path_expanded);
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
   return ASCIICHAT_OK;
@@ -973,6 +962,7 @@ asciichat_error_t config_create_default(const char *config_path) {
                 config_path ? config_path : "(NULL)");
 
   char *config_path_expanded = NULL;
+  defer(free(config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -984,6 +974,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
+    defer(free(config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -1010,23 +1001,21 @@ asciichat_error_t config_create_default(const char *config_path) {
   char *validated_config_path = NULL;
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  SAFE_FREE(config_path_expanded);
   if (validate_result != ASCIICHAT_OK) {
     return validate_result;
   }
+  SAFE_FREE(config_path_expanded);
   config_path_expanded = validated_config_path;
 
   // Check if file already exists
   struct stat st;
   if (stat(config_path_expanded, &st) == 0) {
-    SAFE_FREE(config_path_expanded);
     return SET_ERRNO(ERROR_CONFIG, "Config file already exists: %s", config_path ? config_path : "default location");
   }
 
   // Create directory if needed
   char *dir_path = platform_strdup(config_path_expanded);
   if (!dir_path) {
-    SAFE_FREE(config_path_expanded);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
   }
 
@@ -1054,7 +1043,6 @@ asciichat_error_t config_create_default(const char *config_path) {
       if (stat(dir_path, &test_st) != 0) {
         // Directory doesn't exist and we couldn't create it
         SAFE_FREE(dir_path);
-        SAFE_FREE(config_path_expanded);
         return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
       }
       // Directory exists despite error, proceed
@@ -1069,7 +1057,6 @@ asciichat_error_t config_create_default(const char *config_path) {
       if (stat(dir_path, &test_st) != 0) {
         // Directory doesn't exist and we couldn't create it
         SAFE_FREE(dir_path);
-        SAFE_FREE(config_path_expanded);
         return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
       }
       // Directory exists despite error, proceed
@@ -1081,7 +1068,6 @@ asciichat_error_t config_create_default(const char *config_path) {
     // Create file with default values
     FILE *f = platform_fopen(config_path_expanded, "w");
     if (!f) {
-      SAFE_FREE(config_path_expanded);
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
     }
 
@@ -1187,10 +1173,8 @@ asciichat_error_t config_create_default(const char *config_path) {
 
     int close_result = fclose(f);
     if (close_result != 0) {
-      SAFE_FREE(config_path_expanded);
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to close config file: %s", config_path_expanded);
     }
-    SAFE_FREE(config_path_expanded);
   }
 
   return ASCIICHAT_OK;

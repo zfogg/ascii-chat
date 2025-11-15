@@ -1,7 +1,7 @@
 # Defer Implementation Status
 
 **Last Updated:** 2025-11-14
-**Status:** Phase 1 Complete (Runtime + Macro Safety)
+**Status:** Phase 2 Complete (Runtime + Transformation Tool + Build Integration)
 
 ## ✅ Completed
 
@@ -70,30 +70,41 @@ error: invalid application of 'sizeof' to an incomplete type
   7. Custom cleanup functions
 - **Note:** Will not compile without transformation tool
 
-## ⏸️ Pending (Phase 2)
+### 6. Clang Transformation Tool ✨ NEW
+- **Location:** `src/tooling/defer/tool.cpp`
+- **Features:**
+  - Detects `defer(expression)` macro invocations in AST
+  - Transforms to `ascii_defer_push()` runtime calls
+  - Injects `ascii_defer_scope_t` at function entry
+  - Injects `ascii_defer_execute_all()` at all return statements and function end
+  - Built as `ascii-instr-defer` executable
+  - Uses Clang LibTooling for source transformation
 
-### 1. Clang Transformation Tool
-- **Location:** `src/tooling/defer/tool.cpp` (not created yet)
-- **Responsibilities:**
-  - Detect `defer(expression)` macro invocations
-  - Transform to `ascii_defer_push()` runtime calls
-  - Inject `ascii_defer_scope_t` at function entry
-  - Inject `ascii_defer_execute_all()` at all exit points
-  - Handle nested scopes correctly
-
-### 2. CMake Build Integration
-- **Location:** `cmake/tooling/Defer.cmake` (not created yet)
-- **Responsibilities:**
-  - Implement `ascii_defer_prepare()` function
-  - Implement `ascii_defer_finalize()` function
+### 7. CMake Build Integration ✨ NEW
+- **Location:** `cmake/tooling/Defer.cmake`
+- **Features:**
+  - `ascii_defer_prepare()` - configures transformation
+  - `ascii_defer_finalize()` - applies transformed sources to targets
   - Similar to `Instrumentation.cmake` for source_print
-  - Generate transformed sources in `build/defer/`
+  - Generates transformed sources in `build/defer_transformed/`
+  - Parallel transformation with xargs for performance
+  - Incremental builds (only transforms changed files)
 
-### 3. End-to-End Testing
-- Transform example code
-- Verify deferred cleanup actually runs
-- Test with multiple exit paths
+### 8. Build System Support ✨ NEW
+- **Updated files:**
+  - `cmake/tooling/Targets.cmake` - adds `ascii-instr-defer` target
+  - `cmake/tooling/run_defer.sh` - bash script for running transformation
+  - `CMakeLists.txt` - integrates defer transformation into build
+- **CMake variable:** `ASCII_BUILD_WITH_DEFER=ON` to enable
+
+## ⏸️ Pending (Phase 3)
+
+### 1. End-to-End Testing
+- Transform example code with `-DASCII_BUILD_WITH_DEFER=ON`
+- Verify deferred cleanup actually runs in transformed code
+- Test all 7 example patterns from `example_defer_usage.c`
 - Verify LIFO execution order
+- Test with multiple exit paths
 
 ## How It Works
 
@@ -197,10 +208,56 @@ error: invalid application of 'sizeof' to an incomplete type
    - Add to CI/CD
    - Document usage in CLAUDE.md
 
+## How to Build With Defer Transformation
+
+### Basic Usage
+
+```bash
+# Build with defer transformation enabled
+cmake -B build -DASCII_BUILD_WITH_DEFER=ON
+cmake --build build
+```
+
+### With Tooling Library (Recommended)
+
+To avoid rebuilding the tooling when application code changes:
+
+```bash
+# Step 1: Build library first
+cmake -B build
+cmake --build build --target ascii-chat-static
+
+# Step 2: Copy library to safe location
+cp build/lib/libasciichat.a build/libasciichat_for_tooling.a
+
+# Step 3: Reconfigure with defer transformation + library path
+cmake -B build \
+  -DASCII_BUILD_WITH_DEFER=ON \
+  -DASCII_TOOLING_LIBRARY_PATH="build/libasciichat_for_tooling.a"
+
+# Step 4: Build with transformation
+cmake --build build
+```
+
+See `docs/tooling/BUILDING_TOOLING.md` for complete details.
+
+### What Gets Transformed
+
+The defer transformation tool processes all `.c`, `.m`, and `.mm` files except:
+- `lib/tooling/` (tooling code itself)
+- `lib/debug/` (debug infrastructure)
+- `lib/platform/*/{system,mutex,thread}.c` (low-level platform code)
+- SIMD intrinsics files
+- `lib/tooling/defer/defer.c` (defer runtime)
+
+Transformed sources are written to `build/defer_transformed/` and used automatically.
+
 ## References
 
 - Runtime API: `lib/tooling/defer/defer.h`
 - Examples: `tests/unit/tooling/defer/example_defer_usage.c`
 - Unit Tests: `tests/unit/tooling/defer/test_defer.c`
 - Design Doc: `docs/tooling/defer.md`
+- Transformation Tool: `src/tooling/defer/tool.cpp`
+- Build Integration: `cmake/tooling/Defer.cmake`
 - Source Print (reference): `cmake/tooling/Instrumentation.cmake`

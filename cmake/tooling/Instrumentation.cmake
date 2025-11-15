@@ -2,8 +2,8 @@ include_guard(GLOBAL)
 
 option(ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION "Generate and build source_print-instrumented sources with per-statement logging" OFF)
 
-include(${CMAKE_CURRENT_LIST_DIR}/Targets.cmake)
-set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/run_instrumentation.sh")
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Targets.cmake)
+set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_instrumentation.sh")
 
 function(_ascii_strip_source_include_dirs target_name)
     if(NOT TARGET ${target_name})
@@ -75,7 +75,7 @@ function(ascii_instrumentation_prepare)
         return()
     endif()
 
-    ascii_add_debug_targets()
+    ascii_add_tooling_targets()
 
     set(USE_PRECOMPILED_HEADERS OFF CACHE BOOL "Disable PCH when source_print instrumentation is enabled" FORCE)
 
@@ -138,9 +138,6 @@ function(ascii_instrumentation_prepare)
                 continue()
             endif()
             if(rel_path MATCHES "^lib/debug/")
-                continue()
-            endif()
-            if(rel_path MATCHES "^lib/tooling/")
                 continue()
             endif()
             if(rel_path IN_LIST _ascii_instr_excluded_sources)

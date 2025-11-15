@@ -4,7 +4,7 @@ if(DEFINED ASCII_DEBUG_TARGETS_CMAKE_INCLUDED)
 endif()
 set(ASCII_DEBUG_TARGETS_CMAKE_INCLUDED TRUE)
 
-function(ascii_add_debug_targets)
+function(ascii_add_tooling_targets)
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
             get_filename_component(_clang_dir "${CMAKE_C_COMPILER}" DIRECTORY)
@@ -70,6 +70,95 @@ function(ascii_add_debug_targets)
     set_target_properties(ascii-instr-source-print PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
     )
+
+    # =========================================================================
+    # Defer Transformation Tool
+    # =========================================================================
+    if(NOT TARGET ascii-instr-defer)
+        add_executable(ascii-instr-defer
+            src/tooling/defer/tool.cpp
+        )
+    endif()
+
+    # Use SYSTEM to suppress warnings from LLVM/Clang headers
+    target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+        ${LLVM_INCLUDE_DIRS}
+        ${CLANG_INCLUDE_DIRS}
+    )
+
+    target_compile_features(ascii-instr-defer PRIVATE cxx_std_20)
+
+    # Build ascii-instr-defer without sanitizers to match LLVM libraries
+    target_compile_options(ascii-instr-defer PRIVATE
+        -O0
+        -g
+        -D_ITERATOR_DEBUG_LEVEL=0
+        -fno-sanitize=all
+        -fno-rtti
+        -fexceptions
+    )
+
+    target_link_options(ascii-instr-defer PRIVATE
+        -fno-sanitize=all
+    )
+
+    set_target_properties(ascii-instr-defer PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+    )
+
+    if(DEFINED LLVM_DEFINITIONS)
+        separate_arguments(_llvm_defs_defer NATIVE_COMMAND "${LLVM_DEFINITIONS}")
+        if(_llvm_defs_defer)
+            target_compile_definitions(ascii-instr-defer PRIVATE ${_llvm_defs_defer})
+        endif()
+    endif()
+
+    if(TARGET clang-cpp)
+        target_link_libraries(ascii-instr-defer PRIVATE clang-cpp)
+    endif()
+
+    target_link_libraries(ascii-instr-defer PRIVATE LLVMSupport)
+
+    target_link_libraries(ascii-instr-defer PRIVATE
+        clangTooling
+        clangFrontend
+        clangAST
+        clangASTMatchers
+        clangBasic
+        clangRewrite
+        clangRewriteFrontend
+        clangLex
+        clangSerialization
+        clangDriver
+        clangParse
+        clangSema
+        clangEdit
+        clangAnalysis
+        ${LLVM_LIB_LIST}
+    )
+
+    set_target_properties(ascii-instr-defer PROPERTIES
+        OUTPUT_NAME "ascii-instr-defer"
+    )
+
+    if(CMAKE_CXX_COMPILER)
+        get_filename_component(_cxx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        get_filename_component(_cxx_root "${_cxx_compiler_dir}/.." ABSOLUTE)
+        set(_libcxx_include "${_cxx_root}/include/c++/v1")
+        if(EXISTS "${_libcxx_include}")
+            target_include_directories(ascii-instr-defer BEFORE PRIVATE "${_libcxx_include}")
+            target_compile_options(ascii-instr-defer PRIVATE
+                "--no-default-config"
+                "-isystem"
+                "${_libcxx_include}"
+                "-stdlib=libc++"
+            )
+            target_link_options(ascii-instr-defer PRIVATE
+                "--no-default-config"
+                "-stdlib=libc++"
+            )
+        endif()
+    endif()
 
     # =========================================================================
     # Tooling Runtime Library Strategy
@@ -215,6 +304,16 @@ function(ascii_add_debug_targets)
         endif()
     endif()
 
+    if(TARGET ascii-chat-defer AND TARGET ascii-debug-runtime)
+        add_dependencies(ascii-debug-runtime ascii-chat-defer)
+        get_target_property(_ascii_debug_runtime_type ascii-debug-runtime TYPE)
+        if(_ascii_debug_runtime_type STREQUAL "INTERFACE_LIBRARY")
+            target_link_libraries(ascii-debug-runtime INTERFACE ascii-chat-defer)
+        else()
+            target_link_libraries(ascii-debug-runtime PRIVATE ascii-chat-defer)
+        endif()
+    endif()
+
     # Add LLVM library directory
     if(DEFINED LLVM_LIBRARY_DIRS)
         link_directories(${LLVM_LIBRARY_DIRS})
@@ -297,4 +396,8 @@ function(ascii_add_debug_targets)
         )
         set_target_properties(ascii-source-print-report PROPERTIES OUTPUT_NAME "ascii-source-print-report")
     endif()
+endfunction()
+
+function(ascii_add_debug_targets)
+    ascii_add_tooling_targets()
 endfunction()
