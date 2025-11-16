@@ -51,6 +51,7 @@ function(ascii_add_tooling_targets)
     # Build ascii-instr-source-print without sanitizers and with Release runtime to match LLVM libraries
     # LLVM is built with -fno-rtti, so we must match that
     # Use -O0 to prevent optimizer from stripping static initializers for command line options
+    # Also disable LTO since LLVM libraries are not built with LTO
     target_compile_options(ascii-instr-source-print PRIVATE
         -O0
         -g
@@ -58,17 +59,34 @@ function(ascii_add_tooling_targets)
         -fno-sanitize=all
         -fno-rtti
         -fexceptions
+        -fno-lto
     )
 
-    # Remove debug/sanitizer linker flags
+    # Remove debug/sanitizer linker flags and LTO
     target_link_options(ascii-instr-source-print PRIVATE
         -fno-sanitize=all
+        -fno-lto
     )
+
+    # Explicitly link libc++ to resolve C++ standard library symbols
+    # This is needed because LLVM libraries may have been built with a different libc++ version
+    # Also link static libc++ from LLVM to get all required symbols
+    if(APPLE OR UNIX)
+        # Link against the static libc++ from LLVM to ensure ABI compatibility
+        # Also need libc++abi for exception handling symbols like __cxa_rethrow_primary_exception
+        if(EXISTS "/usr/local/lib/libc++.a" AND EXISTS "/usr/local/lib/libc++abi.a")
+            target_link_libraries(ascii-instr-source-print PRIVATE "/usr/local/lib/libc++.a" "/usr/local/lib/libc++abi.a")
+        else()
+            target_link_libraries(ascii-instr-source-print PRIVATE c++)
+        endif()
+    endif()
 
     # Override global source print runtime settings for this target specifically
     # Use MultiThreadedDLL (MD) instead of MultiThreadedDebugDLL (MDd) to match LLVM build
+    # Disable IPO/LTO since LLVM libraries are not built with LTO
     set_target_properties(ascii-instr-source-print PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+        INTERPROCEDURAL_OPTIMIZATION OFF
     )
 
     # =========================================================================
@@ -89,6 +107,7 @@ function(ascii_add_tooling_targets)
     target_compile_features(ascii-instr-defer PRIVATE cxx_std_20)
 
     # Build ascii-instr-defer without sanitizers to match LLVM libraries
+    # Also disable LTO since LLVM libraries are not built with LTO
     target_compile_options(ascii-instr-defer PRIVATE
         -O0
         -g
@@ -96,14 +115,30 @@ function(ascii_add_tooling_targets)
         -fno-sanitize=all
         -fno-rtti
         -fexceptions
+        -fno-lto
     )
 
     target_link_options(ascii-instr-defer PRIVATE
         -fno-sanitize=all
+        -fno-lto
     )
+
+    # Explicitly link libc++ to resolve C++ standard library symbols
+    # This is needed because LLVM libraries may have been built with a different libc++ version
+    # Also link static libc++ from LLVM to get all required symbols
+    if(APPLE OR UNIX)
+        # Link against the static libc++ from LLVM to ensure ABI compatibility
+        # Also need libc++abi for exception handling symbols like __cxa_rethrow_primary_exception
+        if(EXISTS "/usr/local/lib/libc++.a" AND EXISTS "/usr/local/lib/libc++abi.a")
+            target_link_libraries(ascii-instr-defer PRIVATE "/usr/local/lib/libc++.a" "/usr/local/lib/libc++abi.a")
+        else()
+            target_link_libraries(ascii-instr-defer PRIVATE c++)
+        endif()
+    endif()
 
     set_target_properties(ascii-instr-defer PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+        INTERPROCEDURAL_OPTIMIZATION OFF
     )
 
     if(DEFINED LLVM_DEFINITIONS)
@@ -391,6 +426,14 @@ function(ascii_add_tooling_targets)
                 ${CMAKE_SOURCE_DIR}/lib
                 ${CMAKE_BINARY_DIR}/generated
         )
+        # Add mimalloc include directory if USE_MIMALLOC is enabled
+        # This is needed because common.h includes <mimalloc.h> when USE_MIMALLOC is defined
+        if(USE_MIMALLOC AND DEFINED FETCHCONTENT_BASE_DIR)
+            target_include_directories(ascii-source-print-report
+                PRIVATE
+                    "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
+            )
+        endif()
         target_link_libraries(ascii-source-print-report
             ascii-chat-static
         )
