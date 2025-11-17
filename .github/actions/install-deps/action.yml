@@ -151,11 +151,9 @@ runs:
 
         dpkg-query -L $tools > "$list_file"
 
-        cat <<'EOF' > "$metadata_file"
-/var/lib/dpkg
-/var/lib/apt/lists
-/var/cache/apt/archives
-EOF
+        echo "/var/lib/dpkg" >> "$metadata_file"
+        echo "/var/lib/apt/lists" >> "$metadata_file"
+        echo "/var/cache/apt/archives" >> "$metadata_file"
 
         while read -r path; do
           if [ -z "$path" ]; then
