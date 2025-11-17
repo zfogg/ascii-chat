@@ -1028,6 +1028,10 @@ asciichat_error_t config_create_default(const char *config_path) {
 #ifdef _WIN32
     // Windows: Create directory (creates only one level)
     int mkdir_result = _mkdir(dir_path);
+#else
+    // POSIX: Create directory with DIR_PERM_PRIVATE permissions
+    int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
+#endif
     if (mkdir_result != 0 && errno != EEXIST) {
       // mkdir failed and it's not because the directory already exists
       // Verify if directory actually exists despite the error (Windows compatibility)
@@ -1039,21 +1043,6 @@ asciichat_error_t config_create_default(const char *config_path) {
       }
       // Directory exists despite error, proceed
     }
-#else
-    // POSIX: Create directory with 0700 permissions
-    int mkdir_result = mkdir(dir_path, 0700);
-    if (mkdir_result != 0 && errno != EEXIST) {
-      // mkdir failed and it's not because the directory already exists
-      // Verify if directory actually exists despite the error
-      struct stat test_st;
-      if (stat(dir_path, &test_st) != 0) {
-        // Directory doesn't exist and we couldn't create it
-        SAFE_FREE(dir_path);
-        return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
-      }
-      // Directory exists despite error, proceed
-    }
-#endif
   } else {
     SAFE_FREE(dir_path);
 

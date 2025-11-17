@@ -88,6 +88,25 @@ function(ascii_defer_prepare)
     list(REMOVE_DUPLICATES defer_rel_paths)
     list(REMOVE_DUPLICATES defer_generated_paths)
 
+    # Check if any files actually use defer()
+    list(LENGTH defer_rel_paths _defer_file_count)
+    if(_defer_file_count EQUAL 0)
+        # No files use defer(), so defer transformation is not needed
+        message(STATUS "No source files use defer() - defer runtime will not be included")
+        set(ASCII_DEFER_ENABLED FALSE PARENT_SCOPE)
+        return()
+    endif()
+
+    # Files use defer(), so we need the runtime
+    # Add defer.c to CORE_SRCS if not already present
+    # Explicitly read CORE_SRCS from parent scope to ensure correct behavior
+    set(_core_srcs "${CORE_SRCS}")
+    if(NOT "lib/tooling/defer/defer.c" IN_LIST _core_srcs)
+        list(APPEND _core_srcs "lib/tooling/defer/defer.c")
+        set(CORE_SRCS "${_core_srcs}" PARENT_SCOPE)
+        message(STATUS "Added defer runtime (lib/tooling/defer/defer.c) to CORE_SRCS")
+    endif()
+
     # Directories that must be copied to transformed tree (for includes)
     set(_ascii_defer_copy_dirs
         "lib/tooling"
@@ -252,13 +271,14 @@ function(ascii_defer_finalize)
     )
 
     # Link all targets with the defer runtime library
+    # Note: defer.c is already compiled into ascii-chat-core (via CORE_SRCS),
+    # so we don't need to link ascii-chat-defer to any targets that depend on ascii-chat-core
+    # The defer runtime functions are available through ascii-chat-core
     foreach(lib_target IN LISTS ASCII_DEFER_TRANSFORM_LIBRARY_TARGETS)
         if(TARGET ${lib_target})
             add_dependencies(${lib_target} ascii-generate-defer-transformed-sources)
             target_compile_definitions(${lib_target} PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
-            if(TARGET ascii-tooling-defer-runtime)
-                target_link_libraries(${lib_target} PUBLIC ascii-tooling-defer-runtime)
-            endif()
+            # defer.c is already in ascii-chat-core, so no need to link ascii-chat-defer
         endif()
     endforeach()
 
@@ -266,8 +286,8 @@ function(ascii_defer_finalize)
         if(TARGET ${exe_target})
             add_dependencies(${exe_target} ascii-generate-defer-transformed-sources)
             target_compile_definitions(${exe_target} PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
-            if(TARGET ascii-tooling-defer-runtime)
-                target_link_libraries(${exe_target} ascii-tooling-defer-runtime)
+            if(TARGET ascii-chat-defer)
+                target_link_libraries(${exe_target} ascii-chat-defer)
             endif()
         endif()
     endforeach()
@@ -275,8 +295,11 @@ function(ascii_defer_finalize)
     if(TARGET ascii-chat-shared)
         add_dependencies(ascii-chat-shared ascii-generate-defer-transformed-sources)
         target_compile_definitions(ascii-chat-shared PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
-        if(TARGET ascii-tooling-defer-runtime)
-            target_link_libraries(ascii-chat-shared PRIVATE ascii-tooling-defer-runtime)
+        # Link ascii-chat-defer to provide defer runtime functions
+        # Even though defer.c is in CORE_SRCS, we link ascii-chat-defer to ensure
+        # the runtime functions are available (defer.c may not be compiled into core properly)
+        if(TARGET ascii-chat-defer)
+            target_link_libraries(ascii-chat-shared PRIVATE ascii-chat-defer)
         endif()
     endif()
 

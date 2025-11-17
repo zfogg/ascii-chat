@@ -67,6 +67,51 @@
 #define KNOWN_HOSTS_PATH "~/.ascii-chat/known_hosts"
 #endif
 
+/**
+ * @brief Path component: current directory (single dot)
+ *
+ * Character constant for the current directory component in paths.
+ *
+ * @ingroup util
+ */
+#define PATH_COMPONENT_DOT '.'
+
+/**
+ * @brief Path component: parent directory (double dot)
+ *
+ * String constant for the parent directory component in paths.
+ *
+ * @ingroup util
+ */
+#define PATH_COMPONENT_DOTDOT ".."
+
+/**
+ * @brief Path component: home directory tilde
+ *
+ * Character constant for the home directory expansion character.
+ *
+ * @ingroup util
+ */
+#define PATH_TILDE '~'
+
+/**
+ * @brief Path component: Windows drive separator
+ *
+ * Character constant for the Windows drive letter separator (colon).
+ *
+ * @ingroup util
+ */
+#define PATH_DRIVE_SEPARATOR ':'
+
+/**
+ * @brief Maximum number of path base directories
+ *
+ * Maximum number of base directories that can be checked in path validation.
+ *
+ * @ingroup util
+ */
+#define MAX_PATH_BASES 16
+
 /* ============================================================================
  * Path Manipulation Functions
  * @{

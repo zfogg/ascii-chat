@@ -29,6 +29,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/** @brief Application name for key comments ("ascii-chat") */
+#define ASCII_CHAT_APP_NAME "ascii-chat"
+
 #if (defined(__clang__) || defined(__GNUC__)) && !defined(__builtin_c23_va_start)
 #define __builtin_c23_va_start(ap, param) __builtin_va_start(ap, param)
 #endif
@@ -399,6 +402,64 @@ extern int g_max_fps;
 /** @brief Frame buffer capacity based on MAX_FPS */
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
 
+// =============================================================================
+// Common Buffer Sizes
+// =============================================================================
+
+/**
+ * @brief Small buffer size (256 bytes)
+ *
+ * Used for short strings, error messages, and small temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_SMALL 256
+
+/**
+ * @brief Medium buffer size (512 bytes)
+ *
+ * Used for medium-length strings, paths, and intermediate buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_MEDIUM 512
+
+/**
+ * @brief Large buffer size (1024 bytes)
+ *
+ * Used for longer strings, full paths, and larger temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_LARGE 1024
+
+/**
+ * @brief Extra large buffer size (2048 bytes)
+ *
+ * Used for very long strings, multiple paths, and large temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_XLARGE 2048
+
+/**
+ * @brief Extra extra large buffer size (4096 bytes)
+ *
+ * Used for maximum-length paths and very large temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_XXLARGE 4096
+
+/**
+ * @brief Extra extra extra large buffer size (8192 bytes)
+ *
+ * Used for extremely large buffers like exception messages and stack traces.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_XXXLARGE 8192
+
 /* ============================================================================
  * Shutdown Check System
  * ============================================================================
@@ -442,6 +503,83 @@ void shutdown_register_callback(shutdown_check_fn callback);
  * @ingroup common
  */
 bool shutdown_is_requested(void);
+
+/* ============================================================================
+ * String Literal Constants
+ * ============================================================================
+ */
+
+/**
+ * @brief String literal: "0" (zero)
+ *
+ * Used for boolean comparisons and numeric string parsing.
+ *
+ * @ingroup common
+ */
+#define STR_ZERO "0"
+
+/**
+ * @brief String literal: "1" (one)
+ *
+ * Used for boolean comparisons and numeric string parsing.
+ *
+ * @ingroup common
+ */
+#define STR_ONE "1"
+
+/**
+ * @brief String literal: "false"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_FALSE "false"
+
+/**
+ * @brief String literal: "true"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_TRUE "true"
+
+/**
+ * @brief String literal: "off"
+ *
+ * Used for boolean string comparisons (disable/enable).
+ *
+ * @ingroup common
+ */
+#define STR_OFF "off"
+
+/**
+ * @brief String literal: "on"
+ *
+ * Used for boolean string comparisons (enable/disable).
+ *
+ * @ingroup common
+ */
+#define STR_ON "on"
+
+/**
+ * @brief String literal: "no"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_NO "no"
+
+/**
+ * @brief String literal: "yes"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_YES "yes"
 
 /* ============================================================================
  * Utility Macros

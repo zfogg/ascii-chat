@@ -572,14 +572,14 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   }
 
   // Escape key_id for safe use in shell command (single quotes)
-  char escaped_key_id[512];
+  char escaped_key_id[BUFFER_SIZE_MEDIUM];
   if (!escape_shell_single_quotes(key_id, escaped_key_id, sizeof(escaped_key_id))) {
     log_error("Failed to escape GPG key ID for shell command");
     return -1;
   }
 
   // Use gpg to list the key and get the keygrip
-  char cmd[1024];
+  char cmd[BUFFER_SIZE_LARGE];
 #ifdef _WIN32
   safe_snprintf(cmd, sizeof(cmd), "gpg --list-keys --with-keygrip --with-colons 0x%s 2>nul", escaped_key_id);
 #else
@@ -604,7 +604,7 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
     return -1;
   }
 
-  char line[2048];
+  char line[BUFFER_SIZE_XLARGE];
   char found_keygrip[128] = {0};
   bool found_key = false;
 
@@ -681,9 +681,9 @@ int gpg_get_public_key(const char *key_id, uint8_t *public_key_out, char *keygri
   }
 
   // Read the exported key (PGP ASCII armor)
-  char exported_key[8192] = {0};
+  char exported_key[BUFFER_SIZE_XXXLARGE] = {0};
   size_t offset = 0;
-  char line_buf[512];
+  char line_buf[BUFFER_SIZE_MEDIUM];
   while (fgets(line_buf, sizeof(line_buf), fp)) {
     size_t line_len = strlen(line_buf);
     if (offset + line_len < sizeof(exported_key) - 1) {

@@ -229,11 +229,8 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS lib/debug/memory.c)
 endif()
 
-if(ASCII_BUILD_WITH_DEFER)
-    list(APPEND CORE_SRCS
-        lib/tooling/defer/defer.c
-    )
-endif()
+# defer.c is conditionally added by ascii_defer_prepare() only if files actually use defer()
+# This prevents including the runtime when defer() is not used
 
 # Add tomlc17 parser source
 list(APPEND CORE_SRCS

@@ -504,6 +504,54 @@ void platform_cleanup_binary_path_cache(void);
 #endif
 
 // ============================================================================
+// File Permission Constants
+// ============================================================================
+
+/**
+ * @brief File permission: Private (owner read/write only)
+ *
+ * Octal mode 0600: rw-------
+ * Used for sensitive files like private keys, log files, and configuration files.
+ *
+ * @note On Windows, this is a no-op (Windows uses ACLs instead of POSIX permissions)
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_PRIVATE 0600
+
+/**
+ * @brief Directory permission: Private (owner read/write/execute only)
+ *
+ * Octal mode 0700: rwx------
+ * Used for private directories like ~/.ascii-chat
+ *
+ * @note On Windows, this is a no-op (Windows uses ACLs instead of POSIX permissions)
+ *
+ * @ingroup platform
+ */
+#define DIR_PERM_PRIVATE 0700
+
+/**
+ * @brief File permission: Public read, owner write
+ *
+ * Octal mode 0644: rw-r--r--
+ * Used for files that should be readable by others but only writable by owner.
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_PUBLIC_READ 0644
+
+/**
+ * @brief Permission mask for all permissions
+ *
+ * Octal mode 0777: rwxrwxrwx
+ * Used for masking permission bits (e.g., st_mode & 0777)
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_MASK 0777
+
+// ============================================================================
 // Maximum Path Length
 // ============================================================================
 

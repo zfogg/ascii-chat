@@ -29,12 +29,13 @@
 #endif
 
 #include "known_hosts.h"
-#include "common.h"
+#include "crypto.h"          // For CRYPTO_* hex size and string literal constants
+#include "common.h"          // For BUFFER_SIZE_* constants
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "keys/keys.h"
 #include "util/ip.h"
 #include "platform/internal.h"
-#include "platform/system.h" // For platform_isatty()
+#include "platform/system.h" // For platform_isatty() and FILE_PERM_* constants
 #include "options.h"         // For opt_snapshot_mode
 #include "util/path.h"
 #include "util/string.h"
@@ -185,7 +186,7 @@ const char *get_known_hosts_path(void) {
     // Strategy 3: Try home directory with .ascii-chat subdirectory
     if (!g_known_hosts_path_cache && home_dir && path_is_absolute(home_dir)) {
       size_t home_len = strlen(home_dir);
-      char suffix[256];
+      char suffix[BUFFER_SIZE_SMALL];
       safe_snprintf(suffix, sizeof(suffix), ".ascii-chat%sknown_hosts", PATH_SEPARATOR_STR);
       bool needs_sep = (home_len > 0) && (home_dir[home_len - 1] != PATH_DELIM);
       size_t total_len = home_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
@@ -199,7 +200,7 @@ const char *get_known_hosts_path(void) {
     // Strategy 4: Try temporary directory as fallback
     if (!g_known_hosts_path_cache && temp_base && path_is_absolute(temp_base)) {
       size_t temp_len = strlen(temp_base);
-      char suffix[256];
+      char suffix[BUFFER_SIZE_SMALL];
 #ifdef _WIN32
       safe_snprintf(suffix, sizeof(suffix), "ascii-chat%sknown_hosts", PATH_SEPARATOR_STR);
 #else
@@ -244,7 +245,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
   }
 
   const char *path = get_known_hosts_path();
-  int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
+  int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
   if (fd < 0) {
     // File doesn't exist - this is an unknown host that needs verification
     log_warn("Known hosts file does not exist: %s", path);
@@ -258,11 +259,11 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
   }
 
-  char line[2048];
-  char expected_prefix[512];
+  char line[BUFFER_SIZE_XLARGE];
+  char expected_prefix[BUFFER_SIZE_MEDIUM];
 
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
@@ -288,7 +289,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
       }
       char *key_type = line + prefix_len;
 
-      if (strncmp(key_type, "no-identity", 11) == 0) {
+      if (strncmp(key_type, NO_IDENTITY_MARKER, strlen(NO_IDENTITY_MARKER)) == 0) {
         // This is a "no-identity" entry, but server is presenting an identity key
         // This is a key mismatch - continue searching for a matching identity key
         log_debug("SECURITY_DEBUG: Found no-identity entry, but server has identity key - continuing search");
@@ -318,19 +319,19 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
       }
 
       // DEBUG: Print both keys for comparison
-      char server_key_hex[65], stored_key_hex[65];
-      for (int i = 0; i < 32; i++) {
+      char server_key_hex[CRYPTO_HEX_KEY_SIZE_NULL], stored_key_hex[CRYPTO_HEX_KEY_SIZE_NULL];
+      for (int i = 0; i < CRYPTO_KEY_SIZE; i++) {
         safe_snprintf(server_key_hex + i * 2, 3, "%02x", server_key[i]);
         safe_snprintf(stored_key_hex + i * 2, 3, "%02x", stored_key.key[i]);
       }
-      server_key_hex[64] = '\0';
-      stored_key_hex[64] = '\0';
+      server_key_hex[CRYPTO_HEX_KEY_SIZE] = '\0';
+      stored_key_hex[CRYPTO_HEX_KEY_SIZE] = '\0';
       log_debug("SECURITY_DEBUG: Server key: %s", server_key_hex);
       log_debug("SECURITY_DEBUG: Stored key: %s", stored_key_hex);
 
       // Check if server key is all zeros (no-identity server)
       bool server_key_is_zero = true;
-      for (int i = 0; i < 32; i++) {
+      for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
         if (server_key[i] != 0) {
           server_key_is_zero = false;
           break;
@@ -339,7 +340,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 
       // Check if stored key is all zeros
       bool stored_key_is_zero = true;
-      for (int i = 0; i < 32; i++) {
+      for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
         if (stored_key.key[i] != 0) {
           stored_key_is_zero = false;
           break;
@@ -355,7 +356,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
       }
 
       // Compare keys (constant-time to prevent timing attacks)
-      if (sodium_memcmp(server_key, stored_key.key, 32) == 0) {
+      if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
         (void)fclose(f); // fclose() also closes the underlying fd
         log_info("SECURITY: Server key matches known_hosts - connection verified");
         return 1; // Match found!
@@ -385,7 +386,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 // -1 = previously accepted known host (no-identity entry found)
 asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t port) {
   const char *path = get_known_hosts_path();
-  int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
+  int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
   if (fd < 0) {
     // File doesn't exist - this is an unknown host that needs verification
     log_warn("Known hosts file does not exist: %s", path);
@@ -400,11 +401,11 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
   }
 
-  char line[2048];
-  char expected_prefix[512];
+  char line[BUFFER_SIZE_XLARGE];
+  char expected_prefix[BUFFER_SIZE_MEDIUM];
 
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
@@ -489,7 +490,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
       *p = '\0'; // Temporarily truncate
 
       // Try to create this directory level
-      int result = mkdir(tmp, 0700);
+      int result = mkdir(tmp, DIR_PERM_PRIVATE);
       if (result != 0 && errno != EEXIST) {
         // mkdir failed - check if directory actually exists (Windows quirk)
         int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
@@ -506,7 +507,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
   }
 
   // Create the final directory
-  int result = mkdir(tmp, 0700);
+      int result = mkdir(tmp, DIR_PERM_PRIVATE);
   if (result != 0 && errno != EEXIST) {
     int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
     if (test_fd < 0) {
@@ -577,21 +578,21 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   }
   // Set secure permissions (0600) - only owner can read/write
   // Note: chmod may fail if file was just created by fopen, but that's okay
-  (void)platform_chmod(path, 0600);
+  (void)platform_chmod(path, FILE_PERM_PRIVATE);
   // log_debug("KNOWN_HOSTS: Successfully opened file: %s", path);
 
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f);
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
   }
 
   // Convert key to hex for storage
-  char hex[65] = {0}; // Initialize to zeros for safety
+  char hex[CRYPTO_HEX_KEY_SIZE_NULL] = {0}; // Initialize to zeros for safety
   bool is_placeholder = true;
   // Build hex string byte by byte to avoid buffer overflow issues
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < ED25519_PUBLIC_KEY_SIZE; i++) {
     // Convert each byte to 2 hex digits directly
     uint8_t byte = server_key[i];
     hex[i * 2] = "0123456789abcdef"[byte >> 4];      // High nibble
@@ -600,18 +601,18 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
       is_placeholder = false;
     }
   }
-  hex[64] = '\0'; // Ensure null termination (64 hex digits + null terminator)
+  hex[CRYPTO_HEX_KEY_SIZE] = '\0'; // Ensure null termination (64 hex digits + null terminator)
 
   // Write to file and check for errors
   int fprintf_result;
   if (is_placeholder) {
     // Server has no identity key - store as placeholder
     fprintf_result =
-        safe_fprintf(f, "%s no-identity 0000000000000000000000000000000000000000000000000000000000000000 ascii-chat\n",
-                     ip_with_port);
+        safe_fprintf(f, "%s %s 0000000000000000000000000000000000000000000000000000000000000000 %s\n",
+                     ip_with_port, NO_IDENTITY_MARKER, ASCII_CHAT_APP_NAME);
   } else {
     // Server has identity key - store normally
-    fprintf_result = safe_fprintf(f, "%s x25519 %s ascii-chat\n", ip_with_port, hex);
+    fprintf_result = safe_fprintf(f, "%s %s %s %s\n", ip_with_port, X25519_KEY_TYPE, hex, ASCII_CHAT_APP_NAME);
   }
 
   // Check if fprintf failed
@@ -639,7 +640,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   }
 
   const char *path = get_known_hosts_path();
-  int fd = platform_open(path, PLATFORM_O_RDONLY, 0600);
+  int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
   if (fd < 0) {
     // File doesn't exist - nothing to remove, return success
     return ASCIICHAT_OK;
@@ -652,7 +653,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   }
 
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     (void)fclose(f); // fclose() also closes the underlying fd
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid IP format: %s", server_ip);
@@ -661,9 +662,9 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   // Read all lines into memory
   char **lines = NULL;
   size_t num_lines = 0;
-  char line[2048];
+  char line[BUFFER_SIZE_XLARGE];
 
-  char expected_prefix[512];
+  char expected_prefix[BUFFER_SIZE_MEDIUM];
   safe_snprintf(expected_prefix, sizeof(expected_prefix), "%s ", ip_with_port);
 
   while (fgets(line, sizeof(line), f)) {
@@ -681,7 +682,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   (void)fclose(f); // fclose() also closes the underlying fd
 
   // Write back the filtered lines
-  fd = platform_open(path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, 0600);
+  fd = platform_open(path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
   f = platform_fdopen(fd, "w");
   if (!f) {
     // Cleanup on error - fdopen failed, so fd is still open but f is NULL
@@ -705,26 +706,26 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
 }
 
 // Compute SHA256 fingerprint of key for display
-void compute_key_fingerprint(const uint8_t key[32], char fingerprint[65]) {
-  uint8_t hash[32];
-  crypto_hash_sha256(hash, key, 32);
+void compute_key_fingerprint(const uint8_t key[ED25519_PUBLIC_KEY_SIZE], char fingerprint[CRYPTO_HEX_KEY_SIZE_NULL]) {
+  uint8_t hash[HMAC_SHA256_SIZE];
+  crypto_hash_sha256(hash, key, ED25519_PUBLIC_KEY_SIZE);
 
   // Build hex string byte by byte to avoid buffer overflow issues
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < HMAC_SHA256_SIZE; i++) {
     uint8_t byte = hash[i];
     fingerprint[i * 2] = "0123456789abcdef"[byte >> 4];      // High nibble
     fingerprint[i * 2 + 1] = "0123456789abcdef"[byte & 0xf]; // Low nibble
   }
-  fingerprint[64] = '\0';
+  fingerprint[CRYPTO_HEX_KEY_SIZE] = '\0';
 }
 
 // Interactive prompt for unknown host - returns true if user wants to add, false to abort
 bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t server_key[32]) {
-  char fingerprint[65];
+  char fingerprint[CRYPTO_HEX_KEY_SIZE_NULL];
   compute_key_fingerprint(server_key, fingerprint);
 
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
@@ -735,7 +736,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
   log_debug("SECURITY_DEBUG: env_skip_known_hosts_checking=%s",
             env_skip_known_hosts_checking ? env_skip_known_hosts_checking : "NULL");
-  if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, "1") == 0) {
+  if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
     log_warn("Skipping known_hosts checking. This is a security vulnerability.");
     return true;
   }
@@ -760,7 +761,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   }
 
   // Interactive mode - prompt user
-  char message[1024]; // Increased from 512 to 1024 to accommodate full message + IPv6 address + fingerprint
+  char message[BUFFER_SIZE_LARGE]; // Accommodates full message + IPv6 address + fingerprint
   safe_snprintf(message, sizeof(message),
                 "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
                 "@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n"
@@ -794,14 +795,14 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
 // Returns true if user accepts the risk and wants to continue, false otherwise
 bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t expected_key[32],
                           const uint8_t received_key[32]) {
-  char expected_fp[65], received_fp[65];
+  char expected_fp[CRYPTO_HEX_KEY_SIZE_NULL], received_fp[CRYPTO_HEX_KEY_SIZE_NULL];
   compute_key_fingerprint(expected_key, expected_fp);
   compute_key_fingerprint(received_key, received_fp);
 
   const char *known_hosts_path = get_known_hosts_path();
 
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);
@@ -852,7 +853,7 @@ bool display_mitm_warning(const char *server_ip, uint16_t port, const uint8_t ex
 // Returns true if user wants to continue, false to abort
 bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   // Format IP:port with proper bracket notation for IPv6
-  char ip_with_port[512];
+  char ip_with_port[BUFFER_SIZE_MEDIUM];
   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
     // Fallback to basic format if error
     safe_snprintf(ip_with_port, sizeof(ip_with_port), "%s:%u", server_ip, port);

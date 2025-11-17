@@ -579,7 +579,7 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     char dir_path[PATH_MAX];
     memcpy(dir_path, runtime->log_path, dir_path_len);
     dir_path[dir_path_len] = '\0';
-    if (mkdir(dir_path, 0700) != 0) {
+    if (mkdir(dir_path, DIR_PERM_PRIVATE) != 0) {
       if (errno != EEXIST) {
         return false;
       }
@@ -694,7 +694,7 @@ static bool ascii_instr_env_is_enabled(const char *value) {
     return false;
   }
 
-  if (strcmp(value, "0") == 0) {
+  if (strcmp(value, STR_ZERO) == 0) {
     return false;
   }
 
@@ -706,11 +706,7 @@ static bool ascii_instr_env_is_enabled(const char *value) {
   }
   lowered[len] = '\0';
 
-  if (strcmp(lowered, "false") == 0 || strcmp(lowered, "off") == 0 || strcmp(lowered, "no") == 0) {
-    return false;
-  }
-
-  return true;
+  return !(strcmp(lowered, STR_FALSE) == 0 || strcmp(lowered, STR_OFF) == 0 || strcmp(lowered, STR_NO) == 0);
 }
 
 static bool ascii_instr_parse_positive_uint32(const char *value, uint32_t *out_value) {

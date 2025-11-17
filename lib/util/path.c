@@ -68,11 +68,11 @@ static const char *normalize_path(const char *path) {
     }
 
     /* Check for . and .. components */
-    if (component_len == 1 && component_start[0] == '.') {
+    if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
       /* Skip . component */
       continue;
     }
-    if (component_len == 2 && component_start[0] == '.' && component_start[1] == '.') {
+    if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
       /* Handle .. component - go up one level */
       if (component_count > 0) {
         component_count--;
@@ -179,7 +179,7 @@ const char *extract_project_relative_path(const char *file) {
 }
 
 char *expand_path(const char *path) {
-  if (path[0] == '~') {
+  if (path[0] == PATH_TILDE) {
     const char *home = NULL;
 #ifdef _WIN32
     // On Windows, try USERPROFILE first, then HOME as fallback
@@ -296,7 +296,7 @@ bool path_is_absolute(const char *path) {
   if ((path[0] == '\\' && path[1] == '\\')) {
     return true; // UNC path
   }
-  if (isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
+  if (isalpha((unsigned char)path[0]) && path[1] == PATH_DRIVE_SEPARATOR && path[2] == PATH_DELIM) {
     return true;
   }
   return false;
@@ -366,7 +366,7 @@ bool path_looks_like_path(const char *value) {
     return false;
   }
 
-  if (value[0] == PATH_DELIM || value[0] == '.' || value[0] == '~') {
+  if (value[0] == PATH_DELIM || value[0] == PATH_COMPONENT_DOT || value[0] == PATH_TILDE) {
     return true;
   }
 
@@ -398,7 +398,7 @@ static asciichat_error_t map_role_to_error(path_role_t role) {
 }
 
 static void append_base_if_valid(const char *candidate, const char **bases, size_t *count) {
-  if (!candidate || *candidate == '\0' || *count >= 16) {
+  if (!candidate || *candidate == '\0' || *count >= MAX_PATH_BASES) {
     return;
   }
   if (!path_is_absolute(candidate)) {
@@ -475,7 +475,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Normalized path is not absolute: %s", normalized_buf);
   }
 
-  const char *bases[16] = {0};
+  const char *bases[MAX_PATH_BASES] = {0};
   size_t base_count = 0;
 
   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
