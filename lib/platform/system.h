@@ -465,6 +465,48 @@ bool platform_is_binary_in_path(const char *bin_name);
  */
 void platform_cleanup_binary_path_cache(void);
 
+// ============================================================================
+// Path Separator Constants
+// ============================================================================
+
+/**
+ * @brief Platform-specific path separator character
+ *
+ * - Windows: '\\' (backslash)
+ * - Unix/POSIX: '/' (forward slash)
+ *
+ * Use this constant instead of hardcoding separators or using #ifdef _WIN32.
+ *
+ * @note For string literals, use PATH_SEPARATOR_STR instead.
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PATH_DELIM '\\'
+#define PATH_SEPARATOR_STR "\\"
+#else
+#define PATH_DELIM '/'
+#define PATH_SEPARATOR_STR "/"
+#endif
+
+/**
+ * @brief Platform-specific PATH environment variable separator
+ *
+ * - Windows: ";" (semicolon)
+ * - Unix/POSIX: ":" (colon)
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PATH_ENV_SEPARATOR ";"
+#else
+#define PATH_ENV_SEPARATOR ":"
+#endif
+
+// ============================================================================
+// Maximum Path Length
+// ============================================================================
+
 /**
  * @brief Maximum path length supported by the operating system
  *
