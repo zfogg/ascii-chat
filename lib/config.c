@@ -1020,15 +1020,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   }
 
   // Find the last path separator
-#ifdef _WIN32
-  char *last_sep = strrchr(dir_path, '\\');
-  char *last_fwd = strrchr(dir_path, '/');
-  if (last_fwd && (!last_sep || last_fwd > last_sep)) {
-    last_sep = last_fwd;
-  }
-#else
-  char *last_sep = strrchr(dir_path, '/');
-#endif
+  char *last_sep = strrchr(dir_path, PATH_DELIM);
 
   if (last_sep) {
     *last_sep = '\0';

@@ -185,26 +185,13 @@ const char *get_known_hosts_path(void) {
     // Strategy 3: Try home directory with .ascii-chat subdirectory
     if (!g_known_hosts_path_cache && home_dir && path_is_absolute(home_dir)) {
       size_t home_len = strlen(home_dir);
-      const char *suffix =
-#ifdef _WIN32
-          ".ascii-chat\\known_hosts";
-#else
-          ".ascii-chat/known_hosts";
-#endif
-      bool needs_sep = (home_len > 0) &&
-#ifdef _WIN32
-                       (home_dir[home_len - 1] != '\\' && home_dir[home_len - 1] != '/');
-#else
-                       (home_dir[home_len - 1] != '/');
-#endif
+      char suffix[256];
+      safe_snprintf(suffix, sizeof(suffix), ".ascii-chat%sknown_hosts", PATH_SEPARATOR_STR);
+      bool needs_sep = (home_len > 0) && (home_dir[home_len - 1] != PATH_DELIM);
       size_t total_len = home_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
       if (total_len < sizeof(candidate_buf)) {
         safe_snprintf(candidate_buf, sizeof(candidate_buf),
-#ifdef _WIN32
-                      "%s%s%s", home_dir, needs_sep ? "\\" : "", suffix);
-#else
-                      "%s%s%s", home_dir, needs_sep ? "/" : "", suffix);
-#endif
+                      "%s%s%s", home_dir, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
         (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
       }
     }
@@ -212,26 +199,17 @@ const char *get_known_hosts_path(void) {
     // Strategy 4: Try temporary directory as fallback
     if (!g_known_hosts_path_cache && temp_base && path_is_absolute(temp_base)) {
       size_t temp_len = strlen(temp_base);
-      const char *suffix =
+      char suffix[256];
 #ifdef _WIN32
-          "ascii-chat\\known_hosts";
+      safe_snprintf(suffix, sizeof(suffix), "ascii-chat%sknown_hosts", PATH_SEPARATOR_STR);
 #else
-          "known_hosts";
+      safe_snprintf(suffix, sizeof(suffix), "known_hosts");
 #endif
-      bool needs_sep = (temp_len > 0) &&
-#ifdef _WIN32
-                       (temp_base[temp_len - 1] != '\\' && temp_base[temp_len - 1] != '/');
-#else
-                       (temp_base[temp_len - 1] != '/');
-#endif
+      bool needs_sep = (temp_len > 0) && (temp_base[temp_len - 1] != PATH_DELIM);
       size_t total_len = temp_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
       if (total_len < sizeof(candidate_buf)) {
         safe_snprintf(candidate_buf, sizeof(candidate_buf),
-#ifdef _WIN32
-                      "%s%s%s", temp_base, needs_sep ? "\\" : "", suffix);
-#else
-                      "%s%s%s", temp_base, needs_sep ? "/" : "", suffix);
-#endif
+                      "%s%s%s", temp_base, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
         (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
       }
     }
@@ -500,14 +478,14 @@ static asciichat_error_t mkdir_recursive(const char *path) {
     p += 2;
   }
 #endif
-  // Skip leading slashes
-  while (*p == '/' || *p == '\\') {
+  // Skip leading separators
+  while (*p == PATH_DELIM) {
     p++;
   }
 
   // Create directories one level at a time
   for (; *p; p++) {
-    if (*p == '/' || *p == '\\') {
+    if (*p == PATH_DELIM) {
       *p = '\0'; // Temporarily truncate
 
       // Try to create this directory level
@@ -523,7 +501,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
         platform_close(test_fd);
       }
 
-      *p = '/'; // Restore path separator (normalize to Unix style)
+      *p = PATH_DELIM; // Restore path separator (use platform-specific separator)
     }
   }
 
@@ -574,10 +552,8 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   }
   memcpy(dir, path, path_len + 1);
 
-  // Find the last path separator (handle both / and \)
-  char *last_slash = strrchr(dir, '/');
-  char *last_backslash = strrchr(dir, '\\');
-  char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
+  // Find the last path separator
+  char *last_sep = strrchr(dir, PATH_DELIM);
 
   if (last_sep) {
     *last_sep = '\0'; // Truncate to get directory path

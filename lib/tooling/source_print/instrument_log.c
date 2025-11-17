@@ -499,13 +499,12 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
         SAFE_FREE(expanded);
         return false;
       }
-      safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%c%s", cwd_buf,
-#ifdef _WIN32
-                    '\\',
-#else
-                    '/',
-#endif
-                    expanded);
+      // Check if expanded already starts with a separator to avoid double separators
+      if (strlen(expanded) > 0 && expanded[0] == PATH_DELIM) {
+        safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%s", cwd_buf, expanded);
+      } else {
+        safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%c%s", cwd_buf, PATH_DELIM, expanded);
+      }
       SAFE_FREE(expanded);
       expanded = platform_strdup(absolute_buf);
       if (!expanded) {
@@ -572,13 +571,8 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     SAFE_FREE(validated_log_path);
   }
 
-  const char *last_sep = strrchr(runtime->log_path, '/');
-#ifdef _WIN32
-  const char *last_backslash = strrchr(runtime->log_path, '\\');
-  if (last_backslash != NULL && (last_sep == NULL || last_backslash > last_sep)) {
-    last_sep = last_backslash;
-  }
-#endif
+  // Find last path separator
+  const char *last_sep = strrchr(runtime->log_path, PATH_DELIM);
   if (last_sep != NULL && last_sep != runtime->log_path) {
     const size_t dir_path_len = (size_t)(last_sep - runtime->log_path);
     char dir_path[PATH_MAX];
@@ -968,15 +962,10 @@ static const char *ascii_instr_basename(const char *path) {
     return NULL;
   }
 
-  const char *slash = strrchr(path, '/');
-#ifdef _WIN32
-  const char *backslash = strrchr(path, '\\');
-  if (backslash != NULL && (slash == NULL || backslash > slash)) {
-    slash = backslash;
-  }
-#endif
-  if (slash != NULL && slash[1] != '\0') {
-    return slash + 1;
+  // Find last path separator
+  const char *last_sep = strrchr(path, PATH_DELIM);
+  if (last_sep != NULL && last_sep[1] != '\0') {
+    return last_sep + 1;
   }
   return path;
 }
@@ -992,11 +981,11 @@ static bool ascii_instr_path_contains_module(const char *file_path, const char *
     bool left_ok = (cursor == file_path);
     if (!left_ok) {
       const char prev = cursor[-1];
-      left_ok = (prev == '/' || prev == '\\');
+      left_ok = (prev == PATH_DELIM);
     }
 
     const char tail = cursor[module_len];
-    bool right_ok = (tail == '\0' || tail == '/' || tail == '\\');
+    bool right_ok = (tail == '\0' || tail == PATH_DELIM);
 
     if (left_ok && right_ok) {
       return true;
