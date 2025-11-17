@@ -318,3 +318,28 @@ else()
     endif()
 endif()
 
+# =============================================================================
+# Standalone Tests (No Criterion Dependency)
+# =============================================================================
+# These tests use standard assert.h and don't require the Criterion framework
+
+# Defer Runtime Test - validates LIFO cleanup ordering and memory management
+if(EXISTS "${PROJECT_SOURCE_DIR}/lib/tooling/defer/defer.c")
+    add_executable(test-defer EXCLUDE_FROM_ALL
+        tests/unit/tooling/defer_minimal_test.c
+        lib/tooling/defer/defer.c
+    )
+    target_include_directories(test-defer PRIVATE
+        ${PROJECT_SOURCE_DIR}/lib
+    )
+    # Link against the shared library for SAFE_MALLOC and log_* macros
+    # Use the shared library (DLL) which contains all symbols
+    target_link_libraries(test-defer
+        ascii-chat-shared
+    )
+    set_target_properties(test-defer PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+    message(STATUS "Added standalone test: test-defer")
+endif()
+
