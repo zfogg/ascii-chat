@@ -188,7 +188,7 @@ char *https_get(const char *hostname, const char *path) {
   log_info("Starting TLS handshake with %s", hostname);
 
   // Build HTTP request
-  char request[1024];
+  char request[BUFFER_SIZE_LARGE];
   int request_len = safe_snprintf(request, sizeof(request),
                                   "GET %s HTTP/1.1\r\n"
                                   "Host: %s\r\n"

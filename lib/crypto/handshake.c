@@ -623,7 +623,7 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     // Check if this server was previously connected to (IP verification)
     int known_host_result;
     const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
-    if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, "1") == 0) {
+    if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
       log_warn("Skipping known_hosts checking. This is a security vulnerability.");
       known_host_result = -1;
     } else {

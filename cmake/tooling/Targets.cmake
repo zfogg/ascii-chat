@@ -35,7 +35,7 @@ function(ascii_add_tooling_targets)
     include(HandleLLVMOptions)
 
     if(NOT TARGET ascii-instr-source-print)
-        add_executable(ascii-instr-source-print
+        add_executable(ascii-instr-source-print EXCLUDE_FROM_ALL
             src/tooling/source_print/tool.cpp
         )
     endif()

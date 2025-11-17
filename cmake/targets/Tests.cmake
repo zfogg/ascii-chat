@@ -327,16 +327,23 @@ endif()
 if(EXISTS "${PROJECT_SOURCE_DIR}/lib/tooling/defer/defer.c")
     add_executable(test-defer EXCLUDE_FROM_ALL
         tests/unit/tooling/defer_minimal_test.c
-        lib/tooling/defer/defer.c
     )
     target_include_directories(test-defer PRIVATE
         ${PROJECT_SOURCE_DIR}/lib
     )
     # Link against the shared library for SAFE_MALLOC and log_* macros
-    # Use the shared library (DLL) which contains all symbols
+    # Note: defer.c is NOT compiled directly here to avoid duplicate symbols
     target_link_libraries(test-defer
         ascii-chat-shared
     )
+    # Always link against ascii-chat-defer to get defer runtime functions
+    # If defer.c is already in ascii-chat-shared (when ASCII_DEFER_ENABLED is TRUE),
+    # the linker will use those symbols and ignore duplicates from ascii-chat-defer
+    if(TARGET ascii-chat-defer)
+        target_link_libraries(test-defer
+            ascii-chat-defer
+        )
+    endif()
     set_target_properties(test-defer PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
     )

@@ -38,7 +38,7 @@ endif()
 if(WIN32 AND BUILD_TESTS)
     message(STATUS "${BoldYellow}Criterion testing framework not found. Tests will not be built.${ColorReset}")
     message(STATUS "${BoldCyan}To run tests on Windows, use Docker:${ColorReset}")
-    message(STATUS "  ${BoldWhite}docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_defer'${ColorReset}")
+    message(STATUS "  ${BoldWhite}docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_ascii'${ColorReset}")
     set(BUILD_TESTS OFF)
 endif()
 

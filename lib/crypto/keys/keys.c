@@ -123,7 +123,7 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
 
     FILE *f = platform_fopen(normalized_path, "r");
     if (f) {
-      char line[1024];
+      char line[BUFFER_SIZE_LARGE];
       if (fgets(line, sizeof(line), f)) {
         (void)fclose(f);
         SAFE_FREE(normalized_path);
@@ -235,7 +235,7 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open client keys file: %s", keys_file);
   }
 
-  char line[1024];
+  char line[BUFFER_SIZE_LARGE];
 
   while (fgets(line, sizeof(line), f) && *num_keys < max_keys) {
     // Remove newline
@@ -357,7 +357,7 @@ asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, siz
     return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open keys file: %s", path);
   }
 
-  char line[1024];
+  char line[BUFFER_SIZE_LARGE];
   while (fgets(line, sizeof(line), f) && *num_keys < max_keys) {
     // Remove newline
     line[strcspn(line, "\r\n")] = 0;

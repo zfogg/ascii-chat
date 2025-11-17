@@ -109,7 +109,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   }
 
   // Read response
-  unsigned char response[8192];
+  unsigned char response[BUFFER_SIZE_XXXLARGE];
   ssize_t bytes_read = platform_pipe_read(pipe, response, sizeof(response));
   if (bytes_read < 9) {
     platform_pipe_close(pipe);
@@ -201,7 +201,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   //   string: private key (64 bytes)
   //   string: comment (key path or empty)
 
-  unsigned char buf[4096];
+  unsigned char buf[BUFFER_SIZE_XXLARGE];
   size_t pos = 4; // Reserve space for length prefix
 
   // Message type: SSH2_AGENTC_ADD_IDENTITY
@@ -262,7 +262,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
   }
 
   // Read response
-  unsigned char response[256];
+  unsigned char response[BUFFER_SIZE_SMALL];
   ssize_t bytes_read = platform_pipe_read(pipe, response, sizeof(response));
   if (bytes_read < 5) {
     platform_pipe_close(pipe);
