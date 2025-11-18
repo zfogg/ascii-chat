@@ -81,10 +81,19 @@ void ascii_defer_execute_all(ascii_defer_scope_t *scope) {
                       i, (void*)action->fn, action->context);
 
             // Call the deferred function
-            action->fn(action->context);
+            // For pointer-sized contexts (like defer(free(ptr))), we need to dereference
+            // the stored value to get the actual pointer, like Go's defer semantics
+            if (action->context && action->context_size == sizeof(void*)) {
+                void *actual_ptr = *(void**)action->context;
+                log_debug("Dereferencing pointer-sized context: %p -> %p",
+                          action->context, actual_ptr);
+                action->fn(actual_ptr);
+            } else {
+                action->fn(action->context);
+            }
         }
 
-        // Free context memory
+        // Free context memory (the heap-allocated buffer, not the user's pointer)
         if (action->context) {
             free(action->context);
             action->context = NULL;

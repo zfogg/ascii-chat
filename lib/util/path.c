@@ -37,6 +37,7 @@ static const char *normalize_path(const char *path) {
 #ifdef _WIN32
   if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
     absolute = true;
+    pos += 3; /* Skip the drive letter and colon and separator (e.g., "C:\") */
   }
 #else
   if (path_len >= 1 && path[0] == PATH_DELIM) {
@@ -197,12 +198,22 @@ char *expand_path(const char *path) {
 #endif
 
     char *expanded;
-    size_t total_len = strlen(home) + strlen(path) + 1;
+    size_t total_len = strlen(home) + strlen(path) + 1;  // path includes the tilde
     expanded = SAFE_MALLOC(total_len, char *);
     if (!expanded) {
       return NULL;
     }
     safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
+
+    #ifdef _WIN32
+    // Convert Unix forward slashes to Windows backslashes
+    for (char *p = expanded; *p; p++) {
+      if (*p == '/') {
+        *p = '\\';
+      }
+    }
+    #endif
+
     return expanded;
   }
   return platform_strdup(path);
@@ -522,9 +533,9 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   }
 
 #ifdef _WIN32
+  char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
   const char *program_data = platform_getenv("PROGRAMDATA");
   if (program_data) {
-    char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
     build_ascii_chat_path(program_data, "ascii-chat", program_data_logs, sizeof(program_data_logs));
     append_base_if_valid(program_data_logs, bases, &base_count);
   }
@@ -533,7 +544,13 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   append_base_if_valid("/var/tmp", bases, &base_count);
 #endif
 
-  bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+  // For log files, skip the "allowed directories" check - allow any path
+  bool allowed;
+  if (role == PATH_ROLE_LOG_FILE) {
+    allowed = true;
+  } else {
+    allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+  }
 
   if (!allowed) {
     SAFE_FREE(expanded);
