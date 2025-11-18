@@ -499,7 +499,8 @@ char *image_print_color(const image_t *p, const char *palette) {
     for (int x = 0; x < w; x++) {
       const rgb_t pixel = pix[row_offset + x];
       int r = pixel.r, g = pixel.g, b = pixel.b;
-      const int luminance = RED[r] + GREEN[g] + BLUE[b];
+      // Standard ITU-R BT.601 luminance calculation
+      const int luminance = (77 * r + 150 * g + 29 * b + 128) >> 8;
 
       // Use UTF-8 character cache for proper character selection
       int safe_luminance = (luminance > 255) ? 255 : luminance;
