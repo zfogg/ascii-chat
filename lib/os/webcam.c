@@ -57,7 +57,7 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
 image_t *webcam_read(void) {
   // Check if test pattern mode is enabled
   if (opt_test_pattern) {
-    // Generate a test pattern image
+    // Generate a test pattern image with animation
     static int frame_counter = 0;
     frame_counter++;
 
@@ -124,11 +124,15 @@ image_t *webcam_read(void) {
         }
         }
 
-        // Add a moving diagonal pattern
-        int diagonal = (x + y + frame_counter * 10) % 256;
-        pixel->r = (uint8_t)((int)pixel->r + diagonal) / 2;
-        pixel->g = (uint8_t)((int)pixel->g + diagonal) / 2;
-        pixel->b = (uint8_t)((int)pixel->b + diagonal) / 2;
+        // Add subtle brightness pulsing for animation (keeps colors vibrant)
+        // Create a horizontal wave pattern that moves across the screen
+        int wave_offset = (x + frame_counter * 5) % 256;
+        float brightness_factor = 0.85f + 0.15f * (wave_offset / 255.0f); // Range: 0.85 to 1.0
+
+        // Apply brightness modulation while preserving color saturation
+        pixel->r = (uint8_t)(pixel->r * brightness_factor);
+        pixel->g = (uint8_t)(pixel->g * brightness_factor);
+        pixel->b = (uint8_t)(pixel->b * brightness_factor);
 
         // Add grid lines for visual separation (but skip center lines to avoid artifacts)
         int center_x = test_frame->w / 2;
