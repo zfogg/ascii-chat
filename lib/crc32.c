@@ -6,6 +6,7 @@
 
 #include "crc32.h"
 #include <string.h>
+#include <stdio.h>
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)
@@ -101,12 +102,28 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
   check_crc32_hw_support();
 
   if (!crc32_hw_available) {
+    // DEBUG: Log fallback to software
+    static bool logged_fallback = false;
+    if (!logged_fallback) {
+      fprintf(stderr, "[CRC32 DEBUG] Using software CRC32 (no hardware acceleration)\n");
+      logged_fallback = true;
+    }
     return asciichat_crc32_sw(data, len);
   }
 
 #ifdef ARCH_ARM64
+  static bool logged_arm = false;
+  if (!logged_arm) {
+    fprintf(stderr, "[CRC32 DEBUG] Using ARM64 hardware CRC32\n");
+    logged_arm = true;
+  }
   return crc32_arm_hw(data, len);
 #elif defined(ARCH_X86_64)
+  static bool logged_intel = false;
+  if (!logged_intel) {
+    fprintf(stderr, "[CRC32 DEBUG] Using Intel x86_64 hardware CRC32 (SSE4.2)\n");
+    logged_intel = true;
+  }
   return crc32_intel_hw(data, len);
 #else
   return asciichat_crc32_sw(data, len);
