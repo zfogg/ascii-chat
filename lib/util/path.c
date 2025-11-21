@@ -47,8 +47,8 @@ static const char *normalize_path(const char *path) {
 
   /* Parse path into components */
   while (*pos) {
-    /* Skip leading separators */
-    while (*pos == PATH_DELIM) {
+    /* Skip leading separators (handle both / and \ on all platforms) */
+    while (*pos == '/' || *pos == '\\') {
       pos++;
     }
 
@@ -56,7 +56,7 @@ static const char *normalize_path(const char *path) {
       break;
 
     const char *component_start = pos;
-    while (*pos && *pos != PATH_DELIM) {
+    while (*pos && *pos != '/' && *pos != '\\') {
       pos++;
     }
 
@@ -108,7 +108,7 @@ static const char *normalize_path(const char *path) {
 #endif
 
   for (int i = 0; i < component_count; i++) {
-    if (i > 0 || absolute) {
+    if (i > 0) {
       normalized[out_pos++] = PATH_DELIM;
     }
     size_t comp_len = strlen(components[i]);
