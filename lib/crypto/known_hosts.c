@@ -479,14 +479,14 @@ static asciichat_error_t mkdir_recursive(const char *path) {
     p += 2;
   }
 #endif
-  // Skip leading separators
-  while (*p == PATH_DELIM) {
+  // Skip leading separators (handle both / and \ on all platforms)
+  while (*p == '/' || *p == '\\') {
     p++;
   }
 
   // Create directories one level at a time
   for (; *p; p++) {
-    if (*p == PATH_DELIM) {
+    if (*p == '/' || *p == '\\') {
       *p = '\0'; // Temporarily truncate
 
       // Try to create this directory level
