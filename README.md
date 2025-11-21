@@ -17,7 +17,9 @@ It even works in an initial UNIX login shell, i.e. the login shell that runs
 
 ![Animated demonstration: monochrome](https://i.imgur.com/E4OuqvX.gif)
 
-![Animated demonstration: color](https://github.com/user-attachments/assets/3bbaaad0-2e62-46e8-9653-bd5201c4b7df)
+Supports color and multiple clients.
+
+![Animated demonstration: multi-client](https://i.imgur.com/OYcv7jP.gif)
 
 
 ## Table of Contents
