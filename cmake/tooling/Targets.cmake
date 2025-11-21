@@ -5,6 +5,11 @@ endif()
 set(ASCII_DEBUG_TARGETS_CMAKE_INCLUDED TRUE)
 
 function(ascii_add_tooling_targets)
+    # Guard against multiple calls to this function
+    if(TARGET ascii-debug-runtime)
+        return()
+    endif()
+
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
             get_filename_component(_clang_dir "${CMAKE_C_COMPILER}" DIRECTORY)
