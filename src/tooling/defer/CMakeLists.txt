@@ -269,26 +269,40 @@ else()
             message(FATAL_ERROR "Could not find Clang libraries. Please install clang-dev or llvm-dev package.")
         endif()
 
+        # Use linker group to handle complex interdependencies between Clang static libraries
+        # This is necessary because libraries like clangAnalysis depend on clangASTMatchers,
+        # clangParse depends on clangSema, and clangAPINotes depends on clangFrontend
+        # The group allows the linker to iterate until all symbols are resolved
+        if(NOT APPLE)
+            target_link_options(ascii-instr-defer PRIVATE "LINKER:--start-group")
+        endif()
+
         target_link_libraries(ascii-instr-defer PRIVATE
             ${CLANG_TOOLING_LIB}
             ${CLANG_FRONTEND_LIB}
             ${CLANG_DRIVER_LIB}
             ${CLANG_SERIALIZATION_LIB}
-            ${CLANG_SEMA_LIB}
             ${CLANG_CODEGEN_LIB}
-            ${CLANG_PARSE_LIB}
             ${CLANG_REWRITEFRONTEND_LIB}
             ${CLANG_REWRITE_LIB}
-            ${CLANG_AST_LIB}
-            ${CLANG_ASTMATCHERS_LIB}
-            ${CLANG_EDIT_LIB}
+            ${CLANG_PARSE_LIB}
+            ${CLANG_SEMA_LIB}
             ${CLANG_ANALYSIS_LIB}
+            ${CLANG_ASTMATCHERS_LIB}
+            ${CLANG_AST_LIB}
+            ${CLANG_EDIT_LIB}
             ${CLANG_LEX_LIB}
             ${CLANG_BASIC_LIB}
             ${CLANG_APINOTES_LIB}
             ${CLANG_SUPPORT_LIB}
-            ${LLVM_SHARED_LIB}
         )
+
+        if(NOT APPLE)
+            target_link_options(ascii-instr-defer PRIVATE "LINKER:--end-group")
+        endif()
+
+        # LLVM shared library goes outside the group
+        target_link_libraries(ascii-instr-defer PRIVATE ${LLVM_SHARED_LIB})
     else()
         target_link_libraries(ascii-instr-defer PRIVATE
             ${CLANG_CPP_SHARED_LIB}
