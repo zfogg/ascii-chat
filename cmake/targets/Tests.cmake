@@ -252,6 +252,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
                 ascii-chat-debug
                 ascii-chat-network
                 ascii-chat-crypto
+                ascii-chat-defer
                 -Wl,--end-group
             )
         elseif(APPLE)
@@ -262,6 +263,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
                 ascii-chat-util
                 ascii-chat-network
                 ascii-chat-crypto
+                ascii-chat-defer
             )
         endif()
 
