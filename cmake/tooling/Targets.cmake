@@ -24,6 +24,11 @@ function(ascii_add_tooling_targets)
         enable_language(CXX)
     endif()
 
+    # Find LLVM dependencies first (required by LLVM's CMake config)
+    find_package(ZLIB QUIET)
+    find_package(zstd QUIET CONFIG)
+    find_package(CURL QUIET)
+
     find_package(LLVM REQUIRED CONFIG)
     find_package(Clang REQUIRED CONFIG)
     find_package(Threads REQUIRED)
