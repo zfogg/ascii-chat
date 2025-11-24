@@ -245,7 +245,8 @@ else()
     if(NOT CLANG_CPP_SHARED_LIB)
         message(STATUS "clang-cpp not found, trying individual Clang libraries")
 
-        # Find individual Clang libraries
+        # Find all required Clang static libraries
+        # These libraries have many interdependencies, so we need most of them
         find_library(CLANG_TOOLING_LIB NAMES clangTooling PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
         find_library(CLANG_FRONTEND_LIB NAMES clangFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
         find_library(CLANG_DRIVER_LIB NAMES clangDriver PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
@@ -255,6 +256,14 @@ else()
         find_library(CLANG_AST_LIB NAMES clangAST PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
         find_library(CLANG_BASIC_LIB NAMES clangBasic PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
         find_library(CLANG_LEX_LIB NAMES clangLex PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_REWRITE_LIB NAMES clangRewrite PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_REWRITEFRONTEND_LIB NAMES clangRewriteFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_SERIALIZATION_LIB NAMES clangSerialization PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_EDIT_LIB NAMES clangEdit PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_ANALYSIS_LIB NAMES clangAnalysis PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_ASTMATCHERS_LIB NAMES clangASTMatchers PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_APINOTES_LIB NAMES clangAPINotes PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_SUPPORT_LIB NAMES clangSupport PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 
         if(NOT CLANG_TOOLING_LIB OR NOT LLVM_SHARED_LIB)
             message(FATAL_ERROR "Could not find Clang libraries. Please install clang-dev or llvm-dev package.")
@@ -264,12 +273,20 @@ else()
             ${CLANG_TOOLING_LIB}
             ${CLANG_FRONTEND_LIB}
             ${CLANG_DRIVER_LIB}
+            ${CLANG_SERIALIZATION_LIB}
             ${CLANG_SEMA_LIB}
             ${CLANG_CODEGEN_LIB}
             ${CLANG_PARSE_LIB}
+            ${CLANG_REWRITEFRONTEND_LIB}
+            ${CLANG_REWRITE_LIB}
             ${CLANG_AST_LIB}
-            ${CLANG_BASIC_LIB}
+            ${CLANG_ASTMATCHERS_LIB}
+            ${CLANG_EDIT_LIB}
+            ${CLANG_ANALYSIS_LIB}
             ${CLANG_LEX_LIB}
+            ${CLANG_BASIC_LIB}
+            ${CLANG_APINOTES_LIB}
+            ${CLANG_SUPPORT_LIB}
             ${LLVM_SHARED_LIB}
         )
     else()
