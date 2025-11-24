@@ -131,8 +131,29 @@ function(ascii_add_tooling_targets)
         message(STATUS "Found zstd: ${ZSTD_LIBRARY}")
     endif()
 
-    # Find ncurses/tinfo for terminal support (Unix only, optional)
-    find_library(NCURSES_LIBRARY NAMES ncurses tinfo)
+    # Find ncurses/tinfo for terminal support (required on Unix for LLVM)
+    if(UNIX)
+        find_library(NCURSES_LIBRARY
+            NAMES tinfo ncurses
+            PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib
+                /lib/x86_64-linux-gnu
+                /lib
+            NO_DEFAULT_PATH
+        )
+
+        # Also try default paths if not found
+        if(NOT NCURSES_LIBRARY)
+            find_library(NCURSES_LIBRARY NAMES tinfo ncurses)
+        endif()
+
+        if(NOT NCURSES_LIBRARY)
+            message(FATAL_ERROR "ncurses/tinfo not found - required for LLVM terminal support on Unix. Install: sudo apt install libncurses-dev")
+        else()
+            message(STATUS "Found ncurses/tinfo: ${NCURSES_LIBRARY}")
+        endif()
+    endif()
 
     # Find Clang libraries manually (avoid broken CMake config)
     set(CLANG_LIBS
@@ -336,8 +357,8 @@ function(ascii_add_tooling_targets)
         ${ZSTD_LIBRARY}
     )
 
-    # Link ncurses if available (Unix only, optional)
-    if(NCURSES_LIBRARY)
+    # Link ncurses on Unix (required for LLVM terminal support)
+    if(UNIX AND NCURSES_LIBRARY)
         target_link_libraries(ascii-instr-defer PRIVATE ${NCURSES_LIBRARY})
     endif()
 
@@ -560,8 +581,8 @@ function(ascii_add_tooling_targets)
         ${ZSTD_LIBRARY}
     )
 
-    # Link ncurses if available (Unix only, optional)
-    if(NCURSES_LIBRARY)
+    # Link ncurses on Unix (required for LLVM terminal support)
+    if(UNIX AND NCURSES_LIBRARY)
         target_link_libraries(ascii-instr-source-print PRIVATE ${NCURSES_LIBRARY})
     endif()
 
