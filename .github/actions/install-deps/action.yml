@@ -80,9 +80,10 @@ runs:
         # Clean up to reduce cache size
         brew cleanup
 
-    - name: Cache APT packages (Ubuntu)
+    - name: Restore APT cache (Ubuntu)
       if: inputs.os == 'ubuntu'
-      uses: actions/cache@v4
+      id: apt-cache
+      uses: actions/cache/restore@v4
       with:
         path: |
           /var/cache/apt/archives
@@ -404,3 +405,12 @@ runs:
           ${{ env.VCPKG_ROOT }}/packages
           ${{ env.VCPKG_ROOT }}/buildtrees
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
+
+    - name: Save APT cache (Ubuntu)
+      if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          /var/cache/apt/archives
+          /var/lib/apt/lists
+        key: ${{ runner.os }}-apt-v2-${{ inputs.extra-packages }}
