@@ -92,6 +92,10 @@ jobs:
       with:
         cache-version: v2
 
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
+
     - name: Run static analysis
       run: |
         # Build with CMake for static analysis
