@@ -10,6 +10,20 @@ function(ascii_add_tooling_targets)
         return()
     endif()
 
+    # IMPORTANT: Tooling executables run on BUILD system, not TARGET system
+    # Save and clear musl/cross-compile flags before creating tooling targets
+    set(_SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(_SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(_SAVED_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+
+    # Clear musl and target-specific flags for tooling
+    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REGEX REPLACE "-static-pie" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REGEX REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    string(REGEX REPLACE "-L/usr/lib/[^ ]*musl[^ ]*" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
             get_filename_component(_clang_dir "${CMAKE_C_COMPILER}" DIRECTORY)
@@ -188,8 +202,8 @@ function(ascii_add_tooling_targets)
 
     target_compile_features(ascii-instr-defer PRIVATE cxx_std_20)
 
-    # Build ascii-instr-defer without sanitizers to match LLVM libraries
-    # Also disable LTO since LLVM libraries are not built with LTO
+    # Build ascii-instr-defer for the BUILD system (not musl/target system)
+    # Tooling runs during build, so it needs native system libraries
     target_compile_options(ascii-instr-defer PRIVATE
         -O0
         -g
@@ -203,6 +217,15 @@ function(ascii_add_tooling_targets)
     target_link_options(ascii-instr-defer PRIVATE
         -fno-sanitize=all
         -fno-lto
+    )
+
+    # Override musl/cross-compile flags - tooling must use native system libs
+    set_target_properties(ascii-instr-defer PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
+        INTERPROCEDURAL_OPTIMIZATION OFF
+        # Use native dynamic linker, not musl static
+        LINK_FLAGS "-dynamic"
+        POSITION_INDEPENDENT_CODE ON
     )
 
     # Note: C++ standard library is linked automatically by clang++
@@ -517,6 +540,11 @@ function(ascii_add_tooling_targets)
         )
         set_target_properties(ascii-source-print-report PROPERTIES OUTPUT_NAME "ascii-source-print-report")
     endif()
+
+    # Restore original flags for other targets (in case function was called mid-build)
+    set(CMAKE_C_FLAGS "${_SAVED_CMAKE_C_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS "${_SAVED_CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS "${_SAVED_CMAKE_EXE_LINKER_FLAGS}" PARENT_SCOPE)
 endfunction()
 
 function(ascii_add_debug_targets)
