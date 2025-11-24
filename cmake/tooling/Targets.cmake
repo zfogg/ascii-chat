@@ -347,31 +347,63 @@ function(ascii_add_tooling_targets)
         endif()
     endif()
 
-    if(TARGET clang-cpp)
-        target_link_libraries(ascii-instr-defer PRIVATE clang-cpp)
-    endif()
-
-    target_link_libraries(ascii-instr-defer PRIVATE LLVMSupport)
-
-    target_link_libraries(ascii-instr-defer PRIVATE
-        clangTooling
-        clangFrontend
-        clangAST
-        clangASTMatchers
-        clangBasic
-        clangRewrite
-        clangRewriteFrontend
-        clangLex
-        clangSerialization
-        clangDriver
-        clangParse
-        clangSema
-        clangEdit
-        clangAnalysis
-        clangAPINotes
-        clangSupport
-        ${LLVM_LIB_LIST}
+    # Link against shared LLVM library to avoid duplicate command-line option registration
+    # Using static libraries causes "Option 'debug-counter' registered more than once" error
+    find_library(LLVM_SHARED_LIB
+        NAMES LLVM-18 LLVM
+        PATHS ${LLVM_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
     )
+
+    if(LLVM_SHARED_LIB)
+        message(STATUS "Using shared LLVM library: ${LLVM_SHARED_LIB}")
+        target_link_libraries(ascii-instr-defer PRIVATE
+            clangTooling
+            clangFrontend
+            clangAST
+            clangASTMatchers
+            clangBasic
+            clangRewrite
+            clangRewriteFrontend
+            clangLex
+            clangSerialization
+            clangDriver
+            clangParse
+            clangSema
+            clangEdit
+            clangAnalysis
+            clangAPINotes
+            clangSupport
+            ${LLVM_SHARED_LIB}
+        )
+    else()
+        # Fallback to static libraries (may have command-line option conflicts)
+        if(TARGET clang-cpp)
+            target_link_libraries(ascii-instr-defer PRIVATE clang-cpp)
+        endif()
+
+        target_link_libraries(ascii-instr-defer PRIVATE LLVMSupport)
+
+        target_link_libraries(ascii-instr-defer PRIVATE
+            clangTooling
+            clangFrontend
+            clangAST
+            clangASTMatchers
+            clangBasic
+            clangRewrite
+            clangRewriteFrontend
+            clangLex
+            clangSerialization
+            clangDriver
+            clangParse
+            clangSema
+            clangEdit
+            clangAnalysis
+            clangAPINotes
+            clangSupport
+            ${LLVM_LIB_LIST}
+        )
+    endif()
 
     # Link required system libraries that LLVM/Clang depend on
     target_link_libraries(ascii-instr-defer PRIVATE
@@ -570,32 +602,57 @@ function(ascii_add_tooling_targets)
 
     # LLVM_LIB_LIST already set from llvm-config above
 
-    if(TARGET clang-cpp)
-        target_link_libraries(ascii-instr-source-print PRIVATE clang-cpp)
+    # Link against shared LLVM library to avoid duplicate command-line option registration
+    # (reuse LLVM_SHARED_LIB from ascii-instr-defer above)
+    if(LLVM_SHARED_LIB)
+        target_link_libraries(ascii-instr-source-print PRIVATE
+            clangTooling
+            clangFrontend
+            clangAST
+            clangASTMatchers
+            clangBasic
+            clangRewrite
+            clangRewriteFrontend
+            clangLex
+            clangSerialization
+            clangDriver
+            clangParse
+            clangSema
+            clangEdit
+            clangAnalysis
+            clangAPINotes
+            clangSupport
+            ${LLVM_SHARED_LIB}
+        )
+    else()
+        # Fallback to static libraries (may have command-line option conflicts)
+        if(TARGET clang-cpp)
+            target_link_libraries(ascii-instr-source-print PRIVATE clang-cpp)
+        endif()
+
+        # Link LLVMSupport EXPLICITLY and FIRST to ensure command-line static initialization works
+        target_link_libraries(ascii-instr-source-print PRIVATE LLVMSupport)
+
+        target_link_libraries(ascii-instr-source-print PRIVATE
+            clangTooling
+            clangFrontend
+            clangAST
+            clangASTMatchers
+            clangBasic
+            clangRewrite
+            clangRewriteFrontend
+            clangLex
+            clangSerialization
+            clangDriver
+            clangParse
+            clangSema
+            clangEdit
+            clangAnalysis
+            clangAPINotes
+            clangSupport
+            ${LLVM_LIB_LIST}
+        )
     endif()
-
-    # Link LLVMSupport EXPLICITLY and FIRST to ensure command-line static initialization works
-    target_link_libraries(ascii-instr-source-print PRIVATE LLVMSupport)
-
-    target_link_libraries(ascii-instr-source-print PRIVATE
-        clangTooling
-        clangFrontend
-        clangAST
-        clangASTMatchers
-        clangBasic
-        clangRewrite
-        clangRewriteFrontend
-        clangLex
-        clangSerialization
-        clangDriver
-        clangParse
-        clangSema
-        clangEdit
-        clangAnalysis
-        clangAPINotes
-        clangSupport
-        ${LLVM_LIB_LIST}
-    )
 
     # Link required system libraries that LLVM/Clang depend on
     target_link_libraries(ascii-instr-source-print PRIVATE
