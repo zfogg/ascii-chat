@@ -28,11 +28,11 @@
 #include <unistd.h> // For STDIN_FILENO on POSIX
 #endif
 
-#include "known_hosts.h"
-#include "crypto.h"          // For CRYPTO_* hex size and string literal constants
+#include "crypto/known_hosts.h"
+#include "crypto/crypto.h"          // For CRYPTO_* hex size and string literal constants
 #include "common.h"          // For BUFFER_SIZE_* constants
 #include "asciichat_errno.h" // For asciichat_errno system
-#include "keys/keys.h"
+#include "crypto/keys/keys.h"
 #include "util/ip.h"
 #include "platform/internal.h"
 #include "platform/system.h" // For platform_isatty() and FILE_PERM_* constants
@@ -127,9 +127,9 @@ const char *get_known_hosts_path(void) {
   if (!g_known_hosts_path_cache) {
     // Get platform-specific base directories for path validation
     char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
+    defer(safe_free_wrapper(&config_dir));
     char *home_dir = expand_path("~");
-    defer(SAFE_FREE(home_dir));
+    defer(safe_free_wrapper(&home_dir));
 
     // Build list of allowed base directories for path validation
     const char *allowed_bases[6] = {0};
@@ -180,7 +180,7 @@ const char *get_known_hosts_path(void) {
     // Strategy 2: Try standard KNOWN_HOSTS_PATH define (e.g., ~/.ascii-chat/known_hosts)
     if (!g_known_hosts_path_cache) {
       char *expanded = expand_path(KNOWN_HOSTS_PATH);
-      defer(SAFE_FREE(expanded));
+      defer(safe_free_wrapper(&expanded));
       if (expanded) {
         (void)try_set_known_hosts_path(expanded, allowed_bases, allowed_base_count);
       }
@@ -252,7 +252,7 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
   }
   FILE *f = platform_fdopen(fd, "r");
-  defer(if (f) fclose(f));
+  defer(safe_fclose_wrapper(&f));
   if (!f) {
     // Failed to open file descriptor as FILE*
     platform_close(fd);
@@ -391,7 +391,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
   }
 
   FILE *f = platform_fdopen(fd, "r");
-  defer(if (f) fclose(f));
+  defer(safe_fclose_wrapper(&f));
   if (!f) {
     // Failed to open file descriptor as FILE*
     platform_close(fd);
@@ -463,7 +463,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
   // Make a mutable copy of the path
   size_t len = strlen(path);
   char *tmp = SAFE_MALLOC(len + 1, char *);
-  defer(SAFE_FREE(tmp));
+  defer(safe_free_wrapper(&tmp));
   if (!tmp) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for path");
   }
@@ -540,7 +540,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
     return ERROR_CONFIG;
   }
   char *dir = SAFE_MALLOC(path_len + 1, char *);
-  defer(SAFE_FREE(dir));
+  defer(safe_free_wrapper(&dir));
   if (!dir) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
     return ERROR_MEMORY;
@@ -563,7 +563,7 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   // log_debug("KNOWN_HOSTS: Attempting to create/open file: %s", path);
   // Use "a" mode for append-only (simpler and works better with chmod)
   FILE *f = platform_fopen(path, "a");
-  defer(if (f) fclose(f));
+  defer(safe_fclose_wrapper(&f));
   if (!f) {
     // log_debug("KNOWN_HOSTS: platform_fopen failed: %s (errno=%d)", SAFE_STRERROR(errno), errno);
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create/open known hosts file: %s", path);
@@ -634,7 +634,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
     return ASCIICHAT_OK;
   }
   FILE *f = platform_fdopen(fd, "r");
-  defer(if (f) fclose(f));
+  defer(safe_fclose_wrapper(&f));
   if (!f) {
     platform_close(fd);
     SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open known hosts file: %s", path);

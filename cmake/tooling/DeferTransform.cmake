@@ -245,28 +245,8 @@ function(ascii_defer_prepare)
         list(APPEND _all_generated_outputs "${_gen_path}")
     endforeach()
 
-    # Copy header files (they can't be transformed since they're not in compilation database)
-    list(LENGTH header_abs_paths _num_headers)
-    if(_num_headers GREATER 0)
-        math(EXPR _last_header_idx "${_num_headers} - 1")
-        foreach(_hidx RANGE 0 ${_last_header_idx})
-            list(GET header_abs_paths ${_hidx} _header_abs_path)
-            list(GET header_rel_paths ${_hidx} _header_rel_path)
-            list(GET header_generated_paths ${_hidx} _header_gen_path)
-
-            get_filename_component(_header_gen_dir "${_header_gen_path}" DIRECTORY)
-
-            add_custom_command(
-                OUTPUT "${_header_gen_path}"
-                COMMAND ${CMAKE_COMMAND} -E make_directory "${_header_gen_dir}"
-                COMMAND ${CMAKE_COMMAND} -E copy "${_header_abs_path}" "${_header_gen_path}"
-                DEPENDS "${_header_abs_path}"
-                COMMENT "Copying header ${_header_rel_path}"
-                VERBATIM
-            )
-            list(APPEND _all_generated_outputs "${_header_gen_path}")
-        endforeach()
-    endif()
+    # Headers are NOT copied - transformed C files use original headers via include paths
+    # This avoids issues with relative includes like ../common.h in copied headers
 
     # Copy excluded files individually (these don't need transformation)
     foreach(excluded_file IN LISTS _ascii_defer_excluded_sources)
