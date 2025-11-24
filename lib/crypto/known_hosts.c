@@ -650,8 +650,15 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
 
   // Read all lines into memory
   char **lines = NULL;
-  defer(SAFE_FREE(lines));
   size_t num_lines = 0;
+  defer({
+    if (lines) {
+      for (size_t i = 0; i < num_lines; i++) {
+        SAFE_FREE(lines[i]);
+      }
+    }
+    SAFE_FREE(lines);
+  });
   char line[BUFFER_SIZE_XLARGE];
 
   char expected_prefix[BUFFER_SIZE_MEDIUM];
@@ -680,18 +687,15 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   f = platform_fdopen(fd, "w");
   if (!f) {
     // Cleanup on error - fdopen failed, so fd is still open but f is NULL
-    for (size_t i = 0; i < num_lines; i++) {
-      SAFE_FREE(lines[i]);
-    }
+    // Individual line strings will be freed by defer cleanup
     platform_close(fd); // Close fd directly since fdopen failed
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open known hosts file: %s", path);
   }
 
   for (size_t i = 0; i < num_lines; i++) {
     (void)fputs(lines[i], f);
-    SAFE_FREE(lines[i]);
   }
-  // f will be closed by first defer() at function exit
+  // All cleanup (lines, individual strings, file handle) handled by defer statements
 
   log_debug("KNOWN_HOSTS: Successfully removed host from known_hosts file: %s", path);
   return ASCIICHAT_OK;
