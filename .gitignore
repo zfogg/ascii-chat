@@ -6,6 +6,7 @@ compile_commands.json
 .env
 *.log
 *.txt
+!CMakeLists.txt
 *.old
 .cache
 *.o

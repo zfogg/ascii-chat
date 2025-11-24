@@ -34,6 +34,11 @@ function(ascii_add_tooling_targets)
         string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
         string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
     else()
+        # On non-Windows, completely clear linker flags (musl uses -static-pie)
+        # Must also clear PARENT_SCOPE to prevent re-application
+        set(CMAKE_EXE_LINKER_FLAGS "" PARENT_SCOPE)
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "" PARENT_SCOPE)
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "" PARENT_SCOPE)
         set(CMAKE_EXE_LINKER_FLAGS "")
         set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
         set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
@@ -317,7 +322,24 @@ function(ascii_add_tooling_targets)
         list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-target.*")
         list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*musl.*")
         list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-DUSE_MUSL.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-static.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-nostdlib.*")
         set_target_properties(ascii-instr-defer PROPERTIES COMPILE_OPTIONS "${_inherited_compile_opts}")
+    endif()
+
+    # Also clear link options that might have musl/static flags from add_link_options()
+    get_target_property(_inherited_link_opts ascii-instr-defer LINK_OPTIONS)
+    message(STATUS "defer tool link options BEFORE filtering: ${_inherited_link_opts}")
+    if(_inherited_link_opts)
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*-target.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*musl.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*-static.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*-nostdlib.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*rcrt.*")
+        set_target_properties(ascii-instr-defer PROPERTIES LINK_OPTIONS "${_inherited_link_opts}")
+        message(STATUS "defer tool link options AFTER filtering: ${_inherited_link_opts}")
+    else()
+        message(STATUS "defer tool has NO link options to filter")
     endif()
 
     target_compile_options(ascii-instr-defer PRIVATE
@@ -346,12 +368,40 @@ function(ascii_add_tooling_targets)
         set_target_properties(ascii-instr-defer PROPERTIES
             LINK_FLAGS "/SUBSYSTEM:CONSOLE"
         )
+    else()
+        # On Linux, override any -static or -static-pie flags from musl builds
+        # Tooling must use dynamic linking for shared Clang/LLVM libraries
+        # Explicitly clear all musl-related linker flags
+        # IMPORTANT: Must remove musl target, static flags, and custom startup files
+        set_target_properties(ascii-instr-defer PROPERTIES
+            LINK_FLAGS "-target x86_64-linux-gnu"  # Override musl target with gnu
+            LINK_SEARCH_START_STATIC FALSE
+            LINK_SEARCH_END_STATIC FALSE
+            ENABLE_EXPORTS FALSE
+        )
+        # Remove musl target triple and static flags
+        get_target_property(_link_opts ascii-instr-defer LINK_OPTIONS)
+        if(_link_opts)
+            list(FILTER _link_opts EXCLUDE REGEX ".*-target.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*-static.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*musl.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*-nostdlib.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*rcrt.*")
+            set_target_properties(ascii-instr-defer PROPERTIES LINK_OPTIONS "${_link_opts}")
+        endif()
     endif()
 
     target_link_options(ascii-instr-defer PRIVATE
         -fno-sanitize=all
         -fno-lto
     )
+
+    # On non-Windows, force dynamic linking to prevent musl -static flags from affecting tooling
+    if(NOT WIN32)
+        target_link_options(ascii-instr-defer PRIVATE
+            -Wl,-Bdynamic
+        )
+    endif()
 
     # Note: C++ standard library is linked automatically by clang++
     # On macOS with Homebrew LLVM, we may need explicit libc++
@@ -410,6 +460,13 @@ function(ascii_add_tooling_targets)
     # On Windows, LLVM-C.lib is a DLL import library, not what we want
     # We need static Clang libraries only on Windows
     if(NOT WIN32)
+        # Try to find shared Clang library (monolithic libclang-cpp.so on Linux)
+        find_library(CLANG_CPP_SHARED_LIB
+            NAMES clang-cpp
+            PATHS ${LLVM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
+
         find_library(LLVM_SHARED_LIB
             NAMES LLVM-C LLVM-18 LLVM
             PATHS ${LLVM_LIBRARY_DIRS}
@@ -418,11 +475,20 @@ function(ascii_add_tooling_targets)
     endif()
 
     if(LLVM_SHARED_LIB AND NOT WIN32)
-        message(STATUS "Using shared LLVM library: ${LLVM_SHARED_LIB}")
-        target_link_libraries(ascii-instr-defer PRIVATE
-            ${CLANG_LIBS}
-            ${LLVM_SHARED_LIB}
-        )
+        if(CLANG_CPP_SHARED_LIB)
+            message(STATUS "Using shared Clang library: ${CLANG_CPP_SHARED_LIB}")
+            message(STATUS "Using shared LLVM library: ${LLVM_SHARED_LIB}")
+            target_link_libraries(ascii-instr-defer PRIVATE
+                ${CLANG_CPP_SHARED_LIB}
+                ${LLVM_SHARED_LIB}
+            )
+        else()
+            message(STATUS "Using shared LLVM library with static Clang: ${LLVM_SHARED_LIB}")
+            target_link_libraries(ascii-instr-defer PRIVATE
+                ${CLANG_LIBS}
+                ${LLVM_SHARED_LIB}
+            )
+        endif()
     else()
         # Fallback to static libraries (may have command-line option conflicts)
         if(TARGET clang-cpp)
@@ -438,10 +504,31 @@ function(ascii_add_tooling_targets)
     endif()
 
     # Link required system libraries that LLVM/Clang depend on
-    target_link_libraries(ascii-instr-defer PRIVATE
-        ZLIB::ZLIB
-        ${ZSTD_LIBRARY}
-    )
+    # Only needed when linking static libraries; shared libs resolve these automatically
+    if(WIN32 OR NOT CLANG_CPP_SHARED_LIB)
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ZLIB::ZLIB
+            ${ZSTD_LIBRARY}
+        )
+    endif()
+
+    # On Linux, add ncurses/tinfo which is required by LLVM
+    # Also explicitly link C++ standard library and filesystem library
+    if(NOT WIN32)
+        find_library(TINFO_LIBRARY NAMES tinfo ncurses)
+        if(TINFO_LIBRARY)
+            target_link_libraries(ascii-instr-defer PRIVATE ${TINFO_LIBRARY})
+        endif()
+
+        # Explicitly link C++ standard library, filesystem library, and gcc runtime
+        # Needed because musl builds use -static which we override for tooling
+        # Don't explicitly link -lc, let the compiler handle it
+        target_link_libraries(ascii-instr-defer PRIVATE
+            stdc++
+            stdc++fs
+            gcc_s
+        )
+    endif()
 
     # On Windows, add system libraries required by LLVM
     if(WIN32)
