@@ -82,11 +82,26 @@ function(ascii_add_tooling_targets)
 
     find_package(Threads REQUIRED)
 
+    # Find system libraries that LLVM/Clang depend on
+    find_library(ZLIB_LIBRARY NAMES z zlib)
+    if(NOT ZLIB_LIBRARY)
+        message(FATAL_ERROR "zlib not found - required for LLVM compression support")
+    endif()
+
+    find_library(ZSTD_LIBRARY NAMES zstd libzstd)
+    if(NOT ZSTD_LIBRARY)
+        message(FATAL_ERROR "zstd not found - required for LLVM compression support")
+    endif()
+
+    # Find ncurses/tinfo for terminal support (Unix only, optional)
+    find_library(NCURSES_LIBRARY NAMES ncurses tinfo)
+
     # Find Clang libraries manually (avoid broken CMake config)
     set(CLANG_LIBS
         clangTooling clangFrontend clangAST clangASTMatchers clangBasic
         clangRewrite clangRewriteFrontend clangLex clangSerialization
         clangDriver clangParse clangSema clangEdit clangAnalysis
+        clangAPINotes clangSupport
     )
 
     foreach(lib ${CLANG_LIBS})
@@ -272,8 +287,21 @@ function(ascii_add_tooling_targets)
         clangSema
         clangEdit
         clangAnalysis
+        clangAPINotes
+        clangSupport
         ${LLVM_LIB_LIST}
     )
+
+    # Link required system libraries that LLVM/Clang depend on
+    target_link_libraries(ascii-instr-defer PRIVATE
+        ${ZLIB_LIBRARY}
+        ${ZSTD_LIBRARY}
+    )
+
+    # Link ncurses if available (Unix only, optional)
+    if(NCURSES_LIBRARY)
+        target_link_libraries(ascii-instr-defer PRIVATE ${NCURSES_LIBRARY})
+    endif()
 
     set_target_properties(ascii-instr-defer PROPERTIES
         OUTPUT_NAME "ascii-instr-defer"
@@ -483,8 +511,21 @@ function(ascii_add_tooling_targets)
         clangSema
         clangEdit
         clangAnalysis
+        clangAPINotes
+        clangSupport
         ${LLVM_LIB_LIST}
     )
+
+    # Link required system libraries that LLVM/Clang depend on
+    target_link_libraries(ascii-instr-source-print PRIVATE
+        ${ZLIB_LIBRARY}
+        ${ZSTD_LIBRARY}
+    )
+
+    # Link ncurses if available (Unix only, optional)
+    if(NCURSES_LIBRARY)
+        target_link_libraries(ascii-instr-source-print PRIVATE ${NCURSES_LIBRARY})
+    endif()
 
     set_target_properties(ascii-instr-source-print PROPERTIES
         OUTPUT_NAME "ascii-instr-source-print"

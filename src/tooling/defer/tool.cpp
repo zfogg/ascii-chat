@@ -310,8 +310,6 @@ private:
       return;
     }
 
-    SourceManager &sourceManager = context_.getSourceManager();
-
     // Step 1: Insert defer scope declaration and initialization at function entry
     SourceLocation bodyStart = compoundBody->getLBracLoc().getLocWithOffset(1);
     if (bodyStart.isValid()) {
