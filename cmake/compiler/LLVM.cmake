@@ -191,6 +191,69 @@ function(configure_llvm_pre_project)
         set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
         message(STATUS "Set default ${BoldYellow}C${ColorReset} compiler to ${BoldCyan}Clang${ColorReset}: ${CLANG_EXECUTABLE}")
         message(STATUS "Set default ${BoldYellow}C++${ColorReset} compiler to ${BoldCyan}Clang++${ColorReset}: ${CLANGXX_EXECUTABLE}")
+    else()
+        # C compiler is already set, but make sure CXX compiler is also set
+        if(NOT CMAKE_CXX_COMPILER)
+            message(STATUS "${BoldYellow}C${ColorReset} compiler already set: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+
+            # Derive CXX compiler from the existing C compiler
+            if(CMAKE_C_COMPILER MATCHES "clang\\.exe$")
+                # Windows: Replace clang.exe with clang++.exe
+                string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}")
+            elseif(CMAKE_C_COMPILER MATCHES "clang(-[0-9]+)?$")
+                # Unix/macOS: Append ++ to clang or clang-XX
+                set(CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}++")
+            elseif(WIN32 AND CMAKE_C_COMPILER MATCHES "clang$")
+                # Windows with plain "clang" (no .exe) - search for full path
+                find_program(CLANGXX_EXECUTABLE
+                    NAMES clang++.exe clang++
+                    PATHS ${LLVM_ROOT_DIRS}
+                )
+            else()
+                # Fallback: try to find clang++ in the same directory as the C compiler
+                get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+                if(WIN32)
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++.exe clang++
+                        PATHS "${COMPILER_DIR}"
+                        NO_DEFAULT_PATH
+                    )
+                else()
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++
+                        PATHS "${COMPILER_DIR}"
+                        NO_DEFAULT_PATH
+                    )
+                endif()
+            endif()
+
+            # Verify the CXX compiler exists or was found
+            if(CLANGXX_EXECUTABLE AND EXISTS "${CLANGXX_EXECUTABLE}")
+                set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+                message(STATUS "Auto-detected ${BoldYellow}C++${ColorReset} compiler: ${BoldCyan}${CLANGXX_EXECUTABLE}${ColorReset}")
+            else()
+                message(WARNING "${BoldRed}Could not derive C++ compiler from C compiler${ColorReset}: ${CMAKE_C_COMPILER}")
+                # Try fallback search
+                if(WIN32)
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++.exe clang++
+                        PATHS ${LLVM_ROOT_DIRS}
+                    )
+                else()
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++ clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15
+                        PATHS ${LLVM_ROOT_DIRS}
+                    )
+                endif()
+
+                if(CLANGXX_EXECUTABLE)
+                    set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+                    message(STATUS "Found ${BoldYellow}C++${ColorReset} compiler via fallback search: ${BoldCyan}${CLANGXX_EXECUTABLE}${ColorReset}")
+                else()
+                    message(FATAL_ERROR "Could not find clang++ compiler. Please install LLVM/Clang.")
+                endif()
+            endif()
+        endif()
     endif()
 
     # =============================================================================
