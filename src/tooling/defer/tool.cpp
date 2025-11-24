@@ -540,7 +540,7 @@ public:
     ensureIncludeInserted(originalPath);
 
     std::string rewrittenContents;
-    if (const llvm::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(sourceManager.getMainFileID())) {
+    if (const RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(sourceManager.getMainFileID())) {
       rewrittenContents.assign(buffer->begin(), buffer->end());
 
     } else {
