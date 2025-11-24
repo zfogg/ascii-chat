@@ -11,18 +11,22 @@ function(ascii_add_tooling_targets)
     endif()
 
     # IMPORTANT: Tooling executables run on BUILD system, not TARGET system
-    # They must NOT inherit musl/cross-compile flags
-
+    # They must NOT inherit musl/cross-compile flags or Windows -nostartfiles/-nostdlib
+    
     # Save global CMAKE flags to restore later
     set(_SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
     set(_SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(_SAVED_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-
+    set(_SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+    set(_SAVED_CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+    
     # Temporarily clear ALL global flags that might affect tooling
-    # This prevents musl/target flags from being baked into tooling targets
+    # This prevents musl/target flags and Windows -nostartfiles/-nostdlib from being baked in
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
     set(CMAKE_EXE_LINKER_FLAGS "")
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
 
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
@@ -336,9 +340,14 @@ function(ascii_add_tooling_targets)
     set_target_properties(ascii-instr-defer PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
         INTERPROCEDURAL_OPTIMIZATION OFF
-        # Override CMAKE_EXE_LINKER_FLAGS that has musl flags
-        LINK_FLAGS ""
     )
+    
+    # On Windows, add required LLVM libs (LLVM-C.lib only has C API, need C++ from LLVMSupport)
+    if(WIN32)
+        target_link_libraries(ascii-instr-defer PRIVATE 
+            ${LLVM_LIBRARY_DIRS}/LLVMSupport.lib
+        )
+    endif()
 
     if(DEFINED LLVM_DEFINITIONS)
         separate_arguments(_llvm_defs_defer NATIVE_COMMAND "${LLVM_DEFINITIONS}")
@@ -350,7 +359,7 @@ function(ascii_add_tooling_targets)
     # Link against shared LLVM library to avoid duplicate command-line option registration
     # Using static libraries causes "Option 'debug-counter' registered more than once" error
     find_library(LLVM_SHARED_LIB
-        NAMES LLVM-18 LLVM
+        NAMES LLVM-C LLVM-18 LLVM
         PATHS ${LLVM_LIBRARY_DIRS}
         NO_DEFAULT_PATH
     )
@@ -721,6 +730,8 @@ function(ascii_add_tooling_targets)
     set(CMAKE_C_FLAGS "${_SAVED_CMAKE_C_FLAGS}" PARENT_SCOPE)
     set(CMAKE_CXX_FLAGS "${_SAVED_CMAKE_CXX_FLAGS}" PARENT_SCOPE)
     set(CMAKE_EXE_LINKER_FLAGS "${_SAVED_CMAKE_EXE_LINKER_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${_SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${_SAVED_CMAKE_EXE_LINKER_FLAGS_DEBUG}" PARENT_SCOPE)
 endfunction()
 
 function(ascii_add_debug_targets)

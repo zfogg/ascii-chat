@@ -839,7 +839,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
-    defer(free(config_dir));
+    defer(SAFE_FREE(config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -974,7 +974,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
-    defer(free(config_dir));
+    defer(SAFE_FREE(config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
