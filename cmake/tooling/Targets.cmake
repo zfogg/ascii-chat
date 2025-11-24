@@ -26,7 +26,23 @@ function(ascii_add_tooling_targets)
 
     # Find LLVM dependencies first (required by LLVM's CMake config)
     find_package(ZLIB QUIET)
+    # Create ZLIB::ZLIB target if it doesn't exist (older FindZLIB.cmake only sets variables)
+    if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
+        add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+        set_target_properties(ZLIB::ZLIB PROPERTIES
+            IMPORTED_LOCATION "${ZLIB_LIBRARIES}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIRS}"
+        )
+    endif()
+
     find_package(zstd QUIET CONFIG)
+    # Create zstd::libzstd_static target if it doesn't exist
+    if(zstd_FOUND AND NOT TARGET zstd::libzstd_static)
+        if(TARGET zstd::libzstd_shared)
+            add_library(zstd::libzstd_static ALIAS zstd::libzstd_shared)
+        endif()
+    endif()
+
     find_package(CURL QUIET)
 
     find_package(LLVM REQUIRED CONFIG)
