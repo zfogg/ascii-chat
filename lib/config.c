@@ -1048,6 +1048,7 @@ asciichat_error_t config_create_default(const char *config_path) {
 
     // Create file with default values
     FILE *f = platform_fopen(config_path_expanded, "w");
+    defer(if (f) fclose(f));
     if (!f) {
       return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
     }
@@ -1151,11 +1152,6 @@ asciichat_error_t config_create_default(const char *config_path) {
     (void)fprintf(f, "[logging]\n");
     (void)fprintf(f, "# Log file path (empty string = no file logging)\n");
     (void)fprintf(f, "#log_file = \"%s\"\n", opt_log_file);
-
-    int close_result = fclose(f);
-    if (close_result != 0) {
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to close config file: %s", config_path_expanded);
-    }
   }
 
   return ASCIICHAT_OK;
