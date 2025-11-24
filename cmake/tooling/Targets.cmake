@@ -110,9 +110,25 @@ function(ascii_add_tooling_targets)
     endif()
 
     # Find zstd library
-    find_library(ZSTD_LIBRARY NAMES zstd)
+    find_library(ZSTD_LIBRARY
+        NAMES zstd libzstd
+        PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib
+            /lib/x86_64-linux-gnu
+            /lib
+        NO_DEFAULT_PATH
+    )
+
+    # Also try default paths if not found
+    if(NOT ZSTD_LIBRARY)
+        find_library(ZSTD_LIBRARY NAMES zstd libzstd)
+    endif()
+
     if(NOT ZSTD_LIBRARY)
         message(FATAL_ERROR "zstd not found - required for LLVM compression support. Install: sudo apt install libzstd-dev")
+    else()
+        message(STATUS "Found zstd: ${ZSTD_LIBRARY}")
     endif()
 
     # Find ncurses/tinfo for terminal support (Unix only, optional)
