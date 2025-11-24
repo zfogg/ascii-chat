@@ -24,7 +24,7 @@ function(ascii_add_tooling_targets)
     # This prevents musl/target flags and Windows -nostartfiles/-nostdlib from being baked in
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
-    
+
     # On Windows, aggressively remove -nostartfiles -nostdlib from linker flags
     if(WIN32)
         string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
@@ -172,17 +172,13 @@ function(ascii_add_tooling_targets)
     endif()
 
     # Find Clang libraries manually (avoid broken CMake config)
-    # On Windows, use monolithic libclang.dll instead of individual import stubs
-    if(WIN32)
-        set(CLANG_LIBS libclang)
-    else()
-        set(CLANG_LIBS
-            clangTooling clangFrontend clangAST clangASTMatchers clangBasic
-            clangRewrite clangRewriteFrontend clangLex clangSerialization
-            clangDriver clangParse clangSema clangEdit clangAnalysis
-            clangAPINotes clangSupport
-        )
-    endif()
+    # Use the full list of Clang libraries for both Unix and Windows
+    set(CLANG_LIBS
+        clangTooling clangFrontend clangAST clangASTMatchers clangBasic
+        clangRewrite clangRewriteFrontend clangLex clangSerialization
+        clangDriver clangParse clangSema clangEdit clangAnalysis
+        clangAPINotes clangSupport clangAnalysisLifetimeSafety
+    )
 
     foreach(lib ${CLANG_LIBS})
         find_library(${lib}_LIBRARY
@@ -302,14 +298,6 @@ function(ascii_add_tooling_targets)
         add_executable(ascii-instr-defer
             src/tooling/defer/tool.cpp
         )
-        
-        # On Windows, force static linking of Clang (no __declspec(dllimport))
-        if(WIN32)
-            target_compile_definitions(ascii-instr-defer PRIVATE
-                CLANG_STATIC_LIB
-                LLVM_STATIC_LIB
-            )
-        endif()
     endif()
 
     # Use SYSTEM to suppress warnings from LLVM/Clang headers
@@ -342,6 +330,24 @@ function(ascii_add_tooling_targets)
         -fno-lto
     )
 
+    # On Windows, tell Clang headers to NOT use dllimport even though we use /MD runtime
+    # This is needed because LLVM/Clang libraries are static .lib files, not DLLs
+    if(WIN32)
+        target_compile_definitions(ascii-instr-defer PRIVATE
+            LLVM_BUILD_STATIC
+            CLANG_BUILD_STATIC
+        )
+    endif()
+
+    # On Windows, MUST override the inherited linker flags to remove -nostartfiles -nostdlib
+    # These flags break tooling executables which need standard runtime
+    if(WIN32)
+        # Override CMAKE_EXE_LINKER_FLAGS for this target specifically
+        set_target_properties(ascii-instr-defer PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+        )
+    endif()
+
     target_link_options(ascii-instr-defer PRIVATE
         -fno-sanitize=all
         -fno-lto
@@ -366,10 +372,17 @@ function(ascii_add_tooling_targets)
         INTERPROCEDURAL_OPTIMIZATION OFF
     )
 
+    # On Windows, override LINK_FLAGS to remove -nostartfiles -nostdlib
+    if(WIN32)
+        set_target_properties(ascii-instr-defer PROPERTIES
+            LINK_FLAGS ""
+        )
+    endif()
+
     # On Windows, add ALL required LLVM component libraries statically
     if(WIN32)
         # Windows LLVM has no shared libraries - must link all components statically
-        target_link_libraries(ascii-instr-defer PRIVATE 
+        target_link_libraries(ascii-instr-defer PRIVATE
             ${LLVM_LIBRARY_DIRS}/LLVMSupport.lib
             ${LLVM_LIBRARY_DIRS}/LLVMCore.lib
             ${LLVM_LIBRARY_DIRS}/LLVMBinaryFormat.lib
@@ -379,6 +392,9 @@ function(ascii_add_tooling_targets)
             ${LLVM_LIBRARY_DIRS}/LLVMProfileData.lib
             ${LLVM_LIBRARY_DIRS}/LLVMFrontendOpenMP.lib
             ${LLVM_LIBRARY_DIRS}/LLVMDemangle.lib
+            ${LLVM_LIBRARY_DIRS}/clangAnalysisLifetimeSafety.lib
+            ntdll.lib
+            version.lib
         )
     endif()
 
@@ -391,13 +407,17 @@ function(ascii_add_tooling_targets)
 
     # Link against shared LLVM library to avoid duplicate command-line option registration
     # Using static libraries causes "Option 'debug-counter' registered more than once" error
-    find_library(LLVM_SHARED_LIB
-        NAMES LLVM-C LLVM-18 LLVM
-        PATHS ${LLVM_LIBRARY_DIRS}
-        NO_DEFAULT_PATH
-    )
+    # On Windows, LLVM-C.lib is a DLL import library, not what we want
+    # We need static Clang libraries only on Windows
+    if(NOT WIN32)
+        find_library(LLVM_SHARED_LIB
+            NAMES LLVM-C LLVM-18 LLVM
+            PATHS ${LLVM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
+    endif()
 
-    if(LLVM_SHARED_LIB)
+    if(LLVM_SHARED_LIB AND NOT WIN32)
         message(STATUS "Using shared LLVM library: ${LLVM_SHARED_LIB}")
         target_link_libraries(ascii-instr-defer PRIVATE
             ${CLANG_LIBS}
@@ -422,6 +442,14 @@ function(ascii_add_tooling_targets)
         ZLIB::ZLIB
         ${ZSTD_LIBRARY}
     )
+
+    # On Windows, add system libraries required by LLVM
+    if(WIN32)
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ntdll
+            version
+        )
+    endif()
 
     # Link ncurses on Unix (required for LLVM terminal support)
     if(UNIX AND NCURSES_LIBRARY)

@@ -827,7 +827,7 @@ static asciichat_error_t apply_log_config(toml_datum_t toptab) {
  */
 asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict) {
   char *config_path_expanded = NULL;
-  defer(free(config_path_expanded));
+  defer(safe_free_wrapper(&config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -839,7 +839,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
+    defer(safe_free_wrapper(&config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -962,7 +962,7 @@ asciichat_error_t config_create_default(const char *config_path) {
                 config_path ? config_path : "(NULL)");
 
   char *config_path_expanded = NULL;
-  defer(free(config_path_expanded));
+  defer(safe_free_wrapper(&config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -974,7 +974,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
+    defer(safe_free_wrapper(&config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
