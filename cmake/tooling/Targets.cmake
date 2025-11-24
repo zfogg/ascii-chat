@@ -24,52 +24,96 @@ function(ascii_add_tooling_targets)
         enable_language(CXX)
     endif()
 
-    # Find LLVM dependencies first (required by LLVM's CMake config)
-    # Create ZLIB::ZLIB target manually (LLVM requires it but find_package often fails)
-    if(NOT TARGET ZLIB::ZLIB)
-        find_library(ZLIB_LIBRARY NAMES z zlib PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu)
-        if(ZLIB_LIBRARY)
-            add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
-            set_target_properties(ZLIB::ZLIB PROPERTIES
-                IMPORTED_LOCATION "${ZLIB_LIBRARY}"
-            )
-            message(STATUS "Created ZLIB::ZLIB target: ${ZLIB_LIBRARY}")
-        else()
-            message(WARNING "ZLIB library not found - LLVM linking may fail")
-        endif()
-    endif()
-
-    # Create zstd::libzstd_shared target manually (LLVM requires it)
-    if(NOT TARGET zstd::libzstd_shared)
-        find_library(ZSTD_LIBRARY NAMES zstd libzstd PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu)
-        if(ZSTD_LIBRARY)
-            add_library(zstd::libzstd_shared UNKNOWN IMPORTED)
-            set_target_properties(zstd::libzstd_shared PROPERTIES
-                IMPORTED_LOCATION "${ZSTD_LIBRARY}"
-            )
-            message(STATUS "Created zstd::libzstd_shared target: ${ZSTD_LIBRARY}")
-        else()
-            message(WARNING "zstd library not found - LLVM linking may fail")
-        endif()
-    endif()
-
-    # Try to find CURL for LLVM (optional)
-    find_package(CURL QUIET)
-
-    find_package(LLVM REQUIRED CONFIG)
-    find_package(Clang REQUIRED CONFIG)
-    find_package(Threads REQUIRED)
-
-    # Find llvm-config for library information
-    find_program(LLVM_CONFIG
+    # Use llvm-config to get includes and libraries directly
+    # This bypasses LLVM's broken CMake config that requires all dependency targets
+    find_program(LLVM_CONFIG_EXECUTABLE
         NAMES llvm-config llvm-config.exe
-        HINTS ${LLVM_TOOLS_BINARY_DIR}
         DOC "Path to llvm-config"
     )
 
-    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-    include(AddLLVM)
-    include(HandleLLVMOptions)
+    if(NOT LLVM_CONFIG_EXECUTABLE)
+        message(FATAL_ERROR "llvm-config not found")
+    endif()
+
+    # Get LLVM configuration from llvm-config
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --includedir
+        OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --libdir
+        OUTPUT_VARIABLE LLVM_LIBRARY_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --cxxflags
+        OUTPUT_VARIABLE LLVM_CXX_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --ldflags
+        OUTPUT_VARIABLE LLVM_LD_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --system-libs
+        OUTPUT_VARIABLE LLVM_SYSTEM_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version
+        OUTPUT_VARIABLE LLVM_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs
+        OUTPUT_VARIABLE LLVM_CONFIG_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # Convert to list and extract library names
+    string(REPLACE " " ";" LLVM_LIB_LIST "${LLVM_CONFIG_LIBS}")
+
+    message(STATUS "LLVM version: ${LLVM_VERSION}")
+    message(STATUS "LLVM include dir: ${LLVM_INCLUDE_DIRS}")
+    message(STATUS "LLVM library dir: ${LLVM_LIBRARY_DIRS}")
+
+    # Find Clang includes (next to LLVM)
+    set(CLANG_INCLUDE_DIRS "${LLVM_INCLUDE_DIRS}")
+
+    # Set LLVM_CONFIG for compatibility with existing code
+    set(LLVM_CONFIG "${LLVM_CONFIG_EXECUTABLE}")
+
+    find_package(Threads REQUIRED)
+
+    # Find Clang libraries manually (avoid broken CMake config)
+    set(CLANG_LIBS
+        clangTooling clangFrontend clangAST clangASTMatchers clangBasic
+        clangRewrite clangRewriteFrontend clangLex clangSerialization
+        clangDriver clangParse clangSema clangEdit clangAnalysis
+    )
+
+    foreach(lib ${CLANG_LIBS})
+        find_library(${lib}_LIBRARY
+            NAMES ${lib}
+            PATHS ${LLVM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
+        if(${lib}_LIBRARY)
+            add_library(${lib} UNKNOWN IMPORTED)
+            set_target_properties(${lib} PROPERTIES
+                IMPORTED_LOCATION "${${lib}_LIBRARY}"
+            )
+        else()
+            message(WARNING "Clang library not found: ${lib}")
+        endif()
+    endforeach()
+
+    # Find clang-cpp monolithic library if available
+    find_library(clang-cpp_LIBRARY
+        NAMES clang-cpp
+        PATHS ${LLVM_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(clang-cpp_LIBRARY)
+        add_library(clang-cpp UNKNOWN IMPORTED)
+        set_target_properties(clang-cpp PROPERTIES
+            IMPORTED_LOCATION "${clang-cpp_LIBRARY}"
+        )
+    endif()
+
+    # Create LLVMSupport target
+    find_library(LLVMSupport_LIBRARY
+        NAMES LLVMSupport
+        PATHS ${LLVM_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(LLVMSupport_LIBRARY)
+        add_library(LLVMSupport UNKNOWN IMPORTED)
+        set_target_properties(LLVMSupport PROPERTIES
+            IMPORTED_LOCATION "${LLVMSupport_LIBRARY}"
+        )
+    endif()
 
     if(NOT TARGET ascii-instr-source-print)
         add_executable(ascii-instr-source-print EXCLUDE_FROM_ALL
@@ -391,16 +435,7 @@ function(ascii_add_tooling_targets)
         link_directories(${LLVM_LIBRARY_DIRS})
     endif()
 
-    # Get LLVM libraries from llvm-config if available
-    if(LLVM_CONFIG)
-        execute_process(
-            COMMAND ${LLVM_CONFIG} --libs
-            OUTPUT_VARIABLE LLVM_CONFIG_LIBS
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-        # Convert to list and extract library names
-        string(REPLACE " " ";" LLVM_LIB_LIST "${LLVM_CONFIG_LIBS}")
-    endif()
+    # LLVM_LIB_LIST already set from llvm-config above
 
     if(TARGET clang-cpp)
         target_link_libraries(ascii-instr-source-print PRIVATE clang-cpp)
