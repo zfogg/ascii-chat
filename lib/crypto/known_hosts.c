@@ -391,6 +391,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
   }
 
   FILE *f = platform_fdopen(fd, "r");
+  defer(if (f) fclose(f));
   if (!f) {
     // Failed to open file descriptor as FILE*
     platform_close(fd);
@@ -417,7 +418,6 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
 
     if (strncmp(line, expected_prefix, strlen(expected_prefix)) == 0) {
       // Found matching IP:port
-  
 
       // Check if this is a "no-identity" entry
       // Bounds check: ensure line is long enough to contain the prefix

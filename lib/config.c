@@ -985,7 +985,6 @@ asciichat_error_t config_create_default(const char *config_path) {
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
 #endif
       }
-      SAFE_FREE(config_dir);
     }
 
     // Fallback to ~/.ascii-chat/config.toml
