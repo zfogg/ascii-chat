@@ -43,6 +43,10 @@ jobs:
       with:
         cache-version: v2
 
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
+
     - name: Run tests with AddressSanitizer
       run: |
         # Use CMake build system
