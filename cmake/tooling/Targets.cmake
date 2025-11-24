@@ -83,9 +83,30 @@ function(ascii_add_tooling_targets)
     find_package(Threads REQUIRED)
 
     # Find system libraries that LLVM/Clang depend on
-    find_package(ZLIB REQUIRED)
+    # Try standard zlib search first
+    find_package(ZLIB QUIET)
+
+    # If not found, try manual search in common locations
     if(NOT ZLIB_FOUND)
-        message(FATAL_ERROR "zlib not found - required for LLVM compression support. Install: sudo apt install zlib1g-dev")
+        find_library(ZLIB_LIBRARY_PATH
+            NAMES z zlib libz
+            PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib
+                /lib/x86_64-linux-gnu
+                /lib
+            NO_DEFAULT_PATH
+        )
+
+        if(ZLIB_LIBRARY_PATH)
+            add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+            set_target_properties(ZLIB::ZLIB PROPERTIES
+                IMPORTED_LOCATION "${ZLIB_LIBRARY_PATH}"
+            )
+            message(STATUS "Found zlib manually: ${ZLIB_LIBRARY_PATH}")
+        else()
+            message(FATAL_ERROR "zlib not found - required for LLVM compression support. Install: sudo apt install zlib1g-dev")
+        endif()
     endif()
 
     # Find zstd library
