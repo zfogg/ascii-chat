@@ -25,24 +25,33 @@ function(ascii_add_tooling_targets)
     endif()
 
     # Find LLVM dependencies first (required by LLVM's CMake config)
-    find_package(ZLIB QUIET)
-    # Create ZLIB::ZLIB target if it doesn't exist (older FindZLIB.cmake only sets variables)
-    if(ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB)
-        add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
-        set_target_properties(ZLIB::ZLIB PROPERTIES
-            IMPORTED_LOCATION "${ZLIB_LIBRARIES}"
-            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIRS}"
-        )
-    endif()
-
-    find_package(zstd QUIET CONFIG)
-    # Create zstd::libzstd_static target if it doesn't exist
-    if(zstd_FOUND AND NOT TARGET zstd::libzstd_static)
-        if(TARGET zstd::libzstd_shared)
-            add_library(zstd::libzstd_static ALIAS zstd::libzstd_shared)
+    # Create ZLIB::ZLIB target manually (LLVM requires it but find_package often fails)
+    if(NOT TARGET ZLIB::ZLIB)
+        find_library(ZLIB_LIBRARY NAMES z zlib PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu)
+        if(ZLIB_LIBRARY)
+            add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+            set_target_properties(ZLIB::ZLIB PROPERTIES
+                IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+            )
+            message(STATUS "Created ZLIB::ZLIB target: ${ZLIB_LIBRARY}")
+        else()
+            message(WARNING "ZLIB library not found - LLVM linking may fail")
         endif()
     endif()
 
+    # Try to find zstd for LLVM (optional)
+    find_package(zstd QUIET CONFIG)
+    if(NOT TARGET zstd::libzstd_static AND NOT TARGET zstd::libzstd_shared)
+        find_library(ZSTD_LIBRARY NAMES zstd libzstd PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu)
+        if(ZSTD_LIBRARY)
+            add_library(zstd::libzstd_static UNKNOWN IMPORTED)
+            set_target_properties(zstd::libzstd_static PROPERTIES
+                IMPORTED_LOCATION "${ZSTD_LIBRARY}"
+            )
+        endif()
+    endif()
+
+    # Try to find CURL for LLVM (optional)
     find_package(CURL QUIET)
 
     find_package(LLVM REQUIRED CONFIG)
