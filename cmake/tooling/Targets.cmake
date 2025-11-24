@@ -149,16 +149,17 @@ function(ascii_add_tooling_targets)
         -fno-lto
     )
 
-    # Explicitly link libc++ to resolve C++ standard library symbols
-    # This is needed because LLVM libraries may have been built with a different libc++ version
-    # Also link static libc++ from LLVM to get all required symbols
-    if(APPLE OR UNIX)
-        # Link against the static libc++ from LLVM to ensure ABI compatibility
-        # Also need libc++abi for exception handling symbols like __cxa_rethrow_primary_exception
+    # Note: C++ standard library is linked automatically by clang++
+    # On macOS with Homebrew LLVM, we may need explicit libc++
+    # On Linux, the system libstdc++ is used by default
+    if(APPLE)
         if(EXISTS "/usr/local/lib/libc++.a" AND EXISTS "/usr/local/lib/libc++abi.a")
             target_link_libraries(ascii-instr-source-print PRIVATE "/usr/local/lib/libc++.a" "/usr/local/lib/libc++abi.a")
-        else()
-            target_link_libraries(ascii-instr-source-print PRIVATE c++)
+        elseif(EXISTS "/opt/homebrew/opt/llvm/lib/c++/libc++.a")
+            target_link_libraries(ascii-instr-source-print PRIVATE
+                "/opt/homebrew/opt/llvm/lib/c++/libc++.a"
+                "/opt/homebrew/opt/llvm/lib/c++/libc++abi.a"
+            )
         endif()
     endif()
 
@@ -204,16 +205,17 @@ function(ascii_add_tooling_targets)
         -fno-lto
     )
 
-    # Explicitly link libc++ to resolve C++ standard library symbols
-    # This is needed because LLVM libraries may have been built with a different libc++ version
-    # Also link static libc++ from LLVM to get all required symbols
-    if(APPLE OR UNIX)
-        # Link against the static libc++ from LLVM to ensure ABI compatibility
-        # Also need libc++abi for exception handling symbols like __cxa_rethrow_primary_exception
+    # Note: C++ standard library is linked automatically by clang++
+    # On macOS with Homebrew LLVM, we may need explicit libc++
+    # On Linux, the system libstdc++ is used by default
+    if(APPLE)
         if(EXISTS "/usr/local/lib/libc++.a" AND EXISTS "/usr/local/lib/libc++abi.a")
             target_link_libraries(ascii-instr-defer PRIVATE "/usr/local/lib/libc++.a" "/usr/local/lib/libc++abi.a")
-        else()
-            target_link_libraries(ascii-instr-defer PRIVATE c++)
+        elseif(EXISTS "/opt/homebrew/opt/llvm/lib/c++/libc++.a")
+            target_link_libraries(ascii-instr-defer PRIVATE
+                "/opt/homebrew/opt/llvm/lib/c++/libc++.a"
+                "/opt/homebrew/opt/llvm/lib/c++/libc++abi.a"
+            )
         endif()
     endif()
 
@@ -257,7 +259,9 @@ function(ascii_add_tooling_targets)
         OUTPUT_NAME "ascii-instr-defer"
     )
 
-    if(CMAKE_CXX_COMPILER)
+    # Only use libc++ on macOS where it's the default
+    # On Linux, use the system libstdc++ (default)
+    if(APPLE AND CMAKE_CXX_COMPILER)
         get_filename_component(_cxx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
         get_filename_component(_cxx_root "${_cxx_compiler_dir}/.." ABSOLUTE)
         set(_libcxx_include "${_cxx_root}/include/c++/v1")
@@ -466,7 +470,9 @@ function(ascii_add_tooling_targets)
         OUTPUT_NAME "ascii-instr-source-print"
     )
 
-    if(CMAKE_CXX_COMPILER)
+    # Only use libc++ on macOS where it's the default
+    # On Linux, use the system libstdc++ (default)
+    if(APPLE AND CMAKE_CXX_COMPILER)
         get_filename_component(_cxx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
         get_filename_component(_cxx_root "${_cxx_compiler_dir}/.." ABSOLUTE)
         set(_libcxx_include "${_cxx_root}/include/c++/v1")
