@@ -39,15 +39,17 @@ function(ascii_add_tooling_targets)
         endif()
     endif()
 
-    # Try to find zstd for LLVM (optional)
-    find_package(zstd QUIET CONFIG)
-    if(NOT TARGET zstd::libzstd_static AND NOT TARGET zstd::libzstd_shared)
+    # Create zstd::libzstd_shared target manually (LLVM requires it)
+    if(NOT TARGET zstd::libzstd_shared)
         find_library(ZSTD_LIBRARY NAMES zstd libzstd PATHS /usr/lib /usr/lib64 /usr/lib/x86_64-linux-gnu)
         if(ZSTD_LIBRARY)
-            add_library(zstd::libzstd_static UNKNOWN IMPORTED)
-            set_target_properties(zstd::libzstd_static PROPERTIES
+            add_library(zstd::libzstd_shared UNKNOWN IMPORTED)
+            set_target_properties(zstd::libzstd_shared PROPERTIES
                 IMPORTED_LOCATION "${ZSTD_LIBRARY}"
             )
+            message(STATUS "Created zstd::libzstd_shared target: ${ZSTD_LIBRARY}")
+        else()
+            message(WARNING "zstd library not found - LLVM linking may fail")
         endif()
     endif()
 
