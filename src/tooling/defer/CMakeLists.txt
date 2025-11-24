@@ -228,24 +228,56 @@ if(WIN32)
     )
 else()
     # Linux/macOS: Use shared Clang/LLVM libraries
+    # Try to find clang-cpp first (newer LLVM versions)
     find_library(CLANG_CPP_SHARED_LIB
-        NAMES clang-cpp
+        NAMES clang-cpp libclang-cpp
         PATHS ${LLVM_LIBRARY_DIRS}
         NO_DEFAULT_PATH
-        REQUIRED
     )
 
     find_library(LLVM_SHARED_LIB
-        NAMES LLVM LLVM-18
+        NAMES LLVM LLVM-18 LLVM-19 LLVM-20 LLVM-21 LLVM-22
         PATHS ${LLVM_LIBRARY_DIRS}
         NO_DEFAULT_PATH
-        REQUIRED
     )
 
-    target_link_libraries(ascii-instr-defer PRIVATE
-        ${CLANG_CPP_SHARED_LIB}
-        ${LLVM_SHARED_LIB}
-    )
+    # If clang-cpp not found, try linking individual Clang libraries
+    if(NOT CLANG_CPP_SHARED_LIB)
+        message(STATUS "clang-cpp not found, trying individual Clang libraries")
+
+        # Find individual Clang libraries
+        find_library(CLANG_TOOLING_LIB NAMES clangTooling PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_FRONTEND_LIB NAMES clangFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_DRIVER_LIB NAMES clangDriver PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_SEMA_LIB NAMES clangSema PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_CODEGEN_LIB NAMES clangCodeGen PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_PARSE_LIB NAMES clangParse PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_AST_LIB NAMES clangAST PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_BASIC_LIB NAMES clangBasic PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(CLANG_LEX_LIB NAMES clangLex PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+
+        if(NOT CLANG_TOOLING_LIB OR NOT LLVM_SHARED_LIB)
+            message(FATAL_ERROR "Could not find Clang libraries. Please install clang-dev or llvm-dev package.")
+        endif()
+
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ${CLANG_TOOLING_LIB}
+            ${CLANG_FRONTEND_LIB}
+            ${CLANG_DRIVER_LIB}
+            ${CLANG_SEMA_LIB}
+            ${CLANG_CODEGEN_LIB}
+            ${CLANG_PARSE_LIB}
+            ${CLANG_AST_LIB}
+            ${CLANG_BASIC_LIB}
+            ${CLANG_LEX_LIB}
+            ${LLVM_SHARED_LIB}
+        )
+    else()
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ${CLANG_CPP_SHARED_LIB}
+            ${LLVM_SHARED_LIB}
+        )
+    endif()
 
     # Add ncurses/tinfo which LLVM needs
     find_library(TINFO_LIBRARY NAMES tinfo ncurses)
