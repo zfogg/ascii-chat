@@ -40,6 +40,8 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v2
 
     - name: Run tests with AddressSanitizer
       run: |
@@ -83,6 +85,8 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v2
 
     - name: Run static analysis
       run: |

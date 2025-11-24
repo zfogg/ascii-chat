@@ -87,9 +87,9 @@ runs:
         path: |
           /var/cache/apt/archives
           /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-v1-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-apt-v2-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-apt-v1-
+          ${{ runner.os }}-apt-v2-
 
     - name: Install APT packages (Ubuntu)
       if: inputs.os == 'ubuntu'
