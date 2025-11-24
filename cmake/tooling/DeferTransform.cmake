@@ -123,7 +123,12 @@ function(ascii_defer_prepare)
         endif()
     endforeach()
 
-    # Also collect all header files for transformation
+    # Collect all header files separately for copying (not transformation)
+    # Headers can't be transformed via defer tool since they're not in compilation database
+    set(header_abs_paths "")
+    set(header_rel_paths "")
+    set(header_generated_paths "")
+
     file(GLOB_RECURSE all_headers
         "${CMAKE_SOURCE_DIR}/lib/*.h"
         "${CMAKE_SOURCE_DIR}/src/*.h"
@@ -151,9 +156,9 @@ function(ascii_defer_prepare)
         endif()
 
         set(generated_path "${defer_transformed_dir}/${rel_path}")
-        list(APPEND defer_abs_paths "${header_path}")
-        list(APPEND defer_rel_paths "${rel_path}")
-        list(APPEND defer_generated_paths "${generated_path}")
+        list(APPEND header_abs_paths "${header_path}")
+        list(APPEND header_rel_paths "${rel_path}")
+        list(APPEND header_generated_paths "${generated_path}")
     endforeach()
 
     list(REMOVE_DUPLICATES defer_abs_paths)
@@ -239,6 +244,29 @@ function(ascii_defer_prepare)
         )
         list(APPEND _all_generated_outputs "${_gen_path}")
     endforeach()
+
+    # Copy header files (they can't be transformed since they're not in compilation database)
+    list(LENGTH header_abs_paths _num_headers)
+    if(_num_headers GREATER 0)
+        math(EXPR _last_header_idx "${_num_headers} - 1")
+        foreach(_hidx RANGE 0 ${_last_header_idx})
+            list(GET header_abs_paths ${_hidx} _header_abs_path)
+            list(GET header_rel_paths ${_hidx} _header_rel_path)
+            list(GET header_generated_paths ${_hidx} _header_gen_path)
+
+            get_filename_component(_header_gen_dir "${_header_gen_path}" DIRECTORY)
+
+            add_custom_command(
+                OUTPUT "${_header_gen_path}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${_header_gen_dir}"
+                COMMAND ${CMAKE_COMMAND} -E copy "${_header_abs_path}" "${_header_gen_path}"
+                DEPENDS "${_header_abs_path}"
+                COMMENT "Copying header ${_header_rel_path}"
+                VERBATIM
+            )
+            list(APPEND _all_generated_outputs "${_header_gen_path}")
+        endforeach()
+    endif()
 
     # Copy excluded files individually (these don't need transformation)
     foreach(excluded_file IN LISTS _ascii_defer_excluded_sources)
