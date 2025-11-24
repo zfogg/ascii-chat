@@ -11,18 +11,20 @@ function(ascii_add_tooling_targets)
     endif()
 
     # IMPORTANT: Tooling executables run on BUILD system, not TARGET system
-    # Save and clear musl/cross-compile flags before creating tooling targets
+    # They must NOT inherit musl/cross-compile flags
+
+    # Save global CMAKE flags to restore later
     set(_SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
     set(_SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(_SAVED_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
-    # Clear musl and target-specific flags for tooling
-    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REGEX REPLACE "-target [^ ]+" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    string(REGEX REPLACE "-static-pie" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    string(REGEX REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    string(REGEX REPLACE "-L/usr/lib/[^ ]*musl[^ ]*" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    # Temporarily clear musl flags for tooling target creation
+    # NOTE: These get baked into targets at creation time
+    if(USE_MUSL)
+        set(CMAKE_C_FLAGS "")
+        set(CMAKE_CXX_FLAGS "")
+        set(CMAKE_EXE_LINKER_FLAGS "")
+    endif()
 
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
@@ -183,6 +185,8 @@ function(ascii_add_tooling_targets)
     set_target_properties(ascii-instr-source-print PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
         INTERPROCEDURAL_OPTIMIZATION OFF
+        # Override CMAKE_EXE_LINKER_FLAGS that has musl flags
+        LINK_FLAGS ""
     )
 
     # =========================================================================
@@ -219,15 +223,6 @@ function(ascii_add_tooling_targets)
         -fno-lto
     )
 
-    # Override musl/cross-compile flags - tooling must use native system libs
-    set_target_properties(ascii-instr-defer PROPERTIES
-        MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
-        INTERPROCEDURAL_OPTIMIZATION OFF
-        # Use native dynamic linker, not musl static
-        LINK_FLAGS "-dynamic"
-        POSITION_INDEPENDENT_CODE ON
-    )
-
     # Note: C++ standard library is linked automatically by clang++
     # On macOS with Homebrew LLVM, we may need explicit libc++
     # On Linux, the system libstdc++ is used by default
@@ -245,6 +240,8 @@ function(ascii_add_tooling_targets)
     set_target_properties(ascii-instr-defer PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
         INTERPROCEDURAL_OPTIMIZATION OFF
+        # Override CMAKE_EXE_LINKER_FLAGS that has musl flags
+        LINK_FLAGS ""
     )
 
     if(DEFINED LLVM_DEFINITIONS)
