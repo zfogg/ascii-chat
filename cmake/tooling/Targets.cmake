@@ -12,21 +12,32 @@ function(ascii_add_tooling_targets)
 
     # IMPORTANT: Tooling executables run on BUILD system, not TARGET system
     # They must NOT inherit musl/cross-compile flags or Windows -nostartfiles/-nostdlib
-    
+
     # Save global CMAKE flags to restore later
     set(_SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
     set(_SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(_SAVED_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
     set(_SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
     set(_SAVED_CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
-    
+
     # Temporarily clear ALL global flags that might affect tooling
     # This prevents musl/target flags and Windows -nostartfiles/-nostdlib from being baked in
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
-    set(CMAKE_EXE_LINKER_FLAGS "")
-    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
-    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
+    
+    # On Windows, aggressively remove -nostartfiles -nostdlib from linker flags
+    if(WIN32)
+        string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+        string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+        string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+        string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+        string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+        string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+    else()
+        set(CMAKE_EXE_LINKER_FLAGS "")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
+    endif()
 
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
@@ -161,12 +172,17 @@ function(ascii_add_tooling_targets)
     endif()
 
     # Find Clang libraries manually (avoid broken CMake config)
-    set(CLANG_LIBS
-        clangTooling clangFrontend clangAST clangASTMatchers clangBasic
-        clangRewrite clangRewriteFrontend clangLex clangSerialization
-        clangDriver clangParse clangSema clangEdit clangAnalysis
-        clangAPINotes clangSupport
-    )
+    # On Windows, use monolithic libclang.dll instead of individual import stubs
+    if(WIN32)
+        set(CLANG_LIBS libclang)
+    else()
+        set(CLANG_LIBS
+            clangTooling clangFrontend clangAST clangASTMatchers clangBasic
+            clangRewrite clangRewriteFrontend clangLex clangSerialization
+            clangDriver clangParse clangSema clangEdit clangAnalysis
+            clangAPINotes clangSupport
+        )
+    endif()
 
     foreach(lib ${CLANG_LIBS})
         find_library(${lib}_LIBRARY
@@ -286,6 +302,14 @@ function(ascii_add_tooling_targets)
         add_executable(ascii-instr-defer
             src/tooling/defer/tool.cpp
         )
+        
+        # On Windows, force static linking of Clang (no __declspec(dllimport))
+        if(WIN32)
+            target_compile_definitions(ascii-instr-defer PRIVATE
+                CLANG_STATIC_LIB
+                LLVM_STATIC_LIB
+            )
+        endif()
     endif()
 
     # Use SYSTEM to suppress warnings from LLVM/Clang headers
@@ -341,11 +365,20 @@ function(ascii_add_tooling_targets)
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
         INTERPROCEDURAL_OPTIMIZATION OFF
     )
-    
-    # On Windows, add required LLVM libs (LLVM-C.lib only has C API, need C++ from LLVMSupport)
+
+    # On Windows, add ALL required LLVM component libraries statically
     if(WIN32)
+        # Windows LLVM has no shared libraries - must link all components statically
         target_link_libraries(ascii-instr-defer PRIVATE 
             ${LLVM_LIBRARY_DIRS}/LLVMSupport.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMCore.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMBinaryFormat.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMRemarks.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMBitstreamReader.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMOption.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMProfileData.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMFrontendOpenMP.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMDemangle.lib
         )
     endif()
 
@@ -367,22 +400,7 @@ function(ascii_add_tooling_targets)
     if(LLVM_SHARED_LIB)
         message(STATUS "Using shared LLVM library: ${LLVM_SHARED_LIB}")
         target_link_libraries(ascii-instr-defer PRIVATE
-            clangTooling
-            clangFrontend
-            clangAST
-            clangASTMatchers
-            clangBasic
-            clangRewrite
-            clangRewriteFrontend
-            clangLex
-            clangSerialization
-            clangDriver
-            clangParse
-            clangSema
-            clangEdit
-            clangAnalysis
-            clangAPINotes
-            clangSupport
+            ${CLANG_LIBS}
             ${LLVM_SHARED_LIB}
         )
     else()
@@ -394,22 +412,7 @@ function(ascii_add_tooling_targets)
         target_link_libraries(ascii-instr-defer PRIVATE LLVMSupport)
 
         target_link_libraries(ascii-instr-defer PRIVATE
-            clangTooling
-            clangFrontend
-            clangAST
-            clangASTMatchers
-            clangBasic
-            clangRewrite
-            clangRewriteFrontend
-            clangLex
-            clangSerialization
-            clangDriver
-            clangParse
-            clangSema
-            clangEdit
-            clangAnalysis
-            clangAPINotes
-            clangSupport
+            ${CLANG_LIBS}
             ${LLVM_LIB_LIST}
         )
     endif()
