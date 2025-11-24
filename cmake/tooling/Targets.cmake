@@ -83,14 +83,15 @@ function(ascii_add_tooling_targets)
     find_package(Threads REQUIRED)
 
     # Find system libraries that LLVM/Clang depend on
-    find_library(ZLIB_LIBRARY NAMES z zlib)
-    if(NOT ZLIB_LIBRARY)
-        message(FATAL_ERROR "zlib not found - required for LLVM compression support")
+    find_package(ZLIB REQUIRED)
+    if(NOT ZLIB_FOUND)
+        message(FATAL_ERROR "zlib not found - required for LLVM compression support. Install: sudo apt install zlib1g-dev")
     endif()
 
-    find_library(ZSTD_LIBRARY NAMES zstd libzstd)
+    # Find zstd library
+    find_library(ZSTD_LIBRARY NAMES zstd)
     if(NOT ZSTD_LIBRARY)
-        message(FATAL_ERROR "zstd not found - required for LLVM compression support")
+        message(FATAL_ERROR "zstd not found - required for LLVM compression support. Install: sudo apt install libzstd-dev")
     endif()
 
     # Find ncurses/tinfo for terminal support (Unix only, optional)
@@ -294,7 +295,7 @@ function(ascii_add_tooling_targets)
 
     # Link required system libraries that LLVM/Clang depend on
     target_link_libraries(ascii-instr-defer PRIVATE
-        ${ZLIB_LIBRARY}
+        ZLIB::ZLIB
         ${ZSTD_LIBRARY}
     )
 
@@ -518,7 +519,7 @@ function(ascii_add_tooling_targets)
 
     # Link required system libraries that LLVM/Clang depend on
     target_link_libraries(ascii-instr-source-print PRIVATE
-        ${ZLIB_LIBRARY}
+        ZLIB::ZLIB
         ${ZSTD_LIBRARY}
     )
 
