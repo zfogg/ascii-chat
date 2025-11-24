@@ -94,7 +94,6 @@ runs:
     - name: Install APT packages (Ubuntu)
       if: inputs.os == 'ubuntu'
       shell: bash
-      timeout-minutes: 10
       run: |
         set -euo pipefail
 
