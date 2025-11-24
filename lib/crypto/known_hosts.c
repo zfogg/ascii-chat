@@ -672,6 +672,9 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
       if (new_lines) {
         lines = new_lines;
         lines[num_lines] = platform_strdup(line);
+        if (lines[num_lines] == NULL) {
+          return SET_ERRNO(ERROR_MEMORY, "Failed to duplicate line from known_hosts file");
+        }
         num_lines++;
       }
     }
