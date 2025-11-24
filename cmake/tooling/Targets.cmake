@@ -18,13 +18,11 @@ function(ascii_add_tooling_targets)
     set(_SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(_SAVED_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
-    # Temporarily clear musl flags for tooling target creation
-    # NOTE: These get baked into targets at creation time
-    if(USE_MUSL)
-        set(CMAKE_C_FLAGS "")
-        set(CMAKE_CXX_FLAGS "")
-        set(CMAKE_EXE_LINKER_FLAGS "")
-    endif()
+    # Temporarily clear ALL global flags that might affect tooling
+    # This prevents musl/target flags from being baked into tooling targets
+    set(CMAKE_C_FLAGS "")
+    set(CMAKE_CXX_FLAGS "")
+    set(CMAKE_EXE_LINKER_FLAGS "")
 
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
@@ -83,13 +81,16 @@ function(ascii_add_tooling_targets)
     find_package(Threads REQUIRED)
 
     # Find system libraries that LLVM/Clang depend on
+    # IMPORTANT: For tooling, prefer shared libraries (dynamic linking for build-time tools)
+    # Only the final binaries need static linking with musl
+
     # Try standard zlib search first
     find_package(ZLIB QUIET)
 
     # If not found, try manual search in common locations
     if(NOT ZLIB_FOUND)
         find_library(ZLIB_LIBRARY_PATH
-            NAMES z zlib libz
+            NAMES libz.so z libz.a
             PATHS
                 /usr/lib/x86_64-linux-gnu
                 /usr/lib
@@ -219,6 +220,17 @@ function(ascii_add_tooling_targets)
 
     target_compile_features(ascii-instr-source-print PRIVATE cxx_std_20)
 
+    # Build ascii-instr-source-print for the BUILD system (not musl/target system)
+    # CRITICAL: Remove ALL inherited compile options from directory scope (e.g., musl flags)
+    get_target_property(_inherited_compile_opts_sp ascii-instr-source-print COMPILE_OPTIONS)
+    if(_inherited_compile_opts_sp)
+        # Remove musl-specific flags that were added by add_compile_options()
+        list(FILTER _inherited_compile_opts_sp EXCLUDE REGEX ".*-target.*")
+        list(FILTER _inherited_compile_opts_sp EXCLUDE REGEX ".*musl.*")
+        list(FILTER _inherited_compile_opts_sp EXCLUDE REGEX ".*-DUSE_MUSL.*")
+        set_target_properties(ascii-instr-source-print PROPERTIES COMPILE_OPTIONS "${_inherited_compile_opts_sp}")
+    endif()
+
     # Build ascii-instr-source-print without sanitizers and with Release runtime to match LLVM libraries
     # LLVM is built with -fno-rtti, so we must match that
     # Use -O0 to prevent optimizer from stripping static initializers for command line options
@@ -282,6 +294,16 @@ function(ascii_add_tooling_targets)
 
     # Build ascii-instr-defer for the BUILD system (not musl/target system)
     # Tooling runs during build, so it needs native system libraries
+    # CRITICAL: Remove ALL inherited compile/link options from directory scope (e.g., musl flags)
+    get_target_property(_inherited_compile_opts ascii-instr-defer COMPILE_OPTIONS)
+    if(_inherited_compile_opts)
+        # Remove musl-specific flags that were added by add_compile_options()
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-target.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*musl.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-DUSE_MUSL.*")
+        set_target_properties(ascii-instr-defer PROPERTIES COMPILE_OPTIONS "${_inherited_compile_opts}")
+    endif()
+
     target_compile_options(ascii-instr-defer PRIVATE
         -O0
         -g
