@@ -7,11 +7,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      },
-      "environment": {
-        "CC": "clang"
       }
     },
     {

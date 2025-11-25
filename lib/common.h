@@ -763,6 +763,24 @@ bool shutdown_is_requested(void);
     }                                                                                                                  \
   } while (0)
 
+/* Function wrapper for SAFE_FREE - for use with defer() which needs a function pointer */
+static inline void safe_free_wrapper(void *ptr_addr) {
+  void **p = (void **)ptr_addr;
+  if (p && *p) {
+    ALLOC_FREE(*p);
+    *p = NULL;
+  }
+}
+
+/* Function wrapper for fclose - for use with defer() which needs a function pointer */
+static inline void safe_fclose_wrapper(void *file_ptr_addr) {
+  FILE **fp = (FILE **)file_ptr_addr;
+  if (fp && *fp) {
+    fclose(*fp);
+    *fp = NULL;
+  }
+}
+
 /* Untracked malloc/free - bypass memory tracking for special cases like mode_argv */
 /* These use raw malloc/free to avoid appearing in leak reports */
 #define UNTRACKED_MALLOC(size, cast)                                                                                   \

@@ -10,6 +10,40 @@ function(ascii_add_tooling_targets)
         return()
     endif()
 
+    # IMPORTANT: Tooling executables run on BUILD system, not TARGET system
+    # They must NOT inherit musl/cross-compile flags or Windows -nostartfiles/-nostdlib
+
+    # Save global CMAKE flags to restore later
+    set(_SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(_SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(_SAVED_CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    set(_SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+    set(_SAVED_CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+
+    # Temporarily clear ALL global flags that might affect tooling
+    # This prevents musl/target flags and Windows -nostartfiles/-nostdlib from being baked in
+    set(CMAKE_C_FLAGS "")
+    set(CMAKE_CXX_FLAGS "")
+
+    # On Windows, aggressively remove -nostartfiles -nostdlib from linker flags
+    if(WIN32)
+        string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+        string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+        string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+        string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+        string(REPLACE "-nostartfiles" "" CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+        string(REPLACE "-nostdlib" "" CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG}")
+    else()
+        # On non-Windows, completely clear linker flags (musl uses -static-pie)
+        # Must also clear PARENT_SCOPE to prevent re-application
+        set(CMAKE_EXE_LINKER_FLAGS "" PARENT_SCOPE)
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "" PARENT_SCOPE)
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "" PARENT_SCOPE)
+        set(CMAKE_EXE_LINKER_FLAGS "")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "")
+        set(CMAKE_EXE_LINKER_FLAGS_DEBUG "")
+    endif()
+
     if(NOT CMAKE_CXX_COMPILER_LOADED)
         if(NOT CMAKE_CXX_COMPILER)
             get_filename_component(_clang_dir "${CMAKE_C_COMPILER}" DIRECTORY)
@@ -24,20 +58,174 @@ function(ascii_add_tooling_targets)
         enable_language(CXX)
     endif()
 
-    find_package(LLVM REQUIRED CONFIG)
-    find_package(Clang REQUIRED CONFIG)
-    find_package(Threads REQUIRED)
-
-    # Find llvm-config for library information
-    find_program(LLVM_CONFIG
+    # Use llvm-config to get includes and libraries directly
+    # This bypasses LLVM's broken CMake config that requires all dependency targets
+    find_program(LLVM_CONFIG_EXECUTABLE
         NAMES llvm-config llvm-config.exe
-        HINTS ${LLVM_TOOLS_BINARY_DIR}
         DOC "Path to llvm-config"
     )
 
-    list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
-    include(AddLLVM)
-    include(HandleLLVMOptions)
+    if(NOT LLVM_CONFIG_EXECUTABLE)
+        message(FATAL_ERROR "llvm-config not found")
+    endif()
+
+    # Get LLVM configuration from llvm-config
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --includedir
+        OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --libdir
+        OUTPUT_VARIABLE LLVM_LIBRARY_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --cxxflags
+        OUTPUT_VARIABLE LLVM_CXX_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --ldflags
+        OUTPUT_VARIABLE LLVM_LD_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --system-libs
+        OUTPUT_VARIABLE LLVM_SYSTEM_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version
+        OUTPUT_VARIABLE LLVM_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --libs
+        OUTPUT_VARIABLE LLVM_CONFIG_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    # Convert to list and extract library names
+    string(REPLACE " " ";" LLVM_LIB_LIST "${LLVM_CONFIG_LIBS}")
+
+    message(STATUS "LLVM version: ${LLVM_VERSION}")
+    message(STATUS "LLVM include dir: ${LLVM_INCLUDE_DIRS}")
+    message(STATUS "LLVM library dir: ${LLVM_LIBRARY_DIRS}")
+
+    # Find Clang includes (next to LLVM)
+    set(CLANG_INCLUDE_DIRS "${LLVM_INCLUDE_DIRS}")
+
+    # Set LLVM_CONFIG for compatibility with existing code
+    set(LLVM_CONFIG "${LLVM_CONFIG_EXECUTABLE}")
+
+    find_package(Threads REQUIRED)
+
+    # Find system libraries that LLVM/Clang depend on
+    # IMPORTANT: For tooling, prefer shared libraries (dynamic linking for build-time tools)
+    # Only the final binaries need static linking with musl
+
+    # Try standard zlib search first
+    find_package(ZLIB QUIET)
+
+    # If not found, try manual search in common locations
+    if(NOT ZLIB_FOUND)
+        find_library(ZLIB_LIBRARY_PATH
+            NAMES libz.so z libz.a
+            PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib
+                /lib/x86_64-linux-gnu
+                /lib
+            NO_DEFAULT_PATH
+        )
+
+        if(ZLIB_LIBRARY_PATH)
+            add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+            set_target_properties(ZLIB::ZLIB PROPERTIES
+                IMPORTED_LOCATION "${ZLIB_LIBRARY_PATH}"
+            )
+            message(STATUS "Found zlib manually: ${ZLIB_LIBRARY_PATH}")
+        else()
+            message(FATAL_ERROR "zlib not found - required for LLVM compression support. Install: sudo apt install zlib1g-dev")
+        endif()
+    endif()
+
+    # Find zstd library
+    find_library(ZSTD_LIBRARY
+        NAMES zstd libzstd
+        PATHS
+            /usr/lib/x86_64-linux-gnu
+            /usr/lib
+            /lib/x86_64-linux-gnu
+            /lib
+        NO_DEFAULT_PATH
+    )
+
+    # Also try default paths if not found
+    if(NOT ZSTD_LIBRARY)
+        find_library(ZSTD_LIBRARY NAMES zstd libzstd)
+    endif()
+
+    if(NOT ZSTD_LIBRARY)
+        message(FATAL_ERROR "zstd not found - required for LLVM compression support. Install: sudo apt install libzstd-dev")
+    else()
+        message(STATUS "Found zstd: ${ZSTD_LIBRARY}")
+    endif()
+
+    # Find ncurses/tinfo for terminal support (required on Unix for LLVM)
+    if(UNIX)
+        find_library(NCURSES_LIBRARY
+            NAMES tinfo ncurses
+            PATHS
+                /usr/lib/x86_64-linux-gnu
+                /usr/lib
+                /lib/x86_64-linux-gnu
+                /lib
+            NO_DEFAULT_PATH
+        )
+
+        # Also try default paths if not found
+        if(NOT NCURSES_LIBRARY)
+            find_library(NCURSES_LIBRARY NAMES tinfo ncurses)
+        endif()
+
+        if(NOT NCURSES_LIBRARY)
+            message(FATAL_ERROR "ncurses/tinfo not found - required for LLVM terminal support on Unix. Install: sudo apt install libncurses-dev")
+        else()
+            message(STATUS "Found ncurses/tinfo: ${NCURSES_LIBRARY}")
+        endif()
+    endif()
+
+    # Find Clang libraries manually (avoid broken CMake config)
+    # Use the full list of Clang libraries for both Unix and Windows
+    set(CLANG_LIBS
+        clangTooling clangFrontend clangAST clangASTMatchers clangBasic
+        clangRewrite clangRewriteFrontend clangLex clangSerialization
+        clangDriver clangParse clangSema clangEdit clangAnalysis
+        clangAPINotes clangSupport clangAnalysisLifetimeSafety
+    )
+
+    foreach(lib ${CLANG_LIBS})
+        find_library(${lib}_LIBRARY
+            NAMES ${lib}
+            PATHS ${LLVM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
+        if(${lib}_LIBRARY)
+            add_library(${lib} UNKNOWN IMPORTED)
+            set_target_properties(${lib} PROPERTIES
+                IMPORTED_LOCATION "${${lib}_LIBRARY}"
+            )
+        else()
+            message(WARNING "Clang library not found: ${lib}")
+        endif()
+    endforeach()
+
+    # Find clang-cpp monolithic library if available
+    find_library(clang-cpp_LIBRARY
+        NAMES clang-cpp
+        PATHS ${LLVM_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(clang-cpp_LIBRARY)
+        add_library(clang-cpp UNKNOWN IMPORTED)
+        set_target_properties(clang-cpp PROPERTIES
+            IMPORTED_LOCATION "${clang-cpp_LIBRARY}"
+        )
+    endif()
+
+    # Create LLVMSupport target
+    find_library(LLVMSupport_LIBRARY
+        NAMES LLVMSupport
+        PATHS ${LLVM_LIBRARY_DIRS}
+        NO_DEFAULT_PATH
+    )
+    if(LLVMSupport_LIBRARY)
+        add_library(LLVMSupport UNKNOWN IMPORTED)
+        set_target_properties(LLVMSupport PROPERTIES
+            IMPORTED_LOCATION "${LLVMSupport_LIBRARY}"
+        )
+    endif()
 
     if(NOT TARGET ascii-instr-source-print)
         add_executable(ascii-instr-source-print EXCLUDE_FROM_ALL
@@ -52,6 +240,17 @@ function(ascii_add_tooling_targets)
     )
 
     target_compile_features(ascii-instr-source-print PRIVATE cxx_std_20)
+
+    # Build ascii-instr-source-print for the BUILD system (not musl/target system)
+    # CRITICAL: Remove ALL inherited compile options from directory scope (e.g., musl flags)
+    get_target_property(_inherited_compile_opts_sp ascii-instr-source-print COMPILE_OPTIONS)
+    if(_inherited_compile_opts_sp)
+        # Remove musl-specific flags that were added by add_compile_options()
+        list(FILTER _inherited_compile_opts_sp EXCLUDE REGEX ".*-target.*")
+        list(FILTER _inherited_compile_opts_sp EXCLUDE REGEX ".*musl.*")
+        list(FILTER _inherited_compile_opts_sp EXCLUDE REGEX ".*-DUSE_MUSL.*")
+        set_target_properties(ascii-instr-source-print PROPERTIES COMPILE_OPTIONS "${_inherited_compile_opts_sp}")
+    endif()
 
     # Build ascii-instr-source-print without sanitizers and with Release runtime to match LLVM libraries
     # LLVM is built with -fno-rtti, so we must match that
@@ -73,16 +272,17 @@ function(ascii_add_tooling_targets)
         -fno-lto
     )
 
-    # Explicitly link libc++ to resolve C++ standard library symbols
-    # This is needed because LLVM libraries may have been built with a different libc++ version
-    # Also link static libc++ from LLVM to get all required symbols
-    if(APPLE OR UNIX)
-        # Link against the static libc++ from LLVM to ensure ABI compatibility
-        # Also need libc++abi for exception handling symbols like __cxa_rethrow_primary_exception
+    # Note: C++ standard library is linked automatically by clang++
+    # On macOS with Homebrew LLVM, we may need explicit libc++
+    # On Linux, the system libstdc++ is used by default
+    if(APPLE)
         if(EXISTS "/usr/local/lib/libc++.a" AND EXISTS "/usr/local/lib/libc++abi.a")
             target_link_libraries(ascii-instr-source-print PRIVATE "/usr/local/lib/libc++.a" "/usr/local/lib/libc++abi.a")
-        else()
-            target_link_libraries(ascii-instr-source-print PRIVATE c++)
+        elseif(EXISTS "/opt/homebrew/opt/llvm/lib/c++/libc++.a")
+            target_link_libraries(ascii-instr-source-print PRIVATE
+                "/opt/homebrew/opt/llvm/lib/c++/libc++.a"
+                "/opt/homebrew/opt/llvm/lib/c++/libc++abi.a"
+            )
         endif()
     endif()
 
@@ -92,6 +292,8 @@ function(ascii_add_tooling_targets)
     set_target_properties(ascii-instr-source-print PROPERTIES
         MSVC_RUNTIME_LIBRARY "MultiThreadedDLL"
         INTERPROCEDURAL_OPTIMIZATION OFF
+        # Override CMAKE_EXE_LINKER_FLAGS that has musl flags
+        LINK_FLAGS ""
     )
 
     # =========================================================================
@@ -111,8 +313,35 @@ function(ascii_add_tooling_targets)
 
     target_compile_features(ascii-instr-defer PRIVATE cxx_std_20)
 
-    # Build ascii-instr-defer without sanitizers to match LLVM libraries
-    # Also disable LTO since LLVM libraries are not built with LTO
+    # Build ascii-instr-defer for the BUILD system (not musl/target system)
+    # Tooling runs during build, so it needs native system libraries
+    # CRITICAL: Remove ALL inherited compile/link options from directory scope (e.g., musl flags)
+    get_target_property(_inherited_compile_opts ascii-instr-defer COMPILE_OPTIONS)
+    if(_inherited_compile_opts)
+        # Remove musl-specific flags that were added by add_compile_options()
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-target.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*musl.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-DUSE_MUSL.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-static.*")
+        list(FILTER _inherited_compile_opts EXCLUDE REGEX ".*-nostdlib.*")
+        set_target_properties(ascii-instr-defer PROPERTIES COMPILE_OPTIONS "${_inherited_compile_opts}")
+    endif()
+
+    # Also clear link options that might have musl/static flags from add_link_options()
+    get_target_property(_inherited_link_opts ascii-instr-defer LINK_OPTIONS)
+    message(STATUS "defer tool link options BEFORE filtering: ${_inherited_link_opts}")
+    if(_inherited_link_opts)
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*-target.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*musl.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*-static.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*-nostdlib.*")
+        list(FILTER _inherited_link_opts EXCLUDE REGEX ".*rcrt.*")
+        set_target_properties(ascii-instr-defer PROPERTIES LINK_OPTIONS "${_inherited_link_opts}")
+        message(STATUS "defer tool link options AFTER filtering: ${_inherited_link_opts}")
+    else()
+        message(STATUS "defer tool has NO link options to filter")
+    endif()
+
     target_compile_options(ascii-instr-defer PRIVATE
         -O0
         -g
@@ -123,21 +352,68 @@ function(ascii_add_tooling_targets)
         -fno-lto
     )
 
+    # On Windows, tell Clang headers to NOT use dllimport even though we use /MD runtime
+    # This is needed because LLVM/Clang libraries are static .lib files, not DLLs
+    if(WIN32)
+        target_compile_definitions(ascii-instr-defer PRIVATE
+            LLVM_BUILD_STATIC
+            CLANG_BUILD_STATIC
+        )
+    endif()
+
+    # On Windows, MUST override the inherited linker flags to remove -nostartfiles -nostdlib
+    # These flags break tooling executables which need standard runtime
+    if(WIN32)
+        # Override CMAKE_EXE_LINKER_FLAGS for this target specifically
+        set_target_properties(ascii-instr-defer PROPERTIES
+            LINK_FLAGS "/SUBSYSTEM:CONSOLE"
+        )
+    else()
+        # On Linux, override any -static or -static-pie flags from musl builds
+        # Tooling must use dynamic linking for shared Clang/LLVM libraries
+        # Explicitly clear all musl-related linker flags
+        # IMPORTANT: Must remove musl target, static flags, and custom startup files
+        set_target_properties(ascii-instr-defer PROPERTIES
+            LINK_FLAGS "-target x86_64-linux-gnu"  # Override musl target with gnu
+            LINK_SEARCH_START_STATIC FALSE
+            LINK_SEARCH_END_STATIC FALSE
+            ENABLE_EXPORTS FALSE
+        )
+        # Remove musl target triple and static flags
+        get_target_property(_link_opts ascii-instr-defer LINK_OPTIONS)
+        if(_link_opts)
+            list(FILTER _link_opts EXCLUDE REGEX ".*-target.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*-static.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*musl.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*-nostdlib.*")
+            list(FILTER _link_opts EXCLUDE REGEX ".*rcrt.*")
+            set_target_properties(ascii-instr-defer PROPERTIES LINK_OPTIONS "${_link_opts}")
+        endif()
+    endif()
+
     target_link_options(ascii-instr-defer PRIVATE
         -fno-sanitize=all
         -fno-lto
     )
 
-    # Explicitly link libc++ to resolve C++ standard library symbols
-    # This is needed because LLVM libraries may have been built with a different libc++ version
-    # Also link static libc++ from LLVM to get all required symbols
-    if(APPLE OR UNIX)
-        # Link against the static libc++ from LLVM to ensure ABI compatibility
-        # Also need libc++abi for exception handling symbols like __cxa_rethrow_primary_exception
+    # On non-Windows, force dynamic linking to prevent musl -static flags from affecting tooling
+    if(NOT WIN32)
+        target_link_options(ascii-instr-defer PRIVATE
+            -Wl,-Bdynamic
+        )
+    endif()
+
+    # Note: C++ standard library is linked automatically by clang++
+    # On macOS with Homebrew LLVM, we may need explicit libc++
+    # On Linux, the system libstdc++ is used by default
+    if(APPLE)
         if(EXISTS "/usr/local/lib/libc++.a" AND EXISTS "/usr/local/lib/libc++abi.a")
             target_link_libraries(ascii-instr-defer PRIVATE "/usr/local/lib/libc++.a" "/usr/local/lib/libc++abi.a")
-        else()
-            target_link_libraries(ascii-instr-defer PRIVATE c++)
+        elseif(EXISTS "/opt/homebrew/opt/llvm/lib/c++/libc++.a")
+            target_link_libraries(ascii-instr-defer PRIVATE
+                "/opt/homebrew/opt/llvm/lib/c++/libc++.a"
+                "/opt/homebrew/opt/llvm/lib/c++/libc++abi.a"
+            )
         endif()
     endif()
 
@@ -146,6 +422,32 @@ function(ascii_add_tooling_targets)
         INTERPROCEDURAL_OPTIMIZATION OFF
     )
 
+    # On Windows, override LINK_FLAGS to remove -nostartfiles -nostdlib
+    if(WIN32)
+        set_target_properties(ascii-instr-defer PROPERTIES
+            LINK_FLAGS ""
+        )
+    endif()
+
+    # On Windows, add ALL required LLVM component libraries statically
+    if(WIN32)
+        # Windows LLVM has no shared libraries - must link all components statically
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ${LLVM_LIBRARY_DIRS}/LLVMSupport.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMCore.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMBinaryFormat.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMRemarks.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMBitstreamReader.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMOption.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMProfileData.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMFrontendOpenMP.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMDemangle.lib
+            ${LLVM_LIBRARY_DIRS}/clangAnalysisLifetimeSafety.lib
+            ntdll.lib
+            version.lib
+        )
+    endif()
+
     if(DEFINED LLVM_DEFINITIONS)
         separate_arguments(_llvm_defs_defer NATIVE_COMMAND "${LLVM_DEFINITIONS}")
         if(_llvm_defs_defer)
@@ -153,35 +455,101 @@ function(ascii_add_tooling_targets)
         endif()
     endif()
 
-    if(TARGET clang-cpp)
-        target_link_libraries(ascii-instr-defer PRIVATE clang-cpp)
+    # Link against shared LLVM library to avoid duplicate command-line option registration
+    # Using static libraries causes "Option 'debug-counter' registered more than once" error
+    # On Windows, LLVM-C.lib is a DLL import library, not what we want
+    # We need static Clang libraries only on Windows
+    if(NOT WIN32)
+        # Try to find shared Clang library (monolithic libclang-cpp.so on Linux)
+        find_library(CLANG_CPP_SHARED_LIB
+            NAMES clang-cpp
+            PATHS ${LLVM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
+
+        find_library(LLVM_SHARED_LIB
+            NAMES LLVM-C LLVM-18 LLVM
+            PATHS ${LLVM_LIBRARY_DIRS}
+            NO_DEFAULT_PATH
+        )
     endif()
 
-    target_link_libraries(ascii-instr-defer PRIVATE LLVMSupport)
+    if(LLVM_SHARED_LIB AND NOT WIN32)
+        if(CLANG_CPP_SHARED_LIB)
+            message(STATUS "Using shared Clang library: ${CLANG_CPP_SHARED_LIB}")
+            message(STATUS "Using shared LLVM library: ${LLVM_SHARED_LIB}")
+            target_link_libraries(ascii-instr-defer PRIVATE
+                ${CLANG_CPP_SHARED_LIB}
+                ${LLVM_SHARED_LIB}
+            )
+        else()
+            message(STATUS "Using shared LLVM library with static Clang: ${LLVM_SHARED_LIB}")
+            target_link_libraries(ascii-instr-defer PRIVATE
+                ${CLANG_LIBS}
+                ${LLVM_SHARED_LIB}
+            )
+        endif()
+    else()
+        # Fallback to static libraries (may have command-line option conflicts)
+        if(TARGET clang-cpp)
+            target_link_libraries(ascii-instr-defer PRIVATE clang-cpp)
+        endif()
 
-    target_link_libraries(ascii-instr-defer PRIVATE
-        clangTooling
-        clangFrontend
-        clangAST
-        clangASTMatchers
-        clangBasic
-        clangRewrite
-        clangRewriteFrontend
-        clangLex
-        clangSerialization
-        clangDriver
-        clangParse
-        clangSema
-        clangEdit
-        clangAnalysis
-        ${LLVM_LIB_LIST}
-    )
+        target_link_libraries(ascii-instr-defer PRIVATE LLVMSupport)
+
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ${CLANG_LIBS}
+            ${LLVM_LIB_LIST}
+        )
+    endif()
+
+    # Link required system libraries that LLVM/Clang depend on
+    # Only needed when linking static libraries; shared libs resolve these automatically
+    if(WIN32 OR NOT CLANG_CPP_SHARED_LIB)
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ZLIB::ZLIB
+            ${ZSTD_LIBRARY}
+        )
+    endif()
+
+    # On Linux, add ncurses/tinfo which is required by LLVM
+    # Also explicitly link C++ standard library and filesystem library
+    if(NOT WIN32)
+        find_library(TINFO_LIBRARY NAMES tinfo ncurses)
+        if(TINFO_LIBRARY)
+            target_link_libraries(ascii-instr-defer PRIVATE ${TINFO_LIBRARY})
+        endif()
+
+        # Explicitly link C++ standard library, filesystem library, and gcc runtime
+        # Needed because musl builds use -static which we override for tooling
+        # Don't explicitly link -lc, let the compiler handle it
+        target_link_libraries(ascii-instr-defer PRIVATE
+            stdc++
+            stdc++fs
+            gcc_s
+        )
+    endif()
+
+    # On Windows, add system libraries required by LLVM
+    if(WIN32)
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ntdll
+            version
+        )
+    endif()
+
+    # Link ncurses on Unix (required for LLVM terminal support)
+    if(UNIX AND NCURSES_LIBRARY)
+        target_link_libraries(ascii-instr-defer PRIVATE ${NCURSES_LIBRARY})
+    endif()
 
     set_target_properties(ascii-instr-defer PROPERTIES
         OUTPUT_NAME "ascii-instr-defer"
     )
 
-    if(CMAKE_CXX_COMPILER)
+    # Only use libc++ on macOS where it's the default
+    # On Linux, use the system libstdc++ (default)
+    if(APPLE AND CMAKE_CXX_COMPILER)
         get_filename_component(_cxx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
         get_filename_component(_cxx_root "${_cxx_compiler_dir}/.." ABSOLUTE)
         set(_libcxx_include "${_cxx_root}/include/c++/v1")
@@ -359,47 +727,78 @@ function(ascii_add_tooling_targets)
         link_directories(${LLVM_LIBRARY_DIRS})
     endif()
 
-    # Get LLVM libraries from llvm-config if available
-    if(LLVM_CONFIG)
-        execute_process(
-            COMMAND ${LLVM_CONFIG} --libs
-            OUTPUT_VARIABLE LLVM_CONFIG_LIBS
-            OUTPUT_STRIP_TRAILING_WHITESPACE
+    # LLVM_LIB_LIST already set from llvm-config above
+
+    # Link against shared LLVM library to avoid duplicate command-line option registration
+    # (reuse LLVM_SHARED_LIB from ascii-instr-defer above)
+    if(LLVM_SHARED_LIB)
+        target_link_libraries(ascii-instr-source-print PRIVATE
+            clangTooling
+            clangFrontend
+            clangAST
+            clangASTMatchers
+            clangBasic
+            clangRewrite
+            clangRewriteFrontend
+            clangLex
+            clangSerialization
+            clangDriver
+            clangParse
+            clangSema
+            clangEdit
+            clangAnalysis
+            clangAPINotes
+            clangSupport
+            ${LLVM_SHARED_LIB}
         )
-        # Convert to list and extract library names
-        string(REPLACE " " ";" LLVM_LIB_LIST "${LLVM_CONFIG_LIBS}")
+    else()
+        # Fallback to static libraries (may have command-line option conflicts)
+        if(TARGET clang-cpp)
+            target_link_libraries(ascii-instr-source-print PRIVATE clang-cpp)
+        endif()
+
+        # Link LLVMSupport EXPLICITLY and FIRST to ensure command-line static initialization works
+        target_link_libraries(ascii-instr-source-print PRIVATE LLVMSupport)
+
+        target_link_libraries(ascii-instr-source-print PRIVATE
+            clangTooling
+            clangFrontend
+            clangAST
+            clangASTMatchers
+            clangBasic
+            clangRewrite
+            clangRewriteFrontend
+            clangLex
+            clangSerialization
+            clangDriver
+            clangParse
+            clangSema
+            clangEdit
+            clangAnalysis
+            clangAPINotes
+            clangSupport
+            ${LLVM_LIB_LIST}
+        )
     endif()
 
-    if(TARGET clang-cpp)
-        target_link_libraries(ascii-instr-source-print PRIVATE clang-cpp)
-    endif()
-
-    # Link LLVMSupport EXPLICITLY and FIRST to ensure command-line static initialization works
-    target_link_libraries(ascii-instr-source-print PRIVATE LLVMSupport)
-
+    # Link required system libraries that LLVM/Clang depend on
     target_link_libraries(ascii-instr-source-print PRIVATE
-        clangTooling
-        clangFrontend
-        clangAST
-        clangASTMatchers
-        clangBasic
-        clangRewrite
-        clangRewriteFrontend
-        clangLex
-        clangSerialization
-        clangDriver
-        clangParse
-        clangSema
-        clangEdit
-        clangAnalysis
-        ${LLVM_LIB_LIST}
+        ZLIB::ZLIB
+        ${ZSTD_LIBRARY}
     )
+
+    # Link ncurses on Unix (required for LLVM terminal support)
+    if(UNIX AND NCURSES_LIBRARY)
+        target_link_libraries(ascii-instr-source-print PRIVATE ${NCURSES_LIBRARY})
+    endif()
 
     set_target_properties(ascii-instr-source-print PROPERTIES
         OUTPUT_NAME "ascii-instr-source-print"
     )
 
-    if(CMAKE_CXX_COMPILER)
+    # Only use libc++ on macOS where it's the default
+    # On Linux, use the system libstdc++ (default)
+    if(APPLE AND CMAKE_CXX_COMPILER)
         get_filename_component(_cxx_compiler_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
         get_filename_component(_cxx_root "${_cxx_compiler_dir}/.." ABSOLUTE)
         set(_libcxx_include "${_cxx_root}/include/c++/v1")
@@ -444,6 +843,13 @@ function(ascii_add_tooling_targets)
         )
         set_target_properties(ascii-source-print-report PROPERTIES OUTPUT_NAME "ascii-source-print-report")
     endif()
+
+    # Restore original flags for other targets (in case function was called mid-build)
+    set(CMAKE_C_FLAGS "${_SAVED_CMAKE_C_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_CXX_FLAGS "${_SAVED_CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS "${_SAVED_CMAKE_EXE_LINKER_FLAGS}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${_SAVED_CMAKE_EXE_LINKER_FLAGS_RELEASE}" PARENT_SCOPE)
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${_SAVED_CMAKE_EXE_LINKER_FLAGS_DEBUG}" PARENT_SCOPE)
 endfunction()
 
 function(ascii_add_debug_targets)

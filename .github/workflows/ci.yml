@@ -40,6 +40,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Run tests with AddressSanitizer
       run: |
@@ -83,6 +89,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Run static analysis
       run: |

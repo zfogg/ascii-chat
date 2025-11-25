@@ -1,0 +1,7 @@
+{
+  "build": {
+    "dockerfile": "./tests/Dockerfile",
+    "context": "."
+  },
+  "terminals": []
+}

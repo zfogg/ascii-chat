@@ -1,26 +1,80 @@
 include_guard(GLOBAL)
 
-option(ASCII_BUILD_WITH_DEFER "Enable defer() transformation during build" ON)
+# defer() is MANDATORY - the code requires it to function correctly
+# Build the defer tool as an external project to avoid inheriting musl/static flags
+
 set(ASCII_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
 
-include(${CMAKE_SOURCE_DIR}/cmake/tooling/Targets.cmake)
+include(ExternalProject)
 
 function(ascii_defer_prepare)
-    if(NOT ASCII_BUILD_WITH_DEFER)
-        set(ASCII_DEFER_ENABLED FALSE PARENT_SCOPE)
-        return()
-    endif()
-
     # Determine which defer tool to use
     if(ASCII_DEFER_TOOL AND EXISTS "${ASCII_DEFER_TOOL}")
         set(_defer_tool_exe "${ASCII_DEFER_TOOL}")
         set(_defer_tool_depends "")
         message(STATUS "Using external defer tool: ${_defer_tool_exe}")
     else()
-        ascii_add_tooling_targets()
-        set(_defer_tool_exe $<TARGET_FILE:ascii-instr-defer>)
-        set(_defer_tool_depends ascii-instr-defer)
-        message(STATUS "Building defer tool from source")
+        # Build defer tool as external project with clean CMake environment
+        set(_defer_build_dir "${CMAKE_BINARY_DIR}/defer_tool_build")
+        set(_defer_tool_exe "${_defer_build_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
+
+        # Detect the C++ compiler (use same compiler family as main build)
+        if(CMAKE_CXX_COMPILER)
+            set(_defer_cxx_compiler "${CMAKE_CXX_COMPILER}")
+        elseif(CMAKE_C_COMPILER MATCHES "clang")
+            get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+            find_program(_defer_cxx_compiler NAMES clang++ PATHS "${_compiler_dir}" NO_DEFAULT_PATH)
+            if(NOT _defer_cxx_compiler)
+                find_program(_defer_cxx_compiler NAMES clang++)
+            endif()
+        else()
+            find_program(_defer_cxx_compiler NAMES c++ g++)
+        endif()
+
+        # Detect vcpkg if on Windows - pass vcpkg paths but not the toolchain file
+        # The vcpkg toolchain file adds -nostartfiles -nostdlib which breaks the defer tool build
+        set(_defer_cmake_args
+            -DCMAKE_CXX_COMPILER=${_defer_cxx_compiler}
+            -DCMAKE_BUILD_TYPE=Release
+            -DOUTPUT_DIR=${_defer_build_dir}
+        )
+
+        # On Windows with vcpkg, pass the vcpkg root so the defer tool can find dependencies
+        # but don't use the toolchain file itself (to avoid inherited build flags)
+        if(WIN32 AND DEFINED VCPKG_INSTALLED_DIR)
+            list(APPEND _defer_cmake_args
+                -DVCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}
+                -DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}
+            )
+            # Force empty linker flags BEFORE project() via cache to prevent -nostartfiles -nostdlib
+            # These are set in the external project's initial cache file
+            set(_defer_cache_args
+                -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE
+                -DCMAKE_C_COMPILER_WORKS:BOOL=TRUE
+                -DCMAKE_EXE_LINKER_FLAGS:STRING=
+                -DCMAKE_EXE_LINKER_FLAGS_DEBUG:STRING=
+                -DCMAKE_EXE_LINKER_FLAGS_RELEASE:STRING=
+                -DCMAKE_SHARED_LINKER_FLAGS:STRING=
+                -DCMAKE_MODULE_LINKER_FLAGS:STRING=
+                # Prevent CMake from adding platform-default linker flags
+                -DCMAKE_PLATFORM_REQUIRED_RUNTIME_PATH:STRING=
+            )
+        else()
+            set(_defer_cache_args "")
+        endif()
+
+        ExternalProject_Add(ascii-instr-defer-external
+            SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/defer"
+            BINARY_DIR "${_defer_build_dir}"
+            CMAKE_ARGS ${_defer_cmake_args}
+            CMAKE_CACHE_ARGS ${_defer_cache_args}
+            BUILD_ALWAYS FALSE
+            INSTALL_COMMAND ""
+            BUILD_BYPRODUCTS "${_defer_tool_exe}"
+        )
+
+        set(_defer_tool_depends ascii-instr-defer-external)
+        message(STATUS "Building defer tool as external project")
     endif()
 
 
@@ -112,6 +166,27 @@ function(ascii_defer_prepare)
         "lib/tooling"
     )
 
+    # Detect Clang resource directory early for compilation database generation
+    if(WIN32)
+        set(_clang_for_db "${CMAKE_C_COMPILER}")
+    else()
+        set(_clang_for_db "/usr/bin/clang")
+    endif()
+
+    execute_process(
+        COMMAND ${_clang_for_db} -print-resource-dir
+        OUTPUT_VARIABLE _clang_resource_dir_db
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(_clang_resource_dir_db)
+        set(_defer_cflags "-resource-dir=${_clang_resource_dir_db}")
+        message(STATUS "Will use Clang resource directory in compilation database: ${_clang_resource_dir_db}")
+    else()
+        set(_defer_cflags "")
+    endif()
+
     # Generate compilation database for the defer tool
     set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp_defer")
     add_custom_command(
@@ -122,11 +197,13 @@ function(ascii_defer_prepare)
             -B "${_ascii_temp_build_dir}"
             -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_BUILD_TYPE=Debug
             -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
+            -DUSE_MUSL=OFF
             -DASCII_BUILD_WITH_DEFER=OFF
             -DUSE_PRECOMPILED_HEADERS=OFF
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+            "-DCMAKE_C_FLAGS=${_defer_cflags}"
         COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
         COMMAND ${CMAKE_COMMAND} -E copy
             "${_ascii_temp_build_dir}/compile_commands.json"
@@ -242,14 +319,14 @@ function(ascii_defer_prepare)
         set(${var} "${updated_list}" PARENT_SCOPE)
     endforeach()
 
+    # Add compile definition so defer() macro knows transformation is enabled
+    add_compile_definitions(ASCII_BUILD_WITH_DEFER)
+
     set(ASCII_DEFER_ENABLED TRUE PARENT_SCOPE)
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)
 endfunction()
 
 function(ascii_defer_finalize)
-    if(NOT ASCII_BUILD_WITH_DEFER)
-        return()
-    endif()
     if(NOT TARGET ascii-generate-defer-transformed-sources)
         return()
     endif()
