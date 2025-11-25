@@ -59,6 +59,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
@@ -272,6 +278,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Build and run integration tests with coverage
       run: |
@@ -375,6 +387,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Build performance tests with coverage
       run: |
@@ -487,6 +505,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Build with AddressSanitizer
       run: |
@@ -566,6 +590,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Build project
       run: |

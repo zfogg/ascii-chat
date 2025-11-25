@@ -42,6 +42,12 @@ jobs:
     - name: Cache build, dependencies, and ccache
       id: cache-build
       uses: ./.github/actions/cache-build
+      with:
+        cache-version: v3
+
+    - name: Clean build directory to force reconfigure
+      run: |
+        rm -rf build/CMakeCache.txt build/CMakeFiles
 
     - name: Build with debug symbols
       run: |
@@ -118,12 +124,19 @@ jobs:
       with:
         build-directory: ${{ github.workspace }}/build_debug
         build-cache-key: performance-debug
+        cache-version: v3
     - name: Cache release build directory
       id: cache-build-release
       uses: ./.github/actions/cache-build
       with:
         build-directory: ${{ github.workspace }}/build_release
         build-cache-key: performance-release
+        cache-version: v3
+
+    - name: Clean build directories to force reconfigure
+      run: |
+        rm -rf build_debug/CMakeCache.txt build_debug/CMakeFiles
+        rm -rf build_release/CMakeCache.txt build_release/CMakeFiles
 
     - name: Build different optimization levels
       run: |

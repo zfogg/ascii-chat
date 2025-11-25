@@ -50,15 +50,11 @@ configure_llvm_pre_project()
 # =============================================================================
 # Project Declaration
 # =============================================================================
+# Always enable C++ for Clang tooling (defer() and source instrumentation)
 if(APPLE)
-    set(PROJECT_LANGUAGES C OBJC)
+    set(PROJECT_LANGUAGES C CXX OBJC)
 else()
-    set(PROJECT_LANGUAGES C)
-endif()
-# Enable C++ if any instrumentation type requires it (for Clang tooling)
-if((DEFINED ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION AND ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION) OR
-   (DEFINED ASCII_BUILD_WITH_DEFER AND ASCII_BUILD_WITH_DEFER))
-    list(APPEND PROJECT_LANGUAGES CXX)
+    set(PROJECT_LANGUAGES C CXX)
 endif()
 
 project(${PROJECT_NAME_FULL}

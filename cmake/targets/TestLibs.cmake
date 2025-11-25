@@ -30,6 +30,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     # Link against the static library (mimalloc is transitively linked)
     target_link_libraries(test-static-lib PRIVATE
         ascii-chat-static-lib
+        ascii-chat-defer
     )
 
     # Include necessary headers
