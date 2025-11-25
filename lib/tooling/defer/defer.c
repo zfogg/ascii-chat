@@ -94,8 +94,9 @@ void ascii_defer_execute_all(ascii_defer_scope_t *scope) {
         }
 
         // Free context memory (the heap-allocated buffer, not the user's pointer)
+        // Must use ALLOC_FREE to match SAFE_MALLOC (supports mimalloc, debug memory, etc.)
         if (action->context) {
-            free(action->context);
+            ALLOC_FREE(action->context);
             action->context = NULL;
         }
     }
