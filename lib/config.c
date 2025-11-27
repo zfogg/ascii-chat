@@ -1047,7 +1047,7 @@ asciichat_error_t config_create_default(const char *config_path) {
 
   // Create file with default values
   FILE *f = platform_fopen(config_path_expanded, "w");
-  defer(if (f) fclose(f));
+  defer(safe_fclose_wrapper(&f));
   if (!f) {
     return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
   }
