@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <sodium.h>
 #ifdef _WIN32
 #include <direct.h>
 #include <fcntl.h>
@@ -29,7 +28,7 @@
 #endif
 
 #include "crypto/known_hosts.h"
-#include "crypto/crypto.h"          // For CRYPTO_* hex size and string literal constants
+#include "crypto/crypto.h"          // Includes <sodium.h>, CRYPTO_* constants
 #include "common.h"          // For BUFFER_SIZE_* constants
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "crypto/keys/keys.h"

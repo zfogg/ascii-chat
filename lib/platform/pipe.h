@@ -24,7 +24,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <sys/types.h> // For ssize_t
+#include <sys/types.h> // For ssize_t on all platforms
 #include "../common.h"
 
 #ifdef _WIN32
@@ -34,7 +34,6 @@ typedef HANDLE pipe_t;
 /** @brief Invalid pipe value (Windows: INVALID_HANDLE_VALUE) */
 #define INVALID_PIPE_VALUE INVALID_HANDLE_VALUE
 #else
-#include <sys/types.h>
 /** @brief Pipe handle type (POSIX: int file descriptor) */
 typedef int pipe_t;
 /** @brief Invalid pipe value (POSIX: -1) */

@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h> // For malloc/free in ALLOC_* macros
 
 /** @brief Application name for key comments ("ascii-chat") */
 #define ASCII_CHAT_APP_NAME "ascii-chat"

@@ -4,7 +4,7 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
-#include "crypto/crypto.h"
+#include "crypto/crypto.h" // Includes <sodium.h>
 #include "ssh_keys.h"
 #include "common.h"
 #include "asciichat_errno.h"
@@ -13,7 +13,6 @@
 #include "util/string.h"
 #include "util/path.h"
 #include "../ssh_agent.h"
-#include <sodium.h>
 #include <bearssl.h>
 #include <sodium_bcrypt_pbkdf.h>
 #include <string.h>
