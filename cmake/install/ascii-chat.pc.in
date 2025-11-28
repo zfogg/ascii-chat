@@ -15,7 +15,7 @@ Version: @PROJECT_VERSION@
 URL: @PROJECT_HOMEPAGE_URL@
 
 # Dependencies with pkg-config files
-Requires.private: mimalloc, libsodium >= 1.0.18, libzstd, portaudio-2.0
+Requires.private: @MIMALLOC_REQUIREMENT@libsodium >= 1.0.18, libzstd, portaudio-2.0
 
 # Main library to link
 Libs: -L${libdir} -lasciichat

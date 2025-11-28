@@ -63,8 +63,19 @@ function(ascii_defer_prepare)
             set(_defer_cache_args "")
         endif()
 
+        # Verify that the defer tool CMakeLists.txt exists before configuring ExternalProject
+        set(_defer_source_dir "${CMAKE_SOURCE_DIR}/src/tooling/defer")
+        set(_defer_cmake_file "${_defer_source_dir}/CMakeLists.txt")
+        if(NOT EXISTS "${_defer_cmake_file}")
+            message(FATAL_ERROR
+                "ERROR: Defer tool CMakeLists.txt not found at: ${_defer_cmake_file}\n"
+                "The defer tool requires a CMakeLists.txt file in src/tooling/defer/ to build.\n"
+                "Please ensure src/tooling/defer/CMakeLists.txt exists in the repository."
+            )
+        endif()
+
         ExternalProject_Add(ascii-instr-defer-external
-            SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/defer"
+            SOURCE_DIR "${_defer_source_dir}"
             BINARY_DIR "${_defer_build_dir}"
             CMAKE_ARGS ${_defer_cmake_args}
             CMAKE_CACHE_ARGS ${_defer_cache_args}

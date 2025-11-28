@@ -43,6 +43,8 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
+        add_definitions(-DENABLE_ERRNO_BACKTRACES)
+
         # Configure sanitizers (automatically handles mimalloc conflicts)
         # Note: Sanitizers are compatible with instrumentation - they work at different stages
         configure_sanitizers(${USE_MIMALLOC} "Debug")
@@ -57,6 +59,7 @@ function(configure_build_type_post_project)
         message(STATUS "DEBUG_MEMORY disabled in Dev mode for performance")
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
+        add_definitions(-DENABLE_ERRNO_BACKTRACES)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
         # Coverage build with instrumentation

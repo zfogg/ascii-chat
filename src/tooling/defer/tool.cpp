@@ -41,7 +41,7 @@ std::unordered_set<std::string> &outputRegistry() {
 bool registerOutputPath(const std::string &path) {
   std::lock_guard<std::mutex> guard(outputRegistryMutex());
   auto &registry = outputRegistry();
-  auto [_, inserted] = registry.insert(path);
+  bool inserted = registry.insert(path).second;
   return inserted;
 }
 
@@ -548,6 +548,7 @@ private:
           }
           i++;
         }
+        i++;  // Skip closing quote
       }
       // Skip character literals
         i++;
@@ -562,6 +563,9 @@ private:
           }
           i++;
         }
+        i++;  // Skip closing quote
+      } else {
+        i++;
       }
     }
 

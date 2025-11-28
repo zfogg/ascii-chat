@@ -129,13 +129,13 @@ endif()
 # Separate cache directories for different build configurations:
 # - .deps-cache/<BuildType>/           : Native builds (normal glibc/system libc)
 # - .deps-cache/musl/                  : Native musl builds
-# - .deps-cache-docker/<BuildType>/    : Docker builds
-# - .deps-cache-docker/musl/           : Docker musl builds
+# - .deps-cache/docker/<BuildType>/    : Docker builds
+# - .deps-cache/docker/musl/           : Docker musl builds
 #
 # Build types need separate caches because dependencies like mimalloc have different
 # configurations (Debug: MI_DEBUG_FULL=ON, Release: MI_DEBUG_FULL=OFF)
 #
-# To force rebuild dependencies: rm -rf .deps-cache* (or just .deps-cache-docker for Docker)
+# To force rebuild dependencies: rm -rf .deps-cache/ (or just .deps-cache/docker/ for Docker)
 
 # Use centralized dependency cache variables from CMakeLists.txt
 # ASCIICHAT_DEPS_CACHE_ROOT, ASCIICHAT_DEPS_CACHE_DIR, and ASCIICHAT_DEPS_CACHE_MUSL are set in CMakeLists.txt
