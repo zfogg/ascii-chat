@@ -84,6 +84,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-dev \
       libmimalloc-dev \
       libzstd-dev \
+      zlib1g-dev \
       libsodium-dev \
       portaudio19-dev \
       doxygen \
@@ -103,6 +104,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-libc-static \
       mimalloc-devel \
       libzstd-devel \
+      zlib-devel \
       libsodium-devel \
       portaudio-devel \
       jack-audio-connection-kit-devel \
@@ -117,16 +119,21 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       clang llvm lldb ccache \
       cmake ninja make \
       musl mimalloc \
-      zstd libsodium portaudio
+      zstd zlib libsodium portaudio
 
   else
     echo "ERROR: No supported package manager found (apt-get, yum, or pacman)"
     echo "Please install dependencies manually:"
-    echo "  - mimalloc (optional, high-performance allocator)"
-    echo "  - zstd"
-    echo "  - libsodium"
-    echo "  - portaudio"
     echo "  - pkg-config"
+    echo "  - llvm (the binary tools and runtime libraries)"
+    echo "  - * zlib (library and development headers. * this is an llvm dependency - you may already have it installed)"
+    echo "  - clang (both clang and clang++)"
+    echo "  - * musl (development tools. * this is only needed if you plan to do a release build)"
+    echo "  - * mimalloc (library and development headers. * this is only needed if you plan to do a release build)"
+    echo "  - zstd (library and development headers)"
+    echo "  - libsodium (library and development headers)"
+    echo "  - portaudio (library and development headers)"
+    echo "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"
     exit 1
   fi
 

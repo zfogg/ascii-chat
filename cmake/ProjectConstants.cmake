@@ -57,7 +57,7 @@ set(PROJECT_DESCRIPTION_SUMMARY "📸 Video chat in your terminal 🔠" CACHE ST
 
 # Full description (for package metadata)
 set(PROJECT_DESCRIPTION_FULL
-    "ascii-chat is a terminal video chat cli application that converts webcam video into ASCII art. It supports color, audio, and has lots of neat little features. Multiple clients can connect a server and talk to each other in a grid display, like Zoom and Google Hangouts."
+    "ascii-chat is a terminal video chat cli application that converts webcam video into ASCII art. It has audio support, renders to monochrome/16color/256color/truecolor, has end-to-end encryption, allows multiple clients (3+) to connect and displays them in an video grid like Zoom and Google Hangouts, and has many other neate little features."
     CACHE STRING "Full project description"
 )
 
@@ -69,10 +69,11 @@ set(PROJECT_DESCRIPTION_ONELINE "${PROJECT_DESCRIPTION_SUMMARY}" CACHE STRING "O
 # =============================================================================
 
 set(PROJECT_LICENSE "MIT" CACHE STRING "Project license")
+set(PROJECT_LICENSE_SPDX "MIT" CACHE STRING "SPDX License identifier")
 set(PROJECT_LICENSE_FILE "${CMAKE_SOURCE_DIR}/LICENSE.txt" CACHE FILEPATH "License file path")
 
 # Copyright notice
-set(PROJECT_COPYRIGHT "Copyright (c) 2025 ${PROJECT_AUTHOR_NAME}" CACHE STRING "Copyright notice")
+set(PROJECT_COPYRIGHT "Copyright (c) 2013 ${PROJECT_AUTHOR_NAME}" CACHE STRING "Copyright notice")
 
 # =============================================================================
 # Package-Specific Identifiers

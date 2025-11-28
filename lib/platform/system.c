@@ -26,16 +26,13 @@
 #include "../util/uthash.h"
 #include "logging.h"
 
-// Platform-specific path separator and binary suffix
+// Platform-specific binary suffix
 #ifdef _WIN32
-#define PATH_SEPARATOR ";"
 #define BIN_SUFFIX ".exe"
-#define PATH_DELIM '\\'
 #else
-#define PATH_SEPARATOR ":"
 #define BIN_SUFFIX ""
-#define PATH_DELIM '/'
 #endif
+// PATH_DELIM and PATH_ENV_SEPARATOR are now defined in system.h
 
 // ============================================================================
 // Maximum Path Length
@@ -202,12 +199,12 @@ static bool check_binary_in_path_uncached(const char *bin_name) {
   // Search each directory in PATH
   bool found = false;
   char *saveptr = NULL;
-  char *dir = platform_strtok_r(path_copy, PATH_SEPARATOR, &saveptr);
+  char *dir = platform_strtok_r(path_copy, PATH_ENV_SEPARATOR, &saveptr);
 
   while (dir != NULL) {
     // Skip empty directory entries
     if (dir[0] == '\0') {
-      dir = platform_strtok_r(NULL, PATH_SEPARATOR, &saveptr);
+      dir = platform_strtok_r(NULL, PATH_ENV_SEPARATOR, &saveptr);
       continue;
     }
 
@@ -220,7 +217,7 @@ static bool check_binary_in_path_uncached(const char *bin_name) {
       break;
     }
 
-    dir = platform_strtok_r(NULL, PATH_SEPARATOR, &saveptr);
+    dir = platform_strtok_r(NULL, PATH_ENV_SEPARATOR, &saveptr);
   }
 
   SAFE_FREE(path_copy);

@@ -156,6 +156,7 @@
 #include "buffer_pool.h"
 #include "network/packet.h"
 #include "util/time.h"
+#include "capture.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -496,6 +497,11 @@ int client_crypto_handshake(socket_t socket) {
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Starting key exchange");
   result = crypto_handshake_client_key_exchange(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
+#ifdef _WIN32
+    // On Windows: Cleanup capture resources before exiting to prevent Media Foundation threads from hanging exit()
+    // Media Foundation creates background COM threads that can block exit() if not properly shut down
+    capture_cleanup();
+#endif
     FATAL(result, "Crypto key exchange failed");
   }
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Key exchange completed successfully");

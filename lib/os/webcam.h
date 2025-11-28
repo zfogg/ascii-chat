@@ -134,6 +134,16 @@ image_t *webcam_read(void);
  */
 void webcam_cleanup(void);
 
+/**
+ * @brief Flush/interrupt any pending webcam read operations
+ *
+ * Cancels any blocking ReadSample operations. Call this before stopping
+ * the capture thread to allow it to exit cleanly.
+ *
+ * @ingroup webcam
+ */
+void webcam_flush(void);
+
 /* ============================================================================
  * Error Handling Helpers
  * @{
@@ -196,6 +206,16 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
  * @ingroup webcam
  */
 void webcam_cleanup_context(webcam_context_t *ctx);
+
+/**
+ * @brief Flush/interrupt pending read operations on webcam context
+ * @param ctx Webcam context (may be NULL - no-op)
+ *
+ * Cancels any blocking read operations. Call before stopping capture thread.
+ *
+ * @ingroup webcam
+ */
+void webcam_flush_context(webcam_context_t *ctx);
 
 /**
  * @brief Capture a frame from webcam context

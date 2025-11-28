@@ -23,9 +23,10 @@ services:
       - ccache-data:/ccache
 
       # Dependency cache volume for FetchContent and musl builds
-      # CMakeLists.txt automatically uses .deps-cache-docker/ when TESTING=1
-      # Path structure: .deps-cache-docker/<BuildType>/ and .deps-cache-docker/<BuildType>/musl/
-      - deps-cache-data:/app/.deps-cache-docker
+      # CMakeLists.txt automatically uses .deps-cache/docker/ when TESTING=1
+      # Volume mounted at root to preserve .patch_applied files and docker/ subdirectory
+      # Path structure: .deps-cache/docker/<BuildType>/ and .deps-cache/docker/<BuildType>/musl/
+      - deps-cache-data:/app/.deps-cache
 
     # Run tests by default
     # Use build_docker directory (build is for native OS)
@@ -74,12 +75,13 @@ volumes:
   deps-cache-data:
     driver: local
     # Stores FetchContent dependencies (mimalloc, bearssl, etc.) and musl builds
+    # Also stores .patch_applied files at root level
     # Separated from ccache for easier management and cleanup
-    # Path structure inside container: /app/.deps-cache-docker/<BuildType>/
+    # Path structure inside container: /app/.deps-cache/docker/<BuildType>/
     # Optional: specify host path for easier access
     # driver_opts:
     #   type: none
-    #   device: ${PWD}/.deps-cache-docker
+    #   device: ${PWD}/.deps-cache
     #   o: bind
 
   docker-build-data:

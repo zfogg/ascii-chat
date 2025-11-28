@@ -133,7 +133,7 @@ static void rotate_log_if_needed_unlocked(void) {
     if (read_file < 0) {
       safe_fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
       /* Fall back to regular truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -144,7 +144,7 @@ static void rotate_log_if_needed_unlocked(void) {
     if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
       platform_close(read_file);
       /* Fall back to truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -165,11 +165,11 @@ static void rotate_log_if_needed_unlocked(void) {
       return;
     }
 
-    int temp_file = platform_open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, 0600);
+    int temp_file = platform_open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, FILE_PERM_PRIVATE);
     if (temp_file < 0) {
       platform_close(read_file);
       /* Fall back to truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
@@ -186,7 +186,7 @@ static void rotate_log_if_needed_unlocked(void) {
         platform_close(temp_file);
         unlink(temp_filename);
         /* Fall back to truncation */
-        int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+        int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
         g_log.file = fd;
         g_log.current_size = 0;
         return;
@@ -201,14 +201,14 @@ static void rotate_log_if_needed_unlocked(void) {
     if (rename(temp_filename, g_log.filename) != 0) {
       unlink(temp_filename); /* Clean up temp file */
       /* Fall back to truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
       g_log.file = fd;
       g_log.current_size = 0;
       return;
     }
 
     /* Reopen for appending */
-    g_log.file = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, 0600);
+    g_log.file = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
     if (g_log.file < 0) {
       LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to reopen rotated log file: %s", g_log.filename);
       g_log.file = STDERR_FILENO;
@@ -271,7 +271,7 @@ void log_init(const char *filename, log_level_t level) {
   if (filename) {
     /* Store filename for rotation */
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
-    int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+    int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
     g_log.file = fd;
     if (g_log.file < 0) { /* Check for error: fd < 0, not fd == 0 (STDIN is valid!) */
       if (preserve_terminal_output) {

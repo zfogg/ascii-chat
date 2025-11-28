@@ -10,56 +10,72 @@
 #
 # Based on neovim's versioning scheme where -dev- indicates non-release builds.
 #
-# This module:
-#   1. Detects version from git at configure time (overrides PROJECT_VERSION)
-#   2. Generates version.h at build time (for runtime version display)
+# Usage:
+#   include(cmake/install/Version.cmake)
+#   version_detect()           # Call BEFORE project() - sets GIT_VERSION_* variables
+#   project(... VERSION ${PROJECT_VERSION_FROM_GIT} ...)
+#   version_setup_targets()    # Call AFTER project() - creates version.h generation
 # =============================================================================
 
-# =============================================================================
-# Configure-time version detection (for CMake variables like PROJECT_VERSION)
-# =============================================================================
-# Get git describe output at configure time
-execute_process(
-    COMMAND git describe --tags --long --dirty --always
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-)
+include_guard(GLOBAL)
 
-# Parse git describe output and override PROJECT_VERSION
-# Format: v0.3.2-6-g0b715d6-dirty
-if(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?$")
-    # Has a tag with commits since - extract tag version
-    set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
-    set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
-    set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-    message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}${ColorReset} ${Yellow}(development)${ColorReset}")
-    # Override PROJECT_VERSION with git-detected version
-    set(PROJECT_VERSION_MAJOR "${GIT_VERSION_MAJOR}" CACHE STRING "Major version from git" FORCE)
-    set(PROJECT_VERSION_MINOR "${GIT_VERSION_MINOR}" CACHE STRING "Minor version from git" FORCE)
-    set(PROJECT_VERSION_PATCH "${GIT_VERSION_PATCH}" CACHE STRING "Patch version from git" FORCE)
-    set(PROJECT_VERSION "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}" CACHE STRING "Version from git" FORCE)
-elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)?$")
-    # Exactly on a tag (no -N-g suffix) - release version
-    set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
-    set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
-    set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
-    message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}${ColorReset} ${BoldCyan}(release)${ColorReset}")
-    # Override PROJECT_VERSION with git-detected version
-    set(PROJECT_VERSION_MAJOR "${GIT_VERSION_MAJOR}" CACHE STRING "Major version from git" FORCE)
-    set(PROJECT_VERSION_MINOR "${GIT_VERSION_MINOR}" CACHE STRING "Minor version from git" FORCE)
-    set(PROJECT_VERSION_PATCH "${GIT_VERSION_PATCH}" CACHE STRING "Patch version from git" FORCE)
-    set(PROJECT_VERSION "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}" CACHE STRING "Version from git" FORCE)
-else()
-    # No tags or git not available - use fallback from project() or keep existing
-    message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION}${ColorReset})")
-endif()
+# =============================================================================
+# version_detect() - Call BEFORE project()
+# Sets: PROJECT_VERSION_FROM_GIT, GIT_VERSION_MAJOR/MINOR/PATCH
+# =============================================================================
+macro(version_detect)
+    # Get git describe output at configure time
+    execute_process(
+        COMMAND git describe --tags --long --dirty --always
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
 
-# Create a script that generates version.h on every build
-# Use absolute path to avoid issues when switching build directories
-set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
-file(WRITE "${VERSION_SCRIPT_PATH}" "
+    # Parse git describe output
+    # Format: v0.3.2-6-g0b715d6-dirty
+    if(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)-g([0-9a-f]+)(-dirty)?$")
+        # Has a tag with commits since - extract tag version
+        set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+        set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+        set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+        set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
+        set(_VERSION_TYPE "development")
+    elseif(GIT_DESCRIBE_CONFIGURE MATCHES "^v?([0-9]+)\\.([0-9]+)\\.([0-9]+)(-dirty)?$")
+        # Exactly on a tag (no -N-g suffix) - release version
+        set(GIT_VERSION_MAJOR "${CMAKE_MATCH_1}")
+        set(GIT_VERSION_MINOR "${CMAKE_MATCH_2}")
+        set(GIT_VERSION_PATCH "${CMAKE_MATCH_3}")
+        set(PROJECT_VERSION_FROM_GIT "${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH}")
+        set(_VERSION_TYPE "release")
+    else()
+        # No tags or git not available - use fallback
+        set(GIT_VERSION_MAJOR "0")
+        set(GIT_VERSION_MINOR "0")
+        set(GIT_VERSION_PATCH "0")
+        set(PROJECT_VERSION_FROM_GIT "0.0.0")
+        set(_VERSION_TYPE "fallback")
+    endif()
+
+    # Print version info (colors defined in Init.cmake)
+    if(_VERSION_TYPE STREQUAL "development")
+        message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${Yellow}(development)${ColorReset}")
+    elseif(_VERSION_TYPE STREQUAL "release")
+        message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldGreen}${PROJECT_VERSION_FROM_GIT}${ColorReset} ${BoldCyan}(release)${ColorReset}")
+    else()
+        message(STATUS "Version from ${BoldBlue}git${ColorReset}: ${BoldRed}not available${ColorReset} (using fallback: ${BoldYellow}${PROJECT_VERSION_FROM_GIT}${ColorReset})")
+    endif()
+endmacro()
+
+# =============================================================================
+# version_setup_targets() - Call AFTER project()
+# Creates: generate_version target, version.h generation
+# =============================================================================
+function(version_setup_targets)
+    # Create a script that generates version.h on every build
+    set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
+    file(WRITE "${VERSION_SCRIPT_PATH}" "
 # Get git describe output (includes commits since last tag)
 execute_process(
     COMMAND git describe --tags --long --dirty --always
@@ -213,44 +229,45 @@ configure_file(
 )
 ")
 
-# Add custom command that regenerates version.h smartly based on build type
-# - Debug/Dev: Only regenerate when .git/HEAD changes (commits/branch changes)
-# - Release: Regenerate when any tracked files change (for reproducible builds)
-#
-# Strategy: Always generate to temp file, then copy_if_different to preserve timestamps
-if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
-    # Debug/Dev: Only depend on .git/HEAD (commits/branches), NOT .git/index
-    # This prevents rebuilds from uncommitted changes or staging
-    set(VERSION_DEPENDENCIES
-        "${CMAKE_SOURCE_DIR}/.git/HEAD"
-        "${CMAKE_SOURCE_DIR}/lib/version.h.in"
-    )
-else()
-    # Release: Also depend on .git/index for dirty state tracking
-    set(VERSION_DEPENDENCIES
-        "${CMAKE_SOURCE_DIR}/.git/HEAD"
-        "${CMAKE_SOURCE_DIR}/.git/index"
-        "${CMAKE_SOURCE_DIR}/lib/version.h.in"
-    )
-endif()
+    # Add custom command that regenerates version.h smartly based on build type
+    # - Debug/Dev: Only regenerate when .git/HEAD changes (commits/branch changes)
+    # - Release: Regenerate when any tracked files change (for reproducible builds)
+    #
+    # Strategy: Always generate to temp file, then copy_if_different to preserve timestamps
+    if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
+        # Debug/Dev: Only depend on .git/HEAD (commits/branches), NOT .git/index
+        # This prevents rebuilds from uncommitted changes or staging
+        set(VERSION_DEPENDENCIES
+            "${CMAKE_SOURCE_DIR}/.git/HEAD"
+            "${CMAKE_SOURCE_DIR}/lib/version.h.in"
+        )
+    else()
+        # Release: Also depend on .git/index for dirty state tracking
+        set(VERSION_DEPENDENCIES
+            "${CMAKE_SOURCE_DIR}/.git/HEAD"
+            "${CMAKE_SOURCE_DIR}/.git/index"
+            "${CMAKE_SOURCE_DIR}/lib/version.h.in"
+        )
+    endif()
 
-add_custom_command(
-    OUTPUT "${CMAKE_BINARY_DIR}/generated/version.h"
-    # Generate to temp file first
-    COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT_PATH}"
-    # Copy temp to final location only if different (preserves timestamp if unchanged)
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
-        "${CMAKE_BINARY_DIR}/generated/version.h"
-    # Clean up temp file
-    COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
-    DEPENDS ${VERSION_DEPENDENCIES}
-    COMMENT "Generating version header with current git state..."
-    VERBATIM
-)
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/generated/version.h"
+        # Generate to temp file first
+        COMMAND ${CMAKE_COMMAND} -P "${VERSION_SCRIPT_PATH}"
+        # Copy temp to final location only if different (preserves timestamp if unchanged)
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
+            "${CMAKE_BINARY_DIR}/generated/version.h"
+        # Clean up temp file
+        COMMAND ${CMAKE_COMMAND} -E remove -f "${CMAKE_BINARY_DIR}/generated/version.h.tmp"
+        DEPENDS ${VERSION_DEPENDENCIES}
+        COMMENT "Generating version header with current git state..."
+        VERBATIM
+    )
 
-# Add custom target that depends on the generated header
-# Note: NOT using ALL here - only regenerates when dependencies change
-add_custom_target(generate_version
-    DEPENDS "${CMAKE_BINARY_DIR}/generated/version.h"
-)
+    # Add custom target that depends on the generated header
+    # Note: NOT using ALL here - only regenerates when dependencies change
+    add_custom_target(generate_version
+        DEPENDS "${CMAKE_BINARY_DIR}/generated/version.h"
+    )
+endfunction()

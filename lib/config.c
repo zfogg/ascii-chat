@@ -13,6 +13,7 @@
 #include "crypto/crypto.h"
 #include "logging.h"
 #include "version.h"
+#include "tooling/defer/defer.h"
 
 #include "tomlc17.h"
 #include <string.h>
@@ -826,6 +827,7 @@ static asciichat_error_t apply_log_config(toml_datum_t toptab) {
  */
 asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict) {
   char *config_path_expanded = NULL;
+  defer(safe_free_wrapper(&config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -837,6 +839,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
+    defer(safe_free_wrapper(&config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -847,7 +850,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
 #endif
       }
-      SAFE_FREE(config_dir);
     }
 
     // Fallback to ~/.ascii-chat/config.toml
@@ -866,10 +868,10 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   char *validated_config_path = NULL;
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  SAFE_FREE(config_path_expanded);
   if (validate_result != ASCIICHAT_OK) {
     return validate_result;
   }
+  SAFE_FREE(config_path_expanded);
   config_path_expanded = validated_config_path;
 
   // Determine display path for error messages (before any early returns)
@@ -878,7 +880,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   // Check if config file exists
   struct stat st;
   if (stat(config_path_expanded, &st) != 0) {
-    SAFE_FREE(config_path_expanded);
     if (strict) {
       return SET_ERRNO(ERROR_CONFIG, "Config file does not exist: '%s'", display_path);
     }
@@ -889,11 +890,9 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   // Verify it's a regular file
   if (!S_ISREG(st.st_mode)) {
     if (strict) {
-      SAFE_FREE(config_path_expanded);
       return SET_ERRNO(ERROR_CONFIG, "Config file exists but is not a regular file: '%s'", display_path);
     }
     CONFIG_WARN("Config file exists but is not a regular file: '%s' (skipping)", display_path);
-    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK;
   }
 
@@ -905,7 +904,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     const char *errmsg = (strlen(result.errmsg) > 0) ? result.errmsg : "Unknown parse error";
 
     if (strict) {
-      SAFE_FREE(config_path_expanded);
       // For strict mode, return detailed error message directly
       // Note: SET_ERRNO stores the message in context, but asciichat_error_string() only returns generic codes
       // So we need to format the error message ourselves here
@@ -914,7 +912,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
       return SET_ERRNO(ERROR_CONFIG, "%s", error_buffer);
     }
     CONFIG_WARN("Failed to parse config file '%s': %s (skipping)", display_path, errmsg);
-    SAFE_FREE(config_path_expanded);
     return ASCIICHAT_OK; // Non-fatal error
   }
 
@@ -925,14 +922,10 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   apply_palette_config_from_toml(result.toptab);
   asciichat_error_t crypto_result = apply_crypto_config(result.toptab, is_client);
   if (crypto_result != ASCIICHAT_OK) {
-    toml_free(result);
-    SAFE_FREE(config_path_expanded);
     return crypto_result;
   }
   asciichat_error_t log_result = apply_log_config(result.toptab);
   if (log_result != ASCIICHAT_OK) {
-    toml_free(result);
-    SAFE_FREE(config_path_expanded);
     return log_result;
   }
 
@@ -940,10 +933,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
   config_address_set = false;
   config_address6_set = false;
   config_port_set = false;
-
-  // Free TOML result
-  toml_free(result);
-  SAFE_FREE(config_path_expanded);
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
   return ASCIICHAT_OK;
@@ -973,6 +962,7 @@ asciichat_error_t config_create_default(const char *config_path) {
                 config_path ? config_path : "(NULL)");
 
   char *config_path_expanded = NULL;
+  defer(safe_free_wrapper(&config_path_expanded));
 
   if (config_path) {
     // Use custom path provided
@@ -984,6 +974,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   } else {
     // Use default location with XDG support
     char *config_dir = get_config_dir();
+    defer(safe_free_wrapper(&config_dir));
     if (config_dir) {
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
@@ -994,7 +985,6 @@ asciichat_error_t config_create_default(const char *config_path) {
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
 #endif
       }
-      SAFE_FREE(config_dir);
     }
 
     // Fallback to ~/.ascii-chat/config.toml
@@ -1010,36 +1000,26 @@ asciichat_error_t config_create_default(const char *config_path) {
   char *validated_config_path = NULL;
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
-  SAFE_FREE(config_path_expanded);
   if (validate_result != ASCIICHAT_OK) {
     return validate_result;
   }
+  SAFE_FREE(config_path_expanded);
   config_path_expanded = validated_config_path;
 
   // Check if file already exists
   struct stat st;
   if (stat(config_path_expanded, &st) == 0) {
-    SAFE_FREE(config_path_expanded);
     return SET_ERRNO(ERROR_CONFIG, "Config file already exists: %s", config_path ? config_path : "default location");
   }
 
   // Create directory if needed
   char *dir_path = platform_strdup(config_path_expanded);
   if (!dir_path) {
-    SAFE_FREE(config_path_expanded);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for directory path");
   }
 
   // Find the last path separator
-#ifdef _WIN32
-  char *last_sep = strrchr(dir_path, '\\');
-  char *last_fwd = strrchr(dir_path, '/');
-  if (last_fwd && (!last_sep || last_fwd > last_sep)) {
-    last_sep = last_fwd;
-  }
-#else
-  char *last_sep = strrchr(dir_path, '/');
-#endif
+  char *last_sep = strrchr(dir_path, PATH_DELIM);
 
   if (last_sep) {
     *last_sep = '\0';
@@ -1047,6 +1027,10 @@ asciichat_error_t config_create_default(const char *config_path) {
 #ifdef _WIN32
     // Windows: Create directory (creates only one level)
     int mkdir_result = _mkdir(dir_path);
+#else
+    // POSIX: Create directory with DIR_PERM_PRIVATE permissions
+    int mkdir_result = mkdir(dir_path, DIR_PERM_PRIVATE);
+#endif
     if (mkdir_result != 0 && errno != EEXIST) {
       // mkdir failed and it's not because the directory already exists
       // Verify if directory actually exists despite the error (Windows compatibility)
@@ -1054,144 +1038,119 @@ asciichat_error_t config_create_default(const char *config_path) {
       if (stat(dir_path, &test_st) != 0) {
         // Directory doesn't exist and we couldn't create it
         SAFE_FREE(dir_path);
-        SAFE_FREE(config_path_expanded);
         return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
       }
       // Directory exists despite error, proceed
     }
-#else
-    // POSIX: Create directory with 0700 permissions
-    int mkdir_result = mkdir(dir_path, 0700);
-    if (mkdir_result != 0 && errno != EEXIST) {
-      // mkdir failed and it's not because the directory already exists
-      // Verify if directory actually exists despite the error
-      struct stat test_st;
-      if (stat(dir_path, &test_st) != 0) {
-        // Directory doesn't exist and we couldn't create it
-        SAFE_FREE(dir_path);
-        SAFE_FREE(config_path_expanded);
-        return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
-      }
-      // Directory exists despite error, proceed
-    }
-#endif
-  } else {
-    SAFE_FREE(dir_path);
-
-    // Create file with default values
-    FILE *f = platform_fopen(config_path_expanded, "w");
-    if (!f) {
-      SAFE_FREE(config_path_expanded);
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
-    }
-
-    // Write version comment
-    (void)fprintf(f, "# ascii-chat configuration file\n");
-    (void)fprintf(f, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
-                  ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION);
-    (void)fprintf(f, "#\n");
-    (void)fprintf(f, "# If you upgrade ascii-chat and this version comment changes, you may need to\n");
-    (void)fprintf(f, "# delete and regenerate this file with: ascii-chat --config-create\n");
-    (void)fprintf(f, "#\n\n");
-
-    // Write network section with defaults
-    (void)fprintf(f, "[network]\n");
-    (void)fprintf(f, "# Port number (1-65535, shared between server and client)\n");
-    // Use opt_port (always initialized to "27224" by default)
-    (void)fprintf(f, "#port = %s\n\n", opt_port);
-
-    // Write server section with bind addresses
-    (void)fprintf(f, "[server]\n");
-    (void)fprintf(f, "# IPv4 bind address (default: 127.0.0.1)\n");
-    (void)fprintf(f, "#bind_ipv4 = \"127.0.0.1\"\n");
-    (void)fprintf(f, "# IPv6 bind address (default: ::1 for IPv6-only, or :: for dual-stack)\n");
-    (void)fprintf(f, "#bind_ipv6 = \"::1\"\n");
-    (void)fprintf(f, "# Legacy bind address (fallback if bind_ipv4/bind_ipv6 not set)\n");
-    (void)fprintf(f, "#address = \"::\"\n\n");
-
-    // Write client section with defaults
-    (void)fprintf(f, "[client]\n");
-    (void)fprintf(f, "# Server address to connect to\n");
-    (void)fprintf(f, "#address = \"%s\"\n", opt_address);
-    (void)fprintf(f, "# Alternative: set via network.address (legacy)\n");
-    (void)fprintf(f, "#network.address = \"%s\"\n\n", opt_address);
-    (void)fprintf(f, "# Terminal width in characters (0 = auto-detect)\n");
-    (void)fprintf(f, "#width = %d\n", OPT_WIDTH_DEFAULT);
-    (void)fprintf(f, "# Terminal height in characters (0 = auto-detect)\n");
-    (void)fprintf(f, "#height = %d\n", OPT_HEIGHT_DEFAULT);
-    (void)fprintf(f, "# Webcam device index (0 = first webcam)\n");
-    (void)fprintf(f, "#webcam_index = %hu\n", opt_webcam_index);
-    (void)fprintf(f, "# Flip webcam image horizontally\n");
-    (void)fprintf(f, "#webcam_flip = %s\n", opt_webcam_flip ? "true" : "false");
-    (void)fprintf(f, "# Color mode: \"none\", \"16\", \"256\", \"truecolor\" (or \"auto\" for auto-detect)\n");
-    (void)fprintf(f, "#color_mode = \"auto\"\n");
-    (void)fprintf(f, "# Render mode: \"foreground\", \"background\", \"half-block\"\n");
-    (void)fprintf(f, "#render_mode = \"foreground\"\n");
-    (void)fprintf(f, "# Frames per second (1-144, default: 30 for Windows, 60 for Unix)\n");
-#if defined(_WIN32)
-    (void)fprintf(f, "#fps = 30\n");
-#else
-    (void)fprintf(f, "#fps = 60\n");
-#endif
-    (void)fprintf(f, "# Stretch video to terminal size (without preserving aspect ratio)\n");
-    (void)fprintf(f, "#stretch = %s\n", opt_stretch ? "true" : "false");
-    (void)fprintf(f, "# Quiet mode (disable console logging)\n");
-    (void)fprintf(f, "#quiet = %s\n", opt_quiet ? "true" : "false");
-    (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
-    (void)fprintf(f, "#snapshot_mode = %s\n", opt_snapshot_mode ? "true" : "false");
-    (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
-    (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opt_snapshot_delay);
-    (void)fprintf(f, "# Use test pattern instead of real webcam\n");
-    (void)fprintf(f, "#test_pattern = %s\n", opt_test_pattern ? "true" : "false");
-    (void)fprintf(f, "# Show terminal capabilities and exit\n");
-    (void)fprintf(f, "#show_capabilities = %s\n", opt_show_capabilities ? "true" : "false");
-    (void)fprintf(f, "# Force UTF-8 support\n");
-    (void)fprintf(f, "#force_utf8 = %s\n\n", opt_force_utf8 ? "true" : "false");
-
-    // Write audio section (client only)
-    (void)fprintf(f, "[audio]\n");
-    (void)fprintf(f, "# Enable audio streaming\n");
-    (void)fprintf(f, "#enabled = %s\n", opt_audio_enabled ? "true" : "false");
-    (void)fprintf(f, "# Audio device index (-1 = use default)\n");
-    (void)fprintf(f, "#device = %d\n\n", opt_audio_device);
-
-    // Write palette section
-    (void)fprintf(f, "[palette]\n");
-    (void)fprintf(f, "# Palette type: \"blocks\", \"half-blocks\", \"chars\", \"custom\"\n");
-    (void)fprintf(f, "#type = \"half-blocks\"\n");
-    (void)fprintf(f, "# Custom palette characters (only used if type = \"custom\")\n");
-    (void)fprintf(f, "#chars = \"   ...',;:clodxkO0KXNWM\"\n\n");
-
-    // Write crypto section
-    (void)fprintf(f, "[crypto]\n");
-    (void)fprintf(f, "# Enable encryption\n");
-    (void)fprintf(f, "#encrypt_enabled = %s\n", opt_encrypt_enabled ? "true" : "false");
-    (void)fprintf(f, "# Encryption key identifier (e.g., \"gpg:keyid\" or \"github:username\")\n");
-    (void)fprintf(f, "#key = \"%s\"\n", opt_encrypt_key);
-    (void)fprintf(f, "# Password for encryption (WARNING: storing passwords in config files is insecure!)\n");
-    (void)fprintf(f, "# Use CLI --password or environment variables instead.\n");
-    (void)fprintf(f, "#password = \"%s\"\n", opt_password);
-    (void)fprintf(f, "# Key file path\n");
-    (void)fprintf(f, "#keyfile = \"%s\"\n", opt_encrypt_keyfile);
-    (void)fprintf(f, "# Disable encryption (opt-out)\n");
-    (void)fprintf(f, "#no_encrypt = %s\n", opt_no_encrypt ? "true" : "false");
-    (void)fprintf(f, "# Server public key (client only)\n");
-    (void)fprintf(f, "#server_key = \"%s\"\n", opt_server_key);
-    (void)fprintf(f, "# Client keys directory (server only)\n");
-    (void)fprintf(f, "#client_keys = \"%s\"\n\n", opt_client_keys);
-
-    // Write logging section
-    (void)fprintf(f, "[logging]\n");
-    (void)fprintf(f, "# Log file path (empty string = no file logging)\n");
-    (void)fprintf(f, "#log_file = \"%s\"\n", opt_log_file);
-
-    int close_result = fclose(f);
-    if (close_result != 0) {
-      SAFE_FREE(config_path_expanded);
-      return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to close config file: %s", config_path_expanded);
-    }
-    SAFE_FREE(config_path_expanded);
   }
+  SAFE_FREE(dir_path);
+
+  // Create file with default values
+  FILE *f = platform_fopen(config_path_expanded, "w");
+  defer(safe_fclose_wrapper(&f));
+  if (!f) {
+    return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config file: %s", config_path_expanded);
+  }
+
+  // Write version comment
+  (void)fprintf(f, "# ascii-chat configuration file\n");
+  (void)fprintf(f, "# Generated by ascii-chat v%d.%d.%d-%s\n", ASCII_CHAT_VERSION_MAJOR, ASCII_CHAT_VERSION_MINOR,
+                ASCII_CHAT_VERSION_PATCH, ASCII_CHAT_GIT_VERSION);
+  (void)fprintf(f, "#\n");
+  (void)fprintf(f, "# If you upgrade ascii-chat and this version comment changes, you may need to\n");
+  (void)fprintf(f, "# delete and regenerate this file with: ascii-chat --config-create\n");
+  (void)fprintf(f, "#\n\n");
+
+  // Write network section with defaults
+  (void)fprintf(f, "[network]\n");
+  (void)fprintf(f, "# Port number (1-65535, shared between server and client)\n");
+  // Use opt_port (always initialized to "27224" by default)
+  (void)fprintf(f, "#port = %s\n\n", opt_port);
+
+  // Write server section with bind addresses
+  (void)fprintf(f, "[server]\n");
+  (void)fprintf(f, "# IPv4 bind address (default: 127.0.0.1)\n");
+  (void)fprintf(f, "#bind_ipv4 = \"127.0.0.1\"\n");
+  (void)fprintf(f, "# IPv6 bind address (default: ::1 for IPv6-only, or :: for dual-stack)\n");
+  (void)fprintf(f, "#bind_ipv6 = \"::1\"\n");
+  (void)fprintf(f, "# Legacy bind address (fallback if bind_ipv4/bind_ipv6 not set)\n");
+  (void)fprintf(f, "#address = \"::\"\n\n");
+
+  // Write client section with defaults
+  (void)fprintf(f, "[client]\n");
+  (void)fprintf(f, "# Server address to connect to\n");
+  (void)fprintf(f, "#address = \"%s\"\n", opt_address);
+  (void)fprintf(f, "# Alternative: set via network.address (legacy)\n");
+  (void)fprintf(f, "#network.address = \"%s\"\n\n", opt_address);
+  (void)fprintf(f, "# Terminal width in characters (0 = auto-detect)\n");
+  (void)fprintf(f, "#width = %d\n", OPT_WIDTH_DEFAULT);
+  (void)fprintf(f, "# Terminal height in characters (0 = auto-detect)\n");
+  (void)fprintf(f, "#height = %d\n", OPT_HEIGHT_DEFAULT);
+  (void)fprintf(f, "# Webcam device index (0 = first webcam)\n");
+  (void)fprintf(f, "#webcam_index = %hu\n", opt_webcam_index);
+  (void)fprintf(f, "# Flip webcam image horizontally\n");
+  (void)fprintf(f, "#webcam_flip = %s\n", opt_webcam_flip ? "true" : "false");
+  (void)fprintf(f, "# Color mode: \"none\", \"16\", \"256\", \"truecolor\" (or \"auto\" for auto-detect)\n");
+  (void)fprintf(f, "#color_mode = \"auto\"\n");
+  (void)fprintf(f, "# Render mode: \"foreground\", \"background\", \"half-block\"\n");
+  (void)fprintf(f, "#render_mode = \"foreground\"\n");
+  (void)fprintf(f, "# Frames per second (1-144, default: 30 for Windows, 60 for Unix)\n");
+#if defined(_WIN32)
+  (void)fprintf(f, "#fps = 30\n");
+#else
+  (void)fprintf(f, "#fps = 60\n");
+#endif
+  (void)fprintf(f, "# Stretch video to terminal size (without preserving aspect ratio)\n");
+  (void)fprintf(f, "#stretch = %s\n", opt_stretch ? "true" : "false");
+  (void)fprintf(f, "# Quiet mode (disable console logging)\n");
+  (void)fprintf(f, "#quiet = %s\n", opt_quiet ? "true" : "false");
+  (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
+  (void)fprintf(f, "#snapshot_mode = %s\n", opt_snapshot_mode ? "true" : "false");
+  (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
+  (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opt_snapshot_delay);
+  (void)fprintf(f, "# Use test pattern instead of real webcam\n");
+  (void)fprintf(f, "#test_pattern = %s\n", opt_test_pattern ? "true" : "false");
+  (void)fprintf(f, "# Show terminal capabilities and exit\n");
+  (void)fprintf(f, "#show_capabilities = %s\n", opt_show_capabilities ? "true" : "false");
+  (void)fprintf(f, "# Force UTF-8 support\n");
+  (void)fprintf(f, "#force_utf8 = %s\n\n", opt_force_utf8 ? "true" : "false");
+
+  // Write audio section (client only)
+  (void)fprintf(f, "[audio]\n");
+  (void)fprintf(f, "# Enable audio streaming\n");
+  (void)fprintf(f, "#enabled = %s\n", opt_audio_enabled ? "true" : "false");
+  (void)fprintf(f, "# Audio device index (-1 = use default)\n");
+  (void)fprintf(f, "#device = %d\n\n", opt_audio_device);
+
+  // Write palette section
+  (void)fprintf(f, "[palette]\n");
+  (void)fprintf(f, "# Palette type: \"blocks\", \"half-blocks\", \"chars\", \"custom\"\n");
+  (void)fprintf(f, "#type = \"half-blocks\"\n");
+  (void)fprintf(f, "# Custom palette characters (only used if type = \"custom\")\n");
+  (void)fprintf(f, "#chars = \"   ...',;:clodxkO0KXNWM\"\n\n");
+
+  // Write crypto section
+  (void)fprintf(f, "[crypto]\n");
+  (void)fprintf(f, "# Enable encryption\n");
+  (void)fprintf(f, "#encrypt_enabled = %s\n", opt_encrypt_enabled ? "true" : "false");
+  (void)fprintf(f, "# Encryption key identifier (e.g., \"gpg:keyid\" or \"github:username\")\n");
+  (void)fprintf(f, "#key = \"%s\"\n", opt_encrypt_key);
+  (void)fprintf(f, "# Password for encryption (WARNING: storing passwords in config files is insecure!)\n");
+  (void)fprintf(f, "# Use CLI --password or environment variables instead.\n");
+  (void)fprintf(f, "#password = \"%s\"\n", opt_password);
+  (void)fprintf(f, "# Key file path\n");
+  (void)fprintf(f, "#keyfile = \"%s\"\n", opt_encrypt_keyfile);
+  (void)fprintf(f, "# Disable encryption (opt-out)\n");
+  (void)fprintf(f, "#no_encrypt = %s\n", opt_no_encrypt ? "true" : "false");
+  (void)fprintf(f, "# Server public key (client only)\n");
+  (void)fprintf(f, "#server_key = \"%s\"\n", opt_server_key);
+  (void)fprintf(f, "# Client keys directory (server only)\n");
+  (void)fprintf(f, "#client_keys = \"%s\"\n\n", opt_client_keys);
+
+  // Write logging section
+  (void)fprintf(f, "[logging]\n");
+  (void)fprintf(f, "# Log file path (empty string = no file logging)\n");
+  (void)fprintf(f, "#log_file = \"%s\"\n", opt_log_file);
 
   return ASCIICHAT_OK;
 }

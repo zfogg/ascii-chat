@@ -16,7 +16,7 @@
 #   - WIN32, UNIX, APPLE: Platform detection variables
 #   - USE_MUSL: Whether using musl libc
 #   - CMAKE_BUILD_TYPE: Build type
-#   - DEPS_CACHE_DIR: Dependency cache directory
+#   - ASCIICHAT_DEPS_CACHE_DIR: Dependency cache directory
 #
 # Outputs (variables set by this file):
 #   - BEARSSL_LIBRARIES: Libraries to link against (bearssl_static target)
@@ -62,8 +62,8 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
     set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/bearssl")
 
     if(WIN32)
-        # Windows: Build to cache directory (DEPS_CACHE_DIR already includes build type)
-        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_DIR}/bearssl")
+        # Windows: Build to cache directory (ASCIICHAT_DEPS_CACHE_DIR already includes build type)
+        set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl")
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/bearssls.lib")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
@@ -122,8 +122,8 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
 
     else()
         # Unix/Linux/macOS
-        # Build to cache directory (DEPS_CACHE_DIR already includes build type)
-        set(BEARSSL_BUILD_DIR "${DEPS_CACHE_DIR}/bearssl")
+        # Build to cache directory (ASCIICHAT_DEPS_CACHE_DIR already includes build type)
+        set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl")
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")

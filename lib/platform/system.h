@@ -149,6 +149,50 @@ const char *platform_get_username(void);
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
 
 /**
+ * @brief Console control event types (cross-platform Ctrl+C handling)
+ *
+ * @ingroup platform
+ */
+typedef enum {
+  CONSOLE_CTRL_C = 0,       /**< Ctrl+C pressed (SIGINT equivalent) */
+  CONSOLE_CTRL_BREAK = 1,   /**< Ctrl+Break pressed (Windows only, maps to SIGINT on Unix) */
+  CONSOLE_CLOSE = 2,        /**< Console window closed */
+  CONSOLE_LOGOFF = 3,       /**< User logoff event (Windows only) */
+  CONSOLE_SHUTDOWN = 4      /**< System shutdown event (Windows only) */
+} console_ctrl_event_t;
+
+/**
+ * @brief Console control handler callback type
+ * @param event The control event that occurred
+ * @return true if the event was handled, false to pass to next handler
+ *
+ * @note On Windows, this is called from a separate thread, not from signal context
+ * @note On Unix, this is called from signal context (limited safe operations)
+ *
+ * @ingroup platform
+ */
+typedef bool (*console_ctrl_handler_t)(console_ctrl_event_t event);
+
+/**
+ * @brief Register a console control handler (for Ctrl+C, etc.)
+ * @param handler Handler function to register, or NULL to unregister
+ * @return true on success, false on failure
+ *
+ * This provides cross-platform handling for console control events like Ctrl+C.
+ * - On Windows: Uses SetConsoleCtrlHandler() for proper signal handling
+ * - On Unix: Uses sigaction() for SIGINT/SIGTERM handling
+ *
+ * Unlike platform_signal() which uses CRT signal() on Windows (known issues),
+ * this function uses the native Windows API for reliable Ctrl+C handling.
+ *
+ * @note Only one handler is supported at a time. Registering a new handler
+ *       replaces the previous one.
+ *
+ * @ingroup platform
+ */
+bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler);
+
+/**
  * @brief Get an environment variable value
  * @param name Environment variable name
  * @return Pointer to value string (or NULL if not set), do not free
@@ -464,6 +508,96 @@ bool platform_is_binary_in_path(const char *bin_name);
  * @ingroup platform
  */
 void platform_cleanup_binary_path_cache(void);
+
+// ============================================================================
+// Path Separator Constants
+// ============================================================================
+
+/**
+ * @brief Platform-specific path separator character
+ *
+ * - Windows: '\\' (backslash)
+ * - Unix/POSIX: '/' (forward slash)
+ *
+ * Use this constant instead of hardcoding separators or using #ifdef _WIN32.
+ *
+ * @note For string literals, use PATH_SEPARATOR_STR instead.
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PATH_DELIM '\\'
+#define PATH_SEPARATOR_STR "\\"
+#else
+#define PATH_DELIM '/'
+#define PATH_SEPARATOR_STR "/"
+#endif
+
+/**
+ * @brief Platform-specific PATH environment variable separator
+ *
+ * - Windows: ";" (semicolon)
+ * - Unix/POSIX: ":" (colon)
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PATH_ENV_SEPARATOR ";"
+#else
+#define PATH_ENV_SEPARATOR ":"
+#endif
+
+// ============================================================================
+// File Permission Constants
+// ============================================================================
+
+/**
+ * @brief File permission: Private (owner read/write only)
+ *
+ * Octal mode 0600: rw-------
+ * Used for sensitive files like private keys, log files, and configuration files.
+ *
+ * @note On Windows, this is a no-op (Windows uses ACLs instead of POSIX permissions)
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_PRIVATE 0600
+
+/**
+ * @brief Directory permission: Private (owner read/write/execute only)
+ *
+ * Octal mode 0700: rwx------
+ * Used for private directories like ~/.ascii-chat
+ *
+ * @note On Windows, this is a no-op (Windows uses ACLs instead of POSIX permissions)
+ *
+ * @ingroup platform
+ */
+#define DIR_PERM_PRIVATE 0700
+
+/**
+ * @brief File permission: Public read, owner write
+ *
+ * Octal mode 0644: rw-r--r--
+ * Used for files that should be readable by others but only writable by owner.
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_PUBLIC_READ 0644
+
+/**
+ * @brief Permission mask for all permissions
+ *
+ * Octal mode 0777: rwxrwxrwx
+ * Used for masking permission bits (e.g., st_mode & 0777)
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_MASK 0777
+
+// ============================================================================
+// Maximum Path Length
+// ============================================================================
 
 /**
  * @brief Maximum path length supported by the operating system

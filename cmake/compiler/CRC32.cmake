@@ -5,18 +5,18 @@
 # different architectures (x86_64 SSE4.2, ARM CRC32).
 #
 # Sets:
-#   ENABLE_CRC32_HW - TRUE if hardware CRC32 is available
+#   ASCIICHAT_ENABLE_CRC32_HW - TRUE if hardware CRC32 is available
 #
 # Must be included AFTER platform detection.
 # =============================================================================
 
 # CRC32 Hardware Acceleration
-set(CRC32_HW "auto" CACHE STRING "CRC32 hardware acceleration: auto, on, off")
-set(ENABLE_CRC32_HW FALSE)
+set(ASCIICHAT_CRC32_HW "auto" CACHE STRING "CRC32 hardware acceleration: auto, on, off")
+set(ASCIICHAT_ENABLE_CRC32_HW FALSE)
 
-if(CRC32_HW STREQUAL "on")
-    set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
-elseif(CRC32_HW STREQUAL "auto")
+if(ASCIICHAT_CRC32_HW STREQUAL "on")
+    set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+elseif(ASCIICHAT_CRC32_HW STREQUAL "auto")
     if(WIN32)
         # Windows CRC32 detection
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64")
@@ -36,7 +36,7 @@ elseif(CRC32_HW STREQUAL "auto")
                     }
                 " HAS_ARM_CRC32_RUNTIME)
                 if(HAS_ARM_CRC32_RUNTIME)
-                    set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                    set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
                 endif()
             else()
                 # Cross-compiling - try compile test with required flags
@@ -54,7 +54,7 @@ elseif(CRC32_HW STREQUAL "auto")
                 " CAN_COMPILE_ARM_CRC32)
                 unset(CMAKE_REQUIRED_FLAGS)
                 if(CAN_COMPILE_ARM_CRC32)
-                    set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                    set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
                 endif()
             endif()
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
@@ -62,7 +62,7 @@ elseif(CRC32_HW STREQUAL "auto")
             # Note: Clang on Windows has issues with check_c_source_runs, so check SIMD flags first
             if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
                 # Assume SSE4.2 if we have SSSE3 or better
-                set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
             elseif(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
                 check_c_source_runs("
                     #include <intrin.h>
@@ -75,7 +75,7 @@ elseif(CRC32_HW STREQUAL "auto")
                     }
                 " HAS_SSE42_RUNTIME)
                 if(HAS_SSE42_RUNTIME)
-                    set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                    set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
                 endif()
             endif()
         endif()
@@ -83,7 +83,7 @@ elseif(CRC32_HW STREQUAL "auto")
         # macOS detection
         if(IS_APPLE_SILICON EQUAL 1)
             # Apple Silicon M1/M2/M3 all have CRC32
-            set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+            set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
         else()
             # Intel Mac - check for SSE4.2
             execute_process(
@@ -93,7 +93,7 @@ elseif(CRC32_HW STREQUAL "auto")
                 ERROR_QUIET
             )
             if(HAS_SSE42_MAC EQUAL 1)
-                set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
             endif()
         endif()
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM|ARM64")
@@ -101,7 +101,7 @@ elseif(CRC32_HW STREQUAL "auto")
         if(PLATFORM_LINUX AND EXISTS "/proc/cpuinfo")
             file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
             if(CPUINFO_CONTENT MATCHES "crc32")
-                set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
             endif()
         else()
             # Try compile test as fallback with required flags
@@ -118,18 +118,18 @@ elseif(CRC32_HW STREQUAL "auto")
             " CAN_COMPILE_ARM_CRC32)
             unset(CMAKE_REQUIRED_FLAGS)
             if(CAN_COMPILE_ARM_CRC32)
-                set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+                set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
             endif()
         endif()
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
         # Linux x86_64 - assume SSE4.2 if we have SSSE3
         if(ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
-            set(ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
+            set(ASCIICHAT_ENABLE_CRC32_HW TRUE CACHE INTERNAL "CRC32 HW support" FORCE)
         endif()
     endif()
 endif()
 
-if(ENABLE_CRC32_HW)
+if(ASCIICHAT_ENABLE_CRC32_HW)
     add_definitions(-DHAVE_CRC32_HW)
 
     # Determine architecture more reliably

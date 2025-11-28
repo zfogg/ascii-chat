@@ -159,16 +159,14 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/cmake/install/LICENSE.rtf")
     set(CPACK_WIX_LICENSE_RTF "${CMAKE_SOURCE_DIR}/cmake/install/LICENSE.rtf")
 elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
     set(CPACK_WIX_LICENSE_RTF "${CMAKE_SOURCE_DIR}/LICENSE.txt")
-elseif(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
-    set(CPACK_WIX_LICENSE_RTF "${CMAKE_SOURCE_DIR}/LICENSE")
 endif()
 
 # Program Menu Folder (Start Menu)
 set(CPACK_WIX_PROGRAM_MENU_FOLDER "${CPACK_PACKAGE_NAME}")
 
 # Root feature customization (the top-level install feature)
-set(CPACK_WIX_ROOT_FEATURE_TITLE "ascii-chat")
-set(CPACK_WIX_ROOT_FEATURE_DESCRIPTION "Real-time terminal-based video chat with ASCII art conversion")
+set(CPACK_WIX_ROOT_FEATURE_TITLE "${PROJECT_NAME_FULL}")
+set(CPACK_WIX_ROOT_FEATURE_DESCRIPTION "${PROJECT_DESCRIPTION_FULL}")
 
 # Language/Culture for installer UI
 # Default is en-US, but can be customized
@@ -177,8 +175,10 @@ set(CPACK_WIX_CULTURES "en-US")
 # Architecture
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(CPACK_WIX_ARCHITECTURE "x64")
+    set(CPACK_WIX_SIZEOF_VOID_P 8)
 else()
     set(CPACK_WIX_ARCHITECTURE "x86")
+    set(CPACK_WIX_SIZEOF_VOID_P 4)
 endif()
 
 # Install scope - install for all users (requires admin)
@@ -200,7 +200,10 @@ set(CPACK_WIX_UPGRADE_GUID "A1B2C3D4-E5F6-7890-ABCD-EF1234567890")
 
 # Product GUID - can be "*" to auto-generate per version (recommended)
 # Auto-generation ensures each version gets a unique GUID
-set(CPACK_WIX_PRODUCT_GUID "*")
+# NOTE: I'm not sure if claude's note^ above^ about "*" actually generates it so
+# just disable it because the cmake docs say it gets auto-generated if it's not
+# set.
+#set(CPACK_WIX_PRODUCT_GUID "*")
 
 # =============================================================================
 # Installation Behavior
@@ -212,6 +215,8 @@ set(CPACK_WIX_UPGRADE_BEHAVIOR "UPGRADE")
 # Skip license dialog if desired (set to "1" to skip)
 # set(CPACK_WIX_SKIP_PROGRAM_FOLDER ON)
 
+set(CPACK_WIX_CMAKE_PACKAGE_REGISTRY "${PROJECT_VERSION}")
+
 # =============================================================================
 # Custom WiX Fragments
 # =============================================================================
@@ -219,101 +224,92 @@ set(CPACK_WIX_UPGRADE_BEHAVIOR "UPGRADE")
 
 # WiX patch file for custom configuration (temporarily disabled - needs WiX v4 format)
 # This will be merged with the auto-generated WiX file
-# set(CPACK_WIX_PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/install/wix_patch.xml")
+set(CPACK_WIX_PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/install/wix_patch.xml")
 
 # Create the WiX patch file if it doesn't exist
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/cmake/install/wix_patch.xml")
-    file(WRITE "${CMAKE_SOURCE_DIR}/cmake/install/wix_patch.xml" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<CPackWiXPatch>
-  <!--
-    Custom WiX configuration for ascii-chat
-
-    This patch adds:
-    1. Start Menu shortcuts for ascii-chat client and server
-    2. PATH environment variable modification to add bin directory
-  -->
-
-  <!-- Add shortcuts to Start Menu -->
-  <CPackWiXFragment Id=\"CM_SHORTCUTS\">
-    <DirectoryRef Id=\"ApplicationProgramsFolder\">
-      <Component Id=\"ApplicationShortcuts\" Guid=\"B1C2D3E4-F5A6-7890-BCDE-FA1234567890\">
-        <!-- Client shortcut -->
-        <Shortcut Id=\"ClientShortcut\"
-                  Name=\"ascii-chat Client\"
-                  Description=\"Launch ascii-chat client\"
-                  Target=\"[INSTALL_ROOT]bin\\\\ascii-chat.exe\"
-                  Arguments=\"client\"
-                  WorkingDirectory=\"INSTALL_ROOT\" />
-
-        <!-- Server shortcut -->
-        <Shortcut Id=\"ServerShortcut\"
-                  Name=\"ascii-chat Server\"
-                  Description=\"Launch ascii-chat server\"
-                  Target=\"[INSTALL_ROOT]bin\\\\ascii-chat.exe\"
-                  Arguments=\"server\"
-                  WorkingDirectory=\"INSTALL_ROOT\" />
-
-        <!-- Uninstall shortcut (required by Windows Installer) -->
-        <RemoveFolder Id=\"ApplicationProgramsFolder\" On=\"uninstall\" />
-
-        <!-- Registry key for Windows Installer (required) -->
-        <RegistryValue Root=\"HKCU\"
-                      Key=\"Software\\\\ascii-chat\"
-                      Name=\"installed\"
-                      Type=\"integer\"
-                      Value=\"1\"
-                      KeyPath=\"yes\" />
-      </Component>
-    </DirectoryRef>
-  </CPackWiXFragment>
-
-  <!-- Add bin directory to PATH environment variable -->
-  <CPackWiXFragment Id=\"CM_PATH\">
-    <Component Id=\"PathEnvironment\" Guid=\"C1D2E3F4-A5B6-7890-CDEF-AB1234567890\" Directory=\"INSTALL_ROOT\">
-      <!-- Add to user PATH (HKCU) - works without admin -->
-      <Environment Id=\"PATH\"
-                  Name=\"PATH\"
-                  Value=\"[INSTALL_ROOT]bin\"
-                  Permanent=\"no\"
-                  Part=\"last\"
-                  Action=\"set\"
-                  System=\"no\" />
-
-      <!-- Registry key required for component -->
-      <RegistryValue Root=\"HKCU\"
-                    Key=\"Software\\\\ascii-chat\"
-                    Name=\"path\"
-                    Type=\"integer\"
-                    Value=\"1\"
-                    KeyPath=\"yes\" />
-    </Component>
-  </CPackWiXFragment>
-
-  <!-- Install the custom components -->
-  <CPackWiXFragment Id=\"CM_INSTALL_COMPONENTS\">
-    <Feature Id=\"ProductFeature\">
-      <ComponentRef Id=\"ApplicationShortcuts\" />
-      <ComponentRef Id=\"PathEnvironment\" />
-    </Feature>
-  </CPackWiXFragment>
-</CPackWiXPatch>
-")
-    message(STATUS "${Yellow}CPack:${ColorReset} Created WiX patch file: ${BoldBlue}cmake/install/wix_patch.xml${ColorReset}")
-endif()
+#if(NOT EXISTS "${CMAKE_SOURCE_DIR}/cmake/install/wix_patch.xml")
+#    file(WRITE "${CMAKE_SOURCE_DIR}/cmake/install/wix_patch.xml" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+#<CPackWiXPatch>
+#  <!--
+#    Custom WiX configuration for ascii-chat
+#
+#    This patch adds:
+#    1. Start Menu shortcuts for ascii-chat client and server
+#    2. PATH environment variable modification to add bin directory
+#  -->
+#
+#  <!-- Add shortcuts to Start Menu -->
+#  <CPackWiXFragment Id=\"CM_SHORTCUTS\">
+#    <DirectoryRef Id=\"ApplicationProgramsFolder\">
+#      <Component Id=\"ApplicationShortcuts\" Guid=\"B1C2D3E4-F5A6-7890-BCDE-FA1234567890\">
+#        <!-- Client shortcut -->
+#        <Shortcut Id=\"ClientShortcut\"
+#                  Name=\"ascii-chat Client\"
+#                  Description=\"Launch ascii-chat client\"
+#                  Target=\"[INSTALL_ROOT]bin\\\\ascii-chat.exe\"
+#                  Arguments=\"client\"
+#                  WorkingDirectory=\"INSTALL_ROOT\" />
+#
+#        <!-- Server shortcut -->
+#        <Shortcut Id=\"ServerShortcut\"
+#                  Name=\"ascii-chat Server\"
+#                  Description=\"Launch ascii-chat server\"
+#                  Target=\"[INSTALL_ROOT]bin\\\\ascii-chat.exe\"
+#                  Arguments=\"server\"
+#                  WorkingDirectory=\"INSTALL_ROOT\" />
+#
+#        <!-- Uninstall shortcut (required by Windows Installer) -->
+#        <RemoveFolder Id=\"ApplicationProgramsFolder\" On=\"uninstall\" />
+#
+#        <!-- Registry key for Windows Installer (required) -->
+#        <RegistryValue Root=\"HKCU\"
+#                      Key=\"Software\\\\ascii-chat\"
+#                      Name=\"installed\"
+#                      Type=\"integer\"
+#                      Value=\"1\"
+#                      KeyPath=\"yes\" />
+#      </Component>
+#    </DirectoryRef>
+#  </CPackWiXFragment>
+#
+#  <!-- Add bin directory to PATH environment variable -->
+#  <CPackWiXFragment Id=\"CM_PATH\">
+#    <Component Id=\"PathEnvironment\" Guid=\"C1D2E3F4-A5B6-7890-CDEF-AB1234567890\" Directory=\"INSTALL_ROOT\">
+#      <!-- Add to user PATH (HKCU) - works without admin -->
+#      <Environment Id=\"PATH\"
+#                  Name=\"PATH\"
+#                  Value=\"[INSTALL_ROOT]bin\"
+#                  Permanent=\"no\"
+#                  Part=\"last\"
+#                  Action=\"set\"
+#                  System=\"no\" />
+#
+#      <!-- Registry key required for component -->
+#      <RegistryValue Root=\"HKCU\"
+#                    Key=\"Software\\\\ascii-chat\"
+#                    Name=\"path\"
+#                    Type=\"integer\"
+#                    Value=\"1\"
+#                    KeyPath=\"yes\" />
+#    </Component>
+#  </CPackWiXFragment>
+#
+#  <!-- Install the custom components -->
+#  <CPackWiXFragment Id=\"CM_INSTALL_COMPONENTS\">
+#    <Feature Id=\"ProductFeature\">
+#      <ComponentRef Id=\"ApplicationShortcuts\" />
+#      <ComponentRef Id=\"PathEnvironment\" />
+#    </Feature>
+#  </CPackWiXFragment>
+#</CPackWiXPatch>
+#")
+#    message(STATUS "${Yellow}CPack:${ColorReset} Created WiX patch file: ${BoldBlue}cmake/install/wix_patch.xml${ColorReset}")
+#endif()
 
 # =============================================================================
 # Additional WiX Configuration
 # =============================================================================
 
-# Architecture (x64 or x86)
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-    set(CPACK_WIX_SIZEOF_VOID_P 8)
-else()
-    set(CPACK_WIX_SIZEOF_VOID_P 4)
-endif()
-
 # Additional compiler/linker flags for WiX (optional)
 # set(CPACK_WIX_CANDLE_EXTRA_FLAGS "")
 # set(CPACK_WIX_LIGHT_EXTRA_FLAGS "-sval")  # Skip validation for faster builds
-
-message(STATUS "${Yellow}CPack:${ColorReset} WiX configuration complete")

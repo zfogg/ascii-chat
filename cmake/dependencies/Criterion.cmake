@@ -35,6 +35,13 @@ endif()
 
 # Windows doesn't use pkg-config, so skip Criterion detection on Windows
 # Tests are primarily Unix-based (Criterion requires pkg-config)
+if(WIN32 AND BUILD_TESTS)
+    message(STATUS "${BoldYellow}Criterion testing framework not found. Tests will not be built.${ColorReset}")
+    message(STATUS "${BoldCyan}To run tests on Windows, use Docker:${ColorReset}")
+    message(STATUS "  ${BoldWhite}docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_ascii'${ColorReset}")
+    set(BUILD_TESTS OFF)
+endif()
+
 if(BUILD_TESTS AND NOT WIN32)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(CRITERION criterion)

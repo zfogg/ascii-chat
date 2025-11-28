@@ -28,40 +28,43 @@ function(get_timestamp_ms OUTPUT_VAR)
     set(TIMESTAMP "")
 
     if(WIN32)
-        # Windows: Try multiple methods
+        # Windows: Use fast methods first (Python is much faster than PowerShell to start)
 
-        # Method 1: PowerShell (most common)
+        # Method 1: Try Python first (fast startup, ~50ms vs PowerShell's ~500ms)
         execute_process(
-            COMMAND powershell -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
+            COMMAND python -c "import time; print(int(time.time() * 1000))"
             OUTPUT_VARIABLE TIMESTAMP
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
-            RESULT_VARIABLE POWERSHELL_RESULT
+            RESULT_VARIABLE PYTHON_RESULT
+            TIMEOUT 2
         )
 
+        if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Method 2: Try PowerShell (slower but more common)
+            execute_process(
+                COMMAND powershell -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE POWERSHELL_RESULT
+                TIMEOUT 5
+            )
+        endif()
+
         if(NOT POWERSHELL_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
-            # Method 2: Try pwsh (PowerShell Core)
+            # Method 3: Try pwsh (PowerShell Core)
             execute_process(
                 COMMAND pwsh -NoProfile -Command "(Get-Date).ToUniversalTime().Subtract((Get-Date '1970-01-01')).TotalMilliseconds"
                 OUTPUT_VARIABLE TIMESTAMP
                 OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET
                 RESULT_VARIABLE PWSH_RESULT
+                TIMEOUT 5
             )
         endif()
 
         if(NOT PWSH_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
-            # Method 3: Try Python
-            execute_process(
-                COMMAND python -c "import time; print(int(time.time() * 1000))"
-                OUTPUT_VARIABLE TIMESTAMP
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-                RESULT_VARIABLE PYTHON_RESULT
-            )
-        endif()
-
-        if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
             # Method 4: Fallback to seconds with cmd.exe
             execute_process(
                 COMMAND cmd /c "echo %time:~0,2%%time:~3,2%%time:~6,2%"
@@ -213,7 +216,8 @@ elseif(ACTION STREQUAL "check")
         set(MSG "${BoldGreen}✓${ColorReset} Built ${BoldCyan}${TARGET_NAME}${ColorReset} ${BoldGreen}(up to date)${ColorReset}")
 
         if(WIN32)
-            execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG}')")
+            # Use cmd.exe echo (fast) - Windows 10+ supports ANSI codes
+            execute_process(COMMAND cmd /c "echo ${MSG}")
         else()
             execute_process(COMMAND printf "%b\n" "${MSG}")
         endif()
@@ -272,7 +276,8 @@ elseif(ACTION STREQUAL "end")
 
             # Output using execute_process to preserve ANSI codes
             if(WIN32)
-                execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG}')")
+                # Use cmd.exe echo (fast) - Windows 10+ supports ANSI codes
+                execute_process(COMMAND cmd /c "echo ${MSG}")
             else()
                 execute_process(COMMAND printf "%b\n" "${MSG}")
             endif()
@@ -281,8 +286,8 @@ elseif(ACTION STREQUAL "end")
 
             # Output using execute_process to preserve ANSI codes
             if(WIN32)
-                # Windows: Use PowerShell Console.WriteLine to output raw ANSI codes
-                execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG}')")
+                # Use cmd.exe echo (fast) - Windows 10+ supports ANSI codes
+                execute_process(COMMAND cmd /c "echo ${MSG}")
             else()
                 # Unix: Use printf to preserve escape sequences
                 execute_process(COMMAND printf "%b\n" "${MSG}")
@@ -301,7 +306,8 @@ elseif(ACTION STREQUAL "end")
         set(MSG "${BoldGreen}✓${ColorReset} Built ${BoldCyan}${TARGET_NAME}${ColorReset}")
 
         if(WIN32)
-            execute_process(COMMAND powershell -NoProfile -Command "[Console]::WriteLine('${MSG}')")
+            # Use cmd.exe echo (fast) - Windows 10+ supports ANSI codes
+            execute_process(COMMAND cmd /c "echo ${MSG}")
         else()
             execute_process(COMMAND printf "%b\n" "${MSG}")
         endif()

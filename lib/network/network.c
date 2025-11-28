@@ -24,16 +24,7 @@
  * socket management, timeouts, and basic send/receive operations.
  */
 
-// Check if we're in a test environment
-static int is_test_environment(void) {
-#if defined(CRITERION_TEST) || defined(__CRITERION__) || defined(TESTING)
-  return 1; // Compile-time test environment detection
-#else
-  const char *criterion_test = SAFE_GETENV("CRITERION_TEST");
-  const char *testing = SAFE_GETENV("TESTING");
-  return criterion_test != NULL || testing != NULL;
-#endif
-}
+// Use network_network_is_test_environment() from network.h
 
 /**
  * @brief Platform-specific send operation
@@ -222,7 +213,7 @@ ssize_t send_with_timeout(socket_t sockfd, const void *data, size_t len, int tim
     socket_fd_zero(&write_fds);
     socket_fd_set(sockfd, &write_fds);
 
-    timeout.tv_sec = is_test_environment() ? 1 : timeout_seconds;
+    timeout.tv_sec = network_is_test_environment() ? 1 : timeout_seconds;
     timeout.tv_usec = 0;
 
     int result = socket_select(sockfd, NULL, &write_fds, NULL, &timeout);
@@ -287,7 +278,7 @@ ssize_t recv_with_timeout(socket_t sockfd, void *buf, size_t len, int timeout_se
     socket_fd_zero(&read_fds);
     socket_fd_set(sockfd, &read_fds);
 
-    timeout.tv_sec = is_test_environment() ? 1 : timeout_seconds;
+    timeout.tv_sec = network_is_test_environment() ? 1 : timeout_seconds;
     timeout.tv_usec = 0;
 
     int result = socket_select(sockfd, &read_fds, NULL, NULL, &timeout);

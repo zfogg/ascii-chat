@@ -318,3 +318,9 @@ else()
     endif()
 endif()
 
+# =============================================================================
+# Standalone Tests (No Criterion Dependency)
+# =============================================================================
+# These tests use standard assert.h and don't require the Criterion framework
+# Note: The defer runtime library was removed when we switched to direct code insertion.
+

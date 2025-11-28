@@ -17,7 +17,7 @@ function(configure_tomlc17)
     set(TOMLC17_PATCH1 "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/tomlc17-fix-align8-overflow.patch")
     set(TOMLC17_PATCH2 "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/tomlc17-fix-windows-deprecation.patch")
     set(TOMLC17_SOURCE "${TOMLC17_DIR}/src/tomlc17.c")
-    set(PATCH_MARKER "${DEPS_CACHE_ROOT}/tomlc17.patches_applied")
+    set(PATCH_MARKER "${ASCIICHAT_DEPS_CACHE_ROOT}/tomlc17.patches_applied")
 
     # Check if patches need to be applied
     if(NOT EXISTS "${PATCH_MARKER}")

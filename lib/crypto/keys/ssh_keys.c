@@ -4,7 +4,7 @@
  * @brief 🔐 SSH key parsing and management for RSA, ECDSA, and Ed25519 key types
  */
 
-#include "crypto/crypto.h"
+#include "crypto/crypto.h" // Includes <sodium.h>
 #include "ssh_keys.h"
 #include "common.h"
 #include "asciichat_errno.h"
@@ -13,7 +13,6 @@
 #include "util/string.h"
 #include "util/path.h"
 #include "../ssh_agent.h"
-#include <sodium.h>
 #include <bearssl.h>
 #include <sodium_bcrypt_pbkdf.h>
 #include <string.h>
@@ -226,12 +225,12 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   // First, check if we can get the key from ssh-agent (password-free)
   // This requires reading the public key from the .pub file
-  char pub_key_path[1024];
+  char pub_key_path[BUFFER_SIZE_LARGE];
   safe_snprintf(pub_key_path, sizeof(pub_key_path), "%s.pub", key_path);
 
   FILE *pub_f = platform_fopen(pub_key_path, "r");
   if (pub_f) {
-    char pub_line[1024];
+    char pub_line[BUFFER_SIZE_LARGE];
     if (fgets(pub_line, sizeof(pub_line), pub_f)) {
       public_key_t pub_key = {0};
       pub_key.type = KEY_TYPE_ED25519;
@@ -271,7 +270,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   // Read the entire file
   char *file_content = NULL;
   size_t file_size = 0;
-  char buffer[4096];
+  char buffer[BUFFER_SIZE_XXLARGE];
   size_t bytes_read;
 
   while ((bytes_read = fread(buffer, 1, sizeof(buffer), f)) > 0) {
@@ -648,7 +647,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at keytype data: %s", key_path);
     }
-    char keytype[64] = {0};
+    char keytype[BUFFER_SIZE_SMALL / 4] = {0}; // SSH key type strings are short
     if (keytype_len > 0 && keytype_len < sizeof(keytype)) {
       memcpy(keytype, decrypted_blob + dec_offset, keytype_len);
     }
@@ -987,7 +986,7 @@ asciichat_error_t validate_ssh_key_file(const char *key_path) {
   }
 
   // Check if this is an SSH key file by looking for the header
-  char header[256];
+  char header[BUFFER_SIZE_SMALL];
   bool is_ssh_key_file = false;
   if (fgets(header, sizeof(header), test_file) != NULL) {
     if (strstr(header, "BEGIN OPENSSH PRIVATE KEY") != NULL || strstr(header, "BEGIN RSA PRIVATE KEY") != NULL ||

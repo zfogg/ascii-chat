@@ -1,9 +1,9 @@
 include_guard(GLOBAL)
 
-option(ASCII_BUILD_WITH_INSTRUMENTATION "Generate and build instrumented sources with per-statement logging" OFF)
+option(ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION "Generate and build source_print-instrumented sources with per-statement logging" OFF)
 
-include(${CMAKE_CURRENT_LIST_DIR}/Targets.cmake)
-set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/run_instrumentation.sh")
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Targets.cmake)
+set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_instrumentation.sh")
 
 function(_ascii_strip_source_include_dirs target_name)
     if(NOT TARGET ${target_name})
@@ -57,7 +57,7 @@ set(ASCII_INSTRUMENTATION_LIBRARY_TARGETS
     ascii-chat-network
 )
 
-# ascii-instr-report uses POSIX headers - only available on Unix/Linux/macOS
+# ascii-source-print-report uses POSIX headers - only available on Unix/Linux/macOS
 if(WIN32)
     set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
         ascii-chat
@@ -65,19 +65,17 @@ if(WIN32)
 else()
     set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
         ascii-chat
-        ascii-instr-report
+        ascii-source-print-report
     )
 endif()
 
 function(ascii_instrumentation_prepare)
-    if(NOT ASCII_BUILD_WITH_INSTRUMENTATION)
+    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
         set(ASCII_INSTRUMENTATION_ENABLED FALSE PARENT_SCOPE)
         return()
     endif()
 
-    ascii_add_debug_targets()
-
-    set(USE_PRECOMPILED_HEADERS OFF CACHE BOOL "Disable PCH when instrumentation is enabled" FORCE)
+    ascii_add_tooling_targets()
 
     set(instrumented_dir "${CMAKE_BINARY_DIR}/instrumented")
 
@@ -90,7 +88,7 @@ function(ascii_instrumentation_prepare)
         "lib/platform/windows/mutex.c"
         "lib/platform/windows/thread.c"
         "lib/debug/lock.c"
-        # SIMD files use intrinsics that confuse the instrumentation tool
+        # SIMD files use intrinsics that confuse the source_print instrumentation tool
         "lib/image2ascii/simd/ascii_simd.c"
         "lib/image2ascii/simd/ascii_simd_color.c"
         "lib/image2ascii/simd/common.c"
@@ -201,7 +199,7 @@ function(ascii_instrumentation_prepare)
     endif()
 
     if(NOT _ascii_bash_executable)
-        message(FATAL_ERROR "ascii-chat instrumentation requires 'bash'. Install Git Bash or provide a path via ASCII_INSTRUMENTATION_BASH.")
+        message(FATAL_ERROR "ascii-chat source_print instrumentation requires 'bash'. Install Git Bash or provide a path via ASCII_INSTRUMENTATION_BASH.")
     endif()
 
     set(_ascii_bash_uses_wsl FALSE)
@@ -219,8 +217,8 @@ function(ascii_instrumentation_prepare)
         _ascii_convert_path_for_shell("${_ascii_instrumented_dir_for_shell}" _ascii_instrumented_dir_for_shell)
     endif()
 
-    # Generate compilation database with original source paths for instrumentation tool
-    # The regular compile_commands.json has instrumented paths, but the tool needs original paths
+    # Generate compilation database with original source paths for the source_print instrumentation tool
+    # The regular compile_commands.json has instrumented paths, but the source_print tool needs the originals
     set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp")
     add_custom_command(
         OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_original.json"
@@ -232,14 +230,14 @@ function(ascii_instrumentation_prepare)
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
-            -DASCII_BUILD_WITH_INSTRUMENTATION=OFF
-            -DUSE_PRECOMPILED_HEADERS=OFF
+            -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=OFF
+            -DASCIICHAT_USE_PCH=OFF
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
         COMMAND ${CMAKE_COMMAND} -E copy
             "${_ascii_temp_build_dir}/compile_commands.json"
             "${CMAKE_BINARY_DIR}/compile_commands_original.json"
-        COMMENT "Generating compilation database for instrumentation tool"
+        COMMENT "Generating compilation database for the source_print instrumentation tool"
         VERBATIM
     )
 
@@ -248,13 +246,13 @@ function(ascii_instrumentation_prepare)
         COMMAND ${CMAKE_COMMAND} -E rm -rf "${instrumented_dir}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${instrumented_dir}"
         COMMAND ${CMAKE_COMMAND} -E env
-            ASCII_INSTR_TOOL=$<TARGET_FILE:ascii-instr-tool>
+            ASCII_SOURCE_PRINT_TOOL=$<TARGET_FILE:ascii-instr-source-print>
             "${_ascii_bash_executable}" "${_ascii_instr_script_for_shell}" -b "${_ascii_binary_dir_for_shell}" -o "${_ascii_instrumented_dir_for_shell}"
         COMMAND ${CMAKE_COMMAND} -E touch "${instrumented_dir}/.stamp"
-        DEPENDS ascii-instr-tool ${instrumented_abs_paths} "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+        DEPENDS ascii-instr-source-print ${instrumented_abs_paths} "${CMAKE_BINARY_DIR}/compile_commands_original.json"
         BYPRODUCTS ${instrumented_generated_paths}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMENT "Generating instrumented source tree"
+        COMMENT "Generating source_print-instrumented source tree"
         VERBATIM
     )
 
@@ -300,7 +298,7 @@ function(ascii_instrumentation_prepare)
 endfunction()
 
 function(ascii_instrumentation_finalize)
-    if(NOT ASCII_BUILD_WITH_INSTRUMENTATION)
+    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
         return()
     endif()
     if(NOT TARGET ascii-generate-instrumented-sources)
@@ -314,7 +312,7 @@ function(ascii_instrumentation_finalize)
         "${instrumented_dir}/src"
     )
 
-    # Debug/instrumentation runtime targets that are built before instrumentation
+    # Debug/source_print instrumentation runtime targets that are built before instrumentation
     # need the original lib/ headers, not instrumented ones
     if(TARGET ascii-chat-debug)
         target_include_directories(ascii-chat-debug PRIVATE

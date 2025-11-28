@@ -102,6 +102,14 @@
 #define ARGON2ID_SALT_SIZE 32
 /** @brief Secretbox key size in bytes */
 #define SECRETBOX_KEY_SIZE 32
+/** @brief AES-256 key size in bytes */
+#define AES256_KEY_SIZE 32
+/** @brief AES initialization vector (IV) size in bytes */
+#define AES_IV_SIZE 16
+/** @brief AES-256 key + IV derived size in bytes (for bcrypt_pbkdf) */
+#define AES256_DERIVED_SIZE (AES256_KEY_SIZE + AES_IV_SIZE)
+/** @brief Session ID size in bytes */
+#define SESSION_ID_SIZE 16
 
 /** @} */
 
@@ -346,6 +354,66 @@ typedef enum {
 #define SSH_KEY_PUBLIC_KEY_SIZE 32       // Ed25519 public key size
 #define SSH_KEY_HEADER_SIZE                                                                                            \
   (SSH_KEY_TYPE_LENGTH_SIZE + SSH_KEY_TYPE_STRING_SIZE + SSH_KEY_PUBLIC_KEY_LENGTH_SIZE + SSH_KEY_PUBLIC_KEY_SIZE)
+
+// =============================================================================
+// Cryptographic Key Size Constants
+// =============================================================================
+
+/**
+ * @brief Ed25519 key size in bytes
+ *
+ * Ed25519 public and private keys are 32 bytes each.
+ *
+ * @ingroup crypto
+ */
+#define CRYPTO_KEY_SIZE 32
+
+/**
+ * @brief Ed25519 key fingerprint size in bytes
+ *
+ * SHA-256 hash of the key, resulting in 32 bytes.
+ *
+ * @ingroup crypto
+ */
+#define CRYPTO_FINGERPRINT_SIZE 32
+
+// =============================================================================
+// Hex String Size Constants
+// =============================================================================
+
+/**
+ * @name Hex String Size Constants
+ * @{
+ */
+
+/** @brief Hex string size for 32-byte key (64 hex characters) */
+#define CRYPTO_HEX_KEY_SIZE 64
+/** @brief Hex string size for 32-byte key with null terminator (65 bytes) */
+#define CRYPTO_HEX_KEY_SIZE_NULL 65
+/** @brief Hex string size for 64-byte key (128 hex characters) */
+#define CRYPTO_HEX_KEY64_SIZE 128
+/** @brief Hex string size for 64-byte key with null terminator (129 bytes) */
+#define CRYPTO_HEX_KEY64_SIZE_NULL 129
+
+/** @} */
+
+// =============================================================================
+// String Literal Constants
+// =============================================================================
+
+/**
+ * @name Cryptographic String Literals
+ * @{
+ */
+
+/** @brief SSH Ed25519 key type string ("ssh-ed25519") */
+#define SSH_ED25519_KEY_TYPE "ssh-ed25519"
+/** @brief X25519 key type string ("x25519") */
+#define X25519_KEY_TYPE "x25519"
+/** @brief No-identity entry marker ("no-identity") */
+#define NO_IDENTITY_MARKER "no-identity"
+
+/** @} */
 
 // =============================================================================
 // File Permission Constants

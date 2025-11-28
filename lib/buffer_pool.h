@@ -112,8 +112,8 @@
  * @{
  */
 
-/** @brief Number of small buffers to pre-allocate (128KB total) */
-#define BUFFER_POOL_SMALL_COUNT 128
+/** @brief Number of small buffers to pre-allocate (1MB total) */
+#define BUFFER_POOL_SMALL_COUNT 1024
 /** @brief Number of medium buffers to pre-allocate (4MB total) */
 #define BUFFER_POOL_MEDIUM_COUNT 64
 /** @brief Number of large buffers to pre-allocate (8MB total) */
