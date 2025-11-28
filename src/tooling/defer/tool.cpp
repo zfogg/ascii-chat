@@ -525,17 +525,21 @@ private:
     }
 
     int depth = 1;
-    for (size_t i = openPos + 1; i < fileData.size(); i++) {
+    size_t i = openPos + 1;
+    while (i < fileData.size()) {
       char c = fileData[i];
       if (c == '(') {
         depth++;
+        i++;
       } else if (c == ')') {
         depth--;
         if (depth == 0) {
           return i;
         }
+        i++;
       }
       // Skip string literals to avoid counting parens inside strings
+        i++;
       else if (c == '"') {
         i++;
         while (i < fileData.size() && fileData[i] != '"') {
@@ -546,7 +550,11 @@ private:
         }
       }
       // Skip character literals
+        i++;
       else if (c == '\'') {
+      else {
+        i++;
+      }
         i++;
         while (i < fileData.size() && fileData[i] != '\'') {
           if (fileData[i] == '\\' && i + 1 < fileData.size()) {
