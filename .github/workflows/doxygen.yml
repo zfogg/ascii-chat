@@ -2,6 +2,8 @@ name: Doxygen Documentation
 
 on:
   push:
+    branches:
+      - master  # Only deploy docs from master branch
     paths:
       - 'lib/**/*.c'
       - 'lib/**/*.h'
