@@ -23,7 +23,7 @@ This module implements Go/Zig-style `defer` statements for C using Clang libTool
 **Phase 3: Build System Integration** ⏸️ **NOT STARTED**
 - [ ] `cmake/tooling/Defer.cmake` - Build-time transformation integration
 - [ ] Similar to `Instrumentation.cmake` but for defer
-- [ ] Option: `ASCII_BUILD_WITH_DEFER` to enable transformation
+- [ ] Option: `ASCIICHAT_BUILD_WITH_DEFER` to enable transformation
 
 ## Architecture
 
@@ -105,7 +105,7 @@ void process_file(const char *path) {
 Similar to source_print instrumentation, but for defer transformation:
 
 ```cmake
-option(ASCII_BUILD_WITH_DEFER "Enable defer statement transformation" OFF)
+option(ASCIICHAT_BUILD_WITH_DEFER "Enable defer statement transformation" OFF)
 
 function(ascii_defer_prepare)
     # Transform sources with defer statements
@@ -311,7 +311,7 @@ void example() {
 
 3. **Build System Integration**
    - Add `cmake/tooling/Defer.cmake`
-   - Create `ASCII_BUILD_WITH_DEFER` option
+   - Create `ASCIICHAT_BUILD_WITH_DEFER` option
    - Integration similar to source_print instrumentation
 
 4. **Documentation**
