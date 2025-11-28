@@ -46,8 +46,6 @@ function(ascii_defer_prepare)
         "lib/image2ascii/simd/ssse3.c"
         "lib/image2ascii/simd/neon.c"
         "lib/image2ascii/simd/sve.c"
-        "lib/tooling/defer/defer.c"
-        "lib/tooling/defer/defer.h"
     )
 
     set(candidate_vars

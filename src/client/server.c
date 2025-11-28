@@ -703,17 +703,25 @@ void server_connection_close() {
  * @ingroup client_connection
  */
 void server_connection_shutdown() {
+  // NOTE: This function may be called from:
+  //   - Signal handlers on Unix (async-signal-safe context)
+  //   - SetConsoleCtrlHandler callback thread on Windows (separate thread context)
+  // Only use atomic operations and simple system calls - NO mutex locks, NO malloc, NO logging.
+
   atomic_store(&g_connection_active, false);
   atomic_store(&g_connection_lost, true);
 
   if (g_sockfd != INVALID_SOCKET_VALUE) {
-    socket_shutdown(g_sockfd, SHUT_RDWR); // Interrupt blocking operations
-    socket_close(g_sockfd);
-    g_sockfd = INVALID_SOCKET_VALUE;
+    // Only shutdown() the socket to interrupt blocking recv()/send() operations.
+    // Do NOT close() here - on Windows, closing the socket while another thread
+    // is using it is undefined behavior and can cause STATUS_STACK_BUFFER_OVERRUN.
+    // The actual socket close happens in server_connection_close() which is called
+    // from the main thread after worker threads have been joined.
+    socket_shutdown(g_sockfd, SHUT_RDWR);
   }
 
-  // Turn ON terminal logging when connection is shutdown
-  log_set_terminal_output(true);
+  // DO NOT call log_set_terminal_output() here - it uses mutex which is NOT async-signal-safe.
+  // The normal cleanup path in shutdown_client() will handle logging state.
 }
 
 /**

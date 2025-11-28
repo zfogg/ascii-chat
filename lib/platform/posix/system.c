@@ -179,6 +179,72 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
   return old_sa.sa_handler;
 }
 
+// Global console control handler for POSIX
+static console_ctrl_handler_t g_console_ctrl_handler = NULL;
+
+/**
+ * @brief POSIX signal handler that routes to console control handler
+ * @param sig Signal number received
+ */
+static void posix_console_ctrl_signal_handler(int sig) {
+  if (!g_console_ctrl_handler) {
+    return;
+  }
+
+  console_ctrl_event_t event;
+  switch (sig) {
+    case SIGINT:
+      event = CONSOLE_CTRL_C;
+      break;
+    case SIGTERM:
+      event = CONSOLE_CLOSE;
+      break;
+    default:
+      return;
+  }
+
+  // Call user's handler (in signal context - limited operations allowed!)
+  (void)g_console_ctrl_handler(event);
+}
+
+/**
+ * @brief Set console control handler (POSIX implementation)
+ * @param handler Handler function to register, or NULL to unregister
+ * @return true on success, false on failure
+ *
+ * Uses sigaction() for SIGINT and SIGTERM handling on POSIX systems.
+ */
+bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
+  struct sigaction sa;
+
+  if (handler != NULL) {
+    g_console_ctrl_handler = handler;
+
+    // Set up signal action
+    sa.sa_handler = posix_console_ctrl_signal_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0; // Don't use SA_RESTART - let the handler control flow
+
+    // Install handlers for SIGINT and SIGTERM
+    if (sigaction(SIGINT, &sa, NULL) == -1) {
+      g_console_ctrl_handler = NULL;
+      return false;
+    }
+    if (sigaction(SIGTERM, &sa, NULL) == -1) {
+      // Restore default SIGINT handler on failure
+      signal(SIGINT, SIG_DFL);
+      g_console_ctrl_handler = NULL;
+      return false;
+    }
+  } else {
+    // Unregister handler - restore default signal handling
+    g_console_ctrl_handler = NULL;
+    signal(SIGINT, SIG_DFL);
+    signal(SIGTERM, SIG_DFL);
+  }
+  return true;
+}
+
 /**
  * @brief Get environment variable value
  * @param name Environment variable name

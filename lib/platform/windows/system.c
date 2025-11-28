@@ -187,6 +187,72 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
   return signal(sig, handler);
 }
 
+// Global console control handler (used by SetConsoleCtrlHandler)
+static console_ctrl_handler_t g_console_ctrl_handler = NULL;
+
+/**
+ * @brief Windows console control handler callback
+ * @param ctrl_type Control event type from Windows
+ * @return TRUE if handled, FALSE to pass to next handler
+ */
+static BOOL WINAPI windows_console_ctrl_handler(DWORD ctrl_type) {
+  if (!g_console_ctrl_handler) {
+    return FALSE;
+  }
+
+  console_ctrl_event_t event;
+  switch (ctrl_type) {
+    case CTRL_C_EVENT:
+      event = CONSOLE_CTRL_C;
+      break;
+    case CTRL_BREAK_EVENT:
+      event = CONSOLE_CTRL_BREAK;
+      break;
+    case CTRL_CLOSE_EVENT:
+      event = CONSOLE_CLOSE;
+      break;
+    case CTRL_LOGOFF_EVENT:
+      event = CONSOLE_LOGOFF;
+      break;
+    case CTRL_SHUTDOWN_EVENT:
+      event = CONSOLE_SHUTDOWN;
+      break;
+    default:
+      return FALSE;
+  }
+
+  // Call the user's handler
+  bool handled = g_console_ctrl_handler(event);
+  return handled ? TRUE : FALSE;
+}
+
+/**
+ * @brief Set console control handler (Windows implementation)
+ * @param handler Handler function to register, or NULL to unregister
+ * @return true on success, false on failure
+ *
+ * Uses SetConsoleCtrlHandler() for proper Ctrl+C handling on Windows.
+ * This is more reliable than the CRT signal() emulation which has known issues.
+ */
+bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
+  if (handler != NULL) {
+    // Register our handler if not already registered
+    if (g_console_ctrl_handler == NULL) {
+      if (!SetConsoleCtrlHandler(windows_console_ctrl_handler, TRUE)) {
+        return false;
+      }
+    }
+    g_console_ctrl_handler = handler;
+  } else {
+    // Unregister handler
+    if (g_console_ctrl_handler != NULL) {
+      SetConsoleCtrlHandler(windows_console_ctrl_handler, FALSE);
+      g_console_ctrl_handler = NULL;
+    }
+  }
+  return true;
+}
+
 /**
  * @brief Get environment variable value
  * @param name Environment variable name
