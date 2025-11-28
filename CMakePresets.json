@@ -9,7 +9,26 @@
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_C_STANDARD": "23",
-        "CMAKE_CXX_STANDARD": "26"
+        "CMAKE_CXX_STANDARD": "26",
+        "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON",
+        "USE_CPACK": "OFF",
+        "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "ON",
+        "ASCIICHAT_USE_PCH": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
+      }
+    },
+    {
+      "name": "base-release",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_MIMALLOC": "ON",
+        "USE_CPACK": "ON",
+        "ASCIICHAT_RELEASE_CPU_TUNE": "native",
+        "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "ON",
+        "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF"
       }
     },
     {
@@ -27,7 +46,8 @@
       "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
       }
     },
     {
@@ -37,6 +57,7 @@
       "inherits": "base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
         "USE_MUSL": "ON"
       }
     },
@@ -44,32 +65,15 @@
       "name": "release",
       "displayName": "Release",
       "description": "Optimized static release build - automatically uses musl on Linux, vcpkg static on Windows",
-      "inherits": "base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "USE_MIMALLOC": "ON",
-        "ASCIICHAT_RELEASE_CPU_TUNE": "portable",
-        "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "OFF"
-      }
+      "inherits": "base-release"
     },
     {
       "name": "release-musl",
       "displayName": "Release (musl)",
       "description": "Optimized static release build with musl explicitly enabled (Linux only)",
-      "inherits": "base",
+      "inherits": "base-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "USE_MUSL": "ON",
-        "USE_MIMALLOC": "ON"
-      }
-    },
-    {
-      "name": "release-x86-64-v3",
-      "displayName": "Release (x86-64-v3)",
-      "description": "Release build targeting modern AVX2 CPUs",
-      "inherits": "release",
-      "cacheVariables": {
-        "ASCIICHAT_RELEASE_CPU_TUNE": "x86-64-v3"
+        "USE_MUSL": "ON"
       }
     },
     {
@@ -88,15 +92,7 @@
       "description": "Debug without sanitizers (faster)",
       "inherits": "base",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Dev"
-      }
-    },
-    {
-      "name": "dev-analyzers",
-      "displayName": "Dev (Analyzers)",
-      "description": "Debug build with static analyzers enabled (clang-tidy/cppcheck)",
-      "inherits": "dev",
-      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Dev",
         "ASCIICHAT_ENABLE_ANALYZERS": "ON"
       }
     },
@@ -155,10 +151,6 @@
       "configurePreset": "release"
     },
     {
-      "name": "release-x86-64-v3",
-      "configurePreset": "release-x86-64-v3"
-    },
-    {
       "name": "release-musl",
       "configurePreset": "release-musl"
     },
@@ -169,10 +161,6 @@
     {
       "name": "dev",
       "configurePreset": "dev"
-    },
-    {
-      "name": "dev-analyzers",
-      "configurePreset": "dev-analyzers"
     },
     {
       "name": "coverage",

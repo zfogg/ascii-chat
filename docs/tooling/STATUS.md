@@ -99,7 +99,7 @@ Implements `__sanitizer_cov_trace_pc_guard()` for compiler-based instrumentation
 **Build commands**:
 ```bash
 # Enable source_print instrumentation
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 
 # Run instrumented binary
@@ -154,7 +154,7 @@ llvm-symbolizer --obj=./build/bin/ascii-chat.exe < pc_addresses.txt
 
 ```bash
 # 1. Build the source_print instrumentation tool
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON  # enables source_print instrumentation
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON  # enables source_print instrumentation
 cmake --build build --target ascii-instr-source-print
 
 # 2. Instrument specific file
@@ -165,7 +165,7 @@ cmake --build build --target ascii-instr-source-print
   -I./lib -I./build/generated
 
 # 3. Build with instrumented sources
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 
 # 4. Run and watch logs
@@ -216,7 +216,7 @@ Download from: https://github.com/llvm/llvm-project/releases
 docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash
 
 # Inside container:
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 ./build/bin/ascii-instr-source-print --help
 ```

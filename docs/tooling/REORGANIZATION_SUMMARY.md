@@ -66,7 +66,7 @@ All CMake variables now explicitly reference `source_print`:
 - `ASCII_INSTRUMENTATION_*` (generic)
 
 **After:**
-- `ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION`
+- `ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION`
 - `ascii_instrumentation_prepare()` (kept for compatibility)
 - `ascii_instrumentation_finalize()` (kept for compatibility)
 

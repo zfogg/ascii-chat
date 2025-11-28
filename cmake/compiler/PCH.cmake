@@ -15,9 +15,9 @@
 
 # CMake 3.16+ supports target_precompile_headers
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
-    option(USE_PRECOMPILED_HEADERS "Use precompiled headers for faster builds" ON)
+    option(ASCIICHAT_USE_PCH "Use precompiled headers for faster builds" ON)
 
-    if(USE_PRECOMPILED_HEADERS AND NOT USE_MUSL)
+    if(ASCIICHAT_USE_PCH AND NOT USE_MUSL)
         set(_ascii_chat_pch_targets
             ascii-chat-core
             ascii-chat-network

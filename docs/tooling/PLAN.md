@@ -24,7 +24,7 @@
 ### Build System Integration (`cmake/tooling/`)
 - [x] Provide `cmake/tooling/Targets.cmake` that defines the libTooling executable and `ascii-debug-runtime`, ensuring LLVM/Clang discovery happens there.
 - [x] Expose `ascii_instrumentation_prepare()` / `ascii_instrumentation_finalize()` helpers in `cmake/tooling/Instrumentation.cmake`, invoked from the root `CMakeLists.txt`.
-- [x] Add cache option `ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION` and integrate `cmake/tooling/run_instrumentation.sh` to generate source_print-instrumented sources safely into `build/instrumented/`.
+- [x] Add cache option `ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION` and integrate `cmake/tooling/run_instrumentation.sh` to generate source_print-instrumented sources safely into `build/instrumented/`.
 
 ### Developer Documentation & Usage
 - [x] Document workflow in `docs/tooling-instrumentation.md`: configuration, environment filters, per-thread logs.
@@ -109,7 +109,7 @@
    - [x] Complete `docs/tooling-instrumentation.md` with end-to-end workflow, env var reference, and troubleshooting.
    - [ ] Record a short asciinema or GIF walkthrough demonstrating instrumentation on a simple crash.
 2. **Stabilize Build Integration**
-   - [ ] Add CI job that configures with `-DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON` to validate the pipeline builds on macOS/Linux.
+   - [ ] Add CI job that configures with `-DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON` to validate the pipeline builds on macOS/Linux.
    - [ ] Create a convenience script (`scripts/instrumented-build.sh`) that wraps preset configuration, emphasizing no overwrite guarantees.
 3. **Runtime Validation**
    - [ ] Write deterministic unit tests covering filter combinations (include/exclude, rate, thread selection) using mock log sinks.

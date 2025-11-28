@@ -3,14 +3,14 @@ include_guard(GLOBAL)
 # defer() is MANDATORY - the code requires it to function correctly
 # Build the defer tool as an external project to avoid inheriting musl/static flags
 
-set(ASCII_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
+set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
 
 include(ExternalProject)
 
 function(ascii_defer_prepare)
     # Determine which defer tool to use
-    if(ASCII_DEFER_TOOL AND EXISTS "${ASCII_DEFER_TOOL}")
-        set(_defer_tool_exe "${ASCII_DEFER_TOOL}")
+    if(ASCIICHAT_DEFER_TOOL AND EXISTS "${ASCIICHAT_DEFER_TOOL}")
+        set(_defer_tool_exe "${ASCIICHAT_DEFER_TOOL}")
         set(_defer_tool_depends "")
         message(STATUS "Using external defer tool: ${_defer_tool_exe}")
     else()
@@ -77,8 +77,6 @@ function(ascii_defer_prepare)
         message(STATUS "Building defer tool as external project")
     endif()
 
-
-    set(USE_PRECOMPILED_HEADERS OFF CACHE BOOL "Disable PCH when defer transformation is enabled" FORCE)
 
     set(defer_transformed_dir "${CMAKE_BINARY_DIR}/defer_transformed")
 
@@ -189,7 +187,7 @@ function(ascii_defer_prepare)
             -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
             -DUSE_MUSL=OFF
             -DASCII_BUILD_WITH_DEFER=OFF
-            -DUSE_PRECOMPILED_HEADERS=OFF
+            -DASCIICHAT_USE_PCH=OFF
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
             "-DCMAKE_C_FLAGS=${_defer_cflags}"
         COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
@@ -335,15 +333,12 @@ function(ascii_defer_finalize)
         ascii-chat
     )
 
-    # Link all targets with the defer runtime library
-    # Note: defer.c is already compiled into ascii-chat-core (via CORE_SRCS),
-    # so we don't need to link ascii-chat-defer to any targets that depend on ascii-chat-core
-    # The defer runtime functions are available through ascii-chat-core
+    # Add compile definitions and dependencies for defer-transformed targets
+    # Note: No runtime library is needed - defer cleanup is inlined directly into the code
     foreach(lib_target IN LISTS ASCII_DEFER_TRANSFORM_LIBRARY_TARGETS)
         if(TARGET ${lib_target})
             add_dependencies(${lib_target} ascii-generate-defer-transformed-sources)
             target_compile_definitions(${lib_target} PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
-            # defer.c is already in ascii-chat-core, so no need to link ascii-chat-defer
         endif()
     endforeach()
 
@@ -351,21 +346,12 @@ function(ascii_defer_finalize)
         if(TARGET ${exe_target})
             add_dependencies(${exe_target} ascii-generate-defer-transformed-sources)
             target_compile_definitions(${exe_target} PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
-            if(TARGET ascii-chat-defer)
-                target_link_libraries(${exe_target} ascii-chat-defer)
-            endif()
         endif()
     endforeach()
 
     if(TARGET ascii-chat-shared)
         add_dependencies(ascii-chat-shared ascii-generate-defer-transformed-sources)
         target_compile_definitions(ascii-chat-shared PRIVATE ASCII_DEFER_TRANSFORMED_BUILD=1)
-        # Link ascii-chat-defer to provide defer runtime functions
-        # Even though defer.c is in CORE_SRCS, we link ascii-chat-defer to ensure
-        # the runtime functions are available (defer.c may not be compiled into core properly)
-        if(TARGET ascii-chat-defer)
-            target_link_libraries(ascii-chat-shared PRIVATE ascii-chat-defer)
-        endif()
     endif()
 
 endfunction()

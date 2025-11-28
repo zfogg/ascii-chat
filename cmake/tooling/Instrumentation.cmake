@@ -1,6 +1,6 @@
 include_guard(GLOBAL)
 
-option(ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION "Generate and build source_print-instrumented sources with per-statement logging" OFF)
+option(ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION "Generate and build source_print-instrumented sources with per-statement logging" OFF)
 
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Targets.cmake)
 set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_instrumentation.sh")
@@ -70,14 +70,12 @@ else()
 endif()
 
 function(ascii_instrumentation_prepare)
-    if(NOT ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
+    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
         set(ASCII_INSTRUMENTATION_ENABLED FALSE PARENT_SCOPE)
         return()
     endif()
 
     ascii_add_tooling_targets()
-
-    set(USE_PRECOMPILED_HEADERS OFF CACHE BOOL "Disable PCH when source_print instrumentation is enabled" FORCE)
 
     set(instrumented_dir "${CMAKE_BINARY_DIR}/instrumented")
 
@@ -232,8 +230,8 @@ function(ascii_instrumentation_prepare)
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
-            -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=OFF
-            -DUSE_PRECOMPILED_HEADERS=OFF
+            -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=OFF
+            -DASCIICHAT_USE_PCH=OFF
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
         COMMAND ${CMAKE_COMMAND} -E copy
@@ -300,7 +298,7 @@ function(ascii_instrumentation_prepare)
 endfunction()
 
 function(ascii_instrumentation_finalize)
-    if(NOT ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
+    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
         return()
     endif()
     if(NOT TARGET ascii-generate-instrumented-sources)

@@ -217,7 +217,7 @@ TID 1002: Last execution at client.c:90 in process_frame() ⚠️ CRASH
 ### 4. CMake Integration ✅
 ```bash
 # Build with instrumentation
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 
 # Instrumented sources → build/instrumented/
@@ -334,8 +334,8 @@ cmake --build build
 
 1. **Debug ascii-chat crash**:
 ```bash
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
-   cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+   cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
    cmake --build build
    ASCII_INSTR_SOURCE_PRINT_INCLUDE=network.c ./build/bin/ascii-chat server
    # Wait for crash

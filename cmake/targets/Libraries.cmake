@@ -334,21 +334,7 @@ if(NOT WIN32 AND TARGET Threads::Threads)
     target_link_libraries(ascii-chat-debug PUBLIC Threads::Threads)
 endif()
 
-# -----------------------------------------------------------------------------
-# Module 9b: Defer Statement Runtime (depends on: util, core)
-# -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-defer "${TOOLING_DEFER_SRCS}")
-target_include_directories(ascii-chat-defer PRIVATE
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/src
-)
-if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-defer
-        PRIVATE
-            ascii-chat-util
-            ascii-chat-core
-    )
-endif()
+# Note: Module 9b (defer runtime) was removed - now using direct code insertion
 
 # -----------------------------------------------------------------------------
 # Module 10: Network (depends on: util, platform, crypto, core)

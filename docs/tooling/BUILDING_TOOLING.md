@@ -57,12 +57,12 @@ cp build/lib/libasciichat.a build/libasciichat_for_tooling.a
 # Step 3: Reconfigure with instrumentation + library path
 # Windows:
 cmake -B build \
-  -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON \
+  -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON \
   -DASCII_TOOLING_LIBRARY_PATH="build/asciichat_for_tooling.lib"
 
 # Unix/macOS:
 cmake -B build \
-  -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON \
+  -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON \
   -DASCII_TOOLING_LIBRARY_PATH="build/libasciichat_for_tooling.a"
 
 # Step 4: Build only tooling targets (not the whole project)
@@ -107,7 +107,7 @@ cmake --build build --target ascii-chat-static
 
 # Configure with instrumentation + library path
 cmake -B build \
-  -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON \
+  -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON \
   -DASCII_TOOLING_LIBRARY_PATH="build/lib/libasciichat.a"
 
 # Build instrumented version

@@ -18,8 +18,8 @@ include(CheckCSourceCompiles)
 include(CheckCSourceRuns)
 
 # User override controls
-set(SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, neon, sve")
-set_property(CACHE SIMD_MODE PROPERTY STRINGS "auto" "sse2" "ssse3" "avx2" "neon" "sve")
+set(ASCIICHAT_SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, neon, sve")
+set_property(CACHE ASCIICHAT_SIMD_MODE PROPERTY STRINGS "auto" "sse2" "ssse3" "avx2" "neon" "sve")
 
 # Initialize SIMD flags
 set(ENABLE_SIMD_SSE2 FALSE)
@@ -29,17 +29,17 @@ set(ENABLE_SIMD_NEON FALSE)
 set(ENABLE_SIMD_SVE FALSE)
 
 # Check for user-specified SIMD mode
-if(NOT SIMD_MODE STREQUAL "auto")
+if(NOT ASCIICHAT_SIMD_MODE STREQUAL "auto")
     # Manual mode - only enable the specific architecture requested
-    if(SIMD_MODE STREQUAL "sse2")
+    if(ASCIICHAT_SIMD_MODE STREQUAL "sse2")
         set(ENABLE_SIMD_SSE2 TRUE)
-    elseif(SIMD_MODE STREQUAL "ssse3")
+    elseif(ASCIICHAT_SIMD_MODE STREQUAL "ssse3")
         set(ENABLE_SIMD_SSSE3 TRUE)
-    elseif(SIMD_MODE STREQUAL "avx2")
+    elseif(ASCIICHAT_SIMD_MODE STREQUAL "avx2")
         set(ENABLE_SIMD_AVX2 TRUE)
-    elseif(SIMD_MODE STREQUAL "neon")
+    elseif(ASCIICHAT_SIMD_MODE STREQUAL "neon")
         set(ENABLE_SIMD_NEON TRUE)
-    elseif(SIMD_MODE STREQUAL "sve")
+    elseif(ASCIICHAT_SIMD_MODE STREQUAL "sve")
         set(ENABLE_SIMD_SVE TRUE)
     endif()
 else()

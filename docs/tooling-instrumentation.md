@@ -2,8 +2,8 @@
 
 ### When to Enable
 
-- Configure any preset with `-DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON` to enable the source_print instrumentation pipeline. Examples:
-  - `cmake --preset default -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON`
+- Configure any preset with `-DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON` to enable the source_print instrumentation pipeline. Examples:
+  - `cmake --preset default -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON`
   - `cmake --build build`
 - The configure step adds the source_print instrumentation tool (`ascii-instr-source-print`, a Clang libTooling rewriter) and the `ascii-debug-runtime` library to the build graph. When the flag is on, targets listed in `cmake/tooling/Instrumentation.cmake` are rebuilt from a source_print-instrumented tree under `build/instrumented/`.
 - The generated tree mirrors project layout but skips third-party code (`deps/`) and the source_print instrumentation runtime itself to avoid recursive logging.

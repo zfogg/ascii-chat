@@ -73,6 +73,7 @@
 #include "main.h"
 
 #include "platform/abstraction.h"
+#include "platform/internal.h"
 #include "options.h"
 #include "image2ascii/ascii.h"
 
@@ -387,7 +388,7 @@ void display_cleanup() {
 
   // Close the controlling terminal if we opened it
   if (g_tty_info.owns_fd && g_tty_info.fd >= 0) {
-    close(g_tty_info.fd);
+    platform_close(g_tty_info.fd);
     g_tty_info.fd = -1;
     g_tty_info.owns_fd = false;
   }

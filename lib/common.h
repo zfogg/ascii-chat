@@ -460,6 +460,15 @@ extern int g_max_fps;
  */
 #define BUFFER_SIZE_XXXLARGE 8192
 
+/**
+ * @brief Huge buffer size (16kb)
+ *
+ * Used for huge buffers like stack traces and other system messages.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_HUGE 16384
+
 /* ============================================================================
  * Shutdown Check System
  * ============================================================================
@@ -616,19 +625,12 @@ bool shutdown_is_requested(void);
 #define ALLOC_CALLOC(count, size) mi_calloc((count), (size))
 #define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
 #define ALLOC_FREE(ptr) mi_free(ptr)
-#elif defined(DEBUG_MEMORY)
+#elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
 #include "debug/memory.h"
-#ifdef NDEBUG
-#define ALLOC_MALLOC(size) debug_malloc(size, NULL, 0)
-#define ALLOC_CALLOC(count, size) debug_calloc((count), (size), NULL, 0)
-#define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), NULL, 0)
-#define ALLOC_FREE(ptr) debug_free(ptr, NULL, 0)
-#else
 #define ALLOC_MALLOC(size) debug_malloc(size, __FILE__, __LINE__)
 #define ALLOC_CALLOC(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 #define ALLOC_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
-#endif
 #else
 #define ALLOC_MALLOC(size) malloc(size)
 #define ALLOC_CALLOC(count, size) calloc((count), (size))

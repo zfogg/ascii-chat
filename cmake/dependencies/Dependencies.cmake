@@ -16,7 +16,7 @@
 #   - USE_MUSL: Whether using musl libc
 #   - CMAKE_BUILD_TYPE: Build type
 #   - VCPKG_ROOT: (Windows only) vcpkg installation path
-#   - DEPS_CACHE_DIR: Dependency cache directory
+#   - ASCIICHAT_DEPS_CACHE_DIR: Dependency cache directory
 #
 # Dependency modules included:
 #   1. Vcpkg.cmake - vcpkg configuration (Windows only)

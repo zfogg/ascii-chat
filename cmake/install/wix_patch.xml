@@ -4,71 +4,20 @@
     Custom WiX configuration for ascii-chat
 
     This patch adds:
-    1. Start Menu shortcuts for ascii-chat client and server
-    2. PATH environment variable modification to add bin directory
+    1. PATH environment variable to the ascii-chat.exe component
+
+    Note: Patches inject children into elements matching the fragment ID.
+    We patch into the exe's component (from files.wxs) to add PATH modification.
   -->
 
-  <!-- Add shortcuts to Start Menu -->
-  <CPackWiXFragment Id="CM_SHORTCUTS">
-    <DirectoryRef Id="ApplicationProgramsFolder">
-      <Component Id="ApplicationShortcuts" Guid="B1C2D3E4-F5A6-7890-BCDE-FA1234567890">
-        <!-- Client shortcut -->
-        <Shortcut Id="ClientShortcut"
-                  Name="ascii-chat Client"
-                  Description="Launch ascii-chat client"
-                  Target="[INSTALL_ROOT]bin\\ascii-chat.exe"
-                  Arguments="client"
-                  WorkingDirectory="INSTALL_ROOT" />
-
-        <!-- Server shortcut -->
-        <Shortcut Id="ServerShortcut"
-                  Name="ascii-chat Server"
-                  Description="Launch ascii-chat server"
-                  Target="[INSTALL_ROOT]bin\\ascii-chat.exe"
-                  Arguments="server"
-                  WorkingDirectory="INSTALL_ROOT" />
-
-        <!-- Uninstall shortcut (required by Windows Installer) -->
-        <RemoveFolder Id="ApplicationProgramsFolder" On="uninstall" />
-
-        <!-- Registry key for Windows Installer (required) -->
-        <RegistryValue Root="HKCU"
-                      Key="Software\\ascii-chat"
-                      Name="installed"
-                      Type="integer"
-                      Value="1"
-                      KeyPath="yes" />
-      </Component>
-    </DirectoryRef>
-  </CPackWiXFragment>
-
-  <!-- Add bin directory to PATH environment variable -->
-  <CPackWiXFragment Id="CM_PATH">
-    <Component Id="PathEnvironment" Guid="C1D2E3F4-A5B6-7890-CDEF-AB1234567890" Directory="INSTALL_ROOT">
-      <!-- Add to user PATH (HKCU) - works without admin -->
-      <Environment Id="PATH"
-                  Name="PATH"
-                  Value="[INSTALL_ROOT]bin"
-                  Permanent="no"
-                  Part="last"
-                  Action="set"
-                  System="no" />
-
-      <!-- Registry key required for component -->
-      <RegistryValue Root="HKCU"
-                    Key="Software\\ascii-chat"
-                    Name="path"
-                    Type="integer"
-                    Value="1"
-                    KeyPath="yes" />
-    </Component>
-  </CPackWiXFragment>
-
-  <!-- Install the custom components -->
-  <CPackWiXFragment Id="CM_INSTALL_COMPONENTS">
-    <Feature Id="ProductFeature">
-      <ComponentRef Id="ApplicationShortcuts" />
-      <ComponentRef Id="PathEnvironment" />
-    </Feature>
+  <!-- Add PATH environment variable to the exe component -->
+  <CPackWiXFragment Id="CM_CP_Runtime.bin.ascii_chat.exe">
+    <Environment Id="PATH_ENV"
+                Name="PATH"
+                Value="[INSTALL_ROOT]bin"
+                Permanent="no"
+                Part="last"
+                Action="set"
+                System="no" />
   </CPackWiXFragment>
 </CPackWiXPatch>

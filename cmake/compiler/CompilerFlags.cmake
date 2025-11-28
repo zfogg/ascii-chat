@@ -246,9 +246,9 @@ endfunction()
 #   PLATFORM_LINUX - Whether platform is Linux
 #   IS_ROSETTA - Whether running under Rosetta
 #   IS_APPLE_SILICON - Whether running on Apple Silicon
-#   ENABLE_CRC32_HW - Whether CRC32 hardware acceleration is enabled
+#   ASCIICHAT_ENABLE_CRC32_HW - Whether CRC32 hardware acceleration is enabled
 #   WITH_DEBUG_INFO - Optional: If true, keep debug symbols (for RelWithDebInfo), default false
-function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ENABLE_CRC32_HW)
+function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_APPLE_SILICON ASCIICHAT_ENABLE_CRC32_HW)
     # Handle optional WITH_DEBUG_INFO parameter
     set(WITH_DEBUG_INFO FALSE)
     if(ARGC GREATER 5)
@@ -405,7 +405,7 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
             list(APPEND __asciichat_cpu_flags -march=x86-64)
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
             set(__asciichat_baseline "armv8-a")
-            if(ENABLE_CRC32_HW)
+            if(ASCIICHAT_ENABLE_CRC32_HW)
                 set(__asciichat_baseline "${__asciichat_baseline}+crc")
             endif()
             list(APPEND __asciichat_cpu_flags "-march=${__asciichat_baseline}")
