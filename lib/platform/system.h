@@ -149,6 +149,50 @@ const char *platform_get_username(void);
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
 
 /**
+ * @brief Console control event types (cross-platform Ctrl+C handling)
+ *
+ * @ingroup platform
+ */
+typedef enum {
+  CONSOLE_CTRL_C = 0,       /**< Ctrl+C pressed (SIGINT equivalent) */
+  CONSOLE_CTRL_BREAK = 1,   /**< Ctrl+Break pressed (Windows only, maps to SIGINT on Unix) */
+  CONSOLE_CLOSE = 2,        /**< Console window closed */
+  CONSOLE_LOGOFF = 3,       /**< User logoff event (Windows only) */
+  CONSOLE_SHUTDOWN = 4      /**< System shutdown event (Windows only) */
+} console_ctrl_event_t;
+
+/**
+ * @brief Console control handler callback type
+ * @param event The control event that occurred
+ * @return true if the event was handled, false to pass to next handler
+ *
+ * @note On Windows, this is called from a separate thread, not from signal context
+ * @note On Unix, this is called from signal context (limited safe operations)
+ *
+ * @ingroup platform
+ */
+typedef bool (*console_ctrl_handler_t)(console_ctrl_event_t event);
+
+/**
+ * @brief Register a console control handler (for Ctrl+C, etc.)
+ * @param handler Handler function to register, or NULL to unregister
+ * @return true on success, false on failure
+ *
+ * This provides cross-platform handling for console control events like Ctrl+C.
+ * - On Windows: Uses SetConsoleCtrlHandler() for proper signal handling
+ * - On Unix: Uses sigaction() for SIGINT/SIGTERM handling
+ *
+ * Unlike platform_signal() which uses CRT signal() on Windows (known issues),
+ * this function uses the native Windows API for reliable Ctrl+C handling.
+ *
+ * @note Only one handler is supported at a time. Registering a new handler
+ *       replaces the previous one.
+ *
+ * @ingroup platform
+ */
+bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler);
+
+/**
  * @brief Get an environment variable value
  * @param name Environment variable name
  * @return Pointer to value string (or NULL if not set), do not free

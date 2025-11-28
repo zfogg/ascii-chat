@@ -64,6 +64,42 @@ target_compile_options(ascii-instr-defer PRIVATE
     -fexceptions
 )
 
+# On macOS with Homebrew LLVM, we need to explicitly set the sysroot
+# to avoid header conflicts between LLVM's libc++ and macOS SDK.
+# Homebrew LLVM's libc++ headers include macOS SDK headers, which expect
+# basic C types (size_t, ptrdiff_t) to be defined, but the include order
+# can cause issues without proper sysroot configuration.
+#
+# The key issue: Homebrew LLVM 21+ uses its own libc++ which then includes
+# macOS SDK system headers. Without proper sysroot, the SDK headers can't
+# find their prerequisites (like __darwin_wint_t from _types.h).
+if(APPLE)
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE MACOS_SDK_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(MACOS_SDK_PATH)
+        message(STATUS "Using macOS SDK for defer tool: ${MACOS_SDK_PATH}")
+        # Use -isysroot to tell clang where to find macOS SDK system headers.
+        # Also explicitly specify -stdlib=libc++ for consistency.
+        # The -I for SDK includes is added BEFORE LLVM includes to ensure
+        # proper type definitions are available when LLVM headers need them.
+        target_compile_options(ascii-instr-defer PRIVATE
+            -isysroot ${MACOS_SDK_PATH}
+            -stdlib=libc++
+        )
+        target_link_options(ascii-instr-defer PRIVATE
+            -isysroot ${MACOS_SDK_PATH}
+            -stdlib=libc++
+        )
+    else()
+        message(WARNING "Could not detect macOS SDK path - defer tool may fail to build")
+    endif()
+endif()
+
 # On Windows, use dynamic runtime (/MD) to match Clang libraries
 if(WIN32)
     target_compile_options(ascii-instr-defer PRIVATE

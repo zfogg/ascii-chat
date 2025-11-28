@@ -79,6 +79,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
+#include "keepalive.h"
 
 #include "network/packet.h"
 #include "buffer_pool.h"
@@ -876,6 +877,9 @@ void protocol_stop_connection() {
 
   // Shutdown the socket to interrupt any blocking recv() in data thread
   server_connection_shutdown();
+
+  // Stop keepalive/ping thread - it checks connection status and will exit
+  keepalive_stop_thread();
 
   // Stop webcam capture thread
   capture_stop_thread();

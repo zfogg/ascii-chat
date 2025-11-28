@@ -537,12 +537,20 @@ void capture_stop_thread() {
   if (!g_capture_thread_created) {
     return;
   }
-  // Signal thread to stop
-  // Signal main thread to exit via should_exit() mechanism
+
+  // Flush webcam to interrupt any blocking ReadSample operations
+  // This allows the capture thread to notice should_exit() and exit cleanly
+  webcam_flush();
+
   // Wait for thread to exit gracefully
   int wait_count = 0;
   while (wait_count < 20 && !atomic_load(&g_capture_thread_exited)) {
     platform_sleep_usec(100000); // 100ms
+    // Keep flushing in case the thread went back into a blocking read
+    if (wait_count % 5 == 0) {
+      webcam_flush();
+    }
+    wait_count++;
   }
 
   if (!atomic_load(&g_capture_thread_exited)) {

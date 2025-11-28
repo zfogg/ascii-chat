@@ -216,6 +216,16 @@ void webcam_cleanup(void) {
   }
 }
 
+void webcam_flush(void) {
+  if (opt_test_pattern) {
+    return;  // Test pattern doesn't need flushing
+  }
+
+  if (global_webcam_ctx) {
+    webcam_flush_context(global_webcam_ctx);
+  }
+}
+
 void webcam_print_init_error_help(asciichat_error_t error_code) {
   // Platform-specific error messages and troubleshooting help
 #ifdef __linux__
@@ -303,6 +313,11 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 void webcam_cleanup_context(webcam_context_t *ctx) {
   (void)ctx;
   log_warn("Webcam cleanup called on unsupported platform");
+}
+
+void webcam_flush_context(webcam_context_t *ctx) {
+  (void)ctx;
+  // No-op on unsupported platforms
 }
 
 image_t *webcam_read_context(webcam_context_t *ctx) {

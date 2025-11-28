@@ -151,20 +151,8 @@ function(ascii_defer_prepare)
         return()
     endif()
 
-    # Files use defer(), so we need the runtime
-    # Add defer.c to CORE_SRCS if not already present
-    # Explicitly read CORE_SRCS from parent scope to ensure correct behavior
-    set(_core_srcs "${CORE_SRCS}")
-    if(NOT "lib/tooling/defer/defer.c" IN_LIST _core_srcs)
-        list(APPEND _core_srcs "lib/tooling/defer/defer.c")
-        set(CORE_SRCS "${_core_srcs}" PARENT_SCOPE)
-        message(STATUS "Added defer runtime (lib/tooling/defer/defer.c) to CORE_SRCS")
-    endif()
-
-    # Directories that must be copied to transformed tree (for includes)
-    set(_ascii_defer_copy_dirs
-        "lib/tooling"
-    )
+    # Note: With direct code insertion, no runtime library is needed.
+    # The defer transformer inserts cleanup code directly at each exit point.
 
     # Detect Clang resource directory early for compilation database generation
     if(WIN32)

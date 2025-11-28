@@ -343,9 +343,24 @@ error:
   return result;
 }
 
+void webcam_flush_context(webcam_context_t *ctx) {
+  if (ctx && ctx->reader) {
+    // Flush to cancel any pending ReadSample operations
+    // This interrupts blocking synchronous reads in other threads
+    HRESULT hr = IMFSourceReader_Flush(ctx->reader, (DWORD)MF_SOURCE_READER_ALL_STREAMS);
+    if (FAILED(hr)) {
+      log_warn("IMFSourceReader_Flush failed: 0x%08lx", hr);
+    } else {
+      log_debug("Flushed webcam source reader");
+    }
+  }
+}
+
 void webcam_cleanup_context(webcam_context_t *ctx) {
   if (ctx) {
     if (ctx->reader) {
+      // Flush before release to ensure no pending operations
+      webcam_flush_context(ctx);
       IMFSourceReader_Release(ctx->reader);
       ctx->reader = NULL;
     }
