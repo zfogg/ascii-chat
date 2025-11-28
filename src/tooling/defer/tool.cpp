@@ -74,27 +74,27 @@ namespace {
 struct BlockScope {
   CompoundStmt *stmt = nullptr;
   unsigned scopeId = 0;
-  unsigned depth = 0;  // Nesting depth (0 = function body)
+  unsigned depth = 0; // Nesting depth (0 = function body)
   bool hasDefers = false;
-  bool endsWithReturn = false;  // True if block's last statement is a return
-  SourceLocation startLoc;  // After opening brace
-  SourceLocation endLoc;    // Before closing brace
+  bool endsWithReturn = false; // True if block's last statement is a return
+  SourceLocation startLoc;     // After opening brace
+  SourceLocation endLoc;       // Before closing brace
 };
 
 // Structure to track defer calls within a function
 struct DeferCall {
   SourceLocation location;
-  SourceLocation endLocation;  // End of the defer statement (after semicolon)
-  unsigned fileOffset;         // File offset of the defer statement
-  std::string expression;      // The code to execute (e.g., "fclose(f)" or "{ cleanup(); }")
-  unsigned scopeId;            // Which scope this defer belongs to
+  SourceLocation endLocation; // End of the defer statement (after semicolon)
+  unsigned fileOffset;        // File offset of the defer statement
+  std::string expression;     // The code to execute (e.g., "fclose(f)" or "{ cleanup(); }")
+  unsigned scopeId;           // Which scope this defer belongs to
 };
 
 // Structure to track return statements and their active scopes
 struct ReturnInfo {
   SourceLocation location;
-  unsigned fileOffset;  // File offset of the return statement
-  std::vector<unsigned> activeScopeIds;  // Scopes that are active at this return
+  unsigned fileOffset;                  // File offset of the return statement
+  std::vector<unsigned> activeScopeIds; // Scopes that are active at this return
 };
 
 // Structure to track function transformation state
@@ -102,8 +102,8 @@ struct FunctionTransformState {
   FunctionDecl *funcDecl = nullptr;
   std::vector<DeferCall> deferCalls;
   std::vector<ReturnInfo> returnInfos;
-  std::map<unsigned, BlockScope> blockScopes;  // scopeId -> BlockScope
-  std::vector<unsigned> currentScopeStack;  // Stack of active scope IDs during traversal
+  std::map<unsigned, BlockScope> blockScopes; // scopeId -> BlockScope
+  std::vector<unsigned> currentScopeStack;    // Stack of active scope IDs during traversal
   bool needsTransformation = false;
   unsigned nextScopeId = 0;
 };
@@ -194,8 +194,8 @@ public:
     // We DO skip IfStmt/ForStmt/WhileStmt/SwitchStmt because their source text
     // includes child statements with defers that should be tracked at inner scopes.
 
-    if (isa<CompoundStmt>(stmt) || isa<IfStmt>(stmt) || isa<ForStmt>(stmt) ||
-        isa<WhileStmt>(stmt) || isa<SwitchStmt>(stmt)) {
+    if (isa<CompoundStmt>(stmt) || isa<IfStmt>(stmt) || isa<ForStmt>(stmt) || isa<WhileStmt>(stmt) ||
+        isa<SwitchStmt>(stmt)) {
       return RecursiveASTVisitor<DeferVisitor>::TraverseStmt(stmt);
     }
 
@@ -346,8 +346,8 @@ private:
   }
 
   // Get defers for a specific scope in LIFO order (last registered first)
-  std::vector<const DeferCall*> getDefersForScope(unsigned scopeId, const std::vector<DeferCall> &deferCalls) const {
-    std::vector<const DeferCall*> result;
+  std::vector<const DeferCall *> getDefersForScope(unsigned scopeId, const std::vector<DeferCall> &deferCalls) const {
+    std::vector<const DeferCall *> result;
     for (const auto &dc : deferCalls) {
       if (dc.scopeId == scopeId) {
         result.push_back(&dc);
@@ -368,8 +368,8 @@ private:
       // Function call defer - just add semicolon if needed
       std::string result = expr;
       // Trim trailing semicolons/whitespace
-      while (!result.empty() && (result.back() == ';' || result.back() == ' ' ||
-             result.back() == '\t' || result.back() == '\n' || result.back() == '\r')) {
+      while (!result.empty() && (result.back() == ';' || result.back() == ' ' || result.back() == '\t' ||
+                                 result.back() == '\n' || result.back() == '\r')) {
         result.pop_back();
       }
       return result + "; ";
@@ -378,8 +378,7 @@ private:
 
   // Generate inline cleanup code for all active scopes at a return statement (LIFO order)
   // Only includes defers that were declared BEFORE the return statement
-  std::string generateInlineCleanupForReturn(const ReturnInfo &returnInfo,
-                                             const FunctionTransformState &state) const {
+  std::string generateInlineCleanupForReturn(const ReturnInfo &returnInfo, const FunctionTransformState &state) const {
     std::string code;
     // Process scopes from innermost to outermost
     for (auto scopeIt = returnInfo.activeScopeIds.rbegin(); scopeIt != returnInfo.activeScopeIds.rend(); ++scopeIt) {
@@ -398,10 +397,9 @@ private:
   }
 
   // Get defers for a specific scope that were declared before a given file offset (in LIFO order)
-  std::vector<const DeferCall*> getDefersForScopeBeforeOffset(unsigned scopeId,
-                                                               const std::vector<DeferCall> &deferCalls,
-                                                               unsigned maxOffset) const {
-    std::vector<const DeferCall*> result;
+  std::vector<const DeferCall *>
+  getDefersForScopeBeforeOffset(unsigned scopeId, const std::vector<DeferCall> &deferCalls, unsigned maxOffset) const {
+    std::vector<const DeferCall *> result;
     for (const auto &dc : deferCalls) {
       if (dc.scopeId == scopeId && dc.fileOffset < maxOffset) {
         result.push_back(&dc);
@@ -484,11 +482,11 @@ private:
     // Find "defer(" starting at offset
     size_t deferStart = fileData.find("defer(", offset);
     if (deferStart == StringRef::npos || deferStart != offset) {
-      return;  // Not at the expected position
+      return; // Not at the expected position
     }
 
     // Find matching closing paren for defer(...)
-    size_t openParen = deferStart + 5;  // Position of '(' in defer(
+    size_t openParen = deferStart + 5; // Position of '(' in defer(
     size_t closeParen = findMatchingParenInFile(fileData, openParen);
     if (closeParen == StringRef::npos) {
       return;
@@ -496,13 +494,12 @@ private:
 
     // Find the semicolon AFTER the closing paren
     size_t semicolonPos = closeParen + 1;
-    while (semicolonPos < fileData.size() &&
-           (fileData[semicolonPos] == ' ' || fileData[semicolonPos] == '\t' ||
-            fileData[semicolonPos] == '\n' || fileData[semicolonPos] == '\r')) {
+    while (semicolonPos < fileData.size() && (fileData[semicolonPos] == ' ' || fileData[semicolonPos] == '\t' ||
+                                              fileData[semicolonPos] == '\n' || fileData[semicolonPos] == '\r')) {
       semicolonPos++;
     }
     if (semicolonPos >= fileData.size() || fileData[semicolonPos] != ';') {
-      return;  // No semicolon found after closing paren
+      return; // No semicolon found after closing paren
     }
 
     SourceLocation semicolonLoc = macroLoc.getLocWithOffset(semicolonPos - offset);
@@ -513,7 +510,7 @@ private:
     std::string exprSummary = deferCall.expression;
     bool isBlockDefer = !exprSummary.empty() && exprSummary[0] == '{';
     if (isBlockDefer) {
-      exprSummary = "{...}";  // Summarize block defers
+      exprSummary = "{...}"; // Summarize block defers
     }
     std::string comment = "/* defer: " + exprSummary + " (moved to scope exit) */";
     rewriter_.ReplaceText(deferRange, comment);
@@ -537,10 +534,8 @@ private:
           return i;
         }
         i++;
-      }
-      // Skip string literals to avoid counting parens inside strings
-        i++;
-      else if (c == '"') {
+      } else if (c == '"') {
+        // Skip string literals to avoid counting parens inside strings
         i++;
         while (i < fileData.size() && fileData[i] != '"') {
           if (fileData[i] == '\\' && i + 1 < fileData.size()) {
@@ -548,14 +543,11 @@ private:
           }
           i++;
         }
-        i++;  // Skip closing quote
-      }
-      // Skip character literals
-        i++;
-      else if (c == '\'') {
-      else {
-        i++;
-      }
+        if (i < fileData.size()) {
+          i++;  // Skip closing quote
+        }
+      } else if (c == '\'') {
+        // Skip character literals
         i++;
         while (i < fileData.size() && fileData[i] != '\'') {
           if (fileData[i] == '\\' && i + 1 < fileData.size()) {
@@ -563,7 +555,9 @@ private:
           }
           i++;
         }
-        i++;  // Skip closing quote
+        if (i < fileData.size()) {
+          i++;  // Skip closing quote
+        }
       } else {
         i++;
       }
@@ -640,15 +634,12 @@ public:
     // Use generic_string() for forward slashes on all platforms
     const std::string destinationString = destinationPath.generic_string();
 
-
-
     if (!registerOutputPath(destinationString)) {
       return;
     }
 
     // Check file existence using LLVM's exists() inline function
     bool fileExists = llvm::sys::fs::exists(llvm::Twine(destinationString));
-
 
     if (fileExists && isInProtectedSourceTree(destinationPath)) {
       llvm::errs() << "Refusing to overwrite existing file in protected source tree: " << destinationString << "\n";
@@ -674,9 +665,7 @@ public:
 
     } else {
       rewrittenContents = sourceManager.getBufferData(sourceManager.getMainFileID()).str();
-
     }
-
 
     std::error_code fileError;
     llvm::raw_fd_ostream outputStream(destinationPath.string(), fileError, llvm::sys::fs::OF_Text);
@@ -869,12 +858,17 @@ int main(int argc, const char **argv) {
     for (size_t i = 0; i < args.size(); ++i) {
       const std::string &arg = args[i];
       // Skip sanitizer flags
-      if (arg.find("-fsanitize") != std::string::npos) continue;
-      if (arg.find("-fno-sanitize") != std::string::npos) continue;
+      if (arg.find("-fsanitize") != std::string::npos)
+        continue;
+      if (arg.find("-fno-sanitize") != std::string::npos)
+        continue;
       // Skip debug info flags (not needed for AST parsing)
-      if (arg == "-g" || arg == "-g2" || arg == "-g3") continue;
-      if (arg == "-fno-eliminate-unused-debug-types") continue;
-      if (arg == "-fno-inline") continue;
+      if (arg == "-g" || arg == "-g2" || arg == "-g3")
+        continue;
+      if (arg == "-fno-eliminate-unused-debug-types")
+        continue;
+      if (arg == "-fno-inline")
+        continue;
       result.push_back(arg);
     }
     return result;
@@ -882,8 +876,8 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(stripUnnecessaryFlags);
 
   // Add ASCIICHAT_DEFER_TOOL_PARSING definition so defer() macro doesn't cause parse errors
-  tool.appendArgumentsAdjuster(tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING",
-                                                                   tooling::ArgumentInsertPosition::END));
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
   DeferActionFactory actionFactory(outputDir, inputRoot);
   const int executionResult = tool.run(&actionFactory);
