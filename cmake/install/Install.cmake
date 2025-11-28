@@ -169,6 +169,13 @@ endif()
 
 # Install pkg-config file (only when shared library is built)
 if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-shared)
+    # Set mimalloc requirement conditionally
+    if(USE_MIMALLOC)
+        set(MIMALLOC_REQUIREMENT "mimalloc, ")
+    else()
+        set(MIMALLOC_REQUIREMENT "")
+    endif()
+    
     # Configure the pkgconfig file with current settings
     configure_file(
         "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.pc.in"

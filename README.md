@@ -3,21 +3,22 @@ ascii-chat 📸
 
 ASCII video chat.
 
-Probably the first command line video chat program.
+Probably the first command line video chat program, initial. First written
+November 20, 2013, at the [Hack Duke](https://hackduke.org/) hackathon.
 
-It just prints ASCII, so it works on your rxvt-unicode in OpenBox, a Putty SSH
-session, and even iTerm or Kitty.app on macOS.
+It functions by simply printing text and terminal escape codes to your terminal,
+so it works on rxvt-unicode in OpenBox, a Putty SSH session, iTerm and Kitty.app
+on macOS, and theoretically wherever else the terminal runs.
 
-It even works in an initial UNIX login shell, i.e. the login shell that runs
-'startx'.
+ascii-chat even works in an initial UNIX login shell, i.e. the shell that runs 'startx'. This means you can video chat without even installing a graphical desktop environment on Linux.
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do.
 
-🆕 Audio streaming is now supported via PortAudio, with a custom mixer with features like compression, ducking, crowd scaling, noise gating, hi/lo-pass filtering, and soft clipping.
+🆕 Audio is now supported -- turn on your microphone and start talking!
 
 ![Animated demonstration: monochrome](https://i.imgur.com/E4OuqvX.gif)
 
-Supports color and multiple clients.
+Supports color and multiple clients. Here are 3 clients connected to a single server, in a call.
 
 ![Animated demonstration: multi-client](https://i.imgur.com/OYcv7jP.gif)
 
@@ -603,13 +604,15 @@ changing command-line arguments.
 - [x] Hardware-accelerated ASCII-conversion via SIMD.
 - [x] Windows support.
 - [x] Linux support.
+- [ ] Fix v4l2 usage because the ascii rendered looks corrupted on Linux.
 - [x] Crypto.
 - [ ] GPG key support for crypto (there's a bug upstream in libgcrypt).
-= [ ] ascii-chat internet protocol rfc
-= [ ] ascii-chat discovery service
-= [ ] zalgo text generator
+- [ ] zalgo text generator
 - [ ] v4l2 webcam images working.
 - [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)
+- [ ] submit an ascii-chat internet protocol (ACIP) ietf rfc
+- [ ] ascii-chat discovery service
+- [ ] submit an ascii-chat discovery service (ACDS) ietf rfc
 
 
 ## Notes

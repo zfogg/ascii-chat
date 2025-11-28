@@ -1,19 +1,27 @@
 cmake_minimum_required(VERSION 3.16)
 
 # =============================================================================
-# Dependency Cache Configuration (must come first)
+# Initialization
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
+# INFO: CMAKE_BUILD_TYPE is now set.
+
+# =============================================================================
+# Dependency Cache Configuration (must come early in the configuration process)
 # =============================================================================
 # Centralized dependency cache configuration
-# Docker builds use .deps-cache-docker/, native builds use .deps-cache/
+# This section must run AFTER BuildTypes.cmake is included (where CMAKE_BUILD_TYPE is set)
+# Docker builds use .deps-cache/<Docker OS | docker>/, native builds use .deps-cache/
 # Musl dependencies are stored in musl/ subdirectory
 
 # Check if running in Docker (set by Dockerfile with ENV TESTING=1)
 if(DEFINED ENV{TESTING} AND "$ENV{TESTING}" STREQUAL "1")
     # Use OS-specific cache directory for Docker builds
     if(DEFINED ENV{DOCKER_OS})
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
     else()
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-docker" CACHE PATH "Root directory for dependency cache (Docker)")
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)")
     endif()
 else()
     set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
@@ -21,16 +29,8 @@ endif()
 
 # Build-type-specific cache directory
 set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
-
 # Musl-specific cache directory
 set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
-
-# =============================================================================
-# Initialization
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
-
 # Print dependency cache message (after Init.cmake defines colors)
 message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${ColorReset}")
 

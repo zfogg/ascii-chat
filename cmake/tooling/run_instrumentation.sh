@@ -435,7 +435,6 @@ find "${PWD}" -type f -name '*.h' \
   ! -path "*/build_*/*" \
   ! -path "*/.git/*" \
   ! -path "*/.deps-cache/*" \
-  ! -path "*/.deps-cache-docker/*" \
   ! -path "*/deps/bearssl/build/*" \
   ! -path "*/deps/mimalloc/build/*" \
   -print0 2>/dev/null | while IFS= read -r -d '' header_file; do
