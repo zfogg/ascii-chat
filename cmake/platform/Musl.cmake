@@ -113,7 +113,7 @@ function(configure_musl_post_project)
 
     # Set musl dependency cache directory for ExternalProject builds
     # This must be done here (after USE_MUSL is defined) rather than in Init.cmake
-    set(MUSL_DEPS_DIR_STATIC "${DEPS_CACHE_MUSL}" CACHE PATH "Musl-specific dependencies cache for static builds" FORCE)
+    set(MUSL_DEPS_DIR_STATIC "${ASCIICHAT_DEPS_CACHE_MUSL}" CACHE PATH "Musl-specific dependencies cache for static builds" FORCE)
     message(STATUS "${BoldBlue}Musl${ColorReset} dependency cache directory: ${BoldMagenta}${MUSL_DEPS_DIR_STATIC}${ColorReset}")
 
     # Use -static-pie flag to build fully static PIE binaries with musl

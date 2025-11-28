@@ -64,12 +64,12 @@ function(configure_build_type_post_project)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Optimized release build (no debug symbols)
-        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ENABLE_CRC32_HW} FALSE)
+        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} FALSE)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
         # RelWithDebInfo mode - optimized build with debug symbols
         # Like Release but with debug symbols enabled for debugging optimized code
-        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ENABLE_CRC32_HW} TRUE)
+        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} TRUE)
 
         # Enable errno backtraces for RelWithDebInfo (useful for debugging production issues)
         add_definitions(-DENABLE_ERRNO_BACKTRACES)

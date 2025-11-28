@@ -37,10 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Check if we're in a test environment
-static int is_test_environment(void) {
-  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
-}
+// Use network_network_is_test_environment() from network.h
 
 /**
  * @brief Send ASCII frame packet
@@ -289,7 +286,7 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
   }
 
   size_t data_size = num_samples * sizeof(float);
-  ssize_t received = recv_with_timeout(sockfd, samples, data_size, is_test_environment() ? 1 : RECV_TIMEOUT);
+  ssize_t received = recv_with_timeout(sockfd, samples, data_size, network_is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received != (ssize_t)data_size) {
     SET_ERRNO(ERROR_NETWORK, "Failed to receive audio data: %zd/%zu bytes", received, data_size);
     return -1;

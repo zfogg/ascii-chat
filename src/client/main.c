@@ -155,20 +155,9 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   atomic_store(&g_should_exit, true);
   server_connection_shutdown();  // Only uses atomics and socket_shutdown
 
-#ifdef _WIN32
-  // On Windows, the console handler runs in a separate thread.
-  // Worker threads may be holding mutexes, so atexit handlers can deadlock.
-  // Give threads a brief moment to notice shutdown and release resources,
-  // then force terminate to avoid hangs.
-  Sleep(200);  // Brief grace period for threads to wind down
-
-  // Print memory report before terminating (atexit handlers won't run)
-#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
-  debug_memory_report();
-#endif
-
-  TerminateProcess(GetCurrentProcess(), 0);
-#endif
+  // Let the main thread handle cleanup via atexit handlers.
+  // The webcam_flush() call in capture_stop_thread() will interrupt
+  // any blocking ReadSample() calls, allowing clean shutdown.
 
   return true; // Event handled
 }
@@ -221,12 +210,25 @@ static void shutdown_client() {
   // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
 
-  // Shutdown server connection and all associated threads
+  // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
+  // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
+  // then waits for the data reception thread and capture thread to exit.
+  // This prevents race conditions where threads access freed resources.
+  protocol_stop_connection();
+
+  // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
   server_connection_cleanup();
 
-  // Cleanup capture subsystems
+  // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
   capture_cleanup();
   audio_cleanup();
+
+#ifndef NDEBUG
+  // Stop lock debug thread BEFORE display_cleanup() because the debug thread uses
+  // _kbhit()/_getch() on Windows which interact with the console. If we close the
+  // CON handle first, the debug thread can hang on console I/O, blocking process exit.
+  lock_debug_cleanup();
+#endif
 
   // Cleanup display and terminal state
   display_cleanup();
@@ -236,6 +238,11 @@ static void shutdown_client() {
 
   log_info("Client shutdown complete");
   log_destroy();
+
+#ifndef NDEBUG
+  // Join the debug thread as the very last thing (after log_destroy since thread may log)
+  lock_debug_cleanup_thread();
+#endif
 }
 
 /**

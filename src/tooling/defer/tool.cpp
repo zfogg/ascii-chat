@@ -851,22 +851,26 @@ int main(int argc, const char **argv) {
 
   tooling::ClangTool tool(*compilations, sourcePaths);
 
-  // Strip unnecessary flags for faster processing
+  // Strip unnecessary flags for faster processing (flags not needed for AST parsing)
   auto stripUnnecessaryFlags = [](const tooling::CommandLineArguments &args, StringRef) {
     tooling::CommandLineArguments result;
     for (size_t i = 0; i < args.size(); ++i) {
       const std::string &arg = args[i];
+      // Skip sanitizer flags
       if (arg.find("-fsanitize") != std::string::npos) continue;
       if (arg.find("-fno-sanitize") != std::string::npos) continue;
+      // Skip debug info flags (not needed for AST parsing)
       if (arg == "-g" || arg == "-g2" || arg == "-g3") continue;
+      if (arg == "-fno-eliminate-unused-debug-types") continue;
+      if (arg == "-fno-inline") continue;
       result.push_back(arg);
     }
     return result;
   };
   tool.appendArgumentsAdjuster(stripUnnecessaryFlags);
 
-  // Add ASCII_DEFER_TOOL_PARSING definition so defer() macro doesn't cause parse errors
-  tool.appendArgumentsAdjuster(tooling::getInsertArgumentAdjuster("-DASCII_DEFER_TOOL_PARSING",
+  // Add ASCIICHAT_DEFER_TOOL_PARSING definition so defer() macro doesn't cause parse errors
+  tool.appendArgumentsAdjuster(tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING",
                                                                    tooling::ArgumentInsertPosition::END));
 
   DeferActionFactory actionFactory(outputDir, inputRoot);

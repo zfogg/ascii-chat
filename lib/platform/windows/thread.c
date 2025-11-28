@@ -26,10 +26,10 @@ typedef struct {
 // Global to hold exception info from filter
 static EXCEPTION_POINTERS *g_exception_pointers = NULL;
 
-// Global symbol initialization
-static BOOL g_symbols_initialized = FALSE;
+// Global symbol initialization for thread exception handling (separate from system.c)
+static BOOL g_thread_symbols_initialized = FALSE;
 static void initialize_symbol_handler(void) {
-  if (!g_symbols_initialized) {
+  if (!g_thread_symbols_initialized) {
     HANDLE hProcess = GetCurrentProcess();
     SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS | SYMOPT_LOAD_LINES | SYMOPT_FAIL_CRITICAL_ERRORS |
                   SYMOPT_NO_PROMPTS | SYMOPT_AUTO_PUBLICS | SYMOPT_PUBLICS_ONLY);
@@ -44,7 +44,7 @@ static void initialize_symbol_handler(void) {
           SymSetSearchPath(hProcess, exePath);
         }
       }
-      g_symbols_initialized = TRUE;
+      g_thread_symbols_initialized = TRUE;
       log_debug("Symbol handler initialized at startup");
     }
   }
@@ -111,7 +111,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
     pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
     pSymbol->MaxNameLen = MAX_SYM_NAME;
 
-    if (g_symbols_initialized && SymFromAddr(hProcess, ctx->Rip, &dwDisplacement, pSymbol)) {
+    if (g_thread_symbols_initialized && SymFromAddr(hProcess, ctx->Rip, &dwDisplacement, pSymbol)) {
       offset +=
           snprintf(buffer + offset, buffer_size - offset, "  Function: %s + 0x%llX\n", pSymbol->Name, dwDisplacement);
     } else {
@@ -194,7 +194,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
 
           // Try to resolve symbol - check if symbols are initialized first
           BOOL symbolResolved = FALSE;
-          if (g_symbols_initialized && SymFromAddr(hProcess, addr, &displacement, pSymbol2)) {
+          if (g_thread_symbols_initialized && SymFromAddr(hProcess, addr, &displacement, pSymbol2)) {
             symbolResolved = TRUE;
             IMAGEHLP_LINE64 line = {0};
             line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
@@ -238,7 +238,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
             if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                                   (LPCTSTR)addr, &hModule)) {
               foundModule = GetModuleFileNameA(hModule, moduleName, sizeof(moduleName)) > 0;
-            } else if (g_symbols_initialized) {
+            } else if (g_thread_symbols_initialized) {
               // Fallback: Try SymGetModuleBase64 to find which module this address belongs to
               DWORD64 moduleBase = SymGetModuleBase64(hProcess, addr);
               if (moduleBase != 0) {
@@ -307,7 +307,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
     pSym->SizeOfStruct = sizeof(SYMBOL_INFO);
     pSym->MaxNameLen = MAX_SYM_NAME;
 
-    if (g_symbols_initialized && SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &symDisplacement, pSym)) {
+    if (g_thread_symbols_initialized && SymFromAddr(hProcess, stackFrame.AddrPC.Offset, &symDisplacement, pSym)) {
       IMAGEHLP_LINE64 line = {0};
       line.SizeOfStruct = sizeof(IMAGEHLP_LINE64);
       DWORD lineDisplacement = 0;
@@ -329,7 +329,7 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
       if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             (LPCTSTR)stackFrame.AddrPC.Offset, &hMod)) {
         foundModule = GetModuleFileNameA(hMod, modName, sizeof(modName)) > 0;
-      } else if (g_symbols_initialized) {
+      } else if (g_thread_symbols_initialized) {
         // Fallback: Try SymGetModuleBase64 to find which module this address belongs to
         DWORD64 moduleBase = SymGetModuleBase64(hProcess, stackFrame.AddrPC.Offset);
         if (moduleBase != 0) {

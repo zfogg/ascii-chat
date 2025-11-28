@@ -45,7 +45,7 @@ error: invalid application of 'sizeof' to an incomplete type
 - **Language Support:** C++ enabled when either instrumentation type requested
 - **Variables:**
   - `ASCII_BUILD_WITH_DEFER` - Enable defer transformation (future)
-  - `ASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION` - Enable source print (working)
+  - `ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION` - Enable source print (working)
 
 ### 4. Unit Tests
 - **Location:** `tests/unit/tooling/defer/test_defer.c`

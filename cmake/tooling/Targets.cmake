@@ -712,15 +712,7 @@ function(ascii_add_tooling_targets)
         endif()
     endif()
 
-    if(TARGET ascii-chat-defer AND TARGET ascii-debug-runtime)
-        add_dependencies(ascii-debug-runtime ascii-chat-defer)
-        get_target_property(_ascii_debug_runtime_type ascii-debug-runtime TYPE)
-        if(_ascii_debug_runtime_type STREQUAL "INTERFACE_LIBRARY")
-            target_link_libraries(ascii-debug-runtime INTERFACE ascii-chat-defer)
-        else()
-            target_link_libraries(ascii-debug-runtime PRIVATE ascii-chat-defer)
-        endif()
-    endif()
+    # Note: ascii-chat-defer was removed - now using direct code insertion for defer cleanup
 
     # Add LLVM library directory
     if(DEFINED LLVM_LIBRARY_DIRS)

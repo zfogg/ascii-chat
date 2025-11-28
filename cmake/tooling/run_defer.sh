@@ -79,7 +79,7 @@ Options:
   -h               Show this help message
 
 Environment variables:
-  ASCII_DEFER_TOOL  Override path to the ascii-instr-defer executable
+  ASCIICHAT_DEFER_TOOL  Override path to the ascii-instr-defer executable
 
 Examples:
   run_defer.sh -b build -o build/defer_transformed
@@ -126,7 +126,7 @@ if [[ -z "${BUILD_DIR}" ]]; then
   BUILD_DIR="${PWD}/build"
 fi
 
-TOOL_PATH="${ASCII_DEFER_TOOL:-}"
+TOOL_PATH="${ASCIICHAT_DEFER_TOOL:-}"
 if [[ -z "${TOOL_PATH}" ]]; then
   TOOL_PATH="${BUILD_DIR}/bin/ascii-instr-defer"
 fi

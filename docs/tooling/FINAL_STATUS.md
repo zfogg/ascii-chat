@@ -167,7 +167,7 @@ TID 1002: Last execution at client.c:90 in process_frame()
 
 **Usage**:
 ```bash
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 ```
 
@@ -185,7 +185,7 @@ cmake --build build
 # Enable source_print instrumentation in CMake
 cmake -B build \
   -DCMAKE_BUILD_TYPE=Debug \
-  -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+  -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 
 # Build (automatically instruments sources)
 cmake --build build
@@ -375,7 +375,7 @@ target_link_libraries(ascii-instr-source-print PRIVATE ${LLVM_LIB_LIST})
 ### Debug a Crash
 ```bash
 # 1. Build instrumented
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 
 # 2. Run until crash
@@ -458,8 +458,8 @@ You can:
 
 1. **Try it on real ascii-chat crash**:
 ```bash
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
-cmake -B build -DASCII_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON
 cmake --build build
 # Trigger known crash
 # Check logs
