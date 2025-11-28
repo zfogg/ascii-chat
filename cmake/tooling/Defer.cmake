@@ -186,7 +186,7 @@ function(ascii_defer_prepare)
             -DCMAKE_BUILD_TYPE=Debug
             -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
             -DUSE_MUSL=OFF
-            -DASCII_BUILD_WITH_DEFER=OFF
+            -DASCIICHAT_BUILD_WITH_DEFER=OFF
             -DASCIICHAT_USE_PCH=OFF
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
             "-DCMAKE_C_FLAGS=${_defer_cflags}"
@@ -306,7 +306,7 @@ function(ascii_defer_prepare)
     endforeach()
 
     # Add compile definition so defer() macro knows transformation is enabled
-    add_compile_definitions(ASCII_BUILD_WITH_DEFER)
+    add_compile_definitions(ASCIICHAT_BUILD_WITH_DEFER)
 
     set(ASCII_DEFER_ENABLED TRUE PARENT_SCOPE)
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)

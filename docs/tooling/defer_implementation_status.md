@@ -23,14 +23,14 @@ The `defer()` macro now **forces a compile error** if used without transformatio
 
 void example() {
     FILE *f = fopen("test.txt", "r");
-    defer(fclose(f));  // ❌ COMPILE ERROR without ASCII_BUILD_WITH_DEFER
+    defer(fclose(f));  // ❌ COMPILE ERROR without ASCIICHAT_BUILD_WITH_DEFER
 }
 ```
 
 **Error Message:**
 ```
 error: invalid application of 'sizeof' to an incomplete type
-'struct __ascii_defer_error__requires_ASCII_BUILD_WITH_DEFER_transformation'
+'struct __ascii_defer_error__requires_ASCIICHAT_BUILD_WITH_DEFER_transformation'
 ```
 
 **Why This Matters:**
@@ -44,7 +44,7 @@ error: invalid application of 'sizeof' to an incomplete type
 - **Source Files:** Listed in `cmake/targets/SourceFiles.cmake`
 - **Language Support:** C++ enabled when either instrumentation type requested
 - **Variables:**
-  - `ASCII_BUILD_WITH_DEFER` - Enable defer transformation (future)
+  - `ASCIICHAT_BUILD_WITH_DEFER` - Enable defer transformation (future)
   - `ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION` - Enable source print (working)
 
 ### 4. Unit Tests
@@ -95,12 +95,12 @@ error: invalid application of 'sizeof' to an incomplete type
   - `cmake/tooling/Targets.cmake` - adds `ascii-instr-defer` target
   - `cmake/tooling/run_defer.sh` - bash script for running transformation
   - `CMakeLists.txt` - integrates defer transformation into build
-- **CMake variable:** `ASCII_BUILD_WITH_DEFER=ON` to enable
+- **CMake variable:** `ASCIICHAT_BUILD_WITH_DEFER=ON` to enable
 
 ## ⏸️ Pending (Phase 3)
 
 ### 1. End-to-End Testing
-- Transform example code with `-DASCII_BUILD_WITH_DEFER=ON`
+- Transform example code with `-DASCIICHAT_BUILD_WITH_DEFER=ON`
 - Verify deferred cleanup actually runs in transformed code
 - Test all 7 example patterns from `example_defer_usage.c`
 - Verify LIFO execution order
@@ -117,11 +117,11 @@ void example() {
     defer(fclose(f));  // ❌ COMPILE ERROR
 
     // error: invalid application of 'sizeof' to an incomplete type
-    // 'struct __ascii_defer_error__requires_ASCII_BUILD_WITH_DEFER_transformation'
+    // 'struct __ascii_defer_error__requires_ASCIICHAT_BUILD_WITH_DEFER_transformation'
 }
 ```
 
-### With Transformation (ASCII_BUILD_WITH_DEFER=ON)
+### With Transformation (ASCIICHAT_BUILD_WITH_DEFER=ON)
 **Before transformation:**
 ```c
 void example() {
@@ -162,13 +162,13 @@ void example() {
 
 ## Macro Implementation Details
 
-### Without ASCII_BUILD_WITH_DEFER (Normal Builds)
+### Without ASCIICHAT_BUILD_WITH_DEFER (Normal Builds)
 ```c
 #define defer(expr) \
     do { \
         if (0) { (void)(expr); }  /* Type-check expr for editor */ \
-        struct __ascii_defer_error__requires_ASCII_BUILD_WITH_DEFER_transformation; \
-        (void)sizeof(struct __ascii_defer_error__requires_ASCII_BUILD_WITH_DEFER_transformation); \
+        struct __ascii_defer_error__requires_ASCIICHAT_BUILD_WITH_DEFER_transformation; \
+        (void)sizeof(struct __ascii_defer_error__requires_ASCIICHAT_BUILD_WITH_DEFER_transformation); \
     } while(0)
 ```
 
@@ -179,7 +179,7 @@ void example() {
 2. Forward-declares an incomplete struct
 3. Takes `sizeof()` of the incomplete struct → **COMPILE ERROR**
 
-### With ASCII_BUILD_WITH_DEFER (Instrumented Builds)
+### With ASCIICHAT_BUILD_WITH_DEFER (Instrumented Builds)
 The tool **transforms the source code before compilation**, so the macro definition is never actually used. If it is used (transformation didn't run), you get:
 ```c
 error: invalid application of 'sizeof' to an incomplete type
@@ -195,7 +195,7 @@ error: invalid application of 'sizeof' to an incomplete type
 
 2. **Create `cmake/tooling/Defer.cmake`**
    - Mirror `Instrumentation.cmake` structure
-   - Add `ASCII_BUILD_WITH_DEFER` option
+   - Add `ASCIICHAT_BUILD_WITH_DEFER` option
    - Generate transformed sources before compilation
 
 3. **Test Transformation**
@@ -214,7 +214,7 @@ error: invalid application of 'sizeof' to an incomplete type
 
 ```bash
 # Build with defer transformation enabled
-cmake -B build -DASCII_BUILD_WITH_DEFER=ON
+cmake -B build -DASCIICHAT_BUILD_WITH_DEFER=ON
 cmake --build build
 ```
 
@@ -232,7 +232,7 @@ cp build/lib/libasciichat.a build/libasciichat_for_tooling.a
 
 # Step 3: Reconfigure with defer transformation + library path
 cmake -B build \
-  -DASCII_BUILD_WITH_DEFER=ON \
+  -DASCIICHAT_BUILD_WITH_DEFER=ON \
   -DASCII_TOOLING_LIBRARY_PATH="build/libasciichat_for_tooling.a"
 
 # Step 4: Build with transformation

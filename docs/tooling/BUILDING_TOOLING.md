@@ -124,7 +124,7 @@ cmake -B build
 cmake --build build --target ascii-chat-static
 
 cmake -B build \
-  -DASCII_BUILD_WITH_DEFER=ON \
+  -DASCIICHAT_BUILD_WITH_DEFER=ON \
   -DASCII_TOOLING_LIBRARY_PATH="build/lib/libasciichat.a"
 
 cmake --build build
