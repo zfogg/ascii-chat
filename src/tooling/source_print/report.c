@@ -3,18 +3,27 @@
 
 #include "common.h"
 #include "logging.h"
-#include "debug/instrument_log.h"
+#include "tooling/source_print/instrument_log.h"
 
 #include "util/uthash.h"
 
-#include <dirent.h>
 #include <errno.h>
-#include <getopt.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(_WIN32)
+#include <io.h>
+#include <windows.h>
+#include "platform/windows/getopt.h"
+#else
+#include <getopt.h>
+#include <dirent.h>
+#include <unistd.h>
+#endif
 
 typedef struct thread_filter_list {
   uint64_t *values;
@@ -52,11 +61,11 @@ typedef struct thread_entry {
 
 static const char *macro_flag_label(uint32_t flag) {
   switch (flag) {
-  case ASCII_INSTR_MACRO_EXPANSION:
+  case ASCII_INSTR_SOURCE_PRINT_MACRO_EXPANSION:
     return "expansion";
-  case ASCII_INSTR_MACRO_INVOCATION:
+  case ASCII_INSTR_SOURCE_PRINT_MACRO_INVOCATION:
     return "invocation";
-  case ASCII_INSTR_MACRO_NONE:
+  case ASCII_INSTR_SOURCE_PRINT_MACRO_NONE:
   default:
     return "none";
   }
@@ -105,7 +114,7 @@ static bool thread_filter_list_contains(const thread_filter_list_t *list, uint64
 }
 
 static const char *resolve_default_log_dir(void) {
-  const char *dir = SAFE_GETENV("ASCII_INSTR_OUTPUT_DIR");
+  const char *dir = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
   if (dir != NULL && dir[0] != '\0') {
     return dir;
   }
@@ -439,7 +448,77 @@ static bool process_file(const report_config_t *config, const char *path, thread
   return true;
 }
 
+#if defined(_WIN32)
+static bool build_windows_glob_pattern(char *buffer, size_t capacity, const char *directory, const char *suffix) {
+  if (buffer == NULL || directory == NULL || suffix == NULL) {
+    return false;
+  }
+
+  size_t length = 0;
+  for (const char *cursor = directory; *cursor != '\0'; ++cursor) {
+    char ch = *cursor == '/' ? '\\' : *cursor;
+    if (length + 1 >= capacity) {
+      return false;
+    }
+    buffer[length++] = ch;
+  }
+  if (length == 0) {
+    return false;
+  }
+  if (buffer[length - 1] != '\\') {
+    if (length + 1 >= capacity) {
+      return false;
+    }
+    buffer[length++] = '\\';
+  }
+  const size_t suffix_length = strlen(suffix);
+  if (length + suffix_length >= capacity) {
+    return false;
+  }
+  memcpy(buffer + length, suffix, suffix_length + 1);
+  return true;
+}
+#endif
+
 static bool collect_entries(const report_config_t *config, thread_entry_t **entries) {
+#if defined(_WIN32)
+  char pattern[MAX_PATH];
+  if (!build_windows_glob_pattern(pattern, sizeof(pattern), config->log_dir, "ascii-instr-*.log")) {
+    log_error("Instrumentation log directory path is too long: %s", config->log_dir);
+    return false;
+  }
+
+  struct _finddata_t data = {0};
+  intptr_t handle = _findfirst(pattern, &data);
+  if (handle == -1) {
+    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, strerror(errno));
+    return false;
+  }
+
+  bool success = true;
+  do {
+    if ((data.attrib & _A_SUBDIR) != 0) {
+      continue;
+    }
+    size_t name_len = strlen(data.name);
+    if (name_len < 4 || strcmp(data.name + name_len - 4, ".log") != 0) {
+      continue;
+    }
+
+    char path_buffer[MAX_PATH];
+    int written = snprintf(path_buffer, sizeof(path_buffer), "%s/%s", config->log_dir, data.name);
+    if (written < 0 || written >= (int)sizeof(path_buffer)) {
+      log_warn("Skipping path that exceeds buffer: %s/%s", config->log_dir, data.name);
+      continue;
+    }
+    if (!process_file(config, path_buffer, entries)) {
+      success = false;
+    }
+  } while (_findnext(handle, &data) == 0);
+
+  _findclose(handle);
+  return success;
+#else
   DIR *directory = opendir(config->log_dir);
   if (directory == NULL) {
     log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, strerror(errno));
@@ -471,6 +550,7 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
 
   closedir(directory);
   return true;
+#endif
 }
 
 int main(int argc, char **argv) {

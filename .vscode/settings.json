@@ -4,6 +4,9 @@
     "<C-p>": false,
     "<C-f>": false,
     "<D-p>": false
-  }
+  },
+  "editor.defaultFormatter": "xaver.clang-format",
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "C_Cpp.formatting": "clangFormat"
 }
-

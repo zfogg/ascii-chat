@@ -29,21 +29,14 @@
  * compliance checking for all network packets.
  */
 
-// Check if we're in a test environment
-static int is_test_environment(void) {
-#if defined(CRITERION_TEST) || defined(__CRITERION__) || defined(TESTING)
-  return 1; // Compile-time test environment detection
-#else
-  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
-#endif
-}
+// Use network_network_is_test_environment() from network.h
 
 /**
  * Calculate timeout based on packet size
  * Large packets need more time to transmit reliably
  */
 static int calculate_packet_timeout(size_t packet_size) {
-  int base_timeout = is_test_environment() ? 1 : SEND_TIMEOUT;
+  int base_timeout = network_is_test_environment() ? 1 : SEND_TIMEOUT;
 
   // For large packets, increase timeout proportionally
   if (packet_size > LARGE_PACKET_THRESHOLD) {
@@ -336,7 +329,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Read packet header into memory from network socket
   packet_header_t header;
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received < 0) {
     // Error context is already set by recv_with_timeout
     return ERROR_NETWORK;
@@ -370,7 +363,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
     payload = buffer_pool_alloc(pkt_len);
 
     // Use adaptive timeout for large packets
-    int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
       buffer_pool_free(payload, pkt_len);
@@ -543,7 +536,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // Receive packet header
   packet_header_t header;
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), is_test_environment() ? 1 : RECV_TIMEOUT);
+  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
 
   // Check for errors first (before comparing signed with unsigned)
   if (received < 0) {
@@ -592,7 +585,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);
@@ -673,7 +666,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    int recv_timeout = is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
+    int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);

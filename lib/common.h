@@ -28,6 +28,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h> // For malloc/free in ALLOC_* macros
+
+/** @brief Application name for key comments ("ascii-chat") */
+#define ASCII_CHAT_APP_NAME "ascii-chat"
 
 #if (defined(__clang__) || defined(__GNUC__)) && !defined(__builtin_c23_va_start)
 #define __builtin_c23_va_start(ap, param) __builtin_va_start(ap, param)
@@ -399,6 +403,73 @@ extern int g_max_fps;
 /** @brief Frame buffer capacity based on MAX_FPS */
 #define FRAME_BUFFER_CAPACITY (MAX_FPS / 4)
 
+// =============================================================================
+// Common Buffer Sizes
+// =============================================================================
+
+/**
+ * @brief Small buffer size (256 bytes)
+ *
+ * Used for short strings, error messages, and small temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_SMALL 256
+
+/**
+ * @brief Medium buffer size (512 bytes)
+ *
+ * Used for medium-length strings, paths, and intermediate buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_MEDIUM 512
+
+/**
+ * @brief Large buffer size (1024 bytes)
+ *
+ * Used for longer strings, full paths, and larger temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_LARGE 1024
+
+/**
+ * @brief Extra large buffer size (2048 bytes)
+ *
+ * Used for very long strings, multiple paths, and large temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_XLARGE 2048
+
+/**
+ * @brief Extra extra large buffer size (4096 bytes)
+ *
+ * Used for maximum-length paths and very large temporary buffers.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_XXLARGE 4096
+
+/**
+ * @brief Extra extra extra large buffer size (8192 bytes)
+ *
+ * Used for extremely large buffers like exception messages and stack traces.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_XXXLARGE 8192
+
+/**
+ * @brief Huge buffer size (16kb)
+ *
+ * Used for huge buffers like stack traces and other system messages.
+ *
+ * @ingroup common
+ */
+#define BUFFER_SIZE_HUGE 16384
+
 /* ============================================================================
  * Shutdown Check System
  * ============================================================================
@@ -444,6 +515,83 @@ void shutdown_register_callback(shutdown_check_fn callback);
 bool shutdown_is_requested(void);
 
 /* ============================================================================
+ * String Literal Constants
+ * ============================================================================
+ */
+
+/**
+ * @brief String literal: "0" (zero)
+ *
+ * Used for boolean comparisons and numeric string parsing.
+ *
+ * @ingroup common
+ */
+#define STR_ZERO "0"
+
+/**
+ * @brief String literal: "1" (one)
+ *
+ * Used for boolean comparisons and numeric string parsing.
+ *
+ * @ingroup common
+ */
+#define STR_ONE "1"
+
+/**
+ * @brief String literal: "false"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_FALSE "false"
+
+/**
+ * @brief String literal: "true"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_TRUE "true"
+
+/**
+ * @brief String literal: "off"
+ *
+ * Used for boolean string comparisons (disable/enable).
+ *
+ * @ingroup common
+ */
+#define STR_OFF "off"
+
+/**
+ * @brief String literal: "on"
+ *
+ * Used for boolean string comparisons (enable/disable).
+ *
+ * @ingroup common
+ */
+#define STR_ON "on"
+
+/**
+ * @brief String literal: "no"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_NO "no"
+
+/**
+ * @brief String literal: "yes"
+ *
+ * Used for boolean string comparisons.
+ *
+ * @ingroup common
+ */
+#define STR_YES "yes"
+
+/* ============================================================================
  * Utility Macros
  * ============================================================================
  */
@@ -478,19 +626,12 @@ bool shutdown_is_requested(void);
 #define ALLOC_CALLOC(count, size) mi_calloc((count), (size))
 #define ALLOC_REALLOC(ptr, size) mi_realloc((ptr), (size))
 #define ALLOC_FREE(ptr) mi_free(ptr)
-#elif defined(DEBUG_MEMORY)
+#elif defined(DEBUG_MEMORY) && !defined(NDEBUG)
 #include "debug/memory.h"
-#ifdef NDEBUG
-#define ALLOC_MALLOC(size) debug_malloc(size, NULL, 0)
-#define ALLOC_CALLOC(count, size) debug_calloc((count), (size), NULL, 0)
-#define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), NULL, 0)
-#define ALLOC_FREE(ptr) debug_free(ptr, NULL, 0)
-#else
 #define ALLOC_MALLOC(size) debug_malloc(size, __FILE__, __LINE__)
 #define ALLOC_CALLOC(count, size) debug_calloc((count), (size), __FILE__, __LINE__)
 #define ALLOC_REALLOC(ptr, size) debug_realloc((ptr), (size), __FILE__, __LINE__)
 #define ALLOC_FREE(ptr) debug_free(ptr, __FILE__, __LINE__)
-#endif
 #else
 #define ALLOC_MALLOC(size) malloc(size)
 #define ALLOC_CALLOC(count, size) calloc((count), (size))
@@ -624,6 +765,24 @@ bool shutdown_is_requested(void);
       (ptr) = NULL;                                                                                                    \
     }                                                                                                                  \
   } while (0)
+
+/* Function wrapper for SAFE_FREE - for use with defer() which needs a function pointer */
+static inline void safe_free_wrapper(void *ptr_addr) {
+  void **p = (void **)ptr_addr;
+  if (p && *p) {
+    ALLOC_FREE(*p);
+    *p = NULL;
+  }
+}
+
+/* Function wrapper for fclose - for use with defer() which needs a function pointer */
+static inline void safe_fclose_wrapper(void *file_ptr_addr) {
+  FILE **fp = (FILE **)file_ptr_addr;
+  if (fp && *fp) {
+    fclose(*fp);
+    *fp = NULL;
+  }
+}
 
 /* Untracked malloc/free - bypass memory tracking for special cases like mode_argv */
 /* These use raw malloc/free to avoid appearing in leak reports */

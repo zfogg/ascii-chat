@@ -43,6 +43,8 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
+        add_definitions(-DENABLE_ERRNO_BACKTRACES)
+
         # Configure sanitizers (automatically handles mimalloc conflicts)
         # Note: Sanitizers are compatible with instrumentation - they work at different stages
         configure_sanitizers(${USE_MIMALLOC} "Debug")
@@ -57,6 +59,7 @@ function(configure_build_type_post_project)
         message(STATUS "DEBUG_MEMORY disabled in Dev mode for performance")
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
+        add_definitions(-DENABLE_ERRNO_BACKTRACES)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
         # Coverage build with instrumentation
@@ -64,12 +67,12 @@ function(configure_build_type_post_project)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Optimized release build (no debug symbols)
-        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ENABLE_CRC32_HW} FALSE)
+        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} FALSE)
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
         # RelWithDebInfo mode - optimized build with debug symbols
         # Like Release but with debug symbols enabled for debugging optimized code
-        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ENABLE_CRC32_HW} TRUE)
+        configure_release_flags(${PLATFORM_DARWIN} ${PLATFORM_LINUX} ${IS_ROSETTA} ${IS_APPLE_SILICON} ${ASCIICHAT_ENABLE_CRC32_HW} TRUE)
 
         # Enable errno backtraces for RelWithDebInfo (useful for debugging production issues)
         add_definitions(-DENABLE_ERRNO_BACKTRACES)

@@ -93,11 +93,11 @@ if(WIN32)
         lib/platform/windows/string.c
         lib/platform/windows/password.c
         lib/platform/windows/symbols.c
-        lib/os/windows/webcam_mediafoundation.c
         lib/platform/windows/getopt.c
         lib/platform/windows/pipe.c
+        lib/os/windows/webcam_mediafoundation.c
     )
-else()
+elseif(PLATFORM_POSIX)
     # POSIX platforms (Linux/macOS)
     set(PLATFORM_SRCS
         ${PLATFORM_SRCS_COMMON}
@@ -118,24 +118,21 @@ else()
         list(APPEND PLATFORM_SRCS
             lib/os/macos/webcam_avfoundation.m
         )
-    else()
+    elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
             lib/os/linux/webcam_v4l2.c
         )
+    else()
+        message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}. We don't have webcam code for this platform.")
     endif()
-
-    # Add musl compatibility shims if building with musl
-    #if(USE_MUSL)
-    #    list(APPEND PLATFORM_SRCS
-    #        lib/platform/musl_compat.c
-    #    )
-    #endif()
 endif()
 
-# SIMD sources (architecture-specific, matching Makefile logic)
+# =============================================================================
+# Module 4: SIMD (performance-critical - changes weekly)
+# =============================================================================
 set(SIMD_SRCS)
 
-# Always include common SIMD files (matches Makefile)
+# Always include common SIMD files
 list(APPEND SIMD_SRCS
     lib/image2ascii/simd/ascii_simd.c
     lib/image2ascii/simd/ascii_simd_color.c
@@ -154,7 +151,6 @@ endif()
 
 if(ENABLE_SIMD_AVX2)
     list(APPEND SIMD_SRCS lib/image2ascii/simd/avx2.c)
-    # Set specific compile flags for AVX2 files
     set_source_files_properties(lib/image2ascii/simd/avx2.c PROPERTIES COMPILE_FLAGS "-mavx2")
 endif()
 
@@ -166,11 +162,6 @@ if(ENABLE_SIMD_SVE)
     list(APPEND SIMD_SRCS lib/image2ascii/simd/sve.c)
     set_source_files_properties(lib/image2ascii/simd/sve.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve")
 endif()
-
-# =============================================================================
-# Module 4: SIMD (performance-critical - changes weekly)
-# =============================================================================
-# (Already defined above)
 
 # =============================================================================
 # Module 5: Video Processing (changes weekly)
@@ -202,8 +193,6 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/av.c
-    lib/packet_queue.c
-    lib/buffer_pool.c
     lib/compression.c
     lib/crc32.c
 )
@@ -214,12 +203,13 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
-    lib/debug/memory.c
     lib/logging.c
     lib/options.c
     lib/config.c
     lib/version.c
     lib/palette.c
+    # Add tomlc17 parser source
+    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
 
 # Only include lock debugging runtime in non-release builds (when NDEBUG is not defined)
@@ -227,12 +217,8 @@ set(CORE_SRCS
 # but we exclude it for clarity and to avoid unnecessary compilation
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS lib/debug/lock.c)
+    list(APPEND CORE_SRCS lib/debug/memory.c)
 endif()
-
-# Add tomlc17 parser source
-list(APPEND CORE_SRCS
-    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
-)
 
 # Disable precompiled headers for tomlc17 (third-party code)
 # This prevents abstraction.h's _CRT_SECURE_NO_WARNINGS from interfering with
@@ -250,18 +236,20 @@ endif()
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
     lib/ringbuffer.c
+    lib/packet_queue.c
+    lib/buffer_pool.c
 )
 
 # =============================================================================
-# Instrumentation Runtime (debug utilities)
+# Source Print Instrumentation Runtime
 # =============================================================================
-set(DEBUG_RUNTIME_SRCS
-    lib/debug/instrument_log.c
-    lib/debug/instrument_cov.c
+set(TOOLING_SOURCE_PRINT_SRCS
+    lib/tooling/source_print/instrument_log.c
+    lib/tooling/source_print/instrument_cov.c
 )
 
-set(DEBUG_TOOL_SRCS
-    src/debug/ascii_instr_report.c
+set(TOOLING_SOURCE_PRINT_REPORT_SRCS
+    src/tooling/source_print/report.c
 )
 
 # =============================================================================

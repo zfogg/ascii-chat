@@ -6,6 +6,7 @@
 
 #include "crc32.h"
 #include <string.h>
+#include <stdio.h>
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)
@@ -66,51 +67,14 @@ static void check_crc32_hw_support(void) {
 
 #ifdef ARCH_ARM64
 // ARM CRC32 hardware implementation
-// NOTE: ARM CRC32 intrinsics process multi-byte values as little-endian integers.
-// To match byte-by-byte processing, we need to process bytes individually.
-// Using __crc32d/__crc32w on memcpy'd data gives different results due to byte ordering.
+// Process byte-by-byte to ensure cross-platform consistency with x86
 static uint32_t crc32_arm_hw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
-  size_t i = 0;
 
-  // Process 8 bytes at a time
-  // ARM __crc32d processes bytes in reverse order within the 64-bit word
-  // So we need to reverse the byte order to match sequential byte processing
-  while (i + 8 <= len) {
-    uint64_t chunk = 0;
-    // Load bytes in reverse order for ARM's CRC32D instruction
-    for (int j = 0; j < 8; j++) {
-      chunk |= ((uint64_t)bytes[i + (size_t)j]) << (j * 8);
-    }
-    crc = __crc32d(crc, chunk);
-    i += 8;
-  }
-
-  // Process 4 bytes
-  if (i + 4 <= len) {
-    uint32_t chunk = 0;
-    for (int j = 0; j < 4; j++) {
-      chunk |= ((uint32_t)bytes[i + (size_t)j]) << (j * 8);
-    }
-    crc = __crc32w(crc, chunk);
-    i += 4;
-  }
-
-  // Process 2 bytes
-  if (i + 2 <= len) {
-    uint16_t chunk = 0;
-    for (int j = 0; j < 2; j++) {
-      chunk |= ((uint16_t)bytes[i + (size_t)j]) << (j * 8);
-    }
-    crc = __crc32h(crc, chunk);
-    i += 2;
-  }
-
-  // Process remaining bytes
-  while (i < len) {
+  // Process all bytes one at a time for guaranteed consistency
+  for (size_t i = 0; i < len; i++) {
     crc = __crc32b(crc, bytes[i]);
-    i++;
   }
 
   return ~crc;
@@ -119,48 +83,14 @@ static uint32_t crc32_arm_hw(const void *data, size_t len) {
 
 #ifdef ARCH_X86_64
 // Intel CRC32 hardware implementation using SSE4.2
-// NOTE: Intel CRC32 intrinsics process multi-byte values as little-endian integers.
-// Explicit byte loading to ensure consistent behavior across platforms.
+// Process byte-by-byte to ensure cross-platform consistency with ARM
 static uint32_t crc32_intel_hw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
-  size_t i = 0;
 
-  // Process 8 bytes at a time
-  while (i + 8 <= len) {
-    uint64_t chunk = 0;
-    // Load bytes in little-endian order
-    for (int j = 0; j < 8; j++) {
-      chunk |= ((uint64_t)bytes[i + (size_t)j]) << ((size_t)j * 8);
-    }
-    crc = (uint32_t)_mm_crc32_u64(crc, chunk);
-    i += 8;
-  }
-
-  // Process 4 bytes
-  if (i + 4 <= len) {
-    uint32_t chunk = 0;
-    for (size_t j = 0; j < 4; j++) {
-      chunk |= ((uint32_t)bytes[i + j]) << (j * 8);
-    }
-    crc = _mm_crc32_u32(crc, chunk);
-    i += 4;
-  }
-
-  // Process 2 bytes
-  if (i + 2 <= len) {
-    uint16_t chunk = 0;
-    for (size_t j = 0; j < 2; j++) {
-      chunk |= ((uint16_t)bytes[i + j]) << (j * 8);
-    }
-    crc = _mm_crc32_u16(crc, chunk);
-    i += 2;
-  }
-
-  // Process remaining bytes
-  while (i < len) {
+  // Process all bytes one at a time for guaranteed consistency
+  for (size_t i = 0; i < len; i++) {
     crc = _mm_crc32_u8(crc, bytes[i]);
-    i++;
   }
 
   return ~crc;
@@ -172,12 +102,28 @@ uint32_t asciichat_crc32_hw(const void *data, size_t len) {
   check_crc32_hw_support();
 
   if (!crc32_hw_available) {
+    // DEBUG: Log fallback to software
+    static bool logged_fallback = false;
+    if (!logged_fallback) {
+      fprintf(stderr, "[CRC32 DEBUG] Using software CRC32 (no hardware acceleration)\n");
+      logged_fallback = true;
+    }
     return asciichat_crc32_sw(data, len);
   }
 
 #ifdef ARCH_ARM64
+  static bool logged_arm = false;
+  if (!logged_arm) {
+    fprintf(stderr, "[CRC32 DEBUG] Using ARM64 hardware CRC32\n");
+    logged_arm = true;
+  }
   return crc32_arm_hw(data, len);
 #elif defined(ARCH_X86_64)
+  static bool logged_intel = false;
+  if (!logged_intel) {
+    fprintf(stderr, "[CRC32 DEBUG] Using Intel x86_64 hardware CRC32 (SSE4.2)\n");
+    logged_intel = true;
+  }
   return crc32_intel_hw(data, len);
 #else
   return asciichat_crc32_sw(data, len);

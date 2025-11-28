@@ -104,8 +104,8 @@ static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [..
 
 static cl::opt<std::string> SignalHandlerAnnotation(
     "signal-handler-annotation",
-    cl::desc("Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_SIGNAL_HANDLER)"),
-    cl::value_desc("annotation"), cl::init("ASCII_INSTR_SIGNAL_HANDLER"), cl::cat(ToolCategory));
+    cl::desc("Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER)"),
+    cl::value_desc("annotation"), cl::init("ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER"), cl::cat(ToolCategory));
 
 constexpr unsigned kMacroFlagNone = 0U;
 constexpr unsigned kMacroFlagExpansion = 1U;
@@ -629,12 +629,12 @@ private:
     clang::SourceManager &sourceManager = rewriter_.getSourceMgr();
     const clang::FileID fileId = sourceManager.getMainFileID();
     const llvm::StringRef bufferData = sourceManager.getBufferData(fileId);
-    if (bufferData.contains("#include \"debug/instrument_log.h\"")) {
+    if (bufferData.contains("#include \"tooling/source_print/instrument_log.h\"")) {
       return;
     }
 
     clang::SourceLocation insertionLocation = sourceManager.getLocForStartOfFile(fileId);
-    rewriter_.InsertText(insertionLocation, "#include \"debug/instrument_log.h\"\n", false, true);
+    rewriter_.InsertText(insertionLocation, "#include \"tooling/source_print/instrument_log.h\"\n", false, true);
   }
 
   clang::Rewriter rewriter_;

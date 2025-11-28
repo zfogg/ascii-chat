@@ -8,35 +8,25 @@ index 1358b5c..3a4b5f6 100644
 
 +/* Platform-safe wrappers for deprecated Windows CRT functions */
 +#ifdef _WIN32
-+  /* Windows: Use secure CRT functions */
-+  #ifndef _CRT_SECURE_NO_WARNINGS
-+    /* fopen_s wrapper for consistent error handling */
-+    static inline FILE *safe_fopen(const char *filename, const char *mode) {
-+      FILE *fp = NULL;
-+      errno_t err = fopen_s(&fp, filename, mode);
-+      if (err != 0) {
-+        return NULL;
-+      }
-+      return fp;
++  static inline FILE *safe_fopen(const char *filename, const char *mode) {
++    FILE *fp = NULL;
++    errno_t err = fopen_s(&fp, filename, mode);
++    if (err != 0) {
++      return NULL;
 +    }
-+
-+    /* strerror_s wrapper with static buffer */
-+    static inline const char *safe_strerror(int errnum) {
-+      static __declspec(thread) char errbuf[256];
-+      if (strerror_s(errbuf, sizeof(errbuf), errnum) == 0) {
-+        return errbuf;
-+      }
-+      return "Unknown error";
++    return fp;
++  }
++  static inline const char *safe_strerror(int errnum) {
++    static __declspec(thread) char errbuf[256];
++    if (strerror_s(errbuf, sizeof(errbuf), errnum) == 0) {
++      return errbuf;
 +    }
-+  #else
-+    /* _CRT_SECURE_NO_WARNINGS is defined, use regular functions */
-+    #define safe_fopen fopen
-+    #define safe_strerror strerror
-+  #endif
++    return "Unknown error";
++  }
 +#else
 +  /* Unix: Use standard functions directly */
 +  #define safe_fopen fopen
-+  /* strerror is not thread-safe on some Unix platforms but widely used */
++  /* NOTE: strerror is not thread-safe on some Unix platforms but widely used */
 +  static inline const char *safe_strerror(int errnum) {
 +    const char *msg = strerror(errnum);
 +    return msg ? msg : "Unknown error";
@@ -61,7 +51,7 @@ index 1358b5c..3a4b5f6 100644
      if (ferror(fp)) {
 -      snprintf(result.errmsg, sizeof(result.errmsg), "%s",
 -               errno ? strerror(errno) : "Error reading file");
-+      snprintf(result.errmsg, sizeof(result.errmsg), "%s",
++      (void)snprintf(result.errmsg, sizeof(result.errmsg), "%s",
 +               errno ? safe_strerror(errno) : "Error reading file");
        FREE(buf);
        return result;

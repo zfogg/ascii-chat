@@ -678,6 +678,7 @@
  *
  * **Installation and Packaging**:
  * - `Install.cmake` - Installation rules and CPack package generation
+ * - There are a bunch of cmake/install/ modules like Deb.cmake for DEB packages, Rpm.cmake for RPM packages, etc.
  *
  * **Testing and Documentation**:
  * - `Tests.cmake` - Test framework configuration

@@ -20,6 +20,7 @@
 // Workaround for Windows SDK 10.0.26100.0 stralign.h bug
 // The SDK's stralign.h uses _wcsicmp but doesn't declare it
 // This is a known issue with newer Windows SDK versions when using C23
+#include <stddef.h>  // For wchar_t in C mode
 #ifdef __cplusplus
 extern "C" {
 #endif

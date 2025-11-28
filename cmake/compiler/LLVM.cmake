@@ -66,6 +66,14 @@ function(configure_llvm_pre_project)
             ERROR_QUIET
         )
 
+        # Get LLVM binary directory for finding clang/clang++
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --bindir
+            OUTPUT_VARIABLE LLVM_DETECTED_BINDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
         # Get LLVM CMake directory
         execute_process(
             COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir
@@ -91,6 +99,9 @@ function(configure_llvm_pre_project)
                 set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
                 message(STATUS "${BoldGreen}Detected${ColorReset} ${BoldBlue}Clang CMake${ColorReset} directory: ${BoldCyan}${LLVM_DETECTED_PREFIX}/lib/cmake/clang${ColorReset}")
             endif()
+
+            # Export detected bindir for compiler detection below
+            set(LLVM_DETECTED_BINDIR "${LLVM_DETECTED_BINDIR}" PARENT_SCOPE)
         endif()
     endif()
 
@@ -98,66 +109,151 @@ function(configure_llvm_pre_project)
     # Force Clang compiler - MSVC and GCC are not supported
     # Supports Windows (scoop/official LLVM), macOS (Homebrew), and Linux (system)
     if(NOT CMAKE_C_COMPILER)
-        if(WIN32)
-            # Windows: Try to find Clang from common installation locations
-            find_program(CLANG_EXECUTABLE
-                NAMES clang clang.exe
-                PATHS ${LLVM_ROOT_DIRS}
-            )
-            if(NOT CLANG_EXECUTABLE)
-                message(FATAL_ERROR "Clang not found. Install Clang:\n"
-                                "  Windows: scoop install llvm\n"
-                                "  Or download from: https://llvm.org/builds/")
+        # First priority: Use llvm-config detected bindir if available
+        if(LLVM_DETECTED_BINDIR)
+            if(WIN32)
+                set(CLANG_EXECUTABLE "${LLVM_DETECTED_BINDIR}/clang.exe")
+                set(CLANGXX_EXECUTABLE "${LLVM_DETECTED_BINDIR}/clang++.exe")
+            else()
+                set(CLANG_EXECUTABLE "${LLVM_DETECTED_BINDIR}/clang")
+                set(CLANGXX_EXECUTABLE "${LLVM_DETECTED_BINDIR}/clang++")
             endif()
-        elseif(APPLE)
-            # macOS: Prefer Homebrew Clang over Apple's Clang
-            find_program(CLANG_EXECUTABLE
-                NAMES clang
-                PATHS ${LLVM_ROOT_DIRS}
-            )
 
-            if(NOT CLANG_EXECUTABLE)
-                # Fallback to system clang if Homebrew not found
-                find_program(CLANG_EXECUTABLE NAMES clang
+            # Verify executables exist
+            if(EXISTS "${CLANG_EXECUTABLE}" AND EXISTS "${CLANGXX_EXECUTABLE}")
+                message(STATUS "Using ${BoldBlue}LLVM${ColorReset} compilers from llvm-config: ${BoldCyan}${LLVM_DETECTED_BINDIR}${ColorReset}")
+            else()
+                # Fallback if bindir doesn't have executables
+                unset(CLANG_EXECUTABLE)
+                unset(CLANGXX_EXECUTABLE)
+            endif()
+        endif()
+
+        # Second priority: Search common installation locations
+        if(NOT CLANG_EXECUTABLE)
+            if(WIN32)
+                # Windows: Try to find Clang from common installation locations
+                find_program(CLANG_EXECUTABLE
+                    NAMES clang clang.exe
                     PATHS ${LLVM_ROOT_DIRS}
                 )
+                if(NOT CLANG_EXECUTABLE)
+                    message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                    "  Windows: scoop install llvm\n"
+                                    "  Or download from: https://llvm.org/builds/")
+                endif()
+            elseif(APPLE)
+                # macOS: Prefer Homebrew Clang over Apple's Clang
+                find_program(CLANG_EXECUTABLE
+                    NAMES clang
+                    PATHS ${LLVM_ROOT_DIRS}
+                )
+
+                if(NOT CLANG_EXECUTABLE)
+                    # Fallback to system clang if Homebrew not found
+                    find_program(CLANG_EXECUTABLE NAMES clang
+                        PATHS ${LLVM_ROOT_DIRS}
+                    )
+                endif()
+
+                if(NOT CLANG_EXECUTABLE)
+                    message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                    "  macOS: brew install llvm\n"
+                                    "  Or use system clang from Xcode Command Line Tools")
+                endif()
+            else()
+                # Linux/Unix: Use system Clang (support versions 21 down to 15)
+                find_program(CLANG_EXECUTABLE
+                    NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
+                    PATHS ${LLVM_ROOT_DIRS}
+                )
+
+                if(NOT CLANG_EXECUTABLE)
+                    message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                    "  Debian/Ubuntu: sudo apt install clang\n"
+                                    "  Fedora/RHEL: sudo dnf install clang\n"
+                                    "  Arch: sudo pacman -S clang")
+                endif()
             endif()
 
-            if(NOT CLANG_EXECUTABLE)
-                message(FATAL_ERROR "Clang not found. Install Clang:\n"
-                                "  macOS: brew install llvm\n"
-                                "  Or use system clang from Xcode Command Line Tools")
-            endif()
-        else()
-            # Linux/Unix: Use system Clang (support versions 21 down to 15)
-            find_program(CLANG_EXECUTABLE
-                NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
-                PATHS ${LLVM_ROOT_DIRS}
-            )
-
-            if(NOT CLANG_EXECUTABLE)
-                message(FATAL_ERROR "Clang not found. Install Clang:\n"
-                                "  Debian/Ubuntu: sudo apt install clang\n"
-                                "  Fedora/RHEL: sudo dnf install clang\n"
-                                "  Arch: sudo pacman -S clang")
+            # Derive CXX compiler path from C compiler
+            if(WIN32)
+                # Windows: Replace clang.exe with clang++.exe
+                string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}")
+            else()
+                # Unix/macOS: Append ++ to clang
+                set(CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}++")
             endif()
         endif()
 
-        # Set the compiler (all platforms)
+        # Set the compilers (all platforms)
         set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "C compiler" FORCE)
-
-        # Derive CXX compiler path from C compiler
-        if(WIN32)
-            # Windows: Replace clang.exe with clang++.exe
-            string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}")
-        else()
-            # Unix/macOS: Append ++ to clang
-            set(CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}++")
-        endif()
-
         set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
         message(STATUS "Set default ${BoldYellow}C${ColorReset} compiler to ${BoldCyan}Clang${ColorReset}: ${CLANG_EXECUTABLE}")
         message(STATUS "Set default ${BoldYellow}C++${ColorReset} compiler to ${BoldCyan}Clang++${ColorReset}: ${CLANGXX_EXECUTABLE}")
+    else()
+        # C compiler is already set, but make sure CXX compiler is also set
+        if(NOT CMAKE_CXX_COMPILER)
+            message(STATUS "${BoldYellow}C${ColorReset} compiler already set: ${BoldCyan}${CMAKE_C_COMPILER}${ColorReset}")
+
+            # Derive CXX compiler from the existing C compiler
+            if(CMAKE_C_COMPILER MATCHES "clang\\.exe$")
+                # Windows: Replace clang.exe with clang++.exe
+                string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}")
+            elseif(CMAKE_C_COMPILER MATCHES "clang(-[0-9]+)?$")
+                # Unix/macOS: Append ++ to clang or clang-XX
+                set(CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}++")
+            elseif(WIN32 AND CMAKE_C_COMPILER MATCHES "clang$")
+                # Windows with plain "clang" (no .exe) - search for full path
+                find_program(CLANGXX_EXECUTABLE
+                    NAMES clang++.exe clang++
+                    PATHS ${LLVM_ROOT_DIRS}
+                )
+            else()
+                # Fallback: try to find clang++ in the same directory as the C compiler
+                get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
+                if(WIN32)
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++.exe clang++
+                        PATHS "${COMPILER_DIR}"
+                        NO_DEFAULT_PATH
+                    )
+                else()
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++
+                        PATHS "${COMPILER_DIR}"
+                        NO_DEFAULT_PATH
+                    )
+                endif()
+            endif()
+
+            # Verify the CXX compiler exists or was found
+            if(CLANGXX_EXECUTABLE AND EXISTS "${CLANGXX_EXECUTABLE}")
+                set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+                message(STATUS "Auto-detected ${BoldYellow}C++${ColorReset} compiler: ${BoldCyan}${CLANGXX_EXECUTABLE}${ColorReset}")
+            else()
+                message(WARNING "${BoldRed}Could not derive C++ compiler from C compiler${ColorReset}: ${CMAKE_C_COMPILER}")
+                # Try fallback search
+                if(WIN32)
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++.exe clang++
+                        PATHS ${LLVM_ROOT_DIRS}
+                    )
+                else()
+                    find_program(CLANGXX_EXECUTABLE
+                        NAMES clang++ clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15
+                        PATHS ${LLVM_ROOT_DIRS}
+                    )
+                endif()
+
+                if(CLANGXX_EXECUTABLE)
+                    set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+                    message(STATUS "Found ${BoldYellow}C++${ColorReset} compiler via fallback search: ${BoldCyan}${CLANGXX_EXECUTABLE}${ColorReset}")
+                else()
+                    message(FATAL_ERROR "Could not find clang++ compiler. Please install LLVM/Clang.")
+                endif()
+            endif()
+        endif()
     endif()
 
     # =============================================================================

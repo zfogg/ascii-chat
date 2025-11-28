@@ -56,7 +56,7 @@ $ContainerName = "ascii-chat-test-runner"
 
 # Volume names for persistent caching
 $CcacheVolume = "ascii-chat-ccache"
-$DepsCacheVolume = "ascii-chat-deps-cache-docker"
+$DepsCacheVolume = "ascii-chat-deps-cache"
 
 # Check if Docker is running
 Write-Host "Checking Docker..." -ForegroundColor Cyan
@@ -109,7 +109,7 @@ if ($IsClangTidy) {
 set -e
 
 export CC=clang
-export CXX=clang++ 
+export CXX=clang++
 
 echo '=== Starting ascii-chat clang-tidy Analysis ==='
 echo ""
@@ -232,7 +232,7 @@ echo ""
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/app/.deps-cache-docker" `
+        -v "${DepsCacheVolume}:/app/.deps-cache" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
         -w /app `
@@ -344,7 +344,7 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/app/.deps-cache-docker" `
+        -v "${DepsCacheVolume}:/app/.deps-cache" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
         -w /app `
@@ -357,7 +357,7 @@ if ($Interactive) {
         --name $ContainerName `
         -v "${DockerRepoRoot}:/app" `
         -v "${CcacheVolume}:/ccache" `
-        -v "${DepsCacheVolume}:/app/.deps-cache-docker" `
+        -v "${DepsCacheVolume}:/app/.deps-cache" `
         -e CCACHE_DIR=/ccache `
         -e TESTING=1 `
         -w /app `

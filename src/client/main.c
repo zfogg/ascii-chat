@@ -83,12 +83,19 @@
 
 #ifndef NDEBUG
 #include "debug/lock.h"
+#ifdef DEBUG_MEMORY
+#include "debug/memory.h"
+#endif
 #endif
 
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdatomic.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /* ============================================================================
  * Global State Variables
@@ -114,36 +121,45 @@ void signal_exit() {
 }
 
 /**
- * Signal handler for SIGINT (Ctrl-C)
+ * Console control handler for Ctrl+C and related events
  *
- * Implements double-tap behavior: first SIGINT requests graceful shutdown,
- * second SIGINT within the same session forces immediate exit.
+ * Implements double-tap behavior: first Ctrl+C requests graceful shutdown,
+ * second Ctrl+C within the same session forces immediate exit.
  *
- * @param sigint The signal number (unused)
+ * @note On Windows, this runs in a separate thread (via SetConsoleCtrlHandler)
+ *       and can safely use standard library functions.
+ * @note On Unix, this runs in signal context - use only async-signal-safe functions.
+ *
+ * @param event The control event that occurred
+ * @return true if the event was handled
  */
-static void sigint_handler(int sigint) {
-  (void)(sigint);
+static bool console_ctrl_handler(console_ctrl_event_t event) {
+  // Only handle Ctrl+C and Ctrl+Break events
+  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK) {
+    return false;
+  }
 
   // If this is the second Ctrl-C, force exit
-  static int sigint_count = 0;
-  sigint_count++;
+  static volatile int ctrl_c_count = 0;
+  ctrl_c_count++;
 
-  if (sigint_count > 1) {
-    if (!opt_quiet) {
-      printf("\nForce quit!\n");
-    }
-    _exit(1); // Force immediate exit
+  if (ctrl_c_count > 1) {
+#ifdef _WIN32
+    TerminateProcess(GetCurrentProcess(), 1);
+#else
+    _exit(1);
+#endif
   }
 
-  if (!opt_quiet) {
-    printf("\nShutdown requested... (Press Ctrl-C again to force quit)\n");
-  }
-
-  // Signal all subsystems to shutdown
+  // Signal all subsystems to shutdown (async-signal-safe operations only)
   atomic_store(&g_should_exit, true);
+  server_connection_shutdown();  // Only uses atomics and socket_shutdown
 
-  // Trigger server connection module to close socket
-  server_connection_shutdown();
+  // Let the main thread handle cleanup via atexit handlers.
+  // The webcam_flush() call in capture_stop_thread() will interrupt
+  // any blocking ReadSample() calls, allowing clean shutdown.
+
+  return true; // Event handled
 }
 
 /**
@@ -194,21 +210,39 @@ static void shutdown_client() {
   // Set global shutdown flag to stop all threads
   atomic_store(&g_should_exit, true);
 
-  // Shutdown server connection and all associated threads
+  // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
+  // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
+  // then waits for the data reception thread and capture thread to exit.
+  // This prevents race conditions where threads access freed resources.
+  protocol_stop_connection();
+
+  // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
   server_connection_cleanup();
 
-  // Cleanup capture subsystems
+  // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
   capture_cleanup();
   audio_cleanup();
+
+#ifndef NDEBUG
+  // Stop lock debug thread BEFORE display_cleanup() because the debug thread uses
+  // _kbhit()/_getch() on Windows which interact with the console. If we close the
+  // CON handle first, the debug thread can hang on console I/O, blocking process exit.
+  lock_debug_cleanup();
+#endif
 
   // Cleanup display and terminal state
   display_cleanup();
 
   // Cleanup core systems
   data_buffer_pool_cleanup_global();
-  log_destroy();
 
   log_info("Client shutdown complete");
+  log_destroy();
+
+#ifndef NDEBUG
+  // Join the debug thread as the very last thing (after log_destroy since thread may log)
+  lock_debug_cleanup_thread();
+#endif
 }
 
 /**
@@ -348,8 +382,11 @@ int client_main(void) {
   (void)atexit(print_mimalloc_stats);
 #endif
 
-  // Install signal handlers for graceful shutdown and terminal resize
-  platform_signal(SIGINT, sigint_handler);
+  // Install console control handler for graceful Ctrl+C handling
+  // Uses SetConsoleCtrlHandler on Windows, sigaction on Unix - more reliable than CRT signal()
+  platform_set_console_ctrl_handler(console_ctrl_handler);
+
+  // Install SIGWINCH handler for terminal resize (Unix only, no-op on Windows)
   platform_signal(SIGWINCH, sigwinch_handler);
 
 #ifndef _WIN32

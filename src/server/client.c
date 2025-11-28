@@ -1242,6 +1242,23 @@ void *client_send_thread_func(void *arg) {
       memcpy(payload, &frame_header, sizeof(ascii_frame_packet_t));
       (void)clock_gettime(CLOCK_MONOTONIC, &step4);
 
+      // DEBUG: Verify CRC32 after header copy
+      uint32_t verify_crc = asciichat_crc32(payload + sizeof(ascii_frame_packet_t), frame_size);
+      if (verify_crc != frame_checksum) {
+        log_error("SERVER BUG: CRC mismatch after header copy! calculated=0x%x, verify=0x%x", frame_checksum, verify_crc);
+      } else {
+        static bool logged_once = false;
+        if (!logged_once) {
+          log_debug("SERVER: Sending frame with CRC=0x%x, size=%zu, first_bytes=%02x%02x%02x%02x",
+                    frame_checksum, frame_size,
+                    payload[sizeof(ascii_frame_packet_t) + 0],
+                    payload[sizeof(ascii_frame_packet_t) + 1],
+                    payload[sizeof(ascii_frame_packet_t) + 2],
+                    payload[sizeof(ascii_frame_packet_t) + 3]);
+          logged_once = true;
+        }
+      }
+
       // Now perform network I/O without holding video buffer lock
       // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
       // Crypto context is stable after handshake and stored in client struct

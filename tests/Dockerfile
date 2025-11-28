@@ -53,6 +53,7 @@ RUN pacman -Sy --noconfirm \
   libssh2 \
   lldb \
   doxygen \
+  ncurses \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 

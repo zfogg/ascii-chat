@@ -35,18 +35,19 @@ static const char *normalize_path(const char *path) {
 
   /* Check if path is absolute (Windows drive or Unix root) */
 #ifdef _WIN32
-  if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+  if (path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':' && path[2] == PATH_DELIM) {
     absolute = true;
+    pos += 3; /* Skip the drive letter and colon and separator (e.g., "C:\") */
   }
 #else
-  if (path_len >= 1 && path[0] == '/') {
+  if (path_len >= 1 && path[0] == PATH_DELIM) {
     absolute = true;
   }
 #endif
 
   /* Parse path into components */
   while (*pos) {
-    /* Skip leading separators */
+    /* Skip leading separators (handle both / and \ on all platforms) */
     while (*pos == '/' || *pos == '\\') {
       pos++;
     }
@@ -68,11 +69,11 @@ static const char *normalize_path(const char *path) {
     }
 
     /* Check for . and .. components */
-    if (component_len == 1 && component_start[0] == '.') {
+    if (component_len == 1 && component_start[0] == PATH_COMPONENT_DOT) {
       /* Skip . component */
       continue;
     }
-    if (component_len == 2 && component_start[0] == '.' && component_start[1] == '.') {
+    if (component_len == 2 && component_start[0] == PATH_COMPONENT_DOT && component_start[1] == PATH_COMPONENT_DOT) {
       /* Handle .. component - go up one level */
       if (component_count > 0) {
         component_count--;
@@ -98,24 +99,18 @@ static const char *normalize_path(const char *path) {
   if (absolute && path_len >= 3 && isalpha((unsigned char)path[0]) && path[1] == ':') {
     normalized[out_pos++] = path[0];
     normalized[out_pos++] = ':';
-    normalized[out_pos++] = '\\';
+    normalized[out_pos++] = PATH_DELIM;
   }
 #else
   if (absolute) {
-    normalized[out_pos++] = '/';
+    normalized[out_pos++] = PATH_DELIM;
   }
 #endif
 
   for (int i = 0; i < component_count; i++) {
-#ifdef _WIN32
-    if (i > 0 || absolute) {
-      normalized[out_pos++] = '\\';
+    if (i > 0) {
+      normalized[out_pos++] = PATH_DELIM;
     }
-#else
-    if (i > 0 || absolute) {
-      normalized[out_pos++] = '/';
-    }
-#endif
     size_t comp_len = strlen(components[i]);
     if (out_pos + comp_len >= PLATFORM_MAX_PATH_LENGTH) {
       break;
@@ -174,9 +169,7 @@ const char *extract_project_relative_path(const char *file) {
   }
 
   /* If no common project directory found, try to find just the filename */
-  const char *last_slash = strrchr(normalized, '/');
-  const char *last_backslash = strrchr(normalized, '\\');
-  const char *last_sep = (last_slash > last_backslash) ? last_slash : last_backslash;
+  const char *last_sep = strrchr(normalized, PATH_DELIM);
 
   if (last_sep) {
     return last_sep + 1;
@@ -187,7 +180,7 @@ const char *extract_project_relative_path(const char *file) {
 }
 
 char *expand_path(const char *path) {
-  if (path[0] == '~') {
+  if (path[0] == PATH_TILDE) {
     const char *home = NULL;
 #ifdef _WIN32
     // On Windows, try USERPROFILE first, then HOME as fallback
@@ -205,12 +198,22 @@ char *expand_path(const char *path) {
 #endif
 
     char *expanded;
-    size_t total_len = strlen(home) + strlen(path) + 1;
+    size_t total_len = strlen(home) + strlen(path) + 1;  // path includes the tilde
     expanded = SAFE_MALLOC(total_len, char *);
     if (!expanded) {
       return NULL;
     }
     safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
+
+    #ifdef _WIN32
+    // Convert Unix forward slashes to Windows backslashes
+    for (char *p = expanded; *p; p++) {
+      if (*p == '/') {
+        *p = '\\';
+      }
+    }
+    #endif
+
     return expanded;
   }
   return platform_strdup(path);
@@ -304,12 +307,12 @@ bool path_is_absolute(const char *path) {
   if ((path[0] == '\\' && path[1] == '\\')) {
     return true; // UNC path
   }
-  if (isalpha((unsigned char)path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) {
+  if (isalpha((unsigned char)path[0]) && path[1] == PATH_DRIVE_SEPARATOR && path[2] == PATH_DELIM) {
     return true;
   }
   return false;
 #else
-  return path[0] == '/';
+  return path[0] == PATH_DELIM;
 #endif
 }
 
@@ -339,23 +342,16 @@ bool path_is_within_base(const char *path, const char *base) {
 
 #ifdef _WIN32
   if (_strnicmp(normalized_path, normalized_base, base_len) != 0) {
-    return false;
-  }
-  char next = normalized_path[base_len];
-  if (next == '\0') {
-    return true;
-  }
-  return next == '\\' || next == '/';
 #else
   if (strncmp(normalized_path, normalized_base, base_len) != 0) {
+#endif
     return false;
   }
   char next = normalized_path[base_len];
   if (next == '\0') {
     return true;
   }
-  return next == '/';
-#endif
+  return next == PATH_DELIM;
 }
 
 bool path_is_within_any_base(const char *path, const char *const *bases, size_t base_count) {
@@ -381,16 +377,16 @@ bool path_looks_like_path(const char *value) {
     return false;
   }
 
-  if (value[0] == '/' || value[0] == '\\' || value[0] == '.' || value[0] == '~') {
+  if (value[0] == PATH_DELIM || value[0] == PATH_COMPONENT_DOT || value[0] == PATH_TILDE) {
     return true;
   }
 
-  if (strchr(value, '/') || strchr(value, '\\')) {
+  if (strchr(value, PATH_DELIM)) {
     return true;
   }
 
 #ifdef _WIN32
-  if (isalpha((unsigned char)value[0]) && value[1] == ':' && (value[2] == '\\' || value[2] == '/')) {
+  if (isalpha((unsigned char)value[0]) && value[1] == ':' && value[2] == PATH_DELIM) {
     return true;
   }
 #endif
@@ -413,7 +409,7 @@ static asciichat_error_t map_role_to_error(path_role_t role) {
 }
 
 static void append_base_if_valid(const char *candidate, const char **bases, size_t *count) {
-  if (!candidate || *candidate == '\0' || *count >= 16) {
+  if (!candidate || *candidate == '\0' || *count >= MAX_PATH_BASES) {
     return;
   }
   if (!path_is_absolute(candidate)) {
@@ -429,17 +425,10 @@ static void build_ascii_chat_path(const char *base, const char *suffix, char *ou
     return;
   }
 
-  const char sep =
-#ifdef _WIN32
-      '\\';
-#else
-      '/';
-#endif
-
   size_t base_len = strlen(base);
-  bool needs_sep = base_len > 0 && base[base_len - 1] != '/' && base[base_len - 1] != '\\';
+  bool needs_sep = base_len > 0 && base[base_len - 1] != PATH_DELIM;
 
-  safe_snprintf(out, out_len, "%s%s%s", base, needs_sep ? (sep == '/' ? "/" : "\\") : "", suffix);
+  safe_snprintf(out, out_len, "%s%s%s", base, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
 }
 
 asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out) {
@@ -473,22 +462,15 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
       return SET_ERRNO(map_role_to_error(role), "Failed to determine current working directory");
     }
 
-    char sep =
-#ifdef _WIN32
-        '\\';
-#else
-        '/';
-#endif
-
     size_t total_len = strlen(cwd_buf) + 1 + strlen(candidate_path) + 1;
     if (total_len >= sizeof(candidate_buf)) {
       SAFE_FREE(expanded);
       return SET_ERRNO(map_role_to_error(role), "Resolved path is too long: %s/%s", cwd_buf, candidate_path);
     }
-    if (strlen(candidate_path) > 0 && (candidate_path[0] == '/' || candidate_path[0] == '\\')) {
+    if (strlen(candidate_path) > 0 && candidate_path[0] == PATH_DELIM) {
       safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%s", cwd_buf, candidate_path);
     } else {
-      safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%c%s", cwd_buf, sep, candidate_path);
+      safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%c%s", cwd_buf, PATH_DELIM, candidate_path);
     }
     candidate_path = candidate_buf;
   }
@@ -504,7 +486,7 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Normalized path is not absolute: %s", normalized_buf);
   }
 
-  const char *bases[16] = {0};
+  const char *bases[MAX_PATH_BASES] = {0};
   size_t base_count = 0;
 
   char cwd_base[PLATFORM_MAX_PATH_LENGTH];
@@ -551,9 +533,9 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   }
 
 #ifdef _WIN32
+  char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
   const char *program_data = platform_getenv("PROGRAMDATA");
   if (program_data) {
-    char program_data_logs[PLATFORM_MAX_PATH_LENGTH];
     build_ascii_chat_path(program_data, "ascii-chat", program_data_logs, sizeof(program_data_logs));
     append_base_if_valid(program_data_logs, bases, &base_count);
   }
@@ -562,7 +544,13 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   append_base_if_valid("/var/tmp", bases, &base_count);
 #endif
 
-  bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+  // For log files, skip the "allowed directories" check - allow any path
+  bool allowed;
+  if (role == PATH_ROLE_LOG_FILE) {
+    allowed = true;
+  } else {
+    allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
+  }
 
   if (!allowed) {
     SAFE_FREE(expanded);

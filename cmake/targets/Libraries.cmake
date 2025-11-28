@@ -315,9 +315,9 @@ if(USE_MIMALLOC)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 9: Debug Instrumentation Runtime (depends on: util, platform, core)
+# Module 9: Source Print Instrumentation Runtime (depends on: util, platform, core)
 # -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-debug "${DEBUG_RUNTIME_SRCS}")
+create_ascii_chat_module(ascii-chat-debug "${TOOLING_SOURCE_PRINT_SRCS}")
 target_include_directories(ascii-chat-debug PRIVATE
     ${CMAKE_SOURCE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/src
@@ -333,6 +333,8 @@ endif()
 if(NOT WIN32 AND TARGET Threads::Threads)
     target_link_libraries(ascii-chat-debug PUBLIC Threads::Threads)
 endif()
+
+# Note: Module 9b (defer runtime) was removed - now using direct code insertion
 
 # -----------------------------------------------------------------------------
 # Module 10: Network (depends on: util, platform, crypto, core)

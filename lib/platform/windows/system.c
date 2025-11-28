@@ -8,9 +8,9 @@
 
 #include "../abstraction.h"
 #include "../internal.h"
+#include "../socket.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
-#include "../socket.h"
 #include "../../util/path.h"
 #include "../symbols.h"
 
@@ -19,6 +19,7 @@
 #include <windows.h>
 #include <io.h>
 #include <fcntl.h>
+#include <share.h> // For _SH_DENYNO in _sopen_s
 #include <process.h>
 #include <signal.h>
 #include <string.h>
@@ -187,13 +188,89 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler) {
   return signal(sig, handler);
 }
 
+// Global console control handler (used by SetConsoleCtrlHandler)
+static console_ctrl_handler_t g_console_ctrl_handler = NULL;
+
+/**
+ * @brief Windows console control handler callback
+ * @param ctrl_type Control event type from Windows
+ * @return TRUE if handled, FALSE to pass to next handler
+ */
+static BOOL WINAPI windows_console_ctrl_handler(DWORD ctrl_type) {
+  if (!g_console_ctrl_handler) {
+    return FALSE;
+  }
+
+  console_ctrl_event_t event;
+  switch (ctrl_type) {
+  case CTRL_C_EVENT:
+    event = CONSOLE_CTRL_C;
+    break;
+  case CTRL_BREAK_EVENT:
+    event = CONSOLE_CTRL_BREAK;
+    break;
+  case CTRL_CLOSE_EVENT:
+    event = CONSOLE_CLOSE;
+    break;
+  case CTRL_LOGOFF_EVENT:
+    event = CONSOLE_LOGOFF;
+    break;
+  case CTRL_SHUTDOWN_EVENT:
+    event = CONSOLE_SHUTDOWN;
+    break;
+  default:
+    return FALSE;
+  }
+
+  // Call the user's handler
+  bool handled = g_console_ctrl_handler(event);
+  return handled ? TRUE : FALSE;
+}
+
+/**
+ * @brief Set console control handler (Windows implementation)
+ * @param handler Handler function to register, or NULL to unregister
+ * @return true on success, false on failure
+ *
+ * Uses SetConsoleCtrlHandler() for proper Ctrl+C handling on Windows.
+ * This is more reliable than the CRT signal() emulation which has known issues.
+ */
+bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
+  if (handler != NULL) {
+    // Register our handler if not already registered
+    if (g_console_ctrl_handler == NULL) {
+      if (!SetConsoleCtrlHandler(windows_console_ctrl_handler, TRUE)) {
+        return false;
+      }
+    }
+    g_console_ctrl_handler = handler;
+  } else {
+    // Unregister handler
+    if (g_console_ctrl_handler != NULL) {
+      SetConsoleCtrlHandler(windows_console_ctrl_handler, FALSE);
+      g_console_ctrl_handler = NULL;
+    }
+  }
+  return true;
+}
+
 /**
  * @brief Get environment variable value
  * @param name Environment variable name
  * @return Variable value or NULL if not found
  */
 const char *platform_getenv(const char *name) {
-  return getenv(name);
+  if (!name || name[0] == '\0') {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Empty environment variable name is invalid");
+    return NULL;
+  }
+  char *value = NULL;
+  errno_t err = _dupenv_s(&value, NULL, name);
+  if (err != 0) {
+    log_warn("Failed to get environment variable %s: %lu", name, err);
+    return NULL;
+  }
+  return value;
 }
 
 /**
@@ -222,7 +299,7 @@ int platform_isatty(int fd) {
  */
 const char *platform_ttyname(int fd) {
   // Windows doesn't have ttyname, return "CON" for console
-  if (_isatty(fd)) {
+  if (platform_isatty(fd)) {
     return "CON";
   }
   return NULL;
@@ -372,8 +449,7 @@ static void init_windows_symbols(void) {
     }
 
     // Copy the directory path to project_root before further modifications
-    strncpy(project_root, module_path, sizeof(project_root) - 1);
-    project_root[sizeof(project_root) - 1] = '\0';
+    (void)platform_strncpy(project_root, sizeof(project_root), module_path, sizeof(project_root) - 1);
 
     // If we're in build/bin, go up two levels to get to project root
     if (strstr(module_path, "\\build\\bin") != NULL) {
@@ -385,8 +461,9 @@ static void init_windows_symbols(void) {
     }
 
     // Set up symbol search path: current dir, build dir, and system paths
+    const char *nt_symbol_path = platform_getenv("_NT_SYMBOL_PATH");
     safe_snprintf(symbol_path, sizeof(symbol_path), "%s;%s\\build\\bin;%s\\build;%s", module_path, project_root,
-                  project_root, getenv("_NT_SYMBOL_PATH") ? getenv("_NT_SYMBOL_PATH") : "");
+                  project_root, nt_symbol_path ? nt_symbol_path : "");
   }
 
   // Try to initialize with custom search path
@@ -417,9 +494,8 @@ static void init_windows_symbols(void) {
     if (last_slash) {
       size_t dir_len = (size_t)((ptrdiff_t)(last_slash - module_path));
       if (dir_len < MAX_PATH - 20) { // Leave room for "\build\bin\*.pdb"
-        strncpy(build_pdb_path, module_path, dir_len);
-        build_pdb_path[dir_len] = '\0';
-        strcat(build_pdb_path, "\\build\\bin");
+        // Copy directory portion and append build path in one operation
+        safe_snprintf(build_pdb_path, sizeof(build_pdb_path), "%.*s\\build\\bin", (int)dir_len, module_path);
 
         // Try to load PDB files from build directory
         WIN32_FIND_DATAA find_data;
@@ -610,6 +686,7 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
  */
 char **platform_backtrace_symbols(void *const *buffer, int size) {
   if (!buffer || size <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid buffer or size for backtrace symbols");
     return NULL;
   }
 
@@ -758,7 +835,7 @@ void platform_print_backtrace(int skip_frames) {
   int size = platform_backtrace(buffer, 32);
 
   if (size > 0) {
-    char backtrace_buffer[16384]; // 16KB buffer for backtrace
+    char backtrace_buffer[BUFFER_SIZE_HUGE];
     int offset = 0;
     char **symbols = platform_backtrace_symbols(buffer, size);
 
@@ -823,19 +900,13 @@ static LONG WINAPI crash_handler(EXCEPTION_POINTERS *exception_info) {
     break;
   }
 
-#ifndef NDEBUG
-  // Only capture backtraces in Debug builds
   log_error("\n*** CRASH DETECTED ***\n"
             "Exception Code: 0x%08lx\n"
             "Exception: %s",
             exception_code, exception_name);
+#ifndef NDEBUG
+  // Only capture backtraces in Debug builds
   platform_print_backtrace(0);
-#else
-  log_error("*** CRASH DETECTED ***\n"
-            "Exception Code: 0x%08lx\n"
-            "Exception: %s",
-            exception_code, exception_name);
-  log_error("Backtrace disabled in Release builds");
 #endif
 
   // Return EXCEPTION_EXECUTE_HANDLER to terminate the program
@@ -1042,7 +1113,13 @@ int platform_open(const char *pathname, int flags, ...) {
     flags |= _O_BINARY;
   }
 
-  return _open(pathname, flags, mode);
+  // Use _sopen_s (secure version) with _SH_DENYNO for compatibility
+  int fd = -1;
+  errno_t err = _sopen_s(&fd, pathname, flags, _SH_DENYNO, mode);
+  if (err != 0) {
+    return -1;
+  }
+  return fd;
 }
 
 /**

@@ -1,16 +1,20 @@
 #include "tests/common.h"
-
-#include "debug/instrument_log.h"
+#include "tooling/source_print/instrument_log.h"
 #include "platform/system.h"
 #include "platform/thread.h"
 
-#include <dirent.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <sys/stat.h>
 
 #ifdef _WIN32
 #include <direct.h>
+#include <io.h>
+#include <windows.h>
+#else
+#include <dirent.h>
+#include <unistd.h>
 #endif
 
 static void setup_quiet_logging(void) {
@@ -72,7 +76,71 @@ static void make_unique_directory(char *buffer, size_t buffer_size) {
   cr_assert_fail("Unable to allocate unique temporary directory after multiple attempts");
 }
 
+#if defined(_WIN32)
+static bool build_windows_search_pattern(char *buffer, size_t capacity, const char *directory, const char *suffix) {
+  if (buffer == NULL || directory == NULL || suffix == NULL) {
+    return false;
+  }
+
+  size_t length = 0;
+  for (const char *cursor = directory; *cursor != '\0'; ++cursor) {
+    char ch = *cursor == '/' ? '\\' : *cursor;
+    if (length + 1 >= capacity) {
+      return false;
+    }
+    buffer[length++] = ch;
+  }
+  if (length == 0) {
+    return false;
+  }
+  if (buffer[length - 1] != '\\') {
+    if (length + 1 >= capacity) {
+      return false;
+    }
+    buffer[length++] = '\\';
+  }
+  size_t suffix_len = strlen(suffix);
+  if (length + suffix_len >= capacity) {
+    return false;
+  }
+  memcpy(buffer + length, suffix, suffix_len + 1);
+  return true;
+}
+#endif
+
 static void remove_directory_recursively(const char *path) {
+#if defined(_WIN32)
+  char pattern[MAX_PATH];
+  if (build_windows_search_pattern(pattern, sizeof(pattern), path, "*") == false) {
+    (void)_rmdir(path);
+    return;
+  }
+
+  struct _finddata_t data = {0};
+  intptr_t handle = _findfirst(pattern, &data);
+  if (handle != -1) {
+    do {
+      if (strcmp(data.name, ".") == 0 || strcmp(data.name, "..") == 0) {
+        continue;
+      }
+
+      char target[MAX_PATH];
+      int written = snprintf(target, sizeof(target), "%s/%s", path, data.name);
+      if (written < 0 || written >= (int)sizeof(target)) {
+        continue;
+      }
+
+      if ((data.attrib & _A_SUBDIR) != 0) {
+        remove_directory_recursively(target);
+      } else {
+        (void)_unlink(target);
+      }
+    } while (_findnext(handle, &data) == 0);
+    _findclose(handle);
+  }
+
+  (void)_rmdir(path);
+#else
   DIR *dir = opendir(path);
   if (dir != NULL) {
     struct dirent *entry;
@@ -91,14 +159,35 @@ static void remove_directory_recursively(const char *path) {
     closedir(dir);
   }
 
-#ifdef _WIN32
-  (void)_rmdir(path);
-#else
   (void)rmdir(path);
 #endif
 }
 
 static bool find_log_file(const char *directory, char *path_out, size_t path_capacity) {
+#if defined(_WIN32)
+  char pattern[MAX_PATH];
+  if (!build_windows_search_pattern(pattern, sizeof(pattern), directory, "ascii-instr-*.log")) {
+    return false;
+  }
+
+  struct _finddata_t data = {0};
+  intptr_t handle = _findfirst(pattern, &data);
+  if (handle == -1) {
+    return false;
+  }
+
+  bool found = false;
+  do {
+    int written = snprintf(path_out, path_capacity, "%s/%s", directory, data.name);
+    if (written >= 0 && written < (int)path_capacity) {
+      found = true;
+      break;
+    }
+  } while (_findnext(handle, &data) == 0);
+
+  _findclose(handle);
+  return found;
+#else
   DIR *dir = opendir(directory);
   if (dir == NULL) {
     return false;
@@ -125,19 +214,20 @@ static bool find_log_file(const char *directory, char *path_out, size_t path_cap
 
   closedir(dir);
   return found;
+#endif
 }
 
 static void clear_filter_environment(void) {
 #ifdef _WIN32
-  _putenv_s("ASCII_INSTR_INCLUDE", "");
-  _putenv_s("ASCII_INSTR_EXCLUDE", "");
-  _putenv_s("ASCII_INSTR_THREAD", "");
-  _putenv_s("ASCII_INSTR_OUTPUT_DIR", "");
+  _putenv_s("ASCII_INSTR_SOURCE_PRINT_INCLUDE", "");
+  _putenv_s("ASCII_INSTR_SOURCE_PRINT_EXCLUDE", "");
+  _putenv_s("ASCII_INSTR_SOURCE_PRINT_THREAD", "");
+  _putenv_s("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", "");
 #else
-  unsetenv("ASCII_INSTR_INCLUDE");
-  unsetenv("ASCII_INSTR_EXCLUDE");
-  unsetenv("ASCII_INSTR_THREAD");
-  unsetenv("ASCII_INSTR_OUTPUT_DIR");
+  unsetenv("ASCII_INSTR_SOURCE_PRINT_INCLUDE");
+  unsetenv("ASCII_INSTR_SOURCE_PRINT_EXCLUDE");
+  unsetenv("ASCII_INSTR_SOURCE_PRINT_THREAD");
+  unsetenv("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
 #endif
 }
 
@@ -167,7 +257,7 @@ Test(instrument_log, writes_log_with_defaults) {
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
   clear_filter_environment();
-  set_env_variable("ASCII_INSTR_OUTPUT_DIR", temp_dir);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", temp_dir);
 
   write_sample_record("lib/runtime_test.c");
 
@@ -193,8 +283,8 @@ Test(instrument_log, include_filter_drops_non_matching_files) {
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
   clear_filter_environment();
-  set_env_variable("ASCII_INSTR_OUTPUT_DIR", temp_dir);
-  set_env_variable("ASCII_INSTR_INCLUDE", "server.c");
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", temp_dir);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_INCLUDE", "server.c");
 
   write_sample_record("lib/client.c");
 
@@ -210,12 +300,12 @@ Test(instrument_log, thread_filter_blocks_unlisted_thread) {
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
   clear_filter_environment();
-  set_env_variable("ASCII_INSTR_OUTPUT_DIR", temp_dir);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", temp_dir);
 
   uint64_t tid = ascii_thread_current_id();
   char tid_buffer[64];
   snprintf(tid_buffer, sizeof(tid_buffer), "%" PRIu64, tid + 1);
-  set_env_variable("ASCII_INSTR_THREAD", tid_buffer);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_THREAD", tid_buffer);
 
   write_sample_record("lib/runtime_test.c");
 
@@ -231,12 +321,12 @@ Test(instrument_log, thread_filter_allows_matching_thread) {
   make_unique_directory(temp_dir, sizeof(temp_dir));
 
   clear_filter_environment();
-  set_env_variable("ASCII_INSTR_OUTPUT_DIR", temp_dir);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR", temp_dir);
 
   uint64_t tid = ascii_thread_current_id();
   char tid_buffer[64];
   snprintf(tid_buffer, sizeof(tid_buffer), "%" PRIu64, tid);
-  set_env_variable("ASCII_INSTR_THREAD", tid_buffer);
+  set_env_variable("ASCII_INSTR_SOURCE_PRINT_THREAD", tid_buffer);
 
   write_sample_record("lib/runtime_test.c");
 

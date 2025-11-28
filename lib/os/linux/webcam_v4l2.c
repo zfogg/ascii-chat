@@ -242,6 +242,19 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   return 0;
 }
 
+void webcam_flush_context(webcam_context_t *ctx) {
+  if (!ctx)
+    return;
+
+  // Stop streaming to interrupt any blocking reads
+  enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+  if (ioctl(ctx->fd, VIDIOC_STREAMOFF, &type) == 0) {
+    log_debug("V4L2 streaming stopped for flush");
+    // Restart streaming so reads can continue if needed
+    ioctl(ctx->fd, VIDIOC_STREAMON, &type);
+  }
+}
+
 void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;

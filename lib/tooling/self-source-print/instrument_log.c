@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Debug instrumentation logging runtime for ascii-chat line tracing
 
-#include "debug/instrument_log.h"
+#include "tooling/source_print/instrument_log.h"
 
 #include "common.h"
 #include "debug/memory.h"
@@ -32,10 +32,10 @@
 #endif
 
 #if !defined(_WIN32)
-#define ASCII_INSTR_HAVE_REGEX 1
+#define ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 1
 #include <regex.h>
 #else
-#define ASCII_INSTR_HAVE_REGEX 0
+#define ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 0
 // Windows doesn't have mode_t
 typedef int mode_t;
 #endif
@@ -54,23 +54,23 @@ typedef int mode_t;
 #define posix_write write
 #endif
 
-#ifndef ASCII_INSTR_DEFAULT_BASENAME
-#define ASCII_INSTR_DEFAULT_BASENAME "ascii-instr"
+#ifndef ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME
+#define ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME "ascii-instr"
 #endif
 
-#ifndef ASCII_INSTR_MAX_LINE
-#define ASCII_INSTR_MAX_LINE 4096
+#ifndef ASCII_INSTR_SOURCE_PRINT_MAX_LINE
+#define ASCII_INSTR_SOURCE_PRINT_MAX_LINE 4096
 #endif
 
-#ifndef ASCII_INSTR_MAX_SNIPPET
-#define ASCII_INSTR_MAX_SNIPPET 2048
+#ifndef ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET
+#define ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET 2048
 #endif
 
 typedef enum ascii_instr_selector_type {
-  ASCII_INSTR_SELECTOR_FILE_SUBSTRING = 0,
-  ASCII_INSTR_SELECTOR_FILE_GLOB = 1,
-  ASCII_INSTR_SELECTOR_FUNCTION_GLOB = 2,
-  ASCII_INSTR_SELECTOR_MODULE = 3,
+  ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
+  ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
+  ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
+  ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
 } ascii_instr_selector_type_t;
 
 typedef struct ascii_instr_only_selector {
@@ -98,7 +98,7 @@ typedef struct ascii_instr_runtime {
   const char *filter_function_include;
   const char *filter_function_exclude;
   const char *filter_thread;
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
   regex_t include_regex;
   bool include_regex_valid;
   regex_t exclude_regex;
@@ -136,7 +136,7 @@ static bool ascii_instr_should_log(const ascii_instr_runtime_t *runtime, const c
 static int ascii_instr_write_full(int fd, const char *buffer, size_t len);
 static bool ascii_instr_env_is_enabled(const char *value);
 static bool ascii_instr_parse_positive_uint32(const char *value, uint32_t *out_value);
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
 static bool ascii_instr_compile_regex(regex_t *regex, const char *pattern);
 #endif
 static void ascii_instr_only_list_destroy(ascii_instr_only_list_t *list);
@@ -189,9 +189,9 @@ ascii_instr_runtime_t *ascii_instr_runtime_get(void) {
   runtime->sequence = 0;
   runtime->call_counter = 0;
   runtime->fd = -1;
-  runtime->filter_include = SAFE_GETENV("ASCII_INSTR_INCLUDE");
-  runtime->filter_exclude = SAFE_GETENV("ASCII_INSTR_EXCLUDE");
-  runtime->filter_thread = SAFE_GETENV("ASCII_INSTR_THREAD");
+  runtime->filter_include = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_INCLUDE");
+  runtime->filter_exclude = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_EXCLUDE");
+  runtime->filter_thread = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_THREAD");
   runtime->filter_function_include = NULL;
   runtime->filter_function_exclude = NULL;
   runtime->filters_enabled = false;
@@ -218,7 +218,7 @@ void ascii_instr_runtime_destroy(ascii_instr_runtime_t *runtime) {
     runtime->fd = -1;
   }
 
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
   if (runtime->include_regex_valid) {
     regfree(&runtime->include_regex);
     runtime->include_regex_valid = false;
@@ -266,7 +266,7 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
                           uint8_t is_macro_expansion) {
   // Check if instrumentation is globally enabled via environment variable
   if (!g_instrumentation_enabled_checked) {
-    const char *enable_env = SAFE_GETENV("ASCII_INSTR_ENABLE");
+    const char *enable_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE");
     g_instrumentation_enabled = ascii_instr_env_is_enabled(enable_env);
     g_instrumentation_enabled_checked = true;
   }
@@ -309,7 +309,7 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
   }
 
   const int fd = runtime->stderr_fallback ? STDERR_FILENO : runtime->fd;
-  char buffer[ASCII_INSTR_MAX_LINE];
+  char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
   size_t pos = 0;
 
   struct timespec ts;
@@ -353,7 +353,7 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
                   function_name ? function_name : "<unknown>", (unsigned)is_macro_expansion);
 
   if (snippet != NULL) {
-    size_t snippet_len = strnlen(snippet, ASCII_INSTR_MAX_SNIPPET);
+    size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
     for (size_t i = 0; i < snippet_len && pos < sizeof(buffer) - 2; ++i) {
       const char ch = snippet[i];
       switch (ch) {
@@ -438,7 +438,7 @@ void ascii_instr_log_pc(uintptr_t program_counter) {
 
   char snippet[64];
   snprintf(snippet, sizeof(snippet), "pc=0x%zx", (size_t)program_counter);
-  ascii_instr_log_line("__coverage__", 0, "<coverage>", snippet, ASCII_INSTR_MACRO_NONE);
+  ascii_instr_log_line("__coverage__", 0, "<coverage>", snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
 }
 
 static void ascii_instr_runtime_init_once(void) {
@@ -446,7 +446,7 @@ static void ascii_instr_runtime_init_once(void) {
   // so we don't need to lock/unlock here
   if (!g_runtime_initialized) {
     (void)ascii_tls_key_create(&g_runtime_key, ascii_instr_runtime_tls_destructor);
-    const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_OUTPUT_DIR");
+    const char *output_dir_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR");
     if (output_dir_env != NULL && output_dir_env[0] != '\0') {
       char *normalized_output_dir = NULL;
       asciichat_error_t validation_result =
@@ -456,11 +456,11 @@ static void ascii_instr_runtime_init_once(void) {
         g_output_dir[sizeof(g_output_dir) - 1] = '\0';
         g_output_dir_set = true;
       } else {
-        log_warn("Ignoring invalid ASCII_INSTR_OUTPUT_DIR path: %s", output_dir_env);
+        log_warn("Ignoring invalid ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR path: %s", output_dir_env);
       }
       SAFE_FREE(normalized_output_dir);
     }
-    const char *coverage_env = SAFE_GETENV("ASCII_INSTR_ENABLE_COVERAGE");
+    const char *coverage_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE");
     g_coverage_enabled = ascii_instr_env_is_enabled(coverage_env);
     stm_setup();
     g_start_ticks = stm_now();
@@ -479,7 +479,7 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
   bool is_custom_path = (custom_log_file != NULL && custom_log_file[0] != '\0');
 
   if (is_custom_path) {
-    const char *debug_env = SAFE_GETENV("ASCII_INSTR_ECHO_STDERR");
+    const char *debug_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ECHO_STDERR");
     if (debug_env && debug_env[0] == '1') {
       fprintf(stderr, "ASCII_INSTR: Using custom log path: %s\n", custom_log_file);
     }
@@ -500,13 +500,12 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
         SAFE_FREE(expanded);
         return false;
       }
-      safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%c%s", cwd_buf,
-#ifdef _WIN32
-                    '\\',
-#else
-                    '/',
-#endif
-                    expanded);
+      // Check if expanded already starts with a separator to avoid double separators
+      if (strlen(expanded) > 0 && expanded[0] == PATH_DELIM) {
+        safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%s", cwd_buf, expanded);
+      } else {
+        safe_snprintf(absolute_buf, sizeof(absolute_buf), "%s%c%s", cwd_buf, PATH_DELIM, expanded);
+      }
       SAFE_FREE(expanded);
       expanded = platform_strdup(absolute_buf);
       if (!expanded) {
@@ -547,7 +546,7 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     memcpy(dir_buf, output_dir, dir_len);
     dir_buf[dir_len] = '\0';
 
-    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf, ASCII_INSTR_DEFAULT_BASENAME,
+    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf, ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME,
                  runtime->pid, (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
       return false;
     }
@@ -573,19 +572,14 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     SAFE_FREE(validated_log_path);
   }
 
-  const char *last_sep = strrchr(runtime->log_path, '/');
-#ifdef _WIN32
-  const char *last_backslash = strrchr(runtime->log_path, '\\');
-  if (last_backslash != NULL && (last_sep == NULL || last_backslash > last_sep)) {
-    last_sep = last_backslash;
-  }
-#endif
+  // Find last path separator
+  const char *last_sep = strrchr(runtime->log_path, PATH_DELIM);
   if (last_sep != NULL && last_sep != runtime->log_path) {
     const size_t dir_path_len = (size_t)(last_sep - runtime->log_path);
     char dir_path[PATH_MAX];
     memcpy(dir_path, runtime->log_path, dir_path_len);
     dir_path[dir_path_len] = '\0';
-    if (mkdir(dir_path, 0700) != 0) {
+    if (mkdir(dir_path, DIR_PERM_PRIVATE) != 0) {
       if (errno != EEXIST) {
         return false;
       }
@@ -597,7 +591,7 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
 
 static int ascii_instr_open_log_file(ascii_instr_runtime_t *runtime) {
   if (!ascii_instr_build_log_path(runtime)) {
-    const char *debug_env = SAFE_GETENV("ASCII_INSTR_ECHO_STDERR");
+    const char *debug_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ECHO_STDERR");
     if (debug_env && debug_env[0] == '1') {
       fprintf(stderr, "ASCII_INSTR: Failed to build log path\n");
     }
@@ -617,7 +611,7 @@ static int ascii_instr_open_log_file(ascii_instr_runtime_t *runtime) {
     flags = PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_EXCL | PLATFORM_O_APPEND | PLATFORM_O_BINARY;
   }
 
-  const char *debug_env = SAFE_GETENV("ASCII_INSTR_ECHO_STDERR");
+  const char *debug_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ECHO_STDERR");
   if (debug_env && debug_env[0] == '1') {
     fprintf(stderr, "ASCII_INSTR: Opening log file: %s (custom=%d)\n", runtime->log_path, is_custom_file);
   }
@@ -640,37 +634,37 @@ static int ascii_instr_open_log_file(ascii_instr_runtime_t *runtime) {
 }
 
 static void ascii_instr_runtime_configure(ascii_instr_runtime_t *runtime) {
-  runtime->filter_function_include = SAFE_GETENV("ASCII_INSTR_FUNCTION_INCLUDE");
-  runtime->filter_function_exclude = SAFE_GETENV("ASCII_INSTR_FUNCTION_EXCLUDE");
+  runtime->filter_function_include = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE");
+  runtime->filter_function_exclude = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE");
 
-  const char *only_env = SAFE_GETENV("ASCII_INSTR_ONLY");
+  const char *only_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ONLY");
   ascii_instr_parse_only_filters(runtime, only_env);
 
-#if ASCII_INSTR_HAVE_REGEX
-  const char *include_regex = SAFE_GETENV("ASCII_INSTR_INCLUDE_REGEX");
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
+  const char *include_regex = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX");
   if (include_regex != NULL && include_regex[0] != '\0') {
     runtime->include_regex_valid = ascii_instr_compile_regex(&runtime->include_regex, include_regex);
   }
 
-  const char *exclude_regex = SAFE_GETENV("ASCII_INSTR_EXCLUDE_REGEX");
+  const char *exclude_regex = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX");
   if (exclude_regex != NULL && exclude_regex[0] != '\0') {
     runtime->exclude_regex_valid = ascii_instr_compile_regex(&runtime->exclude_regex, exclude_regex);
   }
 
-  const char *function_include_regex = SAFE_GETENV("ASCII_INSTR_FUNCTION_INCLUDE_REGEX");
+  const char *function_include_regex = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX");
   if (function_include_regex != NULL && function_include_regex[0] != '\0') {
     runtime->function_include_regex_valid =
         ascii_instr_compile_regex(&runtime->function_include_regex, function_include_regex);
   }
 
-  const char *function_exclude_regex = SAFE_GETENV("ASCII_INSTR_FUNCTION_EXCLUDE_REGEX");
+  const char *function_exclude_regex = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX");
   if (function_exclude_regex != NULL && function_exclude_regex[0] != '\0') {
     runtime->function_exclude_regex_valid =
         ascii_instr_compile_regex(&runtime->function_exclude_regex, function_exclude_regex);
   }
 #endif
 
-  const char *rate_env = SAFE_GETENV("ASCII_INSTR_RATE");
+  const char *rate_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_RATE");
   uint32_t rate_value = 0;
   if (ascii_instr_parse_positive_uint32(rate_env, &rate_value) && rate_value > 1U) {
     runtime->rate = rate_value;
@@ -680,7 +674,7 @@ static void ascii_instr_runtime_configure(ascii_instr_runtime_t *runtime) {
   runtime->filters_enabled = (runtime->filter_include != NULL) || (runtime->filter_exclude != NULL) ||
                              (runtime->filter_thread != NULL) || (runtime->filter_function_include != NULL) ||
                              (runtime->filter_function_exclude != NULL)
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
                              || runtime->include_regex_valid || runtime->exclude_regex_valid ||
                              runtime->function_include_regex_valid || runtime->function_exclude_regex_valid
 #endif
@@ -700,7 +694,7 @@ static bool ascii_instr_env_is_enabled(const char *value) {
     return false;
   }
 
-  if (strcmp(value, "0") == 0) {
+  if (strcmp(value, STR_ZERO) == 0) {
     return false;
   }
 
@@ -712,11 +706,7 @@ static bool ascii_instr_env_is_enabled(const char *value) {
   }
   lowered[len] = '\0';
 
-  if (strcmp(lowered, "false") == 0 || strcmp(lowered, "off") == 0 || strcmp(lowered, "no") == 0) {
-    return false;
-  }
-
-  return true;
+  return !(strcmp(lowered, STR_FALSE) == 0 || strcmp(lowered, STR_OFF) == 0 || strcmp(lowered, STR_NO) == 0);
 }
 
 static bool ascii_instr_parse_positive_uint32(const char *value, uint32_t *out_value) {
@@ -743,7 +733,7 @@ static bool ascii_instr_parse_positive_uint32(const char *value, uint32_t *out_v
   return true;
 }
 
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
 static bool ascii_instr_compile_regex(regex_t *regex, const char *pattern) {
   if (regex == NULL || pattern == NULL) {
     return false;
@@ -778,14 +768,14 @@ static bool ascii_instr_only_list_append(ascii_instr_only_list_t *list, ascii_in
     return false;
   }
 
-  if (type == ASCII_INSTR_SELECTOR_FILE_SUBSTRING || type == ASCII_INSTR_SELECTOR_FILE_GLOB ||
-      type == ASCII_INSTR_SELECTOR_FUNCTION_GLOB) {
+  if (type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING || type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB ||
+      type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB) {
     if (pattern == NULL || pattern[0] == '\0') {
       return false;
     }
   }
 
-  if (type == ASCII_INSTR_SELECTOR_MODULE) {
+  if (type == ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE) {
     if (module == NULL || module[0] == '\0') {
       return false;
     }
@@ -883,9 +873,9 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
       }
 
       if (strcmp(kind, "file") == 0) {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SELECTOR_FILE_GLOB, NULL, spec);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL, spec);
       } else if (strcmp(kind, "func") == 0 || strcmp(kind, "function") == 0) {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SELECTOR_FUNCTION_GLOB, NULL, spec);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB, NULL, spec);
       } else if (strcmp(kind, "module") == 0) {
         char *module_value = spec;
         char *module_pattern = strchr(module_value, ':');
@@ -899,10 +889,10 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
           continue;
         }
         const char *pattern_part = (module_pattern != NULL && *module_pattern != '\0') ? module_pattern : NULL;
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SELECTOR_MODULE, module_value,
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE, module_value,
                                            pattern_part);
       } else {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SELECTOR_FILE_GLOB, NULL, spec);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL, spec);
       }
       continue;
     }
@@ -918,12 +908,12 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
         continue;
       }
       const char *pattern_spec = (*pattern_part != '\0') ? pattern_part : NULL;
-      (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SELECTOR_MODULE, module_name,
+      (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE, module_name,
                                          pattern_spec);
       continue;
     }
 
-    (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SELECTOR_FILE_SUBSTRING, NULL,
+    (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING, NULL,
                                        token_start);
   }
 
@@ -969,15 +959,10 @@ static const char *ascii_instr_basename(const char *path) {
     return NULL;
   }
 
-  const char *slash = strrchr(path, '/');
-#ifdef _WIN32
-  const char *backslash = strrchr(path, '\\');
-  if (backslash != NULL && (slash == NULL || backslash > slash)) {
-    slash = backslash;
-  }
-#endif
-  if (slash != NULL && slash[1] != '\0') {
-    return slash + 1;
+  // Find last path separator
+  const char *last_sep = strrchr(path, PATH_DELIM);
+  if (last_sep != NULL && last_sep[1] != '\0') {
+    return last_sep + 1;
   }
   return path;
 }
@@ -993,11 +978,11 @@ static bool ascii_instr_path_contains_module(const char *file_path, const char *
     bool left_ok = (cursor == file_path);
     if (!left_ok) {
       const char prev = cursor[-1];
-      left_ok = (prev == '/' || prev == '\\');
+      left_ok = (prev == PATH_DELIM);
     }
 
     const char tail = cursor[module_len];
-    bool right_ok = (tail == '\0' || tail == '/' || tail == '\\');
+    bool right_ok = (tail == '\0' || tail == PATH_DELIM);
 
     if (left_ok && right_ok) {
       return true;
@@ -1020,23 +1005,23 @@ static bool ascii_instr_only_selectors_match(const ascii_instr_runtime_t *runtim
   for (size_t i = 0; i < list->count; ++i) {
     const ascii_instr_only_selector_t *selector = &list->items[i];
     switch (selector->type) {
-    case ASCII_INSTR_SELECTOR_FILE_SUBSTRING:
+    case ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING:
       if (file_path != NULL && selector->pattern != NULL && strstr(file_path, selector->pattern) != NULL) {
         return true;
       }
       break;
-    case ASCII_INSTR_SELECTOR_FILE_GLOB:
+    case ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB:
       if (file_path != NULL && selector->pattern != NULL && ascii_instr_match_glob(selector->pattern, file_path)) {
         return true;
       }
       break;
-    case ASCII_INSTR_SELECTOR_FUNCTION_GLOB:
+    case ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB:
       if (function_name != NULL && selector->pattern != NULL &&
           ascii_instr_match_glob(selector->pattern, function_name)) {
         return true;
       }
       break;
-    case ASCII_INSTR_SELECTOR_MODULE:
+    case ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE:
       if (file_path != NULL && selector->module != NULL &&
           ascii_instr_path_contains_module(file_path, selector->module)) {
         if (selector->pattern == NULL || (base_name != NULL && ascii_instr_match_glob(selector->pattern, base_name))) {
@@ -1078,7 +1063,7 @@ static bool ascii_instr_should_log(const ascii_instr_runtime_t *runtime, const c
     }
   }
 
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
   if (runtime->include_regex_valid) {
     if (file_path == NULL || regexec(&runtime->include_regex, file_path, 0, NULL, 0) != 0) {
       return false;
@@ -1104,7 +1089,7 @@ static bool ascii_instr_should_log(const ascii_instr_runtime_t *runtime, const c
     }
   }
 
-#if ASCII_INSTR_HAVE_REGEX
+#if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
   if (runtime->function_include_regex_valid) {
     if (function_name == NULL || regexec(&runtime->function_include_regex, function_name, 0, NULL, 0) != 0) {
       return false;

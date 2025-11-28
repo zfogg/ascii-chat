@@ -27,8 +27,8 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 // Internal helper functions
 // =============================================================================
 
-// Check if we're in a test environment
-static int is_test_environment(void) {
+// Check if we're in a test environment (crypto-local version to avoid unity build conflicts)
+static int crypto_is_test_environment(void) {
 #if defined(CRITERION_TEST) || defined(__CRITERION__) || defined(TESTING)
   return 1; // Compile-time test environment detection
 #else
@@ -134,7 +134,7 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   // SECURITY: Use production-safe rekey thresholds by default
   // Rekey every 1 hour OR 1 million packets (whichever comes first)
   // Only use test mode if explicitly requested via environment variable
-  if (is_test_environment()) {
+  if (crypto_is_test_environment()) {
     ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
     log_info(

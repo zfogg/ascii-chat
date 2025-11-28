@@ -1,43 +1,49 @@
 cmake_minimum_required(VERSION 3.16)
 
 # =============================================================================
-# Dependency Cache Configuration (must come first)
+# Initialization
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
+# INFO: CMAKE_BUILD_TYPE is now set.
+
+# =============================================================================
+# Dependency Cache Configuration (must come early in the configuration process)
 # =============================================================================
 # Centralized dependency cache configuration
-# Docker builds use .deps-cache-docker/, native builds use .deps-cache/
+# This section must run AFTER BuildTypes.cmake is included (where CMAKE_BUILD_TYPE is set)
+# Docker builds use .deps-cache/<Docker OS | docker>/, native builds use .deps-cache/
 # Musl dependencies are stored in musl/ subdirectory
 
 # Check if running in Docker (set by Dockerfile with ENV TESTING=1)
 if(DEFINED ENV{TESTING} AND "$ENV{TESTING}" STREQUAL "1")
     # Use OS-specific cache directory for Docker builds
     if(DEFINED ENV{DOCKER_OS})
-        set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
     else()
-        set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache-docker" CACHE PATH "Root directory for dependency cache (Docker)")
+        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)")
     endif()
 else()
-    set(DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
 endif()
 
 # Build-type-specific cache directory
-set(DEPS_CACHE_DIR "${DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
-
+set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
 # Musl-specific cache directory
-set(DEPS_CACHE_MUSL "${DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
-
-# =============================================================================
-# Initialization
-# =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
-
+set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
 # Print dependency cache message (after Init.cmake defines colors)
-message(STATUS "Using dependency cache: ${BoldCyan}${DEPS_CACHE_DIR}${ColorReset}")
+message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${ColorReset}")
 
 # =============================================================================
 # Project Constants (must come before project() for DESCRIPTION/HOMEPAGE_URL)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
+
+# =============================================================================
+# Version from git tags (single source of truth)
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
+version_detect()  # Sets PROJECT_VERSION_FROM_GIT
 
 # =============================================================================
 # Pre project() Configuration
@@ -50,21 +56,23 @@ configure_llvm_pre_project()
 # =============================================================================
 # Project Declaration
 # =============================================================================
+# Always enable C++ for Clang tooling (defer() and source instrumentation)
 if(APPLE)
-    set(PROJECT_LANGUAGES C OBJC)
+    set(PROJECT_LANGUAGES C CXX OBJC)
 else()
-    set(PROJECT_LANGUAGES C)
-endif()
-if(DEFINED ASCII_BUILD_WITH_INSTRUMENTATION AND ASCII_BUILD_WITH_INSTRUMENTATION)
-    list(APPEND PROJECT_LANGUAGES CXX)
+    set(PROJECT_LANGUAGES C CXX)
 endif()
 
 project(${PROJECT_NAME_FULL}
-    VERSION 0.3.2
+    VERSION ${PROJECT_VERSION_FROM_GIT}
     DESCRIPTION "${PROJECT_DESCRIPTION_ONELINE}"
     HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}"
     LANGUAGES ${PROJECT_LANGUAGES}
 )
+
+# SPDX License identifier (PROJECT_LICENSE_SPDX defined in ProjectConstants.cmake)
+# Note: project() SPDX_LICENSE parameter requires CMake 4.2+ (unreleased)
+set(PROJECT_SPDX_LICENSE "${PROJECT_LICENSE_SPDX}" CACHE STRING "SPDX License ID")
 
 # =============================================================================
 # Generator Validation (after project())
@@ -96,9 +104,9 @@ if(NOT CMAKE_GENERATOR MATCHES "Ninja")
 endif()
 
 # =============================================================================
-# Version Detection (after project() to override PROJECT_VERSION)
+# Version targets (after project() - creates generate_version target)
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
+version_setup_targets()
 
 # =============================================================================
 # Compiler config
@@ -140,31 +148,38 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
 # Dependencies
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Dependencies.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Tomlc17.cmake)
 configure_tomlc17()
+
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/LibsodiumBcryptPbkdf.cmake)
 configure_libsodium_bcrypt_pbkdf()
+
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Uthash.cmake)
 configure_uthash()
+
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mimalloc.cmake)
+
 configure_include_directories()
 
 # When USE_MUSL=ON, build all dependencies from source and cache them
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
 
 if(USE_MUSL)
-    message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
     set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
+    message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
 endif()
 
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/debug/Instrumentation.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Instrumentation.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 ascii_instrumentation_prepare()
+ascii_defer_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 # Configure archiver wrapper BEFORE creating any static libraries
@@ -176,6 +191,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
 ascii_instrumentation_finalize()
+ascii_defer_finalize()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
 
