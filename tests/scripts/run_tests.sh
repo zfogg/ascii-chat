@@ -1433,13 +1433,15 @@ function main() {
   # cmake_build_dir already set above using get_build_directory()
 
   if [[ ${#test_targets[@]} -gt 0 ]]; then
-    # Build all test targets in one command - ninja will parallelize and handle dependencies
-    # Use ninja directly instead of cmake --build for faster execution
-    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel with Ninja..."
+    # Build all test targets in one command
+    # Use cmake --build instead of ninja directly because test targets are EXCLUDE_FROM_ALL
+    # CMake properly handles EXCLUDE_FROM_ALL targets when built explicitly via --target
+    log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel..."
 
-    # Show ninja output in real-time
+    # Show build output in real-time
     local build_exit_code
-    (cd "$cmake_build_dir" && ninja "${test_targets[@]}")
+    # Build all targets in one cmake invocation for efficiency
+    cmake --build "$cmake_build_dir" --target "${test_targets[@]}"
     build_exit_code=$?
 
     # Check if build failed
