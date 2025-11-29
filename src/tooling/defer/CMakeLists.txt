@@ -60,27 +60,8 @@ string(REPLACE "-std=c++14" "" LLVM_CXX_FLAGS "${LLVM_CXX_FLAGS}")
 # Create the executable
 add_executable(ascii-instr-defer tool.cpp)
 
-# Add LLVM/Clang include directories
-target_include_directories(ascii-instr-defer SYSTEM PRIVATE
-    ${LLVM_INCLUDE_DIRS}
-)
-
-# Compile options - keep it simple, no sanitizers or LTO for build tools
-target_compile_options(ascii-instr-defer PRIVATE
-    -O2
-    -fno-rtti
-    -fexceptions
-)
-
-# On macOS with Homebrew LLVM, we need to explicitly set the sysroot
-# to avoid header conflicts between LLVM's libc++ and macOS SDK.
-# Homebrew LLVM's libc++ headers include macOS SDK headers, which expect
-# basic C types (size_t, ptrdiff_t) to be defined, but the include order
-# can cause issues without proper sysroot configuration.
-#
-# The key issue: Homebrew LLVM 21+ uses its own libc++ which then includes
-# macOS SDK system headers. Without proper sysroot, the SDK headers can't
-# find their prerequisites (like __darwin_wint_t from _types.h).
+# On macOS with Homebrew LLVM, we need to add SDK includes BEFORE LLVM includes
+# to avoid header conflicts. This MUST come before the SYSTEM include directories.
 if(APPLE)
     execute_process(
         COMMAND xcrun --show-sdk-path
@@ -97,34 +78,49 @@ if(APPLE)
         # when the SDK's own type header chain is followed correctly.
         #
         # Solution: Add SDK includes with -I BEFORE the LLVM -isystem includes.
-        # CMake processes target_include_directories(SYSTEM) after regular includes,
-        # and -I takes precedence over -isystem, so this ensures the SDK C headers
-        # are found first when LLVM's libc++ headers need them.
-        target_compile_options(ascii-instr-defer PRIVATE
-            -isysroot ${MACOS_SDK_PATH}
-            -stdlib=libc++
-            # Explicitly add SDK C header path with high priority
-            # This MUST come before LLVM's -isystem includes
-            "-I${MACOS_SDK_PATH}/usr/include"
+        # Using target_include_directories() WITHOUT SYSTEM and with BEFORE ensures
+        # CMake generates -I flags that come before -isystem flags.
+        target_include_directories(ascii-instr-defer BEFORE PRIVATE
+            "${MACOS_SDK_PATH}/usr/include"
         )
-        # Link against Homebrew LLVM's libc++ to match libclang-cpp.dylib
-        # The LLVM libs were built with this libc++, so we must use it too
-        target_link_directories(ascii-instr-defer PRIVATE
-            ${LLVM_LIBRARY_DIRS}/c++
-            ${LLVM_LIBRARY_DIRS}/unwind
-        )
-        target_link_options(ascii-instr-defer PRIVATE
-            -isysroot ${MACOS_SDK_PATH}
-            -stdlib=libc++
-            "-L${LLVM_LIBRARY_DIRS}/c++"
-            "-L${LLVM_LIBRARY_DIRS}/unwind"
-            "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/c++"
-            "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/unwind"
-        )
-        target_link_libraries(ascii-instr-defer PRIVATE c++ c++abi)
     else()
         message(WARNING "Could not detect macOS SDK path - defer tool may fail to build")
     endif()
+endif()
+
+# Add LLVM/Clang include directories (AFTER SDK includes on macOS)
+target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+    ${LLVM_INCLUDE_DIRS}
+)
+
+# Compile options - keep it simple, no sanitizers or LTO for build tools
+target_compile_options(ascii-instr-defer PRIVATE
+    -O2
+    -fno-rtti
+    -fexceptions
+)
+
+# macOS-specific compiler and linker options
+if(APPLE AND MACOS_SDK_PATH)
+    target_compile_options(ascii-instr-defer PRIVATE
+        -isysroot ${MACOS_SDK_PATH}
+        -stdlib=libc++
+    )
+    # Link against Homebrew LLVM's libc++ to match libclang-cpp.dylib
+    # The LLVM libs were built with this libc++, so we must use it too
+    target_link_directories(ascii-instr-defer PRIVATE
+        ${LLVM_LIBRARY_DIRS}/c++
+        ${LLVM_LIBRARY_DIRS}/unwind
+    )
+    target_link_options(ascii-instr-defer PRIVATE
+        -isysroot ${MACOS_SDK_PATH}
+        -stdlib=libc++
+        "-L${LLVM_LIBRARY_DIRS}/c++"
+        "-L${LLVM_LIBRARY_DIRS}/unwind"
+        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/c++"
+        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/unwind"
+    )
+    target_link_libraries(ascii-instr-defer PRIVATE c++ c++abi)
 endif()
 
 # On Windows, use dynamic runtime (/MD) to match Clang libraries

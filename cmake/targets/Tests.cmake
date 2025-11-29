@@ -217,10 +217,10 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         set(test_exe_name "test_${test_rel_flat}")
         list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
-        # Add test executable with test utilities (EXCLUDE_FROM_ALL = not built by default)
+        # Add test executable with test utilities
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} EXCLUDE_FROM_ALL ${test_src} lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} lib/tests/globals.c lib/tests/logging.c)
 
         # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
