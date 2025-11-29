@@ -12,7 +12,7 @@ DOXYFILE_ENCODING      = UTF-8
 PROJECT_NAME           = "ascii-chat"
 PROJECT_NUMBER         = "@PROJECT_VERSION@"
 PROJECT_BRIEF          = "Real-time terminal-based video chat with ASCII art conversion"
-PROJECT_LOGO           = @CMAKE_SOURCE_DIR@/images/installer-icon.png
+PROJECT_LOGO           = @CMAKE_SOURCE_DIR@/images/installer_icon.png
 
 HTML_EXTRA_STYLESHEET  = @AWESOME_CSS_DIR@/doxygen-awesome.css \
                          @AWESOME_CSS_DIR@/doxygen-awesome-sidebar-only.css \
