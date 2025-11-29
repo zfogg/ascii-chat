@@ -512,17 +512,10 @@ function(ascii_add_tooling_targets)
         )
     endif()
 
-    # On Linux, add ncurses/tinfo which is required by LLVM
-    # Also explicitly link C++ standard library and filesystem library
+    # On Linux, explicitly link C++ standard library, filesystem library, and gcc runtime
+    # Needed because musl builds use -static which we override for tooling
+    # Don't explicitly link -lc, let the compiler handle it
     if(NOT WIN32)
-        find_library(TINFO_LIBRARY NAMES tinfo ncurses)
-        if(TINFO_LIBRARY)
-            target_link_libraries(ascii-instr-defer PRIVATE ${TINFO_LIBRARY})
-        endif()
-
-        # Explicitly link C++ standard library, filesystem library, and gcc runtime
-        # Needed because musl builds use -static which we override for tooling
-        # Don't explicitly link -lc, let the compiler handle it
         target_link_libraries(ascii-instr-defer PRIVATE
             stdc++
             stdc++fs

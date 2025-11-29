@@ -164,11 +164,9 @@ function(ascii_defer_prepare)
     # The defer transformer inserts cleanup code directly at each exit point.
 
     # Detect Clang resource directory early for compilation database generation
-    if(WIN32)
-        set(_clang_for_db "${CMAKE_C_COMPILER}")
-    else()
-        set(_clang_for_db "/usr/bin/clang")
-    endif()
+    # Use CMAKE_C_COMPILER for all platforms to support custom installations
+    # (e.g., macOS Homebrew, custom paths, etc.)
+    set(_clang_for_db "${CMAKE_C_COMPILER}")
 
     execute_process(
         COMMAND ${_clang_for_db} -print-resource-dir
