@@ -16,9 +16,6 @@
 #include <stddef.h>
 
 #if SIMD_SUPPORT_NEON
-#if (!defined(__ARM_NEON) && !defined(__aarch64__))
-#error "NEON support required"
-#endif
 #include <arm_neon.h>
 
 /**
