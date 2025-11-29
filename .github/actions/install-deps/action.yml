@@ -114,14 +114,6 @@ runs:
           deps/bearssl/build
         key: ${{ runner.os }}-cmake-deps-v4-${{ hashFiles('cmake/dependencies/**') }}
 
-    - name: Clean stale dependency cache (if cache not hit) (TEMPORARY)
-      shell: bash
-      run: |
-        if [ -d ".deps-cache" ]; then
-          echo "Cleaning .deps-cache to remove stale artifacts before rebuild..."
-          rm -rf .deps-cache
-        fi
-
     - name: Restore Homebrew cache (macOS)
       if: inputs.os == 'macos'
       id: homebrew-cache
