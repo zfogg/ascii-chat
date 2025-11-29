@@ -557,6 +557,39 @@ After installation, run:
                 endif()
             endif()
         endif()
+
+        # Set DEB/RPM dependencies BEFORE include(CPack)
+        # Runtime dependencies for the shared library (libasciichat.so)
+        if(UNIX AND NOT APPLE)
+            set(CPACK_DEBIAN_PACKAGE_DEPENDS "libportaudio2, libzstd1, libsodium23")
+            set(CPACK_RPM_PACKAGE_REQUIRES "portaudio, libzstd, libsodium")
+            if(USE_MIMALLOC)
+                set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libmimalloc2.0 | libmimalloc-dev")
+                set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, mimalloc")
+            endif()
+        endif()
+
+        # Set package file name BEFORE include(CPack)
+        # Determine OS name (use "macOS" instead of "Darwin")
+        if(APPLE)
+            set(_PACKAGE_OS "macOS")
+        elseif(WIN32)
+            set(_PACKAGE_OS "Windows")
+        else()
+            set(_PACKAGE_OS "${CMAKE_SYSTEM_NAME}")
+        endif()
+
+        # Normalize architecture name (use ARM64/AMD64 instead of aarch64/x86_64)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+            set(_PACKAGE_ARCH "ARM64")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
+            set(_PACKAGE_ARCH "AMD64")
+        else()
+            set(_PACKAGE_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+        endif()
+
+        set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+
         include(CPack)
 
         # After include(CPack), enable binary generators for desired package types
@@ -613,9 +646,6 @@ After installation, run:
         set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE" CACHE FILEPATH "License file for installers" FORCE)
         message(STATUS "${Yellow}CPack:${ColorReset} Using ${BoldBlue}LICENSE${ColorReset} for installers")
     endif()
-
-    # Package file name format (use PROJECT_VERSION directly to ensure git version is used)
-    set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
 
     # Output directory
     set(CPACK_PACKAGE_DIRECTORY "${CMAKE_BINARY_DIR}/packages")

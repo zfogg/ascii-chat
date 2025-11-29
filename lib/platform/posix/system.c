@@ -577,52 +577,11 @@ void platform_backtrace_symbols_free(char **strings) {
     return;
   }
 
-  // Check if this is our cached symbols (allocated with strdup)
-  // or system backtrace_symbols (system malloc)
-  // We can tell by checking if any string has our format (not just the first one,
-  // since the first entry might be NULL if allocation failed)
-  // IMPORTANT: We must be very careful about bounds - arrays are allocated with size+1,
-  // so we should NOT access beyond what we know is safe. We'll check entries one at a time
-  // looking for our format marker, but stop at the first terminator (NULL followed by NULL)
-  bool is_our_format = false;
-  bool has_any_non_null = false;
-
-  // Check first few entries (up to 32) for format markers, stopping at first NULL
-  // We can't safely check beyond the allocated array, so stop at the first NULL we encounter
-  for (int i = 0; i < 32; i++) {
-    if (strings[i] == NULL) {
-      // Found NULL - could be terminator or NULL in middle, but we stop checking here
-      // to avoid accessing beyond allocated memory
-      break;
-    }
-
-    // strings[i] is non-NULL, safe to check
-    has_any_non_null = true;
-    // Check if this string has our format marker
-    if (strstr(strings[i], " in ") != NULL || strstr(strings[i], "() at ") != NULL) {
-      is_our_format = true;
-      // Found format - can break here since we know it's ours
-      break;
-    }
-  }
-
-  // Decision logic: be conservative and free everything that looks like ours
-  // - If we found our format marker -> definitely ours, use symbol_cache_free_symbols
-  // - If all entries are NULL -> likely ours with failed allocations, use symbol_cache_free_symbols
-  // - If we have non-NULL entries but no format marker -> default to freeing it
-  //   (symbol_cache_free_symbols is safe and will handle the terminator correctly)
-  // Only skip freeing if we're certain it's system backtrace_symbols (very rare)
-  // Since platform_backtrace_symbols always returns our format, we should almost always call
-  // symbol_cache_free_symbols
-  if (is_our_format || !has_any_non_null) {
-    // This is our cached format (or all NULL which is our format with failed allocations)
-    // Use symbol cache free which handles NULL entries and terminator properly
-    symbol_cache_free_symbols(strings);
-  } else {
-    // Unknown format - default to freeing with symbol_cache_free_symbols for safety
-    // (it handles the terminator correctly and won't crash)
-    symbol_cache_free_symbols(strings);
-  }
+  // Always use symbol_cache_free_symbols to free the symbols.
+  // This function safely handles NULL entries and the terminator correctly.
+  // Since platform_backtrace_symbols always returns our format, we always call
+  // symbol_cache_free_symbols.
+  symbol_cache_free_symbols(strings);
 }
 
 // ============================================================================
@@ -924,7 +883,8 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
     }
 
     // Null-terminate (PEM is text format)
-    pem_data[bytes_read] = '\0';
+    // bytes_read == file_size is verified above, and we allocated file_size + 1 bytes
+    pem_data[(size_t)file_size] = '\0';
 
     // Success!
     *pem_data_out = pem_data;

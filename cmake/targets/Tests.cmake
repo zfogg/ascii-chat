@@ -217,10 +217,10 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         set(test_exe_name "test_${test_rel_flat}")
         list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
-        # Add test executable with test utilities (EXCLUDE_FROM_ALL = not built by default)
+        # Add test executable with test utilities
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} EXCLUDE_FROM_ALL ${test_src} lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} lib/tests/globals.c lib/tests/logging.c)
 
         # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
@@ -277,6 +277,39 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         if(test_category STREQUAL "performance")
             target_compile_options(${test_exe_name} PRIVATE -O3 -DNDEBUG)
         endif()
+
+        # CRITICAL: Disable dead code elimination for test executables
+        # Criterion uses __attribute__((constructor)) to register tests, which the linker
+        # considers "unused" and removes with --gc-sections/-dead_strip. This causes all
+        # tests to be stripped in Release builds, resulting in "Tested: 0" output.
+        #
+        # Solution: Clear the LINK_OPTIONS property to remove global flags, then only add
+        # what we need. This is necessary because CMake doesn't support "remove flag" operations.
+        if(NOT WIN32)
+            if(APPLE)
+                # macOS: Clear link options to remove -dead_strip, keep -pie for ASLR
+                set_target_properties(${test_exe_name} PROPERTIES
+                    LINK_OPTIONS "-Wl,-pie"
+                )
+            else()
+                # Linux: Use --no-gc-sections to override the global --gc-sections flag
+                target_link_options(${test_exe_name} PRIVATE
+                    -Wl,--no-gc-sections
+                )
+            endif()
+        endif()
+
+        # CRITICAL: Disable IPO/LTO for test executables
+        # LTO can see that Criterion's __attribute__((constructor)) test registration
+        # functions are never called and removes them as dead code. This happens even
+        # with --no-gc-sections because LTO operates at a different (interprocedural)
+        # level than section-based dead stripping. Without this, Release builds show
+        # "Synthesis: Tested: 0" because all test functions are stripped.
+        set_target_properties(${test_exe_name} PROPERTIES
+            INTERPROCEDURAL_OPTIMIZATION OFF
+            INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF
+            INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF
+        )
 
         # Add to CTest
         add_test(NAME ${test_exe_name} COMMAND ${test_exe_name})

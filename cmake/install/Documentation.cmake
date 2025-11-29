@@ -17,6 +17,8 @@ find_program(DOXYGEN_EXECUTABLE NAMES doxygen)
 if(DOXYGEN_EXECUTABLE)
     message(STATUS "Found ${BoldGreen}Doxygen${ColorReset}: ${DOXYGEN_EXECUTABLE}")
 
+    set(AWESOME_CSS_DIR "${CMAKE_SOURCE_DIR}/deps/doxygen-awesome-css")
+
     # Configure Doxyfile from template
     set(DOXYFILE_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
     set(DOXYFILE_OUT "${CMAKE_BINARY_DIR}/Doxyfile")

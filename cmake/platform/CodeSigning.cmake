@@ -4,9 +4,10 @@
 # This module provides code signing support for macOS executables.
 #
 # Configuration:
-#   CODESIGNING_IDENTITY - The identity to use for code signing
-#                          Defaults to $ENV{CODESIGNING_IDENTITY}
-#                          Set to empty string "" to disable code signing
+#   ASCIICHAT_CODESIGNING - Enable/disable code signing (ON by default in Release mode)
+#   CODESIGNING_IDENTITY  - The identity to use for code signing
+#                           Defaults to $ENV{CODESIGNING_IDENTITY}
+#                           Set to empty string "" to disable code signing
 #
 # Usage:
 #   include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)
@@ -19,6 +20,32 @@ if(NOT APPLE)
     # Define no-op function for non-macOS platforms
     function(codesign_target target_name)
         # No-op on non-macOS platforms
+    endfunction()
+    return()
+endif()
+
+# =============================================================================
+# Code Signing Enable/Disable Configuration
+# =============================================================================
+
+# ASCIICHAT_CODESIGNING controls whether code signing is enabled
+# Defaults to ON in Release mode, OFF otherwise
+if(NOT DEFINED CACHE{ASCIICHAT_CODESIGNING})
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(ASCIICHAT_CODESIGNING ON CACHE BOOL "Enable code signing for macOS executables (default ON in Release)")
+    else()
+        set(ASCIICHAT_CODESIGNING OFF CACHE BOOL "Enable code signing for macOS executables (default ON in Release)")
+    endif()
+endif()
+
+# Early exit if code signing is disabled
+if(NOT ASCIICHAT_CODESIGNING)
+    message(STATUS "Code signing disabled (ASCIICHAT_CODESIGNING=${ASCIICHAT_CODESIGNING})")
+    function(codesign_target target_name)
+        # No-op when code signing is disabled
+    endfunction()
+    function(codesign_verify target_name)
+        # No-op when code signing is disabled
     endfunction()
     return()
 endif()

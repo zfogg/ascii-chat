@@ -72,14 +72,14 @@
  *
  * **Looking for a specific function or struct?**
  * - Use the **search bar** at the top of the page (fastest method)
- * - Or check **"Data Structures"** to find type definitions
- * - Or browse **"Files"** to see all functions in a particular source file
+ * - Or check **Data Structures** to find type definitions
+ * - Or browse **Files** to see all functions in a particular source file
  *
  * **Looking for implementation details? Check the sidebar!**
- * - Check "Files" to browse source files by directory
- * - Review "Data Structures" to understand type definitions
+ * - Check **Files** to browse source files by directory
+ * - Review **Data Structures** to understand type definitions
  * - Read **@ref topics "Topics"** for architectural context, then drill into specific files
- * - Check "Examples" for code samples and usage patterns
+ * - Check **Examples** for code samples and usage patterns
  *
  * @subsection topics_page Topics: Comprehensive Architectural Documentation
  *

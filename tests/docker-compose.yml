@@ -10,6 +10,9 @@ services:
       # Build artifacts stored in named volume to avoid macOS timestamp issues
       - ..:/app
 
+      # Output directory for copying files out of the container
+      - ../docker_out:/tmp/out
+
       # Build directory as named volume (fixes Ninja .ninja_deps timestamp issues)
       # On macOS, volume mounts lose timestamp precision, invalidating Ninja's deps
       # By keeping build artifacts in container filesystem, timestamps stay consistent

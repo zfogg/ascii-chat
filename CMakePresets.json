@@ -9,23 +9,31 @@
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "CMAKE_C_STANDARD": "23",
-        "CMAKE_CXX_STANDARD": "26",
-        "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON",
+        "CMAKE_CXX_STANDARD": "26"
+      }
+    },
+    {
+      "name": "base-debug",
+      "inherits": "base",
+      "hidden": true,
+      "cacheVariables": {
         "USE_CPACK": "OFF",
+        "ASCIICHAT_ENABLE_UNITY_BUILDS": "OFF",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "ON",
         "ASCIICHAT_USE_PCH": "ON",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "ON"
       }
     },
     {
       "name": "base-release",
-      "hidden": true,
       "inherits": "base",
+      "hidden": true,
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "USE_MIMALLOC": "ON",
         "USE_CPACK": "ON",
-        "ASCIICHAT_RELEASE_CPU_TUNE": "native",
+        "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON",
         "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "ON",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
         "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
@@ -36,7 +44,7 @@
       "name": "default",
       "displayName": "Default (Debug)",
       "description": "Default configuration - Debug build with system libc, clang, and all compatible sanitizers (ASan+UBSan+LSan+Integer+Nullability)",
-      "inherits": "base",
+      "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -45,7 +53,7 @@
       "name": "debug",
       "displayName": "Debug",
       "description": "Debug build with system libc and sanitizers (ASan+UBSan+LSan) - same as default",
-      "inherits": "base",
+      "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ASCIICHAT_ENABLE_ANALYZERS": "ON"
@@ -55,7 +63,7 @@
       "name": "debug-musl",
       "displayName": "Debug (musl - Linux only)",
       "description": "Debug build with musl - static linked, no sanitizers (incompatible with musl)",
-      "inherits": "base",
+      "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ASCIICHAT_ENABLE_ANALYZERS": "ON",
@@ -91,10 +99,9 @@
       "name": "dev",
       "displayName": "Dev",
       "description": "Debug without sanitizers (faster)",
-      "inherits": "base",
+      "inherits": "base-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Dev",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON"
+        "CMAKE_BUILD_TYPE": "Dev"
       }
     },
     {
@@ -110,7 +117,7 @@
       "name": "tests",
       "displayName": "Tests (Debug)",
       "description": "Debug build with tests enabled (for running test suite)",
-      "inherits": "base",
+      "inherits": "base-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
@@ -128,7 +135,9 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "USE_MUSL": "OFF",
         "BUILD_TESTS": "ON",
+        "USE_CPACK": "OFF",
         "CMAKE_C_STANDARD": "23",
         "CMAKE_C_FLAGS": "-std=c2x"
       }

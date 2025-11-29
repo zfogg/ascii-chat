@@ -1,273 +1,389 @@
 /**
- * @defgroup lock_debug Mutex and RWLock Debugging Utilities
+ * @defgroup lock_debug Lock Debugging and Deadlock Detection
  * @ingroup module_development
- * @brief Lock devel tools (deadlock detection! timing! stack traces!)
+ * @brief Lock debugging infrastructure with backtrace capture and interactive monitoring
  */
 
 /**
- * @page topic_lock_debug Lock Debug
+ * @page topic_lock_debug Lock Debugging and Deadlock Detection
  * @ingroup lock_debug
  *
- * Lock debugging and deadlock detection system for ascii-chat.
+ * Comprehensive lock debugging system for detecting deadlocks, lock contention, and lock ordering violations.
  *
  * @section lock_debug_overview Overview
  *
- * The Lock Debugging module provides instrumentation and debugging facilities
- * for tracking mutex and lock usage in ascii-chat. It helps detect deadlocks,
- * lock ordering violations, and performance bottlenecks in multi-threaded code.
+ * ascii-chat provides a complete lock debugging infrastructure that tracks all mutex and
+ * rwlock acquisitions with full backtrace capture. The system is **only enabled in debug builds**
+ * (when NDEBUG is not defined) and has zero overhead in release builds.
  *
- * **Implementation**: lib/lock_debug.h
+ * **Implementation**: lib/debug/lock.c, lib/debug/lock.h
  *
  * **Key Features**:
- * - Lock acquisition tracking
- * - Lock hold time measurement
- * - Lock contention detection
- * - Deadlock detection (debug builds)
- * - Lock ordering validation
- * - Performance statistics
- * - Thread-local lock tracking
+ * - ✅ Lock acquisition tracking with backtraces (IMPLEMENTED)
+ * - ✅ Lock hold time measurement and warnings (IMPLEMENTED)
+ * - ✅ Interactive debug thread with keyboard monitoring (IMPLEMENTED)
+ * - ✅ Lock usage statistics by code location (IMPLEMENTED)
+ * - ✅ Orphaned release detection (double-unlock detection) (IMPLEMENTED)
+ * - ✅ Thread-safe using uthash with rwlock protection (IMPLEMENTED)
+ * - ❌ Automatic deadlock cycle detection (NOT YET IMPLEMENTED)
+ * - ❌ Lock ordering validation (NOT YET IMPLEMENTED)
+ *
+ * @section lock_debug_architecture Architecture
+ *
+ * **Threading Model**:
+ *
+ * ascii-chat uses a per-client threading model where each client gets dedicated threads:
+ * - **2 threads per client**: 1 video render (60 FPS) + 1 audio render (172 FPS)
+ * - **Linear scaling**: No shared bottlenecks, scales to 9+ clients
+ * - **Lock debugging thread**: Additional monitoring thread when debugging enabled
+ *
+ * **Critical Lock Ordering Rules**:
+ *
+ * Always acquire locks in this exact order to prevent deadlocks:
+ *
+ * 1. **Global RWLock** (`g_client_manager_rwlock` in src/server/client_manager.c)
+ * 2. **Per-Client Mutex** (`client->client_state_mutex` in src/server/client.h)
+ * 3. **Specialized Mutexes** (`g_stats_mutex` in src/server/stats.c, etc.)
  *
  * @section lock_debug_usage Usage
  *
- * @subsection lock_debug_enable Enable Debugging
+ * @subsection lock_debug_enable Enable Lock Debugging
  *
- * **Compile-Time Enable**:
- * @code{.sh}
- * # Build with lock debugging enabled
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DDEBUG_LOCKS=1
+ * **Build with Debug Mode** (lock debugging is automatic):
+ * ```sh
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug
  * cmake --build build
- * @endcode
+ * ```
  *
- * **Runtime Enable**:
- * @code{.c}
- * #if defined(DEBUG_LOCKS)
- *     lock_debug_enable();
- *     log_info("Lock debugging enabled");
- * #endif
- * @endcode
+ * **Initialize in Code**:
+ * ```c
+ * #include "debug/lock.h"
  *
- * @subsection lock_debug_instrumentation Instrumented Locks
+ * int main() {
+ *     // Initialize lock debugging system
+ *     lock_debug_init();
  *
- * **Wrap Lock Operations**:
- * @code{.c}
- * // Regular lock (no debugging)
+ *     // Start interactive debug thread (press '?' to print lock state)
+ *     lock_debug_start_thread();
+ *
+ *     // ... your application code ...
+ *
+ *     // Cleanup before exit
+ *     lock_debug_cleanup();
+ *     lock_debug_cleanup_thread();
+ *     return 0;
+ * }
+ * ```
+ *
+ * @subsection lock_debug_instrumentation Instrument Your Locks
+ *
+ * **Replace lock calls with debug versions**:
+ * ```c
+ * // Regular locks (no debugging)
  * mutex_lock(&my_mutex);
- * // ... critical section ...
- * mutex_unlock(&my_mutex);
+ * rwlock_rdlock(&my_rwlock);
+ * rwlock_wrlock(&my_rwlock);
  *
- * // Instrumented lock (with debugging)
- * #if defined(DEBUG_LOCKS)
- *     LOCK_DEBUG_ACQUIRE("my_mutex", &my_mutex);
+ * // Debug locks (with tracking) - only in debug builds
+ * #ifndef NDEBUG
+ *     debug_mutex_lock(&my_mutex, __FILE__, __LINE__, __func__);
+ *     debug_rwlock_rdlock(&my_rwlock, __FILE__, __LINE__, __func__);
+ *     debug_rwlock_wrlock(&my_rwlock, __FILE__, __LINE__, __func__);
  * #else
  *     mutex_lock(&my_mutex);
+ *     rwlock_rdlock(&my_rwlock);
+ *     rwlock_wrlock(&my_rwlock);
  * #endif
- *
- * // ... critical section ...
- *
- * #if defined(DEBUG_LOCKS)
- *     LOCK_DEBUG_RELEASE("my_mutex", &my_mutex);
- * #else
- *     mutex_unlock(&my_mutex);
- * #endif
- * @endcode
- *
- * @section lock_debug_features Features
- *
- * @subsection lock_debug_tracking Lock Tracking
- *
- * **Track Lock Acquisitions**:
- * - Records every lock acquire/release
- * - Captures file/line/function
- * - Measures hold time
- * - Tracks thread ownership
- *
- * **Example Output**:
- * ```
- * [DEBUG] Lock acquired: my_mutex at server.c:234 by thread 12345
- * [DEBUG] Lock held for 123us: my_mutex
- * [DEBUG] Lock released: my_mutex at server.c:267 by thread 12345
  * ```
  *
- * @subsection lock_debug_contention Contention Detection
+ * **Or use convenience macros**:
+ * ```c
+ * DEBUG_MUTEX_LOCK(&my_mutex);      // Automatically includes file/line/func
+ * DEBUG_MUTEX_UNLOCK(&my_mutex);
+ * DEBUG_RWLOCK_RDLOCK(&my_rwlock);
+ * DEBUG_RWLOCK_WRLOCK(&my_rwlock);
+ * ```
  *
- * **Detect Lock Contention**:
- * @code{.c}
- * // Reports when threads wait for locks
- * LOCK_DEBUG_ACQUIRE("my_mutex", &my_mutex);
- * // If wait time > threshold:
- * //   [WARN] Lock contention: my_mutex waited 1234us
- * @endcode
+ * @section lock_debug_features Implemented Features
  *
- * **Contention Statistics**:
- * @code{.c}
- * lock_debug_stats_t stats;
- * lock_debug_get_stats("my_mutex", &stats);
+ * @subsection lock_debug_tracking Lock Acquisition Tracking
  *
- * log_info("Lock: %s", stats.name);
- * log_info("  Acquisitions: %zu", stats.acquire_count);
- * log_info("  Contentions: %zu", stats.contention_count);
- * log_info("  Avg hold time: %llu us", stats.avg_hold_time_us);
- * log_info("  Max hold time: %llu us", stats.max_hold_time_us);
- * @endcode
+ * **Every tracked lock records**:
+ * - Lock address and type (mutex, rwlock read/write)
+ * - Thread ID that acquired the lock
+ * - Acquisition timestamp (CLOCK_MONOTONIC)
+ * - Source file, line number, function name
+ * - **Full backtrace** (up to 32 frames with symbol resolution)
  *
- * @subsection lock_debug_deadlock Deadlock Detection
+ * **Data Structure** (lib/debug/lock.h:95):
+ * ```c
+ * struct lock_record {
+ *     void *lock_address;
+ *     lock_type_t lock_type;              // MUTEX, RWLOCK_READ, RWLOCK_WRITE
+ *     uint64_t thread_id;
+ *     struct timespec acquisition_time;
+ *     const char *file_name;
+ *     int line_number;
+ *     const char *function_name;
+ *     void *backtrace_buffer[32];         // Raw backtrace addresses
+ *     int backtrace_size;
+ *     char **backtrace_symbols;           // Symbolized backtrace
+ * };
+ * ```
  *
- * **Lock Ordering Validation**:
- * @code{.c}
- * // Define lock order hierarchy
- * LOCK_DEBUG_ORDER("global_rwlock", 1);
- * LOCK_DEBUG_ORDER("client_mutex", 2);
- * LOCK_DEBUG_ORDER("stats_mutex", 3);
+ * @subsection lock_debug_hold_time Lock Hold Time Warnings
  *
- * // ✅ VALID: Acquire in order 1 → 2 → 3
- * LOCK_DEBUG_ACQUIRE("global_rwlock", &g_rwlock);
- * LOCK_DEBUG_ACQUIRE("client_mutex", &client->mutex);
- * LOCK_DEBUG_ACQUIRE("stats_mutex", &g_stats_mutex);
+ * **Automatic warnings for long-held locks**:
  *
- * // ❌ INVALID: Out-of-order acquisition detected
- * LOCK_DEBUG_ACQUIRE("client_mutex", &client->mutex);  // Order 2
- * LOCK_DEBUG_ACQUIRE("global_rwlock", &g_rwlock);      // Order 1 - ERROR!
- * // [ERROR] Lock order violation: acquired global_rwlock (order 1)
- * //         while holding client_mutex (order 2)
- * @endcode
+ * The debug thread automatically checks all held locks every 100ms and warns
+ * if any lock is held longer than 500ms (configurable via LOCK_HOLD_TIME_WARNING_MS).
  *
- * **Detect Circular Dependencies**:
- * - Tracks lock dependency graph
- * - Detects potential deadlock cycles
- * - Reports lock chains that could deadlock
+ * **Example warning** (lib/debug/lock.c:404):
+ * ```
+ * [WARN] Lock held for 1.234s (threshold: 500ms) - MUTEX at 0x7f8a4c001000
+ *   Acquired: src/server/render.c:123 in render_video_thread()
+ *   Thread ID: 140234567890123
+ *   Backtrace from lock acquisition:
+ *     #0: debug_mutex_lock at lib/debug/lock.c:1043
+ *     #1: render_video_thread at src/server/render.c:123
+ *     #2: ascii_thread_wrapper at lib/platform/posix/thread.c:45
+ * ```
  *
- * @subsection lock_debug_performance Performance Analysis
+ * @subsection lock_debug_interactive Interactive Debug Thread
  *
- * **Measure Lock Hold Times**:
- * @code{.c}
- * LOCK_DEBUG_ACQUIRE("expensive_lock", &lock);
- * // ... expensive operation ...
- * LOCK_DEBUG_RELEASE("expensive_lock", &lock);
+ * **Press '?' to print current lock state**:
  *
- * // If hold time > 1ms:
- * // [WARN] Lock held too long: expensive_lock held for 1234us
- * @endcode
+ * The debug thread (lib/debug/lock.c:484) monitors keyboard input and prints
+ * comprehensive lock information when you press '?':
  *
- * **Find Bottlenecks**:
- * @code{.c}
- * // Print lock statistics
- * lock_debug_print_stats();
+ * ```
+ * === LOCK DEBUG STATE ===
+ * Historical Statistics:
+ *   Total locks acquired: 1234567
+ *   Total locks released: 1234560
+ *   Currently held: 7
  *
- * // Output:
- * // Lock Statistics:
- * //   my_mutex: 1000 acquires, 50 contentions (5%), avg=10us, max=500us
- * //   other_mutex: 5000 acquires, 5 contentions (0.1%), avg=5us, max=100us
- * @endcode
+ * === Currently Active Locks ===
+ * Lock #1: MUTEX at 0x7f8a4c001000
+ *   Thread ID: 140234567890123
+ *   Acquired: src/server/client_manager.c:234 in client_add()
+ *   Held for: 0.045 seconds
+ *   Call stack (10 frames):
+ *     #0: debug_mutex_lock at lib/debug/lock.c:1043
+ *     #1: client_add at src/server/client_manager.c:234
+ *     ...
  *
- * @section lock_debug_best_practices Best Practices
+ * === Lock Usage Statistics by Code Location ===
+ * Usage #1: RWLOCK_READ at src/server/client_manager.c:456 in client_find()
+ *   Total acquisitions: 50000
+ *   Total hold time: 5.123 ms
+ *   Average hold time: 0.102 ms
+ *   Max hold time: 2.345 ms
+ *   Min hold time: 0.001 ms
  *
- * **Lock Ordering Rules** (from CLAUDE.md):
- * 1. **Global RWLock** (`g_client_manager_rwlock`)
- * 2. **Per-Client Mutex** (`client_state_mutex`)
- * 3. **Specialized Mutexes** (`g_stats_mutex`, `g_frame_cache_mutex`, etc.)
+ * === Orphaned Releases ===
+ *   No orphaned releases found.
+ * === End Lock Debug State ===
+ * ```
  *
- * **DO**:
- * - Always acquire locks in the same order
- * - Use lock debugging in development
- * - Monitor lock contention in production
- * - Set hold time thresholds appropriately
- * - Review lock statistics regularly
+ * @subsection lock_debug_orphan_detection Orphaned Release Detection
  *
- * **DON'T**:
- * - Don't acquire locks out of order
- * - Don't hold locks during slow operations
- * - Don't ignore lock contention warnings
- * - Don't disable lock debugging prematurely
- * - Don't nest too many locks
+ * **Detects double-unlocks and mismatched lock/unlock**:
+ *
+ * If you call unlock on a lock that was never tracked (either because it wasn't
+ * acquired with debug functions, or it was already released), the system records
+ * an "orphaned release" with full backtrace.
+ *
+ * **Example** (lib/debug/lock.c:969):
+ * ```c
+ * // This will create an orphaned release record:
+ * mutex_lock(&my_mutex);          // Not tracked
+ * debug_mutex_unlock(&my_mutex);  // Tracked unlock - no matching acquire!
+ *
+ * // Warning:
+ * [ERROR] MUTEX UNTRACKED RELEASED: 0x7f8a4c001000 at client.c:456
+ * [ERROR] *** WARNING: MUTEX lock was acquired and tracked but record was lost! ***
+ * ```
+ *
+ * @subsection lock_debug_usage_stats Usage Statistics
+ *
+ * **Per-location statistics** (lib/debug/lock.h:125):
+ *
+ * Tracks aggregate stats for each unique file:line:function that acquires locks:
+ * - Total acquisitions
+ * - Total hold time (cumulative)
+ * - Average/min/max hold time
+ * - First and last acquisition timestamps
+ *
+ * @section lock_debug_implementation Implementation Details
+ *
+ * @subsection lock_debug_data_structures Data Structures
+ *
+ * **Hash Tables** (using uthash):
+ * - `g_lock_debug_manager.lock_records` - Currently held locks
+ * - `g_lock_debug_manager.usage_stats` - Statistics by code location
+ * - `g_lock_debug_manager.orphaned_releases` - Double-unlock detections
+ *
+ * **Thread Safety**:
+ * - Each hash table protected by its own rwlock
+ * - Atomic counters for statistics (total_locks_acquired, etc.)
+ * - Careful locking order to prevent deadlocks in the debugger itself
+ *
+ * **Key Generation** (lib/debug/lock.h:204):
+ * ```c
+ * // Combines lock address, type, and thread ID using FNV-1a hash
+ * uint32_t lock_record_key(void *lock_address, lock_type_t lock_type) {
+ *     struct {
+ *         uintptr_t addr;
+ *         lock_type_t lock_type;
+ *         uint64_t thread_id;
+ *     } key_data = {
+ *         .addr = (uintptr_t)lock_address,
+ *         .lock_type = lock_type,
+ *         .thread_id = ascii_thread_current_id()
+ *     };
+ *     return fnv1a_hash_bytes(&key_data, sizeof(key_data));
+ * }
+ * ```
+ *
+ * @subsection lock_debug_filtering Recursion Prevention
+ *
+ * **Smart filtering** (lib/debug/lock.c:775):
+ *
+ * The system filters out its own internal lock operations to prevent infinite recursion:
+ * - All `log_*()` functions
+ * - All `platform_*()` functions
+ * - All `lock_debug*()` functions
+ * - Symbol resolution code
+ * - During system initialization/shutdown
+ *
+ * @section lock_debug_api API Reference
+ *
+ * @subsection lock_debug_api_init Initialization
+ *
+ * ```c
+ * int lock_debug_init(void);              // Initialize system
+ * int lock_debug_start_thread(void);      // Start debug thread
+ * void lock_debug_cleanup(void);          // Cleanup resources
+ * void lock_debug_cleanup_thread(void);   // Join debug thread
+ * ```
+ *
+ * @subsection lock_debug_api_tracking Lock Tracking
+ *
+ * ```c
+ * // Mutex tracking
+ * int debug_mutex_lock(mutex_t *mutex, const char *file, int line, const char *func);
+ * int debug_mutex_unlock(mutex_t *mutex, const char *file, int line, const char *func);
+ *
+ * // RWLock read tracking
+ * int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file, int line, const char *func);
+ * int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file, int line, const char *func);
+ *
+ * // RWLock write tracking
+ * int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file, int line, const char *func);
+ * int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file, int line, const char *func);
+ * ```
+ *
+ * @subsection lock_debug_api_stats Statistics
+ *
+ * ```c
+ * void lock_debug_get_stats(uint64_t *total_acquired,
+ *                           uint64_t *total_released,
+ *                           uint32_t *currently_held);
+ * bool lock_debug_is_initialized(void);
+ * void lock_debug_print_state(void);
+ * void lock_debug_trigger_print(void);  // Trigger print from another thread
+ * ```
  *
  * @section lock_debug_example Complete Example
  *
- * **Instrumented Multi-Lock Code**:
- * @code{.c}
- * asciichat_error_t update_client_stats(client_t *client) {
- *     // Acquire locks in correct order: global → client → stats
+ * ```c
+ * #include "debug/lock.h"
+ * #include "platform/abstraction.h"
  *
- * #if defined(DEBUG_LOCKS)
- *     LOCK_DEBUG_ACQUIRE("global_rwlock", &g_client_manager_rwlock);
- * #else
- *     rwlock_rdlock(&g_client_manager_rwlock);
- * #endif
+ * mutex_t g_client_mutex;
  *
- * #if defined(DEBUG_LOCKS)
- *     LOCK_DEBUG_ACQUIRE("client_mutex", &client->mutex);
- * #else
- *     mutex_lock(&client->mutex);
- * #endif
+ * void process_client(void) {
+ *     // In debug builds, this captures full backtrace
+ *     DEBUG_MUTEX_LOCK(&g_client_mutex);
  *
- * #if defined(DEBUG_LOCKS)
- *     LOCK_DEBUG_ACQUIRE("stats_mutex", &g_stats_mutex);
- * #else
- *     mutex_lock(&g_stats_mutex);
- * #endif
+ *     // Critical section
+ *     // ...
  *
- *     // Update stats
- *     g_stats.frames_processed++;
- *     client->frame_count++;
- *
- *     // Release in reverse order
- * #if defined(DEBUG_LOCKS)
- *     LOCK_DEBUG_RELEASE("stats_mutex", &g_stats_mutex);
- *     LOCK_DEBUG_RELEASE("client_mutex", &client->mutex);
- *     LOCK_DEBUG_RELEASE("global_rwlock", &g_client_manager_rwlock);
- * #else
- *     mutex_unlock(&g_stats_mutex);
- *     mutex_unlock(&client->mutex);
- *     rwlock_unlock(&g_client_manager_rwlock);
- * #endif
- *
- *     return ASCIICHAT_OK;
+ *     DEBUG_MUTEX_UNLOCK(&g_client_mutex);
  * }
- * @endcode
  *
- * @section lock_debug_output Debug Output
+ * int main() {
+ *     // Initialize platform
+ *     platform_init();
  *
- * **Example Debug Session**:
- * ```
- * [DEBUG] Lock debugging enabled
- * [DEBUG] Lock order: global_rwlock (1) < client_mutex (2) < stats_mutex (3)
+ *     // Initialize lock debugging
+ *     lock_debug_init();
+ *     lock_debug_start_thread();
  *
- * [DEBUG] Thread 12345: Acquiring global_rwlock at server.c:234
- * [DEBUG] Thread 12345: Acquired global_rwlock in 5us
- * [DEBUG] Thread 12345: Acquiring client_mutex at server.c:235
- * [DEBUG] Thread 12345: Acquired client_mutex in 3us
- * [DEBUG] Thread 12345: Acquiring stats_mutex at server.c:236
- * [WARN]  Thread 12345: Lock contention on stats_mutex, waited 1234us
- * [DEBUG] Thread 12345: Acquired stats_mutex in 1237us
+ *     // Initialize mutex
+ *     mutex_init(&g_client_mutex);
  *
- * [DEBUG] Thread 12345: Released stats_mutex (held for 45us)
- * [DEBUG] Thread 12345: Released client_mutex (held for 78us)
- * [DEBUG] Thread 12345: Released global_rwlock (held for 123us)
+ *     // Your application code
+ *     process_client();
  *
- * === Lock Statistics ===
- * stats_mutex:
- *   Acquisitions: 5000
- *   Contentions: 250 (5%)
- *   Avg hold: 40us
- *   Max hold: 1500us
+ *     // During execution, press '?' to see all held locks
+ *
+ *     // Cleanup
+ *     mutex_destroy(&g_client_mutex);
+ *     lock_debug_cleanup();
+ *     lock_debug_cleanup_thread();
+ *     platform_cleanup();
+ *
+ *     return 0;
+ * }
  * ```
  *
- * @section lock_debug_configuration Configuration
+ * @section lock_debug_best_practices Best Practices
  *
- * **Tunable Parameters**:
- * @code{.c}
- * // Set contention threshold
- * lock_debug_set_contention_threshold(1000);  // 1ms
+ * **DO**:
+ * - Always acquire locks in the documented order (Global → Client → Specialized)
+ * - Use DEBUG_MUTEX_LOCK/DEBUG_RWLOCK_* macros for automatic file/line capture
+ * - Enable lock debugging during development to catch issues early
+ * - Press '?' during execution to see current lock state
+ * - Review lock usage statistics to find contention hotspots
+ * - Keep lock hold times under 100ms (video is 60 FPS = 16.67ms/frame)
  *
- * // Set hold time threshold
- * lock_debug_set_hold_time_threshold(10000);  // 10ms
+ * **DON'T**:
+ * - Don't mix debug and non-debug lock functions (creates orphaned releases)
+ * - Don't hold locks during slow operations (I/O, sleep, etc.)
+ * - Don't ignore "lock held too long" warnings
+ * - Don't disable lock debugging when tracking down deadlocks
+ * - Don't forget to call lock_debug_cleanup() before exit
  *
- * // Enable/disable specific warnings
- * lock_debug_set_warn_contention(true);
- * lock_debug_set_warn_hold_time(true);
- * lock_debug_set_warn_order_violation(true);
- * @endcode
+ * @section lock_debug_future Future Enhancements
  *
- * @see lock_debug.h
- * @see platform/mutex.h
- * @see platform/rwlock.h
+ * **Not Yet Implemented**:
+ * - Automatic deadlock cycle detection via lock dependency graph
+ * - Lock ordering validation (automatically detect order violations)
+ * - Graphical visualization of lock dependency graphs
+ * - Export lock statistics to JSON/CSV for analysis
+ * - Per-thread lock stack tracking
+ *
+ * @section lock_debug_references References
+ *
+ * **Source Files**:
+ * - Implementation: lib/debug/lock.c (1394 lines)
+ * - Header: lib/debug/lock.h
+ * - Platform abstraction: lib/platform/abstraction.h
+ * - Backtrace support: lib/platform/system.h (platform_backtrace, platform_backtrace_symbols)
+ * - Hash tables: deps/uthash/uthash.h (included via lib/util/uthash.h)
+ *
+ * **Key Functions**:
+ * - Lock tracking: lib/debug/lock.c:1043 (debug_mutex_lock)
+ * - Hold time warnings: lib/debug/lock.c:404 (check_long_held_locks)
+ * - Debug thread: lib/debug/lock.c:484 (debug_thread_func)
+ * - State printing: lib/debug/lock.c:1175 (lock_debug_print_state)
+ * - Orphan detection: lib/debug/lock.c:969 (debug_process_untracked_unlock)
+ *
+ * @see lib/debug/lock.h
+ * @see lib/debug/lock.c
+ * @see platform/abstraction.h
+ * @see platform/posix/mutex.c
+ * @see platform/posix/rwlock.c
  */
