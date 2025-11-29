@@ -329,7 +329,8 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
 
   // Read packet header into memory from network socket
   packet_header_t header;
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
+  ssize_t received =
+      recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
   if (received < 0) {
     // Error context is already set by recv_with_timeout
     return ERROR_NETWORK;
@@ -536,7 +537,8 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // Receive packet header
   packet_header_t header;
-  ssize_t received = recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
+  ssize_t received =
+      recv_with_timeout(sockfd, &header, sizeof(header), network_is_test_environment() ? 1 : RECV_TIMEOUT);
 
   // Check for errors first (before comparing signed with unsigned)
   if (received < 0) {

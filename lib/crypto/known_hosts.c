@@ -28,7 +28,7 @@
 #endif
 
 #include "crypto/known_hosts.h"
-#include "crypto/crypto.h"          // Includes <sodium.h>, CRYPTO_* constants
+#include "crypto/crypto.h"   // Includes <sodium.h>, CRYPTO_* constants
 #include "common.h"          // For BUFFER_SIZE_* constants
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "crypto/keys/keys.h"
@@ -193,8 +193,8 @@ const char *get_known_hosts_path(void) {
       bool needs_sep = (home_len > 0) && (home_dir[home_len - 1] != PATH_DELIM);
       size_t total_len = home_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
       if (total_len < sizeof(candidate_buf)) {
-        safe_snprintf(candidate_buf, sizeof(candidate_buf),
-                      "%s%s%s", home_dir, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
+        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%s%s", home_dir, needs_sep ? PATH_SEPARATOR_STR : "",
+                      suffix);
         (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
       }
     }
@@ -211,8 +211,8 @@ const char *get_known_hosts_path(void) {
       bool needs_sep = (temp_len > 0) && (temp_base[temp_len - 1] != PATH_DELIM);
       size_t total_len = temp_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
       if (total_len < sizeof(candidate_buf)) {
-        safe_snprintf(candidate_buf, sizeof(candidate_buf),
-                      "%s%s%s", temp_base, needs_sep ? PATH_SEPARATOR_STR : "", suffix);
+        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%s%s", temp_base, needs_sep ? PATH_SEPARATOR_STR : "",
+                      suffix);
         (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
       }
     }
@@ -229,7 +229,6 @@ const char *get_known_hosts_path(void) {
         g_known_hosts_path_cache = NULL;
       }
     }
-
   }
   return g_known_hosts_path_cache;
 }
@@ -445,7 +444,6 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
     }
   }
 
-
   return ASCIICHAT_OK; // Not found = first connection
 }
 
@@ -502,7 +500,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
   }
 
   // Create the final directory
-      int result = mkdir(tmp, DIR_PERM_PRIVATE);
+  int result = mkdir(tmp, DIR_PERM_PRIVATE);
   if (result != 0 && errno != EEXIST) {
     int test_fd = platform_open(tmp, PLATFORM_O_RDONLY, 0);
     if (test_fd < 0) {
@@ -597,9 +595,8 @@ asciichat_error_t add_known_host(const char *server_ip, uint16_t port, const uin
   int fprintf_result;
   if (is_placeholder) {
     // Server has no identity key - store as placeholder
-    fprintf_result =
-        safe_fprintf(f, "%s %s 0000000000000000000000000000000000000000000000000000000000000000 %s\n",
-                     ip_with_port, NO_IDENTITY_MARKER, ASCII_CHAT_APP_NAME);
+    fprintf_result = safe_fprintf(f, "%s %s 0000000000000000000000000000000000000000000000000000000000000000 %s\n",
+                                  ip_with_port, NO_IDENTITY_MARKER, ASCII_CHAT_APP_NAME);
   } else {
     // Server has identity key - store normally
     fprintf_result = safe_fprintf(f, "%s %s %s %s\n", ip_with_port, X25519_KEY_TYPE, hex, ASCII_CHAT_APP_NAME);
@@ -681,7 +678,7 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   // Close first file before opening for write
   if (f) {
     fclose(f);
-    f = NULL;  // Prevent double-close by defer
+    f = NULL; // Prevent double-close by defer
   }
 
   // Write back the filtered lines
@@ -770,7 +767,7 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
                 "\n"
                 "Are you sure you want to continue connecting (yes/no)? ",
                 ip_with_port, fingerprint);
-  safe_fprintf(stderr,"%s", message);
+  safe_fprintf(stderr, "%s", message);
   log_file("%s", message);
 
   char response[10];

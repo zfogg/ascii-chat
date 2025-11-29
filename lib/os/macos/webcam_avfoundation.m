@@ -276,6 +276,11 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   return ASCIICHAT_OK;
 }
 
+void webcam_flush_context(webcam_context_t *ctx) {
+  (void)ctx;
+  // No-op on macOS - AVFoundation handles frame buffering internally
+}
+
 void webcam_cleanup_context(webcam_context_t *ctx) {
   if (!ctx)
     return;

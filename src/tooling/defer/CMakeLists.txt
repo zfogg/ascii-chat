@@ -32,8 +32,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Use llvm-config to get LLVM/Clang configuration
+# On macOS with Homebrew, llvm-config is typically not in PATH
 find_program(LLVM_CONFIG_EXECUTABLE
     NAMES llvm-config llvm-config.exe
+    HINTS
+        /opt/homebrew/opt/llvm/bin    # Homebrew on Apple Silicon
+        /usr/local/opt/llvm/bin        # Homebrew on Intel Mac
+        /usr/lib/llvm-21/bin           # Debian/Ubuntu LLVM 21
+        /usr/lib/llvm-20/bin           # Debian/Ubuntu LLVM 20
+        /usr/lib/llvm-19/bin           # Debian/Ubuntu LLVM 19
+        /usr/lib/llvm-18/bin           # Debian/Ubuntu LLVM 18
     DOC "Path to llvm-config"
     REQUIRED
 )
@@ -99,10 +107,21 @@ if(APPLE)
             # This MUST come before LLVM's -isystem includes
             "-I${MACOS_SDK_PATH}/usr/include"
         )
+        # Link against Homebrew LLVM's libc++ to match libclang-cpp.dylib
+        # The LLVM libs were built with this libc++, so we must use it too
+        target_link_directories(ascii-instr-defer PRIVATE
+            ${LLVM_LIBRARY_DIRS}/c++
+            ${LLVM_LIBRARY_DIRS}/unwind
+        )
         target_link_options(ascii-instr-defer PRIVATE
             -isysroot ${MACOS_SDK_PATH}
             -stdlib=libc++
+            "-L${LLVM_LIBRARY_DIRS}/c++"
+            "-L${LLVM_LIBRARY_DIRS}/unwind"
+            "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/c++"
+            "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/unwind"
         )
+        target_link_libraries(ascii-instr-defer PRIVATE c++ c++abi)
     else()
         message(WARNING "Could not detect macOS SDK path - defer tool may fail to build")
     endif()
@@ -379,11 +398,14 @@ else()
     endif()
 
     # Add standard library support (needed when overriding musl flags)
-    target_link_libraries(ascii-instr-defer PRIVATE
-        stdc++
-        stdc++fs
-        gcc_s
-    )
+    # Only on Linux - macOS uses libc++ which is linked via -stdlib=libc++
+    if(NOT APPLE)
+        target_link_libraries(ascii-instr-defer PRIVATE
+            stdc++
+            stdc++fs
+            gcc_s
+        )
+    endif()
 endif()
 
 # Set output directory to match parent build
