@@ -5,6 +5,7 @@
 
     This patch adds:
     1. PATH environment variable to the ascii-chat.exe component
+    2. Uninstall shortcut in Start Menu
 
     Note: Patches inject children into elements matching the fragment ID.
     We patch into the exe's component (from files.wxs) to add PATH modification.
@@ -19,5 +20,15 @@
                 Part="last"
                 Action="set"
                 System="no" />
+  </CPackWiXFragment>
+
+  <!-- Add Uninstall shortcut to the Documentation shortcut component -->
+  <!-- We patch into the existing shortcut component so they share the Start Menu folder -->
+  <CPackWiXFragment Id="CM_SHORTCUT_Documentation">
+    <Shortcut Id="UninstallProduct"
+              Name="Uninstall ascii-chat"
+              Target="[SystemFolder]msiexec.exe"
+              Arguments="/x [ProductCode]"
+              Description="Uninstalls ascii-chat from your computer" />
   </CPackWiXFragment>
 </CPackWiXPatch>

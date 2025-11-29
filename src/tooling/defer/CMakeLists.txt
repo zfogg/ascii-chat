@@ -83,13 +83,21 @@ if(APPLE)
 
     if(MACOS_SDK_PATH)
         message(STATUS "Using macOS SDK for defer tool: ${MACOS_SDK_PATH}")
-        # Use -isysroot to tell clang where to find macOS SDK system headers.
-        # Also explicitly specify -stdlib=libc++ for consistency.
-        # The -I for SDK includes is added BEFORE LLVM includes to ensure
-        # proper type definitions are available when LLVM headers need them.
+        # CRITICAL: With Homebrew LLVM 21+, the bundled libc++ headers include
+        # macOS SDK C headers via #include_next. The SDK headers expect basic
+        # types like __darwin_wint_t to be defined, but these are only available
+        # when the SDK's own type header chain is followed correctly.
+        #
+        # Solution: Add SDK includes with -I BEFORE the LLVM -isystem includes.
+        # CMake processes target_include_directories(SYSTEM) after regular includes,
+        # and -I takes precedence over -isystem, so this ensures the SDK C headers
+        # are found first when LLVM's libc++ headers need them.
         target_compile_options(ascii-instr-defer PRIVATE
             -isysroot ${MACOS_SDK_PATH}
             -stdlib=libc++
+            # Explicitly add SDK C header path with high priority
+            # This MUST come before LLVM's -isystem includes
+            "-I${MACOS_SDK_PATH}/usr/include"
         )
         target_link_options(ascii-instr-defer PRIVATE
             -isysroot ${MACOS_SDK_PATH}
