@@ -46,6 +46,8 @@ jobs:
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Run tests with AddressSanitizer
       run: |
@@ -95,6 +97,8 @@ jobs:
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Run static analysis
       run: |

@@ -68,6 +68,8 @@ jobs:
         rm -rf build/CMakeCache.txt build/CMakeFiles
         # Also clean test executables to ensure they're rebuilt with correct configuration
         rm -rf build/bin/test_*
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
@@ -289,6 +291,8 @@ jobs:
         rm -rf build/CMakeCache.txt build/CMakeFiles
         # Also clean test executables to ensure they're rebuilt with correct configuration
         rm -rf build/bin/test_*
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Build and run integration tests with coverage
       run: |
@@ -400,6 +404,8 @@ jobs:
         rm -rf build/CMakeCache.txt build/CMakeFiles
         # Also clean test executables to ensure they're rebuilt with correct configuration
         rm -rf build/bin/test_*
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Build performance tests with coverage
       run: |
@@ -520,6 +526,8 @@ jobs:
         rm -rf build/CMakeCache.txt build/CMakeFiles
         # Also clean test executables to ensure they're rebuilt with correct configuration
         rm -rf build/bin/test_*
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Build with AddressSanitizer
       run: |
@@ -607,6 +615,8 @@ jobs:
         rm -rf build/CMakeCache.txt build/CMakeFiles
         # Also clean test executables to ensure they're rebuilt with correct configuration
         rm -rf build/bin/test_*
+        # Clean library files to prevent stale archive format issues when switching build types
+        rm -rf build/lib/*.a
 
     - name: Build project
       run: |
