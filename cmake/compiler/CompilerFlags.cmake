@@ -215,10 +215,27 @@ function(configure_debug_build_flags BUILD_TYPE)
     # Only for Debug/Dev - Release uses default linker for maximum stability
     if(NOT WIN32 AND CMAKE_C_COMPILER_ID MATCHES "Clang")
         # Check if lld is available before trying to use it
-        find_program(LLD_LINKER NAMES ld.lld lld)
+        # Search in Homebrew LLVM paths first (not in default PATH on macOS)
+        find_program(LLD_LINKER NAMES ld.lld lld
+            HINTS
+                /opt/homebrew/opt/llvm/bin    # Homebrew on Apple Silicon
+                /usr/local/opt/llvm/bin        # Homebrew on Intel Mac
+        )
         if(LLD_LINKER)
-            add_link_options(-fuse-ld=lld)
-            message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds")
+            # Verify the linker actually works (handles broken symlinks)
+            execute_process(
+                COMMAND "${LLD_LINKER}" --version
+                RESULT_VARIABLE LLD_CHECK_RESULT
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+            if(LLD_CHECK_RESULT EQUAL 0)
+                add_link_options(-fuse-ld=lld)
+                message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds")
+            else()
+                message(STATUS "${Yellow}LLD linker found but not functional${ColorReset} - using default linker")
+                unset(LLD_LINKER CACHE)
+            endif()
         else()
             message(STATUS "${Yellow}LLD linker not found${ColorReset} - using default linker")
         endif()
