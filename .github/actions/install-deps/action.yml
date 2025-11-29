@@ -115,8 +115,6 @@ runs:
         key: ${{ runner.os }}-cmake-deps-v2-${{ hashFiles('cmake/dependencies/**') }}
         restore-keys: |
           ${{ runner.os }}-cmake-deps-v2-
-          ${{ runner.os }}-cmake-deps-v1-
-          ${{ runner.os }}-cmake-deps-
 
     - name: Restore Homebrew cache (macOS)
       if: inputs.os == 'macos'
