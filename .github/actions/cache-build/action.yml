@@ -21,9 +21,9 @@ inputs:
     required: false
     default: ''
   cache-deps:
-    description: 'Set to false to skip caching dependency directories.'
+    description: 'Set to true to enable caching dependency directories (install-deps already handles this).'
     required: false
-    default: 'true'
+    default: 'false'
   ccache-directory:
     description: 'Path to the ccache directory to cache.'
     required: false
