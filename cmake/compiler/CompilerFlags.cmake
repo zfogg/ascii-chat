@@ -329,9 +329,9 @@ function(detect_x86_64_level DETECTED_LEVEL)
             // Check AVX (CPUID leaf 1, ECX bit 28)
             if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) return 1;
             if (!(ecx & bit_AVX)) return 1;
-            // Check AVX2 (CPUID leaf 7, EBX bit 5)
+            // Check AVX2 (CPUID leaf 7, subleaf 0, EBX bit 5)
             if (!__get_cpuid_max(0, NULL)) return 1;
-            if (!__get_cpuid(7, &eax, &ebx, &ecx, &edx)) return 1;
+            if (!__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) return 1;
             if (!(ebx & bit_AVX2)) return 1;
             // Check BMI1 (CPUID leaf 7, EBX bit 3)
             if (!(ebx & bit_BMI)) return 1;
