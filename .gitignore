@@ -45,3 +45,5 @@ coverage_html/
 /logs/
 
 /.vs/
+
+/docker_out/
