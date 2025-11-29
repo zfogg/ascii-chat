@@ -135,6 +135,7 @@
       },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "USE_MUSL": "OFF",
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF",
         "CMAKE_C_STANDARD": "23",
