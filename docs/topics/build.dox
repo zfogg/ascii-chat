@@ -250,6 +250,8 @@
  * |------|---------|------------|
  * | **xcrun** | Xcode run tool | LLVM.cmake (--show-sdk-path for SDK detection) |
  * | **open** | Open files/URLs | Documentation.cmake, CustomTargets.cmake |
+ * | **codesign** | Code signing | CodeSigning.cmake (sign executables for Gatekeeper) |
+ * | **security** | Keychain access | CodeSigning.cmake (verify signing identity exists) |
  *
  * **Linux-Specific Tools**:
  *
@@ -653,6 +655,7 @@
  * - `PlatformDetection.cmake` - Platform-specific variables (Linux, macOS, Windows)
  * - `CompilerDetection.cmake` - Compiler detection and configuration
  * - `WindowsWorkarounds.cmake` - Windows-specific fixes
+ * - `CodeSigning.cmake` - macOS code signing for Gatekeeper compatibility
  *
  * **Compiler Configuration**:
  * - `CompilerFlags.cmake` - Base compiler flags and standards
@@ -793,6 +796,33 @@
  * - Rosetta 2 compatibility detection
  * - AVFoundation webcam support (via lib/os/webcam.h)
  * - CoreAudio support (via PortAudio)
+ * - Code signing support for Gatekeeper compatibility
+ *
+ * **Code Signing** (macOS only):
+ *
+ * Code signing is supported for distribution and Gatekeeper compatibility.
+ * Configure via the `CODESIGNING_IDENTITY` CMake variable or environment variable:
+ *
+ * @code{.bash}
+ * # Set signing identity via environment variable
+ * export CODESIGNING_IDENTITY="Your Name"
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release
+ * cmake --build build
+ *
+ * # Or pass directly to CMake
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release -DCODESIGNING_IDENTITY="Your Name"
+ * cmake --build build
+ *
+ * # Verify signature
+ * codesign --verify --deep --strict build/bin/ascii-chat
+ * codesign -dv build/bin/ascii-chat  # Display signature details
+ * @endcode
+ *
+ * **Code Signing Configuration**:
+ * - `CODESIGNING_IDENTITY` - Name of your signing certificate (must exist in Keychain)
+ * - If not set or certificate not found, code signing is automatically disabled
+ * - Hardened runtime (`--options runtime`) enabled for notarization compatibility
+ * - Release builds include timestamps (`--timestamp`)
  *
  * **Note**: musl is **not supported** on macOS (uses libSystem instead)
  *
