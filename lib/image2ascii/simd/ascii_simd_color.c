@@ -400,11 +400,8 @@ char *image_print_color_simd(image_t *image, bool use_background_mode, bool use_
   return render_ascii_neon_unified_optimized(image, use_background_mode, use_256color, ascii_chars);
 #else
   // Fallback implementation for non-NEON platforms
-  // Calculate exact maximum buffer size with precise per-pixel bounds
-  const int h = image->h;
-  const int w = image->w;
-
   // Use scalar image function for fallback path - no SIMD allocation needed
+  (void)use_background_mode; // Suppress unused parameter warning
   return image_print_color(image, ascii_chars);
 #endif
 }
