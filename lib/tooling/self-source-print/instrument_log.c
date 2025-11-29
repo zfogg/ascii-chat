@@ -546,8 +546,9 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     memcpy(dir_buf, output_dir, dir_len);
     dir_buf[dir_len] = '\0';
 
-    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf, ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME,
-                 runtime->pid, (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
+    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf,
+                 ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
+                 (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
       return false;
     }
 
@@ -873,9 +874,11 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
       }
 
       if (strcmp(kind, "file") == 0) {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL, spec);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL,
+                                           spec);
       } else if (strcmp(kind, "func") == 0 || strcmp(kind, "function") == 0) {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB, NULL, spec);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB,
+                                           NULL, spec);
       } else if (strcmp(kind, "module") == 0) {
         char *module_value = spec;
         char *module_pattern = strchr(module_value, ':');
@@ -889,10 +892,11 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
           continue;
         }
         const char *pattern_part = (module_pattern != NULL && *module_pattern != '\0') ? module_pattern : NULL;
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE, module_value,
-                                           pattern_part);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE,
+                                           module_value, pattern_part);
       } else {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL, spec);
+        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL,
+                                           spec);
       }
       continue;
     }
@@ -908,8 +912,8 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
         continue;
       }
       const char *pattern_spec = (*pattern_part != '\0') ? pattern_part : NULL;
-      (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE, module_name,
-                                         pattern_spec);
+      (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE,
+                                         module_name, pattern_spec);
       continue;
     }
 

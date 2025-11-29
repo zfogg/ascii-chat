@@ -30,4 +30,6 @@
  *
  * Multiple defers execute in LIFO (last-in-first-out) order.
  */
-#define defer(action) do { /* transformed by ascii-instr-defer */ } while(0)
+#define defer(action)                                                                                                  \
+  do { /* transformed by ascii-instr-defer */                                                                          \
+  } while (0)
