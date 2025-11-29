@@ -28,6 +28,83 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    # =========================================================================
+    # CMake 4.2.0 Installation (All platforms)
+    # =========================================================================
+    - name: Install CMake 4.2.0 (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      shell: bash
+      run: |
+        CMAKE_VERSION="4.2.0"
+        CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz"
+        CMAKE_INSTALL_DIR="/opt/cmake-${CMAKE_VERSION}"
+
+        echo "Installing CMake ${CMAKE_VERSION} from official release..."
+        curl -fsSL "$CMAKE_URL" -o /tmp/cmake.tar.gz
+        sudo mkdir -p "$CMAKE_INSTALL_DIR"
+        sudo tar -xzf /tmp/cmake.tar.gz -C "$CMAKE_INSTALL_DIR" --strip-components=1
+        rm /tmp/cmake.tar.gz
+
+        # Add to PATH (prepend so it takes priority)
+        echo "${CMAKE_INSTALL_DIR}/bin" >> $GITHUB_PATH
+        echo "Installed CMake ${CMAKE_VERSION} to ${CMAKE_INSTALL_DIR}"
+        "${CMAKE_INSTALL_DIR}/bin/cmake" --version
+
+    - name: Install CMake 4.2.0 (macOS)
+      if: inputs.os == 'macos'
+      shell: bash
+      run: |
+        CMAKE_VERSION="4.2.0"
+        CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-macos-universal.tar.gz"
+        CMAKE_INSTALL_DIR="/opt/cmake-${CMAKE_VERSION}"
+
+        echo "Installing CMake ${CMAKE_VERSION} from official release..."
+        curl -fsSL "$CMAKE_URL" -o /tmp/cmake.tar.gz
+        sudo mkdir -p "$CMAKE_INSTALL_DIR"
+        sudo tar -xzf /tmp/cmake.tar.gz -C "$CMAKE_INSTALL_DIR" --strip-components=1
+        rm /tmp/cmake.tar.gz
+
+        # The macOS bundle has CMake.app/Contents/bin/cmake
+        if [ -d "${CMAKE_INSTALL_DIR}/CMake.app/Contents/bin" ]; then
+          CMAKE_BIN_DIR="${CMAKE_INSTALL_DIR}/CMake.app/Contents/bin"
+        else
+          CMAKE_BIN_DIR="${CMAKE_INSTALL_DIR}/bin"
+        fi
+
+        # Add to PATH (prepend so it takes priority)
+        echo "${CMAKE_BIN_DIR}" >> $GITHUB_PATH
+        echo "Installed CMake ${CMAKE_VERSION} to ${CMAKE_INSTALL_DIR}"
+        "${CMAKE_BIN_DIR}/cmake" --version
+
+    - name: Install CMake 4.2.0 (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $CMAKE_VERSION = "4.2.0"
+        $CMAKE_URL = "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-windows-x86_64.zip"
+        $CMAKE_INSTALL_DIR = "C:\cmake-${CMAKE_VERSION}"
+
+        Write-Host "Installing CMake ${CMAKE_VERSION} from official release..."
+        $tempZip = "$env:TEMP\cmake.zip"
+        Invoke-WebRequest -Uri $CMAKE_URL -OutFile $tempZip -UseBasicParsing
+
+        # Extract to install directory
+        if (Test-Path $CMAKE_INSTALL_DIR) {
+          Remove-Item -Recurse -Force $CMAKE_INSTALL_DIR
+        }
+        Expand-Archive -Path $tempZip -DestinationPath "C:\"
+        Rename-Item -Path "C:\cmake-${CMAKE_VERSION}-windows-x86_64" -NewName "cmake-${CMAKE_VERSION}"
+        Remove-Item $tempZip
+
+        # Add to PATH (prepend so it takes priority)
+        $CMAKE_BIN_DIR = "${CMAKE_INSTALL_DIR}\bin"
+        Add-Content -Path $env:GITHUB_PATH -Value $CMAKE_BIN_DIR
+        Write-Host "Installed CMake ${CMAKE_VERSION} to ${CMAKE_INSTALL_DIR}"
+        & "${CMAKE_BIN_DIR}\cmake.exe" --version
+
+    # =========================================================================
+    # Dependency Caches
+    # =========================================================================
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
       uses: actions/cache/restore@v4
