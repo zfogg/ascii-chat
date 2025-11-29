@@ -1,21 +1,23 @@
-ascii-chat 📸
+💻📸 ascii-chat 🔡💬
 ==========
 
-ASCII* video chat
+Video chat in your terminal
 
 Probably the first command line video chat program (let me know if this isn't
-true). Initial commits _November 20-24, 2013_, with @craigpalermo, at some
-collegiate hackathon.
+true). Initial commits _November 20-24, 2013_, with
+[@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon
+(I forget which one).
 
-ascii-chat functions by simply printing text and terminal escape codes to your
-terminal, so it works EVERYWHERE: on rxvt-unicode in OpenBox, in a Putty SSH session, in iTerm and
-Kitty.app on macOS, and theoretically wherever else terminals run.
+ascii-chat is a client-server application that operates over TCP/IP. it supports color and audio and crypto and compression and multiple clients.
 
-ascii-chat even works in an initial UNIX login shell. You know, the shell that runs 'startx' and launches your desktop environment so you can open a GUI terminal app like Konsole or Kitty or Alacritty. You don't need a desktop environment at all to video chat with ascii-chat. **
+The client functions by simply printing text and terminal escape codes to your
+terminal, so it works EVERYWHERE that terminals work: on rxvt-unicode in
+OpenBox, in a Putty SSH session, in iTerm and Kitty.app on macOS, and
+theoretically everywhere else terminals run.
 
-\* We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
+ascii-chat even works in an initial UNIX login shell. You know, the shell that runs 'startx' and launches your desktop environment so you can open a GUI terminal app like Konsole or Kitty or Alacritty. You don't need a desktop environment at all to video chat with ascii-chat. (*)
 
-\** Testing needed to verify a decent framerate on different systems and environments.
+🆕 We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do.
 
@@ -23,16 +25,23 @@ ascii-chat even works in an initial UNIX login shell. You know, the shell that r
 
 📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
 
+\(*) Testing needed to verify a decent framerate on different systems and environments.
+
+## Animated Demonstrations
+
+ascii-chat v0 from 2013:
+
 ![Animated demonstration: monochrome](https://i.imgur.com/E4OuqvX.gif)
 
-Supports color and multiple clients. Here are 3 clients connected to a single server, in a call.
+ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a call:
 
 ![Animated demonstration: multi-client](https://i.imgur.com/OYcv7jP.gif)
 
 
 ## Table of Contents
 
-- [ascii-chat 📸](#ascii-chat-)
+- [💻📸 ascii-chat 🔡💬](#-ascii-chat-)
+  - [Animated Demonstrations](#animated-demonstrations)
   - [Table of Contents](#table-of-contents)
   - [Get ascii-chat](#get-ascii-chat)
   - [Usage](#usage)
@@ -338,7 +347,7 @@ brew install make cmake ninja llvm zstd portaudio libsodium criterion
 For open source developers who want a working copy:
 
 1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
-2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or the docs).
+2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__build.html#topic_dependencies)).
 3. Build an optimized-with-debug build: `make CMAKE_BUILD_TYPE=RelWithDebInfo`.
 4. Run `./build/bin/ascii-chat server`.
 5. Open a second terminal window, tab, split, or pane. Or go to another computer.
@@ -375,12 +384,12 @@ Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for e
 - `BUILD_TESTS`: defaults to `ON` so Criterion unit/integration/performance tests are compiled.
 - `USE_PRECOMPILED_HEADERS`: defaults to `ON` (requires CMake ≥ 3.16 and is disabled automatically for musl builds) to accelerate core library builds.
 - `USE_CCACHE`: defaults to `ON` to speed up rebuilds with `ccache` (forced `OFF` when musl is enabled).
-- `USE_CPACK`: defaults to `ON` to make packaging targets (`package`, `package-productbuild`, etc.) available.
-- `ASCIICHAT_RELEASE_ENABLE_FAST_MATH`: defaults to `OFF`; flip to `ON` to allow aggressive fast-math optimizations in Release builds.
-- `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS`: defaults to `ON`; set `OFF` if you want slightly tighter Release binaries and are okay with poorer stack traces.
-- `ASCIICHAT_ENABLE_ANALYZERS`: defaults to `OFF`; enable to wire clang-tidy/cppcheck into the build (respecting `ASCIICHAT_CLANG_TIDY`/`ASCIICHAT_CPPCHECK` overrides).
-- `ASCIICHAT_ENABLE_UNITY_BUILDS`: defaults to `OFF`; enable to batch-compile sources for faster rebuilds on some toolchains.
-- `ASCIICHAT_ENABLE_CTEST_DASHBOARD`: defaults to `OFF`; enable to include CTest dashboard configuration (`include(CTest)`).
+- `USE_CPACK`: defaults to `ON` to make packaging targets (`package`, `package-productbuild`, etc.) available. The release preset turns this `ON`.
+- `ASCIICHAT_RELEASE_ENABLE_FAST_MATH`: defaults to `OFF`; flip to `ON` to allow aggressive fast-math optimizations in Release builds. The release preset turns this `ON`.
+- `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS`: defaults to `ON`; set `OFF` if you want slightly tighter Release binaries and are okay with poorer stack traces. The release preset turns this `OFF`.
+- `ASCIICHAT_ENABLE_ANALYZERS`: defaults to `OFF`; enable to wire clang-tidy/cppcheck into the build (respecting `ASCIICHAT_CLANG_TIDY`/`ASCIICHAT_CPPCHECK` overrides). The release preset turns this `OFF`.
+- `ASCIICHAT_ENABLE_UNITY_BUILDS`: defaults to `OFF`, but the presets turn it `ON`; enable to batch-compile sources for faster rebuilds on some toolchains.
+- `ASCIICHAT_ENABLE_CTEST_DASHBOARD`: defaults to `OFF`; enable to include CTest dashboard configuration (`include(CTest)`). All presets except release and release-musl turn this `ON`.
 
 #### Documentation
 
