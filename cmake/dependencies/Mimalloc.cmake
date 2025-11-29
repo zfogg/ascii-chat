@@ -320,6 +320,10 @@ if(USE_MIMALLOC)
         endif()
 
         # Only set these for FetchContent builds (vcpkg already set MIMALLOC_LIBRARIES)
+        # Set paths for both static and shared library variants
+        set(_MIMALLOC_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/lib${_MIMALLOC_OUTPUT_NAME}.a")
+        set(_MIMALLOC_SHARED_LIB_PATH "${MIMALLOC_BUILD_DIR}/lib/lib${_MIMALLOC_SHARED_OUTPUT_NAME}.a")
+
         set(MIMALLOC_LIBRARIES "${_MIMALLOC_LIB_PATH}")
         set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_LIB_PATH}")
         if(EXISTS "${_MIMALLOC_SHARED_LIB_PATH}")
