@@ -154,11 +154,11 @@ signal_handler_t platform_signal(int sig, signal_handler_t handler);
  * @ingroup platform
  */
 typedef enum {
-  CONSOLE_CTRL_C = 0,       /**< Ctrl+C pressed (SIGINT equivalent) */
-  CONSOLE_CTRL_BREAK = 1,   /**< Ctrl+Break pressed (Windows only, maps to SIGINT on Unix) */
-  CONSOLE_CLOSE = 2,        /**< Console window closed */
-  CONSOLE_LOGOFF = 3,       /**< User logoff event (Windows only) */
-  CONSOLE_SHUTDOWN = 4      /**< System shutdown event (Windows only) */
+  CONSOLE_CTRL_C = 0,     /**< Ctrl+C pressed (SIGINT equivalent) */
+  CONSOLE_CTRL_BREAK = 1, /**< Ctrl+Break pressed (Windows only, maps to SIGINT on Unix) */
+  CONSOLE_CLOSE = 2,      /**< Console window closed */
+  CONSOLE_LOGOFF = 3,     /**< User logoff event (Windows only) */
+  CONSOLE_SHUTDOWN = 4    /**< System shutdown event (Windows only) */
 } console_ctrl_event_t;
 
 /**

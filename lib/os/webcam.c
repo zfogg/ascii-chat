@@ -218,7 +218,7 @@ void webcam_cleanup(void) {
 
 void webcam_flush(void) {
   if (opt_test_pattern) {
-    return;  // Test pattern doesn't need flushing
+    return; // Test pattern doesn't need flushing
   }
 
   if (global_webcam_ctx) {
