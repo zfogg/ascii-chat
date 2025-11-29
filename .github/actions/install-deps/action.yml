@@ -112,8 +112,9 @@ runs:
         path: |
           .deps-cache
           deps/bearssl/build
-        key: ${{ runner.os }}-cmake-deps-v1-${{ hashFiles('cmake/dependencies/**') }}
+        key: ${{ runner.os }}-cmake-deps-v2-${{ hashFiles('cmake/dependencies/**') }}
         restore-keys: |
+          ${{ runner.os }}-cmake-deps-v2-
           ${{ runner.os }}-cmake-deps-v1-
           ${{ runner.os }}-cmake-deps-
 
@@ -463,7 +464,7 @@ runs:
         path: |
           .deps-cache
           deps/bearssl/build
-        key: ${{ runner.os }}-cmake-deps-v1-${{ hashFiles('cmake/dependencies/**') }}
+        key: ${{ runner.os }}-cmake-deps-v2-${{ hashFiles('cmake/dependencies/**') }}
 
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
