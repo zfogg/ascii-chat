@@ -10,20 +10,6 @@ inputs:
     description: 'Additional suffix applied to the build directory cache key (e.g. build type).'
     required: false
     default: ''
-  deps-cache-directory:
-    description: 'Newline-separated list of dependency cache directories (e.g. .deps-cache). Leave empty to skip.'
-    required: false
-    default: |
-      .deps-cache
-      .deps-cache-musl
-  deps-cache-key:
-    description: 'Additional suffix applied to the dependency cache key.'
-    required: false
-    default: ''
-  cache-deps:
-    description: 'Set to true to enable caching dependency directories (install-deps already handles this).'
-    required: false
-    default: 'false'
   ccache-directory:
     description: 'Path to the ccache directory to cache.'
     required: false
@@ -51,18 +37,6 @@ outputs:
   build-directory-path:
     description: 'Path to the build directory.'
     value: ${{ inputs.build-directory }}
-  deps-cache-key:
-    description: 'Fully qualified cache key for dependency directories.'
-    value: ${{ format('{0}-deps-{1}-{2}-{3}-{4}', inputs.cache-version, runner.os, github.workflow, github.job, steps.cache-config.outputs.deps_suffix) }}
-  deps-cache-hit:
-    description: 'Whether the dependency cache was restored.'
-    value: ${{ steps.cache-deps.outputs.cache-hit }}
-  deps-cache-path:
-    description: 'Dependency cache directory list, if caching is enabled.'
-    value: ${{ inputs.deps-cache-directory }}
-  cache-deps-enabled:
-    description: 'Whether dependency caching is enabled.'
-    value: ${{ inputs.cache-deps }}
   ccache-cache-key:
     description: 'Fully qualified cache key for ccache.'
     value: ${{ format('{0}-ccache-{1}-{2}', inputs.cache-version, runner.os, steps.cache-config.outputs.ccache_suffix) }}
@@ -84,20 +58,14 @@ runs:
       shell: bash
       env:
         BUILD_SUFFIX_INPUT: ${{ inputs.build-cache-key }}
-        DEPS_SUFFIX_INPUT: ${{ inputs.deps-cache-key }}
         CCACHE_SUFFIX_INPUT: ${{ inputs.ccache-cache-key }}
         CACHE_HASH: ${{ hashFiles('CMakeLists.txt', 'cmake/**/*.cmake') }}
       run: |
         build_suffix="$CACHE_HASH"
-        deps_suffix="$CACHE_HASH"
         ccache_suffix="$CACHE_HASH"
 
         if [ -n "$BUILD_SUFFIX_INPUT" ]; then
           build_suffix="${BUILD_SUFFIX_INPUT}-${CACHE_HASH}"
-        fi
-
-        if [ -n "$DEPS_SUFFIX_INPUT" ]; then
-          deps_suffix="${DEPS_SUFFIX_INPUT}-${CACHE_HASH}"
         fi
 
         if [ -n "$CCACHE_SUFFIX_INPUT" ]; then
@@ -105,19 +73,12 @@ runs:
         fi
 
         echo "build_suffix=${build_suffix}" >> "$GITHUB_OUTPUT"
-        echo "deps_suffix=${deps_suffix}" >> "$GITHUB_OUTPUT"
         echo "ccache_suffix=${ccache_suffix}" >> "$GITHUB_OUTPUT"
 
     - name: Ensure cache directories exist
       shell: bash
       run: |
         mkdir -p "${{ inputs.build-directory }}"
-        if [ "${{ inputs.cache-deps }}" = "true" ] && [ -n "${{ inputs.deps-cache-directory }}" ]; then
-          while IFS= read -r dep_dir; do
-            [ -z "$dep_dir" ] && continue
-            mkdir -p "$dep_dir"
-          done <<< "${{ inputs.deps-cache-directory }}"
-        fi
         if [ "${{ inputs.cache-ccache }}" = "true" ]; then
           mkdir -p "${{ inputs.ccache-directory }}"
           echo "CCACHE_DIR=${{ inputs.ccache-directory }}" >> "${GITHUB_ENV}"
@@ -133,18 +94,6 @@ runs:
           ${{ format('{0}-build-{1}-{2}-{3}-', inputs.cache-version, runner.os, github.workflow, github.job) }}
           ${{ format('{0}-build-{1}-{2}-', inputs.cache-version, runner.os, github.workflow) }}
           ${{ format('{0}-build-{1}-', inputs.cache-version, runner.os) }}
-
-    - name: Restore dependency cache
-      if: inputs.cache-deps == 'true' && inputs.deps-cache-directory != ''
-      id: cache-deps
-      uses: actions/cache/restore@v4
-      with:
-        path: ${{ inputs.deps-cache-directory }}
-        key: ${{ format('{0}-deps-{1}-{2}-{3}-{4}', inputs.cache-version, runner.os, github.workflow, github.job, steps.cache-config.outputs.deps_suffix) }}
-        restore-keys: |
-          ${{ format('{0}-deps-{1}-{2}-{3}-', inputs.cache-version, runner.os, github.workflow, github.job) }}
-          ${{ format('{0}-deps-{1}-{2}-', inputs.cache-version, runner.os, github.workflow) }}
-          ${{ format('{0}-deps-{1}-', inputs.cache-version, runner.os) }}
 
     - name: Restore ccache directory
       if: inputs.cache-ccache == 'true'
