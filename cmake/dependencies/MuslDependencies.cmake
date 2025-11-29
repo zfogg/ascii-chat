@@ -26,9 +26,16 @@ set(_SAVED_ARCHIVE_OUTPUT_DIR ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY})
 set(_SAVED_LIBRARY_OUTPUT_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})
 
 # Use cache directory for musl deps - separate directory for each dependency
-# MUSL_DEPS_DIR_STATIC is set in Init.cmake to .deps-cache-musl/$BUILD_TYPE/static
+# MUSL_DEPS_DIR_STATIC is set in Musl.cmake's configure_musl_post_project()
 # Each dependency gets its own subdirectory for cleaner organization
 message(STATUS "MuslDependencies.cmake: MUSL_DEPS_DIR_STATIC=${MUSL_DEPS_DIR_STATIC}")
+
+# Validate that MUSL_DEPS_DIR_STATIC is properly set (not empty or root path)
+if(NOT MUSL_DEPS_DIR_STATIC OR MUSL_DEPS_DIR_STATIC STREQUAL "" OR MUSL_DEPS_DIR_STATIC STREQUAL "/")
+    message(FATAL_ERROR "MUSL_DEPS_DIR_STATIC is not properly set (value: '${MUSL_DEPS_DIR_STATIC}'). "
+                        "This usually means CMAKE_BUILD_TYPE was empty when ASCIICHAT_DEPS_CACHE_* was configured. "
+                        "Please specify -DCMAKE_BUILD_TYPE=Release (or Debug) on the command line.")
+endif()
 
 # =============================================================================
 # Copy kernel headers to project-local directory

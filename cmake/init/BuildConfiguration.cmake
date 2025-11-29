@@ -43,6 +43,31 @@ endif()
 # Note: CMAKE_C_STANDARD_REQUIRED is set per-compiler above
 # This ensures we get the best available standard with graceful fallback
 
+# =============================================================================
+# Windows Install Prefix Configuration
+# =============================================================================
+# Set CMAKE_INSTALL_PREFIX to match WiX installer default location
+# WiX installs to "Program Files\ascii-chat" (64-bit), so we match that
+# This ensures `cmake --install build` and the MSI installer use the same location
+#
+# Architecture considerations:
+# - 64-bit Windows: "C:/Program Files/ascii-chat" (native 64-bit apps)
+# - 32-bit Windows: "C:/Program Files/ascii-chat" (only Program Files exists)
+# - 32-bit app on 64-bit Windows: CMake defaults to "Program Files (x86)" which is correct
+#
+# We only override for 64-bit builds to use the 64-bit Program Files directory
+if(WIN32 AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # 64-bit build: use 64-bit Program Files
+        set(CMAKE_INSTALL_PREFIX "C:/Program Files/ascii-chat" CACHE PATH "Installation directory" FORCE)
+        message(STATUS "Install prefix: ${BoldCyan}C:/Program Files/ascii-chat${ColorReset} (64-bit)")
+    else()
+        # 32-bit build: CMake's default Program Files (x86) is correct on 64-bit Windows
+        # On 32-bit Windows, there's only Program Files, which CMake also handles correctly
+        message(STATUS "Install prefix: ${BoldCyan}${CMAKE_INSTALL_PREFIX}${ColorReset} (32-bit)")
+    endif()
+endif()
+
 # Option to build tests
 option(BUILD_TESTS "Build test executables" ON)
 

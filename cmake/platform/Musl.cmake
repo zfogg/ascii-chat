@@ -111,8 +111,28 @@ function(configure_musl_post_project)
         return()
     endif()
 
-    # Set musl dependency cache directory for ExternalProject builds
-    # This must be done here (after USE_MUSL is defined) rather than in Init.cmake
+    # Set musl dependency cache directories for ExternalProject builds
+    # ASCIICHAT_DEPS_CACHE_MUSL is NOT set in CMakeLists.txt because USE_MUSL
+    # isn't defined until Musl.cmake is included (after the cache dir setup)
+    # So we set it here to ensure it's properly configured
+
+    # First validate that ASCIICHAT_DEPS_CACHE_DIR is properly set
+    if(NOT ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "" OR ASCIICHAT_DEPS_CACHE_DIR MATCHES "^/[^/]*$")
+        message(FATAL_ERROR "ASCIICHAT_DEPS_CACHE_DIR is invalid for musl builds: '${ASCIICHAT_DEPS_CACHE_DIR}'\n"
+                            "This would create directories at root /. Please report this bug.")
+    endif()
+
+    if(NOT ASCIICHAT_DEPS_CACHE_MUSL OR ASCIICHAT_DEPS_CACHE_MUSL STREQUAL "")
+        set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds" FORCE)
+    endif()
+
+    # Validate musl cache dir
+    if(ASCIICHAT_DEPS_CACHE_MUSL MATCHES "^/[^/]*$" OR ASCIICHAT_DEPS_CACHE_MUSL STREQUAL "/musl")
+        message(FATAL_ERROR "ASCIICHAT_DEPS_CACHE_MUSL is invalid: '${ASCIICHAT_DEPS_CACHE_MUSL}'\n"
+                            "ASCIICHAT_DEPS_CACHE_DIR: '${ASCIICHAT_DEPS_CACHE_DIR}'\n"
+                            "This would create directories at root /. Please report this bug.")
+    endif()
+
     set(MUSL_DEPS_DIR_STATIC "${ASCIICHAT_DEPS_CACHE_MUSL}" CACHE PATH "Musl-specific dependencies cache for static builds" FORCE)
     message(STATUS "${BoldBlue}Musl${ColorReset} dependency cache directory: ${BoldMagenta}${MUSL_DEPS_DIR_STATIC}${ColorReset}")
 
