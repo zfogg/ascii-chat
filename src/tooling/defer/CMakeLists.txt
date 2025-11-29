@@ -50,38 +50,23 @@ execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --includedir
     OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
 execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --libdir
     OUTPUT_VARIABLE LLVM_LIBRARY_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
-execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --cxxflags
-    OUTPUT_VARIABLE LLVM_CXX_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version
+    OUTPUT_VARIABLE LLVM_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-# Remove flags we don't want from llvm-config output
-string(REPLACE "-std=c++17" "" LLVM_CXX_FLAGS "${LLVM_CXX_FLAGS}")
-string(REPLACE "-std=c++14" "" LLVM_CXX_FLAGS "${LLVM_CXX_FLAGS}")
+message(STATUS "LLVM version: ${LLVM_VERSION}")
+message(STATUS "LLVM include: ${LLVM_INCLUDE_DIRS}")
+message(STATUS "LLVM lib: ${LLVM_LIBRARY_DIRS}")
 
 # Create the executable
 add_executable(ascii-instr-defer tool.cpp)
 
-# Add LLVM/Clang include directories
-target_include_directories(ascii-instr-defer SYSTEM PRIVATE
-    ${LLVM_INCLUDE_DIRS}
-)
-
-# Compile options - keep it simple, no sanitizers or LTO for build tools
-target_compile_options(ascii-instr-defer PRIVATE
-    -O2
-    -fno-rtti
-    -fexceptions
-)
-
-# On macOS with Homebrew LLVM, we need to explicitly set the sysroot
-# to avoid header conflicts between LLVM's libc++ and macOS SDK.
-# Homebrew LLVM's libc++ headers include macOS SDK headers, which expect
-# basic C types (size_t, ptrdiff_t) to be defined, but the include order
-# can cause issues without proper sysroot configuration.
-#
-# The key issue: Homebrew LLVM 21+ uses its own libc++ which then includes
-# macOS SDK system headers. Without proper sysroot, the SDK headers can't
-# find their prerequisites (like __darwin_wint_t from _types.h).
+# Platform-specific include and compile setup
 if(APPLE)
+    # On macOS with Homebrew LLVM, we need special handling for include paths.
+    # The issue is that Homebrew LLVM (especially 21+) ships with its own libc++
+    # which uses #include_next to find system headers. We must set up the search
+    # path correctly so #include_next can find SDK headers.
+
     execute_process(
         COMMAND xcrun --show-sdk-path
         OUTPUT_VARIABLE MACOS_SDK_PATH
@@ -90,25 +75,83 @@ if(APPLE)
     )
 
     if(MACOS_SDK_PATH)
-        message(STATUS "Using macOS SDK for defer tool: ${MACOS_SDK_PATH}")
-        # CRITICAL: With Homebrew LLVM 21+, the bundled libc++ headers include
-        # macOS SDK C headers via #include_next. The SDK headers expect basic
-        # types like __darwin_wint_t to be defined, but these are only available
-        # when the SDK's own type header chain is followed correctly.
+        message(STATUS "Using macOS SDK: ${MACOS_SDK_PATH}")
+
+        # Get Clang's resource directory (contains compiler builtins like stddef.h)
+        execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} -print-resource-dir
+            OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        # The key insight: With Homebrew LLVM, the compiler needs to find headers in this order:
+        # 1. Clang resource dir (for compiler builtins like __stddef_max_align_t.h)
+        # 2. LLVM's libc++ headers (for C++ standard library)
+        # 3. LLVM's clang/llvm headers (for clang tooling)
+        # 4. SDK usr/include (for C library and Darwin types via -isysroot)
         #
-        # Solution: Add SDK includes with -I BEFORE the LLVM -isystem includes.
-        # CMake processes target_include_directories(SYSTEM) after regular includes,
-        # and -I takes precedence over -isystem, so this ensures the SDK C headers
-        # are found first when LLVM's libc++ headers need them.
+        # The problem in CI was that -isystem LLVM_INCLUDE_DIRS came before the SDK,
+        # and LLVM's headers include libc++ which does #include_next expecting SDK headers.
+        #
+        # Solution: Use -nostdinc++ to disable automatic libc++ search, then add paths
+        # explicitly in the correct order. The -isysroot handles SDK headers.
+
+        # Check if LLVM has bundled libc++ (common in Homebrew LLVM 18+)
+        set(LLVM_LIBCXX_INCLUDE "${LLVM_LIBRARY_DIRS}/../include/c++/v1")
+        get_filename_component(LLVM_LIBCXX_INCLUDE "${LLVM_LIBCXX_INCLUDE}" ABSOLUTE)
+        if(NOT EXISTS "${LLVM_LIBCXX_INCLUDE}")
+            set(LLVM_LIBCXX_INCLUDE "${LLVM_INCLUDE_DIRS}/c++/v1")
+        endif()
+
+        if(EXISTS "${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "Found LLVM libc++ headers: ${LLVM_LIBCXX_INCLUDE}")
+            set(HAS_LLVM_LIBCXX TRUE)
+        else()
+            message(STATUS "LLVM libc++ headers not found, using system libc++")
+            set(HAS_LLVM_LIBCXX FALSE)
+        endif()
+
+        # Set up include directories - order matters for #include_next!
+        if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+            message(STATUS "Using Clang resource dir: ${CLANG_RESOURCE_DIR}/include")
+            target_include_directories(ascii-instr-defer PRIVATE
+                "${CLANG_RESOURCE_DIR}/include"
+            )
+        endif()
+
+        if(HAS_LLVM_LIBCXX)
+            target_include_directories(ascii-instr-defer PRIVATE
+                "${LLVM_LIBCXX_INCLUDE}"
+            )
+        endif()
+
+        # LLVM headers for clang tooling
+        target_include_directories(ascii-instr-defer PRIVATE
+            ${LLVM_INCLUDE_DIRS}
+        )
+
+        # Compile options for macOS
+        # -isysroot tells clang where to find SDK headers (including usr/include)
+        # -stdlib=libc++ ensures we use libc++ (not libstdc++)
         target_compile_options(ascii-instr-defer PRIVATE
+            -O2
+            -fno-rtti
+            -fexceptions
             -isysroot ${MACOS_SDK_PATH}
             -stdlib=libc++
-            # Explicitly add SDK C header path with high priority
-            # This MUST come before LLVM's -isystem includes
-            "-I${MACOS_SDK_PATH}/usr/include"
         )
-        # Link against Homebrew LLVM's libc++ to match libclang-cpp.dylib
-        # The LLVM libs were built with this libc++, so we must use it too
+
+        # If using LLVM's bundled libc++, we need to disable the default search
+        # and use -nostdinc++ with explicit -cxx-isystem for proper #include_next
+        if(HAS_LLVM_LIBCXX)
+            target_compile_options(ascii-instr-defer PRIVATE
+                -nostdinc++
+                "-cxx-isystem${LLVM_LIBCXX_INCLUDE}"
+            )
+        endif()
+
+        # Link options for macOS
         target_link_directories(ascii-instr-defer PRIVATE
             ${LLVM_LIBRARY_DIRS}/c++
             ${LLVM_LIBRARY_DIRS}/unwind
@@ -124,7 +167,28 @@ if(APPLE)
         target_link_libraries(ascii-instr-defer PRIVATE c++ c++abi)
     else()
         message(WARNING "Could not detect macOS SDK path - defer tool may fail to build")
+        # Fallback: use SYSTEM includes
+        target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+            ${LLVM_INCLUDE_DIRS}
+        )
+        target_compile_options(ascii-instr-defer PRIVATE
+            -O2
+            -fno-rtti
+            -fexceptions
+        )
     endif()
+else()
+    # Non-macOS: use SYSTEM includes (Linux, Windows)
+    target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+        ${LLVM_INCLUDE_DIRS}
+    )
+
+    # Compile options - keep it simple, no sanitizers or LTO for build tools
+    target_compile_options(ascii-instr-defer PRIVATE
+        -O2
+        -fno-rtti
+        -fexceptions
+    )
 endif()
 
 # On Windows, use dynamic runtime (/MD) to match Clang libraries

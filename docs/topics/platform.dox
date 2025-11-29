@@ -2462,7 +2462,6 @@
  *
  * **Related Topics**:
  * - @ref topic_testing "Testing with Criterion" - How to test platform code
- * - @ref CLAUDE.md "Development Guide" - General development guidelines
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date September 2025

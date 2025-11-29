@@ -801,6 +801,8 @@
  * **Code Signing** (macOS only):
  *
  * Code signing is supported for distribution and Gatekeeper compatibility.
+ * By default, code signing is **enabled in Release mode** and **disabled in other build types**.
+ *
  * Configure via the `CODESIGNING_IDENTITY` CMake variable or environment variable:
  *
  * @code{.bash}
@@ -813,12 +815,19 @@
  * cmake -B build -DCMAKE_BUILD_TYPE=Release -DCODESIGNING_IDENTITY="Your Name"
  * cmake --build build
  *
+ * # Enable code signing in Debug mode (disabled by default)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_CODESIGNING=ON
+ *
+ * # Disable code signing in Release mode
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release -DASCIICHAT_CODESIGNING=OFF
+ *
  * # Verify signature
  * codesign --verify --deep --strict build/bin/ascii-chat
  * codesign -dv build/bin/ascii-chat  # Display signature details
  * @endcode
  *
  * **Code Signing Configuration**:
+ * - `ASCIICHAT_CODESIGNING` - Enable/disable code signing (ON by default in Release, OFF otherwise)
  * - `CODESIGNING_IDENTITY` - Name of your signing certificate (must exist in Keychain)
  * - If not set or certificate not found, code signing is automatically disabled
  * - Hardened runtime (`--options runtime`) enabled for notarization compatibility
@@ -1308,6 +1317,10 @@
 * - `-DASCIICHAT_RELEASE_KEEP_FRAME_POINTERS=OFF`
 *   - Lets you trade unwindable stacks for slightly smaller/faster code.
 *   - Default `ON` keeps frame pointers so postmortem tooling (Crashpad, addr2line, symbolicators) can reconstruct stacks from field crashes.
+* - `-DASCIICHAT_CODESIGNING=ON|OFF` (macOS only)
+*   - Enable or disable code signing for Gatekeeper compatibility.
+*   - Default `ON` in Release mode, `OFF` in all other build types.
+*   - Requires `CODESIGNING_IDENTITY` to be set (via CMake variable or environment).
 *
 * The release toolchain prints the resolved choices during configuration. For CI/CD, pin them in your preset so the resulting artefacts are reproducible and reviewers can tell which trade-offs you made.
 *

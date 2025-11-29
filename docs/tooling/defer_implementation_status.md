@@ -206,7 +206,7 @@ error: invalid application of 'sizeof' to an incomplete type
 4. **Integration**
    - Update build scripts
    - Add to CI/CD
-   - Document usage in CLAUDE.md
+   - Document usage in developer documentation
 
 ## How to Build With Defer Transformation
 

@@ -44,14 +44,10 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
 endif()
 
-# Dependencies for shared library component (libasciichat.so)
-# The static executable has no runtime dependencies
-# These are only needed if the Development component is installed
-set(CPACK_RPM_PACKAGE_REQUIRES "")
-set(CPACK_RPM_DEVELOPMENT_PACKAGE_REQUIRES "portaudio, alsa-lib, zstd, libsodium, mimalloc")
+# Note: CPACK_RPM_PACKAGE_REQUIRES is set in Install.cmake before include(CPack)
 
-# Use RPM default package naming (ascii-chat-version-release.arch.rpm)
-set(CPACK_RPM_FILE_NAME RPM-DEFAULT)
+# Use our custom package naming (matches CPACK_PACKAGE_FILE_NAME)
+set(CPACK_RPM_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}.rpm")
 
 # Vendor info (optional)
 if(DEFINED ENV{RPM_VENDOR})
