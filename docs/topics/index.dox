@@ -13,21 +13,6 @@
  */
 
 /**
- * @defgroup module_platform Platform Abstraction
- * @brief Cross-platform abstractions for threads, mutexes, sockets, and system calls
- *
- * Complete platform abstraction layer enabling Windows/Linux/macOS portability
- * with zero overhead and consistent semantics.
- */
-
-/**
- * @defgroup module_abstractions Abstraction Layers
- * @brief Platform and OS abstraction layers
- *
- * Cross-platform abstractions for threads, sockets, terminal I/O, and OS-specific functionality.
- */
-
-/**
  * @defgroup module_crypto Cryptography
  * @brief End-to-end encryption and secure communication
  *

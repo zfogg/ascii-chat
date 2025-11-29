@@ -30,7 +30,7 @@
  * The **left sidebar** is your primary navigation tool. It contains the following main sections:
  *
  * - **ascii-chat API Documentation** - The main landing page (you are here)
- * - @ref topics "Topics" - Comprehensive architectural documentation (the most important section for understanding the system)
+ * - **@ref topics "Topics"** - Comprehensive architectural documentation (the most important section for understanding the system)
  * - **@ref topic_categories "Topic Categories"** - Index page that lists all topics organized by category (start here to browse topics!)
  * - **Data Structures** - All struct and typedef definitions organized by functionality
  * - **Files** - Browse source files organized by directory structure
@@ -41,28 +41,32 @@
  *
  * @ref topics "Topics" are directly accessible in the sidebar. To access them:
  *
- * 1. Look for **"Topics"** in the left sidebar (or click @ref topics "here")
- * 2. Click to expand it
- * 3. You'll see all available topic pages listed
+ * 1. Look for **@ref topics "Topics"** in the left sidebar (or click @ref topics "here")
+ * 2. Click to expand the topics tree.
+ * 3. Each topic has a tree to expand with files, functions, enums and structs, custom documentation pages, etc.
  *
  * Alternatively, you can start with **@ref topic_categories "Topic Categories"** in the sidebar, which provides an organized
  * index of all topics grouped by category. This is an excellent starting point!
  *
  * The @ref topics "Topics" page includes comprehensive architectural guides with names like:
  * - **@ref topic_categories "Topic Categories"** - Index page that lists all topics organized by category (start here!)
- * - **"Build System README"** - Comprehensive build documentation
- * - **"Cryptography Module README"** - Crypto architecture and usage
- * - **"Handshake Module README"** - Protocol and authentication details
- * - **"Keys Module README"** - SSH/GPG key management
+ * - **@ref topic_build "Build System README"** - Comprehensive build documentation
+ * - **@ref topic_crypto_detailed "Cryptography README"** - Crypto architecture and usage
+ * - **@ref topic_handshake "Handshake Module README"** - Protocol and authentication details
+ * - **@ref topic_keys "Keys Module README"** - SSH/GPG key management
  * - And many more detailed guides...
  *
- * @note **Pro Tip**: Many topic pages have "README" in their title and descriptive Uppercase names.
+ * @warning **Important**: These links go to the full topic page that has all the topic's functions and enums and structs etc documentation listed first, before the documentation that you wanted when you clicked the link... either scroll down to where the custom documentation starts, or expand the topic in the sidebar to see a direct link to the page you desire (in the sidebar tree, it will be down past the topic's files and structs).
+ * @note **Pro Tip**: Many topic pages have "README" in their title and/or descriptive names with capitalized titles (Pages Titled Like This).
  *       These are comprehensive overview documents that explain entire subsystems in detail.
+ * @note **Pro Tip**: Many topic pages have the same name as their topic. For
+ *       instance the Packet Queue topic has a page called "Packet Queue" that
+ *       explains the code in more detail than the header file documentation does. Look for these pages.
  *
  * @subsubsection sidebar_navigation How to Navigate the Sidebar
  *
  * **Looking for architectural documentation?**
- * - Click @ref topics "Topics" in the sidebar to see all topic pages
+ * - Click **@ref topics "Topics"** in the sidebar to see all topic pages
  * - Or start with **@ref topic_categories "Topic Categories"** for an organized index of all topics
  * - Look for topic pages with "README" in the title for comprehensive subsystem overviews
  *
@@ -71,11 +75,11 @@
  * - Or check **"Data Structures"** to find type definitions
  * - Or browse **"Files"** to see all functions in a particular source file
  *
- * **Looking for implementation details?**
- * - Check **"Files"** to browse source files by directory
- * - Review **"Data Structures"** to understand type definitions
- * - Read @ref topics "Topics" for architectural context, then drill into specific files
- * - Check **"Examples"** for code samples and usage patterns
+ * **Looking for implementation details? Check the sidebar!**
+ * - Check "Files" to browse source files by directory
+ * - Review "Data Structures" to understand type definitions
+ * - Read **@ref topics "Topics"** for architectural context, then drill into specific files
+ * - Check "Examples" for code samples and usage patterns
  *
  * @subsection topics_page Topics: Comprehensive Architectural Documentation
  *
@@ -113,7 +117,7 @@
  * - **@ref topic_buffer_pool "Buffer Pool"**: Pre-allocated memory buffers for efficient allocation
  * - **@ref topic_ringbuffer "Ring Buffer"**: Lock-free circular buffers for audio/video
  * - **@ref topic_packet_queue "Packet Queue"**: Thread-safe per-client packet queues
- * - **@ref uthash library "Hash Table"**: High-performance client ID lookup
+ * - **uthash library**: High-performance client ID lookup - <https://troydhanson.github.io/uthash/>
  *
  * **Media Processing:**
  * - **@ref topic_image2ascii "Image to ASCII Conversion"**: Video frame conversion with SIMD optimization
@@ -167,52 +171,13 @@
  *   and network abstractions
  *
  * @note **Finding Topics**: All topics are accessible via @ref topics "Topics" in the sidebar. Many topics have
- *       "README" in their title and descriptive Uppercase names, indicating they are comprehensive
+ *       "README" in their title and/or descriptive names with capitalized titles (Pages Titled Like This), indicating they are comprehensive
  *       subsystem documentation. You can also start with **@ref topic_categories "Topic Categories"** for an organized index,
  *       or use the search bar at the top of the page to find topics.
  *
  * **Development & Debugging:**
  * - **@ref topic_debug "Debugging Utilities"**: Error tracking, memory leak detection, diagnostics
  * - **@ref topic_lock_debug "Lock Debugging"**: Lock tracking, deadlock detection, contention analysis
- *
- * @subsubsection how_to_use_topics What's Inside Each Topic Page?
- *
- * Each topic page typically includes:
- * - **Overview**: High-level description and purpose of the subsystem
- * - **Architecture**: Design decisions, structural details, and how components interact
- * - **API Reference**: Function signatures, parameters, return values, and usage patterns
- * - **Examples**: Complete code samples showing how to use the APIs correctly
- * - **Integration**: How the module fits into the larger system and interacts with other components
- * - **Performance**: Benchmarks, optimization notes, and performance considerations
- * - **Best Practices**: Recommended usage patterns, common pitfalls, and gotchas
- * - **Related**: Links to related topics, modules, and code elements
- *
- * @subsection files_page Files: Browse Source Code
- *
- * The **Files** section lists all source files in the project:
- * - Header files (`.h`) with file-level documentation explaining the file's purpose
- * - Implementation files (`.c`) for implementation details
- * - Organized by directory structure (e.g., `lib/crypto/`, `src/client/`)
- * - Each file's documentation describes its purpose and key features
- * - Click a file to see all functions, structures, and constants defined within it
- *
- * @subsection class_page Data Structures: Type Definitions
- *
- * The **Data Structures** section shows all `struct` and `typedef` definitions:
- * - Structures organized by functionality (as defined with `@ingroup`)
- * - Complete member documentation with types and descriptions
- * - Links to related functions that use these structures
- * - Useful for understanding data flow and API contracts
- *
- * @subsection examples_page Examples: Code Samples and Usage Patterns
- *
- * The **Examples** section provides:
- * - Code samples demonstrating how to use the APIs
- * - Usage patterns and common workflows
- * - Integration examples showing how components work together
- * - Best practices demonstrated through practical code
- *
- * @section navigation_tips Navigation Tips
  *
  * @subsection quick_start Quick Start
  *
@@ -271,40 +236,40 @@
  * The library is organized into several major modules:
  *
  * @subsection core_module Core Library
- * - @ref common "Common Definitions" - Error codes, macros, core types
- * - @ref options "Options module" - Command-line options
- * - @ref config "Config module" - File-based configuration
- * - @ref logging "Logging Module" - Logging API and utilities
+ * - **@ref topic_common "Common Definitions"** - Error codes, macros, core types
+ * - **@ref topic_options "Options module"** - Command-line options
+ * - **@ref topic_config "Config module"** - File-based configuration
+ * - **@ref topic_logging "Logging Module"** - Logging API and utilities
  *
  * @subsection platform_module Platform Abstractions
- * - @ref topic_platform "Platform Abstraction Layer README" - **Comprehensive guide** to cross-platform abstractions
+ * - **@ref topic_platform "Platform Abstraction Layer README"** - **Comprehensive guide** to cross-platform abstractions
  *   for threads, mutexes, sockets, terminal I/O, crash handling, and OS portability (Windows/Linux/macOS)
- * - @ref platform "Platform Layer" - API reference for platform abstractions
- * - @ref os "OS Abstractions" - Operating system specific functionality (webcam, etc.)
+ * - **@ref topic_platform "Platform Layer"** - API reference for platform abstractions
+ * - **@ref topic_os "OS Abstractions"** - Operating system specific functionality (webcam, etc.)
  *
  * @subsection core_libs_module Core Libraries
- * - @ref buffer_pool "Buffer Pool" - Memory management with pre-allocated buffers
- * - @ref ringbuffer "Ring Buffer" - Circular buffer implementation
- * - @ref packet_queue "Packet Queue" - Queue management for network packets
+ * - **@ref topic_buffer_pool "Buffer Pool"** - Memory management with pre-allocated buffers
+ * - **@ref topic_ringbuffer "Ring Buffer"** - Circular buffer implementation
+ * - **@ref topic_packet_queue "Packet Queue"** - Queue management for network packets
  *
  * @subsection network_module Network Layer
- * - @ref network "Network Module" - Socket operations, timeouts, connections
- * - @ref packet "Packet Types" - Network packet structures and definitions
- * - @ref av "Audio/Video Networking" - Network APIs for audio/video streaming
+ * - **@ref topic_network "Network Module"** - Socket operations, timeouts, connections
+ * - **@ref topic_packet_types "Packet Types"** - Network packet structures and definitions
+ * - **@ref topic_av "Audio/Video Networking"** - Network APIs for audio/video streaming
  *
  * @subsection crypto_module Cryptography
- * - @ref topic_crypto "Crypto Core" - Core cryptographic operations
- * - @ref handshake "Handshake Protocol" - Cryptographic handshake implementation
- * - @ref keys "Keys Module" - SSH key, GPG key, and key validation APIs
+ * - **@ref topic_crypto_detailed "Cryptography Module"** - Core cryptographic operations
+ * - **@ref topic_handshake "Handshake Protocol"** - Cryptographic handshake implementation
+ * - **@ref topic_keys "Keys Module"** - SSH key, GPG key, and key validation APIs
  *
  * @subsection media_module Media Processing
- * - @ref audio "Audio System" - Audio capture and playback
- * - @ref palette "Palette Management" - ASCII palette configuration and UTF-8 support
- * - @ref image2ascii "Image to ASCII" - Image conversion and ASCII rendering
- * - @ref video_frame "Video Frames" - Video frame buffer management
+ * - **@ref topic_audio "Audio System"** - Audio capture and playback
+ * - **@ref topic_palette "Palette Management"** - ASCII palette configuration and UTF-8 support
+ * - **@ref topic_image2ascii "Image to ASCII"** - Image conversion and ASCII rendering
+ * - **@ref topic_video_frame "Video Frames"** - Video frame buffer management
  *
  * @subsection util_module Utilities
- * - @ref util "Utilities" - String manipulation, path handling, IP parsing, math utilities, UTF-8 support
+ * - **@ref topic_util "Utilities"** - String manipulation, path handling, IP parsing, math utilities, UTF-8 support
  *
  * @section getting_started Getting Started
  *
@@ -574,7 +539,7 @@
  * - `threaded_send_packet()` is thread-safe for concurrent sending
  * - `receive_packet_secure()` should be called from dedicated receive thread
  * - Crypto context is per-connection (not thread-safe for concurrent access)
- * 
+ *
  * @section building Building Documentation
  *
  * To build this documentation, you'll need Doxygen configured. See @ref topic_build "Build System"
@@ -597,23 +562,9 @@
  * For more information on the build system, including CMake configuration, build types, and
  * platform-specific considerations, see @ref topic_build "Build System".
  *
- * @section modules Modules
- *
- * @note Most module groups are defined in their respective header files.
- *       See @ref build "Build System", @ref testing "Testing", @ref common
- *       "Common Definitions", @ref logging "Logging System", @ref options
- *       "Options", @ref platform "Platform Abstractions", @ref os "OS
- *       Abstractions", @ref buffer_pool "Buffer Pool", @ref ringbuffer "Ring
- *       Buffer", @ref packet_queue "Packet Queue", @ref network "Network I/O",
- *       @ref packet "Packet Types", @ref av "Audio/Video Networking", @ref
- *       crypto "Cryptography", @ref handshake "Handshake Protocol", @ref keys
- *       "Keys Module", @ref audio "Audio System", @ref palette "Palette
- *       Management", @ref image2ascii "Image to ASCII", @ref video_frame "Video
- *       Frames", and @ref util "Utilities" for detailed documentation.
- *
  * @section license License
  *
- * See the LICENSE file for license information.
+ * See the LICENSE.txt file for license information.
  *
  * @section links Links
  *
