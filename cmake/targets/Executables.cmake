@@ -211,6 +211,12 @@ if(NOT WIN32)
 endif()
 
 # =============================================================================
+# macOS Code Signing
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)
+codesign_target(ascii-chat)
+
+# =============================================================================
 # Global Build Timer - End Marker
 # =============================================================================
 # Show total build time after the final target is built
