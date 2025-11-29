@@ -61,10 +61,13 @@ jobs:
       uses: ./.github/actions/cache-build
       with:
         cache-version: v3
+        build-cache-key: ${{ matrix.build_type }}
 
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Also clean test executables to ensure they're rebuilt with correct configuration
+        rm -rf build/bin/test_*
 
     - name: Build test suite (${{ matrix.build_type }})
       run: |
@@ -284,6 +287,8 @@ jobs:
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Also clean test executables to ensure they're rebuilt with correct configuration
+        rm -rf build/bin/test_*
 
     - name: Build and run integration tests with coverage
       run: |
@@ -393,6 +398,8 @@ jobs:
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Also clean test executables to ensure they're rebuilt with correct configuration
+        rm -rf build/bin/test_*
 
     - name: Build performance tests with coverage
       run: |
@@ -511,6 +518,8 @@ jobs:
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Also clean test executables to ensure they're rebuilt with correct configuration
+        rm -rf build/bin/test_*
 
     - name: Build with AddressSanitizer
       run: |
@@ -596,6 +605,8 @@ jobs:
     - name: Clean build directory to force reconfigure
       run: |
         rm -rf build/CMakeCache.txt build/CMakeFiles
+        # Also clean test executables to ensure they're rebuilt with correct configuration
+        rm -rf build/bin/test_*
 
     - name: Build project
       run: |
