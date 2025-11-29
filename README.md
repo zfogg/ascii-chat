@@ -8,14 +8,18 @@ true). Initial commits _November 20-24, 2013_, with
 [@craigpalermo](https://github.com/craigpalermo), at some collegiate hackathon
 (I forget which one).
 
-ascii-chat is a client-server application that operates over TCP/IP. it supports color and audio and crypto and compression and multiple clients.
+ascii-chat is a client-server application that operates over TCP/IP. it
+supports color and audio and crypto and compression and multiple clients.
 
 The client functions by simply printing text and terminal escape codes to your
 terminal, so it works EVERYWHERE that terminals work: on rxvt-unicode in
 OpenBox, in a Putty SSH session, in iTerm and Kitty.app on macOS, and
 theoretically everywhere else terminals run.
 
-ascii-chat even works in an initial UNIX login shell. You know, the shell that runs 'startx' and launches your desktop environment so you can open a GUI terminal app like Konsole or Kitty or Alacritty. You don't need a desktop environment at all to video chat with ascii-chat. (*)
+ascii-chat even works in an initial UNIX login shell. You know, the shell that
+runs 'startx' and launches your desktop environment so you can open a GUI
+terminal app like Konsole or Kitty or Alacritty. You don't need a desktop
+environment at all to video chat with ascii-chat. (*)
 
 🆕 We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
 
@@ -35,7 +39,7 @@ ascii-chat v0 from 2013:
 
 ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a call:
 
-![Animated demonstration: multi-client](https://i.imgur.com/OYcv7jP.gif)
+![Animated demonstration: multi-client](https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExMHFwczNjY3Fudndmb2kxajJxMmY0aG8ycHc5N29pbDh6czBrdXVreSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/68F2r2pduHugH5sXa5/giphy.gif)
 
 ## Code Coverage
 
