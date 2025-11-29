@@ -1,14 +1,13 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 4.2)
 
 # =============================================================================
-# Initialization
+# CMake Build Types
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
-# INFO: CMAKE_BUILD_TYPE is now set.
+# INFO: CMAKE_BUILD_TYPE is now configured.
 
 # =============================================================================
-# Dependency Cache Configuration (must come early in the configuration process)
+# Dependency Cache (must come early in the configuration process)
 # =============================================================================
 # Centralized dependency cache configuration
 # This section must run AFTER BuildTypes.cmake is included (where CMAKE_BUILD_TYPE is set)
@@ -16,23 +15,29 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # Musl dependencies are stored in musl/ subdirectory
 
 # Check if running in Docker (set by Dockerfile with ENV TESTING=1)
-if(DEFINED ENV{TESTING} AND "$ENV{TESTING}" STREQUAL "1")
-    # Use OS-specific cache directory for Docker builds
-    if(DEFINED ENV{DOCKER_OS})
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
-    else()
-        set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)")
-    endif()
+if(DEFINED ENV{DOCKER_OS})
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
+elseif(EXISTS "/.dockerenv")
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)")
 else()
     set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
 endif()
 
 # Build-type-specific cache directory
 set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
-# Musl-specific cache directory
-set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
+
+if (USE_MUSL)
+    # Musl-specific cache directory
+    set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
+endif()
+
 # Print dependency cache message (after Init.cmake defines colors)
 message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${ColorReset}")
+
+# =============================================================================
+# Initialization
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 
 # =============================================================================
 # Project Constants (must come before project() for DESCRIPTION/HOMEPAGE_URL)
@@ -48,6 +53,12 @@ version_detect()  # Sets PROJECT_VERSION_FROM_GIT
 # =============================================================================
 # Pre project() Configuration
 # =============================================================================
+# Enable experimental SPDX_LICENSE support in project() command (CMake 4.2+)
+# This UUID is defined by CMake to gate experimental features - it must match exactly.
+# See: https://github.com/Kitware/CMake/blob/master/Help/dev/experimental.rst
+# If CMake changes the UUID in a future version, update this value accordingly.
+set(CMAKE_EXPERIMENTAL_EXPORT_PACKAGE_INFO "b80be207-778e-46ba-8080-b23bba22639e")
+
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
@@ -65,14 +76,11 @@ endif()
 
 project(${PROJECT_NAME_FULL}
     VERSION ${PROJECT_VERSION_FROM_GIT}
+    SPDX_LICENSE "${PROJECT_LICENSE_SPDX}"
     DESCRIPTION "${PROJECT_DESCRIPTION_ONELINE}"
     HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}"
     LANGUAGES ${PROJECT_LANGUAGES}
 )
-
-# SPDX License identifier (PROJECT_LICENSE_SPDX defined in ProjectConstants.cmake)
-# Note: project() SPDX_LICENSE parameter requires CMake 4.2+ (unreleased)
-set(PROJECT_SPDX_LICENSE "${PROJECT_LICENSE_SPDX}" CACHE STRING "SPDX License ID")
 
 # =============================================================================
 # Generator Validation (after project())

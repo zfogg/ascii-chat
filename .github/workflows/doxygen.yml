@@ -47,7 +47,13 @@ jobs:
       id: version
       run: |
         # Get version from git describe (same as cmake/install/Version.cmake)
-        VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "0.0.0")
+        # Use --long --dirty --always to match Version.cmake, then extract version number
+        GIT_DESCRIBE=$(git describe --tags --long --dirty --always 2>/dev/null || echo "")
+        if [[ "$GIT_DESCRIBE" =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+          VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+        else
+          VERSION="0.0.0"
+        fi
         echo "version=$VERSION" >> $GITHUB_OUTPUT
 
     - name: Generate Doxyfile from template
