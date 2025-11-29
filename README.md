@@ -1,20 +1,27 @@
 ascii-chat 📸
 ==========
 
-ASCII video chat.
+ASCII* video chat
 
-Probably the first command line video chat program, initial. First written
-November 20, 2013, at the [Hack Duke](https://hackduke.org/) hackathon.
+Probably the first command line video chat program (let me know if this isn't
+true). Initial commits _November 20-24, 2013_, with @craigpalermo, at some
+collegiate hackathon.
 
-It functions by simply printing text and terminal escape codes to your terminal,
-so it works on rxvt-unicode in OpenBox, a Putty SSH session, iTerm and Kitty.app
-on macOS, and theoretically wherever else the terminal runs.
+ascii-chat functions by simply printing text and terminal escape codes to your
+terminal, so it works EVERYWHERE: on rxvt-unicode in OpenBox, in a Putty SSH session, in iTerm and
+Kitty.app on macOS, and theoretically wherever else terminals run.
 
-ascii-chat even works in an initial UNIX login shell, i.e. the shell that runs 'startx'. This means you can video chat without even installing a graphical desktop environment on Linux.
+ascii-chat even works in an initial UNIX login shell. You know, the shell that runs 'startx' and launches your desktop environment so you can open a GUI terminal app like Konsole or Kitty or Alacritty. You don't need a desktop environment at all to video chat with ascii-chat. **
+
+\* We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
+
+\** Testing needed to verify a decent framerate on different systems and environments.
 
 🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do.
 
-🆕 Audio is now supported -- turn on your microphone and start talking!
+🆕 Audio is now supported - turn on your microphone and start talking! (TODO: buggy - needs work)
+
+📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
 
 ![Animated demonstration: monochrome](https://i.imgur.com/E4OuqvX.gif)
 
@@ -67,6 +74,7 @@ Supports color and multiple clients. Here are 3 clients connected to a single se
 
 - Latest release: [v0.3.5](https://github.com/zfogg/ascii-chat/releases/tag/v0.3.5)
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
+- Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
 - Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps
 
 
@@ -218,6 +226,8 @@ ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --pas
 
 ascii-chat is an open source project with an MIT license, meaning you can and should use our code to make cool stuff. Follow through this Open Source section of the README and you'll be compiling against libasciichat in no time.
 
+> 💡 **For detailed API documentation**, see the **[online docs](https://zfogg.github.io/ascii-chat/)** — includes function references, architecture diagrams, and module documentation generated from source comments.
+
 The first thing you need to do is get the dependencies. Some of them are git submodules of the repo. When you clone the repo get the submodules too.
 
 ```bash
@@ -280,19 +290,9 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 - **Windows**: Media Foundation native Windows API
 
 #### Install Dependencies on Linux or macOS
-**Plain old Ubuntu**:
+**Linux (apt/yum/pacman)**:
 ```bash
-apt-get install make cmake pkg-config ninja clang llvm clang-tidy clang-format ninja-build musl-tools musl-dev libmimalloc-dev libzstd-dev portaudio19-dev libsodium-dev libcriterion-dev
-
-```
-**Glorious Arch Linux**:
-```bash
-pacman -S make cmake pkg-config ninja clang llvm musl mimalloc zstd portaudio libsodium criterion rpm-tools dpkg
-```
-
-**Fedora**:
-```bash
-yum install -y make cmake pkg-config ninja clang llvm musl-devel musl-gcc musl-lib-static mimalloc-devel libzstd-devel libsodium-devel portaudio-devel jack-audio-connection-kit-devel rpm-build
+./scripts/deps.sh
 ```
 
 **macOS**:
@@ -383,6 +383,12 @@ Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for e
 - `ASCIICHAT_ENABLE_CTEST_DASHBOARD`: defaults to `OFF`; enable to include CTest dashboard configuration (`include(CTest)`).
 
 #### Documentation
+
+📖 **Online Documentation: [zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)**
+
+The documentation is automatically generated from source code comments using Doxygen and published to GitHub Pages on every push to master.
+
+**To build documentation locally:**
 - Install Doxygen (`brew install doxygen`, `apt-get install doxygen`, etc.) to enable the documentation targets.
 - Run `cmake --build build --target docs` to generate HTML + manpage docs in `build/docs/`.
 - Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
