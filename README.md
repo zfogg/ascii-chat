@@ -94,7 +94,13 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
 
 ## Get ascii-chat
 
-- Latest release: [v0.3.5](https://github.com/zfogg/ascii-chat/releases/tag/v0.3.5)
+**macOS (Homebrew):**
+```bash
+brew install zfogg/ascii-chat/ascii-chat
+```
+
+**All Platforms:**
+- Latest release: [v0.3.9](https://github.com/zfogg/ascii-chat/releases/tag/v0.3.9)
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
 - Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
 - Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps
