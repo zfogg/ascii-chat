@@ -383,9 +383,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Verify checksum
   uint32_t actual_crc = asciichat_crc32(frame_data, header.original_size);
   if (actual_crc != header.checksum) {
-    log_error("Frame checksum mismatch: got 0x%x, expected 0x%x (size=%u, first_bytes=%02x%02x%02x%02x)",
-              actual_crc, header.checksum, header.original_size,
-              (unsigned char)frame_data[0], (unsigned char)frame_data[1],
+    log_error("Frame checksum mismatch: got 0x%x, expected 0x%x (size=%u, first_bytes=%02x%02x%02x%02x)", actual_crc,
+              header.checksum, header.original_size, (unsigned char)frame_data[0], (unsigned char)frame_data[1],
               (unsigned char)frame_data[2], (unsigned char)frame_data[3]);
 
     // DEBUG: Try software CRC32 to compare

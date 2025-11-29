@@ -198,21 +198,21 @@ char *expand_path(const char *path) {
 #endif
 
     char *expanded;
-    size_t total_len = strlen(home) + strlen(path) + 1;  // path includes the tilde
+    size_t total_len = strlen(home) + strlen(path) + 1; // path includes the tilde
     expanded = SAFE_MALLOC(total_len, char *);
     if (!expanded) {
       return NULL;
     }
     safe_snprintf(expanded, total_len, "%s%s", home, path + 1);
 
-    #ifdef _WIN32
+#ifdef _WIN32
     // Convert Unix forward slashes to Windows backslashes
     for (char *p = expanded; *p; p++) {
       if (*p == '/') {
         *p = '\\';
       }
     }
-    #endif
+#endif
 
     return expanded;
   }

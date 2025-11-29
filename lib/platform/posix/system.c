@@ -193,14 +193,14 @@ static void posix_console_ctrl_signal_handler(int sig) {
 
   console_ctrl_event_t event;
   switch (sig) {
-    case SIGINT:
-      event = CONSOLE_CTRL_C;
-      break;
-    case SIGTERM:
-      event = CONSOLE_CLOSE;
-      break;
-    default:
-      return;
+  case SIGINT:
+    event = CONSOLE_CTRL_C;
+    break;
+  case SIGTERM:
+    event = CONSOLE_CLOSE;
+    break;
+  default:
+    return;
   }
 
   // Call user's handler (in signal context - limited operations allowed!)

@@ -576,7 +576,7 @@ function(configure_llvm_post_project)
 
                 # Add to build rpath if directories exist
                 if(LLVM_RPATH_UNWIND)
-                    if(NOT CMAKE_BUILD_RPATH MATCHES "${LLVM_RPATH_UNWIND}")
+                    if(NOT "${LLVM_RPATH_UNWIND}" IN_LIST CMAKE_BUILD_RPATH)
                         list(APPEND CMAKE_BUILD_RPATH "${LLVM_RPATH_UNWIND}")
                         set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" CACHE INTERNAL "Build RPATH" FORCE)
                         message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM unwind${ColorReset} to build rpath: ${BoldCyan}${LLVM_RPATH_UNWIND}${ColorReset}")
@@ -584,7 +584,7 @@ function(configure_llvm_post_project)
                 endif()
 
                 if(LLVM_RPATH_CXX AND NOT LLVM_RPATH_CXX STREQUAL LLVM_RPATH_UNWIND)
-                    if(NOT CMAKE_BUILD_RPATH MATCHES "${LLVM_RPATH_CXX}")
+                    if(NOT "${LLVM_RPATH_CXX}" IN_LIST CMAKE_BUILD_RPATH)
                         list(APPEND CMAKE_BUILD_RPATH "${LLVM_RPATH_CXX}")
                         set(CMAKE_BUILD_RPATH "${CMAKE_BUILD_RPATH}" CACHE INTERNAL "Build RPATH" FORCE)
                         message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}LLVM c++${ColorReset} to build rpath: ${BoldCyan}${LLVM_RPATH_CXX}${ColorReset}")
