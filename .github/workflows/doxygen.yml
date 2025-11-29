@@ -63,6 +63,7 @@ jobs:
         sed -e "s|@CMAKE_SOURCE_DIR@|$(pwd)|g" \
             -e "s|@CMAKE_BINARY_DIR@|$(pwd)/build|g" \
             -e "s|@PROJECT_VERSION@|${{ steps.version.outputs.version }}|g" \
+            -e "s|@AWESOME_CSS_DIR@|$(pwd)/deps/doxygen-awesome-css|g" \
             docs/Doxyfile.in > build/Doxyfile
 
     - name: Build documentation
