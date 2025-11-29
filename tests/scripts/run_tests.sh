@@ -1434,8 +1434,7 @@ function main() {
 
   if [[ ${#test_targets[@]} -gt 0 ]]; then
     # Build all test targets in one command
-    # Use cmake --build instead of ninja directly because test targets are EXCLUDE_FROM_ALL
-    # CMake properly handles EXCLUDE_FROM_ALL targets when built explicitly via --target
+    # Use cmake --build for portability and proper dependency handling
     log_info "🔨 Building ${#test_targets[@]} test executable(s) in parallel..."
 
     # Show build output in real-time
