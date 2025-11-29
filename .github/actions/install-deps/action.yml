@@ -105,6 +105,20 @@ runs:
     # =========================================================================
     # Dependency Caches
     # =========================================================================
+    - name: Clean dependency cache (always clean to avoid stale artifacts)
+      shell: bash
+      run: |
+        # Always clean .deps-cache before restoring cache to avoid stale artifacts from previous builds
+        # (e.g., musl artifacts mixing with glibc builds, or artifacts from different build types)
+        if [ -d ".deps-cache" ]; then
+          echo "Cleaning .deps-cache to remove any stale artifacts..."
+          rm -rf .deps-cache
+        fi
+        # Also clean deps/bearssl/build if it exists
+        if [ -d "deps/bearssl/build" ]; then
+          rm -rf deps/bearssl/build
+        fi
+
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
       uses: actions/cache/restore@v4
@@ -113,20 +127,6 @@ runs:
           .deps-cache
           deps/bearssl/build
         key: ${{ runner.os }}-cmake-deps-v4-${{ hashFiles('cmake/dependencies/**') }}
-
-    - name: Clean stale dependency cache (if cache not hit)
-      if: steps.cmake-cache.outputs.cache-hit != 'true'
-      shell: bash
-      run: |
-        # Remove .deps-cache to avoid stale artifacts from previous builds (e.g., musl artifacts mixing with glibc)
-        if [ -d ".deps-cache" ]; then
-          echo "Cache not hit - cleaning .deps-cache to remove stale artifacts..."
-          rm -rf .deps-cache
-        fi
-        # Also clean deps/bearssl/build if it exists
-        if [ -d "deps/bearssl/build" ]; then
-          rm -rf deps/bearssl/build
-        fi
 
     - name: Restore Homebrew cache (macOS)
       if: inputs.os == 'macos'
