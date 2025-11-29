@@ -2,12 +2,15 @@ diff --git a/src/tomlc17.c b/src/tomlc17.c
 index 1358b5c..3a4b5f6 100644
 --- a/src/tomlc17.c
 +++ b/src/tomlc17.c
-@@ -14,6 +14,43 @@
+@@ -14,6 +14,32 @@
  #include <stdlib.h>
  #include <string.h>
 
 +/* Platform-safe wrappers for deprecated Windows CRT functions */
 +#ifdef _WIN32
++  /* Windows: Always use secure CRT functions to avoid deprecation warnings.
++   * This must be unconditional because in Unity builds, _CRT_SECURE_NO_WARNINGS
++   * may be defined by other headers before this file is compiled. */
 +  static inline FILE *safe_fopen(const char *filename, const char *mode) {
 +    FILE *fp = NULL;
 +    errno_t err = fopen_s(&fp, filename, mode);
@@ -26,7 +29,7 @@ index 1358b5c..3a4b5f6 100644
 +#else
 +  /* Unix: Use standard functions directly */
 +  #define safe_fopen fopen
-+  /* NOTE: strerror is not thread-safe on some Unix platforms but widely used */
++  /* strerror is not thread-safe on some Unix platforms but widely used */
 +  static inline const char *safe_strerror(int errnum) {
 +    const char *msg = strerror(errnum);
 +    return msg ? msg : "Unknown error";
@@ -36,7 +39,7 @@ index 1358b5c..3a4b5f6 100644
  const toml_datum_t DATUM_ZERO = {0};
 
  static toml_option_t toml_option = {0, realloc, free};
-@@ -695,7 +732,7 @@ toml_result_t toml_parse(const char *s) {
+@@ -695,7 +721,7 @@ toml_result_t toml_parse(const char *s) {
   */
  toml_result_t toml_parse_file_ex(const char *fname) {
    toml_result_t result = {0};
@@ -45,7 +48,7 @@ index 1358b5c..3a4b5f6 100644
    if (!fp) {
      snprintf(result.errmsg, sizeof(result.errmsg), "fopen: %s", fname);
      return result;
-@@ -745,7 +782,7 @@ toml_result_t toml_parse_file(FILE *fp) {
+@@ -745,7 +771,7 @@ toml_result_t toml_parse_file(FILE *fp) {
      errno = 0;
      top += fread(buf + top, 1, max - top, fp);
      if (ferror(fp)) {

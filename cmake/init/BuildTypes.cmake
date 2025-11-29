@@ -27,6 +27,9 @@ function(configure_build_type_early)
     # This allows musl detection to work correctly based on build type
     if(NOT CMAKE_BUILD_TYPE)
         set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Debug, Dev, Release, RelWithDebInfo, Coverage)" FORCE)
+        # Also set in parent scope so it's immediately available after function returns
+        # (CACHE FORCE only updates the cache, not the current scope's variable)
+        set(CMAKE_BUILD_TYPE "Release" PARENT_SCOPE)
         message(STATUS "No build type specified, defaulting to Release")
     endif()
 endfunction()

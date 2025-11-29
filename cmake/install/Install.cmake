@@ -32,6 +32,26 @@ install(TARGETS ascii-chat
     COMPONENT Runtime
 )
 
+# =============================================================================
+# Start Menu Shortcuts (Windows WiX installer)
+# =============================================================================
+# Create Start Menu shortcuts for documentation
+# This uses the CPACK_START_MENU_SHORTCUTS install property which CPack WiX reads
+# to generate Start Menu entries during MSI installation
+#
+# Note: ascii-chat is a terminal-only CLI program, so we don't create a shortcut
+# to the executable (it would just flash a console window and exit). Users should
+# run it from their terminal of choice (PowerShell, cmd, Windows Terminal, etc.)
+if(WIN32)
+    # Create Start Menu shortcut for the documentation (opens in browser)
+    # Note: INSTALL_DOC_DIR is set later in this file, so we use the Windows value directly
+    set_property(INSTALL "doc/html/index.html"
+        PROPERTY CPACK_START_MENU_SHORTCUTS "ascii-chat Documentation"
+    )
+
+    message(STATUS "Configured Start Menu shortcut: ${BoldBlue}ascii-chat Documentation${ColorReset}")
+endif()
+
 set(_ascii_chat_exportable_targets ascii-chat-shared ascii-chat-static ascii-chat-static-lib)
 foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
     if(TARGET ${_ascii_target})

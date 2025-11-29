@@ -648,8 +648,6 @@
  * 2. **Consistency Across Environments**
  *    - SSH agent availability varies by system (Unix-only, requires configuration)
  *    - Users should get **identical security** regardless of environment
- *    - Old design: SSH agent = forward secrecy, in-memory = no forward secrecy ❌
- *    - New design: Both modes = forward secrecy ✅
  *
  * 3. **Matches SSH Protocol Design**
  *    - SSH itself uses this exact model: long-term host/user keys for identity, ephemeral
@@ -676,11 +674,19 @@
  * Enter passphrase for /Users/you/.ssh/id_ed25519: [password]
  * Identity added: /Users/you/.ssh/id_ed25519
  *
- * # 3. Start server - uses agent, NO password prompt!
+ * # 3. Start server or client using the key - uses ssh-agent; NO password prompt!
  * ascii-chat server --key ~/.ssh/id_ed25519
+ * # or
+ * ascii-chat client --key ~/.ssh/id_ed25519
  * INFO: Using SSH agent for this key (agent signing + ephemeral encryption)
  * INFO: SSH agent mode: Will use agent for identity signing, ephemeral X25519 for encryption
+ * # There was no password prompt because the key was decrypted in the ssh-agent already.
  * @endcode
+ *
+ * If the key is not in the ssh-agent and ssh-agent is running, ascii-chat will
+ * prompt for the password and decrypt the key and store it in the ssh-agent
+ * securely for future use. This is done via ssh-agent's official protocol and
+ * is safe for production use - this is the intended usage of ssh-agent.
  *
  * @subsection crypto_detailed_github_keys GitHub/GitLab Key Fetching
  *
@@ -1590,7 +1596,7 @@
  *   |   [new_ephemeral_pk: 32 bytes]                  |
  *   |                                                 |
  *   | Generate new ephemeral X25519 keypair           |
- *   | Compute shared_secret_new = DH(my_sk, their_pk) | 
+ *   | Compute shared_secret_new = DH(my_sk, their_pk) |
  *   |                                                 |
  *   |<-- CRYPTO_REKEY_RESPONSE ------>                |
  *   |   [new_ephemeral_pk: 32 bytes]                  |

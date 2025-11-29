@@ -15,21 +15,34 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildTypes.cmake)
 # Musl dependencies are stored in musl/ subdirectory
 
 # Check if running in Docker (set by Dockerfile with ENV TESTING=1)
+# Note: Use FORCE to ensure computed paths always reflect current CMAKE_SOURCE_DIR and CMAKE_BUILD_TYPE
 if(DEFINED ENV{DOCKER_OS})
-    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})")
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/$ENV{DOCKER_OS}" CACHE PATH "Root directory for dependency cache (Docker $ENV{DOCKER_OS})" FORCE)
 elseif(EXISTS "/.dockerenv")
-    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)")
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache/docker" CACHE PATH "Root directory for dependency cache (Docker)" FORCE)
 else()
-    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)")
+    set(ASCIICHAT_DEPS_CACHE_ROOT "${CMAKE_SOURCE_DIR}/.deps-cache" CACHE PATH "Root directory for dependency cache (native)" FORCE)
 endif()
 
 # Build-type-specific cache directory
-set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type")
+# Note: Must use FORCE because this is computed from other variables that may change between runs
+set(ASCIICHAT_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_ROOT}/${CMAKE_BUILD_TYPE}" CACHE PATH "Dependency cache for current build type" FORCE)
 
-if (USE_MUSL)
-    # Musl-specific cache directory
-    set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds")
+# Validate paths are not empty (which would create directories at root /)
+if(NOT ASCIICHAT_DEPS_CACHE_ROOT OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "" OR ASCIICHAT_DEPS_CACHE_ROOT STREQUAL "/")
+    message(FATAL_ERROR "ASCIICHAT_DEPS_CACHE_ROOT is invalid: '${ASCIICHAT_DEPS_CACHE_ROOT}'\n"
+                        "CMAKE_SOURCE_DIR: '${CMAKE_SOURCE_DIR}'\n"
+                        "This should not happen - please report this bug.")
 endif()
+if(NOT ASCIICHAT_DEPS_CACHE_DIR OR ASCIICHAT_DEPS_CACHE_DIR STREQUAL "" OR ASCIICHAT_DEPS_CACHE_DIR MATCHES "^/$" OR ASCIICHAT_DEPS_CACHE_DIR MATCHES "^/[^/]+$")
+    message(FATAL_ERROR "ASCIICHAT_DEPS_CACHE_DIR is invalid: '${ASCIICHAT_DEPS_CACHE_DIR}'\n"
+                        "ASCIICHAT_DEPS_CACHE_ROOT: '${ASCIICHAT_DEPS_CACHE_ROOT}'\n"
+                        "CMAKE_BUILD_TYPE: '${CMAKE_BUILD_TYPE}'\n"
+                        "This should not happen - please report this bug.")
+endif()
+
+# Note: ASCIICHAT_DEPS_CACHE_MUSL is set in Musl.cmake's configure_musl_post_project()
+# after USE_MUSL is properly defined. Don't set it here as USE_MUSL isn't defined yet.
 
 # Print dependency cache message (after Init.cmake defines colors)
 message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${ColorReset}")
