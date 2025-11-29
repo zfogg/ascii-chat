@@ -111,8 +111,13 @@ function(configure_musl_post_project)
         return()
     endif()
 
-    # Set musl dependency cache directory for ExternalProject builds
-    # This must be done here (after USE_MUSL is defined) rather than in Init.cmake
+    # Set musl dependency cache directories for ExternalProject builds
+    # ASCIICHAT_DEPS_CACHE_MUSL may not be set in CMakeLists.txt because USE_MUSL
+    # isn't defined until Musl.cmake is included (after the cache dir setup)
+    # So we set it here to ensure it's properly configured
+    if(NOT ASCIICHAT_DEPS_CACHE_MUSL OR ASCIICHAT_DEPS_CACHE_MUSL STREQUAL "")
+        set(ASCIICHAT_DEPS_CACHE_MUSL "${ASCIICHAT_DEPS_CACHE_DIR}/musl" CACHE PATH "Dependency cache for musl builds" FORCE)
+    endif()
     set(MUSL_DEPS_DIR_STATIC "${ASCIICHAT_DEPS_CACHE_MUSL}" CACHE PATH "Musl-specific dependencies cache for static builds" FORCE)
     message(STATUS "${BoldBlue}Musl${ColorReset} dependency cache directory: ${BoldMagenta}${MUSL_DEPS_DIR_STATIC}${ColorReset}")
 
