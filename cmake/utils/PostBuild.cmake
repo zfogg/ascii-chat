@@ -19,20 +19,62 @@
 #   - macOS: strip
 # =============================================================================
 
-# Copy DLL dependencies to bin directory on Windows (for non-static builds)
-# Note: vcpkg's applocal.ps1 script automatically copies DLLs during linking,
-# so this function is mainly for documentation. If vcpkg is not used, this
-# function can be extended to handle DLL copying manually.
+# Copy DLL dependencies and PDBs to bin directory on Windows (for non-static builds)
+# Uses cmake -E copy for cross-platform path handling (generator expressions use forward slashes)
+# vcpkg's applocal.ps1 is disabled via VCPKG_APPLOCAL_DEPS=OFF in Init.cmake
 function(copy_windows_dlls TARGET_NAME)
     if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
         # Only copy DLLs for non-static builds (Debug, Dev builds use dynamic libraries)
         # Release builds use static libraries (x64-windows-static triplet) so no DLLs needed
 
-        # vcpkg automatically handles DLL copying via applocal.ps1 script during linking
-        # This function is kept for documentation and potential future use cases
-        # where vcpkg is not being used
+        if(DEFINED ENV{VCPKG_ROOT} AND DEFINED VCPKG_TRIPLET)
+            set(VCPKG_DLL_DIR "$ENV{VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/bin")
+            set(VCPKG_DEBUG_DLL_DIR "$ENV{VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/bin")
 
-        message(STATUS "DLL copying: ${BoldBlue}vcpkg${ColorReset}'s ${BoldBlue}applocal.ps1${ColorReset} will handle DLL dependencies automatically")
+            # Use debug DLLs/PDBs for Debug build, release DLLs for Dev build
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                set(DLL_SOURCE_DIR "${VCPKG_DEBUG_DLL_DIR}")
+            else()
+                set(DLL_SOURCE_DIR "${VCPKG_DLL_DIR}")
+            endif()
+
+            # Convert to native path (backslashes for Windows cmd.exe)
+            file(TO_NATIVE_PATH "${DLL_SOURCE_DIR}" DLL_SOURCE_DIR_NATIVE)
+
+            # Copy all DLLs from vcpkg bin directory to output bin using cmd /c xcopy
+            # /D = only copy if source is newer than destination
+            # /Y = suppress prompts
+            add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                COMMAND cmd /c "if exist \"${DLL_SOURCE_DIR_NATIVE}\\*.dll\" xcopy /D /Y \"${DLL_SOURCE_DIR_NATIVE}\\*.dll\" \"$<TARGET_FILE_DIR:${TARGET_NAME}>\\\""
+                COMMENT "Copying DLLs from vcpkg to bin directory"
+                VERBATIM
+            )
+
+            # Copy only the PDBs we actually need for debugging (not all vcpkg PDBs)
+            # This keeps the build directory smaller and avoids copying unrelated PDBs
+            # Use cmake -E copy_if_different for proper path handling (generator expressions output forward slashes)
+            # Note: mimalloc PDBs are named mimalloc-debug.dll.pdb / mimalloc.dll.pdb (not just .pdb)
+            set(VCPKG_PDBS_TO_COPY zstd portaudio libsodium)
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                list(APPEND VCPKG_PDBS_TO_COPY mimalloc-debug.dll)
+            else()
+                list(APPEND VCPKG_PDBS_TO_COPY mimalloc.dll)
+            endif()
+
+            # Always add copy commands - they run at build time, not configure time
+            # copy_if_different will skip if source doesn't exist (no error)
+            foreach(PDB_NAME ${VCPKG_PDBS_TO_COPY})
+                add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL_SOURCE_DIR}/${PDB_NAME}.pdb" "$<TARGET_FILE_DIR:${TARGET_NAME}>/"
+                    COMMENT "Copying ${PDB_NAME}.pdb from vcpkg"
+                    VERBATIM
+                )
+            endforeach()
+
+            message(STATUS "DLL/PDB copying: using ${BoldCyan}cmake -E copy${ColorReset} from ${BoldBlue}${DLL_SOURCE_DIR}${ColorReset}")
+        else()
+            message(STATUS "DLL/PDB copying: ${BoldYellow}skipped${ColorReset} (vcpkg not configured)")
+        endif()
     endif()
 endfunction()
 

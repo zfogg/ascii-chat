@@ -15,8 +15,8 @@
 # =============================================================================
 
 function(configure_include_directories)
-    # Base include directories (source tree). Instrumentation-enabled builds prepend
-    # instrumented include directories later during ascii_instrumentation_finalize().
+    # Base include directories (source tree). Source-print-enabled builds prepend
+    # instrumented include directories later during ascii_source_print_finalize().
     include_directories(
         ${CMAKE_SOURCE_DIR}/lib
         ${CMAKE_SOURCE_DIR}/src

@@ -117,6 +117,7 @@ if(ASCIICHAT_ENABLE_ANALYZERS)
         message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but clang-tidy not found")
     else()
         set(CMAKE_C_CLANG_TIDY "${_asciichat_clang_tidy}" CACHE STRING "" FORCE)
+        message(STATUS "Static analyzer: ${BoldCyan}clang-tidy${ColorReset} enabled")
     endif()
 
     find_program(_asciichat_cppcheck NAMES "${ASCIICHAT_CPPCHECK}" cppcheck PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
@@ -129,6 +130,10 @@ if(ASCIICHAT_ENABLE_ANALYZERS)
     if(NOT DEFINED ENV{ASCIICHAT_ANALYZER_SUPPRESS_WARNINGS})
         set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     endif()
+else()
+    # Clear stale analyzer settings when analyzers are disabled
+    set(CMAKE_C_CLANG_TIDY "" CACHE STRING "" FORCE)
+    set(CMAKE_C_CPPCHECK "" CACHE STRING "" FORCE)
 endif()
 
 # Output directories

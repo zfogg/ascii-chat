@@ -50,18 +50,13 @@ message(STATUS "Using dependency cache: ${BoldCyan}${ASCIICHAT_DEPS_CACHE_DIR}${
 # =============================================================================
 # Initialization
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
-
-# =============================================================================
-# Project Constants (must come before project() for DESCRIPTION/HOMEPAGE_URL)
-# =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
-
-# =============================================================================
-# Version from git tags (single source of truth)
-# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 version_detect()  # Sets PROJECT_VERSION_FROM_GIT
+include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 
 # =============================================================================
 # Pre project() Configuration
@@ -77,9 +72,6 @@ configure_musl_pre_project()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
-# =============================================================================
-# Project Declaration
-# =============================================================================
 # Always enable C++ for Clang tooling (defer() and source instrumentation)
 if(APPLE)
     set(PROJECT_LANGUAGES C CXX OBJC)
@@ -87,6 +79,9 @@ else()
     set(PROJECT_LANGUAGES C CXX)
 endif()
 
+# =============================================================================
+# Project Declaration
+# =============================================================================
 project(${PROJECT_NAME_FULL}
     VERSION ${PROJECT_VERSION_FROM_GIT}
     SPDX_LICENSE "${PROJECT_LICENSE_SPDX}"
@@ -96,47 +91,27 @@ project(${PROJECT_NAME_FULL}
 )
 
 # =============================================================================
-# Generator Validation (after project())
-# =============================================================================
-# Only Ninja generator is supported - enforce this requirement
-if(NOT CMAKE_GENERATOR MATCHES "Ninja")
-    message(FATAL_ERROR
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "  ❌ UNSUPPORTED GENERATOR: ${CMAKE_GENERATOR}\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        "\n"
-        "  This project requires the Ninja build system.\n"
-        "\n"
-        "  To use Ninja:\n"
-        "    1. Install Ninja:\n"
-        "       - Windows: scoop install ninja\n"
-        "       - macOS: brew install ninja\n"
-        "       - Linux: sudo apt install ninja-build (or equivalent)\n"
-        "\n"
-        "    2. Configure with Ninja:\n"
-        "       cmake -G Ninja -B build\n"
-        "\n"
-        "  Or use the build scripts:\n"
-        "    - Windows: ./build.ps1\n"
-        "    - Unix/macOS: cmake -B build && cmake --build build\n"
-        "\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    )
-endif()
-
-# =============================================================================
-# Version targets (after project() - creates generate_version target)
+# Post-project() Config (code that must be run after project())
 # =============================================================================
 version_setup_targets()
+
+# Only Ninja generator is supported - enforce this requirement
+#if(NOT CMAKE_GENERATOR MATCHES "Ninja")
+#    message(FATAL_ERROR
+#        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+#        "  ❌ Non-ninja Generator: ${CMAKE_GENERATOR}\n"
+#        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+#        "  This project only supports the Ninja build system.\n"
+#        "  All other build systems are unsupported and untested.\n"
+#        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+#    )
+#endif()
 
 # =============================================================================
 # Compiler config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CCache.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerDetection.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/CompilerFlags.cmake)
 configure_base_compiler_flags()
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/HeaderChecks.cmake)
@@ -147,12 +122,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/WindowsWorkarounds.cmake)
 fix_windows_clang_linking()
 find_msvc_libraries()
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Sanitizers.cmake)
-
-# Optional CTest dashboard integration
-if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
-    include(CTest)
-    include(${CMAKE_SOURCE_DIR}/cmake/test/CTest.cmake)
-endif()
 
 # Configure build type after both CompilerFlags.cmake and Sanitizers.cmake are included
 # (configure_build_type_post_project needs functions from both modules)
@@ -190,16 +159,15 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
 
 if(USE_MUSL)
     set(CMAKE_PREFIX_PATH "${MUSL_PREFIX}" ${CMAKE_PREFIX_PATH})
-    message(STATUS "Will build static dependencies to: ${MUSL_PREFIX}")
 endif()
 
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/tooling/Instrumentation.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/SourcePrint.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
-ascii_instrumentation_prepare()
+ascii_source_print_prepare()
 ascii_defer_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
@@ -211,10 +179,15 @@ include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
-ascii_instrumentation_finalize()
+ascii_source_print_finalize()
 ascii_defer_finalize()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
+# Optional CTest dashboard integration
+if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
+    include(CTest)
+    include(${CMAKE_SOURCE_DIR}/cmake/test/CTest.cmake)
+endif()
 
 # =============================================================================
 # Post-Build Processing (must come after Executables.cmake)

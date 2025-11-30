@@ -64,8 +64,16 @@ endif()
 # =============================================================================
 # Available in all build types except musl static builds
 # Musl builds use static-pie which cannot link against shared libraries
+# For Debug/Dev/Coverage: EXCLUDE_FROM_ALL (build only on explicit request)
+# For Release/RelWithDebInfo: Build by default
 if(NOT USE_MUSL)
-    add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
+        set(TEST_SHARED_DEFAULT "built by default")
+    else()
+        add_executable(test-shared-lib EXCLUDE_FROM_ALL ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
+        set(TEST_SHARED_DEFAULT "explicit target only")
+    endif()
 
     # Link against the shared library (mimalloc is in the shared library)
     target_link_libraries(test-shared-lib PRIVATE
@@ -88,7 +96,7 @@ if(NOT USE_MUSL)
     # Make sure shared library is built first
     add_dependencies(test-shared-lib ascii-chat-shared)
 
-    message(STATUS "Added test-shared-lib target to test asciichat.dll/.so")
+    message(STATUS "Added test-shared-lib target to test asciichat.dll/.so (${TEST_SHARED_DEFAULT})")
 
     # Add a custom test that runs test-shared-lib to verify it works
     add_custom_target(run-test-shared-lib
