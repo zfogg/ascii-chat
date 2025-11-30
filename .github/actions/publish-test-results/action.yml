@@ -157,7 +157,13 @@ runs:
       if: ${{ always() && inputs.upload-coverage == 'true' }}
       shell: bash
       run: |
+        echo "DEBUG: Current working directory: $(pwd)"
+        echo "DEBUG: GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
         echo "Checking for coverage files matching: ${{ inputs.coverage-files }}"
+        echo "DEBUG: Files in current directory:"
+        ls -la | head -20 || true
+        echo "DEBUG: Looking for .gcov files anywhere:"
+        find . -name "*.gcov" -type f 2>/dev/null | head -10 || echo "No .gcov files found with find"
         if ls ${{ inputs.coverage-files }} 2>/dev/null | head -1 > /dev/null; then
           echo "✅ Found coverage files"
           echo "has_coverage=true" >> $GITHUB_OUTPUT

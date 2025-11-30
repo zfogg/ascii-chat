@@ -58,7 +58,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install mimalloc zstd libsodium portaudio
+  brew install mimalloc zstd libsodium portaudio libxml2
 
   echo ""
   echo "Dependencies installed successfully!"
