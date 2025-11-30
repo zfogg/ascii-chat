@@ -131,24 +131,29 @@ if(APPLE)
         # 4. SDK C headers
         set(SDK_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
         if(HAS_LLVM_LIBCXX)
-            # Attempt 16: Use Homebrew libc++ with correct #include_next order
+            # Attempt 17: Force-include stddef.h BEFORE any other headers
             #
-            # Key insight: Homebrew's libc++ has its own <stddef.h> wrapper that:
-            #   1. Does #include_next <stddef.h> to find underlying C stddef.h
-            #   2. Then defines nullptr_t as 'typedef decltype(nullptr) nullptr_t;'
+            # Problem: LLVM headers include <cassert> which does #include_next <assert.h>
+            # to find SDK's assert.h. SDK's assert.h → stdlib.h → arm/_types.h which
+            # expects size_t/ptrdiff_t to already be defined. But nothing has included
+            # stddef.h yet at that point!
             #
-            # For #include_next to work correctly, the search order must be:
-            #   1. Homebrew libc++ (so its stddef.h wrapper is found FIRST)
-            #   2. Clang resource dir (so #include_next finds clang's stddef.h)
+            # Solution: Use -include to force-include stddef.h BEFORE any other includes.
+            # This ensures size_t/ptrdiff_t are defined before cassert is processed.
+            #
+            # The search order is still:
+            #   1. Homebrew libc++ (so -include stddef.h finds libc++'s wrapper)
+            #   2. Clang resource dir (so libc++'s #include_next finds clang's stddef.h)
             #   3. LLVM tooling headers
             #   4. SDK C headers (for Darwin-specific headers)
             #
-            # When LLVM headers include <stddef.h>:
+            # When -include stddef.h runs:
             #   - Finds Homebrew libc++ wrapper (position 1)
             #   - Wrapper does #include_next, searching position 2+
             #   - Finds clang's builtin stddef.h with size_t/ptrdiff_t (position 2)
-            #   - Wrapper then defines nullptr_t
-            message(STATUS "Using Homebrew libc++ (Attempt 16: libc++ before clang builtins for #include_next)")
+            #   - Now size_t/ptrdiff_t are defined BEFORE cassert is processed
+            message(STATUS "Using Homebrew libc++ (Attempt 17: force-include stddef.h before other headers)")
+            message(STATUS "  Force-include: stddef.h (ensures size_t/ptrdiff_t defined early)")
             message(STATUS "  1. Homebrew libc++: ${LLVM_LIBCXX_INCLUDE}")
             message(STATUS "  2. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
             message(STATUS "  3. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
@@ -170,6 +175,9 @@ if(APPLE)
                 "-isystem${LLVM_INCLUDE_DIRS}"
                 # 4. SDK C headers LAST (for Darwin-specific headers like mach/*.h)
                 "-isystem${MACOS_SDK_PATH}/usr/include"
+                # CRITICAL: Force-include stddef.h BEFORE any source code
+                # This ensures size_t/ptrdiff_t are defined before cassert is processed
+                -include stddef.h
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
