@@ -38,31 +38,29 @@ function(copy_windows_dlls TARGET_NAME)
                 set(DLL_SOURCE_DIR "${VCPKG_DLL_DIR}")
             endif()
 
-            # Convert to native path (backslashes for Windows cmd.exe)
-            file(TO_NATIVE_PATH "${DLL_SOURCE_DIR}" DLL_SOURCE_DIR_NATIVE)
-
-            # Copy all DLLs from vcpkg bin directory to output bin using cmd /c xcopy
-            # /D = only copy if source is newer than destination
-            # /Y = suppress prompts
-            add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                COMMAND cmd /c "if exist \"${DLL_SOURCE_DIR_NATIVE}\\*.dll\" xcopy /D /Y \"${DLL_SOURCE_DIR_NATIVE}\\*.dll\" \"$<TARGET_FILE_DIR:${TARGET_NAME}>\\\""
-                COMMENT "Copying DLLs from vcpkg to bin directory"
-                VERBATIM
-            )
-
-            # Copy only the PDBs we actually need for debugging (not all vcpkg PDBs)
-            # This keeps the build directory smaller and avoids copying unrelated PDBs
-            # Use cmake -E copy_if_different for proper path handling (generator expressions output forward slashes)
-            # Note: mimalloc PDBs are named mimalloc-debug.dll.pdb / mimalloc.dll.pdb (not just .pdb)
+            # Define the DLLs and PDBs we need from vcpkg
+            # This is faster than xcopy/PowerShell wildcards and more reliable
+            set(VCPKG_DLLS_TO_COPY zstd portaudio libsodium)
             set(VCPKG_PDBS_TO_COPY zstd portaudio libsodium)
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+                list(APPEND VCPKG_DLLS_TO_COPY mimalloc-debug mimalloc-redirect)
                 list(APPEND VCPKG_PDBS_TO_COPY mimalloc-debug.dll)
             else()
+                list(APPEND VCPKG_DLLS_TO_COPY mimalloc mimalloc-redirect)
                 list(APPEND VCPKG_PDBS_TO_COPY mimalloc.dll)
             endif()
 
-            # Always add copy commands - they run at build time, not configure time
-            # copy_if_different will skip if source doesn't exist (no error)
+            # Copy DLLs using cmake -E copy_if_different (fast, reliable, no shell startup)
+            foreach(DLL_NAME ${VCPKG_DLLS_TO_COPY})
+                add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL_SOURCE_DIR}/${DLL_NAME}.dll" "$<TARGET_FILE_DIR:${TARGET_NAME}>/"
+                    COMMENT "Copying ${DLL_NAME}.dll from vcpkg"
+                    VERBATIM
+                )
+            endforeach()
+
+            # Copy PDBs for debugging (only in Debug builds)
+            # Note: mimalloc PDBs are named mimalloc-debug.dll.pdb / mimalloc.dll.pdb
             foreach(PDB_NAME ${VCPKG_PDBS_TO_COPY})
                 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL_SOURCE_DIR}/${PDB_NAME}.pdb" "$<TARGET_FILE_DIR:${TARGET_NAME}>/"

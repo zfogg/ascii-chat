@@ -8,6 +8,17 @@ set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer 
 include(ExternalProject)
 
 function(ascii_defer_prepare)
+    # Source Print instrumentation changes the source code structure in ways that
+    # break defer's scope tracking. The two transformations are incompatible.
+    # When Source Print is enabled, skip defer transformation - the defer() macro
+    # will just expand to nothing (no automatic cleanup).
+    if(ASCIICHAT_BUILD_WITH_SOURCE_PRINT)
+        message(STATUS "Source Print instrumentation enabled - skipping defer() transformation")
+        message(STATUS "  (defer() macros will be no-ops in this build)")
+        set(ASCII_DEFER_ENABLED FALSE PARENT_SCOPE)
+        return()
+    endif()
+
     # Determine which defer tool to use
     if(ASCIICHAT_DEFER_TOOL AND EXISTS "${ASCIICHAT_DEFER_TOOL}")
         set(_defer_tool_exe "${ASCIICHAT_DEFER_TOOL}")
