@@ -101,23 +101,24 @@ if(APPLE)
         # #include_next to find C library headers from the SDK. SDK headers
         # expect size_t/ptrdiff_t to be defined from clang's stddef.h.
         #
-        # Root cause: When libc++ does #include_next <assert.h>, it finds SDK's
-        # assert.h which includes arm/_types.h expecting size_t/ptrdiff_t to
-        # already be defined. These types come from clang's stddef.h which must
-        # be included BEFORE SDK headers.
+        # Attempt 18: Force-include clang's builtin stddef.h with FULL PATH
         #
-        # Attempt 14: DON'T use -isysroot for compilation. Use SDK's libc++
-        # instead of Homebrew's bundled libc++. Use -nostdinc to disable ALL
-        # implicit headers, then add explicit paths in correct order:
-        # 1. Clang resource dir (builtins with size_t/ptrdiff_t)
-        # 2. SDK libc++ (not Homebrew's - avoids #include_next issues)
-        # 3. LLVM tooling headers
-        # 4. SDK C headers
-        set(SDK_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
-        if(EXISTS "${SDK_LIBCXX_INCLUDE}")
-            message(STATUS "Using SDK libc++ (Attempt 14: avoid Homebrew libc++ and -isysroot)")
-            message(STATUS "  1. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  2. SDK libc++: ${SDK_LIBCXX_INCLUDE}")
+        # Problem: All previous attempts (10-17) failed because:
+        # - With -nostdinc, clang's internal resource directory is removed from search
+        # - Even when we add it back with -isystem, #include_next doesn't work correctly
+        # - The -include stddef.h flag searches the include paths, which are broken
+        #
+        # Root cause: -nostdinc disables clang's internal header resolution, breaking
+        # the #include_next chain that libc++ relies on to find clang builtins.
+        #
+        # Solution: Force-include clang's stddef.h using its FULL ABSOLUTE PATH.
+        # This bypasses all include path resolution issues - we directly include
+        # the exact file that defines size_t/ptrdiff_t, before any source code.
+        if(HAS_LLVM_LIBCXX)
+            message(STATUS "Using Homebrew libc++ (Attempt 18: force-include clang's stddef.h with full path)")
+            message(STATUS "  Force-include: ${CLANG_RESOURCE_DIR}/include/stddef.h (FULL PATH)")
+            message(STATUS "  1. Homebrew libc++: ${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "  2. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
             message(STATUS "  3. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
             message(STATUS "  4. SDK C headers: ${MACOS_SDK_PATH}/usr/include")
 
@@ -128,36 +129,19 @@ if(APPLE)
                 # Disable ALL implicit header search
                 -nostdinc
                 -nostdinc++
-                # Add paths in STRICT ORDER:
-                # 1. Clang builtins FIRST (defines size_t, ptrdiff_t, etc)
+                # CRITICAL: Force-include clang's builtin stddef.h with FULL PATH
+                # This ensures size_t/ptrdiff_t are defined BEFORE any other code
+                # Using full path bypasses broken #include_next resolution with -nostdinc
+                "-include${CLANG_RESOURCE_DIR}/include/stddef.h"
+                # Add paths in STRICT ORDER for remaining headers:
+                # 1. Homebrew libc++ FIRST (for C++ standard library)
+                "-isystem${LLVM_LIBCXX_INCLUDE}"
+                # 2. Clang builtins (for other compiler builtins like __stddef_max_align_t.h)
                 "-isystem${CLANG_RESOURCE_DIR}/include"
-                # 2. SDK's libc++ (uses Apple's #include_next which works with SDK)
-                "-isystem${SDK_LIBCXX_INCLUDE}"
                 # 3. LLVM tooling headers
                 "-isystem${LLVM_INCLUDE_DIRS}"
-                # 4. SDK C headers LAST
+                # 4. SDK C headers LAST (for Darwin-specific headers like mach/*.h)
                 "-isystem${MACOS_SDK_PATH}/usr/include"
-            )
-        elseif(HAS_LLVM_LIBCXX)
-            message(STATUS "Using Homebrew LLVM with bundled libc++ (Attempt 13: clang builtins first)")
-            message(STATUS "  1. Clang builtins (-isystem): ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  2. SDK via -isysroot: ${MACOS_SDK_PATH}")
-            message(STATUS "  3. C++ (via -cxx-isystem): libc++ and LLVM tooling")
-
-            target_compile_options(ascii-instr-panic PRIVATE
-                -O2
-                -fno-rtti
-                -fexceptions
-                # CRITICAL: Clang resource dir FIRST with -isystem (highest priority)
-                # This ensures stddef.h with size_t/ptrdiff_t is found before SDK headers
-                "-isystem${CLANG_RESOURCE_DIR}/include"
-                # SDK for C headers (after clang builtins)
-                "-isysroot${MACOS_SDK_PATH}"
-                # Disable C++ standard library search
-                -nostdinc++
-                # Add C++ includes explicitly
-                "-cxx-isystem${LLVM_LIBCXX_INCLUDE}"
-                "-cxx-isystem${LLVM_INCLUDE_DIRS}"
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
