@@ -112,43 +112,64 @@ if(APPLE)
             set(HAS_LLVM_LIBCXX FALSE)
         endif()
 
-        # Set up include directories - order matters for #include_next!
-        if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "Using Clang resource dir: ${CLANG_RESOURCE_DIR}/include")
-            target_include_directories(ascii-instr-defer PRIVATE
-                "${CLANG_RESOURCE_DIR}/include"
-            )
-        endif()
-
-        if(HAS_LLVM_LIBCXX)
-            target_include_directories(ascii-instr-defer PRIVATE
-                "${LLVM_LIBCXX_INCLUDE}"
-            )
-        endif()
-
-        # LLVM headers for clang tooling
+        # LLVM headers for clang tooling (added as regular includes)
         target_include_directories(ascii-instr-defer PRIVATE
             ${LLVM_INCLUDE_DIRS}
         )
 
-        # Compile options for macOS
-        # -isysroot tells clang where to find SDK headers (including usr/include)
-        # -stdlib=libc++ ensures we use libc++ (not libstdc++)
-        target_compile_options(ascii-instr-defer PRIVATE
-            -O2
-            -fno-rtti
-            -fexceptions
-            -isysroot ${MACOS_SDK_PATH}
-            -stdlib=libc++
-        )
-
-        # If using LLVM's bundled libc++, we need to disable the default search
-        # and use -nostdinc++ with explicit -cxx-isystem for proper #include_next
+        # Compile options for macOS with Homebrew LLVM
+        # The key challenge: Homebrew LLVM's libc++ uses #include_next to find system headers,
+        # but -nostdinc++ removes all default paths. We must carefully reconstruct the include path.
+        #
+        # Required include path order for #include_next to work:
+        # 1. Clang resource dir (provides __stddef_*.h with size_t, ptrdiff_t)
+        # 2. LLVM's libc++ headers (uses #include_next to find SDK headers)
+        # 3. SDK usr/include (provides Darwin/POSIX headers)
+        #
+        # The -isysroot flag sets the SDK root, and -isystem paths are searched before
+        # the sysroot's usr/include. We use -isystem for clang resource dir so that
+        # #include_next from libc++ can find the SDK headers.
         if(HAS_LLVM_LIBCXX)
-            target_compile_options(ascii-instr-defer PRIVATE
+            set(_defer_compile_flags
+                -O2
+                -fno-rtti
+                -fexceptions
+                -stdlib=libc++
                 -nostdinc++
-                "-cxx-isystem${LLVM_LIBCXX_INCLUDE}"
+                -isysroot ${MACOS_SDK_PATH}
             )
+
+            # Add clang resource dir as -isystem (must come before libc++)
+            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+                message(STATUS "Using Clang resource dir: ${CLANG_RESOURCE_DIR}/include")
+                list(APPEND _defer_compile_flags "-isystem${CLANG_RESOURCE_DIR}/include")
+            endif()
+
+            # Add LLVM libc++ as -cxx-isystem (for C++ standard library headers)
+            list(APPEND _defer_compile_flags "-cxx-isystem${LLVM_LIBCXX_INCLUDE}")
+
+            # Add SDK usr/include explicitly as -isystem to ensure #include_next works
+            # This is needed because -nostdinc++ removes all implicit system paths
+            list(APPEND _defer_compile_flags "-isystem${MACOS_SDK_PATH}/usr/include")
+
+            target_compile_options(ascii-instr-defer PRIVATE ${_defer_compile_flags})
+        else()
+            # Without LLVM libc++, use standard flags
+            target_compile_options(ascii-instr-defer PRIVATE
+                -O2
+                -fno-rtti
+                -fexceptions
+                -isysroot ${MACOS_SDK_PATH}
+                -stdlib=libc++
+            )
+
+            # Add clang resource dir if available
+            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+                message(STATUS "Using Clang resource dir: ${CLANG_RESOURCE_DIR}/include")
+                target_compile_options(ascii-instr-defer PRIVATE
+                    "-isystem${CLANG_RESOURCE_DIR}/include"
+                )
+            endif()
         endif()
 
         # Link options for macOS
