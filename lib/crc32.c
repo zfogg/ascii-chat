@@ -85,15 +85,20 @@ static void check_crc32_hw_support(void) {
 }
 
 #ifdef ARCH_ARM64
-// ARM CRC32 hardware implementation
+// ARM CRC32-C hardware implementation using Castagnoli polynomial
+// IMPORTANT: Use __crc32cb (CRC32-C) NOT __crc32b (IEEE 802.3)
+// __crc32cb uses the Castagnoli polynomial (0x1EDC6F41), matching:
+//   - Intel _mm_crc32_* intrinsics
+//   - Our software fallback asciichat_crc32_sw()
 // Process byte-by-byte to ensure cross-platform consistency with x86
 static uint32_t crc32_arm_hw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
 
   // Process all bytes one at a time for guaranteed consistency
+  // Use CRC32-C intrinsics (__crc32cb) not CRC32 (__crc32b)
   for (size_t i = 0; i < len; i++) {
-    crc = __crc32b(crc, bytes[i]);
+    crc = __crc32cb(crc, bytes[i]);
   }
 
   return ~crc;
