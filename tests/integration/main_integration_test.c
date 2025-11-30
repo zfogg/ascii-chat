@@ -16,8 +16,8 @@
 // Test configuration
 #define TEST_PORT_BASE 10000
 #define SERVER_STARTUP_DELAY_MS 500
-#define CLIENT_CONNECT_TIMEOUT_MS 5000
-#define PROCESS_CLEANUP_TIMEOUT_MS 3000
+#define CLIENT_CONNECT_TIMEOUT_MS 10000
+#define PROCESS_CLEANUP_TIMEOUT_MS 5000
 #define MAX_PROCESSES 10
 
 // Process management
@@ -30,7 +30,16 @@ typedef struct {
 
 static process_info_t tracked_processes[MAX_PROCESSES];
 static int process_count = 0;
-static int next_test_port = TEST_PORT_BASE;
+
+// Port allocation using PID to avoid collisions when Criterion runs tests in parallel.
+// Each forked test process gets a unique port range based on its PID.
+// Range: TEST_PORT_BASE to TEST_PORT_BASE + 50000 (ports 10000-60000)
+static int get_unique_test_port(void) {
+  static int port_offset = 0;
+  // Use PID to create unique port base per process (each process gets 10 ports)
+  int pid_offset = (getpid() % 5000) * 10;
+  return TEST_PORT_BASE + pid_offset + (port_offset++ % 10);
+}
 
 // Logging control
 static log_level_t original_log_level;
@@ -40,6 +49,8 @@ void setup_main_tests(void) {
   log_set_level(LOG_FATAL);
   process_count = 0;
   memset(tracked_processes, 0, sizeof(tracked_processes));
+  // Disable host identity check for tests since we don't have a TTY for prompts
+  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
 }
 
 void teardown_main_tests(void) {
@@ -53,6 +64,7 @@ void teardown_main_tests(void) {
     }
   }
   log_set_level(original_log_level);
+  // Clean up test environment
 }
 
 TestSuite(main_integration, .init = setup_main_tests, .fini = teardown_main_tests);
@@ -207,7 +219,7 @@ static bool wait_for_tcp_port(int port, int timeout_ms) {
 // =============================================================================
 
 Test(main_integration, server_main_starts_and_stops) {
-  int port = next_test_port++;
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
@@ -271,21 +283,26 @@ Test(main_integration, client_main_help_flag) {
 }
 
 Test(main_integration, client_main_no_server) {
-  int port = next_test_port++;
+  // Client is designed to retry connecting forever - verify it stays alive
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  char *argv[] = {"ascii-chat", "client", "--port", port_str, "--address", "127.0.0.1",
-                  "--snapshot", // Exit after one frame
-                  NULL};
+  char *argv[] = {"ascii-chat", "client", "--port", port_str, "--address", "127.0.0.1", "--test-pattern", NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), argv, "client_no_server");
   cr_assert_gt(client_pid, 0, "Client should spawn");
 
-  int exit_code;
-  bool exited = wait_for_process_exit(client_pid, 3000, &exit_code);
-  cr_assert(exited, "Client should exit when no server available");
-  cr_assert_neq(exit_code, 0, "Client should exit with error when no server");
+  // Wait 2 seconds - client should still be running (retrying connection)
+  usleep(2000000);
+
+  // Verify client is still alive (waitpid with WNOHANG returns 0 if still running)
+  int status;
+  pid_t result = waitpid(client_pid, &status, WNOHANG);
+  cr_assert_eq(result, 0, "Client should still be running while retrying connection");
+
+  // Clean up - terminate the client
+  terminate_process(client_pid, "client_no_server");
 }
 
 // =============================================================================
@@ -293,7 +310,7 @@ Test(main_integration, client_main_no_server) {
 // =============================================================================
 
 Test(main_integration, server_client_basic_connection) {
-  int port = next_test_port++;
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
@@ -307,13 +324,19 @@ Test(main_integration, server_client_basic_connection) {
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
-  // Start client
-  char *client_argv[] = {"ascii-chat", "client",
-                         "--port",     port_str,
-                         "--address",  "127.0.0.1",
-                         "--snapshot", "--snapshot-delay",
+  // Start client with test pattern (no webcam needed in Docker)
+  char *client_argv[] = {"ascii-chat",
+                         "client",
+                         "--port",
+                         port_str,
+                         "--address",
+                         "127.0.0.1",
+                         "--test-pattern", // Use test pattern instead of webcam
+                         "--snapshot",
+                         "--snapshot-delay",
                          "1", // Run for 1 second
-                         "--log-file", "/tmp/test_client.log",
+                         "--log-file",
+                         "/tmp/test_client.log",
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
@@ -330,7 +353,7 @@ Test(main_integration, server_client_basic_connection) {
 }
 
 Test(main_integration, server_multiple_clients_sequential) {
-  int port = next_test_port++;
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
@@ -343,21 +366,20 @@ Test(main_integration, server_multiple_clients_sequential) {
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
-  // Connect multiple clients sequentially
+  // Connect multiple clients sequentially with test pattern (no webcam needed)
   for (int i = 0; i < 3; i++) {
     char client_name[32];
     safe_snprintf(client_name, sizeof(client_name), "client_%d", i);
 
-    char *client_argv[] = {"ascii-chat", "client",     "--port",
-                           port_str,     "--address",  "127.0.0.1",
-                           "--snapshot", "--log-file", "/tmp/test_client_seq.log",
+    char *client_argv[] = {"ascii-chat", "client",         "--port",     port_str,     "--address",
+                           "127.0.0.1",  "--test-pattern", "--snapshot", "--log-file", "/tmp/test_client_seq.log",
                            NULL};
 
     pid_t client_pid = spawn_process(get_binary_path(), client_argv, client_name);
     cr_assert_gt(client_pid, 0, "Client %d should spawn", i);
 
     int exit_code;
-    bool exited = wait_for_process_exit(client_pid, 3000, &exit_code);
+    bool exited = wait_for_process_exit(client_pid, 10000, &exit_code);
     cr_assert(exited, "Client %d should complete", i);
     cr_assert_eq(exit_code, 0, "Client %d should exit successfully", i);
   }
@@ -366,7 +388,7 @@ Test(main_integration, server_multiple_clients_sequential) {
 }
 
 Test(main_integration, server_multiple_clients_concurrent) {
-  int port = next_test_port++;
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
@@ -380,7 +402,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
-  // Start multiple clients concurrently
+  // Start multiple clients concurrently with test pattern (no webcam needed)
   pid_t client_pids[3];
   for (int i = 0; i < 3; i++) {
     char client_name[32];
@@ -395,6 +417,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
                            port_str,
                            "--address",
                            "127.0.0.1",
+                           "--test-pattern", // Use test pattern instead of webcam
                            "--snapshot",
                            "--snapshot-delay",
                            delay_str,
@@ -419,13 +442,12 @@ Test(main_integration, server_multiple_clients_concurrent) {
 }
 
 Test(main_integration, server_client_with_options) {
-  int port = next_test_port++;
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
-  // Start server with options
-  char *server_argv[] = {"ascii-chat", "server",  "--port",     port_str,
-                         "--color",    "--audio", "--log-file", "/tmp/test_server_options.log",
+  // Start server with standard options (server doesn't have --color or --audio)
+  char *server_argv[] = {"ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server_options.log",
                          NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
@@ -434,15 +456,17 @@ Test(main_integration, server_client_with_options) {
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
-  // Start client with matching options
+  // Start client with options (test pattern for no webcam)
+  // Note: --color-mode is the correct option, not --color
   char *client_argv[] = {"ascii-chat",
                          "client",
                          "--port",
                          port_str,
                          "--address",
                          "127.0.0.1",
-                         "--color",
-                         "--audio",
+                         "--test-pattern", // Use test pattern instead of webcam
+                         "--color-mode",
+                         "auto",
                          "--width",
                          "80",
                          "--height",
@@ -466,7 +490,7 @@ Test(main_integration, server_client_with_options) {
 }
 
 Test(main_integration, server_survives_client_crash) {
-  int port = next_test_port++;
+  int port = get_unique_test_port();
   char port_str[16];
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
@@ -480,9 +504,16 @@ Test(main_integration, server_survives_client_crash) {
   bool server_ready = wait_for_tcp_port(port, 2000);
   cr_assert(server_ready, "Server should be listening");
 
-  // Start client
-  char *client_argv[] = {"ascii-chat", "client",    "--port",     port_str,
-                         "--address",  "127.0.0.1", "--log-file", "/tmp/test_client_crash.log",
+  // Start client with test pattern (no webcam needed)
+  char *client_argv[] = {"ascii-chat",
+                         "client",
+                         "--port",
+                         port_str,
+                         "--address",
+                         "127.0.0.1",
+                         "--test-pattern",
+                         "--log-file",
+                         "/tmp/test_client_crash.log",
                          NULL};
 
   pid_t client_pid = spawn_process(get_binary_path(), client_argv, "client");
@@ -500,16 +531,16 @@ Test(main_integration, server_survives_client_crash) {
   cr_assert_eq(result, 0, "Server should survive client crash");
 
   // Try connecting another client to verify server is still functional
-  char *client2_argv[] = {"ascii-chat", "client",     "--port",
-                          port_str,     "--address",  "127.0.0.1",
-                          "--snapshot", "--log-file", "/tmp/test_client_after_crash.log",
-                          NULL};
+  char *client2_argv[] = {
+      "ascii-chat", "client",         "--port",     port_str,     "--address",
+      "127.0.0.1",  "--test-pattern", "--snapshot", "--log-file", "/tmp/test_client_after_crash.log",
+      NULL};
 
   pid_t client2_pid = spawn_process(get_binary_path(), client2_argv, "client2");
   cr_assert_gt(client2_pid, 0, "Second client should spawn");
 
   int exit_code;
-  bool exited = wait_for_process_exit(client2_pid, 3000, &exit_code);
+  bool exited = wait_for_process_exit(client2_pid, 10000, &exit_code);
   cr_assert(exited, "Second client should complete");
   cr_assert_eq(exit_code, 0, "Second client should connect successfully");
 

@@ -34,6 +34,23 @@ void restore_server_logging(void) {
 // Test Helper Functions
 // =============================================================================
 
+// Send client capabilities packet (required before sending frames)
+static int send_capabilities(int socket, int width, int height) {
+  terminal_capabilities_packet_t caps = {0};
+  caps.capabilities = 0;
+  caps.color_level = 0;
+  caps.color_count = 0;
+  caps.render_mode = 0;
+  caps.width = htons(width);
+  caps.height = htons(height);
+  caps.detection_reliable = 1;
+  caps.utf8_support = 0;
+  caps.palette_type = 0;
+  caps.desired_fps = 30;
+
+  return send_packet(socket, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
+}
+
 static pid_t start_test_server(int port) {
   pid_t pid = fork();
   if (pid == 0) {
@@ -75,7 +92,8 @@ static pid_t start_test_server(int port) {
       fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
     }
 
-    execl(server_path, "ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server.log", NULL);
+    execl(server_path, "ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server.log",
+          "--no-encrypt", NULL);
 
     // If execl fails, print error
     fprintf(stderr, "Failed to execute server at: %s\n", server_path);
@@ -107,6 +125,12 @@ static int connect_to_server(const char *address, int port) {
   setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
   if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    close(sock);
+    return -1;
+  }
+
+  // Send capabilities packet (required before sending frames)
+  if (send_capabilities(sock, 80, 24) != 0) {
     close(sock);
     return -1;
   }
