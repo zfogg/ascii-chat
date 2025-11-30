@@ -171,12 +171,27 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Set this LLVM version as the active alternative (in case multiple versions are installed)
     sudo update-alternatives --set clang ${LLVM_BIN}/clang
 
+    # Set up cmake alternative to ensure apt-installed cmake is used
+    # GitHub runners have pre-installed cmake in /usr/local/bin that may take precedence
+    if [ -f /usr/bin/cmake ]; then
+      sudo update-alternatives --install /usr/bin/cmake cmake /usr/bin/cmake 100
+      # Remove any conflicting cmake from /usr/local/bin if it exists
+      if [ -f /usr/local/bin/cmake ]; then
+        echo "Removing old cmake from /usr/local/bin..."
+        sudo rm -f /usr/local/bin/cmake
+      fi
+    fi
+
     # Verify configuration
     echo ""
     echo "Verifying LLVM $LLVM_VERSION configuration:"
     clang --version | head -1
     clang++ --version | head -1
     llvm-config --version
+    echo ""
+    echo "Verifying CMake configuration:"
+    which cmake
+    cmake --version | head -1
 
   elif command -v yum &>/dev/null; then
     echo "Detected yum package manager"
