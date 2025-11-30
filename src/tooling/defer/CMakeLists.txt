@@ -117,14 +117,14 @@ if(APPLE)
         # #include_next to find C library headers from the SDK. SDK headers
         # expect size_t/ptrdiff_t to be defined from clang's stddef.h.
         #
-        # The issue with -isysroot: It makes SDK the primary search root, which
-        # means when SDK headers do #include <stddef.h>, they find SDK's broken
-        # stddef.h instead of clang's working one.
+        # Key insight: When Homebrew's libc++ does #include_next <stddef.h>,
+        # it searches in include paths AFTER libc++'s own directory. We need
+        # clang's resource dir (with size_t/ptrdiff_t) to be found before the
+        # SDK's stddef.h.
         #
-        # Solution: Do NOT use -isysroot. Instead, manually specify include paths:
-        # 1. Clang's resource directory (stddef.h with size_t/ptrdiff_t)
-        # 2. LLVM tooling headers
-        # 3. SDK headers (via -isystem, not -isysroot)
+        # Attempt 9: Use -idirafter for SDK headers so they come LAST in search.
+        # Use -isystem for clang resource dir so it comes before SDK but after
+        # the implicit libc++ path that -stdlib=libc++ adds.
         if(HAS_LLVM_LIBCXX)
             message(STATUS "Using Homebrew LLVM with bundled libc++")
             message(STATUS "  clang builtins: ${CLANG_RESOURCE_DIR}/include")
@@ -136,12 +136,12 @@ if(APPLE)
                 -fno-rtti
                 -fexceptions
                 -stdlib=libc++
-                # Clang builtins MUST come first - defines size_t, ptrdiff_t
-                "-isystem${CLANG_RESOURCE_DIR}/include"
-                # LLVM headers for clang tooling
+                # LLVM headers for clang tooling APIs
                 "-isystem${LLVM_INCLUDE_DIRS}"
-                # SDK C headers come last
-                "-isystem${MACOS_SDK_PATH}/usr/include"
+                # Use -idirafter to place SDK headers LAST in search order
+                # This allows #include_next from libc++ to find clang's stddef.h
+                # (in resource dir) before SDK's stddef.h
+                "-idirafter${MACOS_SDK_PATH}/usr/include"
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
