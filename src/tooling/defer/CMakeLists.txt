@@ -121,39 +121,30 @@ if(APPLE)
         # The key challenge: Homebrew LLVM 21+ bundles its own libc++ which has
         # incompatible header include paths with the macOS SDK.
         #
-        # The problem: When compiling, #include <stddef.h> needs to find Clang's
-        # built-in stddef.h (which defines size_t, ptrdiff_t), NOT the SDK's stddef.h.
-        # The SDK's arm/_types.h expects these types to already be defined.
+        # The problem: SDK's arm/_types.h expects size_t/ptrdiff_t to already be
+        # defined before being included. These types should come from clang's stddef.h.
         #
-        # Solution: Use -nostdinc (no standard C headers) and -nostdinc++ (no C++ headers)
-        # then manually add include paths in the correct order:
-        # 1. Clang resource dir FIRST (for stddef.h, stdarg.h - defines size_t, ptrdiff_t)
-        # 2. SDK's libc++ headers (for C++ standard library)
-        # 3. SDK's C headers via -isysroot (for Darwin/POSIX headers)
+        # Root cause: When SDK headers do #include <stddef.h>, the search finds
+        # SDK's stddef.h (which is broken) instead of clang's stddef.h.
         #
-        # The -I flag for clang resource dir ensures it comes BEFORE -isysroot paths.
+        # Solution: Use -include to force-include clang's stddef.h BEFORE any
+        # other headers are processed. This ensures size_t, ptrdiff_t, etc. are
+        # defined before SDK headers try to use them.
         if(HAS_LLVM_LIBCXX)
             set(_defer_compile_flags
                 -O2
                 -fno-rtti
                 -fexceptions
+                -isysroot ${MACOS_SDK_PATH}
                 -stdlib=libc++
-                # Disable automatic header search - we'll add paths manually in correct order
-                -nostdinc++
             )
 
-            # CRITICAL: Add clang resource dir FIRST with -I so it's searched before SDK
-            # This ensures #include <stddef.h> finds clang's version which defines size_t
-            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
-                message(STATUS "Using Clang resource dir (priority): ${CLANG_RESOURCE_DIR}/include")
-                list(APPEND _defer_compile_flags "-I${CLANG_RESOURCE_DIR}/include")
+            # Force-include clang's stddef.h before anything else
+            # This defines size_t, ptrdiff_t, etc. that SDK headers expect
+            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include/stddef.h")
+                message(STATUS "Force-including clang's stddef.h from: ${CLANG_RESOURCE_DIR}/include")
+                list(APPEND _defer_compile_flags "-include" "${CLANG_RESOURCE_DIR}/include/stddef.h")
             endif()
-
-            # Add SDK's libc++ headers for C++ standard library
-            list(APPEND _defer_compile_flags "-isystem${MACOS_SDK_PATH}/usr/include/c++/v1")
-
-            # Add SDK path for Darwin/POSIX C headers (comes after clang resource dir)
-            list(APPEND _defer_compile_flags "-isysroot" "${MACOS_SDK_PATH}")
 
             target_compile_options(ascii-instr-defer PRIVATE ${_defer_compile_flags})
         else()
