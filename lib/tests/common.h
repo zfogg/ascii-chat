@@ -121,3 +121,43 @@ static inline bool test_is_in_headless_environment(void) {
 
   return false;
 }
+
+// =============================================================================
+// Test Binary Path Detection
+// =============================================================================
+
+/**
+ * @brief Get the path to the ascii-chat binary for integration tests
+ *
+ * This function finds the ascii-chat binary by trying multiple candidate paths.
+ * It handles both direct test invocation from the repo root and ctest invocation
+ * from the build directory.
+ *
+ * Search order:
+ * 1. BUILD_DIR environment variable (if set)
+ * 2. ./build_docker/bin/ascii-chat (Docker from repo root)
+ * 3. ./build/bin/ascii-chat (local from repo root)
+ * 4. ./bin/ascii-chat (from build directory - ctest)
+ * 5. /app/build_docker/bin/ascii-chat (Docker absolute)
+ *
+ * @return Path to the ascii-chat binary, or a fallback path if not found
+ *
+ * @note The returned string is static - do not free it.
+ * @note On Windows, returns paths with .exe extension.
+ *
+ * @ingroup testing
+ *
+ * @par Example
+ * @code
+ * Test(my_suite, integration_test) {
+ *   const char *binary = test_get_binary_path();
+ *   pid_t pid = fork();
+ *   if (pid == 0) {
+ *     execl(binary, "ascii-chat", "server", "--help", NULL);
+ *     exit(127);
+ *   }
+ *   // ...
+ * }
+ * @endcode
+ */
+const char *test_get_binary_path(void);
