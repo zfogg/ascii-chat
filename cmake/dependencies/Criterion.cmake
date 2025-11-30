@@ -4,18 +4,22 @@
 # Finds and configures Criterion test framework for unit/integration testing
 #
 # Platform-specific dependency management:
-#   - Windows: Tests disabled (Criterion requires pkg-config)
+#   - Windows: Criterion tests disabled (requires pkg-config), but lib runtime tests work
 #   - Linux/macOS: Uses pkg-config for system packages
-#   - Linux (musl): Tests disabled (Criterion requires glibc)
+#   - Linux (musl): Criterion tests disabled (requires glibc)
 #
 # Prerequisites (must be set before including this file):
 #   - WIN32, UNIX: Platform detection variables
 #   - USE_MUSL: Whether using musl libc
-#   - BUILD_TESTS: Whether to build tests
+#   - BUILD_TESTS: Whether to build tests (user option)
 #
 # Outputs (variables set by this file):
 #   - CRITERION_FOUND: Whether Criterion was found
-#   - BUILD_TESTS: Updated based on platform capabilities
+#   - BUILD_CRITERION_TESTS: Whether to build Criterion-based tests (unit/integration/performance)
+#
+# Test hierarchy:
+#   - BUILD_TESTS: Enables all tests that don't require Criterion (lib runtime tests)
+#   - BUILD_CRITERION_TESTS: Enables Criterion-based tests (requires Criterion found)
 #
 # Additional Linux test dependencies (when CRITERION_FOUND):
 #   - PROTOBUF_C_*: protobuf-c library
@@ -26,23 +30,33 @@
 #   - KRB5_GSSAPI_* or LIBSSH2_*: Kerberos/SSH support
 # =============================================================================
 
-# Disable tests for musl builds - Criterion test framework requires glibc
-# Tests can be run with standard glibc builds instead
-if(USE_MUSL)
-    set(BUILD_TESTS OFF)
-    message(STATUS "Tests disabled for musl builds (${BoldBlue}Criterion${ColorReset} requires ${BoldBlue}glibc${ColorReset})")
+# Initialize BUILD_CRITERION_TESTS based on BUILD_TESTS and build type
+# This can be disabled even when BUILD_TESTS is ON (e.g., on Windows, Release builds)
+# Release and RelWithDebInfo builds default to OFF - only library runtime tests are needed
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    set(BUILD_CRITERION_TESTS OFF)
+else()
+    set(BUILD_CRITERION_TESTS ${BUILD_TESTS})
+endif()
+
+# Disable Criterion tests for musl builds - Criterion test framework requires glibc
+# Lib runtime tests (using assert.h) still work
+if(USE_MUSL AND BUILD_CRITERION_TESTS)
+    set(BUILD_CRITERION_TESTS OFF)
+    message(STATUS "Criterion tests disabled for musl builds (${BoldBlue}Criterion${ColorReset} requires ${BoldBlue}glibc${ColorReset})")
+    message(STATUS "  -> Library runtime tests still available via ctest")
 endif()
 
 # Windows doesn't use pkg-config, so skip Criterion detection on Windows
-# Tests are primarily Unix-based (Criterion requires pkg-config)
-if(WIN32 AND BUILD_TESTS)
-    message(STATUS "${BoldYellow}Criterion testing framework not found. Tests will not be built.${ColorReset}")
-    message(STATUS "${BoldCyan}To run tests on Windows, use Docker:${ColorReset}")
+# Criterion tests are primarily Unix-based, but lib runtime tests work on Windows
+if(WIN32 AND BUILD_CRITERION_TESTS)
+    message(STATUS "${BoldYellow}Criterion testing framework not available on Windows.${ColorReset}")
+    message(STATUS "${BoldCyan}To run Criterion tests, use Docker:${ColorReset}")
     message(STATUS "  ${BoldWhite}docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests bash -c 'build_docker/bin/test_unit_ascii'${ColorReset}")
-    set(BUILD_TESTS OFF)
+    set(BUILD_CRITERION_TESTS OFF)
 endif()
 
-if(BUILD_TESTS AND NOT WIN32)
+if(BUILD_CRITERION_TESTS AND NOT WIN32)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(CRITERION criterion)
 

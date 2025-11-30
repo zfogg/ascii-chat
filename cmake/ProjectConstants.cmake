@@ -90,6 +90,16 @@ set(CPACK_WIX_PRODUCT_GUID "*" CACHE STRING "WiX product GUID" FORCE)
 set(CPACK_WIX_UI_REF "WixUI_FeatureTree" CACHE STRING "WiX UI dialog set" FORCE)
 
 # =============================================================================
+# Platform-Specific Scripts
+# =============================================================================
+
+if(WIN32)
+    set(PROJECT_INSTALL_DEPS_SCRIPT "./scripts/install-deps.ps1" CACHE STRING "Dependency installation script")
+else()
+    set(PROJECT_INSTALL_DEPS_SCRIPT "./scripts/install-deps.sh" CACHE STRING "Dependency installation script")
+endif()
+
+# =============================================================================
 # CPack Configuration Variables
 # =============================================================================
 # NOTE: These are set here to ensure consistency across all CPack generators

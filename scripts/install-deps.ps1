@@ -22,11 +22,11 @@
     Convenience switch to install Release dependencies (equivalent to -Config Release)
 
 .EXAMPLE
-    ./deps.ps1
-    ./deps.ps1 -Release
-    ./deps.ps1 -Config Release
-    ./deps.ps1 -Architecture arm64
-    ./deps.ps1 -Triplet x64-windows-static
+    ./install-deps.ps1
+    ./install-deps.ps1 -Release
+    ./install-deps.ps1 -Config Release
+    ./install-deps.ps1 -Architecture arm64
+    ./install-deps.ps1 -Triplet x64-windows-static
 #>
 
 param(

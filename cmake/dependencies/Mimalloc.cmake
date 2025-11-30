@@ -420,4 +420,27 @@ if(USE_MIMALLOC)
 
     message(STATUS "${BoldGreen}mimalloc${ColorReset} will override malloc/free globally")
     message(STATUS "Your existing SAFE_MALLOC macros will automatically use ${BoldGreen}mimalloc${ColorReset}")
+
+    # Helper: Collect all mimalloc include directories for test harnesses and other consumers
+    # This handles system-installed mimalloc (e.g., Homebrew on macOS), FetchContent builds, and vcpkg
+    set(MIMALLOC_INCLUDE_DIRS "")
+    if(TARGET mimalloc-static)
+        get_target_property(_mimalloc_iface mimalloc-static INTERFACE_INCLUDE_DIRECTORIES)
+        if(_mimalloc_iface)
+            list(APPEND MIMALLOC_INCLUDE_DIRS ${_mimalloc_iface})
+        endif()
+    elseif(TARGET mimalloc)
+        # Some system installations provide 'mimalloc' target instead of 'mimalloc-static'
+        get_target_property(_mimalloc_iface mimalloc INTERFACE_INCLUDE_DIRECTORIES)
+        if(_mimalloc_iface)
+            list(APPEND MIMALLOC_INCLUDE_DIRS ${_mimalloc_iface})
+        endif()
+    endif()
+    if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
+        list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_SOURCE_DIR}/include")
+    endif()
+    if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
+        list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_INCLUDE_DIR}")
+    endif()
+    list(REMOVE_DUPLICATES MIMALLOC_INCLUDE_DIRS)
 endif()

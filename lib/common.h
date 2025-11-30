@@ -847,7 +847,9 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
 }
 
 /* Safe string formatting */
+// clang-format off
 #define SAFE_SNPRINTF(buffer, buffer_size, ...) (size_t)safe_snprintf((buffer), (buffer_size), __VA_ARGS__)
+// clang-format on
 
 /**
  * @brief Safe buffer size calculation for snprintf

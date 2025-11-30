@@ -31,6 +31,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -43,7 +44,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v5
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -53,7 +54,7 @@ jobs:
 
     - name: Build with debug symbols
       run: |
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake --preset github -B build \
           -DCMAKE_BUILD_TYPE=Debug \
           -DBUILD_TESTS=OFF
         cmake --build build
@@ -113,6 +114,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -126,14 +128,14 @@ jobs:
       with:
         build-directory: ${{ github.workspace }}/build_debug
         build-cache-key: performance-debug
-        cache-version: v3
+        cache-version: v5
     - name: Cache release build directory
       id: cache-build-release
       uses: ./.github/actions/cache-build
       with:
         build-directory: ${{ github.workspace }}/build_release
         build-cache-key: performance-release
-        cache-version: v3
+        cache-version: v5
 
     - name: Clean build directories to force reconfigure
       run: |
@@ -143,14 +145,14 @@ jobs:
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
-        GITHUB_CMAKE_BINARY_DIR=build_debug cmake --preset github \
+        cmake --preset github -B build_debug \
           -DCMAKE_BUILD_TYPE=Debug \
           -DBUILD_TESTS=OFF
         cmake --build build_debug
         DEBUG_SIZE=$(stat -f%z build_debug/bin/ascii-chat 2>/dev/null || stat -c%s build_debug/bin/ascii-chat)
 
         echo "Building release version..."
-        GITHUB_CMAKE_BINARY_DIR=build_release cmake --preset github \
+        cmake --preset github -B build_release \
           -DCMAKE_BUILD_TYPE=Release \
           -DUSE_MIMALLOC=ON \
           -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
@@ -215,6 +217,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install tools

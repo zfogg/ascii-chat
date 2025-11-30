@@ -23,7 +23,7 @@
 #include "platform/socket.h"
 #include "platform/thread.h"
 
-// Use the enhanced macro to create complete test suite with basic quiet logging
+// Use quiet logging for normal test runs
 TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake);
 
 // Real socket pairs for testing
@@ -43,11 +43,10 @@ void setup_real_sockets(void) {
   g_server_socket = sv[0];
   g_client_socket = sv[1];
 
-  // Set non-blocking mode for both sockets
-  int flags_server = fcntl(g_server_socket, F_GETFL, 0);
-  int flags_client = fcntl(g_client_socket, F_GETFL, 0);
-  fcntl(g_server_socket, F_SETFL, flags_server | O_NONBLOCK);
-  fcntl(g_client_socket, F_SETFL, flags_client | O_NONBLOCK);
+  // NOTE: Keep sockets in BLOCKING mode for handshake tests.
+  // Non-blocking mode causes receive_packet to fail immediately with EAGAIN
+  // before the server has a chance to send data. Real handshake code uses
+  // blocking sockets with timeouts set via setsockopt SO_RCVTIMEO.
 }
 
 void teardown_real_sockets(void) {
@@ -172,9 +171,16 @@ Test(crypto_handshake, server_complete, .init = setup_real_sockets, .fini = tear
 // =============================================================================
 
 Test(crypto_handshake, client_key_exchange, .init = setup_real_sockets, .fini = teardown_real_sockets) {
+  // Skip known_hosts checking for unit tests (avoid interactive prompts)
+  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
+
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
   crypto_handshake_init(&client_ctx, false);
+
+  // Set server IP/port for known_hosts checking (required by handshake code)
+  SAFE_STRNCPY(client_ctx.server_ip, "127.0.0.1", sizeof(client_ctx.server_ip));
+  client_ctx.server_port = 27224;
 
   // Setup client thread
   client_thread_data_t client_data = {.ctx = &client_ctx, .sock = g_client_socket, .result = ERROR_CRYPTO};
@@ -224,10 +230,17 @@ Test(crypto_handshake, client_key_exchange_null_context) {
 // =============================================================================
 
 Test(crypto_handshake, complete_handshake_flow, .init = setup_real_sockets, .fini = teardown_real_sockets) {
+  // Skip known_hosts checking for unit tests (avoid interactive prompts)
+  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
+
   // Initialize both server and client
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
   crypto_handshake_init(&client_ctx, false);
+
+  // Set server IP/port for known_hosts checking (required by handshake code)
+  SAFE_STRNCPY(client_ctx.server_ip, "127.0.0.1", sizeof(client_ctx.server_ip));
+  client_ctx.server_port = 27224;
 
   // Setup client thread
   client_thread_data_t client_data = {.ctx = &client_ctx, .sock = g_client_socket, .result = ERROR_CRYPTO};

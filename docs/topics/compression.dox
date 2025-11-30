@@ -98,7 +98,7 @@
  *     // Send original data (compression didn't help)
  *     send_packet(input_data, input_size);
  *   }
- *   free(compressed_data);
+ *   SAFE_FREE(compressed_data);
  * }
  * @endcode
  *
@@ -109,7 +109,7 @@
  * size_t decompressed_size;
  *
  * // Allocate output buffer (must know original size)
- * decompressed_data = malloc(original_size);
+ * decompressed_data = SAFE_MALLOC(original_size, void *);
  *
  * // Decompress data
  * if (decompress_data(compressed_data, compressed_size,
@@ -118,7 +118,7 @@
  *   process_data(decompressed_data, original_size);
  * }
  *
- * free(decompressed_data);
+ * SAFE_FREE(decompressed_data);
  * @endcode
  *
  * @section compression_integration Network Integration

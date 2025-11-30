@@ -13,6 +13,7 @@
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <mutex>

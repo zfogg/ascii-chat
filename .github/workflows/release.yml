@@ -228,6 +228,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          fetch-tags: true
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
 
@@ -306,6 +307,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          fetch-tags: true
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
 
@@ -369,6 +371,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          fetch-tags: true
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
 

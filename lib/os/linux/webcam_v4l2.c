@@ -353,4 +353,71 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
+  if (!out_devices || !out_count) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_list_devices: invalid parameters");
+  }
+
+  *out_devices = NULL;
+  *out_count = 0;
+
+  // First pass: count valid video devices
+  unsigned int device_count = 0;
+  for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX; i++) {
+    char device_path[32];
+    snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
+
+    int fd = open(device_path, O_RDONLY);
+    if (fd < 0) {
+      continue;
+    }
+
+    struct v4l2_capability cap;
+    if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0 && (cap.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
+      device_count++;
+    }
+    close(fd);
+  }
+
+  if (device_count == 0) {
+    // No devices found - not an error
+    return ASCIICHAT_OK;
+  }
+
+  // Allocate device array
+  webcam_device_info_t *devices = SAFE_CALLOC(device_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
+  if (!devices) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate device info array");
+  }
+
+  // Second pass: populate device info
+  unsigned int idx = 0;
+  for (int i = 0; i <= WEBCAM_DEVICE_INDEX_MAX && idx < device_count; i++) {
+    char device_path[32];
+    snprintf(device_path, sizeof(device_path), "/dev/video%d", i);
+
+    int fd = open(device_path, O_RDONLY);
+    if (fd < 0) {
+      continue;
+    }
+
+    struct v4l2_capability cap;
+    if (ioctl(fd, VIDIOC_QUERYCAP, &cap) == 0 && (cap.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
+      devices[idx].index = (unsigned int)i;
+      SAFE_STRNCPY(devices[idx].name, (const char *)cap.card, WEBCAM_DEVICE_NAME_MAX);
+      idx++;
+    }
+    close(fd);
+  }
+
+  *out_devices = devices;
+  *out_count = idx;
+
+  return ASCIICHAT_OK;
+}
+
+void webcam_free_device_list(webcam_device_info_t *devices) {
+  SAFE_FREE(devices);
+}
+
 #endif // __linux__

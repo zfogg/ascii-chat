@@ -436,6 +436,14 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
   // Allocate character array
   palette->chars = SAFE_MALLOC(char_count * sizeof(utf8_char_info_t), utf8_char_info_t *);
   palette->raw_string = SAFE_MALLOC(total_bytes + 1, char *);
+  // Explicit NULL checks to satisfy static analyzer (SAFE_MALLOC calls FATAL on failure)
+  if (palette->chars == NULL || palette->raw_string == NULL) {
+    SAFE_FREE(palette->chars);
+    SAFE_FREE(palette->raw_string);
+    SAFE_FREE(palette);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate palette character array");
+    return NULL;
+  }
 
   SAFE_MEMCPY(palette->raw_string, total_bytes + 1, palette_string, total_bytes + 1);
   palette->char_count = char_count;

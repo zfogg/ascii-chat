@@ -96,6 +96,7 @@ typedef struct {
 } static_cond_t;
 
 // Initialization macros
+// clang-format off
 #if PLATFORM_WINDOWS
 #define STATIC_MUTEX_INIT {{0}, 0}
 #define STATIC_RWLOCK_INIT {{0}, 0}
@@ -105,6 +106,7 @@ typedef struct {
 #define STATIC_RWLOCK_INIT {PTHREAD_RWLOCK_INITIALIZER, 1}
 #define STATIC_COND_INIT {PTHREAD_COND_INITIALIZER, 1}
 #endif
+// clang-format on
 
 // Lazy initialization functions
 static inline void static_mutex_lock(static_mutex_t *m) {

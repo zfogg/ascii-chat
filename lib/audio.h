@@ -317,6 +317,81 @@ asciichat_error_t audio_set_realtime_priority(void);
 /** @} */
 
 /* ============================================================================
+ * Audio Device Enumeration
+ * @{
+ */
+
+/** @brief Maximum length of audio device name */
+#define AUDIO_DEVICE_NAME_MAX 256
+
+/**
+ * @brief Audio device information structure
+ *
+ * Contains information about an audio device including its index, name,
+ * and capabilities (input/output channel counts).
+ *
+ * @ingroup audio
+ */
+typedef struct {
+  int index;                        ///< PortAudio device index
+  char name[AUDIO_DEVICE_NAME_MAX]; ///< Human-readable device name
+  int max_input_channels;           ///< Maximum input channels (0 if output only)
+  int max_output_channels;          ///< Maximum output channels (0 if input only)
+  double default_sample_rate;       ///< Default sample rate in Hz
+  bool is_default_input;            ///< True if this is the default input device
+  bool is_default_output;           ///< True if this is the default output device
+} audio_device_info_t;
+
+/**
+ * @brief List available audio input devices (microphones)
+ * @param out_devices Pointer to store allocated array of devices (must not be NULL)
+ * @param out_count Pointer to store device count (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Enumerates all audio input devices (microphones) available on the system.
+ * The caller is responsible for freeing the returned array with audio_free_device_list().
+ *
+ * @note This function initializes PortAudio temporarily if not already initialized.
+ * @note Devices with maxInputChannels > 0 are included.
+ *
+ * @warning Must call audio_free_device_list() to free the returned array.
+ *
+ * @ingroup audio
+ */
+asciichat_error_t audio_list_input_devices(audio_device_info_t **out_devices, unsigned int *out_count);
+
+/**
+ * @brief List available audio output devices (speakers)
+ * @param out_devices Pointer to store allocated array of devices (must not be NULL)
+ * @param out_count Pointer to store device count (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Enumerates all audio output devices (speakers/headphones) available on the system.
+ * The caller is responsible for freeing the returned array with audio_free_device_list().
+ *
+ * @note This function initializes PortAudio temporarily if not already initialized.
+ * @note Devices with maxOutputChannels > 0 are included.
+ *
+ * @warning Must call audio_free_device_list() to free the returned array.
+ *
+ * @ingroup audio
+ */
+asciichat_error_t audio_list_output_devices(audio_device_info_t **out_devices, unsigned int *out_count);
+
+/**
+ * @brief Free device list allocated by audio_list_input_devices/audio_list_output_devices
+ * @param devices Device array to free (can be NULL)
+ *
+ * Frees the device array allocated by audio_list_input_devices() or
+ * audio_list_output_devices(). Safe to call with NULL.
+ *
+ * @ingroup audio
+ */
+void audio_free_device_list(audio_device_info_t *devices);
+
+/** @} */
+
+/* ============================================================================
  * Audio Ring Buffer Management
  * @{
  */

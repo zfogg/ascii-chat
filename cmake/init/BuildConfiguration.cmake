@@ -112,17 +112,34 @@ list(APPEND _ascii_chat_try_compile_vars
 set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES "${_ascii_chat_try_compile_vars}")
 
 if(ASCIICHAT_ENABLE_ANALYZERS)
-    find_program(_asciichat_clang_tidy NAMES "${ASCIICHAT_CLANG_TIDY}" clang-tidy PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
+    # Find clang-tidy from the same installation as the C compiler to ensure version compatibility
+    # This prevents PCH version mismatch errors when clang-tidy uses different headers than the compiler
+    get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+    find_program(_asciichat_clang_tidy
+        NAMES "${ASCIICHAT_CLANG_TIDY}" clang-tidy
+        HINTS "${_compiler_dir}" "${_compiler_dir}/../bin"
+        NO_DEFAULT_PATH
+        NO_CACHE
+    )
+    if(NOT _asciichat_clang_tidy)
+        # Fallback to PATH if not found alongside compiler
+        find_program(_asciichat_clang_tidy NAMES "${ASCIICHAT_CLANG_TIDY}" clang-tidy PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
+    endif()
     if(NOT _asciichat_clang_tidy)
         message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but clang-tidy not found")
     else()
         set(CMAKE_C_CLANG_TIDY "${_asciichat_clang_tidy}" CACHE STRING "" FORCE)
-        message(STATUS "Static analyzer: ${BoldCyan}clang-tidy${ColorReset} enabled")
+        message(STATUS "Static analyzer: ${BoldCyan}clang-tidy${ColorReset} (${_asciichat_clang_tidy}) enabled")
     endif()
 
     find_program(_asciichat_cppcheck NAMES "${ASCIICHAT_CPPCHECK}" cppcheck PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
     if(_asciichat_cppcheck)
-        set(CMAKE_C_CPPCHECK "${_asciichat_cppcheck}" CACHE STRING "" FORCE)
+        # Use quiet mode to suppress verbose "Checking..." messages and informational notes
+        set(CMAKE_C_CPPCHECK
+            "${_asciichat_cppcheck}"
+            "--quiet"
+            "--suppress=normalCheckLevelMaxBranches"
+            CACHE STRING "" FORCE)
     elseif(ASCIICHAT_CPPCHECK)
         message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but specified cppcheck binary '${ASCIICHAT_CPPCHECK}' not found")
     endif()

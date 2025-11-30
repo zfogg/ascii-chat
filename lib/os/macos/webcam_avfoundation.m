@@ -52,6 +52,11 @@
   }
   [_frameLock unlock];
   [_frameLock release];
+  // Release the dispatch semaphore (required under MRC for dispatch objects)
+  if (_frameSemaphore) {
+    dispatch_release(_frameSemaphore);
+    _frameSemaphore = nil;
+  }
   [super dealloc];
 }
 
@@ -122,7 +127,7 @@ static NSArray *getSupportedDeviceTypes(void) {
     [deviceTypes addObject:AVCaptureDeviceTypeExternal];
   }
 
-  return [deviceTypes copy];
+  return [[deviceTypes copy] autorelease];
 }
 
 asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
@@ -428,6 +433,60 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
   *width = ctx->width;
   *height = ctx->height;
   return ASCIICHAT_OK;
+}
+
+asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
+  if (!out_devices || !out_count) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_list_devices: invalid parameters");
+  }
+
+  *out_devices = NULL;
+  *out_count = 0;
+
+  @autoreleasepool {
+    // Get all video capture devices using the helper that handles deprecated types
+    NSArray *deviceTypes = getSupportedDeviceTypes();
+    AVCaptureDeviceDiscoverySession *discoverySession =
+        [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
+                                                               mediaType:AVMediaTypeVideo
+                                                                position:AVCaptureDevicePositionUnspecified];
+
+    NSArray<AVCaptureDevice *> *av_devices = discoverySession.devices;
+    NSUInteger device_count = [av_devices count];
+
+    if (device_count == 0) {
+      // No devices found - not an error
+      return ASCIICHAT_OK;
+    }
+
+    // Allocate device array
+    webcam_device_info_t *devices = SAFE_CALLOC((size_t)device_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
+    if (!devices) {
+      return SET_ERRNO(ERROR_MEMORY, "Failed to allocate device info array");
+    }
+
+    // Populate device info
+    for (NSUInteger i = 0; i < device_count; i++) {
+      AVCaptureDevice *device = av_devices[i];
+      devices[i].index = (unsigned int)i;
+
+      const char *name = [[device localizedName] UTF8String];
+      if (name) {
+        SAFE_STRNCPY(devices[i].name, name, WEBCAM_DEVICE_NAME_MAX);
+      } else {
+        SAFE_STRNCPY(devices[i].name, "<Unknown>", WEBCAM_DEVICE_NAME_MAX);
+      }
+    }
+
+    *out_devices = devices;
+    *out_count = (unsigned int)device_count;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+void webcam_free_device_list(webcam_device_info_t *devices) {
+  SAFE_FREE(devices);
 }
 
 #endif // __APPLE__

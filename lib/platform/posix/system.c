@@ -884,7 +884,14 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
 
     // Null-terminate (PEM is text format)
     // bytes_read == file_size is verified above, and we allocated file_size + 1 bytes
-    pem_data[(size_t)file_size] = '\0';
+    // Explicit bounds check to satisfy static analyzer (taint analysis for bytes_read)
+    size_t allocated_size = (size_t)file_size + 1;
+    if (bytes_read < allocated_size) {
+      pem_data[bytes_read] = '\0';
+    } else {
+      // Should never happen since we verified bytes_read == file_size
+      pem_data[allocated_size - 1] = '\0';
+    }
 
     // Success!
     *pem_data_out = pem_data;

@@ -1,4 +1,4 @@
-function c { & cmake $args }
+function cm { & cmake $args }
 function cpd { & cmake --preset default -B build         $args }
 function cpr { & cmake --preset release -B build_release $args }
 function cbb { & cmake --build build $args }

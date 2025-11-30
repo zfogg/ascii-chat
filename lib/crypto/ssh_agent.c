@@ -180,6 +180,9 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
 }
 
 asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char *key_path) {
+  if (private_key == NULL) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot add key to ssh-agent: private_key is NULL");
+  }
   if (private_key->type != KEY_TYPE_ED25519) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Cannot add key to ssh-agent: only Ed25519 keys supported");
   }

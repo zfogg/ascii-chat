@@ -497,6 +497,105 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
   return audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
 }
 
+// Internal helper to list audio devices (input or output)
+static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_devices, unsigned int *out_count,
+                                                     bool list_inputs) {
+  if (!out_devices || !out_count) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "audio_list_devices: invalid parameters");
+  }
+
+  *out_devices = NULL;
+  *out_count = 0;
+
+  // Initialize PortAudio temporarily
+  PaError err = Pa_Initialize();
+  if (err != paNoError) {
+    return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+  }
+
+  int num_devices = Pa_GetDeviceCount();
+  if (num_devices < 0) {
+    Pa_Terminate();
+    return SET_ERRNO(ERROR_AUDIO, "Failed to get device count: %s", Pa_GetErrorText(num_devices));
+  }
+
+  if (num_devices == 0) {
+    Pa_Terminate();
+    return ASCIICHAT_OK; // No devices found
+  }
+
+  // Get default device indices
+  PaDeviceIndex default_input = Pa_GetDefaultInputDevice();
+  PaDeviceIndex default_output = Pa_GetDefaultOutputDevice();
+
+  // First pass: count matching devices
+  unsigned int device_count = 0;
+  for (int i = 0; i < num_devices; i++) {
+    const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
+    if (info) {
+      bool matches = list_inputs ? (info->maxInputChannels > 0) : (info->maxOutputChannels > 0);
+      if (matches) {
+        device_count++;
+      }
+    }
+  }
+
+  if (device_count == 0) {
+    Pa_Terminate();
+    return ASCIICHAT_OK; // No matching devices
+  }
+
+  // Allocate device array
+  audio_device_info_t *devices = SAFE_CALLOC(device_count, sizeof(audio_device_info_t), audio_device_info_t *);
+  if (!devices) {
+    Pa_Terminate();
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio device info array");
+  }
+
+  // Second pass: populate device info
+  unsigned int idx = 0;
+  for (int i = 0; i < num_devices && idx < device_count; i++) {
+    const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
+    if (!info)
+      continue;
+
+    bool match = list_inputs ? (info->maxInputChannels > 0) : (info->maxOutputChannels > 0);
+    if (!match)
+      continue;
+
+    devices[idx].index = i;
+    if (info->name) {
+      SAFE_STRNCPY(devices[idx].name, info->name, AUDIO_DEVICE_NAME_MAX);
+    } else {
+      SAFE_STRNCPY(devices[idx].name, "<Unknown>", AUDIO_DEVICE_NAME_MAX);
+    }
+    devices[idx].max_input_channels = info->maxInputChannels;
+    devices[idx].max_output_channels = info->maxOutputChannels;
+    devices[idx].default_sample_rate = info->defaultSampleRate;
+    devices[idx].is_default_input = (i == default_input);
+    devices[idx].is_default_output = (i == default_output);
+    idx++;
+  }
+
+  Pa_Terminate();
+
+  *out_devices = devices;
+  *out_count = idx;
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t audio_list_input_devices(audio_device_info_t **out_devices, unsigned int *out_count) {
+  return audio_list_devices_internal(out_devices, out_count, true);
+}
+
+asciichat_error_t audio_list_output_devices(audio_device_info_t **out_devices, unsigned int *out_count) {
+  return audio_list_devices_internal(out_devices, out_count, false);
+}
+
+void audio_free_device_list(audio_device_info_t *devices) {
+  SAFE_FREE(devices);
+}
+
 asciichat_error_t audio_set_realtime_priority(void) {
 #if defined(__linux__)
   struct sched_param param;

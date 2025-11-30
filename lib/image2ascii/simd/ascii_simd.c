@@ -259,8 +259,10 @@ char *image_print_simd(image_t *image, const char *ascii_chars) {
 #elif SIMD_SUPPORT_NEON
   return render_ascii_image_monochrome_neon(image, ascii_chars);
 #else
-  log_debug("COMPILED WITHOUT SPECIFIC SIMD");
-  return convert_pixels_scalar_with_newlines(image, ascii_chars);
+  // Fallback to scalar implementation - use image_print which properly handles
+  // the palette string (convert_pixels_scalar_with_newlines expects a 256-element
+  // luminance lookup table, not the raw palette string)
+  return image_print(image, ascii_chars);
 #endif
 }
 

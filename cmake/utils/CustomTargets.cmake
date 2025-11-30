@@ -126,7 +126,19 @@ endif()
 
 # Find Python3, clang-tidy, and the accompanying run-clang-tidy.py helper
 find_program(PYTHON3_EXECUTABLE NAMES python3 python)
-find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
+
+# Find clang-tidy from the same installation as the C compiler to ensure version compatibility
+# This prevents PCH version mismatch errors when clang-tidy uses different headers than the compiler
+get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
+find_program(CLANG_TIDY_EXECUTABLE
+    NAMES clang-tidy
+    HINTS "${_compiler_dir}" "${_compiler_dir}/../bin"
+    NO_DEFAULT_PATH
+)
+if(NOT CLANG_TIDY_EXECUTABLE)
+    # Fallback to PATH if not found alongside compiler
+    find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
+endif()
 set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
 
 set(_clang_tidy_missing_deps "")
@@ -149,16 +161,19 @@ if(NOT _clang_tidy_missing_deps)
     endif()
 
     if(NOT TARGET clang-tidy)
+        # clang-tidy must run after build to ensure PCH files and generated sources exist
         add_custom_target(clang-tidy
             COMMAND ${CLANG_TIDY_EXECUTABLE}
                 --verify-config
                 --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
             COMMAND ${PYTHON3_EXECUTABLE}
                 ${RUN_CLANG_TIDY_SCRIPT}
+                -clang-tidy-binary ${CLANG_TIDY_EXECUTABLE}
                 -p ${CMAKE_BINARY_DIR}
                 -config-file ${CMAKE_SOURCE_DIR}/.clang-tidy
                 -j ${CLANG_TIDY_JOBS}
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            DEPENDS ascii-chat
             COMMENT "Verifying clang-tidy config, then running static analysis on production code (excluding tests) via scripts/run-clang-tidy.py (parallel: ${CLANG_TIDY_JOBS} jobs)"
             VERBATIM
         )

@@ -309,4 +309,17 @@ bool test_logging_is_disabled(void);
 #define TEST_SUITE_WITH_DEBUG_LOGGING(suite_name, ...)                                                                 \
   TEST_SUITE_WITH_QUIET_LOGGING_AND_LOG_LEVELS(suite_name, LOG_DEBUG, LOG_DEBUG, false, false, ##__VA_ARGS__)
 
+/**
+ * @brief Alias for TEST_SUITE_WITH_DEBUG_LOGGING for verbose output
+ *
+ * This macro is an alias for TEST_SUITE_WITH_DEBUG_LOGGING, providing
+ * verbose logging output for debugging test failures.
+ *
+ * Usage:
+ * @code
+ * TEST_SUITE_WITH_VERBOSE_LOGGING(my_suite);
+ * @endcode
+ */
+#define TEST_SUITE_WITH_VERBOSE_LOGGING(suite_name, ...) TEST_SUITE_WITH_DEBUG_LOGGING(suite_name, ##__VA_ARGS__)
+
 #endif // LOGGING_H

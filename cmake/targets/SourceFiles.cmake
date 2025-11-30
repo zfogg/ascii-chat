@@ -32,6 +32,7 @@ set(UTIL_SRCS
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c
+    lib/util/levenshtein.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
