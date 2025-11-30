@@ -1,0 +1,27 @@
+[Desktop Entry]
+Version=1.1
+Type=Application
+Name=ascii chat
+GenericName=Video Chat
+Comment=Video chat in your terminal
+Exec=ascii-chat client
+Icon=ascii-chat
+Terminal=true
+Categories=Network;Chat;AudioVideo;Video;
+Keywords=video;chat;ascii;terminal;webcam;streaming;
+StartupNotify=false
+MimeType=x-scheme-handler/ascii-chat;
+
+# Server mode can be launched with:
+# Exec=ascii-chat server
+# But the default is client mode which is more common
+
+[Desktop Action Server]
+Name=Start Server
+Exec=ascii-chat server
+Icon=ascii-chat
+
+[Desktop Action Client]
+Name=Connect as Client
+Exec=ascii-chat client
+Icon=ascii-chat

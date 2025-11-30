@@ -362,6 +362,106 @@ if(UNIX)
     message(STATUS "${BoldGreen}Configured${ColorReset} manpage installation: ${BoldBlue}ascii-chat.1${ColorReset} → ${BoldYellow}share/man/man1/${ColorReset}")
 endif()
 
+# =============================================================================
+# Shell Completion Scripts Installation (Unix only)
+# =============================================================================
+# Install tab-completion scripts for bash, zsh, and fish shells
+if(UNIX)
+    # Bash completions
+    # Standard location: /usr/share/bash-completion/completions/
+    # User location: ~/.local/share/bash-completion/completions/
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.bash")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.bash"
+            DESTINATION share/bash-completion/completions
+            RENAME ascii-chat
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} bash completion: ${BoldBlue}ascii-chat.bash${ColorReset} → ${BoldYellow}share/bash-completion/completions/ascii-chat${ColorReset}")
+    endif()
+
+    # Zsh completions
+    # Standard location: /usr/share/zsh/site-functions/
+    # User location: ~/.local/share/zsh/site-functions/ or a directory in $fpath
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/_ascii-chat")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/_ascii-chat"
+            DESTINATION share/zsh/site-functions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii-chat${ColorReset} → ${BoldYellow}share/zsh/site-functions/${ColorReset}")
+    endif()
+
+    # Fish completions
+    # Standard location: /usr/share/fish/vendor_completions.d/
+    # User location: ~/.config/fish/completions/
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.fish")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.fish"
+            DESTINATION share/fish/vendor_completions.d
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} → ${BoldYellow}share/fish/vendor_completions.d/${ColorReset}")
+    endif()
+endif()
+
+# =============================================================================
+# Desktop Entry Installation (Linux only)
+# =============================================================================
+# Install .desktop file for application launchers and menus
+# Note: ascii-chat is a terminal application, so Terminal=true is set
+if(UNIX AND NOT APPLE)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/applications/ascii-chat.desktop")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/applications/ascii-chat.desktop"
+            DESTINATION share/applications
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} desktop entry: ${BoldBlue}ascii-chat.desktop${ColorReset} → ${BoldYellow}share/applications/${ColorReset}")
+    endif()
+endif()
+
+# =============================================================================
+# AppStream Metainfo Installation (Linux only)
+# =============================================================================
+# Install AppStream metadata for software centers (GNOME Software, KDE Discover, etc.)
+if(UNIX AND NOT APPLE)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/metainfo/gg.zfo.ascii-chat.metainfo.xml")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/metainfo/gg.zfo.ascii-chat.metainfo.xml"
+            DESTINATION share/metainfo
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} AppStream metainfo: ${BoldBlue}gg.zfo.ascii-chat.metainfo.xml${ColorReset} → ${BoldYellow}share/metainfo/${ColorReset}")
+    endif()
+endif()
+
+# =============================================================================
+# Systemd Service File Installation (Linux only)
+# =============================================================================
+# Install systemd service file for running ascii-chat server as a daemon
+# Users must enable with: systemctl --user enable ascii-chat-server
+# Or system-wide: sudo systemctl enable ascii-chat-server
+if(UNIX AND NOT APPLE)
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service")
+        # Install to user systemd directory (lib/systemd/user/)
+        # System-wide would be lib/systemd/system/
+        install(FILES "${CMAKE_SOURCE_DIR}/share/systemd/ascii-chat-server.service"
+            DESTINATION lib/systemd/user
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} systemd service: ${BoldBlue}ascii-chat-server.service${ColorReset} → ${BoldYellow}lib/systemd/user/${ColorReset}")
+    endif()
+endif()
+
+# =============================================================================
+# Example Configuration File Installation
+# =============================================================================
+# Install example config.toml with documented options
+# Users can copy this to their config directory to customize
+if(EXISTS "${CMAKE_SOURCE_DIR}/share/examples/config.toml")
+    install(FILES "${CMAKE_SOURCE_DIR}/share/examples/config.toml"
+        DESTINATION ${INSTALL_DOC_DIR}/examples
+        COMPONENT Documentation
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} example config: ${BoldBlue}config.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
+endif()
+
 # Install documentation at root of installation directory
 # README.md and LICENSE.txt should be at the root for easy access
 if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
