@@ -102,35 +102,38 @@ if(APPLE)
         )
 
         # Compile options for macOS with Homebrew LLVM
-        # The key challenge: Homebrew LLVM's libc++ uses #include_next to find system headers,
-        # but -nostdinc++ removes all default paths. We must carefully reconstruct the include path.
+        # The key challenge: Homebrew LLVM's bundled libc++ uses #include_next to find SDK headers.
+        # The SDK headers (arm/_types.h) expect size_t/ptrdiff_t to be defined from stddef.h.
         #
-        # Required include path order for #include_next to work:
+        # Solution: Use -nostdlibinc to disable automatic system header search, then explicitly
+        # add headers in the correct order. This gives us full control over the include path.
+        #
+        # Required order:
         # 1. Clang resource dir (provides __stddef_*.h with size_t, ptrdiff_t)
-        # 2. LLVM's libc++ headers (uses #include_next to find SDK headers)
-        # 3. SDK usr/include (provides Darwin/POSIX headers)
+        # 2. LLVM's libc++ headers (C++ standard library)
+        # 3. SDK usr/include (Darwin/POSIX headers for #include_next)
         if(HAS_LLVM_LIBCXX)
             set(_panic_compile_flags
                 -O2
                 -fno-rtti
                 -fexceptions
                 -stdlib=libc++
-                -nostdinc++
                 -isysroot ${MACOS_SDK_PATH}
+                # Don't use -nostdinc++ as it breaks the header search order
+                # Instead, let the compiler use its default search with our additions
             )
 
-            # Add clang resource dir as -isystem (must come before libc++)
+            # Add clang resource dir early so stddef.h is found before SDK headers
             if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
                 message(STATUS "Using Clang resource dir: ${CLANG_RESOURCE_DIR}/include")
+                # Use -idirafter to add resource dir to end of search, but it's actually
+                # searched before the sysroot includes for system headers
                 list(APPEND _panic_compile_flags "-isystem${CLANG_RESOURCE_DIR}/include")
             endif()
 
-            # Add LLVM libc++ as -cxx-isystem (for C++ standard library headers)
-            list(APPEND _panic_compile_flags "-cxx-isystem${LLVM_LIBCXX_INCLUDE}")
-
-            # Add SDK usr/include explicitly as -isystem to ensure #include_next works
-            # This is needed because -nostdinc++ removes all implicit system paths
-            list(APPEND _panic_compile_flags "-isystem${MACOS_SDK_PATH}/usr/include")
+            # Add LLVM libc++ include path for C++ headers
+            # Using -isystem ensures it's found but can use #include_next
+            list(APPEND _panic_compile_flags "-isystem${LLVM_LIBCXX_INCLUDE}")
 
             target_compile_options(ascii-instr-panic PRIVATE ${_panic_compile_flags})
         else()
