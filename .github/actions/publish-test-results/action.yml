@@ -52,63 +52,33 @@ runs:
           echo "⚠️ No codecov.yml found, skipping validation"
         fi
 
-    # Validate and fix JUnit XML if needed
-    - name: Validate and Fix JUnit XML
+    # Validate JUnit XML if xmllint is available
+    - name: Validate JUnit XML
       if: always()
       shell: bash
       run: |
         if [ -f "${{ inputs.junit-file }}" ]; then
           echo "✅ JUnit XML exists ($(wc -l < ${{ inputs.junit-file }}) lines)"
+          echo "First 5 lines:"
+          head -5 "${{ inputs.junit-file }}"
+          echo "Last 5 lines:"
+          tail -5 "${{ inputs.junit-file }}"
 
-          # Try to validate the XML
-          echo "Validating XML with xmllint..."
-          if xmllint --noout "${{ inputs.junit-file }}" 2>&1; then
-            echo "✅ Valid XML"
-          else
-            echo "⚠️ Invalid XML detected"
-            echo "First 10 lines:"
-            head -10 "${{ inputs.junit-file }}"
-            echo "Last 10 lines:"
-            tail -10 "${{ inputs.junit-file }}"
-            echo "Attempting to fix..."
-
-            # Check if the file ends with </testsuites>
-            if ! tail -1 "${{ inputs.junit-file }}" | grep -q '</testsuites>'; then
-              echo "  Adding missing </testsuites> closing tag"
-              echo '</testsuites>' >> "${{ inputs.junit-file }}"
-            fi
-
-            # Try validation again
-            if xmllint --format "${{ inputs.junit-file }}" > /dev/null 2>&1; then
-              echo "✅ XML fixed successfully"
+          # Validate with xmllint if available
+          if command -v xmllint &>/dev/null; then
+            echo "Validating XML with xmllint..."
+            if xmllint --noout "${{ inputs.junit-file }}" 2>&1; then
+              echo "✅ Valid XML"
             else
-              echo "❌ Could not fix XML, creating minimal valid file"
-              # Create a minimal valid JUnit XML
-              echo '<?xml version="1.0" encoding="UTF-8"?>' > "${{ inputs.junit-file }}.fixed"
-              echo '<testsuites name="ascii-chat Tests">' >> "${{ inputs.junit-file }}.fixed"
-              echo '  <testsuite name="unknown" tests="0" failures="0" errors="1" time="0.0">' >> "${{ inputs.junit-file }}.fixed"
-              echo '    <testcase classname="unknown" name="xml_parse_error" time="0.0">' >> "${{ inputs.junit-file }}.fixed"
-              echo '      <error message="Original JUnit XML was malformed" type="XMLParseError">Could not parse original JUnit XML file</error>' >> "${{ inputs.junit-file }}.fixed"
-              echo '    </testcase>' >> "${{ inputs.junit-file }}.fixed"
-              echo '  </testsuite>' >> "${{ inputs.junit-file }}.fixed"
-              echo '</testsuites>' >> "${{ inputs.junit-file }}.fixed"
-              mv "${{ inputs.junit-file }}.fixed" "${{ inputs.junit-file }}"
+              echo "❌ Invalid XML detected - test results may not display correctly"
             fi
+          else
+            echo "ℹ️ xmllint not available, skipping XML validation"
           fi
         else
           echo "❌ JUnit XML not found at ${{ inputs.junit-file }}"
           echo "Looking for XML files:"
           find . -name "*.xml" -type f | head -5
-
-          # Create a minimal file to prevent downstream errors
-          echo '<?xml version="1.0" encoding="UTF-8"?>' > "${{ inputs.junit-file }}"
-          echo '<testsuites name="ascii-chat Tests">' >> "${{ inputs.junit-file }}"
-          echo '  <testsuite name="unknown" tests="0" failures="0" errors="1" time="0.0">' >> "${{ inputs.junit-file }}"
-          echo '    <testcase classname="unknown" name="no_results" time="0.0">' >> "${{ inputs.junit-file }}"
-          echo '      <error message="No test results found" type="MissingResults">JUnit XML file was not generated</error>' >> "${{ inputs.junit-file }}"
-          echo '    </testcase>' >> "${{ inputs.junit-file }}"
-          echo '  </testsuite>' >> "${{ inputs.junit-file }}"
-          echo '</testsuites>' >> "${{ inputs.junit-file }}"
         fi
 
     # Publish test results to GitHub checks (Linux)
