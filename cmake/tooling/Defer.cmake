@@ -24,6 +24,12 @@ function(ascii_defer_prepare)
         message(STATUS "Using cached defer tool: ${_defer_tool_exe}")
     else()
         # Build defer tool to cache directory (survives rm -rf build)
+        # Clean up any partial cache state (e.g., from incomplete CI cache restore)
+        # that would cause "not a CMake build directory" errors
+        if(EXISTS "${_defer_cache_dir}" AND NOT EXISTS "${_defer_cache_dir}/CMakeCache.txt")
+            message(STATUS "Cleaning incomplete defer tool cache at: ${_defer_cache_dir}")
+            file(REMOVE_RECURSE "${_defer_cache_dir}")
+        endif()
         set(_defer_build_dir "${_defer_cache_dir}")
         set(_defer_tool_exe "${_defer_build_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
 
