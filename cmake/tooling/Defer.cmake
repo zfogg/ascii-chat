@@ -29,6 +29,12 @@ function(ascii_defer_prepare)
             file(REMOVE_RECURSE "${_defer_cache_dir}")
             set(_defer_needs_rebuild TRUE)
         endif()
+    else()
+        # Cache directory doesn't exist at all - this can happen when:
+        # 1. CI cache only restored build/ but not .deps-cache/
+        # 2. Fresh checkout
+        # In either case, we need to clean any stale stamp files
+        set(_defer_needs_rebuild TRUE)
     endif()
 
     # Also clean up stale stamp files if we need a rebuild

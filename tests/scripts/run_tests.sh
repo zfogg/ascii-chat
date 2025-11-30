@@ -1492,19 +1492,23 @@ function main() {
         if [[ -n "$GENERATE_JUNIT" ]]; then
     echo '</testsuites>' >>"$junit_file"
 
-    # Validate JUnit XML
-    local xml_errors
-    xml_errors=$(xmllint --noout "$junit_file" 2>&1)
-    if [[ $? -ne 0 ]]; then
-      log_error "❌ JUnit XML validation failed!"
-      log_error "Invalid XML in: $junit_file"
-      log_error "XML errors: $xml_errors"
-      log_error "XML content:"
-      cat "$junit_file" >&2
-      log_error "Exiting due to invalid JUnit XML"
-      exit 1
+    # Validate JUnit XML (if xmllint is available)
+    if command -v xmllint &>/dev/null; then
+      local xml_errors
+      xml_errors=$(xmllint --noout "$junit_file" 2>&1)
+      if [[ $? -ne 0 ]]; then
+        log_error "❌ JUnit XML validation failed!"
+        log_error "Invalid XML in: $junit_file"
+        log_error "XML errors: $xml_errors"
+        log_error "XML content:"
+        cat "$junit_file" >&2
+        log_error "Exiting due to invalid JUnit XML"
+        exit 1
+      else
+        log_info "✅ JUnit XML validation passed"
+      fi
     else
-      log_info "✅ JUnit XML validation passed"
+      log_info "ℹ️ xmllint not available, skipping JUnit XML validation"
     fi
   fi
 
