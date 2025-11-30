@@ -38,6 +38,38 @@
 #include "platform/password.h"
 #include "version.h"
 #include "crypto/crypto.h"
+#include "util/levenshtein.h"
+
+// Maximum edit distance to suggest an option (higher = more lenient)
+// Threshold of 2 catches most typos (single char errors, transpositions)
+// without suggesting unrelated options
+#define OPTION_SUGGESTION_THRESHOLD 2
+
+// Find the most similar option name to an unknown option
+// Returns the best matching option name, or NULL if no good match found
+static const char *find_similar_option(const char *unknown_opt, const struct option *options) {
+  if (!unknown_opt || !options) {
+    return NULL;
+  }
+
+  const char *best_match = NULL;
+  size_t best_distance = SIZE_MAX;
+
+  for (int i = 0; options[i].name != NULL; i++) {
+    size_t dist = levenshtein(unknown_opt, options[i].name);
+    if (dist < best_distance) {
+      best_distance = dist;
+      best_match = options[i].name;
+    }
+  }
+
+  // Only suggest if the distance is within our threshold
+  if (best_distance <= OPTION_SUGGESTION_THRESHOLD) {
+    return best_match;
+  }
+
+  return NULL;
+}
 
 // Safely parse string to integer with validation
 asciichat_error_t strtoint_safe(const char *str) {
@@ -1311,8 +1343,11 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       }
       return ERROR_USAGE;
 
-    case '?':
+    case '?': {
       // Handle unknown options - extract the actual option name from argv
+      // Use a buffer that persists for the suggestion lookup
+      char unknown_opt_buf[256] = {0};
+
       if (optopt == 0 || optopt > 127) {
         // Long option - extract from argv
         const char *user_input = NULL;
@@ -1328,27 +1363,37 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           const char *eq_pos = strchr(user_opt, '=');
           if (eq_pos) {
             size_t user_opt_len = (size_t)(eq_pos - user_opt);
-            if (user_opt_len > 0 && user_opt_len < 256) {
-              char unsupported_opt[256];
-              SAFE_STRNCPY(unsupported_opt, user_opt, sizeof(unsupported_opt));
-              unsupported_opt[user_opt_len] = '\0';
-              option_name = unsupported_opt;
+            if (user_opt_len > 0 && user_opt_len < sizeof(unknown_opt_buf)) {
+              SAFE_STRNCPY(unknown_opt_buf, user_opt, sizeof(unknown_opt_buf));
+              unknown_opt_buf[user_opt_len] = '\0';
+              option_name = unknown_opt_buf;
             } else {
               option_name = user_opt;
             }
           } else {
             option_name = user_opt;
+            SAFE_STRNCPY(unknown_opt_buf, user_opt, sizeof(unknown_opt_buf));
           }
         } else if (user_input) {
           option_name = user_input;
         }
         safe_fprintf(stderr, "Unknown option '--%s'\n", option_name);
+
+        // Try to find a similar option and suggest it
+        const char *suggestion = find_similar_option(unknown_opt_buf[0] ? unknown_opt_buf : option_name, options);
+        if (suggestion) {
+          safe_fprintf(stderr, "Did you mean '--%s'?\n", suggestion);
+        }
       } else {
-        // Short option
+        // Short option - no suggestions for single character options
         safe_fprintf(stderr, "Unknown option '-%c'\n", optopt);
       }
+#ifndef NDEBUG
+      // Only print full usage in debug builds - release builds just show the error
       usage(stderr, is_client);
+#endif
       return ERROR_USAGE;
+    }
 
     case 'h':
       usage(stdout, is_client);
