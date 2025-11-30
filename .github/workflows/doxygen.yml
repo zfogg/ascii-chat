@@ -3,17 +3,21 @@ name: Doxygen Documentation
 on:
   push:
     branches:
-      - master  # Only deploy docs from master branch
+      - master # Only deploy docs from master branch
     paths:
-      - 'lib/**/*.c'
-      - 'lib/**/*.h'
-      - 'src/**/*.c'
-      - 'src/**/*.h'
-      - '**/*.m'
-      - 'docs/**/*.dox'
-      - 'docs/Doxyfile.in'
-      - '.github/workflows/doxygen.yml'
-  workflow_dispatch:  # Allow manual trigger
+      - "lib/**/*.c"
+      - "lib/**/*.h"
+      - "lib/**/*.cpp"
+      - "lib/**/*.hpp"
+      - "src/**/*.c"
+      - "src/**/*.h"
+      - "src/**/*.cpp"
+      - "src/**/*.hpp"
+      - "**/*.m"
+      - "docs/**/*.dox"
+      - "docs/Doxyfile.in"
+      - ".github/workflows/doxygen.yml"
+  workflow_dispatch: # Allow manual trigger
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -31,52 +35,52 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Full history for git describe to work
-        fetch-tags: true
-        submodules: true  # Don't need submodules for docs
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for git describe to work
+          fetch-tags: true
+          submodules: true # Don't need submodules for docs
 
-    - name: Install Doxygen
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y doxygen graphviz
+      - name: Install Doxygen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
 
-    - name: Get version from git tags
-      id: version
-      run: |
-        # Get version from git describe (same as cmake/install/Version.cmake)
-        # Use --long --dirty --always to match Version.cmake, then extract version number
-        GIT_DESCRIBE=$(git describe --tags --long --dirty --always 2>/dev/null || echo "")
-        if [[ "$GIT_DESCRIBE" =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-          VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
-        else
-          VERSION="0.0.0"
-        fi
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Get version from git tags
+        id: version
+        run: |
+          # Get version from git describe (same as cmake/install/Version.cmake)
+          # Use --long --dirty --always to match Version.cmake, then extract version number
+          GIT_DESCRIBE=$(git describe --tags --long --dirty --always 2>/dev/null || echo "")
+          if [[ "$GIT_DESCRIBE" =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+            VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          else
+            VERSION="0.0.0"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-    - name: Generate Doxyfile from template
-      run: |
-        mkdir -p build/docs
-        # Replace CMake variables in Doxyfile.in
-        sed -e "s|@CMAKE_SOURCE_DIR@|$(pwd)|g" \
-            -e "s|@CMAKE_BINARY_DIR@|$(pwd)/build|g" \
-            -e "s|@PROJECT_VERSION@|${{ steps.version.outputs.version }}|g" \
-            -e "s|@AWESOME_CSS_DIR@|$(pwd)/deps/doxygen-awesome-css|g" \
-            docs/Doxyfile.in > build/Doxyfile
+      - name: Generate Doxyfile from template
+        run: |
+          mkdir -p build/docs
+          # Replace CMake variables in Doxyfile.in
+          sed -e "s|@CMAKE_SOURCE_DIR@|$(pwd)|g" \
+              -e "s|@CMAKE_BINARY_DIR@|$(pwd)/build|g" \
+              -e "s|@PROJECT_VERSION@|${{ steps.version.outputs.version }}|g" \
+              -e "s|@AWESOME_CSS_DIR@|$(pwd)/deps/doxygen-awesome-css|g" \
+              docs/Doxyfile.in > build/Doxyfile
 
-    - name: Build documentation
-      run: |
-        cd build
-        doxygen Doxyfile
-        # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
-        touch docs/html/.nojekyll
+      - name: Build documentation
+        run: |
+          cd build
+          doxygen Doxyfile
+          # Add .nojekyll to prevent GitHub Pages from processing with Jekyll
+          touch docs/html/.nojekyll
 
-    - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: build/docs/html
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/docs/html
 
   deploy:
     environment:
@@ -85,6 +89,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build-docs
     steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

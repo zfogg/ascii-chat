@@ -3,15 +3,15 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Full version (e.g., v2.0.0) - overrides auto-bump'
+        description: "Full version (e.g., v2.0.0) - overrides auto-bump"
         required: false
         type: string
       major_bump:
-        description: 'Force major version bump (requires manual trigger)'
+        description: "Force major version bump (requires manual trigger)"
         required: false
         type: boolean
         default: false
@@ -30,183 +30,183 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Need full history for version calculation
-        submodules: false
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for version calculation
+          submodules: false
 
-    - name: Initialize submodules
-      run: git submodule update --init --depth 1
+      - name: Initialize submodules
+        run: git submodule update --init --depth 1
 
-    - name: Determine version
-      id: version
-      run: |
-        if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-          VERSION="${GITHUB_REF#refs/tags/}"
-          echo "Using tag-derived version: $VERSION"
-        elif [[ -n "${{ github.event.inputs.version }}" ]]; then
-          VERSION="${{ github.event.inputs.version }}"
-          echo "Using manual version: $VERSION"
-        else
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Last tag: $LAST_TAG"
-
-          if [[ $LAST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            MAJOR="${BASH_REMATCH[1]}"
-            MINOR="${BASH_REMATCH[2]}"
-            PATCH="${BASH_REMATCH[3]}"
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+            echo "Using tag-derived version: $VERSION"
+          elif [[ -n "${{ github.event.inputs.version }}" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Using manual version: $VERSION"
           else
-            MAJOR=0
-            MINOR=0
-            PATCH=0
+            LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+            echo "Last tag: $LAST_TAG"
+
+            if [[ $LAST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              MAJOR="${BASH_REMATCH[1]}"
+              MINOR="${BASH_REMATCH[2]}"
+              PATCH="${BASH_REMATCH[3]}"
+            else
+              MAJOR=0
+              MINOR=0
+              PATCH=0
+            fi
+
+            COMMITS=$(git log --format=%s $LAST_TAG..HEAD)
+            BREAKING_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature)\!|^breaking' || true)
+            BREAKING_BODY_COUNT=$(git log --format=%B $LAST_TAG..HEAD | grep -ic 'BREAKING CHANGE' || true)
+            TOTAL_BREAKING=$((BREAKING_COUNT + BREAKING_BODY_COUNT))
+            FEAT_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature):' || true)
+            FIX_COUNT=$(echo "$COMMITS" | grep -icE '^(fix|bugfix):' || true)
+            TOTAL_COMMITS=$(echo "$COMMITS" | wc -l)
+            OTHER_COUNT=$((TOTAL_COMMITS - TOTAL_BREAKING - FEAT_COUNT - FIX_COUNT))
+
+            echo "Commit analysis:"
+            echo "  Breaking changes: $TOTAL_BREAKING"
+            echo "  Features: $FEAT_COUNT"
+            echo "  Fixes: $FIX_COUNT"
+            echo "  Other: $OTHER_COUNT"
+            echo "  Total: $TOTAL_COMMITS"
+
+            if [[ "${{ github.event.inputs.major_bump }}" == "true" ]]; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              BUMP_TYPE="major (manual override)"
+            elif [[ $FEAT_COUNT -gt 0 ]]; then
+              MINOR=$((MINOR + FEAT_COUNT))
+              PATCH=0
+              BUMP_TYPE="minor (${FEAT_COUNT} features)"
+            elif [[ $FIX_COUNT -gt 0 || $OTHER_COUNT -gt 0 ]]; then
+              PATCH=$((PATCH + FIX_COUNT + OTHER_COUNT))
+              BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
+            else
+              PATCH=$((PATCH + 1))
+              BUMP_TYPE="patch (default)"
+            fi
+
+            echo "Bump type: $BUMP_TYPE"
+            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
           fi
 
-          COMMITS=$(git log --format=%s $LAST_TAG..HEAD)
-          BREAKING_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature)\!|^breaking' || true)
-          BREAKING_BODY_COUNT=$(git log --format=%B $LAST_TAG..HEAD | grep -ic 'BREAKING CHANGE' || true)
-          TOTAL_BREAKING=$((BREAKING_COUNT + BREAKING_BODY_COUNT))
-          FEAT_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature):' || true)
-          FIX_COUNT=$(echo "$COMMITS" | grep -icE '^(fix|bugfix):' || true)
-          TOTAL_COMMITS=$(echo "$COMMITS" | wc -l)
-          OTHER_COUNT=$((TOTAL_COMMITS - TOTAL_BREAKING - FEAT_COUNT - FIX_COUNT))
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-          echo "Commit analysis:"
-          echo "  Breaking changes: $TOTAL_BREAKING"
-          echo "  Features: $FEAT_COUNT"
-          echo "  Fixes: $FIX_COUNT"
-          echo "  Other: $OTHER_COUNT"
-          echo "  Total: $TOTAL_COMMITS"
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
-          if [[ "${{ github.event.inputs.major_bump }}" == "true" ]]; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-            BUMP_TYPE="major (manual override)"
-          elif [[ $FEAT_COUNT -gt 0 ]]; then
-            MINOR=$((MINOR + FEAT_COUNT))
-            PATCH=0
-            BUMP_TYPE="minor (${FEAT_COUNT} features)"
-          elif [[ $FIX_COUNT -gt 0 || $OTHER_COUNT -gt 0 ]]; then
-            PATCH=$((PATCH + FIX_COUNT + OTHER_COUNT))
-            BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
+          if [[ -n "$LAST_TAG" ]]; then
+            echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+            echo "## Changes since $LAST_TAG" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            # Group commits by type
+            echo "### Features" >> $GITHUB_OUTPUT
+            git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (feat|feature):' || echo "- None" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            echo "### Bug Fixes" >> $GITHUB_OUTPUT
+            git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (fix|bugfix):' || echo "- None" >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+
+            echo "### Other Changes" >> $GITHUB_OUTPUT
+            git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|feature|fix|bugfix):' | head -n 20 >> $GITHUB_OUTPUT
+            echo "" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
           else
-            PATCH=$((PATCH + 1))
-            BUMP_TYPE="patch (default)"
+            echo "CHANGELOG=Initial release of ascii-chat" >> $GITHUB_OUTPUT
           fi
 
-          echo "Bump type: $BUMP_TYPE"
-          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
-        fi
+      - name: Create and push tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
 
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ascii-chat ${{ steps.version.outputs.version }}
+          body: |
+            # ascii-chat ${{ steps.version.outputs.version }}
 
-    - name: Generate changelog
-      id: changelog
-      run: |
-        VERSION="${{ steps.version.outputs.version }}"
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+            Terminal-based video chat with ASCII art conversion. Supports multiple clients with real-time video mixing and audio streaming.
 
-        if [[ -n "$LAST_TAG" ]]; then
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          echo "## Changes since $LAST_TAG" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
+            ## Download
 
-          # Group commits by type
-          echo "### Features" >> $GITHUB_OUTPUT
-          git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (feat|feature):' || echo "- None" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
+            **Linux Installers (x86_64 & arm64):**
+            - Debian/Ubuntu `.deb`
+            - Fedora/RHEL `.rpm`
+            - Self-extracting `.sh` installer
+            - Portable `.tar.gz`
 
-          echo "### Bug Fixes" >> $GITHUB_OUTPUT
-          git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -iE '^- (fix|bugfix):' || echo "- None" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
+            **macOS Installers (x86_64 & arm64):**
+            - Signed-compatible `.pkg` (productbuild)
+            - Portable `.tar.gz`
 
-          echo "### Other Changes" >> $GITHUB_OUTPUT
-          git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|feature|fix|bugfix):' | head -n 20 >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-        else
-          echo "CHANGELOG=Initial release of ascii-chat" >> $GITHUB_OUTPUT
-        fi
+            **Windows Installers (x86_64):**
+            - WiX `.msi` installer
+            - Portable `.zip`
 
-    - name: Create and push tag
-      run: |
-        VERSION="${{ steps.version.outputs.version }}"
-        git config user.name "github-actions[bot]"
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git tag -a "$VERSION" -m "Release $VERSION"
-        git push origin "$VERSION"
+            ## Quick Start
 
-    - name: Create Release
-      id: create_release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ steps.version.outputs.version }}
-        name: ascii-chat ${{ steps.version.outputs.version }}
-        body: |
-          # ascii-chat ${{ steps.version.outputs.version }}
+            **Linux (no dependencies required):**
+            ```bash
+            sudo dpkg -i ascii-chat_*_amd64.deb   # Debian/Ubuntu
+            # or
+            sudo rpm -i ascii-chat-*.rpm          # Fedora/RHEL
 
-          Terminal-based video chat with ASCII art conversion. Supports multiple clients with real-time video mixing and audio streaming.
+            ascii-chat server  # Start server
+            ascii-chat client  # Start client (in another terminal)
+            ```
 
-          ## Download
+            **macOS (install dependencies first):**
+            ```bash
+            brew install portaudio libsodium
+            sudo installer -pkg ascii-chat-*.pkg -target /
 
-          **Linux Installers (x86_64 & arm64):**
-          - Debian/Ubuntu `.deb`
-          - Fedora/RHEL `.rpm`
-          - Self-extracting `.sh` installer
-          - Portable `.tar.gz`
+            ascii-chat server  # Start server
+            ascii-chat client  # Start client (in another terminal)
+            ```
 
-          **macOS Installers (x86_64 & arm64):**
-          - Signed-compatible `.pkg` (productbuild)
-          - Portable `.tar.gz`
+            **Windows (DLLs included):**
+            ```
+            msiexec /i ascii-chat-*.msi
 
-          **Windows Installers (x86_64):**
-          - WiX `.msi` installer
-          - Portable `.zip`
+            ascii-chat.exe server  # Start server
+            ascii-chat.exe client  # Start client (in another terminal)
+            ```
 
-          ## Quick Start
+            ## Features
+            - Real-time webcam to ASCII conversion
+            - Multi-client grid layout (up to 9 clients)
+            - Audio streaming with mixing
+            - Color support (24-bit + 256-color fallback)
+            - Half-block rendering for 2x vertical resolution
+            - SIMD optimizations (AVX2, SSSE3, SSE2, NEON)
+            - Compression support
+            - Static builds (Linux) - no dependencies!
 
-          **Linux (no dependencies required):**
-          ```bash
-          sudo dpkg -i ascii-chat_*_amd64.deb   # Debian/Ubuntu
-          # or
-          sudo rpm -i ascii-chat-*.rpm          # Fedora/RHEL
-
-          ascii-chat server  # Start server
-          ascii-chat client  # Start client (in another terminal)
-          ```
-
-          **macOS (install dependencies first):**
-          ```bash
-          brew install portaudio libsodium
-          sudo installer -pkg ascii-chat-*.pkg -target /
-
-          ascii-chat server  # Start server
-          ascii-chat client  # Start client (in another terminal)
-          ```
-
-          **Windows (DLLs included):**
-          ```
-          msiexec /i ascii-chat-*.msi
-
-          ascii-chat.exe server  # Start server
-          ascii-chat.exe client  # Start client (in another terminal)
-          ```
-
-          ## Features
-          - Real-time webcam to ASCII conversion
-          - Multi-client grid layout (up to 9 clients)
-          - Audio streaming with mixing
-          - Color support (24-bit + 256-color fallback)
-          - Half-block rendering for 2x vertical resolution
-          - SIMD optimizations (AVX2, SSSE3, SSE2, NEON)
-          - Compression support
-          - Static builds (Linux) - no dependencies!
-
-          ${{ steps.changelog.outputs.CHANGELOG }}
-        draft: false
-        prerelease: false
-        token: ${{ secrets.GITHUB_TOKEN }}
+            ${{ steps.changelog.outputs.CHANGELOG }}
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   package-linux:
     name: Package Linux installers
@@ -236,22 +236,22 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: ubuntu
-          extra-packages: 'rpm dpkg-dev fakeroot'
+          extra-packages: "rpm dpkg-dev fakeroot"
 
       - name: Configure and package with CPack
         run: |
-          cmake -S . -B build --preset release \
-            -DCPACK_GENERATOR="TGZ;STGZ;DEB;RPM"
-          cmake --build build --target all
-          cmake --build build --target run-test-static-lib
-          cmake --build build --target run-test-shared-lib
-          cmake --build build --target package
+          cmake --preset release
+          cmake --build build_release --target all
+          cmake --build build_release --target static-lib
+          cmake --build build_release --target shared-lib
+          cmake --build build_release --target docs
+          cmake --build build_release --target package
 
       - name: Collect artifacts
         run: |
           mkdir -p dist
           shopt -s nullglob
-          for artifact in build/*.deb build/*.rpm build/*.tar.gz build/*.sh build/*.tar.Z build/*.run; do
+          for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh build_release/*.tar.Z build_release/*.run; do
             [[ -e "$artifact" ]] || continue
             filename=$(basename "$artifact")
             case "$filename" in
@@ -315,23 +315,22 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: macos
-          extra-packages: ''
+          extra-packages: ""
 
       - name: Configure and package with CPack
         run: |
-          cmake -S . -B build --preset release \
-            -DCPACK_GENERATOR="productbuild;TGZ" \
-            -DCPACK_PRODUCTBUILD_IDENTITY_NAME=""
-          cmake --build build --target all
-          cmake --build build --target run-test-static-lib
-          cmake --build build --target run-test-shared-lib
-          cmake --build build --target package
+          cmake --preset release
+          cmake --build build_release --target all
+          cmake --build build_release --target static-lib
+          cmake --build build_release --target shared-lib
+          cmake --build build_release --target docs
+          cmake --build build_release --target package
 
       - name: Collect artifacts
         run: |
           mkdir -p dist
           shopt -s nullglob
-          for artifact in build/*.pkg build/*.tar.gz build/*.zip; do
+          for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.zip; do
             [[ -e "$artifact" ]] || continue
             filename=$(basename "$artifact")
             case "$filename" in
@@ -378,14 +377,14 @@ jobs:
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4aef2a00'
+          vcpkgGitCommitId: "c8696863d371ab7f46e213d8f5ca923c4aef2a00"
 
       - name: Install dependencies
         uses: ./.github/actions/install-deps
         with:
           os: windows
-          vcpkg-packages: 'zstd portaudio libsodium'
-          vcpkg-static-packages: 'zstd portaudio libsodium mimalloc'
+          vcpkg-packages: "zstd portaudio libsodium"
+          vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
 
       - name: Install WiX toolset
         run: |
@@ -395,20 +394,18 @@ jobs:
         shell: pwsh
         run: |
           $toolchain = "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-          cmake -S . -B build --preset release \
-            -DCMAKE_TOOLCHAIN_FILE="$toolchain" \
-            -DCPACK_GENERATOR="WIX;ZIP"
-          cmake --build build --target all
-          cmake --build build --target run-test-static-lib
-          cmake --build build --target run-test-shared-lib
-          cmake --build build --target package
+          cmake --preset release
+          cmake --build build_release --target all
+          cmake --build build_release --target run-test-static-lib
+          cmake --build build_release --target run-test-shared-lib
+          cmake --build build_release --target package
 
       - name: Collect artifacts
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           $suffix = "x86_64"
-          $patterns = @("build/*.msi", "build/*.zip")
+          $patterns = @("build_release/*.msi", "build_release/*.zip")
           foreach ($pattern in $patterns) {
             foreach ($artifact in Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue) {
               $name = $artifact.Name
