@@ -112,11 +112,12 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
   buffer_node_t *node = &pool->nodes[index];
   if (!node->in_use) {
     // Enhanced debugging for double free detection
-    log_error("DOUBLE FREE DETECTED in buffer pool!");
-    log_error("  Pool: %p, Buffer: %p, Index: %zu", pool, data, index);
-    log_error("  Pool start: %p, Pool end: %p", pool_start, pool_end);
-    log_error("  Buffer size: %zu, Pool size: %zu", pool->buffer_size, pool->pool_size);
-    log_error("  Node in_use: %d, Node next: %p", node->in_use, node->next);
+    log_error("DOUBLE FREE DETECTED in buffer pool!\n"
+              "  Pool: %p, Buffer: %p, Index: %zu\n"
+              "  Pool start: %p, Pool end: %p\n"
+              "  Buffer size: %zu, Pool size: %zu\n"
+              "  Node in_use: %d, Node next: %p",
+              pool, data, index, pool_start, pool_end, pool->buffer_size, pool->pool_size, node->in_use, node->next);
 
     // Print backtrace to help identify the source
     platform_print_backtrace(0);
@@ -340,10 +341,6 @@ void data_buffer_pool_cleanup_global(void) {
 
 data_buffer_pool_t *data_buffer_pool_get_global(void) {
   return g_global_buffer_pool;
-}
-
-bool data_buffer_pool_is_initialized(void) {
-  return g_global_buffer_pool != NULL;
 }
 
 // Convenience functions that use the global pool

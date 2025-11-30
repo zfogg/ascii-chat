@@ -334,14 +334,6 @@ void data_buffer_pool_cleanup_global(void);
  */
 data_buffer_pool_t *data_buffer_pool_get_global(void);
 
-/**
- * @brief Check if the global buffer pool is initialized
- * @return true if initialized, false otherwise
- *
- * @ingroup buffer_pool
- */
-bool data_buffer_pool_is_initialized(void);
-
 /** @} */
 
 /* ============================================================================
