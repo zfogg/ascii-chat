@@ -304,13 +304,18 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # considers "unused" and removes with --gc-sections/-dead_strip. This causes all
         # tests to be stripped in Release builds, resulting in "Tested: 0" output.
         #
-        # Solution: Clear the LINK_OPTIONS property to remove global flags, then only add
-        # what we need. This is necessary because CMake doesn't support "remove flag" operations.
+        # On macOS: We cannot use -Wl,-no_dead_strip to disable stripping, so we use
+        # -Wl,-all_load on static libraries instead (via target_link_options below).
+        # On Linux: Use --no-gc-sections to override the global --gc-sections flag.
+        #
+        # IMPORTANT: We must NOT replace LINK_OPTIONS entirely on macOS as that would
+        # remove sanitizer link flags. Instead we add flags to counteract dead stripping.
         if(NOT WIN32)
             if(APPLE)
-                # macOS: Clear link options to remove -dead_strip, keep -pie for ASLR
-                set_target_properties(${test_exe_name} PROPERTIES
-                    LINK_OPTIONS "-Wl,-pie"
+                # macOS: Add -all_load to prevent stripping constructor functions from static libs
+                # Keep -pie for ASLR security. Don't clear other link options (sanitizers!)
+                target_link_options(${test_exe_name} PRIVATE
+                    -Wl,-all_load
                 )
             else()
                 # Linux: Use --no-gc-sections to override the global --gc-sections flag

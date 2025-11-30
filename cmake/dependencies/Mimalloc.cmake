@@ -63,6 +63,12 @@ if(USE_MIMALLOC)
                 set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc-static)
                 set(_MIMALLOC_FROM_SYSTEM TRUE)
 
+                # Extract include directory from target for test harnesses
+                get_target_property(_mimalloc_system_include mimalloc-static INTERFACE_INCLUDE_DIRECTORIES)
+                if(_mimalloc_system_include)
+                    set(MIMALLOC_INCLUDE_DIR "${_mimalloc_system_include}" CACHE PATH "mimalloc include directory" FORCE)
+                endif()
+
                 # Alias mimalloc-shared to mimalloc-static for system builds
                 if(NOT TARGET mimalloc-shared)
                     add_library(mimalloc-shared ALIAS mimalloc-static)
@@ -75,6 +81,12 @@ if(USE_MIMALLOC)
                 set(MIMALLOC_LIBRARIES mimalloc)
                 set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
                 set(_MIMALLOC_FROM_SYSTEM TRUE)
+
+                # Extract include directory from target for test harnesses
+                get_target_property(_mimalloc_system_include mimalloc INTERFACE_INCLUDE_DIRECTORIES)
+                if(_mimalloc_system_include)
+                    set(MIMALLOC_INCLUDE_DIR "${_mimalloc_system_include}" CACHE PATH "mimalloc include directory" FORCE)
+                endif()
             endif()
         endif()
     endif()
