@@ -207,11 +207,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                     message(WARNING "Bash not found - cannot remove embedded paths from binary")
                 endif()
             else()
-                # macOS: strip symbols
+                # macOS: strip symbols then codesign (must strip BEFORE codesigning)
                 add_custom_command(TARGET ascii-chat POST_BUILD
                     COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                     COMMENT "Stripping symbols from ascii-chat"
                 )
+                # Code sign after stripping (codesign_target is defined in CodeSigning.cmake)
+                codesign_target(ascii-chat)
             endif()
         endif()
     elseif(STRIP_EXECUTABLE)
@@ -221,6 +223,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                 COMMAND ${STRIP_EXECUTABLE} $<TARGET_FILE:ascii-chat>
                 COMMENT "Stripping symbols from ascii-chat"
             )
+            # Code sign after stripping (codesign_target is defined in CodeSigning.cmake)
+            codesign_target(ascii-chat)
         else()
             add_custom_command(TARGET ascii-chat POST_BUILD
                 COMMAND ${STRIP_EXECUTABLE} --strip-all $<TARGET_FILE:ascii-chat>

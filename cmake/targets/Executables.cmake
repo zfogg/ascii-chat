@@ -211,10 +211,9 @@ if(NOT WIN32)
 endif()
 
 # =============================================================================
-# macOS Code Signing
+# macOS Code Signing (function definition only - actual signing happens in PostBuild.cmake after stripping)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)
-codesign_target(ascii-chat)
 
 # =============================================================================
 # Global Build Timer - End Marker
