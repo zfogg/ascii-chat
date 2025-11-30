@@ -87,7 +87,9 @@ typedef struct {
  *
  * @ingroup crypto
  */
+// clang-format off
 #define ANCHOR_LIST_INIT {NULL, 0, 0}
+// clang-format on
 
 /**
  * @brief Read trust anchors from PEM-encoded data in memory
