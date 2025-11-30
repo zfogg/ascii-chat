@@ -102,12 +102,25 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 **Actual command**: `clang++ -O3 -DNDEBUG -std=gnu++20 -arch arm64 -O2 -fno-rtti -fexceptions -isysroot/Applications/.../MacOSX.sdk -nostdinc++ -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include ...`
 **Result**: FAILED - Same error. Even with `-nostdinc++` (not `-nostdinc`), when libc++ headers use `#include_next` to find SDK C headers, the SDK's `arm/_types.h` still can't find `size_t`/`ptrdiff_t`. The clang compiler's builtin `stddef.h` is apparently not being included BEFORE the SDK headers when `-isysroot` is used.
 
-### Attempt 13: Add clang resource dir BEFORE `-isysroot` (TESTING)
+### Attempt 13: Add clang resource dir BEFORE `-isysroot` (commit 4da27eb - FAILED)
 **Date**: 2025-11-30
 **Approach**: Add clang's resource directory (containing stddef.h with size_t/ptrdiff_t) FIRST with `-isystem` BEFORE `-isysroot`. Keep `-nostdinc++` and `-cxx-isystem` for C++ paths.
 **Key insight**: `-isystem` paths are searched before `-isysroot` paths. By putting clang's builtin headers first, the compiler should find stddef.h before SDK headers need it.
 **Command**: `-isystem<clang_resource_dir> -isysroot<SDK> -nostdinc++ -cxx-isystem<libc++> -cxx-isystem<llvm>`
-**Expected command**: `clang++ -O2 -fno-rtti -fexceptions -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isysroot/Applications/.../MacOSX.sdk -nostdinc++ -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include ...`
+**Actual command**: `clang++ -O2 -fno-rtti -fexceptions -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isysroot/Applications/.../MacOSX.sdk -nostdinc++ -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include ...`
+**Result**: FAILED - Same error. The `-isystem` path before `-isysroot` doesn't help because `-isysroot` changes the "sysroot" which is a fundamental concept affecting all relative include paths. When libc++ uses `#include_next`, the SDK headers are still found through the sysroot mechanism, bypassing the explicit `-isystem` path for clang builtins. The SDK's arm/_types.h still expects size_t/ptrdiff_t to be defined before it's processed.
+
+### Attempt 14: Use SDK libc++ and -nostdinc (no -isysroot) (TESTING)
+**Date**: 2025-11-30
+**Approach**: Don't use `-isysroot` for compilation at all. Use `-nostdinc` AND `-nostdinc++` to disable ALL implicit header search. Then add explicit `-isystem` paths in the exact order needed:
+1. Clang resource dir (defines size_t, ptrdiff_t via builtin stddef.h)
+2. SDK's libc++ (instead of Homebrew's - Apple's libc++ is designed to work with SDK)
+3. LLVM tooling headers
+4. SDK C headers (/usr/include)
+
+**Key insight**: The SDK has its own libc++ at `/usr/include/c++/v1` which is designed to work correctly with SDK headers. Using it instead of Homebrew's bundled libc++ may avoid the `#include_next` search order issues.
+**Command**: `-nostdinc -nostdinc++ -isystem<clang_builtins> -isystem<sdk_libcxx> -isystem<llvm> -isystem<sdk_include>`
+**Expected command**: `clang++ -O2 -fno-rtti -fexceptions -nostdinc -nostdinc++ -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isystem/.../MacOSX.sdk/usr/include/c++/v1 -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -isystem/.../MacOSX.sdk/usr/include ...`
 **Status**: TESTING
 
 ## Key Insights
