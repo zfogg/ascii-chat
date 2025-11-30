@@ -34,15 +34,24 @@ message(STATUS "${Yellow}CPack:${ColorReset} RPM generator enabled (${BoldBlue}r
 # RPM Package Configuration
 # =============================================================================
 
+# Note: CPACK_RPM_PACKAGE_LICENSE, CPACK_RPM_PACKAGE_GROUP, and
+# CPACK_RPM_PACKAGE_DESCRIPTION are set in Install.cmake BEFORE include(CPack)
+
 set(CPACK_RPM_PACKAGE_NAME "ascii-chat")
-set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
-set(CPACK_RPM_PACKAGE_GROUP "Applications/Networking")
-set(CPACK_RPM_PACKAGE_LICENSE "MIT" CACHE STRING "RPM package license" FORCE)
 set(CPACK_RPM_PACKAGE_ICON "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
 set(CPACK_RPM_PACKAGE_ARCHITECTURE "x86_64")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     set(CPACK_RPM_PACKAGE_ARCHITECTURE "aarch64")
 endif()
+
+# Include license file in RPM package using %license directive
+# This makes the license visible in package managers and ensures compliance
+# The %license directive is preferred over %doc for license files
+install(FILES "${CPACK_RESOURCE_FILE_LICENSE}"
+    DESTINATION "share/doc/ascii-chat"
+    COMPONENT applications
+    RENAME LICENSE
+)
 
 # Note: CPACK_RPM_PACKAGE_REQUIRES is set in Install.cmake before include(CPack)
 
