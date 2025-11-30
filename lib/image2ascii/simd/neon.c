@@ -23,6 +23,7 @@
 #include "../image.h"
 #include "image2ascii/simd/common.h"
 #include "image2ascii/output_buffer.h"
+#include "image2ascii/ansi_fast.h"
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance
@@ -101,11 +102,6 @@ static inline void build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, ui
 void neon_caches_destroy(void) {
   // No-op: NEON table cache removed for performance
   // Tables are now built inline (30ns) which is faster than cache lookup (50ns)
-}
-
-// 256-color palette mapping (RGB to ANSI 256 color index) - local implementation
-static inline uint8_t rgb_to_256color(uint8_t r, uint8_t g, uint8_t b) {
-  return (uint8_t)(16 + 36 * (r / 51) + 6 * (g / 51) + (b / 51));
 }
 
 // NEON helper: Horizontal sum of 16 uint8_t values
