@@ -129,6 +129,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       portaudio19-dev \
       libcriterion-dev \
       libffi-dev \
+      libxml2-utils \
       doxygen \
       dpkg-dev
 
