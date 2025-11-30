@@ -400,6 +400,34 @@ if(UNIX)
         )
         message(STATUS "${BoldGreen}Configured${ColorReset} fish completion: ${BoldBlue}ascii-chat.fish${ColorReset} → ${BoldYellow}share/fish/vendor_completions.d/${ColorReset}")
     endif()
+
+    # PowerShell completions (cross-platform)
+    # Standard location: /usr/local/share/powershell/Completions/
+    # User location: ~/.local/share/powershell/Completions/
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1"
+            DESTINATION share/powershell/Completions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} → ${BoldYellow}share/powershell/Completions/${ColorReset}")
+    endif()
+endif()
+
+# =============================================================================
+# Shell Completion Scripts Installation (Windows)
+# =============================================================================
+# Install PowerShell completion script on Windows
+if(WIN32)
+    # PowerShell completions
+    # Standard location varies, but doc/completions is accessible
+    # User can source from: $HOME\Documents\PowerShell\Completions\
+    if(EXISTS "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1")
+        install(FILES "${CMAKE_SOURCE_DIR}/share/completions/ascii-chat.ps1"
+            DESTINATION doc/completions
+            COMPONENT Runtime
+        )
+        message(STATUS "${BoldGreen}Configured${ColorReset} powershell completion: ${BoldBlue}ascii-chat.ps1${ColorReset} → ${BoldYellow}doc/completions/${ColorReset}")
+    endif()
 endif()
 
 # =============================================================================
