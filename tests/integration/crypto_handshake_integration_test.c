@@ -12,6 +12,8 @@
 #include <string.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <sys/socket.h>
+#include <errno.h>
 
 #include "tests/common.h"
 #include "crypto/handshake.h"
@@ -22,56 +24,36 @@
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake_integration);
 
-// Mock network functions for integration testing
+// Network state for integration testing
 typedef struct {
   int server_fd;
   int client_fd;
   bool connected;
-  uint8_t *buffer;
-  size_t buffer_size;
-  size_t buffer_pos;
-} mock_network_t;
+} test_network_t;
 
-static mock_network_t g_network = {0};
-
-// Mock socket functions
-__attribute__((unused)) static ssize_t mock_send(int sock, const void *buf, size_t len, int flags) {
-  (void)flags;
-  if (sock == g_network.client_fd) {
-    // Client sending to server
-    memcpy(g_network.buffer + g_network.buffer_pos, buf, len);
-    g_network.buffer_pos += len;
-    return (ssize_t)len;
-  }
-  return -1;
-}
-
-__attribute__((unused)) static ssize_t mock_recv(int sock, void *buf, size_t len, int flags) {
-  (void)flags;
-  if (sock == g_network.client_fd && g_network.buffer_pos > 0) {
-    // Client receiving from server
-    size_t to_copy = (len < g_network.buffer_pos) ? len : g_network.buffer_pos;
-    memcpy(buf, g_network.buffer, to_copy);
-    memmove(g_network.buffer, g_network.buffer + to_copy, g_network.buffer_pos - to_copy);
-    g_network.buffer_pos -= to_copy;
-    return (ssize_t)to_copy;
-  }
-  return 0;
-}
+static test_network_t g_network = {0};
 
 // Test setup and teardown
-void setup_mock_network(void) {
+void setup_test_network(void) {
   memset(&g_network, 0, sizeof(g_network));
-  g_network.server_fd = 1;
-  g_network.client_fd = 2;
+
+  // Use real socket pairs for integration testing
+  int sv[2];
+  if (socketpair(AF_UNIX, SOCK_STREAM, 0, sv) < 0) {
+    cr_fatal("Failed to create socket pair: %s", strerror(errno));
+    return;
+  }
+  g_network.server_fd = sv[0];
+  g_network.client_fd = sv[1];
   g_network.connected = true;
-  g_network.buffer = SAFE_MALLOC(4096, void *);
-  g_network.buffer_size = 4096;
-  g_network.buffer_pos = 0;
+
+  // Skip host identity checking in tests
+  setenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK", "1", 1);
 }
 
-void teardown_mock_network(void) {
-  SAFE_FREE(g_network.buffer);
+void teardown_test_network(void) {
+  if (g_network.server_fd > 0) close(g_network.server_fd);
+  if (g_network.client_fd > 0) close(g_network.client_fd);
   memset(&g_network, 0, sizeof(g_network));
 }
 
@@ -80,7 +62,7 @@ void teardown_mock_network(void) {
 // =============================================================================
 
 Test(crypto_handshake_integration, complete_handshake_flow) {
-  setup_mock_network();
+  setup_test_network();
 
   // Initialize server and client contexts
   crypto_handshake_context_t server_ctx, client_ctx;
@@ -113,7 +95,7 @@ Test(crypto_handshake_integration, complete_handshake_flow) {
 
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 }
 
 // =============================================================================
@@ -141,7 +123,7 @@ ParameterizedTestParameters(crypto_handshake_integration, key_type_tests) {
 }
 
 ParameterizedTest(key_type_test_case_t *tc, crypto_handshake_integration, key_type_tests) {
-  setup_mock_network();
+  setup_test_network();
 
   // Test key parsing
   public_key_t key;
@@ -154,7 +136,7 @@ ParameterizedTest(key_type_test_case_t *tc, crypto_handshake_integration, key_ty
     cr_assert_eq(parse_result, -1, "Key parsing should fail gracefully for case: %s", tc->description);
   }
 
-  teardown_mock_network();
+  teardown_test_network();
 }
 
 // =============================================================================
@@ -162,7 +144,7 @@ ParameterizedTest(key_type_test_case_t *tc, crypto_handshake_integration, key_ty
 // =============================================================================
 
 Test(crypto_handshake_integration, encryption_after_handshake) {
-  setup_mock_network();
+  setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
@@ -196,11 +178,11 @@ Test(crypto_handshake_integration, encryption_after_handshake) {
 
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 }
 
 Test(crypto_handshake_integration, bidirectional_encryption) {
-  setup_mock_network();
+  setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
@@ -248,7 +230,7 @@ Test(crypto_handshake_integration, bidirectional_encryption) {
 
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 }
 
 // =============================================================================
@@ -263,7 +245,7 @@ TheoryDataPoints(crypto_handshake_integration, authentication_scenarios) = {
 
 Theory((const char *auth_method, bool known_hosts_verification, bool client_whitelist_check),
        crypto_handshake_integration, authentication_scenarios) {
-  setup_mock_network();
+  setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
@@ -298,7 +280,7 @@ Theory((const char *auth_method, bool known_hosts_verification, bool client_whit
   // Cleanup - do before assertions so it always runs even if assertions fail
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 
   // All steps should succeed (assertions after cleanup to ensure cleanup always runs)
   cr_assert_eq(server_start, 0, "Server start should succeed for auth method: %s", auth_method);
@@ -336,7 +318,7 @@ static void *client_handshake_thread(void *arg) {
 }
 
 Test(crypto_handshake_integration, concurrent_handshakes) {
-  setup_mock_network();
+  setup_test_network();
 
   crypto_handshake_context_t server_ctx;
   crypto_handshake_init(&server_ctx, true);
@@ -372,7 +354,7 @@ Test(crypto_handshake_integration, concurrent_handshakes) {
   }
 
   crypto_handshake_cleanup(&server_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 }
 
 // =============================================================================
@@ -380,7 +362,7 @@ Test(crypto_handshake_integration, concurrent_handshakes) {
 // =============================================================================
 
 Test(crypto_handshake_integration, large_data_encryption) {
-  setup_mock_network();
+  setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
@@ -423,7 +405,7 @@ Test(crypto_handshake_integration, large_data_encryption) {
   SAFE_FREE(decrypted);
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 
   // Assertions after cleanup to ensure cleanup always runs
   cr_assert_eq(encrypt_result, 0, "Large data encryption should succeed");
@@ -438,7 +420,7 @@ Test(crypto_handshake_integration, large_data_encryption) {
 // =============================================================================
 
 Test(crypto_handshake_integration, handshake_interruption_recovery) {
-  setup_mock_network();
+  setup_test_network();
 
   crypto_handshake_context_t server_ctx, client_ctx;
   crypto_handshake_init(&server_ctx, true);
@@ -470,7 +452,7 @@ Test(crypto_handshake_integration, handshake_interruption_recovery) {
 
   crypto_handshake_cleanup(&server_ctx);
   crypto_handshake_cleanup(&client_ctx);
-  teardown_mock_network();
+  teardown_test_network();
 }
 
 // =============================================================================
@@ -478,7 +460,7 @@ Test(crypto_handshake_integration, handshake_interruption_recovery) {
 // =============================================================================
 
 Test(crypto_handshake_integration, handshake_performance) {
-  setup_mock_network();
+  setup_test_network();
 
   const int num_handshakes = 10;
   double total_time = 0;
@@ -508,5 +490,5 @@ Test(crypto_handshake_integration, handshake_performance) {
   double average_time = total_time / num_handshakes;
   cr_assert_lt(average_time, 1.0, "Average handshake time should be less than 1 second");
 
-  teardown_mock_network();
+  teardown_test_network();
 }

@@ -49,9 +49,9 @@ typedef struct {
   bool expect_key_set;
   bool expect_server_key_set;
   bool expect_client_keys_set;
-  char expected_key[256];          // Use static char array for Criterion fork compatibility
-  char expected_server_key[256];   // Use static char array for Criterion fork compatibility
-  char expected_client_keys[256];  // Use static char array for Criterion fork compatibility
+  char expected_key[256];         // Use static char array for Criterion fork compatibility
+  char expected_server_key[256];  // Use static char array for Criterion fork compatibility
+  char expected_client_keys[256]; // Use static char array for Criterion fork compatibility
   int expected_result;
 } crypto_options_test_case_t;
 
@@ -180,18 +180,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      "",
      0},
     {"Empty key (should fail)", 3, {"program", "--key", ""}, true, false, false, false, false, "", "", "", -1},
-    {"Missing key value (should fail)",
-     2,
-     {"program", "--key"},
-     true,
-     false,
-     false,
-     false,
-     false,
-     "",
-     "",
-     "",
-     -1}};
+    {"Missing key value (should fail)", 2, {"program", "--key"}, true, false, false, false, false, "", "", "", -1}};
 
 ParameterizedTestParameters(crypto_options, crypto_options_parsing_tests) {
   size_t nb_cases = sizeof(crypto_options_cases) / sizeof(crypto_options_cases[0]);
@@ -459,7 +448,7 @@ Test(crypto_options, many_options) {
   // So we test with client mode and skip --client-keys
   const char *argv[] = {"program", "--no-encrypt", "--key", "password", "--server-key", "/etc/server_key"};
 
-  options_init(6, (char **)argv, true);  // true = client mode for --server-key
+  options_init(6, (char **)argv, true); // true = client mode for --server-key
 
   // Options should be set
   cr_assert(opt_no_encrypt, "No encrypt should be set");

@@ -38,6 +38,10 @@
       "Bash(readelf:*)",
       "Bash(rm:*)",
       "Bash(rmdir:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }
