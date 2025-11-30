@@ -16,13 +16,8 @@
 #   - test-shared-lib: Tests the shared library (when available)
 # =============================================================================
 
-# Helper: detect mimalloc include directory for test harnesses
-set(_asciichat_mimalloc_include "")
-if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
-    list(APPEND _asciichat_mimalloc_include ${MIMALLOC_INCLUDE_DIR})
-elseif(DEFINED MIMALLOC_SOURCE_DIR AND MIMALLOC_SOURCE_DIR)
-    list(APPEND _asciichat_mimalloc_include "${MIMALLOC_SOURCE_DIR}/include")
-endif()
+# Use mimalloc include directories from Mimalloc.cmake
+set(_asciichat_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
 
 # =============================================================================
 # Test Static Library
@@ -68,7 +63,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     # Register as ctest test (only when BUILD_TESTS is enabled)
     if(BUILD_TESTS)
         add_test(NAME static-lib-runtime
-                 COMMAND ${CMAKE_BINARY_DIR}/bin/test-static-lib)
+            COMMAND ${CMAKE_BINARY_DIR}/bin/test-static-lib)
     endif()
 
     message(STATUS "Added test-static-lib target to test libasciichat.a (${TEST_STATIC_DEFAULT})")
@@ -125,8 +120,9 @@ if(NOT USE_MUSL)
     # Register as ctest test (only when BUILD_TESTS is enabled)
     if(BUILD_TESTS)
         add_test(NAME shared-lib-runtime
-                 COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
+            COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
     endif()
 else()
     message(STATUS "Skipping test-shared-lib (not compatible with musl static builds)")
 endif()
+
