@@ -43,26 +43,10 @@ function(ascii_build_tooling_runtime)
         )
 
         # Add mimalloc include directory if enabled
-        if(USE_MIMALLOC)
-            set(_runtime_mimalloc_includes "")
-            if(TARGET mimalloc-static)
-                get_target_property(_mimalloc_iface mimalloc-static INTERFACE_INCLUDE_DIRECTORIES)
-                if(_mimalloc_iface)
-                    list(APPEND _runtime_mimalloc_includes ${_mimalloc_iface})
-                endif()
-            endif()
-            if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
-                list(APPEND _runtime_mimalloc_includes "${MIMALLOC_INCLUDE_DIR}")
-            endif()
-            if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
-                list(APPEND _runtime_mimalloc_includes "${MIMALLOC_SOURCE_DIR}/include")
-            elseif(DEFINED FETCHCONTENT_BASE_DIR AND EXISTS "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include")
-                list(APPEND _runtime_mimalloc_includes "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include")
-            endif()
-            list(REMOVE_DUPLICATES _runtime_mimalloc_includes)
-            if(_runtime_mimalloc_includes)
-                target_include_directories(ascii-panic-runtime PRIVATE ${_runtime_mimalloc_includes})
-            endif()
+        # Use MIMALLOC_INCLUDE_DIRS which is already set in Mimalloc.cmake
+        # and handles system, vcpkg, and FetchContent mimalloc installations
+        if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+            target_include_directories(ascii-panic-runtime PRIVATE ${MIMALLOC_INCLUDE_DIRS})
         endif()
 
         # Link pthread on Unix (Windows uses platform abstraction)
@@ -89,11 +73,9 @@ function(ascii_build_tooling_runtime)
     )
 
     # Add mimalloc include if enabled (needed for common.h)
-    if(USE_MIMALLOC AND DEFINED FETCHCONTENT_BASE_DIR)
-        target_include_directories(ascii-panic-report
-            PRIVATE
-                "${FETCHCONTENT_BASE_DIR}/mimalloc-src/include"
-        )
+    # Use MIMALLOC_INCLUDE_DIRS which handles system, vcpkg, and FetchContent mimalloc
+    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(ascii-panic-report PRIVATE ${MIMALLOC_INCLUDE_DIRS})
     endif()
 
     # On Windows Debug/Dev builds, use shared library; otherwise use static
