@@ -101,7 +101,7 @@ brew install zfogg/ascii-chat/ascii-chat
 - Latest release: [v0.3.9](https://github.com/zfogg/ascii-chat/releases/tag/v0.3.9)
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
 - Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
-- Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps
+- Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
 
 ## Usage
 
@@ -286,6 +286,8 @@ Now let's list out and talk about the dependencies before we install them.
 
 ### Dependencies
 
+> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__build.html#topic_dependencies)**
+
 ascii-chat is built on operating system code and several libraries.
 
 #### List of Dependencies and What We Use Them For
@@ -400,6 +402,8 @@ brew install make cmake ninja llvm zstd portaudio libsodium criterion
 
 ### Build from source
 
+> 📚 **See also: [Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)** — CMake presets, configuration options, and platform-specific build details.
+
 For open source developers who want a working copy:
 
 1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
@@ -452,7 +456,7 @@ cmake --preset dev && cmake --build build --target ascii-chat
 
 #### Configuration Options
 
-Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for example `cmake -B build -DASCIICHAT_ENABLE_ANALYZERS=ON`). Defaults reflect the logic in our CMake modules.
+Pass these Boolean options via `-D<option>=ON|OFF` when configuring CMake (for example `cmake -B build -DASCIICHAT_ENABLE_ANALYZERS=ON`). Defaults reflect the logic in our CMake modules. For complete details, see the **[Build System Reference](https://zfogg.github.io/ascii-chat/group__build.html)**.
 
 - `USE_MUSL` (Linux only): defaults to `ON` for `Release`/`RelWithDebInfo` builds to produce static PIE binaries with musl + mimalloc; `OFF` for other build types and on non-Linux hosts.
 - `USE_MIMALLOC`: defaults to `ON` whenever we're optimizing for performance (Release/RelWithDebInfo or musl builds), and `OFF` for `Debug`/`Dev` configurations to keep debugging predictable.
