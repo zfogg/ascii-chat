@@ -58,7 +58,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install mimalloc zstd libsodium portaudio libxml2
+  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio criterion libxml2
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -129,7 +129,6 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       portaudio19-dev \
       libcriterion-dev \
       libffi-dev \
-      libxml2-utils \
       doxygen \
       dpkg-dev
 
@@ -197,11 +196,15 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo update-alternatives --set clang++ ${LLVM_BIN}/clang++
     sudo update-alternatives --set llvm-config ${LLVM_BIN}/llvm-config
 
-    # Remove any conflicting cmake from /usr/local/bin if it exists
-    # GitHub runners have pre-installed cmake in /usr/local/bin that takes precedence over /usr/bin
-    if [ -f /usr/local/bin/cmake ]; then
-      echo "Removing old cmake from /usr/local/bin..."
-      sudo rm -f /usr/local/bin/cmake
+    # Set up cmake alternative to ensure apt-installed cmake is used
+    # GitHub runners have pre-installed cmake in /usr/local/bin that may take precedence
+    if [ -f /usr/bin/cmake ]; then
+      sudo update-alternatives --install /usr/bin/cmake cmake /usr/bin/cmake 100
+      # Remove any conflicting cmake from /usr/local/bin if it exists
+      if [ -f /usr/local/bin/cmake ]; then
+        echo >&2 "Removing old cmake from /usr/local/bin..."
+        sudo rm -f /usr/local/bin/cmake
+      fi
     fi
 
     # Verify configuration
