@@ -213,6 +213,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libsodium-devel \
       portaudio-devel \
       jack-audio-connection-kit-devel \
+      criterion-devel \
+      libffi-devel \
       doxygen \
       rpm-build
 
@@ -224,7 +226,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       clang llvm lldb ccache \
       cmake ninja make \
       musl mimalloc \
-      zstd zlib libsodium portaudio
+      zstd zlib libsodium portaudio \
+      criterion libffi
 
   else
     echo "ERROR: No supported package manager found (apt-get, yum, or pacman)"
@@ -238,6 +241,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "  - zstd (library and development headers)"
     echo "  - libsodium (library and development headers)"
     echo "  - portaudio (library and development headers)"
+    echo "  - criterion (testing framework, library and development headers)"
+    echo "  - libffi (foreign function interface, required by criterion)"
     echo "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"
     exit 1
   fi
