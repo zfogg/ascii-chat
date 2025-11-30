@@ -149,15 +149,16 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Configuring LLVM $LLVM_VERSION as default compiler..."
 
     LLVM_BIN="/usr/lib/llvm-$LLVM_VERSION/bin"
+    LLVM_TOOLS="clang clang++ clang-format clang-tidy lld ld.lld lldb llvm-config llvm-ar llvm-nm llvm-objdump llvm-ranlib llvm-symbolizer llvm-cov llvm-profdata"
 
     # Remove existing alternatives that might conflict (they may be registered as masters)
     # This allows us to set up fresh alternatives with our desired configuration
-    for tool in clang clang++ clang-format clang-tidy lld ld.lld lldb llvm-config llvm-ar llvm-nm llvm-objdump llvm-ranlib llvm-symbolizer; do
+    for tool in $LLVM_TOOLS; do
       sudo update-alternatives --remove-all "$tool" 2>/dev/null || true
     done
 
     # Also remove any non-alternatives binaries in /usr/bin that might shadow our alternatives
-    for tool in clang clang++ clang-format clang-tidy lld ld.lld lldb llvm-config llvm-ar llvm-nm llvm-objdump llvm-ranlib llvm-symbolizer; do
+    for tool in $LLVM_TOOLS; do
       if [ -e "/usr/bin/$tool" ] && [ ! -L "/usr/bin/$tool" ]; then
         echo "Removing non-symlink $tool from /usr/bin..."
         sudo rm -f "/usr/bin/$tool"
@@ -182,6 +183,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200
     sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200
     sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200
+    sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200 2>/dev/null || true
 
     # Explicitly set the alternatives to ensure our version is active
     sudo update-alternatives --set clang ${LLVM_BIN}/clang
