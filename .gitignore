@@ -47,3 +47,5 @@ coverage_html/
 /.vs/
 
 /docker_out/
+
+/branches/
