@@ -236,10 +236,9 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       pub_key.type = KEY_TYPE_ED25519;
 
       if (parse_ssh_ed25519_line(pub_line, pub_key.key) == ASCIICHAT_OK) {
-        fclose(pub_f);
-
         // Check if this key is in ssh-agent
         if (ssh_agent_has_key(&pub_key)) {
+          fclose(pub_f);
           log_info("Key found in ssh-agent - using cached key (no password required)");
           // Key is in agent, we can use it
           key_out->type = KEY_TYPE_ED25519;
