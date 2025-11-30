@@ -58,8 +58,14 @@ function(ascii_defer_prepare)
         set(_defer_build_dir "${_defer_cache_dir}")
         set(_defer_tool_exe "${_defer_build_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
 
-        # Detect the C++ compiler (use same compiler family as main build)
-        if(CMAKE_CXX_COMPILER)
+        # Detect the C++ compiler for building the defer tool
+        # On macOS, we MUST use Apple's system clang for compiling the defer tool
+        # because Homebrew LLVM's libc++ headers are incompatible with -nostdinc.
+        # The defer tool links against Homebrew LLVM libraries but compiles with system clang.
+        if(APPLE AND EXISTS "/usr/bin/clang++")
+            set(_defer_cxx_compiler "/usr/bin/clang++")
+            message(STATUS "Defer tool: Using Apple system clang for compilation: ${_defer_cxx_compiler}")
+        elseif(CMAKE_CXX_COMPILER)
             set(_defer_cxx_compiler "${CMAKE_CXX_COMPILER}")
         elseif(CMAKE_C_COMPILER MATCHES "clang")
             get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
