@@ -439,11 +439,12 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
   *out_count = 0;
 
   @autoreleasepool {
-    // Get all video capture devices
-    AVCaptureDeviceDiscoverySession *discoverySession = [AVCaptureDeviceDiscoverySession
-        discoverySessionWithDeviceTypes:@[ AVCaptureDeviceTypeBuiltInWideAngleCamera, AVCaptureDeviceTypeExternalUnknown ]
-                              mediaType:AVMediaTypeVideo
-                               position:AVCaptureDevicePositionUnspecified];
+    // Get all video capture devices using the helper that handles deprecated types
+    NSArray *deviceTypes = getSupportedDeviceTypes();
+    AVCaptureDeviceDiscoverySession *discoverySession =
+        [AVCaptureDeviceDiscoverySession discoverySessionWithDeviceTypes:deviceTypes
+                                                               mediaType:AVMediaTypeVideo
+                                                                position:AVCaptureDevicePositionUnspecified];
 
     NSArray<AVCaptureDevice *> *av_devices = discoverySession.devices;
     NSUInteger device_count = [av_devices count];
