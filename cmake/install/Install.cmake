@@ -195,7 +195,7 @@ if(PLATFORM_LINUX AND CMAKE_BUILD_TYPE STREQUAL "Release" AND TARGET ascii-chat-
     else()
         set(MIMALLOC_REQUIREMENT "")
     endif()
-    
+
     # Configure the pkgconfig file with current settings
     configure_file(
         "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.pc.in"
@@ -335,6 +335,31 @@ elseif(WIN32)
     # Binary goes to Program Files/ascii-chat/bin
     # Documentation goes to Program Files/ascii-chat/doc (not share/doc/ascii-chat)
     set(INSTALL_DOC_DIR "doc" CACHE PATH "Documentation install directory")
+endif()
+
+# =============================================================================
+# Main Manual Page Installation (Unix only)
+# =============================================================================
+# Install the main ascii-chat(1) manpage - the primary documentation users get
+# when they run "man ascii-chat". This is separate from the Doxygen-generated
+# API manpages in man3/ which document individual functions.
+#
+# The manpage source is in docs/ascii-chat.1 and uses @PROJECT_VERSION@ for
+# version substitution via configure_file().
+if(UNIX)
+    # Configure manpage with version substitution
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/docs/ascii-chat.1.in"
+        "${CMAKE_BINARY_DIR}/docs/ascii-chat.1"
+        @ONLY
+    )
+
+    # Install to share/man/man1/ (section 1 = user commands)
+    install(FILES "${CMAKE_BINARY_DIR}/docs/ascii-chat.1"
+        DESTINATION share/man/man1
+        COMPONENT Manpages
+    )
+    message(STATUS "${BoldGreen}Configured${ColorReset} manpage installation: ${BoldBlue}ascii-chat.1${ColorReset} → ${BoldYellow}share/man/man1/${ColorReset}")
 endif()
 
 # Install documentation at root of installation directory

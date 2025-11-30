@@ -1,0 +1,321 @@
+.\" ascii-chat - terminal video chat with ASCII art
+.\" Manual page for ascii-chat(1)
+.\"
+.TH ASCII-CHAT 1 "November 2025" "ascii-chat @PROJECT_VERSION@" "User Commands"
+.SH NAME
+ascii-chat \- video chat in your terminal
+.SH SYNOPSIS
+.B ascii-chat
+.RI [ options ]
+.PP
+.B ascii-chat
+.I mode
+.RI [ options ]
+.PP
+.B ascii-chat server
+.RI [ options ]
+.PP
+.B ascii-chat client
+.RI [ options ]
+.SH DESCRIPTION
+.B ascii-chat
+is a terminal-based video chat application that converts webcam video to ASCII
+art in real-time. It enables video chat directly in your terminal, whether you're
+using a local console, a remote SSH session, or any terminal emulator.
+.PP
+The program operates in two modes:
+.TP
+.B server
+Runs a video chat server that accepts connections from multiple clients,
+mixes their audio and video streams together, and broadcasts the mixed streams
+out to all connected clients. Clients see a grid of ascii video cells displaying
+the users of the call.
+.TP
+.B client
+Connects to an ascii-chat server, captures video from the local webcam, sends it
+to the server, and displays the combined video feed grid from all participants that
+the server sends back.
+.SH OPTIONS
+.SS "Basic Options"
+.TP
+.BR \-h ", " \-\-help
+Print usage information and exit.
+.TP
+.BR \-v ", " \-\-version
+Print version information and exit.
+.TP
+.BR \-q ", " \-\-quiet
+Suppress console logging output. Only errors and critical warnings are displayed.
+.TP
+.BR \-L ", " \-\-log\-file =\fIPATH\fR
+Write log output to the specified file. The default log files are client.log and
+server.log in your current working directory.
+.SS "Network Options
+.TP
+.BR \-a ", " \-\-address =\fIADDR\fR
+Server address to connect to (client) or IPv4 bind address (server).
+Default: \fBlocalhost\fR (client), \fB127.0.0.1\fR (server)
+.TP
+.BR \-p ", " \-\-port =\fIPORT\fR
+Server port number. Valid range: 1-65535.
+Default: \fB27224\fR ("ASCII" on a phone dial pad)
+.SS "Network Options (Server Only)"
+.TP
+.BR \-\-address6 =\fIADDR\fR
+IPv6 bind address. Use "::" to bind to all IPv6 interfaces.
+Can be used with \fB\-\-address\fR for dual-stack support.
+Default: \fB::1\fR
+.SS "Network Options (Client Only)"
+.TP
+.BR \-H ", " \-\-host =\fIHOSTNAME\fR
+Hostname for DNS lookup (alternative to \-\-address).
+.SS "Terminal Dimensions (Client Only)"
+.TP
+.BR \-x ", " \-\-width =\fICOLS\fR
+Set terminal width in characters. Disables auto-detection for width.
+Default: auto-detect from terminal size, fallback to \fB110\fR
+.TP
+.BR \-y ", " \-\-height =\fIROWS\fR
+Set terminal height in characters. Disables auto-detection for height.
+Default: auto-detect from terminal size, fallback to \fB70\fR
+.SS "Display Options (Client Only)"
+.TP
+.BR \-\-color\-mode =\fIMODE\fR
+Terminal color mode: auto, mono, 16, 256, truecolor.
+Default: \fBauto\fR (detect terminal capabilities)
+.TP
+.BR \-M ", " \-\-render\-mode =\fIMODE\fR
+Rendering mode: foreground (text colored), background
+(terminal background colored, text color default),
+half-block (Unicode half-blocks for 2x vertical resolution).
+Default: \fBforeground\fR
+.TP
+.BR \-\-utf8
+Force enable UTF-8 support for Unicode palette characters.
+Required for half-block render mode.
+.TP
+.BR \-s ", " \-\-stretch
+Allow image stretching without preserving aspect ratio.
+Default: preserve aspect ratio (may have letterboxing).
+.TP
+.BR \-P ", " \-\-palette =\fIPALETTE\fR
+ASCII character palette: standard, blocks, digital, minimal, cool, custom.
+Default: \fBstandard\fR
+.TP
+.BR \-C ", " \-\-palette\-chars =\fICHARS\fR
+Custom palette characters (implies \-\-palette=custom).
+Characters should be ordered from darkest to brightest.
+Example: " .:-=+*#%@"
+.TP
+.BR \-\-show\-capabilities
+Print detected terminal capabilities and exit.
+.SS "Webcam Options (Client Only)"
+.TP
+.BR \-c ", " \-\-webcam\-index =\fIINDEX\fR
+Webcam device index (0-based). Index 0 is the first available device.
+Default: \fB0\fR
+.TP
+.BR \-f ", " \-\-webcam\-flip
+Toggle horizontal flipping of webcam image.
+Default: flipped (mirror mode)
+.TP
+.BR \-\-test\-pattern
+Use a test pattern instead of real webcam input.
+Useful for testing when you don't have a physical webcam connected to the computer.
+.TP
+.BR \-\-fps =\fIFPS\fR
+Desired frame rate (1-144).
+Default: \fB60\fR (Unix), \fB30\fR (Windows)
+.SS "Snapshot Mode (Client Only)"
+.TP
+.BR \-S ", " \-\-snapshot
+Capture a single frame, convert to ASCII, print, and exit.
+Does not connect to any server.
+.TP
+.BR \-D ", " \-\-snapshot\-delay =\fISECONDS\fR
+Delay in seconds before capturing snapshot (for webcam warmup).
+Default: \fB3.0\fR
+.SS "Audio Options (Client Only)"
+.TP
+.BR \-A ", " \-\-audio
+Enable audio capture and streaming.
+.TP
+.BR \-\-audio\-device =\fIINDEX\fR
+Audio input device index. Use \fB-1\fR for system default.
+Default: \fB-1\fR
+.SS "Encryption Options"
+.TP
+.BR \-E ", " \-\-encrypt
+Enable packet encryption.
+Default: \fBenabled\fR
+.TP
+.BR \-K ", " \-\-key =\fIKEY\fR
+SSH key for authentication. Accepts:
+.RS
+.IP \(bu 2
+File path: /path/to/key (SSH Ed25519 private key)
+.IP \(bu 2
+GitHub: github:username
+.IP \(bu 2
+GitLab: gitlab:username
+.IP \(bu 2
+Auto-detect: ssh (uses ~/.ssh/id_ed25519)
+.RE
+.IP
+Implies \-\-encrypt.
+.TP
+.BR \-\-password [=\fIPASSWORD\fR]
+Password for connection encryption. If PASSWORD is not provided,
+prompts interactively. Both client and server must use the same password.
+Implies \-\-encrypt.
+.TP
+.BR \-F ", " \-\-keyfile =\fIFILE\fR
+Read encryption key from FILE. Implies \-\-encrypt.
+.TP
+.BR \-\-no\-encrypt
+Explicitly disable encryption, even if keys are available.
+.TP
+.BR \-\-server\-key =\fIKEY\fR
+(Client only) Expected server public key for identity verification.
+Prevents man-in-the-middle attacks. Can be a key string or path to .pub file.
+.TP
+.BR \-\-client\-keys =\fIFILE\fR
+(Server only) File containing allowed client public keys for authentication.
+Format is similar to SSH authorized_keys file.
+.SS "Configuration"
+.TP
+.BR \-\-config =\fIPATH\fR
+Load configuration from TOML file at PATH.
+.TP
+.BR \-\-config\-create [=\fIPATH\fR]
+Create a default configuration file and exit.
+If PATH is not specified, uses the default location.
+.SH EXAMPLES
+.SS "Start a basic server"
+.nf
+ascii-chat server
+.fi
+.SS "Connect to a local server"
+.nf
+ascii-chat client
+.fi
+.SS "Connect to a remote server with truecolor"
+.nf
+ascii-chat client \-\-address example.com \-\-color\-mode truecolor
+.fi
+.SS "Server with encryption using SSH key"
+.nf
+ascii-chat server \-\-key ~/.ssh/id_ed25519
+.fi
+.SS "Client with server verification"
+.nf
+ascii-chat client \-\-address example.com \-\-server\-key ~/.ssh/server.pub
+.fi
+.SS "Capture a single ASCII snapshot"
+.nf
+ascii-chat client \-\-snapshot \-\-color\-mode truecolor
+.fi
+.SS "Test without webcam using test pattern"
+.nf
+ascii-chat client \-\-test\-pattern \-\-color\-mode truecolor
+.fi
+.SS "Use half-block rendering for higher resolution"
+.nf
+ascii-chat client \-\-render\-mode half\-block \-\-utf8
+.fi
+.SS "Use GitHub key for authentication"
+.nf
+ascii-chat client \-\-key github:username \-\-address example.com
+.fi
+.SH ENVIRONMENT
+.TP
+.B SSH_AUTH_SOCK
+Path to SSH agent socket for password-free key authentication (Unix only).
+.TP
+.B ASCII_CHAT_SSH_PASSWORD
+Passphrase for encrypted SSH keys. Prefer using ssh-agent when possible.
+.TP
+.B LOG_LEVEL
+Set logging verbosity: 0=DEV, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL.
+.TP
+.B TERM
+Terminal type, used for auto-detecting color capabilities.
+.TP
+.B COLORTERM
+Color terminal indicator. Set to "truecolor" or "24bit" for truecolor support.
+.SH FILES
+.TP
+.I ~/.ssh/id_ed25519
+Default SSH Ed25519 private key used for encryption if \fB\-\-key\fR is not specified.
+.TP
+.I ~/.ssh/id_ed25519.pub
+Public key corresponding to the default private key.
+.TP
+.I ~/.ascii-chat/known_hosts
+Known hosts file for TOFU (Trust On First Use) server verification.
+.TP
+.I ~/.config/ascii-chat/config.toml
+Default configuration file location (Linux/macOS).
+.SH EXIT STATUS
+Exit codes correspond to the \fBasciichat_error_t\fR enum values:
+.TP
+.B 0
+Success (ASCIICHAT_OK).
+.TP
+.B 1
+General unspecified error (ERROR_GENERAL).
+.TP
+.B 2
+Invalid command-line arguments or options (ERROR_USAGE).
+.TP
+.B 3
+Memory allocation failed (ERROR_MEMORY).
+.TP
+.B 4
+Configuration file or settings error (ERROR_CONFIG).
+.TP
+.B 5\-7
+Initialization errors (crypto, logging, platform).
+.TP
+.B 20\-25
+Device errors (webcam, audio, terminal).
+.TP
+.B 40\-45
+Network errors (bind, connect, timeout, protocol).
+.TP
+.B 60\-64
+Cryptographic errors (key, auth, handshake, verification).
+.TP
+.B 80\-90
+Runtime errors (thread, buffer, display, invalid state/param).
+.TP
+.B 100\-104
+Signal and compression errors.
+.SH SECURITY
+.B ascii-chat
+supports end-to-end encryption using modern cryptographic algorithms:
+.IP \(bu 2
+X25519 elliptic curve Diffie-Hellman key exchange
+.IP \(bu 2
+XSalsa20-Poly1305 authenticated encryption (AEAD)
+.IP \(bu 2
+Ed25519 digital signatures for SSH key authentication
+.PP
+Encryption is enabled by default. Use \fB\-\-no\-encrypt\fR to disable it.
+Use \fB\-\-server\-key\fR on the client to verify server identity and prevent
+man-in-the-middle attacks. Use \fB\-\-client\-keys\fR on the server to restrict
+access to specific clients.
+.SH BUGS
+Report bugs at: https://github.com/zfogg/ascii-chat/issues
+.SH AUTHOR
+Zachary Fogg <me@zfo.gg>
+.SH SEE ALSO
+.BR ssh (1),
+.BR ssh-keygen (1),
+.BR ssh-agent (1)
+.PP
+Project homepage: https://github.com/zfogg/ascii-chat
+.PP
+Releases: https://github.com/zfogg/ascii-chat/releases
+.PP
+API documentation: https://zfogg.github.io/ascii-chat/
