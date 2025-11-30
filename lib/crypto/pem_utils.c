@@ -44,7 +44,9 @@
     size_t ptr, len;                                                                                                   \
   }
 
+// clang-format off
 #define VEC_INIT {0, 0, 0}
+// clang-format on
 
 #define VEC_CLEAR(vec)                                                                                                 \
   do {                                                                                                                 \

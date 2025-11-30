@@ -80,9 +80,9 @@ ParameterizedTestParameters(palette_tests, utf8_encoding_tests) {
 
 ParameterizedTest(utf8_test_case_t *tc, palette_tests, utf8_encoding_tests) {
   size_t len = strlen(tc->palette_chars);
-  bool requires = palette_requires_utf8_encoding(tc->palette_chars, len);
-  cr_assert_eq(requires, tc->expected_utf8, "UTF-8 requirement should match for %s (got %d, expected %d)",
-               tc->description, requires, tc->expected_utf8);
+  bool requires_utf8 = palette_requires_utf8_encoding(tc->palette_chars, len);
+  cr_assert_eq(requires_utf8, tc->expected_utf8, "UTF-8 requirement should match for %s (got %d, expected %d)",
+               tc->description, requires_utf8, tc->expected_utf8);
 }
 
 // Test case structure for palette validation tests
@@ -487,8 +487,8 @@ ParameterizedTestParameters(palette_tests, null_handling_tests) {
 ParameterizedTest(null_handling_test_case_t *tc, palette_tests, null_handling_tests) {
   switch (tc->function) {
   case NULL_TEST_REQUIRES_UTF8: {
-    bool requires = palette_requires_utf8_encoding(NULL, 10);
-    cr_assert_eq(requires, false, "%s should return false", tc->description);
+    bool requires_utf8 = palette_requires_utf8_encoding(NULL, 10);
+    cr_assert_eq(requires_utf8, false, "%s should return false", tc->description);
     break;
   }
   case NULL_TEST_VALIDATE_CHARS: {
