@@ -1,6 +1,6 @@
 /**
  * @file version.c
- * @ingroup version
+ * @ingroup util
  * @brief 🏷️ Binary-embedded version information in custom ELF/Mach-O sections for runtime inspection
  */
 

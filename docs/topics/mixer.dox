@@ -26,11 +26,17 @@
  * What makes the mixer special?
  * ------------------------------
  * - **Real-time mixing**: Combines multiple audio streams on the fly
- * - **Dynamic client management**: Clients can join or leave without disrupting the mix
- * - **Automatic ducking**: Prevents distortion when many people talk simultaneously
- * - **Thread-safe**: Safe for multi-threaded audio processing
- * - **Low latency**: Minimal processing delay (you won't notice it!)
- * - **Per-client buffering**: Each client has their own buffer for smooth audio
+ * - **Dynamic source management**: Sources can join or leave without disrupting the mix
+ * - **Active speaker detection**: Automatically identifies who's talking loudest
+ * - **Automatic ducking**: Attenuates background sources when someone is speaking
+ * - **Dynamic range compression**: Prevents clipping with professional compressor
+ * - **Noise gate**: Suppresses background noise below threshold with hysteresis
+ * - **High-pass filtering**: Removes low-frequency rumble and noise
+ * - **Soft clipping**: Prevents harsh digital clipping artifacts
+ * - **Crowd scaling**: Automatically adjusts volume based on participant count
+ * - **Thread-safe**: Reader-writer locks for concurrent access
+ * - **Low latency**: Fixed 256-sample frame processing
+ * - **O(1) source exclusion**: Bitset-based tracking for echo cancellation
  * @section mixer_architecture Architecture
  *
  * **Mixer Design**:
@@ -53,143 +59,131 @@
  *
  * **Create Mixer**:
  * @code{.c}
- * mixer_t mixer;
- * asciichat_error_t err = mixer_init(&mixer, MAX_CLIENTS);
- * if (err != ASCIICHAT_OK) {
- *     log_error("Failed to initialize mixer");
- *     return err;
+ * // mixer_create returns a pointer to a new mixer (NULL on failure)
+ * mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 48000);
+ * if (!mixer) {
+ *     log_error("Failed to create mixer");
+ *     return ASCIICHAT_ERROR_MEMORY;
  * }
  * @endcode
  *
- * **Configure Mixer**:
- * @code{.c}
- * mixer.sample_rate = 44100;
- * mixer.channels = 1;  // Mono
- * mixer.ducking_enabled = true;
- * mixer.ducking_threshold = 4;  // Start ducking at 4+ clients
- * @endcode
+ * @subsection mixer_source_management Source Management
  *
- * @subsection mixer_client_management Client Management
- *
- * **Add Client**:
+ * **Add Audio Source** (client with audio ring buffer):
  * @code{.c}
  * uint32_t client_id = 12345;
- * err = mixer_add_client(&mixer, client_id);
- * if (err != ASCIICHAT_OK) {
+ * audio_ring_buffer_t *client_audio_buffer = ...; // Client's audio ring buffer
+ *
+ * int result = mixer_add_source(mixer, client_id, client_audio_buffer);
+ * if (result < 0) {
  *     log_error("Failed to add client %u to mixer", client_id);
- *     return err;
+ *     return ASCIICHAT_ERROR_FULL;
  * }
- * log_info("Client %u added to mixer", client_id);
+ * log_info("Client %u added to mixer at index %d", client_id, result);
  * @endcode
  *
- * **Remove Client**:
+ * **Remove Audio Source**:
  * @code{.c}
- * err = mixer_remove_client(&mixer, client_id);
- * if (err != ASCIICHAT_OK) {
- *     log_error("Failed to remove client %u from mixer", client_id);
- *     return err;
- * }
+ * mixer_remove_source(mixer, client_id);
  * log_info("Client %u removed from mixer", client_id);
  * @endcode
  *
  * @subsection mixer_audio_processing Audio Processing
  *
- * **Submit Audio from Client**:
- * @code{.c}
- * float samples[256];
- * // Receive audio packet from client
- * receive_audio_from_client(client_id, samples, 256);
+ * The mixer reads audio directly from each client's audio ring buffer. Clients
+ * write their audio samples to their ring buffer, and the mixer reads and mixes
+ * them during processing.
  *
- * // Submit to mixer
- * err = mixer_submit_audio(&mixer, client_id, samples, 256);
- * if (err != ASCIICHAT_OK) {
- *     log_error("Failed to submit audio from client %u", client_id);
+ * **Mix Audio** (reads from all source ring buffers):
+ * @code{.c}
+ * float mixed_output[MIXER_FRAME_SIZE];
+ * int samples_mixed = mixer_process(mixer, mixed_output, MIXER_FRAME_SIZE);
+ *
+ * if (samples_mixed > 0) {
+ *     // Send mixed audio to all clients
+ *     send_audio_to_all_clients(mixed_output, samples_mixed);
  * }
  * @endcode
  *
- * **Mix Audio**:
+ * **Mix Audio Excluding a Source** (for echo cancellation):
  * @code{.c}
- * float mixed_output[256];
- * size_t num_frames = mixer_process(&mixer, mixed_output, 256);
- *
- * if (num_frames > 0) {
- *     // Send mixed audio to all clients
- *     send_audio_to_all_clients(mixed_output, num_frames);
- * }
+ * // Mix all sources except the client we're sending to (prevents echo)
+ * float output_for_client[MIXER_FRAME_SIZE];
+ * int samples = mixer_process_excluding_source(mixer, output_for_client,
+ *                                               MIXER_FRAME_SIZE, client_id);
+ * send_audio_to_client(client_id, output_for_client, samples);
  * @endcode
  *
  * @subsection mixer_cleanup Cleanup
  *
  * **Destroy Mixer**:
  * @code{.c}
- * mixer_destroy(&mixer);
+ * mixer_destroy(mixer);  // Pass pointer, not address-of
  * @endcode
  *
- * @section mixer_ducking Automatic Ducking
+ * @section mixer_ducking Active Speaker Detection & Ducking
  *
- * Ducking is one of the mixer's coolest features. Here's the problem it solves: if you have
- * 8 people all talking at full volume, the mixed audio would be 8× louder—way too loud! You'd
- * get clipping, distortion, and generally terrible audio quality.
+ * The ducking system automatically identifies who's speaking and attenuates background
+ * sources to improve clarity. This is more sophisticated than simple volume scaling.
  *
- * The solution? Automatically reduce everyone's volume proportionally. The ducking algorithm
- * is beautifully simple:
+ * **How It Works**:
+ * - **Leader Detection**: The loudest source(s) above threshold_dB are identified
+ * - **Margin Tracking**: Sources within leader_margin_dB of the loudest are also "leaders"
+ * - **Attenuation**: Non-leader sources are attenuated by atten_dB
+ * - **Smooth Transitions**: Attack/release curves prevent jarring volume changes
  *
- * - **Monitor**: Keep track of how many clients are talking
- * - **Scale down**: When more than 4 clients talk, reduce each person's volume proportionally
- * - **Prevent clipping**: This keeps the mixed output from getting too loud
- * - **Smooth transitions**: Volume changes happen gradually (no jarring jumps)
- *
- * The math is straightforward:
+ * The ducking uses dB-based audio analysis:
  * @code{.c}
- * if (num_clients > ducking_threshold) {
- *     float scale = ducking_threshold / (float)num_clients;
- *     volume = base_volume * scale;
- * } else {
- *     volume = base_volume;
- * }
+ * // Ducking parameters (in dB and milliseconds)
+ * typedef struct {
+ *     float threshold_dB;    // Speaking threshold (-40dB typical)
+ *     float leader_margin_dB; // Margin to be considered a leader (6dB typical)
+ *     float atten_dB;        // Attenuation for non-leaders (-12dB typical)
+ *     float attack_ms;       // How fast ducking engages (10ms typical)
+ *     float release_ms;      // How fast ducking releases (100ms typical)
+ * } ducking_t;
  * @endcode
  *
- * Here's what it looks like in practice:
- * - **1-4 clients**: 100% volume each (full volume, no ducking needed)
- * - **5 clients**: 80% volume each (4/5 = 0.8)
- * - **8 clients**: 50% volume each (4/8 = 0.5)
- * - **16 clients**: 25% volume each (4/16 = 0.25)
+ * **Practical Example**:
+ * - Person A speaks at -20dB (loud)
+ * - Person B speaks at -25dB (within 6dB margin of A)
+ * - Person C has background noise at -50dB (below threshold)
+ * - Result: A and B are heard at full volume, C is attenuated by 12dB
  *
- * Even with 16 people talking, everyone is still audible—just quieter individually so
- * the total mix stays at a reasonable level!
- *
- * **Configuration**:
- * @code{.c}
- * mixer.ducking_enabled = true;
- * mixer.ducking_threshold = 4;  // Start ducking at 5+ clients
- * mixer.ducking_scale = 0.5;    // Minimum scale factor
- * @endcode
+ * This allows multiple people to have a natural conversation while suppressing
+ * background noise from inactive participants.
  *
  * @section mixer_threading Thread Safety
  *
- * **Mutex Protection**:
- * - All mixer operations protected by internal mutex
- * - Safe for concurrent access from multiple threads
- * - Lock-free audio buffer where possible
+ * **Reader-Writer Lock Protection**:
+ * - Source array protected by reader-writer locks (rwlock)
+ * - Multiple readers can process audio concurrently
+ * - Writers (add/remove source) get exclusive access
+ * - Bitset operations are atomic for source exclusion
  *
  * **Thread Model**:
  * @code{.c}
- * // Network receive thread
+ * // Network receive thread - writes to client's ring buffer
  * void* client_receive_thread(void *arg) {
+ *     client_t *client = (client_t *)arg;
  *     while (running) {
  *         float samples[256];
- *         receive_audio_packet(client_id, samples, 256);
- *         mixer_submit_audio(&mixer, client_id, samples, 256);  // Thread-safe
+ *         receive_audio_packet(client->id, samples, 256);
+ *         // Write directly to client's audio ring buffer
+ *         audio_ring_buffer_write(client->audio_buffer, samples, 256);
  *     }
  *     return NULL;
  * }
  *
- * // Audio processing thread
+ * // Audio processing thread - reads from all ring buffers via mixer
  * void* audio_mix_thread(void *arg) {
+ *     mixer_t *mixer = (mixer_t *)arg;
  *     while (running) {
- *         float mixed[256];
- *         size_t frames = mixer_process(&mixer, mixed, 256);  // Thread-safe
- *         send_to_all_clients(mixed, frames);
+ *         float mixed[MIXER_FRAME_SIZE];
+ *         int samples = mixer_process(mixer, mixed, MIXER_FRAME_SIZE);
+ *         if (samples > 0) {
+ *             send_to_all_clients(mixed, samples);
+ *         }
  *     }
  *     return NULL;
  * }

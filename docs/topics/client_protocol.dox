@@ -1,7 +1,7 @@
 /**
  * @defgroup client_protocol Client Handler
  * @ingroup module_client
- * @brief Client-side packet processing and data reception thread
+ * @brief 📡 Client-side packet processing and data reception thread
  */
 
 /**

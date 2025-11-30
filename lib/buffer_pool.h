@@ -1,9 +1,6 @@
 #pragma once
 
 /**
- * @defgroup buffer_pool Buffer Pool
- * @ingroup buffer_pool
- *
  * @file buffer_pool.h
  * @ingroup buffer_pool
  * @brief 🗃️ Memory Buffer Pool System for High-Performance Allocation

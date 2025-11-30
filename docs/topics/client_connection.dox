@@ -1,7 +1,7 @@
 /**
  * @defgroup client_connection Connection Management
  * @ingroup module_client
- * @brief Server connection establishment, packet transmission, and state tracking
+ * @brief 🔗 Server connection establishment, packet transmission, and state tracking
  */
 
 /**

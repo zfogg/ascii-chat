@@ -78,27 +78,27 @@
  * - Lower memory usage, but requires careful lifetime management
  *
  * @code{.c}
- * // Deep copy mode (safer)
- * packet_queue_t *q = packet_queue_create(100, true);
+ * // Deep copy mode (safer) - copy_data=true
+ * packet_queue_t *q = packet_queue_create(100);
  *
  * char *data = SAFE_MALLOC(1024, char*);
  * strcpy(data, "Hello");
- * packet_queue_enqueue(q, &header, data);
- * SAFE_FREE(data);  // Can free immediately!
+ * packet_queue_enqueue(q, PACKET_TYPE_ASCII_FRAME, data, strlen(data), client_id, true);
+ * SAFE_FREE(data);  // Can free immediately since copy_data=true!
  *
- * // Reference mode (lower overhead)
- * packet_queue_t *q = packet_queue_create(100, false);
+ * // Reference mode (lower overhead) - copy_data=false
+ * packet_queue_t *q2 = packet_queue_create(100);
  *
- * char *data = SAFE_MALLOC(1024, char*);
- * strcpy(data, "Hello");
- * packet_queue_enqueue(q, &header, data);
- * // data must stay alive until dequeued!
+ * char *data2 = SAFE_MALLOC(1024, char*);
+ * strcpy(data2, "Hello");
+ * packet_queue_enqueue(q2, PACKET_TYPE_ASCII_FRAME, data2, strlen(data2), client_id, false);
+ * // data2 must stay alive until dequeued since copy_data=false!
  *
- * packet_header_t hdr;
- * void *dequeued_data;
- * if (packet_queue_dequeue(q, &hdr, &dequeued_data)) {
- *     process_packet(dequeued_data);
- *     SAFE_FREE(dequeued_data);  // Consumer frees
+ * // Dequeue returns a queued_packet_t pointer
+ * queued_packet_t *packet = packet_queue_dequeue(q2);
+ * if (packet) {
+ *     process_packet(packet->data);
+ *     packet_queue_free_packet(q2, packet);  // Free packet properly
  * }
  * @endcode
  *

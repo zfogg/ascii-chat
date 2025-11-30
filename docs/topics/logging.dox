@@ -18,7 +18,7 @@
  *
  * What makes this logging system helpful?
  * ----------------------------------------
- * - **Five log levels**: DEBUG, INFO, WARN, ERROR, FATAL (choose your verbosity)
+ * - **Six log levels**: DEV, DEBUG, INFO, WARN, ERROR, FATAL (choose your verbosity)
  * - **Rate limiting**: Prevents log spam in tight loops (your disk will thank you)
  * - **Flexible output**: Console, file, or both simultaneously
  * - **Thread-safe**: Multiple threads can log without stepping on each other
@@ -28,29 +28,34 @@
  *
  * @section logging_levels Log Levels
  *
- * The logging system has five levels, from most verbose to least:
+ * The logging system has six levels, from most verbose to least:
  *
- * **DEBUG (0)** - The chatty one:
+ * **DEV (0)** - The super chatty one:
+ * - Use this for development-only messages that are too verbose for normal debugging
+ * - Useful for tracing code paths during active development
+ * - Usually disabled even in debug builds unless you need extreme detail
+ *
+ * **DEBUG (1)** - The chatty one:
  * - Use this when you need detailed diagnostic information
  * - Only available in debug builds (stripped out in release for performance)
  * - Perfect for understanding exactly what's happening step by step
  *
- * **INFO (1)** - The reporter:
+ * **INFO (2)** - The reporter:
  * - General informational messages about normal operations
  * - "Client connected", "Frame processed", that sort of thing
  * - What you'd want to see during normal operation
  *
- * **WARN (2)** - The concerned citizen:
+ * **WARN (3)** - The concerned citizen:
  * - Something's not quite right, but we can keep going
  * - "Buffer is getting full", "Retrying connection"
  * - Pay attention, but don't panic
  *
- * **ERROR (3)** - Houston, we have a problem:
+ * **ERROR (4)** - Houston, we have a problem:
  * - Operation failures that are recoverable
  * - "Failed to send packet", "Client disconnected unexpectedly"
  * - Things went wrong, but we're handling it
  *
- * **FATAL (4)** - The showstopper:
+ * **FATAL (5)** - The showstopper:
  * - Unrecoverable errors that mean we can't continue
  * - "Cannot initialize crypto", "Out of memory"
  * - Time to gracefully shut down
@@ -118,14 +123,15 @@
  * **Environment Variable**:
  * @code{.sh}
  * # Set log level via environment
- * export LOG_LEVEL=0  # DEBUG
- * export LOG_LEVEL=1  # INFO
- * export LOG_LEVEL=2  # WARN
- * export LOG_LEVEL=3  # ERROR
- * export LOG_LEVEL=4  # FATAL
+ * export LOG_LEVEL=0  # DEV
+ * export LOG_LEVEL=1  # DEBUG
+ * export LOG_LEVEL=2  # INFO
+ * export LOG_LEVEL=3  # WARN
+ * export LOG_LEVEL=4  # ERROR
+ * export LOG_LEVEL=5  # FATAL
  *
  * # Run with debug logging
- * LOG_LEVEL=0 ./bin/ascii-chat server
+ * LOG_LEVEL=1 ./bin/ascii-chat server
  * @endcode
  *
  * @subsection logging_file_output File Output
@@ -182,6 +188,7 @@
  * What about colors?
  * ------------------
  * **Console Colors** (ANSI terminals):
+ * - **DEV**: Dim Gray (even more subtle, for development tracing)
  * - **DEBUG**: Gray (subtle, so it doesn't distract from important messages)
  * - **INFO**: White (default color, for normal messages)
  * - **WARN**: Yellow (gets your attention, but not too alarming)

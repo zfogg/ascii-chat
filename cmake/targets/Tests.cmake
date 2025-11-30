@@ -311,8 +311,11 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF
         )
 
-        # Add to CTest
+        # Add to CTest with TESTING environment variable
         add_test(NAME ${test_exe_name} COMMAND ${test_exe_name})
+        set_tests_properties(${test_exe_name} PROPERTIES
+            ENVIRONMENT "TESTING=1"
+        )
     endforeach()
 
     # Target to build all tests without running them (excluded from default build)

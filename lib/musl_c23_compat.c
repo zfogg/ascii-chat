@@ -1,6 +1,6 @@
 /**
  * @file musl_c23_compat.c
- * @ingroup compat
+ * @ingroup util
  * @brief 🔄 musl C23 compatibility wrappers for __isoc23_* symbol aliases (glibc 2.38+ compatibility)
  *
  * Note: These aliases provide the base functionality but don't implement the full

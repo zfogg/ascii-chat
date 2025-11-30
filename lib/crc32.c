@@ -1,6 +1,6 @@
 /**
  * @file crc32.c
- * @ingroup crc32
+ * @ingroup util
  * @brief ⚡ Hardware-accelerated CRC32 checksum with ARM64 and x86_64 CPU feature detection
  */
 

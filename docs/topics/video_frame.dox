@@ -14,12 +14,14 @@
  * **Implementation**: lib/video_frame.h
  *
  * **Key Features**:
+ * - Zero-copy frame transfer (pointer swaps only)
+ * - Lock-free double-buffering system
+ * - Latest-frame-wins semantics (old frames dropped, not queued)
+ * - Pre-allocated buffers for zero-allocation operation
  * - RGB24 image frame representation
  * - Frame metadata (timestamp, dimensions, client ID)
- * - Efficient memory management
- * - Frame ownership tracking
- * - Reference counting (where applicable)
- * - Frame validation and verification
+ * - Frame sequence numbering for drop detection
+ * - Comprehensive quality metrics tracking
  *
  * @section video_frame_structure Frame Structure
  *
@@ -46,19 +48,35 @@
  *
  * @section video_frame_operations Operations
  *
- * @subsection video_frame_create Creation
+ * @subsection video_frame_double_buffer Double-Buffering API
  *
- * **Allocate New Frame**:
+ * The recommended way to use video frames is through the lock-free double-buffering API:
+ *
+ * **Writer API** (producer thread):
  * @code{.c}
- * video_frame_t *frame = SAFE_MALLOC(sizeof(video_frame_t), video_frame_t *);
- * frame->width = 640;
- * frame->height = 480;
- * frame->data_size = frame->width * frame->height * 3;
- * frame->data = SAFE_MALLOC(frame->data_size, uint8_t *);
- * frame->owns_data = true;
- * frame->client_id = client_id;
- * frame->timestamp = get_timestamp_usec();
+ * // 1. Get pointer to back buffer for writing
+ * uint8_t *write_buffer = video_frame_begin_write(frame_buffer);
+ *
+ * // 2. Write frame data directly to back buffer
+ * memcpy(write_buffer, captured_rgb_data, width * height * 3);
+ *
+ * // 3. Atomically swap buffers to make frame available
+ * video_frame_commit(frame_buffer, width, height);
  * @endcode
+ *
+ * **Reader API** (consumer thread):
+ * @code{.c}
+ * // Get latest frame (returns NULL if no new frame since last read)
+ * video_frame_t *frame = video_frame_get_latest(frame_buffer);
+ * if (frame) {
+ *     // Process frame data
+ *     render_ascii(frame->data, frame->width, frame->height);
+ * }
+ * @endcode
+ *
+ * @subsection video_frame_manual Manual Creation (for special cases)
+ *
+ * For cases where you need standalone frames without the double-buffering system:
  *
  * **Create from Existing Data**:
  * @code{.c}

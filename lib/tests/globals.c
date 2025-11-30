@@ -8,13 +8,16 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "options.h"
+#include "platform/system.h"
 
 /**
  * @brief Test environment initialization (runs before main)
- * Sets CRITERION_TEST environment variable so libraries can detect test mode at runtime.
+ * Sets TESTING environment variable so libraries can detect test mode at runtime.
+ * This provides a fallback for when tests are run directly (not via ctest).
+ * CTest also sets TESTING=1 via set_tests_properties() in Tests.cmake.
  */
 __attribute__((constructor)) static void init_test_environment(void) {
-  setenv("CRITERION_TEST", "1", 0); // Don't overwrite if already set
+  platform_setenv("TESTING", "1");
 }
 
 /**

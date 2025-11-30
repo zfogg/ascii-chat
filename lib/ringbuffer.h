@@ -1,9 +1,6 @@
 #pragma once
 
 /**
- * @defgroup ringbuffer Ring Buffer
- * @ingroup ringbuffer
- *
  * @file ringbuffer.h
  * @ingroup ringbuffer
  * @brief Lock-Free Ring Buffer and Frame Buffer Management
@@ -183,7 +180,8 @@ void ringbuffer_destroy(ringbuffer_t *rb);
  * operation that uses lock-free atomic operations. Returns false immediately
  * if the buffer is full.
  *
- * @note Thread-safe: Multiple producers can write simultaneously.
+ * @note SPSC only: Single Producer, Single Consumer. NOT thread-safe for
+ *       multiple producers - use external synchronization if needed.
  *
  * @ingroup ringbuffer
  */
@@ -199,7 +197,8 @@ bool ringbuffer_write(ringbuffer_t *rb, const void *data);
  * operation that uses lock-free atomic operations. Returns false immediately
  * if the buffer is empty.
  *
- * @note Thread-safe: Multiple consumers can read simultaneously.
+ * @note SPSC only: Single Producer, Single Consumer. NOT thread-safe for
+ *       multiple consumers - use external synchronization if needed.
  *
  * @ingroup ringbuffer
  */
@@ -214,7 +213,8 @@ bool ringbuffer_read(ringbuffer_t *rb, void *data);
  * Examines the next element without removing it from the buffer. This is
  * useful for previewing data before committing to reading it.
  *
- * @note Thread-safe: Multiple threads can peek simultaneously.
+ * @note SPSC only: Single Producer, Single Consumer. NOT thread-safe for
+ *       multiple concurrent peek operations.
  *
  * @ingroup ringbuffer
  */

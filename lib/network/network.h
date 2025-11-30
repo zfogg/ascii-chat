@@ -73,6 +73,7 @@
 #pragma once
 
 #include "platform/socket.h"
+#include "tests/test_env.h"
 #include <sys/types.h>
 
 /**
@@ -135,19 +136,13 @@
 /**
  * @brief Check if we're in a test environment
  *
- * Returns 1 if the code is running in a test environment (Criterion tests,
- * CI, etc.), 0 otherwise. Used to adjust timeouts for faster test execution.
+ * Compatibility macro that calls is_test_environment() from tests/test_env.h.
+ * Used to adjust timeouts for faster test execution.
  *
  * @return 1 if test environment, 0 otherwise
  * @ingroup network
  */
-static inline int network_is_test_environment(void) {
-#if defined(CRITERION_TEST) || defined(__CRITERION__) || defined(TESTING)
-  return 1; // Compile-time test environment detection
-#else
-  return SAFE_GETENV("CRITERION_TEST") != NULL || SAFE_GETENV("TESTING") != NULL;
-#endif
-}
+#define network_is_test_environment() ((int)is_test_environment())
 
 /** @} */
 
