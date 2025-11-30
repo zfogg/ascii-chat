@@ -182,7 +182,7 @@ clang++ -nostdinc -nostdinc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c
 
 **Status**: FAILED
 
-### Attempt 18: Force-include clang's builtin stddef.h with FULL PATH (TESTING)
+### Attempt 18: Force-include clang's builtin stddef.h with FULL PATH (FAILED)
 **Date**: 2025-11-30
 **Approach**: Instead of `-include stddef.h` (which relies on include path search), use `-include /full/path/to/clang/stddef.h` to directly include clang's builtin stddef.h with its absolute path. This bypasses all include path resolution issues.
 
@@ -196,6 +196,53 @@ clang++ -nostdinc -nostdinc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c
 -isystem<clang_builtins>
 -isystem<llvm>
 -isystem<sdk_include>
+```
+
+**CI error from run 19801600009**:
+```
+clang++ -nostdinc -nostdinc++ -include/opt/homebrew/opt/llvm/lib/clang/21/include/stddef.h
+        -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1
+        -isystem/opt/homebrew/opt/llvm/lib/clang/21/include
+        -isystem/opt/homebrew/Cellar/llvm/21.1.6/include
+        -isystem/.../MacOSX.sdk/usr/include
+        ... tool.cpp
+
+/opt/homebrew/opt/llvm/lib/clang/21/include/stddef.h:22:25: warning: #include_next in file found relative to primary source file...
+/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1/cmath:334:5: error: <cmath> tried including <math.h> but didn't find libc++'s <math.h> header.
+/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1/cstddef:45:5: error: <cstddef> tried including <stddef.h> but didn't find libc++'s <stddef.h> header.
+/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1/cstdlib:93:5: error: <cstdlib> tried including <stdlib.h> but didn't find libc++'s <stdlib.h> header.
+```
+
+**Analysis**: The force-include of clang's stddef.h now breaks DIFFERENT headers. Homebrew's libc++ C++ wrappers (cmath, cstddef, cstdlib) can't find their corresponding libc++ C wrappers (math.h, stddef.h, stdlib.h). The libc++ has its own wrapper headers that must be found via `#include_next`, but `-nostdinc -nostdinc++` breaks this chain.
+
+**Conclusion**: Homebrew's libc++ is fundamentally incompatible with `-nostdinc -nostdinc++`. The libc++ C++ headers rely on finding libc++'s own C wrappers via `#include_next`, which requires compiler-level support that `-nostdinc` removes.
+
+**Status**: FAILED
+
+### Attempt 19: Use Apple's system clang for compilation (TESTING)
+**Date**: 2025-11-30
+**Approach**: After 18 failed attempts to make Homebrew LLVM's header configuration work, use Apple's system clang (`/usr/bin/clang++`) for COMPILATION but link against Homebrew's LLVM LIBRARIES.
+
+**Rationale**:
+- Apple's clang is built to work seamlessly with the macOS SDK
+- Apple's clang handles header resolution automatically - no manual `-nostdinc`, `-isystem` configuration needed
+- We only need Homebrew's LLVM/Clang for the LIBRARIES (clangAST, clangTooling, etc.), not for the compiler
+- This is the pragmatic solution after proving that Homebrew's bundled libc++ is incompatible with manual header path configuration
+
+**Implementation**:
+1. Set `CMAKE_CXX_COMPILER` to `/usr/bin/clang++` BEFORE `project()` in tooling CMakeLists.txt
+2. Keep using Homebrew's llvm-config to find LLVM libraries
+3. Add LLVM headers as `-isystem` (works fine with Apple clang)
+4. Use `-isysroot` and `-stdlib=libc++` normally
+
+**Command**:
+```
+/usr/bin/clang++ -O2 -fno-rtti -fexceptions
+                 -isysroot <SDK>
+                 -stdlib=libc++
+                 -isystem<llvm_includes>
+                 ... tool.cpp
+-L<homebrew_llvm_lib> -lclang-cpp -lLLVM
 ```
 
 **Status**: TESTING
