@@ -73,6 +73,15 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
     )
 endif()
 
+# Disable static analyzers for third-party libsodium-bcrypt-pbkdf code
+set_source_files_properties(
+    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
+    deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/blowfish.c
+    deps/libsodium-bcrypt-pbkdf/src/sodium_bcrypt_pbkdf.c
+    PROPERTIES
+    SKIP_LINTING ON
+)
+
 # =============================================================================
 # Module 3: Platform Abstraction (stable - changes monthly)
 # =============================================================================
@@ -221,16 +230,13 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS lib/debug/memory.c)
 endif()
 
-# Disable precompiled headers for tomlc17 (third-party code)
-# This prevents abstraction.h's _CRT_SECURE_NO_WARNINGS from interfering with
-# tomlc17's own platform-safe wrappers for fopen/strerror
-if(WIN32)
-    set_source_files_properties(
-        ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
-        PROPERTIES
-        SKIP_PRECOMPILE_HEADERS ON
-    )
-endif()
+# Disable precompiled headers and static analyzers for tomlc17 (third-party code)
+set_source_files_properties(
+    ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
+    PROPERTIES
+    SKIP_PRECOMPILE_HEADERS ON
+    SKIP_LINTING ON
+)
 
 # =============================================================================
 # Data Structures Module
