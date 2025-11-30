@@ -487,6 +487,10 @@ int main(int argc, char *argv[]) {
   // Use UNTRACKED_MALLOC to avoid appearing in memory leak reports
   // mode_argv is freed via atexit handler when mode->entry_point() calls exit()
   char **mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
+  if (!mode_argv) {
+    log_error("Failed to allocate memory for mode arguments");
+    return EXIT_FAILURE;
+  }
 
   // Build new argv: [program_name, options_after_mode]
   mode_argv[0] = argv[0]; // Keep program name
