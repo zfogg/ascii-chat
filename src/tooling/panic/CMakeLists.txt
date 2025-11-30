@@ -106,10 +106,39 @@ if(APPLE)
         # already be defined. These types come from clang's stddef.h which must
         # be included BEFORE SDK headers.
         #
-        # Attempt 13: Add clang resource dir BEFORE -isysroot to ensure
-        # compiler builtins (stddef.h with size_t/ptrdiff_t) are found first.
-        # Use -nostdinc++ and -cxx-isystem for C++ paths.
-        if(HAS_LLVM_LIBCXX)
+        # Attempt 14: DON'T use -isysroot for compilation. Use SDK's libc++
+        # instead of Homebrew's bundled libc++. Use -nostdinc to disable ALL
+        # implicit headers, then add explicit paths in correct order:
+        # 1. Clang resource dir (builtins with size_t/ptrdiff_t)
+        # 2. SDK libc++ (not Homebrew's - avoids #include_next issues)
+        # 3. LLVM tooling headers
+        # 4. SDK C headers
+        set(SDK_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
+        if(EXISTS "${SDK_LIBCXX_INCLUDE}")
+            message(STATUS "Using SDK libc++ (Attempt 14: avoid Homebrew libc++ and -isysroot)")
+            message(STATUS "  1. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
+            message(STATUS "  2. SDK libc++: ${SDK_LIBCXX_INCLUDE}")
+            message(STATUS "  3. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
+            message(STATUS "  4. SDK C headers: ${MACOS_SDK_PATH}/usr/include")
+
+            target_compile_options(ascii-instr-panic PRIVATE
+                -O2
+                -fno-rtti
+                -fexceptions
+                # Disable ALL implicit header search
+                -nostdinc
+                -nostdinc++
+                # Add paths in STRICT ORDER:
+                # 1. Clang builtins FIRST (defines size_t, ptrdiff_t, etc)
+                "-isystem${CLANG_RESOURCE_DIR}/include"
+                # 2. SDK's libc++ (uses Apple's #include_next which works with SDK)
+                "-isystem${SDK_LIBCXX_INCLUDE}"
+                # 3. LLVM tooling headers
+                "-isystem${LLVM_INCLUDE_DIRS}"
+                # 4. SDK C headers LAST
+                "-isystem${MACOS_SDK_PATH}/usr/include"
+            )
+        elseif(HAS_LLVM_LIBCXX)
             message(STATUS "Using Homebrew LLVM with bundled libc++ (Attempt 13: clang builtins first)")
             message(STATUS "  1. Clang builtins (-isystem): ${CLANG_RESOURCE_DIR}/include")
             message(STATUS "  2. SDK via -isysroot: ${MACOS_SDK_PATH}")
