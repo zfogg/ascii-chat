@@ -122,7 +122,12 @@ jobs:
         fi
 
         GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
-        cmake --build build
+        # Use --verbose to see full compile commands for debugging tooling build issues
+        cmake --build build --verbose 2>&1 | tee build_output.log || {
+          echo "Build failed. Extracting tooling compile commands..."
+          grep -A 5 -B 5 "ascii-instr-defer\|ascii-instr-panic\|tool.cpp" build_output.log | head -100 || true
+          exit 1
+        }
 
         echo "Test executables built:"
         ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
