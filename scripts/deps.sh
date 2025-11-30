@@ -13,8 +13,6 @@
 # Note: On Unix systems, -dev packages include both static (.a) and dynamic (.so) libraries.
 #       The actual static/dynamic linking is controlled by CMake based on build type.
 
-set -e
-
 # Parse arguments
 CONFIG="Debug"
 if [[ "$1" == "-Release" ]] || [[ "$1" == "--release" ]]; then
