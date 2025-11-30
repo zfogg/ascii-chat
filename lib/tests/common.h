@@ -59,6 +59,7 @@
 // Project headers - use relative paths from tests directory
 #include "../common.h"
 #include "logging.h"
+#include "test_env.h"
 
 // =============================================================================
 // Test Environment Detection

@@ -1,7 +1,7 @@
 /**
  * @defgroup client_crypto Cryptographic Operations
  * @ingroup module_client
- * @brief Client-side cryptographic handshake and key management
+ * @brief 🔐 Client-side cryptographic handshake and key management
  */
 
 /**

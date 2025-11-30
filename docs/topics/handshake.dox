@@ -300,17 +300,20 @@
  *
  * **Key Derivation**:
  * @code{.c}
- * // Server/client both derive password_key from password
+ * // Server/client both derive password_key from password using libsodium
  * uint8_t password_key[32];
- * uint8_t salt[16] = ARGON2ID_SALT;  // Fixed salt for ascii-chat
- * 
- * argon2id_hash_raw(
- *     ARGON2ID_TIME_COST,    // 3 iterations
- *     ARGON2ID_MEMORY_COST,  // 64 MB memory
- *     ARGON2ID_PARALLELISM,  // 4 threads
+ * uint8_t salt[ARGON2ID_SALT_SIZE];  // 32-byte salt
+ * // Salt is deterministic: "ascii-chat-password-salt-v1" zero-padded to 32 bytes
+ * memset(salt, 0, sizeof(salt));
+ * memcpy(salt, "ascii-chat-password-salt-v1", 27);
+ *
+ * crypto_pwhash(
+ *     password_key, 32,
  *     password, strlen(password),
- *     salt, sizeof(salt),
- *     password_key, 32
+ *     salt,
+ *     crypto_pwhash_OPSLIMIT_INTERACTIVE,  // ~0.1 seconds on modern CPU
+ *     crypto_pwhash_MEMLIMIT_INTERACTIVE,  // ~64 MB memory
+ *     crypto_pwhash_ALG_DEFAULT            // Argon2id
  * );
  * @endcode
  *

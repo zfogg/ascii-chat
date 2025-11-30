@@ -83,7 +83,7 @@
 /**
  * @name Audio Mixing Configuration
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -92,7 +92,7 @@
  * Limits the maximum number of clients that can provide audio simultaneously.
  * Each client requires one source slot in the mixer.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 #define MIXER_MAX_SOURCES 10
 
@@ -102,7 +102,7 @@
  * Fixed frame size for consistent latency and processing behavior.
  * 256 samples at 44.1kHz = ~5.8ms per frame.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 #define MIXER_FRAME_SIZE 256
 
@@ -125,7 +125,7 @@
  * @note All time-based parameters (attack_ms, release_ms) are converted
  *       to coefficients internally for sample-by-sample processing.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 typedef struct {
   /** @brief Compression threshold in dB (e.g., -10.0) */
@@ -168,7 +168,7 @@ typedef struct {
  * @note Hysteresis means gate opens at threshold but closes at
  *       threshold * hysteresis (lower level), preventing chatter.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 typedef struct {
   /** @brief Gate threshold in linear units (e.g., 0.01f for -40dB) */
@@ -206,7 +206,7 @@ typedef struct {
  * @note Filter state (prev_input, prev_output) must be preserved
  *       between samples for proper operation.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 typedef struct {
   /** @brief Cutoff frequency in Hz (frequencies below this are attenuated) */
@@ -238,7 +238,7 @@ typedef struct {
  * @note Ducking gain is applied per-source, allowing multiple active
  *       speakers to be heard while attenuating background noise.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 typedef struct {
   /** @brief Speaking threshold in dB (sources below this are not "speaking") */
@@ -292,7 +292,7 @@ typedef struct {
  * @warning Source arrays must be locked (read or write) during iteration
  *          to prevent concurrent modifications.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 typedef struct {
   /** @brief Current number of active audio sources */
@@ -334,7 +334,7 @@ typedef struct {
 /**
  * @name Mixer Lifecycle Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -348,7 +348,7 @@ typedef struct {
  *
  * @note max_sources should not exceed MIXER_MAX_SOURCES.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 mixer_t *mixer_create(int max_sources, int sample_rate);
 
@@ -361,7 +361,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate);
  *
  * @warning Mixer must not be in use by any threads when destroyed.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void mixer_destroy(mixer_t *mixer);
 
@@ -370,7 +370,7 @@ void mixer_destroy(mixer_t *mixer);
 /**
  * @name Source Management Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -387,7 +387,7 @@ void mixer_destroy(mixer_t *mixer);
  *
  * @note If max_sources is reached, addition fails and -1 is returned.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *buffer);
 
@@ -403,7 +403,7 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
  *
  * @note If client_id is not found, operation has no effect.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void mixer_remove_source(mixer_t *mixer, uint32_t client_id);
 
@@ -420,7 +420,7 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id);
  *
  * @note Source must exist (be added) before calling this function.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active);
 
@@ -429,7 +429,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active);
 /**
  * @name Audio Processing Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -450,7 +450,7 @@ void mixer_set_source_active(mixer_t *mixer, uint32_t client_id, bool active);
  *
  * @warning Output buffer must have at least num_samples float elements.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 int mixer_process(mixer_t *mixer, float *output, int num_samples);
 
@@ -470,7 +470,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples);
  *
  * @note Thread-safe (acquires read lock for source access).
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_samples, uint32_t exclude_client_id);
 
@@ -479,7 +479,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 /**
  * @name Utility Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -489,7 +489,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
  *
  * Converts decibel value to linear gain multiplier for audio processing.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float db_to_linear(float db);
 
@@ -500,7 +500,7 @@ float db_to_linear(float db);
  *
  * Converts linear gain multiplier to decibel value for display/logging.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float linear_to_db(float linear);
 
@@ -514,7 +514,7 @@ float linear_to_db(float linear);
  * Clamps a float value to the specified range. Useful for preventing
  * audio overflow and ensuring parameters stay within valid ranges.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float clamp_float(float value, float min, float max);
 
@@ -523,7 +523,7 @@ float clamp_float(float value, float min, float max);
 /**
  * @name Compressor Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -534,7 +534,7 @@ float clamp_float(float value, float min, float max);
  * Initializes compressor state and converts time-based parameters
  * (attack_ms, release_ms) to coefficients for sample-by-sample processing.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void compressor_init(compressor_t *comp, float sample_rate);
 
@@ -550,7 +550,7 @@ void compressor_init(compressor_t *comp, float sample_rate);
  * Updates compressor parameters. Time-based parameters are converted
  * to coefficients internally.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
                            float makeup_dB);
@@ -567,7 +567,7 @@ void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, 
  * @note This calculates gain reduction, not actual audio compression.
  *       Apply the gain to audio samples separately.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float compressor_process_sample(compressor_t *comp, float sidechain);
 
@@ -576,7 +576,7 @@ float compressor_process_sample(compressor_t *comp, float sidechain);
 /**
  * @name Ducking Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -590,7 +590,7 @@ float compressor_process_sample(compressor_t *comp, float sidechain);
  *
  * @warning Must be paired with ducking_free() to prevent memory leaks.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void ducking_init(ducking_t *duck, int num_sources, float sample_rate);
 
@@ -600,7 +600,7 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate);
  *
  * Frees per-source arrays allocated by ducking_init().
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void ducking_free(ducking_t *duck);
 
@@ -616,7 +616,7 @@ void ducking_free(ducking_t *duck);
  * Updates ducking parameters. Time-based parameters are converted
  * to coefficients internally.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin_dB, float atten_dB, float attack_ms,
                         float release_ms);
@@ -634,7 +634,7 @@ void ducking_set_params(ducking_t *duck, float threshold_dB, float leader_margin
  * @note Gains are calculated from envelope levels, identifying leaders
  *       and applying attenuation to non-leaders.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int num_sources);
 
@@ -643,7 +643,7 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
 /**
  * @name Noise Gate Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -654,7 +654,7 @@ void ducking_process_frame(ducking_t *duck, float *envelopes, float *gains, int 
  * Initializes noise gate state and converts time-based parameters
  * to coefficients.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void noise_gate_init(noise_gate_t *gate, float sample_rate);
 
@@ -669,7 +669,7 @@ void noise_gate_init(noise_gate_t *gate, float sample_rate);
  * Updates noise gate parameters. Time-based parameters are converted
  * to coefficients internally.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms, float release_ms, float hysteresis);
 
@@ -685,7 +685,7 @@ void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms,
  *
  * @note peak_amplitude should be envelope follower output, not raw sample.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float noise_gate_process_sample(noise_gate_t *gate, float input, float peak_amplitude);
 
@@ -699,7 +699,7 @@ float noise_gate_process_sample(noise_gate_t *gate, float input, float peak_ampl
  *
  * @note Peak amplitude is calculated per sample for gate decision.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void noise_gate_process_buffer(noise_gate_t *gate, float *buffer, int num_samples);
 
@@ -710,7 +710,7 @@ void noise_gate_process_buffer(noise_gate_t *gate, float *buffer, int num_sample
  *
  * Returns current gate state. Useful for debugging and monitoring.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 bool noise_gate_is_open(const noise_gate_t *gate);
 
@@ -719,7 +719,7 @@ bool noise_gate_is_open(const noise_gate_t *gate);
 /**
  * @name High-Pass Filter Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -731,7 +731,7 @@ bool noise_gate_is_open(const noise_gate_t *gate);
  * Initializes filter state and calculates filter coefficient alpha
  * from cutoff frequency.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void highpass_filter_init(highpass_filter_t *filter, float cutoff_hz, float sample_rate);
 
@@ -742,7 +742,7 @@ void highpass_filter_init(highpass_filter_t *filter, float cutoff_hz, float samp
  * Resets filter state (prev_input, prev_output) to zero. Useful
  * for starting fresh processing or removing DC offset.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void highpass_filter_reset(highpass_filter_t *filter);
 
@@ -755,7 +755,7 @@ void highpass_filter_reset(highpass_filter_t *filter);
  * Processes input sample through first-order IIR high-pass filter.
  * Filter state is updated for next sample.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float highpass_filter_process_sample(highpass_filter_t *filter, float input);
 
@@ -767,7 +767,7 @@ float highpass_filter_process_sample(highpass_filter_t *filter, float input);
  *
  * Processes entire buffer through high-pass filter. Buffer is modified in-place.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, int num_samples);
 
@@ -776,7 +776,7 @@ void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, in
 /**
  * @name Soft Clipping Functions
  * @{
- * @ingroup mixer
+ * @ingroup audio
  */
 
 /**
@@ -790,7 +790,7 @@ void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, in
  *
  * @note Soft clipping is gentler than hard clipping, reducing distortion.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 float soft_clip(float sample, float threshold);
 
@@ -802,7 +802,7 @@ float soft_clip(float sample, float threshold);
  *
  * Processes entire buffer through soft clipping. Buffer is modified in-place.
  *
- * @ingroup mixer
+ * @ingroup audio
  */
 void soft_clip_buffer(float *buffer, int num_samples, float threshold);
 

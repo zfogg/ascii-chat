@@ -1,7 +1,7 @@
 /**
  * @defgroup client_audio Audio Processing
  * @ingroup module_client
- * @brief Audio capture, playback, and sample processing
+ * @brief 🔊 Audio capture, playback, and sample processing
  */
 
 /**

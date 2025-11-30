@@ -1,7 +1,7 @@
 /**
  * @defgroup client_display Terminal Display
  * @ingroup module_client
- * @brief Terminal rendering, TTY management, and frame output
+ * @brief 🖥️ Terminal rendering, TTY management, and frame output
  */
 
 /**

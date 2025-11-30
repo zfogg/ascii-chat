@@ -1,7 +1,7 @@
 /**
  * @defgroup client_capture Media Capture
  * @ingroup module_client
- * @brief Webcam video capture and transmission to server
+ * @brief 📹 Webcam video capture and transmission to server
  */
 
 /**

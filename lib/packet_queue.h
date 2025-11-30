@@ -1,7 +1,4 @@
 /**
- * @defgroup packet_queue Packet Queue
- * @ingroup packet_queue
- *
  * @file packet_queue.h
  * @ingroup packet_queue
  * @brief 📬 Thread-safe packet queue system for per-client send threads
@@ -26,7 +23,7 @@
  * PRODUCER-CONSUMER MODEL:
  * - Producer threads (audio mixer, video render): Enqueue packets asynchronously
  * - Consumer threads (per-client send threads): Dequeue packets and transmit
- * - Condition variables provide efficient blocking/waking without busy-waiting
+ * - Lock-free operations with atomic retry patterns (no busy-waiting with backoff)
  *
  * QUEUE DESIGN:
  * - Linked-list implementation with head/tail pointers for O(1) enqueue/dequeue
@@ -421,9 +418,9 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
 int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *packet);
 
 /**
- * @brief Dequeue a packet from the queue (blocking)
+ * @brief Dequeue a packet from the queue (non-blocking)
  * @param queue Packet queue
- * @return Pointer to dequeued packet, or NULL if queue is shutdown
+ * @return Pointer to dequeued packet, or NULL if queue is empty or shutdown
  *
  * Removes and returns the packet at the head of the queue. Returns NULL immediately
  * if queue is empty or shutdown (non-blocking operation).

@@ -570,7 +570,7 @@
  * bool is_authorized = false;
  * for (size_t i = 0; i < num_authorized; i++) {
  *     if (ed25519_verify_signature(
- *             client_keys[i].data,
+ *             client_keys[i].key,  // .key field (32 bytes), not .data
  *             challenge,
  *             sizeof(challenge),
  *             signature

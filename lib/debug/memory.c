@@ -370,7 +370,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
  * @note If in nested debug tracking, falls back to standard realloc
  * @note Thread-safe when mutex is properly initialized
  *
- * @ingroup debug
+ * @ingroup debug_util
  */
 void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   // Prevent recursion if we're already in debug memory logic
