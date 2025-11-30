@@ -16,6 +16,12 @@
 #include <unistd.h>
 #endif
 
+#include <stdbool.h>
+#include "tests/common.h"
+
+// Use shared binary path detection from tests/common.h
+#define get_binary_path test_get_binary_path
+
 Test(client_main, test_client_help) {
 #ifdef _WIN32
   // Windows version - use CreateProcess
@@ -27,7 +33,8 @@ Test(client_main, test_client_help) {
   ZeroMemory(&pi, sizeof(pi));
 
   // Run client with --help
-  char cmdLine[] = "ascii-chat.exe --help";
+  char cmdLine[512];
+  safe_snprintf(cmdLine, sizeof(cmdLine), "%s --help", get_binary_path());
   if (CreateProcess(NULL, cmdLine, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
     // Wait for process to complete
     WaitForSingleObject(pi.hProcess, INFINITE);
@@ -52,7 +59,7 @@ Test(client_main, test_client_help) {
     char *argv[] = {"ascii-chat", "--help", NULL};
 
     // Run the regular client binary
-    execv("./build/bin/ascii-chat", argv);
+    execv(get_binary_path(), argv);
     exit(127); // If exec fails
   }
 

@@ -51,56 +51,8 @@ static int send_capabilities(int socket, int width, int height) {
   return send_packet(socket, PACKET_TYPE_CLIENT_CAPABILITIES, &caps, sizeof(caps));
 }
 
-// Helper function to find the binary path
-// Handles both direct invocation from repo root and ctest invocation from build dir
-static const char *get_server_binary_path(void) {
-  static char binary_path[256];
-  static bool initialized = false;
-
-  if (!initialized) {
-    // Check if we're in Docker (/.dockerenv file exists)
-    bool in_docker = (access("/.dockerenv", F_OK) == 0);
-    const char *build_dir = getenv("BUILD_DIR");
-
-    // Try BUILD_DIR first if set
-    if (build_dir) {
-      safe_snprintf(binary_path, sizeof(binary_path), "./%s/bin/ascii-chat", build_dir);
-      if (access(binary_path, X_OK) == 0) {
-        initialized = true;
-        return binary_path;
-      }
-    }
-
-    // Try several paths in order of preference
-    const char *candidates[] = {
-        // Relative paths from repo root
-        in_docker ? "./build_docker/bin/ascii-chat" : "./build/bin/ascii-chat",
-        // Relative paths from build directory (when ctest runs from there)
-        "./bin/ascii-chat",
-        // Absolute paths for Docker
-        in_docker ? "/app/build_docker/bin/ascii-chat" : NULL,
-    };
-
-    // Try each candidate path
-    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
-      if (candidates[i] && access(candidates[i], X_OK) == 0) {
-        safe_snprintf(binary_path, sizeof(binary_path), "%s", candidates[i]);
-        initialized = true;
-        return binary_path;
-      }
-    }
-
-    // Fallback to default (will likely fail but gives useful error)
-    if (in_docker) {
-      safe_snprintf(binary_path, sizeof(binary_path), "./build_docker/bin/ascii-chat");
-    } else {
-      safe_snprintf(binary_path, sizeof(binary_path), "./build/bin/ascii-chat");
-    }
-    initialized = true;
-  }
-
-  return binary_path;
-}
+// Use shared binary path detection from tests/common.h
+#define get_server_binary_path test_get_binary_path
 
 static pid_t start_test_server(int port) {
   pid_t pid = fork();

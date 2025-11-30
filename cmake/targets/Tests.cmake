@@ -1,24 +1,30 @@
 # =============================================================================
-# Tests Module
+# Tests Module (Criterion-based tests)
 # =============================================================================
-# This module sets up the test framework and creates test executables
+# This module sets up the Criterion test framework and creates test executables
 #
 # Prerequisites:
 #   - Libraries created (via Libraries.cmake)
-#   - BUILD_TESTS option set
-#   - CRITERION_FOUND (if BUILD_TESTS is ON)
+#   - BUILD_CRITERION_TESTS option set (from Criterion.cmake)
+#   - CRITERION_FOUND (required for BUILD_CRITERION_TESTS)
 #   - Platform detection complete
 #   - USE_MUSL known
 #
 # Outputs:
-#   - All test_* executable targets
+#   - All test_* executable targets (Criterion-based)
 #   - tests, test_debug, test_release, test_all custom targets
+#
+# Note: Library runtime tests (test-static-lib, test-shared-lib) are handled
+# by TestLibs.cmake and only require BUILD_TESTS, not Criterion.
 # =============================================================================
 
-# Test framework setup
-if(BUILD_TESTS AND CRITERION_FOUND)
+# Enable CTest if any tests are being built (Criterion or lib runtime)
+if(BUILD_TESTS)
     enable_testing()
+endif()
 
+# Criterion test framework setup
+if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     # Build test LDFLAGS systematically (matches Makefile complex setup)
     set(TEST_LDFLAGS ${CRITERION_LIBRARIES})
     # Criterion requires libffi for theories support
@@ -218,9 +224,10 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
         # Add test executable with test utilities
+        # - common.c: Provides shared test utilities (test_get_binary_path, etc.)
         # - globals.c: Provides global symbols (g_should_exit) needed by lib code
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src} lib/tests/common.c lib/tests/globals.c lib/tests/logging.c)
 
         # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
@@ -358,19 +365,30 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         COMMENT "Running all tests"
     )
 
+    # Add library test targets to test_all so they're built when running ctest
+    # These are defined in TestLibs.cmake but need to be added here after test_all exists
+    if(TARGET test-static-lib)
+        add_dependencies(test_all test-static-lib)
+    endif()
+    if(TARGET test-shared-lib)
+        add_dependencies(test_all test-shared-lib)
+    endif()
+
 else()
+    # Criterion tests not available, but lib runtime tests may still be available
     if(USE_MUSL AND BUILD_TESTS)
-        message(STATUS "Tests disabled: System Criterion requires glibc (boxfort dependency)")
-        message(STATUS "  -> Use glibc build for tests: cmake -B build -DBUILD_TESTS=ON")
-        message(STATUS "  -> Musl builds are for deployment, not testing")
-    elseif(BUILD_TESTS)
-        message(STATUS "${Yellow}Criterion testing framework not found. Tests will not be built.${ColorReset}")
+        message(STATUS "Criterion tests disabled: System Criterion requires glibc (boxfort dependency)")
+        message(STATUS "  -> Library runtime tests still available via ctest")
+    elseif(BUILD_TESTS AND NOT WIN32)
+        message(STATUS "${Yellow}Criterion testing framework not found. Criterion tests will not be built.${ColorReset}")
+        message(STATUS "  -> Library runtime tests still available via ctest")
     endif()
 endif()
 
 # =============================================================================
 # Standalone Tests (No Criterion Dependency)
 # =============================================================================
-# These tests use standard assert.h and don't require the Criterion framework
+# Library runtime tests (test-static-lib, test-shared-lib) are handled by
+# TestLibs.cmake and only require BUILD_TESTS, not Criterion.
 # Note: The defer runtime library was removed when we switched to direct code insertion.
 

@@ -73,57 +73,8 @@ TestSuite(main_integration, .init = setup_main_tests, .fini = teardown_main_test
 // Process Management Utilities
 // =============================================================================
 
-// Helper function to get the binary path based on environment
-// Handles both direct invocation from repo root and ctest invocation from build dir
-static const char *get_binary_path(void) {
-  static char binary_path[256];
-  static bool initialized = false;
-
-  if (!initialized) {
-    // Check if we're in Docker (/.dockerenv file exists)
-    bool in_docker = (access("/.dockerenv", F_OK) == 0);
-    const char *build_dir = getenv("BUILD_DIR");
-
-    // Try several paths in order of preference
-    const char *candidates[] = {
-        // Relative paths from repo root
-        build_dir ? NULL : NULL, // placeholder for build_dir case below
-        in_docker ? "./build_docker/bin/ascii-chat" : "./build/bin/ascii-chat",
-        // Relative paths from build directory (when ctest runs from there)
-        "./bin/ascii-chat",
-        // Absolute paths for Docker
-        in_docker ? "/app/build_docker/bin/ascii-chat" : NULL,
-    };
-
-    if (build_dir) {
-      // Use BUILD_DIR environment variable if set
-      safe_snprintf(binary_path, sizeof(binary_path), "./%s/bin/ascii-chat", build_dir);
-      if (access(binary_path, X_OK) == 0) {
-        initialized = true;
-        return binary_path;
-      }
-    }
-
-    // Try each candidate path
-    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
-      if (candidates[i] && access(candidates[i], X_OK) == 0) {
-        safe_snprintf(binary_path, sizeof(binary_path), "%s", candidates[i]);
-        initialized = true;
-        return binary_path;
-      }
-    }
-
-    // Fallback to default (will likely fail but gives useful error)
-    if (in_docker) {
-      safe_snprintf(binary_path, sizeof(binary_path), "./build_docker/bin/ascii-chat");
-    } else {
-      safe_snprintf(binary_path, sizeof(binary_path), "./build/bin/ascii-chat");
-    }
-    initialized = true;
-  }
-
-  return binary_path;
-}
+// Use shared binary path detection from tests/common.h
+#define get_binary_path test_get_binary_path
 
 static pid_t spawn_process(const char *path, char *const argv[], const char *name) {
   pid_t pid = fork();
