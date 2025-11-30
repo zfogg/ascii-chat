@@ -13,6 +13,7 @@ _ascii_chat() {
         -a --address
         -p --port
         -q --quiet
+        -V --verbose
         -L --log-file
         -P --palette
         -C --palette-chars
@@ -38,6 +39,9 @@ _ascii_chat() {
         -S --snapshot
         -D --snapshot-delay
         --test-pattern
+        --list-webcams
+        --list-microphones
+        --list-speakers
         --fps
         --color-mode
         --show-capabilities

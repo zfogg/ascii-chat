@@ -50,6 +50,7 @@ _ascii_chat_common_options() {
         '(-a --address)'{-a,--address}'[Server address]:address:_hosts' \
         '(-p --port)'{-p,--port}'[Server port number]:port:(27224)' \
         '(-q --quiet)'{-q,--quiet}'[Suppress console logging output]' \
+        '*'{-V,--verbose}'[Increase verbosity (stackable)]' \
         '(-L --log-file)'{-L,--log-file}'[Write log output to file]:file:_files' \
         '(-P --palette)'{-P,--palette}'[ASCII character palette]:palette:_ascii_chat_palettes' \
         '(-C --palette-chars)'{-C,--palette-chars}'[Custom palette characters]:characters:' \
@@ -75,6 +76,9 @@ _ascii_chat_client_options() {
         '(-S --snapshot)'{-S,--snapshot}'[Capture single frame and exit]' \
         '(-D --snapshot-delay)'{-D,--snapshot-delay}'[Delay before snapshot]:seconds:(1.0 2.0 3.0 5.0)' \
         '--test-pattern[Use test pattern instead of webcam]' \
+        '--list-webcams[List available webcam devices and exit]' \
+        '--list-microphones[List available audio input devices and exit]' \
+        '--list-speakers[List available audio output devices and exit]' \
         '--fps[Desired frame rate]:fps:(15 30 60 120)' \
         '--color-mode[Terminal color mode]:mode:_ascii_chat_color_modes' \
         '--show-capabilities[Print terminal capabilities and exit]' \

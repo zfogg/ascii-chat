@@ -47,6 +47,17 @@ Print version information and exit.
 .BR \-q ", " \-\-quiet
 Suppress console logging output. Only errors and critical warnings are displayed.
 .TP
+.BR \-V ", " \-\-verbose
+Increase output verbosity. Can be specified multiple times for increased detail:
+.RS
+.IP \(bu 2
+\fB\-V\fR: More detailed output
+.IP \(bu 2
+\fB\-VV\fR: Even more detail
+.IP \(bu 2
+\fB\-VVV\fR: Maximum verbosity
+.RE
+.TP
 .BR \-L ", " \-\-log\-file =\fIPATH\fR
 Write log output to the specified file. The default log files are client.log and
 server.log in your current working directory.
@@ -123,6 +134,10 @@ Default: flipped (mirror mode)
 Use a test pattern instead of real webcam input.
 Useful for testing when you don't have a physical webcam connected to the computer.
 .TP
+.BR \-\-list\-webcams
+List all available webcam devices and exit.
+Shows device index and name for each detected camera.
+.TP
 .BR \-\-fps =\fIFPS\fR
 Desired frame rate (1-144).
 Default: \fB60\fR (Unix), \fB30\fR (Windows)
@@ -143,6 +158,14 @@ Enable audio capture and streaming.
 .BR \-\-audio\-device =\fIINDEX\fR
 Audio input device index. Use \fB-1\fR for system default.
 Default: \fB-1\fR
+.TP
+.BR \-\-list\-microphones
+List all available audio input devices (microphones) and exit.
+Shows device index, name, and capabilities.
+.TP
+.BR \-\-list\-speakers
+List all available audio output devices (speakers) and exit.
+Shows device index, name, and capabilities.
 .SS "Encryption Options"
 .TP
 .BR \-E ", " \-\-encrypt
