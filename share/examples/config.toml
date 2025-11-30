@@ -1,0 +1,179 @@
+# ascii-chat configuration file
+#
+# Default location:
+#   Linux/macOS: ~/.config/ascii-chat/config.toml (or $XDG_CONFIG_HOME/ascii-chat/config.toml)
+#   Windows: %APPDATA%\ascii-chat\config.toml
+#
+# Generate a new config file with: ascii-chat --config-create
+# Use a custom config file with: ascii-chat --config /path/to/config.toml
+#
+# CLI arguments override config file values.
+# All options are commented out with their default values.
+
+# =============================================================================
+# Network Configuration
+# =============================================================================
+[network]
+# Port number for server/client communication (1-65535)
+# Default: 27224
+#port = 27224
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
+[server]
+# IPv4 address to bind to
+# Use "0.0.0.0" to accept connections from any IPv4 address
+# Default: 127.0.0.1 (localhost only)
+#bind_ipv4 = "127.0.0.1"
+
+# IPv6 address to bind to
+# Use "::" to accept connections from any address (dual-stack)
+# Use "::1" for localhost only
+# Default: ::1
+#bind_ipv6 = "::1"
+
+# =============================================================================
+# Client Configuration
+# =============================================================================
+[client]
+# Server address to connect to
+# Can be an IP address or hostname
+# Default: 127.0.0.1
+#address = "127.0.0.1"
+
+# Terminal dimensions in characters
+# Set to 0 for auto-detection from terminal size
+# Default: 0 (auto-detect)
+#width = 0
+#height = 0
+
+# Webcam device index
+# 0 = first webcam, 1 = second webcam, etc.
+# Default: 0
+#webcam_index = 0
+
+# Flip webcam image horizontally (mirror mode)
+# Useful for selfie-style video
+# Default: false
+#webcam_flip = false
+
+# Use test pattern instead of real webcam
+# Useful for testing without a camera
+# Default: false
+#test_pattern = false
+
+# Color mode for terminal output
+# Options: "auto", "mono", "16", "256", "truecolor"
+#   auto     - Auto-detect terminal capabilities
+#   mono     - Monochrome/grayscale output
+#   16       - 16-color ANSI mode
+#   256      - 256-color palette mode
+#   truecolor - 24-bit truecolor mode
+# Default: auto
+#color_mode = "auto"
+
+# Render mode for ASCII output
+# Options: "foreground", "background", "half-block"
+#   foreground - Use colored text characters
+#   background - Use block characters with background colors
+#   half-block - Use Unicode half-block characters (2x vertical resolution)
+# Default: foreground
+#render_mode = "foreground"
+
+# Target frames per second
+# Range: 1-144
+# Default: 30 (Windows), 60 (Unix)
+#fps = 60
+
+# Stretch video to fill terminal (ignore aspect ratio)
+# Default: false
+#stretch = false
+
+# Quiet mode (suppress console logging)
+# Default: false
+#quiet = false
+
+# Snapshot mode settings
+# snapshot_mode: Capture single frame and exit
+# snapshot_delay: Seconds to wait for webcam warmup before capture
+# Default: snapshot_mode = false, snapshot_delay = 0.0
+#snapshot_mode = false
+#snapshot_delay = 0.0
+
+# Force UTF-8 support even if terminal doesn't advertise it
+# Default: false
+#force_utf8 = false
+
+# =============================================================================
+# Audio Configuration (Client Only)
+# =============================================================================
+[audio]
+# Enable audio streaming
+# Default: false
+#enabled = false
+
+# Audio input device index
+# -1 = use system default device
+# 0, 1, 2... = specific device index
+# Default: -1
+#device = -1
+
+# =============================================================================
+# ASCII Palette Configuration
+# =============================================================================
+[palette]
+# Palette type for ASCII rendering
+# Options: "standard", "blocks", "digital", "minimal", "cool", "custom"
+# Default: standard
+#type = "standard"
+
+# Custom palette characters (only used when type = "custom")
+# Characters should be ordered from darkest (spaces) to brightest
+# Example: " .:-=+*#%@"
+#chars = " .:-=+*#%@"
+
+# =============================================================================
+# Encryption Configuration
+# =============================================================================
+[crypto]
+# Enable encryption
+# Encryption is enabled by default; use no_encrypt = true to disable
+# Default: true
+#encrypt_enabled = true
+
+# Path to SSH private key file for authentication
+# Supports Ed25519 keys
+# Example: "~/.ssh/id_ed25519"
+#key = ""
+
+# Path to key file containing encryption key
+#keyfile = ""
+
+# Password for encryption (WARNING: storing passwords in config files is insecure!)
+# Prefer using CLI --password
+#password = ""
+
+# Disable encryption entirely
+# Default: false
+#no_encrypt = false
+
+# Server public key for client verification (client only)
+# Can be:
+#   - Path to public key file: "~/.ssh/server.pub"
+#   - GitHub username: "github:username"
+#   - GitLab username: "gitlab:username"
+#server_key = ""
+
+# Path to file containing allowed client public keys (server only)
+# One key per line in authorized_keys format
+#client_keys = ""
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+[logging]
+# Path to log file
+# Empty string means no file logging (console only)
+# Default: "" (no file)
+#log_file = ""

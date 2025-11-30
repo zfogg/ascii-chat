@@ -1,0 +1,119 @@
+#compdef ascii-chat
+# Zsh completion script for ascii-chat
+# Install to: /usr/share/zsh/site-functions/_ascii-chat
+# Or place in a directory in your $fpath
+
+_ascii_chat_modes() {
+    local modes=(
+        'server:Run a video chat server'
+        'client:Connect to a video chat server'
+    )
+    _describe -t modes 'mode' modes
+}
+
+_ascii_chat_palettes() {
+    local palettes=(
+        'standard:Standard ASCII characters'
+        'blocks:Unicode block characters'
+        'digital:Digital/matrix style'
+        'minimal:Minimal character set'
+        'cool:Cool/aesthetic style'
+        'custom:User-defined characters'
+    )
+    _describe -t palettes 'palette' palettes
+}
+
+_ascii_chat_color_modes() {
+    local modes=(
+        'auto:Auto-detect terminal capabilities'
+        'mono:Monochrome/grayscale output'
+        '16:16-color ANSI mode'
+        '256:256-color palette mode'
+        'truecolor:24-bit truecolor mode'
+    )
+    _describe -t color-modes 'color mode' modes
+}
+
+_ascii_chat_render_modes() {
+    local modes=(
+        'foreground:Text colors only'
+        'background:Block-style fills'
+        'half-block:Unicode half-blocks (2x vertical resolution)'
+    )
+    _describe -t render-modes 'render mode' modes
+}
+
+_ascii_chat_common_options() {
+    _arguments -s -S \
+        '(-h --help)'{-h,--help}'[Print usage information and exit]' \
+        '(-v --version)'{-v,--version}'[Print version information and exit]' \
+        '(-a --address)'{-a,--address}'[Server address]:address:_hosts' \
+        '(-p --port)'{-p,--port}'[Server port number]:port:(27224)' \
+        '(-q --quiet)'{-q,--quiet}'[Suppress console logging output]' \
+        '(-L --log-file)'{-L,--log-file}'[Write log output to file]:file:_files' \
+        '(-P --palette)'{-P,--palette}'[ASCII character palette]:palette:_ascii_chat_palettes' \
+        '(-C --palette-chars)'{-C,--palette-chars}'[Custom palette characters]:characters:' \
+        '(-E --encrypt)'{-E,--encrypt}'[Enable packet encryption]' \
+        '(-K --key)'{-K,--key}'[SSH key for authentication]:key:_files' \
+        '(-F --keyfile)'{-F,--keyfile}'[Read encryption key from file]:file:_files' \
+        '--password[Password for connection encryption]::password:' \
+        '--no-encrypt[Explicitly disable encryption]' \
+        '--config[Load configuration from TOML file]:file:_files -g "*.toml"' \
+        '--config-create[Create a default configuration file]::path:_files'
+}
+
+_ascii_chat_client_options() {
+    _arguments -s -S \
+        '(-x --width)'{-x,--width}'[Set terminal width]:columns:' \
+        '(-y --height)'{-y,--height}'[Set terminal height]:rows:' \
+        '(-H --host)'{-H,--host}'[Hostname for DNS lookup]:hostname:_hosts' \
+        '(-c --webcam-index)'{-c,--webcam-index}'[Webcam device index]:index:(0 1 2 3)' \
+        '(-f --webcam-flip)'{-f,--webcam-flip}'[Toggle horizontal flipping of webcam]' \
+        '(-M --render-mode)'{-M,--render-mode}'[Rendering mode]:mode:_ascii_chat_render_modes' \
+        '(-A --audio)'{-A,--audio}'[Enable audio capture and streaming]' \
+        '(-s --stretch)'{-s,--stretch}'[Allow image stretching]' \
+        '(-S --snapshot)'{-S,--snapshot}'[Capture single frame and exit]' \
+        '(-D --snapshot-delay)'{-D,--snapshot-delay}'[Delay before snapshot]:seconds:(1.0 2.0 3.0 5.0)' \
+        '--test-pattern[Use test pattern instead of webcam]' \
+        '--fps[Desired frame rate]:fps:(15 30 60 120)' \
+        '--color-mode[Terminal color mode]:mode:_ascii_chat_color_modes' \
+        '--show-capabilities[Print terminal capabilities and exit]' \
+        '--utf8[Force enable UTF-8 support]' \
+        '--audio-device[Audio input device index]:index:(-1 0 1 2)' \
+        '--server-key[Expected server public key]:key:_files -g "*.pub"'
+}
+
+_ascii_chat_server_options() {
+    _arguments -s -S \
+        '--address6[IPv6 bind address]:address:' \
+        '--client-keys[Allowed client keys file]:file:_files'
+}
+
+_ascii_chat() {
+    local curcontext="$curcontext" state line
+    typeset -A opt_args
+
+    _arguments -C \
+        '1:mode:_ascii_chat_modes' \
+        '*::arg:->args'
+
+    case $state in
+        args)
+            case $line[1] in
+                client)
+                    _ascii_chat_common_options
+                    _ascii_chat_client_options
+                    ;;
+                server)
+                    _ascii_chat_common_options
+                    _ascii_chat_server_options
+                    ;;
+                *)
+                    _ascii_chat_common_options
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_ascii_chat "$@"

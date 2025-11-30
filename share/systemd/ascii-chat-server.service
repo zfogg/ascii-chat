@@ -1,0 +1,46 @@
+[Unit]
+Description=ascii chat Video Server
+Documentation=man:ascii-chat(1)
+Documentation=https://github.com/zfogg/ascii-chat
+Documentation=https://zfogg.github.io/ascii-chat
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/ascii-chat server --quiet
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+MemoryDenyWriteExecute=yes
+LockPersonality=yes
+
+# Run as dedicated user (create with: useradd -r -s /usr/sbin/nologin ascii-chat)
+User=ascii-chat
+Group=ascii-chat
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ascii-chat-server
+
+# Resource limits
+LimitNOFILE=4096
+LimitNPROC=64
+
+[Install]
+WantedBy=multi-user.target
