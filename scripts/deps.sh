@@ -196,15 +196,12 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo update-alternatives --set clang++ ${LLVM_BIN}/clang++
     sudo update-alternatives --set llvm-config ${LLVM_BIN}/llvm-config
 
-    # Set up cmake alternative to ensure apt-installed cmake is used
+    # Ensure apt-installed cmake in /usr/bin is used
     # GitHub runners have pre-installed cmake in /usr/local/bin that may take precedence
-    if [ -f /usr/bin/cmake ]; then
-      sudo update-alternatives --install /usr/bin/cmake cmake /usr/bin/cmake 100
-      # Remove any conflicting cmake from /usr/local/bin if it exists
-      if [ -f /usr/local/bin/cmake ]; then
-        echo >&2 "Removing old cmake from /usr/local/bin..."
-        sudo rm -f /usr/local/bin/cmake
-      fi
+    # Remove any conflicting cmake from /usr/local/bin if it exists
+    if [ -f /usr/local/bin/cmake ]; then
+      echo >&2 "Removing old cmake from /usr/local/bin..."
+      sudo rm -f /usr/local/bin/cmake
     fi
 
     # Verify configuration
