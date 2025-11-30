@@ -41,7 +41,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v4
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -92,7 +92,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v4
 
     - name: Clean build directory to force reconfigure
       run: |

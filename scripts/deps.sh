@@ -148,30 +148,45 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     echo "Configuring LLVM $LLVM_VERSION as default compiler..."
 
-    # Set up update-alternatives for LLVM tools
-    # Priority 100 ensures this version takes precedence over other versions
     LLVM_BIN="/usr/lib/llvm-$LLVM_VERSION/bin"
 
-    # Main clang alternative with slaves (this creates the comprehensive group)
-    # The --slave options ensure related tools are switched together
-    sudo update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 100 \
-      --slave /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ \
-      --slave /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format \
-      --slave /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy \
-      --slave /usr/bin/lld lld ${LLVM_BIN}/lld \
-      --slave /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld \
-      --slave /usr/bin/lldb lldb ${LLVM_BIN}/lldb
+    # Remove existing alternatives that might conflict (they may be registered as masters)
+    # This allows us to set up fresh alternatives with our desired configuration
+    for tool in clang clang++ clang-format clang-tidy lld ld.lld lldb llvm-config llvm-ar llvm-nm llvm-objdump llvm-ranlib llvm-symbolizer; do
+      sudo update-alternatives --remove-all "$tool" 2>/dev/null || true
+    done
 
-    # LLVM core tools (separate alternatives)
-    sudo update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 100
-    sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 100
-    sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 100
-    sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 100
-    sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 100
-    sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 100
+    # Also remove any non-alternatives binaries in /usr/bin that might shadow our alternatives
+    for tool in clang clang++ clang-format clang-tidy lld ld.lld lldb llvm-config llvm-ar llvm-nm llvm-objdump llvm-ranlib llvm-symbolizer; do
+      if [ -e "/usr/bin/$tool" ] && [ ! -L "/usr/bin/$tool" ]; then
+        echo "Removing non-symlink $tool from /usr/bin..."
+        sudo rm -f "/usr/bin/$tool"
+      elif [ -L "/usr/bin/$tool" ] && [ ! -e "/etc/alternatives/$tool" ]; then
+        echo "Removing stale symlink $tool from /usr/bin..."
+        sudo rm -f "/usr/bin/$tool"
+      fi
+    done
 
-    # Set this LLVM version as the active alternative (in case multiple versions are installed)
+    # Register each tool as a separate alternative (no slaves - avoids conflicts)
+    # Use priority 200 to override any lower-priority alternatives
+    sudo update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200
+    sudo update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
+    sudo update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 200
+    sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 200
+    sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 200
+    sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200
+    sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200
+    sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200
+
+    # Explicitly set the alternatives to ensure our version is active
     sudo update-alternatives --set clang ${LLVM_BIN}/clang
+    sudo update-alternatives --set clang++ ${LLVM_BIN}/clang++
+    sudo update-alternatives --set llvm-config ${LLVM_BIN}/llvm-config
 
     # Set up cmake alternative to ensure apt-installed cmake is used
     # GitHub runners have pre-installed cmake in /usr/local/bin that may take precedence
