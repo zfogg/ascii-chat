@@ -61,10 +61,16 @@ runs:
           echo "✅ JUnit XML exists ($(wc -l < ${{ inputs.junit-file }}) lines)"
 
           # Try to validate the XML
-          if xmllint --format "${{ inputs.junit-file }}" > /dev/null 2>&1; then
+          echo "Validating XML with xmllint..."
+          if xmllint --noout "${{ inputs.junit-file }}" 2>&1; then
             echo "✅ Valid XML"
           else
-            echo "⚠️ Invalid XML detected, attempting to fix..."
+            echo "⚠️ Invalid XML detected"
+            echo "First 10 lines:"
+            head -10 "${{ inputs.junit-file }}"
+            echo "Last 10 lines:"
+            tail -10 "${{ inputs.junit-file }}"
+            echo "Attempting to fix..."
 
             # Check if the file ends with </testsuites>
             if ! tail -1 "${{ inputs.junit-file }}" | grep -q '</testsuites>'; then
