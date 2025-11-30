@@ -43,7 +43,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v4
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -126,14 +126,14 @@ jobs:
       with:
         build-directory: ${{ github.workspace }}/build_debug
         build-cache-key: performance-debug
-        cache-version: v3
+        cache-version: v4
     - name: Cache release build directory
       id: cache-build-release
       uses: ./.github/actions/cache-build
       with:
         build-directory: ${{ github.workspace }}/build_release
         build-cache-key: performance-release
-        cache-version: v3
+        cache-version: v4
 
     - name: Clean build directories to force reconfigure
       run: |
