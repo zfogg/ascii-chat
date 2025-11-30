@@ -430,8 +430,11 @@ int main(int argc, char *argv[]) {
         return 0;
       }
       // Any other option before the mode is not supported
-      fprintf(stderr, "Error: Option '%s' must come after the mode\n\n", argv[i]);
+      fprintf(stderr, "Error: Option '%s' must come after the mode\n", argv[i]);
+#ifndef NDEBUG
+      fprintf(stderr, "\n");
       print_usage(program_name);
+#endif
       return ERROR_USAGE;
     }
   }
@@ -449,15 +452,21 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
       if (argv[i][0] != '-') {
         // Found a non-option that's not a valid mode
-        fprintf(stderr, "Error: Unknown mode '%s'\n\n", argv[i]);
+        fprintf(stderr, "Error: Unknown mode '%s'\n", argv[i]);
+#ifndef NDEBUG
+        fprintf(stderr, "\n");
         print_usage(program_name);
+#endif
         return ERROR_USAGE;
       }
     }
 
     // Only options provided, no mode
-    fprintf(stderr, "Error: No mode specified\n\n");
+    fprintf(stderr, "Error: No mode specified\n");
+#ifndef NDEBUG
+    fprintf(stderr, "\n");
     print_usage(program_name);
+#endif
     return ERROR_USAGE;
   }
 
