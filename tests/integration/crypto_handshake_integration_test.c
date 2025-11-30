@@ -35,24 +35,26 @@ typedef struct {
 static mock_network_t g_network = {0};
 
 // Mock socket functions
-static ssize_t mock_send(int sock, const void *buf, size_t len, int flags) {
+__attribute__((unused)) static ssize_t mock_send(int sock, const void *buf, size_t len, int flags) {
+  (void)flags;
   if (sock == g_network.client_fd) {
     // Client sending to server
     memcpy(g_network.buffer + g_network.buffer_pos, buf, len);
     g_network.buffer_pos += len;
-    return len;
+    return (ssize_t)len;
   }
   return -1;
 }
 
-static ssize_t mock_recv(int sock, void *buf, size_t len, int flags) {
+__attribute__((unused)) static ssize_t mock_recv(int sock, void *buf, size_t len, int flags) {
+  (void)flags;
   if (sock == g_network.client_fd && g_network.buffer_pos > 0) {
     // Client receiving from server
     size_t to_copy = (len < g_network.buffer_pos) ? len : g_network.buffer_pos;
     memcpy(buf, g_network.buffer, to_copy);
     memmove(g_network.buffer, g_network.buffer + to_copy, g_network.buffer_pos - to_copy);
     g_network.buffer_pos -= to_copy;
-    return to_copy;
+    return (ssize_t)to_copy;
   }
   return 0;
 }

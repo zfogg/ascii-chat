@@ -1015,6 +1015,7 @@ Test(ascii_simd_integration, mixed_byte_length_palettes) {
   // Ensure cleanup happens even if assertions fail
   // We'll clean up the image after all iterations complete
   bool test_failed = false;
+  (void)test_failed; // Suppress unused variable warning
 
   for (int p = 0; p < num_palettes; p++) {
     log_debug("\nTesting palette: %s (%s)", mixed_palettes[p].name, mixed_palettes[p].description);
