@@ -137,7 +137,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     LLVM_VERSION=""
     for ver in $LLVM_VERSIONS; do
       echo "Trying LLVM $ver..."
-      if sudo apt-get install -y clang-$ver libclang-$ver-dev llvm-$ver llvm-$ver-dev 2>/dev/null; then
+      if sudo apt-get install -y clang-$ver clang-tools-$ver libclang-$ver-dev llvm-$ver llvm-$ver-dev 2>/dev/null; then
         LLVM_VERSION=$ver
         echo "Successfully installed LLVM $ver"
         break
@@ -177,19 +177,19 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Use priority 200 to override any lower-priority alternatives
     sudo update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200
     sudo update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
-    sudo update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200 2>/dev/null || true
-    sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200 2>/dev/null || true
-    sudo update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200 2>/dev/null || true
-    sudo update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200 2>/dev/null || true
-    sudo update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200
+    sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200
+    sudo update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200
+    sudo update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200
+    sudo update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200
     sudo update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 200
     sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 200
     sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 200
     sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200
     sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200
     sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200
-    sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200 2>/dev/null || true
-    sudo update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200 2>/dev/null || true
+    sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200
+    sudo update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200
 
     # Explicitly set the alternatives to ensure our version is active
     sudo update-alternatives --set clang ${LLVM_BIN}/clang
