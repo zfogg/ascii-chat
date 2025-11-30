@@ -48,6 +48,15 @@ if(USE_MIMALLOC)
             /usr/local/lib/cmake/mimalloc
         )
 
+        # Add Homebrew paths on macOS (ARM: /opt/homebrew, Intel: /usr/local)
+        if(APPLE)
+            list(APPEND _MIMALLOC_SEARCH_PATHS
+                /opt/homebrew/opt/mimalloc/lib/cmake/mimalloc
+                /opt/homebrew/lib/cmake/mimalloc
+                /usr/local/opt/mimalloc/lib/cmake/mimalloc
+            )
+        endif()
+
         find_package(mimalloc QUIET CONFIG
             PATHS ${_MIMALLOC_SEARCH_PATHS}
         )
@@ -436,8 +445,12 @@ if(USE_MIMALLOC)
             list(APPEND MIMALLOC_INCLUDE_DIRS ${_mimalloc_iface})
         endif()
     endif()
-    if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
-        list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_SOURCE_DIR}/include")
+    # Only add MIMALLOC_SOURCE_DIR for FetchContent builds (not system or vcpkg)
+    # This prevents stale include paths when switching between system and FetchContent mimalloc
+    if(NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
+        if(DEFINED MIMALLOC_SOURCE_DIR AND EXISTS "${MIMALLOC_SOURCE_DIR}/include")
+            list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_SOURCE_DIR}/include")
+        endif()
     endif()
     if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
         list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_INCLUDE_DIR}")
