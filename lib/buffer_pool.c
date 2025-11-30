@@ -342,6 +342,10 @@ data_buffer_pool_t *data_buffer_pool_get_global(void) {
   return g_global_buffer_pool;
 }
 
+bool data_buffer_pool_is_initialized(void) {
+  return g_global_buffer_pool != NULL;
+}
+
 // Convenience functions that use the global pool
 void *buffer_pool_alloc(size_t size) {
   if (!g_global_buffer_pool) {
