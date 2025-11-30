@@ -122,6 +122,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       zlib1g-dev \
       libsodium-dev \
       portaudio19-dev \
+      libcriterion-dev \
+      libffi-dev \
       doxygen \
       dpkg-dev
 
