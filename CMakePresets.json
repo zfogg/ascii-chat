@@ -159,7 +159,7 @@
       "binaryDir": "${sourceDir}/build_panic",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "ASCIICHAT_BUILD_WITH_SOURCE_PRINT": "ON",
+        "ASCIICHAT_BUILD_WITH_PANIC": "ON",
         "ASCIICHAT_USE_PCH": "OFF"
       }
     }
