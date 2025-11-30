@@ -263,10 +263,16 @@ void ascii_instr_runtime_global_shutdown(void) {
 
 void ascii_instr_log_line(const char *file_path, uint32_t line_number, const char *function_name, const char *snippet,
                           uint8_t is_macro_expansion) {
-  // Check if instrumentation is globally enabled via environment variable
+  // Instrumentation is enabled by default when the binary is built with Source Print.
+  // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
   if (!g_instrumentation_enabled_checked) {
     const char *enable_env = SAFE_GETENV("ASCII_INSTR_SOURCE_PRINT_ENABLE");
-    g_instrumentation_enabled = ascii_instr_env_is_enabled(enable_env);
+    // Default to enabled (true) - only disable if explicitly set to "0", "false", "off", or "no"
+    if (enable_env != NULL && enable_env[0] != '\0') {
+      g_instrumentation_enabled = ascii_instr_env_is_enabled(enable_env);
+    } else {
+      g_instrumentation_enabled = true;  // Default to enabled when instrumented
+    }
     g_instrumentation_enabled_checked = true;
   }
 
@@ -523,36 +529,27 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     // Don't check if file exists - allow appending to existing file
     // Path already normalized, skip validation below
   } else {
-    // Auto-generate log path in temp directory
-    char dir_buf[PATH_MAX];
-    const char *output_dir = g_output_dir_set ? g_output_dir : SAFE_GETENV("TMPDIR");
-    if (output_dir == NULL) {
-      output_dir = SAFE_GETENV("TEMP");
-    }
-    if (output_dir == NULL) {
-      output_dir = SAFE_GETENV("TMP");
-    }
-
-    if (output_dir == NULL) {
-      output_dir = "/tmp";
-    }
-
-    const size_t dir_len = strnlen(output_dir, sizeof(dir_buf) - 1);
-    if (dir_len == 0 || dir_len >= sizeof(dir_buf)) {
-      return false;
-    }
-
-    memcpy(dir_buf, output_dir, dir_len);
-    dir_buf[dir_len] = '\0';
-
-    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s/%s-%d-%llu.log", dir_buf,
-                 ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
-                 (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
-      return false;
+    // Default to "trace.log" in current working directory when instrumented
+    // This makes it easy to find the trace output without setting environment variables
+    char cwd_buf[PATH_MAX];
+    if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+      // Fallback to temp directory if cwd fails
+      const char *output_dir = g_output_dir_set ? g_output_dir : SAFE_GETENV("TMPDIR");
+      if (output_dir == NULL) {
+        output_dir = SAFE_GETENV("TEMP");
+      }
+      if (output_dir == NULL) {
+        output_dir = SAFE_GETENV("TMP");
+      }
+      if (output_dir == NULL) {
+        output_dir = "/tmp";
+      }
+      SAFE_STRNCPY(cwd_buf, output_dir, sizeof(cwd_buf));
     }
 
-    struct stat st;
-    if (stat(runtime->log_path, &st) == 0) {
+    // Use simple "trace.log" name in current directory
+    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", cwd_buf, PATH_DELIM) >=
+        (int)sizeof(runtime->log_path)) {
       return false;
     }
   }

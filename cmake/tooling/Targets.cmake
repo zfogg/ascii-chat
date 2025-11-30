@@ -182,7 +182,7 @@ function(ascii_add_tooling_targets)
         clangTooling clangFrontend clangAST clangASTMatchers clangBasic
         clangRewrite clangRewriteFrontend clangLex clangSerialization
         clangDriver clangParse clangSema clangEdit clangAnalysis
-        clangAPINotes clangSupport clangAnalysisLifetimeSafety
+        clangAPINotes clangSupport clangAnalysisLifetimeSafety clangOptions
     )
 
     foreach(lib ${CLANG_LIBS})
@@ -265,6 +265,15 @@ function(ascii_add_tooling_targets)
         -fexceptions
         -fno-lto
     )
+
+    # On Windows, tell Clang headers to NOT use dllimport even though we use /MD runtime
+    # This is needed because LLVM/Clang libraries are static .lib files, not DLLs
+    if(WIN32)
+        target_compile_definitions(ascii-instr-source-print PRIVATE
+            LLVM_BUILD_STATIC
+            CLANG_BUILD_STATIC
+        )
+    endif()
 
     # Remove debug/sanitizer linker flags and LTO
     target_link_options(ascii-instr-source-print PRIVATE
@@ -766,6 +775,26 @@ function(ascii_add_tooling_targets)
         )
     endif()
 
+    # On Windows, add ALL required LLVM component libraries statically
+    # (same as ascii-instr-defer - Windows LLVM has no shared libraries)
+    if(WIN32)
+        target_link_libraries(ascii-instr-source-print PRIVATE
+            ${LLVM_LIBRARY_DIRS}/LLVMSupport.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMCore.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMBinaryFormat.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMRemarks.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMBitstreamReader.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMOption.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMProfileData.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMFrontendOpenMP.lib
+            ${LLVM_LIBRARY_DIRS}/LLVMDemangle.lib
+            ${LLVM_LIBRARY_DIRS}/clangAnalysisLifetimeSafety.lib
+            ${LLVM_LIBRARY_DIRS}/clangOptions.lib
+            ntdll.lib
+            version.lib
+        )
+    endif()
+
     # Link required system libraries that LLVM/Clang depend on
     target_link_libraries(ascii-instr-source-print PRIVATE
         ZLIB::ZLIB
@@ -827,6 +856,44 @@ function(ascii_add_tooling_targets)
             ascii-chat-static
         )
         set_target_properties(ascii-source-print-report PROPERTIES OUTPUT_NAME "ascii-source-print-report")
+    endif()
+
+    # =========================================================================
+    # Copy required DLLs for tooling executables on Windows
+    # =========================================================================
+    # The tooling executables (ascii-instr-source-print, ascii-instr-defer) need
+    # zstd.dll and zlibd1.dll (zlib debug) at runtime. These come from vcpkg.
+    if(WIN32 AND DEFINED ENV{VCPKG_ROOT})
+        # Use debug DLLs (tooling is built with MD runtime matching debug vcpkg libs)
+        set(_tooling_dll_source "$ENV{VCPKG_ROOT}/installed/x64-windows/debug/bin")
+
+        # Copy DLLs for ascii-instr-source-print
+        if(TARGET ascii-instr-source-print)
+            add_custom_command(TARGET ascii-instr-source-print POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_tooling_dll_source}/zstd.dll"
+                    "$<TARGET_FILE_DIR:ascii-instr-source-print>/"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_tooling_dll_source}/zlibd1.dll"
+                    "$<TARGET_FILE_DIR:ascii-instr-source-print>/"
+                COMMENT "Copying zstd.dll and zlibd1.dll for ascii-instr-source-print"
+                VERBATIM
+            )
+        endif()
+
+        # Copy DLLs for ascii-instr-defer
+        if(TARGET ascii-instr-defer)
+            add_custom_command(TARGET ascii-instr-defer POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_tooling_dll_source}/zstd.dll"
+                    "$<TARGET_FILE_DIR:ascii-instr-defer>/"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${_tooling_dll_source}/zlibd1.dll"
+                    "$<TARGET_FILE_DIR:ascii-instr-defer>/"
+                COMMENT "Copying zstd.dll and zlibd1.dll for ascii-instr-defer"
+                VERBATIM
+            )
+        endif()
     endif()
 
     # Restore original flags for other targets (in case function was called mid-build)
