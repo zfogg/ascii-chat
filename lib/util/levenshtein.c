@@ -58,9 +58,9 @@ size_t levenshtein_n(const char *a, const size_t length, const char *b, const si
       bDistance = code == a[index] ? distance : distance + 1;
       distance = cache[index];
 
-      cache[index] = result = distance > result ? bDistance > result ? result + 1 : bDistance
-                                                : bDistance > distance ? distance + 1
-                                                                       : bDistance;
+      cache[index] = result = distance > result      ? bDistance > result ? result + 1 : bDistance
+                              : bDistance > distance ? distance + 1
+                                                     : bDistance;
     }
   }
 

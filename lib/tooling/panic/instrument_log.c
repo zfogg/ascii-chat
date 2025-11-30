@@ -561,8 +561,8 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     if (g_output_dir_set) {
       // When output directory is explicitly set, use unique naming with pid and tid
       if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%c%s-%d-%llu.log", output_dir_buf, PATH_DELIM,
-                   ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid, (unsigned long long)runtime->thread_id) >=
-          (int)sizeof(runtime->log_path)) {
+                   ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid,
+                   (unsigned long long)runtime->thread_id) >= (int)sizeof(runtime->log_path)) {
         return false;
       }
     } else {
