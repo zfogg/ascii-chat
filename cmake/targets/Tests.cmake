@@ -274,6 +274,7 @@ if(BUILD_TESTS AND CRITERION_FOUND)
             # Windows
             target_link_libraries(${test_exe_name}
                 ascii-chat-lib
+                ascii-chat-panic
                 ${TEST_LDFLAGS}
             )
         endif()
