@@ -40,7 +40,7 @@ size_t levenshtein_n(const char *a, const size_t length, const char *b, const si
   size_t bIndex = 0;
   size_t distance;
   size_t bDistance;
-  size_t result;
+  size_t result = 0;
   char code;
 
   // initialize the vector.
