@@ -30,10 +30,16 @@
 #   - KRB5_GSSAPI_* or LIBSSH2_*: Kerberos/SSH support
 # =============================================================================
 
+# Option to force Criterion tests even in Release builds (used by CI)
+option(ASCIICHAT_FORCE_CRITERION_TESTS "Force Criterion tests even in Release builds (for CI)" OFF)
+
 # Initialize BUILD_CRITERION_TESTS based on BUILD_TESTS and build type
 # This can be disabled even when BUILD_TESTS is ON (e.g., on Windows, Release builds)
 # Release and RelWithDebInfo builds default to OFF - only library runtime tests are needed
-if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+# ASCIICHAT_FORCE_CRITERION_TESTS overrides this for CI environments
+if(ASCIICHAT_FORCE_CRITERION_TESTS)
+    set(BUILD_CRITERION_TESTS ${BUILD_TESTS})
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     set(BUILD_CRITERION_TESTS OFF)
 else()
     set(BUILD_CRITERION_TESTS ${BUILD_TESTS})

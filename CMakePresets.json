@@ -141,7 +141,8 @@
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF",
         "CMAKE_C_STANDARD": "23",
-        "CMAKE_C_FLAGS": "-std=c2x"
+        "CMAKE_C_FLAGS": "-std=c2x",
+        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON"
       }
     },
     {
