@@ -55,7 +55,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
 version_detect()  # Sets PROJECT_VERSION_FROM_GIT
-include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 
 # =============================================================================
@@ -93,6 +92,7 @@ project(${PROJECT_NAME_FULL}
 # =============================================================================
 # Post-project() Config (code that must be run after project())
 # =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
 version_setup_targets()
 
 # Only Ninja generator is supported - enforce this requirement
