@@ -129,25 +129,12 @@ jobs:
         fi
 
         cmake -B build "${cmake_args[@]}"
-        # Use --verbose to see full compile commands for debugging tooling build issues
-        cmake --build build --verbose 2>&1 | tee build_output.log || {
-          echo "Build failed. Extracting tooling compile commands..."
-          grep -A 5 -B 5 "ascii-instr-defer\|ascii-instr-panic\|tool.cpp" build_output.log | head -100 || true
-          exit 1
-        }
+        cmake --build build
 
         echo "Test executables built:"
         ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
         echo "All files in build/bin:"
         ls -la build/bin/ 2>/dev/null || echo "build/bin/ directory not found"
-
-        # Debug: Check if coverage build actually created .gcno files
-        if [ "${{ matrix.build_type }}" = "debug" ]; then
-          echo "DEBUG: Coverage build - checking for .gcno files..."
-          echo "DEBUG: Count of .gcno files after build: $(find . -name "*.gcno" -type f | wc -l)"
-          echo "DEBUG: Sample .gcno files:"
-          find . -name "*.gcno" -type f | head -5
-        fi
 
     - name: Run unit tests with JUnit XML generation
       run: |
