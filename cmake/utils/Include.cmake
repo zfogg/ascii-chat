@@ -42,8 +42,9 @@ function(configure_include_directories)
             include_directories(SYSTEM ${PORTAUDIO_INCLUDE_DIRS})
         endif()
         # Add mimalloc include directory for USE_MIMALLOC builds
-        if(USE_MIMALLOC)
-            include_directories(${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+        # Use MIMALLOC_INCLUDE_DIRS which handles system vs FetchContent mimalloc
+        if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+            include_directories(${MIMALLOC_INCLUDE_DIRS})
         endif()
     else()
         # Use pkg-config flags (matches Makefile CFLAGS approach)

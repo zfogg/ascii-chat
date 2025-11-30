@@ -79,9 +79,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
         target_compile_definitions(${MODULE_NAME} PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
     endif()
 
-    # Mimalloc include directory
-    if(USE_MIMALLOC)
-        target_include_directories(${MODULE_NAME} PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+    # Mimalloc include directory (use MIMALLOC_INCLUDE_DIRS for system vs FetchContent)
+    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(${MODULE_NAME} PRIVATE ${MIMALLOC_INCLUDE_DIRS})
     endif()
 
     # Musl flag
@@ -459,8 +459,8 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
     endif()
 
-    if(USE_MIMALLOC)
-        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${FETCHCONTENT_BASE_DIR}/mimalloc-src/include>)
+    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
     # Add dependencies from modules
@@ -556,9 +556,9 @@ else()
         target_compile_definitions(ascii-chat-shared PRIVATE MI_DEBUG=${MIMALLOC_DEBUG_LEVEL})
     endif()
 
-    # Mimalloc include directory
-    if(USE_MIMALLOC)
-        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${FETCHCONTENT_BASE_DIR}/mimalloc-src/include>)
+    # Mimalloc include directory (use MIMALLOC_INCLUDE_DIRS for system vs FetchContent)
+    if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE $<BUILD_INTERFACE:${MIMALLOC_INCLUDE_DIRS}>)
     endif()
 
     # Musl flag
