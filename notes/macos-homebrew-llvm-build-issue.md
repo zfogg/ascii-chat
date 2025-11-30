@@ -219,15 +219,9 @@ clang++ -nostdinc -nostdinc++ -include/opt/homebrew/opt/llvm/lib/clang/21/includ
 
 **Status**: FAILED
 
-### Attempt 19: Use Apple's system clang for compilation (TESTING)
+### Attempt 19: Use Apple's system clang - set in tooling CMakeLists (FAILED)
 **Date**: 2025-11-30
 **Approach**: After 18 failed attempts to make Homebrew LLVM's header configuration work, use Apple's system clang (`/usr/bin/clang++`) for COMPILATION but link against Homebrew's LLVM LIBRARIES.
-
-**Rationale**:
-- Apple's clang is built to work seamlessly with the macOS SDK
-- Apple's clang handles header resolution automatically - no manual `-nostdinc`, `-isystem` configuration needed
-- We only need Homebrew's LLVM/Clang for the LIBRARIES (clangAST, clangTooling, etc.), not for the compiler
-- This is the pragmatic solution after proving that Homebrew's bundled libc++ is incompatible with manual header path configuration
 
 **Implementation**:
 1. Set `CMAKE_CXX_COMPILER` to `/usr/bin/clang++` BEFORE `project()` in tooling CMakeLists.txt
@@ -235,7 +229,34 @@ clang++ -nostdinc -nostdinc++ -include/opt/homebrew/opt/llvm/lib/clang/21/includ
 3. Add LLVM headers as `-isystem` (works fine with Apple clang)
 4. Use `-isysroot` and `-stdlib=libc++` normally
 
-**Command**:
+**CI error from run 19801717153**:
+```
+/opt/homebrew/Cellar/llvm/21.1.6/bin/clang++  -isystem /opt/homebrew/Cellar/llvm/21.1.6/include ...
+```
+
+**Analysis**: The CI log shows that Homebrew's clang (`/opt/homebrew/Cellar/llvm/21.1.6/bin/clang++`) is still being used, NOT Apple's system clang. The `CMAKE_CXX_COMPILER` setting in the tooling CMakeLists.txt BEFORE `project()` is being overridden because:
+- The tooling CMakeLists.txt is built via CMake `ExternalProject_Add`
+- ExternalProject_Add passes `-DCMAKE_CXX_COMPILER=...` from the parent build
+- CMake command-line `-D` arguments take precedence over `set()` in CMakeLists.txt
+
+**Status**: FAILED - Compiler setting not taking effect
+
+### Attempt 20: Pass Apple system clang to ExternalProject (TESTING)
+**Date**: 2025-11-30
+**Approach**: Fix Attempt 19's implementation by setting the compiler in the PARENT build's `cmake/tooling/Defer.cmake` and `cmake/tooling/Panic.cmake` where ExternalProject_Add is configured, rather than in the tooling CMakeLists.txt.
+
+**Key insight**: ExternalProject_Add passes compiler settings via `-DCMAKE_CXX_COMPILER=...` which takes precedence over anything in the child CMakeLists.txt. The fix must be in the parent build.
+
+**Implementation**:
+1. In `cmake/tooling/Defer.cmake` and `cmake/tooling/Panic.cmake`, check for macOS with `if(APPLE)`
+2. If macOS, set `_defer_cxx_compiler` / `_panic_cxx_compiler` to `/usr/bin/clang++`
+3. This compiler is then passed to ExternalProject_Add via `CMAKE_ARGS -DCMAKE_CXX_COMPILER=...`
+
+**Files modified**:
+- `cmake/tooling/Defer.cmake`: Lines 65-67 - Prioritize Apple system clang on macOS
+- `cmake/tooling/Panic.cmake`: Lines 106-108 - Same change
+
+**Expected command**:
 ```
 /usr/bin/clang++ -O2 -fno-rtti -fexceptions
                  -isysroot <SDK>

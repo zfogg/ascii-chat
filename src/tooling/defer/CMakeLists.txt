@@ -6,26 +6,11 @@ if(WIN32)
     set(CMAKE_C_COMPILER_WORKS TRUE CACHE BOOL "Skip compiler test" FORCE)
 endif()
 
-# Attempt 19: Use Apple's system clang for compilation on macOS
-#
-# Background: After 18 failed attempts to make Homebrew LLVM 21+ work with explicit
-# header paths (-nostdinc/-nostdinc++), we've concluded that Homebrew's bundled libc++
-# is fundamentally incompatible with manual header path configuration. The libc++ headers
-# use #include_next chains that require very specific header resolution behavior.
-#
-# Solution: Use Apple's system clang (/usr/bin/clang++) for COMPILATION, but still
-# link against Homebrew's LLVM/Clang LIBRARIES. Apple's clang is properly integrated
-# with the Xcode SDK and handles all header resolution correctly.
-#
-# This is a pragmatic solution - we only need Homebrew for the LLVM tooling libraries
-# (clangAST, clangTooling, etc.), not for the compiler itself.
-if(APPLE AND NOT DEFINED CMAKE_CXX_COMPILER)
-    # Check if Apple's system clang exists
-    if(EXISTS "/usr/bin/clang++")
-        set(CMAKE_CXX_COMPILER "/usr/bin/clang++" CACHE FILEPATH "Use Apple system clang" FORCE)
-        message(STATUS "Attempt 19: Using Apple's system clang for compilation: /usr/bin/clang++")
-    endif()
-endif()
+# Note: On macOS, the parent build (cmake/tooling/Defer.cmake) sets CMAKE_CXX_COMPILER
+# to Apple's system clang (/usr/bin/clang++) BEFORE invoking this ExternalProject.
+# This is necessary because Homebrew LLVM's bundled libc++ headers are incompatible
+# with manual header path configuration (-nostdinc/-nostdinc++). We use Apple's clang
+# for compilation but link against Homebrew's LLVM/Clang libraries.
 
 project(ascii-instr-defer CXX)
 
@@ -83,18 +68,8 @@ add_executable(ascii-instr-defer tool.cpp)
 
 # Platform-specific include and compile setup
 if(APPLE)
-    # Attempt 19: Use Apple's system clang for compilation
-    #
-    # After 18 failed attempts to make Homebrew LLVM 21+ work with explicit
-    # header path configuration, we now use Apple's system clang for compilation.
-    # Apple's clang is properly integrated with the Xcode SDK and handles all
-    # header resolution automatically. We only use Homebrew LLVM for LIBRARIES.
-    #
-    # This approach:
-    # - Compiles with /usr/bin/clang++ (Apple's system clang)
-    # - Links against Homebrew LLVM/Clang libraries (clangAST, clangTooling, etc.)
-    # - No manual header path configuration needed - Apple clang just works
-
+    # macOS: Using Apple's system clang for compilation, Homebrew LLVM for libraries
+    # Apple's clang handles header resolution automatically with -isysroot
     execute_process(
         COMMAND xcrun --show-sdk-path
         OUTPUT_VARIABLE MACOS_SDK_PATH
@@ -104,7 +79,7 @@ if(APPLE)
 
     if(MACOS_SDK_PATH)
         message(STATUS "macOS SDK: ${MACOS_SDK_PATH}")
-        message(STATUS "Attempt 19: Using Apple system clang for compilation, Homebrew LLVM for libraries")
+        message(STATUS "macOS: Using Apple system clang for compilation, Homebrew LLVM for libraries")
         message(STATUS "  Compiler: ${CMAKE_CXX_COMPILER}")
         message(STATUS "  LLVM libraries: ${LLVM_LIBRARY_DIRS}")
         message(STATUS "  LLVM headers: ${LLVM_INCLUDE_DIRS}")
