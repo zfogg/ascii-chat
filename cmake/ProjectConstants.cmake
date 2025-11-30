@@ -112,15 +112,3 @@ if(EXISTS "${PROJECT_LICENSE_FILE}")
     set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_LICENSE_FILE}" CACHE FILEPATH "License file for installers" FORCE)
 endif()
 
-# =============================================================================
-# Status Messages
-# =============================================================================
-
-message(STATUS "")
-message(STATUS "${BoldCyan}Project Constants Loaded:${ColorReset}")
-message(STATUS "  Name:        ${BoldGreen}${PROJECT_NAME_FULL}${ColorReset}")
-message(STATUS "  Author:      ${Yellow}${PROJECT_AUTHOR_NAME}${ColorReset} <${PROJECT_AUTHOR_EMAIL}>")
-message(STATUS "  Homepage:    ${Blue}${PROJECT_HOMEPAGE_URL}${ColorReset}")
-message(STATUS "  Bundle ID:   ${Magenta}${PROJECT_BUNDLE_ID}${ColorReset}")
-message(STATUS "  License:     ${Green}${PROJECT_LICENSE}${ColorReset}")
-message(STATUS "")

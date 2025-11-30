@@ -17,11 +17,12 @@
       "inherits": "base",
       "hidden": true,
       "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
         "USE_CPACK": "OFF",
         "ASCIICHAT_ENABLE_UNITY_BUILDS": "OFF",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "ON",
         "ASCIICHAT_USE_PCH": "ON",
-        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
+        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "ON"
       }
     },
@@ -36,7 +37,7 @@
         "ASCIICHAT_ENABLE_UNITY_BUILDS": "ON",
         "ASCIICHAT_RELEASE_ENABLE_FAST_MATH": "ON",
         "ASCIICHAT_ENABLE_CTEST_DASHBOARD": "OFF",
-        "ASCIICHAT_ENABLE_ANALYZERS": "OFF",
+        "ASCIICHAT_ENABLE_ANALYZERS": "ON",
         "ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS": "OFF"
       }
     },
@@ -141,6 +142,13 @@
         "CMAKE_C_STANDARD": "23",
         "CMAKE_C_FLAGS": "-std=c2x"
       }
+    },
+    {
+      "name": "vs26",
+      "inherits": "base",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/build_vs",
+      "toolset": "ClangCL"
     }
   ],
   "buildPresets": [
@@ -183,6 +191,10 @@
     {
       "name": "github",
       "configurePreset": "github"
+    },
+    {
+      "name": "vs26",
+      "configurePreset": "vs26"
     }
   ]
 }

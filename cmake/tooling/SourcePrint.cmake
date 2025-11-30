@@ -1,9 +1,9 @@
 include_guard(GLOBAL)
 
-option(ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION "Generate and build source_print-instrumented sources with per-statement logging" OFF)
+option(ASCIICHAT_BUILD_WITH_SOURCE_PRINT "Generate and build source_print-instrumented sources with per-statement logging" OFF)
 
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Targets.cmake)
-set(_ASCII_INSTRUMENTATION_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_instrumentation.sh")
+set(_ASCII_SOURCE_PRINT_SCRIPT "${CMAKE_SOURCE_DIR}/cmake/tooling/run_instrumentation.sh")
 
 function(_ascii_strip_source_include_dirs target_name)
     if(NOT TARGET ${target_name})
@@ -45,7 +45,7 @@ function(_ascii_convert_path_for_shell input_path output_var)
     set(${output_var} "${_ascii_result}" PARENT_SCOPE)
 endfunction()
 
-set(ASCII_INSTRUMENTATION_LIBRARY_TARGETS
+set(ASCII_SOURCE_PRINT_LIBRARY_TARGETS
     ascii-chat-util
     ascii-chat-data-structures
     ascii-chat-platform
@@ -59,19 +59,19 @@ set(ASCII_INSTRUMENTATION_LIBRARY_TARGETS
 
 # ascii-source-print-report uses POSIX headers - only available on Unix/Linux/macOS
 if(WIN32)
-    set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
+    set(ASCII_SOURCE_PRINT_EXECUTABLE_TARGETS
         ascii-chat
     )
 else()
-    set(ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS
+    set(ASCII_SOURCE_PRINT_EXECUTABLE_TARGETS
         ascii-chat
         ascii-source-print-report
     )
 endif()
 
-function(ascii_instrumentation_prepare)
-    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
-        set(ASCII_INSTRUMENTATION_ENABLED FALSE PARENT_SCOPE)
+function(ascii_source_print_prepare)
+    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT)
+        set(ASCII_SOURCE_PRINT_ENABLED FALSE PARENT_SCOPE)
         return()
     endif()
 
@@ -153,8 +153,8 @@ function(ascii_instrumentation_prepare)
     list(REMOVE_DUPLICATES instrumented_rel_paths)
     list(REMOVE_DUPLICATES instrumented_generated_paths)
 
-    if(DEFINED ASCII_INSTRUMENTATION_BASH AND ASCII_INSTRUMENTATION_BASH)
-        set(_ascii_bash_executable "${ASCII_INSTRUMENTATION_BASH}")
+    if(DEFINED ASCII_SOURCE_PRINT_BASH AND ASCII_SOURCE_PRINT_BASH)
+        set(_ascii_bash_executable "${ASCII_SOURCE_PRINT_BASH}")
     else()
         unset(_ascii_bash_executable CACHE)  # Clear any cached value
         if(WIN32)
@@ -199,7 +199,7 @@ function(ascii_instrumentation_prepare)
     endif()
 
     if(NOT _ascii_bash_executable)
-        message(FATAL_ERROR "ascii-chat source_print instrumentation requires 'bash'. Install Git Bash or provide a path via ASCII_INSTRUMENTATION_BASH.")
+        message(FATAL_ERROR "ascii-chat source_print requires 'bash'. Install Git Bash or provide a path via ASCII_SOURCE_PRINT_BASH.")
     endif()
 
     set(_ascii_bash_uses_wsl FALSE)
@@ -207,7 +207,7 @@ function(ascii_instrumentation_prepare)
         set(_ascii_bash_uses_wsl TRUE)
     endif()
 
-    set(_ascii_instr_script_for_shell "${_ASCII_INSTRUMENTATION_SCRIPT}")
+    set(_ascii_instr_script_for_shell "${_ASCII_SOURCE_PRINT_SCRIPT}")
     set(_ascii_binary_dir_for_shell "${CMAKE_BINARY_DIR}")
     set(_ascii_instrumented_dir_for_shell "${instrumented_dir}")
 
@@ -230,14 +230,14 @@ function(ascii_instrumentation_prepare)
             -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
-            -DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=OFF
+            -DASCIICHAT_BUILD_WITH_SOURCE_PRINT=OFF
             -DASCIICHAT_USE_PCH=OFF
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
         COMMAND ${CMAKE_COMMAND} -E copy
             "${_ascii_temp_build_dir}/compile_commands.json"
             "${CMAKE_BINARY_DIR}/compile_commands_original.json"
-        COMMENT "Generating compilation database for the source_print instrumentation tool"
+        COMMENT "Generating compilation database for the source_print tool"
         VERBATIM
     )
 
@@ -293,12 +293,12 @@ function(ascii_instrumentation_prepare)
         set(${var} "${updated_list}" PARENT_SCOPE)
     endforeach()
 
-    set(ASCII_INSTRUMENTATION_ENABLED TRUE PARENT_SCOPE)
-    set(ASCII_INSTRUMENTATION_SOURCE_DIR "${instrumented_dir}" PARENT_SCOPE)
+    set(ASCII_SOURCE_PRINT_ENABLED TRUE PARENT_SCOPE)
+    set(ASCII_SOURCE_PRINT_SOURCE_DIR "${instrumented_dir}" PARENT_SCOPE)
 endfunction()
 
-function(ascii_instrumentation_finalize)
-    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION)
+function(ascii_source_print_finalize)
+    if(NOT ASCIICHAT_BUILD_WITH_SOURCE_PRINT)
         return()
     endif()
     if(NOT TARGET ascii-generate-instrumented-sources)
@@ -312,7 +312,7 @@ function(ascii_instrumentation_finalize)
         "${instrumented_dir}/src"
     )
 
-    # Debug/source_print instrumentation runtime targets that are built before instrumentation
+    # Debug/source_print runtime targets that are built before instrumentation
     # need the original lib/ headers, not instrumented ones
     if(TARGET ascii-chat-debug)
         target_include_directories(ascii-chat-debug PRIVATE
@@ -327,7 +327,7 @@ function(ascii_instrumentation_finalize)
         )
     endif()
 
-    foreach(lib_target IN LISTS ASCII_INSTRUMENTATION_LIBRARY_TARGETS)
+    foreach(lib_target IN LISTS ASCII_SOURCE_PRINT_LIBRARY_TARGETS)
         if(TARGET ${lib_target})
             add_dependencies(${lib_target} ascii-generate-instrumented-sources)
             _ascii_strip_source_include_dirs(${lib_target})
@@ -336,7 +336,7 @@ function(ascii_instrumentation_finalize)
         endif()
     endforeach()
 
-    foreach(exe_target IN LISTS ASCII_INSTRUMENTATION_EXECUTABLE_TARGETS)
+    foreach(exe_target IN LISTS ASCII_SOURCE_PRINT_EXECUTABLE_TARGETS)
         if(TARGET ${exe_target})
             if(NOT exe_target IN_LIST _ascii_skip_strip_targets)
                 add_dependencies(${exe_target} ascii-generate-instrumented-sources)

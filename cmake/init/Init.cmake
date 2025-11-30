@@ -168,8 +168,14 @@ endif()
 # Set up vcpkg toolchain if available (must be before project())
 if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})
+        # Disable vcpkg's applocal.ps1 DLL copying BEFORE loading toolchain
+        # (slow PowerShell startup adds ~1-2s per link)
+        # We handle DLL copying ourselves using cmd /c in PostBuild.cmake
+        set(VCPKG_APPLOCAL_DEPS OFF CACHE BOOL "Disable vcpkg automatic DLL copying" FORCE)
+
         set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
         message(STATUS "Using ${BoldGreen}vcpkg${ColorReset} toolchain from environment: ${BoldBlue}$ENV{VCPKG_ROOT}${ColorReset}")
+        message(STATUS "Disabled vcpkg applocal.ps1 - using ${BoldCyan}cmd /c xcopy${ColorReset} for DLL copying")
     endif()
 endif()
 
