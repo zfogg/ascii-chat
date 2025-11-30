@@ -219,6 +219,8 @@ Run `./bin/ascii-chat server --help` to see all server options:
 
 ## Cryptography
 
+> 🔐 **Protocol details: [Cryptographic Handshake Documentation](https://zfogg.github.io/ascii-chat/group__handshake.html#topic_handshake)**
+
 ascii-chat supports **end-to-end encryption** using libsodium with Ed25519 key authentication and X25519 key exchange.
 
 ascii-chat's crypto works like your web browser's HTTPS: the client and server perform the Diffie-Hellman exchange to establish secure communication with ephemeral keys every connection. HTTPS depends on certificates tied to DNS names with a certificate authority roots build into the operating system, but ascii-chat is built on TCP so DNS doesn't work for us to secure our servers. ascii-chat users need to verify their server's public keys manually until ACDS (ascii-chat discovery service) is built.
