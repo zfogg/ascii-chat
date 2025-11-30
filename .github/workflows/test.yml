@@ -9,6 +9,8 @@ on:
       - '**.m'
       - 'tests/**'
       - 'CMakeLists.txt'
+      - 'cmake/**'
+      - '.github/workflows/test.yml'
   pull_request:
     branches: [ '*' ]
     paths:
@@ -17,6 +19,8 @@ on:
       - '**.m'
       - 'tests/**'
       - 'CMakeLists.txt'
+      - 'cmake/**'
+      - '.github/workflows/test.yml'
 
 permissions:
   contents: read
