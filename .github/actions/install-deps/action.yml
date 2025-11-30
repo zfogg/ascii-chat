@@ -152,13 +152,13 @@ runs:
       id: apt-cache
       uses: actions/cache/restore@v4
       with:
+        # Only cache the .deb files, not lock files or partial directories
         path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-v3-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+          /var/cache/apt/archives/*.deb
+        key: ${{ runner.os }}-apt-v4-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-apt-v3-${{ steps.deps-sh-hash.outputs.hash }}-
-          ${{ runner.os }}-apt-v3-
+          ${{ runner.os }}-apt-v4-${{ steps.deps-sh-hash.outputs.hash }}-
+          ${{ runner.os }}-apt-v4-
 
     - name: Install dependencies via scripts/deps.sh (Ubuntu)
       if: inputs.os == 'ubuntu'
@@ -465,7 +465,7 @@ runs:
       if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
+        # Only cache the .deb files, not lock files or partial directories
         path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-v3-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+          /var/cache/apt/archives/*.deb
+        key: ${{ runner.os }}-apt-v4-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
