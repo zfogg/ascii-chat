@@ -188,16 +188,28 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endforeach()
 
     elseif(PLATFORM_DARWIN)
-        # macOS test linking (simpler, matches Makefile)
-        if(NOT CRITERION_LIBRARIES)
+        # macOS test linking - must add library directories from pkg-config
+        # pkg-config sets CRITERION_LIBRARY_DIRS but CMake doesn't automatically use it
+        # This is especially important when using Homebrew LLVM which doesn't search
+        # /opt/homebrew/lib by default
+        if(CRITERION_LIBRARY_DIRS)
+            foreach(dir ${CRITERION_LIBRARY_DIRS})
+                list(APPEND TEST_LDFLAGS "-L${dir}")
+            endforeach()
+        else()
             # Fallback for Homebrew (Criterion is keg-only, so provide both opt prefixes)
             list(APPEND TEST_LDFLAGS
                 "-L/opt/homebrew/opt/criterion/lib"
                 "-L/usr/local/opt/criterion/lib"
                 "-L/opt/homebrew/lib"
                 "-L/usr/local/lib"
-                criterion
             )
+        endif()
+        # Add criterion library name (pkg-config provides this in CRITERION_LIBRARIES)
+        if(CRITERION_LIBRARIES)
+            list(APPEND TEST_LDFLAGS ${CRITERION_LIBRARIES})
+        else()
+            list(APPEND TEST_LDFLAGS criterion)
         endif()
     endif()
 
