@@ -52,8 +52,10 @@ void setup_test_network(void) {
 }
 
 void teardown_test_network(void) {
-  if (g_network.server_fd > 0) close(g_network.server_fd);
-  if (g_network.client_fd > 0) close(g_network.client_fd);
+  if (g_network.server_fd > 0)
+    close(g_network.server_fd);
+  if (g_network.client_fd > 0)
+    close(g_network.client_fd);
   memset(&g_network, 0, sizeof(g_network));
 }
 
