@@ -111,8 +111,8 @@ ParameterizedTestParameters(ip_utils, ipv6_validation) {
 
 ParameterizedTest(ipv6_test_case_t *tc, ip_utils, ipv6_validation) {
   int result = is_valid_ipv6(tc->ip);
-  cr_assert_eq(result, tc->expected_result, "is_valid_ipv6(\"%s\") = %d, expected %d (%s)", tc->ip ? tc->ip : "NULL",
-               result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "is_valid_ipv6(\"%s\") = %d, expected %d (%s)", tc->ip, result,
+               tc->expected_result, tc->description);
 }
 
 // =============================================================================
@@ -155,12 +155,12 @@ ParameterizedTest(ipv6_parse_test_case_t *tc, ip_utils, ipv6_parsing) {
 
   int result = parse_ipv6_address(tc->input, output, sizeof(output));
 
-  cr_assert_eq(result, tc->expected_result, "parse_ipv6_address(\"%s\") returned %d, expected %d (%s)",
-               tc->input ? tc->input : "NULL", result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "parse_ipv6_address(\"%s\") returned %d, expected %d (%s)", tc->input,
+               result, tc->expected_result, tc->description);
 
   if (tc->expected_result == 0) {
-    cr_assert_str_eq(output, tc->expected_output, "parse_ipv6_address(\"%s\") output mismatch (%s)",
-                     tc->input ? tc->input : "NULL", tc->description);
+    cr_assert_str_eq(output, tc->expected_output, "parse_ipv6_address(\"%s\") output mismatch (%s)", tc->input,
+                     tc->description);
   }
 }
 
@@ -213,12 +213,12 @@ ParameterizedTest(format_ip_port_test_case_t *tc, ip_utils, format_ip_with_port)
 
   int result = format_ip_with_port(tc->ip, tc->port, output, sizeof(output));
 
-  cr_assert_eq(result, tc->expected_result, "format_ip_with_port(\"%s\", %u) returned %d, expected %d (%s)",
-               tc->ip ? tc->ip : "NULL", tc->port, result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "format_ip_with_port(\"%s\", %u) returned %d, expected %d (%s)", tc->ip,
+               tc->port, result, tc->expected_result, tc->description);
 
   if (tc->expected_result == 0) {
-    cr_assert_str_eq(output, tc->expected_output, "format_ip_with_port(\"%s\", %u) output mismatch (%s)",
-                     tc->ip ? tc->ip : "NULL", tc->port, tc->description);
+    cr_assert_str_eq(output, tc->expected_output, "format_ip_with_port(\"%s\", %u) output mismatch (%s)", tc->ip,
+                     tc->port, tc->description);
   }
 }
 
@@ -291,14 +291,14 @@ ParameterizedTest(parse_ip_port_test_case_t *tc, ip_utils, parse_ip_with_port) {
 
   int result = parse_ip_with_port(tc->input, ip_output, sizeof(ip_output), &port_output);
 
-  cr_assert_eq(result, tc->expected_result, "parse_ip_with_port(\"%s\") returned %d, expected %d (%s)",
-               tc->input ? tc->input : "NULL", result, tc->expected_result, tc->description);
+  cr_assert_eq(result, tc->expected_result, "parse_ip_with_port(\"%s\") returned %d, expected %d (%s)", tc->input,
+               result, tc->expected_result, tc->description);
 
   if (tc->expected_result == 0) {
-    cr_assert_str_eq(ip_output, tc->expected_ip, "parse_ip_with_port(\"%s\") IP mismatch (%s)",
-                     tc->input ? tc->input : "NULL", tc->description);
+    cr_assert_str_eq(ip_output, tc->expected_ip, "parse_ip_with_port(\"%s\") IP mismatch (%s)", tc->input,
+                     tc->description);
     cr_assert_eq(port_output, tc->expected_port, "parse_ip_with_port(\"%s\") port mismatch: got %u, expected %u (%s)",
-                 tc->input ? tc->input : "NULL", port_output, tc->expected_port, tc->description);
+                 tc->input, port_output, tc->expected_port, tc->description);
   }
 }
 

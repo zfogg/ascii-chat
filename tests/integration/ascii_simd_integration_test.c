@@ -1670,7 +1670,6 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
       int unique_chars_found = 0;
       bool exact_match = true;
       int first_diff = -1;
-      unsigned char scalar_diff_byte = 0;
       size_t null_count = 0;
       bool length_match = (scalar_len == simd_len);
 
@@ -1711,7 +1710,6 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
             if (scalar_result[i] != simd_result[i]) {
               if (first_diff == -1) {
                 first_diff = (int)i;
-                scalar_diff_byte = (unsigned char)scalar_result[i];
               }
               exact_match = false;
               break;
