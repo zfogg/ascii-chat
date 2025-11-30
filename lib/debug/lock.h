@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file lock_debug.h
+ * @file lock.h
  * @ingroup lock_debug
  * @brief 🔒 Lock debugging and deadlock detection system for ascii-chat
  *

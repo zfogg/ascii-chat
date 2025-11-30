@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
-// Memory debugging implementation for ascii-chat debug builds
+/**
+ * @file memory.c
+ * @ingroup debug_util
+ * @brief 🧠 Memory debugging implementation for ascii-chat debug builds
+ */
 
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
 
