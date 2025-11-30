@@ -775,6 +775,30 @@ extern ASCIICHAT_API unsigned short int opt_stretch;
  */
 extern ASCIICHAT_API unsigned short int opt_quiet;
 
+/** @brief Verbose logging level (stackable)
+ *
+ * Increases logging verbosity. Each -V or --verbose decreases the log level
+ * threshold by one, showing more detailed output.
+ *
+ * **Default**: `0` (default log level based on build type)
+ *
+ * **Command-line**: `--verbose` or `-V` (stackable: -VV, -VVV, etc.)
+ *
+ * **Verbosity levels**:
+ * - 0: Default (INFO in Release, DEBUG in Debug)
+ * - 1: DEBUG level (shows debug messages)
+ * - 2: DEV level (shows all messages including developer diagnostics)
+ *
+ * **Example**: `-VV` or `--verbose --verbose` (maximum verbosity)
+ *
+ * @note Can be combined: `-VVV` is equivalent to `--verbose --verbose --verbose`
+ * @note Mutually exclusive with `--quiet` (verbose takes precedence if both specified)
+ * @note Affects both console and log file output
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API unsigned short int opt_verbose_level;
+
 /** @brief Enable snapshot mode - capture one frame and exit (client only)
  *
  * If non-zero, enables snapshot mode where the client captures a single frame

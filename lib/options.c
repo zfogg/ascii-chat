@@ -31,6 +31,9 @@
 #include "options.h"
 #include "config.h"
 #include "common.h"
+#include "logging.h"
+#include "os/webcam.h"
+#include "audio.h"
 #include "util/ip.h"
 #include "util/path.h"
 #include "platform/system.h"
@@ -148,6 +151,9 @@ ASCIICHAT_API unsigned short int opt_stretch = 0;
 // Disable console logging when set via -q/--quiet (logs only to file)
 ASCIICHAT_API unsigned short int opt_quiet = 0;
 
+// Verbose logging level - each -V increases verbosity (decreases log level threshold)
+ASCIICHAT_API unsigned short int opt_verbose_level = 0;
+
 // Enable snapshot mode when set via --snapshot (client only - capture one frame and exit)
 ASCIICHAT_API unsigned short int opt_snapshot_mode = 0;
 
@@ -231,6 +237,10 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"server-key", required_argument, NULL, 1006},
                                          {"config", required_argument, NULL, 1010},
                                          {"config-create", optional_argument, NULL, 1011},
+                                         {"verbose", no_argument, NULL, 'V'},
+                                         {"list-webcams", no_argument, NULL, 1013},
+                                         {"list-microphones", no_argument, NULL, 1014},
+                                         {"list-speakers", no_argument, NULL, 1015},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -249,6 +259,7 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"client-keys", required_argument, NULL, 1008},
                                          {"config", required_argument, NULL, 1010},
                                          {"config-create", optional_argument, NULL, 1011},
+                                         {"verbose", no_argument, NULL, 'V'},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -781,10 +792,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   struct option *options;
 
   if (is_client) {
-    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:h"; // Leading ':' for error reporting
+    optstring = ":a:H:p:x:y:c:fM:P:C:AsqSD:L:EK:F:Vh"; // Leading ':' for error reporting
     options = client_options;
   } else {
-    optstring = ":a:p:P:C:L:EK:F:h"; // Leading ':' for error reporting (removed A for audio)
+    optstring = ":a:p:P:C:L:EK:F:Vh"; // Leading ':' for error reporting (removed A for audio)
     options = server_options;
   }
 
@@ -1032,6 +1043,85 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
+    case 1013: { // --list-webcams (client only - list available webcam devices and exit)
+      if (!is_client) {
+        (void)fprintf(stderr, "Error: --list-webcams is a client-only option.\n");
+        return ERROR_USAGE;
+      }
+      webcam_device_info_t *devices = NULL;
+      unsigned int device_count = 0;
+      asciichat_error_t list_result = webcam_list_devices(&devices, &device_count);
+      if (list_result != ASCIICHAT_OK) {
+        (void)fprintf(stderr, "Error: Failed to enumerate webcam devices\n");
+        _exit(1);
+      }
+      if (device_count == 0) {
+        (void)fprintf(stdout, "No webcam devices found.\n");
+      } else {
+        (void)fprintf(stdout, "Available webcam devices:\n");
+        for (unsigned int i = 0; i < device_count; i++) {
+          (void)fprintf(stdout, "  %u: %s\n", devices[i].index, devices[i].name);
+        }
+      }
+      webcam_free_device_list(devices);
+      (void)fflush(stdout);
+      _exit(0);
+    }
+
+    case 1014: { // --list-microphones (client only - list available audio input devices and exit)
+      if (!is_client) {
+        (void)fprintf(stderr, "Error: --list-microphones is a client-only option.\n");
+        return ERROR_USAGE;
+      }
+      audio_device_info_t *devices = NULL;
+      unsigned int device_count = 0;
+      asciichat_error_t list_result = audio_list_input_devices(&devices, &device_count);
+      if (list_result != ASCIICHAT_OK) {
+        (void)fprintf(stderr, "Error: Failed to enumerate audio input devices\n");
+        _exit(1);
+      }
+      if (device_count == 0) {
+        (void)fprintf(stdout, "No audio input devices (microphones) found.\n");
+      } else {
+        (void)fprintf(stdout, "Available audio input devices (microphones):\n");
+        for (unsigned int i = 0; i < device_count; i++) {
+          (void)fprintf(stdout, "  %d: %s (%d ch, %.0f Hz)%s\n", devices[i].index, devices[i].name,
+                        devices[i].max_input_channels, devices[i].default_sample_rate,
+                        devices[i].is_default_input ? " [DEFAULT]" : "");
+        }
+      }
+      audio_free_device_list(devices);
+      (void)fflush(stdout);
+      _exit(0);
+    }
+
+    case 1015: { // --list-speakers (client only - list available audio output devices and exit)
+      if (!is_client) {
+        (void)fprintf(stderr, "Error: --list-speakers is a client-only option.\n");
+        return ERROR_USAGE;
+      }
+      audio_device_info_t *devices = NULL;
+      unsigned int device_count = 0;
+      asciichat_error_t list_result = audio_list_output_devices(&devices, &device_count);
+      if (list_result != ASCIICHAT_OK) {
+        (void)fprintf(stderr, "Error: Failed to enumerate audio output devices\n");
+        _exit(1);
+      }
+      if (device_count == 0) {
+        (void)fprintf(stdout, "No audio output devices (speakers) found.\n");
+      } else {
+        (void)fprintf(stdout, "Available audio output devices (speakers):\n");
+        for (unsigned int i = 0; i < device_count; i++) {
+          (void)fprintf(stdout, "  %d: %s (%d ch, %.0f Hz)%s\n", devices[i].index, devices[i].name,
+                        devices[i].max_output_channels, devices[i].default_sample_rate,
+                        devices[i].is_default_output ? " [DEFAULT]" : "");
+        }
+      }
+      audio_free_device_list(devices);
+      (void)fflush(stdout);
+      _exit(0);
+    }
+
     case 'M': { // --render-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
       if (!value_str)
@@ -1109,6 +1199,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
     case 'q':
       opt_quiet = 1;
+      break;
+
+    case 'V':
+      opt_verbose_level++;
       break;
 
     case 'S':
@@ -1418,6 +1512,18 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   update_dimensions_to_terminal_size();
   update_dimensions_for_full_height();
 
+  // Apply verbose level to log threshold
+  // Each -V decreases the log level by 1 (showing more verbose output)
+  // Minimum level is LOG_DEV (0)
+  if (opt_verbose_level > 0) {
+    log_level_t current_level = log_get_level();
+    int new_level = (int)current_level - (int)opt_verbose_level;
+    if (new_level < LOG_DEV) {
+      new_level = LOG_DEV;
+    }
+    log_set_level((log_level_t)new_level);
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -1437,6 +1543,12 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                 USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
   (void)fprintf(desc, USAGE_INDENT "-c --webcam-index CAMERA     " USAGE_INDENT
                                    "webcam device index (0-based) (default: 0)\n");
+  (void)fprintf(desc,
+                USAGE_INDENT "   --list-webcams            " USAGE_INDENT "list available webcam devices and exit\n");
+  (void)fprintf(desc, USAGE_INDENT "   --list-microphones        " USAGE_INDENT
+                                   "list available audio input devices and exit\n");
+  (void)fprintf(desc, USAGE_INDENT "   --list-speakers           " USAGE_INDENT
+                                   "list available audio output devices and exit\n");
   (void)fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
                                    "image (default: flipped)\n");
   (void)fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "
@@ -1466,6 +1578,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "(ignore aspect ratio) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
                                    "disable console logging (log only to file) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-V --verbose                 " USAGE_INDENT
+                                   "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
                                    "capture single frame and exit (default: [unset])\n");
   (void)fprintf(
@@ -1504,6 +1618,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     "
                                    "Custom palette characters for --palette=custom (implies --palette=custom)\n");
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "-V --verbose         " USAGE_INDENT
+                                   "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-E --encrypt         " USAGE_INDENT "enable packet encryption (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT

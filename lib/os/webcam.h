@@ -64,6 +64,75 @@
 #include "image2ascii/image.h"
 
 /* ============================================================================
+ * Device Information
+ * @{
+ */
+
+/**
+ * @brief Maximum length of webcam device name
+ * @ingroup webcam
+ */
+#define WEBCAM_DEVICE_NAME_MAX 256
+
+/**
+ * @brief Webcam device information structure
+ *
+ * Contains information about an available webcam device. Used by device
+ * enumeration functions to return a list of available devices.
+ *
+ * @note Device index corresponds to the device_index parameter in webcam_init().
+ *
+ * @ingroup webcam
+ */
+typedef struct {
+  unsigned int index;                ///< Device index (use with webcam_init)
+  char name[WEBCAM_DEVICE_NAME_MAX]; ///< Human-readable device name
+} webcam_device_info_t;
+
+/**
+ * @brief Enumerate available webcam devices
+ * @param devices Output pointer to array of device info structures (must not be NULL)
+ * @param count Output pointer to number of devices found (must not be NULL)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Enumerates all available webcam devices and returns their information.
+ * The devices array is allocated by this function and must be freed with
+ * webcam_free_device_list().
+ *
+ * @note On success, *devices will point to a dynamically allocated array.
+ * @note If no devices are found, *count will be 0 and *devices will be NULL.
+ * @note Call webcam_free_device_list() to free the returned array.
+ *
+ * Example:
+ * @code
+ * webcam_device_info_t *devices = NULL;
+ * unsigned int count = 0;
+ * if (webcam_list_devices(&devices, &count) == ASCIICHAT_OK) {
+ *     for (unsigned int i = 0; i < count; i++) {
+ *         printf("Device %u: %s\n", devices[i].index, devices[i].name);
+ *     }
+ *     webcam_free_device_list(devices);
+ * }
+ * @endcode
+ *
+ * @ingroup webcam
+ */
+asciichat_error_t webcam_list_devices(webcam_device_info_t **devices, unsigned int *count);
+
+/**
+ * @brief Free device list returned by webcam_list_devices()
+ * @param devices Device list to free (can be NULL)
+ *
+ * Frees a device list allocated by webcam_list_devices(). Safe to call
+ * with NULL pointer (no-op).
+ *
+ * @ingroup webcam
+ */
+void webcam_free_device_list(webcam_device_info_t *devices);
+
+/** @} */
+
+/* ============================================================================
  * High-Level Webcam Interface
  * @{
  */
