@@ -251,7 +251,16 @@ void ascii_instr_runtime_global_shutdown(void) {
     g_ticks_initialized = false;
     g_start_ticks = 0;
     g_coverage_enabled = false;
+    g_output_dir_set = false;
+    g_output_dir[0] = '\0';
+    g_instrumentation_enabled_checked = false;
+    g_instrumentation_enabled = false;
+    g_echo_to_stderr_initialized = false;
+    g_echo_to_stderr = false;
   }
+
+  // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
+  g_disable_write = false;
 
   if (g_runtime_mutex_initialized) {
     mutex_unlock(&g_runtime_mutex);
@@ -528,28 +537,40 @@ static bool ascii_instr_build_log_path(ascii_instr_runtime_t *runtime) {
     // Don't check if file exists - allow appending to existing file
     // Path already normalized, skip validation below
   } else {
-    // Default to "trace.log" in current working directory when instrumented
-    // This makes it easy to find the trace output without setting environment variables
-    char cwd_buf[PATH_MAX];
-    if (!platform_get_cwd(cwd_buf, sizeof(cwd_buf))) {
+    // Determine output directory
+    char output_dir_buf[PATH_MAX];
+    if (g_output_dir_set) {
+      // Use the output directory from ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR
+      SAFE_STRNCPY(output_dir_buf, g_output_dir, sizeof(output_dir_buf));
+    } else if (!platform_get_cwd(output_dir_buf, sizeof(output_dir_buf))) {
       // Fallback to temp directory if cwd fails
-      const char *output_dir = g_output_dir_set ? g_output_dir : SAFE_GETENV("TMPDIR");
-      if (output_dir == NULL) {
-        output_dir = SAFE_GETENV("TEMP");
+      const char *fallback = SAFE_GETENV("TMPDIR");
+      if (fallback == NULL) {
+        fallback = SAFE_GETENV("TEMP");
       }
-      if (output_dir == NULL) {
-        output_dir = SAFE_GETENV("TMP");
+      if (fallback == NULL) {
+        fallback = SAFE_GETENV("TMP");
       }
-      if (output_dir == NULL) {
-        output_dir = "/tmp";
+      if (fallback == NULL) {
+        fallback = "/tmp";
       }
-      SAFE_STRNCPY(cwd_buf, output_dir, sizeof(cwd_buf));
+      SAFE_STRNCPY(output_dir_buf, fallback, sizeof(output_dir_buf));
     }
 
-    // Use simple "trace.log" name in current directory
-    if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", cwd_buf, PATH_DELIM) >=
-        (int)sizeof(runtime->log_path)) {
-      return false;
+    // Build log file name
+    if (g_output_dir_set) {
+      // When output directory is explicitly set, use unique naming with pid and tid
+      if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%c%s-%d-%llu.log", output_dir_buf, PATH_DELIM,
+                   ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME, runtime->pid, (unsigned long long)runtime->thread_id) >=
+          (int)sizeof(runtime->log_path)) {
+        return false;
+      }
+    } else {
+      // Use simple "trace.log" name in current directory
+      if (snprintf(runtime->log_path, sizeof(runtime->log_path), "%s%ctrace.log", output_dir_buf, PATH_DELIM) >=
+          (int)sizeof(runtime->log_path)) {
+        return false;
+      }
     }
   }
 
