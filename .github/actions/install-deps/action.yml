@@ -136,13 +136,21 @@ runs:
       id: apt-cache
       uses: actions/cache/restore@v4
       with:
-        # Only cache the .deb files, not lock files or partial directories
-        path: |
-          /var/cache/apt/archives/*.deb
-        key: ${{ runner.os }}-apt-v4-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+        # Cache to workspace directory to avoid permission issues
+        path: .apt-cache
+        key: ${{ runner.os }}-apt-v5-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-apt-v4-${{ steps.deps-sh-hash.outputs.hash }}-
-          ${{ runner.os }}-apt-v4-
+          ${{ runner.os }}-apt-v5-${{ steps.deps-sh-hash.outputs.hash }}-
+          ${{ runner.os }}-apt-v5-
+
+    - name: Restore APT cache to system (Ubuntu)
+      if: inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        if [ -d ".apt-cache" ] && [ "$(ls -A .apt-cache 2>/dev/null)" ]; then
+          echo "Restoring $(ls .apt-cache/*.deb 2>/dev/null | wc -l) cached .deb files..."
+          sudo cp .apt-cache/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+        fi
 
     - name: Install dependencies via scripts/deps.sh (Ubuntu)
       if: inputs.os == 'ubuntu'
@@ -445,11 +453,20 @@ runs:
           ${{ env.VCPKG_ROOT }}/buildtrees
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
 
+    - name: Prepare APT cache for saving (Ubuntu)
+      if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p .apt-cache
+        if ls /var/cache/apt/archives/*.deb 1>/dev/null 2>&1; then
+          cp /var/cache/apt/archives/*.deb .apt-cache/
+          echo "Cached $(ls .apt-cache/*.deb | wc -l) .deb files for future runs"
+        fi
+
     - name: Save APT cache (Ubuntu)
       if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        # Only cache the .deb files, not lock files or partial directories
-        path: |
-          /var/cache/apt/archives/*.deb
-        key: ${{ runner.os }}-apt-v4-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+        # Cache to workspace directory to avoid permission issues
+        path: .apt-cache
+        key: ${{ runner.os }}-apt-v5-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
