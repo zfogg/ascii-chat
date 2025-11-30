@@ -27,20 +27,11 @@
  * SOFTWARE.
  */
 
-/**
- * @file pem_utils.c
- * @brief BearSSL PEM and trust anchor utilities adapted for in-memory data
- *
- * This file contains BearSSL tools utilities adapted to work with in-memory
- * PEM data instead of files. Original code from BearSSL tools (ISC license).
- */
-
 #include "../common.h"
 #include "pem_utils.h"
 #include "asciichat_errno.h"
 
 #include <bearssl.h>
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -53,7 +44,9 @@
     size_t ptr, len;                                                                                                   \
   }
 
+// clang-format off
 #define VEC_INIT {0, 0, 0}
+// clang-format on
 
 #define VEC_CLEAR(vec)                                                                                                 \
   do {                                                                                                                 \

@@ -872,7 +872,6 @@ Test(crypto, rekey_commit) {
   uint8_t temp_shared_key_copy[CRYPTO_SHARED_KEY_SIZE];
   memcpy(temp_shared_key_copy, ctx1.temp_shared_key, CRYPTO_SHARED_KEY_SIZE);
 
-  uint64_t old_packet_count = ctx1.rekey_packet_count;
   uint64_t old_rekey_count = ctx1.rekey_count;
 
   // Commit

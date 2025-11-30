@@ -30,59 +30,62 @@
  *
  * @code{.c}
  * typedef enum {
- *     ASCIICHAT_OK = 0,                 // Success
+ *     // Standard codes (0-2) - Unix conventions
+ *     ASCIICHAT_OK = 0,                   // Success
+ *     ERROR_GENERAL = 1,                  // Unspecified error
+ *     ERROR_USAGE = 2,                    // Invalid command line arguments
  *
- *     // Generic errors
- *     ERROR_INVALID_PARAM,               // Invalid parameter passed
- *     ERROR_MEMORY,                      // Memory allocation failed
- *     ERROR_NOT_FOUND,                   // Resource not found
- *     ERROR_ALREADY_EXISTS,              // Resource already exists
- *     ERROR_TIMEOUT,                     // Operation timed out
- *     ERROR_BUSY,                        // Resource busy
- *     ERROR_NOT_SUPPORTED,               // Operation not supported
+ *     // Initialization failures (3-19)
+ *     ERROR_MEMORY = 3,                   // Memory allocation failed (OOM)
+ *     ERROR_CONFIG = 4,                   // Configuration file or settings error
+ *     ERROR_CRYPTO_INIT = 5,              // Cryptographic initialization failed
+ *     ERROR_LOGGING_INIT = 6,             // Logging system initialization failed
+ *     ERROR_PLATFORM_INIT = 7,            // Platform-specific initialization failed
  *
- *     // Network errors (10-29)
- *     ERROR_NETWORK_SOCKET = 10,         // Socket creation failed
- *     ERROR_NETWORK_BIND,                // Socket bind failed
- *     ERROR_NETWORK_LISTEN,              // Socket listen failed
- *     ERROR_NETWORK_ACCEPT,              // Socket accept failed
- *     ERROR_NETWORK_CONNECT,             // Socket connect failed
- *     ERROR_NETWORK_SEND,                // Send failed
- *     ERROR_NETWORK_RECV,                // Receive failed
- *     ERROR_NETWORK_CLOSED,              // Connection closed by peer
- *     ERROR_NETWORK_TIMEOUT,             // Network timeout
- *     ERROR_NETWORK_PROTOCOL,            // Protocol error
+ *     // Hardware/Device errors (20-39)
+ *     ERROR_WEBCAM = 20,                  // Webcam initialization or capture failed
+ *     ERROR_WEBCAM_IN_USE = 21,           // Webcam is in use by another application
+ *     ERROR_WEBCAM_PERMISSION = 22,       // Webcam permission denied
+ *     ERROR_AUDIO = 23,                   // Audio device initialization or I/O failed
+ *     ERROR_AUDIO_IN_USE = 24,            // Audio device is in use
+ *     ERROR_TERMINAL = 25,                // Terminal initialization failed
  *
- *     // Crypto errors (30-49)
- *     ERROR_CRYPTO_INIT = 30,            // Crypto initialization failed
- *     ERROR_CRYPTO_KEYGEN,               // Key generation failed
- *     ERROR_CRYPTO_ENCRYPT,              // Encryption failed
- *     ERROR_CRYPTO_DECRYPT,              // Decryption failed
- *     ERROR_CRYPTO_MAC_VERIFY,           // MAC verification failed
- *     ERROR_CRYPTO_SIGNATURE,            // Signature verification failed
- *     ERROR_CRYPTO_HANDSHAKE,            // Handshake failed
- *     ERROR_CRYPTO_KEY_LOAD,             // Key loading failed
- *     ERROR_CRYPTO_KNOWN_HOSTS,          // Known hosts verification failed
+ *     // Network errors (40-59)
+ *     ERROR_NETWORK = 40,                 // General network error
+ *     ERROR_NETWORK_BIND = 41,            // Cannot bind to port (server)
+ *     ERROR_NETWORK_CONNECT = 42,         // Cannot connect to server (client)
+ *     ERROR_NETWORK_TIMEOUT = 43,         // Network operation timed out
+ *     ERROR_NETWORK_PROTOCOL = 44,        // Protocol violation or incompatible version
+ *     ERROR_NETWORK_SIZE = 45,            // Network packet size error
  *
- *     // Config errors (50-59)
- *     ERROR_CONFIG = 50,                 // Configuration error
- *     ERROR_CONFIG_PARSE,                // Config file parse error
- *     ERROR_CONFIG_INVALID,              // Invalid configuration value
+ *     // Security/Crypto errors (60-79)
+ *     ERROR_CRYPTO = 60,                  // Cryptographic operation failed
+ *     ERROR_CRYPTO_KEY = 61,              // Key loading, parsing, or generation failed
+ *     ERROR_CRYPTO_AUTH = 62,             // Authentication failed
+ *     ERROR_CRYPTO_HANDSHAKE = 63,        // Cryptographic handshake failed
+ *     ERROR_CRYPTO_VERIFICATION = 64,     // Signature or key verification failed
  *
- *     // Audio/Video errors (60-79)
- *     ERROR_AUDIO_INIT = 60,             // Audio init failed
- *     ERROR_AUDIO_START,                 // Audio start failed
- *     ERROR_VIDEO_INIT = 70,             // Video init failed
- *     ERROR_VIDEO_START,                 // Video start failed
- *     ERROR_WEBCAM_INIT,                 // Webcam init failed
- *     ERROR_WEBCAM_CAPTURE,              // Webcam capture failed
+ *     // Runtime errors (80-99)
+ *     ERROR_THREAD = 80,                  // Thread creation or management failed
+ *     ERROR_BUFFER = 81,                  // Buffer allocation or overflow
+ *     ERROR_BUFFER_FULL = 82,             // Buffer full
+ *     ERROR_BUFFER_OVERFLOW = 83,         // Buffer overflow
+ *     ERROR_DISPLAY = 84,                 // Display rendering or output error
+ *     ERROR_INVALID_STATE = 85,           // Invalid program state
+ *     ERROR_INVALID_PARAM = 86,           // Invalid parameter
+ *     ERROR_INVALID_FRAME = 87,           // Invalid frame data
+ *     ERROR_RESOURCE_EXHAUSTED = 88,      // System resources exhausted
+ *     ERROR_FORMAT = 89,                  // String formatting operation failed
+ *     ERROR_STRING = 90,                  // String manipulation operation failed
  *
- *     // Thread errors (80-89)
- *     ERROR_THREAD_CREATE = 80,          // Thread creation failed
- *     ERROR_THREAD_JOIN,                 // Thread join failed
- *     ERROR_MUTEX_INIT,                  // Mutex initialization failed
- *     ERROR_MUTEX_LOCK,                  // Mutex lock failed
+ *     // Signal/Crash handlers (100-127)
+ *     ERROR_SIGNAL_INTERRUPT = 100,       // Interrupted by signal (SIGINT, SIGTERM)
+ *     ERROR_SIGNAL_CRASH = 101,           // Fatal signal (SIGSEGV, SIGABRT, etc.)
+ *     ERROR_ASSERTION_FAILED = 102,       // Assertion or invariant violation
  *
+ *     // Compression errors (103-104)
+ *     ERROR_COMPRESSION = 103,            // Compression operation failed
+ *     ERROR_DECOMPRESSION = 104,          // Decompression operation failed
  * } asciichat_error_t;
  * @endcode
  *
@@ -92,13 +95,19 @@
  *
  * @code{.c}
  * typedef struct {
- *     asciichat_error_t error_code;       // Error code enum value
- *     int system_errno;                    // System errno (POSIX) or GetLastError (Windows)
- *     char context_message[256];           // Formatted error message with user context
- *     char file[64];                       // Source file where error occurred
- *     int line;                            // Line number
- *     char function[64];                   // Function name
- *     uint64_t timestamp;                  // Timestamp (microseconds since epoch)
+ *     asciichat_error_t code;     // Error code (asciichat_error_t enum value)
+ *     const char *file;           // Source file where error occurred (NULL in release)
+ *     int line;                   // Line number where error occurred (0 in release)
+ *     const char *function;       // Function name where error occurred (NULL in release)
+ *     char *context_message;      // Optional custom message (dynamically allocated)
+ *     uint64_t timestamp;         // Timestamp when error occurred (microseconds)
+ *     int system_errno;           // System errno value (if applicable, 0 otherwise)
+ *     int wsa_error;              // Windows socket error code (if applicable)
+ *     void *backtrace[32];        // Stack trace addresses (debug builds only)
+ *     char **backtrace_symbols;   // Stack trace symbol strings (debug builds only)
+ *     int stack_depth;            // Number of stack frames captured
+ *     bool has_system_error;      // True if system_errno is valid
+ *     bool has_wsa_error;         // True if wsa_error is valid
  * } asciichat_error_context_t;
  * @endcode
  *

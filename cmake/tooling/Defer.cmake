@@ -13,12 +13,43 @@ function(ascii_defer_prepare)
     set(_defer_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/defer-tool")
     set(_defer_cached_exe "${_defer_cache_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
 
+    # Clean up any partial cache state BEFORE checking if exe exists
+    # This handles CI cache restore that has incomplete state (directory exists,
+    # maybe CMakeCache.txt, but no exe) which causes "not a CMake build directory" errors
+    set(_defer_stamp_dir "${CMAKE_BINARY_DIR}/ascii-instr-defer-external-prefix/src/ascii-instr-defer-external-stamp")
+    set(_defer_needs_rebuild FALSE)
+
+    if(EXISTS "${_defer_cache_dir}")
+        if(NOT EXISTS "${_defer_cache_dir}/CMakeCache.txt")
+            message(STATUS "Cleaning incomplete defer tool cache (no CMakeCache.txt): ${_defer_cache_dir}")
+            file(REMOVE_RECURSE "${_defer_cache_dir}")
+            set(_defer_needs_rebuild TRUE)
+        elseif(NOT EXISTS "${_defer_cached_exe}")
+            message(STATUS "Cleaning incomplete defer tool cache (no exe): ${_defer_cache_dir}")
+            file(REMOVE_RECURSE "${_defer_cache_dir}")
+            set(_defer_needs_rebuild TRUE)
+        endif()
+    else()
+        # Cache directory doesn't exist at all - this can happen when:
+        # 1. CI cache only restored build/ but not .deps-cache/
+        # 2. Fresh checkout
+        # In either case, we need to clean any stale stamp files
+        set(_defer_needs_rebuild TRUE)
+    endif()
+
+    # Also clean up stale stamp files if we need a rebuild
+    if(_defer_needs_rebuild AND EXISTS "${_defer_stamp_dir}")
+        message(STATUS "Cleaning stale defer tool stamp files: ${_defer_stamp_dir}")
+        file(REMOVE_RECURSE "${_defer_stamp_dir}")
+    endif()
+
     if(ASCIICHAT_DEFER_TOOL AND EXISTS "${ASCIICHAT_DEFER_TOOL}")
         set(_defer_tool_exe "${ASCIICHAT_DEFER_TOOL}")
         set(_defer_tool_depends "")
         message(STATUS "Using external defer tool: ${_defer_tool_exe}")
-    elseif(EXISTS "${_defer_cached_exe}")
+    elseif(EXISTS "${_defer_cached_exe}" AND EXISTS "${_defer_cache_dir}/CMakeCache.txt")
         # Use cached defer tool (persists across build directory deletes)
+        # Both exe AND CMakeCache.txt must exist for a valid cache
         set(_defer_tool_exe "${_defer_cached_exe}")
         set(_defer_tool_depends "")
         message(STATUS "Using cached defer tool: ${_defer_tool_exe}")
@@ -27,8 +58,14 @@ function(ascii_defer_prepare)
         set(_defer_build_dir "${_defer_cache_dir}")
         set(_defer_tool_exe "${_defer_build_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
 
-        # Detect the C++ compiler (use same compiler family as main build)
-        if(CMAKE_CXX_COMPILER)
+        # Detect the C++ compiler for building the defer tool
+        # On macOS, we MUST use Apple's system clang for compiling the defer tool
+        # because Homebrew LLVM's libc++ headers are incompatible with -nostdinc.
+        # The defer tool links against Homebrew LLVM libraries but compiles with system clang.
+        if(APPLE AND EXISTS "/usr/bin/clang++")
+            set(_defer_cxx_compiler "/usr/bin/clang++")
+            message(STATUS "Defer tool: Using Apple system clang for compilation: ${_defer_cxx_compiler}")
+        elseif(CMAKE_CXX_COMPILER)
             set(_defer_cxx_compiler "${CMAKE_CXX_COMPILER}")
         elseif(CMAKE_C_COMPILER MATCHES "clang")
             get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)

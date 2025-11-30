@@ -171,9 +171,16 @@ Run `ascii-chat client --help` to see all client options:
 - `--no-encrypt`: Disable encryption (for local testing)
 - `--server-key KEY`: Expected server public key for verification
 
+**Device Enumeration:**
+
+- `--list-webcams`: List available webcam devices and exit
+- `--list-microphones`: List available audio input devices and exit
+- `--list-speakers`: List available audio output devices and exit
+
 **Misc:**
 
 - `-q --quiet`: Disable console logging (logs only to file)
+- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
 - `-S --snapshot`: Capture one frame and exit (useful for testing)
 - `-D --snapshot-delay SECONDS`: Delay before snapshot in seconds (default: 3.0/5.0)
 - `-L --log-file FILE`: Redirect logs to file
@@ -207,6 +214,7 @@ Run `./bin/ascii-chat server --help` to see all server options:
 
 **Misc:**
 
+- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
 - `-L --log-file FILE`: Redirect logs to file
 - `-v --version`: Display version information
 - `-h --help`: Show help message
@@ -346,7 +354,7 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 **Linux (apt/yum/pacman)**:
 
 ```bash
-./scripts/deps.sh
+./scripts/install-deps.sh
 ```
 
 **macOS**:

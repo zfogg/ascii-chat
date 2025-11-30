@@ -430,6 +430,10 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
     char_count++;
   }
 
+  // Handle empty string case
+  if (char_count == 0)
+    return;
+
   // Build 256-entry cache
   for (int i = 0; i < 256; i++) {
     int char_idx = char_count > 1 ? (i * (char_count - 1) + 127) / 255 : 0;
@@ -481,6 +485,10 @@ void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], u
     }
     char_count++;
   }
+
+  // Handle empty string case
+  if (char_count == 0)
+    return;
 
   // Build 64-entry cache and index ramp
   for (int i = 0; i < 64; i++) {

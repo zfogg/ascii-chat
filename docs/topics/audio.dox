@@ -146,10 +146,10 @@
  * **Read Captured Samples**:
  * @code{.c}
  * float samples[256];
- * size_t num_frames = audio_read_capture(&audio_ctx, samples, 256);
- * if (num_frames > 0) {
+ * asciichat_error_t err = audio_read_samples(&audio_ctx, samples, 256);
+ * if (err == ASCIICHAT_OK) {
  *     // Send samples to network
- *     send_audio_packet(sockfd, samples, num_frames);
+ *     send_audio_packet(sockfd, samples, 256);
  * }
  * @endcode
  *
@@ -171,9 +171,9 @@
  * receive_audio_packet(sockfd, samples, 256);
  *
  * // Write to playback buffer
- * size_t written = audio_write_playback(&audio_ctx, samples, 256);
- * if (written < 256) {
- *     log_warn("Audio buffer full, dropped %zu frames", 256 - written);
+ * asciichat_error_t err = audio_write_samples(&audio_ctx, samples, 256);
+ * if (err != ASCIICHAT_OK) {
+ *     log_warn("Failed to write audio samples");
  * }
  * @endcode
  *

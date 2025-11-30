@@ -900,7 +900,6 @@ target_link_libraries(ascii-chat-lib INTERFACE
     ascii-chat-crypto
     ascii-chat-network
     ascii-chat-core
-    ascii-chat-debug
     ascii-chat-platform
     ascii-chat-data-structures
     ascii-chat-util

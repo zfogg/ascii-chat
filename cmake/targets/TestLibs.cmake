@@ -3,23 +3,29 @@
 # =============================================================================
 # Simple test programs to verify both static and shared libraries work correctly
 # Both targets use the same source file but link against different libraries
+#
+# These tests use assert.h (not Criterion), so they only require BUILD_TESTS=ON
+# and work on all platforms including Windows.
+#
+# Prerequisites:
+#   - BUILD_TESTS option set
+#   - Libraries created (via Libraries.cmake)
+#
+# Outputs:
+#   - test-static-lib: Tests the static library (when available)
+#   - test-shared-lib: Tests the shared library (when available)
+# =============================================================================
 
-# Helper: detect mimalloc include directory for test harnesses
-set(_asciichat_mimalloc_include "")
-if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
-    list(APPEND _asciichat_mimalloc_include ${MIMALLOC_INCLUDE_DIR})
-elseif(DEFINED MIMALLOC_SOURCE_DIR AND MIMALLOC_SOURCE_DIR)
-    list(APPEND _asciichat_mimalloc_include "${MIMALLOC_SOURCE_DIR}/include")
-endif()
+# Use mimalloc include directories from Mimalloc.cmake
+set(_asciichat_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
 
 # =============================================================================
 # Test Static Library
 # =============================================================================
 # Only available when building STATIC libraries (not OBJECT libraries)
-# For Debug/Dev/Coverage: EXCLUDE_FROM_ALL (build only on explicit request)
-# For Release: Build by default (since Release uses static library)
+# On Windows, static libs are built in Release mode (OBJECT libs in Debug/Dev)
 if(NOT BUILDING_OBJECT_LIBS)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(BUILD_TESTS)
         add_executable(test-static-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
         set(TEST_STATIC_DEFAULT "built by default")
     else()
@@ -54,6 +60,12 @@ if(NOT BUILDING_OBJECT_LIBS)
         VERBATIM
     )
 
+    # Register as ctest test (only when BUILD_TESTS is enabled)
+    if(BUILD_TESTS)
+        add_test(NAME static-lib-runtime
+            COMMAND ${CMAKE_BINARY_DIR}/bin/test-static-lib)
+    endif()
+
     message(STATUS "Added test-static-lib target to test libasciichat.a (${TEST_STATIC_DEFAULT})")
 else()
     message(STATUS "Skipping test-static-lib (not available with OBJECT libraries)")
@@ -64,10 +76,8 @@ endif()
 # =============================================================================
 # Available in all build types except musl static builds
 # Musl builds use static-pie which cannot link against shared libraries
-# For Debug/Dev/Coverage: EXCLUDE_FROM_ALL (build only on explicit request)
-# For Release/RelWithDebInfo: Build by default
 if(NOT USE_MUSL)
-    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    if(BUILD_TESTS)
         add_executable(test-shared-lib ${CMAKE_SOURCE_DIR}/cmake/test/test_lib.c)
         set(TEST_SHARED_DEFAULT "built by default")
     else()
@@ -107,8 +117,12 @@ if(NOT USE_MUSL)
         VERBATIM
     )
 
-    add_test(NAME shared-lib-runtime
-             COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
+    # Register as ctest test (only when BUILD_TESTS is enabled)
+    if(BUILD_TESTS)
+        add_test(NAME shared-lib-runtime
+            COMMAND ${CMAKE_BINARY_DIR}/bin/test-shared-lib)
+    endif()
 else()
     message(STATUS "Skipping test-shared-lib (not compatible with musl static builds)")
 endif()
+

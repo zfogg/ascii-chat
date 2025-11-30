@@ -48,6 +48,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -60,7 +61,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v5
         build-cache-key: ${{ matrix.build_type }}
 
     - name: Clean build directory to force reconfigure
@@ -118,10 +119,17 @@ jobs:
 
         if [ "${BUILD_TYPE}" = "Release" ]; then
           cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
+          # Explicitly enable Criterion tests in Release mode for CI testing
+          cmake_args+=(-DBUILD_CRITERION_TESTS=ON)
         fi
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
-        cmake --build build
+        cmake -B build "${cmake_args[@]}"
+        # Use --verbose to see full compile commands for debugging tooling build issues
+        cmake --build build --verbose 2>&1 | tee build_output.log || {
+          echo "Build failed. Extracting tooling compile commands..."
+          grep -A 5 -B 5 "ascii-instr-defer\|ascii-instr-panic\|tool.cpp" build_output.log | head -100 || true
+          exit 1
+        }
 
         echo "Test executables built:"
         ls -la build/bin/test_* 2>/dev/null || echo "No test executables found in build/bin/"
@@ -272,6 +280,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -284,7 +293,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v5
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -319,7 +328,7 @@ jobs:
 
         FLAGS="-std=c2x --coverage"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake -B build --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
@@ -386,6 +395,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -397,7 +407,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v5
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -441,7 +451,7 @@ jobs:
           -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
         )
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
+        cmake -B build "${cmake_args[@]}"
         cmake --build build
         echo "Performance test executables built:"
         ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
@@ -507,6 +517,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -519,7 +530,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v5
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -534,7 +545,7 @@ jobs:
         # Use CMake build system with AddressSanitizer
         FLAGS="-std=c2x -fsanitize=address"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake -B build --preset github \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
@@ -596,6 +607,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -608,7 +620,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v3
+        cache-version: v5
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -642,7 +654,7 @@ jobs:
 
         FLAGS="-std=c2x"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake -B build --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}" \

@@ -750,10 +750,27 @@ function determine_test_failure() {
 # SIMPLIFIED TEST EXECUTION - SHARED SPAWNING + TWO EXECUTION MODES
 # =============================================================================
 
+# Merge Criterion's XML output into combined JUnit file
+# Args: test_name junit_file
+function merge_criterion_xml() {
+  local test_name="$1"
+  local junit_file="$2"
+  local test_xml_file="/tmp/test_${test_name}_$$.xml"
+
+  if [[ -n "$junit_file" ]] && [[ -f "$test_xml_file" ]]; then
+    # Extract only <testsuite> elements (not <testsuites> wrapper) from Criterion's XML
+    # Criterion wraps everything in <testsuites>, we want just the inner <testsuite> elements
+    sed -n '/<testsuite name=/,/<\/testsuite>/p' "$test_xml_file" >> "$junit_file"
+    rm -f "$test_xml_file"
+  fi
+}
+
 # Shared function to spawn a single test (sync or async)
+# Args: test_executable background [xml_output_file]
 function spawn_test() {
   local test_executable="$1"
   local background="$2"  # "sync" or "async"
+  local xml_output_file="${3:-}"  # Optional: path to write Criterion XML output
 
   local test_name=$(basename "$test_executable")
 
@@ -767,6 +784,11 @@ function spawn_test() {
   if [[ -n "$VERBOSE" ]]; then
     test_args+=(--verbose)
     log_verbose "Adding --verbose flag to $test_name (VERBOSE=$VERBOSE)"
+  fi
+
+  # If XML output requested, tell Criterion to generate it directly
+  if [[ -n "$xml_output_file" ]]; then
+    test_args+=("--xml=$xml_output_file")
   fi
 
   if [[ "$background" == "async" ]]; then
@@ -801,7 +823,10 @@ function spawn_test() {
 }
 
 # Function 1: Run tests sequentially (no parallelism)
+# Args: junit_file test1 test2 ...
 function run_tests_sequential() {
+  local junit_file="$1"
+  shift
   local test_list=("$@")
   local passed=0
   local failed=0
@@ -820,13 +845,19 @@ function run_tests_sequential() {
     fi
 
     local test_name=$(basename "$test_executable")
+    local test_class="${test_name#test_}"  # Remove test_ prefix for class name
     echo "🚀 [TEST] Starting: $test_name"
     ((started++))
 
     # Run test synchronously using shared spawning function
     local start_time=$(date +%s.%N)
+    # Determine XML output file for this test if JUnit is requested
+    local test_xml_file=""
+    if [[ -n "$junit_file" ]]; then
+      test_xml_file="/tmp/test_${test_name}_$$.xml"
+    fi
     # Use the shared spawn_test function for consistency - it handles verbose flag properly
-    local exit_code=$(spawn_test "$test_executable" "sync")
+    local exit_code=$(spawn_test "$test_executable" "sync" "$test_xml_file")
     local end_time=$(date +%s.%N)
     local duration
     if command -v bc >/dev/null 2>&1; then
@@ -849,6 +880,9 @@ function run_tests_sequential() {
       ((failed++))
       failed_tests+=("$test_name")  # Track failed test name
     fi
+
+    # Merge Criterion's XML output into combined JUnit file
+    merge_criterion_xml "$test_name" "$junit_file"
   done
 
   # Return results via global variables (no subshell needed)
@@ -869,7 +903,10 @@ function run_tests_sequential() {
 }
 
 # Function 2: Run tests in parallel (up to max_parallel at once)
+# Args: junit_file max_parallel test1 test2 ...
 function run_tests_parallel() {
+  local junit_file="$1"
+  shift
   local max_parallel=$1
   shift
   local test_list=("$@")
@@ -938,10 +975,10 @@ function run_tests_parallel() {
         fi
 
         # Show test output when it completes (only in non-verbose mode since verbose shows real-time)
-        if [[ -f "/tmp/test_${test_name}_$$.log" ]]; then
+        local log_file_path="/tmp/test_${test_name}_$$.log"
+        if [[ -f "$log_file_path" ]]; then
           # Only show summary in non-verbose mode (verbose already showed everything)
-          tail -5 "/tmp/test_${test_name}_$$.log" | grep -E "Synthesis:|PASSED|FAILED|Error" || tail -5 "/tmp/test_${test_name}_$$.log"
-          rm -f "/tmp/test_${test_name}_$$.log"
+          tail -5 "$log_file_path" | grep -E "Synthesis:|PASSED|FAILED|Error" || tail -5 "$log_file_path"
         fi
 
         if [[ $exit_code -eq 0 ]]; then
@@ -956,6 +993,12 @@ function run_tests_parallel() {
           ((failed++))
           failed_tests+=("$test_name")  # Track failed test name
         fi
+
+        # Merge Criterion's XML output into combined JUnit file
+        merge_criterion_xml "$test_name" "$junit_file"
+
+        # Clean up log file
+        rm -f "$log_file_path"
       fi
     done
 
@@ -985,7 +1028,12 @@ function run_tests_parallel() {
 
       # Run test asynchronously using shared spawning function
       local start_time=$(date +%s.%N)
-      spawn_test "$test_executable" "async"
+      # Determine XML output file for this test if JUnit is requested
+      local test_xml_file=""
+      if [[ -n "$junit_file" ]]; then
+        test_xml_file="/tmp/test_${test_name}_$$.xml"
+      fi
+      spawn_test "$test_executable" "async" "$test_xml_file"
 
       # Read PID from file
       local test_pid=""
@@ -1474,12 +1522,18 @@ function main() {
   local num_tests=${#all_tests_to_run[@]}
   local max_parallel_tests=$(calculate_resource_allocation $num_tests $total_cores "$jobs")
 
+  # Determine junit file path to pass (empty string if not generating)
+  local junit_file_arg=""
+  if [[ -n "$GENERATE_JUNIT" ]]; then
+    junit_file_arg="$junit_file"
+  fi
+
   if [[ "$NO_PARALLEL" == "1" ]] || [[ ${#all_tests_to_run[@]} -eq 1 ]]; then
     # Run sequentially
-    run_tests_sequential "${all_tests_to_run[@]}"
+    run_tests_sequential "$junit_file_arg" "${all_tests_to_run[@]}"
   else
     # Run in parallel
-    run_tests_parallel "$max_parallel_tests" "${all_tests_to_run[@]}"
+    run_tests_parallel "$junit_file_arg" "$max_parallel_tests" "${all_tests_to_run[@]}"
   fi
 
   # Results are now in global variables (no subshell issues!)
@@ -1492,19 +1546,23 @@ function main() {
         if [[ -n "$GENERATE_JUNIT" ]]; then
     echo '</testsuites>' >>"$junit_file"
 
-    # Validate JUnit XML
-    local xml_errors
-    xml_errors=$(xmllint --noout "$junit_file" 2>&1)
-    if [[ $? -ne 0 ]]; then
-      log_error "❌ JUnit XML validation failed!"
-      log_error "Invalid XML in: $junit_file"
-      log_error "XML errors: $xml_errors"
-      log_error "XML content:"
-      cat "$junit_file" >&2
-      log_error "Exiting due to invalid JUnit XML"
-      exit 1
+    # Validate JUnit XML (if xmllint is available)
+    if command -v xmllint &>/dev/null; then
+      local xml_errors
+      xml_errors=$(xmllint --noout "$junit_file" 2>&1)
+      if [[ $? -ne 0 ]]; then
+        log_error "❌ JUnit XML validation failed!"
+        log_error "Invalid XML in: $junit_file"
+        log_error "XML errors: $xml_errors"
+        log_error "XML content:"
+        cat "$junit_file" >&2
+        log_error "Exiting due to invalid JUnit XML"
+        exit 1
+      else
+        log_info "✅ JUnit XML validation passed"
+      fi
     else
-      log_info "✅ JUnit XML validation passed"
+      log_info "ℹ️ xmllint not available, skipping JUnit XML validation"
     fi
   fi
 

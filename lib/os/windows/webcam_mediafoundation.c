@@ -562,4 +562,122 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
+  if (!out_devices || !out_count) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "webcam_list_devices: invalid parameters");
+  }
+
+  *out_devices = NULL;
+  *out_count = 0;
+
+  IMFAttributes *attr = NULL;
+  IMFActivate **mf_devices = NULL;
+  UINT32 mf_count = 0;
+  HRESULT hr;
+  asciichat_error_t result = ASCIICHAT_OK;
+  BOOL com_initialized = FALSE;
+  BOOL mf_initialized = FALSE;
+
+  // Initialize COM
+  hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+  if (SUCCEEDED(hr)) {
+    com_initialized = TRUE;
+  } else if (hr != RPC_E_CHANGED_MODE) {
+    return SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to initialize COM: 0x%08x", hr);
+  }
+
+  // Initialize Media Foundation
+  hr = MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET);
+  if (FAILED(hr)) {
+    result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to startup Media Foundation: 0x%08x", hr);
+    goto cleanup;
+  }
+  mf_initialized = TRUE;
+
+  // Create attribute store for device enumeration
+  hr = MFCreateAttributes(&attr, 1);
+  if (FAILED(hr)) {
+    result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to create MF attributes: 0x%08x", hr);
+    goto cleanup;
+  }
+
+  // Set the device type to video capture
+  hr =
+      IMFAttributes_SetGUID(attr, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE, &MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+  if (FAILED(hr)) {
+    result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to set MF device type: 0x%08x", hr);
+    goto cleanup;
+  }
+
+  // Enumerate video capture devices
+  hr = MFEnumDeviceSources(attr, &mf_devices, &mf_count);
+  if (FAILED(hr)) {
+    result = SET_ERRNO_SYS(ERROR_WEBCAM, "Failed to enumerate MF devices: 0x%08x", hr);
+    goto cleanup;
+  }
+
+  if (mf_count == 0) {
+    // No devices found - not an error, just return empty list
+    goto cleanup;
+  }
+
+  // Allocate output array
+  webcam_device_info_t *devices = SAFE_CALLOC(mf_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
+  if (!devices) {
+    result = SET_ERRNO(ERROR_MEMORY, "Failed to allocate device info array");
+    goto cleanup;
+  }
+
+  // Populate device info
+  for (UINT32 i = 0; i < mf_count; i++) {
+    devices[i].index = i;
+
+    LPWSTR friendlyName = NULL;
+    UINT32 nameLength = 0;
+
+    hr = IMFActivate_GetAllocatedString(mf_devices[i], &MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &friendlyName,
+                                        &nameLength);
+    if (SUCCEEDED(hr) && friendlyName) {
+      // Convert wide string to UTF-8
+      int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL, NULL);
+      if (len > 0 && len < WEBCAM_DEVICE_NAME_MAX) {
+        WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, devices[i].name, WEBCAM_DEVICE_NAME_MAX, NULL, NULL);
+      } else {
+        SAFE_STRNCPY(devices[i].name, "<Unknown>", WEBCAM_DEVICE_NAME_MAX);
+      }
+      CoTaskMemFree(friendlyName);
+    } else {
+      SAFE_STRNCPY(devices[i].name, "<Unknown>", WEBCAM_DEVICE_NAME_MAX);
+    }
+  }
+
+  *out_devices = devices;
+  *out_count = mf_count;
+
+cleanup:
+  if (mf_devices) {
+    for (UINT32 i = 0; i < mf_count; i++) {
+      if (mf_devices[i]) {
+        IMFActivate_Release(mf_devices[i]);
+      }
+    }
+    CoTaskMemFree((void *)mf_devices);
+  }
+  if (attr) {
+    IMFAttributes_Release(attr);
+  }
+  if (mf_initialized) {
+    MFShutdown();
+  }
+  if (com_initialized) {
+    CoUninitialize();
+  }
+
+  return result;
+}
+
+void webcam_free_device_list(webcam_device_info_t *devices) {
+  SAFE_FREE(devices);
+}
+
 #endif

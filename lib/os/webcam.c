@@ -332,4 +332,17 @@ asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *
   (void)height;
   return SET_ERRNO(ERROR_WEBCAM, "Webcam get dimensions not supported on this platform");
 }
+
+asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsigned int *out_count) {
+  if (out_devices)
+    *out_devices = NULL;
+  if (out_count)
+    *out_count = 0;
+  return SET_ERRNO(ERROR_WEBCAM, "Webcam device enumeration not supported on this platform");
+}
+
+void webcam_free_device_list(webcam_device_info_t *devices) {
+  (void)devices;
+  // No-op on unsupported platforms
+}
 #endif

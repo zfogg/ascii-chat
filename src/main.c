@@ -430,8 +430,11 @@ int main(int argc, char *argv[]) {
         return 0;
       }
       // Any other option before the mode is not supported
-      fprintf(stderr, "Error: Option '%s' must come after the mode\n\n", argv[i]);
+      fprintf(stderr, "Error: Option '%s' must come after the mode\n", argv[i]);
+#ifndef NDEBUG
+      fprintf(stderr, "\n");
       print_usage(program_name);
+#endif
       return ERROR_USAGE;
     }
   }
@@ -449,15 +452,21 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
       if (argv[i][0] != '-') {
         // Found a non-option that's not a valid mode
-        fprintf(stderr, "Error: Unknown mode '%s'\n\n", argv[i]);
+        fprintf(stderr, "Error: Unknown mode '%s'\n", argv[i]);
+#ifndef NDEBUG
+        fprintf(stderr, "\n");
         print_usage(program_name);
+#endif
         return ERROR_USAGE;
       }
     }
 
     // Only options provided, no mode
-    fprintf(stderr, "Error: No mode specified\n\n");
+    fprintf(stderr, "Error: No mode specified\n");
+#ifndef NDEBUG
+    fprintf(stderr, "\n");
     print_usage(program_name);
+#endif
     return ERROR_USAGE;
   }
 
@@ -478,6 +487,10 @@ int main(int argc, char *argv[]) {
   // Use UNTRACKED_MALLOC to avoid appearing in memory leak reports
   // mode_argv is freed via atexit handler when mode->entry_point() calls exit()
   char **mode_argv = UNTRACKED_MALLOC((size_t)(mode_argc + 1) * sizeof(char *), char **);
+  if (!mode_argv) {
+    log_error("Failed to allocate memory for mode arguments");
+    return EXIT_FAILURE;
+  }
 
   // Build new argv: [program_name, options_after_mode]
   mode_argv[0] = argv[0]; // Keep program name

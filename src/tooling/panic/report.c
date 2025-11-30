@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "logging.h"
+#include "platform/internal.h"
 #include "tooling/panic/instrument_log.h"
 
 #include "util/uthash.h"
@@ -477,9 +478,9 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
 }
 
 static bool process_file(const report_config_t *config, const char *path, thread_entry_t **entries) {
-  FILE *handle = fopen(path, "r");
+  FILE *handle = platform_fopen(path, "r");
   if (handle == NULL) {
-    log_warn("Cannot open log file '%s': %s", path, strerror(errno));
+    log_warn("Cannot open log file '%s': %s", path, SAFE_STRERROR(errno));
     return false;
   }
 
@@ -549,7 +550,7 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
   struct _finddata_t data = {0};
   intptr_t handle = _findfirst(pattern, &data);
   if (handle == -1) {
-    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, strerror(errno));
+    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, SAFE_STRERROR(errno));
     return false;
   }
 
@@ -579,7 +580,7 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
 #else
   DIR *directory = opendir(config->log_dir);
   if (directory == NULL) {
-    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, strerror(errno));
+    log_error("Unable to open instrumentation log directory '%s': %s", config->log_dir, SAFE_STRERROR(errno));
     return false;
   }
 

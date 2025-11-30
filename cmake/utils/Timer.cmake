@@ -21,16 +21,114 @@ set(TIME_FILE "${CMAKE_BINARY_DIR}/.build_time_${TARGET_NAME}.txt")
 # =============================================================================
 # Function: get_timestamp_ms
 # Gets current timestamp in milliseconds since epoch
-# Uses CMake's native string(TIMESTAMP) - no external process spawn needed!
+# Uses python3 for actual millisecond precision on Unix
+# Falls back to CMake-only approach (second precision) if python3 unavailable
 # Sets the output variable to the timestamp value
 # =============================================================================
 function(get_timestamp_ms OUTPUT_VAR)
-    # Use CMake's native timestamp (seconds since epoch) - instant, no process spawn
-    # This is available in CMake 2.8.11+ and is extremely fast
-    string(TIMESTAMP EPOCH_SEC "%s" UTC)
-
-    # Convert to milliseconds (we don't have sub-second precision, but that's fine for build timing)
-    math(EXPR TIMESTAMP "${EPOCH_SEC} * 1000")
+    if(WIN32)
+        # Windows: Try bash first (Git Bash or WSL) for millisecond precision
+        execute_process(
+            COMMAND bash -c "date +%s%3N"
+            OUTPUT_VARIABLE TIMESTAMP
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+            RESULT_VARIABLE BASH_RESULT
+        )
+        if(NOT BASH_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Fallback to python
+            execute_process(
+                COMMAND python -c "import time; print(int(time.time() * 1000))"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PYTHON_RESULT
+            )
+            if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+                # Fallback to PowerShell
+                execute_process(
+                    COMMAND powershell -NoProfile -Command "[int64]([datetime]::UtcNow - [datetime]'1970-01-01').TotalMilliseconds"
+                    OUTPUT_VARIABLE TIMESTAMP
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                    RESULT_VARIABLE PS_RESULT
+                )
+                if(NOT PS_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+                    # Final fallback to CMake-only (second precision)
+                    string(TIMESTAMP EPOCH_SEC "%s" UTC)
+                    math(EXPR TIMESTAMP "${EPOCH_SEC} * 1000")
+                endif()
+            endif()
+        endif()
+    else()
+        set(TIMESTAMP_OK FALSE)
+        if(APPLE)
+            # macOS: Try gdate first (GNU date from Homebrew coreutils)
+            execute_process(
+                COMMAND gdate +%s%3N
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE GDATE_RESULT
+            )
+            if(GDATE_RESULT EQUAL 0 AND NOT TIMESTAMP STREQUAL "")
+                set(TIMESTAMP_OK TRUE)
+            else()
+                # Fallback to ruby (pre-installed on macOS)
+                execute_process(
+                    COMMAND ruby -e "puts (Time.now.to_f * 1000).to_i"
+                    OUTPUT_VARIABLE TIMESTAMP
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                    RESULT_VARIABLE RUBY_RESULT
+                )
+                if(RUBY_RESULT EQUAL 0 AND NOT TIMESTAMP STREQUAL "")
+                    set(TIMESTAMP_OK TRUE)
+                endif()
+            endif()
+        elseif(PLATFORM_LINUX)
+            # Linux: Try GNU date first for millisecond precision
+            execute_process(
+                COMMAND date +%s%3N
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE DATE_RESULT
+            )
+            if(DATE_RESULT EQUAL 0 AND NOT TIMESTAMP STREQUAL "")
+                set(TIMESTAMP_OK TRUE)
+            else()
+                # Fallback to python3
+                execute_process(
+                    COMMAND python3 -c "import time; print(int(time.time() * 1000))"
+                    OUTPUT_VARIABLE TIMESTAMP
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                    RESULT_VARIABLE PYTHON_RESULT
+                )
+                if(PYTHON_RESULT EQUAL 0 AND NOT TIMESTAMP STREQUAL "")
+                    set(TIMESTAMP_OK TRUE)
+                endif()
+            endif()
+        else()
+            # Other Unix (BSDs, etc.): Try python3 first (BSD date doesn't support %N)
+            execute_process(
+                COMMAND python3 -c "import time; print(int(time.time() * 1000))"
+                OUTPUT_VARIABLE TIMESTAMP
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+                RESULT_VARIABLE PYTHON_RESULT
+            )
+            if(PYTHON_RESULT EQUAL 0 AND NOT TIMESTAMP STREQUAL "")
+                set(TIMESTAMP_OK TRUE)
+            endif()
+        endif()
+        if(NOT TIMESTAMP_OK)
+            # Final fallback to CMake-only (second precision)
+            string(TIMESTAMP EPOCH_SEC "%s" UTC)
+            math(EXPR TIMESTAMP "${EPOCH_SEC} * 1000")
+        endif()
+    endif()
 
     set(${OUTPUT_VAR} "${TIMESTAMP}" PARENT_SCOPE)
 endfunction()
@@ -107,17 +205,26 @@ elseif(ACTION STREQUAL "end")
         math(EXPR ELAPSED_SEC "${ELAPSED_MS} / 1000")
         math(EXPR MS_ONLY "${ELAPSED_MS} % 1000")
 
+        # Zero-pad milliseconds to 3 digits (e.g., 56 -> 056, 5 -> 005)
+        if(MS_ONLY LESS 10)
+            set(MS_PADDED "00${MS_ONLY}")
+        elseif(MS_ONLY LESS 100)
+            set(MS_PADDED "0${MS_ONLY}")
+        else()
+            set(MS_PADDED "${MS_ONLY}")
+        endif()
+
         # Format elapsed time
         if(ELAPSED_SEC LESS 60)
             if(ELAPSED_SEC LESS 7)
-                set(TIME_STR "${BoldGreen}${ELAPSED_SEC}.${MS_ONLY}s${ColorReset}")
+                set(TIME_STR "${BoldGreen}${ELAPSED_SEC}.${MS_PADDED}s${ColorReset}")
             else()
-                set(TIME_STR "${BoldYellow}${ELAPSED_SEC}.${MS_ONLY}s${ColorReset}")
+                set(TIME_STR "${BoldYellow}${ELAPSED_SEC}.${MS_PADDED}s${ColorReset}")
             endif()
         else()
             math(EXPR MINUTES "${ELAPSED_SEC} / 60")
             math(EXPR SECONDS "${ELAPSED_SEC} % 60")
-            set(TIME_STR "${BoldMagenta}${MINUTES}m ${SECONDS}.${MS_ONLY}s${ColorReset}")
+            set(TIME_STR "${BoldMagenta}${MINUTES}m ${SECONDS}.${MS_PADDED}s${ColorReset}")
         endif()
 
         # Print success message with colored timing

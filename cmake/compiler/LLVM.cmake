@@ -34,7 +34,8 @@
 if (WIN32)
     set(LLVM_ROOT_DIRS "$ENV{PROGRAMFILES}/LLVM" "$ENV{LOCALAPPDATA}/Programs/LLVM/bin" "C:/Program Files/LLVM/bin" "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin" "$ENV{USERPROFILE}/scoop/shims")
 elseif(APPLE)
-    set(LLVM_ROOT_DIRS /opt/homebrew/opt/llvm/bin /usr/local/opt/llvm/bin /usr/bin)
+    # Priority: /usr/local/bin (git-built LLVM), then Homebrew locations
+    set(LLVM_ROOT_DIRS /usr/local/bin /usr/local/opt/llvm/bin /opt/homebrew/opt/llvm/bin /opt/homebrew/bin /usr/bin)
 elseif(LINUX)
     set(LLVM_ROOT_DIRS /usr/local/bin /usr/lib/llvm/bin /usr/lib/llvm-21/bin /usr/lib/llvm-20/bin /usr/lib/llvm-19/bin /usr/lib/llvm-18/bin /usr/lib/llvm-17/bin /usr/lib/llvm-16/bin /usr/lib/llvm-15/bin)
 endif()
@@ -51,11 +52,22 @@ function(configure_llvm_pre_project)
         endif()
     endif()
 
-    # Use llvm-config to detect LLVM installation (if available in PATH)
+    # Use llvm-config to detect LLVM installation
+    # First, strictly search LLVM_ROOT_DIRS with NO_DEFAULT_PATH to respect priority order
+    # This ensures git-built LLVM at /usr/local/bin takes precedence over Homebrew
     find_program(LLVM_CONFIG_EXECUTABLE
         NAMES llvm-config llvm-config.exe
+        HINTS ${LLVM_ROOT_DIRS}
+        NO_DEFAULT_PATH
         DOC "Path to llvm-config"
     )
+    # Fallback to default PATH search if not found in preferred locations
+    if(NOT LLVM_CONFIG_EXECUTABLE)
+        find_program(LLVM_CONFIG_EXECUTABLE
+            NAMES llvm-config llvm-config.exe
+            DOC "Path to llvm-config"
+        )
+    endif()
 
     if(LLVM_CONFIG_EXECUTABLE)
         # Get LLVM installation prefix
@@ -143,17 +155,17 @@ function(configure_llvm_pre_project)
                                     "  Or download from: https://llvm.org/builds/")
                 endif()
             elseif(APPLE)
-                # macOS: Prefer Homebrew Clang over Apple's Clang
+                # macOS: Prefer git-built LLVM at /usr/local, then Homebrew Clang
+                # Use NO_DEFAULT_PATH first to respect LLVM_ROOT_DIRS priority order
                 find_program(CLANG_EXECUTABLE
                     NAMES clang
-                    PATHS ${LLVM_ROOT_DIRS}
+                    HINTS ${LLVM_ROOT_DIRS}
+                    NO_DEFAULT_PATH
                 )
 
                 if(NOT CLANG_EXECUTABLE)
-                    # Fallback to system clang if Homebrew not found
-                    find_program(CLANG_EXECUTABLE NAMES clang
-                        PATHS ${LLVM_ROOT_DIRS}
-                    )
+                    # Fallback to system PATH if not found in preferred locations
+                    find_program(CLANG_EXECUTABLE NAMES clang)
                 endif()
 
                 if(NOT CLANG_EXECUTABLE)
@@ -288,7 +300,12 @@ function(configure_llvm_pre_project)
         set(HOMEBREW_LLVM_PREFIX "${LLVM_DETECTED_PREFIX}")
         set(LLVM_SOURCE "llvm-config")
         message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}LLVM${ColorReset} (from llvm-config): ${BoldCyan}${LLVM_DETECTED_PREFIX}${ColorReset}")
-    # Second priority: Check common Homebrew installation paths
+    # Second priority: Check /usr/local for git-built LLVM (user's preferred installation)
+    elseif(EXISTS "/usr/local/bin/clang" AND EXISTS "/usr/local/bin/llvm-config")
+        set(HOMEBREW_LLVM_PREFIX "/usr/local")
+        set(LLVM_SOURCE "git-built")
+        message(STATUS "${BoldGreen}Using${ColorReset} ${BoldBlue}LLVM${ColorReset} (git-built at /usr/local): ${BoldCyan}/usr/local${ColorReset}")
+    # Third priority: Check common Homebrew installation paths
     elseif(EXISTS "/usr/local/opt/llvm/bin/clang")
         set(HOMEBREW_LLVM_PREFIX "/usr/local/opt/llvm")
         set(LLVM_SOURCE "Homebrew")

@@ -29,7 +29,7 @@ static bool is_network_available(void) {
   return false;
 }
 
-static bool response_contains(const char *response, const char *substring) {
+__attribute__((unused)) static bool response_contains(const char *response, const char *substring) {
   if (!response || !substring) {
     return false;
   }

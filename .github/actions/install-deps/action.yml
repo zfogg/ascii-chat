@@ -31,33 +31,9 @@ runs:
     # =========================================================================
     # CMake 4.2.0 Installation (macOS and Windows only)
     # =========================================================================
-    # NOTE: Ubuntu uses scripts/deps.sh which installs CMake via Kitware APT repo
+    # NOTE: Ubuntu uses scripts/install-deps.sh which installs CMake via Kitware APT repo
 
-    - name: Install CMake 4.2.0 (macOS)
-      if: inputs.os == 'macos'
-      shell: bash
-      run: |
-        CMAKE_VERSION="4.2.0"
-        CMAKE_URL="https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-macos-universal.tar.gz"
-        CMAKE_INSTALL_DIR="/opt/cmake-${CMAKE_VERSION}"
-
-        echo "Installing CMake ${CMAKE_VERSION} from official release..."
-        curl -fsSL "$CMAKE_URL" -o /tmp/cmake.tar.gz
-        sudo mkdir -p "$CMAKE_INSTALL_DIR"
-        sudo tar -xzf /tmp/cmake.tar.gz -C "$CMAKE_INSTALL_DIR" --strip-components=1
-        rm /tmp/cmake.tar.gz
-
-        # The macOS bundle has CMake.app/Contents/bin/cmake
-        if [ -d "${CMAKE_INSTALL_DIR}/CMake.app/Contents/bin" ]; then
-          CMAKE_BIN_DIR="${CMAKE_INSTALL_DIR}/CMake.app/Contents/bin"
-        else
-          CMAKE_BIN_DIR="${CMAKE_INSTALL_DIR}/bin"
-        fi
-
-        # Add to PATH (prepend so it takes priority)
-        echo "${CMAKE_BIN_DIR}" >> $GITHUB_PATH
-        echo "Installed CMake ${CMAKE_VERSION} to ${CMAKE_INSTALL_DIR}"
-        "${CMAKE_BIN_DIR}/cmake" --version
+    # NOTE: macOS CMake is installed via Homebrew in install-deps.sh
 
     - name: Install CMake 4.2.0 (Windows)
       if: inputs.os == 'windows'
@@ -97,6 +73,17 @@ runs:
           deps/bearssl/build
         key: ${{ runner.os }}-cmake-deps-v4-${{ hashFiles('cmake/dependencies/**') }}
 
+    - name: Compute install-deps.sh hash (macOS)
+      if: inputs.os == 'macos'
+      id: install-deps-sh-hash-macos
+      shell: bash
+      run: |
+        # Use scripts/install-deps.sh as the single source of truth for package installation
+        # Hash the install-deps.sh script to invalidate cache when dependencies change
+        hash=$(shasum -a 256 scripts/install-deps.sh | cut -c1-8)
+        echo "hash=$hash" >> $GITHUB_OUTPUT
+        echo "install-deps.sh hash: $hash"
+
     - name: Restore Homebrew cache (macOS)
       if: inputs.os == 'macos'
       id: homebrew-cache
@@ -108,70 +95,75 @@ runs:
         # already present, so only cache the download artifacts.
         path: |
           ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-homebrew-v2-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-homebrew-v2-
-          ${{ runner.os }}-homebrew-
+          ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-
+          ${{ runner.os }}-homebrew-v3-
 
-    - name: Install Homebrew packages (macOS)
+    - name: Install dependencies via scripts/install-deps.sh (macOS)
       if: inputs.os == 'macos'
       shell: bash
       run: |
-        # Update Homebrew
-        brew update
+        set -euo pipefail
 
-        # Install packages
-        PACKAGES="pkg-config llvm ccache make ninja zstd portaudio libsodium criterion coreutils ${{ inputs.extra-packages }}"
+        echo "Running scripts/install-deps.sh to install build dependencies..."
+        # install-deps.sh handles all Homebrew package installation
+        bash scripts/install-deps.sh
 
-        echo "Installing Homebrew packages: $PACKAGES"
-        for pkg in $PACKAGES; do
-          if brew list --formula | grep -q "^${pkg}\$"; then
-            echo "✓ $pkg already installed"
-          else
-            echo "Installing $pkg..."
-            brew install "$pkg"
-          fi
-        done
+        # Install any extra packages requested by the workflow
+        extra="${{ inputs.extra-packages }}"
+        if [ -n "$extra" ]; then
+          echo "Installing additional packages: $extra"
+          brew install $extra
+        fi
 
         # Clean up to reduce cache size
         brew cleanup
 
-    - name: Compute deps.sh hash (Ubuntu)
+    - name: Compute install-deps.sh hash (Ubuntu)
       if: inputs.os == 'ubuntu'
-      id: deps-sh-hash
+      id: install-deps-sh-hash
       shell: bash
       run: |
-        # Use scripts/deps.sh as the single source of truth for package installation
-        # Hash the deps.sh script to invalidate cache when dependencies change
-        hash=$(sha256sum scripts/deps.sh | cut -c1-8)
+        # Use scripts/install-deps.sh as the single source of truth for package installation
+        # Hash the install-deps.sh script to invalidate cache when dependencies change
+        hash=$(sha256sum scripts/install-deps.sh | cut -c1-8)
         echo "hash=$hash" >> $GITHUB_OUTPUT
-        echo "deps.sh hash: $hash"
+        echo "install-deps.sh hash: $hash"
 
     - name: Restore APT cache (Ubuntu)
       if: inputs.os == 'ubuntu'
       id: apt-cache
       uses: actions/cache/restore@v4
       with:
-        path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-v3-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+        # Cache to workspace directory to avoid permission issues
+        path: .apt-cache
+        key: ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-apt-v3-${{ steps.deps-sh-hash.outputs.hash }}-
-          ${{ runner.os }}-apt-v3-
+          ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-
+          ${{ runner.os }}-apt-v5-
 
-    - name: Install dependencies via scripts/deps.sh (Ubuntu)
+    - name: Restore APT cache to system (Ubuntu)
+      if: inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: |
+        if [ -d ".apt-cache" ] && [ "$(ls -A .apt-cache 2>/dev/null)" ]; then
+          echo "Restoring $(ls .apt-cache/*.deb 2>/dev/null | wc -l) cached .deb files..."
+          sudo cp .apt-cache/*.deb /var/cache/apt/archives/ 2>/dev/null || true
+        fi
+
+    - name: Install dependencies via scripts/install-deps.sh (Ubuntu)
       if: inputs.os == 'ubuntu'
       shell: bash
       run: |
         set -euo pipefail
 
-        echo "Running scripts/deps.sh to install build dependencies..."
-        # deps.sh handles:
+        echo "Running scripts/install-deps.sh to install build dependencies..."
+        # install-deps.sh handles:
         # - CMake 4.2.0 installation via Kitware APT repository
         # - All build dependencies (clang-21, llvm-21-dev, etc.)
         # - LLVM 21 update-alternatives configuration
-        bash scripts/deps.sh
+        bash scripts/install-deps.sh
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
@@ -449,7 +441,7 @@ runs:
       with:
         path: |
           ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-homebrew-v2-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
 
     - name: Save vcpkg packages (Windows)
       if: always() && inputs.os == 'windows' && env.VCPKG_ROOT != '' && steps.vcpkg-cache.outputs.cache-hit != 'true'
@@ -461,11 +453,20 @@ runs:
           ${{ env.VCPKG_ROOT }}/buildtrees
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
 
+    - name: Prepare APT cache for saving (Ubuntu)
+      if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        mkdir -p .apt-cache
+        if ls /var/cache/apt/archives/*.deb 1>/dev/null 2>&1; then
+          cp /var/cache/apt/archives/*.deb .apt-cache/
+          echo "Cached $(ls .apt-cache/*.deb | wc -l) .deb files for future runs"
+        fi
+
     - name: Save APT cache (Ubuntu)
       if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: |
-          /var/cache/apt/archives
-          /var/lib/apt/lists
-        key: ${{ runner.os }}-apt-v3-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+        # Cache to workspace directory to avoid permission issues
+        path: .apt-cache
+        key: ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}

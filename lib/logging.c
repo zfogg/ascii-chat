@@ -538,6 +538,8 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, false);
   if (header_len <= 0 || header_len >= (int)sizeof(log_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
+    va_end(args);
+    mutex_unlock(&g_log.mutex);
     return;
   }
 

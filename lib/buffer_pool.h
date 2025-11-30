@@ -204,7 +204,7 @@ typedef struct data_buffer_pool {
  * Creates a new buffer pool manager with all size classes initialized.
  * Each size class is pre-allocated with the configured number of buffers.
  *
- * @note Allocates significant memory up front (128KB + 4MB + 8MB + 128MB).
+ * @note Allocates significant memory up front (1MB + 4MB + 8MB + 128MB = 141MB).
  *       Use this carefully in memory-constrained environments.
  *
  * @note Thread-safe: Can be called from multiple threads.

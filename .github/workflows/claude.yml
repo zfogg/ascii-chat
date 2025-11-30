@@ -33,6 +33,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          fetch-tags: true
           submodules: true
 
       - name: Run Claude Code
