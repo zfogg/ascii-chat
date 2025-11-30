@@ -13,6 +13,8 @@
 # Note: On Unix systems, -dev packages include both static (.a) and dynamic (.so) libraries.
 #       The actual static/dynamic linking is controlled by CMake based on build type.
 
+set -e
+
 # Parse arguments
 CONFIG="Debug"
 if [[ "$1" == "-Release" ]] || [[ "$1" == "--release" ]]; then
@@ -40,7 +42,7 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
 elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]]; then
   PLATFORM="windows"
 else
-  echo "ERROR: Unsupported platform: $OSTYPE"
+  echo >&2 "ERROR: Unsupported platform: $OSTYPE"
   exit 1
 fi
 
@@ -50,8 +52,8 @@ echo ""
 # macOS: Use Homebrew
 if [[ "$PLATFORM" == "macos" ]]; then
   if ! command -v brew &>/dev/null; then
-    echo "ERROR: Homebrew not found"
-    echo "Please install Homebrew from https://brew.sh"
+    echo >&2 "ERROR: Homebrew not found"
+    echo >&2 "Please install Homebrew from https://brew.sh"
     exit 1
   fi
 
@@ -73,9 +75,12 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
 
     # INFO: see https://apt.kitware.com/
-    sudo /bin/bash -c "$(curl -fsSL https://apt.kitware.com/kitware-archive.sh)" 2>/dev/null \
-      || true
-    if [ $? -eq 1 ]; then
+    set +e
+    sudo /bin/bash -c "$(curl -fsSL https://apt.kitware.com/kitware-archive.sh)" 2>/dev/null
+    kitware_apt_sh_result="$?"
+    set -e
+
+    if [ $kitware_apt_sh_result -eq 1 ]; then
       sudo apt-get update
       sudo apt-get install ca-certificates gpg wget
 
@@ -93,7 +98,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       elif [ "$ubuntu_version_major" -eq "22" ]; then
         local ubuntu_version_name_short="focal"
       else
-        echo "Unsupported Ubuntu version $ubuntu_version_major" >&2
+        echo >&2 "Unsupported Ubuntu version $ubuntu_version_major"
         exit 1
       fi
 
@@ -137,12 +142,12 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         echo "Successfully installed LLVM $ver"
         break
       else
-        echo "LLVM $ver not available, trying next version..."
+        echo >&2 "LLVM $ver not available, trying next version..."
       fi
     done
 
     if [ -z "$LLVM_VERSION" ]; then
-      echo "ERROR: Could not install any LLVM version ($LLVM_VERSIONS)"
+      echo >&2 "ERROR: Could not install any LLVM version ($LLVM_VERSIONS)"
       exit 1
     fi
 
@@ -203,12 +208,10 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     fi
 
     # Verify configuration
-    echo ""
     echo "Verifying LLVM $LLVM_VERSION configuration:"
     clang --version | head -1
     clang++ --version | head -1
     llvm-config --version
-    echo ""
     echo "Verifying CMake configuration:"
     which cmake
     cmake --version | head -1
@@ -248,20 +251,20 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       criterion libffi
 
   else
-    echo "ERROR: No supported package manager found (apt-get, yum, or pacman)"
-    echo "Please install dependencies manually:"
-    echo "  - pkg-config"
-    echo "  - llvm (the binary tools and runtime libraries)"
-    echo "  - * zlib (library and development headers. * this is an llvm dependency - you may already have it installed)"
-    echo "  - clang (both clang and clang++)"
-    echo "  - * musl (development tools. * this is only needed if you plan to do a release build)"
-    echo "  - * mimalloc (library and development headers. * this is only needed if you plan to do a release build)"
-    echo "  - zstd (library and development headers)"
-    echo "  - libsodium (library and development headers)"
-    echo "  - portaudio (library and development headers)"
-    echo "  - criterion (testing framework, library and development headers)"
-    echo "  - libffi (foreign function interface, required by criterion)"
-    echo "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"
+    echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"
+    echo >&2 "Please install dependencies manually:"
+    echo >&2 "  - pkg-config"
+    echo >&2 "  - llvm (the binary tools and runtime libraries)"
+    echo >&2 "  - * zlib (library and development headers. * this is an llvm dependency - you may already have it installed)"
+    echo >&2 "  - clang (both clang and clang++)"
+    echo >&2 "  - * musl (development tools. * this is only needed if you plan to do a release build)"
+    echo >&2 "  - * mimalloc (library and development headers. * this is only needed if you plan to do a release build)"
+    echo >&2 "  - zstd (library and development headers)"
+    echo >&2 "  - libsodium (library and development headers)"
+    echo >&2 "  - portaudio (library and development headers)"
+    echo >&2 "  - criterion (testing framework, library and development headers)"
+    echo >&2 "  - libffi (foreign function interface, required by criterion)"
+    echo >&2 "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"
     exit 1
   fi
 
