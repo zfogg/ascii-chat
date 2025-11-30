@@ -14,14 +14,18 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 #include "tests/common.h"
 #include "crypto/handshake.h"
 #include "crypto/keys/keys.h"
 #include "crypto/known_hosts.h"
+#include "network/packet.h"
+#include "network/packet_types.h"
+#include "buffer_pool.h"
 #include "tests/logging.h"
 
-// Use the enhanced macro to create complete test suite with basic quiet logging
+// Use verbose logging to debug test failures
 TEST_SUITE_WITH_QUIET_LOGGING(crypto_handshake_integration);
 
 // Network state for integration testing
@@ -78,7 +82,8 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   // Step 1: Receive client's PROTOCOL_VERSION
   int result = receive_packet(server_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    if (payload) buffer_pool_free(payload, payload_len);
+    if (payload)
+      buffer_pool_free(payload, payload_len);
     return -1;
   }
   buffer_pool_free(payload, payload_len);
@@ -89,13 +94,15 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   server_version.protocol_revision = htons(0);
   server_version.supports_encryption = 1;
   result = send_protocol_version_packet(server_fd, &server_version);
-  if (result != 0) return -1;
+  if (result != 0)
+    return -1;
 
   // Step 3: Receive client's CRYPTO_CAPABILITIES
   payload = NULL;
   result = receive_packet(server_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
-    if (payload) buffer_pool_free(payload, payload_len);
+    if (payload)
+      buffer_pool_free(payload, payload_len);
     return -1;
   }
   buffer_pool_free(payload, payload_len);
@@ -103,19 +110,20 @@ static int server_protocol_negotiation(int server_fd, crypto_handshake_context_t
   // Step 4: Send server's CRYPTO_PARAMETERS
   crypto_parameters_packet_t server_params = {0};
   server_params.selected_kex = KEX_ALGO_X25519;
-  server_params.selected_auth = AUTH_ALGO_NONE;  // Simple mode, no auth
+  server_params.selected_auth = AUTH_ALGO_NONE; // Simple mode, no auth
   server_params.selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305;
   server_params.verification_enabled = 0;
   server_params.kex_public_key_size = CRYPTO_PUBLIC_KEY_SIZE;
-  server_params.auth_public_key_size = 0;  // No auth keys
-  server_params.signature_size = 0;        // No signatures
+  server_params.auth_public_key_size = 0; // No auth keys
+  server_params.signature_size = 0;       // No signatures
   server_params.shared_secret_size = CRYPTO_PUBLIC_KEY_SIZE;
   server_params.nonce_size = CRYPTO_NONCE_SIZE;
   server_params.mac_size = CRYPTO_MAC_SIZE;
   server_params.hmac_size = CRYPTO_HMAC_SIZE;
 
   result = send_crypto_parameters_packet(server_fd, &server_params);
-  if (result != 0) return -1;
+  if (result != 0)
+    return -1;
 
   // Set parameters in server context (server uses host byte order)
   return crypto_handshake_set_parameters(server_ctx, &server_params);
@@ -133,12 +141,14 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   client_version.protocol_revision = htons(0);
   client_version.supports_encryption = 1;
   int result = send_protocol_version_packet(client_fd, &client_version);
-  if (result != 0) return -1;
+  if (result != 0)
+    return -1;
 
   // Step 2: Receive server's PROTOCOL_VERSION
   result = receive_packet(client_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_PROTOCOL_VERSION) {
-    if (payload) buffer_pool_free(payload, payload_len);
+    if (payload)
+      buffer_pool_free(payload, payload_len);
     return -1;
   }
   buffer_pool_free(payload, payload_len);
@@ -149,13 +159,15 @@ static int client_protocol_negotiation(int client_fd, crypto_handshake_context_t
   client_caps.supported_auth_algorithms = htons(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
   client_caps.supported_cipher_algorithms = htons(CIPHER_ALGO_XSALSA20_POLY1305);
   result = send_crypto_capabilities_packet(client_fd, &client_caps);
-  if (result != 0) return -1;
+  if (result != 0)
+    return -1;
 
   // Step 4: Receive server's CRYPTO_PARAMETERS
   payload = NULL;
   result = receive_packet(client_fd, &packet_type, &payload, &payload_len);
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
-    if (payload) buffer_pool_free(payload, payload_len);
+    if (payload)
+      buffer_pool_free(payload, payload_len);
     return -1;
   }
 

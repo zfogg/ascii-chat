@@ -74,6 +74,7 @@ TestSuite(main_integration, .init = setup_main_tests, .fini = teardown_main_test
 // =============================================================================
 
 // Helper function to get the binary path based on environment
+// Handles both direct invocation from repo root and ctest invocation from build dir
 static const char *get_binary_path(void) {
   static char binary_path[256];
   static bool initialized = false;
@@ -83,17 +84,41 @@ static const char *get_binary_path(void) {
     bool in_docker = (access("/.dockerenv", F_OK) == 0);
     const char *build_dir = getenv("BUILD_DIR");
 
+    // Try several paths in order of preference
+    const char *candidates[] = {
+        // Relative paths from repo root
+        build_dir ? NULL : NULL, // placeholder for build_dir case below
+        in_docker ? "./build_docker/bin/ascii-chat" : "./build/bin/ascii-chat",
+        // Relative paths from build directory (when ctest runs from there)
+        "./bin/ascii-chat",
+        // Absolute paths for Docker
+        in_docker ? "/app/build_docker/bin/ascii-chat" : NULL,
+    };
+
     if (build_dir) {
       // Use BUILD_DIR environment variable if set
       safe_snprintf(binary_path, sizeof(binary_path), "./%s/bin/ascii-chat", build_dir);
-    } else if (in_docker) {
-      // In Docker, use build_docker directory (matches docker-compose.yml)
-      safe_snprintf(binary_path, sizeof(binary_path), "./build_docker/bin/ascii-chat");
-    } else {
-      // Local testing, use build directory
-      safe_snprintf(binary_path, sizeof(binary_path), "./build/bin/ascii-chat");
+      if (access(binary_path, X_OK) == 0) {
+        initialized = true;
+        return binary_path;
+      }
     }
 
+    // Try each candidate path
+    for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); i++) {
+      if (candidates[i] && access(candidates[i], X_OK) == 0) {
+        safe_snprintf(binary_path, sizeof(binary_path), "%s", candidates[i]);
+        initialized = true;
+        return binary_path;
+      }
+    }
+
+    // Fallback to default (will likely fail but gives useful error)
+    if (in_docker) {
+      safe_snprintf(binary_path, sizeof(binary_path), "./build_docker/bin/ascii-chat");
+    } else {
+      safe_snprintf(binary_path, sizeof(binary_path), "./build/bin/ascii-chat");
+    }
     initialized = true;
   }
 
