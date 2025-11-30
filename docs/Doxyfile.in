@@ -133,6 +133,8 @@ INPUT_ENCODING         = UTF-8
 
 FILE_PATTERNS          = *.c \
                          *.h \
+                         *.cpp \
+                         *.hpp \
                          *.m \
                          *.dox
 

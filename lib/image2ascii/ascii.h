@@ -3,7 +3,7 @@
 /**
  * @file image2ascii/ascii.h
  * @ingroup image2ascii
- * @brief ASCII Art Conversion and Output Interface
+ * @brief 🖼️ ASCII Art Conversion and Output Interface
  *
  * This header provides comprehensive functions for converting images to ASCII art
  * and outputting frames to the terminal. Supports multiple color modes, aspect

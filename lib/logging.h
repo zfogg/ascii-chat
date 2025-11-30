@@ -1,11 +1,11 @@
 /**
  * @defgroup logging Logging System
  * @ingroup module_core
- * @brief Logging API with multiple log levels and terminal output control
+ * @brief 📝 Logging API with multiple log levels and terminal output control
  *
  * @file logging.h
  * @ingroup logging
- * @brief Logging API with multiple log levels and terminal output control
+ * @brief 📝 Logging API with multiple log levels and terminal output control
  *
  * This header provides a comprehensive logging system with:
  * - Multiple log levels (DEV, DEBUG, INFO, WARN, ERROR, FATAL)

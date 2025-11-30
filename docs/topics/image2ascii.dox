@@ -1,6 +1,6 @@
 /**
  * @defgroup image2ascii Image to ASCII Conversion
- * @ingroup module_video
+ * @ingroup module_image2ascii
  * @brief 🖼️ Everything necessary to turn pixels into text art
  *
  * @page topic_image2ascii image2ascii README

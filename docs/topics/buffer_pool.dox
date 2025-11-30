@@ -1,7 +1,7 @@
 /**
  * @defgroup buffer_pool Buffer Pool
  * @ingroup module_data_structures
- * @brief Pre-allocated memory buffers for efficient allocation
+ * @brief 🗃️ Pre-allocated memory buffers for efficient allocation
  */
 
 /**

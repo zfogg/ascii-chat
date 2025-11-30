@@ -1,7 +1,7 @@
 /**
  * @defgroup keys Keys Module
  * @ingroup module_crypto
- * @brief SSH key, GPG key, and key validation APIs
+ * @brief 🔑 SSH key, GPG key, and key validation APIs
  */
 
 /**

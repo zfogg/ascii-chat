@@ -1,7 +1,7 @@
  /**
  * @defgroup packet Packet Types
  * @ingroup module_network
- * @brief Network protocol packet type definitions and structures
+ * @brief 📨 Network protocol packet type definitions and structures
  */
 
 /**
@@ -17,7 +17,7 @@
  * **Implementation**: lib/network/packet_types.h
  *
  * **Key Features**:
-* - Comprehensive packet type enumeration (32 packet types)
+* - Comprehensive packet type enumeration (33 packet types)
  * - Packed structures for wire format compatibility
  * - Protocol versioning and capability negotiation
  * - Handshake packet detection for crypto routing
@@ -123,7 +123,7 @@ to make the source of the message obvious.
  *
  * **Header fields**:
  * - `magic`: Must be `PACKET_MAGIC` (0xDEADBEEF) or packet is invalid
- * - `type`: Packet type enumeration value (1-33)
+ * - `type`: Packet type enumeration value (packet_type_t, 1-33)
  * - `length`: Payload data length in bytes (0 for header-only packets)
  * - `crc32`: CRC32 checksum of payload data (not including header)
  * - `client_id`: Identifies source (0 for server, 1-9 for clients)

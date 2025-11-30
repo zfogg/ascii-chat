@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "logging.h"
-#include "tooling/source_print/instrument_log.h"
+#include "tooling/panic/instrument_log.h"
 
 #include "util/uthash.h"
 
@@ -33,6 +33,7 @@ typedef struct thread_filter_list {
 
 typedef struct report_config {
   const char *log_dir;
+  const char *log_file; // Single log file path (alternative to log_dir)
   const char *include_filter;
   const char *exclude_filter;
   thread_filter_list_t threads;
@@ -130,7 +131,12 @@ static const char *resolve_default_log_dir(void) {
   if (dir != NULL && dir[0] != '\0') {
     return dir;
   }
+#if defined(_WIN32)
+  // Default to current directory on Windows (trace.log is usually in cwd)
+  return ".";
+#else
   return "/tmp";
+#endif
 }
 
 static void free_record(log_record_t *record) {
@@ -353,6 +359,7 @@ static void print_summary(const report_config_t *config, thread_entry_t **entrie
 static void usage(FILE *stream, const char *program) {
   fprintf(stream,
           "Usage: %s [options]\n"
+          "  --log-file <path>    Single log file to analyze (e.g., trace.log)\n"
           "  --log-dir <path>     Directory containing ascii-instr-*.log files (default: resolve from environment)\n"
           "  --thread <id>        Limit to specific thread ID (repeatable)\n"
           "  --include <substr>   Include records whose file path contains substring\n"
@@ -362,20 +369,59 @@ static void usage(FILE *stream, const char *program) {
           program);
 }
 
+// Simple pre-scan for --log-file to avoid corrupted optarg from instrumented getopt
+// This is a workaround for stack corruption caused by panic instrumentation
+static const char *prescan_log_file(int argc, char **argv) {
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--log-file") == 0 && i + 1 < argc) {
+      return argv[i + 1];
+    }
+    // Handle --log-file=path format
+    if (strncmp(argv[i], "--log-file=", 11) == 0) {
+      return argv[i] + 11;
+    }
+  }
+  return NULL;
+}
+
+// Check if only --log-file is specified (to skip getopt entirely)
+static bool is_simple_log_file_invocation(int argc, char **argv) {
+  // Expected patterns: program --log-file path (argc=3) or program --log-file=path (argc=2)
+  if (argc == 3 && strcmp(argv[1], "--log-file") == 0) {
+    return true;
+  }
+  if (argc == 2 && strncmp(argv[1], "--log-file=", 11) == 0) {
+    return true;
+  }
+  return false;
+}
+
 static bool parse_arguments(int argc, char **argv, report_config_t *config) {
+  // Pre-scan for --log-file before getopt (workaround for instrumentation bug)
+  const char *log_file_arg = prescan_log_file(argc, argv);
+  if (log_file_arg != NULL) {
+    config->log_file = log_file_arg;
+  }
+
+  // If just --log-file with no other args, skip getopt entirely
+  // (instrumented getopt corrupts memory)
+  if (config->log_file != NULL && is_simple_log_file_invocation(argc, argv)) {
+    return true;
+  }
+
   static const struct option kLongOptions[] = {
-      {"log-dir", required_argument, NULL, 'd'},
-      {"thread", required_argument, NULL, 't'},
-      {"include", required_argument, NULL, 'i'},
-      {"exclude", required_argument, NULL, 'x'},
-      {"raw", no_argument, NULL, 'r'},
-      {"help", no_argument, NULL, 'h'},
-      {0, 0, 0, 0},
+      {"log-file", required_argument, NULL, 'f'}, {"log-dir", required_argument, NULL, 'd'},
+      {"thread", required_argument, NULL, 't'},   {"include", required_argument, NULL, 'i'},
+      {"exclude", required_argument, NULL, 'x'},  {"raw", no_argument, NULL, 'r'},
+      {"help", no_argument, NULL, 'h'},           {0, 0, 0, 0},
   };
 
   int option = 0;
   while ((option = getopt_long(argc, argv, "", kLongOptions, NULL)) != -1) {
     switch (option) {
+    case 'f':
+      // Already handled by prescan - skip (optarg may be corrupted)
+      break;
     case 'd':
       config->log_dir = optarg;
       break;
@@ -416,7 +462,14 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
     return false;
   }
 
-  if (config->log_dir == NULL) {
+  // Validate --log-file and --log-dir are mutually exclusive
+  if (config->log_file != NULL && config->log_dir != NULL) {
+    log_error("Cannot specify both --log-file and --log-dir");
+    return false;
+  }
+
+  // Fall back to default log directory only if no log file specified
+  if (config->log_file == NULL && config->log_dir == NULL) {
     config->log_dir = resolve_default_log_dir();
   }
 
@@ -481,6 +534,11 @@ static bool build_windows_glob_pattern(char *buffer, size_t capacity, const char
 #endif
 
 static bool collect_entries(const report_config_t *config, thread_entry_t **entries) {
+  // If a single log file is specified, just process that file
+  if (config->log_file != NULL) {
+    return process_file(config, config->log_file, entries);
+  }
+
 #if defined(_WIN32)
   char pattern[MAX_PATH];
   if (!build_windows_glob_pattern(pattern, sizeof(pattern), config->log_dir, "ascii-instr-*.log")) {
@@ -556,6 +614,7 @@ static bool collect_entries(const report_config_t *config, thread_entry_t **entr
 int main(int argc, char **argv) {
   report_config_t config = {
       .log_dir = NULL,
+      .log_file = NULL,
       .include_filter = NULL,
       .exclude_filter = NULL,
       .threads = {.values = NULL, .count = 0, .capacity = 0},

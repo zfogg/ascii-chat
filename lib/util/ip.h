@@ -3,7 +3,7 @@
 /**
  * @file util/ip.h
  * @ingroup util
- * @brief IP Address Parsing and Formatting Utilities
+ * @brief 🌍 IP Address Parsing and Formatting Utilities
  *
  * This header provides utilities for validating, parsing, and formatting IPv4
  * and IPv6 addresses with proper bracket notation support. Functions handle

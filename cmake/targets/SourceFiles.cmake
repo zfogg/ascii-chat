@@ -241,15 +241,15 @@ set(DATA_STRUCTURES_SRCS
 )
 
 # =============================================================================
-# Source Print Instrumentation Runtime
+# Panic Instrumentation Runtime
 # =============================================================================
-set(TOOLING_SOURCE_PRINT_SRCS
-    lib/tooling/source_print/instrument_log.c
-    lib/tooling/source_print/instrument_cov.c
+set(TOOLING_PANIC_SRCS
+    lib/tooling/panic/instrument_log.c
+    lib/tooling/panic/instrument_cov.c
 )
 
-set(TOOLING_SOURCE_PRINT_REPORT_SRCS
-    src/tooling/source_print/report.c
+set(TOOLING_PANIC_REPORT_SRCS
+    src/tooling/panic/report.c
 )
 
 # =============================================================================

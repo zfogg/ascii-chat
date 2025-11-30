@@ -1,7 +1,7 @@
 /**
  * @file util/utf8.h
  * @ingroup util
- * @brief UTF-8 Encoding and Decoding Utilities
+ * @brief 🔤 UTF-8 Encoding and Decoding Utilities
  *
  * This header provides simple, efficient UTF-8 validation and decoding
  * without external dependencies. The implementation handles multi-byte

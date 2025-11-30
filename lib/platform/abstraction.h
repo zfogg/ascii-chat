@@ -2,11 +2,11 @@
 
 /**
  * @defgroup platform Platform Abstractions
- * @brief Cross-platform abstractions for threading, sockets, and system calls, and hardware access
+ * @brief 🔌 Cross-platform abstractions for threading, sockets, and system calls, and hardware access
  *
  * @file platform/abstraction.h
  * @ingroup platform
- * @brief Cross-platform abstraction layer umbrella header for ascii-chat
+ * @brief 🔌 Cross-platform abstraction layer umbrella header for ascii-chat
  *
  * This header provides the main entry point for the platform abstraction layer,
  * enabling ascii-chat to run seamlessly on Windows, Linux, and macOS with a

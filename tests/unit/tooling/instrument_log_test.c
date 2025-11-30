@@ -1,5 +1,5 @@
 #include "tests/common.h"
-#include "tooling/source_print/instrument_log.h"
+#include "tooling/panic/instrument_log.h"
 #include "platform/system.h"
 #include "platform/thread.h"
 

@@ -1,7 +1,7 @@
 /**
  * @defgroup build Build System
  * @ingroup module_development
- * @brief Compile human-readable code into machine-executable code
+ * @brief 🔨 Compile human-readable code into machine-executable code
  */
 
 /**
@@ -279,10 +279,7 @@
  * - **Patching Dependencies**: `git apply`, `git diff` (BearSSL.cmake, Tomlc17.cmake)
  * - **Index Management**: `git update-index --assume-unchanged` (Tomlc17.cmake)
  *
- * Git is **recommended** but not strictly required. If git is not available:
- * - Version defaults to `PROJECT_VERSION` from CMakeLists.txt
- * - Build continues normally (no version detection warning)
- * - Dependency patching may fail (affects BearSSL, tomlc17 if building from source)
+ * Having Git available is recommended when building ascii-chat so that version detection and dependency patching works properly.
  *
  * **Build Tool Variations**:
  *
@@ -645,52 +642,73 @@
  * The main `CMakeLists.txt` is organized as a modular system, with each major
  * aspect handled by a dedicated module in the `cmake/` directory:
  *
- * **Core Configuration Modules**:
- * - `Init.cmake` - Initial setup and paths
- * - `BuildTypes.cmake` - Build type configuration (Debug, Release, etc.)
- * - `Options.cmake` - Build options (mimalloc, musl, tests, etc.)
- * - `BuildConfiguration.cmake` - Build configuration helpers
+ * @note All file paths listed below are relative to the `cmake/` directory.
  *
- * **Platform Detection**:
- * - `PlatformDetection.cmake` - Platform-specific variables (Linux, macOS, Windows)
- * - `CompilerDetection.cmake` - Compiler detection and configuration
- * - `WindowsWorkarounds.cmake` - Windows-specific fixes
- * - `CodeSigning.cmake` - macOS code signing for Gatekeeper compatibility
+ * **Core Configuration Modules** (`init/`):
+ * - `init/Init.cmake` - Initial setup and paths
+ * - `init/BuildTypes.cmake` - Build type configuration (Debug, Release, etc.)
+ * - `init/Options.cmake` - Build options (mimalloc, musl, tests, etc.)
+ * - `init/BuildConfiguration.cmake` - Build configuration helpers
+ * - `init/PlatformDetection.cmake` - Platform-specific variables (Linux, macOS, Windows)
  *
- * **Compiler Configuration**:
- * - `CompilerFlags.cmake` - Base compiler flags and standards
- * - `Sanitizers.cmake` - Sanitizer configuration (ASan, UBSan, etc.)
- * - `CCache.cmake` - Compiler cache configuration
- * - `SIMD.cmake` - SIMD instruction detection
- * - `CRC32.cmake` - Hardware-accelerated CRC32 detection
+ * **Compiler Configuration** (`compiler/`):
+ * - `compiler/CompilerDetection.cmake` - Compiler detection and configuration
+ * - `compiler/CompilerFlags.cmake` - Base compiler flags and standards
+ * - `compiler/CCache.cmake` - Compiler cache configuration
+ * - `compiler/SIMD.cmake` - SIMD instruction detection
+ * - `compiler/CRC32.cmake` - Hardware-accelerated CRC32 detection
+ * - `compiler/PCH.cmake` - Precompiled headers
+ * - `compiler/LLVM.cmake` - LLVM toolchain configuration
+ * - `compiler/HeaderChecks.cmake` - Header availability checks
+ * - `compiler/ToolchainChecks.cmake` - Toolchain validation
  *
- * **Library Configuration**:
- * - `Dependencies.cmake` - External dependency finding
- * - `Mimalloc.cmake` - mimalloc memory allocator
- * - `Musl.cmake` - musl libc configuration (Linux only)
- * - `MuslDependencies.cmake` - Static dependency building for musl
- * - `LLVM.cmake` - LLVM toolchain configuration
+ * **Platform Configuration** (`platform/`):
+ * - `platform/WindowsWorkarounds.cmake` - Windows-specific fixes
+ * - `platform/CodeSigning.cmake` - macOS code signing for Gatekeeper compatibility
+ * - `platform/Sanitizers.cmake` - Sanitizer configuration (ASan, UBSan, etc.)
+ * - `platform/Musl.cmake` - musl libc configuration (Linux only)
  *
- * **Build Configuration**:
- * - `SourceFiles.cmake` - Source file collection
- * - `Include.cmake` - Include directory configuration
- * - `Libraries.cmake` - Library linking
- * - `Executables.cmake` - Executable targets
- * - `PCH.cmake` - Precompiled headers
- * - `PostBuild.cmake` - Post-build processing
+ * **Dependencies** (`dependencies/`):
+ * - `dependencies/Dependencies.cmake` - External dependency finding (main entry point)
+ * - `dependencies/Vcpkg.cmake` - vcpkg package manager integration
+ * - `dependencies/BearSSL.cmake` - BearSSL TLS library
+ * - `dependencies/Criterion.cmake` - Criterion test framework
+ * - `dependencies/Libsodium.cmake` - libsodium cryptography library
+ * - `dependencies/Mimalloc.cmake` - mimalloc memory allocator
+ * - `dependencies/MuslDependencies.cmake` - Static dependency building for musl
+ * - `dependencies/Portaudio.cmake` - PortAudio audio library
+ * - `dependencies/Zstd.cmake` - Zstandard compression library
  *
- * **Installation and Packaging**:
- * - `Install.cmake` - Installation rules and CPack package generation
- * - There are a bunch of cmake/install/ modules like Deb.cmake for DEB packages, Rpm.cmake for RPM packages, etc.
+ * **Build Targets** (`targets/`):
+ * - `targets/SourceFiles.cmake` - Source file collection
+ * - `targets/Libraries.cmake` - Library linking
+ * - `targets/Executables.cmake` - Executable targets
+ * - `targets/Tests.cmake` - Test framework configuration
  *
- * **Testing and Documentation**:
- * - `Tests.cmake` - Test framework configuration
- * - `Documentation.cmake` - Doxygen documentation
+ * **Installation and Packaging** (`install/`):
+ * - `install/Install.cmake` - Installation rules and CPack package generation
+ * - `install/Archive.cmake` - Archive package configuration (ZIP, TGZ)
+ * - `install/Deb.cmake` - Debian package configuration
+ * - `install/Rpm.cmake` - RPM package configuration
+ * - `install/Version.cmake` - Version generation
+ * - `install/Documentation.cmake` - Doxygen documentation
  *
- * **Utilities**:
- * - `Version.cmake` - Version generation
- * - `StatusMessages.cmake` - Build status output
- * - `CustomTargets.cmake` - Custom build targets
+ * **Testing** (`test/`):
+ * - `test/TestFramework.cmake` - Test framework setup
+ *
+ * **Tooling and Instrumentation** (`tooling/`):
+ * - `tooling/Panic.cmake` - Panic instrumentation (per-statement logging for crash debugging)
+ * - `tooling/Defer.cmake` - Defer transformation (Go/Zig-style defer statements)
+ * - `tooling/ToolingRuntime.cmake` - Builds the runtime that the panic tool needs to work, and also the panic-report tool.
+ *
+ * **Utilities** (`utils/`):
+ * - `utils/Include.cmake` - Include directory configuration
+ * - `utils/PostBuild.cmake` - Post-build processing
+ * - `utils/StatusMessages.cmake` - Build status output
+ * - `utils/CustomTargets.cmake` - Custom build targets
+ *
+ * **Root-level Modules**:
+ * - `ProjectConstants.cmake` - Project metadata (name, author, URLs, license)
  *
  * @subsection build_modularity_benefits Benefits of Modularity
  *
@@ -1700,6 +1718,166 @@
  *     "BUILD_TESTS": "ON"
  *   }
  * }
+ * @endcode
+ *
+ * @section build_options CMake Configuration Options
+ *
+ * This section documents all CMake cache variables and options that control
+ * the build behavior. Options are set via `-D<OPTION>=<VALUE>` on the command line.
+ *
+ * @subsection build_options_core Core Build Options
+ *
+ * **Build Type and Testing**:
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `CMAKE_BUILD_TYPE` | STRING | Debug | Build configuration (Debug, Dev, Release, RelWithDebInfo, Coverage) |
+ * | `BUILD_TESTS` | BOOL | ON | Build the Criterion test suite |
+ *
+ * @subsection build_options_allocator Memory Allocator Options
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `USE_MIMALLOC` | BOOL | Auto | Enable mimalloc allocator (ON for Release/RelWithDebInfo, OFF otherwise) |
+ *
+ * @subsection build_options_libc C Library Options (Linux Only)
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `USE_MUSL` | BOOL | Auto | Use musl libc for static linking (ON for Release/RelWithDebInfo on Linux) |
+ *
+ * @subsection build_options_tooling Tooling and Instrumentation Options
+ *
+ * These options enable source-to-source transformations using Clang libTooling.
+ * **These are debugging tools** - use them when you have a crash or bug to investigate.
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `ASCIICHAT_BUILD_WITH_PANIC` | BOOL | OFF | Enable panic instrumentation (per-statement logging for crash debugging) |
+ * | `ASCIICHAT_PANIC_TOOL` | PATH | "" | Path to pre-built ascii-instr-panic tool (skips tool rebuild) |
+ * | `ASCIICHAT_DEFER_TOOL` | PATH | "" | Path to pre-built ascii-instr-defer tool (skips tool rebuild) |
+ *
+ * **Note**: Defer transformation is **automatic** when source files contain `defer()` calls.
+ * There is no option to enable/disable it - the build system detects `defer()` usage automatically.
+ *
+ * @subsubsection build_options_panic Panic Instrumentation (Crash Debugging)
+ *
+ * Panic instrumentation enables per-statement logging for debugging crashes.
+ * When the program crashes, **the last line printed is the crashing line**.
+ *
+ * @code{.bash}
+ * # Build with panic instrumentation
+ * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
+ * cmake --build build
+ *
+ * # Run the program
+ * export ASCII_PANIC_OUTPUT_DIR=/tmp/crash-logs
+ * ./build/bin/ascii-chat server
+ *
+ * # Find crash location
+ * tail -n1 /tmp/crash-logs/ascii-instr-*.log
+ * @endcode
+ *
+ * **For complete documentation**, including usage workflows, environment variable
+ * filtering, multi-threaded debugging, the `ascii-panic-report` tool, and the
+ * background on why this technique works, see @ref topic_panic "Panic Instrumentation".
+ *
+ * @subsubsection build_options_defer Defer Transformation (Automatic)
+ *
+ * **Defer Transformation**:
+ * - Enables Go/Zig-style `defer` statements in C code
+ * - Automatically runs cleanup code at function exit
+ * - **Automatic**: Enabled when source files contain `defer()` - no option needed
+ * - Outputs transformed sources to `build/defer_transformed/`
+ * - See @ref topic_defer "Defer Statements" for detailed documentation
+ *
+ * **Usage Example**:
+ * @code{.bash}
+ * # Build with panic instrumentation (for debugging crashes)
+ * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
+ * cmake --build build
+ *
+ * # Defer transformation is automatic - just build normally
+ * cmake -B build
+ * cmake --build build
+ * # If any source files contain defer(), they are automatically transformed
+ *
+ * # Use pre-built tools (faster rebuilds)
+ * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON \
+ *   -DASCIICHAT_PANIC_TOOL=/path/to/ascii-instr-panic
+ * @endcode
+ *
+ * @subsection build_options_compiler Compiler and Build Options
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `USE_CCACHE` | BOOL | ON | Enable ccache compiler cache (auto-disabled for musl) |
+ * | `ASCIICHAT_USE_PCH` | BOOL | ON | Enable precompiled headers for faster builds |
+ * | `ASCIICHAT_ENABLE_UNITY_BUILDS` | BOOL | OFF | Enable unity builds (single TU compilation) |
+ * | `ASCIICHAT_ENABLE_ANALYZERS` | BOOL | Auto | Enable static analyzers (ON for Release, OFF otherwise) |
+ *
+ * @subsection build_options_release Release Build Options
+ *
+ * These options control Release build behavior:
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `ASCIICHAT_ENFORCE_STATIC_RELEASE` | BOOL | ON | Enforce static linking for Release builds |
+ * | `ASCIICHAT_RELEASE_CPU_TUNE` | STRING | portable | CPU baseline (portable, x86-64-v2, x86-64-v3, native, custom) |
+ * | `ASCIICHAT_RELEASE_CPU_CUSTOM_FLAGS` | STRING | "" | Custom CPU flags when CPU_TUNE=custom |
+ * | `ASCIICHAT_RELEASE_ENABLE_FAST_MATH` | BOOL | OFF | Enable aggressive fast-math optimizations |
+ * | `ASCIICHAT_RELEASE_KEEP_FRAME_POINTERS` | BOOL | ON | Keep frame pointers for crash debugging |
+ *
+ * @subsection build_options_packaging Packaging and Installation Options
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `USE_CPACK` | BOOL | ON | Enable CPack package generation |
+ * | `ASCIICHAT_CODESIGNING` | BOOL | Auto | Enable macOS code signing (ON for Release on macOS) |
+ * | `CODESIGNING_IDENTITY` | STRING | "" | macOS code signing identity (from env or CMake) |
+ *
+ * @subsection build_options_testing Testing Options
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `ASCIICHAT_ENABLE_CTEST_DASHBOARD` | BOOL | OFF | Enable CTest dashboard submission |
+ *
+ * @subsection build_options_deps Dependency Cache Options
+ *
+ * | Option | Type | Default | Description |
+ * |--------|------|---------|-------------|
+ * | `ASCIICHAT_DEPS_CACHE_ROOT` | PATH | "${CMAKE_SOURCE_DIR}/.deps-cache" | Root directory for dependency caches |
+ * | `ASCIICHAT_DEPS_CACHE_DIR` | PATH | Auto | Build-type specific cache directory |
+ *
+ * **Cache Directory Structure**:
+ * - Debug/Dev: `${ASCIICHAT_DEPS_CACHE_ROOT}/debug/`
+ * - Release: `${ASCIICHAT_DEPS_CACHE_ROOT}/release/`
+ * - musl: `${ASCIICHAT_DEPS_CACHE_ROOT}/musl/`
+ *
+ * @subsection build_options_summary Options Summary
+ *
+ * **Common Configurations**:
+ *
+ * @code{.bash}
+ * # Debug build (default)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug
+ *
+ * # Release build with defaults
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release
+ *
+ * # Release with specific CPU tuning
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release \
+ *   -DASCIICHAT_RELEASE_CPU_TUNE=x86-64-v3
+ *
+ * # Debug with panic instrumentation
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug \
+ *   -DASCIICHAT_BUILD_WITH_PANIC=ON
+ *
+ * # Disable tests for faster builds
+ * cmake -B build -DBUILD_TESTS=OFF
+ *
+ * # Custom dependency cache location
+ * cmake -B build -DASCIICHAT_DEPS_CACHE_ROOT=/path/to/cache
  * @endcode
  *
  * @section build_summary Build System Summary

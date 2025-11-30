@@ -25,7 +25,7 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_chars);
 
@@ -37,7 +37,7 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                          const char *ascii_chars);
@@ -45,7 +45,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 /**
  * @brief Destroy SVE caches
  *
- * @ingroup module_video
+ * @ingroup image2ascii
  */
 void sve_caches_destroy(void);
 

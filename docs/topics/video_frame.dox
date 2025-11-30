@@ -1,6 +1,6 @@
 /**
  * @defgroup video_frame Video Frame Buffers
- * @ingroup module_video
+ * @ingroup image2ascii
  *
  * @page topic_video_frame Video Frame README
  * @ingroup video_frame

@@ -1,6 +1,6 @@
 /**
  * @defgroup module_server Server
- * @brief ascii-chat server implementation and architecture
+ * @brief 🖥️ ascii-chat server implementation and architecture
  *
  * Multi-client real-time video and audio streaming server with per-client threading,
  * end-to-end encryption, and terminal-aware ASCII rendering.
@@ -9,43 +9,43 @@
 /**
  * @defgroup server_main Server Main Entry Point
  * @ingroup module_server
- * @brief Server initialization, signal handling, and connection management
+ * @brief 🚀 Server initialization, signal handling, and connection management
  */
 
 /**
  * @defgroup server_client Client Management
  * @ingroup module_server
- * @brief Per-client lifecycle management and threading coordination
+ * @brief 👥 Per-client lifecycle management and threading coordination
  */
 
 /**
  * @defgroup server_protocol Protocol Handler
  * @ingroup module_server
- * @brief Network packet processing and protocol implementation
+ * @brief 📡 Network packet processing and protocol implementation
  */
 
 /**
  * @defgroup server_stream Stream Generation
  * @ingroup module_server
- * @brief Multi-client video mixing and ASCII frame generation
+ * @brief 🎬 Multi-client video mixing and ASCII frame generation
  */
 
 /**
  * @defgroup server_render Render Threads
  * @ingroup module_server
- * @brief Per-client rendering threads with rate limiting
+ * @brief 🎨 Per-client rendering threads with rate limiting
  */
 
 /**
  * @defgroup server_stats Statistics and Monitoring
  * @ingroup module_server
- * @brief Performance monitoring and resource utilization tracking
+ * @brief 📊 Performance monitoring and resource utilization tracking
  */
 
 /**
  * @defgroup server_crypto Cryptographic Operations
  * @ingroup module_server
- * @brief Per-client cryptographic handshake and session encryption management
+ * @brief 🔐 Per-client cryptographic handshake and session encryption management
  */
 
 /**

@@ -1,6 +1,6 @@
 /**
  * @defgroup util Utility Functions
- * @brief String, path, IP, UTF-8, CRC32, and formatting utilities
+ * @brief 🛠️ String, path, IP, UTF-8, CRC32, and formatting utilities
  */
 
 /**

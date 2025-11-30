@@ -1,11 +1,11 @@
 /**
  * @defgroup common Common Definitions
  * @ingroup module_core
- * @brief Code shared throughout the library
+ * @brief ⚙️ Code shared throughout the library
  *
  * @file common.h
  * @ingroup common
- * @brief Common definitions, error codes, macros, and types shared throughout the application
+ * @brief ⚙️ Common definitions, error codes, macros, and types shared throughout the application
  *
  * This header provides core functionality used throughout ascii-chat:
  * - Error and exit codes (unified status values)

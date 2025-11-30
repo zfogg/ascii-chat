@@ -5,7 +5,7 @@
  *
  * @defgroup webcam Webcam Module
  * @ingroup os
- * @brief Cross-platform webcam capture API
+ * @brief 📷 Cross-platform webcam capture API
  */
 
 /**

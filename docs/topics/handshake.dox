@@ -1,7 +1,7 @@
 /**
  * @defgroup handshake Handshake Module
  * @ingroup module_crypto
- * @brief Cryptographic handshake implementation for key exchange and authentication
+ * @brief 🤝 Cryptographic handshake implementation for key exchange and authentication
  */
 
 /**

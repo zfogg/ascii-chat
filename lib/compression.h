@@ -3,7 +3,7 @@
 /**
  * @file compression.h
  * @ingroup compression
- * @brief Network Packet Compression Utilities
+ * @brief 📦 Network Packet Compression Utilities
  *
  * This header provides compression and decompression utilities for network
  * packets in ascii-chat. The system uses zstd compression to reduce

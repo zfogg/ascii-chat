@@ -1,6 +1,6 @@
 /**
  * @page topics Topics
- * @brief Comprehensive topic documentation for ascii-chat
+ * @brief 📚 Comprehensive topic documentation for ascii-chat
  *
  * This page organizes documentation by functional modules, matching the architectural
  * structure of the codebase. Each section corresponds to a module group defined by
@@ -8,13 +8,13 @@
  *
  * @tableofcontents
  *
- * @section topics_utilities Utilities
+ * @section topics_utilities 🛠️ Utilities
  *
  * @copybrief module_utilities
  *
  * - @subpage topic_util
  *
- * @section topics_data_structures Data Structures
+ * @section topics_data_structures 📦 Data Structures
  *
  * @copybrief module_data_structures
  *
@@ -23,39 +23,38 @@
  * - @subpage topic_packet_queue
  * - @subpage uthash library
  *
- * @section topics_abstractions Abstraction Layers
+ * @section topics_abstractions 🔌 Abstraction Layers
  *
  * @copybrief module_abstractions
  *
  * - @subpage topic_platform
  * - @subpage topic_os
  *
- * @section topics_crypto Cryptography
+ * @section topics_crypto 🔐 Cryptography
  *
  * @copybrief module_crypto
  *
  * - @subpage topic_crypto
- * - @subpage topic_crypto_detailed
  * - @subpage topic_handshake
  * - @subpage topic_keys
  *
- * @section topics_video Video
+ * @section topics_image2ascii 📹 Image2ASCII
  *
- * @copybrief module_video
+ * @copybrief module_image2ascii
  *
- * - @subpage topic_video_frame
  * - @subpage topic_image2ascii
+ * - @subpage topic_video_frame
  * - @subpage topic_grid_layout
  * - @subpage topic_palette
  *
- * @section topics_audio Audio Processing
+ * @section topics_audio 🔊 Audio Processing
  *
  * @copybrief module_audio
  *
  * - @subpage topic_audio
  * - @subpage topic_mixer
  *
- * @section topics_core Core Infrastructure
+ * @section topics_core ⚙️ Core Infrastructure
  *
  * @copybrief module_core
  *
@@ -66,7 +65,7 @@
  * - @subpage topic_options
  * - @subpage topic_config
  *
- * @section topics_network Network
+ * @section topics_network 🌐 Network
  *
  * @copybrief module_network
  *
@@ -75,7 +74,7 @@
  * - @subpage topic_packet_types
  * - @subpage topic_av
  *
- * @section topics_client Client Application
+ * @section topics_client 💻 Client Application
  *
  * @copybrief module_client
  *
@@ -89,7 +88,7 @@
  * - @subpage topic_client_keepalive
  * - @subpage topic_client_crypto
  *
- * @section topics_server Server Application
+ * @section topics_server 🖥️ Server Application
  *
  * @copybrief module_server
  *
@@ -102,7 +101,7 @@
  * - @subpage topic_server_stats
  * - @subpage topic_server_crypto
  *
- * @section topics_development Development & Debugging
+ * @section topics_development 🔧 Development & Debugging
  *
  * @copybrief module_development
  *
@@ -111,4 +110,11 @@
  * - @subpage topic_testing
  * - @subpage topic_debug
  * - @subpage topic_lock_debug
+ *
+ * @subsection topics_tooling 🧰 Tooling
+ *
+ * Source-to-source transformation tools for debugging and code quality.
+ *
+ * - @subpage topic_defer - 🔄 Go/Zig-style defer statements for automatic cleanup
+ * - @subpage topic_panic - 🚨 Per-statement logging for crash debugging
  */

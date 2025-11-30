@@ -3,7 +3,7 @@
 /**
  * @file util/time.h
  * @ingroup module_utilities
- * @brief High-precision timing utilities using sokol_time.h and uthash
+ * @brief ⏱️ High-precision timing utilities using sokol_time.h and uthash
  *
  * This module provides a simple timing API for performance measurement:
  * - START_TIMER("name", ...) - Begin timing with formatted message
