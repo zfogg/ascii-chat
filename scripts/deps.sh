@@ -94,7 +94,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         local ubuntu_version_name_short="focal"
       else
         echo "Unsupported Ubuntu version $ubuntu_version_major" >&2
-        return 1
+        exit 1
       fi
 
       echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ '"$ubuntu_version_name_short"' main' \
