@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata for ascii-chat -->
+<component type="console-application">
+  <id>com.github.zfogg.ascii-chat</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>ascii-chat</name>
+  <summary>@CPACK_PACKAGE_DESCRIPTION_SUMMARY@</summary>
+  <description>
+    <p>
+      @CPACK_PACKAGE_DESCRIPTION@
+    </p>
+  </description>
+  <url type="homepage">@PROJECT_HOMEPAGE_URL@</url>
+  <url type="bugtracker">@PROJECT_HOMEPAGE_URL@/issues</url>
+  <developer_name>@PROJECT_AUTHOR_NAME@</developer_name>
+  <provides>
+    <binary>ascii-chat</binary>
+  </provides>
+  <releases>
+    <release version="@PROJECT_VERSION@" date="@BUILD_DATE@"/>
+  </releases>
+</component>

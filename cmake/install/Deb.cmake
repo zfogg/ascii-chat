@@ -34,10 +34,11 @@ message(STATUS "${Yellow}CPack:${ColorReset} DEB generator enabled (${BoldBlue}d
 # DEB Package Configuration
 # =============================================================================
 
+# Note: CPACK_DEBIAN_PACKAGE_SECTION, CPACK_DEBIAN_PACKAGE_PRIORITY, and
+# CPACK_DEBIAN_PACKAGE_HOMEPAGE are set in Install.cmake BEFORE include(CPack)
+
 set(CPACK_DEBIAN_PACKAGE_NAME "ascii-chat")
 set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
-set(CPACK_DEBIAN_PACKAGE_SECTION "net")
-set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional")
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
@@ -53,5 +54,38 @@ set(CPACK_DEBIAN_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}.deb")
 if(DEFINED ENV{DEBEMAIL})
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "$ENV{DEBEMAIL}")
 endif()
+
+# Generate Debian copyright file from template
+# This is required by Debian policy (https://www.debian.org/doc/debian-policy/ch-docs.html#copyright)
+# The copyright file must be installed to /usr/share/doc/<package>/copyright
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/install/copyright.in"
+    "${CMAKE_BINARY_DIR}/generated/copyright"
+    @ONLY
+)
+
+# Install copyright file to /usr/share/doc/ascii-chat/copyright
+# This is required by Debian policy and shows license information in package managers
+install(FILES "${CMAKE_BINARY_DIR}/generated/copyright"
+    DESTINATION "share/doc/ascii-chat"
+    COMPONENT applications
+)
+
+# Generate AppStream metadata file for Ubuntu App Center and other software centers
+# This provides license information that GUI package managers can display
+# Get current date for the release info
+string(TIMESTAMP BUILD_DATE "%Y-%m-%d")
+configure_file(
+    "${CMAKE_SOURCE_DIR}/cmake/install/ascii-chat.metainfo.xml.in"
+    "${CMAKE_BINARY_DIR}/generated/ascii-chat.metainfo.xml"
+    @ONLY
+)
+
+# Install AppStream metadata to /usr/share/metainfo/
+# This is used by GNOME Software, KDE Discover, Ubuntu App Center, etc.
+install(FILES "${CMAKE_BINARY_DIR}/generated/ascii-chat.metainfo.xml"
+    DESTINATION "share/metainfo"
+    COMPONENT applications
+)
 
 message(STATUS "${Yellow}CPack:${ColorReset} DEB configuration complete")
