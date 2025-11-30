@@ -482,9 +482,10 @@ The documentation is automatically generated from source code comments using Dox
 
 **To build documentation locally:**
 
-- Install Doxygen (`brew install doxygen`, `apt-get install doxygen`, etc.) to enable the documentation targets.
-- Run `cmake --build build --target docs` to generate HTML + manpage docs in `build/docs/`.
-- Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
+1. Install Doxygen (`brew install doxygen`, `apt-get install doxygen`, etc.) to enable the documentation targets.
+2. Configure a build (`cmake --preset default`) to let cmake find the doxygen binary.
+3. Run `cmake --build build --target docs` to generate HTML + manpage docs in `build/docs/`.
+4. Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
 
 ### Testing
 
