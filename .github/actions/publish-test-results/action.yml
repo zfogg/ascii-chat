@@ -160,14 +160,23 @@ runs:
         echo "DEBUG: Current working directory: $(pwd)"
         echo "DEBUG: GITHUB_WORKSPACE: $GITHUB_WORKSPACE"
         echo "Checking for coverage files matching: ${{ inputs.coverage-files }}"
-        echo "DEBUG: Files in current directory:"
-        ls -la | head -20 || true
-        echo "DEBUG: Looking for .gcov files anywhere:"
-        find . -name "*.gcov" -type f 2>/dev/null | head -10 || echo "No .gcov files found with find"
-        if ls ${{ inputs.coverage-files }} 2>/dev/null | head -1 > /dev/null; then
-          echo "✅ Found coverage files"
+
+        # Count gcov files with different methods
+        echo "DEBUG: Counting .gcov files in root:"
+        gcov_count=$(ls -1 *.gcov 2>/dev/null | wc -l || echo 0)
+        echo "DEBUG: Count from ls -1 *.gcov: $gcov_count"
+
+        echo "DEBUG: Counting with find:"
+        find_count=$(find . -maxdepth 1 -name "*.gcov" -type f 2>/dev/null | wc -l)
+        echo "DEBUG: Count from find (maxdepth 1): $find_count"
+
+        echo "DEBUG: First 5 files from ls:"
+        ls -1 *.gcov 2>/dev/null | head -5 || echo "(no files)"
+
+        # The actual check
+        if [ "$gcov_count" -gt 0 ]; then
+          echo "✅ Found $gcov_count coverage files"
           echo "has_coverage=true" >> $GITHUB_OUTPUT
-          ls -la ${{ inputs.coverage-files }} | head -10 || true
         else
           echo "⚠️ No coverage files found matching pattern: ${{ inputs.coverage-files }}"
           echo "has_coverage=false" >> $GITHUB_OUTPUT
