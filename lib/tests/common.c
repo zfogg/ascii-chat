@@ -52,8 +52,7 @@ const char *test_get_binary_path(void) {
       // Absolute paths for Docker
       in_docker ? "/app/build_docker/bin/ascii-chat" : NULL,
   };
-  const char *fallback =
-      in_docker ? "./build_docker/bin/ascii-chat" : "./build/bin/ascii-chat";
+  const char *fallback = in_docker ? "./build_docker/bin/ascii-chat" : "./build/bin/ascii-chat";
 #endif
 
   // Try each candidate path

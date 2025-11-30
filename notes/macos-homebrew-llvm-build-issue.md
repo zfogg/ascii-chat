@@ -79,11 +79,32 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 **Actual command**: `clang++ -O3 -DNDEBUG -std=gnu++20 -arch arm64 -O2 -fno-rtti -fexceptions -stdlib=libc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -idirafter/Applications/.../MacOSX.sdk/usr/include -c tool.cpp`
 **Result**: FAILED - Same error. `-idirafter` does place SDK headers last, but `#include_next` from libc++ cassert still finds SDK's assert.h which includes SDK's arm/_types.h BEFORE clang's stddef.h gets a chance.
 
-### Attempt 10: Use `--sysroot` with explicit clang resource dir (TESTING)
+### Attempt 10: Use `-nostdinc` with explicit clang resource dir (commit 2284b16 - FAILED)
 **Date**: 2025-11-30
 **Approach**: Use `-nostdinc` to disable ALL implicit system headers, then explicitly add clang's resource dir first, then libc++, then SDK.
 **Command**: `-nostdinc -isystem<clang_resource_dir> -isystem<llvm_libcxx> -isystem<llvm> -isystem<sdk_usr_include>`
-**Rationale**: `-nostdinc` disables compiler's implicit header search. We then manually reconstruct the search path in the correct order.
+**Actual command**: `clang++ -nostdinc -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -isystem/.../MacOSX.sdk/usr/include ...`
+**Result**: FAILED - Same error. The problem is that libc++'s headers use `#include_next` to find SDK headers BEFORE stddef.h is included. Even though clang's resource dir is first, the SDK's arm/_types.h needs size_t/ptrdiff_t BEFORE it's processed.
+
+### Attempt 11: Use Apple's system clang for compilation (SKIPPED)
+**Date**: 2025-11-30
+**Approach**: Use Apple's system clang (`/usr/bin/clang++`) for compiling the tooling tools, which is properly configured to work with the macOS SDK. Then link against Homebrew LLVM libraries.
+**Command**: Set `CMAKE_CXX_COMPILER` to `/usr/bin/clang++` for the tooling ExternalProject
+**Rationale**: Apple's clang is built and configured to work seamlessly with the macOS SDK. The header search order issues are solved at the toolchain level. We only need to add Homebrew's LLVM include paths for the clang tooling APIs.
+**Risk**: Version mismatch between Apple's clang and Homebrew LLVM libraries. Apple clang may be older.
+**Status**: SKIPPED - User prefers to use Homebrew clang
+
+### Attempt 12: Use `-nostdinc++` with `-cxx-isystem` (TESTING)
+**Date**: 2025-11-30
+**Approach**: Use `-nostdinc++` to disable ONLY C++ standard library search (not all headers like `-nostdinc` does). Then use `-cxx-isystem` to add C++ includes explicitly. Use `-isysroot` for SDK C headers.
+**Key insight**: `-cxx-isystem` is a Clang-specific flag for C++ system include paths, separate from `-isystem` for C paths.
+**Command**: `-isysroot<SDK> -nostdinc++ -cxx-isystem<libc++> -cxx-isystem<llvm>`
+**Expected command**: `clang++ -isysroot/...MacOSX.sdk -nostdinc++ -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include ...`
+**Rationale**:
+- `-nostdinc++` only disables C++ stdlib search, NOT C headers or compiler builtins
+- Clang can still find its own `stddef.h` through normal search with `-isysroot`
+- `-cxx-isystem` specifically adds paths for C++ headers only
+- This should prevent the problematic search chain where SDK C headers are found via `#include_next` from libc++
 **Status**: Testing...
 
 ## Key Insights

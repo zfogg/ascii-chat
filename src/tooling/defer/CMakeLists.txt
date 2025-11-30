@@ -122,33 +122,30 @@ if(APPLE)
         # already be defined. These types come from clang's stddef.h which must
         # be included BEFORE SDK headers.
         #
-        # Attempt 10: Use -nostdinc to disable ALL implicit header search.
-        # Then manually add headers in correct order:
-        # 1. Clang resource dir (stddef.h with size_t/ptrdiff_t)
-        # 2. LLVM's libc++ headers
-        # 3. LLVM tooling headers
-        # 4. SDK C headers
+        # Attempt 12: Use -nostdinc++ to disable ONLY C++ library search.
+        # Use -cxx-isystem for C++ includes (libc++ and LLVM tooling).
+        # Use -isysroot for SDK (handles C headers properly).
+        # This allows clang to use its default behavior for finding compiler
+        # builtins (stddef.h etc) while we control C++ paths.
         if(HAS_LLVM_LIBCXX)
-            message(STATUS "Using Homebrew LLVM with bundled libc++ (nostdinc mode)")
-            message(STATUS "  1. clang builtins: ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  2. libc++: ${LLVM_LIBCXX_INCLUDE}")
-            message(STATUS "  3. LLVM: ${LLVM_INCLUDE_DIRS}")
-            message(STATUS "  4. SDK: ${MACOS_SDK_PATH}/usr/include")
+            message(STATUS "Using Homebrew LLVM with bundled libc++ (Attempt 12: -nostdinc++ with -cxx-isystem)")
+            message(STATUS "  C++ includes via -cxx-isystem:")
+            message(STATUS "    1. libc++: ${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "    2. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
+            message(STATUS "  SDK via -isysroot: ${MACOS_SDK_PATH}")
 
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
                 -fno-rtti
                 -fexceptions
-                # Disable ALL implicit header search - we'll add everything manually
-                -nostdinc
-                # 1. Clang resource dir FIRST - has stddef.h with size_t/ptrdiff_t
-                "-isystem${CLANG_RESOURCE_DIR}/include"
-                # 2. LLVM's bundled libc++ headers
-                "-isystem${LLVM_LIBCXX_INCLUDE}"
-                # 3. LLVM tooling headers (clang/AST etc)
-                "-isystem${LLVM_INCLUDE_DIRS}"
-                # 4. SDK C headers LAST
-                "-isystem${MACOS_SDK_PATH}/usr/include"
+                # Use SDK for C headers and compiler builtins
+                "-isysroot${MACOS_SDK_PATH}"
+                # Disable ONLY C++ standard library search (not C headers!)
+                -nostdinc++
+                # Add C++ includes explicitly via -cxx-isystem
+                # This flag is specifically for C++ system headers
+                "-cxx-isystem${LLVM_LIBCXX_INCLUDE}"
+                "-cxx-isystem${LLVM_INCLUDE_DIRS}"
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes

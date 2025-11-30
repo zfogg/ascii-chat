@@ -80,8 +80,8 @@ static pid_t start_test_server(int port) {
       fprintf(stderr, "Attempting to execute server at: %s\n", server_path);
     }
 
-    execl(server_path, "ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server.log",
-          "--no-encrypt", NULL);
+    execl(server_path, "ascii-chat", "server", "--port", port_str, "--log-file", "/tmp/test_server.log", "--no-encrypt",
+          NULL);
 
     // If execl fails, print error
     fprintf(stderr, "Failed to execute server at: %s\n", server_path);
