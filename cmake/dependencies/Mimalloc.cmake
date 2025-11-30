@@ -20,8 +20,67 @@
 if(USE_MIMALLOC)
     message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} memory allocator...")
 
-    # On Windows, prefer vcpkg; on Unix, use FetchContent
-    if(WIN32 AND DEFINED VCPKG_TRIPLET AND DEFINED VCPKG_ROOT)
+    # Try to find system-installed mimalloc first (Unix only, via CMake config)
+    set(_MIMALLOC_FROM_SYSTEM FALSE)
+    if(NOT WIN32 AND NOT USE_MUSL)
+        # Try to find mimalloc via CMake's find_package (uses mimalloc-config.cmake)
+        # Detect multiarch directory (e.g., x86_64-linux-gnu, aarch64-linux-gnu)
+        if(NOT CMAKE_LIBRARY_ARCHITECTURE)
+            # If not set by CMake, try to detect it
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+                set(_MULTIARCH_DIR "x86_64-linux-gnu")
+            elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+                set(_MULTIARCH_DIR "aarch64-linux-gnu")
+            elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
+                set(_MULTIARCH_DIR "arm-linux-gnueabihf")
+            else()
+                set(_MULTIARCH_DIR "")
+            endif()
+        else()
+            set(_MULTIARCH_DIR "${CMAKE_LIBRARY_ARCHITECTURE}")
+        endif()
+
+        # Build search paths
+        set(_MIMALLOC_SEARCH_PATHS
+            /usr/lib/${_MULTIARCH_DIR}/cmake/mimalloc
+            /usr/lib/cmake/mimalloc
+            /usr/local/lib/${_MULTIARCH_DIR}/cmake/mimalloc
+            /usr/local/lib/cmake/mimalloc
+        )
+
+        find_package(mimalloc QUIET CONFIG
+            PATHS ${_MIMALLOC_SEARCH_PATHS}
+        )
+        if(mimalloc_FOUND)
+            # Found system mimalloc via CMake config
+            message(STATUS "Found ${BoldGreen}mimalloc${ColorReset} via find_package, version ${BoldGreen}${mimalloc_VERSION}${ColorReset}")
+
+            # The system mimalloc provides 'mimalloc-static' and 'mimalloc' targets
+            # We'll use mimalloc-static for consistency with our FetchContent build
+            if(TARGET mimalloc-static)
+                message(STATUS "  Using system ${BoldCyan}mimalloc-static${ColorReset} target")
+                set(MIMALLOC_LIBRARIES mimalloc-static)
+                set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc-static)
+                set(_MIMALLOC_FROM_SYSTEM TRUE)
+
+                # Alias mimalloc-shared to mimalloc-static for system builds
+                if(NOT TARGET mimalloc-shared)
+                    add_library(mimalloc-shared ALIAS mimalloc-static)
+                endif()
+            elseif(TARGET mimalloc)
+                message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} target")
+                # Create alias so our code can use mimalloc-static consistently
+                add_library(mimalloc-static ALIAS mimalloc)
+                add_library(mimalloc-shared ALIAS mimalloc)
+                set(MIMALLOC_LIBRARIES mimalloc)
+                set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
+                set(_MIMALLOC_FROM_SYSTEM TRUE)
+            endif()
+        endif()
+    endif()
+
+    # On Windows, prefer vcpkg; on Unix (if system not found), use FetchContent
+    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TRIPLET AND DEFINED VCPKG_ROOT)
         # Try to find mimalloc from vcpkg
         set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/include")
         set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/lib")
@@ -76,8 +135,8 @@ if(USE_MIMALLOC)
         set(_MIMALLOC_FROM_VCPKG FALSE)
     endif()
 
-    # Fall back to FetchContent if not using vcpkg or vcpkg didn't have mimalloc
-    if(NOT _MIMALLOC_FROM_VCPKG)
+    # Fall back to FetchContent if not using system, vcpkg, or vcpkg didn't have mimalloc
+    if(NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
         set(MIMALLOC_SOURCE_DIR "${FETCHCONTENT_BASE_DIR}/mimalloc-src")
         set(MIMALLOC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/mimalloc")
 
@@ -169,8 +228,8 @@ if(USE_MIMALLOC)
         endif()
     endif()
 
-    # Only configure and build if not using cached library and not from vcpkg
-    if(NOT _MIMALLOC_CACHED AND NOT _MIMALLOC_FROM_VCPKG)
+    # Only configure and build if not using cached library, system, or vcpkg
+    if(NOT _MIMALLOC_CACHED AND NOT _MIMALLOC_FROM_SYSTEM AND NOT _MIMALLOC_FROM_VCPKG)
         # Configure mimalloc build options - disable all built-in targets
         # We'll create our own mimalloc-static and mimalloc-shared targets
         set(MI_BUILD_SHARED OFF CACHE BOOL "Build shared library")
