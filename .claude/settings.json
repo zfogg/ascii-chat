@@ -41,7 +41,11 @@
     ],
     "ask": [
       "Bash(git push:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)",
+      "Bash(git mv:*)"
     ]
   }
 }
