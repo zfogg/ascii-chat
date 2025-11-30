@@ -122,28 +122,27 @@ if(APPLE)
         # already be defined. These types come from clang's stddef.h which must
         # be included BEFORE SDK headers.
         #
-        # Attempt 12: Use -nostdinc++ to disable ONLY C++ library search.
-        # Use -cxx-isystem for C++ includes (libc++ and LLVM tooling).
-        # Use -isysroot for SDK (handles C headers properly).
-        # This allows clang to use its default behavior for finding compiler
-        # builtins (stddef.h etc) while we control C++ paths.
+        # Attempt 13: Add clang resource dir BEFORE -isysroot to ensure
+        # compiler builtins (stddef.h with size_t/ptrdiff_t) are found first.
+        # Use -nostdinc++ and -cxx-isystem for C++ paths.
         if(HAS_LLVM_LIBCXX)
-            message(STATUS "Using Homebrew LLVM with bundled libc++ (Attempt 12: -nostdinc++ with -cxx-isystem)")
-            message(STATUS "  C++ includes via -cxx-isystem:")
-            message(STATUS "    1. libc++: ${LLVM_LIBCXX_INCLUDE}")
-            message(STATUS "    2. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
-            message(STATUS "  SDK via -isysroot: ${MACOS_SDK_PATH}")
+            message(STATUS "Using Homebrew LLVM with bundled libc++ (Attempt 13: clang builtins first)")
+            message(STATUS "  1. Clang builtins (-isystem): ${CLANG_RESOURCE_DIR}/include")
+            message(STATUS "  2. SDK via -isysroot: ${MACOS_SDK_PATH}")
+            message(STATUS "  3. C++ (via -cxx-isystem): libc++ and LLVM tooling")
 
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
                 -fno-rtti
                 -fexceptions
-                # Use SDK for C headers and compiler builtins
+                # CRITICAL: Clang resource dir FIRST with -isystem (highest priority)
+                # This ensures stddef.h with size_t/ptrdiff_t is found before SDK headers
+                "-isystem${CLANG_RESOURCE_DIR}/include"
+                # SDK for C headers (after clang builtins)
                 "-isysroot${MACOS_SDK_PATH}"
-                # Disable ONLY C++ standard library search (not C headers!)
+                # Disable C++ standard library search
                 -nostdinc++
-                # Add C++ includes explicitly via -cxx-isystem
-                # This flag is specifically for C++ system headers
+                # Add C++ includes explicitly
                 "-cxx-isystem${LLVM_LIBCXX_INCLUDE}"
                 "-cxx-isystem${LLVM_INCLUDE_DIRS}"
             )
