@@ -2,156 +2,167 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
     paths:
-      - '**.c'
-      - '**.h'
-      - '**.m'
+      - "**.c"
+      - "**.h"
+      - "**.cpp"
+      - "**.hpp"
+      - "**.m"
+      - "tests/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - ".github/workflows/ci.yml"
   pull_request:
-    branches: [ '*' ]
+    branches: ["*"]
     paths:
-      - '**.c'
-      - '**.h'
-      - '**.m'
+      - "**.c"
+      - "**.h"
+      - "**.cpp"
+      - "**.hpp"
+      - "**.m"
+      - "tests/**"
+      - "CMakeLists.txt"
+      - "cmake/**"
+      - ".github/workflows/ci.yml"
 
 env:
   CC: clang
   CXX: clang++
 
 jobs:
-
   memory-check:
     name: Memory Safety Check
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        fetch-tags: true
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: true
 
-    - name: Install dependencies
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
-        extra-packages: 'libc6-dbg valgrind'
+      - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+          extra-packages: "libc6-dbg"
 
-    - name: Cache build, dependencies, and ccache
-      id: cache-build
-      uses: ./.github/actions/cache-build
-      with:
-        cache-version: v5
+      - name: Cache build, dependencies, and ccache
+        id: cache-build
+        uses: ./.github/actions/cache-build
+        with:
+          cache-version: v5
 
-    - name: Clean build directory to force reconfigure
-      run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Clean library files to prevent stale archive format issues when switching build types
-        rm -rf build/lib/*.a
+      - name: Clean build directory to force reconfigure
+        run: |
+          rm -rf build/CMakeCache.txt build/CMakeFiles
+          # Clean library files to prevent stale archive format issues when switching build types
+          rm -rf build/lib/*.a
 
-    - name: Run tests with AddressSanitizer
-      run: |
-        # Use CMake build system
-        cmake --preset github
-        cmake --build build
-        ./tests/scripts/run_tests.sh -t unit -b debug
+      - name: Run tests with AddressSanitizer
+        run: |
+          # Use CMake build system
+          cmake --preset github
+          cmake --build build
+          ./tests/scripts/run_tests.sh -t unit -b debug
 
-    - name: Save build caches
-      if: always()
-      uses: ./.github/actions/cache-build-save
-      with:
-        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
-        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
-        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
-        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
-        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
-        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
-        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
-        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
-        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
-        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+      - name: Save build caches
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+          build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+          build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+          deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+          deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+          deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+          ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+          ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
   static-analysis:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        fetch-tags: true
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: true
 
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
-        extra-packages: clang-tools
+      - name: Install dependencies with caching
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+          extra-packages: clang-tools
 
-    - name: Cache build, dependencies, and ccache
-      id: cache-build
-      uses: ./.github/actions/cache-build
-      with:
-        cache-version: v5
+      - name: Cache build, dependencies, and ccache
+        id: cache-build
+        uses: ./.github/actions/cache-build
+        with:
+          cache-version: v5
 
-    - name: Clean build directory to force reconfigure
-      run: |
-        rm -rf build/CMakeCache.txt build/CMakeFiles
-        # Clean library files to prevent stale archive format issues when switching build types
-        rm -rf build/lib/*.a
+      - name: Clean build directory to force reconfigure
+        run: |
+          rm -rf build/CMakeCache.txt build/CMakeFiles
+          # Clean library files to prevent stale archive format issues when switching build types
+          rm -rf build/lib/*.a
 
-    - name: Run static analysis
-      run: |
-        # Build with CMake for static analysis
-        cmake --preset github -DBUILD_TESTS=OFF
-        # Run clang-tidy on source files
-        find src lib -name "*.c" -exec clang-tidy {} -- -std=c2x \;
-        # Run clang static analyzer
-        scan-build cmake --build build || true
+      - name: Run static analysis
+        run: |
+          # Build with CMake for static analysis
+          cmake --preset github -DBUILD_TESTS=OFF
+          # Run clang-tidy on source files
+          find src lib -name "*.c" -exec clang-tidy {} -- -std=c2x \;
+          # Run clang static analyzer
+          scan-build cmake --build build || true
 
-    - name: Check for memory leaks patterns
-      run: |
-        # Simple grep-based checks for common memory leak patterns
-        echo "Checking for potential memory leaks..."
-        ! grep -n "malloc\|calloc\|realloc" *.c | grep -v "free\|DEBUG_MEMORY"
-        echo "Memory leak check completed"
+      - name: Check for memory leaks patterns
+        run: |
+          # Simple grep-based checks for common memory leak patterns
+          echo "Checking for potential memory leaks..."
+          ! grep -n "malloc\|calloc\|realloc" *.c | grep -v "free\|DEBUG_MEMORY"
+          echo "Memory leak check completed"
 
-    - name: Save build caches
-      if: always()
-      uses: ./.github/actions/cache-build-save
-      with:
-        build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
-        build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
-        build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
-        cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
-        deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
-        deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
-        deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
-        cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
-        ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
-        ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
-        ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
+      - name: Save build caches
+        if: always()
+        uses: ./.github/actions/cache-build-save
+        with:
+          build-directory: ${{ steps.cache-build.outputs['build-directory-path'] }}
+          build-cache-key: ${{ steps.cache-build.outputs['build-cache-key'] }}
+          build-cache-hit: ${{ steps.cache-build.outputs['build-cache-hit'] }}
+          cache-deps-enabled: ${{ steps.cache-build.outputs['cache-deps-enabled'] }}
+          deps-cache-directory: ${{ steps.cache-build.outputs['deps-cache-path'] }}
+          deps-cache-key: ${{ steps.cache-build.outputs['deps-cache-key'] }}
+          deps-cache-hit: ${{ steps.cache-build.outputs['deps-cache-hit'] }}
+          cache-ccache-enabled: ${{ steps.cache-build.outputs['cache-ccache-enabled'] }}
+          ccache-directory: ${{ steps.cache-build.outputs['ccache-directory-path'] }}
+          ccache-cache-key: ${{ steps.cache-build.outputs['ccache-cache-key'] }}
+          ccache-cache-hit: ${{ steps.cache-build.outputs['ccache-cache-hit'] }}
 
   format-check:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-        fetch-tags: true
-        submodules: true
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          submodules: true
 
-    - name: Install dependencies with caching
-      uses: ./.github/actions/install-deps
-      with:
-        os: ubuntu
-        extra-packages: clang-format
+      - name: Install dependencies with caching
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+          extra-packages: clang-format
 
-    - name: Check code formatting
-      run: |
-        # Check if code follows consistent formatting
-        find src lib tests -name "*.c" -o -name "*.h" | xargs clang-format --dry-run -Werror
+      - name: Check code formatting
+        run: |
+          # Check if code follows consistent formatting
+          find src lib tests -name "*.c" -o -name "*.h" | xargs clang-format --dry-run -Werror

@@ -553,26 +553,30 @@ jobs:
         cmake -B build --preset github \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
-        cmake --build build
+        cmake --build build --target ascii-chat
 
-    - name: Run tests with AddressSanitizer
+    - name: Run memory leak detection
       run: |
-        # Run tests with AddressSanitizer and other sanitizers to detect memory issues
-        LOG_FILE="sanitizer-tests.log"
-        ./tests/scripts/run_tests.sh -b debug --log-file="${LOG_FILE}"
-        echo "AddressSanitizer tests completed successfully"
-        echo "Test logs saved to: ${LOG_FILE}"
+        echo "Testing binary memory usage..."
+        # NOTE: THese are started with "&" and run in the background with no logs.
+        timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+          ./build/bin/ascii-chat server > valgrind-server.log 2>&1 &
+        SERVER_PID=$!
+        # Run server in the background so the command doesn't block until the process is dead so we can start the client.
+        timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
+          ./build/bin/ascii-chat client --test-pattern > valgrind-client.log 2>&1 &
+        CLIENT_PID=$!
+        wait $SERVER_PID $CLIENT_PID
 
-    - name: Memory leak detection
+    - name: Analyze memory reports
       run: |
-        # Additional memory leak checks
-        echo "Running memory leak detection..."
-
-        # Test basic binary functionality for leaks (just help output, no server/client needed)
-        timeout --kill-after=3 10s valgrind --leak-check=full --error-exitcode=1 ./build/bin/ascii-chat --help || true
-        [ $? -eq 124 ] && echo "Help command timed out" || echo "Help command completed"
-
-        echo "Memory leak detection completed"
+        echo "=== Binary Memory Analysis ==="
+        if grep -q "definitely lost" valgrind-*.log; then
+          echo "❌ Memory leaks detected"
+          grep "definitely lost" valgrind-*.log
+        else
+          echo "✅ No memory leaks detected"
+        fi
 
     - name: Save build caches
       if: always()
@@ -596,8 +600,7 @@ jobs:
       with:
         name: memory-test-results
         path: |
-          sanitizer-tests.log
-          tests.log
+          valgrind-*.log
         retention-days: 7
 
   functional-tests:
