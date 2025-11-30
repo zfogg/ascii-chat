@@ -275,7 +275,7 @@ void crypto_handshake_cleanup(crypto_handshake_context_t *ctx) {
 // Server: Start crypto handshake by sending public key
 asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx, socket_t client_socket) {
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", (void *)ctx, ctx ? (int)ctx->state : -1);
   }
 
   int result;
@@ -345,7 +345,7 @@ asciichat_error_t crypto_handshake_server_start(crypto_handshake_context_t *ctx,
 // Client: Process server's public key and send our public key
 asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_t *ctx, socket_t client_socket) {
   if (!ctx || ctx->state != CRYPTO_HANDSHAKE_INIT) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", ctx, ctx ? ctx->state : -1);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, state=%d", (void *)ctx, ctx ? (int)ctx->state : -1);
   }
 
   // Receive server's KEY_EXCHANGE_INIT packet
