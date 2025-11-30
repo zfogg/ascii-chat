@@ -128,7 +128,7 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 **Command**: `-include<clang_builtins>/__stddef_size_t.h -include.../__stddef_nullptr_t.h -nostdinc -nostdinc++ -isystem...`
 **Result**: FAILED - Same error as Attempt 14. The `-include` flags define the types, but SDK's libc++ `<cstddef>` still complains about not finding libc++'s own `<stddef.h>` wrapper.
 
-### Attempt 16: Homebrew libc++ FIRST, clang builtins SECOND (SUCCESS!)
+### Attempt 16: Homebrew libc++ FIRST, clang builtins SECOND (LOCAL SUCCESS, CI FAILED)
 **Date**: 2025-11-30
 **Approach**: Use Homebrew's libc++ (not SDK's) with correct `#include_next` order. The key insight is that Homebrew's libc++ has its own `<stddef.h>` wrapper that:
 1. Does `#include_next <stddef.h>` to find the underlying C stddef.h
@@ -142,14 +142,25 @@ For `#include_next` to work correctly, the search order must be:
 
 **Command**: `-nostdinc -nostdinc++ -isystem<homebrew_libcxx> -isystem<clang_builtins> -isystem<llvm> -isystem<sdk_include>`
 **Actual command**: `clang++ -O2 -fno-rtti -fexceptions -nostdinc -nostdinc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -isystem/opt/homebrew/Cellar/llvm/21.1.6/lib/clang/21/include -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -isystem/.../MacOSX.sdk/usr/include ...`
-**Result**: SUCCESS! The defer tool compiles and links correctly.
+**Local Result**: SUCCESS - The defer tool compiles and links correctly on local macOS machine.
+**CI Result**: FAILED - Same `unknown type name 'size_t'`/`ptrdiff_t` errors on GitHub Actions macos-15 runner.
 
-**Why this works**:
-- When LLVM headers `#include <stddef.h>`, Homebrew libc++'s wrapper is found first (position 1)
-- The wrapper does `#include_next <stddef.h>`, searching from position 2 onwards
-- Clang's builtin `<stddef.h>` is found at position 2, which defines `size_t`, `ptrdiff_t`
-- The wrapper then defines `nullptr_t` using `decltype(nullptr)`
-- All types are properly defined before any code needs them
+**CI error from run 19801334764**:
+```
+/opt/homebrew/Cellar/llvm/21.1.6/bin/clang++ -nostdinc -nostdinc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -isystem/.../MacOSX.sdk/usr/include ...
+In file included from tool.cpp:2:
+In file included from .../MacOSX.sdk/usr/include/sys/_types/_ptrdiff_t.h:41:
+.../MacOSX.sdk/usr/include/arm/_types.h:75:9: error: unknown type name 'ptrdiff_t'
+.../MacOSX.sdk/usr/include/arm/_types.h:85:9: error: unknown type name 'size_t'
+```
+
+**Analysis**: The CI uses the exact same flags but still fails. The include chain shows SDK headers are being reached before clang's stddef.h defines the types. The difference between local success and CI failure may be:
+- Different LLVM version or build configuration
+- Different cached headers or precompiled headers
+- GitHub Actions runner has a different environment setup
+- Local machine may have a cached defer tool binary from a previous build
+
+**Status**: NEEDS INVESTIGATION - works locally but fails in CI
 
 ## Key Insights
 
