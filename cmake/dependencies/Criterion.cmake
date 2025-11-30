@@ -30,9 +30,14 @@
 #   - KRB5_GSSAPI_* or LIBSSH2_*: Kerberos/SSH support
 # =============================================================================
 
-# Initialize BUILD_CRITERION_TESTS based on BUILD_TESTS
-# This can be disabled even when BUILD_TESTS is ON (e.g., on Windows)
-set(BUILD_CRITERION_TESTS ${BUILD_TESTS})
+# Initialize BUILD_CRITERION_TESTS based on BUILD_TESTS and build type
+# This can be disabled even when BUILD_TESTS is ON (e.g., on Windows, Release builds)
+# Release and RelWithDebInfo builds default to OFF - only library runtime tests are needed
+if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+    set(BUILD_CRITERION_TESTS OFF)
+else()
+    set(BUILD_CRITERION_TESTS ${BUILD_TESTS})
+endif()
 
 # Disable Criterion tests for musl builds - Criterion test framework requires glibc
 # Lib runtime tests (using assert.h) still work
