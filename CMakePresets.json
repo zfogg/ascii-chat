@@ -30,6 +30,7 @@
       "name": "base-release",
       "inherits": "base",
       "hidden": true,
+      "binaryDir": "${sourceDir}/build_release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "USE_MIMALLOC": "ON",
@@ -149,6 +150,18 @@
       "generator": "Visual Studio 18 2026",
       "binaryDir": "${sourceDir}/build_vs",
       "toolset": "ClangCL"
+    },
+    {
+      "name": "panic",
+      "displayName": "Panic (Source Print Instrumentation)",
+      "description": "Debug build with Source Print instrumentation - traces every executed statement to trace.log",
+      "inherits": "base-debug",
+      "binaryDir": "${sourceDir}/build_panic",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ASCIICHAT_BUILD_WITH_SOURCE_PRINT": "ON",
+        "ASCIICHAT_USE_PCH": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -195,6 +208,10 @@
     {
       "name": "vs26",
       "configurePreset": "vs26"
+    },
+    {
+      "name": "panic",
+      "configurePreset": "panic"
     }
   ]
 }
