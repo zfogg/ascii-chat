@@ -110,7 +110,7 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 **Actual command**: `clang++ -O2 -fno-rtti -fexceptions -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isysroot/Applications/.../MacOSX.sdk -nostdinc++ -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -cxx-isystem/opt/homebrew/Cellar/llvm/21.1.6/include ...`
 **Result**: FAILED - Same error. The `-isystem` path before `-isysroot` doesn't help because `-isysroot` changes the "sysroot" which is a fundamental concept affecting all relative include paths. When libc++ uses `#include_next`, the SDK headers are still found through the sysroot mechanism, bypassing the explicit `-isystem` path for clang builtins. The SDK's arm/_types.h still expects size_t/ptrdiff_t to be defined before it's processed.
 
-### Attempt 14: Use SDK libc++ and -nostdinc (no -isysroot) (TESTING)
+### Attempt 14: Use SDK libc++ and -nostdinc (no -isysroot) (FAILED)
 **Date**: 2025-11-30
 **Approach**: Don't use `-isysroot` for compilation at all. Use `-nostdinc` AND `-nostdinc++` to disable ALL implicit header search. Then add explicit `-isystem` paths in the exact order needed:
 1. Clang resource dir (defines size_t, ptrdiff_t via builtin stddef.h)
@@ -120,8 +120,36 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 
 **Key insight**: The SDK has its own libc++ at `/usr/include/c++/v1` which is designed to work correctly with SDK headers. Using it instead of Homebrew's bundled libc++ may avoid the `#include_next` search order issues.
 **Command**: `-nostdinc -nostdinc++ -isystem<clang_builtins> -isystem<sdk_libcxx> -isystem<llvm> -isystem<sdk_include>`
-**Expected command**: `clang++ -O2 -fno-rtti -fexceptions -nostdinc -nostdinc++ -isystem/opt/homebrew/opt/llvm/lib/clang/21/include -isystem/.../MacOSX.sdk/usr/include/c++/v1 -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -isystem/.../MacOSX.sdk/usr/include ...`
-**Status**: TESTING
+**Result**: FAILED - SDK's libc++ explicitly checks that it finds its own `<stddef.h>` wrapper. Without it (because we're using clang builtins directly), SDK's `<cstddef>` errors with: "tried including <stddef.h> but didn't find libc++'s <stddef.h> header"
+
+### Attempt 15: Force-include clang builtin headers (FAILED)
+**Date**: 2025-11-30
+**Approach**: Force-include clang's individual type definition headers (`__stddef_size_t.h`, `__stddef_ptrdiff_t.h`, `__stddef_nullptr_t.h`) using `-include` flags BEFORE any other headers, combined with Attempt 14's approach.
+**Command**: `-include<clang_builtins>/__stddef_size_t.h -include.../__stddef_nullptr_t.h -nostdinc -nostdinc++ -isystem...`
+**Result**: FAILED - Same error as Attempt 14. The `-include` flags define the types, but SDK's libc++ `<cstddef>` still complains about not finding libc++'s own `<stddef.h>` wrapper.
+
+### Attempt 16: Homebrew libc++ FIRST, clang builtins SECOND (SUCCESS!)
+**Date**: 2025-11-30
+**Approach**: Use Homebrew's libc++ (not SDK's) with correct `#include_next` order. The key insight is that Homebrew's libc++ has its own `<stddef.h>` wrapper that:
+1. Does `#include_next <stddef.h>` to find the underlying C stddef.h
+2. Then defines `nullptr_t` as `typedef decltype(nullptr) nullptr_t;`
+
+For `#include_next` to work correctly, the search order must be:
+1. Homebrew libc++ FIRST (so its `<stddef.h>` wrapper is found)
+2. Clang resource dir SECOND (so `#include_next` finds clang's real `<stddef.h>`)
+3. LLVM tooling headers
+4. SDK C headers (for Darwin-specific headers like mach/*.h)
+
+**Command**: `-nostdinc -nostdinc++ -isystem<homebrew_libcxx> -isystem<clang_builtins> -isystem<llvm> -isystem<sdk_include>`
+**Actual command**: `clang++ -O2 -fno-rtti -fexceptions -nostdinc -nostdinc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1 -isystem/opt/homebrew/Cellar/llvm/21.1.6/lib/clang/21/include -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -isystem/.../MacOSX.sdk/usr/include ...`
+**Result**: SUCCESS! The defer tool compiles and links correctly.
+
+**Why this works**:
+- When LLVM headers `#include <stddef.h>`, Homebrew libc++'s wrapper is found first (position 1)
+- The wrapper does `#include_next <stddef.h>`, searching from position 2 onwards
+- Clang's builtin `<stddef.h>` is found at position 2, which defines `size_t`, `ptrdiff_t`
+- The wrapper then defines `nullptr_t` using `decltype(nullptr)`
+- All types are properly defined before any code needs them
 
 ## Key Insights
 
@@ -142,3 +170,34 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 - **LLVM include dir**: `/opt/homebrew/Cellar/llvm/21.1.6/include`
 - **Homebrew libc++**: `/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1/`
 - **SDK path**: `/Applications/Xcode_16.4.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk`
+
+## Secondary Issue: Sanitizer Link Flags Removed from Tests
+
+### Problem
+After fixing Attempt 16 (defer tool compilation), test executables failed to link with UBSan/ASan errors:
+```
+"___ubsan_handle_type_mismatch_v1", referenced from: ...
+ld: symbol(s) not found for architecture arm64
+```
+
+### Root Cause
+In `cmake/targets/Tests.cmake`, test targets on macOS were having their `LINK_OPTIONS` property **replaced** with just `-Wl,-pie`:
+```cmake
+# BAD: This replaced ALL link options, including sanitizer flags
+set_target_properties(${test_exe_name} PROPERTIES
+    LINK_OPTIONS "-Wl,-pie"
+)
+```
+
+This removed the sanitizer link flags (`-fsanitize=address`, `-fsanitize=undefined`, etc.) that were added globally via `add_link_options()`.
+
+### Fix
+Changed from `set_target_properties` (which replaces) to `target_link_options` (which appends):
+```cmake
+# GOOD: This adds to existing link options, preserving sanitizer flags
+target_link_options(${test_exe_name} PRIVATE
+    -Wl,-all_load
+)
+```
+
+The `-Wl,-all_load` flag serves the original purpose (preventing dead code elimination of Criterion test constructors) while preserving sanitizer link flags.
