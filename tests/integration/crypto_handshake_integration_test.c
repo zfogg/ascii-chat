@@ -687,7 +687,7 @@ Test(crypto_handshake_integration, large_data_encryption) {
   // Test with large data
   const size_t large_size = 1024 * 1024; // 1MB
   uint8_t *large_data = SAFE_MALLOC(large_size, void *);
-  uint8_t *ciphertext = SAFE_MALLOC(large_size + 1024, char *); // Extra space for encryption overhead
+  uint8_t *ciphertext = SAFE_MALLOC(large_size + 1024, uint8_t *); // Extra space for encryption overhead
   uint8_t *decrypted = SAFE_MALLOC(large_size, void *);
 
   // Fill with test data
