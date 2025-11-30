@@ -75,7 +75,7 @@ runs:
 
     - name: Compute install-deps.sh hash (macOS)
       if: inputs.os == 'macos'
-      id: deps-sh-hash-macos
+      id: install-deps-sh-hash-macos
       shell: bash
       run: |
         # Use scripts/install-deps.sh as the single source of truth for package installation
@@ -95,9 +95,9 @@ runs:
         # already present, so only cache the download artifacts.
         path: |
           ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-homebrew-v3-${{ steps.deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-homebrew-v3-${{ steps.deps-sh-hash-macos.outputs.hash }}-
+          ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-
           ${{ runner.os }}-homebrew-v3-
 
     - name: Install dependencies via scripts/install-deps.sh (macOS)
@@ -122,7 +122,7 @@ runs:
 
     - name: Compute install-deps.sh hash (Ubuntu)
       if: inputs.os == 'ubuntu'
-      id: deps-sh-hash
+      id: install-deps-sh-hash
       shell: bash
       run: |
         # Use scripts/install-deps.sh as the single source of truth for package installation
@@ -138,9 +138,9 @@ runs:
       with:
         # Cache to workspace directory to avoid permission issues
         path: .apt-cache
-        key: ${{ runner.os }}-apt-v5-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
         restore-keys: |
-          ${{ runner.os }}-apt-v5-${{ steps.deps-sh-hash.outputs.hash }}-
+          ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-
           ${{ runner.os }}-apt-v5-
 
     - name: Restore APT cache to system (Ubuntu)
@@ -441,7 +441,7 @@ runs:
       with:
         path: |
           ~/Library/Caches/Homebrew
-        key: ${{ runner.os }}-homebrew-v3-${{ steps.deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-homebrew-v3-${{ steps.install-deps-sh-hash-macos.outputs.hash }}-${{ inputs.extra-packages }}
 
     - name: Save vcpkg packages (Windows)
       if: always() && inputs.os == 'windows' && env.VCPKG_ROOT != '' && steps.vcpkg-cache.outputs.cache-hit != 'true'
@@ -469,4 +469,4 @@ runs:
       with:
         # Cache to workspace directory to avoid permission issues
         path: .apt-cache
-        key: ${{ runner.os }}-apt-v5-${{ steps.deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+        key: ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
