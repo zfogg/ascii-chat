@@ -85,8 +85,8 @@ endif()
 target_include_directories(ascii-chat PRIVATE $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>)
 
 # Add mimalloc include directory for executable (needed for SAFE_MALLOC macros in src/)
-if(USE_MIMALLOC)
-    target_include_directories(ascii-chat PRIVATE ${FETCHCONTENT_BASE_DIR}/mimalloc-src/include)
+if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
+    target_include_directories(ascii-chat PRIVATE ${MIMALLOC_INCLUDE_DIRS})
 endif()
 
 # Add build timing for ascii-chat executable
