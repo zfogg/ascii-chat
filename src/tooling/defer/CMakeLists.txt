@@ -113,40 +113,31 @@ if(APPLE)
         endif()
 
         # Compile options for macOS with Homebrew LLVM
-        # The key challenge: Homebrew LLVM 21+ bundles its own libc++ which uses
-        # #include_next to find C library headers from the SDK.
+        # The challenge: Homebrew LLVM 21+ bundles its own libc++ which uses
+        # #include_next to find C library headers from the SDK. SDK headers
+        # expect size_t/ptrdiff_t to be defined from clang's stddef.h.
         #
-        # The error message says: "header search paths should contain the C++ Standard
-        # Library headers before any C Standard Library"
+        # Solution: Use -isysroot for SDK, but let compiler find its own stddef.h
+        # via normal search order. Don't use -nostdinc++ which removes compiler
+        # builtins from the search path.
         #
-        # Solution: Use -nostdinc++ to disable automatic header search, then manually
-        # add headers in the correct order. Note: -I paths are searched BEFORE -isystem,
-        # so we must use -isystem for LLVM include dir too.
-        #
-        # Order of search:
-        # 1. Homebrew's libc++ headers (C++ Standard Library)
-        # 2. Clang resource dir (compiler builtins like stddef.h)
-        # 3. SDK headers (C Standard Library)
-        # 4. LLVM headers for clang tooling (after stdlib so they use the right stdlib)
+        # The -stdlib=libc++ tells clang to use libc++ (from Homebrew), and the
+        # compiler knows where its own builtins are. We just need to tell it
+        # where to find LLVM tooling headers and the SDK.
         if(HAS_LLVM_LIBCXX)
-            message(STATUS "Configuring Homebrew LLVM include path order:")
-            message(STATUS "  1. libc++: ${LLVM_LIBCXX_INCLUDE}")
-            message(STATUS "  2. clang builtins: ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  3. SDK: ${MACOS_SDK_PATH}/usr/include")
-            message(STATUS "  4. LLVM: ${LLVM_INCLUDE_DIRS}")
+            message(STATUS "Using Homebrew LLVM with bundled libc++")
+            message(STATUS "  libc++: ${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "  clang builtins: ${CLANG_RESOURCE_DIR}/include")
+            message(STATUS "  SDK: ${MACOS_SDK_PATH}")
+            message(STATUS "  LLVM: ${LLVM_INCLUDE_DIRS}")
 
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
                 -fno-rtti
                 -fexceptions
                 -stdlib=libc++
-                -nostdinc++
-                # Order matters! C++ stdlib must come before C stdlib
-                # Use -isystem for ALL external includes to maintain strict order
-                "-isystem${LLVM_LIBCXX_INCLUDE}"
-                "-isystem${CLANG_RESOURCE_DIR}/include"
-                "-isystem${MACOS_SDK_PATH}/usr/include"
-                # LLVM headers come last - they depend on stdlib headers
+                -isysroot ${MACOS_SDK_PATH}
+                # LLVM headers for clang tooling
                 "-isystem${LLVM_INCLUDE_DIRS}"
             )
         else()
