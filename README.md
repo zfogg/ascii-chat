@@ -127,6 +127,20 @@ ascii-chat server --help
 ascii-chat client --help
 ```
 
+**Man Page:**
+
+ascii-chat includes a man page with comprehensive documentation. When installed via Homebrew or a package manager:
+
+```bash
+man ascii-chat
+```
+
+From the build directory (after running `cmake --build build --target docs`):
+
+```bash
+man build/docs/ascii-chat.1
+```
+
 ## Command line flags
 
 ### Client Options
