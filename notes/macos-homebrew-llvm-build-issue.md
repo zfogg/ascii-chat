@@ -160,7 +160,45 @@ In file included from .../MacOSX.sdk/usr/include/sys/_types/_ptrdiff_t.h:41:
 - GitHub Actions runner has a different environment setup
 - Local machine may have a cached defer tool binary from a previous build
 
-**Status**: NEEDS INVESTIGATION - works locally but fails in CI
+**Status**: FAILED in CI
+
+### Attempt 17: Force-include stddef.h before other headers (FAILED)
+**Date**: 2025-11-30
+**Approach**: Same as Attempt 16, but add `-include stddef.h` to force-include stddef.h before any source code is processed.
+**Command**: `-nostdinc -nostdinc++ -isystem<homebrew_libcxx> -isystem<clang_builtins> -isystem<llvm> -isystem<sdk_include> -include stddef.h`
+**Result**: FAILED - Same `unknown type name 'size_t'`/`ptrdiff_t` errors
+
+**CI error from run 19801504938**:
+```
+clang++ -nostdinc -nostdinc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include/c++/v1
+        -isystem/opt/homebrew/opt/llvm/lib/clang/21/include
+        -isystem/opt/homebrew/Cellar/llvm/21.1.6/include
+        -isystem/.../MacOSX.sdk/usr/include
+        -include stddef.h
+        ... tool.cpp
+```
+
+**Analysis**: The `-include stddef.h` flag searches the include paths to find stddef.h. With `-nostdinc`, clang's internal resource directory is removed from the search. Even though we add it back with `-isystem`, the `#include_next` mechanism used by libc++'s stddef.h wrapper doesn't find clang's builtin stddef.h correctly.
+
+**Status**: FAILED
+
+### Attempt 18: Force-include clang's builtin stddef.h with FULL PATH (TESTING)
+**Date**: 2025-11-30
+**Approach**: Instead of `-include stddef.h` (which relies on include path search), use `-include /full/path/to/clang/stddef.h` to directly include clang's builtin stddef.h with its absolute path. This bypasses all include path resolution issues.
+
+**Key insight**: The `-include` flag with a full path directly includes the specified file, regardless of `-nostdinc` or any include path configuration. This guarantees size_t/ptrdiff_t are defined before any source code is processed.
+
+**Command**:
+```
+-nostdinc -nostdinc++
+-include${CLANG_RESOURCE_DIR}/include/stddef.h   # FULL PATH - bypasses include search
+-isystem<homebrew_libcxx>
+-isystem<clang_builtins>
+-isystem<llvm>
+-isystem<sdk_include>
+```
+
+**Status**: TESTING
 
 ## Key Insights
 

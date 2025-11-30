@@ -131,29 +131,27 @@ if(APPLE)
         # 4. SDK C headers
         set(SDK_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
         if(HAS_LLVM_LIBCXX)
-            # Attempt 17: Force-include stddef.h BEFORE any other headers
+            # Attempt 18: Force-include clang's builtin stddef.h with FULL PATH
             #
-            # Problem: LLVM headers include <cassert> which does #include_next <assert.h>
-            # to find SDK's assert.h. SDK's assert.h → stdlib.h → arm/_types.h which
-            # expects size_t/ptrdiff_t to already be defined. But nothing has included
-            # stddef.h yet at that point!
+            # Problem: All previous attempts (10-17) failed because:
+            # - With -nostdinc, clang's internal resource directory is removed from search
+            # - Even when we add it back with -isystem, #include_next doesn't work correctly
+            # - The -include stddef.h flag searches the include paths, which are broken
             #
-            # Solution: Use -include to force-include stddef.h BEFORE any other includes.
-            # This ensures size_t/ptrdiff_t are defined before cassert is processed.
+            # Root cause: -nostdinc disables clang's internal header resolution, breaking
+            # the #include_next chain that libc++ relies on to find clang builtins.
             #
-            # The search order is still:
-            #   1. Homebrew libc++ (so -include stddef.h finds libc++'s wrapper)
-            #   2. Clang resource dir (so libc++'s #include_next finds clang's stddef.h)
+            # Solution: Force-include clang's stddef.h using its FULL ABSOLUTE PATH.
+            # This bypasses all include path resolution issues - we directly include
+            # the exact file that defines size_t/ptrdiff_t, before any source code.
+            #
+            # The search order for other includes:
+            #   1. Homebrew libc++ (for C++ standard library)
+            #   2. Clang resource dir (for other compiler builtins)
             #   3. LLVM tooling headers
             #   4. SDK C headers (for Darwin-specific headers)
-            #
-            # When -include stddef.h runs:
-            #   - Finds Homebrew libc++ wrapper (position 1)
-            #   - Wrapper does #include_next, searching position 2+
-            #   - Finds clang's builtin stddef.h with size_t/ptrdiff_t (position 2)
-            #   - Now size_t/ptrdiff_t are defined BEFORE cassert is processed
-            message(STATUS "Using Homebrew libc++ (Attempt 17: force-include stddef.h before other headers)")
-            message(STATUS "  Force-include: stddef.h (ensures size_t/ptrdiff_t defined early)")
+            message(STATUS "Using Homebrew libc++ (Attempt 18: force-include clang's stddef.h with full path)")
+            message(STATUS "  Force-include: ${CLANG_RESOURCE_DIR}/include/stddef.h (FULL PATH)")
             message(STATUS "  1. Homebrew libc++: ${LLVM_LIBCXX_INCLUDE}")
             message(STATUS "  2. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
             message(STATUS "  3. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
@@ -166,18 +164,19 @@ if(APPLE)
                 # Disable ALL implicit header search
                 -nostdinc
                 -nostdinc++
-                # Add paths in STRICT ORDER for #include_next to work:
-                # 1. Homebrew libc++ FIRST (has stddef.h wrapper with nullptr_t)
+                # CRITICAL: Force-include clang's builtin stddef.h with FULL PATH
+                # This ensures size_t/ptrdiff_t are defined BEFORE any other code
+                # Using full path bypasses broken #include_next resolution with -nostdinc
+                "-include${CLANG_RESOURCE_DIR}/include/stddef.h"
+                # Add paths in STRICT ORDER for remaining headers:
+                # 1. Homebrew libc++ FIRST (for C++ standard library)
                 "-isystem${LLVM_LIBCXX_INCLUDE}"
-                # 2. Clang builtins (so #include_next from libc++ finds real stddef.h)
+                # 2. Clang builtins (for other compiler builtins like __stddef_max_align_t.h)
                 "-isystem${CLANG_RESOURCE_DIR}/include"
                 # 3. LLVM tooling headers
                 "-isystem${LLVM_INCLUDE_DIRS}"
                 # 4. SDK C headers LAST (for Darwin-specific headers like mach/*.h)
                 "-isystem${MACOS_SDK_PATH}/usr/include"
-                # CRITICAL: Force-include stddef.h BEFORE any source code
-                # This ensures size_t/ptrdiff_t are defined before cassert is processed
-                -include stddef.h
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
