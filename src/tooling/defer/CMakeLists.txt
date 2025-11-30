@@ -117,28 +117,31 @@ if(APPLE)
         # #include_next to find C library headers from the SDK. SDK headers
         # expect size_t/ptrdiff_t to be defined from clang's stddef.h.
         #
-        # Solution: Use -isysroot for SDK, but let compiler find its own stddef.h
-        # via normal search order. Don't use -nostdinc++ which removes compiler
-        # builtins from the search path.
+        # The issue with -isysroot: It makes SDK the primary search root, which
+        # means when SDK headers do #include <stddef.h>, they find SDK's broken
+        # stddef.h instead of clang's working one.
         #
-        # The -stdlib=libc++ tells clang to use libc++ (from Homebrew), and the
-        # compiler knows where its own builtins are. We just need to tell it
-        # where to find LLVM tooling headers and the SDK.
+        # Solution: Do NOT use -isysroot. Instead, manually specify include paths:
+        # 1. Clang's resource directory (stddef.h with size_t/ptrdiff_t)
+        # 2. LLVM tooling headers
+        # 3. SDK headers (via -isystem, not -isysroot)
         if(HAS_LLVM_LIBCXX)
             message(STATUS "Using Homebrew LLVM with bundled libc++")
-            message(STATUS "  libc++: ${LLVM_LIBCXX_INCLUDE}")
             message(STATUS "  clang builtins: ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  SDK: ${MACOS_SDK_PATH}")
             message(STATUS "  LLVM: ${LLVM_INCLUDE_DIRS}")
+            message(STATUS "  SDK: ${MACOS_SDK_PATH}/usr/include")
 
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
                 -fno-rtti
                 -fexceptions
                 -stdlib=libc++
-                -isysroot ${MACOS_SDK_PATH}
+                # Clang builtins MUST come first - defines size_t, ptrdiff_t
+                "-isystem${CLANG_RESOURCE_DIR}/include"
                 # LLVM headers for clang tooling
                 "-isystem${LLVM_INCLUDE_DIRS}"
+                # SDK C headers come last
+                "-isystem${MACOS_SDK_PATH}/usr/include"
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
