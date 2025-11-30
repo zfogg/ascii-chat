@@ -48,6 +48,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -272,6 +273,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -386,6 +388,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -507,6 +510,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
@@ -596,6 +600,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
         submodules: true
 
     - name: Install dependencies with caching
