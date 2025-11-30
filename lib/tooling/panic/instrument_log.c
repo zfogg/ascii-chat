@@ -756,10 +756,7 @@ static bool ascii_instr_compile_regex(regex_t *regex, const char *pattern) {
     return false;
   }
   int ret = regcomp(regex, pattern, REG_EXTENDED | REG_NOSUB);
-  if (ret != 0) {
-    return false;
-  }
-  return true;
+  return ret == 0;
 }
 #endif
 
@@ -802,6 +799,9 @@ static bool ascii_instr_only_list_append(ascii_instr_only_list_t *list, ascii_in
     size_t new_capacity = (list->capacity == 0) ? 4U : list->capacity * 2U;
     ascii_instr_only_selector_t *new_items =
         SAFE_REALLOC(list->items, new_capacity * sizeof(*new_items), ascii_instr_only_selector_t *);
+    if (new_items == NULL) {
+      return false; // SAFE_REALLOC already called FATAL, but satisfy analyzer
+    }
     list->items = new_items;
     list->capacity = new_capacity;
   }
@@ -889,10 +889,7 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
         continue;
       }
 
-      if (strcmp(kind, "file") == 0) {
-        (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL,
-                                           spec);
-      } else if (strcmp(kind, "func") == 0 || strcmp(kind, "function") == 0) {
+      if (strcmp(kind, "func") == 0 || strcmp(kind, "function") == 0) {
         (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB,
                                            NULL, spec);
       } else if (strcmp(kind, "module") == 0) {
@@ -911,6 +908,7 @@ static bool ascii_instr_parse_only_filters(ascii_instr_runtime_t *runtime, const
         (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE,
                                            module_value, pattern_part);
       } else {
+        // "file" kind or unknown kinds default to FILE_GLOB
         (void)ascii_instr_only_list_append(&runtime->only_selectors, ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB, NULL,
                                            spec);
       }

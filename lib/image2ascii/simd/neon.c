@@ -555,6 +555,9 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
 
   // Use SIMD-aligned allocation for optimal vectorized write performance
   char *output = SAFE_MALLOC_SIMD(len, char *);
+  if (output == NULL) {
+    return NULL; // SAFE_MALLOC_SIMD already called FATAL, but satisfy analyzer
+  }
 
   char *pos = output;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;

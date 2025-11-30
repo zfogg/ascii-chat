@@ -533,9 +533,8 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   for (int i = 0; i < num_devices; i++) {
     const PaDeviceInfo *info = Pa_GetDeviceInfo(i);
     if (info) {
-      if (list_inputs && info->maxInputChannels > 0) {
-        device_count++;
-      } else if (!list_inputs && info->maxOutputChannels > 0) {
+      bool matches = list_inputs ? (info->maxInputChannels > 0) : (info->maxOutputChannels > 0);
+      if (matches) {
         device_count++;
       }
     }
