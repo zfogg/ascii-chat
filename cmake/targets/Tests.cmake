@@ -237,31 +237,44 @@ if(BUILD_TESTS AND CRITERION_FOUND)
         endif()
 
         # Link test dependencies (order matters for linking)
-        target_link_libraries(${test_exe_name}
-            ascii-chat-lib
-            ${TEST_LDFLAGS}
-        )
-
         # Handle circular dependencies between libraries
         # This is needed because core→network→core and core→crypto have circular refs
         if(NOT WIN32 AND NOT APPLE)
             # Linux: Use --start-group/--end-group to resolve circular dependencies
+            # IMPORTANT: All internal libraries must be inside the group, otherwise
+            # the linker will process libraries outside the group first and fail
+            # to resolve circular references
             target_link_libraries(${test_exe_name}
                 -Wl,--start-group
+                ascii-chat-simd
+                ascii-chat-video
+                ascii-chat-audio
                 ascii-chat-core
                 ascii-chat-panic
                 ascii-chat-network
                 ascii-chat-crypto
+                ascii-chat-platform
+                ascii-chat-data-structures
+                ascii-chat-util
                 -Wl,--end-group
+                ${TEST_LDFLAGS}
             )
         elseif(APPLE)
             # macOS: List libraries multiple times (ld64 doesn't have --start-group)
             target_link_libraries(${test_exe_name}
+                ascii-chat-lib
+                ${TEST_LDFLAGS}
                 ascii-chat-core
                 ascii-chat-panic
                 ascii-chat-util
                 ascii-chat-network
                 ascii-chat-crypto
+            )
+        else()
+            # Windows
+            target_link_libraries(${test_exe_name}
+                ascii-chat-lib
+                ${TEST_LDFLAGS}
             )
         endif()
 
