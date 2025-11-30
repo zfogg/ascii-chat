@@ -51,7 +51,7 @@
  * The @ref topics "Topics" page includes comprehensive architectural guides with names like:
  * - **@ref topic_categories "Topic Categories"** - Index page that lists all topics organized by category (start here!)
  * - **@ref topic_build "Build System README"** - Comprehensive build documentation
- * - **@ref topic_crypto_detailed "Cryptography README"** - Crypto architecture and usage
+ * - **@ref topic_crypto "Cryptography"** - Crypto architecture and usage
  * - **@ref topic_handshake "Handshake Module README"** - Protocol and authentication details
  * - **@ref topic_keys "Keys Module README"** - SSH/GPG key management
  * - And many more detailed guides...
@@ -109,7 +109,7 @@
  * - **@ref topic_options "Options and Configuration"**: Command-line parsing and TOML config
  *
  * **Cryptography:**
- * - **@ref topic_crypto_detailed "Cryptography Module README"**: Encryption architecture and security details
+ * - **@ref topic_crypto "Cryptography"**: Encryption architecture and security details
  * - **@ref topic_handshake "Handshake Protocol"**: Secure connection establishment with X25519
  * - **@ref topic_keys "Keys Module"**: SSH/GPG key parsing and validation
  *
@@ -159,7 +159,7 @@
  *   cross-platform compilation, build types, and optimization
  * - **@ref topic_platform "Platform Abstraction Layer README"**: Comprehensive guide to cross-platform
  *   abstractions, threading, sockets, terminal I/O, and OS portability
- * - **@ref topic_crypto_detailed "Cryptography Module README"**: Encryption architecture,
+ * - **@ref topic_crypto "Cryptography"**: Encryption architecture,
  *   cryptographic operations, and security details
  * - **@ref topic_handshake "Handshake Module README"**: How client and server establish
  *   secure encrypted sessions using X25519 key exchange
@@ -258,7 +258,7 @@
  * - **@ref topic_av "Audio/Video Networking"** - Network APIs for audio/video streaming
  *
  * @subsection crypto_module Cryptography
- * - **@ref topic_crypto_detailed "Cryptography Module"** - Core cryptographic operations
+ * - **@ref topic_crypto "Cryptography"** - Core cryptographic operations
  * - **@ref topic_handshake "Handshake Protocol"** - Cryptographic handshake implementation
  * - **@ref topic_keys "Keys Module"** - SSH key, GPG key, and key validation APIs
  *

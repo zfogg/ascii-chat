@@ -1,11 +1,11 @@
 /**
  * @defgroup network Network Module
  * @ingroup module_network
- * @brief Core network I/O operations with timeout support
+ * @brief 🌐 Core network I/O operations with timeout support
  *
  * @file network/network.h
  * @ingroup network
- * @brief Core network I/O operations with timeout support
+ * @brief 🌐 Core network I/O operations with timeout support
  *
  * This module provides fundamental network I/O operations including socket
  * management, timeout handling, and basic send/receive operations. All

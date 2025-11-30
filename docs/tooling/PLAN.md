@@ -1,30 +1,30 @@
-# Full Source Print Instrumentation Pipeline Plan
+# Full Panic Instrumentation Pipeline Plan
 
 ## Goals
 
-- [x] Build a Clang libTooling executable that rewrites ascii-chat C sources, inserting per-statement logging calls for the source_print instrumentation pipeline.
+- [x] Build a Clang libTooling executable that rewrites ascii-chat C sources, inserting per-statement logging calls for the panic instrumentation pipeline.
 - [x] Provide a runtime logging helper that records PID/TID, file, line, macro status, and source snippet via single write() calls with env-configurable filters.
-- [x] Wire the tool into CMake so we can compile both original and source_print-instrumented builds easily while guaranteeing the original sources remain untouched.
+- [x] Wire the tool into CMake so we can compile both original and panic-instrumented builds easily while guaranteeing the original sources remain untouched.
 
 ## Steps
 
 ### Runtime Logging Library (lib/tooling/)
 - [x] Create `lib/tooling/instrument_log.h` and `lib/tooling/instrument_log.c` implementing `ascii_instr_log_line()` using async-signal-safe `write()`; include PID/TID, timestamp, macro flag, snippet.
-- [x] Add env-configurable filters (e.g., `ASCII_INSTR_SOURCE_PRINT_INCLUDE`, `ASCII_INSTR_SOURCE_PRINT_THREAD`, `ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR`) and per-thread file support.
+- [x] Add env-configurable filters (e.g., `ASCII_PANIC_INCLUDE`, `ASCII_PANIC_THREAD`, `ASCII_PANIC_OUTPUT_DIR`) and per-thread file support.
 - [x] Expose initialization/teardown helpers for thread-local log files.
-- [x] Register the new source files in the existing library target definitions (via `cmake/tooling/Instrumentation.cmake`).
+- [x] Register the new source files in the existing library target definitions (via `cmake/tooling/Panic.cmake`).
 
-### Source Print Instrumentation Tool (`src/tooling/`)
+### Panic Instrumentation Tool (`src/tooling/`)
 - [x] Implement `src/tooling/ascii_instr_tool.cpp` using Clang libTooling + AST visitors to insert `ascii_instr_log_line()` before each executable `Stmt`, capturing original source text via `SourceManager`.
 - [x] Enforce “write-new-only” safety: validate target output directories, refuse to overwrite existing files, and abort on any attempt to reuse an existing path.
 - [x] Handle macros by tagging expansion sites; log metadata distinguishing expansion use.
-- [x] Add command-line options for selecting files/functions and for skipping functions marked with `ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER` (via annotate attribute) macro.
+- [x] Add command-line options for selecting files/functions and for skipping functions marked with `ASCII_PANIC_SIGNAL_HANDLER` (via annotate attribute) macro.
 - [x] Emit transformed sources to a dedicated output directory mirroring the input tree.
 
 ### Build System Integration (`cmake/tooling/`)
 - [x] Provide `cmake/tooling/Targets.cmake` that defines the libTooling executable and `ascii-debug-runtime`, ensuring LLVM/Clang discovery happens there.
-- [x] Expose `ascii_instrumentation_prepare()` / `ascii_instrumentation_finalize()` helpers in `cmake/tooling/Instrumentation.cmake`, invoked from the root `CMakeLists.txt`.
-- [x] Add cache option `ASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION` and integrate `cmake/tooling/run_instrumentation.sh` to generate source_print-instrumented sources safely into `build/instrumented/`.
+- [x] Expose `ascii_panic_prepare()` / `ascii_panic_finalize()` helpers in `cmake/tooling/Panic.cmake`, invoked from the root `CMakeLists.txt`.
+- [x] Add cache option `ASCIICHAT_BUILD_WITH_PANIC` and integrate `cmake/tooling/run_panic_instrumentation.sh` to generate panic-instrumented sources safely into `build/instrumented/`.
 
 ### Developer Documentation & Usage
 - [x] Document workflow in `docs/tooling-instrumentation.md`: configuration, environment filters, per-thread logs.
@@ -46,8 +46,8 @@
 
 2. **Advanced Filtering & Noise Control**
    - [x] Extend runtime filters to support regular-expression includes/excludes for files and functions.
-   - [x] Add rate limiting (e.g., `ASCII_INSTR_SOURCE_PRINT_RATE=10` to log every Nth statement per thread).
-   - [x] Support `ASCII_INSTR_SOURCE_PRINT_ONLY=server:*` to scope logging to module prefixes or glob patterns.
+   - [x] Add rate limiting (e.g., `ASCII_PANIC_RATE=10` to log every Nth statement per thread).
+   - [x] Support `ASCII_PANIC_ONLY=server:*` to scope logging to module prefixes or glob patterns.
 
 3. **Signal-Safe Postmortem Tooling**
    - [x] Create a small analyzer that parses per-thread log files and reports the last executed statement per TID, highlighting divergence between threads.
@@ -58,7 +58,7 @@
    - [ ] Build a symbolizer helper that resolves PCs to `file:line` and optionally prints the on-disk source snippet for parity with the source-to-source path.
 
 5. **Signal Handler Opt-In/Out Support**
-   - [x] Implement optional annotation macros (e.g., `#define ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER`) that map to Clang attributes for exclusion.
+   - [x] Implement optional annotation macros (e.g., `#define ASCII_PANIC_SIGNAL_HANDLER`) that map to Clang attributes for exclusion.
    - [x] Document guidelines for marking async-signal-safe sections to avoid interference from inserted logging.
 
 6. **Documentation & Examples**
@@ -109,7 +109,7 @@
    - [x] Complete `docs/tooling-instrumentation.md` with end-to-end workflow, env var reference, and troubleshooting.
    - [ ] Record a short asciinema or GIF walkthrough demonstrating instrumentation on a simple crash.
 2. **Stabilize Build Integration**
-   - [ ] Add CI job that configures with `-DASCIICHAT_BUILD_WITH_SOURCE_PRINT_INSTRUMENTATION=ON` to validate the pipeline builds on macOS/Linux.
+   - [ ] Add CI job that configures with `-DASCIICHAT_BUILD_WITH_PANIC=ON` to validate the pipeline builds on macOS/Linux.
    - [ ] Create a convenience script (`scripts/instrumented-build.sh`) that wraps preset configuration, emphasizing no overwrite guarantees.
 3. **Runtime Validation**
    - [ ] Write deterministic unit tests covering filter combinations (include/exclude, rate, thread selection) using mock log sinks.
@@ -126,10 +126,10 @@
    - *Mitigation:* Encourage scoped instrumentation via filters; document rate limiting defaults and provide profiling guidance.
    - *Metric:* Instrumented build should remain within 5× runtime of baseline for targeted modules.
 2. **Risk: Log Volume Overwhelms Storage or Pipelines**
-   - *Mitigation:* Default to per-thread rolling logs with size caps; expose `ASCII_INSTR_SOURCE_PRINT_MAX_BYTES` env var; integrate optional gzip rotation.
+   - *Mitigation:* Default to per-thread rolling logs with size caps; expose `ASCII_PANIC_MAX_BYTES` env var; integrate optional gzip rotation.
    - *Metric:* Demonstrate a 10-minute instrumented session stays under 500 MB with defaults.
 3. **Risk: Developer Misuse in Signal Handlers**
-   - *Mitigation:* Enforce compiler warnings when `ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER` functions are instrumented; highlight safe patterns in docs.
+   - *Mitigation:* Enforce compiler warnings when `ASCII_PANIC_SIGNAL_HANDLER` functions are instrumented; highlight safe patterns in docs.
    - *Metric:* Zero known incidents of instrumented signal handlers in postmortems.
 4. **Risk: Divergence Between Original and Instrumented Trees**
    - *Mitigation:* Add automated sanity checks comparing hashes of non-instrumented files; gate merges on clean diffs.

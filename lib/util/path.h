@@ -3,7 +3,7 @@
 /**
  * @file util/path.h
  * @ingroup util
- * @brief Path Manipulation Utilities
+ * @brief 📂 Path Manipulation Utilities
  *
  * This header provides cross-platform utilities for working with file paths,
  * including path expansion, configuration directory resolution, and project

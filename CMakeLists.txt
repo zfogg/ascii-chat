@@ -165,21 +165,28 @@ endif()
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/tooling/SourcePrint.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
-ascii_source_print_prepare()
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
+# IMPORTANT: Defer must run BEFORE panic so that:
+# 1. Defer analyzes clean original sources (correct scope analysis)
+# 2. Panic then transforms defer's output (just adds logging)
 ascii_defer_prepare()
+ascii_panic_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 # Configure archiver wrapper BEFORE creating any static libraries
 include(${CMAKE_SOURCE_DIR}/cmake/init/ArchiverWrapper.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
 
+# Build panic runtime after Libraries.cmake creates ascii-chat-panic target
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
+ascii_build_tooling_runtime()
+
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
-ascii_source_print_finalize()
+ascii_panic_finalize()
 ascii_defer_finalize()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)

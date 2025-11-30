@@ -1,0 +1,280 @@
+/**
+ * @defgroup defer Defer Statements
+ * @ingroup module_development
+ * @brief 🔄 Go/Zig-style defer statements for automatic cleanup in C
+ */
+
+/**
+ * @page topic_defer Defer Statements
+ * @ingroup defer
+ *
+ * @tableofcontents
+ *
+ * @section defer_overview 🔄 Overview
+ *
+ * This module implements Go/Zig-style `defer` statements for C using Clang libTooling
+ * source-to-source transformation. Defer allows cleanup code to run automatically at
+ * function exit, regardless of the exit path (return, goto, end of function).
+ *
+ * **Key Design Decision**: No runtime library is needed. The transformer directly
+ * inlines cleanup code at every exit point, making defer zero-overhead at runtime.
+ *
+ * **Implementation**: `src/tooling/defer/tool.cpp`
+ *
+ * **Key Features**:
+ * - Automatic cleanup at function exit
+ * - LIFO (last-in-first-out) execution order
+ * - Zero runtime overhead (cleanup inlined at compile time)
+ * - Automatic detection and transformation of files using `defer()`
+ * - CMake integration via `cmake/tooling/Defer.cmake`
+ *
+ * @section defer_architecture Architecture
+ *
+ * @subsection defer_transformation Source-to-Source Transformation (No Runtime)
+ *
+ * The defer tool transforms source code by **directly inlining cleanup code** at
+ * every function exit point. No runtime library is needed.
+ *
+ * **Original Code**:
+ * @code{.c}
+ * void process_file(const char *path) {
+ *     FILE *f = fopen(path, "r");
+ *     defer(fclose(f));  // Cleanup happens automatically
+ *
+ *     if (!f) return;    // fclose runs here
+ *
+ *     // ... process file ...
+ *
+ *     return;  // fclose runs here too
+ * }
+ * @endcode
+ *
+ * **Transformed Code**:
+ * @code{.c}
+ * void process_file(const char *path) {
+ *     FILE *f = fopen(path, "r");
+ *     // defer(fclose(f)); removed - cleanup inlined below
+ *
+ *     if (!f) {
+ *         { fclose(f); }  // Inlined cleanup
+ *         return;
+ *     }
+ *
+ *     // ... process file ...
+ *
+ *     { fclose(f); }  // Inlined cleanup
+ *     return;
+ * }
+ * @endcode
+ *
+ * **Transformation Rules**:
+ * 1. **Defer detection**: Match `defer(expression);` statements
+ * 2. **Exit point injection**: Insert cleanup block `{ expression; }` before:
+ *    - Every `return` statement
+ *    - End of function (implicit return)
+ *    - Before `goto` targets outside the defer scope
+ * 3. **LIFO order**: Multiple defers execute in reverse order (last-in-first-out)
+ * 4. **Remove defer statement**: The original `defer()` call is removed
+ *
+ * @subsection defer_header Header Stub (lib/tooling/defer/defer.h)
+ *
+ * The header provides a no-op macro so IDEs and editors can parse code that uses `defer()`:
+ *
+ * @code{.c}
+ * #define defer(action)   \
+ *   do { /* transformed by ascii-instr-defer */ } while (0)
+ * @endcode
+ *
+ * This allows:
+ * - Syntax highlighting to work correctly
+ * - IDE code completion and error checking
+ * - Code to compile (as a no-op) without transformation for quick testing
+ *
+ * @subsection defer_build_integration Build Integration (cmake/tooling/Defer.cmake)
+ *
+ * Defer transformation is **enabled automatically** when files contain `defer()` calls.
+ *
+ * @code{.bash}
+ * # Defer is automatically enabled when defer() is detected in source files
+ * # No CMake option needed - just build normally
+ * cmake -B build
+ * cmake --build build
+ * @endcode
+ *
+ * **How it works**:
+ * 1. CMake scans source files for `defer(` usage
+ * 2. Only files containing `defer()` are transformed
+ * 3. Transformed files are written to `build/defer_transformed/`
+ * 4. Build uses transformed sources instead of originals
+ *
+ * **Key features**:
+ * - **Incremental builds**: Only re-transforms files that changed
+ * - **Cached tool**: The defer tool binary is cached in `.deps-cache/defer-tool/`
+ * - **No runtime library**: Cleanup code is inlined directly
+ *
+ * @section defer_usage Usage Examples
+ *
+ * @subsection defer_basic Basic Cleanup
+ *
+ * @code{.c}
+ * void example() {
+ *     char *buffer = malloc(1024);
+ *     defer(free(buffer));
+ *
+ *     // ... use buffer ...
+ *     // free(buffer) happens automatically
+ * }
+ * @endcode
+ *
+ * @subsection defer_multiple Multiple Resources (LIFO order)
+ *
+ * @code{.c}
+ * void multi_resource() {
+ *     FILE *f1 = fopen("file1.txt", "r");
+ *     defer(fclose(f1));  // Runs second (LIFO)
+ *
+ *     FILE *f2 = fopen("file2.txt", "w");
+ *     defer(fclose(f2));  // Runs first (LIFO)
+ *
+ *     // ... use files ...
+ *     // Order: fclose(f2) then fclose(f1)
+ * }
+ * @endcode
+ *
+ * @subsection defer_lock Lock/Unlock Pattern
+ *
+ * @code{.c}
+ * void critical_section(mutex_t *mtx) {
+ *     mutex_lock(mtx);
+ *     defer(mutex_unlock(mtx));
+ *
+ *     // ... critical section code ...
+ *     // mutex_unlock runs automatically on any exit path
+ * }
+ * @endcode
+ *
+ * @subsection defer_error_handling Error Handling
+ *
+ * @code{.c}
+ * asciichat_error_t process_data(void) {
+ *     int fd = open("data.bin", O_RDONLY);
+ *     if (fd < 0) {
+ *         return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to open file");
+ *     }
+ *     defer(close(fd));  // Cleanup on any return path
+ *
+ *     uint8_t *buffer = SAFE_MALLOC(4096, uint8_t*);
+ *     defer(free(buffer));
+ *
+ *     if (read(fd, buffer, 4096) < 0) {
+ *         return SET_ERRNO_SYS(ERROR_OPERATION_FAILED, "Read failed");
+ *         // Both close(fd) and free(buffer) run here
+ *     }
+ *
+ *     return ASCIICHAT_OK;
+ *     // Both close(fd) and free(buffer) run here too
+ * }
+ * @endcode
+ *
+ * @section defer_implementation Implementation Notes
+ *
+ * @subsection defer_supported_expressions Supported Expressions
+ *
+ * The defer tool supports any single expression:
+ *
+ * 1. **Simple function calls**: `defer(fclose(file));`
+ * 2. **Expressions with side effects**: `defer(printf("cleanup\n"));`
+ * 3. **Multiple arguments**: `defer(cleanup_resource(res, flags));`
+ * 4. **Compound expressions**: `defer((void)(count++, cleanup()));`
+ *
+ * @subsection defer_scope_handling Scope Handling
+ *
+ * Defer applies to **function scope**, not block scope:
+ *
+ * @code{.c}
+ * void example() {
+ *     {
+ *         FILE *f = fopen("file.txt", "r");
+ *         defer(fclose(f));  // Runs at function exit, not block exit
+ *     }
+ *     // ... more code ...
+ *     // fclose(f) runs here at function end
+ * }
+ * @endcode
+ *
+ * @subsection defer_performance Performance
+ *
+ * Since cleanup code is inlined:
+ * - **Zero runtime overhead** - No function call indirection
+ * - **No memory allocation** - No scope tracking structures
+ * - **Compiler optimizations** - Cleanup code can be optimized with surrounding code
+ * - **Slight code size increase** - Cleanup duplicated at each exit point
+ *
+ * @section defer_comparison Comparison to Other Approaches
+ *
+ * @subsection defer_vs_manual vs Manual Cleanup
+ *
+ * **Defer Advantages**:
+ * - Cleanup code near allocation site (better readability)
+ * - Automatic handling of all exit paths (no missed cleanup)
+ * - LIFO order matches allocation order naturally
+ *
+ * **Manual Disadvantages**:
+ * - Easy to miss cleanup paths (early returns, errors)
+ * - Cleanup far from allocation (hard to track)
+ * - Error-prone with complex control flow
+ *
+ * @subsection defer_vs_cleanup_attributes vs Cleanup Attributes (GCC/Clang)
+ *
+ * @code{.c}
+ * void example() {
+ *     __attribute__((cleanup(cleanup_fn))) int fd = open(...);
+ *     // Cleanup runs at scope exit
+ * }
+ * @endcode
+ *
+ * **Defer Advantages**:
+ * - More flexible (can defer any expression, not just declarations)
+ * - Explicit control over cleanup order
+ * - Works with any compiler after transformation
+ * - No need to write separate cleanup functions
+ *
+ * **Attribute Disadvantages**:
+ * - Compiler-specific (non-portable without transformation)
+ * - Tied to variable declarations only
+ * - Requires separate cleanup function for each type
+ *
+ * @section defer_build_details Build System Details
+ *
+ * @subsection defer_file_locations File Locations
+ *
+ * - **Tool source**: `src/tooling/defer/tool.cpp`
+ * - **Tool CMake**: `src/tooling/defer/CMakeLists.txt`
+ * - **Integration**: `cmake/tooling/Defer.cmake`
+ * - **Header stub**: `lib/tooling/defer/defer.h`
+ * - **Cached binary**: `.deps-cache/defer-tool/ascii-instr-defer`
+ * - **Transformed output**: `build/defer_transformed/`
+ *
+ * @subsection defer_troubleshooting Troubleshooting
+ *
+ * **Defer not working**:
+ * 1. Check that the file contains `defer(` (CMake only transforms files with defer usage)
+ * 2. Verify build completed: `cmake --build build`
+ * 3. Check transformed output: `cat build/defer_transformed/path/to/file.c`
+ *
+ * **Tool not building**:
+ * 1. Requires LLVM/Clang development libraries
+ * 2. Check: `ls .deps-cache/defer-tool/ascii-instr-defer*`
+ * 3. Force rebuild: `rm -rf .deps-cache/defer-tool && cmake --build build`
+ *
+ * **IDE shows errors**:
+ * - Include `lib/tooling/defer/defer.h` to provide the macro stub
+ * - The header makes `defer()` a valid no-op for parsing
+ *
+ * @section defer_references References
+ *
+ * - Go defer: https://go.dev/blog/defer-panic-and-recover
+ * - Zig defer: https://ziglang.org/documentation/master/#defer
+ * - Clang libTooling: https://clang.llvm.org/docs/LibTooling.html
+ * - @ref topic_panic "Panic Instrumentation" - Related tooling for crash debugging
+ */

@@ -3,7 +3,7 @@
 /**
  * @file aspect_ratio.h
  * @ingroup util
- * @brief Aspect Ratio Calculation Functions
+ * @brief 📐 Aspect Ratio Calculation Functions
  *
  * This header provides functions for calculating image dimensions while
  * maintaining aspect ratio. Functions handle terminal character correction

@@ -1,62 +1,69 @@
 /**
  * @defgroup module_utilities Utilities
- * @brief Core utility functions for string manipulation, paths, IP parsing, and formatting
+ * @brief 🛠️ Core utility functions for string manipulation, paths, IP parsing, and formatting
  *
  * String utilities, path handling, IP address parsing, UTF-8 support, CRC32, and formatting.
  */
 
 /**
  * @defgroup module_data_structures Data Structures
- * @brief High-performance data structures for memory and packet management
+ * @brief 📦 High-performance data structures for memory and packet management
  *
  * Buffer pools, ring buffers, packet queues, and hash tables.
  */
 
 /**
+ * @defgroup module_abstractions Abstraction Layers
+ * @brief 🔌 Cross-platform abstraction for threading, sockets, and system APIs
+ *
+ * Platform-independent APIs for Windows, Linux, and macOS.
+ */
+
+/**
  * @defgroup module_crypto Cryptography
- * @brief End-to-end encryption and secure communication
+ * @brief 🔐 End-to-end encryption and secure communication
  *
  * Cryptographic operations, handshake protocol, and key management.
  */
 
 /**
- * @defgroup module_video Video
- * @brief Video capture, ASCII conversion, and frame layout
+ * @defgroup module_image2ascii image2ascii
+ * @brief 📹 Video capture, ASCII conversion, and frame layout
  *
  * Video frame management, image-to-ASCII conversion with SIMD, grid layout, and palettes.
  */
 
 /**
  * @defgroup module_audio Audio Processing
- * @brief Audio capture, playback, and multi-client mixing
+ * @brief 🔊 Audio capture, playback, and multi-client mixing
  *
  * Audio system with PortAudio integration and multi-client audio mixing with ducking.
  */
 
 /**
  * @defgroup module_core Core Infrastructure
- * @brief Core functionality including error handling, logging, and configuration
+ * @brief ⚙️ Core functionality including error handling, logging, and configuration
  *
  * Common definitions, error handling, logging system, and configuration.
  */
 
 /**
  * @defgroup module_network Network
- * @brief Network I/O, packet protocol, and audio/video streaming
+ * @brief 🌐 Network I/O, packet protocol, and audio/video streaming
  *
  * Network operations, packet types, and audio/video networking.
  */
 
 /**
  * @defgroup module_client Application: Client
- * @brief Client application for connecting to servers and streaming media
+ * @brief 💻 Client application for connecting to servers and streaming media
  *
  * Client connection management, media capture, display rendering, and reconnection logic.
  */
 
 /**
  * @defgroup module_server Application: Server
- * @brief ascii-chat server implementation and architecture
+ * @brief 🖥️ ascii-chat server implementation and architecture
  *
  * Multi-client real-time video and audio streaming server with per-client threading,
  * end-to-end encryption, and terminal-aware ASCII rendering.
@@ -64,14 +71,14 @@
 
 /**
  * @defgroup module_development Development & Debugging
- * @brief Build system, testing infrastructure, and debugging utilities
+ * @brief 🔧 Build system, testing infrastructure, and debugging utilities
  *
  * Build configuration, test framework, debugging tools, and lock debugging.
  */
 
 /**
  * @page topic_categories Topic Categories
- * @brief Detailed documentation for major subsystems
+ * @brief 📚 Detailed documentation for major subsystems
  *
  * This page provides detailed information about the major subsystems in ascii-chat.
  * Each topic covers architecture, implementation details, usage patterns, and best practices.
@@ -79,13 +86,13 @@
  *
  * @tableofcontents
  *
- * @section topics_utilities Utilities
+ * @section topics_utilities 🛠️ Utilities
  *
  * @copybrief module_utilities
  *
  * - @ref topic_util "Utility Functions" - String, path, IP, UTF-8, CRC32, formatting utilities
  *
- * @section topics_data Data Structures
+ * @section topics_data 📦 Data Structures
  *
  * @copybrief module_data_structures
  *
@@ -94,40 +101,40 @@
  * - @ref topic_packet_queue "Packet Queue" - Thread-safe per-client packet queues
  * - @ref uthash library "Hash Table" - High-performance client ID lookup
  *
- * @section topics_platform Platform Abstraction
+ * @section topics_platform 🔌 Platform Abstraction
  *
- * @copybrief module_platform
+ * @copybrief module_abstractions
  *
  * - @ref topic_platform "Platform Abstraction Layer README" - **Comprehensive guide** covering cross-platform
  *   threading, mutexes, sockets, terminal I/O, crash handling, static initialization, and OS portability
  *   (Windows/Linux/macOS)
  * - @ref topic_os "OS Abstractions" - Platform-specific functionality (webcam, etc.)
  *
- * @section topics_crypto Cryptography
+ * @section topics_crypto 🔐 Cryptography
  *
  * @copybrief module_crypto
  *
- * - @ref topic_crypto_detailed "Cryptography README" - Detailed crypto implementation guide
+ * - @ref topic_crypto "Cryptography" - Encryption architecture and security details
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Keys Module" - SSH/GPG key parsing and validation
  *
- * @section topics_video Video
+ * @section topics_image2ascii 📹 Image to ASCII Conversion
  *
- * @copybrief module_video
+ * @copybrief module_image2ascii
  *
+ * - @ref topic_image2ascii "Image to ASCII Conversion" - The root image2ascii category containing all image2ascii code and modules.
  * - @ref topic_video_frame "Video Frame Management" - RGB frame structures and lifecycle
- * - @ref topic_image2ascii "Image to ASCII Conversion" - Video frame conversion with SIMD optimization
  * - @ref topic_grid_layout "Grid Layout System" - Multi-frame layout for multi-user video
  * - @ref topic_palette "Palette Management" - ASCII character palettes with UTF-8 support
  *
- * @section topics_audio Audio Processing
+ * @section topics_audio 🔊 Audio Processing
  *
  * @copybrief module_audio
  *
  * - @ref topic_audio "Audio System" - Audio capture and playback with PortAudio
  * - @ref topic_mixer "Audio Mixer" - Multi-client audio mixing with ducking
  *
- * @section topics_core Core Infrastructure
+ * @section topics_core ⚙️ Core Infrastructure
  *
  * @copybrief module_core
  *
@@ -138,7 +145,7 @@
  * - @ref topic_options "Options and Configuration" - Command-line parsing and TOML config
  * - @ref topic_config "Configuration" - TOML configuration file management
  *
- * @section topics_network Network
+ * @section topics_network 🌐 Network
  *
  * @copybrief module_network
  *
@@ -147,7 +154,7 @@
  * - @ref topic_packet_types "Packet Types" - Network packet structures and definitions
  * - @ref topic_av "Audio/Video Networking" - Network APIs for audio/video streaming
  *
- * @section topics_client Client Application
+ * @section topics_client 💻 Client Application
  *
  * @copybrief module_client
  *
@@ -161,7 +168,7 @@
  * - @ref topic_client_keepalive "Connection Keepalive" - Ping/pong and timeout detection
  * - @ref topic_client_crypto "Cryptographic Operations" - Handshake and key management
  *
- * @section topics_server Server
+ * @section topics_server 🖥️ Server
  *
  * @copybrief module_server
  *
@@ -174,15 +181,23 @@
  * - @ref topic_server_stats "Statistics and Monitoring" - Performance monitoring and resource utilization tracking
  * - @ref topic_server_crypto "Cryptographic Operations" - Per-client cryptographic handshake and session encryption management
  *
- * @section topics_development Development & Debugging
+ * @section topics_development 🔧 Development & Debugging
  *
  * @copybrief module_development
  *
+ * - @ref topic_dependencies "Dependencies" - Third-party libraries and build requirements
  * - @ref topic_build "Build System" - CMake configuration, cross-platform compilation, build types
  * - @ref topic_testing "Testing" - Test framework, test runner, Docker testing, coverage reporting
  * - @ref topic_debug "Debugging Utilities" - Error tracking, memory leak detection, diagnostics
  * - @ref topic_errno "Error Handling System" - Typed error codes, error context, thread-safe errors
  * - @ref exit_codes "Exit Codes" - Exit code categories and error descriptions from asciichat_error_t
  * - @ref topic_lock_debug "Lock Debugging" - Lock tracking, deadlock detection, contention analysis
+ *
+ * @subsection topics_tooling 🧰 Tooling
+ *
+ * 🧰 Source-to-source transformation tools for debugging and code quality.
+ *
+ * - @ref topic_defer "Defer Statements" - 🔄 Go/Zig-style defer statements for automatic cleanup
+ * - @ref topic_panic "Panic Instrumentation" - 🚨 Per-statement logging for crash debugging
  */
 

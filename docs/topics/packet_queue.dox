@@ -1,7 +1,7 @@
 /**
  * @defgroup packet_queue Packet Queue
  * @ingroup module_data_structures
- * @brief Thread-safe per-client packet queues
+ * @brief 📬 Thread-safe per-client packet queues
  */
 
 /**

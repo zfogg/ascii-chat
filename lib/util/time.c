@@ -1,7 +1,7 @@
 /**
  * @file util/time.c
  * @ingroup module_utilities
- * @brief High-precision timing utilities implementation
+ * @brief ⏱️ High-precision timing utilities implementation
  */
 
 #define SOKOL_IMPL

@@ -104,8 +104,9 @@ static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [..
 
 static cl::opt<std::string> SignalHandlerAnnotation(
     "signal-handler-annotation",
-    cl::desc("Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER)"),
-    cl::value_desc("annotation"), cl::init("ASCII_INSTR_SOURCE_PRINT_SIGNAL_HANDLER"), cl::cat(ToolCategory));
+    cl::desc(
+        "Annotation string used to mark functions that should be skipped (default: ASCII_INSTR_PANIC_SIGNAL_HANDLER)"),
+    cl::value_desc("annotation"), cl::init("ASCII_INSTR_PANIC_SIGNAL_HANDLER"), cl::cat(ToolCategory));
 
 constexpr unsigned kMacroFlagNone = 0U;
 constexpr unsigned kMacroFlagExpansion = 1U;
@@ -629,12 +630,12 @@ private:
     clang::SourceManager &sourceManager = rewriter_.getSourceMgr();
     const clang::FileID fileId = sourceManager.getMainFileID();
     const llvm::StringRef bufferData = sourceManager.getBufferData(fileId);
-    if (bufferData.contains("#include \"tooling/source_print/instrument_log.h\"")) {
+    if (bufferData.contains("#include \"tooling/panic/instrument_log.h\"")) {
       return;
     }
 
     clang::SourceLocation insertionLocation = sourceManager.getLocForStartOfFile(fileId);
-    rewriter_.InsertText(insertionLocation, "#include \"tooling/source_print/instrument_log.h\"\n", false, true);
+    rewriter_.InsertText(insertionLocation, "#include \"tooling/panic/instrument_log.h\"\n", false, true);
   }
 
   clang::Rewriter rewriter_;
@@ -704,10 +705,10 @@ int main(int argc, const char **argv) {
     }
     if (entry[0] == '-') {
       extraCompilerArgs.push_back(entry);
-      const bool consumesNext =
-          (entry == "-I" || entry == "-isystem" || entry == "-include" || entry == "-include-pch" ||
-           entry == "-imacros" || entry == "-idirafter" || entry == "-iprefix" || entry == "-iwithprefix" ||
-           entry == "-iwithprefixbefore" || entry == "-resource-dir" || entry == "-Xclang" || entry == "-Xpreprocessor");
+      const bool consumesNext = (entry == "-I" || entry == "-isystem" || entry == "-include" ||
+                                 entry == "-include-pch" || entry == "-imacros" || entry == "-idirafter" ||
+                                 entry == "-iprefix" || entry == "-iwithprefix" || entry == "-iwithprefixbefore" ||
+                                 entry == "-resource-dir" || entry == "-Xclang" || entry == "-Xpreprocessor");
       if (consumesNext && (i + 1) < rawSourceArgs.size()) {
         extraCompilerArgs.push_back(rawSourceArgs[i + 1]);
         ++i;
@@ -780,12 +781,11 @@ int main(int argc, const char **argv) {
 
   if (!extraCompilerArgs.empty()) {
     const std::vector<std::string> extraArgsCopy(extraCompilerArgs.begin(), extraCompilerArgs.end());
-    tool.appendArgumentsAdjuster(
-        [extraArgsCopy](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
-          clang::tooling::CommandLineArguments adjusted = args;
-          adjusted.insert(adjusted.end(), extraArgsCopy.begin(), extraArgsCopy.end());
-          return adjusted;
-        });
+    tool.appendArgumentsAdjuster([extraArgsCopy](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
+      clang::tooling::CommandLineArguments adjusted = args;
+      adjusted.insert(adjusted.end(), extraArgsCopy.begin(), extraArgsCopy.end());
+      return adjusted;
+    });
   }
 
   auto stripPchAdjuster = [](const clang::tooling::CommandLineArguments &args, llvm::StringRef) {
@@ -867,27 +867,40 @@ int main(int argc, const char **argv) {
       const std::string &arg = args[i];
 
       // Skip sanitizer flags (not needed for instrumentation, slow down parsing)
-      if (arg.find("-fsanitize") != std::string::npos) continue;
-      if (arg.find("-fno-sanitize") != std::string::npos) continue;
-      if (arg.find("sanitize") != std::string::npos) continue;
+      if (arg.find("-fsanitize") != std::string::npos)
+        continue;
+      if (arg.find("-fno-sanitize") != std::string::npos)
+        continue;
+      if (arg.find("sanitize") != std::string::npos)
+        continue;
 
       // Skip debug info generation flags (not needed, slow down codegen)
-      if (arg == "-g" || arg == "-g2" || arg == "-g3") continue;
-      if (arg == "-gcolumn-info") continue;
-      if (arg == "-fstandalone-debug") continue;
-      if (arg.find("-gcodeview") != std::string::npos) continue;
-      if (arg.find("-gdwarf") != std::string::npos) continue;
+      if (arg == "-g" || arg == "-g2" || arg == "-g3")
+        continue;
+      if (arg == "-gcolumn-info")
+        continue;
+      if (arg == "-fstandalone-debug")
+        continue;
+      if (arg.find("-gcodeview") != std::string::npos)
+        continue;
+      if (arg.find("-gdwarf") != std::string::npos)
+        continue;
 
       // Skip stack protector (not needed for instrumentation)
-      if (arg.find("-fstack-protector") != std::string::npos) continue;
+      if (arg.find("-fstack-protector") != std::string::npos)
+        continue;
 
       // Skip frame pointer flags
-      if (arg.find("-fno-omit-frame-pointer") != std::string::npos) continue;
-      if (arg.find("-fomit-frame-pointer") != std::string::npos) continue;
+      if (arg.find("-fno-omit-frame-pointer") != std::string::npos)
+        continue;
+      if (arg.find("-fomit-frame-pointer") != std::string::npos)
+        continue;
 
       // Skip optimization-related debug flags
-      if (arg == "-fno-inline") continue;
-      if (arg == "-fno-eliminate-unused-debug-types") continue;
+      if (arg == "-fno-inline")
+        continue;
+      if (arg == "-fno-eliminate-unused-debug-types")
+        continue;
 
       result.push_back(arg);
     }

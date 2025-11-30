@@ -8,25 +8,23 @@ set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer 
 include(ExternalProject)
 
 function(ascii_defer_prepare)
-    # Source Print instrumentation changes the source code structure in ways that
-    # break defer's scope tracking. The two transformations are incompatible.
-    # When Source Print is enabled, skip defer transformation - the defer() macro
-    # will just expand to nothing (no automatic cleanup).
-    if(ASCIICHAT_BUILD_WITH_SOURCE_PRINT)
-        message(STATUS "Source Print instrumentation enabled - skipping defer() transformation")
-        message(STATUS "  (defer() macros will be no-ops in this build)")
-        set(ASCII_DEFER_ENABLED FALSE PARENT_SCOPE)
-        return()
-    endif()
-
     # Determine which defer tool to use
+    # Priority: 1. ASCIICHAT_DEFER_TOOL (explicit), 2. Cached build, 3. Build new
+    set(_defer_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/defer-tool")
+    set(_defer_cached_exe "${_defer_cache_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
+
     if(ASCIICHAT_DEFER_TOOL AND EXISTS "${ASCIICHAT_DEFER_TOOL}")
         set(_defer_tool_exe "${ASCIICHAT_DEFER_TOOL}")
         set(_defer_tool_depends "")
         message(STATUS "Using external defer tool: ${_defer_tool_exe}")
+    elseif(EXISTS "${_defer_cached_exe}")
+        # Use cached defer tool (persists across build directory deletes)
+        set(_defer_tool_exe "${_defer_cached_exe}")
+        set(_defer_tool_depends "")
+        message(STATUS "Using cached defer tool: ${_defer_tool_exe}")
     else()
-        # Build defer tool as external project with clean CMake environment
-        set(_defer_build_dir "${CMAKE_BINARY_DIR}/defer_tool_build")
+        # Build defer tool to cache directory (survives rm -rf build)
+        set(_defer_build_dir "${_defer_cache_dir}")
         set(_defer_tool_exe "${_defer_build_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
 
         # Detect the C++ compiler (use same compiler family as main build)
@@ -96,11 +94,16 @@ function(ascii_defer_prepare)
         )
 
         set(_defer_tool_depends ascii-instr-defer-external)
-        message(STATUS "Building defer tool as external project")
+        message(STATUS "Building defer tool to cache: ${_defer_cache_dir}")
+        message(STATUS "  (To force rebuild, delete: ${_defer_cached_exe})")
     endif()
 
 
     set(defer_transformed_dir "${CMAKE_BINARY_DIR}/defer_transformed")
+
+    # Defer always processes original sources from CMAKE_SOURCE_DIR
+    # When panic is also enabled, panic will process defer's output
+    set(_defer_input_root "${CMAKE_SOURCE_DIR}")
 
     # Scan source files to find which ones actually use defer()
     # Only transform files that contain "defer(" to minimize build time
@@ -249,7 +252,7 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${CMAKE_BINARY_DIR}/compile_db_temp_defer
+            COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir}
             DEPENDS ascii-defer-transform-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Transforming defer() in ${_rel_path}"

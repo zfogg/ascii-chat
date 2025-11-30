@@ -2,7 +2,7 @@
  * @file asciichat_errno.h
  * @defgroup errno Error Handling
  * @ingroup module_development
- * @brief Thread-Local Error Number System with Context
+ * @brief ⚠️ Thread-Local Error Number System with Context
  */
 
 /**

@@ -3,7 +3,7 @@
 /**
  * @file lock_debug.h
  * @ingroup lock_debug
- * @brief Lock debugging and deadlock detection system for ascii-chat
+ * @brief 🔒 Lock debugging and deadlock detection system for ascii-chat
  *
  * This module provides comprehensive lock tracking to help identify deadlocks
  * and lock contention issues. It tracks all mutex and rwlock acquisitions

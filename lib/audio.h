@@ -3,7 +3,7 @@
 /**
  * @file audio.h
  * @ingroup audio
- * @brief Audio Capture and Playback Interface for ascii-chat
+ * @brief 🔊 Audio Capture and Playback Interface for ascii-chat
  *
  * This header provides audio capture and playback functionality using PortAudio,
  * enabling real-time audio streaming for ascii-chat video chat sessions.

@@ -3,7 +3,7 @@
 /**
  * @file util/format.h
  * @ingroup util
- * @brief String Formatting Utilities
+ * @brief 📊 String Formatting Utilities
  *
  * This header provides utilities for formatting various data types into
  * human-readable strings. Functions handle byte counts, sizes, and other

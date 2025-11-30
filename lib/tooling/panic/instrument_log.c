@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 // Debug instrumentation logging runtime for ascii-chat line tracing
 
-#include "tooling/source_print/instrument_log.h"
+#include "tooling/panic/instrument_log.h"
 #include "common.h"
-#include "debug/memory.h"
 #include "platform/internal.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
@@ -271,7 +270,7 @@ void ascii_instr_log_line(const char *file_path, uint32_t line_number, const cha
     if (enable_env != NULL && enable_env[0] != '\0') {
       g_instrumentation_enabled = ascii_instr_env_is_enabled(enable_env);
     } else {
-      g_instrumentation_enabled = true;  // Default to enabled when instrumented
+      g_instrumentation_enabled = true; // Default to enabled when instrumented
     }
     g_instrumentation_enabled_checked = true;
   }

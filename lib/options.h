@@ -1,11 +1,11 @@
 /**
  * @defgroup options Options Module
  * @ingroup module_core
- * @brief The command-line flags available.
+ * @brief ⚙️ The command-line flags available
  *
  * @file options.h
  * @ingroup options
- * @brief Command-line options parsing and configuration management for ascii-chat
+ * @brief ⚙️ Command-line options parsing and configuration management for ascii-chat
  *
  * This header provides comprehensive functionality for parsing command-line arguments
  * and managing configuration settings for both client and server modes of ascii-chat.

@@ -17,7 +17,7 @@
 if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
     option(ASCIICHAT_USE_PCH "Use precompiled headers for faster builds" ON)
 
-    if(ASCIICHAT_USE_PCH AND NOT USE_MUSL)
+    if(ASCIICHAT_USE_PCH AND NOT USE_MUSL AND NOT ASCIICHAT_BUILD_WITH_PANIC)
         set(_ascii_chat_pch_targets
             ascii-chat-core
             ascii-chat-network
@@ -77,6 +77,8 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
         endforeach()
 
         message(STATUS "${BoldGreen}Precompiled headers enabled for core libraries (excluding common.h due to macro conflicts)${ColorReset}")
+    elseif(ASCIICHAT_BUILD_WITH_PANIC)
+        message(STATUS "Precompiled headers disabled for ${BoldBlue}panic instrumentation${ColorReset} builds (include path conflicts)")
     elseif(USE_MUSL)
         message(STATUS "Precompiled headers disabled for ${BoldBlue}musl${ColorReset} builds")
     endif()

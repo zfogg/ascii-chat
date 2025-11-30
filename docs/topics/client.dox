@@ -1,49 +1,49 @@
 /**
  * @defgroup client_main Client Main Entry Point
  * @ingroup module_client
- * @brief Client lifecycle orchestration and reconnection logic
+ * @brief 🚀 Client lifecycle orchestration and reconnection logic
  */
 
 /**
  * @defgroup client_connection Connection Management
  * @ingroup module_client
- * @brief Server connection, packet transmission, and state tracking
+ * @brief 🔗 Server connection, packet transmission, and state tracking
  */
 
 /**
  * @defgroup client_protocol Protocol Handler
  * @ingroup module_client
- * @brief Packet reception and processing
+ * @brief 📡 Packet reception and processing
  */
 
 /**
  * @defgroup client_capture Media Capture
  * @ingroup module_client
- * @brief Webcam video capture and transmission
+ * @brief 📹 Webcam video capture and transmission
  */
 
 /**
  * @defgroup client_display Terminal Display
  * @ingroup module_client
- * @brief Terminal rendering and TTY management
+ * @brief 🖥️ Terminal rendering and TTY management
  */
 
 /**
  * @defgroup client_audio Audio Processing
  * @ingroup module_client
- * @brief Audio capture, playback, and jitter buffering
+ * @brief 🔊 Audio capture, playback, and jitter buffering
  */
 
 /**
  * @defgroup client_keepalive Connection Keepalive
  * @ingroup module_client
- * @brief Ping/pong and timeout detection
+ * @brief 💓 Ping/pong and timeout detection
  */
 
 /**
  * @defgroup client_crypto Cryptographic Operations
  * @ingroup module_client
- * @brief Handshake and key management
+ * @brief 🔐 Handshake and key management
  */
 
 /**

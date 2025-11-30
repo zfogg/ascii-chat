@@ -3,7 +3,7 @@
 /**
  * @file util/util.h
  * @ingroup util
- * @brief Master Utility Header
+ * @brief 🛠️ Master Utility Header
  *
  * This is a convenience header that includes all utility modules. Including
  * this header provides access to all utility functions in a single include.

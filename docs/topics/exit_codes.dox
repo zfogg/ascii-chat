@@ -1,7 +1,7 @@
 /**
  * @defgroup error Errors
  * @ingroup module_development
- * @brief When things go wrong and ending the program unsuccessfully
+ * @brief ❌ When things go wrong and ending the program unsuccessfully
  */
 
 /**

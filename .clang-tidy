@@ -3,7 +3,7 @@
 
 # Focus on bug-catching checks first, then important readability/performance issues
 # Note: Comments inside the Checks string are not supported - all comments must be outside
-Checks: '-*,
+Checks: "-*,
   bugprone-*,
   clang-analyzer-*,
   readability-redundant-control-flow,
@@ -99,10 +99,8 @@ Checks: '-*,
   -clang-analyzer-security.FloatLoopCounter,
   -clang-analyzer-unix.API,
   -clang-analyzer-unix.Malloc,
-  -clang-analyzer-valist.Uninitialized,
-  -clang-analyzer-valist.Unterminated,
   -clang-analyzer-core.NullDereference,
-  -clang-analyzer-core.NonNullParamChecker'
+  -clang-analyzer-core.NonNullParamChecker"
 
 # Only check project headers, not system headers
 HeaderFilterRegex: '.*ascii-chat/(lib|src)/.*\.(h|hpp)$'
@@ -117,13 +115,13 @@ HeaderFilterRegex: '.*ascii-chat/(lib|src)/.*\.(h|hpp)$'
 # Works on both Windows (backslashes) and Unix (forward slashes)
 
 # Don't treat warnings as errors (allows gradual cleanup)
-WarningsAsErrors: ''
+WarningsAsErrors: ""
 
 # Check configuration options
 CheckOptions:
-  performance-unnecessary-value-param.AllowedTypes: ''
-  bugprone-assert-side-effect.AssertMacros: 'assert,ASSERT'
+  performance-unnecessary-value-param.AllowedTypes: ""
+  bugprone-assert-side-effect.AssertMacros: "assert,ASSERT"
   # Readability check thresholds (if we enable any)
   readability-function-size.LineThreshold: 200
   readability-function-size.StatementThreshold: 80
-  readability-magic-numbers.IgnoredIntegerValues: '0;1;2;3;4;8;16;32;64;128;256;512;1024;2048;4096'
+  readability-magic-numbers.IgnoredIntegerValues: "0;1;2;3;4;8;16;32;64;128;256;512;1024;2048;4096"

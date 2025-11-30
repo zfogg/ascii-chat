@@ -315,15 +315,15 @@ if(USE_MIMALLOC)
 endif()
 
 # -----------------------------------------------------------------------------
-# Module 9: Source Print Instrumentation Runtime (depends on: util, platform, core)
+# Module 9: Panic Instrumentation Runtime (depends on: util, platform, core)
 # -----------------------------------------------------------------------------
-create_ascii_chat_module(ascii-chat-debug "${TOOLING_SOURCE_PRINT_SRCS}")
-target_include_directories(ascii-chat-debug PRIVATE
+create_ascii_chat_module(ascii-chat-panic "${TOOLING_PANIC_SRCS}")
+target_include_directories(ascii-chat-panic PRIVATE
     ${CMAKE_SOURCE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/src
 )
 if(NOT BUILDING_OBJECT_LIBS)
-    target_link_libraries(ascii-chat-debug
+    target_link_libraries(ascii-chat-panic
         PRIVATE
             ascii-chat-util
             ascii-chat-platform
@@ -331,7 +331,7 @@ if(NOT BUILDING_OBJECT_LIBS)
     )
 endif()
 if(NOT WIN32 AND TARGET Threads::Threads)
-    target_link_libraries(ascii-chat-debug PUBLIC Threads::Threads)
+    target_link_libraries(ascii-chat-panic PUBLIC Threads::Threads)
 endif()
 
 # Note: Module 9b (defer runtime) was removed - now using direct code insertion
@@ -368,6 +368,8 @@ endif()
 # For other platforms/builds: Link static libraries together
 if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
     # Windows dev builds: Create DLL from OBJECT libraries (modules compiled as OBJECT)
+    # Note: ascii-chat-panic is always included as it provides runtime logging functions
+    # that may be called by panic-instrumented code
     add_library(ascii-chat-shared SHARED EXCLUDE_FROM_ALL
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
@@ -378,6 +380,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         $<TARGET_OBJECTS:ascii-chat-audio>
         $<TARGET_OBJECTS:ascii-chat-network>
         $<TARGET_OBJECTS:ascii-chat-core>
+        $<TARGET_OBJECTS:ascii-chat-panic>
     )
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
@@ -409,13 +412,7 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         ascii-chat-audio
         ascii-chat-network
         ascii-chat-core
-    )
-
-    # List of library module targets (exclude executable)
-    set(MODULE_TARGETS
-        ascii-chat-util;ascii-chat-data-structures;ascii-chat-platform
-;ascii-chat-crypto;ascii-chat-simd;ascii-chat-video
-;ascii-chat-audio;ascii-chat-network;ascii-chat-core
+        ascii-chat-panic
     )
 
     # Generate the .def file using a custom command
@@ -478,6 +475,7 @@ else()
     # This allows the shared library to export symbols even though the project uses -fvisibility=hidden
 
     # Collect all source files from all modules
+    # Note: TOOLING_PANIC_SRCS provides runtime logging functions for panic-instrumented code
     set(ALL_LIBRARY_SRCS
         ${UTIL_SRCS}
         ${DATA_STRUCTURES_SRCS}
@@ -488,6 +486,7 @@ else()
         ${AUDIO_SRCS}
         ${NETWORK_SRCS}
         ${CORE_SRCS}
+        ${TOOLING_PANIC_SRCS}
     )
 
     # Create shared library directly from sources (not from static libraries)

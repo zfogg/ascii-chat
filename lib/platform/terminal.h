@@ -3,7 +3,7 @@
 /**
  * @file platform/terminal.h
  * @ingroup platform
- * @brief Cross-platform terminal interface for ascii-chat
+ * @brief 🖥️ Cross-platform terminal interface for ascii-chat
  *
  * This header provides unified terminal I/O operations including
  * ANSI escape sequences, cursor control, and terminal configuration.

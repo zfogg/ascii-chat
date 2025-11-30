@@ -1,7 +1,7 @@
 /**
  * @defgroup lock_debug Lock Debugging and Deadlock Detection
  * @ingroup module_development
- * @brief Lock debugging infrastructure with backtrace capture and interactive monitoring
+ * @brief 🔒 Lock debugging infrastructure with backtrace capture and interactive monitoring
  */
 
 /**

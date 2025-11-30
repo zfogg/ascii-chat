@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // SanitizerCoverage hooks for ascii-chat instrumentation runtime
 
-#include "tooling/source_print/instrument_log.h"
+#include "tooling/panic/instrument_log.h"
 #include "common.h"
 
 #include <stdint.h>

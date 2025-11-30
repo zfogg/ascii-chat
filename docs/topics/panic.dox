@@ -1,0 +1,417 @@
+/**
+ * @defgroup panic Panic Instrumentation
+ * @ingroup module_development
+ * @brief 🚨 Per-statement logging for crash debugging in C programs
+ */
+
+/**
+ * @page topic_panic Panic Instrumentation
+ * @ingroup panic
+ *
+ * @tableofcontents
+ *
+ * @section panic_overview 🚨 Overview
+ *
+ * Panic instrumentation provides per-statement logging for debugging crashes in C programs.
+ * The core idea is simple: **the last line printed before a crash is the crashing line**
+ * (or the line immediately before it in most cases).
+ *
+ * **Implementation**: `src/tooling/panic/tool.cpp`
+ *
+ * **Key Features**:
+ * - Per-statement source code logging
+ * - Multi-threaded support with per-thread log files
+ * - Environment variable filtering (by file, function, thread, regex, glob patterns)
+ * - Signal-safe logging using atomic writes
+ * - Post-mortem analysis with `ascii-panic-report` tool
+ * - SanitizerCoverage integration for edge coverage
+ *
+ * @section panic_background Background: The Core Idea
+ *
+ * **The Problem**: C programs crash without error messages. When a segfault or other
+ * crash occurs, you get no information about which line of code caused it. Traditional
+ * debugging approaches have limitations:
+ *
+ * - **Manual printf debugging**: You have to guess where to add logs, and you might
+ *   not even be in the right function yet. Hours can be wasted adding printf() calls
+ *   to the wrong places.
+ * - **Debuggers (gdb/lldb)**: Great for reproducible crashes, but timing-sensitive
+ *   bugs (race conditions) may not reproduce under a debugger.
+ * - **Sanitizers (ASan/UBSan)**: Excellent for memory bugs, but don't help with
+ *   logic errors or silent hangs.
+ *
+ * **The Solution**: What if we automatically insert a log before *every* line of code?
+ * When the program crashes, the last line printed tells you exactly where it crashed.
+ *
+ * @code{.text}
+ * If your program crashes without logs:
+ *   ??? → ??? → ??? → CRASH
+ *
+ * With panic instrumentation:
+ *   log(line 10) → log(line 11) → log(line 12) → CRASH
+ *                                       ↑
+ *                           Last printed line = crash location!
+ * @endcode
+ *
+ * **Why This Works**:
+ * 1. We log BEFORE each statement executes
+ * 2. The logging uses atomic writes (survives crashes)
+ * 3. Whatever printed last was the last thing that ran
+ * 4. Therefore, the crash is at or after that line
+ *
+ * **Why Hasn't This Been Done Before?**
+ *
+ * Tools like this exist in various forms (SanitizerCoverage, `-finstrument-functions`,
+ * dynamic binary instrumentation), but they typically:
+ * - Log addresses/PCs that need symbolization, not actual source text
+ * - Work at function granularity, not per-statement
+ * - Require post-processing to map back to source
+ *
+ * This approach is deliberately simple: print the actual source code text, so the
+ * crash location is immediately readable. No symbolization, no post-processing.
+ *
+ * @subsection panic_threads Multi-Threaded Programs
+ *
+ * With multiple threads, the "last printed line globally" might be from a different
+ * thread than the one that crashed. The solution:
+ *
+ * - Each thread writes to its own log file (`ascii-instr-<pid>-<tid>.log`)
+ * - Each log line includes the thread ID
+ * - Use `ascii-panic-report` to find the last line from each thread
+ * - Identify the crashing thread from the crash report, then check its log
+ *
+ * @section panic_when When to Use
+ *
+ * Use panic instrumentation when:
+ * - You have a crash that's difficult to reproduce
+ * - Traditional debuggers don't work (e.g., timing-sensitive bugs)
+ * - You need to know exactly which statement crashed
+ * - You're debugging multi-threaded code
+ *
+ * @section panic_how How It Works
+ *
+ * The panic instrumentation tool transforms your C source code to print each
+ * statement before executing it:
+ *
+ * @code{.text}
+ * Original code:          Instrumented code:
+ * ---------------         -------------------------------------------
+ * int x = 5;              log("lib/foo.c:10: int x = 5;");
+ *                         int x = 5;
+ *
+ * int y = x / 0;          log("lib/foo.c:11: int y = x / 0;");  // Last printed!
+ *                         int y = x / 0;                         // CRASH!
+ *
+ * return y;               log("lib/foo.c:12: return y;");       // Never reached
+ *                         return y;
+ * @endcode
+ *
+ * **Single-Threaded Programs**: The last log line is the crash location.
+ *
+ * **Multi-Threaded Programs**: Each thread writes to its own log file
+ * (`ascii-instr-<pid>-<tid>.log`). Use `ascii-panic-report` to summarize
+ * the last statement executed by each thread.
+ *
+ * @section panic_usage Usage
+ *
+ * @subsection panic_build Building with Panic Instrumentation
+ *
+ * @code{.bash}
+ * # Build with panic instrumentation
+ * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
+ * cmake --build build
+ * @endcode
+ *
+ * @subsection panic_workflow Debugging Workflow
+ *
+ * @code{.bash}
+ * # 1. Build with panic instrumentation
+ * cmake -B build -DASCIICHAT_BUILD_WITH_PANIC=ON
+ * cmake --build build
+ *
+ * # 2. Run the crashing program
+ * export ASCII_PANIC_OUTPUT_DIR=/tmp/crash-logs
+ * ./build/bin/ascii-chat server
+ * # ... program crashes ...
+ *
+ * # 3. Find the crash location
+ * # Single-threaded: just look at the last line
+ * tail -n1 /tmp/crash-logs/ascii-instr-*.log
+ *
+ * # Multi-threaded: use the report tool
+ * ./build/bin/ascii-panic-report --log-dir /tmp/crash-logs
+ * @endcode
+ *
+ * @section panic_report The ascii-panic-report Tool
+ *
+ * For multi-threaded programs, `ascii-panic-report` parses all log files and
+ * shows the last executed statement per thread:
+ *
+ * @code{.bash}
+ * # Build the report tool
+ * cmake --build build --target ascii-panic-report
+ *
+ * # Run it
+ * ./build/bin/ascii-panic-report --log-dir /tmp/crash-logs
+ *
+ * # Output:
+ * # Latest instrumentation record per thread (3 threads)
+ * # ======================================================================
+ * # tid=1234 seq=42891 pid=5678
+ * #   timestamp : 2025-11-07T18:32:01.123456789Z
+ * #   elapsed   : 12.3ms
+ * #   location  : lib/network.c:512
+ * #   function  : socket_send
+ * #   macro     : none (0)
+ * #   snippet   : send_packet(queue, payload)
+ * # ----------------------------------------------------------------------
+ * # tid=1235 seq=8901 pid=5678
+ * #   location  : lib/mixer.c:234
+ * #   function  : mix_audio_frames
+ * #   snippet   : buffer[i] = left + right
+ * @endcode
+ *
+ * @subsection panic_report_options Report Tool Options
+ *
+ * @code{.bash}
+ * # Filter to specific thread
+ * ./build/bin/ascii-panic-report --thread 1234
+ *
+ * # Filter by file path
+ * ./build/bin/ascii-panic-report --include network.c
+ *
+ * # Exclude files
+ * ./build/bin/ascii-panic-report --exclude image2ascii
+ *
+ * # Show raw log lines
+ * ./build/bin/ascii-panic-report --raw
+ * @endcode
+ *
+ * @section panic_log_format Log Record Format
+ *
+ * Each log line contains:
+ *
+ * @code{.text}
+ * pid=12345 tid=678 seq=42 ts=2025-11-07T18:32:01.123456789Z elapsed=12.3ms file=lib/network.c line=512 func=socket_send macro=0 snippet=send_packet(queue, payload)
+ * @endcode
+ *
+ * - `pid`: Process ID
+ * - `tid`: Thread ID
+ * - `seq`: Sequence number for this thread
+ * - `ts`: Timestamp (ISO 8601 format)
+ * - `elapsed`: Time since runtime initialization
+ * - `file`: Source file path
+ * - `line`: Line number
+ * - `func`: Function name
+ * - `macro`: Macro flag (0=normal, 1=from macro expansion, 2=macro invocation)
+ * - `snippet`: The source code being executed
+ *
+ * @section panic_filtering Environment Variable Filtering
+ *
+ * Reduce log volume by filtering what gets logged. Filters are checked before
+ * formatting to minimize overhead.
+ *
+ * @subsection panic_filter_basic Basic Filters
+ *
+ * | Variable | Purpose |
+ * |----------|---------|
+ * | `ASCII_INSTR_SOURCE_PRINT_INCLUDE` | Only log files matching substring |
+ * | `ASCII_INSTR_SOURCE_PRINT_EXCLUDE` | Skip files matching substring |
+ * | `ASCII_INSTR_SOURCE_PRINT_THREAD` | Comma-separated thread IDs to log |
+ * | `ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE` | Only log functions matching substring |
+ * | `ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE` | Skip functions matching substring |
+ * | `ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR` | Directory for log files |
+ * | `ASCII_INSTR_SOURCE_PRINT_RATE` | Log every Nth statement (throttle) |
+ * | `ASCII_INSTR_SOURCE_PRINT_ENABLE` | Set to "0" to disable at runtime |
+ *
+ * @subsection panic_filter_regex Regex Filters (POSIX platforms only)
+ *
+ * | Variable | Purpose |
+ * |----------|---------|
+ * | `ASCII_INSTR_SOURCE_PRINT_INCLUDE_REGEX` | POSIX regex include filter on file path |
+ * | `ASCII_INSTR_SOURCE_PRINT_EXCLUDE_REGEX` | POSIX regex exclude filter on file path |
+ * | `ASCII_INSTR_SOURCE_PRINT_FUNCTION_INCLUDE_REGEX` | POSIX regex include filter on function name |
+ * | `ASCII_INSTR_SOURCE_PRINT_FUNCTION_EXCLUDE_REGEX` | POSIX regex exclude filter on function name |
+ *
+ * @subsection panic_filter_only ONLY Selectors (Advanced)
+ *
+ * The `ASCII_INSTR_SOURCE_PRINT_ONLY` variable supports sophisticated allow-list filtering
+ * using comma-separated selectors:
+ *
+ * | Syntax | Description |
+ * |--------|-------------|
+ * | `file=<glob>` | Match files by glob pattern |
+ * | `func=<glob>` | Match functions by glob pattern |
+ * | `module=<name>` | Match files under `/name/` directory |
+ * | `module=<name>:<glob>` | Match files under `/name/` with basename matching glob |
+ * | `<name>:<glob>` | Shorthand for `module=<name>:<glob>` |
+ * | `<substring>` | Match files containing substring |
+ *
+ * **Examples**:
+ * @code{.bash}
+ * # Only log network-related files
+ * export ASCII_INSTR_SOURCE_PRINT_INCLUDE=network.c
+ *
+ * # Skip video processing (too noisy)
+ * export ASCII_INSTR_SOURCE_PRINT_EXCLUDE=image2ascii
+ *
+ * # Only log specific threads
+ * export ASCII_INSTR_SOURCE_PRINT_THREAD=1234,5678
+ *
+ * # Log every 100th statement (reduce volume)
+ * export ASCII_INSTR_SOURCE_PRINT_RATE=100
+ *
+ * # Custom output directory
+ * export ASCII_INSTR_SOURCE_PRINT_OUTPUT_DIR=/tmp/crash-logs
+ *
+ * # Advanced: Only log server render code
+ * export ASCII_INSTR_SOURCE_PRINT_ONLY="server:render_*"
+ *
+ * # Advanced: Multiple selectors
+ * export ASCII_INSTR_SOURCE_PRINT_ONLY="file=lib/network/*,func=socket_*"
+ *
+ * # Advanced: Module with glob pattern
+ * export ASCII_INSTR_SOURCE_PRINT_ONLY="module=crypto:handshake*"
+ *
+ * # Disable instrumentation at runtime (binary still instrumented)
+ * export ASCII_INSTR_SOURCE_PRINT_ENABLE=0
+ * @endcode
+ *
+ * @subsection panic_filter_custom Custom Log File
+ *
+ * For debugging specific issues, you can direct all output to a single file:
+ *
+ * @code{.bash}
+ * # Write to a specific file (allows appending across runs)
+ * export ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_FILE=/tmp/trace.log
+ *
+ * # Also echo to stderr for live viewing
+ * export ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR=1
+ * @endcode
+ *
+ * @section panic_signal_handlers Signal Handler Annotations
+ *
+ * Mark functions that must remain async-signal-safe:
+ *
+ * @code{.c}
+ * ASCII_PANIC_SIGNAL_HANDLER
+ * void handle_sigint(int signum) {
+ *     // ... signal handler code ...
+ * }
+ * @endcode
+ *
+ * The panic instrumentation tool skips any function carrying that annotation,
+ * ensuring inserted logging calls never appear inside signal handlers.
+ *
+ * @section panic_safety Safety Guarantees
+ *
+ * - **Original sources remain untouched**: The tool writes only to new files
+ *   under `build/instrumented/`
+ * - **Atomic writes**: Each log line is emitted with a single `write()` call,
+ *   so concurrent threads cannot interleave records
+ * - **Signal tolerance**: Once initialized, the runtime avoids non-signal-safe
+ *   functions inside the hot path
+ * - **Thread isolation**: Separate files per thread prevent interleaving
+ *
+ * @section panic_limitations Limitations and Best Practices
+ *
+ * - **Performance cost**: Logging every statement carries significant overhead.
+ *   Use filters to narrow the scope when possible.
+ * - **Timing changes**: Heavy I/O can mask race conditions (Heisenbugs). After
+ *   localizing the failure, confirm with sanitizers or record/replay tools.
+ * - **Binary size**: Expect larger binaries because every statement introduces
+ *   a logging call and associated string literal.
+ * - **Thread IDs differ by platform**: Always copy the numeric ID from log
+ *   headers when using `ASCII_PANIC_THREAD`.
+ *
+ * @section panic_build_details Build System Details
+ *
+ * @subsection panic_file_locations File Locations
+ *
+ * - **Tool source**: `src/tooling/panic/tool.cpp` (Clang libTooling rewriter)
+ * - **Runtime library**: `lib/tooling/panic/instrument_log.c` and `.h`
+ * - **Coverage runtime**: `lib/tooling/panic/instrument_cov.c`
+ * - **CMake integration**: `cmake/tooling/Panic.cmake`
+ * - **Helper script**: `cmake/tooling/run_panic_instrumentation.sh`
+ * - **Report tool**: `src/tooling/panic/report.c`
+ * - **Instrumented output**: `build/instrumented/`
+ *
+ * @subsection panic_cmake_options CMake Options
+ *
+ * | Option | Default | Description |
+ * |--------|---------|-------------|
+ * | `ASCIICHAT_BUILD_WITH_PANIC` | OFF | Enable panic instrumentation |
+ * | `ASCIICHAT_PANIC_TOOL` | "" | Path to pre-built tool (faster rebuilds) |
+ *
+ * @subsection panic_coverage SanitizerCoverage Mode
+ *
+ * For lightweight edge coverage without full statement logging:
+ *
+ * @code{.bash}
+ * # Build with coverage instrumentation
+ * cmake -B build -DCMAKE_C_FLAGS="-fsanitize-coverage=trace-pc-guard"
+ *
+ * # Enable coverage logging at runtime
+ * export ASCII_INSTR_SOURCE_PRINT_ENABLE_COVERAGE=1
+ * ./build/bin/ascii-chat server
+ * @endcode
+ *
+ * Coverage mode logs compact `pc=0x...` entries that can be symbolized with
+ * `llvm-symbolizer` or `addr2line` to map back to source locations.
+ *
+ * @subsection panic_macro_options Tool Command-Line Options
+ *
+ * The `ascii-instr-panic` tool supports:
+ *
+ * | Option | Description |
+ * |--------|-------------|
+ * | `--output-dir <path>` | Where to write instrumented sources |
+ * | `--input-root <path>` | Root for computing relative paths |
+ * | `--log-macro-expansions` | Instrument statements from macro expansions |
+ * | `--log-macro-invocations` | Emit synthetic log for macro call sites |
+ * | `--filter-file <substring>` | Only instrument files matching substring |
+ * | `--filter-function <substring>` | Only instrument functions matching substring |
+ * | `--signal-handler-annotation <name>` | Annotation to skip (default: ASCII_INSTR_PANIC_SIGNAL_HANDLER) |
+ *
+ * @section panic_troubleshooting Troubleshooting
+ *
+ * **No logs emitted**:
+ * - Check the output directory exists and is writable
+ * - Verify filters aren't over-restrictive (`unset ASCII_INSTR_SOURCE_PRINT_INCLUDE`)
+ * - Check `ASCII_INSTR_SOURCE_PRINT_ENABLE` isn't set to "0"
+ *
+ * **"Refusing to overwrite" errors**:
+ * - Remove existing `build/instrumented/` directory
+ * - Or specify a fresh output directory
+ *
+ * **Partial log files**:
+ * - Ensure disk isn't full
+ * - Check runtime didn't hit a fatal error before logging
+ *
+ * **Thread IDs don't match**:
+ * - Thread IDs are platform-specific (pthread vs system TID)
+ * - Always copy the exact numeric ID from log headers
+ *
+ * @section panic_related_tools Related Tools and Alternatives
+ *
+ * | Tool | Approach | Pros | Cons |
+ * |------|----------|------|------|
+ * | **Panic instrumentation** | Source rewriting | Readable output, no symbolization | High overhead |
+ * | **SanitizerCoverage** | Edge callbacks | Lower overhead | Needs symbolization |
+ * | **-finstrument-functions** | Function entry/exit | Very low overhead | Function granularity only |
+ * | **rr (record/replay)** | Deterministic replay | Perfect reproduction | Linux only, heavyweight |
+ * | **ASan/UBSan** | Memory/UB detection | Catches specific bugs | Not for all crash types |
+ * | **gdb/lldb** | Debugger | Full control | May perturb timing |
+ *
+ * Panic instrumentation is best when you need:
+ * - Immediate, readable crash location without post-processing
+ * - To debug timing-sensitive code that doesn't reproduce under debuggers
+ * - Per-statement granularity for complex control flow
+ *
+ * @section panic_references References
+ *
+ * - @ref topic_defer "Defer Statements" - Related tooling for automatic cleanup
+ * - @ref topic_build "Build System" - CMake build options including panic instrumentation
+ * - Clang libTooling: https://clang.llvm.org/docs/LibTooling.html
+ * - SanitizerCoverage: https://clang.llvm.org/docs/SanitizerCoverage.html
+ */
