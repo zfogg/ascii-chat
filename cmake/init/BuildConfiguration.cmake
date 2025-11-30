@@ -122,7 +122,12 @@ if(ASCIICHAT_ENABLE_ANALYZERS)
 
     find_program(_asciichat_cppcheck NAMES "${ASCIICHAT_CPPCHECK}" cppcheck PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
     if(_asciichat_cppcheck)
-        set(CMAKE_C_CPPCHECK "${_asciichat_cppcheck}" CACHE STRING "" FORCE)
+        # Use quiet mode to suppress verbose "Checking..." messages and informational notes
+        set(CMAKE_C_CPPCHECK
+            "${_asciichat_cppcheck}"
+            "--quiet"
+            "--suppress=normalCheckLevelMaxBranches"
+            CACHE STRING "" FORCE)
     elseif(ASCIICHAT_CPPCHECK)
         message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but specified cppcheck binary '${ASCIICHAT_CPPCHECK}' not found")
     endif()
