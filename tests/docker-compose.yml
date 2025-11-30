@@ -31,6 +31,10 @@ services:
       # Path structure: .deps-cache/docker/<BuildType>/ and .deps-cache/docker/<BuildType>/musl/
       - deps-cache-data:/app/.deps-cache
 
+    # Required for AddressSanitizer/LeakSanitizer to work in container
+    cap_add:
+      - SYS_PTRACE
+
     # Run tests by default
     # Use build_docker directory (build is for native OS)
     command: >
@@ -64,6 +68,11 @@ services:
 
       # AddressSanitizer configuration
       - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+
+      # LeakSanitizer workaround for Docker
+      # LSAN requires ptrace which may not work in all Docker configurations
+      # even with SYS_PTRACE capability (depends on host security policies)
+      - LSAN_OPTIONS=detect_leaks=0
 
 # Named volumes for persistent caching
 volumes:

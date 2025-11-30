@@ -31,9 +31,9 @@ runs:
     # =========================================================================
     # CMake 4.2.0 Installation (macOS and Windows only)
     # =========================================================================
-    # NOTE: Ubuntu uses scripts/deps.sh which installs CMake via Kitware APT repo
+    # NOTE: Ubuntu uses scripts/install-deps.sh which installs CMake via Kitware APT repo
 
-    # NOTE: macOS CMake is installed via Homebrew in deps.sh
+    # NOTE: macOS CMake is installed via Homebrew in install-deps.sh
 
     - name: Install CMake 4.2.0 (Windows)
       if: inputs.os == 'windows'
@@ -73,16 +73,16 @@ runs:
           deps/bearssl/build
         key: ${{ runner.os }}-cmake-deps-v4-${{ hashFiles('cmake/dependencies/**') }}
 
-    - name: Compute deps.sh hash (macOS)
+    - name: Compute install-deps.sh hash (macOS)
       if: inputs.os == 'macos'
       id: deps-sh-hash-macos
       shell: bash
       run: |
-        # Use scripts/deps.sh as the single source of truth for package installation
-        # Hash the deps.sh script to invalidate cache when dependencies change
-        hash=$(shasum -a 256 scripts/deps.sh | cut -c1-8)
+        # Use scripts/install-deps.sh as the single source of truth for package installation
+        # Hash the install-deps.sh script to invalidate cache when dependencies change
+        hash=$(shasum -a 256 scripts/install-deps.sh | cut -c1-8)
         echo "hash=$hash" >> $GITHUB_OUTPUT
-        echo "deps.sh hash: $hash"
+        echo "install-deps.sh hash: $hash"
 
     - name: Restore Homebrew cache (macOS)
       if: inputs.os == 'macos'
@@ -100,15 +100,15 @@ runs:
           ${{ runner.os }}-homebrew-v3-${{ steps.deps-sh-hash-macos.outputs.hash }}-
           ${{ runner.os }}-homebrew-v3-
 
-    - name: Install dependencies via scripts/deps.sh (macOS)
+    - name: Install dependencies via scripts/install-deps.sh (macOS)
       if: inputs.os == 'macos'
       shell: bash
       run: |
         set -euo pipefail
 
-        echo "Running scripts/deps.sh to install build dependencies..."
-        # deps.sh handles all Homebrew package installation
-        bash scripts/deps.sh
+        echo "Running scripts/install-deps.sh to install build dependencies..."
+        # install-deps.sh handles all Homebrew package installation
+        bash scripts/install-deps.sh
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"
@@ -120,16 +120,16 @@ runs:
         # Clean up to reduce cache size
         brew cleanup
 
-    - name: Compute deps.sh hash (Ubuntu)
+    - name: Compute install-deps.sh hash (Ubuntu)
       if: inputs.os == 'ubuntu'
       id: deps-sh-hash
       shell: bash
       run: |
-        # Use scripts/deps.sh as the single source of truth for package installation
-        # Hash the deps.sh script to invalidate cache when dependencies change
-        hash=$(sha256sum scripts/deps.sh | cut -c1-8)
+        # Use scripts/install-deps.sh as the single source of truth for package installation
+        # Hash the install-deps.sh script to invalidate cache when dependencies change
+        hash=$(sha256sum scripts/install-deps.sh | cut -c1-8)
         echo "hash=$hash" >> $GITHUB_OUTPUT
-        echo "deps.sh hash: $hash"
+        echo "install-deps.sh hash: $hash"
 
     - name: Restore APT cache (Ubuntu)
       if: inputs.os == 'ubuntu'
@@ -152,18 +152,18 @@ runs:
           sudo cp .apt-cache/*.deb /var/cache/apt/archives/ 2>/dev/null || true
         fi
 
-    - name: Install dependencies via scripts/deps.sh (Ubuntu)
+    - name: Install dependencies via scripts/install-deps.sh (Ubuntu)
       if: inputs.os == 'ubuntu'
       shell: bash
       run: |
         set -euo pipefail
 
-        echo "Running scripts/deps.sh to install build dependencies..."
-        # deps.sh handles:
+        echo "Running scripts/install-deps.sh to install build dependencies..."
+        # install-deps.sh handles:
         # - CMake 4.2.0 installation via Kitware APT repository
         # - All build dependencies (clang-21, llvm-21-dev, etc.)
         # - LLVM 21 update-alternatives configuration
-        bash scripts/deps.sh
+        bash scripts/install-deps.sh
 
         # Install any extra packages requested by the workflow
         extra="${{ inputs.extra-packages }}"

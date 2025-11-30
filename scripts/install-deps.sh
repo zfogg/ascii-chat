@@ -4,11 +4,11 @@
 # This script handles platform-specific dependency installation:
 # - macOS: Uses Homebrew
 # - Linux: Uses apt-get, yum, or pacman
-# - Windows: Directs to deps.ps1
+# - Windows: Directs to install-deps.ps1
 #
 # Usage:
-#   ./deps.sh           # Install Debug dependencies
-#   ./deps.sh -Release  # Install Release dependencies (static libraries)
+#   ./install-deps.sh           # Install Debug dependencies
+#   ./install-deps.sh -Release  # Install Release dependencies (static libraries)
 #
 # Note: On Unix systems, -dev packages include both static (.a) and dynamic (.so) libraries.
 #       The actual static/dynamic linking is controlled by CMake based on build type.
@@ -277,9 +277,9 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
   if [[ "$CONFIG" == "Release" ]]; then
-    echo "  ./scripts/deps.ps1 -Release"
+    echo "  ./scripts/install-deps.ps1 -Release"
   else
-    echo "  ./scripts/deps.ps1"
+    echo "  ./scripts/install-deps.ps1"
   fi
   exit 1
 fi

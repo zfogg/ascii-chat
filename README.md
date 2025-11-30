@@ -354,7 +354,7 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 **Linux (apt/yum/pacman)**:
 
 ```bash
-./scripts/deps.sh
+./scripts/install-deps.sh
 ```
 
 **macOS**:

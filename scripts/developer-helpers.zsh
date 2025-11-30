@@ -19,41 +19,31 @@ source "$_repo_root/scripts/color.zsh"
 
 # CMake
 unalias c 2>/dev/null || true
-c() {
+function cm() {
   cmake "$@"
 }
 
-cpd() {
+function cpd() {
   cmake --preset default -B build "$@"
 }
-cpr() {
+function cpr() {
   cmake --preset release -B build_release "$@"
 }
 
-cb() {
+function cb() {
   cmake --build "$@"
 }
 
-cbb() {
+function cbb() {
   cmake --build build "$@"
 }
 
-cbr() {
+function cbr() {
   cmake --build build_release "$@"
 }
 
-# Ninja
-n() {
-  ninja "$@"
-}
-
-# Make
-m() {
-  make "$@"
-}
-
 # t - Test - Run the test defined in $test with a convenient one-letter command
-# Run it from anywhere in the repo - you can be in the build dir running ninjas 
+# Run it from anywhere in the repo - you can be in the build dir running ninjas
 # or the repo root running cmake --build build
 function t() {
   _src="$_repo_root"
@@ -78,8 +68,9 @@ function dtbash() {
 # dt - Docker Tests Test - Build and run a single test "$test" in the Docker tests container
 # Like `t` (check the description) but for Docker
 function dt() {
-  docker-compose -f "$_repo_root"/tests/docker-compose.yml run --rm ascii-chat-tests bash \
-    -c '
+  docker-compose -f "$_repo_root"/tests/docker-compose.yml \
+    run --rm ascii-chat-tests \
+    bash -c '
   _dir=build_docker
   _test="$0"
   if [ -z "$_test" ]; then
