@@ -119,8 +119,9 @@ jobs:
 
         if [ "${BUILD_TYPE}" = "Release" ]; then
           cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
-          # Explicitly enable Criterion tests in Release mode for CI testing
-          cmake_args+=(-DBUILD_CRITERION_TESTS=ON)
+          # Force Criterion tests in Release mode for CI testing
+          # Must use ASCIICHAT_FORCE_CRITERION_TESTS (cache option) not BUILD_CRITERION_TESTS (regular variable)
+          cmake_args+=(-DASCIICHAT_FORCE_CRITERION_TESTS=ON)
         fi
 
         cmake -B build "${cmake_args[@]}"
