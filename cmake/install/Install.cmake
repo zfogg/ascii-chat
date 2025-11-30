@@ -418,6 +418,26 @@ if(UNIX AND NOT APPLE)
 endif()
 
 # =============================================================================
+# Application Icon Installation (Linux only)
+# =============================================================================
+# Install hicolor theme icons for desktop environments and software centers
+# Icons are installed to share/icons/hicolor/{size}/apps/ascii-chat.png
+if(UNIX AND NOT APPLE)
+    # Standard icon sizes for hicolor theme
+    set(_ICON_SIZES 16 24 32 48 64 128 256 512)
+    foreach(_SIZE ${_ICON_SIZES})
+        set(_ICON_PATH "${CMAKE_SOURCE_DIR}/share/icons/hicolor/${_SIZE}x${_SIZE}/apps/ascii-chat.png")
+        if(EXISTS "${_ICON_PATH}")
+            install(FILES "${_ICON_PATH}"
+                DESTINATION share/icons/hicolor/${_SIZE}x${_SIZE}/apps
+                COMPONENT Runtime
+            )
+        endif()
+    endforeach()
+    message(STATUS "${BoldGreen}Configured${ColorReset} application icons: ${BoldBlue}ascii-chat.png${ColorReset} → ${BoldYellow}share/icons/hicolor/*/apps/${ColorReset}")
+endif()
+
+# =============================================================================
 # AppStream Metainfo Installation (Linux only)
 # =============================================================================
 # Install AppStream metadata for software centers (GNOME Software, KDE Discover, etc.)
