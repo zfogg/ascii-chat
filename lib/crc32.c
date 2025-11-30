@@ -27,10 +27,11 @@ static bool crc32_hw_available = false;
 static bool crc32_hw_checked = false;
 
 static void check_crc32_hw_support(void) {
-  if (crc32_hw_checked)
+  if (crc32_hw_checked) {
     return;
+  }
 
-// clang-format off
+  // clang-format off
 #ifdef ARCH_ARM64
 // On Apple Silicon, CRC32 is always available
 // On other ARM64 systems, we could check HWCAP_CRC32
