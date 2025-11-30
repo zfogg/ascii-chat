@@ -105,39 +105,39 @@ if(APPLE)
         # The key challenge: Homebrew LLVM 21+ bundles its own libc++ which has
         # incompatible header include paths with the macOS SDK.
         #
-        # The problem: LLVM's libc++ uses #include_next to find SDK headers,
-        # but the SDK's arm/_types.h expects size_t/ptrdiff_t to already be defined.
-        # With Homebrew clang, these types aren't defined at the right point.
+        # The problem: When compiling, #include <stddef.h> needs to find Clang's
+        # built-in stddef.h (which defines size_t, ptrdiff_t), NOT the SDK's stddef.h.
+        # The SDK's arm/_types.h expects these types to already be defined.
         #
-        # Solution: Tell Homebrew's clang to NOT use its bundled libc++ headers
-        # and instead use the SDK's C++ headers. This is done with:
-        # -nostdinc++ : Don't use clang's default C++ include paths
-        # -isystem SDK/usr/include/c++/v1 : Use SDK's libc++ headers instead
-        # -isystem clang-resource-dir/include : Add back clang builtins (stddef.h, etc)
+        # Solution: Use -nostdinc (no standard C headers) and -nostdinc++ (no C++ headers)
+        # then manually add include paths in the correct order:
+        # 1. Clang resource dir FIRST (for stddef.h, stdarg.h - defines size_t, ptrdiff_t)
+        # 2. SDK's libc++ headers (for C++ standard library)
+        # 3. SDK's C headers via -isysroot (for Darwin/POSIX headers)
         #
-        # This configuration works because:
-        # 1. SDK's libc++ headers are designed to work with SDK's C headers
-        # 2. clang's resource dir provides necessary compiler builtins
-        # 3. LLVM_INCLUDE_DIRS provides clang/llvm headers for tooling
+        # The -I flag for clang resource dir ensures it comes BEFORE -isysroot paths.
         if(HAS_LLVM_LIBCXX)
             set(_panic_compile_flags
                 -O2
                 -fno-rtti
                 -fexceptions
-                -isysroot ${MACOS_SDK_PATH}
                 -stdlib=libc++
-                # Don't use Homebrew's bundled libc++ headers
+                # Disable automatic header search - we'll add paths manually in correct order
                 -nostdinc++
             )
 
-            # Add SDK's libc++ headers instead of Homebrew's
+            # CRITICAL: Add clang resource dir FIRST with -I so it's searched before SDK
+            # This ensures #include <stddef.h> finds clang's version which defines size_t
+            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
+                message(STATUS "Using Clang resource dir (priority): ${CLANG_RESOURCE_DIR}/include")
+                list(APPEND _panic_compile_flags "-I${CLANG_RESOURCE_DIR}/include")
+            endif()
+
+            # Add SDK's libc++ headers for C++ standard library
             list(APPEND _panic_compile_flags "-isystem${MACOS_SDK_PATH}/usr/include/c++/v1")
 
-            # Add clang resource dir for compiler builtins (stddef.h provides size_t)
-            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include")
-                message(STATUS "Using Clang resource dir: ${CLANG_RESOURCE_DIR}/include")
-                list(APPEND _panic_compile_flags "-isystem${CLANG_RESOURCE_DIR}/include")
-            endif()
+            # Add SDK path for Darwin/POSIX C headers (comes after clang resource dir)
+            list(APPEND _panic_compile_flags "-isysroot" "${MACOS_SDK_PATH}")
 
             target_compile_options(ascii-instr-panic PRIVATE ${_panic_compile_flags})
         else()
