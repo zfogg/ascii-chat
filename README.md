@@ -43,8 +43,6 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
 
 ## Code Coverage
 
-⚠️ **FIXME:** Unit tests are not being reported to Codecov (only integration test results are being reported). I have to fix GitHub Actions to report them. CMake changes broke the builds I guess. Actual code coverage is higher than the reported ~24%.
-
 [![codecov](https://codecov.io/gh/zfogg/ascii-chat/graph/badge.svg?token=Nkt0GBDMIH)](https://codecov.io/gh/zfogg/ascii-chat)
 
 [![codecov svg](https://codecov.io/gh/zfogg/ascii-chat/graphs/sunburst.svg?token=Nkt0GBDMIH)](https://codecov.io/gh/zfogg/ascii-chat)
