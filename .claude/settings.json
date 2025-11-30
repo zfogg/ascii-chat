@@ -35,7 +35,9 @@
       "Bash(ldd:*)",
       "Bash(llvm-nm:*)",
       "Bash(llvm-objdump:*)",
-      "Bash(readelf:*)"
+      "Bash(readelf:*)",
+      "Bash(rm:*)",
+      "Bash(rmdir:*)"
     ]
   }
 }
