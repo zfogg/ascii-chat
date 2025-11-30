@@ -130,10 +130,27 @@ if(APPLE)
         # 3. LLVM tooling headers
         # 4. SDK C headers
         set(SDK_LIBCXX_INCLUDE "${MACOS_SDK_PATH}/usr/include/c++/v1")
-        if(EXISTS "${SDK_LIBCXX_INCLUDE}")
-            message(STATUS "Using SDK libc++ (Attempt 14: avoid Homebrew libc++ and -isysroot)")
-            message(STATUS "  1. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  2. SDK libc++: ${SDK_LIBCXX_INCLUDE}")
+        if(HAS_LLVM_LIBCXX)
+            # Attempt 16: Use Homebrew libc++ with correct #include_next order
+            #
+            # Key insight: Homebrew's libc++ has its own <stddef.h> wrapper that:
+            #   1. Does #include_next <stddef.h> to find underlying C stddef.h
+            #   2. Then defines nullptr_t as 'typedef decltype(nullptr) nullptr_t;'
+            #
+            # For #include_next to work correctly, the search order must be:
+            #   1. Homebrew libc++ (so its stddef.h wrapper is found FIRST)
+            #   2. Clang resource dir (so #include_next finds clang's stddef.h)
+            #   3. LLVM tooling headers
+            #   4. SDK C headers (for Darwin-specific headers)
+            #
+            # When LLVM headers include <stddef.h>:
+            #   - Finds Homebrew libc++ wrapper (position 1)
+            #   - Wrapper does #include_next, searching position 2+
+            #   - Finds clang's builtin stddef.h with size_t/ptrdiff_t (position 2)
+            #   - Wrapper then defines nullptr_t
+            message(STATUS "Using Homebrew libc++ (Attempt 16: libc++ before clang builtins for #include_next)")
+            message(STATUS "  1. Homebrew libc++: ${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "  2. Clang builtins: ${CLANG_RESOURCE_DIR}/include")
             message(STATUS "  3. LLVM tooling: ${LLVM_INCLUDE_DIRS}")
             message(STATUS "  4. SDK C headers: ${MACOS_SDK_PATH}/usr/include")
 
@@ -144,36 +161,15 @@ if(APPLE)
                 # Disable ALL implicit header search
                 -nostdinc
                 -nostdinc++
-                # Add paths in STRICT ORDER:
-                # 1. Clang builtins FIRST (defines size_t, ptrdiff_t, etc)
+                # Add paths in STRICT ORDER for #include_next to work:
+                # 1. Homebrew libc++ FIRST (has stddef.h wrapper with nullptr_t)
+                "-isystem${LLVM_LIBCXX_INCLUDE}"
+                # 2. Clang builtins (so #include_next from libc++ finds real stddef.h)
                 "-isystem${CLANG_RESOURCE_DIR}/include"
-                # 2. SDK's libc++ (uses Apple's #include_next which works with SDK)
-                "-isystem${SDK_LIBCXX_INCLUDE}"
                 # 3. LLVM tooling headers
                 "-isystem${LLVM_INCLUDE_DIRS}"
-                # 4. SDK C headers LAST
+                # 4. SDK C headers LAST (for Darwin-specific headers like mach/*.h)
                 "-isystem${MACOS_SDK_PATH}/usr/include"
-            )
-        elseif(HAS_LLVM_LIBCXX)
-            message(STATUS "Using Homebrew LLVM with bundled libc++ (Attempt 13: clang builtins first)")
-            message(STATUS "  1. Clang builtins (-isystem): ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  2. SDK via -isysroot: ${MACOS_SDK_PATH}")
-            message(STATUS "  3. C++ (via -cxx-isystem): libc++ and LLVM tooling")
-
-            target_compile_options(ascii-instr-defer PRIVATE
-                -O2
-                -fno-rtti
-                -fexceptions
-                # CRITICAL: Clang resource dir FIRST with -isystem (highest priority)
-                # This ensures stddef.h with size_t/ptrdiff_t is found before SDK headers
-                "-isystem${CLANG_RESOURCE_DIR}/include"
-                # SDK for C headers (after clang builtins)
-                "-isysroot${MACOS_SDK_PATH}"
-                # Disable C++ standard library search
-                -nostdinc++
-                # Add C++ includes explicitly
-                "-cxx-isystem${LLVM_LIBCXX_INCLUDE}"
-                "-cxx-isystem${LLVM_INCLUDE_DIRS}"
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
