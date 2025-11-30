@@ -72,11 +72,18 @@ The SDK's `arm/_types.h` expects `size_t` and `ptrdiff_t` to be defined by the c
 **Command**: `-stdlib=libc++ -isystem<clang_builtins> -isystem<llvm> -isystem<sdk_usr_include>`
 **Result**: FAILED - The `-stdlib=libc++` flag implicitly adds Homebrew's libc++ path BEFORE any explicit `-isystem` paths. When libc++ does `#include_next`, it searches AFTER its own path, finding SDK headers before clang builtins.
 
-### Attempt 9: Use `-idirafter` for SDK headers (TESTING)
+### Attempt 9: Use `-idirafter` for SDK headers (commit e6aa60a - FAILED)
 **Date**: 2025-11-30
 **Approach**: Use `-idirafter` for SDK headers to place them LAST in search order. Let clang's default behavior (with `-stdlib=libc++`) handle libc++ and resource dir paths implicitly.
 **Command**: `-stdlib=libc++ -isystem<llvm> -idirafter<sdk_usr_include>`
-**Rationale**: `-idirafter` places paths at the very end of the search list, even after paths used by `#include_next`. This should allow clang's resource dir (implicitly added by the driver) to be found before SDK headers.
+**Actual command**: `clang++ -O3 -DNDEBUG -std=gnu++20 -arch arm64 -O2 -fno-rtti -fexceptions -stdlib=libc++ -isystem/opt/homebrew/Cellar/llvm/21.1.6/include -idirafter/Applications/.../MacOSX.sdk/usr/include -c tool.cpp`
+**Result**: FAILED - Same error. `-idirafter` does place SDK headers last, but `#include_next` from libc++ cassert still finds SDK's assert.h which includes SDK's arm/_types.h BEFORE clang's stddef.h gets a chance.
+
+### Attempt 10: Use `--sysroot` with explicit clang resource dir (TESTING)
+**Date**: 2025-11-30
+**Approach**: Use `-nostdinc` to disable ALL implicit system headers, then explicitly add clang's resource dir first, then libc++, then SDK.
+**Command**: `-nostdinc -isystem<clang_resource_dir> -isystem<llvm_libcxx> -isystem<llvm> -isystem<sdk_usr_include>`
+**Rationale**: `-nostdinc` disables compiler's implicit header search. We then manually reconstruct the search path in the correct order.
 **Status**: Testing...
 
 ## Key Insights

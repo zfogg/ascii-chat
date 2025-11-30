@@ -117,31 +117,38 @@ if(APPLE)
         # #include_next to find C library headers from the SDK. SDK headers
         # expect size_t/ptrdiff_t to be defined from clang's stddef.h.
         #
-        # Key insight: When Homebrew's libc++ does #include_next <stddef.h>,
-        # it searches in include paths AFTER libc++'s own directory. We need
-        # clang's resource dir (with size_t/ptrdiff_t) to be found before the
-        # SDK's stddef.h.
+        # Root cause: When libc++ does #include_next <assert.h>, it finds SDK's
+        # assert.h which includes arm/_types.h expecting size_t/ptrdiff_t to
+        # already be defined. These types come from clang's stddef.h which must
+        # be included BEFORE SDK headers.
         #
-        # Attempt 9: Use -idirafter for SDK headers so they come LAST in search.
-        # Use -isystem for clang resource dir so it comes before SDK but after
-        # the implicit libc++ path that -stdlib=libc++ adds.
+        # Attempt 10: Use -nostdinc to disable ALL implicit header search.
+        # Then manually add headers in correct order:
+        # 1. Clang resource dir (stddef.h with size_t/ptrdiff_t)
+        # 2. LLVM's libc++ headers
+        # 3. LLVM tooling headers
+        # 4. SDK C headers
         if(HAS_LLVM_LIBCXX)
-            message(STATUS "Using Homebrew LLVM with bundled libc++")
-            message(STATUS "  clang builtins: ${CLANG_RESOURCE_DIR}/include")
-            message(STATUS "  LLVM: ${LLVM_INCLUDE_DIRS}")
-            message(STATUS "  SDK: ${MACOS_SDK_PATH}/usr/include")
+            message(STATUS "Using Homebrew LLVM with bundled libc++ (nostdinc mode)")
+            message(STATUS "  1. clang builtins: ${CLANG_RESOURCE_DIR}/include")
+            message(STATUS "  2. libc++: ${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "  3. LLVM: ${LLVM_INCLUDE_DIRS}")
+            message(STATUS "  4. SDK: ${MACOS_SDK_PATH}/usr/include")
 
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
                 -fno-rtti
                 -fexceptions
-                -stdlib=libc++
-                # LLVM headers for clang tooling APIs
+                # Disable ALL implicit header search - we'll add everything manually
+                -nostdinc
+                # 1. Clang resource dir FIRST - has stddef.h with size_t/ptrdiff_t
+                "-isystem${CLANG_RESOURCE_DIR}/include"
+                # 2. LLVM's bundled libc++ headers
+                "-isystem${LLVM_LIBCXX_INCLUDE}"
+                # 3. LLVM tooling headers (clang/AST etc)
                 "-isystem${LLVM_INCLUDE_DIRS}"
-                # Use -idirafter to place SDK headers LAST in search order
-                # This allows #include_next from libc++ to find clang's stddef.h
-                # (in resource dir) before SDK's stddef.h
-                "-idirafter${MACOS_SDK_PATH}/usr/include"
+                # 4. SDK C headers LAST
+                "-isystem${MACOS_SDK_PATH}/usr/include"
             )
         else()
             # Without LLVM libc++, add LLVM headers as regular includes
