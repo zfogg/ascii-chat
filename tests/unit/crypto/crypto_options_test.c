@@ -40,10 +40,11 @@ TestSuite(crypto_options, .init = reset_crypto_options);
 // Crypto Options Parsing Tests (Parameterized)
 // =============================================================================
 
+// clang-format off
 typedef struct {
   char description[128];
   int argc;
-  char argv[10][256]; // Use static char arrays instead of pointers for Criterion compatibility
+  char argv[10][256];             // Use static char arrays instead of pointers for Criterion compatibility
   bool is_client;
   bool expect_no_encrypt;
   bool expect_key_set;
@@ -54,7 +55,9 @@ typedef struct {
   char expected_client_keys[256]; // Use static char array for Criterion fork compatibility
   int expected_result;
 } crypto_options_test_case_t;
+// clang-format on
 
+// clang-format off
 static crypto_options_test_case_t crypto_options_cases[] = {
     // Note: --help and --version tests are separate (they call _exit(0))
     // Use "" instead of NULL for static char arrays (Criterion fork compatibility)
@@ -181,6 +184,7 @@ static crypto_options_test_case_t crypto_options_cases[] = {
      0},
     {"Empty key (should fail)", 3, {"program", "--key", ""}, true, false, false, false, false, "", "", "", -1},
     {"Missing key value (should fail)", 2, {"program", "--key"}, true, false, false, false, false, "", "", "", -1}};
+// clang-format on
 
 ParameterizedTestParameters(crypto_options, crypto_options_parsing_tests) {
   size_t nb_cases = sizeof(crypto_options_cases) / sizeof(crypto_options_cases[0]);

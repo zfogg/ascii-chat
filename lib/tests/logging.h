@@ -320,7 +320,6 @@ bool test_logging_is_disabled(void);
  * TEST_SUITE_WITH_VERBOSE_LOGGING(my_suite);
  * @endcode
  */
-#define TEST_SUITE_WITH_VERBOSE_LOGGING(suite_name, ...)                                                               \
-  TEST_SUITE_WITH_DEBUG_LOGGING(suite_name, ##__VA_ARGS__)
+#define TEST_SUITE_WITH_VERBOSE_LOGGING(suite_name, ...) TEST_SUITE_WITH_DEBUG_LOGGING(suite_name, ##__VA_ARGS__)
 
 #endif // LOGGING_H
