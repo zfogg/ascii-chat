@@ -13,15 +13,45 @@
 # Outputs:
 #   - All test_* executable targets (Criterion-based)
 #   - tests, test_debug, test_release, test_all custom targets
+#   - tests-timer-start, tests-timer-end (build timing targets)
+#   - tests-criterion-build or tests-lib-build (internal build targets)
 #
 # Note: Library runtime tests (test-static-lib, test-shared-lib) are handled
 # by TestLibs.cmake and only require BUILD_TESTS, not Criterion.
+#
+# Build Timing:
+#   When BUILD_TESTS is enabled, the module creates timer targets that measure
+#   how long it takes to build all test executables. The timing includes:
+#   - All Criterion test executables (when available)
+#   - Library runtime tests (test-static-lib, test-shared-lib)
+#   - Future defer tests (prepared for in this infrastructure)
 # =============================================================================
 
 # Enable CTest if any tests are being built (Criterion or lib runtime)
 if(BUILD_TESTS)
     enable_testing()
 endif()
+
+# =============================================================================
+# Test Build Timing
+# =============================================================================
+# Create timer start target for all tests (Criterion, library, and future defer tests)
+# This target is created unconditionally so other modules can depend on it
+if(BUILD_TESTS AND NOT TARGET tests-timer-start)
+    add_custom_target(tests-timer-start
+        COMMAND ${CMAKE_COMMAND}
+            -DACTION=start
+            -DTARGET_NAME=tests
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+        COMMENT "Starting test build timing"
+        VERBATIM
+    )
+endif()
+
+# Collect all test targets for timing (populated by Criterion tests, lib tests, etc.)
+set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
 # Criterion test framework setup
 if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
@@ -216,6 +246,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
         add_executable(${test_exe_name} ${test_src} lib/tests/common.c lib/tests/globals.c lib/tests/logging.c)
 
+        # Add timer dependency so timing starts before first test compiles
+        if(TARGET tests-timer-start)
+            add_dependencies(${test_exe_name} tests-timer-start)
+        endif()
+
         # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
@@ -331,11 +366,41 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         )
     endforeach()
 
-    # Target to build all tests without running them (excluded from default build)
-    add_custom_target(tests
+    # Update timed test targets list with Criterion tests
+    set(ALL_TIMED_TEST_TARGETS ${ALL_TEST_TARGETS} CACHE INTERNAL "All test targets for timing")
+
+    # Internal target to build all Criterion tests (without timing)
+    add_custom_target(tests-criterion-build
         DEPENDS ${ALL_TEST_TARGETS}
+        COMMENT "Building Criterion test executables"
+    )
+
+    # Target to build all tests without running them (excluded from default build)
+    # This is the main public target that includes timing
+    add_custom_target(tests
         COMMENT "Building all test executables"
     )
+
+    # Timer end target runs after all tests are built
+    if(TARGET tests-timer-start)
+        add_custom_target(tests-timer-end
+            COMMAND ${CMAKE_COMMAND}
+                -DACTION=end
+                -DTARGET_NAME=tests
+                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            COMMENT "Finishing test build timing"
+            VERBATIM
+        )
+        # Timer end depends on timer start and the actual test build
+        add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
+        # Main tests target depends on timer end (so timing is shown)
+        add_dependencies(tests tests-timer-end)
+    else()
+        # No timer, just depend on the build target directly
+        add_dependencies(tests tests-criterion-build)
+    endif()
 
     # Custom targets for different test modes (matches Makefile)
     add_custom_target(test_debug
@@ -359,11 +424,20 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     # Add library test targets to test_all so they're built when running ctest
     # These are defined in TestLibs.cmake but need to be added here after test_all exists
+    # Also add them to the timed test targets and timer dependency chain
     if(TARGET test-static-lib)
         add_dependencies(test_all test-static-lib)
+        add_dependencies(tests-criterion-build test-static-lib)
+        if(TARGET tests-timer-start)
+            add_dependencies(test-static-lib tests-timer-start)
+        endif()
     endif()
     if(TARGET test-shared-lib)
         add_dependencies(test_all test-shared-lib)
+        add_dependencies(tests-criterion-build test-shared-lib)
+        if(TARGET tests-timer-start)
+            add_dependencies(test-shared-lib tests-timer-start)
+        endif()
     endif()
 
 else()
@@ -374,6 +448,57 @@ else()
     elseif(BUILD_TESTS AND NOT WIN32)
         message(STATUS "${Yellow}Criterion testing framework not found. Criterion tests will not be built.${ColorReset}")
         message(STATUS "  -> Library runtime tests still available via ctest")
+    endif()
+
+    # Even without Criterion, create tests target for library tests with timing
+    if(BUILD_TESTS)
+        # Create tests target that depends on lib tests with timing
+        add_custom_target(tests-lib-build
+            COMMENT "Building library test executables"
+        )
+
+        # Add library tests to the build target
+        if(TARGET test-static-lib)
+            add_dependencies(tests-lib-build test-static-lib)
+            if(TARGET tests-timer-start)
+                add_dependencies(test-static-lib tests-timer-start)
+            endif()
+        endif()
+        if(TARGET test-shared-lib)
+            add_dependencies(tests-lib-build test-shared-lib)
+            if(TARGET tests-timer-start)
+                add_dependencies(test-shared-lib tests-timer-start)
+            endif()
+        endif()
+
+        # Create tests target with timing
+        add_custom_target(tests
+            COMMENT "Building all test executables"
+        )
+
+        if(TARGET tests-timer-start)
+            add_custom_target(tests-timer-end
+                COMMAND ${CMAKE_COMMAND}
+                    -DACTION=end
+                    -DTARGET_NAME=tests
+                    -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+                    -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+                    -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+                COMMENT "Finishing test build timing"
+                VERBATIM
+            )
+            add_dependencies(tests-timer-end tests-timer-start tests-lib-build)
+            add_dependencies(tests tests-timer-end)
+        else()
+            add_dependencies(tests tests-lib-build)
+        endif()
+
+        # Test mode targets
+        add_custom_target(test_all
+            DEPENDS tests
+            COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+            COMMENT "Running all tests"
+        )
     endif()
 endif()
 
