@@ -62,8 +62,7 @@ static void check_crc32_hw_support(void) {
 #else
   crc32_hw_available = false;
   // log_debug("No hardware CRC32 acceleration available for this architecture");
-#endif
-// clang-format on
+#endif // clang-format on
 
   crc32_hw_checked = true;
 }
