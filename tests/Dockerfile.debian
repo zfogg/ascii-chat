@@ -44,11 +44,11 @@ RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.
 WORKDIR /app
 
 # Copy deps script
-COPY scripts/deps.sh /tmp/deps.sh
-RUN chmod +x /tmp/deps.sh
+COPY scripts/install-deps.sh /tmp/install-deps.sh
+RUN chmod +x /tmp/install-deps.sh
 
 # Run deps script to install build dependencies
-RUN /tmp/deps.sh
+RUN /tmp/install-deps.sh
 
 # Default to bash for interactive use
 CMD ["/bin/bash"]
