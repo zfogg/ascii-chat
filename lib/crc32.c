@@ -7,6 +7,7 @@
 #include "crc32.h"
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)
@@ -24,12 +25,26 @@
 
 // Check if CRC32 instructions are available at runtime
 static bool crc32_hw_available = false;
-static bool crc32_hw_checked = false;
+static atomic_bool crc32_hw_checked = false;
 
 static void check_crc32_hw_support(void) {
-  if (crc32_hw_checked) {
+  // Fast path: check if already initialized (atomic read)
+  if (atomic_load(&crc32_hw_checked)) {
     return;
   }
+
+  // Try to claim initialization (only one thread will succeed)
+  bool expected = false;
+  if (!atomic_compare_exchange_strong(&crc32_hw_checked, &expected, true)) {
+    // Another thread is initializing or already initialized, wait for it
+    // Spin briefly then check again (most common case: already initialized)
+    while (!atomic_load(&crc32_hw_checked)) {
+      // Brief spin wait - initialization is very fast
+    }
+    return;
+  }
+
+  // This thread won the race and will perform initialization
 
   // clang-format off
 #ifdef ARCH_ARM64
@@ -64,7 +79,9 @@ static void check_crc32_hw_support(void) {
   // log_debug("No hardware CRC32 acceleration available for this architecture");
 #endif // clang-format on
 
-  crc32_hw_checked = true;
+  // Initialization complete - flag was already set to true by atomic_compare_exchange_strong above
+  // The compare-exchange with memory_order_seq_cst ensures all writes to crc32_hw_available
+  // are visible to other threads when they see crc32_hw_checked == true
 }
 
 #ifdef ARCH_ARM64

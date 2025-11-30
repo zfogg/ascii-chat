@@ -10,9 +10,15 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "options.h"
+#include "platform/init.h" // For static_mutex_t
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+
+// PortAudio initialization reference counter
+// Tracks how many audio contexts are using PortAudio to avoid conflicts
+static unsigned int g_pa_init_refcount = 0;
+static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 
 static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
@@ -229,11 +235,18 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize audio context mutex");
   }
 
-  PaError err = Pa_Initialize();
-  if (err != paNoError) {
-    mutex_destroy(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+  // Initialize PortAudio with reference counting
+  static_mutex_lock(&g_pa_refcount_mutex);
+  if (g_pa_init_refcount == 0) {
+    PaError err = Pa_Initialize();
+    if (err != paNoError) {
+      static_mutex_unlock(&g_pa_refcount_mutex);
+      mutex_destroy(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+    }
   }
+  g_pa_init_refcount++;
+  static_mutex_unlock(&g_pa_refcount_mutex);
 
   // Enumerate all audio devices for debugging
   int numDevices = Pa_GetDeviceCount();
@@ -269,7 +282,15 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
   ctx->capture_buffer = audio_ring_buffer_create();
   if (!ctx->capture_buffer) {
-    Pa_Terminate();
+    // Decrement refcount and terminate if this was the only context
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create capture buffer");
   }
@@ -277,7 +298,15 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   ctx->playback_buffer = audio_ring_buffer_create();
   if (!ctx->playback_buffer) {
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    Pa_Terminate();
+    // Decrement refcount and terminate if this was the only context
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to create playback buffer");
   }
@@ -305,7 +334,16 @@ void audio_destroy(audio_context_t *ctx) {
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
 
-  Pa_Terminate();
+  // Terminate PortAudio only when last context is destroyed
+  static_mutex_lock(&g_pa_refcount_mutex);
+  if (g_pa_init_refcount > 0) {
+    g_pa_init_refcount--;
+    if (g_pa_init_refcount == 0) {
+      Pa_Terminate();
+    }
+  }
+  static_mutex_unlock(&g_pa_refcount_mutex);
+
   ctx->initialized = false;
 
   mutex_unlock(&ctx->state_mutex);
@@ -507,20 +545,49 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   *out_devices = NULL;
   *out_count = 0;
 
-  // Initialize PortAudio temporarily
-  PaError err = Pa_Initialize();
-  if (err != paNoError) {
-    return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+  // Check if PortAudio is already initialized by another audio context
+  static_mutex_lock(&g_pa_refcount_mutex);
+  bool pa_was_initialized = (g_pa_init_refcount > 0);
+
+  // Initialize PortAudio only if not already initialized
+  if (!pa_was_initialized) {
+    PaError err = Pa_Initialize();
+    if (err != paNoError) {
+      static_mutex_unlock(&g_pa_refcount_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
+    }
+    g_pa_init_refcount = 1; // Set refcount to 1 for temporary initialization
+  } else {
+    // PortAudio is already initialized - increment refcount to prevent
+    // termination while we're using it
+    g_pa_init_refcount++;
   }
+  static_mutex_unlock(&g_pa_refcount_mutex);
 
   int num_devices = Pa_GetDeviceCount();
   if (num_devices < 0) {
-    Pa_Terminate();
+    // Decrement refcount and terminate only if we initialized PortAudio ourselves
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (!pa_was_initialized && g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
     return SET_ERRNO(ERROR_AUDIO, "Failed to get device count: %s", Pa_GetErrorText(num_devices));
   }
 
   if (num_devices == 0) {
-    Pa_Terminate();
+    // Decrement refcount and terminate only if we initialized PortAudio ourselves
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (!pa_was_initialized && g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
     return ASCIICHAT_OK; // No devices found
   }
 
@@ -541,14 +608,30 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   }
 
   if (device_count == 0) {
-    Pa_Terminate();
+    // Decrement refcount and terminate only if we initialized PortAudio ourselves
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (!pa_was_initialized && g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
     return ASCIICHAT_OK; // No matching devices
   }
 
   // Allocate device array
   audio_device_info_t *devices = SAFE_CALLOC(device_count, sizeof(audio_device_info_t), audio_device_info_t *);
   if (!devices) {
-    Pa_Terminate();
+    // Decrement refcount and terminate only if we initialized PortAudio ourselves
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (!pa_was_initialized && g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio device info array");
   }
 
@@ -577,7 +660,15 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
     idx++;
   }
 
-  Pa_Terminate();
+  // Decrement refcount and terminate only if we initialized PortAudio ourselves
+  static_mutex_lock(&g_pa_refcount_mutex);
+  if (g_pa_init_refcount > 0) {
+    g_pa_init_refcount--;
+    if (!pa_was_initialized && g_pa_init_refcount == 0) {
+      Pa_Terminate();
+    }
+  }
+  static_mutex_unlock(&g_pa_refcount_mutex);
 
   *out_devices = devices;
   *out_count = idx;
