@@ -27,9 +27,19 @@ function(copy_windows_dlls TARGET_NAME)
         # Only copy DLLs for non-static builds (Debug, Dev builds use dynamic libraries)
         # Release builds use static libraries (x64-windows-static triplet) so no DLLs needed
 
-        if(DEFINED ENV{VCPKG_ROOT} AND DEFINED VCPKG_TRIPLET)
-            set(VCPKG_DLL_DIR "$ENV{VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/bin")
-            set(VCPKG_DEBUG_DLL_DIR "$ENV{VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/bin")
+        # Determine vcpkg installed directory - prefer _VCPKG_INSTALLED_DIR set by vcpkg toolchain
+        # This is more reliable than $ENV{VCPKG_ROOT} which can change between configure and build
+        if(DEFINED _VCPKG_INSTALLED_DIR)
+            set(VCPKG_INSTALLED "${_VCPKG_INSTALLED_DIR}")
+        elseif(DEFINED VCPKG_INSTALLED_DIR)
+            set(VCPKG_INSTALLED "${VCPKG_INSTALLED_DIR}")
+        elseif(DEFINED ENV{VCPKG_ROOT})
+            set(VCPKG_INSTALLED "$ENV{VCPKG_ROOT}/installed")
+        endif()
+
+        if(DEFINED VCPKG_INSTALLED AND DEFINED VCPKG_TRIPLET)
+            set(VCPKG_DLL_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/bin")
+            set(VCPKG_DEBUG_DLL_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/debug/bin")
 
             # Use debug DLLs/PDBs for Debug build, release DLLs for Dev build
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
