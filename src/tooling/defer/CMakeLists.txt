@@ -112,11 +112,6 @@ if(APPLE)
             set(HAS_LLVM_LIBCXX FALSE)
         endif()
 
-        # LLVM headers for clang tooling (added as regular includes)
-        target_include_directories(ascii-instr-defer PRIVATE
-            ${LLVM_INCLUDE_DIRS}
-        )
-
         # Compile options for macOS with Homebrew LLVM
         # The key challenge: Homebrew LLVM 21+ bundles its own libc++ which uses
         # #include_next to find C library headers from the SDK.
@@ -125,15 +120,20 @@ if(APPLE)
         # Library headers before any C Standard Library"
         #
         # Solution: Use -nostdinc++ to disable automatic header search, then manually
-        # add headers in the correct order:
+        # add headers in the correct order. Note: -I paths are searched BEFORE -isystem,
+        # so we must use -isystem for LLVM include dir too.
+        #
+        # Order of search:
         # 1. Homebrew's libc++ headers (C++ Standard Library)
         # 2. Clang resource dir (compiler builtins like stddef.h)
         # 3. SDK headers (C Standard Library)
+        # 4. LLVM headers for clang tooling (after stdlib so they use the right stdlib)
         if(HAS_LLVM_LIBCXX)
             message(STATUS "Configuring Homebrew LLVM include path order:")
             message(STATUS "  1. libc++: ${LLVM_LIBCXX_INCLUDE}")
             message(STATUS "  2. clang builtins: ${CLANG_RESOURCE_DIR}/include")
             message(STATUS "  3. SDK: ${MACOS_SDK_PATH}/usr/include")
+            message(STATUS "  4. LLVM: ${LLVM_INCLUDE_DIRS}")
 
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
@@ -142,11 +142,18 @@ if(APPLE)
                 -stdlib=libc++
                 -nostdinc++
                 # Order matters! C++ stdlib must come before C stdlib
+                # Use -isystem for ALL external includes to maintain strict order
                 "-isystem${LLVM_LIBCXX_INCLUDE}"
                 "-isystem${CLANG_RESOURCE_DIR}/include"
                 "-isystem${MACOS_SDK_PATH}/usr/include"
+                # LLVM headers come last - they depend on stdlib headers
+                "-isystem${LLVM_INCLUDE_DIRS}"
             )
         else()
+            # Without LLVM libc++, add LLVM headers as regular includes
+            target_include_directories(ascii-instr-defer PRIVATE
+                ${LLVM_INCLUDE_DIRS}
+            )
             # Without LLVM libc++, use standard flags
             target_compile_options(ascii-instr-defer PRIVATE
                 -O2
