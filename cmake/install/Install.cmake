@@ -703,7 +703,7 @@ After installation, run:
             endif()
         endif()
 
-        # Set DEB/RPM dependencies BEFORE include(CPack)
+        # Set DEB/RPM dependencies and metadata BEFORE include(CPack)
         # Runtime dependencies for the shared library (libasciichat.so)
         if(UNIX AND NOT APPLE)
             set(CPACK_DEBIAN_PACKAGE_DEPENDS "libportaudio2, libzstd1, libsodium23")
@@ -712,6 +712,18 @@ After installation, run:
                 set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libmimalloc2.0 | libmimalloc-dev")
                 set(CPACK_RPM_PACKAGE_REQUIRES "${CPACK_RPM_PACKAGE_REQUIRES}, mimalloc")
             endif()
+
+            # RPM-specific metadata (must be set BEFORE include(CPack))
+            # Use CACHE FORCE to ensure these values persist through CPack's initialization
+            set(CPACK_RPM_PACKAGE_LICENSE "MIT" CACHE STRING "RPM package license" FORCE)
+            set(CPACK_RPM_PACKAGE_GROUP "Applications/Networking" CACHE STRING "RPM package group" FORCE)
+            set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION}" CACHE STRING "RPM package description" FORCE)
+
+            # DEB-specific metadata (must be set BEFORE include(CPack))
+            # Debian packages need proper section, priority, and homepage
+            set(CPACK_DEBIAN_PACKAGE_SECTION "net" CACHE STRING "DEB package section" FORCE)
+            set(CPACK_DEBIAN_PACKAGE_PRIORITY "optional" CACHE STRING "DEB package priority" FORCE)
+            set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "${CPACK_PACKAGE_HOMEPAGE_URL}" CACHE STRING "DEB package homepage" FORCE)
         endif()
 
         # Set package file name BEFORE include(CPack)
