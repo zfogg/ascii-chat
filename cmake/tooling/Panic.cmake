@@ -85,12 +85,43 @@ function(ascii_panic_prepare)
     set(_panic_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/panic-tool")
     set(_panic_cached_exe "${_panic_cache_dir}/ascii-instr-panic${CMAKE_EXECUTABLE_SUFFIX}")
 
+    # Clean up any partial cache state BEFORE checking if exe exists
+    # This handles CI cache restore that has incomplete state (directory exists,
+    # maybe CMakeCache.txt, but no exe) which causes "not a CMake build directory" errors
+    set(_panic_stamp_dir "${CMAKE_BINARY_DIR}/ascii-instr-panic-external-prefix/src/ascii-instr-panic-external-stamp")
+    set(_panic_needs_rebuild FALSE)
+
+    if(EXISTS "${_panic_cache_dir}")
+        if(NOT EXISTS "${_panic_cache_dir}/CMakeCache.txt")
+            message(STATUS "Cleaning incomplete panic tool cache (no CMakeCache.txt): ${_panic_cache_dir}")
+            file(REMOVE_RECURSE "${_panic_cache_dir}")
+            set(_panic_needs_rebuild TRUE)
+        elseif(NOT EXISTS "${_panic_cached_exe}")
+            message(STATUS "Cleaning incomplete panic tool cache (no exe): ${_panic_cache_dir}")
+            file(REMOVE_RECURSE "${_panic_cache_dir}")
+            set(_panic_needs_rebuild TRUE)
+        endif()
+    else()
+        # Cache directory doesn't exist at all - this can happen when:
+        # 1. CI cache only restored build/ but not .deps-cache/
+        # 2. Fresh checkout
+        # In either case, we need to clean any stale stamp files
+        set(_panic_needs_rebuild TRUE)
+    endif()
+
+    # Also clean up stale stamp files if we need a rebuild
+    if(_panic_needs_rebuild AND EXISTS "${_panic_stamp_dir}")
+        message(STATUS "Cleaning stale panic tool stamp files: ${_panic_stamp_dir}")
+        file(REMOVE_RECURSE "${_panic_stamp_dir}")
+    endif()
+
     if(ASCIICHAT_PANIC_TOOL AND EXISTS "${ASCIICHAT_PANIC_TOOL}")
         set(_panic_tool_exe "${ASCIICHAT_PANIC_TOOL}")
         set(_panic_tool_depends "")
         message(STATUS "Using external panic tool: ${_panic_tool_exe}")
-    elseif(EXISTS "${_panic_cached_exe}")
+    elseif(EXISTS "${_panic_cached_exe}" AND EXISTS "${_panic_cache_dir}/CMakeCache.txt")
         # Use cached panic tool (persists across build directory deletes)
+        # Both exe AND CMakeCache.txt must exist for a valid cache
         set(_panic_tool_exe "${_panic_cached_exe}")
         set(_panic_tool_depends "")
         message(STATUS "Using cached panic tool: ${_panic_tool_exe}")
