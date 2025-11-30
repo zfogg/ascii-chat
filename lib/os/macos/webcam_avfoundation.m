@@ -52,6 +52,11 @@
   }
   [_frameLock unlock];
   [_frameLock release];
+  // Release the dispatch semaphore (required under MRC for dispatch objects)
+  if (_frameSemaphore) {
+    dispatch_release(_frameSemaphore);
+    _frameSemaphore = nil;
+  }
   [super dealloc];
 }
 
@@ -122,7 +127,7 @@ static NSArray *getSupportedDeviceTypes(void) {
     [deviceTypes addObject:AVCaptureDeviceTypeExternal];
   }
 
-  return [deviceTypes copy];
+  return [[deviceTypes copy] autorelease];
 }
 
 asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int device_index) {
