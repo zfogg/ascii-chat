@@ -119,9 +119,11 @@ jobs:
 
         if [ "${BUILD_TYPE}" = "Release" ]; then
           cmake_args+=(-DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF)
+          # Explicitly enable Criterion tests in Release mode for CI testing
+          cmake_args+=(-DBUILD_CRITERION_TESTS=ON)
         fi
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
+        cmake -B build "${cmake_args[@]}"
         # Use --verbose to see full compile commands for debugging tooling build issues
         cmake --build build --verbose 2>&1 | tee build_output.log || {
           echo "Build failed. Extracting tooling compile commands..."
@@ -326,7 +328,7 @@ jobs:
 
         FLAGS="-std=c2x --coverage"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake -B build --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
@@ -449,7 +451,7 @@ jobs:
           -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
         )
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake "${cmake_args[@]}"
+        cmake -B build "${cmake_args[@]}"
         cmake --build build
         echo "Performance test executables built:"
         ls -la build/bin/test_performance_* 2>/dev/null || echo "No performance test executables found"
@@ -543,7 +545,7 @@ jobs:
         # Use CMake build system with AddressSanitizer
         FLAGS="-std=c2x -fsanitize=address"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake -B build --preset github \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
@@ -652,7 +654,7 @@ jobs:
 
         FLAGS="-std=c2x"
 
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake -B build --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}" \

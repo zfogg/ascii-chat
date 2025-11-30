@@ -54,7 +54,7 @@ jobs:
 
     - name: Build with debug symbols
       run: |
-        GITHUB_CMAKE_BINARY_DIR=build cmake --preset github \
+        cmake --preset github -B build \
           -DCMAKE_BUILD_TYPE=Debug \
           -DBUILD_TESTS=OFF
         cmake --build build
@@ -145,14 +145,14 @@ jobs:
     - name: Build different optimization levels
       run: |
         echo "Building debug version..."
-        GITHUB_CMAKE_BINARY_DIR=build_debug cmake --preset github \
+        cmake --preset github -B build_debug \
           -DCMAKE_BUILD_TYPE=Debug \
           -DBUILD_TESTS=OFF
         cmake --build build_debug
         DEBUG_SIZE=$(stat -f%z build_debug/bin/ascii-chat 2>/dev/null || stat -c%s build_debug/bin/ascii-chat)
 
         echo "Building release version..."
-        GITHUB_CMAKE_BINARY_DIR=build_release cmake --preset github \
+        cmake --preset github -B build_release \
           -DCMAKE_BUILD_TYPE=Release \
           -DUSE_MIMALLOC=ON \
           -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
