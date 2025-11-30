@@ -118,35 +118,34 @@ if(APPLE)
         )
 
         # Compile options for macOS with Homebrew LLVM
-        # The key challenge: Homebrew LLVM 21+ bundles its own libc++ which has
-        # incompatible header include paths with the macOS SDK.
+        # The key challenge: Homebrew LLVM 21+ bundles its own libc++ which uses
+        # #include_next to find C library headers from the SDK.
         #
-        # The problem: SDK's arm/_types.h expects size_t/ptrdiff_t to already be
-        # defined before being included. These types should come from clang's stddef.h.
+        # The error message says: "header search paths should contain the C++ Standard
+        # Library headers before any C Standard Library"
         #
-        # Root cause: When SDK headers do #include <stddef.h>, the search finds
-        # SDK's stddef.h (which is broken) instead of clang's stddef.h.
-        #
-        # Solution: Use -include to force-include clang's stddef.h BEFORE any
-        # other headers are processed. This ensures size_t, ptrdiff_t, etc. are
-        # defined before SDK headers try to use them.
+        # Solution: Use -nostdinc++ to disable automatic header search, then manually
+        # add headers in the correct order:
+        # 1. Homebrew's libc++ headers (C++ Standard Library)
+        # 2. Clang resource dir (compiler builtins like stddef.h)
+        # 3. SDK headers (C Standard Library)
         if(HAS_LLVM_LIBCXX)
-            set(_defer_compile_flags
+            message(STATUS "Configuring Homebrew LLVM include path order:")
+            message(STATUS "  1. libc++: ${LLVM_LIBCXX_INCLUDE}")
+            message(STATUS "  2. clang builtins: ${CLANG_RESOURCE_DIR}/include")
+            message(STATUS "  3. SDK: ${MACOS_SDK_PATH}/usr/include")
+
+            target_compile_options(ascii-instr-defer PRIVATE
                 -O2
                 -fno-rtti
                 -fexceptions
-                -isysroot ${MACOS_SDK_PATH}
                 -stdlib=libc++
+                -nostdinc++
+                # Order matters! C++ stdlib must come before C stdlib
+                "-isystem${LLVM_LIBCXX_INCLUDE}"
+                "-isystem${CLANG_RESOURCE_DIR}/include"
+                "-isystem${MACOS_SDK_PATH}/usr/include"
             )
-
-            # Force-include clang's stddef.h before anything else
-            # This defines size_t, ptrdiff_t, etc. that SDK headers expect
-            if(CLANG_RESOURCE_DIR AND EXISTS "${CLANG_RESOURCE_DIR}/include/stddef.h")
-                message(STATUS "Force-including clang's stddef.h from: ${CLANG_RESOURCE_DIR}/include")
-                list(APPEND _defer_compile_flags "-include" "${CLANG_RESOURCE_DIR}/include/stddef.h")
-            endif()
-
-            target_compile_options(ascii-instr-defer PRIVATE ${_defer_compile_flags})
         else()
             # Without LLVM libc++, use standard flags
             target_compile_options(ascii-instr-defer PRIVATE
