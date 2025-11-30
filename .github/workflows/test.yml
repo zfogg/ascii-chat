@@ -566,7 +566,9 @@ jobs:
         timeout 10s valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \
           ./build/bin/ascii-chat client --test-pattern > valgrind-client.log 2>&1 &
         CLIENT_PID=$!
-        wait $SERVER_PID $CLIENT_PID
+        # Wait for both processes - timeout exit code 124 is expected (processes ran for full duration)
+        wait $SERVER_PID || true
+        wait $CLIENT_PID || true
 
     - name: Analyze memory reports
       run: |
