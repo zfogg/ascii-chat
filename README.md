@@ -23,9 +23,9 @@ environment at all to video chat with ascii-chat. (\*)
 
 🆕 We support UTF-8 now so it's not just ASCII anymore. However the name is still ascii-chat.
 
-🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do.
+🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol docs](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**.
 
-🆕 Audio is now supported - turn on your microphone and start talking! (TODO: buggy - needs work)
+🆕 Audio is now supported - turn on your microphone and start talking! (TODO: buggy - needs work) See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**.
 
 📚 **[Read the Documentation](https://zfogg.github.io/ascii-chat/)** - Full API reference, architecture guides, and more.
 
@@ -345,6 +345,8 @@ ascii-chat is built on operating system code and several libraries.
 
 #### Operating System APIs
 
+> 🔌 **Cross-platform details: [Platform Abstraction Layer](https://zfogg.github.io/ascii-chat/group__platform.html#topic_platform)**
+
 ascii-chat uses native platform APIs for each platform for webcam access:
 
 - **Linux**: V4L2 Linux kernel module
@@ -485,6 +487,8 @@ The documentation is automatically generated from source code comments using Dox
 - Run `cmake --build build --target docs-open` to generate the docs and open `build/docs/html/index.html` in your default browser (works on macOS, Linux, and Windows).
 
 ### Testing
+
+> 🧪 **Full documentation: [Testing Framework](https://zfogg.github.io/ascii-chat/group__testing.html)**
 
 #### Testing Framework
 
