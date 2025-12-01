@@ -37,6 +37,7 @@
 ```
 
 **Notes:**
+
 - All Phase 1 items were combined into a single initial commit (`6e4b546`)
 - LLDBController in `src/tooling/query/lldb_controller.cpp` implements full LLDB SB API integration
 - HTTP server uses single-threaded design with routes for /, /process, /threads, /query, /breakpoints, /continue, /stop, /step
@@ -78,12 +79,14 @@
 ```
 
 **Notes (4.x Variable Reading):**
+
 - Variable reading integrated into LLDBController class (not separate VariableReader)
 - `queryVariable()` method in `lldb_controller.cpp:346-462` handles file:line:name lookup
 - Supports primitives, pointers, and struct member access via dot notation
 - GET /query endpoint fully functional
 
 **Notes (5.x Breakpoint Mode):**
+
 - Breakpoint functionality integrated into LLDBController (not separate BreakpointManager class)
 - Methods: `setBreakpoint()`, `removeBreakpoint()`, `getBreakpoints()`, `waitForBreakpoint()`
 - HTTP endpoints: GET/POST/DELETE /breakpoints, GET /query with &break parameter
@@ -92,6 +95,7 @@
 - **Important:** Breakpoints stop BEFORE line executes - query variables initialized on previous lines
 
 **Notes (6.x Auto-Spawn):**
+
 - `lib/tooling/query/query.c` fully implemented with:
   - Unix: fork/exec to spawn controller process
   - Windows: CreateProcess for spawning
@@ -101,6 +105,7 @@
 - Test fixture: `tests/fixtures/query_autospawn_test.c`
 
 **Notes (7.x Struct Expansion):**
+
 - Already implemented in initial commit via `valueToInfo()` recursive expansion
 - HTTP parameters: `&expand` (default depth 3) or `&depth=N` (explicit)
 - Arrays limited to 100 elements to prevent huge responses
@@ -122,6 +127,7 @@
 ```
 
 **Notes:**
+
 - `cmake/tooling/Query.cmake` implements `ascii_query_prepare()`/`ascii_query_finalize()`
 - LLDB discovered via `find_library(LLDB_LIBRARY NAMES lldb liblldb)`
 - Query tool built as ExternalProject to avoid inheriting musl/static linking flags
@@ -141,9 +147,9 @@
 [x] 9.5  Fix any macOS-specific issues (none found)
 [ ] 9.6  COMMIT 9: "test(query): verify macOS support"
 
-[ ] 10.1 Test on Linux x86_64 (Ubuntu 22.04)
+[x] 10.1 Test on Linux x86_64 (Ubuntu 22.04)
 [ ] 10.2 Handle ptrace_scope restrictions
-[ ] 10.3 Test in Docker with --cap-add=SYS_PTRACE
+[x] 10.3 Test in Docker with --cap-add=SYS_PTRACE
 [ ] 10.4 Write tests/scripts/test_query_linux.sh
 [ ] 10.5 Fix any Linux-specific issues
 [ ] 10.6 COMMIT 10: "test(query): verify Linux support"
@@ -178,6 +184,7 @@
 ```
 
 **Notes:**
+
 - Test fixture `tests/fixtures/query_test_target.c` created with:
   - Global variable `g_global_counter` for testing global queries
   - `TestData` struct with nested `point` struct for member access testing
@@ -189,6 +196,7 @@
   - Tests process control: /continue, /stop, /step
 
 **Phase 5 Tests Added (commit `d5a8eef`):**
+
 - `tests/unit/tooling/query_test.c` - Comprehensive API tests:
   - QUERY_INIT/SHUTDOWN lifecycle tests
   - State consistency tests
@@ -205,43 +213,36 @@
   - Stop/continue cycling
   - Invalid request resilience
 
-### Phase 6: Documentation & CI (Commits 14-15)
+### Phase 6: Documentation (Commit 14)
+
+> **NOTE:** CI workflow removed from plan - LLDB attachment requires special
+> permissions (codesigning on macOS, ptrace on Linux) that CI runners don't have.
+> Unit tests run as part of main ascii-chat test suite. Integration tests are
+> meant for local development validation.
 
 ```
-[ ] 14.1 Write docs/tooling/query-tool.md (user guide)
-[ ] 14.2 Write docs/tooling/query-api.md (API reference)
-[ ] 14.3 Write docs/tooling/query-troubleshooting.md
-[ ] 14.4 Add Doxygen comments to query.h
-[ ] 14.5 Write src/tooling/query/README.md (quick reference)
-[ ] 14.6 COMMIT 14: "docs(query): add documentation"
-
-[ ] 15.1 Create .github/workflows/query-tool.yml
-[ ] 15.2 Add macOS CI job (macos-latest)
-[ ] 15.3 Add Linux CI job (ubuntu container with SYS_PTRACE)
-[ ] 15.4 Add Windows CI job (windows-latest)
-[ ] 15.5 Verify all CI jobs pass
-[ ] 15.6 COMMIT 15: "ci(query): add CI workflow"
+[ ] 14.1 Write docs/tooling/query.md (user guide)
+[ ] 14.2 Make sure query tool has api docs via doxygen comments in the .c and .cpp and .h files.
+[ ] 14.3 COMMIT 14: "docs(query): add documentation"
 ```
 
-### Phase 7: Merge Preparation (Commit 16)
+### Phase 7: Merge Preparation (Commit 15)
 
 ```
-[ ] 16.1 Run full test suite on macOS
-[ ] 16.2 Run full test suite on Linux
-[ ] 16.3 Run full test suite on Windows
-[ ] 16.4 Run ASan/memory leak checks
-[ ] 16.5 Run code formatter: cmake --build build --target format
-[ ] 16.6 Fix any compiler warnings
-[ ] 16.7 Update CLAUDE.md with query tool section
-[ ] 16.8 Update README.md with query tool mention
-[ ] 16.9 Squash/rebase for clean history (if needed)
-[ ] 16.10 COMMIT 16: "chore(query): final polish"
+[ ] 15.1 Check macOS GitHub CI to see full test suite results
+[ ] 15.2 Check Ubuntu GitHub CI to see full test suite results
+[ ] 15.4 Run ASan/memory leak checks
+[ ] 15.5 Run code formatter: cmake --build build --target format
+[ ] 15.6 Fix any compiler warnings
+[ ] 15.7 Update CLAUDE.md with query tool section
+[ ] 15.9 Squash/rebase for clean history (if needed)
+[ ] 15.10 COMMIT 15: "chore(query): final polish"
 
-[ ] 17.1 Create PR: query-tool → master
-[ ] 17.2 Fill PR description with feature summary
-[ ] 17.3 Request review
-[ ] 17.4 Address review feedback
-[ ] 17.5 Merge to master
+[ ] 16.1 Create PR: query-tool → master
+[ ] 16.2 Fill PR description with feature summary
+[ ] 16.3 Request review
+[ ] 16.4 Address review feedback
+[ ] 16.5 Merge to master
 ```
 
 ### Quick Reference: Key Commands
@@ -267,14 +268,15 @@ cd build && ctest -R test_query
 
 ### Milestones
 
-| Milestone            | Commits | Criteria                                             | Status |
-| -------------------- | ------- | ---------------------------------------------------- | ------ |
-| **MVP**              | 1-4     | Can query primitive variables via HTTP               | ✅ DONE |
-| **Feature Complete** | 1-8     | All query modes, struct expansion, CMake integration | ✅ DONE |
+| Milestone            | Commits | Criteria                                             | Status     |
+| -------------------- | ------- | ---------------------------------------------------- | ---------- |
+| **MVP**              | 1-4     | Can query primitive variables via HTTP               | ✅ DONE    |
+| **Feature Complete** | 1-8     | All query modes, struct expansion, CMake integration | ✅ DONE    |
 | **Platform Ready**   | 1-11    | Works on macOS, Linux, Windows                       | ⏳ Pending |
 | **Production Ready** | 1-16    | Tests, docs, CI, ready for merge                     | ⏳ Pending |
 
 **Current Status (2025-12-01):**
+
 - MVP achieved: Variable queries work via HTTP on macOS
 - Breakpoint mode fully functional
 - Struct expansion (7.x) fully implemented and tested
