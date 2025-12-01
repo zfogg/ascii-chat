@@ -1,5 +1,6 @@
 services:
   ascii-chat-tests:
+    image: ascii-chat-tests
     build:
       context: ..
       dockerfile: tests/Dockerfile
@@ -17,9 +18,6 @@ services:
       # On macOS, volume mounts lose timestamp precision, invalidating Ninja's deps
       # By keeping build artifacts in container filesystem, timestamps stay consistent
       - build-data:/app/build_docker
-
-      # Secondary build directory for ad-hoc docker builds (read-write)
-      - docker-build-data:/app/docker_build
 
       # ccache volume for persistent compilation cache
       # This persists between container runs for faster rebuilds
@@ -43,11 +41,10 @@ services:
              ./tests/scripts/run_tests.sh"
 
     # Optional: Override command for interactive shell
-    # docker-compose run ascii-chat-tests /bin/bash
+    # docker-compose run --rm ascii-chat-tests /bin/bash
 
-    # Environment variables (can be overridden)
     environment:
-      # ccache configuration (from Dockerfile)
+      # ccache configuration
       - CCACHE_DIR=/ccache
       - CCACHE_UMASK=002
       - CCACHE_HARDLINK=true
@@ -61,9 +58,6 @@ services:
       - CRITERION_TEST=1
 
       # Security: Skip known_hosts checking for integration tests
-      # This allows tests to connect without TTY prompts for server verification
-      # NOTE: setenv() inside Criterion tests doesn't propagate to exec()'d children
-      # due to Criterion's fork model, so we set it here at container level
       - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
 
       # AddressSanitizer configuration
@@ -101,8 +95,3 @@ volumes:
     #   type: none
     #   device: ${PWD}/.deps-cache
     #   o: bind
-
-  docker-build-data:
-    driver: local
-    # Stores ad-hoc build trees created under /app/docker_build (e.g. docker_build/extra_test_build)
-    # Allows writable mount separate from primary build_docker directory
