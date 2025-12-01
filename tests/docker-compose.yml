@@ -1,4 +1,5 @@
 services:
+  # Arch Linux container (x86_64 only)
   ascii-chat-tests:
     image: ascii-chat-tests
     build:
@@ -44,6 +45,7 @@ services:
     # docker-compose run --rm ascii-chat-tests /bin/bash
 
     environment:
+      - DOCKER_DEFAULT_PLATFORM=linux/amd64
       # ccache configuration
       - CCACHE_DIR=/ccache
       - CCACHE_UMASK=002
@@ -69,8 +71,45 @@ services:
       # even with SYS_PTRACE capability (depends on host security policies)
       - LSAN_OPTIONS=detect_leaks=0
 
+  # Ubuntu container (ARM64 + x86_64)
+  # Use this on Apple Silicon Macs or ARM64 Linux
+  ascii-chat-tests-ubuntu:
+    image: ascii-chat-tests-ubuntu
+    build:
+      context: ..
+      dockerfile: tests/Dockerfile.ubuntu
+
+    volumes:
+      - ..:/app
+      - ../docker_out:/tmp/out
+      - build-data-ubuntu:/app/build_docker
+      - ccache-data-ubuntu:/ccache
+      - deps-cache-data-ubuntu:/app/.deps-cache
+
+    cap_add:
+      - SYS_PTRACE
+
+    command: >
+      sh -c "cmake --preset docker &&
+             cmake --build build_docker &&
+             ./tests/scripts/run_tests.sh"
+
+    environment:
+      - CCACHE_DIR=/ccache
+      - CCACHE_UMASK=002
+      - CCACHE_HARDLINK=true
+      - CCACHE_NLEVELS=2
+      - CMAKE_GENERATOR=Ninja
+      - CMAKE_BUILD_TYPE=Debug
+      - TESTING=1
+      - CRITERION_TEST=1
+      - ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1
+      - ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+      - LSAN_OPTIONS=detect_leaks=0
+
 # Named volumes for persistent caching
 volumes:
+  # Arch Linux volumes
   build-data:
     driver: local
     # Stores build artifacts (object files, .ninja_deps, executables)
@@ -96,3 +135,13 @@ volumes:
     #   type: none
     #   device: ${PWD}/.deps-cache
     #   o: bind
+
+  # Ubuntu volumes (separate to avoid conflicts)
+  build-data-ubuntu:
+    driver: local
+
+  ccache-data-ubuntu:
+    driver: local
+
+  deps-cache-data-ubuntu:
+    driver: local
