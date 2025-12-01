@@ -711,13 +711,13 @@ else()
                     target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
                 endif()
             elseif(TARGET mimalloc-shared)
-                # Static library - use force_load/whole-archive to embed and export symbols
+                # Static library - use force_load/whole-archive to include all objects
                 add_dependencies(ascii-chat-shared mimalloc-shared)
                 if(APPLE)
-                    # macOS: -force_load exports all symbols from static library
+                    # macOS: -force_load includes all objects from static library
                     target_link_libraries(ascii-chat-shared PRIVATE -force_load $<TARGET_FILE:mimalloc-shared>)
                 else()
-                    # Linux: --whole-archive exports all symbols from static library
+                    # Linux: --whole-archive includes all objects from static library
                     target_link_libraries(ascii-chat-shared PRIVATE
                         -Wl,--whole-archive $<TARGET_FILE:mimalloc-shared> -Wl,--no-whole-archive)
                 endif()
@@ -784,14 +784,20 @@ set(ASCIICHAT_REQUIRED_SYMBOLS
     "crypto_init"
 )
 
-# Add mimalloc symbols when USE_MIMALLOC is enabled with static library
-# (shared mimalloc keeps symbols in separate .so, not embedded in our library)
-if(USE_MIMALLOC AND NOT MIMALLOC_IS_SHARED_LIB)
-    list(APPEND ASCIICHAT_REQUIRED_SYMBOLS "mi_malloc" "mi_free")
+# Internal symbols - linked but not necessarily exported (checked with lowercase 't')
+set(ASCIICHAT_INTERNAL_SYMBOLS "")
+
+# Add mimalloc symbols as internal when USE_MIMALLOC is enabled
+# These are linked into the library but don't need to be exported
+if(USE_MIMALLOC)
+    list(APPEND ASCIICHAT_INTERNAL_SYMBOLS "mi_malloc" "mi_free")
 endif()
 
 # Convert to comma-separated for passing through command line (semicolons cause escaping issues)
 string(REPLACE ";" "," ASCIICHAT_SYMBOLS_CSV "${ASCIICHAT_REQUIRED_SYMBOLS}")
+if(ASCIICHAT_INTERNAL_SYMBOLS)
+    string(REPLACE ";" "," ASCIICHAT_INTERNAL_SYMBOLS_CSV "${ASCIICHAT_INTERNAL_SYMBOLS}")
+endif()
 
 # Validate symbols in shared library after build
 if(ASCIICHAT_LLVM_NM_EXECUTABLE)
@@ -803,12 +809,20 @@ if(ASCIICHAT_LLVM_NM_EXECUTABLE)
         set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
     endif()
 
+    # Build the validation command with optional internal symbols
+    set(_VALIDATE_CMD
+        ${CMAKE_COMMAND}
+        -DLLVM_NM=${ASCIICHAT_LLVM_NM_EXECUTABLE}
+        -DLIBRARY=${SHARED_LIB_TO_VALIDATE}
+        -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
+    )
+    if(ASCIICHAT_INTERNAL_SYMBOLS_CSV)
+        list(APPEND _VALIDATE_CMD -DINTERNAL_SYMBOLS=${ASCIICHAT_INTERNAL_SYMBOLS_CSV})
+    endif()
+    list(APPEND _VALIDATE_CMD -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake)
+
     add_custom_command(TARGET ascii-chat-shared POST_BUILD
-        COMMAND ${CMAKE_COMMAND}
-            -DLLVM_NM=${ASCIICHAT_LLVM_NM_EXECUTABLE}
-            -DLIBRARY=${SHARED_LIB_TO_VALIDATE}
-            -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
-            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake
+        COMMAND ${_VALIDATE_CMD}
         COMMENT "Validating ascii-chat symbols in shared library"
         VERBATIM
     )
