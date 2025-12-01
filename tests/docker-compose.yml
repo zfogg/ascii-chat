@@ -36,7 +36,7 @@ services:
     # Run tests by default
     # Use build_docker directory (build is for native OS)
     command: >
-      sh -c "cmake --preset default -B build_docker &&
+      sh -c "cmake --preset docker &&
              cmake --build build_docker &&
              ./tests/scripts/run_tests.sh"
 
