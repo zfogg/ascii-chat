@@ -186,6 +186,19 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                     "${CMAKE_BINARY_DIR}"
                 COMMENT "Removing embedded file paths from ascii-chat binary"
             )
+
+            # Validate no debug sections AFTER stripping (Release builds only)
+            if(CMAKE_BUILD_TYPE STREQUAL "Release" AND ASCIICHAT_LLVM_READELF_EXECUTABLE)
+                add_custom_command(TARGET ascii-chat POST_BUILD
+                    COMMAND ${CMAKE_COMMAND}
+                        -DMODE=no_debug
+                        -DBINARY=$<TARGET_FILE:ascii-chat>
+                        -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
+                        -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
+                    COMMENT "Validating no debug sections"
+                    VERBATIM
+                )
+            endif()
         else()
             # On Windows, use strip to remove debug info and paths
             # Note: Windows PE format doesn't have .comment sections
