@@ -146,6 +146,19 @@
       }
     },
     {
+      "name": "docker",
+      "displayName": "Docker",
+      "description": "Configuration for Docker container builds (tests enabled)",
+      "inherits": "base-debug",
+      "binaryDir": "${sourceDir}/build_docker",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTS": "ON",
+        "USE_CPACK": "OFF",
+        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON"
+      }
+    },
+    {
       "name": "vs26",
       "inherits": "base",
       "generator": "Visual Studio 18 2026",
@@ -205,6 +218,10 @@
     {
       "name": "github",
       "configurePreset": "github"
+    },
+    {
+      "name": "docker",
+      "configurePreset": "docker"
     },
     {
       "name": "vs26",
