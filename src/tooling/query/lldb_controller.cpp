@@ -215,9 +215,31 @@ bool LLDBController::stop() {
         return false;
     }
 
+    // Sync state first to ensure we have the current process state
+    syncProcessState();
+
+    // Check if already stopped
+    lldb::StateType current = process_.GetState();
+    if (current == lldb::eStateStopped || current == lldb::eStateSuspended) {
+        clearError();
+        return true;
+    }
+
+    // Only try to stop if running
+    if (current != lldb::eStateRunning && current != lldb::eStateStepping) {
+        setError("Process is not running (state: " + std::to_string(static_cast<int>(current)) + ")");
+        return false;
+    }
+
     lldb::SBError error = process_.Stop();
     if (error.Fail()) {
         setError("Failed to stop process: " + std::string(error.GetCString() ? error.GetCString() : "unknown error"));
+        return false;
+    }
+
+    // Wait for process to actually stop (async mode)
+    if (!waitForState(lldb::eStateStopped, 5)) {
+        setError("Timeout waiting for process to stop");
         return false;
     }
 
@@ -231,11 +253,25 @@ bool LLDBController::resume() {
         return false;
     }
 
+    // Sync state first
+    syncProcessState();
+
+    // Check if already running
+    lldb::StateType current = process_.GetState();
+    if (current == lldb::eStateRunning || current == lldb::eStateStepping) {
+        clearError();
+        return true;
+    }
+
     lldb::SBError error = process_.Continue();
     if (error.Fail()) {
         setError("Failed to resume process: " + std::string(error.GetCString() ? error.GetCString() : "unknown error"));
         return false;
     }
+
+    // Wait briefly for process to start running (async mode)
+    // Note: We don't wait long because running is the target state
+    waitForState(lldb::eStateRunning, 2);
 
     clearError();
     return true;
@@ -315,6 +351,9 @@ std::vector<ThreadInfo> LLDBController::getThreads() const {
     if (!process_.IsValid()) {
         return result;
     }
+
+    // Sync state to ensure we have fresh thread info
+    syncProcessState();
 
     lldb::SBThread selected = process_.GetSelectedThread();
     uint64_t selected_id = selected.IsValid() ? selected.GetThreadID() : 0;
@@ -601,6 +640,63 @@ void LLDBController::setError(const std::string &msg) const { last_error_ = msg;
 
 void LLDBController::clearError() const { last_error_.clear(); }
 
+void LLDBController::syncProcessState() const {
+    if (!listener_.IsValid() || !process_.IsValid()) {
+        return;
+    }
+
+    // Drain all pending events to synchronize LLDB's internal state
+    lldb::SBEvent event;
+    while (listener_.PeekAtNextEvent(event)) {
+        listener_.GetNextEvent(event);
+    }
+}
+
+bool LLDBController::waitForState(lldb::StateType target_state, uint32_t timeout_sec) const {
+    if (!listener_.IsValid() || !process_.IsValid()) {
+        return false;
+    }
+
+    // Check if already in target state
+    lldb::StateType current = process_.GetState();
+    if (current == target_state) {
+        return true;
+    }
+
+    // Wait for state change event
+    lldb::SBEvent event;
+    auto start = std::chrono::steady_clock::now();
+
+    while (true) {
+        // Check timeout
+        auto elapsed = std::chrono::steady_clock::now() - start;
+        auto elapsed_sec = std::chrono::duration_cast<std::chrono::seconds>(elapsed).count();
+        if (elapsed_sec >= timeout_sec) {
+            return false;
+        }
+
+        // Wait for event with 1 second timeout
+        bool got_event = listener_.WaitForEvent(1, event);
+        if (got_event) {
+            lldb::StateType new_state = lldb::SBProcess::GetStateFromEvent(event);
+            if (new_state == target_state) {
+                return true;
+            }
+            // Check for terminal states
+            if (new_state == lldb::eStateExited || new_state == lldb::eStateCrashed ||
+                new_state == lldb::eStateDetached) {
+                return false;
+            }
+        }
+
+        // Re-check process state (might have been updated)
+        current = process_.GetState();
+        if (current == target_state) {
+            return true;
+        }
+    }
+}
+
 lldb::SBThread LLDBController::getSelectedThreadInternal() const {
     if (!process_.IsValid()) {
         return lldb::SBThread();
@@ -755,6 +851,8 @@ BreakpointInfo LLDBController::breakpointToInfo(lldb::SBBreakpoint bp) {
     info.id = static_cast<int32_t>(bp.GetID());
     info.enabled = bp.IsEnabled();
     info.hit_count = bp.GetHitCount();
+    info.line = 0;  // Initialize to 0 for unresolved breakpoints
+    info.file = ""; // Initialize to empty for unresolved breakpoints
 
     const char *condition = bp.GetCondition();
     info.condition = condition ? condition : "";
