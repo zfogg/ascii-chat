@@ -457,17 +457,22 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
         endif()
     endif()
 
-    # Remove absolute file paths from __FILE__ macro expansions
+    # Remove absolute file paths from binaries (__FILE__ macros and debug info)
     # This prevents usernames and full paths from appearing in release binaries
+    # -ffile-prefix-map is equivalent to -fdebug-prefix-map + -fmacro-prefix-map
     if(CMAKE_C_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "GNU")
-        # Get the source directory and normalize paths for Windows
+        # Get source and build directories with normalized paths
         get_filename_component(SOURCE_DIR "${CMAKE_SOURCE_DIR}" ABSOLUTE)
+        get_filename_component(BUILD_DIR "${CMAKE_BINARY_DIR}" ABSOLUTE)
 
-        # NOTE: On Windows, this doesn't work. We use the bash script
-        # "cmake/utils/remove_paths.sh" (via Git Bash or WSL) that edits strings with paths from the
-        # builder's machine in them found in the release binary for after it's
-        # built.
-        add_compile_options(-fmacro-prefix-map="${SOURCE_DIR}/=")
+        # Map source directory to empty string (removes path prefix)
+        add_compile_options(-ffile-prefix-map=${SOURCE_DIR}/=)
+        # Map build directory to "build/" (for generated files)
+        add_compile_options(-ffile-prefix-map=${BUILD_DIR}/=build/)
+
+        # NOTE: On Windows with Clang, these flags may not fully work.
+        # We use the bash script "cmake/utils/remove_paths.sh" (via Git Bash)
+        # as a fallback to edit remaining paths in the release binary.
     endif()
 
     # When IPO/LTO is enabled we want to retain native code in the object files
