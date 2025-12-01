@@ -1,0 +1,87 @@
+# Dockerfile for running ascii-chat tests on ARM64 (Apple Silicon, etc.)
+# Uses Ubuntu for ARM64 compatibility with full Criterion support
+
+FROM ubuntu:24.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Use Clang as the default compiler, Ninja as default generator
+ENV CC=clang \
+  CXX=clang++ \
+  CMAKE_GENERATOR=Ninja \
+  LANG=C.UTF-8 \
+  LC_ALL=C.UTF-8 \
+  TESTING=1 \
+  ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+
+# Configure ccache for Docker volume caching
+ENV CCACHE_DIR=/ccache \
+  CCACHE_UMASK=002 \
+  CCACHE_HARDLINK=true \
+  CCACHE_NLEVELS=2
+
+# Install git and basic utilities first
+RUN apt-get update && apt-get install -y \
+  git \
+  curl \
+  ca-certificates \
+  gpg \
+  wget \
+  lsb-release \
+  && rm -rf /var/lib/apt/lists/*
+
+# Add Kitware APT repository for latest CMake
+RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
+  | gpg --dearmor - \
+  | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null \
+  && echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ noble main' \
+  | tee /etc/apt/sources.list.d/kitware.list >/dev/null
+
+# Install all dependencies
+RUN apt-get update && apt-get install -y \
+  pkg-config make \
+  cmake ninja-build ccache \
+  musl-tools musl-dev \
+  libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
+  libcriterion-dev libffi-dev \
+  doxygen \
+  dpkg-dev rpm \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install LLVM/Clang (try versions from newest to oldest)
+RUN apt-get update && \
+  ( apt-get install -y clang-21 clang-tools-21 clang-tidy-21 libclang-21-dev llvm-21 llvm-21-dev lld-21 lldb-21 2>/dev/null && LLVM_VERSION=21 || \
+    apt-get install -y clang-20 clang-tools-20 clang-tidy-20 libclang-20-dev llvm-20 llvm-20-dev lld-20 lldb-20 2>/dev/null && LLVM_VERSION=20 || \
+    apt-get install -y clang-19 clang-tools-19 clang-tidy-19 libclang-19-dev llvm-19 llvm-19-dev lld-19 lldb-19 2>/dev/null && LLVM_VERSION=19 || \
+    apt-get install -y clang-18 clang-tools-18 clang-tidy-18 libclang-18-dev llvm-18 llvm-18-dev lld-18 lldb-18 2>/dev/null && LLVM_VERSION=18 ) && \
+  rm -rf /var/lib/apt/lists/*
+
+# Set up LLVM alternatives (find which version was installed)
+RUN LLVM_VERSION=$(ls /usr/lib/llvm-* -d 2>/dev/null | sort -V | tail -1 | grep -oE '[0-9]+$') && \
+  LLVM_BIN="/usr/lib/llvm-${LLVM_VERSION}/bin" && \
+  echo "Setting up LLVM ${LLVM_VERSION} alternatives from ${LLVM_BIN}" && \
+  update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200 && \
+  update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200 && \
+  update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 200 && \
+  update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 200 && \
+  update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 200 && \
+  update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200 && \
+  update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200 && \
+  update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200 && \
+  update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200 || true && \
+  update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200 || true && \
+  update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200 || true && \
+  update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200 || true && \
+  update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200 || true && \
+  update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200 || true && \
+  update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200 || true
+
+# Verify installation
+RUN clang --version && cmake --version
+
+# Set working directory
+WORKDIR /app
+
+# Default command runs the test script directly
+CMD ["./tests/scripts/run_tests.sh"]
