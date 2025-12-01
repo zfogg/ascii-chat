@@ -503,6 +503,14 @@ typedef struct {
   char palette_custom[64];
   /** @brief Client's desired frame rate (1-144 FPS) */
   uint8_t desired_fps;
+  /** @brief Color filter enabled (true if --color-filter specified) */
+  bool color_filter_enabled;
+  /** @brief Color filter RGB value (R component, 0-255) */
+  uint8_t color_filter_r;
+  /** @brief Color filter RGB value (G component, 0-255) */
+  uint8_t color_filter_g;
+  /** @brief Color filter RGB value (B component, 0-255) */
+  uint8_t color_filter_b;
 } terminal_capabilities_t;
 
 /**

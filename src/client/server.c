@@ -968,7 +968,28 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
   net_packet.detection_reliable = caps.detection_reliable;
   net_packet.utf8_support = opt_force_utf8 ? 1 : 0;
 
-  SAFE_MEMSET(net_packet.reserved, sizeof(net_packet.reserved), 0, sizeof(net_packet.reserved));
+  // Set color filter if specified
+  if (opt_color_filter[0] != '\0') {
+    uint8_t r, g, b;
+    if (parse_color_filter(opt_color_filter, &r, &g, &b) == ASCIICHAT_OK) {
+      net_packet.color_filter_enabled = 1;
+      net_packet.color_filter_r = r;
+      net_packet.color_filter_g = g;
+      net_packet.color_filter_b = b;
+    } else {
+      // Shouldn't happen - was validated during option parsing
+      log_warn("Failed to parse color filter '%s', disabling", opt_color_filter);
+      net_packet.color_filter_enabled = 0;
+      net_packet.color_filter_r = 0;
+      net_packet.color_filter_g = 0;
+      net_packet.color_filter_b = 0;
+    }
+  } else {
+    net_packet.color_filter_enabled = 0;
+    net_packet.color_filter_r = 0;
+    net_packet.color_filter_g = 0;
+    net_packet.color_filter_b = 0;
+  }
 
   // Use threaded_send_packet() which handles encryption
   return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));

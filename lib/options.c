@@ -185,6 +185,19 @@ ASCIICHAT_API palette_type_t opt_palette_type = PALETTE_STANDARD; // Default to 
 ASCIICHAT_API char opt_palette_custom[256] = "";                  // Custom palette characters
 ASCIICHAT_API bool opt_palette_custom_set = false;                // True if custom palette was set
 
+// Color filter option
+ASCIICHAT_API char opt_color_filter[OPTIONS_BUFF_SIZE] = ""; // Color filter spec (hex or preset name)
+
+// Color filter preset lookup table
+static const struct {
+  const char *name;
+  uint8_t r, g, b;
+} color_presets[] = {
+    {"red", 255, 0, 0},       {"green", 0, 255, 0},    {"blue", 0, 0, 255},    {"cyan", 0, 255, 255},
+    {"magenta", 255, 0, 255}, {"yellow", 255, 255, 0}, {"matrix", 0, 255, 65}, {"amber", 255, 191, 0},
+    {"white", 255, 255, 255}, {NULL, 0, 0, 0},
+};
+
 // Default weights; must add up to 1.0
 const float weight_red = 0.2989f;
 const float weight_green = 0.5866f;
@@ -241,6 +254,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"list-webcams", no_argument, NULL, 1013},
                                          {"list-microphones", no_argument, NULL, 1014},
                                          {"list-speakers", no_argument, NULL, 1015},
+                                         {"color-filter", required_argument, NULL, 1016},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -577,6 +591,64 @@ int validate_fps(const char *value_str, char *error_msg, size_t error_msg_size) 
     return -1;
   }
   return fps_val;
+}
+
+/**
+ * Parse color filter string (hex or preset name)
+ * @param str Input string: "#RRGGBB", "RRGGBB", or preset name (e.g., "matrix")
+ * @param r Output red component (0-255)
+ * @param g Output green component (0-255)
+ * @param b Output blue component (0-255)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t parse_color_filter(const char *str, uint8_t *r, uint8_t *g, uint8_t *b) {
+  if (!str || !r || !g || !b) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter to parse_color_filter");
+  }
+
+  // Skip leading # if present
+  const char *hex = str;
+  if (hex[0] == '#') {
+    hex++;
+  }
+
+  // Check for preset name first
+  for (int i = 0; color_presets[i].name != NULL; i++) {
+    if (strcasecmp(str, color_presets[i].name) == 0) {
+      *r = color_presets[i].r;
+      *g = color_presets[i].g;
+      *b = color_presets[i].b;
+      return ASCIICHAT_OK;
+    }
+  }
+
+  // Try to parse as hex color (RRGGBB)
+  if (strlen(hex) != 6) {
+    return SET_ERRNO(ERROR_INVALID_PARAM,
+                     "Invalid color filter '%s'. Use #RRGGBB, RRGGBB, or preset: red, green, blue, cyan, magenta, "
+                     "yellow, matrix, amber, white",
+                     str);
+  }
+
+  // Validate all characters are hex digits
+  for (int i = 0; i < 6; i++) {
+    if (!((hex[i] >= '0' && hex[i] <= '9') || (hex[i] >= 'a' && hex[i] <= 'f') || (hex[i] >= 'A' && hex[i] <= 'F'))) {
+      return SET_ERRNO(ERROR_INVALID_PARAM,
+                       "Invalid hex character '%c' in color filter '%s'. Use #RRGGBB, RRGGBB, or preset name", hex[i],
+                       str);
+    }
+  }
+
+  // Parse hex values
+  unsigned int r_val, g_val, b_val;
+  if (SAFE_SSCANF(hex, "%2x%2x%2x", &r_val, &g_val, &b_val) != 3) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse hex color '%s'", str);
+  }
+
+  *r = (uint8_t)r_val;
+  *g = (uint8_t)g_val;
+  *b = (uint8_t)b_val;
+  return ASCIICHAT_OK;
 }
 
 // ============================================================================
@@ -1122,6 +1194,28 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       _exit(0);
     }
 
+    case 1016: { // --color-filter (client only - monochrome color tint)
+      if (!is_client) {
+        (void)fprintf(stderr, "Error: --color-filter is a client-only option.\n");
+        return ERROR_USAGE;
+      }
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "color-filter", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+      // Validate the color filter format (will be parsed later when sending capabilities)
+      uint8_t r, g, b;
+      if (parse_color_filter(value_str, &r, &g, &b) != ASCIICHAT_OK) {
+        (void)fprintf(stderr,
+                      "Error: Invalid color filter '%s'.\n"
+                      "Use hex format (#RRGGBB or RRGGBB) or preset: red, green, blue, cyan, magenta, yellow, matrix, "
+                      "amber, white\n",
+                      value_str);
+        return ERROR_USAGE;
+      }
+      SAFE_SNPRINTF(opt_color_filter, OPTIONS_BUFF_SIZE, "%s", value_str);
+      break;
+    }
+
     case 'M': { // --render-mode
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "render-mode", is_client);
       if (!value_str)
@@ -1572,6 +1666,10 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "standard, blocks, digital, minimal, cool, custom (default: standard)\n");
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     " USAGE_INDENT
                                    "Custom palette characters (implies --palette=custom) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --color-filter COLOR      " USAGE_INDENT
+                                   "monochrome tint: #RRGGBB, RRGGBB, or preset (red, green, blue, cyan,\n");
+  (void)fprintf(desc, USAGE_INDENT "                             " USAGE_INDENT
+                                   "magenta, yellow, matrix, amber, white) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-A --audio                   " USAGE_INDENT
                                    "enable audio capture and playback (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "

@@ -871,8 +871,14 @@ typedef struct {
   char palette_custom[64];
   /** @brief Client's desired frame rate (1-144 FPS) */
   uint8_t desired_fps;
-  /** @brief Reserved bytes for alignment (must be zero) */
-  uint8_t reserved[2];
+  /** @brief Color filter enabled (1 = enabled, 0 = disabled) */
+  uint8_t color_filter_enabled;
+  /** @brief Color filter RGB value (R component, 0-255) */
+  uint8_t color_filter_r;
+  /** @brief Color filter RGB value (G component, 0-255) */
+  uint8_t color_filter_g;
+  /** @brief Color filter RGB value (B component, 0-255) */
+  uint8_t color_filter_b;
 } /** @cond */
 PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
 

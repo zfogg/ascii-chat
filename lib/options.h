@@ -188,6 +188,28 @@
  */
 
 /**
+ * @brief Parse color filter string to RGB values
+ * @param str Color filter string (hex code like "#RRGGBB" or preset name like "matrix")
+ * @param r Pointer to store red component (0-255)
+ * @param g Pointer to store green component (0-255)
+ * @param b Pointer to store blue component (0-255)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on parse error
+ *
+ * Parses a color filter specification string and extracts RGB values.
+ *
+ * **Supported formats**:
+ * - Hex codes: `#RRGGBB` or `RRGGBB` (e.g., `#00ff00`, `ff0000`)
+ * - Preset names: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`,
+ *   `matrix`, `amber`, `white`
+ *
+ * @note Returns ERROR_INVALID_PARAM for invalid hex codes or unknown presets.
+ * @note On error, r/g/b values are not modified.
+ *
+ * @ingroup options
+ */
+asciichat_error_t parse_color_filter(const char *str, uint8_t *r, uint8_t *g, uint8_t *b);
+
+/**
  * @brief Safely parse string to integer with validation
  * @param str String to parse (must not be NULL)
  * @return Integer value on success, INT_MIN on error
@@ -1094,6 +1116,36 @@ extern ASCIICHAT_API char opt_server_key[OPTIONS_BUFF_SIZE];
  * @ingroup options
  */
 extern ASCIICHAT_API char opt_client_keys[OPTIONS_BUFF_SIZE];
+
+/** @} */
+
+/**
+ * @name Color Filter Options
+ * @{
+ */
+
+/** @brief Color filter specification string from --color-filter
+ *
+ * Hex color code or preset name for monochrome tint rendering. When specified,
+ * the server renders ASCII art as grayscale tinted with this color.
+ *
+ * **Default**: Empty string (no color filter)
+ *
+ * **Command-line**: `--color-filter <color>`
+ *
+ * **Supported formats**:
+ * - Hex codes: `#RRGGBB` or `RRGGBB` (e.g., `#00ff00`, `ff0000`)
+ * - Preset names: `red`, `green`, `blue`, `cyan`, `magenta`, `yellow`,
+ *   `matrix`, `amber`, `white`
+ *
+ * **Example**: `--color-filter #00ff00` or `--color-filter matrix`
+ *
+ * @note Client mode only: Color filter is applied server-side for each client
+ * @note Each client can have their own color filter preference
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API char opt_color_filter[OPTIONS_BUFF_SIZE];
 
 /** @} */
 
