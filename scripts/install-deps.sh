@@ -11,6 +11,24 @@
 
 set -e
 
+# Parse arguments
+DANGEROUSLY_DELETE_CONFLICTS=false
+for arg in "$@"; do
+  case $arg in
+    --dangerously-delete-conflicts)
+      DANGEROUSLY_DELETE_CONFLICTS=true
+      ;;
+    --help|-h)
+      echo "Usage: $0 [--dangerously-delete-conflicts]"
+      echo ""
+      echo "Options:"
+      echo "  --dangerously-delete-conflicts  Delete conflicting binaries in /usr/bin"
+      echo "                                  (requires CI=true environment variable)"
+      exit 0
+      ;;
+  esac
+done
+
 echo ""
 echo "=== ascii-chat Dependency Installer ==="
 echo ""
@@ -136,17 +154,62 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       sudo update-alternatives --remove-all "$tool" 2>/dev/null || true
     done
 
-    # Also remove any non-alternatives binaries in /usr/bin that might shadow our alternatives
+    # Check for non-alternatives binaries in /usr/bin that would shadow our alternatives
+    CONFLICTING_TOOLS=""
+    STALE_SYMLINKS=""
     for tool in $LLVM_TOOLS; do
-      echo "Attempting to remove $tool from /usr/bin..."
       if [ -e "/usr/bin/$tool" ] && [ ! -L "/usr/bin/$tool" ]; then
-        echo "Removing non-symlink $tool from /usr/bin..."
-        sudo rm -f "/usr/bin/$tool"
+        CONFLICTING_TOOLS="$CONFLICTING_TOOLS /usr/bin/$tool"
       elif [ -L "/usr/bin/$tool" ] && [ ! -e "/etc/alternatives/$tool" ]; then
-        echo "Removing stale symlink $tool from /usr/bin..."
-        sudo rm -f "/usr/bin/$tool"
+        STALE_SYMLINKS="$STALE_SYMLINKS /usr/bin/$tool"
       fi
     done
+
+    if [ -n "$CONFLICTING_TOOLS" ] || [ -n "$STALE_SYMLINKS" ]; then
+      if [ "$DANGEROUSLY_DELETE_CONFLICTS" = "true" ]; then
+        # Safety check: --dangerously-delete-conflicts requires CI environment
+        if [ "$CI" != "true" ]; then
+          echo >&2 "ERROR: --dangerously-delete-conflicts requires CI=true environment variable"
+          echo >&2 "This flag is intended for CI systems only, not interactive use."
+          exit 1
+        fi
+        echo "Removing conflicting binaries (--dangerously-delete-conflicts):"
+        for f in $CONFLICTING_TOOLS $STALE_SYMLINKS; do
+          echo "  Removing: $f"
+          sudo rm -f "$f"
+        done
+      else
+        echo ""
+        echo "=========================================="
+        echo "  ACTION REQUIRED: Conflicting binaries found"
+        echo "=========================================="
+        echo ""
+        echo "The following files in /usr/bin would shadow the LLVM $LLVM_VERSION"
+        echo "alternatives we're trying to configure:"
+        echo ""
+        if [ -n "$CONFLICTING_TOOLS" ]; then
+          echo "Non-symlink binaries (probably from manual install):"
+          for f in $CONFLICTING_TOOLS; do
+            echo "  $f"
+          done
+          echo ""
+        fi
+        if [ -n "$STALE_SYMLINKS" ]; then
+          echo "Stale symlinks (point to non-existent alternatives):"
+          for f in $STALE_SYMLINKS; do
+            echo "  $f"
+          done
+          echo ""
+        fi
+        echo "To fix this, run:"
+        echo ""
+        echo "  sudo rm -f$CONFLICTING_TOOLS$STALE_SYMLINKS"
+        echo ""
+        echo "Then re-run this script."
+        echo ""
+        exit 1
+      fi
+    fi
 
     # Register each tool as a separate alternative (no slaves - avoids conflicts)
     # Use priority 200 to override any lower-priority alternatives
