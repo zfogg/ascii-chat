@@ -548,6 +548,26 @@ SAFE_STRNCPY(dest, src, sizeof(dest));
 - `$SSH_AUTH_SOCK` - SSH agent socket path for password-free key authentication (Unix only)
 - `$ASCII_CHAT_SSH_PASSWORD` - Passphrase for encrypted SSH keys (⚠️ sensitive, prefer ssh-agent)
 - `$LOG_LEVEL` - Enable logging at a certain level (DEBUG/0, INFO/1, WARN/2, ERROR/3, FATAL/4)
+- `$CLAUDECODE` - Automatically set by Claude Code; enables LLM-friendly behavior (see below)
+
+### CLAUDECODE Environment Variable
+
+Claude Code automatically sets `CLAUDECODE=1` in its environment. ascii-chat detects this to optimize behavior for LLM automation:
+
+**Build System:**
+- `cmake/utils/Colors.cmake` - Disables ANSI color codes in CMake output
+
+**Debug Builds Only (`#ifndef NDEBUG`):**
+- `lib/crypto/known_hosts.c` - Skips interactive host identity prompts
+- `lib/crypto/handshake.c` - Skips known_hosts checking (can't do interactive prompts)
+- `src/client/crypto.c` - Skips "continue anyway?" security prompts
+- `lib/platform/posix/terminal.c` - Forces `--color-mode mono` to reduce output tokens
+- `lib/platform/windows/terminal.c` - Forces `--color-mode mono` to reduce output tokens
+
+**Why This Exists:**
+- LLMs cannot interact with keyboard prompts, so security prompts block automation
+- Color codes waste tokens and add no value for LLM parsing
+- Debug-only ensures production builds maintain full security
 
 ### Common Issues and Solutions
 
