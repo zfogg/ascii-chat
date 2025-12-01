@@ -15,9 +15,10 @@
 # Runtime library for QUERY_INIT/QUERY_SHUTDOWN macros
 add_library(ascii-query-runtime STATIC query.c)
 
+# Include from lib/ so users can do: #include "tooling/query/query.h"
 target_include_directories(ascii-query-runtime PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include/tooling/query>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/lib>
+    $<INSTALL_INTERFACE:include>
 )
 
 # Add compile definition to indicate query support is available
