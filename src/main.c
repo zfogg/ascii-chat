@@ -458,7 +458,7 @@ int main(int argc, char *argv[]) {
       if (opt_name[0] == '-') opt_name++;
       if (opt_name[0] == '-') opt_name++;
 
-      const char *suggestion = find_similar_top_level_option(opt_name);
+      const char *suggestion = levenshtein_find_similar(opt_name, g_top_level_options);
       if (suggestion) {
         fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
         fprintf(stderr, "Did you mean '--%s'?\n", suggestion);

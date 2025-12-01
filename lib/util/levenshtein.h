@@ -11,6 +11,7 @@
 #define LEVENSHTEIN_H
 
 #include <stddef.h>
+#include "../common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,7 +38,7 @@ extern "C" {
  *
  * @see https://en.wikipedia.org/wiki/Levenshtein_distance
  */
-size_t levenshtein(const char *a, const char *b);
+ASCIICHAT_API size_t levenshtein(const char *a, const char *b);
 
 /**
  * @brief Calculate Levenshtein distance with explicit string lengths
@@ -48,7 +49,7 @@ size_t levenshtein(const char *a, const char *b);
  * @param bLength Length of second string
  * @return Edit distance, or SIZE_MAX on error
  */
-size_t levenshtein_n(const char *a, const size_t length, const char *b, const size_t bLength);
+ASCIICHAT_API size_t levenshtein_n(const char *a, const size_t length, const char *b, const size_t bLength);
 
 /**
  * @brief Find the most similar string from a NULL-terminated array
@@ -60,7 +61,7 @@ size_t levenshtein_n(const char *a, const size_t length, const char *b, const si
  * @param candidates NULL-terminated array of candidate strings
  * @return Best matching string, or NULL if no match within threshold
  */
-const char *levenshtein_find_similar(const char *unknown, const char *const *candidates);
+ASCIICHAT_API const char *levenshtein_find_similar(const char *unknown, const char *const *candidates);
 
 #ifdef __cplusplus
 }
