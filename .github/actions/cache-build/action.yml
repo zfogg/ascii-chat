@@ -33,7 +33,7 @@ inputs:
   cache-version:
     description: 'Version string used to invalidate both caches when inputs change.'
     required: false
-    default: v1
+    default: v2
 
 outputs:
   build-cache-key:
