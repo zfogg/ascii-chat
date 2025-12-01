@@ -673,19 +673,20 @@ else()
         endif()
         # Link mimalloc with force_load/whole-archive to export all symbols
         if(USE_MIMALLOC)
+            # For FetchContent builds, use generator expression to get library path at build time
             if(TARGET mimalloc-shared)
                 add_dependencies(ascii-chat-shared mimalloc-shared)
-            endif()
-            set(_MIMALLOC_LIB_TO_LINK "")
-            if(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                set(_MIMALLOC_LIB_TO_LINK "${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB}")
-            elseif(MIMALLOC_SHARED_LIBRARIES)
-                set(_MIMALLOC_LIB_TO_LINK "${MIMALLOC_SHARED_LIBRARIES}")
-            endif()
-            if(_MIMALLOC_LIB_TO_LINK)
                 # Linux musl: --whole-archive exports all symbols from static library
                 target_link_libraries(ascii-chat-shared PRIVATE
-                    -Wl,--whole-archive ${_MIMALLOC_LIB_TO_LINK} -Wl,--no-whole-archive)
+                    -Wl,--whole-archive $<TARGET_FILE:mimalloc-shared> -Wl,--no-whole-archive)
+            elseif(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
+                # Fallback: use explicit path if set (cached builds)
+                target_link_libraries(ascii-chat-shared PRIVATE
+                    -Wl,--whole-archive ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB} -Wl,--no-whole-archive)
+            elseif(MIMALLOC_SHARED_LIBRARIES)
+                # Another fallback: use MIMALLOC_SHARED_LIBRARIES if set
+                target_link_libraries(ascii-chat-shared PRIVATE
+                    -Wl,--whole-archive ${MIMALLOC_SHARED_LIBRARIES} -Wl,--no-whole-archive)
             endif()
         endif()
     else()
@@ -701,24 +702,33 @@ else()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use force_load/whole-archive to export all mimalloc symbols from the shared library
         if(USE_MIMALLOC)
-            # Determine which mimalloc library to link
-            set(_MIMALLOC_LIB_TO_LINK "")
-            if(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                set(_MIMALLOC_LIB_TO_LINK "${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB}")
-            elseif(MIMALLOC_SHARED_LIBRARIES)
-                set(_MIMALLOC_LIB_TO_LINK "${MIMALLOC_SHARED_LIBRARIES}")
-            elseif(TARGET mimalloc-shared)
-                get_target_property(_MIMALLOC_LIB_TO_LINK mimalloc-shared IMPORTED_LOCATION)
-            endif()
-
-            if(_MIMALLOC_LIB_TO_LINK)
+            # For FetchContent builds, the mimalloc-shared target exists but isn't an IMPORTED target
+            # Use generator expression to get the library path at build time
+            if(TARGET mimalloc-shared)
+                add_dependencies(ascii-chat-shared mimalloc-shared)
                 if(APPLE)
                     # macOS: -force_load exports all symbols from static library
-                    target_link_libraries(ascii-chat-shared PRIVATE -force_load ${_MIMALLOC_LIB_TO_LINK})
+                    target_link_libraries(ascii-chat-shared PRIVATE -force_load $<TARGET_FILE:mimalloc-shared>)
                 else()
                     # Linux: --whole-archive exports all symbols from static library
                     target_link_libraries(ascii-chat-shared PRIVATE
-                        -Wl,--whole-archive ${_MIMALLOC_LIB_TO_LINK} -Wl,--no-whole-archive)
+                        -Wl,--whole-archive $<TARGET_FILE:mimalloc-shared> -Wl,--no-whole-archive)
+                endif()
+            elseif(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
+                # Fallback: use explicit path if set (cached builds)
+                if(APPLE)
+                    target_link_libraries(ascii-chat-shared PRIVATE -force_load ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
+                else()
+                    target_link_libraries(ascii-chat-shared PRIVATE
+                        -Wl,--whole-archive ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB} -Wl,--no-whole-archive)
+                endif()
+            elseif(MIMALLOC_SHARED_LIBRARIES)
+                # Another fallback: use MIMALLOC_SHARED_LIBRARIES if set
+                if(APPLE)
+                    target_link_libraries(ascii-chat-shared PRIVATE -force_load ${MIMALLOC_SHARED_LIBRARIES})
+                else()
+                    target_link_libraries(ascii-chat-shared PRIVATE
+                        -Wl,--whole-archive ${MIMALLOC_SHARED_LIBRARIES} -Wl,--no-whole-archive)
                 endif()
             endif()
         endif()
