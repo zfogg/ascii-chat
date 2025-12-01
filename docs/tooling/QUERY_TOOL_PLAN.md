@@ -154,14 +154,44 @@
 [ ] 10.5 Fix any Linux-specific issues
 [ ] 10.6 COMMIT 10: "test(query): verify Linux support"
 
-[ ] 11.1 Test on Windows x86_64
+[x] 11.1 Test on Windows x86_64
 [ ] 11.2 Verify CreateProcess spawn works
-[ ] 11.3 Verify Winsock HTTP server works
-[ ] 11.4 Handle Windows path separators
+[x] 11.3 Verify Winsock HTTP server works
+[x] 11.4 Handle Windows path separators
 [ ] 11.5 Write tests/scripts/test_query_windows.ps1
-[ ] 11.6 Fix any Windows-specific issues
+[x] 11.6 Fix any Windows-specific issues (see notes below)
 [ ] 11.7 COMMIT 11: "test(query): verify Windows support"
 ```
+
+**Notes (11.x Windows Testing - 2025-12-01):**
+
+Windows query tool is now functional:
+
+**Build Fixes Applied:**
+1. `src/tooling/query/lldb_controller.h` - Added `using pid_t = lldb::pid_t;` for Windows
+2. `src/tooling/query/http_server.cpp` - Added `using ssize_t = ptrdiff_t;` for Windows
+3. `src/tooling/query/main.cpp` - Fixed printf format specifiers using `%llu` with casts
+4. `src/tooling/query/CMakeLists.txt` - Switched to static CRT (`-D_MT`, `-Xclang --dependent-lib=libcmt`)
+5. `cmake/tooling/Query.cmake` - Added DLL copying for liblldb.dll and liblzma.dll
+
+**Runtime Requirements:**
+- liblldb.dll (copied by CMake from LLVM bin dir)
+- liblzma.dll (copied by CMake from vcpkg)
+- python3XX.dll must be in PATH (Python install)
+- libxml2.dll must be in PATH (vcpkg or LLVM bin)
+
+**Tested Endpoints (all working):**
+- `GET /` - Status page with target info
+- `GET /process` - JSON process info
+- `GET /threads` - Thread list (when stopped)
+- `GET /frames` - Stack frames (when stopped)
+- `POST /stop` - Stops target process
+- `POST /continue` - Resumes target process
+- `POST /detach` - Detaches cleanly
+
+**Remaining:**
+- CreateProcess auto-spawn not yet tested
+- Need to write test_query_windows.ps1
 
 ### Phase 5: Testing & Quality (Commits 12-13)
 
@@ -298,7 +328,9 @@ cd build && ctest -R test_query
 - Struct expansion (7.x) fully implemented and tested
 - Auto-spawn (6.x) fully implemented and tested
 - Phase 3 (Build Integration) complete - runtime library links correctly
-- Feature Complete milestone achieved, ready for platform testing (Phase 4)
+- Feature Complete milestone achieved
+- **Windows support working** (2025-12-01): Query tool builds, runs, and all HTTP endpoints functional
+  - Tested: attach to process, stop/resume, thread listing, stack frames, detach
 
 ---
 
@@ -1652,15 +1684,15 @@ ascii-chat/
 
 **Full Feature:**
 
-- [~] All query types working (immediate, breakpoint, struct expansion)
+- [x] All query types working (immediate, breakpoint, struct expansion)
   - [x] Immediate mode (query while running)
   - [x] Breakpoint mode (wait for line, capture variable)
-  - [ ] Struct expansion (recursive traversal)
-- [ ] Works on macOS, Linux, Windows
+  - [x] Struct expansion (recursive traversal via `valueToInfo()`)
+- [~] Works on macOS, Linux, Windows
   - [x] macOS ARM64 tested and working
-  - [ ] Linux testing pending
-  - [ ] Windows testing pending
-- [~] Auto-spawn integration (macros exist, implementation partial)
+  - [x] Linux tested in Docker with --cap-add=SYS_PTRACE
+  - [x] Windows x86_64 tested and working (2025-12-01)
+- [x] Auto-spawn integration (macros exist, Windows CreateProcess pending test)
 - [ ] CI passing on all platforms
 
 **Production Ready:**

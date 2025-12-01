@@ -202,5 +202,60 @@ function(ascii_query_finalize)
         add_custom_target(ascii-query-server-copy ALL
             DEPENDS "${_query_bin_dest}"
         )
+
+        # On Windows, copy liblldb.dll and its dependencies to bin directory
+        if(WIN32)
+            include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
+
+            find_program(LLVM_CONFIG_EXE
+                NAMES llvm-config llvm-config.exe
+                HINTS
+                    /opt/homebrew/opt/llvm/bin
+                    /usr/local/opt/llvm/bin
+                    /usr/lib/llvm-21/bin
+                    /usr/lib/llvm-20/bin
+                    /usr/lib/llvm-19/bin
+                DOC "Path to llvm-config"
+            )
+            if(LLVM_CONFIG_EXE)
+                execute_process(COMMAND ${LLVM_CONFIG_EXE} --bindir
+                    OUTPUT_VARIABLE _llvm_bindir OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+                # liblldb.dll from LLVM install
+                copy_dll(
+                    NAME liblldb.dll
+                    HINTS "${_llvm_bindir}"
+                    DEST "${CMAKE_BINARY_DIR}/bin"
+                    COMMENT "for query tool"
+                    DEPENDS_TARGET ascii-query-server-copy
+                )
+
+                # LLDB dependency DLLs from vcpkg
+                if(DEFINED VCPKG_INSTALLED_DIR)
+                    set(_vcpkg_bin "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+                    copy_dlls(
+                        NAMES liblzma.dll libxml2.dll zlib1.dll zstd.dll iconv-2.dll
+                        HINTS "${_vcpkg_bin}"
+                        DEST "${CMAKE_BINARY_DIR}/bin"
+                        COMMENT "for query tool"
+                        DEPENDS_TARGET ascii-query-server-copy
+                    )
+                endif()
+
+                # Python DLL
+                find_package(Python3 COMPONENTS Interpreter)
+                if(Python3_FOUND AND Python3_EXECUTABLE)
+                    get_filename_component(_python_dir "${Python3_EXECUTABLE}" DIRECTORY)
+                    string(REPLACE "." "" _python_ver "${Python3_VERSION_MAJOR}${Python3_VERSION_MINOR}")
+                    copy_dll(
+                        NAME "python${_python_ver}.dll"
+                        HINTS "${_python_dir}"
+                        DEST "${CMAKE_BINARY_DIR}/bin"
+                        COMMENT "for query tool"
+                        DEPENDS_TARGET ascii-query-server-copy
+                    )
+                endif()
+            endif()
+        endif()
     endif()
 endfunction()

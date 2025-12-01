@@ -17,6 +17,7 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 using socket_t = SOCKET;
+using ssize_t = ptrdiff_t; // Windows doesn't define ssize_t
 #define INVALID_SOCKET_VAL INVALID_SOCKET
 #define SOCKET_ERROR_VAL SOCKET_ERROR
 #define close_socket closesocket

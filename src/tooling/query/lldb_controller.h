@@ -22,6 +22,11 @@
 #include <string>
 #include <vector>
 
+// Windows doesn't define pid_t, use LLDB's definition
+#ifdef _WIN32
+using pid_t = lldb::pid_t;
+#endif
+
 namespace ascii_query {
 
 /**
