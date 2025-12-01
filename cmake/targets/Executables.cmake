@@ -272,15 +272,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE)
         )
 
         # 2. No debug info check
-        add_custom_command(TARGET ascii-chat POST_BUILD
-            COMMAND ${CMAKE_COMMAND}
-                -DMODE=no_debug
-                -DBINARY=$<TARGET_FILE:ascii-chat>
-                -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
-            COMMENT "Validating no debug sections"
-            VERBATIM
-        )
+        # Note: Moved to PostBuild.cmake to run AFTER stripping
 
         # 3. Static linking check (USE_MUSL builds should be fully static)
         if(USE_MUSL)
