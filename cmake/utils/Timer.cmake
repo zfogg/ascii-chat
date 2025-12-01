@@ -27,37 +27,28 @@ set(TIME_FILE "${CMAKE_BINARY_DIR}/.build_time_${TARGET_NAME}.txt")
 # =============================================================================
 function(get_timestamp_ms OUTPUT_VAR)
     if(WIN32)
-        # Windows: Try bash first (Git Bash or WSL) for millisecond precision
+        # Windows: Git Bash and WSL both corrupt terminal cursor position
+        # Python is fast, has milliseconds, and doesn't corrupt terminal
         execute_process(
-            COMMAND bash -c "date +%s%3N"
+            COMMAND python -c "import time; print(int(time.time() * 1000))"
             OUTPUT_VARIABLE TIMESTAMP
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
-            RESULT_VARIABLE BASH_RESULT
+            RESULT_VARIABLE PYTHON_RESULT
         )
-        if(NOT BASH_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
-            # Fallback to python
+        if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+            # Fallback to PowerShell (slower but reliable, always available)
             execute_process(
-                COMMAND python -c "import time; print(int(time.time() * 1000))"
+                COMMAND powershell -NoProfile -Command "[int64]([datetime]::UtcNow - [datetime]'1970-01-01').TotalMilliseconds"
                 OUTPUT_VARIABLE TIMESTAMP
                 OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET
-                RESULT_VARIABLE PYTHON_RESULT
+                RESULT_VARIABLE PS_RESULT
             )
-            if(NOT PYTHON_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
-                # Fallback to PowerShell
-                execute_process(
-                    COMMAND powershell -NoProfile -Command "[int64]([datetime]::UtcNow - [datetime]'1970-01-01').TotalMilliseconds"
-                    OUTPUT_VARIABLE TIMESTAMP
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                    RESULT_VARIABLE PS_RESULT
-                )
-                if(NOT PS_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
-                    # Final fallback to CMake-only (second precision)
-                    string(TIMESTAMP EPOCH_SEC "%s" UTC)
-                    math(EXPR TIMESTAMP "${EPOCH_SEC} * 1000")
-                endif()
+            if(NOT PS_RESULT EQUAL 0 OR TIMESTAMP STREQUAL "")
+                # Final fallback to CMake-only (second precision)
+                string(TIMESTAMP EPOCH_SEC "%s" UTC)
+                math(EXPR TIMESTAMP "${EPOCH_SEC} * 1000")
             endif()
         endif()
     else()
