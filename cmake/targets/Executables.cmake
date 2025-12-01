@@ -252,3 +252,73 @@ add_custom_target(build-all
     COMMENT "Finishing build-all timer"
     VERBATIM
 )
+
+# =============================================================================
+# Release Binary Validation (Linux ELF only)
+# =============================================================================
+# Validates Release binaries for security hardening, debug info removal,
+# static linking, and correct architecture using llvm-readelf/objdump
+if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE)
+    if(ASCIICHAT_LLVM_READELF_EXECUTABLE)
+        # 1. Security hardening check (RELRO, PIE)
+        add_custom_command(TARGET ascii-chat POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DMODE=hardening
+                -DBINARY=$<TARGET_FILE:ascii-chat>
+                -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
+                -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
+            COMMENT "Validating security hardening"
+            VERBATIM
+        )
+
+        # 2. No debug info check
+        add_custom_command(TARGET ascii-chat POST_BUILD
+            COMMAND ${CMAKE_COMMAND}
+                -DMODE=no_debug
+                -DBINARY=$<TARGET_FILE:ascii-chat>
+                -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
+                -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
+            COMMENT "Validating no debug sections"
+            VERBATIM
+        )
+
+        # 3. Static linking check (USE_MUSL builds should be fully static)
+        if(USE_MUSL)
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                COMMAND ${CMAKE_COMMAND}
+                    -DMODE=static
+                    -DBINARY=$<TARGET_FILE:ascii-chat>
+                    -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
+                    -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
+                COMMENT "Validating static linking"
+                VERBATIM
+            )
+        endif()
+
+        # 4. Architecture check
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+            set(EXPECTED_ARCH "x86_64")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+            set(EXPECTED_ARCH "aarch64")
+        else()
+            set(EXPECTED_ARCH "")
+        endif()
+
+        if(EXPECTED_ARCH)
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                COMMAND ${CMAKE_COMMAND}
+                    -DMODE=architecture
+                    -DBINARY=$<TARGET_FILE:ascii-chat>
+                    -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
+                    -DEXPECTED_ARCH=${EXPECTED_ARCH}
+                    -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
+                COMMENT "Validating architecture (${EXPECTED_ARCH})"
+                VERBATIM
+            )
+        endif()
+
+        message(STATUS "Release binary validation: ${BoldGreen}enabled${ColorReset} (hardening, no_debug, static, architecture)")
+    else()
+        message(STATUS "Release binary validation: ${BoldYellow}disabled${ColorReset} (llvm-readelf not found)")
+    endif()
+endif()

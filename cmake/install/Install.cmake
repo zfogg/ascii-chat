@@ -61,17 +61,11 @@ endif()
 
 foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
     if(TARGET ${_ascii_target})
-        # Skip targets with EXCLUDE_FROM_ALL that weren't explicitly built
+        # Skip targets with EXCLUDE_FROM_ALL - these aren't built by default
+        # and shouldn't be installed unless explicitly built
         get_target_property(_exclude_from_all ${_ascii_target} EXCLUDE_FROM_ALL)
         if(_exclude_from_all)
-            # Check if the library file actually exists before trying to install
-            get_target_property(_target_type ${_ascii_target} TYPE)
-            if(_target_type STREQUAL "SHARED_LIBRARY" OR _target_type STREQUAL "STATIC_LIBRARY")
-                get_target_property(_lib_location ${_ascii_target} LOCATION)
-                if(NOT EXISTS "${_lib_location}")
-                    continue()
-                endif()
-            endif()
+            continue()
         endif()
         install(TARGETS ${_ascii_target}
             EXPORT ascii-chat-targets

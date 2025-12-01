@@ -6,17 +6,20 @@
 #   - Path removal (removes embedded source paths for privacy)
 #   - .comment section cleanup (Linux ELF only)
 #   - DLL copying (Windows dynamic builds only)
+#   - Symbol validation (verifies required symbols exist in libraries)
 #
 # Prerequisites (must be set before including this file):
 #   - CMAKE_BUILD_TYPE: Build type
 #   - TARGET: Name of the target to process (must exist before calling)
 #   - CMAKE_SOURCE_DIR, CMAKE_BINARY_DIR: Project paths
 #   - WIN32, UNIX, APPLE: Platform detection
+#   - ASCIICHAT_LLVM_NM_EXECUTABLE: llvm-nm for symbol validation (optional)
 #
 # Tools required:
 #   - Linux: strip, objcopy, bash (for path removal)
 #   - Windows: strip, bash (for path removal - Git Bash or WSL)
 #   - macOS: strip
+#   - All platforms: llvm-nm (for symbol validation)
 # =============================================================================
 
 # Copy DLL dependencies and PDBs to bin directory on Windows (for non-static builds)
@@ -84,6 +87,43 @@ function(copy_windows_dlls TARGET_NAME)
             message(STATUS "DLL/PDB copying: ${BoldYellow}skipped${ColorReset} (vcpkg not configured)")
         endif()
     endif()
+endfunction()
+
+# =============================================================================
+# Path Validation Function (Release builds only)
+# =============================================================================
+# Validates that Release binaries don't contain developer paths like:
+#   - C:\Users\*  (Windows)
+#   - /home/*     (Linux)
+#   - /Users/*    (macOS)
+#
+# This is a security/privacy measure to ensure release binaries don't leak
+# information about the build environment.
+#
+# Parameters:
+#   TARGET_NAME - The executable target to validate
+#
+# Example:
+#   validate_no_developer_paths(ascii-chat)
+# =============================================================================
+function(validate_no_developer_paths TARGET_NAME)
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        return()
+    endif()
+
+    if(NOT ASCIICHAT_LLVM_STRINGS_EXECUTABLE)
+        message(STATUS "Path validation skipped: llvm-strings not found")
+        return()
+    endif()
+
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -DLLVM_STRINGS=${ASCIICHAT_LLVM_STRINGS_EXECUTABLE}
+            -DBINARY=$<TARGET_FILE:${TARGET_NAME}>
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidatePaths.cmake
+        COMMENT "Validating no developer paths in ${TARGET_NAME}"
+        VERBATIM
+    )
 endfunction()
 
 # Check if Release build is statically linked (warns if not)
@@ -216,4 +256,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
             )
         endif()
     endif()
+
+    # Validate no developer paths remain in the final binary
+    # This runs AFTER stripping and path removal to validate the final result
+    validate_no_developer_paths(ascii-chat)
 endif()
