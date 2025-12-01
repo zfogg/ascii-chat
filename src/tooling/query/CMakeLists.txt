@@ -128,15 +128,13 @@ else()
     )
 endif()
 
-# On Windows, use dynamic runtime (/MD) to match LLVM libraries
+# On Windows, use static runtime (/MT) to match LLVM libraries (built with static UCRT)
 if(WIN32)
     target_compile_options(ascii-query-server PRIVATE
-        $<$<CONFIG:Debug>:-D_DLL -D_MT>
-        $<$<CONFIG:Release>:-D_DLL -D_MT>
+        -D_MT
     )
     target_link_options(ascii-query-server PRIVATE
-        $<$<CONFIG:Debug>:-Xclang --dependent-lib=msvcrtd>
-        $<$<CONFIG:Release>:-Xclang --dependent-lib=msvcrt>
+        -Xclang --dependent-lib=libcmt
     )
 endif()
 
