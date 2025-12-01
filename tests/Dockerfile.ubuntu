@@ -45,16 +45,18 @@ RUN apt-get update && apt-get install -y \
   musl-tools musl-dev \
   libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
   libcriterion-dev libffi-dev \
+  libssl-dev \
   doxygen \
   dpkg-dev rpm \
   && rm -rf /var/lib/apt/lists/*
 
 # Install LLVM/Clang (try versions from newest to oldest)
+# liblldb-XX-dev is required for the query tool to link against LLDB
 RUN apt-get update && \
-  ( apt-get install -y clang-21 clang-tools-21 clang-tidy-21 libclang-21-dev llvm-21 llvm-21-dev lld-21 lldb-21 2>/dev/null && LLVM_VERSION=21 || \
-    apt-get install -y clang-20 clang-tools-20 clang-tidy-20 libclang-20-dev llvm-20 llvm-20-dev lld-20 lldb-20 2>/dev/null && LLVM_VERSION=20 || \
-    apt-get install -y clang-19 clang-tools-19 clang-tidy-19 libclang-19-dev llvm-19 llvm-19-dev lld-19 lldb-19 2>/dev/null && LLVM_VERSION=19 || \
-    apt-get install -y clang-18 clang-tools-18 clang-tidy-18 libclang-18-dev llvm-18 llvm-18-dev lld-18 lldb-18 2>/dev/null && LLVM_VERSION=18 ) && \
+  ( apt-get install -y clang-21 clang-tools-21 clang-tidy-21 libclang-21-dev llvm-21 llvm-21-dev lld-21 lldb-21 liblldb-21-dev 2>/dev/null && LLVM_VERSION=21 || \
+    apt-get install -y clang-20 clang-tools-20 clang-tidy-20 libclang-20-dev llvm-20 llvm-20-dev lld-20 lldb-20 liblldb-20-dev 2>/dev/null && LLVM_VERSION=20 || \
+    apt-get install -y clang-19 clang-tools-19 clang-tidy-19 libclang-19-dev llvm-19 llvm-19-dev lld-19 lldb-19 liblldb-19-dev 2>/dev/null && LLVM_VERSION=19 || \
+    apt-get install -y clang-18 clang-tools-18 clang-tidy-18 libclang-18-dev llvm-18 llvm-18-dev lld-18 lldb-18 liblldb-18-dev 2>/dev/null && LLVM_VERSION=18 ) && \
   rm -rf /var/lib/apt/lists/*
 
 # Set up LLVM alternatives (find which version was installed)
