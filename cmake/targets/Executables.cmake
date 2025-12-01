@@ -55,7 +55,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         endif()
-        # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
+        # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
+        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
+            target_link_libraries(ascii-chat ${MIMALLOC_LIBRARIES})
+        endif()
     endif()
 else()
     add_dependencies(ascii-chat ascii-chat-static-build generate_version)
@@ -90,18 +93,14 @@ if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
 endif()
 
 # Add build timing for ascii-chat executable
-# Record start time before linking (only when actually building)
 add_custom_command(TARGET ascii-chat PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT ""
+    COMMENT "Starting ascii-chat timer"
     VERBATIM
 )
-
-# Show timing and success message after build completes
-# This runs whenever ascii-chat is actually rebuilt (POST_BUILD)
 add_custom_command(TARGET ascii-chat POST_BUILD
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT ""
+    COMMENT "Finishing ascii-chat timer"
     VERBATIM
 )
 
@@ -222,7 +221,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)
 # ascii-chat is always built last, so attach the timer there
 add_custom_command(TARGET ascii-chat POST_BUILD
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT ""
+    COMMENT "Finishing total build timer"
     VERBATIM
 )
 
@@ -250,6 +249,6 @@ add_custom_target(build-all
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=build-total -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
     COMMAND_ECHO NONE
     DEPENDS ${BUILD_ALL_DEPS}
-    COMMENT ""
+    COMMENT "Finishing build-all timer"
     VERBATIM
 )

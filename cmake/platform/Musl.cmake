@@ -57,17 +57,18 @@ function(configure_musl_pre_project)
         # Use clang directly with musl instead of musl-gcc wrapper
         # musl-gcc wrapper doesn't properly support -static-pie flag
         # See: https://github.com/rust-lang/rust/issues/95926
-        find_program(CLANG_COMPILER clang)
-        if(NOT CLANG_COMPILER)
+        # Use centralized clang from FindPrograms.cmake
+        if(NOT ASCIICHAT_CLANG_EXECUTABLE)
             message(FATAL_ERROR "clang not found. Install clang for musl static-PIE support:\n"
                                 "  Ubuntu/Debian: sudo apt install clang")
         endif()
+        set(CLANG_COMPILER "${ASCIICHAT_CLANG_EXECUTABLE}")
 
-        find_program(CLANGXX_COMPILER clang++)
-        if(NOT CLANGXX_COMPILER)
+        if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
             message(FATAL_ERROR "clang++ not found. Install clang for musl static-PIE support:\n"
                                 "  Ubuntu/Debian: sudo apt install clang")
         endif()
+        set(CLANGXX_COMPILER "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
 
         # Verify musl development files are installed
         # Check multiple locations (Arch vs Debian/Ubuntu)

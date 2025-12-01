@@ -11,11 +11,9 @@
 #   - Documentation will be generated in ${CMAKE_BINARY_DIR}/docs/html/
 # =============================================================================
 
-# Find Doxygen executable
-find_program(DOXYGEN_EXECUTABLE NAMES doxygen)
-
-if(DOXYGEN_EXECUTABLE)
-    message(STATUS "Found ${BoldGreen}Doxygen${ColorReset}: ${DOXYGEN_EXECUTABLE}")
+# Use centralized ASCIICHAT_DOXYGEN_EXECUTABLE from FindPrograms.cmake
+if(ASCIICHAT_DOXYGEN_EXECUTABLE)
+    message(STATUS "Found ${BoldGreen}Doxygen${ColorReset}: ${ASCIICHAT_DOXYGEN_EXECUTABLE}")
 
     set(AWESOME_CSS_DIR "${CMAKE_SOURCE_DIR}/deps/doxygen-awesome-css")
 
@@ -73,7 +71,7 @@ message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} 
 
     # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
     add_custom_target(docs
-        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+        COMMAND ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/docs/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}

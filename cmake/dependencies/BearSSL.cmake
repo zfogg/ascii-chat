@@ -92,10 +92,19 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
                 endif()
             endif()
 
-            # Find build tools
-            find_program(NMAKE_EXECUTABLE nmake REQUIRED)
-            find_program(CLANG_CL_EXECUTABLE clang-cl REQUIRED)
-            find_program(LLVM_LIB_EXECUTABLE llvm-lib REQUIRED)
+            # Use centralized build tools from FindPrograms.cmake
+            if(NOT ASCIICHAT_NMAKE_EXECUTABLE)
+                message(FATAL_ERROR "nmake not found. Required for building BearSSL on Windows.")
+            endif()
+            set(NMAKE_EXECUTABLE "${ASCIICHAT_NMAKE_EXECUTABLE}")
+            if(NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
+                message(FATAL_ERROR "clang-cl not found. Required for building BearSSL on Windows.")
+            endif()
+            if(NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
+                message(FATAL_ERROR "llvm-lib not found. Required for building BearSSL on Windows.")
+            endif()
+            set(CLANG_CL_EXECUTABLE "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
+            set(LLVM_LIB_EXECUTABLE "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
 
             # Add custom command to build BearSSL if library is missing
             # This creates a build rule that Ninja/Make can use to rebuild the library
@@ -136,7 +145,11 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             # Always add -fPIC for shared library support
             if(USE_MUSL)
                 set(BEARSSL_EXTRA_CFLAGS "-fPIC -DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector")
-                set(BEARSSL_CC "/usr/bin/musl-gcc")
+                # Use centralized musl-gcc from FindPrograms.cmake
+                if(NOT ASCIICHAT_MUSL_GCC_EXECUTABLE)
+                    message(FATAL_ERROR "musl-gcc not found. Required for building BearSSL with USE_MUSL=ON.")
+                endif()
+                set(BEARSSL_CC "${ASCIICHAT_MUSL_GCC_EXECUTABLE}")
             else()
                 set(BEARSSL_EXTRA_CFLAGS "-fPIC")
                 set(BEARSSL_CC "${CMAKE_C_COMPILER}")

@@ -67,14 +67,11 @@ function(ascii_defer_prepare)
             message(STATUS "Defer tool: Using Apple system clang for compilation: ${_defer_cxx_compiler}")
         elseif(CMAKE_CXX_COMPILER)
             set(_defer_cxx_compiler "${CMAKE_CXX_COMPILER}")
-        elseif(CMAKE_C_COMPILER MATCHES "clang")
-            get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
-            find_program(_defer_cxx_compiler NAMES clang++ PATHS "${_compiler_dir}" NO_DEFAULT_PATH)
-            if(NOT _defer_cxx_compiler)
-                find_program(_defer_cxx_compiler NAMES clang++)
-            endif()
+        elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+            # Use centralized clang++ from FindPrograms.cmake
+            set(_defer_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
         else()
-            find_program(_defer_cxx_compiler NAMES c++ g++)
+            message(FATAL_ERROR "Cannot find clang++ for building defer tool. Set CMAKE_CXX_COMPILER or ensure clang++ is in PATH.")
         endif()
 
         # Detect vcpkg if on Windows - pass vcpkg paths but not the toolchain file
@@ -234,29 +231,39 @@ function(ascii_defer_prepare)
     endif()
 
     # Generate compilation database for the defer tool
+    # Note: All output is redirected to a log file to prevent interference with ninja's
+    # terminal cursor tracking (which causes progressive indentation on Windows terminals)
     set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp_defer")
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
-        COMMAND ${CMAKE_COMMAND} -G Ninja
-            -S "${CMAKE_SOURCE_DIR}"
-            -B "${_ascii_temp_build_dir}"
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-            -DCMAKE_BUILD_TYPE=Debug
-            -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
-            -DUSE_MUSL=OFF
-            -DASCIICHAT_BUILD_WITH_DEFER=OFF
-            -DASCIICHAT_USE_PCH=OFF
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-            "-DCMAKE_C_FLAGS=${_defer_cflags}"
-        COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${_ascii_temp_build_dir}/compile_commands.json"
-            "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
-        COMMENT "Generating compilation database for defer transformation tool"
-        VERBATIM
-    )
+    set(_defer_log_file "${CMAKE_BINARY_DIR}/defer_compile_db.log")
+    if(WIN32)
+        # Windows: use cmd to redirect stdout and stderr to log file
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${_ascii_temp_build_dir}"
+            COMMAND cmd /c "${CMAKE_COMMAND} -G Ninja -S ${CMAKE_SOURCE_DIR} -B ${_ascii_temp_build_dir} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND -DUSE_MUSL=OFF -DASCIICHAT_BUILD_WITH_DEFER=OFF -DASCIICHAT_USE_PCH=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \"-DCMAKE_C_FLAGS=${_defer_cflags}\" > ${_defer_log_file} 2>&1"
+            COMMAND cmd /c "${CMAKE_COMMAND} --build ${_ascii_temp_build_dir} --target generate_version >> ${_defer_log_file} 2>&1"
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "${_ascii_temp_build_dir}/compile_commands.json"
+                "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+            COMMENT "Generating compilation database for defer transformation tool"
+            VERBATIM
+        )
+    else()
+        # Unix: use shell redirection
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${_ascii_temp_build_dir}"
+            COMMAND sh -c "${CMAKE_COMMAND} -G Ninja -S ${CMAKE_SOURCE_DIR} -B ${_ascii_temp_build_dir} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND -DUSE_MUSL=OFF -DASCIICHAT_BUILD_WITH_DEFER=OFF -DASCIICHAT_USE_PCH=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '-DCMAKE_C_FLAGS=${_defer_cflags}' > ${_defer_log_file} 2>&1"
+            COMMAND sh -c "${CMAKE_COMMAND} --build ${_ascii_temp_build_dir} --target generate_version >> ${_defer_log_file} 2>&1"
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "${_ascii_temp_build_dir}/compile_commands.json"
+                "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+            COMMENT "Generating compilation database for defer transformation tool"
+            VERBATIM
+        )
+    endif()
 
     # Build list of excluded files to copy
     if(NOT TARGET ascii-defer-transform-timer-start)

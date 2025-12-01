@@ -716,17 +716,14 @@ else()
 endif()
 
 # Add build timing for ascii-chat-shared library
-# Record start time before linking (only when actually building)
 add_custom_command(TARGET ascii-chat-shared PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT ""
+    COMMENT "Starting ascii-chat-shared timer"
     VERBATIM
 )
-
-# Show timing after build completes (only when actually building)
 add_custom_command(TARGET ascii-chat-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -DACTION=end -DTARGET_NAME=ascii-chat-shared -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMENT ""
+    COMMENT "Finishing ascii-chat-shared timer"
     VERBATIM
 )
 
@@ -759,7 +756,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         DEPENDS
             ascii-chat-util ascii-chat-data-structures ascii-chat-platform ascii-chat-crypto ascii-chat-simd
             ascii-chat-video ascii-chat-audio ascii-chat-network ascii-chat-core
-        COMMENT ""
+        COMMENT "Combining static libraries into libasciichat.a"
         COMMAND_EXPAND_LISTS
     )
 

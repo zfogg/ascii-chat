@@ -42,10 +42,12 @@
  * | Tool | Purpose | Minimum Version | Where Used |
  * |------|---------|-----------------|------------|
  * | **cmake** | Build system generator | 3.16+ | Configure and generate build files |
- * | **clang** | C compiler (primary) | 10+ | Compile C source files |
+ * | **clang** | C compiler (primary) | 18+ | Compile C source files |
+ * | **clang++** | C++ compiler | 18+ | Build defer/panic tools (link against LLVM) |
+ * | **llvm-config** | Query LLVM configuration | 18+ | Defer tool finds LLVM include/library paths |
  * | **ninja** or **make** | Build executor | Any | Execute build commands |
- * | **ar** | Static library archiver | Any | Create .a static libraries |
- * | **ranlib** | Static library indexer | Any | Index .a static libraries |
+ * | **llvm-ar** | LLVM static library archiver | 18+ | Create .a static libraries |
+ * | **llvm-ranlib** | LLVM static library indexer | 18+ | Index .a static libraries |
  *
  * **Alternative Archivers** (used by LLVM toolchain):
  * | Tool | Purpose | Where Used |

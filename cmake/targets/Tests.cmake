@@ -40,11 +40,11 @@ endif()
 if(BUILD_TESTS AND NOT TARGET tests-timer-start)
     add_custom_target(tests-timer-start
         COMMAND ${CMAKE_COMMAND}
-            -DACTION=start
-            -DTARGET_NAME=tests
-            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+        -DACTION=start
+        -DTARGET_NAME=tests
+        -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+        -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+        -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
         COMMENT "Starting test build timing"
         VERBATIM
     )
@@ -105,7 +105,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             if(LIBGIT2_FOUND)
                 list(APPEND TEST_LDFLAGS ${LIBGIT2_LIBRARIES})
 
-                # libgit2 requires OpenSSL, libssh2, and http_parser when statically linked
+                # libgit2 requires OpenSSL and libssh2 when statically linked
                 find_package(OpenSSL)
                 if(OpenSSL_FOUND)
                     list(APPEND TEST_LDFLAGS OpenSSL::SSL OpenSSL::Crypto)
@@ -121,11 +121,9 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 # On Linux, provide search hints for standard locations
                 if(PLATFORM_LINUX)
                     find_library(SSH2_LIB ssh2 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
-                    find_library(HTTP_PARSER_LIB http_parser HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
                     find_library(PCRE2_LIB pcre2-8 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
                 else()
                     find_library(SSH2_LIB ssh2)
-                    find_library(HTTP_PARSER_LIB http_parser)
                     find_library(PCRE2_LIB pcre2-8)
                 endif()
 
@@ -135,13 +133,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                     message(STATUS "Added libssh2 for tests")
                 else()
                     message(WARNING "libssh2 not found - some git features may not work")
-                endif()
-
-                if(HTTP_PARSER_LIB)
-                    list(APPEND TEST_LDFLAGS http_parser)
-                    message(STATUS "Added http_parser for tests")
-                else()
-                    message(WARNING "http_parser not found - some git features may not work")
                 endif()
 
                 if(PCRE2_LIB)
@@ -160,7 +151,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                     message(WARNING "zlib not found - libgit2 compression may not work")
                 endif()
 
-                if(NOT SSH2_LIB AND NOT HTTP_PARSER_LIB AND NOT PCRE2_LIB)
+                if(NOT SSH2_LIB AND NOT PCRE2_LIB)
                     message(WARNING "No libgit2 dependencies found - git features will be disabled")
                 endif()
             endif() # LIBGIT2_FOUND
@@ -179,7 +170,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
         # Additional system libraries (matches Makefile)
         # Make these optional - only link if available
-        # Note: ssh2, http_parser, and pcre2-8 are already handled above with libgit2
+        # Note: ssh2 and and pcre2-8 are already handled above with libgit2
         foreach(lib dl resolv)
             find_library(${lib}_LIB ${lib})
             if(${lib}_LIB)
@@ -397,11 +388,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     if(TARGET tests-timer-start)
         add_custom_target(tests-timer-end
             COMMAND ${CMAKE_COMMAND}
-                -DACTION=end
-                -DTARGET_NAME=tests
-                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+            -DACTION=end
+            -DTARGET_NAME=tests
+            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
+            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
             COMMENT "Finishing test build timing"
             VERBATIM
         )
