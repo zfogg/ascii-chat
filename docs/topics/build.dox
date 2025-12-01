@@ -157,7 +157,7 @@
  *
  * | Tool | Version | Purpose |
  * |------|---------|---------|
- * | **cmake** | 4.2+ | Build system generator |
+ * | **cmake** | 3.20+ | Build system generator |
  * | **clang** | 18+ | C compiler |
  * | **clang++** | 18+ | C++ compiler (for defer/panic tools) |
  * | **llvm-config** | 18+ | Query LLVM paths (for defer/panic tools) |

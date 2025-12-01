@@ -50,31 +50,31 @@ Options:
 
 ## HTTP Endpoints Quick Reference
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | Status page |
-| `/process` | GET | Process info (PID, state, threads) |
-| `/threads` | GET | List all threads |
-| `/frames` | GET | Stack frames (when stopped) |
-| `/query` | GET | Query variable value |
-| `/stop` | POST | Pause target |
-| `/continue` | POST | Resume target |
-| `/step` | POST | Single step |
-| `/breakpoints` | GET/POST/DELETE | Manage breakpoints |
-| `/detach` | POST | Detach from target |
+| Endpoint       | Method          | Description                        |
+| -------------- | --------------- | ---------------------------------- |
+| `/`            | GET             | Status page                        |
+| `/process`     | GET             | Process info (PID, state, threads) |
+| `/threads`     | GET             | List all threads                   |
+| `/frames`      | GET             | Stack frames (when stopped)        |
+| `/query`       | GET             | Query variable value               |
+| `/stop`        | POST            | Pause target                       |
+| `/continue`    | POST            | Resume target                      |
+| `/step`        | POST            | Single step                        |
+| `/breakpoints` | GET/POST/DELETE | Manage breakpoints                 |
+| `/detach`      | POST            | Detach from target                 |
 
 ## Query Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| `file` | Source file path (required when running) |
-| `line` | Line number (required when running) |
-| `name` | Variable name (supports `struct.member`, `ptr->field`, `arr[i]`) |
-| `break` | Stop at breakpoint and stay stopped |
-| `expand` | Expand struct members |
-| `depth` | Expansion depth (default: 3) |
-| `timeout` | Breakpoint timeout in ms (default: 5000) |
-| `frame` | Stack frame index or function name |
+| Parameter | Description                                                      |
+| --------- | ---------------------------------------------------------------- |
+| `file`    | Source file path (required when running)                         |
+| `line`    | Line number (required when running)                              |
+| `name`    | Variable name (supports `struct.member`, `ptr->field`, `arr[i]`) |
+| `break`   | Stop at breakpoint and stay stopped                              |
+| `expand`  | Expand struct members                                            |
+| `depth`   | Expansion depth (default: 3)                                     |
+| `timeout` | Breakpoint timeout in ms (default: 5000)                         |
+| `frame`   | Stack frame index or function name                               |
 
 ## Example Session
 
@@ -120,6 +120,5 @@ curl -X POST localhost:9999/detach
 
 - [`lib/tooling/query/query.h`](../../../lib/tooling/query/query.h) - Public C API for auto-spawn
 - [`docs/tooling/query.md`](../../../docs/tooling/query.md) - User guide
-- [`docs/tooling/query-api.md`](../../../docs/tooling/query-api.md) - HTTP API reference
 - [`docs/tooling/query-troubleshooting.md`](../../../docs/tooling/query-troubleshooting.md) - Common issues
 - [`docs/tooling/QUERY_TOOL_PLAN.md`](../../../docs/tooling/QUERY_TOOL_PLAN.md) - Implementation plan

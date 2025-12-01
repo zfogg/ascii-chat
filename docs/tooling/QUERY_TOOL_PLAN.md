@@ -215,16 +215,32 @@
 
 ### Phase 6: Documentation (Commit 14)
 
+> **STATUS: COMPLETE** - All documentation in place
+>
 > **NOTE:** CI workflow removed from plan - LLDB attachment requires special
 > permissions (codesigning on macOS, ptrace on Linux) that CI runners don't have.
 > Unit tests run as part of main ascii-chat test suite. Integration tests are
 > meant for local development validation.
 
 ```
-[ ] 14.1 Write docs/tooling/query.md (user guide)
-[ ] 14.2 Make sure query tool has api docs via doxygen comments in the .c and .cpp and .h files.
+[x] 14.1 Write docs/tooling/query.md (user guide)
+[x] 14.2 Make sure query tool has api docs via doxygen comments in the .c and .cpp and .h files.
 [ ] 14.3 COMMIT 14: "docs(query): add documentation"
 ```
+
+**Notes:**
+
+- User documentation complete:
+  - `docs/tooling/query.md` - User guide with quick start, key concepts, common workflows, editor integration
+  - `docs/tooling/query-api.md` - Full HTTP API reference for all endpoints
+  - `docs/tooling/query-troubleshooting.md` - Common issues and solutions
+- Source files have comprehensive doxygen comments:
+  - `lib/tooling/query/query.h` - Public API with @file, @brief, @param, @return, @note, @see
+  - `lib/tooling/query/query.c` - Implementation with file and function documentation
+  - `src/tooling/query/lldb_controller.h` - All classes, structs, enums, and methods documented
+  - `src/tooling/query/http_server.h` - HttpRequest, HttpResponse, HttpServer with full doxygen
+  - `src/tooling/query/json.h` - JSON serialization helpers documented
+  - `src/tooling/query/main.cpp` - File-level documentation
 
 ### Phase 7: Merge Preparation (Commit 15)
 
