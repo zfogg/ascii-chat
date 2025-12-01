@@ -6,9 +6,10 @@ FROM archlinux:latest
 # Initialize pacman keyring (required for package verification)
 RUN pacman-key --init && pacman-key --populate archlinux
 
-# Use Clang as the default compiler
+# Use Clang as the default compiler, Ninja as default generator
 ENV CC=clang \
   CXX=clang++ \
+  CMAKE_GENERATOR=Ninja \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   TESTING=1 \
