@@ -4,12 +4,12 @@
 # Configures CPack to generate .deb packages for Debian and Ubuntu
 #
 # Prerequisites:
-#   - dpkg-buildpackage must be available in PATH
+#   - dpkg-deb must be available in PATH (CPack uses this internally)
 #   - CPack variables must be set (CPACK_PACKAGE_NAME, etc.)
 #   - Must be included after basic CPack configuration
 #
 # Outputs:
-#   - Adds "DEB" to CPACK_GENERATOR if dpkg-buildpackage is found
+#   - Adds "DEB" to CPACK_GENERATOR if dpkg-deb is found
 #   - Configures DEB-specific CPack variables
 # =============================================================================
 
