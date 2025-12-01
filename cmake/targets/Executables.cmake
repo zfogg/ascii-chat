@@ -73,14 +73,22 @@ else()
     endif()
 endif()
 
-# Ensure build directory takes precedence in rpath for all build types
+# Ensure build directory takes precedence in rpath for Debug/Dev builds
 # This prevents conflicts with installed libraries in system directories
-if(APPLE OR UNIX)
+# Skip for Release builds - they use static linking and shouldn't embed developer paths
+if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Explicitly set BUILD_RPATH to put build/lib first, before any system paths
     # This ensures we use the freshly built library, not any installed version
     set_target_properties(ascii-chat PROPERTIES
         BUILD_RPATH "${CMAKE_LIBRARY_OUTPUT_DIRECTORY};${CMAKE_BUILD_RPATH}"
         INSTALL_RPATH_USE_LINK_PATH TRUE
+    )
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    # Release builds use static linking - no rpath needed
+    set_target_properties(ascii-chat PROPERTIES
+        SKIP_BUILD_RPATH TRUE
+        INSTALL_RPATH ""
+        INSTALL_RPATH_USE_LINK_PATH FALSE
     )
 endif()
 

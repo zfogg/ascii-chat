@@ -485,7 +485,11 @@ if(USE_MIMALLOC)
             list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_SOURCE_DIR}/include")
         endif()
     endif()
-    if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR)
+    # Add MIMALLOC_INCLUDE_DIR if set (vcpkg and Linux system packages set it correctly)
+    # Skip on macOS with system mimalloc - Homebrew's package incorrectly sets it to
+    # /opt/homebrew/include/mimalloc instead of /opt/homebrew/include
+    # The INTERFACE_INCLUDE_DIRECTORIES from the target is already correct on macOS
+    if(DEFINED MIMALLOC_INCLUDE_DIR AND MIMALLOC_INCLUDE_DIR AND NOT (APPLE AND _MIMALLOC_FROM_SYSTEM))
         list(APPEND MIMALLOC_INCLUDE_DIRS "${MIMALLOC_INCLUDE_DIR}")
     endif()
     list(REMOVE_DUPLICATES MIMALLOC_INCLUDE_DIRS)
