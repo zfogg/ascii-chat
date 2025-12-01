@@ -279,6 +279,22 @@ if(DEFINED OUTPUT_DIR)
     )
 endif()
 
+# macOS: Sign with get-task-allow entitlement for LLDB debugging
+if(APPLE)
+    set(ENTITLEMENTS_FILE "${CMAKE_CURRENT_SOURCE_DIR}/query.entitlements")
+    if(EXISTS "${ENTITLEMENTS_FILE}")
+        add_custom_command(TARGET ascii-query-server POST_BUILD
+            COMMAND codesign --sign - --force --entitlements "${ENTITLEMENTS_FILE}" "$<TARGET_FILE:ascii-query-server>"
+            COMMENT "Code signing ascii-query-server with get-task-allow entitlement"
+            VERBATIM
+        )
+        message(STATUS "macOS: Will code sign with entitlements from ${ENTITLEMENTS_FILE}")
+    else()
+        message(WARNING "Entitlements file not found: ${ENTITLEMENTS_FILE}")
+        message(WARNING "Query tool may fail to attach to processes without get-task-allow entitlement")
+    endif()
+endif()
+
 install(TARGETS ascii-query-server
     RUNTIME DESTINATION bin
 )

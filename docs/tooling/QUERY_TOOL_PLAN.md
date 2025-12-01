@@ -134,11 +134,11 @@
 ### Phase 4: Platform Testing (Commits 9-11)
 
 ```
-[ ] 9.1  Test on macOS ARM64 (Apple Silicon)
-[ ] 9.2  Test on macOS x86_64 (Intel, if available)
-[ ] 9.3  Handle code signing (get-task-allow entitlement)
-[ ] 9.4  Write tests/scripts/test_query_macos.sh
-[ ] 9.5  Fix any macOS-specific issues
+[x] 9.1  Test on macOS ARM64 (Apple Silicon)
+[ ] 9.2  Test on macOS x86_64 (Intel, if available) - User will test later
+[x] 9.3  Handle code signing (get-task-allow entitlement)
+[-] 9.4  Write tests/scripts/test_query_macos.sh (SKIP: use existing test scripts)
+[x] 9.5  Fix any macOS-specific issues (none found)
 [ ] 9.6  COMMIT 9: "test(query): verify macOS support"
 
 [ ] 10.1 Test on Linux x86_64 (Ubuntu 22.04)
