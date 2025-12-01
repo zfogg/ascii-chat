@@ -213,6 +213,10 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         tests/integration/server_multiclient_test.c
         tests/integration/video_pipeline_test.c
     )
+    # Exclude query tests if query runtime library not available
+    if(NOT TARGET ascii-query-runtime)
+        list(APPEND TEST_EXCLUDES tests/unit/tooling/query_test.c)
+    endif()
 
     set(TEST_SRCS)
     foreach(test_src IN LISTS TEST_SRCS_ALL)
@@ -276,8 +280,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             # IMPORTANT: All internal libraries must be inside the group, otherwise
             # the linker will process libraries outside the group first and fail
             # to resolve circular references
-            target_link_libraries(${test_exe_name}
-                -Wl,--start-group
+            set(_linux_test_libs
                 ascii-chat-simd
                 ascii-chat-video
                 ascii-chat-audio
@@ -288,6 +291,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ascii-chat-platform
                 ascii-chat-data-structures
                 ascii-chat-util
+            )
+            # Add query runtime if available (must be in group for symbol resolution)
+            if(TARGET ascii-query-runtime)
+                list(APPEND _linux_test_libs ascii-query-runtime)
+            endif()
+            target_link_libraries(${test_exe_name}
+                -Wl,--start-group
+                ${_linux_test_libs}
                 -Wl,--end-group
                 ${TEST_LDFLAGS}
             )
@@ -311,8 +322,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
         endif()
 
-        # Add query runtime library if enabled (for tooling/query_test.c)
-        if(TARGET ascii-query-runtime)
+        # Add query runtime library for macOS and Windows (Linux handled in --start-group above)
+        if(TARGET ascii-query-runtime AND (APPLE OR WIN32))
             target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
