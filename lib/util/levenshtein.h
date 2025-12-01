@@ -17,6 +17,14 @@ extern "C" {
 #endif
 
 /**
+ * @brief Maximum edit distance to suggest an option
+ *
+ * Threshold of 2 catches most typos (single char errors, transpositions)
+ * without suggesting unrelated options.
+ */
+#define LEVENSHTEIN_SUGGESTION_THRESHOLD 2
+
+/**
  * @brief Calculate Levenshtein distance between two strings
  *
  * The Levenshtein distance is the minimum number of single-character edits
@@ -41,6 +49,18 @@ size_t levenshtein(const char *a, const char *b);
  * @return Edit distance, or SIZE_MAX on error
  */
 size_t levenshtein_n(const char *a, const size_t length, const char *b, const size_t bLength);
+
+/**
+ * @brief Find the most similar string from a NULL-terminated array
+ *
+ * Searches through an array of candidate strings to find the one most similar
+ * to the input string, using Levenshtein distance.
+ *
+ * @param unknown The string to match against
+ * @param candidates NULL-terminated array of candidate strings
+ * @return Best matching string, or NULL if no match within threshold
+ */
+const char *levenshtein_find_similar(const char *unknown, const char *const *candidates);
 
 #ifdef __cplusplus
 }
