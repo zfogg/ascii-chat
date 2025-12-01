@@ -187,8 +187,7 @@ static const mode_descriptor_t g_mode_table[] = {
  * @brief Top-level options for fuzzy matching (without dashes)
  */
 static const char *const g_top_level_options[] = {
-    "help",
-    "version",
+    "help", "version",
     NULL // Terminator
 };
 
@@ -196,8 +195,7 @@ static const char *const g_top_level_options[] = {
  * @brief Mode names for fuzzy matching
  */
 static const char *const g_mode_names[] = {
-    "server",
-    "client",
+    "server", "client",
     NULL // Terminator
 };
 
@@ -455,8 +453,10 @@ int main(int argc, char *argv[]) {
       // Any other option before the mode - check if it's a typo of --help or --version
       // Extract the option name (skip leading dashes)
       const char *opt_name = argv[i];
-      if (opt_name[0] == '-') opt_name++;
-      if (opt_name[0] == '-') opt_name++;
+      if (opt_name[0] == '-')
+        opt_name++;
+      if (opt_name[0] == '-')
+        opt_name++;
 
       const char *suggestion = levenshtein_find_similar(opt_name, g_top_level_options);
       if (suggestion) {
