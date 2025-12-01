@@ -787,9 +787,11 @@ set(ASCIICHAT_REQUIRED_SYMBOLS
 # Internal symbols - linked but not necessarily exported (checked with lowercase 't')
 set(ASCIICHAT_INTERNAL_SYMBOLS "")
 
-# Add mimalloc symbols as internal when USE_MIMALLOC is enabled
-# These are linked into the library but don't need to be exported
-if(USE_MIMALLOC)
+# Add mimalloc symbols as internal when USE_MIMALLOC is enabled AND using static mimalloc
+# When linking against shared mimalloc (.so), the symbols are NOT embedded in our library -
+# they're resolved at runtime from libmimalloc.so, so we can't validate them here.
+# Only static mimalloc links the symbols directly into our library.
+if(USE_MIMALLOC AND NOT MIMALLOC_IS_SHARED_LIB)
     list(APPEND ASCIICHAT_INTERNAL_SYMBOLS "mi_malloc" "mi_free")
 endif()
 
