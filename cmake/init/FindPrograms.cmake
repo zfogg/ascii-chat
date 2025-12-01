@@ -23,6 +23,9 @@
 #   - ASCIICHAT_ZIP_EXECUTABLE: zip archiver
 #   - ASCIICHAT_LLVM_AR_EXECUTABLE: llvm-ar archiver
 #   - ASCIICHAT_LLVM_RANLIB_EXECUTABLE: llvm-ranlib archive indexer
+#   - ASCIICHAT_LLVM_NM_EXECUTABLE: llvm-nm symbol table viewer
+#   - ASCIICHAT_LLVM_READELF_EXECUTABLE: llvm-readelf for ELF binary analysis
+#   - ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE: llvm-objdump for binary disassembly/analysis
 #   - ASCIICHAT_LLVM_STRIP_EXECUTABLE: llvm-strip for removing symbols
 #   - ASCIICHAT_LLD_EXECUTABLE: LLD linker
 #   - ASCIICHAT_GMAKE_EXECUTABLE: GNU Make (macOS)
@@ -304,6 +307,30 @@ find_program(ASCIICHAT_LLVM_RANLIB_EXECUTABLE
     DOC "llvm-ranlib archive indexer"
 )
 
+find_program(ASCIICHAT_LLVM_NM_EXECUTABLE
+    NAMES llvm-nm llvm-nm-21 llvm-nm-20 llvm-nm-19 llvm-nm-18
+    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+    DOC "llvm-nm symbol table viewer"
+)
+
+find_program(ASCIICHAT_LLVM_READELF_EXECUTABLE
+    NAMES llvm-readelf llvm-readelf-21 llvm-readelf-20 llvm-readelf-19 llvm-readelf-18
+    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+    DOC "llvm-readelf for ELF binary analysis"
+)
+
+find_program(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE
+    NAMES llvm-objdump llvm-objdump-21 llvm-objdump-20 llvm-objdump-19 llvm-objdump-18
+    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+    DOC "llvm-objdump for binary disassembly and analysis"
+)
+
+find_program(ASCIICHAT_LLVM_STRINGS_EXECUTABLE
+    NAMES llvm-strings llvm-strings-21 llvm-strings-20 llvm-strings-19 llvm-strings-18
+    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+    DOC "llvm-strings for extracting strings from binaries"
+)
+
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
 # =============================================================================
@@ -580,6 +607,8 @@ if(ASCIICHAT_VERBOSE_FIND_PROGRAMS)
     message(STATUS "FindPrograms: ASCIICHAT_LLD_EXECUTABLE = ${ASCIICHAT_LLD_EXECUTABLE}")
     message(STATUS "FindPrograms: ASCIICHAT_LLVM_AR_EXECUTABLE = ${ASCIICHAT_LLVM_AR_EXECUTABLE}")
     message(STATUS "FindPrograms: ASCIICHAT_LLVM_RANLIB_EXECUTABLE = ${ASCIICHAT_LLVM_RANLIB_EXECUTABLE}")
+    message(STATUS "FindPrograms: ASCIICHAT_LLVM_NM_EXECUTABLE = ${ASCIICHAT_LLVM_NM_EXECUTABLE}")
+    message(STATUS "FindPrograms: ASCIICHAT_LLVM_STRINGS_EXECUTABLE = ${ASCIICHAT_LLVM_STRINGS_EXECUTABLE}")
     message(STATUS "FindPrograms: ASCIICHAT_DOXYGEN_EXECUTABLE = ${ASCIICHAT_DOXYGEN_EXECUTABLE}")
     if(WIN32)
         message(STATUS "FindPrograms: ASCIICHAT_CLANG_CL_EXECUTABLE = ${ASCIICHAT_CLANG_CL_EXECUTABLE}")

@@ -728,6 +728,51 @@ add_custom_command(TARGET ascii-chat-shared POST_BUILD
 )
 
 # =============================================================================
+# Required Symbol Definitions (used by both shared and static library validation)
+# =============================================================================
+# Note: log_debug/log_info/log_error are macros that call log_msg
+set(ASCIICHAT_REQUIRED_SYMBOLS
+    "log_msg"
+    "ascii_thread_create"
+    "ascii_thread_join"
+    "mutex_init"
+    "mutex_lock"
+    "mutex_unlock"
+    "send_packet"
+    "receive_packet"
+    "crypto_init"
+)
+
+# Add mimalloc symbols when USE_MIMALLOC is enabled
+if(USE_MIMALLOC)
+    list(APPEND ASCIICHAT_REQUIRED_SYMBOLS "mi_malloc" "mi_free")
+endif()
+
+# Convert to comma-separated for passing through command line (semicolons cause escaping issues)
+string(REPLACE ";" "," ASCIICHAT_SYMBOLS_CSV "${ASCIICHAT_REQUIRED_SYMBOLS}")
+
+# Validate symbols in shared library after build
+if(ASCIICHAT_LLVM_NM_EXECUTABLE)
+    # On Windows, check the import library (.lib) since DLLs don't expose symbols to llvm-nm
+    # On Unix, check the shared object directly
+    if(WIN32)
+        set(SHARED_LIB_TO_VALIDATE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/asciichat.lib")
+    else()
+        set(SHARED_LIB_TO_VALIDATE "$<TARGET_FILE:ascii-chat-shared>")
+    endif()
+
+    add_custom_command(TARGET ascii-chat-shared POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            -DLLVM_NM=${ASCIICHAT_LLVM_NM_EXECUTABLE}
+            -DLIBRARY=${SHARED_LIB_TO_VALIDATE}
+            -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake
+        COMMENT "Validating ascii-chat symbols in shared library"
+        VERBATIM
+    )
+endif()
+
+# =============================================================================
 # Combined Static Library (only when building STATIC libs, not OBJECT libs)
 # =============================================================================
 # Create libasciichat.a by combining all module static libraries
@@ -831,13 +876,43 @@ else()
     target_link_libraries(ascii-chat-static-lib INTERFACE m)
 endif()
 
-# User-friendly 'static-lib' target - builds the static library
-add_custom_target(static-lib
-    COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-    COMMAND_ECHO NONE
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a build-timer-start
-    VERBATIM
-)
+# =============================================================================
+# Symbol Validation for Combined Static Library
+# =============================================================================
+# Validates that key ascii-chat symbols exist in the combined library
+# Uses ASCIICHAT_SYMBOLS_CSV defined earlier (shared between static and shared lib validation)
+if(ASCIICHAT_LLVM_NM_EXECUTABLE)
+    # Add validation step after library is created
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a.validated
+        COMMAND ${CMAKE_COMMAND}
+            -DLLVM_NM=${ASCIICHAT_LLVM_NM_EXECUTABLE}
+            -DLIBRARY=${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+            -DSYMBOLS=${ASCIICHAT_SYMBOLS_CSV}
+            -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateSymbols.cmake
+        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a.validated
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a
+        COMMENT "Validating ascii-chat symbols in libasciichat.a"
+        VERBATIM
+    )
+
+    # User-friendly 'static-lib' target - builds AND validates the static library
+    add_custom_target(static-lib
+        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+        COMMAND_ECHO NONE
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a.validated build-timer-start
+        VERBATIM
+    )
+else()
+    message(STATUS "Symbol validation: ${BoldYellow}disabled${ColorReset} (llvm-nm not found)")
+    # User-friendly 'static-lib' target - builds the static library (no validation)
+    add_custom_target(static-lib
+        COMMAND ${CMAKE_COMMAND} -DACTION=check -DTARGET_NAME=static-lib -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
+        COMMAND_ECHO NONE
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a build-timer-start
+        VERBATIM
+    )
+endif()
 
 # Build target for Release builds (referenced by Executables.cmake)
 add_custom_target(ascii-chat-static-build
