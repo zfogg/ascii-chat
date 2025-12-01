@@ -43,13 +43,9 @@
 #include "crypto/crypto.h"
 #include "util/levenshtein.h"
 
-// Maximum edit distance to suggest an option (higher = more lenient)
-// Threshold of 2 catches most typos (single char errors, transpositions)
-// without suggesting unrelated options
-#define OPTION_SUGGESTION_THRESHOLD 2
-
 // Find the most similar option name to an unknown option
 // Returns the best matching option name, or NULL if no good match found
+// Note: Uses LEVENSHTEIN_SUGGESTION_THRESHOLD from levenshtein.h
 static const char *find_similar_option(const char *unknown_opt, const struct option *options) {
   if (!unknown_opt || !options) {
     return NULL;
@@ -67,7 +63,7 @@ static const char *find_similar_option(const char *unknown_opt, const struct opt
   }
 
   // Only suggest if the distance is within our threshold
-  if (best_distance <= OPTION_SUGGESTION_THRESHOLD) {
+  if (best_distance <= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
     return best_match;
   }
 
