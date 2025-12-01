@@ -311,6 +311,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
         endif()
 
+        # Add query runtime library if enabled (for tooling/query_test.c)
+        if(TARGET ascii-query-runtime)
+            target_link_libraries(${test_exe_name} ascii-query-runtime)
+        endif()
+
         # For musl static builds, allow undefined boxfort references (they won't be called)
         if(USE_MUSL)
             target_link_options(${test_exe_name} PRIVATE
