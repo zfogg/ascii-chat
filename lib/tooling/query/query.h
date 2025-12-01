@@ -33,7 +33,7 @@
  * (when NDEBUG is defined). The query tool has zero runtime overhead in
  * production builds.
  *
- * @see docs/tooling/query-tool.md for full documentation
+ * @see docs/tooling/query.md for full documentation
  * @see docs/tooling/QUERY_TOOL_PLAN.md for implementation details
  */
 
