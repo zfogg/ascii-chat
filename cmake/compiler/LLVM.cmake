@@ -41,10 +41,9 @@ elseif(LINUX)
 endif()
 
 function(configure_llvm_pre_project)
-    # Check for ccache and use it if available
-    find_program(CCACHE_PROGRAM ccache)
-    if(CCACHE_PROGRAM)
-        set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
+    # Check for ccache and use it if available (from centralized FindPrograms.cmake)
+    if(ASCIICHAT_CCACHE_EXECUTABLE)
+        set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
     else()
         if(DEFINED CMAKE_C_COMPILER_LAUNCHER AND CMAKE_C_COMPILER_LAUNCHER MATCHES "ccache")
             message(STATUS "${BoldYellow}ccache${ColorReset} not found; clearing compiler launcher.")
@@ -52,22 +51,9 @@ function(configure_llvm_pre_project)
         endif()
     endif()
 
-    # Use llvm-config to detect LLVM installation
-    # First, strictly search LLVM_ROOT_DIRS with NO_DEFAULT_PATH to respect priority order
-    # This ensures git-built LLVM at /usr/local/bin takes precedence over Homebrew
-    find_program(LLVM_CONFIG_EXECUTABLE
-        NAMES llvm-config llvm-config.exe
-        HINTS ${LLVM_ROOT_DIRS}
-        NO_DEFAULT_PATH
-        DOC "Path to llvm-config"
-    )
-    # Fallback to default PATH search if not found in preferred locations
-    if(NOT LLVM_CONFIG_EXECUTABLE)
-        find_program(LLVM_CONFIG_EXECUTABLE
-            NAMES llvm-config llvm-config.exe
-            DOC "Path to llvm-config"
-        )
-    endif()
+    # Use llvm-config to detect LLVM installation (from centralized FindPrograms.cmake)
+    # Copy centralized result to local variable for compatibility with existing code
+    set(LLVM_CONFIG_EXECUTABLE "${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
 
     if(LLVM_CONFIG_EXECUTABLE)
         # Get LLVM installation prefix
@@ -141,55 +127,23 @@ function(configure_llvm_pre_project)
             endif()
         endif()
 
-        # Second priority: Search common installation locations
+        # Second priority: Use centralized ASCIICHAT_CLANG_EXECUTABLE from FindPrograms.cmake
         if(NOT CLANG_EXECUTABLE)
-            if(WIN32)
-                # Windows: Try to find Clang from common installation locations
-                find_program(CLANG_EXECUTABLE
-                    NAMES clang clang.exe
-                    PATHS ${LLVM_ROOT_DIRS}
-                )
-                if(NOT CLANG_EXECUTABLE)
-                    message(FATAL_ERROR "Clang not found. Install Clang:\n"
-                                    "  Windows: scoop install llvm\n"
-                                    "  Or download from: https://llvm.org/builds/")
-                endif()
-            elseif(APPLE)
-                # macOS: Prefer git-built LLVM at /usr/local, then Homebrew Clang
-                # Use NO_DEFAULT_PATH first to respect LLVM_ROOT_DIRS priority order
-                find_program(CLANG_EXECUTABLE
-                    NAMES clang
-                    HINTS ${LLVM_ROOT_DIRS}
-                    NO_DEFAULT_PATH
-                )
-
-                if(NOT CLANG_EXECUTABLE)
-                    # Fallback to system PATH if not found in preferred locations
-                    find_program(CLANG_EXECUTABLE NAMES clang)
-                endif()
-
-                if(NOT CLANG_EXECUTABLE)
-                    message(FATAL_ERROR "Clang not found. Install Clang:\n"
-                                    "  macOS: brew install llvm\n"
-                                    "  Or use system clang from Xcode Command Line Tools")
-                endif()
+            if(ASCIICHAT_CLANG_EXECUTABLE)
+                set(CLANG_EXECUTABLE "${ASCIICHAT_CLANG_EXECUTABLE}")
             else()
-                # Linux/Unix: Use system Clang (support versions 21 down to 15)
-                find_program(CLANG_EXECUTABLE
-                    NAMES clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
-                    PATHS ${LLVM_ROOT_DIRS}
-                )
-
-                if(NOT CLANG_EXECUTABLE)
-                    message(FATAL_ERROR "Clang not found. Install Clang:\n"
-                                    "  Debian/Ubuntu: sudo apt install clang\n"
-                                    "  Fedora/RHEL: sudo dnf install clang\n"
-                                    "  Arch: sudo pacman -S clang")
-                endif()
+                message(FATAL_ERROR "Clang not found. Install Clang:\n"
+                                "  Windows: scoop install llvm\n"
+                                "  macOS: brew install llvm\n"
+                                "  Debian/Ubuntu: sudo apt install clang\n"
+                                "  Fedora/RHEL: sudo dnf install clang\n"
+                                "  Arch: sudo pacman -S clang")
             endif()
 
-            # Derive CXX compiler path from C compiler
-            if(WIN32)
+            # Use centralized ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE or derive from C compiler
+            if(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+                set(CLANGXX_EXECUTABLE "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
+            elseif(WIN32)
                 # Windows: Replace clang.exe with clang++.exe
                 string(REPLACE "clang.exe" "clang++.exe" CLANGXX_EXECUTABLE "${CLANG_EXECUTABLE}")
             else()
@@ -215,27 +169,13 @@ function(configure_llvm_pre_project)
             elseif(CMAKE_C_COMPILER MATCHES "clang(-[0-9]+)?$")
                 # Unix/macOS: Append ++ to clang or clang-XX
                 set(CLANGXX_EXECUTABLE "${CMAKE_C_COMPILER}++")
-            elseif(WIN32 AND CMAKE_C_COMPILER MATCHES "clang$")
-                # Windows with plain "clang" (no .exe) - search for full path
-                find_program(CLANGXX_EXECUTABLE
-                    NAMES clang++.exe clang++
-                    PATHS ${LLVM_ROOT_DIRS}
-                )
             else()
-                # Fallback: try to find clang++ in the same directory as the C compiler
+                # Fallback: try compiler directory first, then centralized ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE
                 get_filename_component(COMPILER_DIR "${CMAKE_C_COMPILER}" DIRECTORY)
-                if(WIN32)
-                    find_program(CLANGXX_EXECUTABLE
-                        NAMES clang++.exe clang++
-                        PATHS "${COMPILER_DIR}"
-                        NO_DEFAULT_PATH
-                    )
-                else()
-                    find_program(CLANGXX_EXECUTABLE
-                        NAMES clang++
-                        PATHS "${COMPILER_DIR}"
-                        NO_DEFAULT_PATH
-                    )
+                if(EXISTS "${COMPILER_DIR}/clang++${CMAKE_EXECUTABLE_SUFFIX}")
+                    set(CLANGXX_EXECUTABLE "${COMPILER_DIR}/clang++${CMAKE_EXECUTABLE_SUFFIX}")
+                elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+                    set(CLANGXX_EXECUTABLE "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
                 endif()
             endif()
 
@@ -243,27 +183,12 @@ function(configure_llvm_pre_project)
             if(CLANGXX_EXECUTABLE AND EXISTS "${CLANGXX_EXECUTABLE}")
                 set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
                 message(STATUS "Auto-detected ${BoldYellow}C++${ColorReset} compiler: ${BoldCyan}${CLANGXX_EXECUTABLE}${ColorReset}")
+            elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+                # Use centralized clang++ from FindPrograms.cmake
+                set(CMAKE_CXX_COMPILER "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
+                message(STATUS "Using centralized ${BoldYellow}C++${ColorReset} compiler: ${BoldCyan}${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}${ColorReset}")
             else()
-                message(WARNING "${BoldRed}Could not derive C++ compiler from C compiler${ColorReset}: ${CMAKE_C_COMPILER}")
-                # Try fallback search
-                if(WIN32)
-                    find_program(CLANGXX_EXECUTABLE
-                        NAMES clang++.exe clang++
-                        PATHS ${LLVM_ROOT_DIRS}
-                    )
-                else()
-                    find_program(CLANGXX_EXECUTABLE
-                        NAMES clang++ clang++-21 clang++-20 clang++-19 clang++-18 clang++-17 clang++-16 clang++-15
-                        PATHS ${LLVM_ROOT_DIRS}
-                    )
-                endif()
-
-                if(CLANGXX_EXECUTABLE)
-                    set(CMAKE_CXX_COMPILER "${CLANGXX_EXECUTABLE}" CACHE FILEPATH "CXX compiler" FORCE)
-                    message(STATUS "Found ${BoldYellow}C++${ColorReset} compiler via fallback search: ${BoldCyan}${CLANGXX_EXECUTABLE}${ColorReset}")
-                else()
-                    message(FATAL_ERROR "Could not find clang++ compiler. Please install LLVM/Clang.")
-                endif()
+                message(FATAL_ERROR "Could not find clang++ compiler. Please install LLVM/Clang.")
             endif()
         endif()
     endif()
@@ -273,11 +198,9 @@ function(configure_llvm_pre_project)
     # =============================================================================
     # Only set compiler if not already set by user or environment
     if(NOT CMAKE_C_COMPILER AND NOT DEFINED ENV{CC})
-        find_program(CLANG_EXECUTABLE clang clang-21 clang-20 clang-19 clang-18 clang-17 clang-16 clang-15
-            PATHS ${LLVM_ROOT_DIRS}
-        )
-        if(CLANG_EXECUTABLE)
-            set(CMAKE_C_COMPILER "${CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler" FORCE)
+        # Use centralized ASCIICHAT_CLANG_EXECUTABLE from FindPrograms.cmake
+        if(ASCIICHAT_CLANG_EXECUTABLE)
+            set(CMAKE_C_COMPILER "${ASCIICHAT_CLANG_EXECUTABLE}" CACHE FILEPATH "Default C compiler" FORCE)
         else()
             message(FATAL_ERROR "${BoldRed}Clang not found in PATH.${ColorReset} The project is designed for ${BoldGreen}Clang${ColorReset}.")
         endif()
@@ -632,47 +555,14 @@ endfunction()
 # =============================================================================
 
 function(find_llvm_tools)
-    # Use llvm-config to find the correct LLVM installation
-    find_program(LLVM_CONFIG
-        NAMES llvm-config llvm-config-21 llvm-config-20 llvm-config-19 llvm-config-18 llvm-config-17 llvm-config-16 llvm-config-15
-        DOC "Path to llvm-config"
-        PATHS ${LLVM_ROOT_DIRS}
-    )
+    # Use centralized LLVM tools from FindPrograms.cmake
+    # These were already found during early initialization
 
-    if(LLVM_CONFIG)
-        # Get LLVM binary directory from llvm-config
-        execute_process(
-            COMMAND ${LLVM_CONFIG} --bindir
-            OUTPUT_VARIABLE LLVM_BINDIR
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-        )
-
-        # Find llvm-ar and llvm-ranlib in LLVM's binary directory
-        find_program(LLVM_AR
-            NAMES llvm-ar
-            PATHS ${LLVM_BINDIR}
-        )
-        find_program(LLVM_RANLIB
-            NAMES llvm-ranlib
-            PATHS ${LLVM_BINDIR}
-        )
-    else()
-        # Fallback: search in common LLVM installation directories
-        find_program(LLVM_AR
-            NAMES llvm-ar llvm-ar-21 llvm-ar-20 llvm-ar-19 llvm-ar-18 llvm-ar-17 llvm-ar-16 llvm-ar-15
-            PATHS ${LLVM_ROOT_DIRS}
-        )
-        find_program(LLVM_RANLIB
-            NAMES llvm-ranlib llvm-ranlib-21 llvm-ranlib-20 llvm-ranlib-19 llvm-ranlib-18 llvm-ranlib-17 llvm-ranlib-16 llvm-ranlib-15
-            PATHS ${LLVM_ROOT_DIRS}
-        )
+    if(ASCIICHAT_LLVM_AR_EXECUTABLE)
+        set(CMAKE_AR "${ASCIICHAT_LLVM_AR_EXECUTABLE}" CACHE FILEPATH "Archiver" FORCE)
     endif()
-
-    if(LLVM_AR)
-        set(CMAKE_AR "${LLVM_AR}" CACHE FILEPATH "Archiver" FORCE)
-    endif()
-    if(LLVM_RANLIB)
-        set(CMAKE_RANLIB "${LLVM_RANLIB}" CACHE FILEPATH "Ranlib" FORCE)
+    if(ASCIICHAT_LLVM_RANLIB_EXECUTABLE)
+        set(CMAKE_RANLIB "${ASCIICHAT_LLVM_RANLIB_EXECUTABLE}" CACHE FILEPATH "Ranlib" FORCE)
     endif()
 endfunction()
 

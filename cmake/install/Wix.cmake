@@ -21,15 +21,14 @@ if(NOT WIN32)
     return()
 endif()
 
-# Check for WiX .NET Tools (v4+) first, then fall back to WiX Toolset v3
+# Use centralized WiX executables from FindPrograms.cmake
 # WiX v4+ uses unified 'wix' command
 # WiX v3 uses candle.exe (compiler) and light.exe (linker)
-find_program(WIX_EXECUTABLE wix)
 
-if(WIX_EXECUTABLE)
+if(ASCIICHAT_WIX_EXECUTABLE)
     # WiX v4+ detected - get version
     execute_process(
-        COMMAND ${WIX_EXECUTABLE} --version
+        COMMAND ${ASCIICHAT_WIX_EXECUTABLE} --version
         OUTPUT_VARIABLE WIX_VERSION_OUTPUT
         OUTPUT_STRIP_TRAILING_WHITESPACE
         ERROR_QUIET
@@ -41,71 +40,29 @@ if(WIX_EXECUTABLE)
     # Set CPACK_WIX_VERSION to tell CPack which toolset we're using
     if(WIX_MAJOR_VERSION GREATER_EQUAL 4)
         set(CPACK_WIX_VERSION "4")
-        # Set the path to the unified wix executable for v4
-        set(CPACK_WIX_EXECUTABLE "${WIX_EXECUTABLE}")
+        set(CPACK_WIX_EXECUTABLE "${ASCIICHAT_WIX_EXECUTABLE}")
         set(WIX_FOUND TRUE)
-        message(STATUS "${Yellow}CPack:${ColorReset} WiX v4+ detected (${BoldBlue}wix${ColorReset} v${WIX_VERSION_OUTPUT} found at ${BoldBlue}${WIX_EXECUTABLE}${ColorReset})")
+        message(STATUS "${Yellow}CPack:${ColorReset} WiX v4+ detected (${BoldBlue}wix${ColorReset} v${WIX_VERSION_OUTPUT} found at ${BoldBlue}${ASCIICHAT_WIX_EXECUTABLE}${ColorReset})")
         message(STATUS "${Yellow}CPack:${ColorReset} ${Magenta}WiX${ColorReset} generator will be enabled using ${BoldBlue}WiX .NET Tools${ColorReset}")
     else()
         message(STATUS "${Red}CPack:${ColorReset} ${BoldBlue}WiX${ColorReset} version ${BoldGreen}${WIX_VERSION_OUTPUT}${ColorReset} is too old (need v4+)")
-        set(WIX_EXECUTABLE "")
     endif()
 endif()
 
-# If WiX v4+ not found, try WiX Toolset v3
-if(NOT WIX_EXECUTABLE)
-    find_program(WIX_CANDLE_EXECUTABLE candle)
-    find_program(WIX_LIGHT_EXECUTABLE light)
+# If WiX v4+ not found, try WiX Toolset v3 from FindPrograms.cmake
+if(NOT WIX_FOUND AND ASCIICHAT_WIX_CANDLE_EXECUTABLE AND ASCIICHAT_WIX_LIGHT_EXECUTABLE)
+    set(CPACK_WIX_VERSION "3")
+    set(WIX_FOUND TRUE)
+    message(STATUS "${Yellow}CPack:${ColorReset} WiX v3 detected (${BoldBlue}candle.exe${ColorReset} found at ${BoldBlue}${ASCIICHAT_WIX_CANDLE_EXECUTABLE}${ColorReset})")
+    message(STATUS "${Yellow}CPack:${ColorReset} ${Magenta}WiX${ColorReset} generator will be enabled using ${BoldBlue}WiX Toolset v3${ColorReset}")
+endif()
 
-    if(NOT WIX_CANDLE_EXECUTABLE OR NOT WIX_LIGHT_EXECUTABLE)
-        # Try common WiX v3 installation paths
-        if(DEFINED ENV{WIX})
-            set(WIX_ROOT "$ENV{WIX}")
-        else()
-            set(WIX_ROOT "")
-        endif()
-
-        find_program(WIX_CANDLE_EXECUTABLE
-            NAMES candle.exe candle
-            PATHS
-                "${WIX_ROOT}/bin"
-                "C:/Program Files (x86)/WiX Toolset v3.14/bin"
-                "C:/Program Files/WiX Toolset v3.14/bin"
-                "C:/Program Files (x86)/WiX Toolset v3.11/bin"
-                "C:/Program Files/WiX Toolset v3.11/bin"
-                "$ENV{ProgramFiles}/WiX Toolset v3.14/bin"
-                "$ENV{ProgramFiles\(x86\)}/WiX Toolset v3.14/bin"
-            NO_DEFAULT_PATH
-        )
-
-        find_program(WIX_LIGHT_EXECUTABLE
-            NAMES light.exe light
-            PATHS
-                "${WIX_ROOT}/bin"
-                "C:/Program Files (x86)/WiX Toolset v3.14/bin"
-                "C:/Program Files/WiX Toolset v3.14/bin"
-                "C:/Program Files (x86)/WiX Toolset v3.11/bin"
-                "C:/Program Files/WiX Toolset v3.11/bin"
-                "$ENV{ProgramFiles}/WiX Toolset v3.14/bin"
-                "$ENV{ProgramFiles\(x86\)}/WiX Toolset v3.14/bin"
-            NO_DEFAULT_PATH
-        )
-    endif()
-
-    if(WIX_CANDLE_EXECUTABLE AND WIX_LIGHT_EXECUTABLE)
-        # WiX v3 detected
-        set(CPACK_WIX_VERSION "3")
-        set(WIX_FOUND TRUE)
-        message(STATUS "${Yellow}CPack:${ColorReset} WiX v3 detected (${BoldBlue}candle.exe${ColorReset} found at ${BoldBlue}${WIX_CANDLE_EXECUTABLE}${ColorReset})")
-        message(STATUS "${Yellow}CPack:${ColorReset} ${Magenta}WiX${ColorReset} generator will be enabled using ${BoldBlue}WiX Toolset v3${ColorReset}")
-    else()
-        # Neither v3 nor v4 found
-        message(STATUS "${Red}CPack:${ColorReset} WiX generator disabled - no ${BoldBlue}WiX${ColorReset} installation found")
-        message(STATUS "${Yellow}CPack:${ColorReset} Install WiX v4: ${BoldBlue}dotnet tool install --global wix --version 4.0.4${ColorReset}")
-        message(STATUS "${Yellow}CPack:${ColorReset} Then install UI extension: ${BoldBlue}wix extension add --global WixToolset.UI.wixext/4.0.4${ColorReset}")
-        message(STATUS "${Yellow}CPack:${ColorReset} Or download WiX v3.14: ${BoldBlue}https://github.com/wixtoolset/wix3/releases/tag/wix3141rtm${ColorReset}")
-        return()
-    endif()
+if(NOT WIX_FOUND)
+    message(STATUS "${Red}CPack:${ColorReset} WiX generator disabled - no ${BoldBlue}WiX${ColorReset} installation found")
+    message(STATUS "${Yellow}CPack:${ColorReset} Install WiX v4: ${BoldBlue}dotnet tool install --global wix --version 4.0.4${ColorReset}")
+    message(STATUS "${Yellow}CPack:${ColorReset} Then install UI extension: ${BoldBlue}wix extension add --global WixToolset.UI.wixext/4.0.4${ColorReset}")
+    message(STATUS "${Yellow}CPack:${ColorReset} Or download WiX v3.14: ${BoldBlue}https://github.com/wixtoolset/wix3/releases/tag/wix3141rtm${ColorReset}")
+    return()
 endif()
 
 # =============================================================================

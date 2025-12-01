@@ -17,9 +17,8 @@ if(NOT UNIX OR APPLE)
     return()
 endif()
 
-# Check for rpmbuild
-find_program(RPMBUILD_EXECUTABLE rpmbuild)
-if(NOT RPMBUILD_EXECUTABLE)
+# Use centralized ASCIICHAT_RPMBUILD_EXECUTABLE from FindPrograms.cmake
+if(NOT ASCIICHAT_RPMBUILD_EXECUTABLE)
     message(STATUS "${Red}CPack:${ColorReset} RPM generator disabled (${BoldBlue}rpmbuild${ColorReset} not found)")
     return()
 endif()

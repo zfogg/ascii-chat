@@ -66,8 +66,8 @@ endif()
 # Filter out third-party or generated files if needed
 # Note: Objective-C files (.m) are included for Apple platforms
 
-# Find clang-format executable
-find_program(CLANG_FORMAT_EXECUTABLE NAMES clang-format)
+# Use centralized clang-format from FindPrograms.cmake
+set(CLANG_FORMAT_EXECUTABLE "${ASCIICHAT_CLANG_FORMAT_EXECUTABLE}")
 
 if(CLANG_FORMAT_EXECUTABLE)
     add_custom_target(format
@@ -124,25 +124,12 @@ if(NOT TARGET clang-format-check)
     )
 endif()
 
-# Find Python3, clang-tidy, and the accompanying run-clang-tidy.py helper
-find_program(PYTHON3_EXECUTABLE NAMES python3 python)
-
-# Find clang-tidy from the same installation as the C compiler to ensure version compatibility
-# This prevents PCH version mismatch errors when clang-tidy uses different headers than the compiler
-get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
-find_program(CLANG_TIDY_EXECUTABLE
-    NAMES clang-tidy
-    HINTS "${_compiler_dir}" "${_compiler_dir}/../bin"
-    NO_DEFAULT_PATH
-)
-if(NOT CLANG_TIDY_EXECUTABLE)
-    # Fallback to PATH if not found alongside compiler
-    find_program(CLANG_TIDY_EXECUTABLE NAMES clang-tidy)
-endif()
+# Use centralized clang-tidy from FindPrograms.cmake
+set(CLANG_TIDY_EXECUTABLE "${ASCIICHAT_CLANG_TIDY_EXECUTABLE}")
 set(RUN_CLANG_TIDY_SCRIPT "${CMAKE_SOURCE_DIR}/scripts/run-clang-tidy.py")
 
 set(_clang_tidy_missing_deps "")
-if(NOT PYTHON3_EXECUTABLE)
+if(NOT ASCIICHAT_PYTHON3_EXECUTABLE)
     list(APPEND _clang_tidy_missing_deps "python3 interpreter")
 endif()
 if(NOT CLANG_TIDY_EXECUTABLE)
@@ -166,7 +153,7 @@ if(NOT _clang_tidy_missing_deps)
             COMMAND ${CLANG_TIDY_EXECUTABLE}
                 --verify-config
                 --config-file=${CMAKE_SOURCE_DIR}/.clang-tidy
-            COMMAND ${PYTHON3_EXECUTABLE}
+            COMMAND ${ASCIICHAT_PYTHON3_EXECUTABLE}
                 ${RUN_CLANG_TIDY_SCRIPT}
                 -clang-tidy-binary ${CLANG_TIDY_EXECUTABLE}
                 -p ${CMAKE_BINARY_DIR}
@@ -188,8 +175,8 @@ else()
     endif()
 endif()
 
-# Find scan-build executable
-find_program(SCAN_BUILD_EXECUTABLE NAMES scan-build)
+# Use centralized scan-build from FindPrograms.cmake
+set(SCAN_BUILD_EXECUTABLE "${ASCIICHAT_SCAN_BUILD_EXECUTABLE}")
 
 if(SCAN_BUILD_EXECUTABLE)
     add_custom_target(scan-build

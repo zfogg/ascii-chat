@@ -68,7 +68,7 @@ else()
         # =============================================================================
         find_package(Threads REQUIRED)
 
-        # Linux library search paths (matches Makefile)
-        link_directories(/usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu)
+        # Linux library search paths (Debian/Ubuntu multiarch and Arch/Fedora standard paths)
+        link_directories(/usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib /lib)
     endif()
 endif()

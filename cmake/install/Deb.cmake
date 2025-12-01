@@ -17,9 +17,8 @@ if(NOT UNIX OR APPLE)
     return()
 endif()
 
-# Check for dpkg-deb (used by CPack to build .deb packages)
-find_program(DPKG_DEB_EXECUTABLE dpkg-deb)
-if(NOT DPKG_DEB_EXECUTABLE)
+# Use centralized ASCIICHAT_DPKG_DEB_EXECUTABLE from FindPrograms.cmake
+if(NOT ASCIICHAT_DPKG_DEB_EXECUTABLE)
     message(STATUS "${Red}CPack:${ColorReset} DEB generator disabled (${BoldBlue}dpkg-deb${ColorReset} not found)")
     return()
 endif()

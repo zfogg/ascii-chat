@@ -21,6 +21,10 @@
 # Import color definitions from Colors.cmake
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Colors.cmake)
 
+# Centralized program discovery - find all external programs once
+# Other modules should use the ASCIICHAT_* cached variables instead of find_program
+include(${CMAKE_SOURCE_DIR}/cmake/init/FindPrograms.cmake)
+
 # Detect CPU cores for parallel builds
 # Note: Use CMAKE_HOST_SYSTEM_NAME because CMAKE_SYSTEM_NAME is not set until after project()
 set(_ASCII_CPU_FALLBACK 4)
@@ -155,8 +159,8 @@ set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH "FetchContent
 # Only set Ninja if no generator was explicitly specified via -G flag
 # This MUST be set before vcpkg toolchain to prevent vcpkg from forcing Visual Studio generator
 if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
-    find_program(NINJA_EXECUTABLE ninja)
-    if(NINJA_EXECUTABLE)
+    # Use centralized ASCIICHAT_NINJA_EXECUTABLE from FindPrograms.cmake
+    if(ASCIICHAT_NINJA_EXECUTABLE)
         set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
         message(STATUS "Using ${BoldGreen}Ninja${ColorReset} generator for faster builds")
     endif()
@@ -181,10 +185,10 @@ endif()
 
 # On macOS, prefer gmake over make when using Unix Makefiles generator
 if(APPLE AND CMAKE_GENERATOR MATCHES "Unix Makefiles")
-    find_program(GMAKE_EXECUTABLE gmake)
-    if(GMAKE_EXECUTABLE)
-        set(CMAKE_MAKE_PROGRAM "${GMAKE_EXECUTABLE}" CACHE FILEPATH "Make program" FORCE)
-        message(STATUS "Using gmake: ${GMAKE_EXECUTABLE}")
+    # Use centralized ASCIICHAT_GMAKE_EXECUTABLE from FindPrograms.cmake
+    if(ASCIICHAT_GMAKE_EXECUTABLE)
+        set(CMAKE_MAKE_PROGRAM "${ASCIICHAT_GMAKE_EXECUTABLE}" CACHE FILEPATH "Make program" FORCE)
+        message(STATUS "Using gmake: ${ASCIICHAT_GMAKE_EXECUTABLE}")
     endif()
 endif()
 

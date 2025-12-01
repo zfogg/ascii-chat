@@ -28,9 +28,8 @@ if(UNIX AND NOT APPLE)
 set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
     message(STATUS "${Yellow}CPack:${ColorReset} TGZ generator enabled (always available)")
 
-    # Check for zip command
-    find_program(ZIP_EXECUTABLE zip)
-    if(ZIP_EXECUTABLE)
+    # Use centralized ASCIICHAT_ZIP_EXECUTABLE from FindPrograms.cmake
+    if(ASCIICHAT_ZIP_EXECUTABLE)
         list(APPEND CPACK_GENERATOR "ZIP")
 # Force update the cache so it persists
 set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
@@ -71,8 +70,8 @@ endif()
 
 set(CPACK_SOURCE_GENERATOR "TGZ")
 if(UNIX AND NOT APPLE)
-    find_program(ZIP_EXECUTABLE zip)
-    if(ZIP_EXECUTABLE)
+    # Use centralized ASCIICHAT_ZIP_EXECUTABLE from FindPrograms.cmake
+    if(ASCIICHAT_ZIP_EXECUTABLE)
         list(APPEND CPACK_SOURCE_GENERATOR "ZIP")
     endif()
 endif()

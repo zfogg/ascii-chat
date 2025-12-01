@@ -65,25 +65,15 @@ function(configure_asan_ubsan_sanitizers)
             # Resolve compiler path (CMAKE_C_COMPILER can be just "clang")
             set(_clang_compiler_path "${CMAKE_C_COMPILER}")
             if(NOT IS_ABSOLUTE "${_clang_compiler_path}")
-                set(_clang_search_paths)
-                if(CMAKE_CXX_COMPILER AND IS_ABSOLUTE "${CMAKE_CXX_COMPILER}")
+                # Use centralized ASCIICHAT_CLANG_EXECUTABLE from FindPrograms.cmake
+                if(ASCIICHAT_CLANG_EXECUTABLE)
+                    set(_clang_compiler_path "${ASCIICHAT_CLANG_EXECUTABLE}")
+                elseif(CMAKE_CXX_COMPILER AND IS_ABSOLUTE "${CMAKE_CXX_COMPILER}")
+                    # Fallback to deriving from C++ compiler directory
                     get_filename_component(_clang_cxx_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
-                    list(APPEND _clang_search_paths "${_clang_cxx_dir}")
-                endif()
-                if(_clang_search_paths)
-                    find_program(_clang_resolved
-                        NAMES ${_clang_compiler_path} clang clang-cl
-                        HINTS ${_clang_search_paths}
-                    )
-                else()
-                    find_program(_clang_resolved
-                        NAMES ${_clang_compiler_path} clang clang-cl
-                    )
-                endif()
-                if(_clang_resolved)
-                    set(_clang_compiler_path "${_clang_resolved}")
-                elseif(CMAKE_CXX_COMPILER)
-                    set(_clang_compiler_path "${CMAKE_CXX_COMPILER}")
+                    if(EXISTS "${_clang_cxx_dir}/clang${CMAKE_EXECUTABLE_SUFFIX}")
+                        set(_clang_compiler_path "${_clang_cxx_dir}/clang${CMAKE_EXECUTABLE_SUFFIX}")
+                    endif()
                 endif()
             endif()
 

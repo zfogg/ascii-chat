@@ -16,17 +16,17 @@
 option(USE_CCACHE "Use ccache for compilation if available" ON)
 
 if(USE_CCACHE)
-    find_program(CCACHE_PROGRAM ccache)
-    if(CCACHE_PROGRAM)
+    # Use centralized ASCIICHAT_CCACHE_EXECUTABLE from FindPrograms.cmake
+    if(ASCIICHAT_CCACHE_EXECUTABLE)
         # Only set ccache if not already configured (e.g., by Homebrew LLVM setup)
         if(NOT CMAKE_C_COMPILER_LAUNCHER)
-            set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}" CACHE STRING "C compiler launcher" FORCE)
-            message(STATUS "${BoldGreen}Using ccache: ${CCACHE_PROGRAM}${ColorReset}")
+            set(CMAKE_C_COMPILER_LAUNCHER "${ASCIICHAT_CCACHE_EXECUTABLE}" CACHE STRING "C compiler launcher" FORCE)
+            message(STATUS "${BoldGreen}Using ccache: ${ASCIICHAT_CCACHE_EXECUTABLE}${ColorReset}")
 
             # Configure ccache for optimal performance
-            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config max_size=2G)
-            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config compression=true)
-            execute_process(COMMAND ${CCACHE_PROGRAM} --set-config compression_level=6)
+            execute_process(COMMAND ${ASCIICHAT_CCACHE_EXECUTABLE} --set-config max_size=2G)
+            execute_process(COMMAND ${ASCIICHAT_CCACHE_EXECUTABLE} --set-config compression=true)
+            execute_process(COMMAND ${ASCIICHAT_CCACHE_EXECUTABLE} --set-config compression_level=6)
         else()
             message(STATUS "Compiler launcher already set: ${BoldCyan}${CMAKE_C_COMPILER_LAUNCHER}${ColorReset}")
         endif()
