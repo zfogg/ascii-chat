@@ -77,12 +77,45 @@ if(USE_MIMALLOC)
                     add_library(mimalloc-shared ALIAS mimalloc-static)
                 endif()
             elseif(TARGET mimalloc)
-                message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} target")
-                # Create alias so our code can use mimalloc-static consistently
-                add_library(mimalloc-static ALIAS mimalloc)
-                add_library(mimalloc-shared ALIAS mimalloc)
-                set(MIMALLOC_LIBRARIES mimalloc)
-                set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
+                # The 'mimalloc' target might be the shared library - check for static
+                # We need the static library (.a) for embedding into our shared library
+                get_target_property(_mimalloc_type mimalloc TYPE)
+                get_target_property(_mimalloc_location mimalloc IMPORTED_LOCATION)
+
+                # Try to find the static library explicitly
+                find_library(_MIMALLOC_STATIC_LIB
+                    NAMES libmimalloc.a mimalloc.a mimalloc-static.a
+                    HINTS /usr/lib/${CMAKE_LIBRARY_ARCHITECTURE} /usr/lib /usr/local/lib
+                    NO_DEFAULT_PATH
+                )
+
+                if(_MIMALLOC_STATIC_LIB)
+                    message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} static library: ${_MIMALLOC_STATIC_LIB}")
+                    # Create proper IMPORTED target for the static library
+                    add_library(mimalloc-static STATIC IMPORTED)
+                    set_target_properties(mimalloc-static PROPERTIES
+                        IMPORTED_LOCATION "${_MIMALLOC_STATIC_LIB}"
+                    )
+                    # Get include dir from the mimalloc target if available
+                    get_target_property(_mimalloc_inc mimalloc INTERFACE_INCLUDE_DIRECTORIES)
+                    if(_mimalloc_inc)
+                        set_target_properties(mimalloc-static PROPERTIES
+                            INTERFACE_INCLUDE_DIRECTORIES "${_mimalloc_inc}"
+                        )
+                    endif()
+                    add_library(mimalloc-shared ALIAS mimalloc-static)
+                    set(MIMALLOC_LIBRARIES mimalloc-static)
+                    set(ASCIICHAT_MIMALLOC_LINK_LIB "${_MIMALLOC_STATIC_LIB}")
+                else()
+                    message(STATUS "  Using system ${BoldCyan}mimalloc${ColorReset} target (shared library)")
+                    # Fall back to shared - won't work with --whole-archive
+                    add_library(mimalloc-static ALIAS mimalloc)
+                    add_library(mimalloc-shared ALIAS mimalloc)
+                    set(MIMALLOC_LIBRARIES mimalloc)
+                    set(ASCIICHAT_MIMALLOC_LINK_LIB mimalloc)
+                    # Mark that we're using shared mimalloc (can't use --whole-archive)
+                    set(MIMALLOC_IS_SHARED_LIB TRUE CACHE INTERNAL "Using shared mimalloc library")
+                endif()
                 set(_MIMALLOC_FROM_SYSTEM TRUE)
             endif()
         endif()

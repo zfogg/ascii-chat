@@ -702,9 +702,16 @@ else()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use force_load/whole-archive to export all mimalloc symbols from the shared library
         if(USE_MIMALLOC)
-            # For FetchContent builds, the mimalloc-shared target exists but isn't an IMPORTED target
-            # Use generator expression to get the library path at build time
-            if(TARGET mimalloc-shared)
+            if(MIMALLOC_IS_SHARED_LIB)
+                # System mimalloc is a shared library - link normally (no --whole-archive)
+                # Symbols stay in separate .so, not embedded in our library
+                if(TARGET mimalloc-shared)
+                    target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
+                elseif(MIMALLOC_LIBRARIES)
+                    target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+                endif()
+            elseif(TARGET mimalloc-shared)
+                # Static library - use force_load/whole-archive to embed and export symbols
                 add_dependencies(ascii-chat-shared mimalloc-shared)
                 if(APPLE)
                     # macOS: -force_load exports all symbols from static library
@@ -777,8 +784,9 @@ set(ASCIICHAT_REQUIRED_SYMBOLS
     "crypto_init"
 )
 
-# Add mimalloc symbols when USE_MIMALLOC is enabled
-if(USE_MIMALLOC)
+# Add mimalloc symbols when USE_MIMALLOC is enabled with static library
+# (shared mimalloc keeps symbols in separate .so, not embedded in our library)
+if(USE_MIMALLOC AND NOT MIMALLOC_IS_SHARED_LIB)
     list(APPEND ASCIICHAT_REQUIRED_SYMBOLS "mi_malloc" "mi_free")
 endif()
 
