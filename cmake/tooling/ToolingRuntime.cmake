@@ -78,7 +78,7 @@ function(ascii_build_tooling_runtime)
         target_include_directories(ascii-panic-report PRIVATE ${MIMALLOC_INCLUDE_DIRS})
     endif()
 
-    # Debug/Dev/Coverage builds use shared library; Release uses static
+    # Debug/Dev/Coverage builds use shared library; Release/RelWithDebInfo uses static
     if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
         target_link_libraries(ascii-panic-report ascii-chat-shared)
         # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
@@ -87,6 +87,11 @@ function(ascii_build_tooling_runtime)
         endif()
     else()
         target_link_libraries(ascii-panic-report ascii-chat-static)
+        # ascii-chat-static is an INTERFACE library - add explicit build dependency
+        # ASCII_CHAT_UNIFIED_BUILD_TARGET is set in Libraries.cmake to the actual build target
+        if(TARGET ascii-chat-static-build)
+            add_dependencies(ascii-panic-report ascii-chat-static-build)
+        endif()
     endif()
     set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
 

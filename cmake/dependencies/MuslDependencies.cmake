@@ -344,8 +344,17 @@ if(EXISTS "${BEARSSL_SOURCE_DIR}")
         message(STATUS "Using cached ${BoldBlue}BearSSL${ColorReset} library: ${BoldMagenta}${BEARSSL_LIB}${ColorReset}")
     endif()
 
+    # Create an imported library target that matches what BearSSL.cmake creates
+    add_library(bearssl_static STATIC IMPORTED GLOBAL)
+    set_target_properties(bearssl_static PROPERTIES
+        IMPORTED_LOCATION "${BEARSSL_LIB}"
+    )
+    target_include_directories(bearssl_static INTERFACE
+        "${BEARSSL_SOURCE_DIR}/inc"
+    )
+
     set(BEARSSL_FOUND TRUE)
-    set(BEARSSL_LIBRARIES "${BEARSSL_LIB}")
+    set(BEARSSL_LIBRARIES bearssl_static)
     set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
 else()
     message(WARNING "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
