@@ -50,7 +50,8 @@ services:
       - CCACHE_HARDLINK=true
       - CCACHE_NLEVELS=2
 
-      # Build configuration
+      # Build configuration - Ninja is much faster than Make
+      - CMAKE_GENERATOR=Ninja
       - CMAKE_BUILD_TYPE=Debug
 
       # Test configuration
