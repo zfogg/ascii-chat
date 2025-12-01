@@ -24,35 +24,23 @@ ENV CCACHE_DIR=/ccache \
   CCACHE_HARDLINK=true \
   CCACHE_NLEVELS=2
 
-# Install build dependencies and test framework
-# Using packages from README.md Arch instructions
-# Note: Using -S (not -Syu) to avoid upgrading base system packages
-RUN pacman -Sy --noconfirm \
+# Install git first (needed for install-deps.sh to work)
+RUN pacman -Sy --noconfirm git
+
+# Copy install-deps.sh and run it with modifications for Docker:
+# - Skip git submodule commands (source mounted at runtime, submodules on host)
+# - Add --noconfirm for non-interactive pacman installs
+# - Remove sudo (running as root in Docker)
+COPY scripts/install-deps.sh /tmp/install-deps.sh
+RUN chmod +x /tmp/install-deps.sh && \
+    sed -i 's/^git submodule/#git submodule/g' /tmp/install-deps.sh && \
+    sed -i 's/sudo pacman -S --needed/pacman -S --noconfirm --needed/g' /tmp/install-deps.sh && \
+    /tmp/install-deps.sh
+
+# Install additional packages needed for Docker testing/packaging
+# These are not in install-deps.sh but required for the test environment
+RUN pacman -S --noconfirm --needed \
   which \
-  pkg-config \
-  dpkg \
-  rpm-tools \
-  llvm \
-  clang \
-  lld \
-  musl \
-  cmake \
-  ninja \
-  make \
-  ccache \
-  mimalloc \
-  zstd \
-  portaudio \
-  libsodium \
-  criterion \
-  protobuf-c \
-  bc \
-  git \
-  pcre2 \
-  libssh2 \
-  lldb \
-  doxygen \
-  ncurses \
   && pacman -Scc --noconfirm \
   && rm -rf /var/cache/pacman/pkg/* /tmp/* /var/tmp/*
 

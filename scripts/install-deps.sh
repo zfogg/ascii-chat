@@ -117,20 +117,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     sudo apt-get install -y \
-      cmake \
-      ninja-build \
       pkg-config \
-      musl-tools \
-      musl-dev \
-      libmimalloc-dev \
-      libzstd-dev \
-      zlib1g-dev \
-      libsodium-dev \
-      portaudio19-dev \
-      libcriterion-dev \
-      libffi-dev \
+      cmake ninja-build \
+      musl-tools musl-dev \
+      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
+      libcriterion-dev libffi-dev \
       doxygen \
-      dpkg-dev
+      dpkg-dev rpm
 
     # Try LLVM versions in order from newest to oldest
     LLVM_VERSIONS="21 20 19 18"
@@ -220,22 +213,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
     sudo yum install -y \
-      clang \
-      llvm \
-      musl-devel \
-      cmake \
-      ninja-build \
       pkg-config \
-      musl-gcc \
-      musl-libc-static \
-      mimalloc-devel \
-      libzstd-devel \
-      zlib-devel \
-      libsodium-devel \
-      portaudio-devel \
+      clang llvm \
+      cmake ninja-build \
+      musl-devel musl-gcc musl-libc-static \
+      mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel \
       jack-audio-connection-kit-devel \
-      criterion-devel \
-      libffi-devel \
+      criterion-devel libffi-devel \
       doxygen \
       rpm-build
 
@@ -245,10 +229,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     sudo pacman -S --needed \
       pkg-config \
       clang llvm lldb ccache \
+      lld \
       cmake ninja make \
       musl mimalloc \
       zstd zlib libsodium portaudio \
-      criterion libffi
+      criterion \
+      doxygen \
+      dpkg rpm-tools
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"
