@@ -129,7 +129,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     LLVM_VERSION=""
     for ver in $LLVM_VERSIONS; do
       echo "Trying LLVM $ver..."
-      if sudo apt-get install -y clang-$ver clang-tools-$ver libclang-$ver-dev llvm-$ver llvm-$ver-dev 2>/dev/null; then
+      if sudo apt-get install -y clang-$ver clang-tools-$ver libclang-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver 2>/dev/null; then
         LLVM_VERSION=$ver
         echo "Successfully installed LLVM $ver"
         break
