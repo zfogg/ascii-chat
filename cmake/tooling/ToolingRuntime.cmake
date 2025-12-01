@@ -78,9 +78,13 @@ function(ascii_build_tooling_runtime)
         target_include_directories(ascii-panic-report PRIVATE ${MIMALLOC_INCLUDE_DIRS})
     endif()
 
-    # On Windows Debug/Dev builds, use shared library; otherwise use static
-    if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
+    # Debug/Dev/Coverage builds use shared library; Release uses static
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
         target_link_libraries(ascii-panic-report ascii-chat-shared)
+        # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
+        if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
+            target_link_libraries(ascii-panic-report ${MIMALLOC_LIBRARIES})
+        endif()
     else()
         target_link_libraries(ascii-panic-report ascii-chat-static)
     endif()

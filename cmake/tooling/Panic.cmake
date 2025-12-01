@@ -266,10 +266,10 @@ function(ascii_panic_prepare)
             file(RELATIVE_PATH rel_path "${CMAKE_SOURCE_DIR}" "${abs_path}")
             string(REPLACE "\\" "/" rel_path "${rel_path}")
 
-            # Handle defer-transformed sources: strip build/defer_transformed/ prefix
-            # When defer runs first, sources are in build/defer_transformed/lib/...
+            # Handle defer-transformed sources: strip build*/defer_transformed/ prefix
+            # When defer runs first, sources are in build_panic/defer_transformed/lib/...
             # We need to compute the output path relative to the original source structure
-            if(rel_path MATCHES "^build/defer_transformed/(.*)")
+            if(rel_path MATCHES "^build[^/]*/defer_transformed/(.*)")
                 set(rel_path "${CMAKE_MATCH_1}")
             endif()
 
@@ -404,8 +404,8 @@ function(ascii_panic_prepare)
                 set(rel_path "${item}")
             endif()
             string(REPLACE "\\" "/" rel_path "${rel_path}")
-            # Handle defer-transformed sources: strip build/defer_transformed/ prefix
-            if(rel_path MATCHES "^build/defer_transformed/(.*)")
+            # Handle defer-transformed sources: strip build*/defer_transformed/ prefix
+            if(rel_path MATCHES "^build[^/]*/defer_transformed/(.*)")
                 set(rel_path "${CMAKE_MATCH_1}")
             endif()
             if(rel_path IN_LIST instrumented_rel_paths)
