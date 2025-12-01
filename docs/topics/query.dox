@@ -1,0 +1,249 @@
+/**
+ * @defgroup query_tool Query Tool - Runtime Variable Inspection
+ * @ingroup module_development
+ * @brief HTTP-based runtime variable inspection using external LLDB
+ *
+ * @page query_tool_page Query Tool Documentation
+ * @tableofcontents
+ *
+ * @section query_overview Overview
+ *
+ * The query tool enables runtime variable inspection in debug builds via HTTP
+ * requests. It uses an external LLDB process to attach to the running application
+ * and read variable values on demand.
+ *
+ * @code{.sh}
+ * # Query a variable while your program runs
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
+ * # {"status":"ok","result":{"name":"client_count","value":"5","type":"int"}}
+ * @endcode
+ *
+ * The tool compiles out completely in release builds (NDEBUG defined), adding
+ * zero runtime overhead to production code.
+ *
+ * @section query_problem The Core Problem
+ *
+ * During development, you often want to inspect variable values at specific
+ * points in execution without:
+ * - Stopping to add printf() statements and recompile
+ * - Running under a full interactive debugger
+ * - Modifying your code with instrumentation
+ *
+ * The ideal solution would let you query any variable at any line via a simple
+ * HTTP request, as if the program had an omniscient API for its own internal state.
+ *
+ * @subsection query_approaches_considered Approaches Considered
+ *
+ * Several implementation strategies were evaluated:
+ *
+ * **1. Compile-Time Source Instrumentation (libclang)**
+ * - Parse source with libclang, inject logging at every assignment
+ * - Problems: Huge runtime overhead, complex AST manipulation, fragile
+ *
+ * **2. DWARF + Sampling**
+ * - Use debug info to locate variables, sample memory periodically
+ * - Problems: Only works at scope boundaries, misses transient values
+ *
+ * **3. Self-Patching (INT3 breakpoints)**
+ * - Patch own executable with breakpoint instructions at runtime
+ * - Problems: Platform-specific, signal handling complexity, security concerns
+ *
+ * **4. External LLDB Process (chosen approach)**
+ * - Spawn separate controller process that attaches via LLDB
+ * - Controller runs HTTP server, target runs normally
+ * - LLDB handles all the complexity of breakpoints and variable reading
+ *
+ * @subsection query_why_lldb Why External LLDB Won
+ *
+ * The external LLDB approach was chosen because it:
+ *
+ * - **Handles all edge cases**: LLDB has years of battle-tested code for reading
+ *   variables in any context (registers, stack, heap, optimized code)
+ * - **Cross-platform**: Works on macOS, Linux, and Windows without platform-specific
+ *   ptrace/mach/debug API code
+ * - **No self-modification**: Target process runs unmodified; controller does all
+ *   the debugging magic
+ * - **Always responsive**: When target is stopped at a breakpoint, the HTTP server
+ *   in the controller process continues serving requests
+ * - **Leverages existing infrastructure**: LLDB's SB API is well-documented and stable
+ *
+ * The key insight: by making the controller a separate process, we avoid all the
+ * complexity of a program trying to debug itself. LLDB already solved that problem.
+ *
+ * @section query_architecture Architecture
+ *
+ * @code{.unparsed}
+ * +-----------------------+           +-----------------------+
+ * |  ascii-chat (TARGET)  |           |  ascii-query-server   |
+ * |                       |           |  (CONTROLLER)         |
+ * |  Your application     |<--LLDB--->|  HTTP server :9999    |
+ * |  runs normally        |           |  Always responsive!   |
+ * +-----------------------+           +-----------------------+
+ *                                               ^
+ *                                               | curl
+ *                                               |
+ *                                     +-----------------------+
+ *                                     |  curl / browser / vim |
+ *                                     +-----------------------+
+ * @endcode
+ *
+ * **Key components:**
+ *
+ * - **Target Process**: Your application (ascii-chat), built with debug symbols.
+ *   Runs completely normally. No instrumentation or modification.
+ *
+ * - **Controller Process**: ascii-query-server binary. Attaches to target via
+ *   LLDB SB API. Hosts HTTP server for queries. Stays running even when target
+ *   is stopped at breakpoints.
+ *
+ * - **LLDB Connection**: Controller uses LLDB's SBDebugger, SBTarget, SBProcess
+ *   APIs to attach, set breakpoints, and read variables.
+ *
+ * @section query_modes Query Modes
+ *
+ * @subsection query_immediate Immediate Mode
+ *
+ * Default behavior. Sets temporary breakpoint, waits for hit, reads variable,
+ * resumes target. Fast and non-interactive.
+ *
+ * @code{.sh}
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count'
+ * @endcode
+ *
+ * @subsection query_breakpoint Breakpoint Mode
+ *
+ * Add `&break` to keep target stopped after reading. Enables interactive
+ * debugging session where you can query additional variables.
+ *
+ * @code{.sh}
+ * # Stop at line 100, read 'count', stay stopped
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count&break'
+ *
+ * # While stopped, query more variables (no file:line needed)
+ * curl 'localhost:9999/query?name=options.port'
+ * curl 'localhost:9999/query?name=client&expand'
+ *
+ * # Resume execution
+ * curl -X POST 'localhost:9999/continue'
+ * @endcode
+ *
+ * @section query_api HTTP API Reference
+ *
+ * | Endpoint       | Method          | Description                        |
+ * |----------------|-----------------|-----------------------------------|
+ * | `/`            | GET             | Status page                        |
+ * | `/process`     | GET             | Process info (PID, state, threads) |
+ * | `/threads`     | GET             | List all threads                   |
+ * | `/frames`      | GET             | Stack frames (when stopped)        |
+ * | `/query`       | GET             | Query variable value               |
+ * | `/stop`        | POST            | Pause target                       |
+ * | `/continue`    | POST            | Resume target                      |
+ * | `/step`        | POST            | Single step                        |
+ * | `/breakpoints` | GET/POST/DELETE | Manage breakpoints                 |
+ * | `/detach`      | POST            | Detach from target                 |
+ *
+ * @subsection query_params Query Parameters
+ *
+ * | Parameter | Description                                                  |
+ * |-----------|--------------------------------------------------------------|
+ * | `file`    | Source file path (required when running)                     |
+ * | `line`    | Line number (required when running)                          |
+ * | `name`    | Variable name (supports `struct.member`, `ptr->field`, `arr[i]`) |
+ * | `break`   | Stop at breakpoint and stay stopped                          |
+ * | `expand`  | Expand struct members                                        |
+ * | `depth`   | Expansion depth (default: 3)                                 |
+ * | `timeout` | Breakpoint timeout in ms (default: 5000)                     |
+ * | `frame`   | Stack frame index or function name                           |
+ *
+ * @section query_usage Usage
+ *
+ * @subsection query_standalone Standalone Mode
+ *
+ * Start the controller manually, attach to running process:
+ *
+ * @code{.sh}
+ * # Terminal 1: Start your application
+ * ./build/bin/ascii-chat server --port 8080
+ *
+ * # Terminal 2: Attach the query controller
+ * ./build/bin/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+ *
+ * # Terminal 3: Query variables
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=options'
+ * @endcode
+ *
+ * @subsection query_autospawn Auto-Spawn Mode (Recommended)
+ *
+ * Add to your application code for automatic controller management:
+ *
+ * @code{.c}
+ * #include "tooling/query/query.h"
+ *
+ * int main(void) {
+ *     // Auto-spawn controller attached to this process
+ *     int port = QUERY_INIT(9999);
+ *     if (port > 0) {
+ *         printf("Query server at http://localhost:%d\n", port);
+ *     }
+ *
+ *     // ... your application runs ...
+ *
+ *     QUERY_SHUTDOWN();
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * The macros compile to no-ops in release builds.
+ *
+ * @section query_platform Platform Notes
+ *
+ * @subsection query_macos macOS
+ *
+ * Requires code signing with `get-task-allow` entitlement for LLDB attach:
+ *
+ * @code{.sh}
+ * codesign -s - --entitlements query.entitlements ./ascii-query-server
+ * @endcode
+ *
+ * CMake handles this automatically when building the query tool.
+ *
+ * @subsection query_linux Linux
+ *
+ * Check ptrace permissions:
+ *
+ * @code{.sh}
+ * cat /proc/sys/kernel/yama/ptrace_scope
+ * # 0 = permissive (debugging works)
+ * # 1 = restricted (may need sudo or capabilities)
+ *
+ * # For Docker containers:
+ * docker run --cap-add=SYS_PTRACE ...
+ * @endcode
+ *
+ * @section query_best_practices Best Practices
+ *
+ * 1. **Use auto-spawn mode** for seamless integration. The QUERY_INIT() macro
+ *    handles controller lifecycle automatically.
+ *
+ * 2. **Query at stable points** where variables are fully initialized. Mid-expression
+ *    queries may show intermediate values.
+ *
+ * 3. **Use `&expand` sparingly** on large structs. Deep expansion can be slow.
+ *
+ * 4. **Breakpoint mode for exploration**. Use `&break` when you need to inspect
+ *    multiple related variables in context.
+ *
+ * 5. **Remember: debug builds only**. All query functionality compiles out in
+ *    release builds, so don't depend on it for production behavior.
+ *
+ * @section query_files Source Files
+ *
+ * - `lib/tooling/query/query.h` - Public C API for auto-spawn
+ * - `lib/tooling/query/query.c` - Auto-spawn implementation
+ * - `src/tooling/query/main.cpp` - Controller entry point
+ * - `src/tooling/query/lldb_controller.h/cpp` - LLDB SB API wrapper
+ * - `src/tooling/query/http_server.h/cpp` - HTTP server implementation
+ *
+ * @see @ref docs/tooling/query.md "User Guide"
+ * @see @ref docs/tooling/query-troubleshooting.md "Troubleshooting"
+ */
