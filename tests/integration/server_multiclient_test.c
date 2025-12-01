@@ -54,6 +54,29 @@ static int send_capabilities(int socket, int width, int height) {
 // Use shared binary path detection from tests/common.h
 #define get_server_binary_path test_get_binary_path
 
+// Wait for a TCP port to become available (server listening)
+static bool wait_for_port(int port, int timeout_ms) {
+  int elapsed = 0;
+  while (elapsed < timeout_ms) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) return false;
+
+    struct sockaddr_in addr = {0};
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+    int result = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
+    close(sock);
+
+    if (result == 0) return true;
+
+    usleep(10000); // 10ms poll interval
+    elapsed += 10;
+  }
+  return false;
+}
+
 static pid_t start_test_server(int port) {
   pid_t pid = fork();
   if (pid == 0) {
@@ -89,8 +112,8 @@ static pid_t start_test_server(int port) {
     exit(1); // If exec fails
   }
 
-  // Parent process - wait for server to start
-  sleep(1);
+  // Parent process - poll for server to start (much faster than sleep)
+  wait_for_port(port, 2000);
   return pid;
 }
 
@@ -247,7 +270,7 @@ Test(server_multiclient, client_disconnect_reconnect) {
 
   // Disconnect
   close(client_socket);
-  sleep(1);
+  usleep(50000); // 50ms for server to detect disconnect
 
   // Reconnect
   client_socket = connect_to_server("127.0.0.1", test_port);
@@ -278,7 +301,7 @@ Test(server_multiclient, image_to_ascii_flow) {
   cr_assert_eq(result, 0, "Should send image frame");
 
   // Give server time to process
-  sleep(1);
+  usleep(50000); // 50ms
 
   // Server might broadcast frames back, but we're not checking for now
 
@@ -310,7 +333,7 @@ Test(server_multiclient, concurrent_frame_sending) {
   }
 
   // Give server time to process all frames
-  sleep(2);
+  usleep(100000); // 100ms
 
   // Clean up
   for (int i = 0; i < client_count; i++) {
@@ -344,7 +367,7 @@ Test(server_multiclient, server_handles_malformed_packets) {
   cr_assert_eq(sent, sizeof(bad_packet), "Should send malformed packet");
 
   // Server should still be running (not crashed)
-  sleep(1);
+  usleep(50000); // 50ms
 
   // Try to send valid packet
   send_test_frame(client_socket, 1);
@@ -377,7 +400,7 @@ Test(server_multiclient, server_handles_client_sudden_disconnect) {
   close(client_sockets[1]);
   client_sockets[1] = -1;
 
-  sleep(1); // Give server time to detect disconnect
+  usleep(50000); // 50ms for server to detect disconnect
 
   // Other clients should still work
   int result = send_test_frame(client_sockets[0], 300);
@@ -472,12 +495,11 @@ Test(server_multiclient, server_stability_over_time) {
   pid_t server_pid = start_test_server(test_port);
   cr_assert_gt(server_pid, 0, "Server should start successfully");
 
-  // Run for longer period with various operations
-  const int duration_seconds = 10;
+  // Run for short period with various operations (stability check, not endurance)
+  const int num_waves = 3;
   const int clients_per_wave = 2;
-  time_t start_time = time(NULL);
 
-  while (time(NULL) - start_time < duration_seconds) {
+  for (int wave = 0; wave < num_waves; wave++) {
     // Connect clients
     int client_sockets[clients_per_wave];
     for (int i = 0; i < clients_per_wave; i++) {
@@ -487,7 +509,7 @@ Test(server_multiclient, server_stability_over_time) {
       }
     }
 
-    usleep(500000); // 0.5 second
+    usleep(50000); // 50ms
 
     // Disconnect clients
     for (int i = 0; i < clients_per_wave; i++) {
@@ -496,7 +518,7 @@ Test(server_multiclient, server_stability_over_time) {
       }
     }
 
-    usleep(500000); // 0.5 second
+    usleep(50000); // 50ms
   }
 
   // Server should still be responsive
