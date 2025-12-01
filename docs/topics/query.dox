@@ -1,9 +1,10 @@
 /**
- * @defgroup query_tool Query Tool - Runtime Variable Inspection
+ * @defgroup query_tool Query Tool
  * @ingroup module_development
  * @brief HTTP-based runtime variable inspection using external LLDB
  *
- * @page query_tool_page Query Tool Documentation
+ * @page query_tool_page Query Tool README
+ * @ingroup query_tool
  * @tableofcontents
  *
  * @section query_overview Overview
@@ -154,6 +155,178 @@
  * | `depth`   | Expansion depth (default: 3)                                 |
  * | `timeout` | Breakpoint timeout in ms (default: 5000)                     |
  * | `frame`   | Stack frame index or function name                           |
+ *
+ * @subsection query_param_examples Parameter Examples
+ *
+ * @subsubsection query_ex_basic Basic Query (file, line, name)
+ *
+ * Query a simple variable at a specific location:
+ *
+ * @code{.sh}
+ * # Query 'client_count' when execution reaches server.c line 100
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
+ * @endcode
+ *
+ * Response:
+ * @code{.json}
+ * {
+ *   "status": "ok",
+ *   "result": {
+ *     "name": "client_count",
+ *     "value": "5",
+ *     "type": "int"
+ *   }
+ * }
+ * @endcode
+ *
+ * @subsubsection query_ex_nested Nested Access (struct.member, ptr->field)
+ *
+ * Access struct members and pointer dereferences:
+ *
+ * @code{.sh}
+ * # Access nested struct member
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client.socket.fd'
+ *
+ * # Access through pointer
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=opts->port'
+ *
+ * # Array indexing
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=clients[0]'
+ *
+ * # Combined: pointer to struct with array member
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=server->clients[2].id'
+ * @endcode
+ *
+ * @subsubsection query_ex_break Breakpoint Mode (&break)
+ *
+ * Stop execution and stay stopped for interactive inspection:
+ *
+ * @code{.sh}
+ * # Stop at breakpoint and read variable
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count&break'
+ * @endcode
+ *
+ * Response:
+ * @code{.json}
+ * {
+ *   "status": "ok",
+ *   "stopped": true,
+ *   "result": {"name": "count", "value": "42", "type": "int"}
+ * }
+ * @endcode
+ *
+ * While stopped, query additional variables without file:line:
+ *
+ * @code{.sh}
+ * # No file:line needed - process is already stopped
+ * curl 'localhost:9999/query?name=other_var'
+ * curl 'localhost:9999/query?name=options.debug_mode'
+ *
+ * # Resume when done
+ * curl -X POST 'localhost:9999/continue'
+ * @endcode
+ *
+ * @subsubsection query_ex_expand Struct Expansion (&expand, &depth)
+ *
+ * Expand structs to see all members:
+ *
+ * @code{.sh}
+ * # Expand struct with default depth (3 levels)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client&expand'
+ * @endcode
+ *
+ * Response:
+ * @code{.json}
+ * {
+ *   "status": "ok",
+ *   "result": {
+ *     "name": "client",
+ *     "type": "client_t",
+ *     "children": [
+ *       {"name": "id", "type": "uint32_t", "value": "42"},
+ *       {"name": "socket", "type": "socket_info_t", "children": [
+ *         {"name": "fd", "type": "int", "value": "7"},
+ *         {"name": "connected", "type": "bool", "value": "true"}
+ *       ]},
+ *       {"name": "username", "type": "char[32]", "value": "\"alice\""}
+ *     ]
+ *   }
+ * }
+ * @endcode
+ *
+ * Control expansion depth:
+ *
+ * @code{.sh}
+ * # Shallow expansion (1 level only)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client&expand&depth=1'
+ *
+ * # Deep expansion (5 levels for complex nested structs)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=config&expand&depth=5'
+ * @endcode
+ *
+ * @subsubsection query_ex_timeout Custom Timeout (&timeout)
+ *
+ * Adjust breakpoint wait timeout (default 5000ms):
+ *
+ * @code{.sh}
+ * # Short timeout for frequently-hit code paths
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count&timeout=1000'
+ *
+ * # Long timeout for rarely-hit code (e.g., error handlers)
+ * curl 'localhost:9999/query?file=src/server.c&line=500&name=error_code&timeout=30000'
+ * @endcode
+ *
+ * Timeout response:
+ * @code{.json}
+ * {
+ *   "status": "error",
+ *   "error": "timeout",
+ *   "message": "Breakpoint not hit within 5000ms"
+ * }
+ * @endcode
+ *
+ * @subsubsection query_ex_frame Stack Frame Selection (&frame)
+ *
+ * Query variables from caller's stack frame:
+ *
+ * @code{.sh}
+ * # Query from parent frame (index 1)
+ * curl 'localhost:9999/query?name=argc&frame=1'
+ *
+ * # Query from grandparent frame (index 2)
+ * curl 'localhost:9999/query?name=config&frame=2'
+ *
+ * # Query by function name
+ * curl 'localhost:9999/query?name=opts&frame=main'
+ * curl 'localhost:9999/query?name=request&frame=handle_client'
+ * @endcode
+ *
+ * @subsubsection query_ex_combined Combined Parameters
+ *
+ * Parameters can be combined for complex queries:
+ *
+ * @code{.sh}
+ * # Stop at breakpoint, expand struct, use custom timeout
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client&break&expand&depth=2&timeout=10000'
+ *
+ * # Query from specific frame while stopped, with expansion
+ * curl 'localhost:9999/query?name=options&frame=main&expand&depth=1'
+ * @endcode
+ *
+ * @subsubsection query_ex_arrays Array Queries
+ *
+ * Query array elements and ranges:
+ *
+ * @code{.sh}
+ * # Single element
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=buffer[0]'
+ *
+ * # Element range (returns array of values)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=buffer[0..10]'
+ *
+ * # Last element (if size is known)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=clients[client_count-1]'
+ * @endcode
  *
  * @section query_usage Usage
  *
