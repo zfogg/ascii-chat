@@ -52,9 +52,27 @@ if(WIN32)
     message(STATUS "Configured Start Menu shortcut: ${BoldBlue}ascii-chat Documentation${ColorReset}")
 endif()
 
-set(_ascii_chat_exportable_targets ascii-chat-shared ascii-chat-static ascii-chat-static-lib)
+# Build exportable targets list
+# For musl builds, exclude the shared library (it's not built by default and can't link against musl)
+set(_ascii_chat_exportable_targets ascii-chat-static ascii-chat-static-lib)
+if(NOT USE_MUSL)
+    list(PREPEND _ascii_chat_exportable_targets ascii-chat-shared)
+endif()
+
 foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
     if(TARGET ${_ascii_target})
+        # Skip targets with EXCLUDE_FROM_ALL that weren't explicitly built
+        get_target_property(_exclude_from_all ${_ascii_target} EXCLUDE_FROM_ALL)
+        if(_exclude_from_all)
+            # Check if the library file actually exists before trying to install
+            get_target_property(_target_type ${_ascii_target} TYPE)
+            if(_target_type STREQUAL "SHARED_LIBRARY" OR _target_type STREQUAL "STATIC_LIBRARY")
+                get_target_property(_lib_location ${_ascii_target} LOCATION)
+                if(NOT EXISTS "${_lib_location}")
+                    continue()
+                endif()
+            endif()
+        endif()
         install(TARGETS ${_ascii_target}
             EXPORT ascii-chat-targets
             RUNTIME DESTINATION bin

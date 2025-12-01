@@ -24,6 +24,11 @@
 #   - BEARSSL_FOUND: Whether BearSSL was found or built successfully
 # =============================================================================
 
+# Skip when using musl - BearSSL is built from source in MuslDependencies.cmake
+if(USE_MUSL)
+    return()
+endif()
+
 # Try to find BearSSL (system install from Docker or pkg-config)
 # First check for system-installed version (e.g., from Docker image)
 find_library(BEARSSL_SYSTEM_LIB NAMES bearssl libbearssl bearssls
