@@ -34,25 +34,7 @@ configure_file(
 execute_process(COMMAND chmod +x "${AR_WRAPPER_SH}" ERROR_QUIET)
 
 if (WIN32)
-    # Build hint paths for finding bash on Windows
-    # Note: We must read ProgramFiles(x86) separately because CMake can't parse parens in $ENV{}
-    set(_pf "$ENV{ProgramFiles}")
-    set(_pf_x86 "$ENV{ProgramFiles\(x86\)}")
-    set(_localappdata "$ENV{LOCALAPPDATA}")
-
-    set(_asciichat_bash_hint_paths
-        "${_pf}/Git/usr/bin"
-        "${_pf}/Git/bin"
-        "${_pf_x86}/Git/usr/bin"
-        "${_pf_x86}/Git/bin"
-        "${_localappdata}/Programs/Git/usr/bin"
-        "${_localappdata}/Programs/Git/bin"
-    )
-    find_program(
-        ASCIICHAT_BASH_EXECUTABLE
-        NAMES bash.exe bash sh.exe sh
-        HINTS ${_asciichat_bash_hint_paths}
-    )
+    # Use centralized ASCIICHAT_BASH_EXECUTABLE from FindPrograms.cmake
     if (NOT ASCIICHAT_BASH_EXECUTABLE)
         message(FATAL_ERROR "ascii-chat build requires a POSIX shell (bash) to wrap the archiver on Windows. Install Git for Windows or another bash distribution and ensure it is in PATH.")
     endif()

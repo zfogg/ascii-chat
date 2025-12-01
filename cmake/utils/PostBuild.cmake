@@ -96,8 +96,8 @@ function(check_static_linking TARGET_NAME)
             message(STATUS "Static linking enforcement disabled for Release builds")
             return()
         endif()
-        find_program(BASH_EXECUTABLE bash HINTS "C:/Program Files/Git/usr/bin")
-        if(BASH_EXECUTABLE)
+        # Use centralized ASCIICHAT_BASH_EXECUTABLE from FindPrograms.cmake
+        if(ASCIICHAT_BASH_EXECUTABLE)
             # Determine platform
             if(UNIX AND NOT APPLE)
                 set(PLATFORM "linux")
@@ -108,7 +108,7 @@ function(check_static_linking TARGET_NAME)
             endif()
 
             add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                COMMAND ${BASH_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/utils/check_static_linking.sh" "$<TARGET_FILE:${TARGET_NAME}>" "${PLATFORM}"
+                COMMAND ${ASCIICHAT_BASH_EXECUTABLE} "${CMAKE_SOURCE_DIR}/cmake/utils/check_static_linking.sh" "$<TARGET_FILE:${TARGET_NAME}>" "${PLATFORM}"
                 COMMENT "Verifying static linking for Release build"
                 VERBATIM
             )
@@ -122,8 +122,9 @@ endfunction()
 # macOS uses Mach-O format (no .comment section)
 # Also ensure no debug info paths are embedded
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    find_program(STRIP_EXECUTABLE strip)
-    find_program(OBJCOPY_EXECUTABLE objcopy)
+    # Use centralized executables from FindPrograms.cmake
+    set(STRIP_EXECUTABLE "${ASCIICHAT_STRIP_EXECUTABLE}")
+    set(OBJCOPY_EXECUTABLE "${ASCIICHAT_OBJCOPY_EXECUTABLE}")
     if(STRIP_EXECUTABLE AND OBJCOPY_EXECUTABLE)
         # Only run .comment cleaning on Linux (ELF format)
         # Windows (PE) and macOS (Mach-O) don't have .comment sections
@@ -155,25 +156,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
                     COMMENT "Stripping symbols and debug info from ascii-chat"
                 )
                 # Then remove embedded file paths from binary using bash script (much faster than PowerShell)
-                # On Windows, prefer Git Bash over WSL bash for consistent path handling
-                if(WIN32)
-                    find_program(BASH_EXECUTABLE
-                        NAMES bash
-                        PATHS
-                            "C:/Program Files/Git/usr/bin"
-                            "C:/Program Files/Git/bin"
-                            "$ENV{ProgramFiles}/Git/usr/bin"
-                            "$ENV{ProgramFiles}/Git/bin"
-                        NO_DEFAULT_PATH
-                    )
-                    # If Git Bash not found in standard locations, fall back to any bash
-                    if(NOT BASH_EXECUTABLE)
-                        find_program(BASH_EXECUTABLE bash)
-                    endif()
-                else()
-                    find_program(BASH_EXECUTABLE bash)
-                endif()
-                if(BASH_EXECUTABLE)
+                # Use centralized ASCIICHAT_BASH_EXECUTABLE from FindPrograms.cmake
+                if(ASCIICHAT_BASH_EXECUTABLE)
                     # Helper function to convert Windows paths to bash compatible format
                     # Auto-detects WSL vs Git Bash/MSYS - the script will do runtime detection
                     # We'll pass Windows paths as-is and let the script handle conversion
@@ -197,14 +181,14 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
 
                     # Note: DEPENDS is not supported for TARGET form, but the script path is explicit in COMMAND
                     add_custom_command(TARGET ascii-chat POST_BUILD
-                        COMMAND ${BASH_EXECUTABLE} "${SCRIPT_PATH_BASH}"
+                        COMMAND ${ASCIICHAT_BASH_EXECUTABLE} "${SCRIPT_PATH_BASH}"
                             "$<TARGET_FILE:ascii-chat>"
                             "${CMAKE_SOURCE_DIR}"
                             "${CMAKE_BINARY_DIR}"
                         COMMENT "Removing embedded file paths from ascii-chat binary"
                     )
                 else()
-                    message(WARNING "Bash not found - cannot remove embedded paths from binary")
+                    message(WARNING "Bash not found (ASCIICHAT_BASH_EXECUTABLE) - cannot remove embedded paths from binary")
                 endif()
             else()
                 # macOS: strip symbols then codesign (must strip BEFORE codesigning)

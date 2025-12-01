@@ -861,9 +861,9 @@ After installation, run:
     elseif(WIN32)
         # Windows: Use llvm-strip if available (for Clang builds)
         # Note: MSVC uses different tools, but this project uses Clang
-        find_program(LLVM_STRIP llvm-strip)
-        if(LLVM_STRIP)
-            set(CMAKE_STRIP "${LLVM_STRIP}" CACHE FILEPATH "Strip tool for CPack" FORCE)
+        # Use centralized ASCIICHAT_LLVM_STRIP_EXECUTABLE from FindPrograms.cmake
+        if(ASCIICHAT_LLVM_STRIP_EXECUTABLE)
+            set(CMAKE_STRIP "${ASCIICHAT_LLVM_STRIP_EXECUTABLE}" CACHE FILEPATH "Strip tool for CPack" FORCE)
             set(CPACK_STRIP_FILES
                 "bin/ascii-chat.exe"            # Main executable
                 "bin/asciichat.dll"             # Shared library (if dynamic build)
@@ -871,7 +871,7 @@ After installation, run:
             )
             message(STATUS "${BoldYellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} using ${BoldBlue}llvm-strip${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
         else()
-            message(STATUS "${BoldRed}CPack:${ColorReset} Binary stripping ${Yellow}disabled${ColorReset} ${BoldRed}(llvm-strip not found)${ColorReset}")
+            message(STATUS "${BoldRed}CPack:${ColorReset} Binary stripping ${Yellow}disabled${ColorReset} ${BoldRed}(ASCIICHAT_LLVM_STRIP_EXECUTABLE not found)${ColorReset}")
         endif()
     endif()
 

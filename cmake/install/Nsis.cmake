@@ -20,36 +20,8 @@ if(NOT WIN32)
     return()
 endif()
 
-# Check for NSIS (Nullsoft Scriptable Install System)
-find_program(NSIS_EXECUTABLE makensis)
-if(NOT NSIS_EXECUTABLE)
-    # Try alternative NSIS locations (common Windows install paths)
-    # Handle ProgramFiles(x86) separately due to CMake variable parsing
-    if(DEFINED ENV{ProgramFiles})
-        set(PROGRAM_FILES_PATH "$ENV{ProgramFiles}")
-    else()
-        set(PROGRAM_FILES_PATH "C:/Program Files")
-    endif()
-
-    if(DEFINED ENV{ProgramFiles\(x86\)})
-        set(PROGRAM_FILES_X86_PATH "$ENV{ProgramFiles\(x86\)}")
-    else()
-        set(PROGRAM_FILES_X86_PATH "C:/Program Files (x86)")
-    endif()
-
-    find_program(NSIS_EXECUTABLE
-        NAMES makensis
-        PATHS
-            "${PROGRAM_FILES_PATH}/NSIS"
-            "${PROGRAM_FILES_X86_PATH}/NSIS"
-            "C:/Program Files/NSIS"
-            "C:/Program Files (x86)/NSIS"
-        PATH_SUFFIXES bin
-        NO_DEFAULT_PATH
-    )
-endif()
-
-if(NOT NSIS_EXECUTABLE)
+# Use centralized ASCIICHAT_NSIS_EXECUTABLE from FindPrograms.cmake
+if(NOT ASCIICHAT_NSIS_EXECUTABLE)
     message(STATUS "${Red}CPack:${ColorReset} NSIS generator disabled (${BoldBlue}makensis${ColorReset} not found - install ${BoldBlue}NSIS${ColorReset} to create EXE installers)")
     return()
 endif()
@@ -58,7 +30,7 @@ endif()
 list(APPEND CPACK_GENERATOR "NSIS")
 # Force update the cache so it persists
 set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-message(STATUS "${Yellow}CPack:${ColorReset} NSIS generator enabled (${BoldBlue}makensis${ColorReset} found at ${BoldBlue}${NSIS_EXECUTABLE}${ColorReset})")
+message(STATUS "${Yellow}CPack:${ColorReset} NSIS generator enabled (${BoldBlue}makensis${ColorReset} found at ${BoldBlue}${ASCIICHAT_NSIS_EXECUTABLE}${ColorReset})")
 
 # =============================================================================
 # NSIS Package Configuration

@@ -112,36 +112,38 @@ list(APPEND _ascii_chat_try_compile_vars
 set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES "${_ascii_chat_try_compile_vars}")
 
 if(ASCIICHAT_ENABLE_ANALYZERS)
-    # Find clang-tidy from the same installation as the C compiler to ensure version compatibility
-    # This prevents PCH version mismatch errors when clang-tidy uses different headers than the compiler
-    get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
-    find_program(_asciichat_clang_tidy
-        NAMES "${ASCIICHAT_CLANG_TIDY}" clang-tidy
-        HINTS "${_compiler_dir}" "${_compiler_dir}/../bin"
-        NO_DEFAULT_PATH
-        NO_CACHE
-    )
-    if(NOT _asciichat_clang_tidy)
-        # Fallback to PATH if not found alongside compiler
-        find_program(_asciichat_clang_tidy NAMES "${ASCIICHAT_CLANG_TIDY}" clang-tidy PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
+    # Determine which clang-tidy to use
+    # Priority: 1. User override (ASCIICHAT_CLANG_TIDY), 2. Centralized from FindPrograms.cmake
+    set(_clang_tidy_for_analyzer "")
+    if(ASCIICHAT_CLANG_TIDY)
+        # User explicitly specified clang-tidy path
+        set(_clang_tidy_for_analyzer "${ASCIICHAT_CLANG_TIDY}")
+    else()
+        # Use centralized ASCIICHAT_CLANG_TIDY_EXECUTABLE from FindPrograms.cmake
+        set(_clang_tidy_for_analyzer "${ASCIICHAT_CLANG_TIDY_EXECUTABLE}")
     endif()
-    if(NOT _asciichat_clang_tidy)
+    if(NOT _clang_tidy_for_analyzer)
         message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but clang-tidy not found")
     else()
-        set(CMAKE_C_CLANG_TIDY "${_asciichat_clang_tidy}" CACHE STRING "" FORCE)
-        message(STATUS "Static analyzer: ${BoldCyan}clang-tidy${ColorReset} (${_asciichat_clang_tidy}) enabled")
+        set(CMAKE_C_CLANG_TIDY "${_clang_tidy_for_analyzer}" CACHE STRING "" FORCE)
+        message(STATUS "Static analyzer: ${BoldCyan}clang-tidy${ColorReset} (${_clang_tidy_for_analyzer}) enabled")
     endif()
 
-    find_program(_asciichat_cppcheck NAMES "${ASCIICHAT_CPPCHECK}" cppcheck PATHS ENV PATH PATH_SUFFIXES bin NO_CACHE)
-    if(_asciichat_cppcheck)
+    # Determine which cppcheck to use
+    # Priority: 1. User override (ASCIICHAT_CPPCHECK), 2. Auto-detected (ASCIICHAT_CPPCHECK_EXECUTABLE)
+    set(_cppcheck_for_analyzer "")
+    if(ASCIICHAT_CPPCHECK)
+        set(_cppcheck_for_analyzer "${ASCIICHAT_CPPCHECK}")
+    elseif(ASCIICHAT_CPPCHECK_EXECUTABLE)
+        set(_cppcheck_for_analyzer "${ASCIICHAT_CPPCHECK_EXECUTABLE}")
+    endif()
+    if(_cppcheck_for_analyzer)
         # Use quiet mode to suppress verbose "Checking..." messages and informational notes
         set(CMAKE_C_CPPCHECK
-            "${_asciichat_cppcheck}"
+            "${_cppcheck_for_analyzer}"
             "--quiet"
             "--suppress=normalCheckLevelMaxBranches"
             CACHE STRING "" FORCE)
-    elseif(ASCIICHAT_CPPCHECK)
-        message(WARNING "ASCIICHAT_ENABLE_ANALYZERS=ON but specified cppcheck binary '${ASCIICHAT_CPPCHECK}' not found")
     endif()
 
     if(NOT DEFINED ENV{ASCIICHAT_ANALYZER_SUPPRESS_WARNINGS})

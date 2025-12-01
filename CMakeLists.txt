@@ -127,6 +127,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/platform/Sanitizers.cmake)
 # (configure_build_type_post_project needs functions from both modules)
 configure_build_type_post_project()
 
+# Validate optional programs based on enabled options (from FindPrograms.cmake)
+asciichat_validate_optional_programs()
+
 # =============================================================================
 # Hardware Acceleration Detection (must be before build type configuration)
 # =============================================================================

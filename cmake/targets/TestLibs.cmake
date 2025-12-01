@@ -38,6 +38,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-static-lib
     )
 
+    # Link panic runtime when panic instrumentation is enabled
+    if(ASCIICHAT_BUILD_WITH_PANIC AND TARGET ascii-panic-runtime)
+        target_link_libraries(test-static-lib PRIVATE ascii-panic-runtime)
+    endif()
+
     # Include necessary headers
     target_include_directories(test-static-lib PRIVATE
         ${CMAKE_SOURCE_DIR}/lib

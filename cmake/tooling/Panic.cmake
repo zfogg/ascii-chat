@@ -139,14 +139,11 @@ function(ascii_panic_prepare)
             message(STATUS "Panic tool: Using Apple system clang for compilation: ${_panic_cxx_compiler}")
         elseif(CMAKE_CXX_COMPILER)
             set(_panic_cxx_compiler "${CMAKE_CXX_COMPILER}")
-        elseif(CMAKE_C_COMPILER MATCHES "clang")
-            get_filename_component(_compiler_dir "${CMAKE_C_COMPILER}" DIRECTORY)
-            find_program(_panic_cxx_compiler NAMES clang++ PATHS "${_compiler_dir}" NO_DEFAULT_PATH)
-            if(NOT _panic_cxx_compiler)
-                find_program(_panic_cxx_compiler NAMES clang++)
-            endif()
+        elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+            # Use centralized clang++ from FindPrograms.cmake
+            set(_panic_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
         else()
-            find_program(_panic_cxx_compiler NAMES c++ g++)
+            message(FATAL_ERROR "Cannot find clang++ for building panic tool. Set CMAKE_CXX_COMPILER or ensure clang++ is in PATH.")
         endif()
 
         # Configure cmake args for the external project
@@ -297,52 +294,12 @@ function(ascii_panic_prepare)
     list(REMOVE_DUPLICATES instrumented_rel_paths)
     list(REMOVE_DUPLICATES instrumented_generated_paths)
 
+    # Use centralized bash from FindPrograms.cmake (or user override)
     if(DEFINED ASCII_PANIC_BASH AND ASCII_PANIC_BASH)
         set(_ascii_bash_executable "${ASCII_PANIC_BASH}")
+    elseif(ASCIICHAT_BASH_EXECUTABLE)
+        set(_ascii_bash_executable "${ASCIICHAT_BASH_EXECUTABLE}")
     else()
-        unset(_ascii_bash_executable CACHE)  # Clear any cached value
-        if(WIN32)
-            # Windows-specific search for Git Bash or WSL
-            find_program(_ascii_bash_executable
-                NAMES bash.exe bash
-                HINTS
-                    "$ENV{ProgramFiles}/Git/usr/bin"
-                    "$ENV{ProgramFiles}/Git/bin"
-                    "$ENV{ProgramFiles}/Git/cmd"
-                    "$ENV{ProgramW6432}/Git/usr/bin"
-                    "$ENV{ProgramW6432}/Git/bin"
-                    "$ENV{ProgramW6432}/Git/cmd"
-                    "$ENV{LOCALAPPDATA}/Programs/Git/usr/bin"
-                    "$ENV{LOCALAPPDATA}/Programs/Git/bin"
-                    "$ENV{LOCALAPPDATA}/Programs/Git/cmd"
-                PATHS
-                    "$ENV{SystemRoot}/system32"
-                    "$ENV{SystemRoot}"
-            )
-            if(NOT _ascii_bash_executable)
-                set(_ascii_candidate_bash_paths
-                    "$ENV{SystemRoot}/system32/bash.exe"
-                    "$ENV{ProgramFiles}/Git/usr/bin/bash.exe"
-                    "$ENV{ProgramFiles}/Git/bin/bash.exe"
-                    "$ENV{ProgramW6432}/Git/usr/bin/bash.exe"
-                    "$ENV{ProgramW6432}/Git/bin/bash.exe"
-                    "$ENV{LOCALAPPDATA}/Programs/Git/usr/bin/bash.exe"
-                    "$ENV{LOCALAPPDATA}/Programs/Git/bin/bash.exe"
-                )
-                foreach(_ascii_candidate_path IN LISTS _ascii_candidate_bash_paths)
-                    if(_ascii_candidate_path AND EXISTS "${_ascii_candidate_path}")
-                        set(_ascii_bash_executable "${_ascii_candidate_path}")
-                        break()
-                    endif()
-                endforeach()
-            endif()
-        else()
-            # Unix (Linux/macOS) - use standard find_program with system PATH
-            find_program(_ascii_bash_executable NAMES bash)
-        endif()
-    endif()
-
-    if(NOT _ascii_bash_executable)
         message(FATAL_ERROR "ascii-chat panic requires 'bash'. Install Git Bash or provide a path via ASCII_PANIC_BASH.")
     endif()
 
@@ -361,29 +318,57 @@ function(ascii_panic_prepare)
         _ascii_convert_path_for_shell("${_ascii_instrumented_dir_for_shell}" _ascii_instrumented_dir_for_shell)
     endif()
 
+    # Detect Clang resource directory for compilation database generation
+    # This is required for Clang's LibTooling to find builtin headers like stdatomic.h
+    set(_clang_for_db "${CMAKE_C_COMPILER}")
+    execute_process(
+        COMMAND ${_clang_for_db} -print-resource-dir
+        OUTPUT_VARIABLE _panic_clang_resource_dir
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    if(_panic_clang_resource_dir)
+        set(_panic_cflags "-resource-dir=${_panic_clang_resource_dir}")
+        message(STATUS "Panic tool: Using Clang resource directory: ${_panic_clang_resource_dir}")
+    else()
+        set(_panic_cflags "")
+        message(WARNING "Panic tool: Could not detect Clang resource directory - builtin headers may not be found")
+    endif()
+
     # Generate compilation database with original source paths for the panic instrumentation tool
     # The regular compile_commands.json has instrumented paths, but the panic tool needs the originals
     set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp")
-    add_custom_command(
-        OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_original.json"
-        COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
-        COMMAND ${CMAKE_COMMAND} -G Ninja
-            -S "${CMAKE_SOURCE_DIR}"
-            -B "${_ascii_temp_build_dir}"
-            -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-            -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND
-            -DASCIICHAT_BUILD_WITH_PANIC=OFF
-            -DASCIICHAT_USE_PCH=OFF
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-        COMMAND ${CMAKE_COMMAND} --build "${_ascii_temp_build_dir}" --target generate_version
-        COMMAND ${CMAKE_COMMAND} -E copy
-            "${_ascii_temp_build_dir}/compile_commands.json"
-            "${CMAKE_BINARY_DIR}/compile_commands_original.json"
-        COMMENT "Generating compilation database for the panic tool"
-        VERBATIM
-    )
+    set(_panic_log_file "${CMAKE_BINARY_DIR}/panic_compile_db.log")
+    if(WIN32)
+        # Windows: use cmd to redirect stdout and stderr to log file
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${_ascii_temp_build_dir}"
+            COMMAND cmd /c "${CMAKE_COMMAND} -G Ninja -S ${CMAKE_SOURCE_DIR} -B ${_ascii_temp_build_dir} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND -DASCIICHAT_BUILD_WITH_PANIC=OFF -DASCIICHAT_USE_PCH=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \"-DCMAKE_C_FLAGS=${_panic_cflags}\" > ${_panic_log_file} 2>&1"
+            COMMAND cmd /c "${CMAKE_COMMAND} --build ${_ascii_temp_build_dir} --target generate_version >> ${_panic_log_file} 2>&1"
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "${_ascii_temp_build_dir}/compile_commands.json"
+                "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+            COMMENT "Generating compilation database for the panic tool"
+            VERBATIM
+        )
+    else()
+        # Unix: use shell redirection
+        add_custom_command(
+            OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${_ascii_temp_build_dir}"
+            COMMAND sh -c "${CMAKE_COMMAND} -G Ninja -S ${CMAKE_SOURCE_DIR} -B ${_ascii_temp_build_dir} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND -DASCIICHAT_BUILD_WITH_PANIC=OFF -DASCIICHAT_USE_PCH=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '-DCMAKE_C_FLAGS=${_panic_cflags}' > ${_panic_log_file} 2>&1"
+            COMMAND sh -c "${CMAKE_COMMAND} --build ${_ascii_temp_build_dir} --target generate_version >> ${_panic_log_file} 2>&1"
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "${_ascii_temp_build_dir}/compile_commands.json"
+                "${CMAKE_BINARY_DIR}/compile_commands_original.json"
+            COMMENT "Generating compilation database for the panic tool"
+            VERBATIM
+        )
+    endif()
 
     add_custom_command(
         OUTPUT "${instrumented_dir}/.stamp"

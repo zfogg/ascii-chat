@@ -17,9 +17,8 @@ if(NOT APPLE)
     return()
 endif()
 
-# Check for productbuild (macOS package creation tool)
-find_program(PRODUCTBUILD_EXECUTABLE productbuild)
-if(NOT PRODUCTBUILD_EXECUTABLE)
+# Use centralized ASCIICHAT_PRODUCTBUILD_EXECUTABLE from FindPrograms.cmake
+if(NOT ASCIICHAT_PRODUCTBUILD_EXECUTABLE)
     message(STATUS "${Red}CPack:${ColorReset} productbuild generator disabled (${BoldBlue}productbuild${ColorReset} not found)")
     return()
 endif()

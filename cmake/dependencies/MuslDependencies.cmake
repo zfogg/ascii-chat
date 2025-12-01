@@ -17,7 +17,33 @@ if(NOT USE_MUSL)
     return()
 endif()
 
+# =============================================================================
+# Validate required programs for musl builds
+# =============================================================================
+# musl-gcc and gcc are required to build dependencies from source
+if(NOT ASCIICHAT_MUSL_GCC_EXECUTABLE)
+    message(FATAL_ERROR "musl-gcc not found. Required for Linux Release builds with USE_MUSL=ON.\n"
+        "Install musl development tools:\n"
+        "  Arch Linux: sudo pacman -S musl\n"
+        "  Ubuntu/Debian: sudo apt install musl-tools\n"
+        "  Fedora: sudo dnf install musl-gcc")
+endif()
+
+if(NOT ASCIICHAT_GCC_EXECUTABLE)
+    message(FATAL_ERROR "gcc not found. Required by musl-gcc (via REALGCC).\n"
+        "Install GCC:\n"
+        "  Arch Linux: sudo pacman -S gcc\n"
+        "  Ubuntu/Debian: sudo apt install gcc\n"
+        "  Fedora: sudo dnf install gcc")
+endif()
+
+# Set variables for use in ExternalProject commands
+set(MUSL_GCC "${ASCIICHAT_MUSL_GCC_EXECUTABLE}")
+set(REAL_GCC "${ASCIICHAT_GCC_EXECUTABLE}")
+
 message(STATUS "Building dependencies from source for musl libc...")
+message(STATUS "  musl-gcc: ${MUSL_GCC}")
+message(STATUS "  gcc (REALGCC): ${REAL_GCC}")
 
 include(FetchContent)
 
@@ -117,7 +143,7 @@ if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR> lib-release PREFIX=${ZSTD_PREFIX}
+        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -C <SOURCE_DIR> lib-release PREFIX=${ZSTD_PREFIX}
         INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${ZSTD_PREFIX}
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${ZSTD_PREFIX}/lib/libzstd.a
@@ -151,8 +177,8 @@ if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         STAMP_DIR ${LIBSODIUM_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${LIBSODIUM_PREFIX} --enable-static --disable-shared
+        BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
         DEPENDS zstd-musl
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
@@ -188,8 +214,8 @@ if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
         STAMP_DIR ${ALSA_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=${MUSL_KERNEL_CFLAGS} <SOURCE_DIR>/configure --host=x86_64-linux-gnu --prefix=${ALSA_PREFIX} --enable-static --disable-shared --disable-maintainer-mode
+        BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
     )
@@ -223,8 +249,8 @@ if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
         STAMP_DIR ${PORTAUDIO_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
-        BUILD_COMMAND env REALGCC=/usr/bin/gcc make
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
+        BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         DEPENDS alsa-lib-musl
@@ -258,7 +284,7 @@ if(NOT EXISTS "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND env CC=/usr/bin/musl-gcc REALGCC=/usr/bin/gcc CFLAGS=-fPIC make -C <SOURCE_DIR>
+        BUILD_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC make -C <SOURCE_DIR>
         INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
@@ -299,7 +325,7 @@ if(EXISTS "${BEARSSL_SOURCE_DIR}")
         # Build the static library target with parallel jobs for faster builds
         # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
         execute_process(
-            COMMAND make -j1 lib CC=/usr/bin/musl-gcc AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
+            COMMAND make -j1 lib CC=${MUSL_GCC} AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
             WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
             RESULT_VARIABLE BEARSSL_MAKE_RESULT
             OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
