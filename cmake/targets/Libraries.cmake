@@ -595,8 +595,10 @@ else()
 
     # Platform-specific linker flags
     if(APPLE)
-        # Export all symbols on macOS
-        target_link_options(ascii-chat-shared PRIVATE -Wl,-export_dynamic)
+        # macOS: Symbols are exported by default when using -fvisibility=default
+        # Note: -export_dynamic is a GNU ld flag, NOT valid for Apple ld64
+        # Apple ld uses -exported_symbols_list for explicit control, but we don't need it
+        # since we're using default visibility for the shared library
     elseif(WIN32)
         # Windows Release: DLL export configuration
         # Use WINDOWS_EXPORT_ALL_SYMBOLS to automatically export all symbols
@@ -669,14 +671,21 @@ else()
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
+        # Link mimalloc with force_load/whole-archive to export all symbols
         if(USE_MIMALLOC)
             if(TARGET mimalloc-shared)
                 add_dependencies(ascii-chat-shared mimalloc-shared)
             endif()
+            set(_MIMALLOC_LIB_TO_LINK "")
             if(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
+                set(_MIMALLOC_LIB_TO_LINK "${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB}")
             elseif(MIMALLOC_SHARED_LIBRARIES)
-                target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_SHARED_LIBRARIES})
+                set(_MIMALLOC_LIB_TO_LINK "${MIMALLOC_SHARED_LIBRARIES}")
+            endif()
+            if(_MIMALLOC_LIB_TO_LINK)
+                # Linux musl: --whole-archive exports all symbols from static library
+                target_link_libraries(ascii-chat-shared PRIVATE
+                    -Wl,--whole-archive ${_MIMALLOC_LIB_TO_LINK} -Wl,--no-whole-archive)
             endif()
         endif()
     else()
@@ -690,14 +699,27 @@ else()
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
+        # Use force_load/whole-archive to export all mimalloc symbols from the shared library
         if(USE_MIMALLOC)
+            # Determine which mimalloc library to link
+            set(_MIMALLOC_LIB_TO_LINK "")
             if(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                target_link_libraries(ascii-chat-shared PRIVATE ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
+                set(_MIMALLOC_LIB_TO_LINK "${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB}")
             elseif(MIMALLOC_SHARED_LIBRARIES)
-                target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_SHARED_LIBRARIES})
+                set(_MIMALLOC_LIB_TO_LINK "${MIMALLOC_SHARED_LIBRARIES}")
             elseif(TARGET mimalloc-shared)
-                # Fall back to linking the target directly if path variables aren't set
-                target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
+                get_target_property(_MIMALLOC_LIB_TO_LINK mimalloc-shared IMPORTED_LOCATION)
+            endif()
+
+            if(_MIMALLOC_LIB_TO_LINK)
+                if(APPLE)
+                    # macOS: -force_load exports all symbols from static library
+                    target_link_libraries(ascii-chat-shared PRIVATE -force_load ${_MIMALLOC_LIB_TO_LINK})
+                else()
+                    # Linux: --whole-archive exports all symbols from static library
+                    target_link_libraries(ascii-chat-shared PRIVATE
+                        -Wl,--whole-archive ${_MIMALLOC_LIB_TO_LINK} -Wl,--no-whole-archive)
+                endif()
             endif()
         endif()
         if(PLATFORM_DARWIN)
