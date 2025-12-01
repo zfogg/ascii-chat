@@ -302,7 +302,7 @@ Now let's list out and talk about the dependencies before we install them.
 
 ### Dependencies
 
-> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__build.html#topic_dependencies)**
+> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)**
 
 ascii-chat is built on operating system code and several libraries.
 
@@ -425,7 +425,7 @@ brew install make cmake ninja llvm zstd portaudio libsodium criterion
 For open source developers who want a working copy:
 
 1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
-2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__build.html#topic_dependencies)).
+2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__dependencies.html)).
 3. Build an optimized-with-debug build: `make CMAKE_BUILD_TYPE=RelWithDebInfo`.
 4. Run `./build/bin/ascii-chat server`.
 5. Open a second terminal window, tab, split, or pane. Or go to another computer.
