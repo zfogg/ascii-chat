@@ -582,6 +582,17 @@ void test_terminal_output_modes(void) {
  * @return Modified capabilities with overrides applied
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
+#ifndef NDEBUG
+  // In debug builds, force mono mode for Claude Code (LLM doesn't need colors, saves tokens)
+  if (opt_color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
+    log_debug("CLAUDECODE detected: forcing mono color mode");
+    caps.color_level = TERM_COLOR_NONE;
+    caps.capabilities &= ~(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
+    caps.color_count = 0;
+    return caps;
+  }
+#endif
+
   // Apply color mode override if specified in options (not auto mode)
   if (opt_color_mode != COLOR_MODE_AUTO) {
     terminal_color_level_t override_level = (terminal_color_level_t)opt_color_mode;
