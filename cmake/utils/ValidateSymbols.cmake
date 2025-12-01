@@ -52,12 +52,19 @@ foreach(SYMBOL ${SYMBOLS})
     # Symbol should appear as " T symbol" or " D symbol" etc. in nm output
     # Use simple string FIND - symbol names are unique enough
     # Look for " T symbolname" or " D symbolname" pattern
+    # On macOS, symbols have underscore prefix (_symbol), so check both
     string(FIND "${NM_OUTPUT}" " T ${SYMBOL}" FOUND_T)
     string(FIND "${NM_OUTPUT}" " D ${SYMBOL}" FOUND_D)
     string(FIND "${NM_OUTPUT}" " B ${SYMBOL}" FOUND_B)
     string(FIND "${NM_OUTPUT}" " R ${SYMBOL}" FOUND_R)
+    # macOS underscore-prefixed symbols
+    string(FIND "${NM_OUTPUT}" " T _${SYMBOL}" FOUND_T_MAC)
+    string(FIND "${NM_OUTPUT}" " D _${SYMBOL}" FOUND_D_MAC)
+    string(FIND "${NM_OUTPUT}" " B _${SYMBOL}" FOUND_B_MAC)
+    string(FIND "${NM_OUTPUT}" " R _${SYMBOL}" FOUND_R_MAC)
 
-    if(FOUND_T EQUAL -1 AND FOUND_D EQUAL -1 AND FOUND_B EQUAL -1 AND FOUND_R EQUAL -1)
+    if(FOUND_T EQUAL -1 AND FOUND_D EQUAL -1 AND FOUND_B EQUAL -1 AND FOUND_R EQUAL -1 AND
+       FOUND_T_MAC EQUAL -1 AND FOUND_D_MAC EQUAL -1 AND FOUND_B_MAC EQUAL -1 AND FOUND_R_MAC EQUAL -1)
         list(APPEND MISSING_SYMBOLS "${SYMBOL}")
     endif()
 endforeach()
