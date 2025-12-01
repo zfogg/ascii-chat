@@ -1,46 +1,145 @@
 /**
- * @page topic_dependencies Dependencies
- * @ingroup build
+ * @defgroup dependencies Dependencies
+ * @ingroup module_development
+ * @brief ⛓️ External projects we rely on
+ */
+
+/**
+ * @page topic_dependencies Dependencies README
+ * @ingroup dependencies
  *
- * @section dependencies_overview Overview
+ * @brief Get ascii-chat's dependencies installed and ready to build.
  *
- * ascii-chat relies on a carefully selected set of dependencies to provide its
- * real-time video chat functionality. Each dependency serves a specific purpose
- * and has been chosen for performance, security, portability, and license
- * compatibility. This page provides comprehensive documentation of all dependencies,
- * their purposes, integration methods, and configuration options.
+ * This page walks you through installing everything you need to build ascii-chat.
+ * Once you're done here, head to @ref topic_build "Build System" to compile.
  *
  * @tableofcontents
  *
- * @section dependencies_philosophy Dependency Philosophy
+ * @section dependencies_submodules Step 1: Get Submodules
  *
- * **Minimalism**: ascii-chat aims to minimize external dependencies while
- * maximizing functionality. We prefer:
- * - Native platform APIs over cross-platform libraries when viable
- * - Header-only libraries that integrate cleanly
- * - Well-maintained, battle-tested libraries with clear licenses
- * - Static linking where possible for simplified deployment
+ * ascii-chat uses git submodules for vendored dependencies. Get them first:
  *
- * **Security**: All dependencies are carefully vetted for:
- * - Active maintenance and security updates
- * - Clear vulnerability disclosure processes
- * - Minimal attack surface
- * - Cryptographically secure implementations where applicable
+ * @code{.bash}
+ * git submodule init
+ * git submodule update --recursive
+ * @endcode
  *
- * **Performance**: Dependencies are selected for:
- * - Real-time performance characteristics
- * - Low latency and high throughput
- * - Efficient memory usage
- * - SIMD and hardware acceleration support
+ * This fetches uthash, BearSSL, tomlc17, sokol, and libsodium-bcrypt-pbkdf into `deps/`.
+ *
+ * @section dependencies_installation Step 2: Install Dependencies
+ *
+ * @subsection dependencies_install_script Automated Installation (Recommended)
+ *
+ * The easiest way to install everything is with the install script:
+ *
+ * @code{.bash}
+ * # Linux/macOS
+ * ./scripts/install-deps.sh
+ *
+ * # Windows (PowerShell)
+ * ./scripts/install-deps.ps1
+ * @endcode
+ *
+ * The script detects your platform and installs all required dependencies using
+ * your system's package manager (Homebrew, apt, yum, pacman, or vcpkg).
+ *
+ * @subsection dependencies_install_manual Manual Installation
+ *
+ * If you prefer to install manually or the script doesn't work for your system:
+ *
+ * **Ubuntu/Debian**:
+ * @code{.bash}
+ * # Build tools
+ * sudo apt-get install build-essential clang clang-tidy clang-format cmake ninja-build
+ *
+ * # Core dependencies
+ * sudo apt-get install libzstd-dev portaudio19-dev libsodium-dev
+ *
+ * # Testing (optional)
+ * sudo apt-get install libcriterion-dev
+ *
+ * # Release builds (optional)
+ * sudo apt-get install musl-tools musl-dev libmimalloc-dev
+ * @endcode
+ *
+ * **Arch Linux**:
+ * @code{.bash}
+ * sudo pacman -S pkg-config clang llvm cmake ninja make zstd portaudio libsodium criterion musl mimalloc
+ * @endcode
+ *
+ * **macOS (Homebrew)**:
+ * @code{.bash}
+ * brew install cmake ninja make zstd portaudio libsodium criterion mimalloc llvm
+ * @endcode
+ *
+ * **Windows (Scoop + vcpkg)**:
+ *
+ * First, install [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
+ * and select the "Desktop development with C++" workload. This provides `nmake` for building BearSSL.
+ *
+ * @code{.powershell}
+ * # Build tools
+ * scoop install cmake ninja llvm
+ *
+ * # Dependencies via vcpkg
+ * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows mimalloc:x64-windows
+ * @endcode
+ *
+ * @subsection dependencies_ready Ready to Build
+ *
+ * Once dependencies are installed, you're ready to compile. See @ref topic_build "Build System"
+ * for build instructions, or just run:
+ *
+ * @code{.bash}
+ * make CMAKE_BUILD_TYPE=RelWithDebInfo
+ * @endcode
+ *
+ * @section dependencies_build_tools Build Tools
+ *
+ * These tools are required to build ascii-chat from source.
+ *
+ * @subsection dependencies_clang Clang/LLVM - C Compiler
+ *
+ * **Website**: https://clang.llvm.org/
+ *
+ * **Version**: 18.0 or later
+ *
+ * ascii-chat is a Clang-only project. We use Clang for:
+ * - C23 standard support
+ * - AddressSanitizer and UndefinedBehaviorSanitizer
+ * - clang-format and clang-tidy integration
+ * - Consistent behavior across platforms
+ * - SIMD intrinsics (SSE2, AVX2, NEON)
+ *
+ * @subsection dependencies_cmake CMake - Build System Generator
+ *
+ * **Website**: https://cmake.org/
+ *
+ * **Version**: 4.2 or later
+ *
+ * CMake configures the build. We use:
+ * - CMake Presets for build configurations
+ * - Modern target-based dependency management
+ * - Cross-compilation support
+ *
+ * @subsection dependencies_ninja Ninja - Build System
+ *
+ * **Website**: https://ninja-build.org/
+ *
+ * **Version**: Any
+ *
+ * Ninja executes the build. Benefits:
+ * - Automatic parallelization
+ * - 2-3x faster than Make
+ * - Incremental builds with dependency tracking
  *
  * @section dependencies_core Core Runtime Dependencies
  *
- * These dependencies are required for ascii-chat to function and must be
- * available at both compile time and runtime.
+ * Required for ascii-chat to function.
  *
  * @subsection dependencies_portaudio PortAudio - Cross-Platform Audio I/O
  *
- * **Purpose**: Real-time audio capture and playback for multi-client audio streaming
+ * **Purpose**: Real-time audio capture and playback
  *
  * **Website**: http://www.portaudio.com/
  *
@@ -48,192 +147,54 @@
  *
  * **Version**: 19.7.0 or later
  *
- * **Key Features**:
- * - Cross-platform audio I/O abstraction (Windows WASAPI, macOS CoreAudio, Linux ALSA/PulseAudio)
- * - Low-latency streaming audio support
- * - Callback-based architecture for real-time processing
- * - Automatic sample rate conversion
- * - Device enumeration and selection
+ * Used in `lib/audio.c` and `lib/mixer.c` for audio streaming. PortAudio
+ * abstracts platform differences (WASAPI on Windows, CoreAudio on macOS,
+ * ALSA/PulseAudio on Linux).
  *
- * **Usage in ascii-chat**:
- * - `lib/audio.c` - Audio capture and playback implementation
- * - `lib/mixer.c` - Multi-client audio mixing with PortAudio streams
- * - Client and server audio threads use PortAudio callbacks
+ * @subsection dependencies_libsodium libsodium - Modern Cryptography
  *
- * **Configuration**:
- * @code{.cmake}
- * pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
- * target_link_libraries(ascii-chat-audio PRIVATE ${PORTAUDIO_LIBRARIES})
- * @endcode
- *
- * **Platform Notes**:
- * - **Linux**: Uses ALSA or PulseAudio backend (auto-detected)
- * - **macOS**: Uses CoreAudio backend (native)
- * - **Windows**: Uses WASAPI backend (Windows Audio Session API)
- *
- * **Performance Characteristics**:
- * - Latency: ~5-20ms (hardware dependent)
- * - Sample Rate: 48000 Hz (configurable)
- * - Buffer Size: 256-1024 samples (configurable)
- * - Channels: Mono input, stereo output
- *
- * @subsection dependencies_libsodium libsodium - Modern Cryptographic Library
- *
- * **Purpose**: End-to-end encryption, authentication, and key management
+ * **Purpose**: End-to-end encryption and authentication
  *
  * **Website**: https://libsodium.org/
  *
- * **License**: ISC License (permissive, GPL-compatible)
+ * **License**: ISC License
  *
  * **Version**: 1.0.18 or later
  *
- * **Key Features**:
- * - Modern cryptographic primitives (NaCl/libsodium)
- * - X25519 elliptic curve Diffie-Hellman key exchange
- * - Ed25519 digital signatures for authentication
- * - XSalsa20-Poly1305 authenticated encryption (AEAD)
- * - Constant-time operations to prevent timing attacks
- * - Cross-platform with hardware acceleration support
+ * Powers the cryptographic protocol in `lib/crypto/`. Provides:
+ * - X25519 key exchange
+ * - XSalsa20-Poly1305 authenticated encryption
+ * - Ed25519 signatures for SSH key authentication
  *
- * **Usage in ascii-chat**:
- * - `lib/crypto/crypto.c` - Core cryptographic operations
- * - `lib/crypto/handshake.c` - Cryptographic handshake protocol
- * - `lib/crypto/keys/` - Key loading and management
- * - Session encryption for all client-server communication
+ * @subsection dependencies_zstd zstd - Fast Compression
  *
- * **Algorithms Used**:
- * - **Key Exchange**: X25519 (Curve25519 ECDH)
- * - **Encryption**: XSalsa20-Poly1305 (stream cipher + MAC)
- * - **Signatures**: Ed25519 (EdDSA on Curve25519)
- * - **Hashing**: BLAKE2b for key derivation
- *
- * **Configuration**:
- * @code{.cmake}
- * pkg_check_modules(LIBSODIUM REQUIRED libsodium)
- * target_link_libraries(ascii-chat-crypto PRIVATE ${LIBSODIUM_LIBRARIES})
- * @endcode
- *
- * **Security Properties**:
- * - Forward secrecy through ephemeral key exchange
- * - Authenticated encryption prevents tampering
- * - Mutual authentication with Ed25519 signatures
- * - Constant-time operations prevent timing side-channels
- *
- * @subsection dependencies_zstd zstd - Fast Compression Library
- *
- * **Purpose**: Real-time video frame compression for bandwidth reduction
+ * **Purpose**: Real-time video frame compression
  *
  * **Website**: https://facebook.github.io/zstd/
  *
- * **License**: BSD License or GPLv2 (dual licensed)
+ * **License**: BSD License
  *
  * **Version**: 1.4.0 or later
  *
- * **Key Features**:
- * - Extremely fast compression/decompression (>400 MB/s)
- * - Configurable compression levels (1-22)
- * - Dictionary support for improved compression
- * - Streaming API for continuous data
- * - Small memory footprint
- *
- * **Usage in ascii-chat**:
- * - `lib/compression.c` - Frame compression implementation
- * - Compresses ASCII frames before network transmission
- * - Uses compression level 1 for real-time performance
- *
- * **Configuration**:
- * @code{.cmake}
- * pkg_check_modules(ZSTD REQUIRED libzstd)
- * target_link_libraries(ascii-chat-network PRIVATE ${ZSTD_LIBRARIES})
- * @endcode
- *
- * **Performance Characteristics**:
- * - Compression Level: 1 (fastest, ~50% compression ratio)
- * - Compression Speed: 400-600 MB/s (single thread)
- * - Decompression Speed: 1000-1500 MB/s (single thread)
- * - Memory Usage: ~256 KB per stream
- *
- * **Trade-offs**:
- * - Level 1 prioritizes speed over compression ratio
- * - Perfect for real-time video where latency matters
- * - Higher levels (3-6) could improve compression but add latency
+ * Used in `lib/compression.c` to compress ASCII frames before transmission.
+ * Level 1 compression gives ~50% size reduction at 400+ MB/s.
  *
  * @section dependencies_vendored Vendored Dependencies (Git Submodules)
  *
- * These dependencies are included in the source tree as git submodules and
- * are built from source. This ensures version consistency and simplifies
- * deployment.
+ * Included in `deps/` and built from source for version consistency.
  *
  * @subsection dependencies_uthash uthash - Hash Table for C
  *
- * **Purpose**: Fast O(1) hash table lookups for client management and caching
+ * **Purpose**: O(1) hash table lookups for client management
  *
  * **Website**: https://troydhanson.github.io/uthash/
  *
- * **License**: BSD Revised License (permissive)
+ * **License**: BSD License
  *
- * **Version**: 2.3.0 (git submodule at deps/uthash)
+ * Header-only library for hash tables. Used for client ID lookups, symbol
+ * caching, and lock tracking.
  *
- * **Integration**: Header-only library (no compilation required)
- *
- * **Key Features**:
- * - Macro-based hash table for C structures
- * - Multiple key types (integers, strings, arbitrary data)
- * - O(1) average-case lookup/insert/delete
- * - No dynamic memory for bookkeeping (embedded in structs)
- * - Deletion-safe iteration with HASH_ITER
- * - Support for sorting, counting, and filtering
- *
- * **Usage in ascii-chat**:
- * - `src/server/client.c` - Client ID → client_info_t lookup hash table
- * - `lib/platform/system.c` - Binary name → PATH presence cache
- * - `lib/lock_debug.c` - Lock ID → lock record hash table
- * - `lib/platform/symbols.c` - Address → symbol name cache
- *
- * **Example Integration**:
- * @code{.c}
- * // Add hash handle to structure
- * typedef struct {
- *   uint32_t client_id;      // Key field
- *   char *display_name;
- *   UT_hash_handle hh;       // Hash table bookkeeping
- * } client_info_t;
- *
- * // Hash table head pointer
- * client_info_t *clients_by_id = NULL;
- *
- * // Lookup by integer key
- * client_info_t *client = NULL;
- * HASH_FIND_INT(clients_by_id, &client_id, client);
- *
- * // Insert
- * HASH_ADD_INT(clients_by_id, client_id, new_client);
- *
- * // Delete
- * HASH_DELETE(hh, clients_by_id, client);
- *
- * // Safe iteration (allows deletion during loop)
- * client_info_t *current, *tmp;
- * HASH_ITER(hh, clients_by_id, current, tmp) {
- *   HASH_DELETE(hh, clients_by_id, current);
- *   free(current);
- * }
- * @endcode
- *
- * **Performance Characteristics**:
- * - Lookup: O(1) average, O(n) worst case
- * - Insert: O(1) average
- * - Delete: O(1)
- * - Memory: 32 bytes overhead per entry (UT_hash_handle)
- *
- * **Why uthash?**:
- * - Zero dependencies, header-only
- * - No separate allocation for hash table structure
- * - Type-safe macros prevent casting errors
- * - Widely used and battle-tested
- * - BSD license compatible with our project
- *
- * @subsection dependencies_bearssl BearSSL - Minimalist SSL/TLS Library
+ * @subsection dependencies_bearssl BearSSL - Minimalist SSL/TLS
  *
  * **Purpose**: HTTPS client for fetching public keys from GitHub/GitLab
  *
@@ -241,160 +202,46 @@
  *
  * **License**: MIT License
  *
- * **Version**: 0.6 (git submodule at deps/bearssl)
+ * Small (~100KB) SSL library used in `lib/crypto/http_client.c`. Much smaller
+ * and simpler than OpenSSL.
  *
- * **Integration**: Static library built from source
- *
- * **Key Features**:
- * - Small code footprint (~100KB compiled)
- * - Minimal RAM usage (~20-30KB per connection)
- * - Constant-time cryptographic operations
- * - TLS 1.0, 1.1, 1.2, and 1.3 support
- * - X.509 certificate validation
- * - No dynamic memory allocation in crypto code
- *
- * **Usage in ascii-chat**:
- * - `lib/crypto/http_client.c` - HTTPS client implementation
- * - `lib/crypto/keys/https_keys.c` - Fetching GitHub/GitLab public keys
- * - System CA certificate loading for TLS verification
- *
- * **Why BearSSL over OpenSSL?**:
- * - Much smaller binary size (~100KB vs ~3MB)
- * - Simpler API for basic HTTPS operations
- * - Better security through constant-time operations
- * - Easier to audit due to smaller codebase
- * - No OpenSSL license complications
- *
- * **Configuration**:
- * @code{.cmake}
- * # BearSSL is built once and cached
- * add_custom_command(
- *   OUTPUT ${BEARSSL_LIB}
- *   COMMAND make -C deps/bearssl
- * )
- * target_link_libraries(ascii-chat-crypto PRIVATE ${BEARSSL_LIB})
- * @endcode
- *
- * **Build Optimization**:
- * - BearSSL is built once using its native Makefile
- * - Cached at `deps/bearssl/build/libbearssl.a`
- * - Reused across clean builds (3.75x faster rebuilds)
- * - Only rebuilt when bearssl submodule is updated
- *
- * @subsection dependencies_tomlc17 tomlc17 - TOML Configuration Parser
+ * @subsection dependencies_tomlc17 tomlc17 - TOML Parser
  *
  * **Purpose**: Configuration file parsing (future feature)
  *
- * **Website**: https://github.com/cktan/tomlc99
+ * **Website**: https://github.com/cktan/tomlc17
  *
  * **License**: MIT License
  *
- * **Version**: Custom fork with alignment fixes (git submodule at deps/tomlc17)
+ * Prepared for `~/.ascii-chat/config.toml` support.
  *
- * **Integration**: Compiled as part of ascii-chat-core library
+ * @subsection dependencies_sokol Sokol - Cross-Platform APIs
  *
- * **Key Features**:
- * - Full TOML 1.0.0 specification compliance
- * - Zero dependencies
- * - Simple C API for parsing TOML files
- * - Support for nested tables and arrays
- * - Type-safe value extraction
- *
- * **Current Status**:
- * - Integrated into build system
- * - Not yet used for configuration (future enhancement)
- * - Prepared for ~/.ascii-chat/config.toml support
- *
- * **Patch Applied**:
- * - `deps/tomlc17-fix-align8-overflow.patch` - Fixes alignment overflow issues
- *
- * **Future Usage**:
- * @code{.toml}
- * # ~/.ascii-chat/config.toml (planned)
- * [server]
- * address = "0.0.0.0"
- * port = 27224
- *
- * [client]
- * default_server = "chat.example.com"
- * preferred_palette = "blocks"
- *
- * [crypto]
- * default_key = "~/.ssh/id_ed25519"
- * @endcode
- *
- * @subsection dependencies_sokol Sokol - Cross-Platform Graphics/Audio/Input
- *
- * **Purpose**: Header-only C library providing simple cross-platform APIs
+ * **Purpose**: Future GPU-accelerated rendering
  *
  * **Website**: https://github.com/floooh/sokol
  *
- * **License**: zlib/libpng License (permissive)
+ * **License**: zlib/libpng License
  *
- * **Version**: Git submodule at deps/sokol
- *
- * **Integration**: Header-only library (no compilation required)
- *
- * **Key Features**:
- * - Cross-platform graphics, audio, and input APIs
- * - Modern graphics API wrappers (OpenGL, Metal, D3D11, WebGPU)
- * - Header-only, zero dependencies
- * - Designed for ease of use and portability
- * - Optimized for games and interactive applications
- *
- * **Current Status**:
- * - Integrated into deps/ directory
- * - Available for future enhancements
- * - Potential use cases: GPU-accelerated rendering, audio improvements
- *
- * **Potential Future Usage**:
- * - GPU-accelerated ASCII rendering
- * - Hardware-accelerated video decoding
- * - Alternative audio backend
- * - WebAssembly/browser client support
+ * Header-only library for graphics, audio, and input. Available for future use.
  *
  * @subsection dependencies_libsodium_bcrypt libsodium-bcrypt-pbkdf
  *
- * **Purpose**: OpenSSH private key decryption (bcrypt-pbkdf KDF)
+ * **Purpose**: OpenSSH private key decryption
  *
- * **Repository**: https://github.com/Tarsnap/libsodium-bcrypt
+ * **Website**: https://github.com/imaami/libsodium-bcrypt-pbkdf
  *
  * **License**: BSD License
  *
- * **Version**: Git submodule at deps/libsodium-bcrypt-pbkdf
- *
- * **Integration**: Compiled as part of ascii-chat-crypto library
- *
- * **Key Features**:
- * - bcrypt-pbkdf key derivation function (OpenSSH standard)
- * - Decrypts password-protected SSH Ed25519 private keys
- * - Uses libsodium for underlying primitives
- * - Constant-time operations
- *
- * **Usage in ascii-chat**:
- * - `lib/crypto/keys/ssh_keys.c` - SSH private key decryption
- * - Decrypts modern OpenSSH private key format (RFC 4253)
- * - Supports passphrase-protected keys with bcrypt-pbkdf KDF
- *
- * **Why This Dependency?**:
- * - OpenSSH uses bcrypt-pbkdf for key encryption (not standard PBKDF2)
- * - libsodium doesn't include bcrypt-pbkdf natively
- * - This is the reference implementation from OpenSSH
- * - Required for full SSH key compatibility
- *
- * **Security Properties**:
- * - Memory-hard KDF resistant to GPU/ASIC attacks
- * - Configurable rounds for computational cost
- * - Standard for OpenSSH encrypted private keys
+ * Implements bcrypt-pbkdf for decrypting password-protected SSH keys.
  *
  * @section dependencies_testing Testing Dependencies
  *
- * These dependencies are only required for building and running tests.
- * They are not needed for normal ascii-chat operation.
+ * Only required for building and running tests.
  *
  * @subsection dependencies_criterion Criterion - Testing Framework
  *
- * **Purpose**: Comprehensive unit, integration, and performance testing
+ * **Purpose**: Unit, integration, and performance testing
  *
  * **Website**: https://criterion.readthedocs.io/
  *
@@ -402,45 +249,27 @@
  *
  * **Version**: 2.4.0 or later
  *
- * **Platform Support**: POSIX systems (Linux, macOS)
+ * **Platform**: POSIX only (Linux, macOS). Windows tests run via Docker.
  *
- * **Key Features**:
- * - Automatic test discovery and registration
- * - Fixtures with setup/teardown hooks
- * - Parameterized tests with theories
- * - Timeout and signal safety
- * - TAP and JUnit XML output formats
- * - Memory leak detection integration
- * - Beautiful test output with colors
+ * Provides automatic test discovery, fixtures, parameterized tests, and
+ * JUnit XML output for CI.
  *
- * **Usage in ascii-chat**:
- * - `tests/unit/` - Unit tests for individual components
- * - `tests/integration/` - Integration tests for multi-component workflows
- * - `tests/performance/` - Performance benchmarks and SIMD validation
+ * @section dependencies_release Release Build Dependencies
  *
- * **Test Categories**:
- * - **Unit Tests**: Component isolation testing (buffer_pool, packet_queue, etc.)
- * - **Integration Tests**: Multi-component workflows (client-server handshake, etc.)
- * - **Performance Tests**: SIMD vs scalar benchmarks with speedup validation
+ * Optional for development, but required for portable static release builds.
  *
- * **Configuration**:
- * @code{.cmake}
- * pkg_check_modules(CRITERION criterion)
- * if(CRITERION_FOUND)
- *   enable_testing()
- *   add_test(NAME unit_tests COMMAND test_unit_all)
- * endif()
- * @endcode
+ * @subsection dependencies_musl musl - Lightweight C Standard Library
  *
- * **Windows Note**:
- * - Criterion is POSIX-based and doesn't work natively on Windows
- * - Windows tests must be run via Docker container
- * - Use `tests/scripts/run-docker-tests.ps1` for Windows testing
+ * **Purpose**: Fully static executables with no glibc dependencies
  *
- * @section dependencies_optional Optional Dependencies
+ * **Website**: https://musl.libc.org/
  *
- * These dependencies enhance ascii-chat functionality but are not strictly
- * required. The application gracefully degrades when they are unavailable.
+ * **License**: MIT License
+ *
+ * **Platform**: Linux only
+ *
+ * musl enables building fully static executables that run on any Linux distribution
+ * without shared library dependencies. Used with `-DUSE_MUSL=ON`.
  *
  * @subsection dependencies_mimalloc mimalloc - High-Performance Allocator
  *
@@ -452,316 +281,107 @@
  *
  * **Version**: 2.0.0 or later
  *
- * **Availability**: Optional, enabled with `-DUSE_MIMALLOC=ON`
+ * Up to 2x faster than system malloc. Enabled with `-DUSE_MIMALLOC=ON` and
+ * used by default in release builds.
  *
- * **Key Features**:
- * - Up to 2x faster than system malloc/free
- * - Better memory locality and cache performance
- * - Lower memory fragmentation
- * - Optimized for multi-threaded workloads
- * - Drop-in replacement for malloc/free
+ * @section dependencies_platform Platform APIs
  *
- * **Usage in ascii-chat**:
- * - Used in release builds (`release`, `release-musl`, `relwithdebinfo`)
- * - Overrides system malloc/free/realloc
- * - Transparent to application code
+ * ascii-chat uses native platform APIs for webcam access and terminal I/O,
+ * eliminating heavy dependencies like OpenCV.
  *
- * **Performance Benefits**:
- * - Faster audio buffer allocation/deallocation
- * - Reduced memory fragmentation in long-running servers
- * - Better cache locality for video frame buffers
- * - Improved performance under multi-client load
+ * **Video Capture**:
+ * - **Linux**: Video4Linux2 (V4L2) - kernel interface, no library
+ * - **macOS**: AVFoundation - system framework
+ * - **Windows**: Media Foundation - system library
  *
- * **Configuration**:
- * @code{.cmake}
- * option(USE_MIMALLOC "Use mimalloc allocator" OFF)
- * if(USE_MIMALLOC)
- *   find_library(MIMALLOC_LIB mimalloc)
- *   target_link_libraries(ascii-chat PRIVATE ${MIMALLOC_LIB})
- * endif()
- * @endcode
- *
- * @section dependencies_platform Platform APIs (Zero External Dependencies)
- *
- * ascii-chat uses native platform APIs for webcam access, eliminating the
- * need for heavy dependencies like OpenCV.
- *
- * @subsection dependencies_platform_video Video Capture APIs
- *
- * **Linux - Video4Linux2 (V4L2)**:
- * - Kernel module interface (no library dependency)
- * - Direct ioctl() calls to `/dev/video*` devices
- * - Implementation: `lib/webcam_v4l2.c`
- * - Supports MJPEG and YUYV formats
- * - Zero-copy mmap() for performance
- *
- * **macOS - AVFoundation**:
- * - Native macOS multimedia framework
- * - Objective-C implementation: `lib/webcam_avfoundation.m`
- * - System framework (no external dependency)
- * - Hardware-accelerated format conversion
- * - Supports all connected cameras
- *
- * **Windows - Media Foundation**:
- * - Native Windows multimedia API
- * - Implementation: `lib/webcam_windows.c`
- * - System library (no external dependency)
- * - COM-based interface
- * - Future enhancement (currently test pattern mode)
- *
- * @subsection dependencies_platform_terminal Terminal APIs
- *
- * **POSIX - termios**:
- * - Standard POSIX terminal control
- * - Implementation: `lib/platform/posix/terminal.c`
- * - Raw mode, non-blocking I/O
- * - ANSI escape sequence support
- *
- * **Windows - Console API**:
- * - Native Windows Console API
- * - Implementation: `lib/platform/windows/terminal.c`
- * - Virtual terminal sequences (Windows 10+)
- * - UTF-16 to UTF-8 conversion
- *
- * @section dependencies_build_tools Build Tools
- *
- * These tools are required to build ascii-chat from source but are not
- * runtime dependencies.
- *
- * @subsection dependencies_cmake CMake - Build System Generator
- *
- * **Version**: 3.20 or later
- *
- * **Purpose**: Cross-platform build system configuration
- *
- * **Features Used**:
- * - CMake Presets for build configurations
- * - Modern target-based dependency management
- * - Cross-compilation support
- * - Automatic dependency detection
- *
- * @subsection dependencies_ninja Ninja - Build System
- *
- * **Version**: 1.10 or later
- *
- * **Purpose**: Fast parallel compilation
- *
- * **Benefits**:
- * - Automatic CPU core detection and parallelization
- * - Minimal build overhead
- * - Incremental builds with dependency tracking
- * - 2-3x faster than Make on multi-core systems
- *
- * @subsection dependencies_clang Clang/LLVM - C Compiler and Toolchain
- *
- * **Version**: 12.0 or later
- *
- * **Purpose**: Primary compiler for all platforms
- *
- * **Features Used**:
- * - C23 standard support
- * - AddressSanitizer for memory debugging
- * - UndefinedBehaviorSanitizer for UB detection
- * - clang-format for code formatting
- * - clang-tidy for static analysis
- * - SIMD intrinsics (SSE2, AVX2, NEON)
- *
- * **Why Clang?**:
- * - Better error messages than GCC
- * - Consistent behavior across platforms
- * - Superior sanitizer support
- * - Integrated tooling (format, tidy)
- * - Native Windows support (no MinGW needed)
+ * **Terminal I/O**:
+ * - **POSIX**: termios for raw mode and ANSI sequences
+ * - **Windows**: Console API with virtual terminal sequences
  *
  * @section dependencies_licenses License Compatibility
  *
- * All dependencies are compatible with ascii-chat's licensing:
+ * All dependencies use permissive licenses compatible with ascii-chat:
  *
- * **Permissive Licenses** (GPL-compatible):
- * - MIT License: BearSSL, PortAudio, Criterion, mimalloc, tomlc17
- * - ISC License: libsodium
- * - BSD License: zstd, uthash, libsodium-bcrypt-pbkdf
+ * | License | Dependencies |
+ * |---------|--------------|
+ * | MIT | BearSSL, PortAudio, Criterion, mimalloc, musl, tomlc17 |
+ * | ISC | libsodium |
+ * | BSD | zstd, uthash, libsodium-bcrypt-pbkdf |
+ * | zlib | sokol |
  *
- * **No Copyleft Dependencies**:
- * - ascii-chat avoids GPL dependencies in the core application
- * - zstd is dual-licensed (BSD preferred over GPLv2)
- * - All dependencies allow proprietary use if needed
+ * No copyleft (GPL) dependencies in the core application.
  *
  * @section dependencies_versioning Version Requirements
  *
- * **Minimum Versions**:
- * | Dependency | Minimum Version | Rationale |
- * |------------|-----------------|-----------|
- * | CMake | 3.20 | CMake Presets support |
- * | Clang | 12.0 | C23 features, sanitizers |
+ * | Dependency | Minimum | Rationale |
+ * |------------|---------|-----------|
+ * | CMake | 4.2 | CMake Presets, modern features |
+ * | Clang | 18.0 | C23, sanitizers, defer/panic tools |
  * | PortAudio | 19.7.0 | Stable callback API |
- * | libsodium | 1.0.18 | Ed25519 signatures |
+ * | libsodium | 1.0.18 | Ed25519 support |
  * | zstd | 1.4.0 | Streaming API |
  * | Criterion | 2.4.0 | Theories and fixtures |
- * | uthash | 2.3.0 | HASH_ITER macro |
  *
- * **Version Pinning**:
- * - Git submodules are pinned to specific commits
- * - System libraries use minimum version checks
- * - CI tests against multiple versions
- *
- * @section dependencies_installation Installation Instructions
- *
- * @subsection dependencies_install_linux_ubuntu Ubuntu/Debian Linux
- *
- * @code{.bash}
- * # Build tools
- * apt-get install build-essential clang clang-tidy clang-format cmake ninja-build make
- *
- * # Core dependencies
- * apt-get install libzstd-dev portaudio19-dev libsodium-dev
- *
- * # Release dependencies
- * apt-get install musl-tools musl-dev libmimalloc-dev
- *
- * # Testing dependencies
- * apt-get install libcriterion-dev
- * @endcode
- *
- * @subsection dependencies_install_linux_arch Arch Linux
- *
- * @code{.bash}
- * # Build tools
- * pacman -S pkg-config clang cmake ninja make
- *
- * # Core dependencies
- * pacman -S v4l-utils zstd portaudio libsodium criterion
- *
- * # Release dependencies
- * pacman -S musl mimalloc
- *
- * # Testing dependencies
- * pacman -S criterion
- * @endcode
- *
- * @subsection dependencies_install_macos macOS (Homebrew)
- *
- * @code{.bash}
- * # Build tools (Xcode Command Line Tools provide clang)
- * brew install cmake ninja make
- *
- * # Core dependencies
- * brew install zstd portaudio libsodium
- *
- * # Release dependencies. NOTE: musl is a Linux-only project and is not supported on macOS.
- * brew install mimalloc
- *
- * # Testing framework
- * brew install criterion
- * @endcode
- *
- * @subsection dependencies_install_windows Windows (Scoop + vcpkg)
- *
- * @code{.powershell}
- * # Install Scoop (one-time setup)
- * Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
- * irm get.scoop.sh | iex
- *
- * # Install build tools via Scoop
- * scoop install cmake ninja llvm
- *
- * # Install vcpkg (one-time setup)
- * git clone https://github.com/Microsoft/vcpkg.git
- * cd vcpkg
- * .\bootstrap-vcpkg.bat
- *
- * # Core dependencies via vcpkg
- * vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows
- *
- * # Release dependencies. NOTE: musl is a Linux-only project and is not supported on Windows.
- * vcpkg install mimalloc:x64-windows
- * @endcode
- *
- * **Note**: Criterion is POSIX-only and is not available on Windows. Use Docker for testing.
+ * Git submodules are pinned to specific commits for reproducibility.
  *
  * @section dependencies_updating Updating Dependencies
  *
- * @subsection dependencies_update_submodules Git Submodules
- *
+ * **Git Submodules**:
  * @code{.bash}
- * # Update all submodules to latest commits
+ * # Update all submodules
  * git submodule update --remote --merge
  *
  * # Update specific submodule
- * cd deps/uthash
- * git checkout v2.3.0
- * cd ../..
- * git add deps/uthash
- * git commit -m "Update uthash to v2.3.0"
+ * cd deps/uthash && git checkout v2.3.0
+ * cd ../.. && git add deps/uthash && git commit -m "Update uthash"
  * @endcode
  *
- * @subsection dependencies_update_system System Libraries
- *
+ * **System Libraries**:
  * @code{.bash}
- * # Linux (Ubuntu/Debian)
- * apt-get update && apt-get upgrade
+ * # Linux
+ * sudo apt-get update && sudo apt-get upgrade
  *
- * # macOS (Homebrew)
+ * # macOS
  * brew update && brew upgrade
  *
- * # Windows (vcpkg)
+ * # Windows
  * vcpkg upgrade
  * @endcode
  *
  * @section dependencies_troubleshooting Troubleshooting
  *
- * @subsection dependencies_trouble_portaudio PortAudio Issues
+ * @subsection dependencies_trouble_portaudio PortAudio Not Found
  *
- * **Problem**: PortAudio not found by pkg-config
- *
- * **Solution**:
  * @code{.bash}
- * # Linux: Ensure the correct package is installed by your package manager.
- * # See the installation instructions on this page.
- *
- * # macOS: Ensure Homebrew portaudio is in PKG_CONFIG_PATH
+ * # macOS: Add Homebrew to PKG_CONFIG_PATH
  * export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
  *
- * # Windows: Use vcpkg and set CMAKE_TOOLCHAIN_FILE
+ * # Windows: Set vcpkg toolchain
  * cmake -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake ..
  * @endcode
  *
- * @subsection dependencies_trouble_criterion Criterion Issues
+ * @subsection dependencies_trouble_criterion Criterion on Windows
  *
- * **Problem**: Tests fail to build on Windows
- *
- * **Solution**: Criterion is POSIX-only. Use Docker for Windows testing:
+ * Criterion is POSIX-only. Run tests via Docker:
  * @code{.powershell}
  * ./tests/scripts/run-docker-tests.ps1
  * @endcode
  *
- * @subsection dependencies_trouble_bearssl BearSSL Build Issues
+ * @subsection dependencies_trouble_bearssl BearSSL Build Fails
  *
- * **Problem**: BearSSL fails to build
+ * BearSSL requires a native build tool:
+ * - **Linux/macOS**: Ensure `make` is installed (`apt install build-essential` or `brew install make`)
+ * - **Windows**: Requires `nmake` from Visual Studio Build Tools
+ *   (install from https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)
  *
- * **Solution**: BearSSL requires a Unix-like build environment:
+ * @subsection dependencies_trouble_submodules Missing Submodules
+ *
  * @code{.bash}
- * # Linux/macOS: Ensure make is available
- * which make
- *
- * # Windows: BearSSL builds via CMake custom command (no action needed)
- * # If issues persist, manually build:
- * cd deps/bearssl
- * make
+ * git submodule init
+ * git submodule update --recursive
  * @endcode
  *
- * @section dependencies_future Future Dependency Plans
- *
- * **Planned Additions**:
- * - **WebRTC**: Browser client support (WASM/WebAssembly)
- * - **Opus**: Better audio codec for low-bandwidth connections
- * - **GPG key support**: Waiting for upstream libgcrypt fixes
- *
- * **Planned Removals**:
- * - None currently - all dependencies are actively used
- *
- *
- * @see @ref topic_build "Build System Documentation"
+ * @see @ref topic_build "Build System" - Compile ascii-chat after installing dependencies
  * @see CMakeLists.txt
- * @see cmake/Dependencies.cmake
+ * @see cmake/dependencies/Dependencies.cmake
  */
