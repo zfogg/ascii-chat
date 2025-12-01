@@ -41,16 +41,15 @@ endif()
 
 # Define patterns to check for developer paths
 # These patterns indicate build environment leakage
+# Note: Patterns must be specific enough to avoid false positives from URLs
 set(PATH_PATTERNS
-    # Windows user directories
+    # Windows user directories (forward and back slash variants)
     "C:\\\\Users\\\\"
     "C:/Users/"
     # Unix home directories
     "/home/"
+    # macOS user directories
     "/Users/"
-    # Common build directories that shouldn't appear
-    "/src/"
-    "/build/"
     # WSL paths
     "/mnt/c/Users/"
     "/mnt/d/"
@@ -61,36 +60,67 @@ if(EXTRA_PATTERNS)
     list(APPEND PATH_PATTERNS ${EXTRA_PATTERNS})
 endif()
 
-# Convert output to a list of lines for checking
-string(REPLACE "\n" ";" STRINGS_LINES "${STRINGS_OUTPUT}")
+# Track found paths (as a newline-separated string to avoid semicolon issues)
+set(FOUND_PATHS_TEXT "")
+set(NUM_FOUND 0)
 
-# Track found paths
-set(FOUND_PATHS "")
+# Process line by line using string(FIND) on newlines
+string(LENGTH "${STRINGS_OUTPUT}" OUTPUT_LEN)
+set(POS 0)
+set(LINE_START 0)
 
-foreach(LINE IN LISTS STRINGS_LINES)
+while(POS LESS OUTPUT_LEN AND NUM_FOUND LESS 20)
+    # Get remaining output from current position
+    string(SUBSTRING "${STRINGS_OUTPUT}" ${LINE_START} -1 REMAINING_OUTPUT)
+
+    # Find next newline in remaining output
+    string(FIND "${REMAINING_OUTPUT}" "\n" NEWLINE_POS)
+
+    if(NEWLINE_POS EQUAL -1)
+        # Last line (no trailing newline)
+        set(LINE "${REMAINING_OUTPUT}")
+        set(POS ${OUTPUT_LEN})
+    else()
+        # Extract line (NEWLINE_POS is relative to REMAINING_OUTPUT)
+        if(NEWLINE_POS GREATER 0)
+            string(SUBSTRING "${REMAINING_OUTPUT}" 0 ${NEWLINE_POS} LINE)
+        else()
+            set(LINE "")
+        endif()
+        # Move past the newline
+        math(EXPR LINE_START "${LINE_START} + ${NEWLINE_POS} + 1")
+        set(POS ${LINE_START})
+    endif()
+
     # Skip empty lines
-    if(NOT LINE)
+    if(NOT LINE OR LINE STREQUAL "")
         continue()
     endif()
 
+    # Check each pattern
     foreach(PATTERN IN LISTS PATH_PATTERNS)
-        # Check if line contains the pattern
         string(FIND "${LINE}" "${PATTERN}" MATCH_POS)
         if(NOT MATCH_POS EQUAL -1)
-            # Found a match - record it (but limit to avoid huge output)
-            list(LENGTH FOUND_PATHS NUM_FOUND)
-            if(NUM_FOUND LESS 20)
-                list(APPEND FOUND_PATHS "${LINE}")
-            elseif(NUM_FOUND EQUAL 20)
-                list(APPEND FOUND_PATHS "... (truncated, more paths found)")
+            # Found a match
+            math(EXPR NUM_FOUND "${NUM_FOUND} + 1")
+            # Truncate long lines for readability
+            string(LENGTH "${LINE}" LINE_LEN)
+            if(LINE_LEN GREATER 100)
+                string(SUBSTRING "${LINE}" 0 100 LINE)
+                set(LINE "${LINE}...")
             endif()
+            set(FOUND_PATHS_TEXT "${FOUND_PATHS_TEXT}    ${LINE}\n")
             break()
         endif()
     endforeach()
-endforeach()
+endwhile()
+
+# Add truncation notice if we hit the limit
+if(NUM_FOUND EQUAL 20)
+    set(FOUND_PATHS_TEXT "${FOUND_PATHS_TEXT}    ... (truncated, more paths may exist)\n")
+endif()
 
 # Report results
-list(LENGTH FOUND_PATHS NUM_FOUND)
 if(NUM_FOUND GREATER 0)
     message(FATAL_ERROR
         "=============================================================================\n"
@@ -98,8 +128,9 @@ if(NUM_FOUND GREATER 0)
         "=============================================================================\n"
         "  Binary: ${BINARY}\n"
         "\n"
-        "  The following developer paths were found embedded in the release binary:\n"
-        "${FOUND_PATHS}\n"
+        "  Found ${NUM_FOUND} strings containing developer/build paths:\n"
+        "\n"
+        "${FOUND_PATHS_TEXT}"
         "\n"
         "  This is a security/privacy concern - release binaries should not contain\n"
         "  paths from the build environment.\n"
@@ -107,12 +138,13 @@ if(NUM_FOUND GREATER 0)
         "  Possible causes:\n"
         "    - __FILE__ macros in logging/assertions\n"
         "    - Debug info not fully stripped\n"
-        "    - Compiler embedding source paths\n"
+        "    - Static library paths embedded by linker\n"
         "\n"
         "  Solutions:\n"
-        "    - Use -ffile-prefix-map to remap paths at compile time\n"
+        "    - Use -ffile-prefix-map to remap source paths at compile time\n"
         "    - Ensure debug info is stripped (strip --strip-all)\n"
         "    - Check for __FILE__ usage in release builds\n"
+        "    - Use relative paths for static libraries\n"
         "=============================================================================\n"
     )
 endif()
