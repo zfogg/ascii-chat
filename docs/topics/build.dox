@@ -26,142 +26,229 @@
  * - CMake presets for common configurations
  * - Windows build script for convenience
  *
+ *
+ * @section build_quickstart Quick Start
+ *
+ * Build and install ascii-chat:
+ *
+ * @code{.bash}
+ * make CMAKE_BUILD_TYPE=RelWithDebInfo && sudo make install
+ * @endcode
+ *
+ * **Or use CMake directly with presets**:
+ *
+ * @code{.bash}
+ * # List available presets
+ * cmake --list-presets
+ *
+ * # Build with a preset (configure + build in one command)
+ * cmake --build --preset release
+ * cmake --build --preset debug
+ * cmake --build --preset dev
+ * @endcode
+ *
+ * **Or configure manually**:
+ *
+ * @code{.bash}
+ * cmake -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+ * cmake --build build
+ * sudo cmake --install build
+ * @endcode
+ *
+ * See @ref build_presets for all available presets and @ref build_options for
+ * configuration options.
+ *
+ * @section build_philosophy Compilation Philosophy
+ *
+ * ascii-chat has a few goals to satisfy, and the build system reflects them all.
+ *
+ * @subsection build_philosophy_dev Development Builds (Dynamic)
+ *
+ * First, I need to actually *develop* ascii-chat for it to exist. Development builds
+ * use dynamic linking because it's faster—shared libraries reduce link time, sanitizers
+ * work better, and I can rebuild only what changed. That's why the CMake configuration
+ * is complex: it handles both fast development builds and production-ready releases.
+ *
+ * **Development linking**:
+ * - **Windows**: Dynamic vcpkg DLLs (x64-windows triplet)
+ * - **Linux**: Dynamic .so files against glibc
+ * - **macOS**: Dynamic .dylib against system frameworks
+ *
+ * **Build modes**:
+ * - **Debug**: Maximum debugging with AddressSanitizer enabled
+ * - **Dev**: Fast builds without sanitizer overhead
+ *
+ * @subsection build_philosophy_lib The Library (libasciichat)
+ *
+ * I'm proud of libasciichat and made it available for others to use. That's why we
+ * build and distribute a dynamic library—so you can link against it in your own
+ * projects without pulling in ascii-chat's entire dependency tree statically.
+ *
+ * **Release artifacts include**:
+ * - `libasciichat.so` / `asciichat.dll` / `libasciichat.dylib` - Dynamic library
+ * - `libasciichat.a` / `asciichat.lib` - Static library
+ *
+ * We distribute *both* so you have options. Use the dynamic library for normal
+ * development, or use the static library to build your own portable releases.
+ *
+ * @subsection build_philosophy_static Static Releases (Portability is Awesome)
+ *
+ * Static linking follows the same philosophy as musl and many musl-based projects:
+ * **portability is awesome**.
+ *
+ * I compile Linux releases in a VM or Docker container running a distro that
+ * end users might not be running—and the executables still work everywhere.
+ * That's cool from both perspectives: as a developer, I can build anywhere;
+ * as a user, you can run it anywhere.
+ *
+ * **Why static?**
+ * - **One file**: With a static executable, ascii-chat is *one file*. That's an
+ *   amazing thing to be able to say about your project in the world of software,
+ *   especially if it's complex at all.
+ * - **No dependency hell**: No DLLs, no .so files, no .dylibs—they're extra files
+ *   to worry about, version, and distribute. Static linking eliminates all of that.
+ * - **True portability**: Works on any Linux distribution, any glibc version,
+ *   any system configuration.
+ *
+ * **Platform linking**:
+ * - **Linux**: Static musl libc with static-PIE (fully self-contained)
+ * - **Windows**: Static vcpkg libraries (x64-windows-static triplet)
+ * - **macOS**: Currently dynamic (static planned for future releases)
+ *
+ * @subsection build_philosophy_for_you For Your Projects
+ *
+ * We distribute a static library (`libasciichat.a` / `asciichat.lib`) alongside the
+ * dynamic library so that *you too* can make portable static releases of your project
+ * with libasciichat. If you're building something that uses ascii-chat's library and
+ * you want a single portable binary, link against the static lib.
+ *
+ * @subsection build_philosophy_releases Release Distribution
+ *
+ * **Download binaries**: Grab ascii-chat from the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases).
+ * Each release ships ready-to-run binaries, installers, and SDK artifacts for Linux, macOS, and Windows.
+ *
+ * **Build from source**: Clone the repository, install the dependencies documented in
+ * @ref topic_dependencies and the project README, then run `make CMAKE_BUILD_TYPE=RelWithDebInfo`
+ * to produce a working copy in `build/bin/`.
+ *
+ * @subsection build_philosophy_summary Summary
+ *
+ * | Platform | Development | Production | Release Artifacts |
+ * |----------|-------------|------------|-------------------|
+ * | **Windows** | DLL (x64-windows) | Static (x64-windows-static) | .exe, .dll, .lib, .msi installer |
+ * | **Linux** | .so (glibc) | Static (musl) | binary, .so, .a, .deb/.rpm |
+ * | **macOS** | .dylib | Static (planned) | binary, .dylib, .a, .pkg |
+ *
+ * | Build Mode | Optimization | Debug Info | Sanitizers | C Runtime |
+ * |------------|--------------|------------|------------|-----------|
+ * | **Debug** | -O0 | Full | ASan,UBSan | glibc/UCRT/libSystem |
+ * | **Dev** | -O0 | Full | None | glibc/UCRT/libSystem |
+ * | **Release** | -O3 | None | None | musl/UCRT(static)/libSystem |
+ * | **RelWithDebInfo** | -O3 | Full | None | musl/UCRT/libSystem |
+ *
  * @section build_requirements Build Tool Requirements
  *
- * ascii-chat requires various build tools beyond just the compiler and CMake.
- * This section documents **all** external commands and utilities needed for building,
- * testing, and packaging the project.
- *
- * **Note**: This section covers **build tools only**. For library dependencies
+ * This section documents tools needed to build ascii-chat. For library dependencies
  * (zstd, libsodium, PortAudio, etc.), see @ref topic_dependencies.
  *
- * @subsection build_requirements_core Core Build Tools
+ * @subsection build_requirements_required Required Tools
  *
- * **Required for All Builds**:
+ * These tools are needed for **all** builds on **all** platforms:
  *
- * | Tool | Purpose | Minimum Version | Where Used |
- * |------|---------|-----------------|------------|
- * | **cmake** | Build system generator | 3.16+ | Configure and generate build files |
- * | **clang** | C compiler (primary) | 18+ | Compile C source files |
- * | **clang++** | C++ compiler | 18+ | Build defer/panic tools (link against LLVM) |
- * | **llvm-config** | Query LLVM configuration | 18+ | Defer tool finds LLVM include/library paths |
- * | **ninja** or **make** | Build executor | Any | Execute build commands |
- * | **llvm-ar** | LLVM static library archiver | 18+ | Create .a static libraries |
- * | **llvm-ranlib** | LLVM static library indexer | 18+ | Index .a static libraries |
+ * | Tool | Version | Purpose |
+ * |------|---------|---------|
+ * | **cmake** | 4.2+ | Build system generator |
+ * | **clang** | 18+ | C compiler |
+ * | **clang++** | 18+ | C++ compiler (for defer/panic tools) |
+ * | **llvm-config** | 18+ | Query LLVM paths (for defer/panic tools) |
+ * | **llvm-ar** | 18+ | Static library archiver |
+ * | **llvm-ranlib** | 18+ | Static library indexer |
+ * | **ninja** | Any | Build system (Ninja is required) |
+ * | **git** | Any | Version detection, dependency patching |
  *
- * **Alternative Archivers** (used by LLVM toolchain):
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **llvm-ar** | LLVM static library archiver | musl builds, LLVM toolchain |
- * | **llvm-ranlib** | LLVM static library indexer | musl builds, LLVM toolchain |
- * | **llvm-lib** | LLVM library tool (Windows) | Windows Clang builds (BearSSL) |
+ * **Platform-specific required tools**:
  *
- * On most systems, `ar` and `ranlib` are provided by:
- * - **Linux**: GNU Binutils or LLVM
- * - **macOS**: Xcode Command Line Tools (Apple's ar/ranlib)
- * - **Windows**: LLVM (llvm-ar, llvm-ranlib, llvm-lib) or MinGW (ar, ranlib)
+ * | Platform | Additional Required Tools | Purpose |
+ * |----------|---------------------------|---------|
+ * | **Linux** | pkg-config | Dependency detection |
+ * | **macOS** | pkg-config (Homebrew), xcrun | Dependency detection, SDK tools |
+ * | **Windows** | clang-cl, llvm-lib, nmake | BearSSL build (MSVC-compatible tooling) |
  *
- * @subsection build_requirements_llvm LLVM Toolchain Configuration
+ * @note ascii-chat is a **Clang-only** project. GCC and MSVC are not supported.
+ * @note **llvm-lib** is the LLVM equivalent of Microsoft's lib.exe for creating static libraries.
+ * @note **clang-cl** is Clang's MSVC-compatible driver for Windows builds.
+ * @note **nmake** is Microsoft's make tool, required for building BearSSL on Windows.
  *
- * **LLVM Tools** (for advanced builds and musl):
+ * @subsection build_requirements_optional Optional Build Tools
  *
- * | Tool | Purpose | Where Used | Required For |
- * |------|---------|------------|--------------|
- * | **llvm-config** | Query LLVM configuration | LLVM.cmake | Homebrew LLVM, musl builds |
- * | **llvm-ar** | LLVM static archiver | LLVM.cmake | musl builds (alternative to ar) |
- * | **llvm-ranlib** | LLVM library indexer | LLVM.cmake | musl builds (alternative to ranlib) |
- * | **llvm-symbolizer** | Symbolize stack traces | Sanitizer builds | Better ASan/UBSan output |
- * | **llvm-profdata** | Profile data tool | Coverage builds | Generate coverage data |
- * | **llvm-cov** | Coverage visualization | Coverage builds | HTML coverage reports |
+ * These tools improve the build experience but aren't required:
  *
- * **llvm-config Usage**:
- * - Queries LLVM installation paths and version
- * - Used to detect LLVM toolchain on Homebrew (macOS)
- * - Provides library paths for linking
- * - Not required for basic builds (only Homebrew LLVM)
+ * | Tool | Purpose | When Useful |
+ * |------|---------|-------------|
+ * | **ccache** | Compiler cache | 5-10x faster rebuilds |
+ * | **clang-format** | Code formatting | `format` target |
+ * | **clang-tidy** | Static analysis | Required when ASCIICHAT_ENABLE_ANALYZERS=ON |
+ * | **cppcheck** | Static analysis | Additional code checking |
+ * | **doxygen** | Generate documentation | Release packages |
+ * | **bash** | Shell scripting | Required when ASCIICHAT_BUILD_WITH_PANIC=ON |
+ * | **python3** | Build scripts | Optional scripting support |
+ * | **lld** | LLVM linker | Faster linking, required for USE_MUSL builds |
+ * | **scan-build** | Static analyzer | Clang static analyzer wrapper |
+ *
+ * @note Debugging tools (lldb, llvm-symbolizer, addr2line, valgrind, leaks) are documented
+ *       in @ref topic_debug "Debugging" - they are not build tools.
+ *
+ * @subsection build_requirements_by_build Build Type Additions
+ *
+ * All build types share the same required tools. Each type adds specific needs:
+ *
+ * | Build Type | Additional Tools | Purpose |
+ * |------------|------------------|---------|
+ * | **Debug** | (none) | Uses same tools as other builds |
+ * | **Dev** | (none) | Fast builds without sanitizers |
+ * | **Release** | doxygen (optional) | Documentation for packages |
+ * | **Coverage** | llvm-profdata, llvm-cov | Generate coverage reports |
+ *
+ * **Linux static builds** (USE_MUSL=ON) additionally require:
+ * - **lld** - LLVM linker for static-PIE linking
+ * - **musl-gcc** - musl C compiler wrapper
+ * - **gcc** - used by musl-gcc via REALGCC environment variable
+ *
+ * @subsection build_requirements_packaging Package Generators
+ *
+ * CPack auto-detects available package generators. All are optional:
+ *
+ * | Platform | Tool | Package Format |
+ * |----------|------|----------------|
+ * | Linux | dpkg-deb | .deb (Debian/Ubuntu) |
+ * | Linux | rpmbuild | .rpm (Fedora/RHEL) |
+ * | macOS | productbuild | .pkg |
+ * | Windows | wix | .msi (WiX Toolset v4+) |
+ * | Windows | makensis | .exe installer (NSIS) |
+ * | All | tar/zip | .tar.gz, .zip |
+ *
+ * @subsection build_requirements_verify Verifying Your Setup
+ *
+ * Quick check that all required tools are available:
  *
  * @code{.bash}
- * # Check llvm-config availability
- * llvm-config --version
+ * # Check LLVM toolchain
+ * clang --version && clang++ --version && llvm-config --version
  *
- * # Show LLVM installation prefix
- * llvm-config --prefix
+ * # Check build tools
+ * cmake --version && ninja --version
  *
- * # Show LLVM library directory
- * llvm-config --libdir
+ * # Check archiver tools
+ * llvm-ar --version && llvm-ranlib --version
  * @endcode
  *
- * @subsection build_requirements_linker Linker Tools
+ * If any tool is missing, the CMake configure step will fail with a clear error
+ * message explaining what to install.
  *
- * **Linker Selection** (platform-specific):
+ * @subsection build_requirements_docs Building Documentation
  *
- * | Tool | Purpose | Platform | When Used |
- * |------|---------|----------|-----------|
- * | **lld** | LLVM linker | Linux | musl static builds (via `-fuse-ld=lld`) |
- * | **ld** | GNU linker | Linux | glibc builds (default) |
- * | **lld-link** | LLVM linker (Windows) | Windows | Clang builds (default) |
- * | **link.exe** | MSVC linker | Windows | MSVC builds |
- *
- * The build system automatically selects the appropriate linker based on:
- * - Compiler toolchain (Clang prefers lld)
- * - Build type (musl requires lld for static-PIE)
- * - Platform (Windows uses lld-link or link.exe)
- *
- * @subsection build_requirements_binary Binary Analysis Tools
- *
- * **Optional but Recommended**:
- *
- * | Tool | Purpose | Where Used | Required For |
- * |------|---------|------------|--------------|
- * | **strip** | Remove debug symbols | PostBuild.cmake | Release stripping (optional) |
- * | **objcopy** | Copy/modify object files | PostBuild.cmake | Debug info extraction (optional) |
- * | **ldd** | Show dynamic dependencies | Manual verification | Verify static linking |
- * | **file** | Identify file types | Manual verification | Check binary format |
- * | **nm** | List symbol table | Debugging | Symbol analysis |
- * | **objdump** | Disassemble binaries | Debugging | Assembly inspection |
- * | **readelf** | Display ELF info | Debugging (Linux) | ELF header analysis |
- * | **dumpbin.exe** | Display PE info | Debugging (Windows) | PE header analysis |
- *
- * **Usage Examples**:
  * @code{.bash}
- * # Verify static linking (Linux)
- * ldd build/bin/ascii-chat
- * # Expected: "not a dynamic executable" for musl static builds
- *
- * # Check binary type
- * file build/bin/ascii-chat
- * # Expected: "ELF 64-bit LSB pie executable, statically linked"
- *
- * # List symbols
- * nm build/bin/ascii-chat | grep malloc
- * # Shows malloc implementation (mi_malloc for mimalloc builds)
- *
- * # Check shared library dependencies (non-static)
- * objdump -p build/bin/ascii-chat | grep NEEDED
- * # Lists dynamic libraries required
- * @endcode
- *
- * @subsection build_requirements_documentation Documentation Tools
- *
- * **For Building Documentation**:
- *
- * | Tool | Purpose | Required For | Notes |
- * |------|---------|--------------|-------|
- * | **doxygen** | Generate API docs | `docs` target, Release packages | **Required for releases** |
- * | **dot** (Graphviz) | Generate diagrams | Enhanced docs (optional) | Improves documentation |
- *
- * **Why Doxygen is Required for Releases**:
- * - Release packages (`make package`) **include documentation**
- * - Documentation includes HTML API reference and Unix manpages
- * - Manpages are generated by Doxygen and installed to `share/man/man3/`
- * - Without Doxygen, releases will be missing documentation files
- *
- * **Building Documentation**:
- * @code{.bash}
- * # Check if doxygen is available
- * doxygen --version
- *
- * # Build documentation
+ * # Build docs (requires doxygen)
  * cmake --build build --target docs
  *
  * # Documentation output
@@ -172,470 +259,19 @@
  * cmake --build build --target package
  * @endcode
  *
- * @subsection build_requirements_packaging Packaging Tools
+ * @subsection build_requirements_windows Windows Notes
  *
- * **Platform-Specific Package Generators**:
+ * Windows requires **bash** (from Git Bash, WSL, or MSYS2) for test scripts and
+ * the panic tool. Git Bash is recommended - it's bundled with Git for Windows
+ * and automatically detected by CMake.
  *
- * **Linux**:
- * | Tool | Package Format | Distributions | Auto-Detected |
- * |------|----------------|---------------|---------------|
- * | **dpkg-buildpackage** | .deb | Debian, Ubuntu, Mint | Yes |
- * | **rpmbuild** | .rpm | Fedora, RHEL, CentOS, SUSE | Yes |
- * | **tar** | .tar.gz | All (universal) | Always available |
- * | **zip** | .zip | All (optional) | If `zip` found |
+ * The preferred way to build on Windows is using the PowerShell script:
  *
- * **macOS**:
- * | Tool | Package Format | Purpose | Auto-Detected |
- * |------|----------------|---------|---------------|
- * | **productbuild** | .pkg | macOS installer | Yes |
- * | **tar** | .tar.gz | Universal archive | Always available |
- *
- * **Windows**:
- * | Tool | Package Format | Purpose | Auto-Detected |
- * |------|----------------|---------|---------------|
- * | **wix** / **candle** / **light** | .msi | Windows Installer | Yes (WiX v3 or v4) |
- * | **makensis** | .exe | Self-extracting installer | Yes (NSIS) |
- * | **tar** (CMake built-in) | .zip | Portable archive | Always available |
- *
- * **Automatic Package Generation**:
- * - CPack automatically detects available packaging tools
- * - Generates all available package formats for your platform
- * - Missing tools are skipped (not required, just fewer package formats)
- *
- * **Installing Package Generators**:
- * @code{.bash}
- * # Debian/Ubuntu
- * sudo apt install dpkg-dev rpm
- *
- * # Fedora
- * sudo dnf install rpm-build dpkg-dev
- *
- * # Arch Linux
- * sudo pacman -S dpkg rpm-tools
- *
- * # macOS (Xcode Command Line Tools includes productbuild)
- * xcode-select --install
- *
- * # Windows (WiX v4 via dotnet)
- * dotnet tool install --global wix --version 4.0.4
- * wix extension add --global WixToolset.UI.wixext/4.0.4
- *
- * # Windows (NSIS)
- * # Download from https://nsis.sourceforge.io/Download
+ * @code{.powershell}
+ * ./build.ps1                  # Default build
+ * ./build.ps1 -Clean           # Clean rebuild
+ * ./build.ps1 -Config Release  # Release build
  * @endcode
- *
- * @subsection build_requirements_utilities System Utilities
- *
- * **Shell and Text Processing**:
- *
- * | Tool | Purpose | Platform | Where Used |
- * |------|---------|----------|------------|
- * | **bash** | Shell scripts | All (Unix), Windows* | Test runner, build scripts, PostBuild.cmake |
- * | **sh** | POSIX shell | Unix | CMake execute_process() calls |
- * | **printf** | Format output | Unix | BuildTimer.cmake |
- * | **powershell** | Windows shell | Windows | BuildTimer.cmake, build.ps1 |
- * | **env** | Set environment vars | Unix | Build commands (musl, configure) |
- * | **date** | Get timestamp | Unix | BuildTimer.cmake |
- *
- * **System Information**:
- *
- * | Tool | Purpose | Platform | Where Used |
- * |------|---------|----------|------------|
- * | **sysctl** | Query system info | macOS | CPU/architecture detection (Init.cmake, PlatformDetection.cmake, CRC32.cmake, SIMD.cmake) |
- * | **nproc** | Query CPU count | Linux | CPU core detection (Init.cmake) |
- * | **wmic** | Query system info | Windows | CPU core detection (Init.cmake) |
- * | **pkg-config** | Query library flags | Linux/macOS | Dependency detection (libsodium, zstd, portaudio) |
- *
- * **macOS-Specific Tools**:
- *
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **xcrun** | Xcode run tool | LLVM.cmake (--show-sdk-path for SDK detection) |
- * | **open** | Open files/URLs | Documentation.cmake, CustomTargets.cmake |
- * | **codesign** | Code signing | CodeSigning.cmake (sign executables for Gatekeeper) |
- * | **security** | Keychain access | CodeSigning.cmake (verify signing identity exists) |
- *
- * **Linux-Specific Tools**:
- *
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **xdg-open** | Open files/URLs | Documentation.cmake, CustomTargets.cmake |
- *
- * **Windows-Specific Tools**:
- *
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **start** | Open files/URLs | CustomTargets.cmake |
- *
- * **Version Control**:
- *
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **git** | Version control | Version.cmake, BearSSL.cmake, Tomlc17.cmake |
- *
- * **Git Usage in Build System**:
- * - **Version Detection**: `git describe --tags --long --dirty --always` (Version.cmake)
- * - **Commit Hash**: `git rev-parse HEAD` (Version.cmake)
- * - **Dirty Check**: `git diff-index --quiet HEAD --` (Version.cmake)
- * - **File Listing**: `git ls-files` (Version.cmake)
- * - **Patching Dependencies**: `git apply`, `git diff` (BearSSL.cmake, Tomlc17.cmake)
- * - **Index Management**: `git update-index --assume-unchanged` (Tomlc17.cmake)
- *
- * Having Git available is recommended when building ascii-chat so that version detection and dependency patching works properly.
- *
- * **Build Tool Variations**:
- *
- * | Tool | Purpose | Platform | Where Used |
- * |------|---------|----------|------------|
- * | **make** | GNU Make | Unix | Default build tool, dependency building |
- * | **gmake** | GNU Make (BSD) | BSD systems | Alternative to 'make' on BSD |
- * | **nmake** | Microsoft Make | Windows | BearSSL Windows build |
- * | **ninja** | Ninja build | All | Preferred fast build tool |
- *
- * **musl-Specific Tools** (Linux static builds only):
- *
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **musl-gcc** | musl C compiler wrapper | MuslDependencies.cmake (building static deps) |
- * | **gcc** | Used with musl-gcc | MuslDependencies.cmake (REALGCC variable) |
- *
- * @subsection build_requirements_scripting Scripting Languages
- *
- * **Python** (optional):
- *
- * | Tool | Purpose | Where Used | Required For |
- * |------|---------|------------|--------------|
- * | **python3** or **python** | Python interpreter | CustomTargets.cmake | `run-clang-tidy.py` (parallel tidy) |
- *
- * Python is only needed for parallel `clang-tidy` execution. Without it:
- * - clang-tidy still works (but runs serially, slower)
- * - All other features work normally
- *
- * @subsection build_requirements_windows Windows-Specific Requirements
- *
- * **Bash on Windows**:
- *
- * Windows builds require bash for running test scripts and certain build operations.
- * The build system automatically detects bash from common locations.
- *
- * **Recommended Bash Providers**:
- *
- * 1. **Git Bash** (Recommended):
- *    - Bundled with Git for Windows
- *    - Download: https://git-scm.com/download/win
- *    - Default location: `C:\Program Files\Git\usr\bin\bash.exe`
- *    - Automatically detected by CMake
- *
- * 2. **WSL (Windows Subsystem for Linux)**:
- *    - Full Linux environment on Windows
- *    - Install: `wsl --install` (PowerShell as admin)
- *    - Access: `wsl bash` or `bash.exe` (if in PATH)
- *    - Provides complete Unix toolset
- *
- * 3. **MSYS2**:
- *    - Unix-like environment for Windows
- *    - Download: https://www.msys2.org/
- *    - Includes bash, make, and other Unix tools
- *
- * **Detection and Configuration**:
- * @code{.cmake}
- * # CMake automatically searches for bash in:
- * # 1. C:/Program Files/Git/usr/bin/bash.exe  (Git Bash)
- * # 2. C:/Program Files/Git/bin/bash.exe      (Git Bash alternate)
- * # 3. bash.exe in PATH                        (WSL, MSYS2, etc.)
- * @endcode
- *
- * **PowerShell Commands**:
- *
- * | Tool | Purpose | Where Used |
- * |------|---------|------------|
- * | **powershell.exe** | Windows scripting | build.ps1, BuildTimer.cmake |
- * | **cmd.exe** | Windows command shell | Legacy script support (optional) |
- *
- * PowerShell is built into Windows (no installation needed).
- *
- * @subsection build_requirements_formatter Code Formatting Tools
- *
- * **Optional Development Tools**:
- *
- * | Tool | Purpose | Where Used | Required For |
- * |------|---------|------------|--------------|
- * | **clang-format** | Format C code | `format` target | Code formatting (optional) |
- * | **clang-tidy** | Static analysis | `tidy` target | Code linting (optional) |
- * | **scan-build** | Static analyzer | `analyze` target | Deeper analysis (optional) |
- *
- * **Code Formatting**:
- * @code{.bash}
- * # Format all source files
- * cmake --build build --target format
- *
- * # Check formatting without modifying files
- * cmake --build build --target format-check
- * @endcode
- *
- * @subsection build_requirements_optional Optional Tools
- *
- * **Performance and Optimization**:
- *
- * | Tool | Purpose | Where Used | Benefit |
- * |------|---------|------------|---------|
- * | **ccache** | Compiler cache | CCache.cmake | 5-10x faster rebuilds |
- *
- * ccache is automatically detected and enabled. See @ref build_caches_ccache for configuration.
- *
- * **Debugging Tools**:
- *
- * | Tool | Purpose | Platform | Usage |
- * |------|---------|----------|-------|
- * | **lldb** | LLVM debugger | macOS, Linux, Windows | Interactive debugging, better for Clang |
- * | **gdb** | GNU debugger | Linux | Interactive debugging, traditional choice |
- * | **valgrind** | Memory checker | Linux (x86_64, ARM64) | Memory leak detection, heap profiling |
- * | **leaks** | Memory checker | macOS | Memory leak detection (Apple tool) |
- *
- * **LLVM tools** (llvm-symbolizer, llvm-profdata, llvm-cov) are documented in @ref build_requirements_llvm.
- *
- * @subsection build_requirements_differences Platform Differences
- *
- * **Tool Availability by Platform**:
- *
- * | Tool Category | Linux | macOS | Windows |
- * |---------------|-------|-------|---------|
- * | **Compiler** | clang, gcc | clang (default) | clang, MSVC |
- * | **Build Tool** | ninja, make, gmake | ninja, make, gmake | ninja, nmake, MSBuild |
- * | **Archiver** | ar, llvm-ar | ar (Apple) | llvm-ar, llvm-lib |
- * | **Linker** | ld, lld | ld (Apple) | lld-link, link.exe |
- * | **Shell** | bash, sh, env | bash, sh | Git Bash, WSL, PowerShell, cmd |
- * | **Package** | dpkg, rpm, tar, zip | productbuild, tar | wix, makensis, zip (CMake) |
- * | **Debugger** | gdb, lldb, valgrind | lldb (default), leaks | lldb, Visual Studio |
- * | **LLVM Tools** | llvm-config, llvm-ar, llvm-ranlib | llvm-config, llvm-ar, llvm-ranlib | llvm-lib, llvm-ar, llvm-ranlib |
- * | **System Info** | nproc, date, xdg-open | sysctl, xcrun, open | wmic, start |
- * | **Pkg Config** | pkg-config (native) | pkg-config (Homebrew) | N/A (uses vcpkg) |
- * | **Version Control** | git | git | git |
- * | **Static Builds** | musl-gcc, gcc, lld | Limited (dynamic preferred) | vcpkg static triplet |
- *
- * **Key Differences**:
- *
- * 1. **Compiler Ecosystem**:
- *    - **Linux**: Flexible (GCC or Clang), but ascii-chat uses Clang
- *    - **macOS**: Clang is default (`gcc` often symlinks to clang)
- *    - **Windows**: Clang preferred (MSVC supported but not primary)
- *
- * 2. **Build Systems**:
- *    - **Linux/macOS**: Ninja (fast) or Make (traditional)
- *    - **Windows**: Ninja (recommended), NMake (MSVC), or MSBuild (Visual Studio)
- *
- * 3. **Binary Tools**:
- *    - **Linux**: Rich GNU Binutils (objdump, readelf, nm, etc.)
- *    - **macOS**: Apple tools (otool, dyldinfo, etc.) or LLVM tools
- *    - **Windows**: Limited (dumpbin.exe with Visual Studio, or LLVM tools)
- *
- * 4. **Static Linking**:
- *    - **Linux**: Excellent (musl libc fully static)
- *    - **macOS**: Limited (system libraries usually dynamic)
- *    - **Windows**: Good (static UCRT available with vcpkg)
- *
- * 5. **Package Managers**:
- *    - **Linux**: apt, dnf, pacman (native)
- *    - **macOS**: Homebrew (third-party but universal)
- *    - **Windows**: vcpkg (Microsoft), scoop, chocolatey
- *
- * @subsection build_requirements_by_build Requirements by Build Type
- *
- * This section breaks down what's **required** vs **optional** for each build type.
- *
- * @subsubsection build_requirements_debug Debug Build (CMAKE_BUILD_TYPE=Debug)
- *
- * **Purpose**: Development with sanitizers (ASan, UBSan) for catching bugs
- *
- * **Required Tools** (all platforms):
- * - **cmake** (3.16+)
- * - **clang** (10+) - compiler
- * - **ninja** or **make** - build executor
- * - **ar** and **ranlib** (or llvm-ar/llvm-ranlib) - static library tools
- * - System libraries: see @ref topic_dependencies
- *
- * **Required Tools** (platform-specific):
- * - **pkg-config** (Linux/macOS only) - finds dependency flags
- * - **bash** (Windows only) - Git Bash or WSL for test scripts
- * - **nproc** (Linux), **sysctl** (macOS), **wmic** (Windows) - CPU detection
- * - **date** (Unix) - build timing
- * - **powershell** (Windows) - build timing and scripts
- *
- * **Optional but Recommended**:
- * - **llvm-symbolizer** (all platforms) - symbolizes ASan/UBSan stack traces
- * - **addr2line** (all platforms) - alternative to llvm-symbolizer for backtraces
- * - **ccache** (all platforms) - 5-10x faster rebuilds
- * - **git** (all platforms) - version detection, dependency patching
- * - **lldb** or **gdb** (all platforms) - interactive debugging
- * - **valgrind** (Linux) or **leaks** (macOS) - additional memory checking
- *
- * **Not Needed**:
- * - lld, musl-gcc, doxygen, package tools - these are for release builds
- *
- * @subsubsection build_requirements_dev Dev Build (CMAKE_BUILD_TYPE=Dev)
- *
- * **Purpose**: Fast development without sanitizers (faster than Debug)
- *
- * **Required Tools**: Same as Debug build
- *
- * **Optional but Recommended**: Same as Debug build, except:
- * - llvm-symbolizer and addr2line are **not needed** (no sanitizers)
- *
- * @subsubsection build_requirements_release Release Build (CMAKE_BUILD_TYPE=Release)
- *
- * **Purpose**: Production deployment, static binaries, portable packages
- *
- * **Required Tools** (all platforms - same as Debug):
- * - **cmake** (3.16+)
- * - **clang** (10+)
- * - **ninja** or **make**
- * - **ar** and **ranlib** (or llvm-ar/llvm-ranlib)
- * - System libraries: see @ref topic_dependencies
- *
- * **Required Tools** (Linux musl static builds ONLY):
- * - **lld** - LLVM linker (for static-PIE linking)
- * - **musl-gcc** - musl C compiler wrapper
- * - **gcc** - used by musl-gcc (REALGCC variable)
- * - **env** - set environment variables for build
- *
- * **Required Tools** (macOS with Homebrew LLVM ONLY):
- * - **llvm-config** - query LLVM paths and version
- * - **xcrun** - find SDK paths
- *
- * **Required Tools** (Windows ONLY):
- * - **nmake** - Microsoft Make (for BearSSL build)
- * - **clang-cl** - Clang with MSVC compatibility (for BearSSL)
- * - **llvm-lib** - LLVM library tool (for BearSSL)
- *
- * **Required for Release Packages**:
- * - **doxygen** (all platforms) - generates documentation for packages
- * - **tar** (Unix) - create .tar.gz archives
- * - **git** (all platforms) - version detection and tagging
- *
- * **Optional Package Generators** (create installers):
- * - **dpkg-buildpackage** (Linux) - .deb packages
- * - **rpmbuild** (Linux) - .rpm packages
- * - **wix** (Windows) - .msi installers
- * - **makensis** (Windows) - .exe self-extracting installers
- * - **productbuild** (macOS) - .pkg installers
- * - **zip** (all platforms) - .zip archives
- *
- * **Optional but Recommended**:
- * - **ccache** (all platforms) - faster rebuilds
- * - **strip** (Unix) - strip debug symbols (reduce binary size)
- * - **ldd** (Linux), **otool** (macOS), **dumpbin** (Windows) - verify linking
- *
- * **Not Needed**:
- * - llvm-symbolizer, addr2line - no sanitizers in release builds
- * - Debuggers - release builds are optimized (use RelWithDebInfo for debugging)
- *
- * @subsubsection build_requirements_relwithdebinfo RelWithDebInfo Build
- *
- * **Purpose**: Optimized build with debug symbols (for production debugging)
- *
- * **Required Tools**: Same as Release build
- *
- * **Optional but Recommended**:
- * - **lldb** or **gdb** (all platforms) - debug optimized code
- * - **llvm-symbolizer** (all platforms) - symbolize stack traces
- * - **addr2line** (all platforms) - alternative backtrace tool
- * - **strip** (Unix) - can strip symbols later if needed
- * - All Release build optional tools
- *
- * @subsubsection build_requirements_coverage Coverage Build (CMAKE_BUILD_TYPE=Coverage)
- *
- * **Purpose**: Measure test coverage with instrumentation
- *
- * **Required Tools** (all platforms - same as Debug):
- * - **cmake** (3.16+)
- * - **clang** (10+)
- * - **ninja** or **make**
- * - **ar** and **ranlib**
- * - Platform-specific system tools (pkg-config, bash, etc.)
- *
- * **Required for Coverage Reports**:
- * - **llvm-profdata** (all platforms) - process coverage data
- * - **llvm-cov** (all platforms) - generate coverage reports
- *
- * **Optional**:
- * - **git** (all platforms) - version detection
- * - **ccache** (all platforms) - faster rebuilds
- *
- * **Not Needed**:
- * - llvm-symbolizer, addr2line - no sanitizers in coverage builds
- * - Package tools, doxygen - coverage is not for distribution
- *
- * @subsection build_requirements_symbolizers Stack Trace Symbolizers
- *
- * **llvm-symbolizer vs addr2line**:
- *
- * Both tools convert addresses to source locations in stack traces:
- *
- * | Feature | llvm-symbolizer | addr2line |
- * |---------|-----------------|-----------|
- * | **Platform** | All (Linux, macOS, Windows) | All (Linux, macOS, Windows) |
- * | **Provider** | LLVM/Clang | GNU Binutils |
- * | **Speed** | Faster | Slower |
- * | **Accuracy** | Better with Clang | Better with GCC |
- * | **ASan/UBSan** | Preferred | Fallback |
- * | **Required** | No (optional) | No (optional) |
- *
- * **How Symbolizers Work**:
- * - Sanitizers (ASan, UBSan) print raw addresses by default
- * - Symbolizer converts addresses to `file:line:function` format
- * - Makes crash reports much more readable
- * - Works with debug symbols (`-g` flag)
- *
- * **Using Symbolizers**:
- * @code{.bash}
- * # Without symbolizer (raw addresses)
- * ./build/bin/ascii-chat
- * # Output: #0 0x7f8b9c3d4e20 in ?? ??:0
- *
- * # With llvm-symbolizer (readable)
- * export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
- * ./build/bin/ascii-chat
- * # Output: #0 0x7f8b9c3d4e20 in process_frame lib/image.c:123
- *
- * # With addr2line (alternative)
- * export ASAN_SYMBOLIZER_PATH=/usr/bin/addr2line
- * ./build/bin/ascii-chat
- * @endcode
- *
- * **Availability**:
- * - **llvm-symbolizer**: Comes with LLVM/Clang installation
- * - **addr2line**: Comes with GNU Binutils (gcc, ld, etc.)
- * - Both are **optional** - builds work without them
- * - Debug builds are **much more useful** with symbolizers
- *
- * @subsection build_requirements_minimal Minimal Build Summary
- *
- * **Absolute Minimum** (works on all platforms):
- * - cmake, clang, ninja (or make), ar, ranlib
- * - Platform system tools (sysctl/nproc/wmic, etc.)
- * - pkg-config (Linux/macOS) or vcpkg (Windows)
- * - bash (Windows only)
- *
- * **Recommended for Development**:
- * - Add: git, ccache, llvm-symbolizer (or addr2line)
- * - Debugger: lldb (all platforms) or gdb (Linux)
- *
- * **For Release Builds**:
- * - Add: doxygen (documentation)
- * - Linux: lld, musl-gcc, gcc (for static builds)
- * - macOS: llvm-config (for Homebrew LLVM)
- * - Windows: nmake, clang-cl, llvm-lib (for BearSSL)
- *
- * **For Release Packages**:
- * - Add package generators: dpkg-buildpackage, rpmbuild, wix, makensis, productbuild
- * - All are optional (fallback to .tar.gz or .zip)
- *
- * **Everything Else is Optional**:
- * - clang-format, clang-tidy, scan-build: Code quality
- * - strip, objcopy: Binary manipulation
- * - ldd, file, nm, objdump, readelf, dumpbin: Verification
- * - valgrind, leaks: Additional memory checking
- * - python3: Parallel clang-tidy
  *
  * @section build_modularity CMakeLists.txt Modularity
  *
@@ -644,10 +280,14 @@
  * The main `CMakeLists.txt` is organized as a modular system, with each major
  * aspect handled by a dedicated module in the `cmake/` directory:
  *
- * @note All file paths listed below are relative to the `cmake/` directory.
+ * @note All file paths listed below are relative to the **cmake/** directory.
+ *
+ * **Root-level Modules**:
+ * - `ProjectConstants.cmake` - Project metadata (name, author, URLs, license)
  *
  * **Core Configuration Modules** (`init/`):
  * - `init/Init.cmake` - Initial setup and paths
+ * - `init/FindPrograms.cmake` - Centralized program discovery (clang, llvm-config, etc.)
  * - `init/BuildTypes.cmake` - Build type configuration (Debug, Release, etc.)
  * - `init/Options.cmake` - Build options (mimalloc, musl, tests, etc.)
  * - `init/BuildConfiguration.cmake` - Build configuration helpers
@@ -709,537 +349,56 @@
  * - `utils/StatusMessages.cmake` - Build status output
  * - `utils/CustomTargets.cmake` - Custom build targets
  *
- * **Root-level Modules**:
- * - `ProjectConstants.cmake` - Project metadata (name, author, URLs, license)
+ * @section build_presets CMake Presets (Preferred)
  *
- * @subsection build_modularity_benefits Benefits of Modularity
+ * CMake Presets are the **preferred way to configure builds**. They provide
+ * standardized configurations with all the right flags for each build type.
  *
- * **Maintainability**:
- * - Each module has a single responsibility
- * - Easy to locate and modify specific functionality
- * - Clear separation of concerns
- *
- * **Flexibility**:
- * - Modules can be enabled/disabled independently
- * - Easy to add new platforms or configurations
- * - Platform-specific logic isolated
- *
- * **Testability**:
- * - Individual modules can be tested separately
- * - Clear interfaces between modules
- * - Modular design simplifies debugging
- *
- * **Example Module Structure**:
- * @code{.cmake}
- * # cmake/Mimalloc.cmake
- * # =============================================================================
- * # mimalloc Memory Allocator Configuration
- * # =============================================================================
- * # Configures and builds Microsoft's mimalloc high-performance allocator
- * #
- * # Prerequisites (must be set before including this file):
- * #   - USE_MIMALLOC: Option to enable mimalloc
- * #   - USE_MUSL: Whether using musl libc (affects override behavior)
- * #
- * # Outputs:
- * #   - MIMALLOC_LIBRARIES: Target to link against (mimalloc-static)
- * #   - Defines: USE_MIMALLOC, MI_STATIC_LIB
- * # =============================================================================
- *
- * if(USE_MIMALLOC)
- *     message(STATUS "Configuring mimalloc memory allocator...")
- *     # ... mimalloc configuration ...
- * endif()
- * @endcode
- *
- * @section build_platforms Cross-Platform Compilation
- *
- * @subsection build_platforms_linux Linux
- *
- * **Standard Build** (Dynamic glibc):
- * @code{.bash}
- * # Debug build (default)
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug
- * cmake --build build
- *
- * # Release build (static - auto-detects musl on Linux, vcpkg static on Windows)
- * cmake --preset release
- * cmake --build build
- * # Or explicitly force musl on Linux
- * cmake --preset release-musl
- * # Or configure and build in one command
- * cmake --build --preset release
- * @endcode
- *
- * **Static musl Build** (Portable Release):
- * @code{.bash}
- * # Release build with musl + static linking
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- * cmake --build build
- *
- * # Verify static linking
- * ldd build/bin/ascii-chat
- * # Output: "not a dynamic executable"
- * @endcode
- *
- * **Requirements**:
- * - **Compiler**: clang
- * - **CMake**: 3.16 or later
- * - **musl** (for static builds): `sudo apt install musl-tools musl-dev` (Ubuntu/Debian) or `sudo pacman -S musl` (Arch)
- * - **Dependencies**: PortAudio, libsodium, zstd (or use musl static builds)
- *
- * **Linux-Specific Features**:
- * - musl libc support for static binaries
- * - Kernel headers copied locally for musl builds
- * - ALSA and V4L2 support via kernel headers
- *
- * @subsection build_platforms_macos macOS
- *
- * **Standard Build**:
- * @code{.bash}
- * # Debug build
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug
- * cmake --build build
- *
- * # Release build
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
- * cmake --build build
- * @endcode
- *
- * **Requirements**:
- * - **Xcode Command Line Tools**: `xcode-select --install`
- * - **Homebrew** (recommended): For dependencies
- * - **Compiler**: clang (default on macOS)
- *
- * **macOS-Specific Features**:
- * - Automatic Apple Silicon (arm64) detection
- * - Rosetta 2 compatibility detection
- * - AVFoundation webcam support (via lib/os/webcam.h)
- * - CoreAudio support (via PortAudio)
- * - Code signing support for Gatekeeper compatibility
- *
- * **Code Signing** (macOS only):
- *
- * Code signing is supported for distribution and Gatekeeper compatibility.
- * By default, code signing is **enabled in Release mode** and **disabled in other build types**.
- *
- * Configure via the `CODESIGNING_IDENTITY` CMake variable or environment variable:
+ * @subsection build_presets_overview Quick Start
  *
  * @code{.bash}
- * # Set signing identity via environment variable
- * export CODESIGNING_IDENTITY="Your Name"
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
- * cmake --build build
- *
- * # Or pass directly to CMake
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DCODESIGNING_IDENTITY="Your Name"
- * cmake --build build
- *
- * # Enable code signing in Debug mode (disabled by default)
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_CODESIGNING=ON
- *
- * # Disable code signing in Release mode
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DASCIICHAT_CODESIGNING=OFF
- *
- * # Verify signature
- * codesign --verify --deep --strict build/bin/ascii-chat
- * codesign -dv build/bin/ascii-chat  # Display signature details
+ * # Configure and build (one command)
+ * cmake --build --preset debug      # Debug with sanitizers
+ * cmake --build --preset dev        # Fast iteration, no sanitizers
+ * cmake --build --preset release    # Optimized for distribution
+ * cmake --build --preset coverage   # Code coverage analysis
  * @endcode
  *
- * **Code Signing Configuration**:
- * - `ASCIICHAT_CODESIGNING` - Enable/disable code signing (ON by default in Release, OFF otherwise)
- * - `CODESIGNING_IDENTITY` - Name of your signing certificate (must exist in Keychain)
- * - If not set or certificate not found, code signing is automatically disabled
- * - Hardened runtime (`--options runtime`) enabled for notarization compatibility
- * - Release builds include timestamps (`--timestamp`)
+ * @subsection build_presets_list Available Presets
  *
- * **Note**: musl is **not supported** on macOS (uses libSystem instead)
+ * | Preset | Build Type | Use Case |
+ * |--------|------------|----------|
+ * | `default` / `debug` | Debug | Bug hunting with sanitizers |
+ * | `debug-musl` | Debug | Static musl debug (Linux only) |
+ * | `dev` | Dev | Fast daily development |
+ * | `release` | Release | Production builds (static on Linux/Windows) |
+ * | `release-musl` | Release | Force musl static (Linux only) |
+ * | `relwithdebinfo` | RelWithDebInfo | Optimized with debug symbols |
+ * | `coverage` | Coverage | Test coverage instrumentation |
  *
- * @subsection build_platforms_windows Windows
+ * @subsection build_presets_ide IDE Integration
  *
- * **Using PowerShell Build Script** (Recommended):
- * @code{.powershell}
- * # Default Debug build (Clang, Ninja)
- * .\build.ps1
+ * Presets are defined in `CMakePresets.json` and work with VS Code, CLion,
+ * and other CMake-aware IDEs. Select a preset from your IDE's configuration
+ * dropdown to get consistent builds across your team.
  *
- * # Release build
- * .\build.ps1 -Config Release
+ * @subsection build_presets_custom Custom Presets
  *
- * # Clean rebuild
- * .\build.ps1 -Clean
+ * Create custom presets by editing `CMakePresets.json`:
  *
- * # Dev build (no sanitizers)
- * .\build.ps1 -Config Dev
- *
- * # Coverage build
- * .\build.ps1 -Config Coverage
- *
- * # Disable mimalloc
- * .\build.ps1 -NoMimalloc
- *
- * # Use Visual Studio generator with Clang
- * .\build.ps1 -VSWithClang
+ * @code{.json}
+ * {
+ *   "name": "my-custom",
+ *   "displayName": "My Custom Build",
+ *   "inherits": "base",
+ *   "cacheVariables": {
+ *     "CMAKE_BUILD_TYPE": "Debug",
+ *     "USE_MIMALLOC": "OFF",
+ *     "BUILD_TESTS": "ON"
+ *   }
+ * }
  * @endcode
  *
- * **Manual CMake** (Windows):
- * @code{.powershell}
- * # With Clang (recommended)
- * cmake -B build -G "Ninja" -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Debug
- * cmake --build build
- *
- * # With Visual Studio generator
- * cmake -B build -G "Visual Studio 17 2022" -T ClangCL
- * cmake --build build --config Debug
- *
- * # With MinGW (for Criterion tests)
- * cmake -B build -G "MinGW Makefiles"
- * cmake --build build
- * @endcode
- *
- * **Requirements**:
- * - **CMake**: 3.16 or later
- * - **Compiler**: Clang (recommended), MSVC, or MinGW
- * - **Visual Studio** (for Debug/Dev builds): 2017, 2019, 2022, or 2026 Insiders (Community, Professional, Enterprise, or Build Tools)
- * - **Ninja** (recommended): For faster builds
- *
- * **Windows-Specific Features**:
- * - Automatic MSVC library detection for Clang builds
- * - Windows-Clang linking fixes (removes -nostartfiles -nostdlib)
- * - Media Foundation webcam support (via lib/os/webcam.h)
- * - WASAPI audio support (via PortAudio)
- * - Windows build script (build.ps1) for convenience
- *
- * **Windows Gotchas**:
- * - **MSVC Libraries Required**: Debug and Dev builds require Visual Studio runtime libraries
- * - **Generator Selection**: Visual Studio generator requires MSVC libraries; Ninja with Clang works better
- * - **Path Issues**: Use forward slashes or escaped backslashes in CMake commands
- * - **MinGW Limitation**: Criterion tests typically only work with MinGW, not MSVC or Clang
- *
- * @section build_platform_gotchas Platform Gotchas
- *
- * @subsection build_gotchas_windows_vs_linux Windows vs Linux
- *
- * **Library Linking**:
- * - **Linux**: Uses pkg-config or CMake's Find modules
- * - **Windows**: Manual library path detection or vcpkg
- * - **Solution**: Windows build script handles library detection automatically
- *
- * **Executable Format**:
- * - **Linux**: ELF format, supports static-PIE linking
- * - **Windows**: PE format, requires MSVC runtime for Debug/Dev builds
- * - **Solution**: Windows build script detects and links MSVC libraries
- *
- * **Compiler Flags**:
- * - **Linux**: Standard POSIX flags work across compilers
- * - **Windows**: Requires Windows-specific flags (-D_WIN32, -DWIN32_LEAN_AND_MEAN)
- * - **Solution**: PlatformDetection.cmake and WindowsWorkarounds.cmake handle flags
- *
- * **Path Handling**:
- * - **Linux**: Forward slashes, case-sensitive paths
- * - **Windows**: Backslashes or forward slashes, case-insensitive
- * - **Solution**: CMake normalizes paths automatically
- *
- * **Dynamic Libraries**:
- * - **Linux**: .so files, requires LD_LIBRARY_PATH or rpath
- * - **Windows**: .dll files, requires PATH or same directory
- * - **Solution**: Windows build script copies DLLs to bin/ directory
- *
- * @subsection build_gotchas_macos_vs_linux macOS vs Linux
- *
- * **C Library**:
- * - **Linux**: glibc or musl (for static builds, musl is preferred)
- * - **macOS**: libSystem (system C library)
- * - **Windows**: msvc
- * - **Gotcha**: musl is Linux-only; macOS cannot use musl static builds
- *
- * **Compiler**: clang
- * - **Gotcha**: macOS gcc is often clang in disguise
- *
- * **Library Search**:
- * - **Linux**: Uses pkg-config or system library paths
- * - **macOS**: Uses Homebrew paths or system frameworks
- * - **Gotcha**: Homebrew libraries may not be in default search paths
- *
- * **Architecture**:
- * - **Linux**: Usually x86_64, some ARM
- * - **macOS**: arm64 (Apple Silicon) or x86_64 (Intel)
- * - **Gotcha**: Rosetta 2 can run x86_64 on Apple Silicon, but native arm64 is faster
- *
- * @subsection build_gotchas_macos_vs_windows macOS vs Windows
- *
- * **Audio Framework**:
- * - **macOS**: CoreAudio via PortAudio
- * - **Windows**: WASAPI via PortAudio
- * - **Gotcha**: Platform-specific audio code in lib/audio.c
- *
- * **Video Framework**:
- * - **macOS**: AVFoundation
- * - **Windows**: Media Foundation
- * - **Gotcha**: Platform-specific webcam code in lib/os/webcam.c
- *
- * **Threading**:
- * - **macOS**: POSIX threads (pthreads)
- * - **Windows**: Windows threads
- * - **Solution**: Platform abstraction layer (lib/platform/) handles differences
- *
- * @section build_windows_script Windows Build Script
- *
- * @subsection build_windows_script_overview Script Overview
- *
- * The `build.ps1` PowerShell script simplifies Windows builds by:
- * - Automatically detecting and configuring the best compiler
- * - Using CMake presets for common configurations
- * - Handling MSVC library detection
- * - Managing build directories
- * - Copying outputs to `bin/` directory
- * - Killing conflicting processes before building
- *
- * **Script Location**: `build.ps1` in project root
- *
- * **Usage**:
- * @code{.powershell}
- * # Default Debug build
- * .\build.ps1
- *
- * # Release build
- * .\build.ps1 -Config Release
- *
- * # Dev build (no sanitizers)
- * .\build.ps1 -Config Dev
- *
- * # Coverage build
- * .\build.ps1 -Config Coverage
- *
- * # Clean rebuild
- * .\build.ps1 -Clean
- *
- * # Custom compiler flags (disables presets)
- * .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"
- *
- * # Disable mimalloc
- * .\build.ps1 -NoMimalloc
- *
- * # Use Visual Studio generator with Clang
- * .\build.ps1 -VSWithClang
- *
- * # Custom build directory
- * .\build.ps1 -BuildDir mybuild
- * @endcode
- *
- * @subsection build_windows_script_features Key Features
- *
- * **Automatic Compiler Detection**:
- * - Prefers Clang (gcc untested and unsupported)
- * - Respects `CC` environment variable
- *
- * **CMake Preset Integration**:
- * - Uses CMake presets when possible
- * - Falls back to custom configuration when flags don't match presets
- * - Automatic preset selection based on `-Config` parameter
- *
- * **Process Management**:
- * - Kills running ascii-chat processes before building
- * - Prevents build failures from locked files
- * - Waits for processes to terminate
- *
- * **Output Management**:
- * - Copies build outputs to `bin/` directory
- * - Creates `bin/` directory if it doesn't exist
- * - Preserves directory structure
- *
- * **Configuration Detection**:
- * - Only configures if build directory doesn't exist
- * - Skips configuration on subsequent builds (faster)
- * - `-Clean` flag forces reconfiguration
- *
- * @section build_musl_static musl libc Static Builds (Linux Release)
- *
- * @subsection build_musl_overview musl Overview
- *
- * musl libc is a lightweight C standard library implementation designed for
- * static linking. ascii-chat uses musl for Linux release builds to create
- * fully static binaries with no runtime dependencies.
- *
- * **Performance Benefits**:
- * - musl + mimalloc: ~100 FPS (Release builds)
- * - glibc + mimalloc: ~60 FPS
- * - **Result**: ~85% performance improvement with musl
- *
- * **Portability Benefits**:
- * - Fully static binaries
- * - No glibc version requirements
- * - Works across Linux distributions
- * - Single binary deployment
- *
- * **When Used**:
- * - **Linux Release/RelWithDebInfo builds**: Enabled by default
- * - **Linux Debug/Dev builds**: Disabled by default (better debugging experience)
- * - **macOS/Windows**: Not applicable (uses system libc)
- *
- * @subsection build_musl_configuration musl Configuration
- *
- * **Default Behavior**:
- * - Linux Release/RelWithDebInfo: `USE_MUSL=ON` automatically
- * - Linux Debug/Dev: `USE_MUSL=OFF` (use glibc for debugging)
- *
- * **Manual Configuration**:
- * @code{.bash}
- * # Force musl for Debug build (not recommended)
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DUSE_MUSL=ON
- *
- * # Force glibc for Release build
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=OFF
- * @endcode
- *
- * **Requirements**:
- * - **Compiler**: clang (required for static-PIE support)
- * - **musl Development Files**: `sudo apt install musl-tools musl-dev` (Ubuntu/Debian) or `sudo pacman -S musl` (Arch)
- * - **Kernel Headers**: `sudo apt install linux-libc-dev` or `sudo pacman -S linux-headers` (for ALSA/V4L2 support)
- *
- * @subsection build_musl_dependencies Static Dependency Building
- *
- * When `USE_MUSL=ON`, the build system automatically builds all dependencies
- * from source and caches them for static linking:
- *
- * **Dependencies Built from Source**:
- * - **zstd**: Compression library
- * - **libsodium**: Cryptographic library
- * - **PortAudio**: Audio I/O library
- * - **BearSSL**: TLS library (for HTTPS key fetching)
- * - **mimalloc**: Memory allocator (if enabled)
- *
- * **Cache Location**:
- * - Default: `.deps-cache-musl/` (configurable via `FETCHCONTENT_BASE_DIR`)
- * - Survives `build/` directory deletion
- * - Shared across musl builds
- *
- * **Cache Management**:
- * @code{.bash}
- * # Set custom cache location
- * export FETCHCONTENT_BASE_DIR="$HOME/.cache/ascii-chat-deps"
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- *
- * # Clear cache (forces rebuild of dependencies)
- * rm -rf .deps-cache-musl
- * @endcode
- *
- * **Kernel Headers**:
- * - Kernel headers copied to `$MUSL_PREFIX/kernel-headers/` for musl builds
- * - Required for ALSA (audio) and V4L2 (webcam) support
- * - Copied from system directories (`/usr/include/linux`, etc.)
- *
- * @subsection build_musl_linkage Static Linking Configuration
- *
- * musl builds use static-PIE (Position-Independent Executable) linking:
- *
- * **Linker Flags**:
- * - `-static-pie`: Creates statically linked PIE executable
- * - `-fuse-ld=lld`: Uses LLVM linker (required for static-PIE)
- * - `-L${MUSL_PREFIX}/lib`: Links against musl-built dependencies
- *
- * **Verification**:
- * @code{.bash}
- * # Build static musl release
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- * cmake --build build
- *
- * # Verify static linking
- * ldd build/bin/ascii-chat
- * # Output: "not a dynamic executable"
- *
- * # Check binary info
- * file build/bin/ascii-chat
- * # Output: "ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), statically linked, ..."
- * @endcode
- *
- * @section build_mimalloc mimalloc Memory Allocator
- *
- * @subsection build_mimalloc_overview mimalloc Overview
- *
- * mimalloc is a high-performance memory allocator from Microsoft, providing
- * significant performance improvements over system malloc implementations.
- *
- * **Performance Benefits**:
- * - Faster allocation/deallocation
- * - Better memory locality
- * - Reduced fragmentation
- * - Lower memory overhead
- *
- * **Default Behavior**:
- * - **Release/RelWithDebInfo builds**: Enabled by default (`USE_MIMALLOC=ON`)
- * - **Debug/Dev builds**: Disabled by default (better debugging experience)
- *
- * @subsection build_mimalloc_configuration mimalloc Configuration
- *
- * **Default Configuration**:
- * @code{.bash}
- * # Release build with mimalloc (default)
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
- * cmake --build build
- * # mimalloc enabled automatically
- * @endcode
- *
- * **Manual Configuration**:
- * @code{.bash}
- * # Enable mimalloc for Debug build
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DUSE_MIMALLOC=ON
- *
- * # Disable mimalloc for Release build
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MIMALLOC=OFF
- * @endcode
- *
- * **Platform-Specific Behavior**:
- * - **Linux with glibc**: `MI_OVERRIDE=ON` (global malloc replacement)
- * - **Linux with musl**: `MI_OVERRIDE=OFF` (explicit mi_malloc/mi_free calls)
- * - **macOS/Windows**: `MI_OVERRIDE=ON` (global malloc replacement)
- *
- * **Why Different Behavior for musl**:
- * - musl's malloc implementation conflicts with mimalloc's override mechanism
- * - Explicit calls (`mi_malloc`, `mi_free`) work better with musl
- * - Automatic override (`MI_OVERRIDE=ON`) works fine with glibc
- *
- * @subsection build_mimalloc_building Building mimalloc
- *
- * mimalloc is automatically downloaded and built via CMake's FetchContent:
- *
- * **Source Location**:
- * - GitHub: https://github.com/microsoft/mimalloc
- * - Tag: v2.1.7 (latest stable v2.x release)
- * - Shallow clone: `GIT_SHALLOW TRUE` (faster download)
- *
- * **Cache Location**:
- * - Default: `${FETCHCONTENT_BASE_DIR}/mimalloc-src/` and `mimalloc-build/`
- * - Survives `build/` directory deletion
- * - Shared across builds
- *
- * **Build Configuration**:
- * - `MI_BUILD_STATIC=ON`: Build static library
- * - `MI_BUILD_SHARED=OFF`: Don't build shared library
- * - `MI_BUILD_TESTS=OFF`: Don't build test executables
- * - `MI_DEBUG_FULL=ON`: Full debug mode (Debug/Dev builds only)
- *
- * @subsection build_mimalloc_usage Using mimalloc
- *
- * **With Global Override** (glibc, macOS, Windows):
- * @code{.c}
- * // No code changes required
- * void *ptr = malloc(1024);  // Automatically uses mi_malloc
- * free(ptr);                 // Automatically uses mi_free
- * @endcode
- *
- * **With Explicit Calls** (musl):
- * @code{.c}
- * #include "mimalloc.h"
- *
- * // Explicit calls to mimalloc
- * void *ptr = mi_malloc(1024);
- * mi_free(ptr);
- * @endcode
- *
- * **SAFE_MALLOC Macros**:
- * - `SAFE_MALLOC()` and `SAFE_FREE()` macros work with mimalloc automatically
- * - No changes needed when using macros
- * - Macros handle both override and explicit call modes
  *
  * @section build_types Build Types
  *
@@ -1421,307 +580,6 @@
  * - Finding untested code paths
  * - Continuous integration coverage reporting
  *
- * @section build_philosophy Compilation Philosophy
- *
- * ascii-chat uses different linking strategies depending on the build mode and target platform.
- * This ensures optimal development experience while providing production-ready, portable releases.
- *
- * @subsection build_philosophy_dev Development Builds
- *
- * **Purpose**: Fast iteration, easy debugging, comprehensive error detection
- *
- * **Linking Strategy**:
- * - **Windows**: Dynamic linking against vcpkg DLLs
- *   - Uses x64-windows vcpkg triplet
- *   - Links against Windows UCRT (Universal C Runtime)
- *   - Dependencies: asciichat.dll, libsodium.dll, portaudio.dll, zstd.dll
- *   - AddressSanitizer runtime (clang_rt.asan_dynamic-x86_64.dll) in Debug builds
- * - **Linux**: Dynamic linking against system shared libraries (.so files)
- *   - Links against glibc (GNU C Library)
- *   - Generates asciichat.so shared library for testing
- * - **macOS**: Dynamic linking against system frameworks
- *   - Links against libSystem (system C library)
- *   - Generates asciichat.dylib for testing
- *
- * **Build Modes**:
- * - **Debug** (`CMAKE_BUILD_TYPE=Debug`): Maximum debugging, AddressSanitizer enabled
- * - **Dev** (`CMAKE_BUILD_TYPE=Dev`): Fast builds without sanitizers
- *
- * **Why Dynamic Linking for Development?**
- * - **Faster builds**: Shared libraries reduce link time
- * - **Easier debugging**: Sanitizers work better with dynamic linking
- * - **Quick iteration**: Rebuild only what changed
- * - **Memory debugging**: AddressSanitizer detects use-after-free, buffer overflows, leaks
- *
- * @subsection build_philosophy_prod Production Builds
- *
- * **Purpose**: Portable, optimized, self-contained binaries for distribution
- *
- * **Linking Strategy**:
- * - **Windows** (`CMAKE_BUILD_TYPE=Release`):
- *   - Static linking against vcpkg libraries (x64-windows-static triplet)
- *   - Links statically against Windows UCRT (Universal C Runtime)
- *   - Single .exe file with minimal external dependencies
- *   - Only depends on core Windows system DLLs (KERNEL32.dll, WS2_32.dll, etc.)
- *
- * - **Linux** (`CMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON`):
- *   - Static linking with musl libc (lightweight, security-focused C library)
- *   - Static-PIE (Position Independent Executable) for ASLR security
- *   - Fully static binary - no external dependencies except Linux kernel
- *   - Portable across all Linux distributions
- *
- * - **macOS** (`CMAKE_BUILD_TYPE=Release`):
- *   - Currently uses dynamic linking against system frameworks
- *   - Links against libSystem
- *   - **Static linking planned** for future releases
- *   - Universal binaries (x86_64 + arm64) for Intel and Apple Silicon
- *
- * **Why Static Linking for Production?**
- * - **Portability**: Works on any target system without dependency hell
- * - **Security**: No vulnerable shared libraries to exploit
- * - **Reliability**: No runtime library version mismatches
- * - **Simplicity**: Single binary deployment (especially critical for musl on Linux)
- *
- * **Build Configuration**:
- * @code{.bash}
- * # Windows Release (static vcpkg libraries)
- * .\build.ps1 -Config Release
- *
- * # Linux Release (static musl)
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- * cmake --build build
- *
- * # macOS Release (currently dynamic, static planned)
- * cmake -B build -DCMAKE_BUILD_TYPE=Release
- * cmake --build build
- * @endcode
- *
- * @subsection build_philosophy_releases Release Distribution
- *
- * **Download binaries**: Grab ascii-chat from the [GitHub Releases page](https://github.com/zfogg/ascii-chat/releases). Each release ships ready-to-run binaries, installers, and SDK artifacts for Linux, macOS, and Windows.
- * **Build from source**: Clone the repository, install the dependencies documented in @ref topic_dependencies and the project README, then run `make CMAKE_BUILD_TYPE=RelWithDebInfo` to produce a working copy in `build/bin/`.
- *
- * @subsection build_philosophy_summary Summary
- *
- * | Platform | Development | Production | Release Artifacts |
- * |----------|-------------|------------|-------------------|
- * | **Windows** | DLL (x64-windows) | Static (x64-windows-static) | .exe binary, .dll, .lib, .msi, .exe installer |
- * | **Linux** | .so (glibc) | Static (musl) | binary, .so, .a, .deb/.rpm |
- * | **macOS** | .dylib | Static (planned) | binary, .dylib, .a, .dmg |
- *
- * | Build Mode | Optimization | Debug Info | Sanitizers | C Runtime |
- * |------------|--------------|------------|------------|-----------|
- * | **Debug** | -O0 | Full | ASan,UBSan | glibc/UCRT/libSystem |
- * | **Dev** | -O0 | Full | None | glibc/UCRT/libSystem |
- * | **Release** | -O3 | None | None | musl/UCRT(static)/libSystem |
- * | **RelWithDebInfo** | -O3 | Full | None | musl/UCRT/libSystem |
- *
- * @section build_caches Dependency Caches
- *
- * @subsection build_caches_overview Cache Overview
- *
- * The build system uses multiple caching mechanisms to speed up builds and
- * persist dependencies across build directory deletions:
- *
- * **Cache Types**:
- * - **ccache**: Compiler cache (speeds up recompilation)
- * - **FetchContent**: Dependency caching (persists across builds)
- * - **CMake Cache**: Configuration cache (persists in `CMakeCache.txt`)
- *
- * @subsection build_caches_ccache Compiler Cache (ccache)
- *
- * **Purpose**: Cache compilation results to speed up rebuilds
- *
- * **Automatic Detection**:
- * - ccache automatically detected if available
- * - Enabled by default (`USE_CCACHE=ON`)
- * - Disabled automatically for musl builds (incompatible)
- *
- * **Configuration**:
- * - **Max Size**: 2GB (configurable)
- * - **Compression**: Enabled (level 6)
- * - **Cache Location**: System default (usually `~/.ccache/`)
- *
- * **Manual Configuration**:
- * @code{.bash}
- * # Set cache size
- * ccache --set-config max_size=4G
- *
- * # Show cache statistics
- * ccache --show-stats
- *
- * # Clear cache
- * ccache --clear
- * @endcode
- *
- * **Disabling ccache**:
- * @code{.bash}
- * # Disable for specific build
- * cmake -B build -DUSE_CCACHE=OFF -DCMAKE_BUILD_TYPE=Debug
- *
- * # Disable globally (environment variable)
- * export USE_CCACHE=OFF
- * cmake -B build -DCMAKE_BUILD_TYPE=Debug
- * @endcode
- *
- * **Performance Impact**:
- * - First build: No benefit (cache population)
- * - Subsequent builds: 5-10x faster compilation
- * - Cache hit rate: Typically 70-90% for incremental builds
- *
- * @subsection build_caches_fetchcontent FetchContent Cache
- *
- * **Purpose**: Cache downloaded dependencies to avoid re-downloading
- *
- * **Default Location**:
- * - Linux/macOS: `${CMAKE_BINARY_DIR}/_deps/`
- * - Configurable via `FETCHCONTENT_BASE_DIR`
- *
- * **Persistent Cache**:
- * @code{.bash}
- * # Set persistent cache directory (survives build/ deletion)
- * export FETCHCONTENT_BASE_DIR="$HOME/.cache/ascii-chat-deps"
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- * @endcode
- *
- * **Cached Dependencies**:
- * - **mimalloc**: Cached in `${FETCHCONTENT_BASE_DIR}/mimalloc-*`
- * - **musl dependencies**: Cached in `${FETCHCONTENT_BASE_DIR}/musl-deps/`
- * - **tomlc17**: Cached in `${FETCHCONTENT_BASE_DIR}/tomlc17-*`
- * - **Other FetchContent deps**: Cached individually
- *
- * **Cache Management**:
- * @code{.bash}
- * # View cache size
- * du -sh ~/.cache/ascii-chat-deps
- *
- * # Clear cache
- * rm -rf ~/.cache/ascii-chat-deps
- *
- * # Force dependency rebuild
- * rm -rf build/_deps
- * cmake -B build -DCMAKE_BUILD_TYPE=Release -DUSE_MUSL=ON
- * @endcode
- *
- * **Benefits**:
- * - Dependencies not re-downloaded on rebuild
- * - Dependencies survive `build/` directory deletion
- * - Shared across multiple build directories
- * - Faster incremental builds
- *
- * @subsection build_caches_musl_deps musl Dependency Cache
- *
- * **Purpose**: Cache statically built dependencies for musl builds
- *
- * **Cache Location**:
- * - Default: `${FETCHCONTENT_BASE_DIR}/musl-deps/`
- * - Prefix: `MUSL_PREFIX` variable (set to cache location)
- *
- * **Cached Dependencies**:
- * - **zstd**: Static library built with musl toolchain
- * - **libsodium**: Static library built with musl toolchain
- * - **PortAudio**: Static library built with musl toolchain
- * - **BearSSL**: Static library built with musl toolchain
- * - **Kernel Headers**: Copied to `$MUSL_PREFIX/kernel-headers/`
- *
- * **Building Dependencies**:
- * - Dependencies built from source during first musl build
- * - Build results cached in `MUSL_PREFIX`
- * - Subsequent musl builds reuse cached dependencies
- *
- * **Cache Structure**:
- * ```
- * musl-deps/
- * ├── bin/          # Compiled tools (if any)
- * ├── include/      # Header files
- * ├── lib/          # Static libraries (.a files)
- * ├── kernel-headers/  # Linux kernel headers
- * │   ├── linux/
- * │   ├── asm/
- * │   └── asm-generic/
- * └── share/        # Other files
- * ```
- *
- * @section build_presets CMake Presets
- *
- * @subsection build_presets_overview Presets Overview
- *
- * CMake Presets provide a standardized way to configure and build the project
- * across different platforms and tools. ascii-chat defines presets in
- * `CMakePresets.json`.
- *
- * **Benefits**:
- * - Consistent configurations across platforms
- * - IDE integration (VS Code, CLion, etc.)
- * - Command-line convenience
- * - No need to remember CMake flags
- *
- * @subsection build_presets_list Available Presets
- *
- * **Debug Presets**:
- * - `default` - Debug build with sanitizers (system libc)
- * - `debug` - Same as default
- * - `debug-musl` - Debug build with musl (Linux only, no sanitizers)
- *
- * **Release Presets**:
- * - `release` - Static release build (auto-detects musl on Linux, vcpkg static on Windows)
- * - `release-musl` - Explicitly force musl static build (Linux only)
- *
- * **Development Presets**:
- * - `dev` - Debug without sanitizers (faster iteration)
- * - `relwithdebinfo` - Optimized build with debug symbols
- * - `coverage` - Coverage instrumentation build
- *
- * @subsection build_presets_usage Using Presets
- *
- * **Command-Line Usage**:
- * @code{.bash}
- * # Configure with preset
- * cmake --preset debug
- *
- * # Build with preset
- * cmake --build --preset debug
- *
- * # Or configure and build in one command
- * cmake --build --preset release
- * @endcode
- *
- * **VS Code Integration**:
- * - VS Code automatically detects CMake Presets
- * - Select preset from status bar or command palette
- * - Build and run directly from VS Code
- *
- * **CLion Integration**:
- * - CLion automatically loads presets
- * - Select preset from build configuration dropdown
- * - IDE manages CMake configuration automatically
- *
- * **Windows Build Script**:
- * - `build.ps1` uses presets automatically when possible
- * - Falls back to custom configuration when flags don't match presets
- * - Presets simplify Windows builds significantly
- *
- * @subsection build_presets_custom Custom Presets
- *
- * **Adding Custom Presets**:
- * - Edit `CMakePresets.json`
- * - Add new preset to `configurePresets` array
- * - Inherit from `base` preset for common settings
- *
- * **Example Custom Preset**:
- * @code{.json}
- * {
- *   "name": "my-custom",
- *   "displayName": "My Custom Build",
- *   "inherits": "base",
- *   "cacheVariables": {
- *     "CMAKE_BUILD_TYPE": "Debug",
- *     "USE_MIMALLOC": "OFF",
- *     "BUILD_TESTS": "ON"
- *   }
- * }
- * @endcode
- *
  * @section build_options CMake Configuration Options
  *
  * This section documents all CMake cache variables and options that control
@@ -1882,47 +740,222 @@
  * cmake -B build -DASCIICHAT_DEPS_CACHE_ROOT=/path/to/cache
  * @endcode
  *
- * @section build_summary Build System Summary
+ * @section build_caches Dependency Caches
  *
- * **Recommended Workflows**:
+ * @subsection build_caches_overview Cache Overview
  *
- * **Daily Development**:
+ * The build system uses multiple caching mechanisms to speed up builds and
+ * persist dependencies across build directory deletions:
+ *
+ * **Cache Types**:
+ * - **ccache**: Compiler cache (speeds up recompilation)
+ * - **FetchContent**: Dependency caching (persists across builds)
+ * - **CMake Cache**: Configuration cache (persists in `CMakeCache.txt`)
+ *
+ * @subsection build_caches_ccache Compiler Cache (ccache)
+ *
+ * **Purpose**: Cache compilation results to speed up rebuilds
+ *
+ * **Automatic Detection**:
+ * - ccache automatically detected if available
+ * - Enabled by default (`USE_CCACHE=ON`)
+ * - Disabled automatically for musl builds (incompatible)
+ *
+ * **Configuration**:
+ * - **Max Size**: 2GB (configurable)
+ * - **Compression**: Enabled (level 6)
+ * - **Cache Location**: System default (usually `~/.ccache/`)
+ *
+ * **Manual Configuration**:
  * @code{.bash}
- * cmake --preset dev
- * cmake --build --preset dev
+ * # Set cache size
+ * ccache --set-config max_size=4G
+ *
+ * # Show cache statistics
+ * ccache --show-stats
+ *
+ * # Clear cache
+ * ccache --clear
  * @endcode
  *
- * **Debugging Issues**:
+ * **Disabling ccache**:
  * @code{.bash}
- * cmake --preset debug
- * cmake --build --preset debug
+ * # Disable for specific build
+ * cmake -B build -DUSE_CCACHE=OFF -DCMAKE_BUILD_TYPE=Debug
+ *
+ * # Disable globally (environment variable)
+ * export USE_CCACHE=OFF
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug
  * @endcode
  *
- * **Performance Testing**:
- * @code{.bash}
- * cmake --preset release
- * cmake --build --preset release
+ * **Performance Impact**:
+ * - First build: No benefit (cache population)
+ * - Subsequent builds: 5-10x faster compilation
+ * - Cache hit rate: Typically 70-90% for incremental builds
+ *
+ * @subsection build_caches_deps Dependency Cache (.deps-cache/)
+ *
+ * **Purpose**: Cache built dependencies to survive `build/` directory deletion
+ *
+ * ascii-chat uses a centralized dependency cache system with build-type separation.
+ * This is controlled by `ASCIICHAT_DEPS_CACHE_*` CMake variables, which also configure
+ * `FETCHCONTENT_BASE_DIR` automatically.
+ *
+ * **Cache Structure**:
+ * @code{.txt}
+ * .deps-cache/
+ * ├── Debug/                    # Debug build dependencies
+ * │   ├── mimalloc/             # mimalloc with debug checks
+ * │   ├── bearssl/              # BearSSL library
+ * │   ├── musl/                 # (if USE_MUSL=ON)
+ * │   └── ...                   # Other FetchContent deps
+ * ├── Release/                  # Release build dependencies
+ * │   ├── mimalloc/             # mimalloc optimized
+ * │   ├── bearssl/              # BearSSL library
+ * │   ├── musl/                 # (if USE_MUSL=ON)
+ * │   └── ...
+ * └── Dev/                      # Dev build dependencies
+ *     └── ...
  * @endcode
  *
- * **Creating Releases (Linux)**:
+ * **CMake Variables**:
+ * | Variable | Description |
+ * |----------|-------------|
+ * | `ASCIICHAT_DEPS_CACHE_ROOT` | Root directory (default: `.deps-cache/`) |
+ * | `ASCIICHAT_DEPS_CACHE_DIR` | Build-type specific (e.g., `.deps-cache/Debug/`) |
+ * | `ASCIICHAT_DEPS_CACHE_MUSL` | Musl deps (e.g., `.deps-cache/Release/musl/`) |
+ *
+ * **Custom Cache Location**:
  * @code{.bash}
- * cmake --preset release-musl
- * cmake --build --preset release-musl
- * ./release.sh  # Package release
+ * # Set custom cache root
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release \
+ *     -DASCIICHAT_DEPS_CACHE_ROOT="$HOME/.cache/ascii-chat-deps"
  * @endcode
  *
- * **Windows Development**:
+ * **Cache Management**:
+ * @code{.bash}
+ * # View cache size
+ * du -sh .deps-cache
+ *
+ * # Clear all cached dependencies (full rebuild)
+ * rm -rf .deps-cache
+ *
+ * # Clear only Debug dependencies
+ * rm -rf .deps-cache/Debug
+ *
+ * # Force dependency rebuild without clearing cache
+ * rm -rf build && cmake -B build -DCMAKE_BUILD_TYPE=Debug
+ * @endcode
+ *
+ * **Benefits**:
+ * - Dependencies survive `rm -rf build` (3-4x faster clean rebuilds)
+ * - Separate caches per build type (Debug vs Release optimizations)
+ * - Shared across multiple build directories
+ * - Docker builds use `.deps-cache/<DOCKER_OS>/` for isolation
+ *
+ * @subsection build_caches_musl_deps musl Dependency Cache
+ *
+ * **Purpose**: Cache statically built dependencies for musl builds
+ *
+ * **Cache Location**:
+ * - Default: `.deps-cache/<BuildType>/musl/` (e.g., `.deps-cache/Release/musl/`)
+ * - CMake variable: `ASCIICHAT_DEPS_CACHE_MUSL`
+ * - Prefix: `MUSL_PREFIX` variable (set to cache location)
+ *
+ * **Cached Dependencies**:
+ * - **zstd**: Static library built with musl toolchain
+ * - **libsodium**: Static library built with musl toolchain
+ * - **PortAudio**: Static library built with musl toolchain
+ * - **BearSSL**: Static library built with musl toolchain
+ * - **Kernel Headers**: Copied to `$MUSL_PREFIX/kernel-headers/`
+ *
+ * **Building Dependencies**:
+ * - Dependencies built from source during first musl build
+ * - Build results cached in `MUSL_PREFIX` (same as `ASCIICHAT_DEPS_CACHE_MUSL`)
+ * - Subsequent musl builds reuse cached dependencies
+ *
+ * **Cache Structure**:
+ * @code{.txt}
+ * .deps-cache/Release/musl/
+ * ├── bin/                  # Compiled tools (if any)
+ * ├── include/              # Header files
+ * ├── lib/                  # Static libraries (.a files)
+ * ├── kernel-headers/       # Linux kernel headers
+ * │   ├── linux/
+ * │   ├── asm/
+ * │   └── asm-generic/
+ * └── share/                # Other files
+ * @endcode
+ *
+ * @section build_windows_script Windows Build Script
+ *
+ * @subsection build_windows_script_overview Script Overview
+ *
+ * The `build.ps1` PowerShell script simplifies Windows builds by:
+ * - Automatically detecting and configuring the best compiler
+ * - Using CMake presets for common configurations
+ * - Handling MSVC library detection
+ * - Managing build directories
+ * - Copying outputs to `bin/` directory
+ * - Killing conflicting processes before building
+ *
+ * **Script Location**: `build.ps1` in project root
+ *
+ * **Usage**:
  * @code{.powershell}
- * .\build.ps1 -Config Debug
+ * # Default Debug build
+ * .\build.ps1
+ *
+ * # Release build
+ * .\build.ps1 -Config Release
+ *
+ * # Dev build (no sanitizers)
+ * .\build.ps1 -Config Dev
+ *
+ * # Coverage build
+ * .\build.ps1 -Config Coverage
+ *
+ * # Clean rebuild
+ * .\build.ps1 -Clean
+ *
+ * # Custom compiler flags (disables presets)
+ * .\build.ps1 -CFlags "-DDEBUG_THREADS","-DDEBUG_MEMORY"
+ *
+ * # Disable mimalloc
+ * .\build.ps1 -NoMimalloc
+ *
+ * # Use Visual Studio generator with Clang
+ * .\build.ps1 -VSWithClang
+ *
+ * # Custom build directory
+ * .\build.ps1 -BuildDir mybuild
  * @endcode
  *
- * **Key Points**:
- * - Use presets for consistency
- * - musl for Linux releases (static binaries)
- * - mimalloc for release builds (performance)
- * - ccache for faster rebuilds
- * - RelWithDebInfo for production debugging
- * - Coverage for test coverage analysis
+ * @subsection build_windows_script_features Key Features
+ *
+ * **Automatic Compiler Detection**:
+ * - Prefers Clang (gcc untested and unsupported)
+ * - Respects `CC` environment variable
+ *
+ * **CMake Preset Integration**:
+ * - Uses CMake presets when possible
+ * - Falls back to custom configuration when flags don't match presets
+ * - Automatic preset selection based on `-Config` parameter
+ *
+ * **Process Management**:
+ * - Kills running ascii-chat processes before building
+ * - Prevents build failures from locked files
+ * - Waits for processes to terminate
+ *
+ * **Output Management**:
+ * - Copies build outputs to `bin/` directory
+ * - Creates `bin/` directory if it doesn't exist
+ * - Preserves directory structure
+ *
+ * **Configuration Detection**:
+ * - Only configures if build directory doesn't exist
+ * - Skips configuration on subsequent builds (faster)
+ * - `-Clean` flag forces reconfiguration
  *
  * @section build_installation Installation and Packaging
  *
@@ -1991,7 +1024,7 @@
  *
  * **Supported Package Formats**:
  * - **Linux**: TGZ (always), DEB (if `dpkg-buildpackage` found), RPM (if `rpmbuild` found)
- * - **macOS**: TGZ (always), DMG (if `hdiutil` available)
+ * - **macOS**: TGZ (always), PKG (if `productbuild` available)
  * - **Windows**: ZIP (always), NSIS/EXE (if `makensis` found)
  *
  * **Generating Packages**:
@@ -2031,10 +1064,10 @@
  * - Group: `Applications/Networking`
  * - License: MIT
  *
- * **macOS DMG Packages**:
- * - Format: Compressed UDIF (read-only)
- * - Volume name: `ascii-chat`
- * - Optional: Background image and license agreement support
+ * **macOS PKG Packages**:
+ * - Format: Flat package installer
+ * - Installer ID: `com.zfogg.ascii-chat`
+ * - Installs to: `/usr/local/bin/`
  *
  * **Windows NSIS Installers**:
  * - Adds executable to PATH automatically

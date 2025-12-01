@@ -1,6 +1,6 @@
 /**
  * @defgroup palette Character Palettes
- * @ingroup image2ascii
+ * @ingroup module_image2ascii
  * @brief 🎨 Character palettes for video-to-ASCII conversion
  *
  * @page topic_palette Palette README

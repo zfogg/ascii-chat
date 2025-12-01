@@ -426,6 +426,170 @@
  * // Total leaked: 1024 bytes in 1 allocation
  * @endcode
  *
+ * @section debug_tools Debugging Tools
+ *
+ * These external tools help with debugging and crash analysis. They are **not build tools**
+ * and are not required to compile ascii-chat, but are essential for development.
+ *
+ * @subsection debug_tools_symbolizers Stack Trace Symbolizers
+ *
+ * Symbolizers convert raw memory addresses into human-readable function names and
+ * source locations. ascii-chat's backtrace system (`lib/platform/symbols.c`)
+ * **automatically detects and uses** these tools when available.
+ *
+ * | Tool | Platform | Priority |
+ * |------|----------|----------|
+ * | **llvm-symbolizer** | All | **Preferred** - best for Clang-compiled binaries |
+ * | **addr2line** | Linux/macOS | Fallback - GNU binutils alternative |
+ *
+ * @note **Important**: Ensure at least one symbolizer is in your PATH for readable
+ *       backtraces during debugging. Without a symbolizer, you'll only see raw
+ *       memory addresses like `0x401234` instead of `main() at src/client.c:42`.
+ *
+ * **Automatic Detection** (`lib/platform/symbols.c`):
+ *
+ * The symbol cache system automatically:
+ * 1. Checks for `llvm-symbolizer` in PATH (preferred)
+ * 2. Falls back to `addr2line` if llvm-symbolizer is not found
+ * 3. Uses raw addresses if neither tool is available
+ * 4. Caches resolved symbols in a hashtable to avoid repeated subprocess calls
+ *
+ * You can override the tool paths with environment variables:
+ * - `LLVM_SYMBOLIZER_PATH` - Full path to llvm-symbolizer binary
+ * - `ADDR2LINE_PATH` - Full path to addr2line binary
+ *
+ * **Verify Symbolizer Availability**:
+ * @code{.bash}
+ * # Check if llvm-symbolizer is available (preferred)
+ * which llvm-symbolizer || echo "llvm-symbolizer not found"
+ *
+ * # Check if addr2line is available (fallback)
+ * which addr2line || echo "addr2line not found"
+ *
+ * # Windows (PowerShell)
+ * Get-Command llvm-symbolizer -ErrorAction SilentlyContinue
+ * Get-Command addr2line -ErrorAction SilentlyContinue
+ * @endcode
+ *
+ * **Manual Symbolization Examples**:
+ * @code{.bash}
+ * # Manual symbolization of an address
+ * llvm-symbolizer --obj=build/bin/ascii-chat 0x401234
+ *
+ * # Using addr2line
+ * addr2line -e build/bin/ascii-chat -f 0x401234
+ *
+ * # Filter through symbolizer for readable crash output
+ * ./build/bin/ascii-chat 2>&1 | llvm-symbolizer
+ * @endcode
+ *
+ * **Installation**:
+ * @code{.bash}
+ * # Install on Debian/Ubuntu
+ * sudo apt install llvm binutils
+ *
+ * # Install on Arch
+ * sudo pacman -S llvm binutils
+ *
+ * # Install on macOS (via Homebrew)
+ * brew install llvm binutils
+ *
+ * # Install on Windows (via scoop or LLVM installer)
+ * scoop install llvm
+ * @endcode
+ *
+ * @subsection debug_tools_debuggers Interactive Debuggers
+ *
+ * | Tool | Platform | Description |
+ * |------|----------|-------------|
+ * | **lldb** | All | LLVM debugger (recommended for Clang builds) |
+ * | **gdb** | Linux | GNU debugger |
+ *
+ * **LLDB Usage**:
+ * @code{.bash}
+ * # Start debugging
+ * lldb ./build/bin/ascii-chat
+ *
+ * # Run with arguments
+ * (lldb) run server --port 8080
+ *
+ * # Set breakpoint
+ * (lldb) breakpoint set --name main
+ * (lldb) b network_connect
+ *
+ * # Examine backtrace on crash
+ * (lldb) bt
+ *
+ * # Examine variables
+ * (lldb) frame variable
+ * (lldb) p my_variable
+ *
+ * # Continue execution
+ * (lldb) continue
+ * @endcode
+ *
+ * **GDB Usage** (Linux):
+ * @code{.bash}
+ * # Start debugging
+ * gdb ./build/bin/ascii-chat
+ *
+ * # Run with arguments
+ * (gdb) run server --port 8080
+ *
+ * # Set breakpoint
+ * (gdb) break main
+ *
+ * # Backtrace
+ * (gdb) bt
+ * @endcode
+ *
+ * @subsection debug_tools_memory Memory Checking Tools
+ *
+ * | Tool | Platform | Description |
+ * |------|----------|-------------|
+ * | **valgrind** | Linux | Memory error detector (slower but thorough) |
+ * | **leaks** | macOS | Apple's memory leak checker |
+ * | **ASan** | All | AddressSanitizer (built into Debug builds) |
+ *
+ * **Valgrind Usage** (Linux):
+ * @code{.bash}
+ * # Check for memory leaks
+ * valgrind --leak-check=full ./build/bin/ascii-chat server
+ *
+ * # Check for invalid memory access
+ * valgrind --tool=memcheck ./build/bin/ascii-chat server
+ * @endcode
+ *
+ * **Leaks Usage** (macOS):
+ * @code{.bash}
+ * # Check for leaks at exit
+ * leaks --atExit -- ./build/bin/ascii-chat server
+ * @endcode
+ *
+ * @note Debug builds (`CMAKE_BUILD_TYPE=Debug`) automatically enable AddressSanitizer
+ *       and UndefinedBehaviorSanitizer, which catch most memory errors at runtime.
+ *
+ * @subsection debug_tools_binary Binary Analysis Tools
+ *
+ * | Tool | Platform | Description |
+ * |------|----------|-------------|
+ * | **ldd** | Linux | List dynamic dependencies |
+ * | **otool** | macOS | List dynamic dependencies |
+ * | **objdump** | Linux | Disassemble binary |
+ * | **llvm-objdump** | All | LLVM disassembler |
+ *
+ * **Verifying Static Linking** (Release builds):
+ * @code{.bash}
+ * # Linux - should say "not a dynamic executable" for static builds
+ * ldd build/bin/ascii-chat
+ *
+ * # macOS - should only show system libraries
+ * otool -L build/bin/ascii-chat
+ * @endcode
+ *
+ * @note The build system automatically verifies static linking in Release builds
+ *       using `check_static_linking.sh` - see @ref topic_build "Build System".
+ *
  * @section debug_troubleshooting Troubleshooting
  *
  * **Common Issues**:
