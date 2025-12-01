@@ -119,7 +119,7 @@ curl -X POST localhost:9999/detach
 ## See Also
 
 - [`lib/tooling/query/query.h`](../../../lib/tooling/query/query.h) - Public C API for auto-spawn
-- [`docs/tooling/query-tool.md`](../../../docs/tooling/query-tool.md) - User guide
+- [`docs/tooling/query.md`](../../../docs/tooling/query.md) - User guide
 - [`docs/tooling/query-api.md`](../../../docs/tooling/query-api.md) - HTTP API reference
 - [`docs/tooling/query-troubleshooting.md`](../../../docs/tooling/query-troubleshooting.md) - Common issues
 - [`docs/tooling/QUERY_TOOL_PLAN.md`](../../../docs/tooling/QUERY_TOOL_PLAN.md) - Implementation plan
