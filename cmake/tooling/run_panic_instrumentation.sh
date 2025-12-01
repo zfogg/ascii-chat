@@ -3,15 +3,22 @@ set -eu
 set -o pipefail 2>/dev/null || true
 
 is_wsl_env() {
+  # WSL detection: check for microsoft in /proc/version AND not in a container
+  # Docker containers on Windows (via WSL2) should NOT be considered WSL
   if grep -qi "microsoft" /proc/version 2>/dev/null; then
-    return 0
+    # Check if we're inside a container (Docker, podman, etc.)
+    if [ -f /.dockerenv ] || grep -q 'docker\|lxc\|kubepod' /proc/1/cgroup 2>/dev/null; then
+      return 1  # Inside container - not WSL
+    fi
+    return 0  # WSL environment
   fi
   return 1
 }
 
 is_windows_env() {
-  if is_wsl_env; then
-    return 0
+  # If uname reports Linux, we're building for Linux (even if host is Windows/WSL)
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    return 1
   fi
   case "${OSTYPE:-}" in
   msys* | mingw* | cygwin* | win32*)
@@ -269,44 +276,44 @@ if [[ $# -gt 0 ]]; then
 fi
 
 if [[ ${#SOURCE_PATHS[@]} -eq 0 ]]; then
-  # Find all CMake build directories (directories containing CMakeCache.txt)
-  BUILD_DIRS=()
-  while IFS= read -r -d '' cache_file; do
-    build_dir=$(dirname "${cache_file}")
-    BUILD_DIRS+=("${build_dir}")
-  done < <(find . -type f -name 'CMakeCache.txt' -print0 2>/dev/null)
+  # Find all source files, excluding platform-specific and build directories
+  # Use grep -v for reliable exclusion instead of complex find expressions
 
-  # Build exclusion patterns for find command
-  EXCLUDE_ARGS=()
-  # Exclude debug and test directories
-  EXCLUDE_ARGS+=(\( -path 'lib/debug' -o -path 'lib/debug/*' -o -path 'lib/tooling' -o -path 'lib/tooling/*' -o)
-  EXCLUDE_ARGS+=(-path 'lib/tests' -o -path 'lib/tests/*' -o)
-  EXCLUDE_ARGS+=(-path 'src/tooling' -o -path 'src/tooling/*')
+  # Build list of exclusion patterns
+  EXCLUDE_PATTERNS=(
+    '/debug/'
+    '/tooling/'
+    '/tests/'
+    '/build'
+    '/.deps-cache/'
+  )
 
-  # Exclude platform-specific directories that don't match current platform
-  # Detect OS
+  # Add platform-specific exclusions based on current OS
   if is_windows_env; then
     # On Windows: exclude POSIX-specific directories
-    EXCLUDE_ARGS+=(-o -path 'lib/platform/posix' -o -path 'lib/platform/posix/*')
-    EXCLUDE_ARGS+=(-o -path 'lib/os/macos' -o -path 'lib/os/macos/*')
-    EXCLUDE_ARGS+=(-o -path 'lib/os/linux' -o -path 'lib/os/linux/*')
+    EXCLUDE_PATTERNS+=('/platform/posix/' '/os/macos/' '/os/linux/')
+  elif [[ "$(uname -s)" == "Darwin" ]]; then
+    # On macOS: exclude Windows and Linux specific directories
+    EXCLUDE_PATTERNS+=('/platform/windows/' '/os/windows/' '/os/linux/')
   else
-    # On POSIX: exclude Windows-specific directories
-    EXCLUDE_ARGS+=(-o -path 'lib/platform/windows' -o -path 'lib/platform/windows/*')
-    EXCLUDE_ARGS+=(-o -path 'lib/os/windows' -o -path 'lib/os/windows/*')
+    # On Linux: exclude Windows and macOS specific directories
+    EXCLUDE_PATTERNS+=('/platform/windows/' '/os/windows/' '/os/macos/')
   fi
 
-  # Exclude all CMake build directories
-  for build_dir in "${BUILD_DIRS[@]}"; do
-    EXCLUDE_ARGS+=(-o -path "${build_dir}" -o -path "${build_dir}/*")
+  # Build grep pattern for exclusion
+  GREP_EXCLUDE=""
+  for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+    if [[ -n "$GREP_EXCLUDE" ]]; then
+      GREP_EXCLUDE="${GREP_EXCLUDE}|${pattern}"
+    else
+      GREP_EXCLUDE="${pattern}"
+    fi
   done
-  EXCLUDE_ARGS+=(\) -prune -o)
 
-  # Find all source files, excluding the directories above
-  while IFS= read -r -d '' file; do
+  # Find all source files and filter out excluded paths
+  while IFS= read -r file; do
     SOURCE_PATHS+=("${file}")
-  done < <(find lib src "${EXCLUDE_ARGS[@]}" \
-    -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) -print0 2>/dev/null)
+  done < <(find lib src -type f \( -name '*.c' -o -name '*.m' -o -name '*.mm' \) 2>/dev/null | grep -vE "${GREP_EXCLUDE}")
 fi
 
 declare -A SEEN_SOURCE_PATHS=()
