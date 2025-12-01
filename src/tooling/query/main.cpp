@@ -154,56 +154,36 @@ void setupRoutes(ascii_query::HttpServer &server, ascii_query::LLDBController &c
     using namespace ascii_query;
     using namespace ascii_query::json;
 
-    // GET / - Status page (HTML)
+    // GET / - Status page (plain text for terminal users)
     server.addRoute("GET", "/", [&controller](const HttpRequest &) {
         ProcessState state = controller.state();
         std::string state_str = processStateToString(state);
 
-        std::string html = R"(<!DOCTYPE html>
-<html>
-<head>
-    <title>ascii-query-server</title>
-    <style>
-        body { font-family: system-ui, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; }
-        h1 { color: #333; }
-        .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; }
-        .status.running { background: #d4edda; color: #155724; }
-        .status.stopped { background: #fff3cd; color: #856404; }
-        .status.exited, .status.crashed { background: #f8d7da; color: #721c24; }
-        .status.detached, .status.invalid { background: #e2e3e5; color: #383d41; }
-        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
-        pre { background: #f4f4f4; padding: 12px; border-radius: 6px; overflow-x: auto; }
-    </style>
-</head>
-<body>
-    <h1>ascii-query-server</h1>
-    <p>
-        <strong>Target PID:</strong> )" +
-                           std::to_string(controller.targetPid()) + R"(<br>
-        <strong>Target Name:</strong> )" +
-                           controller.targetName() + R"(<br>
-        <strong>State:</strong> <span class="status )" +
-                           state_str + R"(">)" + state_str + R"(</span>
-    </p>
-    <h2>Endpoints</h2>
-    <ul>
-        <li><code>GET /process</code> - Process information</li>
-        <li><code>GET /threads</code> - Thread list</li>
-        <li><code>GET /frames</code> - Stack frames (when stopped)</li>
-        <li><code>GET /query?file=X&amp;line=N&amp;name=VAR</code> - Query variable</li>
-        <li><code>GET /breakpoints</code> - List breakpoints</li>
-        <li><code>POST /continue</code> - Resume execution</li>
-        <li><code>POST /stop</code> - Stop execution</li>
-        <li><code>POST /step</code> - Single step</li>
-    </ul>
-    <h2>Example</h2>
-    <pre>curl 'localhost:9999/query?file=src/server.c&amp;line=100&amp;name=client_count&amp;break'
-curl 'localhost:9999/query?name=frame.width'
-curl -X POST 'localhost:9999/continue'</pre>
-</body>
-</html>
-)";
-        return HttpResponse::html(html);
+        std::string text = "ascii-query-server\n";
+        text += "==================\n\n";
+        text += "Target PID:   " + std::to_string(controller.targetPid()) + "\n";
+        text += "Target Name:  " + controller.targetName() + "\n";
+        text += "State:        " + state_str + "\n";
+        text += "\n";
+        text += "Endpoints:\n";
+        text += "  GET  /                 Status page (this)\n";
+        text += "  GET  /process          Process information (JSON)\n";
+        text += "  GET  /threads          Thread list (JSON)\n";
+        text += "  GET  /frames           Stack frames when stopped (JSON)\n";
+        text += "  GET  /query?name=VAR   Query a variable (JSON)\n";
+        text += "  GET  /breakpoints      List breakpoints (JSON)\n";
+        text += "  POST /continue         Resume execution\n";
+        text += "  POST /stop             Stop execution\n";
+        text += "  POST /step             Single step (add ?over or ?out)\n";
+        text += "  POST /detach           Detach from process\n";
+        text += "\n";
+        text += "Examples:\n";
+        text += "  curl localhost:9999/process\n";
+        text += "  curl localhost:9999/query?name=frame.width\n";
+        text += "  curl 'localhost:9999/query?file=server.c&line=100&name=client_count&break'\n";
+        text += "  curl -X POST localhost:9999/continue\n";
+
+        return HttpResponse::text(text);
     });
 
     // GET /process - Process information
