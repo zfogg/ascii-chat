@@ -350,6 +350,12 @@ private:
   void setError(const std::string &msg) const;
   void clearError() const;
 
+  // Drain pending LLDB events to synchronize process state
+  void syncProcessState() const;
+
+  // Wait for process to reach a specific state (with timeout in seconds)
+  bool waitForState(lldb::StateType target_state, uint32_t timeout_sec = 5) const;
+
   [[nodiscard]] lldb::SBThread getSelectedThreadInternal() const;
   [[nodiscard]] lldb::SBFrame getFrameInternal(uint32_t index) const;
 
