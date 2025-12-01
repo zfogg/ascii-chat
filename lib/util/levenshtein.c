@@ -78,3 +78,27 @@ size_t levenshtein(const char *a, const char *b) {
 
   return levenshtein_n(a, length, b, bLength);
 }
+
+const char *levenshtein_find_similar(const char *unknown, const char *const *candidates) {
+  if (!unknown || !candidates) {
+    return NULL;
+  }
+
+  const char *best_match = NULL;
+  size_t best_distance = SIZE_MAX;
+
+  for (int i = 0; candidates[i] != NULL; i++) {
+    size_t dist = levenshtein(unknown, candidates[i]);
+    if (dist < best_distance) {
+      best_distance = dist;
+      best_match = candidates[i];
+    }
+  }
+
+  // Only suggest if the distance is within our threshold
+  if (best_distance <= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
+    return best_match;
+  }
+
+  return NULL;
+}

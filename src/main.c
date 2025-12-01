@@ -84,6 +84,7 @@
 #include "options.h"
 #include "logging.h"
 #include "platform/terminal.h"
+#include "util/levenshtein.h"
 
 #ifndef NDEBUG
 #include "asciichat_errno.h"
@@ -176,6 +177,28 @@ static const mode_descriptor_t g_mode_table[] = {
     },
     // NULL terminator for table iteration
     {.name = NULL, .description = NULL, .entry_point = NULL},
+};
+
+/* ============================================================================
+ * Fuzzy Matching Candidates
+ * ============================================================================ */
+
+/**
+ * @brief Top-level options for fuzzy matching (without dashes)
+ */
+static const char *const g_top_level_options[] = {
+    "help",
+    "version",
+    NULL // Terminator
+};
+
+/**
+ * @brief Mode names for fuzzy matching
+ */
+static const char *const g_mode_names[] = {
+    "server",
+    "client",
+    NULL // Terminator
 };
 
 /* ============================================================================
@@ -429,8 +452,19 @@ int main(int argc, char *argv[]) {
         print_version();
         return 0;
       }
-      // Any other option before the mode is not supported
-      fprintf(stderr, "Error: Option '%s' must come after the mode\n", argv[i]);
+      // Any other option before the mode - check if it's a typo of --help or --version
+      // Extract the option name (skip leading dashes)
+      const char *opt_name = argv[i];
+      if (opt_name[0] == '-') opt_name++;
+      if (opt_name[0] == '-') opt_name++;
+
+      const char *suggestion = find_similar_top_level_option(opt_name);
+      if (suggestion) {
+        fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
+        fprintf(stderr, "Did you mean '--%s'?\n", suggestion);
+      } else {
+        fprintf(stderr, "Error: Option '%s' must come after the mode\n", argv[i]);
+      }
 #ifndef NDEBUG
       fprintf(stderr, "\n");
       print_usage(program_name);
@@ -453,6 +487,10 @@ int main(int argc, char *argv[]) {
       if (argv[i][0] != '-') {
         // Found a non-option that's not a valid mode
         fprintf(stderr, "Error: Unknown mode '%s'\n", argv[i]);
+        const char *suggestion = levenshtein_find_similar(argv[i], g_mode_names);
+        if (suggestion) {
+          fprintf(stderr, "Did you mean '%s'?\n", suggestion);
+        }
 #ifndef NDEBUG
         fprintf(stderr, "\n");
         print_usage(program_name);
