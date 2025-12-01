@@ -59,7 +59,8 @@ static bool wait_for_port(int port, int timeout_ms) {
   int elapsed = 0;
   while (elapsed < timeout_ms) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock < 0) return false;
+    if (sock < 0)
+      return false;
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
@@ -69,7 +70,8 @@ static bool wait_for_port(int port, int timeout_ms) {
     int result = connect(sock, (struct sockaddr *)&addr, sizeof(addr));
     close(sock);
 
-    if (result == 0) return true;
+    if (result == 0)
+      return true;
 
     usleep(10000); // 10ms poll interval
     elapsed += 10;

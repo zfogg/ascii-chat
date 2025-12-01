@@ -291,8 +291,8 @@ Test(main_integration, server_client_basic_connection) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file",
-                         "/tmp/test_server_client.log", NULL};
+  char *server_argv[] = {
+      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_server_client.log", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -336,8 +336,8 @@ Test(main_integration, server_multiple_clients_sequential) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file",
-                         "/tmp/test_multi_seq.log", NULL};
+  char *server_argv[] = {
+      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_multi_seq.log", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -383,8 +383,8 @@ Test(main_integration, server_multiple_clients_concurrent) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file",
-                         "/tmp/test_multi_concurrent.log", NULL};
+  char *server_argv[] = {
+      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_multi_concurrent.log", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -435,8 +435,8 @@ Test(main_integration, server_client_with_options) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server with standard options (no encryption for speed)
-  char *server_argv[] = {"ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file",
-                         "/tmp/test_server_options.log", NULL};
+  char *server_argv[] = {
+      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_server_options.log", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn with options");
@@ -484,8 +484,8 @@ Test(main_integration, server_survives_client_crash) {
   safe_snprintf(port_str, sizeof(port_str), "%d", port);
 
   // Start server (no encryption for speed)
-  char *server_argv[] = {"ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file",
-                         "/tmp/test_server_survives.log", NULL};
+  char *server_argv[] = {
+      "ascii-chat", "server", "--port", port_str, "--no-encrypt", "--log-file", "/tmp/test_server_survives.log", NULL};
 
   pid_t server_pid = spawn_process(get_binary_path(), server_argv, "server");
   cr_assert_gt(server_pid, 0, "Server should spawn");
@@ -500,7 +500,7 @@ Test(main_integration, server_survives_client_crash) {
                          port_str,
                          "--address",
                          "127.0.0.1",
-                         "--no-encrypt",   // Skip crypto handshake for speed
+                         "--no-encrypt", // Skip crypto handshake for speed
                          "--test-pattern",
                          "--log-file",
                          "/tmp/test_client_crash.log",
@@ -527,7 +527,7 @@ Test(main_integration, server_survives_client_crash) {
                           port_str,
                           "--address",
                           "127.0.0.1",
-                          "--no-encrypt",   // Skip crypto handshake for speed
+                          "--no-encrypt", // Skip crypto handshake for speed
                           "--test-pattern",
                           "--snapshot",
                           "--snapshot-delay",
