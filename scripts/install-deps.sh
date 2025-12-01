@@ -89,13 +89,13 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 
       ubuntu_version_major="$(lsb_release -a | grep Release: | grep -Eo '[0-9]+' | head -n1)"
-      local ubuntu_version_name_short=""
-      if [ "$ubuntu_version_major" -eq "24" || "$ubuntu_version_major" -eq "25" ]; then
-        local ubuntu_version_name_short="noble"
+      ubuntu_version_name_short=""
+      if [ "$ubuntu_version_major" -eq "24" ] || [ "$ubuntu_version_major" -eq "25" ]; then
+        ubuntu_version_name_short="noble"
       elif [ "$ubuntu_version_major" -eq "23" ]; then
-        local ubuntu_version_name_short="jammy"
+        ubuntu_version_name_short="jammy"
       elif [ "$ubuntu_version_major" -eq "22" ]; then
-        local ubuntu_version_name_short="focal"
+        ubuntu_version_name_short="focal"
       else
         echo >&2 "Unsupported Ubuntu version $ubuntu_version_major"
         exit 1
