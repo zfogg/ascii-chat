@@ -7,27 +7,12 @@
 # - Windows: Directs to install-deps.ps1
 #
 # Usage:
-#   ./install-deps.sh           # Install Debug dependencies
-#   ./install-deps.sh -Release  # Install Release dependencies (static libraries)
-#
-# Note: On Unix systems, -dev packages include both static (.a) and dynamic (.so) libraries.
-#       The actual static/dynamic linking is controlled by CMake based on build type.
+#   ./install-deps.sh
 
 set -e
 
-# Parse arguments
-CONFIG="Debug"
-if [[ "$1" == "-Release" ]] || [[ "$1" == "--release" ]]; then
-  CONFIG="Release"
-fi
-
 echo ""
 echo "=== ascii-chat Dependency Installer ==="
-echo ""
-echo "Build configuration: $CONFIG"
-if [[ "$CONFIG" == "Release" ]]; then
-  echo "Note: Release builds will use static linking where available"
-fi
 echo ""
 
 echo "Getting submodules"
@@ -62,11 +47,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
 
   echo ""
   echo "Dependencies installed successfully!"
-  if [[ "$CONFIG" == "Release" ]]; then
-    echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build"
-  else
-    echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build"
-  fi
+  echo "You can now run: cmake --build --preset debug"
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
@@ -117,7 +98,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     sudo apt-get install -y \
-      pkg-config \
+      pkg-config make \
       cmake ninja-build \
       musl-tools musl-dev \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
@@ -213,7 +194,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
     sudo yum install -y \
-      pkg-config \
+      pkg-config make \
       clang llvm \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
@@ -257,19 +238,11 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
   echo ""
   echo "Dependencies installed successfully!"
-  if [[ "$CONFIG" == "Release" ]]; then
-    echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build"
-  else
-    echo "You can now run: cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build"
-  fi
+  echo "You can now run: cmake --build --preset debug"
 
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
   echo "On Windows, please use the PowerShell script instead:"
-  if [[ "$CONFIG" == "Release" ]]; then
-    echo "  ./scripts/install-deps.ps1 -Release"
-  else
-    echo "  ./scripts/install-deps.ps1"
-  fi
+  echo "  ./scripts/install-deps.ps1"
   exit 1
 fi

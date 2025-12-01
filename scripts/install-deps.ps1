@@ -73,6 +73,23 @@ Write-Host "Getting submodules" -ForegroundColor Yellow
 & git submodule init
 & git submodule update --recursive
 
+# Check for Visual Studio Build Tools (provides nmake for BearSSL)
+$VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+if (Test-Path $VsWhere) {
+    $VsInstall = & $VsWhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
+    if (-not $VsInstall) {
+        Write-Host "WARNING: Visual Studio Build Tools not found" -ForegroundColor Yellow
+        Write-Host "BearSSL requires nmake from Visual Studio Build Tools" -ForegroundColor Yellow
+        Write-Host "Install from: https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022" -ForegroundColor Yellow
+        Write-Host ""
+    } else {
+        Write-Host "Found Visual Studio at: $VsInstall" -ForegroundColor Green
+    }
+} else {
+    Write-Host "WARNING: Could not verify Visual Studio installation" -ForegroundColor Yellow
+    Write-Host "BearSSL requires nmake from Visual Studio Build Tools" -ForegroundColor Yellow
+}
+
 # Check if vcpkg is available
 if (-not $env:VCPKG_ROOT) {
     Write-Host "ERROR: VCPKG_ROOT environment variable not set" -ForegroundColor Red
