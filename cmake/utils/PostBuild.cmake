@@ -23,15 +23,15 @@
 # =============================================================================
 
 # Copy DLL dependencies and PDBs to bin directory on Windows (for non-static builds)
-# Uses cmake -E copy for cross-platform path handling (generator expressions use forward slashes)
 # vcpkg's applocal.ps1 is disabled via VCPKG_APPLOCAL_DEPS=OFF in Init.cmake
 function(copy_windows_dlls TARGET_NAME)
     if(WIN32 AND NOT CMAKE_BUILD_TYPE MATCHES "Release")
         # Only copy DLLs for non-static builds (Debug, Dev builds use dynamic libraries)
         # Release builds use static libraries (x64-windows-static triplet) so no DLLs needed
 
-        # Determine vcpkg installed directory - prefer _VCPKG_INSTALLED_DIR set by vcpkg toolchain
-        # This is more reliable than $ENV{VCPKG_ROOT} which can change between configure and build
+        include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
+
+        # Determine vcpkg installed directory
         if(DEFINED _VCPKG_INSTALLED_DIR)
             set(VCPKG_INSTALLED "${_VCPKG_INSTALLED_DIR}")
         elseif(DEFINED VCPKG_INSTALLED_DIR)
@@ -41,43 +41,37 @@ function(copy_windows_dlls TARGET_NAME)
         endif()
 
         if(DEFINED VCPKG_INSTALLED AND DEFINED VCPKG_TRIPLET)
-            set(VCPKG_DLL_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/bin")
-            set(VCPKG_DEBUG_DLL_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/debug/bin")
-
             # Use debug DLLs/PDBs for Debug build, release DLLs for Dev build
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                set(DLL_SOURCE_DIR "${VCPKG_DEBUG_DLL_DIR}")
+                set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/debug/bin")
             else()
-                set(DLL_SOURCE_DIR "${VCPKG_DLL_DIR}")
+                set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/bin")
             endif()
 
-            # Define the DLLs and PDBs we need from vcpkg
-            # This is faster than xcopy/PowerShell wildcards and more reliable
-            set(VCPKG_DLLS_TO_COPY zstd portaudio libsodium)
-            set(VCPKG_PDBS_TO_COPY zstd portaudio libsodium)
+            # DLLs to copy from vcpkg
+            set(VCPKG_DLLS zstd.dll portaudio.dll libsodium.dll)
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                list(APPEND VCPKG_DLLS_TO_COPY mimalloc-debug mimalloc-redirect)
-                list(APPEND VCPKG_PDBS_TO_COPY mimalloc-debug.dll)
+                list(APPEND VCPKG_DLLS mimalloc-debug.dll mimalloc-redirect.dll)
+                set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc-debug.dll.pdb)
             else()
-                list(APPEND VCPKG_DLLS_TO_COPY mimalloc mimalloc-redirect)
-                list(APPEND VCPKG_PDBS_TO_COPY mimalloc.dll)
+                list(APPEND VCPKG_DLLS mimalloc.dll mimalloc-redirect.dll)
+                set(VCPKG_PDBS zstd.pdb portaudio.pdb libsodium.pdb mimalloc.dll.pdb)
             endif()
 
-            # Copy DLLs using cmake -E copy_if_different (fast, reliable, no shell startup)
-            foreach(DLL_NAME ${VCPKG_DLLS_TO_COPY})
-                add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL_SOURCE_DIR}/${DLL_NAME}.dll" "$<TARGET_FILE_DIR:${TARGET_NAME}>/"
-                    COMMENT "Copying ${DLL_NAME}.dll from vcpkg"
-                    VERBATIM
-                )
-            endforeach()
+            copy_dlls_post_build(
+                TARGET ${TARGET_NAME}
+                NAMES ${VCPKG_DLLS}
+                SOURCE_DIR "${DLL_SOURCE_DIR}"
+                COMMENT "from vcpkg"
+            )
 
-            # Copy PDBs for debugging (only in Debug builds)
-            # Note: mimalloc PDBs are named mimalloc-debug.dll.pdb / mimalloc.dll.pdb
-            foreach(PDB_NAME ${VCPKG_PDBS_TO_COPY})
+            # Copy PDBs for debugging
+            foreach(PDB_NAME ${VCPKG_PDBS})
                 add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${DLL_SOURCE_DIR}/${PDB_NAME}.pdb" "$<TARGET_FILE_DIR:${TARGET_NAME}>/"
-                    COMMENT "Copying ${PDB_NAME}.pdb from vcpkg"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${DLL_SOURCE_DIR}/${PDB_NAME}"
+                        "$<TARGET_FILE_DIR:${TARGET_NAME}>/"
+                    COMMENT "Copying ${PDB_NAME} from vcpkg"
                     VERBATIM
                 )
             endforeach()

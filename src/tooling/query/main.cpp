@@ -440,7 +440,7 @@ int main(int argc, char *argv[]) {
     // Attach to target
     fprintf(stderr, "[ascii-query-server] Attaching to ");
     if (attach_pid > 0) {
-        fprintf(stderr, "PID %d...\n", attach_pid);
+        fprintf(stderr, "PID %llu...\n", static_cast<unsigned long long>(attach_pid));
         if (!controller.attach(attach_pid)) {
             fprintf(stderr, "Error: Failed to attach: %s\n", controller.lastError().c_str());
             return 1;
@@ -453,8 +453,8 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    fprintf(stderr, "[ascii-query-server] Attached to %s (PID %d)\n", controller.targetName().c_str(),
-            controller.targetPid());
+    fprintf(stderr, "[ascii-query-server] Attached to %s (PID %llu)\n", controller.targetName().c_str(),
+            static_cast<unsigned long long>(controller.targetPid()));
 
     // Resume the target (it's stopped after attach)
     if (controller.state() == ascii_query::ProcessState::Stopped) {

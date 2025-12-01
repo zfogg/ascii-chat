@@ -984,7 +984,8 @@ endif() # NOT BUILDING_OBJECT_LIBS
 # =============================================================================
 # Debug/Dev/Coverage: Shared library (DLL on Windows) for faster linking during development
 # Release: Static library for distribution
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage")
+# USE_MUSL: Always static (musl requires static linking)
+if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage") AND NOT USE_MUSL)
     # Use the existing ascii-chat-shared target but make it build by default
     # Remove EXCLUDE_FROM_ALL for Debug/Dev/Coverage builds
     set_target_properties(ascii-chat-shared PROPERTIES EXCLUDE_FROM_ALL FALSE)
@@ -997,7 +998,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE
     # Build target name for consistency
     set(ASCII_CHAT_UNIFIED_BUILD_TARGET ascii-chat-shared)
 else()
-    # Release builds: ascii-chat-static wraps the combined static library
+    # Release builds or USE_MUSL: ascii-chat-static wraps the combined static library
     add_library(ascii-chat-static INTERFACE)
     target_link_libraries(ascii-chat-static INTERFACE ascii-chat-static-lib)
 
