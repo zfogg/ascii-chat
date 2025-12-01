@@ -15,6 +15,12 @@
 #   - ascii-chat-static and ascii-chat-shared unified libraries
 # =============================================================================
 
+include(CheckCCompilerFlag)
+
+# Check for warning flags that may not exist in older Clang versions
+# -Wno-unterminated-string-initialization was added in Clang 20
+check_c_compiler_flag("-Wno-unterminated-string-initialization" HAVE_WNO_UNTERMINATED_STRING_INIT)
+
 # Check if we're building OBJECT libraries (Windows dev builds)
 if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
     set(BUILDING_OBJECT_LIBS TRUE)
@@ -191,9 +197,13 @@ target_include_directories(ascii-chat-crypto PRIVATE
 
 # Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
 if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+    set(BCRYPT_PBKDF_WARNINGS "-Wno-sizeof-array-div")
+    if(HAVE_WNO_UNTERMINATED_STRING_INIT)
+        list(APPEND BCRYPT_PBKDF_WARNINGS "-Wno-unterminated-string-initialization")
+    endif()
     set_source_files_properties(
         ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-        PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div;-Wno-unterminated-string-initialization"
+        PROPERTIES COMPILE_OPTIONS "${BCRYPT_PBKDF_WARNINGS}"
     )
 endif()
 
@@ -581,14 +591,6 @@ else()
     # Add dependency on libsodium build target if building from source
     if(DEFINED LIBSODIUM_BUILD_TARGET)
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
-    endif()
-
-    # Disable specific warnings for bcrypt_pbkdf.c (third-party code with false positives)
-    if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-        set_source_files_properties(
-            ${CMAKE_SOURCE_DIR}/deps/libsodium-bcrypt-pbkdf/src/openbsd-compat/bcrypt_pbkdf.c
-            PROPERTIES COMPILE_OPTIONS "-Wno-sizeof-array-div;-Wno-unterminated-string-initialization"
-        )
     endif()
 
     # Platform-specific linker flags
