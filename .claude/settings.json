@@ -8,7 +8,7 @@
       "Bash(./build_release/bin/ascii-chat:*)",
       "Bash(./tests/scripts/run_tests.sh:*)",
       "Bash(./tests/scripts/run_docker_tests.ps1:*)",
-      "Bash(./build.ps1)",
+      "Bash(./build.ps1:*)",
       "Bash(clang:*)",
       "Bash(clang-tidy:*)",
       "Bash(lld:*)",
