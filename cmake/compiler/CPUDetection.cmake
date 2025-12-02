@@ -159,12 +159,14 @@ function(detect_x86_simd_features)
 
     elseif(PLATFORM_DARWIN)
         # macOS detection using sysctl
-        if(IS_APPLE_SILICON EQUAL 1)
-            # Apple Silicon - no x86 SIMD
-            return()
-        elseif(IS_ROSETTA EQUAL 1)
+        # Note: Check Rosetta first because IS_ROSETTA=1 implies IS_APPLE_SILICON=1
+        # (Rosetta runs x86_64 code on Apple Silicon hardware)
+        if(IS_ROSETTA EQUAL 1)
             # Rosetta - SSSE3 is safe
             set(HAS_SSSE3 TRUE PARENT_SCOPE)
+        elseif(IS_APPLE_SILICON EQUAL 1)
+            # Apple Silicon native - no x86 SIMD
+            return()
         else()
             # Intel Mac - check for AVX2
             execute_process(
