@@ -8,7 +8,7 @@ uu# ascii-chat Development Guide for Claude
 ## Essential First Steps
 
 - **ALWAYS** read and understand the files in this repo first to understand ascii-chat. As Claude you mostly need the files in `src/`, `lib/`, `docs/`
-- Use the test runner script `./tests/scripts/run_tests.sh` for running tests
+- Use ctest for running tests: `cmake --build build --target tests && ctest --test-dir build --output-on-failure --parallel 0`
 - **Use memory macros** from common.h rather than regular malloc/free (see Memory Management section below)
 - Use `lldb` for debugging
 - On Windows: use PowerShell build script `./build.ps1` which kills any processes, rebuilds, and copies the dlls and executable to bin/.
@@ -212,8 +212,8 @@ ascii-chat/
 ├── notes/                              # Development notes and documentation
 ├── todo/                               # Experimental code and future features
 ├── tests/                              # Comprehensive test suite using Criterion
-│   ├── scripts/                        # Test infrastructure scripts (NEW)
-│   │   └── run_tests.sh                # Unified test runner with parallel execution
+│   ├── scripts/                        # Test infrastructure scripts
+│   │   └── run-docker-tests.ps1        # Docker-based test runner for Windows
 │   ├── unit/                           # Unit tests for individual components
 │   ├── integration/                    # Multi-component integration tests
 │   ├── performance/                    # Performance and stress tests
@@ -368,8 +368,8 @@ cmake --build build
 cmake --build build --target format
 
 # Build and run tests
-cmake --build build
-./tests/scripts/run_tests.sh
+cmake --build build --target tests
+ctest --test-dir build --output-on-failure --parallel 0
 ```
 
 ### BearSSL Build Optimization (Automatic)
@@ -439,39 +439,39 @@ The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -
 
 ## Testing Framework
 
-**IMPORTANT**: Always use `./tests/scripts/run_tests.sh` for running tests!
+**IMPORTANT**: Use ctest for running tests!
 
 ### Basic Test Usage
 
 ```bash
-# Run all tests (recommended default)
-./tests/scripts/run_tests.sh
+# Build all tests
+cmake --build build --target tests
 
-# Run specific test category
-./tests/scripts/run_tests.sh unit           # All unit tests
-./tests/scripts/run_tests.sh integration    # All integration tests
-./tests/scripts/run_tests.sh performance    # All performance tests
+# Run all tests
+ctest --test-dir build --output-on-failure --parallel 0
 
-# Run single test by name
-./tests/scripts/run_tests.sh test_unit_buffer_pool
+# Run specific test category using labels
+ctest --test-dir build --label-regex "^unit$" --output-on-failure
+ctest --test-dir build --label-regex "^integration$" --output-on-failure
+ctest --test-dir build --label-regex "^performance$" --output-on-failure
 
-# Filter tests within a binary
-./tests/scripts/run_tests.sh test_unit_buffer_pool -f "*creation*"
+# Run single test by name pattern
+ctest --test-dir build -R "buffer_pool" --output-on-failure
+
+# List all available tests
+ctest --test-dir build -N
 ```
 
 ### Advanced Test Options
 
 ```bash
-# Different build types
-./tests/scripts/run_tests.sh -b release      # Optimized build
-./tests/scripts/run_tests.sh -b coverage     # Coverage instrumentation
-./tests/scripts/run_tests.sh -b debug        # AddressSanitizer enabled (default)
+# Verbose output
+ctest --test-dir build --output-on-failure --verbose
 
-# Generate JUnit XML for CI
-./tests/scripts/run_tests.sh -J
-
-# Custom logging
-./tests/scripts/run_tests.sh --log-file=/tmp/custom_test.log
+# For coverage, use cmake with ASCIICHAT_ENABLE_COVERAGE=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
+cmake --build build --target tests
+ctest --test-dir build --output-on-failure --parallel 0
 ```
 
 # ❌ Criterion on macOS for Claude Code is NOT Supported
@@ -728,7 +728,7 @@ Before committing any changes:
 
 1. [ ] `cmake -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build` - rebuild with sanitizers
 2. [ ] `cmake --build build --target format` - code is properly formatted
-3. [ ] **Run tests**: `./tests/scripts/run_tests.sh`
+3. [ ] **Run tests**: `ctest --test-dir build --output-on-failure --parallel 0`
 4. [ ] Start server, connect 2+ clients
 5. [ ] Video displays in correct grid layout
 6. [ ] No "DEADBEEF" or "Unknown packet type" errors
@@ -782,11 +782,41 @@ Before committing any changes:
 
 ### Testing Infrastructure
 
-13. **tests/scripts/run_tests.sh**: Main test runner - USE THIS!
+13. **ctest**: Main test runner - use `ctest --test-dir build --output-on-failure`
 14. **tests/unit/**: Unit test implementations
 15. **CMakeLists.txt**: Cross-platform build configuration
 
 ## Recent Updates (September 2025)
+
+### Query Tool (December 2025)
+
+Debug utility for runtime variable inspection via HTTP queries. Uses external LLDB process for robust debugging without self-patching complexity.
+
+**Key Features:**
+- Query variables by `file:line:variable` including struct members
+- HTTP API for integration with editors, scripts, and external tools
+- Breakpoint mode with `&break` parameter for interactive debugging
+- Struct expansion with configurable depth
+- Auto-spawn via `QUERY_INIT(port)` macro (compiles out in release)
+
+**Usage:**
+```bash
+# Build with query tool
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
+cmake --build build
+
+# Standalone: attach to running process
+./build/bin/ascii-chat server &
+./.deps-cache/query-tool/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+curl 'localhost:9999/query?file=src/server/main.c&line=50&name=options'
+
+# Auto-spawn in code (debug builds only)
+QUERY_INIT(9999);   // Spawns controller attached to self
+// ... app runs, query via HTTP ...
+QUERY_SHUTDOWN();
+```
+
+**Documentation:** `docs/tooling/query.md`, `docs/tooling/query-api.md`
 
 ### Cryptography Implementation (October 2025)
 

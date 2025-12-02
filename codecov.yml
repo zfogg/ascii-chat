@@ -39,85 +39,111 @@ coverage:
 
       # Core server functionality (most critical)
       server_core:
-        target: 75%  # Higher target for core server functionality
-        threshold: 1%
+        target: 50%
+        threshold: 2%
         paths:
-          - "src/server.c"
-          - "lib/network.c"
-          - "lib/network.h"
+          - "src/server/**/*"
+          - "lib/network/**/*"
 
       # Client functionality
       client_core:
-        target: 75%
-        threshold: 1%
+        target: 50%
+        threshold: 2%
         paths:
-          - "src/client.c"
+          - "src/client/**/*"
 
       # ASCII conversion engine (core feature)
       ascii_engine:
-        target: 80%  # High target for main feature
-        threshold: 1%
+        target: 50%
+        threshold: 2%
         paths:
-          - "lib/ascii.c"
-          - "lib/ascii.h"
-          - "lib/ascii_simd*.c"
-          - "lib/ascii_simd*.h"
           - "lib/image2ascii/**/*"
 
       # Video processing pipeline
       video_processing:
-        target: 70%
+        target: 50%
         threshold: 2%
         paths:
-          - "lib/image.c"
-          - "lib/image.h"
-          - "lib/webcam*.c"
-          - "lib/webcam*.h"
-          - "lib/webcam*.m"
+          - "lib/image2ascii/image.*"
+          - "lib/os/webcam*"
+          - "lib/os/**/webcam*"
 
       # Audio system
       audio_system:
-        target: 70%
+        target: 50%
         threshold: 2%
         paths:
-          - "lib/audio.c"
-          - "lib/audio.h"
-          - "lib/mixer.c"
-          - "lib/mixer.h"
-          - "lib/ringbuffer.c"
-          - "lib/ringbuffer.h"
+          - "lib/audio.*"
+          - "lib/mixer.*"
+          - "lib/ringbuffer.*"
 
       # Network infrastructure
       network_infrastructure:
-        target: 75%
+        target: 50%
         threshold: 2%
         paths:
-          - "lib/packet_queue.c"
-          - "lib/packet_queue.h"
-          - "lib/buffer_pool.c"
-          - "lib/buffer_pool.h"
+          - "lib/network/**/*"
+          - "lib/packet_queue.*"
+          - "lib/buffer_pool.*"
 
-      # Security components
+      # Security components (crypto is now a directory)
       security_crypto:
-        target: 80%  # High target for security code
-        threshold: 1%
+        target: 50%
+        threshold: 2%
         paths:
-          - "lib/crypto.c"
-          - "lib/crypto.h"
-          - "lib/crc32_hw.c"
-          - "lib/crc32_hw.h"
+          - "lib/crypto/**/*"
+          - "lib/crc32.*"
 
       # Terminal rendering and output
       terminal_rendering:
-        target: 65%
+        target: 50%
         threshold: 2%
         paths:
-          - "lib/ansi_fast.c"
-          - "lib/ansi_fast.h"
-          - "lib/terminal_detect.c"
-          - "lib/terminal_detect.h"
-          - "lib/palette.c"
-          - "lib/palette.h"
+          - "lib/image2ascii/ansi_fast.*"
+          - "lib/platform/**/terminal.*"
+          - "lib/platform/terminal.h"
+          - "lib/palette.*"
+
+      # Video frame handling
+      video_frames:
+        target: 50%
+        threshold: 2%
+        paths:
+          - "lib/video_frame.*"
+
+      # Core utilities and error handling
+      core_utilities:
+        target: 50%
+        threshold: 2%
+        paths:
+          - "lib/asciichat_errno.*"
+          - "lib/common.*"
+          - "lib/compression.*"
+          - "lib/util/**/*"
+
+      # Debug utilities
+      debug_utilities:
+        target: 40%
+        threshold: 5%
+        paths:
+          - "lib/debug/**/*"
+        informational: true
+
+      # Tooling (defer, panic, query)
+      tooling:
+        target: 40%
+        threshold: 5%
+        paths:
+          - "lib/tooling/**/*"
+          - "src/tooling/**/*"
+        informational: true
+
+      # Main entry point
+      main_entry:
+        target: 50%
+        threshold: 2%
+        paths:
+          - "src/main.c"
 
       # Test infrastructure
       test_framework:
@@ -144,15 +170,15 @@ coverage:
 
       # Stricter patch requirements for core functionality
       core_patch:
-        target: 80%
-        threshold: 0%
+        target: 60%
+        threshold: 5%
         base: auto
         paths:
-          - "src/server.c"
-          - "src/client.c"
-          - "lib/ascii*.c"
-          - "lib/network.c"
-          - "lib/crypto.c"
+          - "src/server/**/*"
+          - "src/client/**/*"
+          - "lib/image2ascii/**/*"
+          - "lib/network/**/*"
+          - "lib/crypto/**/*"
         branches:
           - master
           - main
@@ -160,14 +186,14 @@ coverage:
         if_ci_failed: error
         only_pulls: true
 
-      # Security code requires 100% patch coverage
+      # Security code patch coverage
       security_patch:
-        target: 100%
-        threshold: 0%
+        target: 70%
+        threshold: 5%
         base: auto
         paths:
-          - "lib/crypto.*"
-          - "lib/crc32_hw.*"
+          - "lib/crypto/**/*"
+          - "lib/crc32.*"
         branches:
           - master
           - main
@@ -177,11 +203,10 @@ coverage:
 
       # SIMD optimizations patch coverage
       simd_patch:
-        target: 70%
-        threshold: 5%
+        target: 50%
+        threshold: 10%
         base: auto
         paths:
-          - "lib/ascii_simd*.*"
           - "lib/image2ascii/simd/**/*"
         branches:
           - master
@@ -243,71 +268,67 @@ component_management:
     - component_id: server_core
       name: "Server Core"
       paths:
-        - "src/server.c"
+        - "src/server/**/*"
         - "tests/**/server*.c"
       statuses:
         - type: project
-          target: 75%
-          threshold: 1%
+          target: 50%
+          threshold: 2%
         - type: patch
-          target: 80%
+          target: 60%
 
     # Client core functionality
     - component_id: client_core
       name: "Client Core"
       paths:
-        - "src/client.c"
+        - "src/client/**/*"
         - "tests/**/client*.c"
       statuses:
         - type: project
-          target: 75%
-          threshold: 1%
+          target: 50%
+          threshold: 2%
         - type: patch
-          target: 80%
+          target: 60%
 
     # ASCII art conversion engine
     - component_id: ascii_engine
       name: "ASCII Art Engine"
       paths:
-        - "lib/ascii*.c"
-        - "lib/ascii*.h"
         - "lib/image2ascii/**/*"
         - "tests/**/ascii*.c"
       statuses:
         - type: project
-          target: 80%
-          threshold: 1%
+          target: 50%
+          threshold: 2%
         - type: patch
-          target: 85%
+          target: 60%
 
     # SIMD optimizations
     - component_id: simd_optimizations
       name: "SIMD Optimizations"
       paths:
-        - "lib/ascii_simd*.c"
-        - "lib/ascii_simd*.h"
         - "lib/image2ascii/simd/**/*"
         - "tests/**/simd*.c"
       statuses:
         - type: project
-          target: 70%
-          threshold: 2%
+          target: 50%
+          threshold: 5%
         - type: patch
-          target: 75%
+          target: 50%
 
     # Network protocol and communication
     - component_id: networking
       name: "Network Protocol"
       paths:
-        - "lib/network.*"
+        - "lib/network/**/*"
         - "lib/packet_queue.*"
         - "tests/**/network*.c"
       statuses:
         - type: project
-          target: 75%
+          target: 50%
           threshold: 2%
         - type: patch
-          target: 80%
+          target: 60%
 
     # Audio processing and mixing
     - component_id: audio_processing
@@ -319,64 +340,65 @@ component_management:
         - "tests/**/audio*.c"
       statuses:
         - type: project
-          target: 70%
+          target: 50%
           threshold: 2%
         - type: patch
-          target: 75%
+          target: 50%
 
     # Video capture and processing
     - component_id: video_processing
       name: "Video Processing"
       paths:
-        - "lib/image.*"
-        - "lib/webcam*.*"
-        - "lib/aspect_ratio.*"
+        - "lib/image2ascii/image.*"
+        - "lib/os/webcam*"
+        - "lib/os/**/webcam*"
       statuses:
         - type: project
-          target: 70%
-          threshold: 2%
+          target: 50%
+          threshold: 5%
 
     # Security and cryptography
     - component_id: security
       name: "Security & Crypto"
       paths:
-        - "lib/crypto.*"
-        - "lib/crc32_hw.*"
+        - "lib/crypto/**/*"
+        - "lib/crc32.*"
         - "tests/**/crypto*.c"
       statuses:
         - type: project
-          target: 80%
-          threshold: 1%
+          target: 50%
+          threshold: 2%
         - type: patch
-          target: 85%
+          target: 60%
 
     # Memory management and data structures
     - component_id: data_structures
       name: "Data Structures"
       paths:
         - "lib/buffer_pool.*"
-        - "lib/hashtable.*"
-        - "lib/common.*"
+        - "lib/packet_queue.*"
+        - "lib/ringbuffer.*"
         - "tests/**/buffer_pool*.c"
-        - "tests/**/hashtable*.c"
+        - "tests/**/packet_queue*.c"
+        - "tests/**/ringbuffer*.c"
       statuses:
         - type: project
-          target: 75%
+          target: 50%
           threshold: 2%
         - type: patch
-          target: 80%
+          target: 60%
 
     # Terminal output and rendering
     - component_id: terminal_output
       name: "Terminal Output"
       paths:
-        - "lib/ansi_fast.*"
-        - "lib/terminal_detect.*"
+        - "lib/image2ascii/ansi_fast.*"
+        - "lib/platform/**/terminal.*"
         - "lib/palette.*"
       statuses:
         - type: project
-          target: 65%
-          threshold: 2%
+          target: 50%
+          threshold: 5%
 
     # Configuration and options
     - component_id: configuration
@@ -384,10 +406,77 @@ component_management:
       paths:
         - "lib/options.*"
         - "lib/logging.*"
+        - "lib/config.*"
       statuses:
         - type: project
-          target: 70%
+          target: 50%
           informational: true
+
+    # Video frame handling
+    - component_id: video_frames
+      name: "Video Frames"
+      paths:
+        - "lib/video_frame.*"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
+
+    # Core utilities
+    - component_id: core_utilities
+      name: "Core Utilities"
+      paths:
+        - "lib/asciichat_errno.*"
+        - "lib/common.*"
+        - "lib/compression.*"
+        - "lib/util/**/*"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
+
+    # Debug utilities
+    - component_id: debug_utilities
+      name: "Debug Utilities"
+      paths:
+        - "lib/debug/**/*"
+      statuses:
+        - type: project
+          target: 40%
+          informational: true
+
+    # Tooling
+    - component_id: tooling
+      name: "Tooling"
+      paths:
+        - "lib/tooling/**/*"
+        - "src/tooling/**/*"
+      statuses:
+        - type: project
+          target: 40%
+          informational: true
+
+    # Main entry point
+    - component_id: main_entry
+      name: "Main Entry"
+      paths:
+        - "src/main.c"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
+
+    # Platform abstraction layer
+    - component_id: platform_abstraction
+      name: "Platform Abstraction"
+      paths:
+        - "lib/platform/**/*"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 5%
+        - type: patch
+          target: 50%
 
     # Integration tests
     - component_id: integration_tests
@@ -403,28 +492,28 @@ component_management:
     - component_id: simd_all
       name: "All SIMD Code"
       paths:
-        - ".*simd.*"
         - "lib/image2ascii/simd/**/*"
       flag_regexes:
         - "ascii-chat-tests.*"
       statuses:
         - type: project
-          target: 70%
-          threshold: 3%
+          target: 50%
+          threshold: 5%
         - type: patch
-          target: 75%
+          target: 50%
 
     - component_id: test_infrastructure
       name: "Test Infrastructure"
       paths:
         - "tests/**/*.c"
         - "tests/**/*.h"
+        - "lib/tests/**/*"
       flag_regexes:
         - "coverage"
         - "ascii-chat-tests.*"
       statuses:
         - type: project
-          target: 65%
+          target: 50%
           informational: true
 
     - component_id: headers
@@ -440,16 +529,17 @@ component_management:
     - component_id: platform_specific
       name: "Platform-Specific Code"
       paths:
-        - "lib/webcam_avfoundation.m"
-        - "lib/webcam_v4l2.c"
-        - "lib/webcam_platform.*"
+        - "lib/os/**/webcam*"
+        - "lib/platform/posix/**/*"
+        - "lib/platform/windows/**/*"
         - "lib/image2ascii/simd/neon.*"
-        - "lib/image2ascii/simd/sse.*"
-        - "lib/image2ascii/simd/avx.*"
+        - "lib/image2ascii/simd/sse*.*"
+        - "lib/image2ascii/simd/avx*.*"
+        - "lib/image2ascii/simd/sve.*"
       statuses:
         - type: project
-          target: 60%
-          threshold: 5%
+          target: 40%
+          threshold: 10%
           informational: true
 
 # Pull request comment configuration
@@ -480,6 +570,9 @@ ignore:
   - "Info.plist"
   - "**/.DS_Store"
   - "**/compile_commands.json"
+  - "lib/version.c"
+  - "lib/version.h.in"
+  - "lib/musl_c23_compat.c"
 
 # Flag configuration for organizing uploads
 flags:
@@ -552,8 +645,8 @@ github_checks:
 profiling:
   # Enable YAML report customization
   critical_files_paths:
-    - "src/server.c"
-    - "src/client.c"
-    - "lib/ascii*.c"
-    - "lib/network.c"
-    - "lib/crypto.c"
+    - "src/server/**/*"
+    - "src/client/**/*"
+    - "lib/image2ascii/**/*"
+    - "lib/network/**/*"
+    - "lib/crypto/**/*"

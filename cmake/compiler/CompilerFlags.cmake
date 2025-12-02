@@ -41,9 +41,12 @@ function(configure_toolchain_capabilities)
     elseif(APPLE)
         check_linker_flag(C "-Wl,-dead_strip_dylibs" ASCIICHAT_SUPPORTS_DEAD_STRIP_DYLIBS)
     elseif(UNIX)
+        # Force executable for linker flag tests (RELRO/NOW don't apply to static libraries)
+        set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
         check_linker_flag(C "-Wl,-z,pack-relative-relocs" ASCIICHAT_SUPPORTS_PACK_REL_RELOCS)
         check_linker_flag(C "-Wl,-z,relro" ASCIICHAT_SUPPORTS_RELRO)
         check_linker_flag(C "-Wl,-z,now" ASCIICHAT_SUPPORTS_NOW)
+        unset(CMAKE_TRY_COMPILE_TARGET_TYPE)
     endif()
 
     set(ASCIICHAT_TOOLCHAIN_CHECKS_CONFIGURED TRUE CACHE INTERNAL "Toolchain checks already evaluated")
@@ -255,176 +258,10 @@ endfunction()
 # =============================================================================
 # x86-64-v2/v3 Autodetection
 # =============================================================================
-# Detects the highest supported x86-64 microarchitecture level on the build machine
-# Returns: "x86-64-v3", "x86-64-v2", or "portable" in DETECTED_LEVEL
+# The detect_x86_64_level() function is now in CPUDetection.cmake
+# Include it to get access to the function
 # =============================================================================
-function(detect_x86_64_level DETECTED_LEVEL)
-    set(${DETECTED_LEVEL} "portable" PARENT_SCOPE)
-
-    # Only detect for x86_64 builds
-    if(NOT CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64|X86_64")
-        return()
-    endif()
-
-    # Skip detection if cross-compiling (can't run test programs)
-    if(CMAKE_CROSSCOMPILING)
-        return()
-    endif()
-
-    # Check if compiler supports x86-64-v3 flag (GCC 11+, Clang 12+)
-    set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
-    check_c_compiler_flag("-march=x86-64-v3" COMPILER_SUPPORTS_V3_FLAG)
-    if(NOT COMPILER_SUPPORTS_V3_FLAG)
-        set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-        return()
-    endif()
-
-    set(CMAKE_REQUIRED_FLAGS "-march=x86-64-v3")
-
-    # Test if compiler accepts x86-64-v3 and CPU supports it
-    # x86-64-v3 requires: AVX, AVX2, BMI1, BMI2, F16C, FMA, LZCNT, MOVBE, OSXSAVE
-    check_c_source_runs("
-        #include <stdint.h>
-
-        #ifdef _WIN32
-        #include <intrin.h>
-        #else
-        #include <cpuid.h>
-        #endif
-
-        int main() {
-            #ifdef _WIN32
-            int info[4];
-            // Check AVX (CPUID leaf 1, ECX bit 28)
-            __cpuid(info, 1);
-            if (!(info[2] & (1 << 28))) return 1;
-            // Check AVX2 (CPUID leaf 7, EBX bit 5)
-            __cpuidex(info, 7, 0);
-            if (!(info[1] & (1 << 5))) return 1;
-            // Check BMI1 (CPUID leaf 7, EBX bit 3)
-            if (!(info[1] & (1 << 3))) return 1;
-            // Check BMI2 (CPUID leaf 7, EBX bit 8)
-            if (!(info[1] & (1 << 8))) return 1;
-            // Check FMA (CPUID leaf 1, ECX bit 12)
-            __cpuid(info, 1);
-            if (!(info[2] & (1 << 12))) return 1;
-            // Check F16C (CPUID leaf 1, ECX bit 29)
-            if (!(info[2] & (1 << 29))) return 1;
-            // Check LZCNT (CPUID leaf 0x80000001, ECX bit 5)
-            __cpuidex(info, 0x80000001, 0);
-            if (!(info[2] & (1 << 5))) return 1;
-            // Check MOVBE (CPUID leaf 1, ECX bit 22)
-            __cpuid(info, 1);
-            if (!(info[2] & (1 << 22))) return 1;
-            // Check OSXSAVE (CPUID leaf 1, ECX bit 27)
-            if (!(info[2] & (1 << 27))) return 1;
-            #else
-            unsigned int eax, ebx, ecx, edx;
-            // Check AVX (CPUID leaf 1, ECX bit 28)
-            if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_AVX)) return 1;
-            // Check AVX2 (CPUID leaf 7, subleaf 0, EBX bit 5)
-            if (!__get_cpuid_max(0, NULL)) return 1;
-            if (!__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ebx & bit_AVX2)) return 1;
-            // Check BMI1 (CPUID leaf 7, EBX bit 3)
-            if (!(ebx & bit_BMI)) return 1;
-            // Check BMI2 (CPUID leaf 7, EBX bit 8)
-            if (!(ebx & bit_BMI2)) return 1;
-            // Check FMA (CPUID leaf 1, ECX bit 12)
-            if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_FMA)) return 1;
-            // Check F16C (CPUID leaf 1, ECX bit 29)
-            if (!(ecx & bit_F16C)) return 1;
-            // Check LZCNT (CPUID leaf 0x80000001, ECX bit 5)
-            if (!__get_cpuid(0x80000001, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_LZCNT)) return 1;
-            // Check MOVBE (CPUID leaf 1, ECX bit 22)
-            if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_MOVBE)) return 1;
-            // Check OSXSAVE (CPUID leaf 1, ECX bit 27)
-            if (!(ecx & bit_OSXSAVE)) return 1;
-            #endif
-            return 0;
-        }
-    " CPU_SUPPORTS_V3)
-
-    if(CPU_SUPPORTS_V3)
-        set(${DETECTED_LEVEL} "x86-64-v3" PARENT_SCOPE)
-        set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-        return()
-    endif()
-
-    # Check if compiler supports x86-64-v2 flag (GCC 11+, Clang 12+)
-    check_c_compiler_flag("-march=x86-64-v2" COMPILER_SUPPORTS_V2_FLAG)
-    if(NOT COMPILER_SUPPORTS_V2_FLAG)
-        set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-        return()
-    endif()
-
-    set(CMAKE_REQUIRED_FLAGS "-march=x86-64-v2")
-
-    # Test if compiler accepts x86-64-v2 and CPU supports it
-    # x86-64-v2 requires: CMPXCHG16B, LAHF-SAHF, POPCNT, SSE3, SSE4.1, SSE4.2, SSSE3
-    check_c_source_runs("
-        #include <stdint.h>
-
-        #ifdef _WIN32
-        #include <intrin.h>
-        #else
-        #include <cpuid.h>
-        #endif
-
-        int main() {
-            #ifdef _WIN32
-            int info[4];
-            // Check CMPXCHG16B (CPUID leaf 1, ECX bit 13)
-            __cpuid(info, 1);
-            if (!(info[2] & (1 << 13))) return 1;
-            // Check LAHF-SAHF (CPUID leaf 0x80000001, ECX bit 0)
-            __cpuidex(info, 0x80000001, 0);
-            if (!(info[2] & (1 << 0))) return 1;
-            // Check POPCNT (CPUID leaf 1, ECX bit 23)
-            __cpuid(info, 1);
-            if (!(info[2] & (1 << 23))) return 1;
-            // Check SSE3 (CPUID leaf 1, ECX bit 0)
-            if (!(info[2] & (1 << 0))) return 1;
-            // Check SSE4.1 (CPUID leaf 1, ECX bit 19)
-            if (!(info[2] & (1 << 19))) return 1;
-            // Check SSE4.2 (CPUID leaf 1, ECX bit 20)
-            if (!(info[2] & (1 << 20))) return 1;
-            // Check SSSE3 (CPUID leaf 1, ECX bit 9)
-            if (!(info[2] & (1 << 9))) return 1;
-            #else
-            unsigned int eax, ebx, ecx, edx;
-            // Check CMPXCHG16B (CPUID leaf 1, ECX bit 13)
-            if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_CMPXCHG16B)) return 1;
-            // Check LAHF-SAHF (CPUID leaf 0x80000001, ECX bit 0)
-            if (!__get_cpuid(0x80000001, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_LAHF)) return 1;
-            // Check POPCNT (CPUID leaf 1, ECX bit 23)
-            if (!__get_cpuid(1, &eax, &ebx, &ecx, &edx)) return 1;
-            if (!(ecx & bit_POPCNT)) return 1;
-            // Check SSE3 (CPUID leaf 1, ECX bit 0)
-            if (!(ecx & bit_SSE3)) return 1;
-            // Check SSE4.1 (CPUID leaf 1, ECX bit 19)
-            if (!(ecx & bit_SSE4_1)) return 1;
-            // Check SSE4.2 (CPUID leaf 1, ECX bit 20)
-            if (!(ecx & bit_SSE4_2)) return 1;
-            // Check SSSE3 (CPUID leaf 1, ECX bit 9)
-            if (!(ecx & bit_SSSE3)) return 1;
-            #endif
-            return 0;
-        }
-    " CPU_SUPPORTS_V2)
-
-    set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-
-    if(CPU_SUPPORTS_V2)
-        set(${DETECTED_LEVEL} "x86-64-v2" PARENT_SCOPE)
-    endif()
-endfunction()
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
 
 # Configure release build optimization flags
 # Args:
@@ -766,9 +603,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     endif()
 endfunction()
 
-# Configure coverage build flags
+# Configure coverage instrumentation (can be combined with any build type)
 function(configure_coverage_flags)
-    add_definitions(-DDEBUG_MEMORY -DCOVERAGE_BUILD)
-    add_compile_options(-g -O0 --coverage -fprofile-arcs -ftest-coverage)
+    message(STATUS "Coverage instrumentation enabled")
+    add_definitions(-DCOVERAGE_BUILD)
+    add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
     add_link_options(--coverage)
 endfunction()

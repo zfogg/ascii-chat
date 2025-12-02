@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.20)
 
 # =============================================================================
 # CMake Build Types
@@ -64,7 +64,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 # This UUID is defined by CMake to gate experimental features - it must match exactly.
 # See: https://github.com/Kitware/CMake/blob/master/Help/dev/experimental.rst
 # If CMake changes the UUID in a future version, update this value accordingly.
-set(CMAKE_EXPERIMENTAL_EXPORT_PACKAGE_INFO "b80be207-778e-46ba-8080-b23bba22639e")
+#set(CMAKE_EXPERIMENTAL_EXPORT_PACKAGE_INFO "b80be207-778e-46ba-8080-b23bba22639e")
 
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
 configure_musl_pre_project()
@@ -81,9 +81,9 @@ endif()
 # =============================================================================
 # Project Declaration
 # =============================================================================
+#SPDX_LICENSE "${PROJECT_LICENSE_SPDX}"
 project(${PROJECT_NAME_FULL}
     VERSION ${PROJECT_VERSION_FROM_GIT}
-    SPDX_LICENSE "${PROJECT_LICENSE_SPDX}"
     DESCRIPTION "${PROJECT_DESCRIPTION_ONELINE}"
     HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}"
     LANGUAGES ${PROJECT_LANGUAGES}
@@ -170,11 +170,14 @@ endif()
 include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 # IMPORTANT: Defer must run BEFORE panic so that:
 # 1. Defer analyzes clean original sources (correct scope analysis)
 # 2. Panic then transforms defer's output (just adds logging)
 ascii_defer_prepare()
 ascii_panic_prepare()
+# Query tool is independent of defer/panic - it doesn't do source transformation
+ascii_query_prepare()
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 # Configure archiver wrapper BEFORE creating any static libraries
@@ -191,6 +194,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
 ascii_panic_finalize()
 ascii_defer_finalize()
+ascii_query_finalize()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
 # Optional CTest dashboard integration

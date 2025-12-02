@@ -20,7 +20,8 @@
  * - Modular CMake architecture (30+ specialized modules)
  * - Cross-platform support (Linux, macOS, Windows)
  * - Automatic dependency caching (ccache, FetchContent)
- * - Multiple build types (Debug, Dev, Release, RelWithDebInfo, Coverage)
+ * - Multiple build types (Debug, Dev, Release, RelWithDebInfo)
+ * - Coverage instrumentation option (combinable with any build type)
  * - Static release builds with musl (Linux only)
  * - High-performance allocator (mimalloc) for release builds
  * - CMake presets for common configurations
@@ -157,7 +158,7 @@
  *
  * | Tool | Version | Purpose |
  * |------|---------|---------|
- * | **cmake** | 4.2+ | Build system generator |
+ * | **cmake** | 3.20+ | Build system generator |
  * | **clang** | 18+ | C compiler |
  * | **clang++** | 18+ | C++ compiler (for defer/panic tools) |
  * | **llvm-config** | 18+ | Query LLVM paths (for defer/panic tools) |
@@ -207,7 +208,7 @@
  * | **Debug** | (none) | Uses same tools as other builds |
  * | **Dev** | (none) | Fast builds without sanitizers |
  * | **Release** | doxygen (optional) | Documentation for packages |
- * | **Coverage** | llvm-profdata, llvm-cov | Generate coverage reports |
+ * | **Coverage** (option) | llvm-profdata, llvm-cov | Generate coverage reports (use -DASCIICHAT_ENABLE_COVERAGE=ON) |
  *
  * **Linux static builds** (USE_MUSL=ON) additionally require:
  * - **lld** - LLVM linker for static-PIE linking
@@ -374,7 +375,7 @@
  * | `release` | Release | Production builds (static on Linux/Windows) |
  * | `release-musl` | Release | Force musl static (Linux only) |
  * | `relwithdebinfo` | RelWithDebInfo | Optimized with debug symbols |
- * | `coverage` | Coverage | Test coverage instrumentation |
+ * | `coverage` | Debug + Coverage | Debug build with coverage instrumentation |
  *
  * @subsection build_presets_ide IDE Integration
  *
@@ -544,31 +545,42 @@
  * - Enable source-level debugging of optimized code
  * - Generated in `build/bin/` directory
  *
- * @subsection build_types_coverage Coverage Build
+ * @subsection build_types_coverage Coverage Instrumentation (Option)
  *
  * **Purpose**: Code coverage analysis
  *
+ * Coverage is an **option** (`ASCIICHAT_ENABLE_COVERAGE`) that can be combined
+ * with any build type, not a separate build type. This allows you to get coverage
+ * data from Debug, Release, or any other build configuration.
+ *
  * **Configuration**:
  * @code{.bash}
- * cmake -B build -DCMAKE_BUILD_TYPE=Coverage
+ * # Debug build with coverage (recommended for CI)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
+ * cmake --build build
+ *
+ * # Or use the coverage preset (Debug + coverage)
+ * cmake --preset coverage
+ * cmake --build build
+ *
+ * # Release build with coverage (for performance profiling)
+ * cmake -B build -DCMAKE_BUILD_TYPE=Release -DASCIICHAT_ENABLE_COVERAGE=ON
  * cmake --build build
  * @endcode
  *
  * **Features**:
- * - **Optimization**: `-O0` (no optimization for accurate coverage)
- * - **Debug Symbols**: Yes
- * - **Coverage Flags**: `-fprofile-instr-generate -fcoverage-mapping`
- * - **Sanitizers**: None (conflicts with coverage)
- * - **mimalloc**: Disabled (better coverage accuracy)
+ * - **Coverage Flags**: `--coverage -fprofile-arcs -ftest-coverage`
+ * - **Combinable**: Works with Debug, Dev, Release, RelWithDebInfo
+ * - **CI Default**: GitHub CI preset enables coverage automatically
  *
  * **Generating Coverage Reports**:
  * @code{.bash}
  * # Build with coverage
- * cmake -B build -DCMAKE_BUILD_TYPE=Coverage
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
  * cmake --build build
  *
- * # Run tests
- * ./tests/scripts/run_tests.sh -b coverage
+ * # Run tests (generates .gcda files)
+ * ctest --test-dir build --output-on-failure
  *
  * # Generate report (clang)
  * llvm-cov gcov src/*.c lib/**/*.c
@@ -591,7 +603,8 @@
  *
  * | Option | Type | Default | Description |
  * |--------|------|---------|-------------|
- * | `CMAKE_BUILD_TYPE` | STRING | Debug | Build configuration (Debug, Dev, Release, RelWithDebInfo, Coverage) |
+ * | `CMAKE_BUILD_TYPE` | STRING | Debug | Build configuration (Debug, Dev, Release, RelWithDebInfo) |
+ * | `ASCIICHAT_ENABLE_COVERAGE` | BOOL | OFF | Enable coverage instrumentation (can combine with any build type) |
  * | `BUILD_TESTS` | BOOL | ON | Build the Criterion test suite |
  *
  * @subsection build_options_allocator Memory Allocator Options
@@ -912,8 +925,8 @@
  * # Dev build (no sanitizers)
  * .\build.ps1 -Config Dev
  *
- * # Coverage build
- * .\build.ps1 -Config Coverage
+ * # Debug build with coverage
+ * .\build.ps1 -Config Debug -CFlags "--coverage"
  *
  * # Clean rebuild
  * .\build.ps1 -Clean

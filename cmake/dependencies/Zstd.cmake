@@ -20,74 +20,24 @@
 #   - ZSTD_FOUND: Whether zstd was found
 # =============================================================================
 
-if(WIN32)
-    # Windows: Find zstd from vcpkg
-    find_library(ZSTD_LIBRARY_RELEASE NAMES zstd zstd_static PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_library(ZSTD_LIBRARY_DEBUG NAMES zstdd zstd zstd_static PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
-    find_path(ZSTD_INCLUDE_DIR NAMES zstd.h PATHS "${VCPKG_INCLUDE_PATH}" NO_DEFAULT_PATH)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-    if(ZSTD_LIBRARY_RELEASE OR ZSTD_LIBRARY_DEBUG)
-        set(ZSTD_LIBRARIES optimized ${ZSTD_LIBRARY_RELEASE} debug ${ZSTD_LIBRARY_DEBUG})
-        set(ZSTD_INCLUDE_DIRS ${ZSTD_INCLUDE_DIR})
-        set(ZSTD_FOUND TRUE)
-        message(STATUS "Found ${BoldGreen}zstd${ColorReset}: ${ZSTD_LIBRARY_RELEASE}")
-
-        # Define ZSTD_STATIC for static builds to prevent dllimport
-        if(CMAKE_BUILD_TYPE MATCHES "Release")
-            add_compile_definitions(ZSTD_STATIC)
-        endif()
-    else()
-        message(FATAL_ERROR "Could not find ${BoldRed}zstd${ColorReset} - required dependency\n"
-            "Install dependencies with: ${BoldCyan}${PROJECT_INSTALL_DEPS_SCRIPT}${ColorReset}")
-    endif()
-else()
-    # Unix/Linux/macOS: Use pkg-config or find static libraries
-    # Skip pkg-config when using musl - dependencies are built from source
-    if(NOT USE_MUSL)
-        # For Release builds on macOS, prefer static libraries
-        if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
-            # Find static library directly from Homebrew
-            find_library(ZSTD_STATIC_LIBRARY NAMES libzstd.a
-                PATHS /usr/local/opt/zstd/lib /opt/homebrew/opt/zstd/lib
-                NO_DEFAULT_PATH
-            )
-            find_path(ZSTD_INCLUDE_DIR NAMES zstd.h
-                PATHS /usr/local/opt/zstd/include /opt/homebrew/opt/zstd/include
-                NO_DEFAULT_PATH
-            )
-
-            if(ZSTD_STATIC_LIBRARY)
-                set(ZSTD_LIBRARIES ${ZSTD_STATIC_LIBRARY})
-                set(ZSTD_INCLUDE_DIRS ${ZSTD_INCLUDE_DIR})
-                set(ZSTD_FOUND TRUE)
-                message(STATUS "Found ${BoldBlue}libzstd${ColorReset} (static): ${BoldGreen}${ZSTD_STATIC_LIBRARY}${ColorReset}")
-            else()
-                message(FATAL_ERROR "Could not find static ${BoldRed}libzstd${ColorReset} for Release build\n"
-                    "Install dependencies with: ${BoldCyan}${PROJECT_INSTALL_DEPS_SCRIPT}${ColorReset}")
-            endif()
-        else()
-            # Debug/Dev builds: Use pkg-config (dynamic linking is fine)
-            # On macOS, prefer Homebrew zstd over system zstd for consistency
-            if(APPLE)
-                # Check for Homebrew zstd first
-                if(EXISTS "/usr/local/opt/zstd/lib/pkgconfig/libzstd.pc")
-                    set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-                    message(STATUS "Using ${BoldBlue}Homebrew${ColorReset} ${BoldBlue}zstd${ColorReset} from /usr/local/opt/zstd")
-                elseif(EXISTS "/opt/homebrew/opt/zstd/lib/pkgconfig/libzstd.pc")
-                    set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
-                    message(STATUS "Using ${BoldBlue}Homebrew${ColorReset} ${BoldBlue}zstd${ColorReset} from /opt/homebrew/opt/zstd")
-                endif()
-            endif()
-
-            find_package(PkgConfig QUIET REQUIRED)
-            pkg_check_modules(ZSTD REQUIRED QUIET IMPORTED_TARGET libzstd)
-            if(TARGET PkgConfig::ZSTD)
-                set(ZSTD_LIBRARIES PkgConfig::ZSTD)
-            endif()
-            if(ZSTD_FOUND)
-                message(STATUS "Checking for module '${BoldBlue}libzstd${ColorReset}'")
-                message(STATUS "  Found ${BoldBlue}libzstd${ColorReset}, version ${BoldGreen}${ZSTD_VERSION}${ColorReset}")
-            endif()
-        endif()
+# On macOS, prefer Homebrew zstd over system zstd for consistency
+if(APPLE AND NOT USE_MUSL AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    if(EXISTS "/usr/local/opt/zstd/lib/pkgconfig/libzstd.pc")
+        set(ENV{PKG_CONFIG_PATH} "/usr/local/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+    elseif(EXISTS "/opt/homebrew/opt/zstd/lib/pkgconfig/libzstd.pc")
+        set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/zstd/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
     endif()
 endif()
+
+find_dependency_library(
+    NAME ZSTD
+    VCPKG_NAMES zstd zstd_static
+    HEADER zstd.h
+    PKG_CONFIG libzstd
+    HOMEBREW_PKG zstd
+    STATIC_LIB_NAME libzstd.a
+    STATIC_DEFINE ZSTD_STATIC
+    REQUIRED
+)

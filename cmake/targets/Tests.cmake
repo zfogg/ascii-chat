@@ -33,6 +33,34 @@ if(BUILD_TESTS)
 endif()
 
 # =============================================================================
+# Criterion Test Configuration
+# =============================================================================
+# Configure Criterion-specific test options based on build type.
+# Coverage builds are slower due to instrumentation, so we use longer timeouts.
+# XML output is generated for coverage builds to capture detailed test results.
+
+# Detect coverage build via ASCIICHAT_ENABLE_COVERAGE option
+set(IS_COVERAGE_BUILD OFF)
+if(ASCIICHAT_ENABLE_COVERAGE)
+    set(IS_COVERAGE_BUILD ON)
+endif()
+
+# Configure timeouts based on build type
+if(IS_COVERAGE_BUILD)
+    set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
+    set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
+    set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
+else()
+    set(CRITERION_TIMEOUT 25)      # Default timeout
+    set(CTEST_TEST_TIMEOUT 45)     # Default ctest timeout
+    set(CRITERION_JOBS 0)          # Auto-detect (0 = use all cores)
+endif()
+
+# XML output directory for Criterion test results
+set(CRITERION_XML_DIR "${CMAKE_BINARY_DIR}/Testing/criterion-xml")
+file(MAKE_DIRECTORY ${CRITERION_XML_DIR})
+
+# =============================================================================
 # Test Build Timing
 # =============================================================================
 # Create timer start target for all tests (Criterion, library, and future defer tests)
@@ -209,10 +237,15 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
+    # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
     set(TEST_EXCLUDES
-        tests/integration/server_multiclient_test.c
-        tests/integration/video_pipeline_test.c
+        ${PROJECT_SOURCE_DIR}/tests/integration/server_multiclient_test.c
+        ${PROJECT_SOURCE_DIR}/tests/integration/video_pipeline_test.c
     )
+    # Exclude query tests if query runtime library not available
+    if(NOT TARGET ascii-query-runtime)
+        list(APPEND TEST_EXCLUDES ${PROJECT_SOURCE_DIR}/tests/unit/tooling/query_test.c)
+    endif()
 
     set(TEST_SRCS)
     foreach(test_src IN LISTS TEST_SRCS_ALL)
@@ -276,8 +309,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             # IMPORTANT: All internal libraries must be inside the group, otherwise
             # the linker will process libraries outside the group first and fail
             # to resolve circular references
-            target_link_libraries(${test_exe_name}
-                -Wl,--start-group
+            set(_linux_test_libs
                 ascii-chat-simd
                 ascii-chat-video
                 ascii-chat-audio
@@ -288,6 +320,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ascii-chat-platform
                 ascii-chat-data-structures
                 ascii-chat-util
+            )
+            # Add query runtime if available (must be in group for symbol resolution)
+            if(TARGET ascii-query-runtime)
+                list(APPEND _linux_test_libs ascii-query-runtime)
+            endif()
+            target_link_libraries(${test_exe_name}
+                -Wl,--start-group
+                ${_linux_test_libs}
                 -Wl,--end-group
                 ${TEST_LDFLAGS}
             )
@@ -309,6 +349,11 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ascii-chat-panic
                 ${TEST_LDFLAGS}
             )
+        endif()
+
+        # Add query runtime library for macOS and Windows (Linux handled in --start-group above)
+        if(TARGET ascii-query-runtime AND (APPLE OR WIN32))
+            target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
         # For musl static builds, allow undefined boxfort references (they won't be called)
@@ -362,11 +407,34 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF
         )
 
-        # Add to CTest with TESTING environment variable
-        add_test(NAME ${test_exe_name} COMMAND ${test_exe_name})
-        set_tests_properties(${test_exe_name} PROPERTIES
-            ENVIRONMENT "TESTING=1"
+        # Build Criterion command-line arguments
+        set(_criterion_args
+            --jobs ${CRITERION_JOBS}
+            --timeout ${CRITERION_TIMEOUT}
+            --color=always
+            --short-filename
         )
+
+        # Add XML output for all builds (needed for CI test reporting)
+        list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
+
+        # Add to CTest with Criterion flags
+        add_test(NAME ${test_exe_name}
+            COMMAND ${test_exe_name} ${_criterion_args}
+        )
+
+        # Set test properties
+        set_tests_properties(${test_exe_name} PROPERTIES
+            ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+            TIMEOUT ${CTEST_TEST_TIMEOUT}
+            LABELS "${test_category}"
+        )
+
+        # Tests that spawn subprocesses (server/client) must run serially
+        # to avoid port conflicts and resource contention
+        if(test_exe_name MATCHES "main_integration")
+            set_tests_properties(${test_exe_name} PROPERTIES RUN_SERIAL TRUE)
+        endif()
     endforeach()
 
     # Update timed test targets list with Criterion tests

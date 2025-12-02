@@ -1,8 +1,7 @@
 #!/usr/bin/env pwsh
-# PowerShell script to run ascii-chat tests via Docker
+# PowerShell script to run ascii-chat tests via Docker using ctest
 #
 # BUILD DIRECTORY: This script always uses build_docker/ for Docker builds.
-# The underlying run_tests.sh script automatically detects Docker and uses build_docker/.
 #
 # Usage:
 #   ./tests/scripts/run-docker-tests.ps1                          # Run all tests
@@ -12,9 +11,9 @@
 #   ./tests/scripts/run-docker-tests.ps1 -ClangTidy               # Run clang-tidy analysis on all files
 #   ./tests/scripts/run-docker-tests.ps1 clang-tidy               # Run clang-tidy analysis on all files
 #   ./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c  # Run clang-tidy on specific file
-#   ./tests/scripts/run-docker-tests.ps1 unit options             # Run unit tests: options
-#   ./tests/scripts/run-docker-tests.ps1 unit options terminal_detect # Run unit tests: options and terminal_detect
-#   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool -f "creation" # Run specific test case
+#   ./tests/scripts/run-docker-tests.ps1 unit options             # Run unit tests matching "options"
+#   ./tests/scripts/run-docker-tests.ps1 -Filter "buffer"         # Run tests matching "buffer"
+#   ./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool    # Run specific test
 
 [CmdletBinding(PositionalBinding=$false)]
 param(
@@ -260,13 +259,8 @@ if ($Interactive) {
     $DockerFlags = "-it"
     Write-Host "Starting interactive shell in test container..." -ForegroundColor Cyan
 } else {
-    # Build test command using run_tests.sh
-    $TestCommand = "./tests/scripts/run_tests.sh"
-
-    # Add options first
-    if ($BuildType -ne "debug") {
-        $TestCommand += " -b $BuildType"
-    }
+    # Build test command using ctest
+    $TestCommand = "ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     # Use PowerShell's built-in -Verbose parameter (from [CmdletBinding()])
     # $VerbosePreference is set to 'Continue' when -Verbose is used
@@ -274,24 +268,35 @@ if ($Interactive) {
         $TestCommand += " --verbose"
     }
 
+    # Add filter using ctest -R (regex match on test name)
     if ($Filter) {
-        $TestCommand += " -f `"$Filter`""
+        $TestCommand += " -R `"$Filter`""
     }
 
-    # Use Suite and Test parameters if provided
-    if ($Suite) {
-        $TestCommand += " $Suite"
-        if ($Test) {
-            $TestCommand += " $Test"
+    # Use Suite parameter to filter by label (unit, integration, performance)
+    if ($Suite -and $Suite -ne "") {
+        # Map suite names to ctest label regex
+        switch ($Suite) {
+            "unit" { $TestCommand += " --label-regex `"^unit$`"" }
+            "integration" { $TestCommand += " --label-regex `"^integration$`"" }
+            "performance" { $TestCommand += " --label-regex `"^performance$`"" }
+            default {
+                # Assume it's a test name pattern
+                $TestCommand += " -R `"$Suite`""
+            }
+        }
+
+        # If Test is also provided, add it as an additional filter
+        if ($Test -and $Test -ne "") {
+            $TestCommand += " -R `"$Test`""
         }
     } elseif ($TestTargets.Count -gt 0) {
-        # Fall back to positional arguments for backward compatibility
-        $TestCommand += " " + ($TestTargets -join " ")
+        # Fall back to positional arguments for test name matching
+        $TestCommand += " -R `"$($TestTargets -join '|')`""
     }
-    # If neither Suite nor TestTargets are provided, run_tests.sh will default to "all"
+    # If neither Suite nor TestTargets are provided, ctest runs all tests
 
     # Configure CMake if build_docker doesn't exist or -Clean is specified
-    # Let run_tests.sh handle building only the specific test executables needed
     if ($Clean) {
         Write-Host "Clean rebuild requested - removing build_docker directory" -ForegroundColor Yellow
         $BuildCommand = @"
@@ -299,19 +304,19 @@ echo 'Clean rebuild - removing build_docker directory...'
 chmod -R u+w build_docker 2>/dev/null || true
 rm -rf build_docker 2>/dev/null || true
 rm -rf build_docker
-    echo 'Configuring CMake using tests preset (Debug with BUILD_TESTS=ON)...'
-    cmake --preset tests -B build_docker
-echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
+echo 'Configuring CMake using docker preset (Debug with BUILD_TESTS=ON)...'
+cmake --preset docker -B build_docker
+echo 'Building test executables...'
+cmake --build build_docker --target tests
 "@
     } else {
         $BuildCommand = @"
 if [ ! -d build_docker ]; then
-    echo 'First time setup - configuring CMake using tests preset (Debug with BUILD_TESTS=ON)...'
-    cmake --preset tests -B build_docker
-    echo 'CMake configuration complete. run_tests.sh will build only the test executables needed.'
-else
-    echo 'Using existing build_docker directory (run_tests.sh will build only the test executables needed)'
+    echo 'First time setup - configuring CMake using docker preset (Debug with BUILD_TESTS=ON)...'
+    cmake --preset docker -B build_docker
 fi
+echo 'Building test executables...'
+cmake --build build_docker --target tests
 "@
     }
 

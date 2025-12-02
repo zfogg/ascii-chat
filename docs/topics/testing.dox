@@ -246,7 +246,7 @@
  * # Configure ccache for persistent caching
  * # Set environment variables (TESTING=1, etc.)
  * WORKDIR /app
- * CMD ["./tests/scripts/run_tests.sh"]
+ * CMD ["sh", "-c", "cmake --preset docker && cmake --build build_docker --target tests && ctest --test-dir build_docker --output-on-failure --parallel 0"]
  * ```
  *
  * @subsection testing_docker_compose docker-compose.yml
@@ -336,154 +336,76 @@
  * - **Reproducible**: Same setup every time means reliable results
  * - **Fast**: ccache keeps compilation fast between runs
  *
- * @section testing_runner Test Runner Script (run_tests.sh)
+ * @section testing_runner Running Tests with ctest
  *
- * The main test runner (`tests/scripts/run_tests.sh`) is a bash script that handles finding,
- * building, and running all your tests. It's smart enough to only rebuild what changed and
- * can run tests in parallel for speed.
+ * Tests are run using CMake's ctest tool, which integrates with Criterion to provide
+ * parallel execution, filtering, and XML output for CI.
  *
  * @subsection testing_runner_features Features
  *
- * What it can do:
- * --------------
- * - **Finds tests automatically**: Just scans for test files—no configuration needed
- * - **Incremental builds**: Uses CMake and Ninja to only rebuild what changed
- * - **Parallel execution**: Automatically runs multiple tests at once (uses half your CPU cores)
- * - **Sequential mode**: Run one test at a time if you're debugging
- * - **Timeout handling**: Kills tests that hang (default: 25 seconds per test)
- * - **JUnit XML output**: Generate reports that CI systems understand
- * - **Coverage builds**: Build with coverage instrumentation enabled
+ * What ctest provides:
+ * -------------------
+ * - **Parallel execution**: Uses `--parallel 0` to auto-detect CPU cores
+ * - **Label filtering**: Filter tests by category (unit, integration, performance)
+ * - **Name filtering**: Filter tests by name pattern
+ * - **Timeout handling**: Criterion handles individual test timeouts
+ * - **XML output**: Criterion generates XML in `build/Testing/criterion-xml/`
  * - **Verbose mode**: See lots of detail when something goes wrong
- * - **Test filtering**: Run only tests matching a pattern
  *
  * @subsection testing_runner_usage Usage
  *
  * Basic usage:
  * -----------
  * ```bash
- * # Run all tests (default: debug build with AddressSanitizer)
- * ./tests/scripts/run_tests.sh
+ * # Build tests first
+ * cmake --build build --target tests
  *
- * # Run a specific category
- * ./tests/scripts/run_tests.sh unit
- * ./tests/scripts/run_tests.sh integration
- * ./tests/scripts/run_tests.sh performance
+ * # Run all tests
+ * ctest --test-dir build --output-on-failure --parallel 0
  *
- * # Run a specific test by name (various formats work)
- * ./tests/scripts/run_tests.sh test_unit_ascii
- * ./tests/scripts/run_tests.sh unit_ascii
- * ./tests/scripts/run_tests.sh bin/test_unit_ascii
+ * # Run a specific category using labels
+ * ctest --test-dir build --label-regex "^unit$" --output-on-failure
+ * ctest --test-dir build --label-regex "^integration$" --output-on-failure
+ * ctest --test-dir build --label-regex "^performance$" --output-on-failure
  *
- * # Run a specific test by category and name
- * ./tests/scripts/run_tests.sh unit options
- * ./tests/scripts/run_tests.sh integration crypto_network
- * ```
- *
- * Build options:
- * -------------
- * ```bash
- * # Choose your build type
- * ./tests/scripts/run_tests.sh -b debug      # Debug with AddressSanitizer (default)
- * ./tests/scripts/run_tests.sh -b dev        # Debug without sanitizers
- * ./tests/scripts/run_tests.sh -b release    # Release with optimizations
- * ./tests/scripts/run_tests.sh -b coverage   # Coverage instrumentation
- * ./tests/scripts/run_tests.sh -b tsan       # ThreadSanitizer
+ * # Run a specific test by name pattern
+ * ctest --test-dir build -R "buffer_pool" --output-on-failure
+ * ctest --test-dir build -R "test_unit_ascii" --output-on-failure
  * ```
  *
  * Execution control:
  * -----------------
  * ```bash
  * # Control parallel execution
- * ./tests/scripts/run_tests.sh -j 4          # Run 4 test executables in parallel
- * ./tests/scripts/run_tests.sh --no-parallel  # Run one at a time (good for debugging)
+ * ctest --test-dir build --parallel 4 --output-on-failure   # Use 4 cores
+ * ctest --test-dir build --parallel 1 --output-on-failure   # Sequential (debugging)
  *
- * # Output and reporting
- * ./tests/scripts/run_tests.sh -v             # Verbose output (see what's happening)
- * ./tests/scripts/run_tests.sh -J            # Generate JUnit XML reports
- * ./tests/scripts/run_tests.sh -l /tmp/log    # Write to a custom log file
+ * # Verbose output
+ * ctest --test-dir build --output-on-failure --verbose
  *
- * # Filter tests (only works when running a single test binary)
- * ./tests/scripts/run_tests.sh test_unit_ascii -f "*some_test_name*"
- * ```
- *
- * Advanced usage:
- * --------------
- * ```bash
- * # Run multiple specific tests
- * ./tests/scripts/run_tests.sh unit options audio buffer_pool
- *
- * # Coverage with JUnit output (useful for CI)
- * ./tests/scripts/run_tests.sh -c -J
- *
- * # Custom build directory (useful in Docker)
- * DOCKER_BUILD=1 ./tests/scripts/run_tests.sh
+ * # List available tests
+ * ctest --test-dir build -N
  * ```
  *
  * @subsection testing_runner_architecture Architecture
  *
  * How it works:
  * ------------
- * The script discovers tests by looking for files:
- * - Unit tests: `tests/unit/*_test.c`
- * - Integration tests: `tests/integration/*_test.c`
- * - Performance tests: `tests/performance/*_test.c`
- *
- * Test executables are named like: `test_{category}_{name}` (e.g., `test_unit_ascii`)
+ * CMake discovers tests from `tests/unit/`, `tests/integration/`, and `tests/performance/`:
+ * - Test executables are named like: `test_{category}_{name}` (e.g., `test_unit_ascii`)
+ * - Each test is labeled with its category for filtering
  *
  * Building:
  * ---------
- * - Uses CMake for configuration and building
- * - Supports different build directories (`build`, `build_docker`, `build_clang`)
- * - Incremental builds with Ninja (only rebuilds what changed—super fast!)
- * - Tracks dependencies automatically
+ * - Build all tests: `cmake --build build --target tests`
+ * - Build specific test: `cmake --build build --target test_unit_buffer_pool`
+ * - Uses Ninja for fast incremental builds
  *
- * Running tests:
- * -------------
- * The script can run tests in two modes:
- *
- * - **Parallel mode** (default): Runs multiple test executables at the same time
- *   - Automatically figures out how many CPU cores you have
- *   - Uses half your cores for tests (good balance of speed vs. memory)
- *   - You can control this with `-j N` if you want
- *
- * - **Sequential mode**: Runs tests one at a time
- *   - Use `--no-parallel` to enable this
- *   - Great for debugging when you need to see output clearly
- *
- * Signal handling:
- * ---------------
- * If you press Ctrl-C, the script handles it gracefully:
- * - Stops all running tests cleanly
- * - Tells you what was cancelled
- * - Cleans up temporary files
- *
- * @subsection testing_runner_internals Internal Details
- *
- * (You probably don't need to know these details, but they're here if you're curious!)
- *
- * How tests are run:
- * -----------------
- * Tests are started with these environment variables set:
- * ```bash
- * TESTING=1 CRITERION_TEST=1 "$test_executable" "${test_args[@]}"
- * ```
- *
- * Default Criterion arguments:
- * ----------------------------
- * The script passes these arguments to Criterion by default:
- * - `--jobs 0`: Let Criterion figure out the best parallelism
- * - `--timeout 25`: Kill any test that takes longer than 25 seconds
- * - `--color=always`: Pretty colors in the output
- * - `--short-filename`: Shorter file paths in output (easier to read)
- * - `--verbose`: If you've enabled verbose mode
- *
- * Parallelism calculation:
- * ------------------------
- * The script figures out how many tests to run in parallel like this:
- * ```bash
- * max_parallel_tests = (CPU_CORES / 2)
- * ```
- * This gives good performance without using so much memory that your system grinds to a halt.
+ * XML Output:
+ * ----------
+ * Criterion generates XML output in `build/Testing/criterion-xml/`:
+ * - Each test executable produces its own XML file
+ * - XML files are used by CI for test result reporting
  *
  * @section testing_parameterized Parameterized Tests
  *
@@ -733,11 +655,12 @@
  * ---------------------------
  * To build and run tests with coverage instrumentation:
  * ```bash
- * # Build with coverage
- * ./tests/scripts/run_tests.sh -b coverage
+ * # Configure with coverage enabled
+ * cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
  *
- * # Or use the coverage flag
- * ./tests/scripts/run_tests.sh -c
+ * # Build and run tests
+ * cmake --build build --target tests
+ * ctest --test-dir build --output-on-failure --parallel 0
  *
  * # Coverage files are generated as .gcov files
  * # (They're automatically uploaded in CI, but you can check them locally too)

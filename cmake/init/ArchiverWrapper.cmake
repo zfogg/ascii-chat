@@ -13,9 +13,9 @@
 # =============================================================================
 
 # Only configure the wrapper for Release builds where we build STATIC libraries
-# Debug/Dev/Coverage builds on Windows use OBJECT libraries, so they don't need this
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
-    # Skip ar wrapper configuration for Windows Debug/Dev/Coverage builds
+# Debug/Dev builds on Windows use OBJECT libraries, so they don't need this
+if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+    # Skip ar wrapper configuration for Windows Debug/Dev builds
     # These use OBJECT libraries, not STATIC libraries
     return()
 endif()

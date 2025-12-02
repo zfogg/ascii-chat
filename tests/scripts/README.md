@@ -1,121 +1,99 @@
 # ascii-chat Test Scripts
 
-This directory contains unified test runner scripts that consolidate all the common test running patterns from the Makefile into reusable, standalone scripts.
+This directory contains test runner scripts for ascii-chat.
 
 ## Scripts
 
-### `run_tests.sh` - Main Test Runner
+### `run-docker-tests.ps1` - Docker-Based Test Runner
 
-The comprehensive test runner that supports all test types, build configurations, and output formats.
-
-**Usage:**
-```bash
-./tests/scripts/run_tests.sh [OPTIONS]
-```
-
-**Options:**
-- `-t, --type TYPE` - Test type: `all`, `unit`, `integration`, `performance` (default: `all`)
-- `-b, --build TYPE` - Build type: `debug`, `release`, `debug-coverage`, `release-coverage` (default: `debug`)
-- `-j, --jobs N` - Number of parallel jobs (default: auto-detect CPU cores)
-- `-J, --junit` - Generate JUnit XML output
-- `-v, --verbose` - Verbose output
-- `-c, --coverage` - Enable coverage (overrides build type)
-- `-h, --help` - Show help message
-
-**Examples:**
-```bash
-# Run all tests with debug build
-./tests/scripts/run_tests.sh
-
-# Run unit tests with release build
-./tests/scripts/run_tests.sh -t unit -b release
-
-# Run performance tests with JUnit output
-./tests/scripts/run_tests.sh -t performance -J
-
-# Run integration tests with coverage
-./tests/scripts/run_tests.sh -c -t integration
-
-# Run all tests with release+coverage+JUnit
-./tests/scripts/run_tests.sh -b release-coverage -J
-```
-
-### `test.sh` - Simple Wrapper
-
-A simple wrapper around `run_tests.sh` for common use cases. Defaults to running all tests with debug build.
+PowerShell script to run tests via Docker using ctest. This is the recommended way to run tests on Windows or when you need a consistent Linux test environment.
 
 **Usage:**
-```bash
-./tests/scripts/test.sh [OPTIONS]
+```powershell
+# Run all tests
+./tests/scripts/run-docker-tests.ps1
+
+# Run specific test category
+./tests/scripts/run-docker-tests.ps1 unit           # All unit tests
+./tests/scripts/run-docker-tests.ps1 integration    # All integration tests
+./tests/scripts/run-docker-tests.ps1 performance    # All performance tests
+
+# Run tests matching a pattern
+./tests/scripts/run-docker-tests.ps1 -Filter "buffer"
+
+# Run a specific test
+./tests/scripts/run-docker-tests.ps1 test_unit_buffer_pool
+
+# Run clang-tidy analysis
+./tests/scripts/run-docker-tests.ps1 -ClangTidy
+./tests/scripts/run-docker-tests.ps1 clang-tidy lib/common.c
+
+# Interactive shell in container
+./tests/scripts/run-docker-tests.ps1 -Interactive
+
+# Clean rebuild
+./tests/scripts/run-docker-tests.ps1 -Clean
 ```
 
-All options are passed through to `run_tests.sh`.
+## Running Tests Natively with ctest
 
-## Build Types
+For native builds (without Docker), use ctest directly:
 
-- **`debug`** - Debug build with symbols, no optimization
-- **`release`** - Release build with optimizations and LTO
-- **`debug-coverage`** - Debug build with coverage instrumentation
-- **`release-coverage`** - Release build with coverage instrumentation
+```bash
+# Build tests
+cmake --build build --target tests
+
+# Run all tests
+ctest --test-dir build --output-on-failure --parallel 0
+
+# Run specific category using labels
+ctest --test-dir build --label-regex "^unit$" --output-on-failure
+ctest --test-dir build --label-regex "^integration$" --output-on-failure
+ctest --test-dir build --label-regex "^performance$" --output-on-failure
+
+# Run specific test by name pattern
+ctest --test-dir build -R "buffer_pool" --output-on-failure
+
+# Verbose output
+ctest --test-dir build --output-on-failure --verbose
+```
 
 ## Test Types
 
-- **`all`** - Run all test categories (unit, integration, performance)
-- **`unit`** - Run only unit tests
-- **`integration`** - Run only integration tests
-- **`performance`** - Run only performance tests
+- **`unit`** - Unit tests for individual components
+- **`integration`** - Multi-component integration tests
+- **`performance`** - Performance and stress tests
 
-## Features
+## Docker Testing
 
-### Automatic Test Building
-If tests don't exist, the script will automatically build them using the appropriate Makefile target.
+Docker provides a consistent Linux environment for running tests:
 
-### Parallel Execution
-Tests run in parallel using all available CPU cores by default. Use `-j N` to override.
+```bash
+# Using docker-compose directly
+docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests
 
-### JUnit XML Output
-Use `-J` or `--junit` to generate JUnit XML output compatible with CI systems like GitHub Actions.
+# Interactive shell
+docker-compose -f tests/docker-compose.yml run --rm ascii-chat-tests /bin/bash
 
-### Comprehensive Logging
-- Regular mode: Logs saved to `/tmp/test_logs.txt`
-- JUnit mode: XML output saved to `junit.xml` in project root
-- Verbose mode: Additional debug information with `-v`
-
-### Error Handling
-- Proper exit codes for CI integration
-- Detailed error reporting
-- Graceful handling of missing tests
-
-## Integration with Makefile
-
-These scripts replace the repetitive test running code in the Makefile. The Makefile targets now delegate to these scripts:
-
-```makefile
-# Instead of inline shell scripts, use:
-test: $(TEST_EXECUTABLES)
-	./tests/scripts/run_tests.sh -b debug
-
-test-performance: $(filter $(BIN_DIR)/test_performance_%, $(TEST_EXECUTABLES))
-	./tests/scripts/run_tests.sh -t performance -b debug
+# Rebuild image
+docker-compose -f tests/docker-compose.yml build --no-cache
 ```
 
 ## CI Integration
 
-The scripts are designed to work seamlessly with CI systems:
+Tests are run automatically via GitHub Actions using ctest with JUnit XML output from Criterion:
 
 ```yaml
-# GitHub Actions example
 - name: Run Tests
-  run: ./tests/scripts/run_tests.sh -J -b release-coverage
-  env:
-    GENERATE_JUNIT: 1
+  run: |
+    cmake --build build --target tests
+    ctest --test-dir build --output-on-failure --parallel 0
 ```
 
-## Benefits
+## Features
 
-1. **DRY Principle** - Eliminates code duplication across Makefile targets
-2. **Consistency** - All tests run with the same logic and error handling
-3. **Maintainability** - Single place to update test running behavior
-4. **Flexibility** - Easy to add new options and features
-5. **Reusability** - Can be used outside of Makefile context
-6. **CI-Friendly** - Proper exit codes and JUnit XML output
+- **Parallel Execution**: `--parallel 0` auto-detects CPU cores
+- **Label Filtering**: Use `--label-regex` to filter by test category
+- **Name Filtering**: Use `-R` to filter by test name pattern
+- **XML Output**: Criterion generates XML in `build/Testing/criterion-xml/`
+- **Docker Support**: Consistent test environment via Docker

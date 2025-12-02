@@ -87,6 +87,11 @@ bool ssh_agent_is_available(void) {
 }
 
 bool ssh_agent_has_key(const public_key_t *public_key) {
+  if (public_key == NULL) {
+    log_warn("NULL is not a valid public key");
+    return false;
+  }
+
   // Use SSH agent protocol to list keys (works on both Windows and Unix)
   pipe_t pipe = ssh_agent_open_pipe();
   if (pipe == INVALID_PIPE_VALUE) {
