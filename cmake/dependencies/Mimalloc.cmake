@@ -328,8 +328,16 @@ if(USE_MIMALLOC)
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
 
-        # Make mimalloc sources available (modern CMake approach)
-        FetchContent_MakeAvailable(mimalloc)
+        # Make mimalloc sources available but exclude from installation
+        # Using manual approach instead of FetchContent_MakeAvailable to add EXCLUDE_FROM_ALL
+        # This prevents mimalloc's install() commands from running (which would install mimalloc.pc)
+        FetchContent_GetProperties(mimalloc)
+        if(NOT mimalloc_POPULATED)
+            FetchContent_Populate(mimalloc)
+            # EXCLUDE_FROM_ALL prevents mimalloc's install() commands from running
+            # This avoids conflicts with system-installed mimalloc packages (e.g., on Arch Linux)
+            add_subdirectory(${mimalloc_SOURCE_DIR} ${mimalloc_BINARY_DIR} EXCLUDE_FROM_ALL)
+        endif()
 
         # Restore original output directory settings
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
