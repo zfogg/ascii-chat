@@ -464,11 +464,11 @@ The pre-built library at `deps/bearssl/build/libbearssl.a` persists across `rm -
 ```bash
 # Different build types
 ./tests/scripts/run_tests.sh -b release      # Optimized build
-./tests/scripts/run_tests.sh -b coverage     # Coverage instrumentation
 ./tests/scripts/run_tests.sh -b debug        # AddressSanitizer enabled (default)
 
-# Generate JUnit XML for CI
-./tests/scripts/run_tests.sh -J
+# For coverage, use cmake with ASCIICHAT_ENABLE_COVERAGE=ON
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
+cmake --build build && ctest --test-dir build --output-on-failure
 
 # Custom logging
 ./tests/scripts/run_tests.sh --log-file=/tmp/custom_test.log

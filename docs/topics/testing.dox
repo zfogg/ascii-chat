@@ -352,7 +352,7 @@
  * - **Sequential mode**: Run one test at a time if you're debugging
  * - **Timeout handling**: Kills tests that hang (default: 25 seconds per test)
  * - **JUnit XML output**: Generate reports that CI systems understand
- * - **Coverage builds**: Build with coverage instrumentation enabled
+ * - **Coverage option**: Build with coverage instrumentation via ASCIICHAT_ENABLE_COVERAGE
  * - **Verbose mode**: See lots of detail when something goes wrong
  * - **Test filtering**: Run only tests matching a pattern
  *
@@ -386,7 +386,7 @@
  * ./tests/scripts/run_tests.sh -b debug      # Debug with AddressSanitizer (default)
  * ./tests/scripts/run_tests.sh -b dev        # Debug without sanitizers
  * ./tests/scripts/run_tests.sh -b release    # Release with optimizations
- * ./tests/scripts/run_tests.sh -b coverage   # Coverage instrumentation
+ * # For coverage, use cmake directly with ASCIICHAT_ENABLE_COVERAGE=ON
  * ./tests/scripts/run_tests.sh -b tsan       # ThreadSanitizer
  * ```
  *
@@ -412,8 +412,8 @@
  * # Run multiple specific tests
  * ./tests/scripts/run_tests.sh unit options audio buffer_pool
  *
- * # Coverage with JUnit output (useful for CI)
- * ./tests/scripts/run_tests.sh -c -J
+ * # For CI with coverage, use ctest directly (Criterion generates XML)
+ * ctest --test-dir build --output-on-failure --parallel 0
  *
  * # Custom build directory (useful in Docker)
  * DOCKER_BUILD=1 ./tests/scripts/run_tests.sh
