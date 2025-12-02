@@ -276,6 +276,11 @@ static void *webcam_capture_thread_func(void *arg) {
   (void)clock_gettime(CLOCK_MONOTONIC, &last_capture_frame_time);
   int expected_capture_fps = 144; // 144 fps target
 
+  // Track NULL frame timeout - exit if webcam returns NULL for too long
+  struct timespec null_frame_start_time = {0, 0};
+  bool tracking_null_frames = false;
+  const long WEBCAM_NULL_TIMEOUT_SEC = 2; // Exit after 2 seconds of NULL frames
+
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
     if (!server_connection_is_active()) {
@@ -298,10 +303,32 @@ static void *webcam_capture_thread_func(void *arg) {
     image_t *image = webcam_read();
 
     if (!image) {
-      log_info("No frame available from webcam yet (webcam_read returned NULL)");
+      // Track how long we've been getting NULL frames
+      struct timespec now;
+      (void)clock_gettime(CLOCK_MONOTONIC, &now);
+
+      if (!tracking_null_frames) {
+        // First NULL frame - start tracking
+        null_frame_start_time = now;
+        tracking_null_frames = true;
+        log_info("No frame available from webcam yet (webcam_read returned NULL)");
+      } else {
+        // Check if we've exceeded the timeout
+        long elapsed_sec = now.tv_sec - null_frame_start_time.tv_sec;
+        if (elapsed_sec >= WEBCAM_NULL_TIMEOUT_SEC) {
+          log_error("Webcam has not produced frames for %ld seconds - webcam may be faulty or disconnected", elapsed_sec);
+          SET_ERRNO(ERROR_WEBCAM, "Webcam timeout: no frames for %ld seconds", elapsed_sec);
+          signal_exit_with_error(ERROR_WEBCAM);
+          break;
+        }
+      }
+
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
+
+    // Got a valid frame - reset NULL tracking
+    tracking_null_frames = false;
 
     // Process frame for network transmission
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);

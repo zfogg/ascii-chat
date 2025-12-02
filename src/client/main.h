@@ -80,3 +80,23 @@ bool should_exit(void);
  * threads. Thread-safe and can be called from signal handlers.
  */
 void signal_exit(void);
+
+/**
+ * @brief Signal client to exit with an error code
+ *
+ * Sets both the exit flag and an error code that can be retrieved
+ * by the main thread to determine the exit status.
+ *
+ * @param error The error code to set (from asciichat_error_t)
+ */
+void signal_exit_with_error(int error);
+
+/**
+ * @brief Get the exit error code
+ *
+ * Returns the error code set by signal_exit_with_error(), or ASCIICHAT_OK
+ * if no error was set.
+ *
+ * @return The error code set during exit, or ASCIICHAT_OK
+ */
+int get_exit_error(void);

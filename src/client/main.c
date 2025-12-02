@@ -104,6 +104,9 @@
 /** Global flag indicating shutdown has been requested */
 atomic_bool g_should_exit = false;
 
+/** Global error code set when exiting due to an error */
+atomic_int g_exit_error = ASCIICHAT_OK;
+
 /**
  * Check if shutdown has been requested
  *
@@ -118,6 +121,23 @@ bool should_exit() {
  */
 void signal_exit() {
   atomic_store(&g_should_exit, true);
+}
+
+/**
+ * Signal exit with an error code
+ */
+void signal_exit_with_error(int error) {
+  // Only set error if not already set (first error wins)
+  int expected = ASCIICHAT_OK;
+  atomic_compare_exchange_strong(&g_exit_error, &expected, error);
+  atomic_store(&g_should_exit, true);
+}
+
+/**
+ * Get the exit error code
+ */
+int get_exit_error() {
+  return atomic_load(&g_exit_error);
 }
 
 /**
@@ -511,5 +531,13 @@ int client_main(void) {
   }
 
   log_info("ascii-chat client shutting down");
+
+  // Return error code if exit was due to an error
+  int exit_error = get_exit_error();
+  if (exit_error != ASCIICHAT_OK) {
+    log_error("Exiting with error code %d: %s", exit_error, asciichat_error_string(exit_error));
+    return exit_error;
+  }
+
   return 0;
 }
