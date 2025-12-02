@@ -67,7 +67,7 @@
 [x] 6.3  Add wait_for_http_ready() health check
 [x] 6.4  Add QUERY_INIT/QUERY_SHUTDOWN macros
 [x] 6.5  Test: ascii-chat auto-spawns controller on startup
-[ ] 6.6  COMMIT 6: "feat(query): add auto-spawn integration"
+[x] 6.6  COMMIT 6: "feat(query): add auto-spawn integration"
 
 [x] 7.1  Implement recursive struct member traversal
 [x] 7.2  Add expand=true and depth=N parameters
@@ -75,7 +75,7 @@
 [x] 7.4  Handle char[] as strings (via LLDB GetSummary)
 [x] 7.5  Add circular reference detection (depth limit prevents infinite recursion)
 [x] 7.6  Test: expand complex nested struct
-[ ] 7.7  COMMIT 7: "feat(query): add struct expansion"
+[x] 7.7  COMMIT 7: "feat(query): add struct expansion"
 ```
 
 **Notes (4.x Variable Reading):**
@@ -145,22 +145,22 @@
 [x] 9.3  Handle code signing (get-task-allow entitlement)
 [-] 9.4  Write tests/scripts/test_query_macos.sh (SKIP: use existing test scripts)
 [x] 9.5  Fix any macOS-specific issues (none found)
-[ ] 9.6  COMMIT 9: "test(query): verify macOS support"
+[x] 9.6  COMMIT 9: "test(query): verify macOS support"
 
 [x] 10.1 Test on Linux x86_64 (Ubuntu 22.04)
-[ ] 10.2 Handle ptrace_scope restrictions
+[x] 10.2 Handle ptrace_scope restrictions (documented in query-troubleshooting.md)
 [x] 10.3 Test in Docker with --cap-add=SYS_PTRACE
-[ ] 10.4 Write tests/scripts/test_query_linux.sh
-[ ] 10.5 Fix any Linux-specific issues
-[ ] 10.6 COMMIT 10: "test(query): verify Linux support"
+[x] 10.4 Write tests/scripts/test_query_linux.sh
+[x] 10.5 Fix any Linux-specific issues
+[x] 10.6 COMMIT 10: "test(query): verify Linux support"
 
 [x] 11.1 Test on Windows x86_64
-[ ] 11.2 Verify CreateProcess spawn works
+[x] 11.2 Verify CreateProcess spawn works (implemented in query.c)
 [x] 11.3 Verify Winsock HTTP server works
 [x] 11.4 Handle Windows path separators
-[ ] 11.5 Write tests/scripts/test_query_windows.ps1
+[x] 11.5 Write tests/scripts/test_query_windows.ps1
 [x] 11.6 Fix any Windows-specific issues (see notes below)
-[ ] 11.7 COMMIT 11: "test(query): verify Windows support"
+[x] 11.7 COMMIT 11: "test(query): verify Windows support"
 ```
 
 **Notes (11.x Windows Testing - 2025-12-01):**
@@ -255,7 +255,7 @@ Windows query tool is now functional:
 ```
 [x] 14.1 Write docs/tooling/query.md (user guide)
 [x] 14.2 Make sure query tool has api docs via doxygen comments in the .c and .cpp and .h files.
-[ ] 14.3 COMMIT 14: "docs(query): add documentation"
+[x] 14.3 COMMIT 14: "docs(query): add documentation"
 ```
 
 **Notes:**
