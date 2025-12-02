@@ -147,6 +147,10 @@ if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
         INSTALL_COMMAND make -C <SOURCE_DIR> install PREFIX=${ZSTD_PREFIX}
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${ZSTD_PREFIX}/lib/libzstd.a
+        LOG_DOWNLOAD TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
     )
 else()
     message(STATUS "  ${BoldBlue}zstd${ColorReset} library found in cache: ${BoldMagenta}${ZSTD_PREFIX}/lib/libzstd.a${ColorReset}")
@@ -182,6 +186,11 @@ if(NOT EXISTS "${LIBSODIUM_PREFIX}/lib/libsodium.a")
         INSTALL_COMMAND make install
         DEPENDS zstd-musl
         BUILD_BYPRODUCTS ${LIBSODIUM_PREFIX}/lib/libsodium.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
     )
 else()
     message(STATUS "  ${BoldBlue}libsodium${ColorReset} library found in cache: ${BoldMagenta}${LIBSODIUM_PREFIX}/lib/libsodium.a${ColorReset}")
@@ -218,6 +227,11 @@ if(NOT EXISTS "${ALSA_PREFIX}/lib/libasound.a")
         BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${ALSA_PREFIX}/lib/libasound.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
     )
 else()
     message(STATUS "  ${BoldBlue}ALSA${ColorReset} library found in cache: ${BoldMagenta}${ALSA_PREFIX}/lib/libasound.a${ColorReset}")
@@ -254,6 +268,11 @@ if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         DEPENDS alsa-lib-musl
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
     )
 else()
     message(STATUS "  ${BoldBlue}PortAudio${ColorReset} library found in cache: ${BoldMagenta}${PORTAUDIO_PREFIX}/lib/libportaudio.a${ColorReset}")
@@ -288,6 +307,10 @@ if(NOT EXISTS "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
         INSTALL_COMMAND env CC=${MUSL_GCC} make -C <SOURCE_DIR> install PREFIX=${LIBEXECINFO_PREFIX}
         BUILD_IN_SOURCE 1
         BUILD_BYPRODUCTS ${LIBEXECINFO_PREFIX}/lib/libexecinfo.a
+        LOG_DOWNLOAD TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
     )
 else()
     message(STATUS "  ${BoldBlue}libexecinfo${ColorReset} library found in cache: ${BoldMagenta}${LIBEXECINFO_PREFIX}/lib/libexecinfo.a${ColorReset}")
@@ -324,19 +347,21 @@ if(EXISTS "${BEARSSL_SOURCE_DIR}")
 
         # Build the static library target with parallel jobs for faster builds
         # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
+        # Output is captured and only shown on failure
         execute_process(
             COMMAND make -j1 lib CC=${MUSL_GCC} AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
             WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
             RESULT_VARIABLE BEARSSL_MAKE_RESULT
             OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
             ERROR_VARIABLE BEARSSL_MAKE_ERROR
+            OUTPUT_QUIET
         )
 
         if(BEARSSL_MAKE_RESULT EQUAL 0)
             # Copy library to cache
             file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a"
                  DESTINATION "${BEARSSL_BUILD_DIR}")
-            message(STATUS "BearSSL library built and cached successfully")
+            message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library built and cached successfully")
         else()
             message(FATAL_ERROR "BearSSL build failed with exit code ${BEARSSL_MAKE_RESULT}\nOutput: ${BEARSSL_MAKE_OUTPUT}\nError: ${BEARSSL_MAKE_ERROR}")
         endif()
