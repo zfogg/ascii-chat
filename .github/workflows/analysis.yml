@@ -69,6 +69,11 @@ jobs:
         run: |
           scan-build cmake --build build
 
+      - name: Build for clang-tidy (generates PCH files)
+        run: |
+          # Rebuild to ensure PCH files exist for clang-tidy
+          cmake --build build --clean-first
+
       - name: Run clang-tidy
         run: |
           cmake --build build --target clang-tidy
