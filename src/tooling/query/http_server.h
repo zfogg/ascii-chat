@@ -27,6 +27,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "json.h"
+
 namespace ascii_query {
 
 /**
@@ -119,15 +121,15 @@ struct HttpResponse {
   }
 
   static HttpResponse notFound(const std::string &message = "Not Found") {
-    return HttpResponse(404, "Not Found", "application/json", R"({"error":")" + message + R"("})");
+    return HttpResponse(404, "Not Found", "application/json", R"({"error":")" + json::escape(message) + R"("})");
   }
 
   static HttpResponse badRequest(const std::string &message = "Bad Request") {
-    return HttpResponse(400, "Bad Request", "application/json", R"({"error":")" + message + R"("})");
+    return HttpResponse(400, "Bad Request", "application/json", R"({"error":")" + json::escape(message) + R"("})");
   }
 
   static HttpResponse serverError(const std::string &message = "Internal Server Error") {
-    return HttpResponse(500, "Internal Server Error", "application/json", R"({"error":")" + message + R"("})");
+    return HttpResponse(500, "Internal Server Error", "application/json", R"({"error":")" + json::escape(message) + R"("})");
   }
 
   static HttpResponse noContent() {
