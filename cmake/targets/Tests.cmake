@@ -415,10 +415,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             --short-filename
         )
 
-        # Add XML output for coverage builds
-        if(IS_COVERAGE_BUILD)
-            list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
-        endif()
+        # Add XML output for all builds (needed for CI test reporting)
+        list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
 
         # Add to CTest with Criterion flags
         add_test(NAME ${test_exe_name}
