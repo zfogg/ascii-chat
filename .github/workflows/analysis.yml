@@ -64,16 +64,12 @@ jobs:
       - name: Run static analysis
         run: |
           # Build with CMake for static analysis
-          cmake --preset github -DBUILD_TESTS=OFF
+          # Disable PCH to avoid clang-tidy issues with missing PCH files
+          cmake --preset github -DBUILD_TESTS=OFF -DASCIICHAT_USE_PCH=OFF
 
       - name: Run scan-build
         run: |
           scan-build cmake --build build
-
-      - name: Build for clang-tidy (generates PCH files)
-        run: |
-          # Rebuild to ensure PCH files exist for clang-tidy
-          cmake --build build --clean-first
 
       - name: Run clang-tidy
         run: |
