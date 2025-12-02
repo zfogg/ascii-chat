@@ -129,7 +129,8 @@ struct HttpResponse {
   }
 
   static HttpResponse serverError(const std::string &message = "Internal Server Error") {
-    return HttpResponse(500, "Internal Server Error", "application/json", R"({"error":")" + json::escape(message) + R"("})");
+    return HttpResponse(500, "Internal Server Error", "application/json",
+                        R"({"error":")" + json::escape(message) + R"("})");
   }
 
   static HttpResponse noContent() {
