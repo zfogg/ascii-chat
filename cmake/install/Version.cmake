@@ -20,6 +20,50 @@
 include_guard(GLOBAL)
 
 # =============================================================================
+# Git Worktree Detection
+# =============================================================================
+# In a git worktree, .git is a file containing "gitdir: /path/to/git/dir"
+# In a regular repo, .git is a directory containing HEAD, index, etc.
+# This function detects which case we're in and sets the correct paths.
+# =============================================================================
+function(detect_git_dir OUT_GIT_HEAD OUT_GIT_INDEX)
+    set(_git_path "${CMAKE_SOURCE_DIR}/.git")
+
+    if(EXISTS "${_git_path}")
+        if(IS_DIRECTORY "${_git_path}")
+            # Regular git repository - .git is a directory
+            set(${OUT_GIT_HEAD} "${_git_path}/HEAD" PARENT_SCOPE)
+            set(${OUT_GIT_INDEX} "${_git_path}/index" PARENT_SCOPE)
+        else()
+            # Git worktree - .git is a file with "gitdir: /path/to/actual/git/dir"
+            file(READ "${_git_path}" _gitfile_content)
+            string(STRIP "${_gitfile_content}" _gitfile_content)
+
+            # Extract the gitdir path (format: "gitdir: /path/to/git/dir")
+            if(_gitfile_content MATCHES "^gitdir: (.+)$")
+                set(_actual_git_dir "${CMAKE_MATCH_1}")
+                # Handle relative paths (though they're usually absolute)
+                if(NOT IS_ABSOLUTE "${_actual_git_dir}")
+                    set(_actual_git_dir "${CMAKE_SOURCE_DIR}/${_actual_git_dir}")
+                endif()
+                set(${OUT_GIT_HEAD} "${_actual_git_dir}/HEAD" PARENT_SCOPE)
+                set(${OUT_GIT_INDEX} "${_actual_git_dir}/index" PARENT_SCOPE)
+                message(STATUS "Git worktree detected: ${_actual_git_dir}")
+            else()
+                # Fallback if parsing fails
+                message(WARNING "Could not parse .git file, using default paths")
+                set(${OUT_GIT_HEAD} "${_git_path}/HEAD" PARENT_SCOPE)
+                set(${OUT_GIT_INDEX} "${_git_path}/index" PARENT_SCOPE)
+            endif()
+        endif()
+    else()
+        # No .git found - use defaults (will fail gracefully)
+        set(${OUT_GIT_HEAD} "${_git_path}/HEAD" PARENT_SCOPE)
+        set(${OUT_GIT_INDEX} "${_git_path}/index" PARENT_SCOPE)
+    endif()
+endfunction()
+
+# =============================================================================
 # version_detect() - Call BEFORE project()
 # Sets: PROJECT_VERSION_FROM_GIT, GIT_VERSION_MAJOR/MINOR/PATCH
 # =============================================================================
@@ -234,18 +278,22 @@ configure_file(
     # - Release: Regenerate when any tracked files change (for reproducible builds)
     #
     # Strategy: Always generate to temp file, then copy_if_different to preserve timestamps
+
+    # Detect git directory (handles both regular repos and worktrees)
+    detect_git_dir(GIT_HEAD_PATH GIT_INDEX_PATH)
+
     if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         # Debug/Dev: Only depend on .git/HEAD (commits/branches), NOT .git/index
         # This prevents rebuilds from uncommitted changes or staging
         set(VERSION_DEPENDENCIES
-            "${CMAKE_SOURCE_DIR}/.git/HEAD"
+            "${GIT_HEAD_PATH}"
             "${CMAKE_SOURCE_DIR}/lib/version.h.in"
         )
     else()
         # Release: Also depend on .git/index for dirty state tracking
         set(VERSION_DEPENDENCIES
-            "${CMAKE_SOURCE_DIR}/.git/HEAD"
-            "${CMAKE_SOURCE_DIR}/.git/index"
+            "${GIT_HEAD_PATH}"
+            "${GIT_INDEX_PATH}"
             "${CMAKE_SOURCE_DIR}/lib/version.h.in"
         )
     endif()
