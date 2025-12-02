@@ -1,6 +1,11 @@
 {
   "permissions": {
     "allow": [
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr review:*)",
+      "Bash(gh pr comment:*)",
+      "Bash(gh run:*)",
       "Bash(rm:*)",
       "Bash(rmdir:*)",
       "Bash(ascii-chat:*)",
