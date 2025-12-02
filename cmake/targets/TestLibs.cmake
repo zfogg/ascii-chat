@@ -43,6 +43,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         target_link_libraries(test-static-lib PRIVATE ascii-panic-runtime)
     endif()
 
+    # Add musl dependency ordering for proper build sequencing
+    if(USE_MUSL)
+        add_dependencies(test-static-lib portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
+    endif()
+
     # Include necessary headers
     target_include_directories(test-static-lib PRIVATE
         ${CMAKE_SOURCE_DIR}/lib
