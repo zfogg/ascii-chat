@@ -105,6 +105,11 @@ function(validate_no_developer_paths TARGET_NAME)
         return()
     endif()
 
+    if(ASCIICHAT_SKIP_HARDENING_VALIDATION)
+        message(STATUS "Path validation skipped: ASCIICHAT_SKIP_HARDENING_VALIDATION=ON")
+        return()
+    endif()
+
     if(NOT ASCIICHAT_LLVM_STRINGS_EXECUTABLE)
         message(STATUS "Path validation skipped: llvm-strings not found")
         return()
