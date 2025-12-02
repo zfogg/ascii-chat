@@ -35,12 +35,68 @@ struct webcam_context_t {
   int fd;
   int width;
   int height;
+  uint32_t pixelformat; // Actual pixel format from driver (RGB24 or YUYV)
   webcam_buffer_t *buffers;
   int buffer_count;
 };
 
 /**
+ * @brief Convert YUYV (YUV 4:2:2) to RGB24
+ *
+ * YUYV packs 2 pixels into 4 bytes: Y0 U Y1 V
+ * Each Y gets its own pixel, U and V are shared between adjacent pixels.
+ *
+ * @param yuyv Source YUYV buffer
+ * @param rgb Destination RGB24 buffer
+ * @param width Frame width
+ * @param height Frame height
+ */
+static void yuyv_to_rgb24(const uint8_t *yuyv, uint8_t *rgb, int width, int height) {
+  const int num_pixels = width * height;
+  for (int i = 0; i < num_pixels; i += 2) {
+    // Each 4 bytes of YUYV contains 2 pixels
+    const int yuyv_idx = i * 2;
+    const int y0 = yuyv[yuyv_idx + 0];
+    const int u = yuyv[yuyv_idx + 1];
+    const int y1 = yuyv[yuyv_idx + 2];
+    const int v = yuyv[yuyv_idx + 3];
+
+    // Convert YUV to RGB using standard formula
+    // R = Y + 1.402 * (V - 128)
+    // G = Y - 0.344 * (U - 128) - 0.714 * (V - 128)
+    // B = Y + 1.772 * (U - 128)
+    const int c0 = y0 - 16;
+    const int c1 = y1 - 16;
+    const int d = u - 128;
+    const int e = v - 128;
+
+    // First pixel
+    int r = (298 * c0 + 409 * e + 128) >> 8;
+    int g = (298 * c0 - 100 * d - 208 * e + 128) >> 8;
+    int b = (298 * c0 + 516 * d + 128) >> 8;
+
+    const int rgb_idx0 = i * 3;
+    rgb[rgb_idx0 + 0] = (uint8_t)(r < 0 ? 0 : (r > 255 ? 255 : r));
+    rgb[rgb_idx0 + 1] = (uint8_t)(g < 0 ? 0 : (g > 255 ? 255 : g));
+    rgb[rgb_idx0 + 2] = (uint8_t)(b < 0 ? 0 : (b > 255 ? 255 : b));
+
+    // Second pixel
+    r = (298 * c1 + 409 * e + 128) >> 8;
+    g = (298 * c1 - 100 * d - 208 * e + 128) >> 8;
+    b = (298 * c1 + 516 * d + 128) >> 8;
+
+    const int rgb_idx1 = (i + 1) * 3;
+    rgb[rgb_idx1 + 0] = (uint8_t)(r < 0 ? 0 : (r > 255 ? 255 : r));
+    rgb[rgb_idx1 + 1] = (uint8_t)(g < 0 ? 0 : (g > 255 ? 255 : g));
+    rgb[rgb_idx1 + 2] = (uint8_t)(b < 0 ? 0 : (b > 255 ? 255 : b));
+  }
+}
+
+/**
  * @brief Set the format of the webcam
+ *
+ * Tries RGB24 first (native), then falls back to YUYV (most common).
+ * V4L2 drivers may change the requested format, so we check what was actually set.
  *
  * @param ctx The webcam context
  * @param width The width of the frame
@@ -52,19 +108,30 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = width;
   fmt.fmt.pix.height = height;
-  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24;
-  fmt.fmt.pix.field = V4L2_FIELD_INTERLACED;
+  fmt.fmt.pix.field = V4L2_FIELD_ANY;
 
-  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == -1) {
-    log_error("Failed to set V4L2 format: %s", strerror(errno));
-    return -1;
+  // Try RGB24 first (ideal - no conversion needed)
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24;
+  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
+    ctx->pixelformat = V4L2_PIX_FMT_RGB24;
+    ctx->width = fmt.fmt.pix.width;
+    ctx->height = fmt.fmt.pix.height;
+    log_info("V4L2 format set to RGB24 %dx%d", ctx->width, ctx->height);
+    return 0;
   }
 
-  ctx->width = fmt.fmt.pix.width;
-  ctx->height = fmt.fmt.pix.height;
+  // Fall back to YUYV (most webcams support this natively)
+  fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+  if (ioctl(ctx->fd, VIDIOC_S_FMT, &fmt) == 0 && fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+    ctx->pixelformat = V4L2_PIX_FMT_YUYV;
+    ctx->width = fmt.fmt.pix.width;
+    ctx->height = fmt.fmt.pix.height;
+    log_info("V4L2 format set to YUYV %dx%d (will convert to RGB)", ctx->width, ctx->height);
+    return 0;
+  }
 
-  log_info("V4L2 format set to %dx%d", ctx->width, ctx->height);
-  return 0;
+  log_error("Failed to set V4L2 format: device supports neither RGB24 nor YUYV");
+  return -1;
 }
 
 static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
@@ -330,9 +397,15 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     return NULL;
   }
 
-  // Copy frame data (V4L2 RGB24 format matches our rgb_t structure)
-  const size_t frame_size = (size_t)ctx->width * ctx->height * 3;
-  memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
+  // Copy and convert frame data based on pixel format
+  if (ctx->pixelformat == V4L2_PIX_FMT_YUYV) {
+    // Convert YUYV to RGB24
+    yuyv_to_rgb24(ctx->buffers[buf.index].start, (uint8_t *)img->pixels, ctx->width, ctx->height);
+  } else {
+    // RGB24 - direct copy
+    const size_t frame_size = (size_t)ctx->width * ctx->height * 3;
+    memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
+  }
 
   // Re-queue the buffer for future use
   if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
