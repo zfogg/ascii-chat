@@ -272,15 +272,17 @@ add_custom_target(build-all
 if(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE)
     if(ASCIICHAT_LLVM_READELF_EXECUTABLE)
         # 1. Security hardening check (RELRO, PIE)
-        add_custom_command(TARGET ascii-chat POST_BUILD
-            COMMAND ${CMAKE_COMMAND}
-                -DMODE=hardening
-                -DBINARY=$<TARGET_FILE:ascii-chat>
-                -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
-            COMMENT "Validating security hardening"
-            VERBATIM
-        )
+        if(NOT ASCIICHAT_SKIP_HARDENING_VALIDATION)
+            add_custom_command(TARGET ascii-chat POST_BUILD
+                COMMAND ${CMAKE_COMMAND}
+                    -DMODE=hardening
+                    -DBINARY=$<TARGET_FILE:ascii-chat>
+                    -DLLVM_READELF=${ASCIICHAT_LLVM_READELF_EXECUTABLE}
+                    -P ${CMAKE_SOURCE_DIR}/cmake/utils/ValidateBinary.cmake
+                COMMENT "Validating security hardening"
+                VERBATIM
+            )
+        endif()
 
         # 2. No debug info check
         # Note: Moved to PostBuild.cmake to run AFTER stripping

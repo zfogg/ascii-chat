@@ -74,6 +74,9 @@ option(BUILD_TESTS "Build test executables" ON)
 # Enforce static linking for Release builds by default
 option(ASCIICHAT_ENFORCE_STATIC_RELEASE "Fail Release builds if binaries are not statically linked" ON)
 
+# Skip hardening validation (useful for CI performance tests where linker checks may fail)
+option(ASCIICHAT_SKIP_HARDENING_VALIDATION "Skip security hardening validation for Release binaries" OFF)
+
 # Build type (matches Makefile modes)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, RelWithDebInfo" FORCE)

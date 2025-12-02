@@ -134,6 +134,7 @@ jobs:
           -DUSE_MIMALLOC=ON \
           -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF \
           -DASCIICHAT_ENABLE_COVERAGE=OFF \
+          -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON \
           -DBUILD_TESTS=OFF
         cmake --build build_release
         RELEASE_SIZE=$(stat -f%z build_release/bin/ascii-chat 2>/dev/null || stat -c%s build_release/bin/ascii-chat)

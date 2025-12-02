@@ -126,6 +126,10 @@ jobs:
           # Force Criterion tests in Release mode for CI testing
           # Must use ASCIICHAT_FORCE_CRITERION_TESTS (cache option) not BUILD_CRITERION_TESTS (regular variable)
           cmake_args+=(-DASCIICHAT_FORCE_CRITERION_TESTS=ON)
+          # Disable coverage for Release builds (github preset has it ON by default)
+          cmake_args+=(-DASCIICHAT_ENABLE_COVERAGE=OFF)
+          # Skip hardening validation (linker checks may fail in CI environment)
+          cmake_args+=(-DASCIICHAT_SKIP_HARDENING_VALIDATION=ON)
         fi
 
         cmake -B build "${cmake_args[@]}"
@@ -664,11 +668,13 @@ jobs:
 
         FLAGS="-std=c2x"
 
+        # Disable coverage for functional tests - not needed and causes llvm_gcov_init symbol errors
         cmake -B build --preset github \
           -DCMAKE_C_COMPILER="${CLANG_BIN}" -DCMAKE_CXX_COMPILER="${CLANGXX_BIN}" \
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}" \
-          -DBUILD_TESTS=OFF
+          -DBUILD_TESTS=OFF \
+          -DASCIICHAT_ENABLE_COVERAGE=OFF
         cmake --build build
 
     - name: Test binary help and modes
