@@ -82,15 +82,16 @@
  * @subsection build_philosophy_lib The Library (libasciichat)
  *
  * I'm proud of libasciichat and made it available for others to use. That's why we
- * build and distribute a dynamic library—so you can link against it in your own
- * projects without pulling in ascii-chat's entire dependency tree statically.
+ * build and distribute a library—so you can link against it in your own
+ * projects.
  *
  * **Release artifacts include**:
  * - `libasciichat.so` / `asciichat.dll` / `libasciichat.dylib` - Dynamic library
  * - `libasciichat.a` / `asciichat.lib` - Static library
  *
- * We distribute *both* so you have options. Use the dynamic library for normal
- * development, or use the static library to build your own portable releases.
+ * We distribute *both* dynamic and static libraries so you have options. Use the dynamic
+ * library for normal development, or use the static library to build your own portable
+ * releases.
  *
  * @subsection build_philosophy_static Static Releases (Portability is Awesome)
  *

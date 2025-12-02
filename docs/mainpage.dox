@@ -49,7 +49,6 @@
  * index of all topics grouped by category. This is an excellent starting point!
  *
  * The @ref topics "Topics" page includes comprehensive architectural guides with names like:
- * - **@ref topic_categories "Topic Categories"** - Index page that lists all topics organized by category (start here!)
  * - **@ref topic_build "Build System README"** - Comprehensive build documentation
  * - **@ref topic_crypto "Cryptography"** - Crypto architecture and usage
  * - **@ref topic_handshake "Handshake Module README"** - Protocol and authentication details
