@@ -104,6 +104,47 @@ coverage:
           - "lib/platform/terminal.h"
           - "lib/palette.*"
 
+      # Video frame handling
+      video_frames:
+        target: 50%
+        threshold: 2%
+        paths:
+          - "lib/video_frame.*"
+
+      # Core utilities and error handling
+      core_utilities:
+        target: 50%
+        threshold: 2%
+        paths:
+          - "lib/asciichat_errno.*"
+          - "lib/common.*"
+          - "lib/compression.*"
+          - "lib/util/**/*"
+
+      # Debug utilities
+      debug_utilities:
+        target: 40%
+        threshold: 5%
+        paths:
+          - "lib/debug/**/*"
+        informational: true
+
+      # Tooling (defer, panic, query)
+      tooling:
+        target: 40%
+        threshold: 5%
+        paths:
+          - "lib/tooling/**/*"
+          - "src/tooling/**/*"
+        informational: true
+
+      # Main entry point
+      main_entry:
+        target: 50%
+        threshold: 2%
+        paths:
+          - "src/main.c"
+
       # Test infrastructure
       test_framework:
         target: 60%
@@ -335,9 +376,11 @@ component_management:
       name: "Data Structures"
       paths:
         - "lib/buffer_pool.*"
-        - "lib/common.*"
-        - "lib/util/**/*"
+        - "lib/packet_queue.*"
+        - "lib/ringbuffer.*"
         - "tests/**/buffer_pool*.c"
+        - "tests/**/packet_queue*.c"
+        - "tests/**/ringbuffer*.c"
       statuses:
         - type: project
           target: 50%
@@ -368,6 +411,60 @@ component_management:
         - type: project
           target: 50%
           informational: true
+
+    # Video frame handling
+    - component_id: video_frames
+      name: "Video Frames"
+      paths:
+        - "lib/video_frame.*"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
+
+    # Core utilities
+    - component_id: core_utilities
+      name: "Core Utilities"
+      paths:
+        - "lib/asciichat_errno.*"
+        - "lib/common.*"
+        - "lib/compression.*"
+        - "lib/util/**/*"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
+
+    # Debug utilities
+    - component_id: debug_utilities
+      name: "Debug Utilities"
+      paths:
+        - "lib/debug/**/*"
+      statuses:
+        - type: project
+          target: 40%
+          informational: true
+
+    # Tooling
+    - component_id: tooling
+      name: "Tooling"
+      paths:
+        - "lib/tooling/**/*"
+        - "src/tooling/**/*"
+      statuses:
+        - type: project
+          target: 40%
+          informational: true
+
+    # Main entry point
+    - component_id: main_entry
+      name: "Main Entry"
+      paths:
+        - "src/main.c"
+      statuses:
+        - type: project
+          target: 50%
+          threshold: 2%
 
     # Platform abstraction layer
     - component_id: platform_abstraction
@@ -473,6 +570,9 @@ ignore:
   - "Info.plist"
   - "**/.DS_Store"
   - "**/compile_commands.json"
+  - "lib/version.c"
+  - "lib/version.h.in"
+  - "lib/musl_c23_compat.c"
 
 # Flag configuration for organizing uploads
 flags:
