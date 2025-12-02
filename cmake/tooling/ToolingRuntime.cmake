@@ -93,6 +93,10 @@ function(ascii_build_tooling_runtime)
         if(TARGET ascii-chat-static-build)
             add_dependencies(ascii-panic-report ascii-chat-static-build)
         endif()
+        # Add musl dependency ordering for proper build sequencing
+        if(USE_MUSL)
+            add_dependencies(ascii-panic-report portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
+        endif()
     endif()
     set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
 
