@@ -454,6 +454,8 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DCMAKE_C_FLAGS="${FLAGS}"
           -DASCIICHAT_ENFORCE_STATIC_RELEASE=OFF
+          # Skip hardening validation - coverage builds embed .gcda paths in binary
+          -DASCIICHAT_SKIP_HARDENING_VALIDATION=ON
         )
 
         cmake -B build "${cmake_args[@]}"
