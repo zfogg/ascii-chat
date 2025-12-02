@@ -412,7 +412,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     static time_t first_frame_time = 0;
     if (first_frame_time == 0) {
       first_frame_time = time(NULL);
-      log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...", opt_snapshot_delay);
+      // If delay is 0, take snapshot immediately on first frame
+      if (opt_snapshot_delay == 0) {
+        log_info("Snapshot captured immediately (delay=0)!");
+        take_snapshot = true;
+        signal_exit();
+      } else {
+        log_info("Snapshot mode: first frame received, waiting %.2f seconds for webcam warmup...", opt_snapshot_delay);
+      }
     } else {
       time_t snapshot_time = time(NULL);
       double elapsed = difftime(snapshot_time, first_frame_time);

@@ -209,13 +209,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
 
     # Find test files (excluding problematic ones, matches Makefile)
     file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
+    # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
     set(TEST_EXCLUDES
-        tests/integration/server_multiclient_test.c
-        tests/integration/video_pipeline_test.c
+        ${PROJECT_SOURCE_DIR}/tests/integration/server_multiclient_test.c
+        ${PROJECT_SOURCE_DIR}/tests/integration/video_pipeline_test.c
     )
     # Exclude query tests if query runtime library not available
     if(NOT TARGET ascii-query-runtime)
-        list(APPEND TEST_EXCLUDES tests/unit/tooling/query_test.c)
+        list(APPEND TEST_EXCLUDES ${PROJECT_SOURCE_DIR}/tests/unit/tooling/query_test.c)
     endif()
 
     set(TEST_SRCS)

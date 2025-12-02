@@ -303,6 +303,44 @@ function _ascii_source_to_test_category() {
   echo "${rel%%/*}"
 }
 
+# Get valid test targets from the build system (Ninja)
+# This returns the set of test_* targets that CMake actually generated
+function get_valid_test_targets() {
+  local cmake_build_dir=$(get_build_directory)
+
+  if [[ ! -f "$PROJECT_ROOT/$cmake_build_dir/build.ninja" ]]; then
+    # No ninja file, return empty - will fall back to source discovery
+    return
+  fi
+
+  # Query ninja for all test_* targets
+  ninja -C "$PROJECT_ROOT/$cmake_build_dir" -t targets 2>/dev/null | \
+    grep '^test_' | \
+    sed 's/:.*$//' | \
+    sort -u
+}
+
+# Discover test executables from source files in a directory
+# Filters out tests not in the build system (e.g., excluded by CMake)
+# Args: $1=search_dir, $2=bin_dir, $3=valid_targets (newline-separated)
+function _discover_tests_in_dir() {
+  local search_dir="$1"
+  local bin_dir="$2"
+  local valid_targets="$3"
+
+  [[ -d "$search_dir" ]] || return
+
+  while IFS= read -r test_file; do
+    [[ -f "$test_file" ]] || continue
+    local executable_name
+    executable_name=$(_ascii_source_to_test_executable "$test_file")
+    # Skip tests not in the build system (e.g., excluded by CMake)
+    if [[ -z "$valid_targets" ]] || echo "$valid_targets" | grep -q "^${executable_name}$"; then
+      echo "$bin_dir/$executable_name"
+    fi
+  done < <(find "$search_dir" -type f -name '*_test.c' -print | sort)
+}
+
 # Get test executables for a specific category
 function get_test_executables() {
   local category="$1"
@@ -319,132 +357,44 @@ function get_test_executables() {
 
   log_verbose "Using test executables from: $bin_dir"
 
-  # Handle coverage builds differently
-  if [[ "$build_type" == "coverage" ]]; then
-    case "$category" in
-    unit)
-      # For coverage, discover test source files and build coverage executables
-      if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
-        log_warning "Skipping unit coverage tests: directory '$PROJECT_ROOT/tests/unit' not found"
-        return
-      fi
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local executable_name
-        executable_name=$(_ascii_source_to_test_executable "$test_file")
-        echo "$bin_dir/$executable_name"
-      done < <(find "$PROJECT_ROOT/tests/unit" -type f -name '*_test.c' -print | sort)
-      ;;
-    integration)
-      # For coverage, discover test source files and build coverage executables
-      if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
-        log_warning "Skipping integration coverage tests: directory '$PROJECT_ROOT/tests/integration' not found"
-        return
-      fi
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local executable_name
-        executable_name=$(_ascii_source_to_test_executable "$test_file")
-        echo "$bin_dir/$executable_name"
-      done < <(find "$PROJECT_ROOT/tests/integration" -type f -name '*_test.c' -print | sort)
-      ;;
-    performance)
-      # For coverage, discover test source files and build coverage executables
-      if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
-        log_warning "Skipping performance coverage tests: directory '$PROJECT_ROOT/tests/performance' not found"
-        return
-      fi
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local executable_name
-        executable_name=$(_ascii_source_to_test_executable "$test_file")
-        echo "$bin_dir/$executable_name"
-      done < <(find "$PROJECT_ROOT/tests/performance" -type f -name '*_test.c' -print | sort)
-      ;;
-    all)
-      # All coverage tests
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local category
-        category=$(_ascii_source_to_test_category "$test_file")
-        case "$category" in
-        unit|integration|performance)
-          local executable_name
-          executable_name=$(_ascii_source_to_test_executable "$test_file")
-          echo "$bin_dir/$executable_name"
-          ;;
-        esac
-      done < <(find "$PROJECT_ROOT/tests" -type f -name '*_test.c' -print | sort)
-      ;;
-    *)
-      log_error "Unknown test category: $category"
-      return 1
-      ;;
-    esac
-  else
-    # Regular builds discover from source files (same as coverage builds)
-    # This ensures we discover all tests, not just ones already built
-    case "$category" in
-    unit)
-      # Discover test source files and build executables
-      if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
-        log_warning "Skipping unit tests: directory '$PROJECT_ROOT/tests/unit' not found"
-        return
-      fi
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local executable_name
-        executable_name=$(_ascii_source_to_test_executable "$test_file")
-        echo "$bin_dir/$executable_name"
-      done < <(find "$PROJECT_ROOT/tests/unit" -type f -name '*_test.c' -print | sort)
-      ;;
-    integration)
-      # Discover test source files and build executables
-      if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
-        log_warning "Skipping integration tests: directory '$PROJECT_ROOT/tests/integration' not found"
-        return
-      fi
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local executable_name
-        executable_name=$(_ascii_source_to_test_executable "$test_file")
-        echo "$bin_dir/$executable_name"
-      done < <(find "$PROJECT_ROOT/tests/integration" -type f -name '*_test.c' -print | sort)
-      ;;
-    performance)
-      # Discover test source files and build executables
-      if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
-        log_warning "Skipping performance tests: directory '$PROJECT_ROOT/tests/performance' not found"
-        return
-      fi
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local executable_name
-        executable_name=$(_ascii_source_to_test_executable "$test_file")
-        echo "$bin_dir/$executable_name"
-      done < <(find "$PROJECT_ROOT/tests/performance" -type f -name '*_test.c' -print | sort)
-      ;;
-    all)
-      # For "all", discover all test source files
-      while IFS= read -r test_file; do
-        [[ -f "$test_file" ]] || continue
-        local category
-        category=$(_ascii_source_to_test_category "$test_file")
-        case "$category" in
-        unit|integration|performance)
-          local executable_name
-          executable_name=$(_ascii_source_to_test_executable "$test_file")
-          echo "$bin_dir/$executable_name"
-          ;;
-        esac
-      done < <(find "$PROJECT_ROOT/tests" -type f -name '*_test.c' -print | sort)
-      ;;
-    *)
-      log_error "Unknown test category: $category"
-      return 1
-      ;;
-    esac
-  fi
+  # Get valid test targets from build system to filter out excluded tests
+  local valid_targets
+  valid_targets=$(get_valid_test_targets)
+
+  # Handle category selection
+  case "$category" in
+  unit)
+    if [[ ! -d "$PROJECT_ROOT/tests/unit" ]]; then
+      log_warning "Skipping unit tests: directory '$PROJECT_ROOT/tests/unit' not found"
+      return
+    fi
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/unit" "$bin_dir" "$valid_targets"
+    ;;
+  integration)
+    if [[ ! -d "$PROJECT_ROOT/tests/integration" ]]; then
+      log_warning "Skipping integration tests: directory '$PROJECT_ROOT/tests/integration' not found"
+      return
+    fi
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/integration" "$bin_dir" "$valid_targets"
+    ;;
+  performance)
+    if [[ ! -d "$PROJECT_ROOT/tests/performance" ]]; then
+      log_warning "Skipping performance tests: directory '$PROJECT_ROOT/tests/performance' not found"
+      return
+    fi
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/performance" "$bin_dir" "$valid_targets"
+    ;;
+  all)
+    # Discover from all test directories
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/unit" "$bin_dir" "$valid_targets"
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/integration" "$bin_dir" "$valid_targets"
+    _discover_tests_in_dir "$PROJECT_ROOT/tests/performance" "$bin_dir" "$valid_targets"
+    ;;
+  *)
+    log_error "Unknown test category: $category"
+    return 1
+    ;;
+  esac
 }
 
 # Build tests if they don't exist
