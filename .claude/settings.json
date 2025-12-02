@@ -1,11 +1,17 @@
 {
   "permissions": {
     "allow": [
+      "Bash(git submodule:*)",
+      "Bash(git log:*)",
       "Bash(gh pr view:*)",
       "Bash(gh pr checks:*)",
       "Bash(gh pr review:*)",
       "Bash(gh pr comment:*)",
       "Bash(gh run:*)",
+      "Bash(gh workflow:*)",
+      "Bash(sha256sum:*)",
+      "Bash(tee:*)",
+      "Bash(makepkg:*)",
       "Bash(rm:*)",
       "Bash(rmdir:*)",
       "Bash(ascii-chat:*)",
@@ -78,7 +84,9 @@
       "Bash(git add:*)",
       "Bash(git reset:*)",
       "Bash(git commit:*)",
-      "Bash(git mv:*)"
+      "Bash(git mv:*)",
+      "Bash(git tag:*)",
+      "Bash(gh release:*)"
     ]
   }
 }
