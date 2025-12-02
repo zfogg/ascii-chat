@@ -47,7 +47,7 @@ static log_level_t original_log_level;
 
 void setup_main_tests(void) {
   original_log_level = log_get_level();
-  log_set_level(LOG_FATAL);  // Quiet logging for tests
+  log_set_level(LOG_FATAL); // Quiet logging for tests
   process_count = 0;
   memset(tracked_processes, 0, sizeof(tracked_processes));
   // Disable host identity check for tests since we don't have a TTY for prompts
