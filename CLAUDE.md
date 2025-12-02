@@ -788,6 +788,36 @@ Before committing any changes:
 
 ## Recent Updates (September 2025)
 
+### Query Tool (December 2025)
+
+Debug utility for runtime variable inspection via HTTP queries. Uses external LLDB process for robust debugging without self-patching complexity.
+
+**Key Features:**
+- Query variables by `file:line:variable` including struct members
+- HTTP API for integration with editors, scripts, and external tools
+- Breakpoint mode with `&break` parameter for interactive debugging
+- Struct expansion with configurable depth
+- Auto-spawn via `QUERY_INIT(port)` macro (compiles out in release)
+
+**Usage:**
+```bash
+# Build with query tool
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_BUILD_WITH_QUERY=ON
+cmake --build build
+
+# Standalone: attach to running process
+./build/bin/ascii-chat server &
+./.deps-cache/query-tool/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+curl 'localhost:9999/query?file=src/server/main.c&line=50&name=options'
+
+# Auto-spawn in code (debug builds only)
+QUERY_INIT(9999);   // Spawns controller attached to self
+// ... app runs, query via HTTP ...
+QUERY_SHUTDOWN();
+```
+
+**Documentation:** `docs/tooling/query.md`, `docs/tooling/query-api.md`
+
 ### Cryptography Implementation (October 2025)
 
 - End-to-end encryption with libsodium (X25519, XSalsa20-Poly1305, Ed25519)

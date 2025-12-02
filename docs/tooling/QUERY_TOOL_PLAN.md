@@ -275,14 +275,14 @@ Windows query tool is now functional:
 ### Phase 7: Merge Preparation (Commit 15)
 
 ```
-[ ] 15.1 Check macOS GitHub CI to see full test suite results
-[ ] 15.2 Check Ubuntu GitHub CI to see full test suite results
-[ ] 15.4 Run ASan/memory leak checks
-[ ] 15.5 Run code formatter: cmake --build build --target format
-[ ] 15.6 Fix any compiler warnings
-[ ] 15.7 Update CLAUDE.md with query tool section
-[ ] 15.9 Squash/rebase for clean history (if needed)
-[ ] 15.10 COMMIT 15: "chore(query): final polish"
+[x] 15.1 Check macOS GitHub CI to see full test suite results
+[x] 15.2 Check Ubuntu GitHub CI to see full test suite results
+[x] 15.4 Run ASan/memory leak checks
+[x] 15.5 Run code formatter: cmake --build build --target format
+[x] 15.6 Fix any compiler warnings
+[x] 15.7 Update CLAUDE.md with query tool section
+[-] 15.9 Squash/rebase for clean history (SKIP: not needed)
+[x] 15.10 COMMIT 15: "chore(query): final polish"
 
 [ ] 16.1 Create PR: query-tool → master
 [ ] 16.2 Fill PR description with feature summary
