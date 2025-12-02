@@ -333,6 +333,9 @@ void query_shutdown(void) {
     g_controller_handle = NULL;
     g_controller_pid = 0;
   }
+
+  // Clean up Winsock (matches WSAStartup in query_init)
+  WSACleanup();
 #else
   if (g_controller_pid > 0) {
     // Send SIGTERM for graceful shutdown
