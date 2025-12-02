@@ -113,16 +113,17 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
 
             # Add custom command to build BearSSL if library is missing
             # This creates a build rule that Ninja/Make can use to rebuild the library
+            # Build BearSSL quietly, logging output to file
+            set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library with nmake..."
                 COMMAND ${CMAKE_COMMAND} -E env
                         MAKEFLAGS=
                         NMAKEFLAGS=
-                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib
+                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib > "${BEARSSL_LOG_FILE}" 2>&1
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                COMMENT "Building BearSSL library to cache: ${BEARSSL_BUILD_DIR}"
+                COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"
                 VERBATIM
             )
 
@@ -169,13 +170,14 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
                 ERROR_QUIET
             )
 
+            # Build BearSSL quietly, logging output to file
+            set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${CMAKE_COMMAND} -E echo "Building BearSSL library (static only) with make lib..."
-                COMMAND make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
+                COMMAND make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}" > "${BEARSSL_LOG_FILE}" 2>&1
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                COMMENT "Building BearSSL static library to cache: ${BEARSSL_BUILD_DIR}"
+                COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"
                 VERBATIM
             )
 
