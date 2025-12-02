@@ -195,10 +195,10 @@ Use when debugging allocator-specific issues or if mimalloc is unavailable.
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
-cmake --build build
+cmake --build build --target tests
 
 # Run tests
-./tests/scripts/run_tests.sh
+ctest --test-dir build --output-on-failure --parallel 0
 ```
 
 **Note:** Tests require the Criterion framework (typically Unix only, or MinGW on Windows).

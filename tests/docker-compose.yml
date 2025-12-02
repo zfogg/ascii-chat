@@ -38,8 +38,8 @@ services:
     # Use build_docker directory (build is for native OS)
     command: >
       sh -c "cmake --preset docker &&
-             cmake --build build_docker &&
-             ./tests/scripts/run_tests.sh"
+             cmake --build build_docker --target tests &&
+             ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     # Optional: Override command for interactive shell
     # docker-compose run --rm ascii-chat-tests /bin/bash
@@ -91,8 +91,8 @@ services:
 
     command: >
       sh -c "cmake --preset docker &&
-             cmake --build build_docker &&
-             ./tests/scripts/run_tests.sh"
+             cmake --build build_docker --target tests &&
+             ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     environment:
       - CCACHE_DIR=/ccache

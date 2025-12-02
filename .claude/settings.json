@@ -6,7 +6,7 @@
       "Bash(ascii-chat:*)",
       "Bash(./build/bin/ascii-chat:*)",
       "Bash(./build_release/bin/ascii-chat:*)",
-      "Bash(./tests/scripts/run_tests.sh:*)",
+      "Bash(ctest:*)",
       "Bash(./tests/scripts/run_docker_tests.ps1:*)",
       "Bash(./build.ps1:*)",
       "Bash(clang:*)",
