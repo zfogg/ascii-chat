@@ -103,7 +103,12 @@ function(ascii_defer_prepare)
                 -DCMAKE_PLATFORM_REQUIRED_RUNTIME_PATH:STRING=
             )
         else()
-            set(_defer_cache_args "")
+            # Isolate defer tool from inherited environment flags (e.g. makepkg's -flto=auto)
+            # The defer tool links against LLVM shared libs which may not be built with LTO
+            set(_defer_cache_args
+                -DCMAKE_CXX_FLAGS:STRING=
+                -DCMAKE_EXE_LINKER_FLAGS:STRING=
+            )
         endif()
 
         # Verify that the defer tool CMakeLists.txt exists before configuring ExternalProject
