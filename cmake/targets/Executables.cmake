@@ -25,10 +25,10 @@ endif()
 
 # Link against the combined library instead of individual libraries
 # Ensure the combined library is built before linking
-# For Debug/Dev/Coverage: shared library (DLL on Windows) - except musl which needs static
+# For Debug/Dev: shared library (DLL on Windows) - except musl which needs static
 # For Release: static library
 # For USE_MUSL: always static (musl requires static linking)
-if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage") AND NOT USE_MUSL)
+if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
     add_dependencies(ascii-chat ascii-chat-shared generate_version)
     target_link_libraries(ascii-chat ascii-chat-shared)
 

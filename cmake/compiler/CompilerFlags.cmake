@@ -600,9 +600,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     endif()
 endfunction()
 
-# Configure coverage build flags
+# Configure coverage instrumentation (can be combined with any build type)
 function(configure_coverage_flags)
-    add_definitions(-DDEBUG_MEMORY -DCOVERAGE_BUILD)
-    add_compile_options(-g -O0 --coverage -fprofile-arcs -ftest-coverage)
+    message(STATUS "Coverage instrumentation enabled")
+    add_definitions(-DCOVERAGE_BUILD)
+    add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
     add_link_options(--coverage)
 endfunction()

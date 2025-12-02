@@ -17,7 +17,7 @@
 #define TEST_PORT_BASE 10000
 #define SERVER_STARTUP_DELAY_MS 100
 // Debug builds with AddressSanitizer are 5-10x slower, so we need generous timeouts
-#define CLIENT_CONNECT_TIMEOUT_MS 5000
+#define CLIENT_CONNECT_TIMEOUT_MS 8000
 #define PROCESS_CLEANUP_TIMEOUT_MS 2000
 #define MAX_PROCESSES 10
 
