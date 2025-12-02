@@ -26,12 +26,15 @@ function(configure_build_type_early)
     # Set default build type if not specified via command line (-DCMAKE_BUILD_TYPE=...)
     # This allows musl detection to work correctly based on build type
     if(NOT CMAKE_BUILD_TYPE)
-        set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Debug, Dev, Release, RelWithDebInfo, Coverage)" FORCE)
+        set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type (Debug, Dev, Release, RelWithDebInfo)" FORCE)
         # Also set in parent scope so it's immediately available after function returns
         # (CACHE FORCE only updates the cache, not the current scope's variable)
         set(CMAKE_BUILD_TYPE "Release" PARENT_SCOPE)
         message(STATUS "No build type specified, defaulting to Release")
     endif()
+
+    # Coverage is now an option that can be combined with any build type
+    option(ASCIICHAT_ENABLE_COVERAGE "Enable code coverage instrumentation (can be combined with any build type)" OFF)
 endfunction()
 
 # =============================================================================
@@ -64,9 +67,7 @@ function(configure_build_type_post_project)
         # No sanitizers in Dev mode
         add_definitions(-DENABLE_ERRNO_BACKTRACES)
 
-    elseif(CMAKE_BUILD_TYPE STREQUAL "Coverage")
-        # Coverage build with instrumentation
-        configure_coverage_flags()
+    # Note: Coverage build type removed - use ASCIICHAT_ENABLE_COVERAGE option instead
 
     elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         # Optimized release build (no debug symbols)
@@ -99,6 +100,11 @@ function(configure_build_type_post_project)
         # Thread Sanitizer mode
         add_definitions(-DDEBUG_MEMORY -DDEBUG_THREADS)
         configure_sanitizers(${USE_MIMALLOC} "TSan")
+    endif()
+
+    # Coverage instrumentation (can be combined with any build type)
+    if(ASCIICHAT_ENABLE_COVERAGE)
+        configure_coverage_flags()
     endif()
 endfunction()
 

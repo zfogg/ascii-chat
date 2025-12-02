@@ -23,7 +23,8 @@ ascii-chat supports multiple build configurations via `CMAKE_BUILD_TYPE`:
 | **Debug** | `-O0` | Yes | ASan, UBSan | Finding bugs, memory issues |
 | **Dev** | `-O0` | Yes | No | Fast compilation, daily development |
 | **Release** | `-O3` | No | No | Production, performance testing |
-| **Coverage** | `-O0` | Yes | No | Code coverage analysis |
+
+**Coverage Option**: Use `-DASCIICHAT_ENABLE_COVERAGE=ON` with any build type for code coverage.
 
 ### Debug Build (Default - Recommended)
 
@@ -194,10 +195,10 @@ Use when debugging allocator-specific issues or if mimalloc is unavailable.
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTS=ON
-cmake --build build
+cmake --build build --target tests
 
 # Run tests
-./tests/scripts/run_tests.sh
+ctest --test-dir build --output-on-failure --parallel 0
 ```
 
 **Note:** Tests require the Criterion framework (typically Unix only, or MinGW on Windows).
@@ -211,10 +212,17 @@ cmake --build build
 
 ### Enable Coverage
 
+Coverage is an option that can be combined with any build type:
+
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Coverage
+# Debug build with coverage (recommended)
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
 cmake --build build
-./tests/scripts/run_tests.sh -b coverage
+ctest --test-dir build --output-on-failure
+
+# Or use the coverage preset
+cmake --preset coverage
+cmake --build build
 ```
 
 ## Recommended Workflows

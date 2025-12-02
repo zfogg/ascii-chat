@@ -16,8 +16,9 @@
 // Test configuration
 #define TEST_PORT_BASE 10000
 #define SERVER_STARTUP_DELAY_MS 100
-#define CLIENT_CONNECT_TIMEOUT_MS 2000
-#define PROCESS_CLEANUP_TIMEOUT_MS 1000
+// Debug builds with AddressSanitizer are 5-10x slower, so we need generous timeouts
+#define CLIENT_CONNECT_TIMEOUT_MS 8000
+#define PROCESS_CLEANUP_TIMEOUT_MS 2000
 #define MAX_PROCESSES 10
 
 // Process management
@@ -46,7 +47,7 @@ static log_level_t original_log_level;
 
 void setup_main_tests(void) {
   original_log_level = log_get_level();
-  log_set_level(LOG_FATAL);
+  log_set_level(LOG_FATAL); // Quiet logging for tests
   process_count = 0;
   memset(tracked_processes, 0, sizeof(tracked_processes));
   // Disable host identity check for tests since we don't have a TTY for prompts
@@ -322,7 +323,7 @@ Test(main_integration, server_client_basic_connection) {
 
   // Wait for client to complete
   int client_exit_code;
-  bool client_exited = wait_for_process_exit(client_pid, 2000, &client_exit_code);
+  bool client_exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &client_exit_code);
   cr_assert(client_exited, "Client should complete snapshot");
   cr_assert_eq(client_exit_code, 0, "Client should exit successfully");
 
@@ -369,7 +370,7 @@ Test(main_integration, server_multiple_clients_sequential) {
     cr_assert_gt(client_pid, 0, "Client %d should spawn", i);
 
     int exit_code;
-    bool exited = wait_for_process_exit(client_pid, 2000, &exit_code);
+    bool exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
     cr_assert(exited, "Client %d should complete", i);
     cr_assert_eq(exit_code, 0, "Client %d should exit successfully", i);
   }
@@ -421,7 +422,7 @@ Test(main_integration, server_multiple_clients_concurrent) {
   // Wait for all clients to complete
   for (int i = 0; i < 2; i++) {
     int exit_code;
-    bool exited = wait_for_process_exit(client_pids[i], 2000, &exit_code);
+    bool exited = wait_for_process_exit(client_pids[i], CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
     cr_assert(exited, "Client %d should complete", i);
     cr_assert_eq(exit_code, 0, "Client %d should exit successfully", i);
   }
@@ -471,7 +472,7 @@ Test(main_integration, server_client_with_options) {
   cr_assert_gt(client_pid, 0, "Client should spawn with options");
 
   int client_exit_code;
-  bool client_exited = wait_for_process_exit(client_pid, 2000, &client_exit_code);
+  bool client_exited = wait_for_process_exit(client_pid, CLIENT_CONNECT_TIMEOUT_MS, &client_exit_code);
   cr_assert(client_exited, "Client should complete");
   cr_assert_eq(client_exit_code, 0, "Client should exit successfully with options");
 
@@ -540,7 +541,7 @@ Test(main_integration, server_survives_client_crash) {
   cr_assert_gt(client2_pid, 0, "Second client should spawn");
 
   int exit_code;
-  bool exited = wait_for_process_exit(client2_pid, 2000, &exit_code);
+  bool exited = wait_for_process_exit(client2_pid, CLIENT_CONNECT_TIMEOUT_MS, &exit_code);
   cr_assert(exited, "Second client should complete");
   cr_assert_eq(exit_code, 0, "Second client should connect successfully");
 

@@ -4,17 +4,8 @@
 # This module provides unified sanitizer configuration for all platforms
 # and handles conflicts with mimalloc's malloc override and spinlock issues.
 
-# Include compiler flag checking utilities
-include(CheckCCompilerFlag)
-
-# Helper function to safely add compiler flags
-function(add_compiler_flag_if_supported flag)
-    string(MAKE_C_IDENTIFIER "HAVE_CFLAG_${flag}" flag_var)
-    check_c_compiler_flag("${flag}" ${flag_var})
-    if(${flag_var})
-        add_compile_options(${flag})
-    endif()
-endfunction()
+# Note: add_compiler_flag_if_supported() is defined in CompilerFlags.cmake
+# which is included before this file
 
 # Configure sanitizers based on platform, compiler, and options
 # Args:

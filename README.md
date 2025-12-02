@@ -302,7 +302,7 @@ Now let's list out and talk about the dependencies before we install them.
 
 ### Dependencies
 
-> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__build.html#topic_dependencies)**
+> 📦 **Complete guide: [Build System / Dependencies](https://zfogg.github.io/ascii-chat/group__dependencies.html)**
 
 ascii-chat is built on operating system code and several libraries.
 
@@ -425,7 +425,7 @@ brew install make cmake ninja llvm zstd portaudio libsodium criterion
 For open source developers who want a working copy:
 
 1. Clone this repository: `git clone git@github.com:zfogg/ascii-chat.git; ls ascii-chat && cd ascii-chat`.
-2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__build.html#topic_dependencies)).
+2. Install the dependencies for your platform (see [Dependencies](#dependencies) above or [the Build System / Dependencies docs](https://zfogg.github.io/ascii-chat/group__dependencies.html)).
 3. Build an optimized-with-debug build: `make CMAKE_BUILD_TYPE=RelWithDebInfo`.
 4. Run `./build/bin/ascii-chat server`.
 5. Open a second terminal window, tab, split, or pane. Or go to another computer.
@@ -462,8 +462,8 @@ Now we can access useful development targets:
 - `cmake --build build --target docs-open` - Build and open the docs in your default browser
 - `cmake --build build --target package-productbuild` - Build a release and make a `.pkg` installer for macOS (analogous targets exist per platform.. try `--target package-deb` for a `.deb` installer on Linux)
 - `./build.ps1` - PowerShell helper that stops running binaries, cleans, configures, builds, and syncs artifacts into `bin/` when developing on Windows
-- `./tests/scripts/run_tests.sh` - Script runner that runs multiple tests in parallel across your CPU cores.
-- `./tests/scripts/run-docker-tests.ps1` - Runs tests in a Docker container. Useful on Windows where Criterion tests don't compile. Calls the `run_tests.sh` script.
+- `ctest --test-dir build --output-on-failure --parallel 0` - Run all tests with ctest (auto-detects CPU cores).
+- `./tests/scripts/run-docker-tests.ps1` - Runs tests in a Docker container. Useful on Windows where Criterion tests don't compile.
 - `./scripts/*` - Developer utilities (dependency installers, useful aliases and functions, etc.)
 
 Sanitizers giving you trouble? Here's how to build a `Dev` build, which is like `Debug` but with sanitizers disabled:
@@ -512,14 +512,14 @@ The documentation is automatically generated from source code comments using Dox
 - **Performance**: SIMD performance tests with aggressive speedup expectations (1-4x)
 - **Memory Checking**: Comprehensive sanitizer support via `-b debug` for detecting memory issues, undefined behavior, and more
 
-The project uses a unified test runner script at `tests/scripts/run_tests.sh` that consolidates all test execution logic. It accepts all sorts of arguments and auto-builds the test executables it's gonna run beforehand with ninja, which is convenient because it allows you to simply iterate on code and then run this script, going between those two things.
+Tests are run using CMake's ctest tool, which integrates with Criterion for parallel execution and XML output.
 
 #### Quick Start
 
 - Have the dependencies installed.
 - Choose:
-  1. Linux or macOS: run test runner script: `./tests/scripts/run_tests.sh`
-  2. Windows: use Docker: `./tests/scripts/run-docker-tests.ps1` (just calls `run_tests.sh` in a container)
+  1. Linux or macOS: Use ctest directly
+  2. Windows: Use Docker: `./tests/scripts/run-docker-tests.ps1`
 
 #### Test Types
 
@@ -527,32 +527,29 @@ The project uses a unified test runner script at `tests/scripts/run_tests.sh` th
 - **Integration Tests**: Test component interactions and full workflows
 - **Performance Tests**: Benchmark stuff like SIMD vs scalar implementations
 
-#### Using the Test Script Directly
+#### Running Tests with ctest
 
 ```bash
-# Run all tests in debug mode
-./tests/scripts/run_tests.sh
+# Build tests first
+cmake --build build --target tests
 
-# Run specific test types
-./tests/scripts/run_tests.sh -t unit
-./tests/scripts/run_tests.sh -t integration
-./tests/scripts/run_tests.sh -t performance
+# Run all tests
+ctest --test-dir build --output-on-failure --parallel 0
 
-# Run with different build configurations
-./tests/scripts/run_tests.sh -b debug
-./tests/scripts/run_tests.sh -b release
-./tests/scripts/run_tests.sh -b debug-coverage
+# Run specific test categories using labels
+ctest --test-dir build --label-regex "^unit$" --output-on-failure
+ctest --test-dir build --label-regex "^integration$" --output-on-failure
+ctest --test-dir build --label-regex "^performance$" --output-on-failure
 
-# Generate JUnit XML for CI
-./tests/scripts/run_tests.sh -J
+# Run specific tests by name pattern
+ctest --test-dir build -R "buffer_pool" --output-on-failure
+ctest --test-dir build -R "test_unit_options" --output-on-failure
 
-# Run in parallel (default: number of CPU cores)
-./tests/scripts/run_tests.sh -j 4
+# Verbose output
+ctest --test-dir build --output-on-failure --verbose
 
-# Run specific tests
-./tests/scripts/run_tests.sh unit options
-./tests/scripts/run_tests.sh unit buffer_pool packet_queue
-
+# List available tests
+ctest --test-dir build -N
 ```
 
 #### Windows Docker Testing
@@ -563,14 +560,13 @@ On Windows, since Criterion is POSIX-based, tests must be run in a Docker contai
 # Run all tests
 ./tests/scripts/run-docker-tests.ps1
 
-# By default run-docker-tests.ps1 just calls run_tests.sh
-# For documentation see above or check the script file
+# Run specific test category
 ./tests/scripts/run-docker-tests.ps1 unit
-./tests/scripts/run-docker-tests.ps1 unit options
-./tests/scripts/run-docker-tests.ps1 unit buffer_pool packet_queue
+./tests/scripts/run-docker-tests.ps1 integration
+./tests/scripts/run-docker-tests.ps1 performance
 
-# Compile with a different CMake build type (you may need to clean `./build_docker/`)
-./tests/scripts/run-docker-tests.ps1 unit -BuildType release
+# Run tests matching a pattern
+./tests/scripts/run-docker-tests.ps1 -Filter "buffer"
 
 # This script can also run clang-tidy static analysis
 ./tests/scripts/run-docker-tests.ps1 clang-tidy

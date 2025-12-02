@@ -11,11 +11,8 @@
 # Must be included AFTER platform detection.
 # =============================================================================
 
-# Hardware Acceleration Detection (cross-platform including Windows ARM)
-# =============================================================================
-
-include(CheckCSourceCompiles)
-include(CheckCSourceRuns)
+# Include centralized CPU detection
+include(${CMAKE_SOURCE_DIR}/cmake/compiler/CPUDetection.cmake)
 
 # User override controls
 set(ASCIICHAT_SIMD_MODE "auto" CACHE STRING "SIMD mode: auto, sse2, ssse3, avx2, neon, sve")
@@ -43,197 +40,33 @@ if(NOT ASCIICHAT_SIMD_MODE STREQUAL "auto")
         set(ENABLE_SIMD_SVE TRUE)
     endif()
 else()
-    # Auto-detect SIMD capabilities (cross-platform)
+    # Auto-detect SIMD capabilities using CPUDetection functions
 
-    # Windows-specific detection
-    if(WIN32)
-        # Check processor architecture on Windows
-        # CMAKE_SYSTEM_PROCESSOR on Windows: AMD64, x86, ARM64, ARM
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64")
-            # Windows on ARM64 - ARMv8 always has NEON
-            set(ENABLE_SIMD_NEON TRUE)
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM")
-            # Windows on ARM32 - NEON is optional in ARMv7
-            # Try compile test to check for NEON
-            check_c_source_compiles("
-                #include <arm_neon.h>
-                int main() {
-                    uint8x16_t a = vdupq_n_u8(0);
-                    return 0;
-                }
-            " CAN_COMPILE_NEON)
-            if(CAN_COMPILE_NEON)
-                set(ENABLE_SIMD_NEON TRUE)
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "AMD64|x86_64")
-            # Windows x86_64 - try compile tests for SIMD features
-            # Try to compile and run CPUID check for x86
-            # Note: Clang on Windows may have issues with check_c_source_runs, so we use compile checks instead
-            if(NOT CMAKE_CROSSCOMPILING AND NOT (CMAKE_C_COMPILER_ID STREQUAL "Clang"))
-                # Check from highest to lowest, stop when we find support
-                # Higher instruction sets imply lower ones
+    if(ASCIICHAT_IS_X86_64)
+        # Detect x86_64 SIMD features
+        detect_x86_simd_features()
 
-                # Check for AVX2
-                check_c_source_runs("
-                    #include <intrin.h>
-                    int main() {
-                        int info[4];
-                        __cpuidex(info, 7, 0);
-                        if (info[1] & (1 << 5)) // AVX2
-                            return 0;
-                        return 1;
-                    }
-                " HAS_AVX2_RUNTIME)
-
-                if(HAS_AVX2_RUNTIME)
-                    # Only enable AVX2 - it includes all lower instruction sets
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                    # Don't enable SSSE3/SSE2 source files - AVX2 handles it
-                else()
-                    # Check for SSSE3
-                    check_c_source_runs("
-                        #include <intrin.h>
-                        int main() {
-                            int info[4];
-                            __cpuid(info, 1);
-                            if (info[2] & (1 << 9)) // SSSE3
-                                return 0;
-                            return 1;
-                        }
-                    " HAS_SSSE3_RUNTIME)
-
-                    if(HAS_SSSE3_RUNTIME)
-                        # Only enable SSSE3 - it includes SSE2
-                        set(ENABLE_SIMD_SSSE3 TRUE)
-                        # Don't enable SSE2 source file - SSSE3 handles it
-                    else()
-                        # Check for SSE2 (baseline for x86_64)
-                        check_c_source_runs("
-                            #include <intrin.h>
-                            int main() {
-                                int info[4];
-                                __cpuid(info, 1);
-                                if (info[3] & (1 << 26)) // SSE2
-                                    return 0;
-                                return 1;
-                            }
-                        " HAS_SSE2_RUNTIME)
-
-                        if(HAS_SSE2_RUNTIME)
-                            set(ENABLE_SIMD_SSE2 TRUE)
-                        endif()
-                    endif()
-                endif()
-            else()
-                # Cross-compiling or Clang on Windows, use compile-time checks with appropriate flags
-                # Only enable the HIGHEST available instruction set to minimize binary size
-                # Higher instruction sets include lower ones, so we only need the highest
-                # Save current flags
-                set(CMAKE_REQUIRED_FLAGS_SAVE ${CMAKE_REQUIRED_FLAGS})
-
-                # Test AVX2 with required flags (highest priority)
-                set(CMAKE_REQUIRED_FLAGS "-mavx2")
-                check_c_source_compiles("
-                    #include <immintrin.h>
-                    int main() { __m256i a = _mm256_setzero_si256(); return 0; }
-                " CAN_COMPILE_AVX2)
-
-                # Only check SSSE3 if AVX2 is not available
-                if(NOT CAN_COMPILE_AVX2)
-                    set(CMAKE_REQUIRED_FLAGS "-mssse3")
-                    check_c_source_compiles("
-                        #include <tmmintrin.h>
-                        int main() { __m128i a = _mm_setzero_si128(); a = _mm_abs_epi8(a); return 0; }
-                    " CAN_COMPILE_SSSE3)
-                endif()
-
-                # Only check SSE2 if neither AVX2 nor SSSE3 are available
-                if(NOT CAN_COMPILE_AVX2 AND NOT CAN_COMPILE_SSSE3)
-                    set(CMAKE_REQUIRED_FLAGS "-msse2")
-                    check_c_source_compiles("
-                        #include <emmintrin.h>
-                        int main() { __m128i a = _mm_setzero_si128(); return 0; }
-                    " CAN_COMPILE_SSE2)
-                endif()
-
-                # Restore flags
-                set(CMAKE_REQUIRED_FLAGS ${CMAKE_REQUIRED_FLAGS_SAVE})
-
-                # Enable only the HIGHEST instruction set available
-                # Higher SIMD levels include lower ones at runtime, so we only compile the highest
-                # Note: We still set the lower flags for compiler compatibility, but only compile one source file
-                if(CAN_COMPILE_AVX2)
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                    # Don't enable SSSE3/SSE2 source files - AVX2 handles it
-                elseif(CAN_COMPILE_SSSE3)
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                    # Don't enable SSE2 source file - SSSE3 handles it
-                elseif(CAN_COMPILE_SSE2)
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                endif()
-            endif()
-        endif()
-
-    elseif(PLATFORM_DARWIN)
-        # macOS detection (native)
-        if(IS_APPLE_SILICON EQUAL 1)
-            set(ENABLE_SIMD_NEON TRUE)
-        elseif(IS_ROSETTA EQUAL 1)
-            # Only enable SSSE3 - it includes SSE2
+        # Enable only the highest available (higher includes lower)
+        if(HAS_AVX2)
+            set(ENABLE_SIMD_AVX2 TRUE)
+        elseif(HAS_SSSE3)
             set(ENABLE_SIMD_SSSE3 TRUE)
-        else()
-            # Intel Mac - check for AVX2 support
-            execute_process(
-                COMMAND sysctl -n hw.optional.avx2_0
-                OUTPUT_VARIABLE HAS_AVX2_MAC
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(HAS_AVX2_MAC EQUAL 1)
-                # Only enable AVX2 - it includes all lower instruction sets
-                set(ENABLE_SIMD_AVX2 TRUE)
-            else()
-                # Only enable SSSE3 - it includes SSE2
-                set(ENABLE_SIMD_SSSE3 TRUE)
-            endif()
+        elseif(HAS_SSE2)
+            set(ENABLE_SIMD_SSE2 TRUE)
         endif()
 
-    elseif(PLATFORM_LINUX)
-        # Linux detection
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-            # Linux ARM64 - ARMv8 always has NEON
+    elseif(ASCIICHAT_IS_ARM64 OR ASCIICHAT_IS_ARM32)
+        # Detect ARM SIMD features
+        detect_arm_neon()
+        if(HAS_NEON)
             set(ENABLE_SIMD_NEON TRUE)
-            # Check for SVE (optional extension)
-            if(EXISTS "/proc/cpuinfo")
-                file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                if(CPUINFO_CONTENT MATCHES "sve")
-                    # SVE is available in addition to NEON
-                    set(ENABLE_SIMD_SVE TRUE)
-                endif()
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm")
-            # Linux ARM32 - NEON is optional
-            if(EXISTS "/proc/cpuinfo")
-                file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                if(CPUINFO_CONTENT MATCHES "neon")
-                    set(ENABLE_SIMD_NEON TRUE)
-                endif()
-            endif()
-        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
-            # Linux x86_64 - use /proc/cpuinfo
-            if(EXISTS "/proc/cpuinfo")
-                file(READ "/proc/cpuinfo" CPUINFO_CONTENT)
-                # Check from highest to lowest, only enable the highest available
-                # Higher instruction sets include lower ones, so we only compile the highest
-                if(CPUINFO_CONTENT MATCHES "avx2")
-                    # Only enable AVX2 - it includes all lower instruction sets
-                    set(ENABLE_SIMD_AVX2 TRUE)
-                elseif(CPUINFO_CONTENT MATCHES "ssse3")
-                    # Only enable SSSE3 - it includes SSE2
-                    set(ENABLE_SIMD_SSSE3 TRUE)
-                elseif(CPUINFO_CONTENT MATCHES "sse2")
-                    set(ENABLE_SIMD_SSE2 TRUE)
-                endif()
+        endif()
+
+        # Check for SVE (ARM64 only)
+        if(ASCIICHAT_IS_ARM64)
+            detect_arm_sve()
+            if(HAS_SVE)
+                set(ENABLE_SIMD_SVE TRUE)
             endif()
         endif()
     endif()
@@ -286,9 +119,8 @@ endif()
 if(ENABLE_SIMD_NEON)
     add_definitions(-DSIMD_SUPPORT_NEON=1)
     # Windows ARM64 with Clang needs proper arch flags
-    if(WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES "ARM|ARM64")
+    if(WIN32 AND ASCIICHAT_IS_ARM64)
         if(CMAKE_C_COMPILER_ID MATCHES "Clang")
-            # Clang on Windows ARM might need explicit flags
             add_compile_options(-march=armv8-a+simd)
         endif()
     endif()

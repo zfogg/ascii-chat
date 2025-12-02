@@ -1,0 +1,422 @@
+/**
+ * @defgroup query_tool Query Tool
+ * @ingroup module_development
+ * @brief HTTP-based runtime variable inspection using external LLDB
+ *
+ * @page query_tool_page Query Tool README
+ * @ingroup query_tool
+ * @tableofcontents
+ *
+ * @section query_overview Overview
+ *
+ * The query tool enables runtime variable inspection in debug builds via HTTP
+ * requests. It uses an external LLDB process to attach to the running application
+ * and read variable values on demand.
+ *
+ * @code{.sh}
+ * # Query a variable while your program runs
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
+ * # {"status":"ok","result":{"name":"client_count","value":"5","type":"int"}}
+ * @endcode
+ *
+ * The tool compiles out completely in release builds (NDEBUG defined), adding
+ * zero runtime overhead to production code.
+ *
+ * @section query_problem The Core Problem
+ *
+ * During development, you often want to inspect variable values at specific
+ * points in execution without:
+ * - Stopping to add printf() statements and recompile
+ * - Running under a full interactive debugger
+ * - Modifying your code with instrumentation
+ *
+ * The ideal solution would let you query any variable at any line via a simple
+ * HTTP request, as if the program had an omniscient API for its own internal state.
+ *
+ * @subsection query_approaches_considered Approaches Considered
+ *
+ * Several implementation strategies were evaluated:
+ *
+ * **1. Compile-Time Source Instrumentation (libclang)**
+ * - Parse source with libclang, inject logging at every assignment
+ * - Problems: Huge runtime overhead, complex AST manipulation, fragile
+ *
+ * **2. DWARF + Sampling**
+ * - Use debug info to locate variables, sample memory periodically
+ * - Problems: Only works at scope boundaries, misses transient values
+ *
+ * **3. Self-Patching (INT3 breakpoints)**
+ * - Patch own executable with breakpoint instructions at runtime
+ * - Problems: Platform-specific, signal handling complexity, security concerns
+ *
+ * **4. External LLDB Process (chosen approach)**
+ * - Spawn separate controller process that attaches via LLDB
+ * - Controller runs HTTP server, target runs normally
+ * - LLDB handles all the complexity of breakpoints and variable reading
+ *
+ * @subsection query_why_lldb Why External LLDB Won
+ *
+ * The external LLDB approach was chosen because it:
+ *
+ * - **Handles all edge cases**: LLDB has years of battle-tested code for reading
+ *   variables in any context (registers, stack, heap, optimized code)
+ * - **Cross-platform**: Works on macOS, Linux, and Windows without platform-specific
+ *   ptrace/mach/debug API code
+ * - **No self-modification**: Target process runs unmodified; controller does all
+ *   the debugging magic
+ * - **Always responsive**: When target is stopped at a breakpoint, the HTTP server
+ *   in the controller process continues serving requests
+ * - **Leverages existing infrastructure**: LLDB's SB API is well-documented and stable
+ *
+ * The key insight: by making the controller a separate process, we avoid all the
+ * complexity of a program trying to debug itself. LLDB already solved that problem.
+ *
+ * @section query_architecture Architecture
+ *
+ * @code{.unparsed}
+ * +-----------------------+           +-----------------------+
+ * |  ascii-chat (TARGET)  |           |  ascii-query-server   |
+ * |                       |           |  (CONTROLLER)         |
+ * |  Your application     |<--LLDB--->|  HTTP server :9999    |
+ * |  runs normally        |           |  Always responsive!   |
+ * +-----------------------+           +-----------------------+
+ *                                               ^
+ *                                               | curl
+ *                                               |
+ *                                     +-----------------------+
+ *                                     |  curl / browser / vim |
+ *                                     +-----------------------+
+ * @endcode
+ *
+ * **Key components:**
+ *
+ * - **Target Process**: Your application (ascii-chat), built with debug symbols.
+ *   Runs completely normally. No instrumentation or modification.
+ *
+ * - **Controller Process**: ascii-query-server binary. Attaches to target via
+ *   LLDB SB API. Hosts HTTP server for queries. Stays running even when target
+ *   is stopped at breakpoints.
+ *
+ * - **LLDB Connection**: Controller uses LLDB's SBDebugger, SBTarget, SBProcess
+ *   APIs to attach, set breakpoints, and read variables.
+ *
+ * @section query_modes Query Modes
+ *
+ * @subsection query_immediate Immediate Mode
+ *
+ * Default behavior. Sets temporary breakpoint, waits for hit, reads variable,
+ * resumes target. Fast and non-interactive.
+ *
+ * @code{.sh}
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count'
+ * @endcode
+ *
+ * @subsection query_breakpoint Breakpoint Mode
+ *
+ * Add `&break` to keep target stopped after reading. Enables interactive
+ * debugging session where you can query additional variables.
+ *
+ * @code{.sh}
+ * # Stop at line 100, read 'count', stay stopped
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count&break'
+ *
+ * # While stopped, query more variables (no file:line needed)
+ * curl 'localhost:9999/query?name=options.port'
+ * curl 'localhost:9999/query?name=client&expand'
+ *
+ * # Resume execution
+ * curl -X POST 'localhost:9999/continue'
+ * @endcode
+ *
+ * @section query_api HTTP API Reference
+ *
+ * | Endpoint       | Method          | Description                        |
+ * |----------------|-----------------|-----------------------------------|
+ * | `/`            | GET             | Status page                        |
+ * | `/process`     | GET             | Process info (PID, state, threads) |
+ * | `/threads`     | GET             | List all threads                   |
+ * | `/frames`      | GET             | Stack frames (when stopped)        |
+ * | `/query`       | GET             | Query variable value               |
+ * | `/stop`        | POST            | Pause target                       |
+ * | `/continue`    | POST            | Resume target                      |
+ * | `/step`        | POST            | Single step                        |
+ * | `/breakpoints` | GET/POST/DELETE | Manage breakpoints                 |
+ * | `/detach`      | POST            | Detach from target                 |
+ *
+ * @subsection query_params Query Parameters
+ *
+ * | Parameter | Description                                                  |
+ * |-----------|--------------------------------------------------------------|
+ * | `file`    | Source file path (required when running)                     |
+ * | `line`    | Line number (required when running)                          |
+ * | `name`    | Variable name (supports `struct.member`, `ptr->field`, `arr[i]`) |
+ * | `break`   | Stop at breakpoint and stay stopped                          |
+ * | `expand`  | Expand struct members                                        |
+ * | `depth`   | Expansion depth (default: 3)                                 |
+ * | `timeout` | Breakpoint timeout in ms (default: 5000)                     |
+ * | `frame`   | Stack frame index or function name                           |
+ *
+ * @subsection query_param_examples Parameter Examples
+ *
+ * @subsubsection query_ex_basic Basic Query (file, line, name)
+ *
+ * Query a simple variable at a specific location:
+ *
+ * @code{.sh}
+ * # Query 'client_count' when execution reaches server.c line 100
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
+ * @endcode
+ *
+ * Response:
+ * @code{.json}
+ * {
+ *   "status": "ok",
+ *   "result": {
+ *     "name": "client_count",
+ *     "value": "5",
+ *     "type": "int"
+ *   }
+ * }
+ * @endcode
+ *
+ * @subsubsection query_ex_nested Nested Access (struct.member, ptr->field)
+ *
+ * Access struct members and pointer dereferences:
+ *
+ * @code{.sh}
+ * # Access nested struct member
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client.socket.fd'
+ *
+ * # Access through pointer
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=opts->port'
+ *
+ * # Array indexing
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=clients[0]'
+ *
+ * # Combined: pointer to struct with array member
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=server->clients[2].id'
+ * @endcode
+ *
+ * @subsubsection query_ex_break Breakpoint Mode (&break)
+ *
+ * Stop execution and stay stopped for interactive inspection:
+ *
+ * @code{.sh}
+ * # Stop at breakpoint and read variable
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count&break'
+ * @endcode
+ *
+ * Response:
+ * @code{.json}
+ * {
+ *   "status": "ok",
+ *   "stopped": true,
+ *   "result": {"name": "count", "value": "42", "type": "int"}
+ * }
+ * @endcode
+ *
+ * While stopped, query additional variables without file:line:
+ *
+ * @code{.sh}
+ * # No file:line needed - process is already stopped
+ * curl 'localhost:9999/query?name=other_var'
+ * curl 'localhost:9999/query?name=options.debug_mode'
+ *
+ * # Resume when done
+ * curl -X POST 'localhost:9999/continue'
+ * @endcode
+ *
+ * @subsubsection query_ex_expand Struct Expansion (&expand, &depth)
+ *
+ * Expand structs to see all members:
+ *
+ * @code{.sh}
+ * # Expand struct with default depth (3 levels)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client&expand'
+ * @endcode
+ *
+ * Response:
+ * @code{.json}
+ * {
+ *   "status": "ok",
+ *   "result": {
+ *     "name": "client",
+ *     "type": "client_t",
+ *     "children": [
+ *       {"name": "id", "type": "uint32_t", "value": "42"},
+ *       {"name": "socket", "type": "socket_info_t", "children": [
+ *         {"name": "fd", "type": "int", "value": "7"},
+ *         {"name": "connected", "type": "bool", "value": "true"}
+ *       ]},
+ *       {"name": "username", "type": "char[32]", "value": "\"alice\""}
+ *     ]
+ *   }
+ * }
+ * @endcode
+ *
+ * Control expansion depth:
+ *
+ * @code{.sh}
+ * # Shallow expansion (1 level only)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client&expand&depth=1'
+ *
+ * # Deep expansion (5 levels for complex nested structs)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=config&expand&depth=5'
+ * @endcode
+ *
+ * @subsubsection query_ex_timeout Custom Timeout (&timeout)
+ *
+ * Adjust breakpoint wait timeout (default 5000ms):
+ *
+ * @code{.sh}
+ * # Short timeout for frequently-hit code paths
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=count&timeout=1000'
+ *
+ * # Long timeout for rarely-hit code (e.g., error handlers)
+ * curl 'localhost:9999/query?file=src/server.c&line=500&name=error_code&timeout=30000'
+ * @endcode
+ *
+ * Timeout response:
+ * @code{.json}
+ * {
+ *   "status": "error",
+ *   "error": "timeout",
+ *   "message": "Breakpoint not hit within 5000ms"
+ * }
+ * @endcode
+ *
+ * @subsubsection query_ex_frame Stack Frame Selection (&frame)
+ *
+ * Query variables from caller's stack frame:
+ *
+ * @code{.sh}
+ * # Query from parent frame (index 1)
+ * curl 'localhost:9999/query?name=argc&frame=1'
+ *
+ * # Query from grandparent frame (index 2)
+ * curl 'localhost:9999/query?name=config&frame=2'
+ *
+ * # Query by function name
+ * curl 'localhost:9999/query?name=opts&frame=main'
+ * curl 'localhost:9999/query?name=request&frame=handle_client'
+ * @endcode
+ *
+ * @subsubsection query_ex_combined Combined Parameters
+ *
+ * Parameters can be combined for complex queries:
+ *
+ * @code{.sh}
+ * # Stop at breakpoint, expand struct, use custom timeout
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=client&break&expand&depth=2&timeout=10000'
+ *
+ * # Query from specific frame while stopped, with expansion
+ * curl 'localhost:9999/query?name=options&frame=main&expand&depth=1'
+ * @endcode
+ *
+ * @subsubsection query_ex_arrays Array Queries
+ *
+ * Query array elements and ranges:
+ *
+ * @code{.sh}
+ * # Single element
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=buffer[0]'
+ *
+ * # Element range (returns array of values)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=buffer[0..10]'
+ *
+ * # Last element (if size is known)
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=clients[client_count-1]'
+ * @endcode
+ *
+ * @section query_usage Usage
+ *
+ * @subsection query_standalone Standalone Mode
+ *
+ * Start the controller manually, attach to running process:
+ *
+ * @code{.sh}
+ * # Terminal 1: Start your application
+ * ./build/bin/ascii-chat server --port 8080
+ *
+ * # Terminal 2: Attach the query controller
+ * ./build/bin/ascii-query-server --attach $(pgrep ascii-chat) --port 9999
+ *
+ * # Terminal 3: Query variables
+ * curl 'localhost:9999/query?file=src/server.c&line=100&name=options'
+ * @endcode
+ *
+ * @subsection query_autospawn Auto-Spawn Mode (Recommended)
+ *
+ * Add to your application code for automatic controller management:
+ *
+ * @code{.c}
+ * #include "tooling/query/query.h"
+ *
+ * int main(void) {
+ *     // Auto-spawn controller attached to this process
+ *     int port = QUERY_INIT(9999);
+ *     if (port > 0) {
+ *         printf("Query server at http://localhost:%d\n", port);
+ *     }
+ *
+ *     // ... your application runs ...
+ *
+ *     QUERY_SHUTDOWN();
+ *     return 0;
+ * }
+ * @endcode
+ *
+ * The macros compile to no-ops in release builds.
+ *
+ * @section query_platform Platform Notes
+ *
+ * @subsection query_macos macOS
+ *
+ * Requires code signing with `get-task-allow` entitlement for LLDB attach:
+ *
+ * @code{.sh}
+ * codesign -s - --entitlements query.entitlements ./ascii-query-server
+ * @endcode
+ *
+ * CMake handles this automatically when building the query tool.
+ *
+ * @subsection query_linux Linux
+ *
+ * Check ptrace permissions:
+ *
+ * @code{.sh}
+ * cat /proc/sys/kernel/yama/ptrace_scope
+ * # 0 = permissive (debugging works)
+ * # 1 = restricted (may need sudo or capabilities)
+ *
+ * # For Docker containers:
+ * docker run --cap-add=SYS_PTRACE ...
+ * @endcode
+ *
+ * @section query_best_practices Best Practices
+ *
+ * 1. **Use auto-spawn mode** for seamless integration. The QUERY_INIT() macro
+ *    handles controller lifecycle automatically.
+ *
+ * 2. **Query at stable points** where variables are fully initialized. Mid-expression
+ *    queries may show intermediate values.
+ *
+ * 3. **Use `&expand` sparingly** on large structs. Deep expansion can be slow.
+ *
+ * 4. **Breakpoint mode for exploration**. Use `&break` when you need to inspect
+ *    multiple related variables in context.
+ *
+ * 5. **Remember: debug builds only**. All query functionality compiles out in
+ *    release builds, so don't depend on it for production behavior.
+ *
+ * @section query_files Source Files
+ *
+ * - `lib/tooling/query/query.h` - Public C API for auto-spawn
+ * - `lib/tooling/query/query.c` - Auto-spawn implementation
+ * - `src/tooling/query/main.cpp` - Controller entry point
+ * - `src/tooling/query/lldb_controller.h/cpp` - LLDB SB API wrapper
+ * - `src/tooling/query/http_server.h/cpp` - HTTP server implementation
+ *
+ * @see @ref docs/tooling/query.md "User Guide"
+ * @see @ref docs/tooling/query-troubleshooting.md "Troubleshooting"
+ */

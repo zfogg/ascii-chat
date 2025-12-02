@@ -176,5 +176,5 @@ void handle_sigint(int signum) {
 
 ## Roadmap Follow-ups
 
-- Cover runtime filtering and formatting with Criterion tests executed via `./tests/scripts/run_tests.sh` (Docker on macOS).
+- Cover runtime filtering and formatting with Criterion tests executed via `ctest --test-dir build --output-on-failure` (Docker on macOS).
 

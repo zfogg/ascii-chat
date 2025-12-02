@@ -132,9 +132,11 @@ make BUILD_TYPE=Release all
 make NPROC=8 production    # Use 8 cores
 ```
 
-### Custom Build Type (legacy)
+### Enable Coverage (option, not build type)
 ```bash
-make BUILD_TYPE=Coverage all
+# Coverage is now an option, not a build type
+cmake -B build -DCMAKE_BUILD_TYPE=Debug -DASCIICHAT_ENABLE_COVERAGE=ON
+cmake --build build
 ```
 
 ### Environment Variables
