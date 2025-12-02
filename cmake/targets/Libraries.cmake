@@ -22,7 +22,7 @@ include(CheckCCompilerFlag)
 check_c_compiler_flag("-Wno-unterminated-string-initialization" HAVE_WNO_UNTERMINATED_STRING_INIT)
 
 # Check if we're building OBJECT libraries (Windows dev builds)
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
+if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
     set(BUILDING_OBJECT_LIBS TRUE)
 else()
     set(BUILDING_OBJECT_LIBS FALSE)
@@ -30,7 +30,7 @@ endif()
 
 # Helper macro to create a module with common settings
 macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
-    # For Windows Debug/Dev/Coverage builds: use OBJECT libraries so we can build a proper DLL
+    # For Windows Debug/Dev builds: use OBJECT libraries so we can build a proper DLL
     # For other platforms/builds: use STATIC libraries
     if(BUILDING_OBJECT_LIBS)
         add_library(${MODULE_NAME} OBJECT ${MODULE_SRCS})
@@ -374,9 +374,9 @@ endif()
 # =============================================================================
 
 # Shared unified library (libasciichat.so / libasciichat.dylib / asciichat.dll)
-# For Windows Debug/Dev/Coverage: Build from OBJECT libraries to enable proper symbol export
+# For Windows Debug/Dev: Build from OBJECT libraries to enable proper symbol export
 # For other platforms/builds: Link static libraries together
-if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage"))
+if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
     # Windows dev builds: Create DLL from OBJECT libraries (modules compiled as OBJECT)
     # Note: ascii-chat-panic is always included as it provides runtime logging functions
     # that may be called by panic-instrumented code
@@ -982,12 +982,12 @@ endif() # NOT BUILDING_OBJECT_LIBS
 # =============================================================================
 # Unified Library (ascii-chat-static for backward compatibility)
 # =============================================================================
-# Debug/Dev/Coverage: Shared library (DLL on Windows) for faster linking during development
+# Debug/Dev: Shared library (DLL on Windows) for faster linking during development
 # Release: Static library for distribution
 # USE_MUSL: Always static (musl requires static linking)
-if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev" OR CMAKE_BUILD_TYPE STREQUAL "Coverage") AND NOT USE_MUSL)
+if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
     # Use the existing ascii-chat-shared target but make it build by default
-    # Remove EXCLUDE_FROM_ALL for Debug/Dev/Coverage builds
+    # Remove EXCLUDE_FROM_ALL for Debug/Dev builds
     set_target_properties(ascii-chat-shared PROPERTIES EXCLUDE_FROM_ALL FALSE)
 
     # Create interface library that wraps the shared library

@@ -33,6 +33,34 @@ if(BUILD_TESTS)
 endif()
 
 # =============================================================================
+# Criterion Test Configuration
+# =============================================================================
+# Configure Criterion-specific test options based on build type.
+# Coverage builds are slower due to instrumentation, so we use longer timeouts.
+# XML output is generated for coverage builds to capture detailed test results.
+
+# Detect coverage build via ASCIICHAT_ENABLE_COVERAGE option
+set(IS_COVERAGE_BUILD OFF)
+if(ASCIICHAT_ENABLE_COVERAGE)
+    set(IS_COVERAGE_BUILD ON)
+endif()
+
+# Configure timeouts based on build type
+if(IS_COVERAGE_BUILD)
+    set(CRITERION_TIMEOUT 60)      # Criterion's internal timeout per test case
+    set(CTEST_TEST_TIMEOUT 120)    # CTest's overall timeout per test executable
+    set(CRITERION_JOBS 1)          # Disable internal parallelism for coverage accuracy
+else()
+    set(CRITERION_TIMEOUT 25)      # Default timeout
+    set(CTEST_TEST_TIMEOUT 45)     # Default ctest timeout
+    set(CRITERION_JOBS 0)          # Auto-detect (0 = use all cores)
+endif()
+
+# XML output directory for Criterion test results
+set(CRITERION_XML_DIR "${CMAKE_BINARY_DIR}/Testing/criterion-xml")
+file(MAKE_DIRECTORY ${CRITERION_XML_DIR})
+
+# =============================================================================
 # Test Build Timing
 # =============================================================================
 # Create timer start target for all tests (Criterion, library, and future defer tests)
@@ -379,11 +407,36 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             INTERPROCEDURAL_OPTIMIZATION_RELWITHDEBINFO OFF
         )
 
-        # Add to CTest with TESTING environment variable
-        add_test(NAME ${test_exe_name} COMMAND ${test_exe_name})
-        set_tests_properties(${test_exe_name} PROPERTIES
-            ENVIRONMENT "TESTING=1"
+        # Build Criterion command-line arguments
+        set(_criterion_args
+            --jobs ${CRITERION_JOBS}
+            --timeout ${CRITERION_TIMEOUT}
+            --color=always
+            --short-filename
         )
+
+        # Add XML output for coverage builds
+        if(IS_COVERAGE_BUILD)
+            list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
+        endif()
+
+        # Add to CTest with Criterion flags
+        add_test(NAME ${test_exe_name}
+            COMMAND ${test_exe_name} ${_criterion_args}
+        )
+
+        # Set test properties
+        set_tests_properties(${test_exe_name} PROPERTIES
+            ENVIRONMENT "TESTING=1;CRITERION_TEST=1"
+            TIMEOUT ${CTEST_TEST_TIMEOUT}
+            LABELS "${test_category}"
+        )
+
+        # Tests that spawn subprocesses (server/client) must run serially
+        # to avoid port conflicts and resource contention
+        if(test_exe_name MATCHES "main_integration")
+            set_tests_properties(${test_exe_name} PROPERTIES RUN_SERIAL TRUE)
+        endif()
     endforeach()
 
     # Update timed test targets list with Criterion tests

@@ -76,11 +76,11 @@ option(ASCIICHAT_ENFORCE_STATIC_RELEASE "Fail Release builds if binaries are not
 
 # Build type (matches Makefile modes)
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, Coverage" FORCE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type: Debug, Dev, Release, RelWithDebInfo" FORCE)
 endif()
 
 # Valid build types (matching Makefile)
-set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Dev" "Release" "Coverage" "TSan")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Dev" "Release" "RelWithDebInfo" "TSan")
 
 # Interprocedural optimization (LTO) support detection
 include(CheckIPOSupported)

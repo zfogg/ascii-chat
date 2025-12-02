@@ -1,5 +1,5 @@
 name: 'Publish Test Results'
-description: 'Validates JUnit XML, publishes test results to GitHub, uploads to Codecov'
+description: 'Validates Criterion XML, publishes test results to GitHub, uploads to Codecov'
 inputs:
   test-type:
     description: 'Type of test (unit, integration, performance)'
@@ -11,10 +11,10 @@ inputs:
     description: 'Build type (debug, release, or empty for integration/perf tests)'
     required: false
     default: ''
-  junit-file:
-    description: 'Path to JUnit XML file'
+  criterion-xml-dir:
+    description: 'Directory containing Criterion XML files'
     required: false
-    default: 'junit.xml'
+    default: 'build/Testing/criterion-xml'
   coverage-files:
     description: 'Coverage file pattern for Codecov'
     required: false
@@ -35,50 +35,68 @@ runs:
       shell: bash
       run: |
         if [ -f "codecov.yml" ]; then
-          echo "🔍 Validating codecov.yml configuration..."
+          echo "Validating codecov.yml configuration..."
           response=$(curl -s --data-binary @codecov.yml https://codecov.io/validate)
 
           # Check if response starts with "Valid!" (successful validation)
           if echo "$response" | grep -q '^Valid!'; then
-            echo "✅ codecov.yml is valid"
+            echo "codecov.yml is valid"
             # Extract and display the JSON part (skip first line)
             echo "$response" | tail -n +2 | jq -C '.coverage.status.project | keys' 2>/dev/null || true
           else
-            echo "❌ codecov.yml validation failed:"
+            echo "codecov.yml validation failed:"
             echo "$response"
             exit 1
           fi
         else
-          echo "⚠️ No codecov.yml found, skipping validation"
+          echo "No codecov.yml found, skipping validation"
         fi
 
-    # Validate JUnit XML if xmllint is available
-    - name: Validate JUnit XML
+    # Validate Criterion XML files
+    - name: Validate Criterion XML
       if: always()
       shell: bash
       run: |
-        if [ -f "${{ inputs.junit-file }}" ]; then
-          echo "✅ JUnit XML exists ($(wc -l < ${{ inputs.junit-file }}) lines)"
-          echo "First 5 lines:"
-          head -5 "${{ inputs.junit-file }}"
-          echo "Last 5 lines:"
-          tail -5 "${{ inputs.junit-file }}"
+        xml_dir="${{ inputs.criterion-xml-dir }}"
+        if [ -d "$xml_dir" ]; then
+          xml_count=$(find "$xml_dir" -name "*.xml" -type f | wc -l)
+          echo "Found $xml_count Criterion XML files in $xml_dir"
 
-          # Validate with xmllint if available
-          if command -v xmllint &>/dev/null; then
-            echo "Validating XML with xmllint..."
-            if xmllint --noout "${{ inputs.junit-file }}" 2>&1; then
-              echo "✅ Valid XML"
-            else
-              echo "❌ Invalid XML detected - test results may not display correctly"
+          if [ "$xml_count" -gt 0 ]; then
+            echo "XML files:"
+            find "$xml_dir" -name "*.xml" -type f -exec basename {} \;
+
+            # Show sample of first XML file
+            first_xml=$(find "$xml_dir" -name "*.xml" -type f | head -1)
+            if [ -n "$first_xml" ]; then
+              echo "Sample from $(basename $first_xml):"
+              head -10 "$first_xml"
+            fi
+
+            # Validate with xmllint if available
+            if command -v xmllint &>/dev/null; then
+              echo "Validating XML files with xmllint..."
+              valid_count=0
+              invalid_count=0
+              for xml_file in "$xml_dir"/*.xml; do
+                if [ -f "$xml_file" ]; then
+                  if xmllint --noout "$xml_file" 2>/dev/null; then
+                    valid_count=$((valid_count + 1))
+                  else
+                    echo "Invalid XML: $(basename $xml_file)"
+                    invalid_count=$((invalid_count + 1))
+                  fi
+                fi
+              done
+              echo "Valid: $valid_count, Invalid: $invalid_count"
             fi
           else
-            echo "ℹ️ xmllint not available, skipping XML validation"
+            echo "No XML files found in $xml_dir"
           fi
         else
-          echo "❌ JUnit XML not found at ${{ inputs.junit-file }}"
+          echo "Criterion XML directory not found: $xml_dir"
           echo "Looking for XML files:"
-          find . -name "*.xml" -type f | head -5
+          find . -name "*.xml" -type f 2>/dev/null | head -10
         fi
 
     # Publish test results to GitHub checks (Linux)
@@ -87,7 +105,7 @@ runs:
       if: always() && runner.os == 'Linux'
       with:
         files: |
-          ${{ inputs.junit-file }}
+          ${{ inputs.criterion-xml-dir }}/*.xml
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
@@ -106,7 +124,7 @@ runs:
       if: always() && runner.os == 'macOS'
       with:
         files: |
-          ${{ inputs.junit-file }}
+          ${{ inputs.criterion-xml-dir }}/*.xml
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
@@ -125,7 +143,7 @@ runs:
       if: always() && runner.os == 'Windows'
       with:
         files: |
-          ${{ inputs.junit-file }}
+          ${{ inputs.criterion-xml-dir }}/*.xml
         check_name: |
           ${{ inputs.test-type == 'unit' && format('{0} Tests ({1}-{2})', 'Unit', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('{0} Tests ({1})', 'Integration', inputs.os-name) ||
@@ -140,10 +158,10 @@ runs:
 
     # Upload test results to Codecov
     - name: Upload Test Results to Codecov
-      if: ${{ always() && hashFiles(inputs.junit-file) != '' }}
+      if: always()
       uses: codecov/test-results-action@v1
       with:
-        files: ${{ inputs.junit-file }}
+        files: ${{ inputs.criterion-xml-dir }}/*.xml
         flags: |
           ${{ inputs.test-type == 'unit' && format('ascii-chat-tests-{0}-{1}', inputs.os-name, inputs.build-type) ||
               inputs.test-type == 'integration' && format('ascii-chat-integration-{0}', inputs.os-name) ||
@@ -160,10 +178,10 @@ runs:
         echo "Checking for coverage files matching: ${{ inputs.coverage-files }}"
         gcov_count=$(ls -1 *.gcov 2>/dev/null | wc -l || echo 0)
         if [ "$gcov_count" -gt 0 ]; then
-          echo "✅ Found $gcov_count coverage files"
+          echo "Found $gcov_count coverage files"
           echo "has_coverage=true" >> $GITHUB_OUTPUT
         else
-          echo "⚠️ No coverage files found matching pattern: ${{ inputs.coverage-files }}"
+          echo "No coverage files found matching pattern: ${{ inputs.coverage-files }}"
           echo "has_coverage=false" >> $GITHUB_OUTPUT
           echo "This may be expected for non-coverage builds (e.g., regular debug vs debug-coverage)"
         fi

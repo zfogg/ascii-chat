@@ -136,16 +136,21 @@ jobs:
         echo "All files in build/bin:"
         ls -la build/bin/ 2>/dev/null || echo "build/bin/ directory not found"
 
-    - name: Run unit tests with JUnit XML generation
+    - name: Run unit tests
       run: |
         echo "Running tests with build type: ${{ matrix.build_type }}"
         echo "Looking for test executables:"
         find . -name "test_unit_*" -type f 2>/dev/null | head -10
-        # Save logs with descriptive filename
-        LOG_FILE="unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log"
-        ./tests/scripts/run_tests.sh -t unit -b ${{ matrix.build_type }} -J --log-file="${LOG_FILE}"
+
+        # Run unit tests via ctest with label filter
+        # Criterion generates detailed XML in build/Testing/criterion-xml/
+        cd build
+        ctest --label-regex "^unit$" \
+          --output-on-failure \
+          --parallel 0 \
+          | tee ../unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+
         echo "Unit tests completed successfully"
-        echo "Test logs saved to: ${LOG_FILE}"
 
     - name: Generate coverage report (debug builds only)
       if: always() && matrix.build_type == 'debug'
@@ -238,7 +243,7 @@ jobs:
         test-type: unit
         os-name: ${{ matrix.os-name }}
         build-type: ${{ matrix.build_type }}
-        junit-file: junit.xml
+        criterion-xml-dir: build/Testing/criterion-xml
         coverage-files: './*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: ${{ matrix.build_type == 'debug' && 'true' || 'false' }}
@@ -249,9 +254,8 @@ jobs:
       with:
         name: test-results-${{ runner.os }}-${{ matrix.build_type }}
         path: |
-          junit.xml
           unit-tests-*.log
-          tests.log
+          build/Testing/criterion-xml/*.xml
         retention-days: 7
 
   integration-tests:
@@ -325,10 +329,16 @@ jobs:
           -DCMAKE_BUILD_TYPE=Debug \
           -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
-        LOG_FILE="integration-tests-${{ matrix.os-name }}.log"
-        ./tests/scripts/run_tests.sh -t integration -b coverage -J --log-file="${LOG_FILE}"
+
+        # Run integration tests via ctest with label filter
+        # Criterion generates detailed XML in build/Testing/criterion-xml/
+        cd build
+        ctest --label-regex "^integration$" \
+          --output-on-failure \
+          --parallel 0 \
+          | tee ../integration-tests-${{ matrix.os-name }}.log
+
         echo "Integration tests completed successfully"
-        echo "Test logs saved to: ${LOG_FILE}"
 
     - name: Generate coverage report
       if: always()
@@ -358,7 +368,7 @@ jobs:
       with:
         test-type: integration
         os-name: ${{ matrix.os-name }}
-        junit-file: junit.xml
+        criterion-xml-dir: build/Testing/criterion-xml
         coverage-files: './*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: 'true'
@@ -369,9 +379,8 @@ jobs:
       with:
         name: integration-test-results-${{ runner.os }}
         path: |
-          junit.xml
           integration-tests-*.log
-          tests.log
+          build/Testing/criterion-xml/*.xml
         retention-days: 7
 
   performance-tests:
@@ -450,12 +459,17 @@ jobs:
 
     - name: Run performance tests
       run: |
-        # Run performance tests
         echo "Running performance tests..."
-        LOG_FILE="performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log"
-        ./tests/scripts/run_tests.sh -t performance -b release -J --log-file="${LOG_FILE}"
+
+        # Run performance tests via ctest with label filter
+        # Criterion generates detailed XML in build/Testing/criterion-xml/
+        cd build
+        ctest --label-regex "^performance$" \
+          --output-on-failure \
+          --parallel 0 \
+          | tee ../performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+
         echo "Performance tests completed successfully"
-        echo "Test logs saved to: ${LOG_FILE}"
 
     - name: Save build caches
       if: always()
@@ -485,7 +499,7 @@ jobs:
       with:
         test-type: performance
         os-name: ${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}
-        junit-file: junit.xml
+        criterion-xml-dir: build/Testing/criterion-xml
         coverage-files: './*.gcov'
         codecov-token: ${{ secrets.CODECOV_TOKEN }}
         upload-coverage: 'true'
@@ -496,9 +510,8 @@ jobs:
       with:
         name: performance-test-results-${{ runner.os }}
         path: |
-          junit.xml
           performance-tests-*.log
-          tests.log
+          build/Testing/criterion-xml/*.xml
         retention-days: 7
 
   memory-tests:
