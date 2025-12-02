@@ -284,8 +284,8 @@ Windows query tool is now functional:
 [-] 15.9 Squash/rebase for clean history (SKIP: not needed)
 [x] 15.10 COMMIT 15: "chore(query): final polish"
 
-[ ] 16.1 Create PR: query-tool → master
-[ ] 16.2 Fill PR description with feature summary
+[x] 16.1 Create PR: query-tool → master (PR #131)
+[x] 16.2 Fill PR description with feature summary
 [ ] 16.3 Request review
 [ ] 16.4 Address review feedback
 [ ] 16.5 Merge to master
