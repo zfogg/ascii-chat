@@ -120,17 +120,16 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
 
             # Add custom command to build BearSSL if library is missing
             # This creates a build rule that Ninja/Make can use to rebuild the library
-            # Build BearSSL quietly, logging output to file
-            set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
+            # Note: Output is NOT redirected to file so errors are visible in CI logs
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
                 COMMAND ${CMAKE_COMMAND} -E env
                         MAKEFLAGS=
                         NMAKEFLAGS=
-                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${BEARSSL_AR_EXECUTABLE}" lib > "${BEARSSL_LOG_FILE}" 2>&1
+                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${BEARSSL_AR_EXECUTABLE}" lib
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"
+                COMMENT "Building BearSSL..."
                 VERBATIM
             )
 
