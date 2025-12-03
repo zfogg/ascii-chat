@@ -274,11 +274,21 @@ Default SSH Ed25519 private key used for encryption if \fB\-\-key\fR is not spec
 .I ~/.ssh/id_ed25519.pub
 Public key corresponding to the default private key.
 .TP
-.I ~/.ascii-chat/known_hosts
-Known hosts file for TOFU (Trust On First Use) server verification.
+.I $XDG_CONFIG_HOME/ascii-chat/ \fRor\fI ~/.ascii-chat/
+Configuration directory on Linux/macOS.
+Uses $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/.
+Contains config.toml and known_hosts.
 .TP
-.I ~/.config/ascii-chat/config.toml
-Default configuration file location (Linux/macOS).
+.I %APPDATA%\eascii-chat\e \fRor\fI ~\e.ascii-chat\e
+Configuration directory on Windows.
+Uses %APPDATA%\eascii-chat\e if APPDATA is set, otherwise ~\e.ascii-chat\e.
+Contains config.toml and known_hosts.
+.TP
+.I config.toml
+Configuration file in the configuration directory.
+.TP
+.I known_hosts
+Known hosts file for TOFU (Trust On First Use) server verification.
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
 .TP
@@ -336,6 +346,18 @@ Zachary Fogg <me@zfo.gg>
 .BR ssh (1),
 .BR ssh-keygen (1),
 .BR ssh-agent (1)
+.PP
+.B ascii-chat
+API documentation (section 3):
+.BR ascii-chat-build (3),
+.BR ascii-chat-config (3),
+.BR ascii-chat-crypto (3),
+.BR ascii-chat-client (3),
+.BR ascii-chat-server (3),
+.BR ascii-chat-errno (3),
+.BR ascii-chat-options (3),
+.BR ascii-chat-network (3),
+.BR ascii-chat-platform (3)
 .PP
 Project homepage: https://github.com/zfogg/ascii-chat
 .PP
