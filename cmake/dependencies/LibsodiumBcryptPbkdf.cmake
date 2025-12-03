@@ -20,7 +20,7 @@ function(configure_libsodium_bcrypt_pbkdf)
     # Apply patch #0: Windows sys/param.h fix (Windows only)
     apply_patch(
         TARGET_DIR "${DEP_DIR}"
-        PATCH_FILE "${PATCHES_DIR}/libsodium-bcrypt-pbkdf-windows.patch"
+        PATCH_FILE "${PATCHES_DIR}/libsodium-bcrypt-pbkdf-0-windows.patch"
         PATCH_NUM 0
         DESCRIPTION "Fix missing sys/param.h on Windows"
         PLATFORM WIN32
@@ -31,7 +31,7 @@ function(configure_libsodium_bcrypt_pbkdf)
     # Apply patch #1: UBSAN fix (all platforms)
     apply_patch(
         TARGET_DIR "${DEP_DIR}"
-        PATCH_FILE "${PATCHES_DIR}/libsodium-bcrypt-pbkdf-fix-ubsan.patch"
+        PATCH_FILE "${PATCHES_DIR}/libsodium-bcrypt-pbkdf-1-fix-ubsan.patch"
         PATCH_NUM 1
         DESCRIPTION "Fix undefined behavior sanitizer warnings"
         ASSUME_UNCHANGED
