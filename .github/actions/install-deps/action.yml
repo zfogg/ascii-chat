@@ -64,6 +64,20 @@ runs:
     # =========================================================================
     # Dependency Caches
     # =========================================================================
+    - name: Compute install-deps.sh hash (for cmake cache key)
+      id: install-deps-hash
+      shell: bash
+      run: |
+        # Hash install-deps.sh to invalidate cmake-deps cache when system packages change
+        # This ensures the defer tool gets rebuilt when Clang packages are updated
+        if command -v sha256sum &>/dev/null; then
+          hash=$(sha256sum scripts/install-deps.sh | cut -c1-8)
+        else
+          hash=$(shasum -a 256 scripts/install-deps.sh | cut -c1-8)
+        fi
+        echo "hash=$hash" >> $GITHUB_OUTPUT
+        echo "install-deps.sh hash for cmake cache: $hash"
+
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
       uses: actions/cache/restore@v4
@@ -72,7 +86,8 @@ runs:
           .deps-cache
           deps/bearssl/build
         # Include runner.arch to separate x86_64 and arm64 caches on macOS
-        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}
+        # Include install-deps.sh hash so defer tool rebuilds when system packages change
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}-${{ steps.install-deps-hash.outputs.hash }}
 
     - name: Compute install-deps.sh hash (macOS)
       if: inputs.os == 'macos'
@@ -545,7 +560,8 @@ runs:
           .deps-cache
           deps/bearssl/build
         # Include runner.arch to separate x86_64 and arm64 caches on macOS
-        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}
+        # Include install-deps.sh hash so defer tool rebuilds when system packages change
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}-${{ steps.install-deps-hash.outputs.hash }}
 
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
