@@ -71,7 +71,8 @@ runs:
         path: |
           .deps-cache
           deps/bearssl/build
-        key: ${{ runner.os }}-cmake-deps-v5-${{ hashFiles('cmake/dependencies/**') }}
+        # Include runner.arch to separate x86_64 and arm64 caches on macOS
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v6-${{ hashFiles('cmake/dependencies/**') }}
 
     - name: Compute install-deps.sh hash (macOS)
       if: inputs.os == 'macos'
@@ -430,8 +431,8 @@ runs:
 
           $packages = $PackageList.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
           foreach ($pkg in $packages) {
-            Write-Host "Installing vcpkg package: $pkg:$Triplet"
-            vcpkg install "$pkg`:$Triplet"
+            Write-Host "Installing vcpkg package: ${pkg}:${Triplet}"
+            vcpkg install "${pkg}:${Triplet}"
           }
         }
 
@@ -445,7 +446,8 @@ runs:
         path: |
           .deps-cache
           deps/bearssl/build
-        key: ${{ runner.os }}-cmake-deps-v5-${{ hashFiles('cmake/dependencies/**') }}
+        # Include runner.arch to separate x86_64 and arm64 caches on macOS
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v6-${{ hashFiles('cmake/dependencies/**') }}
 
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
