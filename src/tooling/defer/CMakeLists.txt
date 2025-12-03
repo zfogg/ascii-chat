@@ -131,6 +131,14 @@ else()
         -fno-rtti
         -fexceptions
     )
+
+    # Linux: Set rpath to ensure we use the LLVM libs we built against,
+    # not any custom LLVM in /usr/local that might be in LD_LIBRARY_PATH
+    if(NOT WIN32)
+        target_link_options(ascii-instr-defer PRIVATE
+            "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
+        )
+    endif()
 endif()
 
 # On Windows, use dynamic runtime (/MD) to match Clang libraries
