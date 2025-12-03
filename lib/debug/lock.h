@@ -2,15 +2,17 @@
 
 /**
  * @file lock.h
- * @ingroup lock_debug
  * @brief 🔒 Lock debugging and deadlock detection system for ascii-chat
+ * @ingroup lock_debug
+ * @addtogroup lock_debug
+ * @{
  *
  * This module provides comprehensive lock tracking to help identify deadlocks
  * and lock contention issues. It tracks all mutex and rwlock acquisitions
  * with call stack backtraces and provides a debug thread to print held locks.
  *
- * NOTE: Lock debugging is ONLY enabled in debug builds (when NDEBUG is not defined).
- * In release builds, all lock_debug functions become no-ops with zero overhead.
+ * NOTE: Lock debugging is ONLY enabled when DEBUG_LOCKS is defined.
+ * Without DEBUG_LOCKS, all lock_debug functions become no-ops with zero overhead.
  *
  * FEATURES (Debug builds only):
  * =========
@@ -43,8 +45,8 @@
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
 
-#ifndef NDEBUG
-// Lock debugging is enabled in debug builds
+#ifdef DEBUG_LOCKS
+// Lock debugging is enabled when DEBUG_LOCKS is defined
 #include "util/uthash.h"
 #include "util/fnv1a.h"
 
@@ -354,16 +356,16 @@ int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_numb
  * @brief Convenience macro for tracked mutex lock
  * @param mutex Pointer to mutex to lock
  */
-#ifdef NDEBUG
-#define DEBUG_MUTEX_LOCK(mutex) debug_mutex_lock(mutex, NULL, 0, NULL)
-#define DEBUG_MUTEX_UNLOCK(mutex) debug_mutex_unlock(mutex, NULL, 0, NULL)
-#define DEBUG_RWLOCK_RDLOCK(rwlock) debug_rwlock_rdlock(rwlock, NULL, 0, NULL)
-#define DEBUG_RWLOCK_WRLOCK(rwlock) debug_rwlock_wrlock(rwlock, NULL, 0, NULL)
-#else
+#ifdef DEBUG_LOCKS
 #define DEBUG_MUTEX_LOCK(mutex) debug_mutex_lock(mutex, __FILE__, __LINE__, __func__)
 #define DEBUG_MUTEX_UNLOCK(mutex) debug_mutex_unlock(mutex, __FILE__, __LINE__, __func__)
 #define DEBUG_RWLOCK_RDLOCK(rwlock) debug_rwlock_rdlock(rwlock, __FILE__, __LINE__, __func__)
 #define DEBUG_RWLOCK_WRLOCK(rwlock) debug_rwlock_wrlock(rwlock, __FILE__, __LINE__, __func__)
+#else
+#define DEBUG_MUTEX_LOCK(mutex) debug_mutex_lock(mutex, NULL, 0, NULL)
+#define DEBUG_MUTEX_UNLOCK(mutex) debug_mutex_unlock(mutex, NULL, 0, NULL)
+#define DEBUG_RWLOCK_RDLOCK(rwlock) debug_rwlock_rdlock(rwlock, NULL, 0, NULL)
+#define DEBUG_RWLOCK_WRLOCK(rwlock) debug_rwlock_wrlock(rwlock, NULL, 0, NULL)
 #endif
 
 /**
@@ -405,4 +407,6 @@ void lock_debug_print_state(void);
  */
 void print_orphaned_release_callback(lock_record_t *record, void *user_data);
 
-#endif // NDEBUG
+#endif // DEBUG_LOCKS
+
+/** @} */
