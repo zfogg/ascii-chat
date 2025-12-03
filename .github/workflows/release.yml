@@ -292,6 +292,18 @@ jobs:
           cmake --build build_release --target docs
           cmake --build build_release --target package
 
+      - name: Print build logs on failure
+        if: failure()
+        run: |
+          echo "=== Defer tool configure log ==="
+          cat build_release/ascii-instr-defer-external-prefix/src/ascii-instr-defer-external-stamp/ascii-instr-defer-external-configure-*.log 2>/dev/null || echo "No configure log"
+          echo ""
+          echo "=== Defer tool build log ==="
+          cat build_release/ascii-instr-defer-external-prefix/src/ascii-instr-defer-external-stamp/ascii-instr-defer-external-build-*.log 2>/dev/null || echo "No build log"
+          echo ""
+          echo "=== CMake error log ==="
+          cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
+
       - name: Collect artifacts
         run: |
           mkdir -p dist
@@ -336,14 +348,10 @@ jobs:
     strategy:
       matrix:
         include:
-          # Use macos-15 for both architectures since macos-13 is Tier 3 (no Homebrew bottles)
-          # ARM64 runner can cross-compile for x86_64 using CMAKE_OSX_ARCHITECTURES
-          - os: macos-15
-            arch: x86_64
-            cmake_arch: x86_64
+          # Only build arm64 - macos-13 (x86_64) is Tier 3 with no Homebrew bottles
+          # Cross-compilation from arm64 to x86_64 has issues with BearSSL Makefile
           - os: macos-15
             arch: arm64
-            cmake_arch: arm64
 
     steps:
       - name: Checkout code
@@ -362,10 +370,7 @@ jobs:
 
       - name: Configure and package with CPack
         run: |
-          # Clean BearSSL build directory to avoid architecture mismatches
-          rm -rf deps/bearssl/build
-          # Cross-compile for target architecture using CMAKE_OSX_ARCHITECTURES
-          cmake --preset release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.cmake_arch }}
+          cmake --preset release
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
