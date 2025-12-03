@@ -105,11 +105,18 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             if(NOT ASCIICHAT_CLANG_CL_EXECUTABLE)
                 message(FATAL_ERROR "clang-cl not found. Required for building BearSSL on Windows.")
             endif()
-            if(NOT ASCIICHAT_LLVM_LIB_EXECUTABLE)
-                message(FATAL_ERROR "llvm-lib not found. Required for building BearSSL on Windows.")
-            endif()
             set(CLANG_CL_EXECUTABLE "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
-            set(LLVM_LIB_EXECUTABLE "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+
+            # Prefer MSVC lib.exe over llvm-lib - more reliable for nmake builds
+            if(ASCIICHAT_MSVC_LIB_EXECUTABLE)
+                set(BEARSSL_AR_EXECUTABLE "${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
+                message(STATUS "BearSSL: Using MSVC lib.exe: ${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
+            elseif(ASCIICHAT_LLVM_LIB_EXECUTABLE)
+                set(BEARSSL_AR_EXECUTABLE "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+                message(STATUS "BearSSL: Using llvm-lib: ${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+            else()
+                message(FATAL_ERROR "No archiver found (lib.exe or llvm-lib). Required for building BearSSL on Windows.")
+            endif()
 
             # Add custom command to build BearSSL if library is missing
             # This creates a build rule that Ninja/Make can use to rebuild the library
@@ -120,7 +127,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
                 COMMAND ${CMAKE_COMMAND} -E env
                         MAKEFLAGS=
                         NMAKEFLAGS=
-                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${LLVM_LIB_EXECUTABLE}" lib > "${BEARSSL_LOG_FILE}" 2>&1
+                        "${NMAKE_EXECUTABLE}" "CC=${CLANG_CL_EXECUTABLE}" "AR=${BEARSSL_AR_EXECUTABLE}" lib > "${BEARSSL_LOG_FILE}" 2>&1
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/bearssls.lib" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"

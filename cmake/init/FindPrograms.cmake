@@ -336,6 +336,24 @@ _find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
 if(WIN32)
     _find_llvm_tool(ASCIICHAT_CLANG_CL_EXECUTABLE clang-cl)
     _find_llvm_tool(ASCIICHAT_LLVM_LIB_EXECUTABLE llvm-lib)
+
+    # MSVC lib.exe - native Windows archiver, more reliable than llvm-lib for nmake builds
+    # Look in the same directory as nmake (they're both in VS VC tools bin)
+    if(ASCIICHAT_NMAKE_EXECUTABLE)
+        get_filename_component(_nmake_dir "${ASCIICHAT_NMAKE_EXECUTABLE}" DIRECTORY)
+        set(_MSVC_LIB_HINTS "${_nmake_dir}")
+        unset(_nmake_dir)
+    endif()
+    find_program(ASCIICHAT_MSVC_LIB_EXECUTABLE
+        NAMES lib.exe
+        HINTS ${_MSVC_LIB_HINTS}
+        PATHS
+            "$ENV{VCToolsInstallDir}/bin/Hostx64/x64"
+            "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64"
+            "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64"
+        DOC "MSVC lib.exe archiver"
+    )
+    unset(_MSVC_LIB_HINTS)
 endif()
 
 # =============================================================================
