@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/keys/gpg_keys.h
- * @ingroup keys
  * @brief GPG key parsing and validation functions
+ * @ingroup keys
+ * @addtogroup keys
+ * @{
  *
  * This module handles GPG key parsing, validation, and conversion
  * to X25519 for key exchange operations.

@@ -1,7 +1,9 @@
 /**
  * @file platform/string.h
- * @ingroup platform
  * @brief Platform-independent safe string functions
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides safe string formatting and manipulation functions that
  * satisfy clang-tidy cert-err33-c requirements. All functions ensure null

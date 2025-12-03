@@ -2,8 +2,10 @@
 
 /**
  * @file tests/common.h
- * @ingroup testing
  * @brief Common test utilities and environment detection
+ * @ingroup testing
+ * @addtogroup testing
+ * @{
  *
  * This header provides common utilities and helpers for writing ascii-chat tests.
  * It includes standard test headers, platform detection, and environment checks
@@ -161,3 +163,5 @@ static inline bool test_is_in_headless_environment(void) {
  * @endcode
  */
 const char *test_get_binary_path(void);
+
+/** @} */

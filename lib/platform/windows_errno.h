@@ -2,8 +2,10 @@
 
 /**
  * @file platform/windows_errno.h
- * @ingroup platform
  * @brief Windows errno compatibility definitions
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides POSIX-style errno constant definitions for Windows
  * compatibility. Windows headers do not define these constants by default,
@@ -109,3 +111,5 @@
 
 // Declare errno variable for Windows CRT compatibility
 extern int errno;
+
+/** @} */

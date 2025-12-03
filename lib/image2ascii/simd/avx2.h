@@ -4,6 +4,8 @@
  * @file image2ascii/simd/avx2.h
  * @ingroup image2ascii
  * @brief AVX2-optimized ASCII rendering functions
+ * @addtogroup util
+ * @{
  *
  * This header provides AVX2 (Advanced Vector Extensions 2) optimized
  * functions for converting images to ASCII art on modern x86-64 CPUs.
@@ -47,3 +49,5 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 void avx2_caches_destroy(void);
 
 #endif /* SIMD_SUPPORT_AVX2 */
+
+/** @} */

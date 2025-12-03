@@ -2,8 +2,10 @@
 
 /**
  * @file mixer.h
- * @ingroup audio
  * @brief Multi-Source Audio Mixing and Processing System
+ * @ingroup audio
+ * @addtogroup audio
+ * @{
  *
  * This header provides professional-quality audio mixing for ascii-chat's
  * multi-client audio chat functionality. The mixer combines audio from multiple

@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/output_buffer.h
- * @ingroup image2ascii
  * @brief Dynamic Output Buffer with ANSI Sequence Support
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides a dynamic output buffer system with automatic expansion
  * and optimized ANSI escape sequence emission functions. The buffer is

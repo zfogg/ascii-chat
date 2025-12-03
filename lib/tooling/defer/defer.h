@@ -1,6 +1,9 @@
 /**
  * @file tooling/defer/defer.h
  * @brief Defer macro definition for source-to-source transformation
+ * @ingroup defer
+ * @addtogroup defer
+ * @{
  *
  * This header provides the defer() macro syntax that is recognized by the
  * ascii-instr-defer tool. The tool transforms defer() calls into inlined
@@ -33,3 +36,5 @@
 #define defer(action)                                                                                                  \
   do { /* transformed by ascii-instr-defer */                                                                          \
   } while (0)
+
+/** @} */

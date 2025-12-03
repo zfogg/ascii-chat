@@ -1,33 +1,40 @@
 /**
  * @file tooling/query/query.h
  * @brief Runtime variable query tool API for debug builds
+ * @ingroup query
+ * @addtogroup query
+ * @{
  *
  * This header provides the public C API for the query tool, which enables
  * runtime variable inspection via HTTP queries. The tool uses an external
  * LLDB process to attach to the running application and read variable values.
  *
- * Architecture:
- *   - Target process (ascii-chat) runs normally with debug symbols
- *   - Controller process (ascii-query-server) attaches via LLDB
- *   - HTTP server in controller accepts curl requests
- *   - When target is stopped at breakpoint, controller is still running
+ * ## Architecture
  *
- * Example usage:
- *   // In your application startup (debug builds only)
- *   int port = QUERY_INIT(9999);
- *   if (port > 0) {
- *       printf("Query server at http://localhost:%d\n", port);
- *   }
+ * - Target process (ascii-chat) runs normally with debug symbols
+ * - Controller process (ascii-query-server) attaches via LLDB
+ * - HTTP server in controller accepts curl requests
+ * - When target is stopped at breakpoint, controller is still running
  *
- *   // ... application runs ...
+ * ## Example Usage
  *
- *   // Query variables via curl:
- *   // curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
- *   // curl 'localhost:9999/query?file=src/server.c&line=100&name=client.socket.fd&break'
- *   // curl -X POST 'localhost:9999/continue'
+ * @code
+ * // In your application startup (debug builds only)
+ * int port = QUERY_INIT(9999);
+ * if (port > 0) {
+ *     printf("Query server at http://localhost:%d\n", port);
+ * }
  *
- *   // On shutdown
- *   QUERY_SHUTDOWN();
+ * // ... application runs ...
+ *
+ * // Query variables via curl:
+ * // curl 'localhost:9999/query?file=src/server.c&line=100&name=client_count'
+ * // curl 'localhost:9999/query?file=src/server.c&line=100&name=client.socket.fd&break'
+ * // curl -X POST 'localhost:9999/continue'
+ *
+ * // On shutdown
+ * QUERY_SHUTDOWN();
+ * @endcode
  *
  * Note: All functions and macros compile out completely in release builds
  * (when NDEBUG is defined). The query tool has zero runtime overhead in
@@ -105,8 +112,6 @@ int query_get_port(void);
  *
  * These macros provide a convenient interface that compiles out completely
  * in release builds. Use these instead of calling the functions directly.
- *
- * @{
  */
 
 #ifndef NDEBUG

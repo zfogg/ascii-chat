@@ -2,8 +2,10 @@
 
 /**
  * @file platform/rwlock.h
- * @ingroup platform
  * @brief Cross-platform read-write lock interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a unified read-write lock interface that abstracts platform-specific
  * implementations (Windows SRW Locks vs POSIX pthread read-write locks).

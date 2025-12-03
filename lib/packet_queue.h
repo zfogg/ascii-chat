@@ -1,7 +1,9 @@
 /**
  * @file packet_queue.h
- * @ingroup packet_queue
  * @brief 📬 Thread-safe packet queue system for per-client send threads
+ * @ingroup packet_queue
+ * @addtogroup packet_queue
+ * @{
  *
  * This module implements a high-performance thread-safe queue for network packets,
  * enabling producer threads (audio mixer, video broadcast) to enqueue packets while

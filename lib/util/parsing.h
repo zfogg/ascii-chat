@@ -2,8 +2,10 @@
 
 /**
  * @file util/parsing.h
- * @ingroup util
  * @brief 🔍 Safe Parsing Utilities
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header provides safe, validated parsing utilities for protocol message
  * formats. Functions validate input strings, check for overflow conditions,

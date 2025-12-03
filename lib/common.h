@@ -4,8 +4,10 @@
  * @brief ⚙️ Code shared throughout the library
  *
  * @file common.h
- * @ingroup common
  * @brief ⚙️ Common definitions, error codes, macros, and types shared throughout the application
+ * @ingroup common
+ * @addtogroup common
+ * @{
  *
  * This header provides core functionality used throughout ascii-chat:
  * - Error and exit codes (unified status values)
@@ -892,3 +894,5 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t asciichat_shared_init(const char *default_log_filename);
+
+/** @} */

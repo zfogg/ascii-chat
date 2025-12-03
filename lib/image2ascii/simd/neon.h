@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/simd/neon.h
- * @ingroup image2ascii
  * @brief NEON-optimized ASCII rendering functions
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides NEON (Advanced SIMD) optimized functions for
  * converting images to ASCII art on ARM processors.
@@ -85,3 +87,5 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
  */
 void neon_caches_destroy(void);
 #endif
+
+/** @} */

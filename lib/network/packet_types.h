@@ -2,6 +2,8 @@
  * @file network/packet_types.h
  * @ingroup packet
  * @ingroup network
+ * @addtogroup packet
+ * @{
  *
  * This module defines all packet types, packet structures, and protocol
  * constants used throughout the ascii-chat network communication system.

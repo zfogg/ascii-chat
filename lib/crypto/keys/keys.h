@@ -3,8 +3,10 @@
 /**
  * @file crypto/keys/keys.h
  * @defgroup keys Key Management
- * @ingroup keys
  * @brief SSH key, GPG key, and key validation APIs
+ * @ingroup keys
+ * @addtogroup keys
+ * @{
  *
  * This header provides a unified interface for parsing SSH, GPG, and X25519 keys
  * from various sources including files, URLs, and raw formats.

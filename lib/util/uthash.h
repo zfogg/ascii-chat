@@ -1,7 +1,9 @@
 /**
  * @file util/uthash.h
- * @ingroup util
  * @brief #️⃣ Wrapper for uthash.h that ensures common.h is included first
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header ensures that common.h is included before uthash.h throughout
  * the codebase. This is necessary because common.h defines HASH_FUNCTION
@@ -94,3 +96,5 @@
     _c ^= ((uint64_t)b >> 15);                                                                                         \
     c = (unsigned)(_c & 0xFFFFFFFFU);                                                                                  \
   } while (0)
+
+/** @} */

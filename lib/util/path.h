@@ -2,30 +2,32 @@
 
 /**
  * @file util/path.h
- * @ingroup util
  * @brief 📂 Path Manipulation Utilities
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header provides cross-platform utilities for working with file paths,
  * including path expansion, configuration directory resolution, and project
  * relative path extraction.
  *
- * CORE FEATURES:
- * ==============
+ * ## Core Features
+ *
  * - Cross-platform path handling (Unix and Windows)
  * - Tilde (~) expansion for home directory
  * - XDG_CONFIG_HOME support for configuration paths
  * - Project relative path extraction for logging
  * - Path normalization and validation
  *
- * PATH EXPANSION:
- * ===============
+ * ## Path Expansion
+ *
  * The system supports:
  * - Tilde expansion: ~/path -> /home/user/path
  * - Environment variable expansion (Windows %VAR%)
  * - Automatic platform-specific path separator handling
  *
- * CONFIGURATION DIRECTORIES:
- * ==========================
+ * ## Configuration Directories
+ *
  * All ascii-chat data files (config, known_hosts, etc.) use a single directory:
  * - Unix: $XDG_CONFIG_HOME/ascii-chat/ if set, otherwise ~/.ascii-chat/
  * - Windows: %APPDATA%\ascii-chat\ if set, otherwise ~\.ascii-chat\
@@ -53,8 +55,6 @@
  * @brief Path component: current directory (single dot)
  *
  * Character constant for the current directory component in paths.
- *
- * @ingroup util
  */
 #define PATH_COMPONENT_DOT '.'
 
@@ -62,26 +62,18 @@
  * @brief Path component: parent directory (double dot)
  *
  * String constant for the parent directory component in paths.
- *
- * @ingroup util
  */
 #define PATH_COMPONENT_DOTDOT ".."
 
 /**
  * @brief Path component: home directory tilde
  *
- * Character constant for the home directory expansion character.
- *
- * @ingroup util
+ * The home directory component in paths (e.g., "~/path").
  */
 #define PATH_TILDE '~'
 
 /**
- * @brief Path component: Windows drive separator
- *
- * Character constant for the Windows drive letter separator (colon).
- *
- * @ingroup util
+ * @brief Path component: Windows drive separator (colon)
  */
 #define PATH_DRIVE_SEPARATOR ':'
 
@@ -89,14 +81,12 @@
  * @brief Maximum number of path base directories
  *
  * Maximum number of base directories that can be checked in path validation.
- *
- * @ingroup util
  */
 #define MAX_PATH_BASES 16
 
 /* ============================================================================
  * Path Manipulation Functions
- * @{
+ * ============================================================================
  */
 
 /**
@@ -120,8 +110,6 @@
  * const char *rel = extract_project_relative_path("/home/user/src/lib/path.c");
  * // Returns: "lib/path.c"
  * @endcode
- *
- * @ingroup util
  */
 const char *extract_project_relative_path(const char *file);
 
@@ -144,8 +132,6 @@ const char *extract_project_relative_path(const char *file);
  * // Returns: "/home/user/.config/ascii-chat" (on Unix)
  * free(expanded);
  * @endcode
- *
- * @ingroup util
  */
 char *expand_path(const char *path);
 
@@ -161,7 +147,7 @@ char *expand_path(const char *path);
  * - config.toml (configuration)
  * - known_hosts (server key verification)
  *
- * CONFIGURATION PATH RESOLUTION:
+ * Configuration path resolution:
  * - Unix: $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/
  * - Windows: %APPDATA%\ascii-chat\ if APPDATA is set, otherwise ~\.ascii-chat\
  *
@@ -176,8 +162,6 @@ char *expand_path(const char *path);
  * // or: "C:\Users\user\AppData\Roaming\ascii-chat\" (on Windows)
  * free(config_dir);
  * @endcode
- *
- * @ingroup util
  */
 char *get_config_dir(void);
 
@@ -243,6 +227,9 @@ typedef enum {
  * Heuristics include presence of path separators, leading ~, relative prefixes,
  * or Windows drive designators. Used to avoid treating tokens like
  * "github:user" or raw hex keys as file paths.
+ *
+ * @param value String to analyze
+ * @return true if the string looks like a filesystem path
  */
 bool path_looks_like_path(const char *value);
 

@@ -2,8 +2,10 @@
 
 /**
  * @file util/math.h
- * @ingroup util
  * @brief 🔢 Mathematical Utility Functions
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header provides mathematical utilities for image processing, including
  * rounding, clamping, and aspect ratio calculations. Functions handle terminal

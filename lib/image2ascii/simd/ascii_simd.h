@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/simd/ascii_simd.h
- * @ingroup image2ascii
  * @brief SIMD-optimized ASCII conversion interface
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides SIMD-optimized functions for converting images to ASCII art.
  * Supports multiple architectures including SSE2, SSSE3, AVX2 (x86), NEON (ARM), and SVE (ARM).

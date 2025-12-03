@@ -27,8 +27,10 @@
 
 /**
  * @file crypto/pem_utils.h
- * @ingroup crypto
  * @brief BearSSL PEM and trust anchor utilities adapted for in-memory data
+ * @ingroup crypto
+ * @addtogroup crypto
+ * @{
  *
  * This file contains BearSSL tools utilities adapted to work with in-memory
  * PEM data instead of files. Original code from BearSSL tools (ISC license).

@@ -10,8 +10,10 @@
 
 /**
  * @file os/webcam.h
- * @ingroup webcam
  * @brief Operating system specific functionality (webcam capture, etc.)
+ * @ingroup webcam
+ * @addtogroup webcam
+ * @{
  *
  * This header provides a cross-platform webcam capture interface for ascii-chat.
  * The system abstracts platform-specific webcam APIs (Windows Media Foundation,

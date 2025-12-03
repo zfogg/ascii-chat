@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/handshake.h
- * @ingroup handshake
  * @brief Cryptographic handshake implementation for key exchange and authentication
+ * @ingroup handshake
+ * @addtogroup handshake
+ * @{
  *
  * This header provides the cryptographic handshake protocol implementation,
  * managing the complete handshake flow from key exchange to authentication

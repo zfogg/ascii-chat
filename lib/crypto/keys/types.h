@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/keys/types.h
- * @ingroup keys
  * @brief Key type definitions for modular key management
+ * @ingroup keys
+ * @addtogroup keys
+ * @{
  *
  * This header contains the core key type definitions that can be shared
  * between the main keys.h and the specialized key modules without circular dependencies.

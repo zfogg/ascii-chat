@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/keys/validation.h
- * @ingroup keys
  * @brief Key validation and security functions
+ * @ingroup keys
+ * @addtogroup keys
+ * @{
  *
  * This module provides comprehensive key validation, security checks,
  * and format verification for all supported key types.

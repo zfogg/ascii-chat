@@ -4,8 +4,10 @@
  * @brief 📝 Logging API with multiple log levels and terminal output control
  *
  * @file logging.h
- * @ingroup logging
  * @brief 📝 Logging API with multiple log levels and terminal output control
+ * @ingroup logging
+ * @addtogroup logging
+ * @{
  *
  * This header provides a comprehensive logging system with:
  * - Multiple log levels (DEV, DEBUG, INFO, WARN, ERROR, FATAL)
@@ -533,3 +535,5 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
     platform_print_backtrace(0);                                                                                       \
   } while (0)
 #endif
+
+/** @} */ /* logging */

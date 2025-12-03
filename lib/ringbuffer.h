@@ -2,8 +2,10 @@
 
 /**
  * @file ringbuffer.h
- * @ingroup ringbuffer
  * @brief Lock-Free Ring Buffer and Frame Buffer Management
+ * @ingroup ringbuffer
+ * @addtogroup ringbuffer
+ * @{
  *
  * This header provides lock-free ring buffer implementations for high-performance
  * producer-consumer scenarios in ascii-chat. The system includes both generic
@@ -497,3 +499,5 @@ bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame
  * @ingroup ringbuffer
  */
 bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
+
+/** @} */

@@ -15,8 +15,10 @@
 
 /**
  * @file asciichat_errno.h
- * @ingroup errno
  * @brief ⚠️‼️ Error and/or exit() when things go bad.
+ * @ingroup errno
+ * @addtogroup errno
+ * @{
  *
  * This header provides a comprehensive thread-local error number system that
  * captures full error context including location, stack traces, and system

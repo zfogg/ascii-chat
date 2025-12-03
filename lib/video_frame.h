@@ -3,8 +3,10 @@
 /**
  * @file video_frame.h
  * @defgroup video_frame Video Frames
- * @ingroup video_frame
  * @brief 📹 High-performance video frame management with double-buffering and lock-free operations
+ * @ingroup video_frame
+ * @addtogroup video_frame
+ * @{
  *
  * This header provides a high-performance video frame management system
  * inspired by WebRTC, Zoom, and Google Meet architectures. It implements a

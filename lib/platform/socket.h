@@ -2,8 +2,10 @@
 
 /**
  * @file platform/socket.h
- * @ingroup platform
  * @brief Cross-platform socket interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a unified socket interface that abstracts platform-specific
  * implementations (Windows Winsock2 vs POSIX sockets).
@@ -478,3 +480,5 @@ struct pollfd {
 typedef unsigned long nfds_t;
 #endif
 #endif
+
+/** @} */

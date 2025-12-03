@@ -6,8 +6,10 @@
  * @brief 📡 Audio/Video/ASCII Packet Network Protocol Implementation
  *
  * @file network/av.h
- * @ingroup av
  * @brief 📡 Audio/Video/ASCII Packet Network Protocol Implementation
+ * @ingroup av
+ * @addtogroup av
+ * @{
  *
  * This header provides the network protocol implementation for audio, video,
  * and ASCII frame packets in ascii-chat. The system handles packet serialization,

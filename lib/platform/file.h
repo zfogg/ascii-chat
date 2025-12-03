@@ -2,8 +2,10 @@
 
 /**
  * @file platform/file.h
- * @ingroup platform
  * @brief Cross-platform file I/O interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides unified file operations with consistent behavior
  * across Windows and POSIX platforms.
@@ -48,3 +50,5 @@
 #define PLATFORM_O_APPEND O_APPEND
 #define PLATFORM_O_BINARY 0 // Not needed on POSIX
 #endif
+
+/** @} */

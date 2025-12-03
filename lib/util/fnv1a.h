@@ -2,8 +2,10 @@
 
 /**
  * @file util/fnv1a.h
- * @ingroup util
  * @brief #️⃣ FNV-1a Hash Function Implementation
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header provides a shared FNV-1a hash function implementation used
  * throughout the codebase for consistent hashing with UBSan-safe arithmetic.
@@ -151,3 +153,5 @@ static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
 
   return (uint32_t)hash;
 }
+
+/** @} */

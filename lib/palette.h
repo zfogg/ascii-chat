@@ -2,8 +2,10 @@
 
 /**
  * @file palette.h
- * @ingroup palette
  * @brief ASCII Palette Management for Video-to-ASCII Conversion
+ * @ingroup palette
+ * @addtogroup palette
+ * @{
  *
  * This header provides ASCII palette management for converting video frames to
  * ASCII art in ascii-chat. The system supports multiple built-in palettes and

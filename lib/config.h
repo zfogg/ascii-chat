@@ -6,8 +6,10 @@
  * @brief The toml text file configuration file module.
  *
  * @file config.h
- * @ingroup config
  * @brief TOML configuration file support for ascii-chat
+ * @ingroup config
+ * @addtogroup config
+ * @{
  *
  * This module provides functionality for loading configuration from TOML files
  * (typically located at ~/.ascii-chat/config.toml). Configuration values are
@@ -123,3 +125,5 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
  * @ingroup config
  */
 asciichat_error_t config_create_default(const char *config_path);
+
+/** @} */

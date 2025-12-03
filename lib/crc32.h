@@ -2,8 +2,10 @@
 
 /**
  * @file crc32.h
- * @ingroup util
  * @brief Hardware-Accelerated CRC32 Checksum Computation
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header provides CRC32 checksum computation with automatic hardware
  * acceleration when available. The system automatically dispatches to hardware
@@ -140,3 +142,5 @@ bool crc32_hw_is_available(void);
  * @endcode
  */
 #define asciichat_crc32(data, len) asciichat_crc32_hw((data), (len))
+
+/** @} */

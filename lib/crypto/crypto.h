@@ -3,8 +3,10 @@
 /**
  * @file crypto/crypto.h
  * @defgroup crypto Crypto Module
- * @ingroup crypto
  * @brief 🔐 Core cryptographic operations for ascii-chat
+ * @ingroup crypto
+ * @addtogroup crypto
+ * @{
  *
  * This header provides the core cryptographic operations for secure communication
  * in ascii-chat, including key exchange, encryption/decryption, authentication,
@@ -1373,4 +1375,6 @@ void crypto_rekey_abort(crypto_context_t *ctx);
  */
 void crypto_get_rekey_status(const crypto_context_t *ctx, char *status_buffer, size_t buffer_size);
 
-/** @} */
+/** @} */ /* Session Rekeying Protocol */
+
+/** @} */ /* crypto */
