@@ -44,6 +44,13 @@ endif()
 # =============================================================================
 if(WIN32)
     # Search known LLVM installation locations
+    # NOTE: We check for LLVMSupport.lib because the official Windows LLVM
+    # installer only includes compiler binaries, NOT the development libraries
+    # needed for building tools like the defer instrumentation pass.
+    # Scoop/choco/winget all use the official installer, so they also lack these.
+    # Full LLVM dev libraries are only available from:
+    #   - vovkos/llvm-package-windows (GitHub)
+    #   - Building LLVM from source
     set(_llvm_search_roots
         # Scoop global install (--global flag installs to ProgramData)
         "C:/ProgramData/scoop/apps/llvm/current"
@@ -58,23 +65,46 @@ if(WIN32)
     )
 
     foreach(_llvm_root IN LISTS _llvm_search_roots)
+        # Check not just for include/lib dirs, but for actual LLVM development
+        # libraries. The official Windows installer has include/lib but NO .lib files
+        # for development (only import libs for clang.exe, not LLVMSupport.lib etc.)
         if(EXISTS "${_llvm_root}/include" AND EXISTS "${_llvm_root}/lib")
-            set(LLVM_ROOT "${_llvm_root}")
-            set(LLVM_INCLUDE_DIRS "${_llvm_root}/include")
-            set(LLVM_LIBRARY_DIRS "${_llvm_root}/lib")
-            message(STATUS "Found LLVM installation at: ${_llvm_root}")
-            break()
+            # Verify this is a full LLVM installation with development libraries
+            if(EXISTS "${_llvm_root}/lib/LLVMSupport.lib" OR
+               EXISTS "${_llvm_root}/lib/libLLVMSupport.a")
+                set(LLVM_ROOT "${_llvm_root}")
+                set(LLVM_INCLUDE_DIRS "${_llvm_root}/include")
+                set(LLVM_LIBRARY_DIRS "${_llvm_root}/lib")
+                message(STATUS "Found LLVM installation with dev libraries at: ${_llvm_root}")
+                break()
+            else()
+                message(STATUS "Skipping ${_llvm_root} - has binaries but no dev libraries (LLVMSupport.lib missing)")
+            endif()
         endif()
     endforeach()
     unset(_llvm_search_roots)
 
     if(NOT LLVM_INCLUDE_DIRS OR NOT LLVM_LIBRARY_DIRS)
-        message(FATAL_ERROR "Could not find LLVM installation on Windows.\n"
-            "Install LLVM via one of:\n"
-            "  scoop install llvm --global\n"
-            "  scoop install llvm\n"
-            "  winget install LLVM.LLVM\n"
-            "Or set LLVM_INCLUDE_DIRS and LLVM_LIBRARY_DIRS manually.")
+        message(FATAL_ERROR "Could not find LLVM installation with development libraries on Windows.\n"
+            "\n"
+            "The defer() instrumentation tool requires LLVM development libraries\n"
+            "(LLVMSupport.lib, clangTooling.lib, etc.) which are NOT included in:\n"
+            "  - Official LLVM Windows installer (releases.llvm.org)\n"
+            "  - scoop install llvm\n"
+            "  - winget install LLVM.LLVM\n"
+            "  - choco install llvm\n"
+            "\n"
+            "These packages only include the compiler binaries (clang.exe), not dev libs.\n"
+            "\n"
+            "Solutions:\n"
+            "  1. Download LLVM with dev libraries from:\n"
+            "     https://github.com/vovkos/llvm-package-windows/releases\n"
+            "     Extract to C:/LLVM or C:/ProgramData/scoop/apps/llvm/current\n"
+            "\n"
+            "  2. Build LLVM from source with development libraries\n"
+            "\n"
+            "  3. Set paths manually:\n"
+            "     -DLLVM_INCLUDE_DIRS=<path>/include -DLLVM_LIBRARY_DIRS=<path>/lib")
     endif()
 
     # Get version from LLVM headers

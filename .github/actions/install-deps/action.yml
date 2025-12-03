@@ -207,7 +207,7 @@ runs:
         Add-Content -Path $env:GITHUB_ENV -Value "CSTD=$value"
         Write-Host "Set CSTD to $value"
 
-    - name: Install Windows build tools
+    - name: Install Windows build tools (scoop)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
@@ -266,7 +266,9 @@ runs:
         Ensure-ScoopBucket -Bucket 'main'
         Ensure-ScoopBucket -Bucket 'extras'
 
-        $basePackages = @('git', '7zip', 'ninja', 'llvm', 'ccache')
+        # NOTE: LLVM is installed separately from vovkos/llvm-package-windows
+        # because scoop/choco/winget LLVM packages don't include dev libraries
+        $basePackages = @('git', '7zip', 'ninja', 'ccache')
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
           $extra = '${{ inputs.extra-packages }}'.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)
@@ -294,22 +296,70 @@ runs:
           exit 1
         }
 
-        # Add LLVM bin directory to PATH (global scoop install location)
-        $llvmPathGlobal = 'C:\ProgramData\scoop\apps\llvm\current\bin'
-        $llvmPathProgFiles = 'C:\Program Files\LLVM\bin'
-        $foundLlvm = $false
-        foreach ($llvmPath in @($llvmPathGlobal, $llvmPathProgFiles)) {
-          if (Test-Path $llvmPath) {
-            Write-Host "Adding LLVM to PATH: $llvmPath"
-            Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
-            $foundLlvm = $true
-            break
+    # =========================================================================
+    # LLVM with Development Libraries (Windows)
+    # =========================================================================
+    # The official LLVM Windows installer and scoop/choco/winget packages only
+    # include compiler binaries (clang.exe), NOT the development libraries
+    # (LLVMSupport.lib, clangTooling.lib, etc.) needed to build the defer tool.
+    # We use vovkos/llvm-package-windows which provides full LLVM dev libraries.
+    - name: Install LLVM with dev libraries (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $LLVM_VERSION = "20.1.8"
+        $LLVM_INSTALL_DIR = "C:\LLVM"
+        $LLVM_ARCHIVE = "clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt.7z"
+        $LLVM_URL = "https://github.com/vovkos/llvm-package-windows/releases/download/clang-${LLVM_VERSION}/${LLVM_ARCHIVE}"
+
+        # Check if LLVM with dev libraries is already installed
+        if (Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib") {
+          Write-Host "LLVM with dev libraries already installed at ${LLVM_INSTALL_DIR}"
+        } else {
+          Write-Host "Downloading LLVM ${LLVM_VERSION} with dev libraries from vovkos/llvm-package-windows..."
+          $tempArchive = "$env:TEMP\${LLVM_ARCHIVE}"
+
+          # Download the archive
+          Invoke-WebRequest -Uri $LLVM_URL -OutFile $tempArchive -UseBasicParsing
+          Write-Host "Downloaded to ${tempArchive}"
+
+          # Extract to install directory
+          if (Test-Path $LLVM_INSTALL_DIR) {
+            Write-Host "Removing existing LLVM installation..."
+            Remove-Item -Recurse -Force $LLVM_INSTALL_DIR
+          }
+
+          Write-Host "Extracting LLVM to ${LLVM_INSTALL_DIR}..."
+          # 7zip is installed via scoop in the previous step
+          7z x $tempArchive -o"C:\" -y | Out-Null
+
+          # The archive extracts to clang-VERSION-windows-amd64-msvc17-msvcrt, rename it
+          $extractedDir = "C:\clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt"
+          if (Test-Path $extractedDir) {
+            Rename-Item -Path $extractedDir -NewName "LLVM"
+          }
+
+          Remove-Item $tempArchive -Force
+
+          # Verify installation
+          if (Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib") {
+            Write-Host "LLVM ${LLVM_VERSION} with dev libraries installed successfully"
+          } else {
+            Write-Host "ERROR: LLVMSupport.lib not found after installation" -ForegroundColor Red
+            Get-ChildItem "${LLVM_INSTALL_DIR}\lib" -ErrorAction SilentlyContinue | Select-Object -First 20
+            exit 1
           }
         }
-        if (-not $foundLlvm) {
-          Write-Host "LLVM not found at $llvmPathGlobal or $llvmPathProgFiles"
-          exit 1
-        }
+
+        # Add LLVM to PATH
+        $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
+        Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
+        Add-Content -Path $env:GITHUB_PATH -Value $llvmBinPath
+
+        # Verify clang is accessible
+        & "${llvmBinPath}\clang.exe" --version
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'
