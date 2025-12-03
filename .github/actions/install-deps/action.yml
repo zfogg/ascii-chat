@@ -296,7 +296,8 @@ runs:
 
         # NOTE: LLVM is installed separately from vovkos/llvm-package-windows
         # because scoop/choco/winget LLVM packages don't include dev libraries
-        $basePackages = @('git', '7zip', 'ninja', 'ccache')
+        # doxygen is needed for generating documentation included in installers
+        $basePackages = @('git', '7zip', 'ninja', 'ccache', 'doxygen')
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
           $extra = '${{ inputs.extra-packages }}'.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)

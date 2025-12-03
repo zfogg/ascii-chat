@@ -42,13 +42,12 @@ install(TARGETS ascii-chat
 # Note: ascii-chat is a terminal-only CLI program, so we don't create a shortcut
 # to the executable (it would just flash a console window and exit). Users should
 # run it from their terminal of choice (PowerShell, cmd, Windows Terminal, etc.)
-if(WIN32)
-    # Create Start Menu shortcut for the documentation (opens in browser)
-    # Note: INSTALL_DOC_DIR is set later in this file, so we use the Windows value directly
+# Create Start Menu shortcut for the documentation (opens in browser)
+# Only if Doxygen is available to generate the docs
+if(WIN32 AND ASCIICHAT_DOXYGEN_EXECUTABLE)
     set_property(INSTALL "doc/html/index.html"
         PROPERTY CPACK_START_MENU_SHORTCUTS "ascii-chat Documentation"
     )
-
     message(STATUS "Configured Start Menu shortcut: ${BoldBlue}ascii-chat Documentation${ColorReset}")
 endif()
 
