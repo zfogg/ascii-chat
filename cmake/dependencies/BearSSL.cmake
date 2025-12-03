@@ -171,10 +171,11 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             )
 
             # Build BearSSL quietly, logging output to file
+            # Clear MAKEFLAGS to prevent parallel make from causing race conditions
             set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
-                COMMAND make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}" > "${BEARSSL_LOG_FILE}" 2>&1
+                COMMAND ${CMAKE_COMMAND} -E env MAKEFLAGS= make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}" > "${BEARSSL_LOG_FILE}" 2>&1
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"
