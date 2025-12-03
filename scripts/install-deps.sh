@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio criterion libxml2
+  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio criterion libxml2 doxygen
 
   echo ""
   echo "Dependencies installed successfully!"
