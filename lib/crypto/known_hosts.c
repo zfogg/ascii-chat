@@ -376,9 +376,9 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
 }
 
 // Check known_hosts for servers without identity key (no-identity entries)
-// Returns: ASCIICHAT_OK = known host (no-identity entry found),
-// ERROR_CRYPTO_VERIFICATION = unknown host, ERROR_CRYPTO = error,
-// -1 = previously accepted known host (no-identity entry found)
+// Returns: 1 = previously accepted known host (no-identity entry found),
+// ASCIICHAT_OK = unknown host (first connection),
+// ERROR_CRYPTO_VERIFICATION = server changed from identity to no-identity
 asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t port) {
   const char *path = get_known_hosts_path();
   int fd = platform_open(path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
@@ -434,7 +434,7 @@ asciichat_error_t check_known_host_no_identity(const char *server_ip, uint16_t p
       if (strncmp(key_type, "no-identity", 11) == 0) {
         // This is a server without identity key that was previously accepted by the user
         // No warnings or user confirmation needed - user already accepted this server
-        return -1; // Known host (no-identity entry) - secure connection
+        return 1; // Known host (no-identity entry) - secure connection
       }
 
       // If we found a normal identity key entry, this is a mismatch

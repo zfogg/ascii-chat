@@ -176,7 +176,10 @@ void terminal_enable_ansi(void) {
  * @return 0 on success, -1 on failure
  */
 asciichat_error_t terminal_flush(int fd) {
-  return fsync(fd);
+  if (fsync(fd) < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -195,7 +198,10 @@ asciichat_error_t terminal_hide_cursor(int fd, bool hide) {
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to show cursor");
     }
   }
-  return fsync(fd);
+  if (fsync(fd) < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to sync cursor state");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -207,7 +213,10 @@ asciichat_error_t terminal_cursor_home(int fd) {
   if (dprintf(fd, "\033[H") < 0) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor to home");
   }
-  return fsync(fd);
+  if (fsync(fd) < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to sync cursor position");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**
@@ -219,7 +228,10 @@ asciichat_error_t terminal_clear_scrollback(int fd) {
   if (dprintf(fd, "\033[3J") < 0) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to clear scrollback buffer");
   }
-  return fsync(fd);
+  if (fsync(fd) < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to sync scrollback clear");
+  }
+  return ASCIICHAT_OK;
 }
 
 /**

@@ -621,24 +621,25 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
     }
 
     // Check if this server was previously connected to (IP verification)
-    int known_host_result;
+    bool skip_known_hosts = false;
+    asciichat_error_t known_host_result = ASCIICHAT_OK;
     const char *env_skip_known_hosts_checking = platform_getenv("ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK");
     if (env_skip_known_hosts_checking && strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
       log_warn("Skipping known_hosts checking. This is a security vulnerability.");
-      known_host_result = -1;
+      skip_known_hosts = true;
     }
 #ifndef NDEBUG
     // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
     else if (platform_getenv("CLAUDECODE")) {
       log_warn("Skipping known_hosts checking (CLAUDECODE set in debug build).");
-      known_host_result = -1;
+      skip_known_hosts = true;
     }
 #endif
     else {
       known_host_result = check_known_host_no_identity(ctx->server_ip, ctx->server_port);
     }
 
-    if (known_host_result == 1) {
+    if (skip_known_hosts || known_host_result == 1) {
       // Server IP is known and verified - allow connection without warnings
       log_info("SECURITY: Server IP %s:%u is known (no-identity entry found) - connection verified", ctx->server_ip,
                ctx->server_port);
