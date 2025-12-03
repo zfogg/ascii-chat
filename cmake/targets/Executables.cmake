@@ -177,11 +177,16 @@ endif()
 include(CheckPIESupported)
 check_pie_supported(OUTPUT_VARIABLE PIE_OUTPUT LANGUAGES C)
 
-# Disable PIE for Debug/Dev builds so addr2line can resolve backtrace addresses
-# Only on Linux - Windows and macOS don't support -no-pie flag
-if(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    if(CMAKE_C_LINK_PIE_SUPPORTED)
-        target_link_options(ascii-chat PRIVATE "LINKER:-no-pie")
+# PIE (Position Independent Executable) for security hardening
+# Only enable for Release/RelWithDebInfo - Debug builds disable PIE for addr2line compatibility
+# Note: -pie is added here per-target, not globally, to avoid affecting shared libraries
+if(NOT WIN32 AND CMAKE_C_LINK_PIE_SUPPORTED)
+    if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        if(APPLE)
+            target_link_options(ascii-chat PRIVATE -Wl,-pie)
+        elseif(PLATFORM_LINUX)
+            target_link_options(ascii-chat PRIVATE "LINKER:-pie")
+        endif()
     endif()
 endif()
 

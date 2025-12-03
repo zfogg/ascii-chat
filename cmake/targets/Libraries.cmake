@@ -531,6 +531,7 @@ else()
     # 3. -fPIC: Position-independent code required for shared libraries
     # 4. -fno-pie: Disable PIE mode (conflicts with -shared)
     # Note: Windows doesn't support these flags and uses different DLL export mechanisms
+    # Note: No need to add -no_pie linker flag since -pie is only added to executables
     if(NOT WIN32)
         target_compile_options(ascii-chat-shared PRIVATE
             -fvisibility=default
@@ -538,8 +539,6 @@ else()
             -fno-pie
             -fPIC
         )
-        # Also disable PIE at link time (override global LINKER:-pie from CompilerFlags.cmake)
-        target_link_options(ascii-chat-shared PRIVATE -Wl,-no_pie)
     endif()
 
     # Add version dependency

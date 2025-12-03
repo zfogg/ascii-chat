@@ -541,7 +541,10 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
     # Security hardening for Unix-like platforms
     if(NOT WIN32)
         if(NOT WITH_DEBUG_INFO)
-            # Position Independent Executable (PIE) - better ASLR
+            # Position Independent Code (PIC/PIE) - required for ASLR
+            # Note: -fPIE is a compile option; -pie is a linker option
+            # The linker -pie flag is added per-target in Executables.cmake to avoid
+            # applying it to shared libraries (which use -shared, not -pie)
             add_compile_options(-fPIE)
 
             if(USE_MUSL)
@@ -549,18 +552,14 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
                 # Note: Static-PIE uses -static-pie flag (set in Musl.cmake linker flags)
                 #       and rcrt1.o startup file instead of regular -pie + crt1.o
             else()
-                # Dynamic PIE for regular builds
-                # Note: Windows is excluded by parent if(NOT WIN32) at line 318
+                # RELRO and NOW flags for security (applies to all targets)
                 if(PLATFORM_LINUX)
-                    add_link_options(LINKER:-pie)
                     if(ASCIICHAT_SUPPORTS_RELRO)
                         add_link_options(-Wl,-z,relro)
                     endif()
                     if(ASCIICHAT_SUPPORTS_NOW)
                         add_link_options(-Wl,-z,now)
                     endif()
-                elseif(APPLE)
-                    add_link_options(-Wl,-pie)
                 endif()
             endif()
         endif()
