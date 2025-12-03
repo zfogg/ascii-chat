@@ -688,8 +688,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       SAFE_FREE(server_identity_key);
       SAFE_FREE(server_signature);
       return SET_ERRNO(ERROR_CRYPTO_VERIFICATION, "Server key configuration changed - potential security issue");
-    } else if (known_host_result != -1) {
-      // Error checking known_hosts
+    } else {
+      // Other error checking known_hosts (e.g., ERROR_INVALID_PARAM)
       if (payload) {
         buffer_pool_free(payload, payload_len);
       }
