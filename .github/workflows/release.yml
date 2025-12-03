@@ -478,12 +478,6 @@ jobs:
         run: |
           choco install wixtoolset --no-progress -y
 
-      - name: Install LLVM
-        run: |
-          choco install llvm --no-progress -y
-          # Add LLVM to PATH for this job
-          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
       - name: Configure and package with CPack
         shell: pwsh
         run: |
