@@ -437,7 +437,7 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = Join-Path $PWD ".deps-cache" "defer-tool" "ascii-instr-defer.exe"
-          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool"
+          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" --verbose
           cmake --build build_release --target all
           cmake --build build_release --target run-test-static-lib
           cmake --build build_release --target run-test-shared-lib

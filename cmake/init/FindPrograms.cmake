@@ -168,9 +168,11 @@ foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
     list(APPEND _llvm_config_names llvm-config-${_ver})
 endforeach()
 
+# Use HINTS (not PATHS) to prioritize our search paths over system PATH
+# This ensures we find vovkos LLVM at C:/LLVM before official LLVM at C:/Program Files/LLVM
 find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
     NAMES ${_llvm_config_names}
-    PATHS ${ASCIICHAT_LLVM_SEARCH_PATHS}
+    HINTS ${ASCIICHAT_LLVM_SEARCH_PATHS}
     DOC "llvm-config for LLVM toolchain info (determines which LLVM installation to use)"
 )
 unset(_llvm_config_names)
@@ -196,6 +198,20 @@ endif()
 # Cache it for use by other modules (use FORCE to update on reconfigure)
 set(ASCIICHAT_LLVM_BINDIR "${_llvm_bindir_result}" CACHE INTERNAL "LLVM bin directory from llvm-config" FORCE)
 unset(_llvm_bindir_result)
+
+# Debug output for LLVM discovery (helps diagnose CI issues)
+if(WIN32)
+    if(ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
+        message(STATUS "[DEBUG] llvm-config found: ${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
+    else()
+        message(STATUS "[DEBUG] llvm-config NOT found - will use fallback search paths")
+    endif()
+    if(ASCIICHAT_LLVM_BINDIR)
+        message(STATUS "[DEBUG] LLVM bindir from llvm-config: ${ASCIICHAT_LLVM_BINDIR}")
+    else()
+        message(STATUS "[DEBUG] LLVM bindir NOT set - tools will be searched in fallback paths")
+    endif()
+endif()
 
 # Build unified LLVM tool search paths for fallback searches
 if(ASCIICHAT_LLVM_BINDIR)
@@ -337,6 +353,11 @@ if(WIN32)
     _find_llvm_tool(ASCIICHAT_CLANG_CL_EXECUTABLE clang-cl)
     _find_llvm_tool(ASCIICHAT_LLVM_LIB_EXECUTABLE llvm-lib)
 
+    # Debug output for Windows LLVM tools (helps diagnose CI issues)
+    message(STATUS "[DEBUG] clang-cl found: ${ASCIICHAT_CLANG_CL_EXECUTABLE}")
+    message(STATUS "[DEBUG] llvm-lib found: ${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+    message(STATUS "[DEBUG] LLVM tool search paths: ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}")
+
     # MSVC lib.exe - native Windows archiver, more reliable than llvm-lib for nmake builds
     # Look in the same directory as nmake (they're both in VS VC tools bin)
     if(ASCIICHAT_NMAKE_EXECUTABLE)
@@ -353,6 +374,8 @@ if(WIN32)
             "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.29.30133/bin/Hostx64/x64"
         DOC "MSVC lib.exe archiver"
     )
+    message(STATUS "[DEBUG] nmake found: ${ASCIICHAT_NMAKE_EXECUTABLE}")
+    message(STATUS "[DEBUG] MSVC lib.exe found: ${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
     unset(_MSVC_LIB_HINTS)
 endif()
 
