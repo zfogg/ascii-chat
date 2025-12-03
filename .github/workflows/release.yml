@@ -348,8 +348,8 @@ jobs:
     strategy:
       matrix:
         include:
-          # Only build arm64 - macos-13 (x86_64) is Tier 3 with no Homebrew bottles
-          # Cross-compilation from arm64 to x86_64 has issues with BearSSL Makefile
+          - os: macos-15-intel
+            arch: x86_64
           - os: macos-15
             arch: arm64
 
@@ -370,12 +370,25 @@ jobs:
 
       - name: Configure and package with CPack
         run: |
+          # Clean BearSSL build artifacts to ensure fresh build
+          rm -rf deps/bearssl/build
+          rm -rf .deps-cache/*/bearssl
+          make -C deps/bearssl clean || true
           cmake --preset release
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
           cmake --build build_release --target docs
           cmake --build build_release --target package
+
+      - name: Print build logs on failure
+        if: failure()
+        run: |
+          echo "=== BearSSL build log ==="
+          cat .deps-cache/*/bearssl/bearssl-build.log 2>/dev/null || echo "No BearSSL build log"
+          echo ""
+          echo "=== CMake error log ==="
+          cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
 
       - name: Collect artifacts
         run: |
