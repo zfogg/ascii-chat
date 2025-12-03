@@ -486,6 +486,7 @@ jobs:
           cmake --build build_release --target all --verbose
           cmake --build build_release --target run-test-static-lib --verbose
           cmake --build build_release --target run-test-shared-lib --verbose
+          cmake --build build_release --target docs --verbose
           cmake --build build_release --target package --verbose
 
       - name: Collect artifacts
