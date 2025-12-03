@@ -138,7 +138,12 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
     else()
         # Unix/Linux/macOS
         # Build to cache directory (ASCIICHAT_DEPS_CACHE_DIR already includes build type)
-        set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl")
+        # On macOS with cross-compilation, include the target architecture in the path
+        if(APPLE AND CMAKE_OSX_ARCHITECTURES)
+            set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl-${CMAKE_OSX_ARCHITECTURES}")
+        else()
+            set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl")
+        endif()
         set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
@@ -159,6 +164,11 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             else()
                 set(BEARSSL_EXTRA_CFLAGS "-fPIC")
                 set(BEARSSL_CC "${CMAKE_C_COMPILER}")
+                # Support cross-compilation on macOS via CMAKE_OSX_ARCHITECTURES
+                if(APPLE AND CMAKE_OSX_ARCHITECTURES)
+                    set(BEARSSL_EXTRA_CFLAGS "${BEARSSL_EXTRA_CFLAGS} -arch ${CMAKE_OSX_ARCHITECTURES}")
+                    message(STATUS "  BearSSL cross-compiling for: ${CMAKE_OSX_ARCHITECTURES}")
+                endif()
             endif()
 
             # Clean BearSSL build directory before initial build
