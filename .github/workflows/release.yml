@@ -362,6 +362,8 @@ jobs:
 
       - name: Configure and package with CPack
         run: |
+          # Clean BearSSL build directory to avoid architecture mismatches
+          rm -rf deps/bearssl/build
           # Cross-compile for target architecture using CMAKE_OSX_ARCHITECTURES
           cmake --preset release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.cmake_arch }}
           cmake --build build_release --target all
