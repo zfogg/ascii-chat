@@ -451,8 +451,8 @@ jobs:
           # This avoids needing full LLVM dev libraries which aren't available in standard Windows LLVM packages
           $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
           New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
-          gh release download build-tools --pattern "ascii-instr-defer-windows-AMD64.exe" --dir $deferToolDir
-          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-windows-AMD64.exe"
+          gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
+          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
           $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
           Move-Item -Path $srcPath -Destination $dstPath -Force
           Write-Host "Downloaded defer tool to: $dstPath"
