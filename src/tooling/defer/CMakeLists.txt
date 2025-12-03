@@ -99,16 +99,20 @@ if(APPLE)
     endif()
 else()
     # Non-macOS (Linux, Windows)
-    # Check if LLVM includes are in a standard system path
-    # If so, don't add -isystem as it can break #include_next in libstdc++ headers
-    set(_defer_compile_opts -O2 -fno-rtti -fexceptions)
+    # Use -I (not -isystem) to add LLVM includes with high priority
+    # This ensures we use the correct LLVM headers even when another LLVM
+    # version is installed in /usr/local/include (which clang searches first)
+    # -isystem breaks #include_next in libstdc++ headers, so we use -I instead
+    target_compile_options(ascii-instr-defer PRIVATE
+        -O2
+        -fno-rtti
+        -fexceptions
+    )
 
-    if(NOT LLVM_INCLUDE_DIRS STREQUAL "/usr/include" AND NOT LLVM_INCLUDE_DIRS STREQUAL "")
-        # Non-standard LLVM location - add as system include
-        list(APPEND _defer_compile_opts "-isystem${LLVM_INCLUDE_DIRS}")
+    # Add LLVM include path with -I for priority over /usr/local/include
+    if(NOT LLVM_INCLUDE_DIRS STREQUAL "")
+        target_include_directories(ascii-instr-defer PRIVATE "${LLVM_INCLUDE_DIRS}")
     endif()
-
-    target_compile_options(ascii-instr-defer PRIVATE ${_defer_compile_opts})
 
     # Linux: Set rpath to ensure we use the LLVM libs we built against,
     # not any custom LLVM in /usr/local that might be in LD_LIBRARY_PATH
