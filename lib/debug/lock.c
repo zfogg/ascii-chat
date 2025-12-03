@@ -8,9 +8,9 @@
 // Header must be included even in release builds to get inline no-op stubs
 #include "debug/lock.h"
 
-#ifndef NDEBUG
-// Only compile lock_debug implementation in debug builds
-// In release builds, lock_debug.h provides inline no-op stubs
+#ifdef DEBUG_LOCKS
+// Only compile lock_debug implementation when DEBUG_LOCKS is defined
+// Without DEBUG_LOCKS, lock_debug.h provides inline no-op stubs
 
 #include "common.h"
 #include "platform/abstraction.h"
@@ -1390,4 +1390,4 @@ void lock_debug_print_state(void) {
   log_info("%s", log_buffer);
 }
 
-#endif // NDEBUG - Release builds: no implementation, header provides inline stubs
+#endif // DEBUG_LOCKS - Without DEBUG_LOCKS: no implementation, header provides inline stubs

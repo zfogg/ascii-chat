@@ -50,6 +50,7 @@ function(configure_build_type_post_project)
         configure_debug_build_flags("Debug")
 
         add_definitions(-DENABLE_ERRNO_BACKTRACES)
+        add_definitions(-DDEBUG_LOCKS)
 
         # Configure sanitizers (automatically handles mimalloc conflicts)
         # Note: Sanitizers are compatible with instrumentation - they work at different stages
@@ -66,6 +67,8 @@ function(configure_build_type_post_project)
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
         add_definitions(-DENABLE_ERRNO_BACKTRACES)
+        add_definitions(-DDEBUG_LOCKS)
+        fix_macos_asan_runtime()
 
     # Note: Coverage build type removed - use ASCIICHAT_ENABLE_COVERAGE option instead
 
