@@ -365,10 +365,17 @@ runs:
           }
         }
 
-        # Add LLVM to PATH
+        # Add LLVM to PATH (prepend by using GITHUB_PATH - entries are prepended)
         $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
         Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
         Add-Content -Path $env:GITHUB_PATH -Value $llvmBinPath
+
+        # Set CC and CXX to full paths to our vovkos LLVM
+        # This overrides the workflow-level CC=clang, CXX=clang++ which would resolve to the pre-installed LLVM
+        Write-Host "Setting CC=${llvmBinPath}\clang.exe"
+        Write-Host "Setting CXX=${llvmBinPath}\clang++.exe"
+        Add-Content -Path $env:GITHUB_ENV -Value "CC=${llvmBinPath}\clang.exe"
+        Add-Content -Path $env:GITHUB_ENV -Value "CXX=${llvmBinPath}\clang++.exe"
 
         # Verify clang is accessible
         & "${llvmBinPath}\clang.exe" --version
