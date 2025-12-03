@@ -121,15 +121,12 @@ if(APPLE)
     endif()
 else()
     # Non-macOS (Linux, Windows)
-    # CMake filters out "implicit" include directories from target_include_directories,
-    # and -I flags for paths already in the built-in search get deduplicated.
-    # Use -iquote which adds to the quoted include path (searched before system paths)
-    # and doesn't get deduplicated with the built-in /usr/include.
+    # Use -isystem to add LLVM includes as system headers (works with angled includes)
     target_compile_options(ascii-instr-defer PRIVATE
         -O2
         -fno-rtti
         -fexceptions
-        "-iquote${LLVM_INCLUDE_DIRS}"
+        "-isystem${LLVM_INCLUDE_DIRS}"
     )
 
     # Linux: Set rpath to ensure we use the LLVM libs we built against,
