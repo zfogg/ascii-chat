@@ -481,7 +481,8 @@ jobs:
         shell: pwsh
         run: |
           $deferTool = Join-Path $PWD ".deps-cache" "defer-tool" "ascii-instr-defer.exe"
-          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool"
+          # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
+          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
           cmake --build build_release --target all --verbose
           cmake --build build_release --target run-test-static-lib --verbose
           cmake --build build_release --target run-test-shared-lib --verbose
