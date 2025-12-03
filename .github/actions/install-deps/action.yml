@@ -153,6 +153,19 @@ runs:
           sudo cp .apt-cache/*.deb /var/cache/apt/archives/ 2>/dev/null || true
         fi
 
+    - name: Disable problematic Microsoft APT repos (Ubuntu)
+      if: inputs.os == 'ubuntu'
+      shell: bash
+      run: |
+        # Microsoft's Azure CLI repos sometimes return 403 errors on GitHub Actions
+        # Disable them since we don't need Azure CLI for building ascii-chat
+        for repo in /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure*.list; do
+          if [[ -f "$repo" ]]; then
+            echo "Disabling problematic repo: $repo"
+            sudo mv "$repo" "$repo.disabled" || true
+          fi
+        done
+
     - name: Install dependencies via scripts/install-deps.sh (Ubuntu)
       if: inputs.os == 'ubuntu'
       shell: bash
