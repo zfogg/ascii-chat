@@ -349,7 +349,7 @@
  * - `utils/Include.cmake` - Include directory configuration
  * - `utils/PostBuild.cmake` - Post-build processing
  * - `utils/StatusMessages.cmake` - Build status output
- * - `utils/CustomTargets.cmake` - Custom build targets
+ * - `targets/CustomTargets.cmake` - Custom build targets (format, clang-tidy, etc.)
  *
  * @section build_presets CMake Presets (Preferred)
  *

@@ -220,10 +220,32 @@ char *expand_path(const char *path) {
 }
 
 char *get_config_dir(void) {
-  const char *home = platform_getenv("HOME");
-
-#ifndef _WIN32
-  // Use XDG_CONFIG_HOME/ascii-chat
+#ifdef _WIN32
+  // Windows: Use %APPDATA%\ascii-chat\
+  const char *appdata = platform_getenv("APPDATA");
+  if (appdata && appdata[0] != '\0') {
+    size_t len = strlen(appdata) + strlen("\\ascii-chat\\") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s\\ascii-chat\\", appdata);
+    return dir;
+  }
+  // Fallback to %USERPROFILE%\.ascii-chat\
+  const char *userprofile = platform_getenv("USERPROFILE");
+  if (userprofile && userprofile[0] != '\0') {
+    size_t len = strlen(userprofile) + strlen("\\.ascii-chat\\") + 1;
+    char *dir = SAFE_MALLOC(len, char *);
+    if (!dir) {
+      return NULL;
+    }
+    safe_snprintf(dir, len, "%s\\.ascii-chat\\", userprofile);
+    return dir;
+  }
+  return NULL;
+#else
+  // Unix: Use $XDG_CONFIG_HOME/ascii-chat/ if set
   const char *xdg_config_home = platform_getenv("XDG_CONFIG_HOME");
   if (xdg_config_home && xdg_config_home[0] != '\0') {
     size_t len = strlen(xdg_config_home) + strlen("/ascii-chat/") + 1;
@@ -235,47 +257,19 @@ char *get_config_dir(void) {
     return dir;
   }
 
-  // Fallback to ~/.config/ascii-chat
+  // Fallback: ~/.ascii-chat/
+  const char *home = platform_getenv("HOME");
   if (home && home[0] != '\0') {
-    size_t len = strlen(home) + strlen("/.config/ascii-chat/") + 1;
+    size_t len = strlen(home) + strlen("/.ascii-chat/") + 1;
     char *dir = SAFE_MALLOC(len, char *);
     if (!dir) {
       return NULL;
     }
-    safe_snprintf(dir, len, "%s/.config/ascii-chat/", home);
+    safe_snprintf(dir, len, "%s/.ascii-chat/", home);
     return dir;
   }
 
-  // Final fallback: return NULL if no config directory can be determined
   return NULL;
-
-#elif _WIN32
-  const char *appdata = platform_getenv("APPDATA");
-  if (appdata && appdata[0] != '\0') {
-    size_t len = strlen(appdata) + strlen("\\.ascii-chat\\") + 1;
-    char *dir = SAFE_MALLOC(len, char *);
-    if (!dir) {
-      return NULL;
-    }
-    safe_snprintf(dir, len, "%s\\.ascii-chat\\", appdata);
-    return dir;
-  }
-  // Fallback to the user's home directory
-  size_t len = strlen(home) + strlen("\\.ascii-chat\\") + 1;
-  char *dir = SAFE_MALLOC(len, char *);
-  if (!dir) {
-    return NULL;
-  }
-  safe_snprintf(dir, len, "%s\\.ascii-chat\\", home);
-  return dir;
-#else
-  size_t len = strlen(home) + strlen("/.ascii-chat/") + 1;
-  char *dir = SAFE_MALLOC(len, char *);
-  if (!dir) {
-    return NULL;
-  }
-  safe_snprintf(dir, len, "%s/.ascii-chat/", home);
-  return dir;
 #endif
 }
 
