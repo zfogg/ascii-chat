@@ -18,15 +18,13 @@
 #   - Configures STGZ-specific CPack variables
 # =============================================================================
 
-if(NOT UNIX)
-    return()
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
 
-# Add STGZ to generator list (always available on Unix)
-list(APPEND CPACK_GENERATOR "STGZ")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-message(STATUS "${Yellow}CPack:${ColorReset} STGZ generator enabled (always available)")
+enable_cpack_generator(
+    NAME "STGZ"
+    PLATFORM UNIX
+    ALWAYS_AVAILABLE
+)
 
 # =============================================================================
 # STGZ Configuration
