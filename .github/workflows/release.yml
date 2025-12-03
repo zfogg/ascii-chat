@@ -180,31 +180,55 @@ jobs:
 
             ## Quick Start
 
-            **Linux (no dependencies required):**
+            **Linux - Package Manager (no dependencies required):**
             ```bash
-            sudo dpkg -i ascii-chat_*_amd64.deb   # Debian/Ubuntu
-            # or
+            sudo dpkg -i ascii-chat_*.deb         # Debian/Ubuntu
             sudo rpm -i ascii-chat-*.rpm          # Fedora/RHEL
-
-            ascii-chat server  # Start server
-            ascii-chat client  # Start client (in another terminal)
             ```
 
-            **macOS (install dependencies first):**
+            **Linux - Self-Extracting Installer:**
             ```bash
-            brew install portaudio libsodium
-            sudo installer -pkg ascii-chat-*.pkg -target /
-
-            ascii-chat server  # Start server
-            ascii-chat client  # Start client (in another terminal)
+            chmod +x ascii-chat-*.sh
+            sudo ./ascii-chat-*.sh --prefix=/usr/local
             ```
 
-            **Windows (DLLs included):**
+            **Linux - Portable (.tar.gz):**
+            ```bash
+            tar -xzf ascii-chat-*.tar.gz
+            cd ascii-chat-*/bin
+            ./ascii-chat server
+            ```
+
+            **macOS - Package Installer:**
+            ```bash
+            brew install portaudio libsodium      # Install dependencies first
+            sudo installer -pkg ascii-chat-*.pkg -target /
+            ```
+
+            **macOS - Portable (.tar.gz):**
+            ```bash
+            brew install portaudio libsodium      # Install dependencies first
+            tar -xzf ascii-chat-*.tar.gz
+            cd ascii-chat-*/bin
+            ./ascii-chat server
+            ```
+
+            **Windows - MSI Installer:**
             ```
             msiexec /i ascii-chat-*.msi
+            ```
 
-            ascii-chat.exe server  # Start server
-            ascii-chat.exe client  # Start client (in another terminal)
+            **Windows - Portable (.zip):**
+            ```
+            # Extract zip, then run from extracted folder:
+            ascii-chat.exe server
+            ```
+
+            ## Running ascii-chat
+
+            ```bash
+            ascii-chat server  # Start server (in one terminal)
+            ascii-chat client  # Connect client (in another terminal)
             ```
 
             ## Features
@@ -272,21 +296,15 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
-          for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh build_release/*.tar.Z build_release/*.run; do
+          for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
             filename=$(basename "$artifact")
             case "$filename" in
               *.tar.gz)
                 new_name="${filename%.tar.gz}-${{ matrix.artifact_suffix }}.tar.gz"
                 ;;
-              *.tar.Z)
-                new_name="${filename%.tar.Z}-${{ matrix.artifact_suffix }}.tar.Z"
-                ;;
               *.sh)
                 new_name="${filename%.sh}-${{ matrix.artifact_suffix }}.sh"
-                ;;
-              *.run)
-                new_name="${filename%.run}-${{ matrix.artifact_suffix }}.run"
                 ;;
               *.deb)
                 new_name="${filename%.deb}-${{ matrix.artifact_suffix }}.deb"
@@ -318,10 +336,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: macos-13
+          # Use macos-15 for both architectures since macos-13 is Tier 3 (no Homebrew bottles)
+          # ARM64 runner can cross-compile for x86_64 using CMAKE_OSX_ARCHITECTURES
+          - os: macos-15
             arch: x86_64
-          - os: macos-14
+            cmake_arch: x86_64
+          - os: macos-15
             arch: arm64
+            cmake_arch: arm64
 
     steps:
       - name: Checkout code
@@ -340,7 +362,8 @@ jobs:
 
       - name: Configure and package with CPack
         run: |
-          cmake --preset release
+          # Cross-compile for target architecture using CMAKE_OSX_ARCHITECTURES
+          cmake --preset release -DCMAKE_OSX_ARCHITECTURES=${{ matrix.cmake_arch }}
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib

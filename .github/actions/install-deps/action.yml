@@ -228,9 +228,16 @@ runs:
             [string]$Bucket
           )
 
-          if (-not (scoop bucket list | Select-String -SimpleMatch $Bucket)) {
-            Write-Host "Adding scoop bucket: $Bucket"
-            scoop bucket add $Bucket | Out-Null
+          # Use try/catch for robustness - scoop bucket add is idempotent
+          try {
+            $buckets = scoop bucket list 2>$null
+            if ($buckets -notmatch [regex]::Escape($Bucket)) {
+              Write-Host "Adding scoop bucket: $Bucket"
+              scoop bucket add $Bucket 2>$null | Out-Null
+            }
+          } catch {
+            Write-Host "Adding scoop bucket: $Bucket (first time)"
+            scoop bucket add $Bucket 2>$null | Out-Null
           }
         }
 
@@ -243,8 +250,10 @@ runs:
             return
           }
 
-          if (scoop list | Select-String -SimpleMatch "^$Package\s") {
-            Write-Host "✓ $Package already installed via scoop"
+          # Check if package is installed using string matching
+          $installed = scoop list 2>$null | Out-String
+          if ($installed -match "(?m)^\s*$([regex]::Escape($Package))\s") {
+            Write-Host "Package already installed via scoop: $Package"
           }
           else {
             Write-Host "Installing scoop package: $Package"
