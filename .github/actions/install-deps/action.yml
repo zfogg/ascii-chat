@@ -277,21 +277,37 @@ runs:
           Install-ScoopPackage -Package $pkg
         }
 
-        $scoopShims = Join-Path $env:USERPROFILE 'scoop\shims'
-        if (Test-Path $scoopShims) {
-          Write-Host "Adding scoop shims to PATH"
-          Add-Content -Path $env:GITHUB_PATH -Value $scoopShims
-        } else {
-          Write-Host "Scoop shims not found at $scoopShims"
+        # Add scoop shims to PATH (both user and global locations)
+        # Global installs (--global) go to C:\ProgramData\scoop
+        $scoopShimsUser = Join-Path $env:USERPROFILE 'scoop\shims'
+        $scoopShimsGlobal = 'C:\ProgramData\scoop\shims'
+        $foundShims = $false
+        foreach ($shimsPath in @($scoopShimsGlobal, $scoopShimsUser)) {
+          if (Test-Path $shimsPath) {
+            Write-Host "Adding scoop shims to PATH: $shimsPath"
+            Add-Content -Path $env:GITHUB_PATH -Value $shimsPath
+            $foundShims = $true
+          }
+        }
+        if (-not $foundShims) {
+          Write-Host "No scoop shims found"
           exit 1
         }
 
-        $llvmPath = 'C:\Program Files\LLVM\bin'
-        if (Test-Path $llvmPath) {
-          Write-Host "Adding LLVM to PATH"
-          Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
-        } else {
-          Write-Host "LLVM not found at $llvmPath"
+        # Add LLVM bin directory to PATH (global scoop install location)
+        $llvmPathGlobal = 'C:\ProgramData\scoop\apps\llvm\current\bin'
+        $llvmPathProgFiles = 'C:\Program Files\LLVM\bin'
+        $foundLlvm = $false
+        foreach ($llvmPath in @($llvmPathGlobal, $llvmPathProgFiles)) {
+          if (Test-Path $llvmPath) {
+            Write-Host "Adding LLVM to PATH: $llvmPath"
+            Add-Content -Path $env:GITHUB_PATH -Value $llvmPath
+            $foundLlvm = $true
+            break
+          }
+        }
+        if (-not $foundLlvm) {
+          Write-Host "LLVM not found at $llvmPathGlobal or $llvmPathProgFiles"
           exit 1
         }
 
