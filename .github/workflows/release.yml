@@ -122,7 +122,7 @@ jobs:
             echo "" >> $GITHUB_OUTPUT
 
             echo "### Other Changes" >> $GITHUB_OUTPUT
-            git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|feature|fix|bugfix):' | head -n 20 >> $GITHUB_OUTPUT
+            git log --format="- %s (%an)" $LAST_TAG..HEAD | grep -ivE '^- (feat|feature|fix|bugfix):' | head -n 50 >> $GITHUB_OUTPUT
             echo "" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
           else
@@ -164,8 +164,6 @@ jobs:
 
             ## Download
 
-            $arch = AMD64 (x86_64) or ARM64 (aarch64)
-
             **Linux Installers (x86_64 & arm64):**
             - Debian/Ubuntu `.deb`
             - Fedora/RHEL `.rpm`
@@ -181,6 +179,9 @@ jobs:
             - Portable `.zip`
 
             ## Quick Start
+
+            Choose the architecture of your computer when you download. Ask @claude how to find out your computer's architecture.
+            $arch = AMD64 (x86_64) or ARM64 (aarch64)
 
             **Linux - Package Manager (no dependencies required):**
             ```bash
