@@ -86,8 +86,12 @@ function(ascii_defer_prepare)
             -DCMAKE_CXX_COMPILER=${_defer_cxx_compiler}
             -DCMAKE_BUILD_TYPE=Release
             -DOUTPUT_DIR=${_defer_build_dir}
-            -DLLVM_CONFIG_EXECUTABLE=${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}
         )
+
+        # Pass llvm-config to external project on Unix only (Windows doesn't have llvm-config.exe)
+        if(ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
+            list(APPEND _defer_cmake_args -DLLVM_CONFIG_EXECUTABLE=${ASCIICHAT_LLVM_CONFIG_EXECUTABLE})
+        endif()
 
         # On Windows with vcpkg, pass the vcpkg root so the defer tool can find dependencies
         # but don't use the toolchain file itself (to avoid inherited build flags)

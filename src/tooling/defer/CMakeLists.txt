@@ -37,31 +37,9 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Use llvm-config to get LLVM/Clang configuration
-# On macOS with Homebrew, llvm-config is typically not in PATH
-find_program(LLVM_CONFIG_EXECUTABLE
-    NAMES llvm-config llvm-config.exe
-    HINTS
-        /opt/homebrew/opt/llvm/bin    # Homebrew on Apple Silicon
-        /usr/local/opt/llvm/bin        # Homebrew on Intel Mac
-        /usr/lib/llvm-21/bin           # Debian/Ubuntu LLVM 21
-        /usr/lib/llvm-20/bin           # Debian/Ubuntu LLVM 20
-        /usr/lib/llvm-19/bin           # Debian/Ubuntu LLVM 19
-        /usr/lib/llvm-18/bin           # Debian/Ubuntu LLVM 18
-    DOC "Path to llvm-config"
-    REQUIRED
-)
-
-execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --includedir
-    OUTPUT_VARIABLE LLVM_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
-execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --libdir
-    OUTPUT_VARIABLE LLVM_LIBRARY_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
-execute_process(COMMAND ${LLVM_CONFIG_EXECUTABLE} --version
-    OUTPUT_VARIABLE LLVM_VERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-message(STATUS "LLVM version: ${LLVM_VERSION}")
-message(STATUS "LLVM include: ${LLVM_INCLUDE_DIRS}")
-message(STATUS "LLVM lib: ${LLVM_LIBRARY_DIRS}")
+# Get LLVM/Clang configuration using centralized detection module
+# This handles Windows (no llvm-config) vs Unix (uses llvm-config) automatically
+include("${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/utils/DetectLLVMPaths.cmake")
 
 # Create the executable
 add_executable(ascii-instr-defer tool.cpp)
