@@ -1,0 +1,167 @@
+name: Build
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'src/**.c'
+      - 'src/**.cpp'
+      - 'src/**.h'
+      - 'src/**.hpp'
+      - 'src/**.m'
+      - 'lib/**.c'
+      - 'lib/**.cpp'
+      - 'lib/**.h'
+      - 'lib/**.hpp'
+      - 'lib/**.m'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.github/workflows/build.yml'
+      - '.github/actions/install-deps/**'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'src/**.c'
+      - 'src/**.cpp'
+      - 'src/**.h'
+      - 'src/**.hpp'
+      - 'src/**.m'
+      - 'lib/**.c'
+      - 'lib/**.cpp'
+      - 'lib/**.h'
+      - 'lib/**.hpp'
+      - 'lib/**.m'
+      - 'cmake/**'
+      - 'CMakeLists.txt'
+      - 'CMakePresets.json'
+      - '.github/workflows/build.yml'
+      - '.github/actions/install-deps/**'
+  workflow_dispatch:
+
+env:
+  CC: clang
+  CXX: clang++
+
+jobs:
+  build:
+    name: ${{ matrix.os }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux AMD64
+          - os: Linux
+            arch: amd64
+            runner: ubuntu-latest
+            vcpkg-packages: ""
+            vcpkg-static-packages: ""
+
+          # Linux ARM64 (using QEMU emulation - slower but works)
+          # Note: Native ARM64 runners would require self-hosted
+          # Disabled for now - uncomment if you have self-hosted ARM64 runners
+          # - os: Linux
+          #   arch: arm64
+          #   runner: ubuntu-latest
+          #   vcpkg-packages: ""
+          #   vcpkg-static-packages: ""
+
+          # macOS AMD64 (Intel)
+          - os: macOS
+            arch: amd64
+            runner: macos-13
+            vcpkg-packages: ""
+            vcpkg-static-packages: ""
+
+          # macOS ARM64 (Apple Silicon) - Native!
+          - os: macOS
+            arch: arm64
+            runner: macos-15
+            vcpkg-packages: ""
+            vcpkg-static-packages: ""
+
+          # Windows AMD64
+          - os: Windows
+            arch: amd64
+            runner: windows-latest
+            vcpkg-packages: "zstd portaudio libsodium"
+            vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
+
+          # Windows ARM64 - Not available as hosted runner
+          # Would require self-hosted runner or cross-compilation
+          # - os: Windows
+          #   arch: arm64
+          #   runner: windows-arm64  # self-hosted only
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: Install dependencies
+        id: install-deps
+        uses: ./.github/actions/install-deps
+        with:
+          os: ${{ matrix.os == 'Linux' && 'ubuntu' || (matrix.os == 'macOS' && 'macos' || 'windows') }}
+          vcpkg-packages: ${{ matrix.vcpkg-packages }}
+          vcpkg-static-packages: ${{ matrix.vcpkg-static-packages }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure (Unix)
+        if: matrix.os != 'Windows'
+        run: |
+          cmake --preset release
+
+      - name: Configure (Windows)
+        if: matrix.os == 'Windows'
+        shell: pwsh
+        run: |
+          $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
+          # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
+          # Disable tests - Criterion doesn't work well on Windows
+          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_ENABLE_TESTS=OFF
+
+      - name: Build
+        run: |
+          cmake --build build_release --target ascii-chat
+          cmake --build build_release --target static-lib
+          cmake --build build_release --target shared-lib
+
+      - name: Verify build artifacts (Unix)
+        if: matrix.os != 'Windows'
+        run: |
+          echo "=== Verifying build artifacts ==="
+          if [ ! -f "build_release/bin/ascii-chat" ]; then
+            echo "ERROR: ascii-chat binary not found!"
+            exit 1
+          fi
+          echo "Build successful! Found ascii-chat"
+          ls -la build_release/bin/
+          ls -la build_release/lib/
+
+      - name: Verify build artifacts (Windows)
+        if: matrix.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "=== Verifying build artifacts ==="
+          $binDir = "build_release/bin"
+          if (!(Test-Path "$binDir/ascii-chat.exe")) {
+            Write-Host "ERROR: ascii-chat.exe not found!"
+            exit 1
+          }
+          Write-Host "Build successful! Found ascii-chat.exe"
+          Get-ChildItem -Path $binDir
+          Get-ChildItem -Path "build_release/lib"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ascii-chat-${{ matrix.os }}-${{ matrix.arch }}
+          path: |
+            build_release/bin/ascii-chat*
+            build_release/lib/*
+          retention-days: 7
+
