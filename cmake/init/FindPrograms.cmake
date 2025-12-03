@@ -66,6 +66,10 @@ if(WIN32)
         "$ENV{PROGRAMFILES}/LLVM/bin"
         "$ENV{LOCALAPPDATA}/Programs/LLVM/bin"
         "C:/Program Files/LLVM/bin"
+        # Scoop global install (--global flag installs to ProgramData)
+        "C:/ProgramData/scoop/apps/llvm/current/bin"
+        "C:/ProgramData/scoop/shims"
+        # Scoop user install
         "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
         "$ENV{USERPROFILE}/scoop/shims"
     )
