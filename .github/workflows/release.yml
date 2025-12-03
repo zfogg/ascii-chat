@@ -130,12 +130,26 @@ jobs:
           fi
 
       - name: Create and push tag
+        # Only create tag for workflow_dispatch - tag already exists for tag push triggers
+        if: github.event_name == 'workflow_dispatch'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION"
+
+      - name: Create release tarball
+        id: tarball
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ./scripts/create-release-tarball.sh "$VERSION"
+          TARBALL="ascii-chat-${VERSION#v}-full.tar.gz"
+          SHA256=$(sha256sum "$TARBALL" | cut -d' ' -f1)
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "Created tarball: $TARBALL"
+          echo "SHA256: $SHA256"
 
       - name: Create Release
         id: create_release
@@ -204,8 +218,15 @@ jobs:
             - Static builds (Linux) - no dependencies!
 
             ${{ steps.changelog.outputs.CHANGELOG }}
+
+            ## Source Tarball
+
+            For package maintainers (Homebrew, AUR, etc.):
+            - `${{ steps.tarball.outputs.tarball }}`
+            - SHA256: `${{ steps.tarball.outputs.sha256 }}`
           draft: false
           prerelease: false
+          files: ${{ steps.tarball.outputs.tarball }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
   package-linux:
