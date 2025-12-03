@@ -384,15 +384,32 @@ jobs:
       - name: Print build logs on failure
         if: failure()
         run: |
-          echo "=== BearSSL build log (cache) ==="
-          cat .deps-cache/*/bearssl/bearssl-build.log 2>/dev/null || echo "No BearSSL build log in cache"
+          echo "=== Cache directory structure ==="
+          find .deps-cache -type f -name "*.log" 2>/dev/null || echo "No log files in .deps-cache"
           echo ""
-          echo "=== BearSSL source directory ==="
+          echo "=== BearSSL build log (cache) ==="
+          for f in .deps-cache/*/bearssl/bearssl-build.log; do
+            if [[ -f "$f" ]]; then
+              echo "--- $f ---"
+              cat "$f"
+            fi
+          done || echo "No BearSSL build log in cache"
+          echo ""
+          echo "=== BearSSL source build directory ==="
           ls -la deps/bearssl/build/ 2>/dev/null || echo "No deps/bearssl/build directory"
+          echo ""
+          echo "=== Compiler and AR info ==="
+          which clang && clang --version | head -1
+          which llvm-ar && llvm-ar --version | head -1 || echo "llvm-ar not found, using ar"
+          which ar && ar --version | head -1
           echo ""
           echo "=== Try rebuilding BearSSL with verbose output ==="
           make -C deps/bearssl clean 2>/dev/null || true
-          make -C deps/bearssl lib CC="$(which clang)" AR="$(which llvm-ar || which ar)" CFLAGS="-fPIC" 2>&1 | head -100
+          # Show full output including ar step (not just first 100 lines)
+          make -C deps/bearssl lib CC="$(which clang)" AR="$(which llvm-ar || which ar)" CFLAGS="-fPIC" 2>&1
+          echo ""
+          echo "=== Verify BearSSL was built ==="
+          ls -la deps/bearssl/build/libbearssl.a 2>/dev/null || echo "libbearssl.a was not created"
           echo ""
           echo "=== CMake error log ==="
           cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
@@ -460,6 +477,12 @@ jobs:
       - name: Install WiX toolset
         run: |
           choco install wixtoolset --no-progress -y
+
+      - name: Install LLVM
+        run: |
+          choco install llvm --no-progress -y
+          # Add LLVM to PATH for this job
+          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Configure and package with CPack
         shell: pwsh
