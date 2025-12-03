@@ -52,15 +52,16 @@ if(WIN32)
     #   - vovkos/llvm-package-windows (GitHub)
     #   - Building LLVM from source
     set(_llvm_search_roots
+        # CI installs full LLVM with dev libraries here (vovkos/llvm-package-windows)
+        "C:/LLVM"
         # Scoop global install (--global flag installs to ProgramData)
         "C:/ProgramData/scoop/apps/llvm/current"
         # Scoop user install
         "$ENV{USERPROFILE}/scoop/apps/llvm/current"
-        # Official LLVM installer, choco, winget
+        # Official LLVM installer, choco, winget (usually lacks dev libraries)
         "C:/Program Files/LLVM"
         "$ENV{PROGRAMFILES}/LLVM"
         # Less common locations
-        "C:/LLVM"
         "$ENV{LOCALAPPDATA}/Programs/LLVM"
     )
 

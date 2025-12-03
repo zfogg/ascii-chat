@@ -171,11 +171,16 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             )
 
             # Build BearSSL quietly, logging output to file
-            # Clear MAKEFLAGS to prevent parallel make from causing race conditions
+            # Use bash wrapper to ensure shell redirection works correctly across platforms
+            # (VERBATIM + redirection can be problematic on some platforms/generators)
             set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
+            find_program(BASH_EXECUTABLE bash HINTS /bin /usr/bin)
+            if(NOT BASH_EXECUTABLE)
+                set(BASH_EXECUTABLE "bash")
+            endif()
             add_custom_command(
                 OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${CMAKE_COMMAND} -E env MAKEFLAGS= make lib CC=${BEARSSL_CC} AR=${CMAKE_AR} "CFLAGS=${BEARSSL_EXTRA_CFLAGS}" > "${BEARSSL_LOG_FILE}" 2>&1
+                COMMAND ${BASH_EXECUTABLE} -c "MAKEFLAGS= make lib CC='${BEARSSL_CC}' AR='${CMAKE_AR}' 'CFLAGS=${BEARSSL_EXTRA_CFLAGS}' > '${BEARSSL_LOG_FILE}' 2>&1"
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"
