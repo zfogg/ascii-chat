@@ -42,6 +42,10 @@ function cbr() {
   cmake --build build_release "$@"
 }
 
+function ct() {
+  ctest --test-dir build --output-on-failure --parallel 0 "$@"
+}
+
 # t - Test - Run the test defined in $test with a convenient one-letter command
 # Run it from anywhere in the repo - you can be in the build dir running ninjas
 # or the repo root running cmake --build build
