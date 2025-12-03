@@ -3,7 +3,7 @@
 .\"
 .TH ASCII-CHAT 1 "November 2025" "ascii-chat @PROJECT_VERSION@" "User Commands"
 .SH NAME
-ascii-chat \- video chat in your terminal
+ascii-chat \- Video chat in your terminal
 .SH SYNOPSIS
 .B ascii-chat
 .RI [ options ]
