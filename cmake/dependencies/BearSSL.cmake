@@ -143,26 +143,15 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
 
         file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
 
-        # Only add build command if library doesn't exist
+        # Only build if library doesn't exist in cache
         if(NOT EXISTS "${BEARSSL_LIB}")
-            message(STATUS "${BoldYellow}BearSSL${ColorReset} library not found in cache, will build from source: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
+            message(STATUS "${BoldYellow}BearSSL${ColorReset} library not found in cache, building from source...")
 
-            # For musl builds: disable getentropy() (not in musl), force /dev/urandom, disable fortification
             # Always add -fPIC for shared library support
-            if(USE_MUSL)
-                set(BEARSSL_EXTRA_CFLAGS "-fPIC -DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector")
-                # Use centralized musl-gcc from FindPrograms.cmake
-                if(NOT ASCIICHAT_MUSL_GCC_EXECUTABLE)
-                    message(FATAL_ERROR "musl-gcc not found. Required for building BearSSL with USE_MUSL=ON.")
-                endif()
-                set(BEARSSL_CC "${ASCIICHAT_MUSL_GCC_EXECUTABLE}")
-            else()
-                set(BEARSSL_EXTRA_CFLAGS "-fPIC")
-                set(BEARSSL_CC "${CMAKE_C_COMPILER}")
-            endif()
+            set(BEARSSL_EXTRA_CFLAGS "-fPIC")
+            set(BEARSSL_CC "${CMAKE_C_COMPILER}")
 
             # Clean BearSSL build directory before initial build
-            message(STATUS "  Cleaning BearSSL build directory before initial build...")
             execute_process(
                 COMMAND make clean
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
@@ -170,30 +159,32 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
                 ERROR_QUIET
             )
 
-            # Build BearSSL quietly, logging output to file
-            # Use bash wrapper to ensure shell redirection works correctly across platforms
-            # (VERBATIM + redirection can be problematic on some platforms/generators)
+            # Build BearSSL at configure time using execute_process
+            # This is more reliable than add_custom_command which has issues with
+            # make on macOS GitHub Actions runners (commands echo but don't execute)
             set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
-            find_program(BASH_EXECUTABLE bash HINTS /bin /usr/bin)
-            if(NOT BASH_EXECUTABLE)
-                set(BASH_EXECUTABLE "bash")
-            endif()
-            add_custom_command(
-                OUTPUT "${BEARSSL_LIB}"
-                COMMAND ${BASH_EXECUTABLE} -c "MAKEFLAGS= make lib CC='${BEARSSL_CC}' AR='${CMAKE_AR}' 'CFLAGS=${BEARSSL_EXTRA_CFLAGS}' > '${BEARSSL_LOG_FILE}' 2>&1"
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}"
+            execute_process(
+                COMMAND make lib "CC=${BEARSSL_CC}" "AR=${CMAKE_AR}" "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
-                COMMENT "Building BearSSL (log: ${BEARSSL_LOG_FILE})"
-                VERBATIM
+                RESULT_VARIABLE BEARSSL_BUILD_RESULT
+                OUTPUT_FILE "${BEARSSL_LOG_FILE}"
+                ERROR_FILE "${BEARSSL_LOG_FILE}"
             )
 
-            # Add custom target that depends on the library
-            add_custom_target(bearssl_build DEPENDS "${BEARSSL_LIB}")
+            if(NOT BEARSSL_BUILD_RESULT EQUAL 0)
+                message(FATAL_ERROR "${BoldRed}BearSSL build failed${ColorReset}. Check log: ${BEARSSL_LOG_FILE}")
+            endif()
+
+            # Copy built library to cache
+            file(COPY_FILE "${BEARSSL_SOURCE_DIR}/build/libbearssl.a" "${BEARSSL_LIB}")
+
+            message(STATUS "  ${BoldGreen}BearSSL${ColorReset} library built and cached successfully")
         else()
             message(STATUS "${BoldGreen}BearSSL${ColorReset} library found in cache: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
-            # Create a dummy target so dependencies work
-            add_custom_target(bearssl_build)
         endif()
+
+        # Create a dummy target so dependencies work (library already built at configure time)
+        add_custom_target(bearssl_build)
     endif()
 
     # Create an imported library that links to the custom command output

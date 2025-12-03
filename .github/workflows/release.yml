@@ -418,11 +418,25 @@ jobs:
         run: |
           choco install wixtoolset --no-progress -y
 
+      - name: Download pre-built defer tool
+        shell: pwsh
+        run: |
+          # Download pre-built defer tool from build-tools release
+          # This avoids needing full LLVM dev libraries which aren't available in standard Windows LLVM packages
+          $deferToolDir = ".deps-cache/defer-tool"
+          New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
+          gh release download build-tools --pattern "ascii-instr-defer-windows-x64.exe" --dir $deferToolDir
+          Rename-Item "$deferToolDir/ascii-instr-defer-windows-x64.exe" "$deferToolDir/ascii-instr-defer.exe"
+          Write-Host "Downloaded defer tool to: $deferToolDir/ascii-instr-defer.exe"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Configure and package with CPack
         shell: pwsh
         run: |
           $toolchain = "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
-          cmake --preset release
+          $deferTool = "$PWD/.deps-cache/defer-tool/ascii-instr-defer.exe"
+          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool"
           cmake --build build_release --target all
           cmake --build build_release --target run-test-static-lib
           cmake --build build_release --target run-test-shared-lib
