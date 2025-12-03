@@ -2,8 +2,10 @@
 
 /**
  * @file compression.h
- * @ingroup compression
  * @brief 📦 Network Packet Compression Utilities
+ * @ingroup compression
+ * @addtogroup compression
+ * @{
  *
  * This header provides compression and decompression utilities for network
  * packets in ascii-chat. The system uses zstd compression to reduce
@@ -132,3 +134,5 @@ int decompress_data(const void *input, size_t input_size, void *output, size_t o
 bool should_compress(size_t original_size, size_t compressed_size);
 
 // Note: Frame sending functions have been moved to network.h/network.c
+
+/** @} */

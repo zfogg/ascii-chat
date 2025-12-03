@@ -2,8 +2,10 @@
 
 /**
  * @file buffer_pool.h
- * @ingroup buffer_pool
  * @brief 🗃️ Memory Buffer Pool System for High-Performance Allocation
+ * @ingroup buffer_pool
+ * @addtogroup buffer_pool
+ * @{
  *
  * This header provides a pre-allocated memory buffer pool system optimized
  * for high-throughput scenarios in ascii-chat. The system uses multiple size

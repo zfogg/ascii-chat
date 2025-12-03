@@ -2,8 +2,10 @@
 
 /**
  * @file platform/cond.h
- * @ingroup platform
  * @brief Cross-platform condition variable interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a unified condition variable interface that abstracts platform-specific
  * implementations (Windows Condition Variables vs POSIX pthread condition variables).
@@ -119,3 +121,5 @@ int cond_signal(cond_t *cond);
  * @ingroup platform
  */
 int cond_broadcast(cond_t *cond);
+
+/** @} */

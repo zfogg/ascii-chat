@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/ascii.h
- * @ingroup image2ascii
  * @brief 🖼️ ASCII Art Conversion and Output Interface
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides comprehensive functions for converting images to ASCII art
  * and outputting frames to the terminal. Supports multiple color modes, aspect
@@ -605,3 +607,5 @@ static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
  * @ingroup image2ascii
  */
 #define ascii_zzz() nanosleep((struct timespec *)&ASCII_SLEEP_START, (struct timespec *)&ASCII_SLEEP_STOP)
+
+/** @} */

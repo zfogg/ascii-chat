@@ -2,8 +2,10 @@
 
 /**
  * @file platform/windows_compat.h
- * @ingroup platform
  * @brief Wrapper for windows.h with C23 alignment compatibility
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a single point to include windows.h with proper alignment.
  * The pragma pack ensures Windows SDK types get 8-byte alignment as expected,
@@ -32,3 +34,5 @@ int __cdecl _wcsicmp(const wchar_t *, const wchar_t *);
 #include <windows.h>
 #pragma pack(pop)
 #endif // _WIN32
+
+/** @} */

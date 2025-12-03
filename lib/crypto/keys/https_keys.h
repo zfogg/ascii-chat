@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/keys/https_keys.h
- * @ingroup keys
  * @brief HTTPS-based key fetching from GitHub and GitLab
+ * @ingroup keys
+ * @addtogroup keys
+ * @{
  *
  * This module handles fetching SSH and GPG keys from GitHub and GitLab
  * using HTTPS requests with BearSSL for secure communication.

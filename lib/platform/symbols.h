@@ -1,7 +1,9 @@
 /**
  * @file platform/symbols.h
- * @ingroup platform
  * @brief Symbol Resolution Cache for Backtrace Addresses
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a high-performance symbol resolution cache system for
  * converting backtrace addresses to human-readable symbol names. The system

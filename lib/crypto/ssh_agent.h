@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/ssh_agent.h
- * @ingroup crypto
  * @brief 🔑 SSH agent interface for signing operations
+ * @ingroup crypto
+ * @addtogroup crypto
+ * @{
  *
  * This header provides SSH agent integration for signing operations.
  * Allows keys to stay in SSH agent (not loaded into memory) for better security.

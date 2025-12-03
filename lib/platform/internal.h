@@ -2,8 +2,10 @@
 
 /**
  * @file platform/internal.h
- * @ingroup platform
  * @brief Internal implementation helpers for platform abstraction layer
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header contains internal helpers and macros used by the platform
  * implementation files. Not for external use.
@@ -113,3 +115,5 @@ int platform_chmod(const char *pathname, int mode);
 #define PLATFORM_O_APPEND O_APPEND
 #define PLATFORM_O_BINARY 0 // Not needed on POSIX
 #endif
+
+/** @} */

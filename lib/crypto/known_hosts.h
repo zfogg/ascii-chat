@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/known_hosts.h
- * @ingroup crypto
  * @brief Known hosts management for MITM attack prevention
+ * @ingroup crypto
+ * @addtogroup crypto
+ * @{
  *
  * This header provides known hosts management functionality similar to SSH's known_hosts.
  * Tracks server identity keys to detect man-in-the-middle attacks and key changes.

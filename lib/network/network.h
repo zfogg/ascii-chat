@@ -4,8 +4,10 @@
  * @brief 🌐 Core network I/O operations with timeout support
  *
  * @file network/network.h
- * @ingroup network
  * @brief 🌐 Core network I/O operations with timeout support
+ * @ingroup network
+ * @addtogroup network
+ * @{
  *
  * This module provides fundamental network I/O operations including socket
  * management, timeout handling, and basic send/receive operations. All
@@ -351,4 +353,6 @@ int set_socket_nonblocking(socket_t sockfd);
  */
 const char *network_error_string();
 
-/** @} */
+/** @} */ /* Error Reporting Functions */
+
+/** @} */ /* network */

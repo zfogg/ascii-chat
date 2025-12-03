@@ -3,8 +3,10 @@
 
 /**
  * @file tests/logging.h
- * @ingroup testing
  * @brief Test logging control utilities
+ * @ingroup testing
+ * @addtogroup testing
+ * @{
  *
  * This header provides utilities for controlling logging output during tests.
  * It enables tests to temporarily disable or redirect stdout/stderr for quiet
@@ -321,5 +323,7 @@ bool test_logging_is_disabled(void);
  * @endcode
  */
 #define TEST_SUITE_WITH_VERBOSE_LOGGING(suite_name, ...) TEST_SUITE_WITH_DEBUG_LOGGING(suite_name, ##__VA_ARGS__)
+
+/** @} */
 
 #endif // LOGGING_H

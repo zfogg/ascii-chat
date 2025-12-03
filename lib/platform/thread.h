@@ -2,8 +2,10 @@
 
 /**
  * @file platform/thread.h
- * @ingroup platform
  * @brief 🧵 Cross-platform thread interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a unified thread interface that abstracts platform-specific
  * implementations (Windows threads vs POSIX pthreads).
@@ -201,3 +203,5 @@ void *ascii_tls_get(tls_key_t key);
  * @ingroup platform
  */
 int ascii_tls_set(tls_key_t key, void *value);
+
+/** @} */

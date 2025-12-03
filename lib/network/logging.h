@@ -2,8 +2,10 @@
 
 /**
  * @file lib/network/logging.h
- * @ingroup logging
  * @brief Remote logging direction enumeration shared between logging and packet layers.
+ * @ingroup logging
+ * @addtogroup logging
+ * @{
  */
 
 /**
@@ -17,3 +19,5 @@ typedef enum remote_log_direction {
   REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT = 1,
   REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER = 2
 } remote_log_direction_t;
+
+/** @} */

@@ -2,8 +2,10 @@
 
 /**
  * @file platform/mutex.h
- * @ingroup platform
  * @brief Cross-platform mutex interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a unified mutex interface that abstracts platform-specific
  * implementations (Windows Critical Sections vs POSIX pthread mutexes).
@@ -140,4 +142,6 @@ int mutex_unlock_impl(mutex_t *mutex);
   (lock_debug_is_initialized() ? debug_mutex_unlock(mutex, __FILE__, __LINE__, __func__) : mutex_unlock_impl(mutex))
 #endif
 
-/** @} */
+/** @} */ /* Mutex Locking Macros */
+
+/** @} */ /* platform */

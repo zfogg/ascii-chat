@@ -1,7 +1,9 @@
 /**
  * @file network/packet.h
- * @ingroup network
  * @brief Packet protocol implementation with encryption and compression support
+ * @ingroup network
+ * @addtogroup network
+ * @{
  *
  * This module provides comprehensive packet protocol implementation including
  * packet verification, CRC validation, protocol compliance checking, encryption

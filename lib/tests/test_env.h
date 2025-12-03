@@ -2,8 +2,10 @@
 
 /**
  * @file tests/test_env.h
- * @ingroup testing
  * @brief Test environment detection utilities
+ * @ingroup testing
+ * @addtogroup testing
+ * @{
  *
  * This header provides test environment detection functions that can be used
  * by both test code and production code (to adjust behavior like timeouts).
@@ -41,3 +43,5 @@ static inline bool is_test_environment(void) {
   return platform_getenv("CRITERION_TEST") != NULL || platform_getenv("TESTING") != NULL;
 #endif
 }
+
+/** @} */

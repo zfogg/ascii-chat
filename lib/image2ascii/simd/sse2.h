@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/simd/sse2.h
- * @ingroup image2ascii
  * @brief SSE2-optimized ASCII rendering functions
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides SSE2 (Streaming SIMD Extensions 2) optimized
  * functions for converting images to ASCII art on x86-64 CPUs.
@@ -57,3 +59,5 @@ void sse2_caches_destroy(void);
 // Legacy row-based functions removed - use image-based API above
 
 #endif /* SIMD_SUPPORT_SSE2 */
+
+/** @} */

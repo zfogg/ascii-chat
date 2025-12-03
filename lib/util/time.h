@@ -2,8 +2,10 @@
 
 /**
  * @file util/time.h
- * @ingroup module_utilities
  * @brief ⏱️ High-precision timing utilities using sokol_time.h and uthash
+ * @ingroup module_utilities
+ * @addtogroup module_utilities
+ * @{
  *
  * This module provides a simple timing API for performance measurement:
  * - START_TIMER("name", ...) - Begin timing with formatted message
@@ -275,3 +277,5 @@ int format_duration_s(double seconds, char *buffer, size_t buffer_size);
       log_func(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                                        \
     }                                                                                                                  \
   } while (0)
+
+/** @} */

@@ -1,6 +1,9 @@
 /**
- * @file levenshtein.h
+ * @file util/levenshtein.h
  * @brief Levenshtein distance algorithm for fuzzy string matching
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * MIT licensed.
  * Copyright (c) 2015 Titus Wormer <tituswormer@gmail.com>
@@ -62,6 +65,8 @@ ASCIICHAT_API size_t levenshtein_n(const char *a, const size_t length, const cha
  * @return Best matching string, or NULL if no match within threshold
  */
 ASCIICHAT_API const char *levenshtein_find_similar(const char *unknown, const char *const *candidates);
+
+/** @} */
 
 #ifdef __cplusplus
 }

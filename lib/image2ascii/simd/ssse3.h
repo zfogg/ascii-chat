@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/simd/ssse3.h
- * @ingroup image2ascii
  * @brief SSSE3-optimized ASCII rendering functions
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides SSSE3 (Supplemental Streaming SIMD Extensions 3)
  * optimized functions for converting images to ASCII art on x86-64 CPUs.
@@ -57,3 +59,5 @@ void ssse3_caches_destroy(void);
 // Legacy row-based functions removed - use image-based API above
 
 #endif /* SIMD_SUPPORT_SSSE3 */
+
+/** @} */

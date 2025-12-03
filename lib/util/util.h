@@ -2,8 +2,10 @@
 
 /**
  * @file util/util.h
- * @ingroup util
  * @brief 🛠️ Master Utility Header
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This is a convenience header that includes all utility modules. Including
  * this header provides access to all utility functions in a single include.
@@ -53,3 +55,5 @@
 #include "util/path.h"
 #include "util/string.h"
 #include "util/utf8.h"
+
+/** @} */

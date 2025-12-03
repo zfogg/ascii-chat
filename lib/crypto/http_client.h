@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/http_client.h
- * @ingroup crypto
  * @brief Simple HTTPS client for fetching public keys from GitHub/GitLab
+ * @ingroup crypto
+ * @addtogroup crypto
+ * @{
  *
  * This module provides basic HTTPS GET functionality using BearSSL for TLS.
  * It's designed specifically for fetching SSH/GPG public keys from GitHub and GitLab.

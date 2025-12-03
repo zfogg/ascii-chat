@@ -2,8 +2,10 @@
 
 /**
  * @file platform/password.h
- * @ingroup platform
  * @brief Cross-platform password prompting utilities
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * Provides secure password input functionality across Windows, Linux, and macOS.
  * Automatically disables terminal echo and provides consistent user experience.
@@ -27,3 +29,5 @@
  * @ingroup platform
  */
 int platform_prompt_password(const char *prompt, char *password, size_t max_len);
+
+/** @} */

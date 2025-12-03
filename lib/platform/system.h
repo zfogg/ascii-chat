@@ -2,8 +2,10 @@
 
 /**
  * @file platform/system.h
- * @ingroup platform
  * @brief Cross-platform system functions interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides unified system functions including process management,
  * environment variables, TTY operations, and signal handling.
@@ -704,3 +706,5 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size);
  * @return true on success, false on failure (buffer too small or API error)
  */
 bool platform_get_cwd(char *cwd, size_t path_size);
+
+/** @} */

@@ -4,8 +4,10 @@
 
 /**
  * @file platform/windows/getopt.h
- * @ingroup platform
  * @brief POSIX getopt implementation for Windows
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a POSIX-compatible getopt and getopt_long implementation
  * for Windows systems. Windows does not provide these functions by default, so

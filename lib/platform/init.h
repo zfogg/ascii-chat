@@ -2,8 +2,10 @@
 
 /**
  * @file platform/init.h
- * @ingroup platform
  * @brief Platform initialization and static synchronization helpers
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides platform initialization functions and static initialization
  * helpers for synchronization primitives that need to work before main().
@@ -186,3 +188,5 @@ asciichat_error_t platform_init(void);
 
 // Call this at program exit
 void platform_cleanup(void);
+
+/** @} */

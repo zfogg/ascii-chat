@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/image.h
- * @ingroup image2ascii
  * @brief Image Data Structures and Operations
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides comprehensive image data structures and operations
  * for ascii-chat. Supports RGB images with standard and SIMD-optimized

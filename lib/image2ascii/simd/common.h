@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/simd/common.h
- * @ingroup image2ascii
  * @brief Common SIMD utilities and structures
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides common utilities, cache systems, and helper functions
  * shared across all SIMD implementations.

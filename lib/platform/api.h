@@ -1,7 +1,9 @@
 /**
  * @file platform/api.h
- * @ingroup platform
  * @brief DLL export/import macros for cross-platform symbol visibility
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header defines the ASCIICHAT_API macro used to control symbol visibility
  * in shared libraries (DLLs on Windows, .so/.dylib on Unix).
@@ -79,3 +81,5 @@
  */
 #define ASCIICHAT_API __attribute__((visibility("default")))
 #endif
+
+/** @} */

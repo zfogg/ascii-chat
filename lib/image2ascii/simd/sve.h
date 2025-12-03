@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/simd/sve.h
- * @ingroup image2ascii
  * @brief SVE-optimized ASCII rendering functions
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides SVE (Scalable Vector Extension) optimized
  * functions for converting images to ASCII art on ARM processors
@@ -50,3 +52,5 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 void sve_caches_destroy(void);
 
 #endif /* SIMD_SUPPORT_SVE */
+
+/** @} */

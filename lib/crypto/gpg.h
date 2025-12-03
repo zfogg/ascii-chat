@@ -2,8 +2,10 @@
 
 /**
  * @file crypto/gpg.h
- * @ingroup crypto
  * @brief GPG agent interface for signing operations
+ * @ingroup crypto
+ * @addtogroup crypto
+ * @{
  *
  * This header provides GPG agent integration for signing operations using
  * the Assuan protocol to communicate with gpg-agent.

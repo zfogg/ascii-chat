@@ -2,8 +2,10 @@
 
 /**
  * @file util/string.h
- * @ingroup util
  * @brief 🔤 String Manipulation and Shell Escaping Utilities
+ * @ingroup util
+ * @addtogroup util
+ * @{
  *
  * This header provides utilities for string manipulation, shell command
  * escaping, and validation. Functions ensure strings are safe for use in

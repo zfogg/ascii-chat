@@ -2,8 +2,10 @@
 
 /**
  * @file image2ascii/ansi_fast.h
- * @ingroup image2ascii
  * @brief Fast ANSI escape sequence generation
+ * @ingroup image2ascii
+ * @addtogroup image2ascii
+ * @{
  *
  * This header provides optimized ANSI escape sequence generation using
  * precomputed lookup tables and run-length encoding for efficient
@@ -289,3 +291,5 @@ char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color
 // Complete frame generation with optimized ANSI string generation
 // size_t generate_ansi_frame_optimized(const uint8_t *pixels, int width, int height, char *output_buffer,
 //                                      size_t buffer_capacity, ansi_color_mode_t mode);
+
+/** @} */

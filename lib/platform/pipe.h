@@ -2,8 +2,10 @@
 
 /**
  * @file platform/pipe.h
- * @ingroup platform
  * @brief Cross-platform pipe/agent socket interface for ascii-chat
+ * @ingroup platform
+ * @addtogroup platform
+ * @{
  *
  * This header provides a unified interface for agent communication (SSH agent,
  * GPG agent) that abstracts platform-specific implementations:
@@ -118,3 +120,5 @@ ssize_t platform_pipe_write(pipe_t pipe, const void *buf, size_t len);
  * @ingroup platform
  */
 bool platform_pipe_is_valid(pipe_t pipe);
+
+/** @} */
