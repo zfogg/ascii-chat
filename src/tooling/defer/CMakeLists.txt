@@ -105,6 +105,12 @@ else()
     # clang will find those headers first, causing ABI mismatches with system LLVM.
     # Solution: Use ASCIICHAT_LLVM_CONFIG_EXECUTABLE to point to your custom LLVM,
     # or remove conflicting headers from /usr/local/include.
+
+    # Add LLVM include directories (needed for clang/AST/*.h headers)
+    target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+        ${LLVM_INCLUDE_DIRS}
+    )
+
     target_compile_options(ascii-instr-defer PRIVATE
         -O2
         -fno-rtti
