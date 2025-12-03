@@ -99,13 +99,16 @@ if(APPLE)
     endif()
 else()
     # Non-macOS (Linux, Windows)
-    # Use -isystem to add LLVM includes as system headers (works with angled includes)
-    target_compile_options(ascii-instr-defer PRIVATE
-        -O2
-        -fno-rtti
-        -fexceptions
-        "-isystem${LLVM_INCLUDE_DIRS}"
-    )
+    # Check if LLVM includes are in a standard system path
+    # If so, don't add -isystem as it can break #include_next in libstdc++ headers
+    set(_defer_compile_opts -O2 -fno-rtti -fexceptions)
+
+    if(NOT LLVM_INCLUDE_DIRS STREQUAL "/usr/include" AND NOT LLVM_INCLUDE_DIRS STREQUAL "")
+        # Non-standard LLVM location - add as system include
+        list(APPEND _defer_compile_opts "-isystem${LLVM_INCLUDE_DIRS}")
+    endif()
+
+    target_compile_options(ascii-instr-defer PRIVATE ${_defer_compile_opts})
 
     # Linux: Set rpath to ensure we use the LLVM libs we built against,
     # not any custom LLVM in /usr/local that might be in LD_LIBRARY_PATH
