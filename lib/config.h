@@ -24,9 +24,10 @@
  *       Config file values override default values. The config file is loaded
  *       before CLI argument parsing to ensure this precedence.
  *
- * @note Configuration File Location: The config file is loaded from
- *       `~/.ascii-chat/config.toml` (or `%USERPROFILE%\.ascii-chat\config.toml`
- *       on Windows). The `~` is expanded using platform-specific path expansion.
+ * @note Configuration File Location: The config file is loaded from the
+ *       ascii-chat configuration directory:
+ *       - Unix: `$XDG_CONFIG_HOME/ascii-chat/config.toml` if set, otherwise `~/.ascii-chat/config.toml`
+ *       - Windows: `%APPDATA%\ascii-chat\config.toml` if set, otherwise `~\.ascii-chat\config.toml`
  *
  * @note Error Handling: Config file parsing errors are non-fatal. If the file
  *       is missing, malformed, or contains invalid values, warnings are printed
@@ -65,10 +66,8 @@
  * and applies values to global options.
  *
  * Default config file location (when config_path is NULL):
- * - Uses XDG_CONFIG_HOME/ascii-chat/config.toml if XDG_CONFIG_HOME is set (Unix)
- * - Falls back to ~/.config/ascii-chat/config.toml (Unix)
- * - Falls back to ~/.ascii-chat/config.toml (cross-platform)
- * - Uses %APPDATA%\.ascii-chat\config.toml on Windows
+ * - Unix: $XDG_CONFIG_HOME/ascii-chat/config.toml if set, otherwise ~/.ascii-chat/config.toml
+ * - Windows: %APPDATA%\ascii-chat\config.toml if set, otherwise ~\.ascii-chat\config.toml
  *
  * Only applies configuration values that haven't already been set (though in practice,
  * CLI arguments will override config values anyway since this is called before

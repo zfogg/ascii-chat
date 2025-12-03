@@ -26,10 +26,9 @@
  *
  * CONFIGURATION DIRECTORIES:
  * ==========================
- * Configuration directory resolution follows platform conventions:
- * - Unix: Respects XDG_CONFIG_HOME, falls back to ~/.config/ascii-chat
- * - Windows: Uses %APPDATA%\.ascii-chat
- * - Cross-platform: Falls back to ~/.ascii-chat
+ * All ascii-chat data files (config, known_hosts, etc.) use a single directory:
+ * - Unix: $XDG_CONFIG_HOME/ascii-chat/ if set, otherwise ~/.ascii-chat/
+ * - Windows: %APPDATA%\ascii-chat\ if set, otherwise ~\.ascii-chat\
  *
  * @note All returned paths that require freeing are allocated with malloc()
  *       and must be freed by the caller using free().
@@ -49,23 +48,6 @@
  * Path Constants
  * ============================================================================
  */
-
-/**
- * @brief Known hosts file path
- *
- * Platform-specific path to the known hosts file. On Windows, uses backslash
- * separators; on Unix, uses forward slashes.
- *
- * @note Path includes tilde (~) which can be expanded using expand_path().
- * @note This is a string literal, not an expanded path.
- *
- * @ingroup util
- */
-#ifdef _WIN32
-#define KNOWN_HOSTS_PATH "~\\.ascii-chat\\known_hosts"
-#else
-#define KNOWN_HOSTS_PATH "~/.ascii-chat/known_hosts"
-#endif
 
 /**
  * @brief Path component: current directory (single dot)
@@ -175,10 +157,13 @@ char *expand_path(const char *path);
  * conventions and environment variables. The path includes the directory
  * separator at the end for convenience.
  *
+ * All ascii-chat data files use this single directory:
+ * - config.toml (configuration)
+ * - known_hosts (server key verification)
+ *
  * CONFIGURATION PATH RESOLUTION:
- * - Unix: Checks XDG_CONFIG_HOME, falls back to ~/.config/ascii-chat
- * - Windows: Uses %APPDATA%\.ascii-chat
- * - Cross-platform: Falls back to ~/.ascii-chat if above fail
+ * - Unix: $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/
+ * - Windows: %APPDATA%\ascii-chat\ if APPDATA is set, otherwise ~\.ascii-chat\
  *
  * @note Returned path is allocated with malloc() and must be freed by caller.
  * @note Path includes directory separator at the end (e.g., "/home/user/.config/ascii-chat/").
@@ -188,7 +173,7 @@ char *expand_path(const char *path);
  * @code
  * char *config_dir = get_config_dir();
  * // Returns: "/home/user/.config/ascii-chat/" (on Unix with XDG_CONFIG_HOME unset)
- * // or: "C:\Users\user\AppData\Roaming\.ascii-chat\" (on Windows)
+ * // or: "C:\Users\user\AppData\Roaming\ascii-chat\" (on Windows)
  * free(config_dir);
  * @endcode
  *

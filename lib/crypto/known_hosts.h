@@ -200,12 +200,9 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port);
  * @note Path caching: Path is cached after first call to avoid repeated expansion.
  *       Cache is freed by known_hosts_cleanup().
  *
- * @note Fallback: If path expansion fails, uses `/tmp/.ascii-chat/known_hosts` as fallback.
- *       Function always returns non-NULL path.
- *
- * @note Platform-specific:
- *       - Unix: `~/.ascii-chat/known_hosts`
- *       - Windows: `%APPDATA%\.ascii-chat\known_hosts`
+ * @note Platform-specific paths (same directory as config.toml):
+ *       - Unix: `$XDG_CONFIG_HOME/ascii-chat/known_hosts` if set, otherwise `~/.ascii-chat/known_hosts`
+ *       - Windows: `%APPDATA%\ascii-chat\known_hosts` if set, otherwise `~\.ascii-chat\known_hosts`
  *
  * @warning Path may not exist: Function returns path even if file doesn't exist.
  *          File will be created when first entry is added.

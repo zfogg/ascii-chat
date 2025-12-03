@@ -248,20 +248,19 @@
  *
  * @section config_default_locations Default Config Locations
  *
- * ascii-chat searches for configuration files in the following order:
+ * All ascii-chat data files (config.toml, known_hosts) are stored in a single directory:
  *
  * **Linux/macOS**:
- * - `~/.config/ascii-chat/config.toml`
- * - `~/.ascii-chat/config.toml`
- * - `/etc/ascii-chat/config.toml`
+ * - `$XDG_CONFIG_HOME/ascii-chat/` (if XDG_CONFIG_HOME is set)
+ * - `~/.ascii-chat/` (default when XDG_CONFIG_HOME is not set)
  *
  * **Windows**:
- * - `%APPDATA%\ascii-chat\config.toml`
- * - `%USERPROFILE%\.ascii-chat\config.toml`
+ * - `%APPDATA%\ascii-chat\` (if APPDATA is set)
+ * - `~\.ascii-chat\` (default when APPDATA is not set)
  *
  * **Creating a Default Config**:
  * @code{.sh}
- * ./ascii-chat client --config-create ~/.ascii-chat/config.toml
+ * ./ascii-chat client --config-create
  * @endcode
  *
  * **Using a Config File**:

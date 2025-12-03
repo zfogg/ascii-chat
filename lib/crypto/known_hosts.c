@@ -43,192 +43,45 @@
 // Global variable to cache the expanded known_hosts path
 static char *g_known_hosts_path_cache = NULL;
 
-static char *duplicate_normalized_path(const char *path) {
-  if (!path) {
-    return NULL;
-  }
-
-  char normalized[PLATFORM_MAX_PATH_LENGTH];
-  if (!path_normalize_copy(path, normalized, sizeof(normalized))) {
-    return NULL;
-  }
-
-  size_t len = strlen(normalized) + 1;
-  char *copy = SAFE_MALLOC(len, char *);
-  if (!copy) {
-    return NULL;
-  }
-  memcpy(copy, normalized, len);
-  return copy;
-}
-
-static bool try_set_known_hosts_path(const char *candidate, const char *const *allowed_bases,
-                                     size_t allowed_base_count) {
-  if (!candidate || g_known_hosts_path_cache) {
-    return false;
-  }
-
-  if (!path_is_absolute(candidate)) {
-    log_warn("Rejected known_hosts path (not absolute): %s", candidate);
-    return false;
-  }
-
-  if (!path_is_within_any_base(candidate, allowed_bases, allowed_base_count)) {
-    log_warn("Rejected known_hosts path (outside allowed base): %s", candidate);
-    return false;
-  }
-
-  char *normalized = duplicate_normalized_path(candidate);
-  if (!normalized) {
-    log_error("Failed to normalize known_hosts path candidate: %s", candidate);
-    return false;
-  }
-
-  g_known_hosts_path_cache = normalized;
-  log_debug("KNOWN_HOSTS: Using path %s", g_known_hosts_path_cache);
-  return true;
-}
-
 /**
- * @brief Get the path to the known_hosts file with platform-specific fallbacks
+ * @brief Get the path to the known_hosts file
  *
- * This function determines the appropriate location for the known_hosts file
- * by attempting multiple strategies in order of preference. It caches the
- * result to avoid repeated filesystem operations.
+ * Returns the path to the known_hosts file, using the same directory as
+ * all other ascii-chat configuration files (get_config_dir()).
  *
- * PATH RESOLUTION STRATEGY:
- * 1. Configuration directory (XDG_CONFIG_HOME or platform equivalent)
- * 2. Standard known_hosts path (~/.ascii-chat/known_hosts)
- * 3. Home directory fallback (~/.ascii-chat/known_hosts)
- * 4. Temporary directory fallback (/tmp/.ascii-chat/known_hosts or %TEMP%)
- * 5. Hard-coded safe default as last resort
+ * PATH RESOLUTION:
+ * - Unix: $XDG_CONFIG_HOME/ascii-chat/known_hosts or ~/.config/ascii-chat/known_hosts
+ * - Windows: %APPDATA%\ascii-chat\known_hosts
  *
- * SECURITY CONSIDERATIONS:
- * - All paths must be absolute to prevent path traversal attacks
- * - Paths are validated against allowed base directories
- * - Environment variables are checked but not blindly trusted
- * - On failure, falls back to system-wide safe defaults
- *
- * PLATFORM BEHAVIOR:
- * - Unix/Linux: Prefers ~/.config/ascii-chat/known_hosts (XDG), falls back to /tmp
- * - Windows: Prefers %APPDATA%\.ascii-chat\known_hosts, falls back to %TEMP%
- * - macOS: Follows Unix behavior with XDG support
- *
- * @return Pointer to cached known_hosts path (do not free), or NULL on total failure
+ * @return Pointer to cached known_hosts path (do not free), or NULL on failure
  * @note The returned pointer is valid for the lifetime of the program
- * @note This function is thread-safe through internal caching
- * @note Path construction handles both Unix (/) and Windows (\) separators
  *
  * @ingroup crypto
  */
 const char *get_known_hosts_path(void) {
   // Return cached path if already determined
   if (!g_known_hosts_path_cache) {
-    // Get platform-specific base directories for path validation
     char *config_dir = get_config_dir();
-    defer(SAFE_FREE(config_dir));
-    char *home_dir = expand_path("~");
-    defer(SAFE_FREE(home_dir));
-
-    // Build list of allowed base directories for path validation
-    const char *allowed_bases[6] = {0};
-    size_t allowed_base_count = 0;
-
-    // Add config directory to allowed bases if valid
-    if (config_dir && path_is_absolute(config_dir)) {
-      allowed_bases[allowed_base_count++] = config_dir;
-    }
-    // Add home directory to allowed bases if valid
-    if (home_dir && path_is_absolute(home_dir)) {
-      allowed_bases[allowed_base_count++] = home_dir;
+    if (!config_dir) {
+      log_error("Failed to determine configuration directory for known_hosts");
+      return NULL;
     }
 
-    // Determine platform-specific temporary directory
-    const char *temp_base = NULL;
-#ifdef _WIN32
-    // Windows: Try %TEMP%, then %TMP%, fallback to system temp
-    temp_base = platform_getenv("TEMP");
-    if (!temp_base || !path_is_absolute(temp_base)) {
-      temp_base = platform_getenv("TMP");
-    }
-    if (!temp_base || !path_is_absolute(temp_base)) {
-      temp_base = "C:\\Windows\\Temp";
-    }
-#else
-    // Unix/Linux/macOS: Use /tmp with ascii-chat subdirectory
-    temp_base = "/tmp/.ascii-chat";
-#endif
-    if (temp_base && path_is_absolute(temp_base)) {
-      allowed_bases[allowed_base_count++] = temp_base;
+    // Build path: config_dir + "known_hosts"
+    size_t config_len = strlen(config_dir);
+    size_t total_len = config_len + strlen("known_hosts") + 1;
+    char *path = SAFE_MALLOC(total_len, char *);
+    if (!path) {
+      SAFE_FREE(config_dir);
+      log_error("Failed to allocate memory for known_hosts path");
+      return NULL;
     }
 
-    char candidate_buf[PLATFORM_MAX_PATH_LENGTH];
+    safe_snprintf(path, total_len, "%sknown_hosts", config_dir);
+    SAFE_FREE(config_dir);
 
-    // Strategy 1: Try configuration directory (highest priority)
-    if (config_dir && !g_known_hosts_path_cache) {
-      size_t config_len = strlen(config_dir);
-      size_t total_len = config_len + strlen("known_hosts") + 1;
-      if (total_len < sizeof(candidate_buf)) {
-        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%sknown_hosts", config_dir);
-        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
-      } else {
-        log_warn("Config directory path too long when constructing known_hosts path");
-      }
-    }
-
-    // Strategy 2: Try standard KNOWN_HOSTS_PATH define (e.g., ~/.ascii-chat/known_hosts)
-    if (!g_known_hosts_path_cache) {
-      char *expanded = expand_path(KNOWN_HOSTS_PATH);
-      defer(SAFE_FREE(expanded));
-      if (expanded) {
-        (void)try_set_known_hosts_path(expanded, allowed_bases, allowed_base_count);
-      }
-    }
-
-    // Strategy 3: Try home directory with .ascii-chat subdirectory
-    if (!g_known_hosts_path_cache && home_dir && path_is_absolute(home_dir)) {
-      size_t home_len = strlen(home_dir);
-      char suffix[BUFFER_SIZE_SMALL];
-      safe_snprintf(suffix, sizeof(suffix), ".ascii-chat%sknown_hosts", PATH_SEPARATOR_STR);
-      bool needs_sep = (home_len > 0) && (home_dir[home_len - 1] != PATH_DELIM);
-      size_t total_len = home_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
-      if (total_len < sizeof(candidate_buf)) {
-        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%s%s", home_dir, needs_sep ? PATH_SEPARATOR_STR : "",
-                      suffix);
-        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
-      }
-    }
-
-    // Strategy 4: Try temporary directory as fallback
-    if (!g_known_hosts_path_cache && temp_base && path_is_absolute(temp_base)) {
-      size_t temp_len = strlen(temp_base);
-      char suffix[BUFFER_SIZE_SMALL];
-#ifdef _WIN32
-      safe_snprintf(suffix, sizeof(suffix), "ascii-chat%sknown_hosts", PATH_SEPARATOR_STR);
-#else
-      safe_snprintf(suffix, sizeof(suffix), "known_hosts");
-#endif
-      bool needs_sep = (temp_len > 0) && (temp_base[temp_len - 1] != PATH_DELIM);
-      size_t total_len = temp_len + (needs_sep ? 1 : 0) + strlen(suffix) + 1;
-      if (total_len < sizeof(candidate_buf)) {
-        safe_snprintf(candidate_buf, sizeof(candidate_buf), "%s%s%s", temp_base, needs_sep ? PATH_SEPARATOR_STR : "",
-                      suffix);
-        (void)try_set_known_hosts_path(candidate_buf, allowed_bases, allowed_base_count);
-      }
-    }
-
-    // Strategy 5: Last resort - use hard-coded safe default
-    if (!g_known_hosts_path_cache) {
-#ifdef _WIN32
-      const char *safe_default = "C:\\Windows\\Temp\\ascii-chat\\known_hosts";
-#else
-      const char *safe_default = "/tmp/.ascii-chat/known_hosts";
-#endif
-      if (!try_set_known_hosts_path(safe_default, allowed_bases, allowed_base_count)) {
-        log_error("Fallback known_hosts path %s failed validation; known_hosts will not be available", safe_default);
-        g_known_hosts_path_cache = NULL;
-      }
-    }
+    g_known_hosts_path_cache = path;
+    log_debug("KNOWN_HOSTS: Using path %s", g_known_hosts_path_cache);
   }
   return g_known_hosts_path_cache;
 }
