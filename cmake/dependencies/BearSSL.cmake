@@ -24,6 +24,8 @@
 #   - BEARSSL_FOUND: Whether BearSSL was found or built successfully
 # =============================================================================
 
+include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
+
 # Skip when using musl - BearSSL is built from source in MuslDependencies.cmake
 if(USE_MUSL)
     return()
@@ -78,24 +80,13 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             message(STATUS "${BoldYellow}BearSSL${ColorReset} library not found in cache, will build from source: ${BoldCyan}${BEARSSL_LIB}${ColorReset}")
 
             # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
-            # This needs to happen at configure time to ensure the source is patched
-            set(BEARSSL_PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/bearssl-windows-clang.patch")
-            execute_process(
-                COMMAND git -C "${BEARSSL_SOURCE_DIR}" diff --quiet src/inner.h
-                RESULT_VARIABLE BEARSSL_PATCH_NEEDED
-                OUTPUT_QUIET ERROR_QUIET
+            apply_patch(
+                TARGET_DIR "${BEARSSL_SOURCE_DIR}"
+                PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/bearssl-windows-clang.patch"
+                PATCH_NUM 0
+                DESCRIPTION "Fix Windows+Clang header conflicts"
+                ASSUME_UNCHANGED src/inner.h
             )
-            if(NOT BEARSSL_PATCH_NEEDED EQUAL 0)
-                message(STATUS "Applying BearSSL patch for Windows+Clang compatibility")
-                execute_process(
-                    COMMAND git -C "${BEARSSL_SOURCE_DIR}" apply --ignore-whitespace "${BEARSSL_PATCH_FILE}"
-                    RESULT_VARIABLE BEARSSL_PATCH_RESULT
-                    OUTPUT_QUIET ERROR_QUIET
-                )
-                if(NOT BEARSSL_PATCH_RESULT EQUAL 0)
-                    message(WARNING "Failed to apply BearSSL patch (may already be applied)")
-                endif()
-            endif()
 
             # Use centralized build tools from FindPrograms.cmake
             if(NOT ASCIICHAT_NMAKE_EXECUTABLE)
