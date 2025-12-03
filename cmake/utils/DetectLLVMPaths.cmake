@@ -67,18 +67,19 @@ if(WIN32)
     foreach(_llvm_root IN LISTS _llvm_search_roots)
         # Check not just for include/lib dirs, but for actual LLVM development
         # libraries. The official Windows installer has include/lib but NO .lib files
-        # for development (only import libs for clang.exe, not LLVMSupport.lib etc.)
+        # for development (only import libs for clang.exe, not clangTooling.lib etc.)
         if(EXISTS "${_llvm_root}/include" AND EXISTS "${_llvm_root}/lib")
             # Verify this is a full LLVM installation with development libraries
-            if(EXISTS "${_llvm_root}/lib/LLVMSupport.lib" OR
-               EXISTS "${_llvm_root}/lib/libLLVMSupport.a")
+            # Check for clangTooling.lib which is required for the defer tool
+            if(EXISTS "${_llvm_root}/lib/clangTooling.lib" OR
+               EXISTS "${_llvm_root}/lib/libclangTooling.a")
                 set(LLVM_ROOT "${_llvm_root}")
                 set(LLVM_INCLUDE_DIRS "${_llvm_root}/include")
                 set(LLVM_LIBRARY_DIRS "${_llvm_root}/lib")
                 message(STATUS "Found LLVM installation with dev libraries at: ${_llvm_root}")
                 break()
             else()
-                message(STATUS "Skipping ${_llvm_root} - has binaries but no dev libraries (LLVMSupport.lib missing)")
+                message(STATUS "Skipping ${_llvm_root} - has binaries but no dev libraries (clangTooling.lib missing)")
             endif()
         endif()
     endforeach()
@@ -87,8 +88,8 @@ if(WIN32)
     if(NOT LLVM_INCLUDE_DIRS OR NOT LLVM_LIBRARY_DIRS)
         message(FATAL_ERROR "Could not find LLVM installation with development libraries on Windows.\n"
             "\n"
-            "The defer() instrumentation tool requires LLVM development libraries\n"
-            "(LLVMSupport.lib, clangTooling.lib, etc.) which are NOT included in:\n"
+            "The defer() instrumentation tool requires clang tooling libraries\n"
+            "(clangTooling.lib, clangFrontend.lib, etc.) which are NOT included in:\n"
             "  - Official LLVM Windows installer (releases.llvm.org)\n"
             "  - scoop install llvm\n"
             "  - winget install LLVM.LLVM\n"

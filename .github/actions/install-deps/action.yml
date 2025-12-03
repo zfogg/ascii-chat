@@ -343,12 +343,24 @@ runs:
 
           Remove-Item $tempArchive -Force
 
-          # Verify installation
-          if (Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib") {
+          # Verify installation - check for clangTooling.lib which is what defer tool needs
+          # Also check for LLVMSupport.lib as a secondary indicator
+          $hasClangTooling = Test-Path "${LLVM_INSTALL_DIR}\lib\clangTooling.lib"
+          $hasLLVMSupport = Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib"
+
+          Write-Host "Checking LLVM installation..."
+          Write-Host "  clangTooling.lib: $hasClangTooling"
+          Write-Host "  LLVMSupport.lib: $hasLLVMSupport"
+
+          if ($hasClangTooling) {
             Write-Host "LLVM ${LLVM_VERSION} with dev libraries installed successfully"
+            # List some key libs for verification
+            Write-Host "Key libraries found:"
+            Get-ChildItem "${LLVM_INSTALL_DIR}\lib\*.lib" | Where-Object { $_.Name -match "^(clangTooling|clangFrontend|clangBasic|LLVMSupport)" } | ForEach-Object { Write-Host "  $($_.Name)" }
           } else {
-            Write-Host "ERROR: LLVMSupport.lib not found after installation" -ForegroundColor Red
-            Get-ChildItem "${LLVM_INSTALL_DIR}\lib" -ErrorAction SilentlyContinue | Select-Object -First 20
+            Write-Host "ERROR: clangTooling.lib not found after installation" -ForegroundColor Red
+            Write-Host "Contents of ${LLVM_INSTALL_DIR}\lib:"
+            Get-ChildItem "${LLVM_INSTALL_DIR}\lib\*.lib" -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "  $($_.Name)" }
             exit 1
           }
         }
