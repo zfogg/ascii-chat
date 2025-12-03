@@ -103,16 +103,16 @@ else()
     # This ensures we use the correct LLVM headers even when another LLVM
     # version is installed in /usr/local/include (which clang searches first)
     # -isystem breaks #include_next in libstdc++ headers, so we use -I instead
-    target_compile_options(ascii-instr-defer PRIVATE
-        -O2
-        -fno-rtti
-        -fexceptions
-    )
-
-    # Add LLVM include path with -I for priority over /usr/local/include
+    #
+    # IMPORTANT: We use target_compile_options() with "-I" instead of
+    # target_include_directories() because CMake silently optimizes out
+    # /usr/include (standard system path) from -I flags. We need to force
+    # the -I flag to ensure it's searched BEFORE /usr/local/include.
+    set(_defer_compile_opts -O2 -fno-rtti -fexceptions)
     if(NOT LLVM_INCLUDE_DIRS STREQUAL "")
-        target_include_directories(ascii-instr-defer PRIVATE "${LLVM_INCLUDE_DIRS}")
+        list(APPEND _defer_compile_opts "-I${LLVM_INCLUDE_DIRS}")
     endif()
+    target_compile_options(ascii-instr-defer PRIVATE ${_defer_compile_opts})
 
     # Linux: Set rpath to ensure we use the LLVM libs we built against,
     # not any custom LLVM in /usr/local that might be in LD_LIBRARY_PATH
