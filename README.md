@@ -96,6 +96,18 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
 brew install zfogg/ascii-chat/ascii-chat
 ```
 
+**Arch Linux (AUR):**
+
+```bash
+# Using paru
+paru -S ascii-chat
+# Using yay
+yay -S ascii-chat
+
+# For latest git version
+paru -S ascii-chat-git
+```
+
 **All Platforms:**
 
 - Latest release: [v0.3.9](https://github.com/zfogg/ascii-chat/releases/tag/v0.3.9)
