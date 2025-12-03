@@ -181,7 +181,7 @@ jobs:
             ## Quick Start
 
             Choose the architecture of your computer when you download. Ask @claude how to find out your computer's architecture.
-            $arch = AMD64 (x86_64) or ARM64 (aarch64)
+            $arch = amd64 (x86_64) or arm64 (aarch64)
 
             **Linux - Package Manager (no dependencies required):**
             ```bash
@@ -239,11 +239,7 @@ jobs:
       matrix:
         include:
           - runner: ubuntu-latest
-            arch: x86_64
-            artifact_suffix: amd64
           - runner: ubuntu-latest-arm64
-            arch: arm64
-            artifact_suffix: arm64
 
     steps:
       - name: Checkout code
@@ -285,27 +281,10 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
+          # CPack already includes architecture in filename, just copy
           for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
-            filename=$(basename "$artifact")
-            case "$filename" in
-              *.tar.gz)
-                new_name="${filename%.tar.gz}-${{ matrix.artifact_suffix }}.tar.gz"
-                ;;
-              *.sh)
-                new_name="${filename%.sh}-${{ matrix.artifact_suffix }}.sh"
-                ;;
-              *.deb)
-                new_name="${filename%.deb}-${{ matrix.artifact_suffix }}.deb"
-                ;;
-              *.rpm)
-                new_name="${filename%.rpm}-${{ matrix.artifact_suffix }}.rpm"
-                ;;
-              *)
-                new_name="${filename}-${{ matrix.artifact_suffix }}"
-                ;;
-            esac
-            cp "$artifact" "dist/$new_name"
+            cp "$artifact" dist/
           done
           ls -l dist
 
@@ -326,9 +305,7 @@ jobs:
       matrix:
         include:
           - os: macos-15-intel
-            arch: x86_64
           - os: macos-15
-            arch: arm64
 
     steps:
       - name: Checkout code
@@ -395,24 +372,10 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
+          # CPack already includes architecture in filename, just copy
           for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.zip; do
             [[ -e "$artifact" ]] || continue
-            filename=$(basename "$artifact")
-            case "$filename" in
-              *.tar.gz)
-                new_name="${filename%.tar.gz}-${{ matrix.arch }}.tar.gz"
-                ;;
-              *.pkg)
-                new_name="${filename%.pkg}-${{ matrix.arch }}.pkg"
-                ;;
-              *.zip)
-                new_name="${filename%.zip}-${{ matrix.arch }}.zip"
-                ;;
-              *)
-                new_name="${filename}-${{ matrix.arch }}"
-                ;;
-            esac
-            cp "$artifact" "dist/$new_name"
+            cp "$artifact" dist/
           done
           ls -l dist
 
@@ -469,19 +432,11 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          $suffix = "x86_64"
+          # CPack already includes architecture in filename, just copy
           $patterns = @("build_release/*.msi", "build_release/*.zip")
           foreach ($pattern in $patterns) {
             foreach ($artifact in Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue) {
-              $name = $artifact.Name
-              if ($name.EndsWith(".msi")) {
-                $newName = "$($name.Substring(0, $name.Length - 4))-$suffix.msi"
-              } elseif ($name.EndsWith(".zip")) {
-                $newName = "$($name.Substring(0, $name.Length - 4))-$suffix.zip"
-              } else {
-                $newName = "$name-$suffix"
-              }
-              Copy-Item $artifact.FullName (Join-Path dist $newName)
+              Copy-Item $artifact.FullName dist/
             }
           }
           Get-ChildItem dist

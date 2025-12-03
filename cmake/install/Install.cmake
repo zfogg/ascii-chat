@@ -776,11 +776,11 @@ After installation, run:
             set(_PACKAGE_OS "${CMAKE_SYSTEM_NAME}")
         endif()
 
-        # Normalize architecture name (use ARM64/AMD64 instead of aarch64/x86_64)
+        # Normalize architecture name to lowercase amd64/arm64
         if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
-            set(_PACKAGE_ARCH "ARM64")
+            set(_PACKAGE_ARCH "arm64")
         elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64|amd64")
-            set(_PACKAGE_ARCH "AMD64")
+            set(_PACKAGE_ARCH "amd64")
         else()
             set(_PACKAGE_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
         endif()
