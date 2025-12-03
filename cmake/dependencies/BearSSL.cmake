@@ -82,7 +82,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             # Apply Windows+Clang patch to BearSSL (fixes header conflicts with clang-cl)
             apply_patch(
                 TARGET_DIR "${BEARSSL_SOURCE_DIR}"
-                PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/bearssl-windows-clang.patch"
+                PATCH_FILE "${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/bearssl-0-windows-clang.patch"
                 PATCH_NUM 0
                 DESCRIPTION "Fix Windows+Clang header conflicts"
                 ASSUME_UNCHANGED src/inner.h

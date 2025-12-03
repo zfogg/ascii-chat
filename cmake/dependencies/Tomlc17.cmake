@@ -20,7 +20,7 @@ function(configure_tomlc17)
     # Apply patch #0: align8 overflow fix (all platforms)
     apply_patch(
         TARGET_DIR "${DEP_DIR}"
-        PATCH_FILE "${PATCHES_DIR}/tomlc17-fix-align8-overflow.patch"
+        PATCH_FILE "${PATCHES_DIR}/tomlc17-0-fix-align8-overflow.patch"
         PATCH_NUM 0
         DESCRIPTION "Fix align8 integer overflow"
         ASSUME_UNCHANGED
@@ -30,7 +30,7 @@ function(configure_tomlc17)
     # Apply patch #1: Windows deprecation fix (Windows only)
     apply_patch(
         TARGET_DIR "${DEP_DIR}"
-        PATCH_FILE "${PATCHES_DIR}/tomlc17-fix-windows-deprecation.patch"
+        PATCH_FILE "${PATCHES_DIR}/tomlc17-1-fix-windows-deprecation.patch"
         PATCH_NUM 1
         DESCRIPTION "Fix Windows deprecation warnings"
         PLATFORM WIN32
