@@ -384,8 +384,15 @@ jobs:
       - name: Print build logs on failure
         if: failure()
         run: |
-          echo "=== BearSSL build log ==="
-          cat .deps-cache/*/bearssl/bearssl-build.log 2>/dev/null || echo "No BearSSL build log"
+          echo "=== BearSSL build log (cache) ==="
+          cat .deps-cache/*/bearssl/bearssl-build.log 2>/dev/null || echo "No BearSSL build log in cache"
+          echo ""
+          echo "=== BearSSL source directory ==="
+          ls -la deps/bearssl/build/ 2>/dev/null || echo "No deps/bearssl/build directory"
+          echo ""
+          echo "=== Try rebuilding BearSSL with verbose output ==="
+          make -C deps/bearssl clean 2>/dev/null || true
+          make -C deps/bearssl lib CC="$(which clang)" AR="$(which llvm-ar || which ar)" CFLAGS="-fPIC" 2>&1 | head -100
           echo ""
           echo "=== CMake error log ==="
           cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
@@ -452,7 +459,7 @@ jobs:
 
       - name: Install WiX toolset
         run: |
-          choco install wixtoolset --version=3.11.2 --no-progress -y
+          choco install wixtoolset --no-progress -y
 
       - name: Configure and package with CPack
         shell: pwsh
