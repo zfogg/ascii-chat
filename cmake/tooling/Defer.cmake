@@ -5,122 +5,25 @@ include_guard(GLOBAL)
 
 set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
 
-include(ExternalProject)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 function(ascii_defer_prepare)
-    # Determine which defer tool to use
-    # Priority: 1. ASCIICHAT_DEFER_TOOL (explicit), 2. Cached build, 3. Build new
-    set(_defer_cache_dir "${CMAKE_SOURCE_DIR}/.deps-cache/defer-tool")
-    set(_defer_cached_exe "${_defer_cache_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
+    # Build/find the defer tool using the common utility
+    build_llvm_tool(
+        NAME defer
+        SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/defer"
+        CACHE_DIR_NAME "defer-tool"
+        OUTPUT_EXECUTABLE "ascii-instr-defer"
+        PREBUILT_VAR ASCIICHAT_DEFER_TOOL
+        PASS_LLVM_CONFIG
+        ENABLE_LOG_OUTPUT
+        ISOLATE_FROM_ENV
+    )
 
-    # FIRST: Check for explicit pre-built tool path BEFORE any cleanup
-    # This prevents cleanup from deleting a pre-built tool that was placed in .deps-cache/defer-tool
-    if(ASCIICHAT_DEFER_TOOL AND EXISTS "${ASCIICHAT_DEFER_TOOL}")
-        set(_defer_tool_exe "${ASCIICHAT_DEFER_TOOL}")
-        set(_defer_tool_depends "")
-        message(STATUS "Using external defer tool: ${_defer_tool_exe}")
-    elseif(EXISTS "${_defer_cached_exe}" AND EXISTS "${_defer_cache_dir}/CMakeCache.txt")
-        # Use cached defer tool (persists across build directory deletes)
-        # Both exe AND CMakeCache.txt must exist for a valid cache
-        set(_defer_tool_exe "${_defer_cached_exe}")
-        set(_defer_tool_depends "")
-        message(STATUS "Using cached defer tool: ${_defer_tool_exe}")
-    else()
-        # Build defer tool to cache directory (survives rm -rf build)
-        set(_defer_build_dir "${_defer_cache_dir}")
-        set(_defer_tool_exe "${_defer_build_dir}/ascii-instr-defer${CMAKE_EXECUTABLE_SUFFIX}")
-
-        # Detect the C++ compiler for building the defer tool
-        # The compiler MUST come from the same LLVM installation as llvm-config
-        # to ensure ABI compatibility with the LLVM libraries we link against.
-        #
-        # On macOS, we MUST use Apple's system clang for compiling because
-        # Homebrew LLVM's libc++ headers are incompatible with -nostdinc.
-        # The defer tool links against Homebrew LLVM libraries but compiles with system clang.
-        if(APPLE AND EXISTS "/usr/bin/clang++")
-            set(_defer_cxx_compiler "/usr/bin/clang++")
-            message(STATUS "Defer tool: Using Apple system clang for compilation: ${_defer_cxx_compiler}")
-        elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
-            # Use clang++ from the same LLVM installation as llvm-config (from FindPrograms.cmake)
-            set(_defer_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
-            message(STATUS "Defer tool: Using clang++ from llvm-config installation: ${_defer_cxx_compiler}")
-        elseif(CMAKE_CXX_COMPILER)
-            # Fallback to project compiler (may not match llvm-config installation)
-            set(_defer_cxx_compiler "${CMAKE_CXX_COMPILER}")
-            message(WARNING "Defer tool: Using CMAKE_CXX_COMPILER which may not match llvm-config installation: ${_defer_cxx_compiler}")
-        else()
-            message(FATAL_ERROR "Cannot find clang++ for building defer tool. Set ASCIICHAT_LLVM_CONFIG_EXECUTABLE or CMAKE_CXX_COMPILER.")
-        endif()
-
-        # Detect vcpkg if on Windows - pass vcpkg paths but not the toolchain file
-        # The vcpkg toolchain file adds -nostartfiles -nostdlib which breaks the defer tool build
-        set(_defer_cmake_args
-            -DCMAKE_CXX_COMPILER=${_defer_cxx_compiler}
-            -DCMAKE_BUILD_TYPE=Release
-            -DOUTPUT_DIR=${_defer_build_dir}
-        )
-
-        # Pass llvm-config to external project on Unix only (Windows doesn't have llvm-config.exe)
-        if(ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
-            list(APPEND _defer_cmake_args -DLLVM_CONFIG_EXECUTABLE=${ASCIICHAT_LLVM_CONFIG_EXECUTABLE})
-        endif()
-
-        # On Windows with vcpkg, pass the vcpkg root so the defer tool can find dependencies
-        # but don't use the toolchain file itself (to avoid inherited build flags)
-        if(WIN32 AND DEFINED VCPKG_INSTALLED_DIR)
-            list(APPEND _defer_cmake_args
-                -DVCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}
-                -DVCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}
-            )
-            # Force empty linker flags BEFORE project() via cache to prevent -nostartfiles -nostdlib
-            # These are set in the external project's initial cache file
-            set(_defer_cache_args
-                -DCMAKE_CXX_COMPILER_WORKS:BOOL=TRUE
-                -DCMAKE_C_COMPILER_WORKS:BOOL=TRUE
-                -DCMAKE_EXE_LINKER_FLAGS:STRING=
-                -DCMAKE_EXE_LINKER_FLAGS_DEBUG:STRING=
-                -DCMAKE_EXE_LINKER_FLAGS_RELEASE:STRING=
-                -DCMAKE_SHARED_LINKER_FLAGS:STRING=
-                -DCMAKE_MODULE_LINKER_FLAGS:STRING=
-                # Prevent CMake from adding platform-default linker flags
-                -DCMAKE_PLATFORM_REQUIRED_RUNTIME_PATH:STRING=
-            )
-        else()
-            # Isolate defer tool from inherited environment flags (e.g. makepkg's -flto=auto)
-            # The defer tool links against LLVM shared libs which may not be built with LTO
-            set(_defer_cache_args
-                -DCMAKE_CXX_FLAGS:STRING=
-                -DCMAKE_EXE_LINKER_FLAGS:STRING=
-            )
-        endif()
-
-        # Verify that the defer tool CMakeLists.txt exists before configuring ExternalProject
-        set(_defer_source_dir "${CMAKE_SOURCE_DIR}/src/tooling/defer")
-        set(_defer_cmake_file "${_defer_source_dir}/CMakeLists.txt")
-        if(NOT EXISTS "${_defer_cmake_file}")
-            message(FATAL_ERROR
-                "ERROR: Defer tool CMakeLists.txt not found at: ${_defer_cmake_file}\n"
-                "The defer tool requires a CMakeLists.txt file in src/tooling/defer/ to build.\n"
-                "Please ensure src/tooling/defer/CMakeLists.txt exists in the repository."
-            )
-        endif()
-
-        ExternalProject_Add(ascii-instr-defer-external
-            SOURCE_DIR "${_defer_source_dir}"
-            BINARY_DIR "${_defer_build_dir}"
-            CMAKE_ARGS ${_defer_cmake_args}
-            CMAKE_CACHE_ARGS ${_defer_cache_args}
-            BUILD_ALWAYS FALSE
-            INSTALL_COMMAND ""
-            BUILD_BYPRODUCTS "${_defer_tool_exe}"
-            LOG_CONFIGURE TRUE
-            LOG_BUILD TRUE
-        )
-
-        set(_defer_tool_depends ascii-instr-defer-external)
-        message(STATUS "Building defer tool to cache: ${_defer_cache_dir}")
-        message(STATUS "  (To force rebuild, delete: ${_defer_cached_exe})")
-    endif()
+    set(_defer_tool_exe "${DEFER_TOOL_EXECUTABLE}")
+    set(_defer_tool_depends "${DEFER_TOOL_DEPENDS}")
 
 
     set(defer_transformed_dir "${CMAKE_BINARY_DIR}/defer_transformed")
@@ -201,73 +104,29 @@ function(ascii_defer_prepare)
     # Note: With direct code insertion, no runtime library is needed.
     # The defer transformer inserts cleanup code directly at each exit point.
 
-    # Detect Clang resource directory early for compilation database generation
-    # Use CMAKE_C_COMPILER for all platforms to support custom installations
-    # (e.g., macOS Homebrew, custom paths, etc.)
-    set(_clang_for_db "${CMAKE_C_COMPILER}")
+    # Detect Clang resource directory for compilation database generation
+    detect_clang_resource_dir(_clang_resource_dir_db)
+    if(_clang_resource_dir_db)
+        message(STATUS "Will use Clang resource directory in compilation database: ${_clang_resource_dir_db}")
+    endif()
 
-    execute_process(
-        COMMAND ${_clang_for_db} -print-resource-dir
-        OUTPUT_VARIABLE _clang_resource_dir_db
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
+    # Generate compilation database for the defer tool using the common utility
+    set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp_defer")
+    generate_compilation_database(
+        OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+        TEMP_DIR "${_ascii_temp_build_dir}"
+        LOG_FILE "${CMAKE_BINARY_DIR}/defer_compile_db.log"
+        COMMENT "Generating compilation database for defer transformation tool"
+        CLANG_RESOURCE_DIR "${_clang_resource_dir_db}"
+        DISABLE_OPTIONS ASCIICHAT_BUILD_WITH_DEFER ASCIICHAT_USE_PCH ASCIICHAT_ENABLE_ANALYZERS
     )
 
-    if(_clang_resource_dir_db)
-        set(_defer_cflags "-resource-dir=${_clang_resource_dir_db}")
-        message(STATUS "Will use Clang resource directory in compilation database: ${_clang_resource_dir_db}")
-    else()
-        set(_defer_cflags "")
-    endif()
-
-    # Generate compilation database for the defer tool
-    # Note: All output is redirected to a log file to prevent interference with ninja's
-    # terminal cursor tracking (which causes progressive indentation on Windows terminals)
-    set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp_defer")
-    set(_defer_log_file "${CMAKE_BINARY_DIR}/defer_compile_db.log")
-    if(WIN32)
-        # Windows: use cmd to redirect stdout and stderr to log file
-        add_custom_command(
-            OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
-            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${_ascii_temp_build_dir}"
-            COMMAND cmd /c "${CMAKE_COMMAND} -G Ninja -S ${CMAKE_SOURCE_DIR} -B ${_ascii_temp_build_dir} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND -DUSE_MUSL=OFF -DASCIICHAT_BUILD_WITH_DEFER=OFF -DASCIICHAT_USE_PCH=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \"-DCMAKE_C_FLAGS=${_defer_cflags}\" > ${_defer_log_file} 2>&1"
-            COMMAND cmd /c "${CMAKE_COMMAND} --build ${_ascii_temp_build_dir} --target generate_version >> ${_defer_log_file} 2>&1"
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${_ascii_temp_build_dir}/compile_commands.json"
-                "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
-            COMMENT "Generating compilation database for defer transformation tool"
-            VERBATIM
-        )
-    else()
-        # Unix: use shell redirection
-        add_custom_command(
-            OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
-            COMMAND ${CMAKE_COMMAND} -E rm -rf "${_ascii_temp_build_dir}"
-            COMMAND ${CMAKE_COMMAND} -E make_directory "${_ascii_temp_build_dir}"
-            COMMAND sh -c "${CMAKE_COMMAND} -G Ninja -S ${CMAKE_SOURCE_DIR} -B ${_ascii_temp_build_dir} -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER} -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND -DUSE_MUSL=OFF -DASCIICHAT_BUILD_WITH_DEFER=OFF -DASCIICHAT_USE_PCH=OFF -DASCIICHAT_ENABLE_ANALYZERS=OFF -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '-DCMAKE_C_FLAGS=${_defer_cflags}' > ${_defer_log_file} 2>&1"
-            COMMAND sh -c "${CMAKE_COMMAND} --build ${_ascii_temp_build_dir} --target generate_version >> ${_defer_log_file} 2>&1"
-            COMMAND ${CMAKE_COMMAND} -E copy
-                "${_ascii_temp_build_dir}/compile_commands.json"
-                "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
-            COMMENT "Generating compilation database for defer transformation tool"
-            VERBATIM
-        )
-    endif()
-
-    # Build list of excluded files to copy
-    if(NOT TARGET ascii-defer-transform-timer-start)
-        add_custom_target(ascii-defer-transform-timer-start
-            COMMAND ${CMAKE_COMMAND}
-                -DACTION=start
-                -DTARGET_NAME=defer-all
-                -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-                -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-                -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-            COMMENT "Starting defer() transformation timing block"
-            VERBATIM
-        )
-    endif()
+    # Create timer targets for defer transformation
+    add_timer_targets(
+        NAME defer-all
+        COMMENT_START "Starting defer() transformation timing block"
+        COMMENT_END "Finishing defer() transformation timing block"
+    )
 
     # Create per-file transformation commands for incremental builds
     set(_all_generated_outputs "")
@@ -287,7 +146,7 @@ function(ascii_defer_prepare)
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
             COMMAND ${_defer_tool_exe} "${_rel_path}" --output-dir=${defer_transformed_dir} -p ${_ascii_temp_build_dir}
-            DEPENDS ascii-defer-transform-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Transforming defer() in ${_rel_path}"
             VERBATIM
@@ -316,21 +175,15 @@ function(ascii_defer_prepare)
         endif()
     endforeach()
 
-    add_custom_target(ascii-defer-transform-timer-end
-        COMMAND ${CMAKE_COMMAND}
-            -DACTION=end
-            -DTARGET_NAME=defer-all
-            -DSOURCE_DIR=${CMAKE_SOURCE_DIR}
-            -DCMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}
-            -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
-        COMMENT "Finishing defer() transformation timing block"
-        VERBATIM
+    # Create a target that depends on all generated outputs
+    # Note: add_custom_target DEPENDS accepts file paths, add_dependencies does not
+    add_custom_target(defer-all-generated-outputs
         DEPENDS ${_all_generated_outputs}
     )
-    add_dependencies(ascii-defer-transform-timer-end ascii-defer-transform-timer-start)
+    add_dependencies(defer-all-timer-end defer-all-generated-outputs)
 
     add_custom_target(ascii-generate-defer-transformed-sources
-        DEPENDS ascii-defer-transform-timer-end
+        DEPENDS defer-all-timer-end
     )
 
     # Replace source file paths with transformed versions

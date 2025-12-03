@@ -13,21 +13,18 @@
 #   - Configures productbuild-specific CPack variables
 # =============================================================================
 
-if(NOT APPLE)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
+
+enable_cpack_generator(
+    NAME "productbuild"
+    PLATFORM APPLE
+    REQUIRED_TOOL ASCIICHAT_PRODUCTBUILD_EXECUTABLE
+    TOOL_DISPLAY_NAME "productbuild"
+)
+
+if(NOT productbuild_GENERATOR_ENABLED)
     return()
 endif()
-
-# Use centralized ASCIICHAT_PRODUCTBUILD_EXECUTABLE from FindPrograms.cmake
-if(NOT ASCIICHAT_PRODUCTBUILD_EXECUTABLE)
-    message(STATUS "${Red}CPack:${ColorReset} productbuild generator disabled (${BoldBlue}productbuild${ColorReset} not found)")
-    return()
-endif()
-
-# Add productbuild to generator list
-list(APPEND CPACK_GENERATOR "productbuild")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-message(STATUS "${Yellow}CPack:${ColorReset} productbuild generator enabled (${BoldBlue}productbuild${ColorReset} found)")
 
 # =============================================================================
 # ProductBuild Package Configuration

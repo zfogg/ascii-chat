@@ -335,39 +335,6 @@ jobs:
           cmake --build build_release --target docs
           cmake --build build_release --target package
 
-      - name: Print build logs on failure
-        if: failure()
-        run: |
-          echo "=== Cache directory structure ==="
-          find .deps-cache -type f -name "*.log" 2>/dev/null || echo "No log files in .deps-cache"
-          echo ""
-          echo "=== BearSSL build log (cache) ==="
-          for f in .deps-cache/*/bearssl/bearssl-build.log; do
-            if [[ -f "$f" ]]; then
-              echo "--- $f ---"
-              cat "$f"
-            fi
-          done || echo "No BearSSL build log in cache"
-          echo ""
-          echo "=== BearSSL source build directory ==="
-          ls -la deps/bearssl/build/ 2>/dev/null || echo "No deps/bearssl/build directory"
-          echo ""
-          echo "=== Compiler and AR info ==="
-          which clang && clang --version | head -1
-          which llvm-ar && llvm-ar --version | head -1 || echo "llvm-ar not found, using ar"
-          which ar && ar --version | head -1
-          echo ""
-          echo "=== Try rebuilding BearSSL with verbose output ==="
-          make -C deps/bearssl clean 2>/dev/null || true
-          # Show full output including ar step (not just first 100 lines)
-          make -C deps/bearssl lib CC="$(which clang)" AR="$(which llvm-ar || which ar)" CFLAGS="-fPIC" 2>&1
-          echo ""
-          echo "=== Verify BearSSL was built ==="
-          ls -la deps/bearssl/build/libbearssl.a 2>/dev/null || echo "libbearssl.a was not created"
-          echo ""
-          echo "=== CMake error log ==="
-          cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
-
       - name: Collect artifacts
         run: |
           mkdir -p dist
@@ -428,59 +395,23 @@ jobs:
           }
           Write-Host "BearSSL ready for build"
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: "80d025e8299d442c13b29751fc9451711b7c6c8e"
-
       - name: Install dependencies
+        id: install-deps
         uses: ./.github/actions/install-deps
         with:
           os: windows
           vcpkg-packages: "zstd portaudio libsodium"
           vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install WiX toolset
         run: |
           choco install wixtoolset --no-progress -y
 
-      - name: Download pre-built defer tool
-        shell: pwsh
-        run: |
-          # Download pre-built defer tool and its DLL dependencies from build-tools release
-          # This avoids needing full LLVM dev libraries which aren't available in standard Windows LLVM packages
-          $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
-          New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
-          gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
-          gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
-          gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
-          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
-          $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
-          Move-Item -Path $srcPath -Destination $dstPath -Force
-          Write-Host "Downloaded defer tool to: $dstPath"
-          Write-Host "Downloaded DLLs: zlib1.dll, zstd.dll"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download pre-built BearSSL
-        shell: pwsh
-        run: |
-          # Download pre-built BearSSL from build-tools release
-          # This avoids nmake build issues with shallow clones of BearSSL submodule
-          $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
-          New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
-          gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
-          $srcPath = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
-          $dstPath = Join-Path $bearsslDir "bearssls.lib"
-          Move-Item -Path $srcPath -Destination $dstPath -Force
-          Write-Host "Downloaded BearSSL to: $dstPath"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Configure and package with CPack
         shell: pwsh
         run: |
-          $deferTool = Join-Path $PWD ".deps-cache" "defer-tool" "ascii-instr-defer.exe"
+          $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
           cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
           cmake --build build_release --target ascii-chat

@@ -13,21 +13,18 @@
 #   - Configures DEB-specific CPack variables
 # =============================================================================
 
-if(NOT UNIX OR APPLE)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
+
+enable_cpack_generator(
+    NAME "DEB"
+    PLATFORM UNIX_NOT_APPLE
+    REQUIRED_TOOL ASCIICHAT_DPKG_DEB_EXECUTABLE
+    TOOL_DISPLAY_NAME "dpkg-deb"
+)
+
+if(NOT DEB_GENERATOR_ENABLED)
     return()
 endif()
-
-# Use centralized ASCIICHAT_DPKG_DEB_EXECUTABLE from FindPrograms.cmake
-if(NOT ASCIICHAT_DPKG_DEB_EXECUTABLE)
-    message(STATUS "${Red}CPack:${ColorReset} DEB generator disabled (${BoldBlue}dpkg-deb${ColorReset} not found)")
-    return()
-endif()
-
-# Add DEB to generator list
-list(APPEND CPACK_GENERATOR "DEB")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-message(STATUS "${Yellow}CPack:${ColorReset} DEB generator enabled (${BoldBlue}dpkg-deb${ColorReset} found)")
 
 # =============================================================================
 # DEB Package Configuration

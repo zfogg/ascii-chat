@@ -17,51 +17,13 @@
 #   - Adds archive generators to CPACK_GENERATOR
 # =============================================================================
 
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
+
 # =============================================================================
 # Platform-Specific Archive Selection
 # =============================================================================
-
-if(UNIX AND NOT APPLE)
-    # Linux: TGZ is always available, add ZIP if zip command exists
-    list(APPEND CPACK_GENERATOR "TGZ")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-    message(STATUS "${Yellow}CPack:${ColorReset} TGZ generator enabled (always available)")
-
-    # Use centralized ASCIICHAT_ZIP_EXECUTABLE from FindPrograms.cmake
-    if(ASCIICHAT_ZIP_EXECUTABLE)
-        list(APPEND CPACK_GENERATOR "ZIP")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-        message(STATUS "${Yellow}CPack:${ColorReset} ZIP generator enabled (${BoldBlue}zip${ColorReset} found)")
-    else()
-        message(STATUS "${Yellow}CPack:${ColorReset} ZIP generator disabled (${BoldBlue}zip${ColorReset} not found)")
-    endif()
-
-elseif(APPLE)
-    # macOS: TGZ is always available
-    list(APPEND CPACK_GENERATOR "TGZ")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-    message(STATUS "${Yellow}CPack:${ColorReset} TGZ generator enabled (always available)")
-
-elseif(WIN32)
-    # Windows: ZIP is always available (uses CMake's built-in tar command)
-    # Only add if not already in the list (it may have been set as default if WiX not found)
-    if(NOT "ZIP" IN_LIST CPACK_GENERATOR)
-        list(APPEND CPACK_GENERATOR "ZIP")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-        message(STATUS "${Yellow}CPack:${ColorReset} ZIP generator enabled (always available)")
-    endif()
-
-else()
-    # Unknown platform: fallback to TGZ
-    list(APPEND CPACK_GENERATOR "TGZ")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-    message(STATUS "${Yellow}CPack:${ColorReset} Using fallback generator ${Magenta}TGZ${ColorReset} for unknown platform")
-endif()
+# Uses the convenience function from CPackGenerator.cmake
+enable_archive_generators()
 
 # =============================================================================
 # Source Package Configuration (Optional)

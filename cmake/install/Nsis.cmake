@@ -16,21 +16,18 @@
 #   - Configures NSIS-specific CPack variables
 # =============================================================================
 
-if(NOT WIN32)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
+
+enable_cpack_generator(
+    NAME "NSIS"
+    PLATFORM WIN32
+    REQUIRED_TOOL ASCIICHAT_NSIS_EXECUTABLE
+    TOOL_DISPLAY_NAME "makensis"
+)
+
+if(NOT NSIS_GENERATOR_ENABLED)
     return()
 endif()
-
-# Use centralized ASCIICHAT_NSIS_EXECUTABLE from FindPrograms.cmake
-if(NOT ASCIICHAT_NSIS_EXECUTABLE)
-    message(STATUS "${Red}CPack:${ColorReset} NSIS generator disabled (${BoldBlue}makensis${ColorReset} not found - install ${BoldBlue}NSIS${ColorReset} to create EXE installers)")
-    return()
-endif()
-
-# Add NSIS to generator list
-list(APPEND CPACK_GENERATOR "NSIS")
-# Force update the cache so it persists
-set(CPACK_GENERATOR "${CPACK_GENERATOR}" CACHE STRING "CPack generators" FORCE)
-message(STATUS "${Yellow}CPack:${ColorReset} NSIS generator enabled (${BoldBlue}makensis${ColorReset} found at ${BoldBlue}${ASCIICHAT_NSIS_EXECUTABLE}${ColorReset})")
 
 # =============================================================================
 # NSIS Package Configuration

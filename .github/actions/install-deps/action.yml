@@ -24,6 +24,15 @@ inputs:
     description: 'vcpkg triplet to use for static packages (Windows only)'
     required: false
     default: 'x64-windows-static'
+  github-token:
+    description: 'GitHub token for downloading pre-built tools from releases (Windows only)'
+    required: false
+    default: ''
+
+outputs:
+  defer-tool-path:
+    description: 'Path to the defer tool executable (Windows only)'
+    value: ${{ steps.download-prebuilt.outputs.defer-tool-path }}
 
 runs:
   using: 'composite'
@@ -524,6 +533,12 @@ runs:
         echo "Created clang config files for darwin${DARWIN_VERSION}"
         ls -la ~/.config/clang/
 
+
+    - name: Setup vcpkg (Windows)
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: "80d025e8299d442c13b29751fc9451711b7c6c8e"
+
     - name: Install vcpkg packages (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
@@ -552,6 +567,47 @@ runs:
 
         Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-packages }}' -Triplet '${{ inputs.vcpkg-triplet }}'
         Install-VcpkgPackages -PackageList '${{ inputs.vcpkg-static-packages }}' -Triplet '${{ inputs.vcpkg-static-triplet }}'
+
+
+    # =========================================================================
+    # Pre-built Tools Download (Windows)
+    # =========================================================================
+    # Download pre-built defer tool and BearSSL from build-tools release
+    # This avoids needing full LLVM dev libraries and nmake build issues
+    - name: Download pre-built tools (Windows)
+      id: download-prebuilt
+      if: inputs.os == 'windows' && inputs.github-token != ''
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        # Download pre-built defer tool and its DLL dependencies from build-tools release
+        # This avoids needing full LLVM dev libraries which aren't available in standard Windows LLVM packages
+        $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
+        New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
+        gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
+        gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
+        gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
+        $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
+        $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
+        Move-Item -Path $srcPath -Destination $dstPath -Force
+        Write-Host "Downloaded defer tool to: $dstPath"
+        Write-Host "Downloaded DLLs: zlib1.dll, zstd.dll"
+
+        # Output the defer tool path for use by workflows
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
+
+        # Download pre-built BearSSL from build-tools release
+        # This avoids nmake build issues with shallow clones of BearSSL submodule
+        $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
+        New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
+        gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
+        $srcPathBearssl = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
+        $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
+        Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
+        Write-Host "Downloaded BearSSL to: $dstPathBearssl"
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
 
     - name: Save CMake dependency cache (All platforms)
       if: always() && steps.cmake-cache.outputs.cache-hit != 'true'
