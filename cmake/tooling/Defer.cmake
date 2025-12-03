@@ -80,6 +80,7 @@ function(ascii_defer_prepare)
             -DCMAKE_CXX_COMPILER=${_defer_cxx_compiler}
             -DCMAKE_BUILD_TYPE=Release
             -DOUTPUT_DIR=${_defer_build_dir}
+            -DLLVM_CONFIG_EXECUTABLE=${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}
         )
 
         # On Windows with vcpkg, pass the vcpkg root so the defer tool can find dependencies
