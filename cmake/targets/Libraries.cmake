@@ -790,7 +790,9 @@ set(ASCIICHAT_INTERNAL_SYMBOLS "")
 # When linking against shared mimalloc (.so), the symbols are NOT embedded in our library -
 # they're resolved at runtime from libmimalloc.so, so we can't validate them here.
 # Only static mimalloc links the symbols directly into our library.
-if(USE_MIMALLOC AND NOT MIMALLOC_IS_SHARED_LIB)
+# Note: On Windows, we skip this check because the import library (.lib) only contains
+# exported symbol stubs, not internal symbols - those are only in the actual .dll
+if(USE_MIMALLOC AND NOT MIMALLOC_IS_SHARED_LIB AND NOT WIN32)
     list(APPEND ASCIICHAT_INTERNAL_SYMBOLS "mi_malloc" "mi_free")
 endif()
 
