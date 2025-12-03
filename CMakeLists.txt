@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28)
 
 # =============================================================================
 # CMake Build Types
@@ -219,6 +219,6 @@ check_static_linking(ascii-chat)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/install/Documentation.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/install/Install.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/utils/CustomTargets.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/CustomTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)
 
