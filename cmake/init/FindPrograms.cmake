@@ -646,10 +646,11 @@ if(NOT ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
         "  Linux:   sudo apt install clang  OR  sudo pacman -S clang")
 endif()
 
-# llvm-config is required for defer tool to find LLVM libraries
-if(NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
+# llvm-config is required for defer tool to find LLVM libraries (Unix only)
+# On Windows, the official pre-built LLVM binaries don't include llvm-config.exe
+# The defer tool detects LLVM paths directly on Windows instead
+if(NOT WIN32 AND NOT ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
     message(FATAL_ERROR "llvm-config not found. Required for building defer tool. Install LLVM:\n"
-        "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
         "  macOS:   brew install llvm\n"
         "  Linux:   sudo apt install llvm  OR  sudo pacman -S llvm")
 endif()
