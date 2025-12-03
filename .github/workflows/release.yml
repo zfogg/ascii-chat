@@ -402,6 +402,32 @@ jobs:
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
 
+      - name: Verify and clean BearSSL submodule
+        shell: pwsh
+        run: |
+          # Verify BearSSL source files exist (debug for CI issues)
+          Write-Host "=== BearSSL submodule verification ==="
+          Write-Host "Checking if deps/bearssl exists..."
+          if (!(Test-Path "deps/bearssl")) {
+            Write-Host "ERROR: deps/bearssl directory not found!"
+            exit 1
+          }
+          Write-Host "Checking if deps/bearssl/src/aead/ccm.c exists..."
+          if (!(Test-Path "deps/bearssl/src/aead/ccm.c")) {
+            Write-Host "ERROR: deps/bearssl/src/aead/ccm.c not found!"
+            Write-Host "Contents of deps/bearssl:"
+            Get-ChildItem -Path "deps/bearssl" -Recurse | Select-Object -First 50
+            exit 1
+          }
+          Write-Host "BearSSL source files verified OK"
+
+          # Clean any stale BearSSL build state
+          Write-Host "Cleaning BearSSL build directory..."
+          if (Test-Path "deps/bearssl/build") {
+            Remove-Item -Recurse -Force "deps/bearssl/build"
+          }
+          Write-Host "BearSSL ready for build"
+
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
@@ -425,11 +451,26 @@ jobs:
           # This avoids needing full LLVM dev libraries which aren't available in standard Windows LLVM packages
           $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
           New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
-          gh release download build-tools --pattern "ascii-instr-defer-windows-x64.exe" --dir $deferToolDir
-          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-windows-x64.exe"
+          gh release download build-tools --pattern "ascii-instr-defer-windows-AMD64.exe" --dir $deferToolDir
+          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-windows-AMD64.exe"
           $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
           Move-Item -Path $srcPath -Destination $dstPath -Force
           Write-Host "Downloaded defer tool to: $dstPath"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download pre-built BearSSL
+        shell: pwsh
+        run: |
+          # Download pre-built BearSSL from build-tools release
+          # This avoids nmake build issues with shallow clones of BearSSL submodule
+          $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
+          New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
+          gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
+          $srcPath = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
+          $dstPath = Join-Path $bearsslDir "bearssls.lib"
+          Move-Item -Path $srcPath -Destination $dstPath -Force
+          Write-Host "Downloaded BearSSL to: $dstPath"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
