@@ -72,7 +72,7 @@ runs:
           .deps-cache
           deps/bearssl/build
         # Include runner.arch to separate x86_64 and arm64 caches on macOS
-        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v6-${{ hashFiles('cmake/dependencies/**') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}
 
     - name: Compute install-deps.sh hash (macOS)
       if: inputs.os == 'macos'
@@ -545,7 +545,7 @@ runs:
           .deps-cache
           deps/bearssl/build
         # Include runner.arch to separate x86_64 and arm64 caches on macOS
-        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v6-${{ hashFiles('cmake/dependencies/**') }}
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}
 
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
