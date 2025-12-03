@@ -115,6 +115,7 @@ endif()
 
 # Export LLVM search paths for use by other modules (e.g., LLVM.cmake)
 set(ASCIICHAT_LLVM_SEARCH_PATHS "${_LLVM_SEARCH_PATHS}" CACHE INTERNAL "LLVM search paths")
+unset(_LLVM_SEARCH_PATHS)
 
 # =============================================================================
 # ccache - Compiler cache for faster rebuilds
@@ -139,18 +140,37 @@ find_program(ASCIICHAT_CCACHE_EXECUTABLE ccache
 unset(_CCACHE_HINTS)
 
 # =============================================================================
+# LLVM Version Configuration
+# =============================================================================
+# Supported LLVM versions (newest first for priority)
+set(_LLVM_SUPPORTED_VERSIONS 21 20 19 18)
+
+# =============================================================================
 # llvm-config - LLVM toolchain configuration (MUST BE FIRST)
 # =============================================================================
-# Search user's PATH first (respect their environment), then fall back to known locations
-# Only LLVM 18-21 are supported
-find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
-    NAMES llvm-config llvm-config.exe llvm-config-21 llvm-config-20 llvm-config-19 llvm-config-18
-    PATHS ${_LLVM_SEARCH_PATHS}
-    DOC "llvm-config for LLVM toolchain info"
-)
+# llvm-config is the SINGLE SOURCE OF TRUTH for which LLVM installation to use.
+# All other LLVM tools (clang, clang++, llvm-ar, etc.) are discovered from
+# the same installation via `llvm-config --bindir`.
+#
+# To use a specific LLVM installation, set ASCIICHAT_LLVM_CONFIG_EXECUTABLE:
+#   cmake -B build -DASCIICHAT_LLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config
 
-# Get the LLVM bindir from llvm-config - use this for ALL LLVM tools to ensure consistency
-# This ensures clang-tidy, clang-format, llvm-ar, llvm-ranlib, LLD all come from same install
+# Build versioned names list for llvm-config
+set(_llvm_config_names llvm-config llvm-config.exe)
+foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
+    list(APPEND _llvm_config_names llvm-config-${_ver})
+endforeach()
+
+find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
+    NAMES ${_llvm_config_names}
+    PATHS ${ASCIICHAT_LLVM_SEARCH_PATHS}
+    DOC "llvm-config for LLVM toolchain info (determines which LLVM installation to use)"
+)
+unset(_llvm_config_names)
+
+# Get the LLVM bindir from llvm-config - ALL LLVM tools MUST come from this directory
+# This ensures clang, clang++, clang-tidy, clang-format, llvm-ar, llvm-ranlib, LLD
+# all come from the same LLVM installation for ABI compatibility.
 set(_llvm_bindir_result "")
 if(ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
     execute_process(
@@ -162,6 +182,7 @@ if(ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
     )
     if(NOT _llvm_config_exit_code EQUAL 0)
         set(_llvm_bindir_result "")
+        message(WARNING "Failed to get LLVM bindir from llvm-config")
     endif()
     unset(_llvm_config_exit_code)
 endif()
@@ -169,50 +190,65 @@ endif()
 set(ASCIICHAT_LLVM_BINDIR "${_llvm_bindir_result}" CACHE INTERNAL "LLVM bin directory from llvm-config" FORCE)
 unset(_llvm_bindir_result)
 
-# Build unified LLVM tool search paths: llvm-config bindir first, then fallbacks
-# Export as ASCIICHAT_LLVM_TOOL_SEARCH_PATHS for other modules that need to find LLVM tools
+# Build unified LLVM tool search paths for fallback searches
 if(ASCIICHAT_LLVM_BINDIR)
-    set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS "${ASCIICHAT_LLVM_BINDIR}" ${_LLVM_SEARCH_PATHS})
+    set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS "${ASCIICHAT_LLVM_BINDIR}" ${ASCIICHAT_LLVM_SEARCH_PATHS})
 else()
-    set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS ${_LLVM_SEARCH_PATHS})
+    set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS ${ASCIICHAT_LLVM_SEARCH_PATHS})
 endif()
 set(ASCIICHAT_LLVM_TOOL_SEARCH_PATHS "${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}" CACHE INTERNAL "LLVM tool search paths" FORCE)
 
 # =============================================================================
-# Clang tools - clang-tidy, clang-format
+# Helper macro to find LLVM tools from the correct installation
 # =============================================================================
-# Note: clang-tidy ideally should match the compiler version.
-# After project() is called, other modules can re-check using CMAKE_C_COMPILER directory.
-# Only LLVM 18-21 are supported
-find_program(ASCIICHAT_CLANG_TIDY_EXECUTABLE
-    NAMES clang-tidy clang-tidy-21 clang-tidy-20 clang-tidy-19 clang-tidy-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "clang-tidy static analyzer"
-)
+# When ASCIICHAT_LLVM_BINDIR is set, we ONLY search there (NO_DEFAULT_PATH)
+# to ensure all tools come from the same LLVM installation.
+# This prevents ABI mismatches when multiple LLVM versions are installed.
+#
+# Usage: _find_llvm_tool(VAR_NAME base_name [base_name2 ...])
+# Example: _find_llvm_tool(ASCIICHAT_CLANG_EXECUTABLE clang)
+#   -> searches for: clang, clang-21, clang-20, clang-19, clang-18
+macro(_find_llvm_tool VAR_NAME)
+    # Build list of names: base names first, then versioned variants
+    set(_tool_names ${ARGN})
+    foreach(_base IN ITEMS ${ARGN})
+        foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
+            list(APPEND _tool_names ${_base}-${_ver})
+        endforeach()
+    endforeach()
 
-find_program(ASCIICHAT_CLANG_FORMAT_EXECUTABLE
-    NAMES clang-format clang-format-21 clang-format-20 clang-format-19 clang-format-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "clang-format code formatter"
-)
+    if(ASCIICHAT_LLVM_BINDIR)
+        # Strict mode: ONLY search in the llvm-config bindir
+        find_program(${VAR_NAME}
+            NAMES ${_tool_names}
+            PATHS "${ASCIICHAT_LLVM_BINDIR}"
+            NO_DEFAULT_PATH
+            DOC "LLVM tool from ${ASCIICHAT_LLVM_BINDIR}"
+        )
+    else()
+        # Fallback mode: search PATH and known locations
+        find_program(${VAR_NAME}
+            NAMES ${_tool_names}
+            HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
+            DOC "LLVM tool"
+        )
+    endif()
+    unset(_tool_names)
+endmacro()
 
-find_program(ASCIICHAT_CLANG_EXECUTABLE
-    NAMES clang clang-21 clang-20 clang-19 clang-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "clang C compiler"
-)
+# =============================================================================
+# Clang compilers - clang, clang++
+# =============================================================================
+# These MUST come from the same LLVM installation as llvm-config
+_find_llvm_tool(ASCIICHAT_CLANG_EXECUTABLE clang)
+_find_llvm_tool(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE clang++)
 
-find_program(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE
-    NAMES clang++ clang++-21 clang++-20 clang++-19 clang++-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "clang++ C++ compiler"
-)
-
-find_program(ASCIICHAT_SCAN_BUILD_EXECUTABLE
-    NAMES scan-build scan-build-21 scan-build-20 scan-build-19 scan-build-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "scan-build static analyzer wrapper"
-)
+# =============================================================================
+# Clang tools - clang-tidy, clang-format, scan-build
+# =============================================================================
+_find_llvm_tool(ASCIICHAT_CLANG_TIDY_EXECUTABLE clang-tidy)
+_find_llvm_tool(ASCIICHAT_CLANG_FORMAT_EXECUTABLE clang-format)
+_find_llvm_tool(ASCIICHAT_SCAN_BUILD_EXECUTABLE scan-build)
 
 # =============================================================================
 # cppcheck - Static analyzer
@@ -273,79 +309,26 @@ endif()
 # =============================================================================
 # Binary manipulation tools - strip, objcopy
 # =============================================================================
-find_program(ASCIICHAT_STRIP_EXECUTABLE
-    NAMES llvm-strip strip
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "strip for removing symbols"
-)
-
-find_program(ASCIICHAT_OBJCOPY_EXECUTABLE
-    NAMES llvm-objcopy objcopy
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "objcopy for binary manipulation"
-)
-
-find_program(ASCIICHAT_LLVM_STRIP_EXECUTABLE
-    NAMES llvm-strip
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-strip for removing symbols"
-)
+_find_llvm_tool(ASCIICHAT_STRIP_EXECUTABLE llvm-strip strip)
+_find_llvm_tool(ASCIICHAT_OBJCOPY_EXECUTABLE llvm-objcopy objcopy)
+_find_llvm_tool(ASCIICHAT_LLVM_STRIP_EXECUTABLE llvm-strip)
 
 # =============================================================================
-# LLVM archiver tools - llvm-ar, llvm-ranlib
+# LLVM archiver and analysis tools
 # =============================================================================
-# Only LLVM 18-21 are supported
-find_program(ASCIICHAT_LLVM_AR_EXECUTABLE
-    NAMES llvm-ar llvm-ar-21 llvm-ar-20 llvm-ar-19 llvm-ar-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-ar archiver"
-)
-
-find_program(ASCIICHAT_LLVM_RANLIB_EXECUTABLE
-    NAMES llvm-ranlib llvm-ranlib-21 llvm-ranlib-20 llvm-ranlib-19 llvm-ranlib-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-ranlib archive indexer"
-)
-
-find_program(ASCIICHAT_LLVM_NM_EXECUTABLE
-    NAMES llvm-nm llvm-nm-21 llvm-nm-20 llvm-nm-19 llvm-nm-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-nm symbol table viewer"
-)
-
-find_program(ASCIICHAT_LLVM_READELF_EXECUTABLE
-    NAMES llvm-readelf llvm-readelf-21 llvm-readelf-20 llvm-readelf-19 llvm-readelf-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-readelf for ELF binary analysis"
-)
-
-find_program(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE
-    NAMES llvm-objdump llvm-objdump-21 llvm-objdump-20 llvm-objdump-19 llvm-objdump-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-objdump for binary disassembly and analysis"
-)
-
-find_program(ASCIICHAT_LLVM_STRINGS_EXECUTABLE
-    NAMES llvm-strings llvm-strings-21 llvm-strings-20 llvm-strings-19 llvm-strings-18
-    HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-    DOC "llvm-strings for extracting strings from binaries"
-)
+_find_llvm_tool(ASCIICHAT_LLVM_AR_EXECUTABLE llvm-ar)
+_find_llvm_tool(ASCIICHAT_LLVM_RANLIB_EXECUTABLE llvm-ranlib)
+_find_llvm_tool(ASCIICHAT_LLVM_NM_EXECUTABLE llvm-nm)
+_find_llvm_tool(ASCIICHAT_LLVM_READELF_EXECUTABLE llvm-readelf)
+_find_llvm_tool(ASCIICHAT_LLVM_OBJDUMP_EXECUTABLE llvm-objdump)
+_find_llvm_tool(ASCIICHAT_LLVM_STRINGS_EXECUTABLE llvm-strings)
 
 # =============================================================================
 # Windows-specific LLVM tools - clang-cl, llvm-lib
 # =============================================================================
 if(WIN32)
-    find_program(ASCIICHAT_CLANG_CL_EXECUTABLE
-        NAMES clang-cl
-        HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-        DOC "clang-cl MSVC-compatible compiler driver"
-    )
-
-    find_program(ASCIICHAT_LLVM_LIB_EXECUTABLE
-        NAMES llvm-lib
-        HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-        DOC "llvm-lib library archive tool"
-    )
+    _find_llvm_tool(ASCIICHAT_CLANG_CL_EXECUTABLE clang-cl)
+    _find_llvm_tool(ASCIICHAT_LLVM_LIB_EXECUTABLE llvm-lib)
 endif()
 
 # =============================================================================
@@ -454,26 +437,13 @@ endif()
 #   - ld64.lld  : Mach-O linker (macOS) - mimics Apple's ld64
 #   - lld-link  : COFF/PE linker (Windows)
 # Clang's -fuse-ld=lld automatically selects the right flavor.
-# Uses _LLVM_TOOL_SEARCH_PATHS which includes llvm-config --bindir first.
 if(APPLE)
-    find_program(ASCIICHAT_LLD_EXECUTABLE
-        NAMES ld64.lld lld
-        HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-        DOC "LLD Mach-O linker (ld64.lld)"
-    )
+    _find_llvm_tool(ASCIICHAT_LLD_EXECUTABLE ld64.lld lld)
 elseif(WIN32)
-    find_program(ASCIICHAT_LLD_EXECUTABLE
-        NAMES lld-link.exe lld.exe
-        HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-        DOC "LLD COFF linker (lld-link)"
-    )
+    _find_llvm_tool(ASCIICHAT_LLD_EXECUTABLE lld-link lld)
 else()
     # Linux/Unix
-    find_program(ASCIICHAT_LLD_EXECUTABLE
-        NAMES ld.lld lld
-        HINTS ${ASCIICHAT_LLVM_TOOL_SEARCH_PATHS}
-        DOC "LLD ELF linker (ld.lld)"
-    )
+    _find_llvm_tool(ASCIICHAT_LLD_EXECUTABLE ld.lld lld)
 endif()
 
 # =============================================================================
@@ -585,7 +555,6 @@ endif()
 # =============================================================================
 # Cleanup temporary variables
 # =============================================================================
-unset(_LLVM_SEARCH_PATHS)
 unset(_BASH_SEARCH_PATHS)
 
 # =============================================================================
