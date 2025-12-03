@@ -63,15 +63,18 @@ set(_ASCIICHAT_FIND_PROGRAMS_INCLUDED TRUE)
 # =============================================================================
 if(WIN32)
     set(_LLVM_SEARCH_PATHS
-        "$ENV{PROGRAMFILES}/LLVM/bin"
-        "$ENV{LOCALAPPDATA}/Programs/LLVM/bin"
-        "C:/Program Files/LLVM/bin"
+        # CI installs vovkos LLVM with dev libraries here
+        "C:/LLVM/bin"
         # Scoop global install (--global flag installs to ProgramData)
         "C:/ProgramData/scoop/apps/llvm/current/bin"
         "C:/ProgramData/scoop/shims"
         # Scoop user install
         "$ENV{USERPROFILE}/scoop/apps/llvm/current/bin"
         "$ENV{USERPROFILE}/scoop/shims"
+        # Official LLVM installer locations (usually lacks dev libraries)
+        "$ENV{PROGRAMFILES}/LLVM/bin"
+        "$ENV{LOCALAPPDATA}/Programs/LLVM/bin"
+        "C:/Program Files/LLVM/bin"
     )
     set(_BASH_SEARCH_PATHS
         # Git for Windows (64-bit)
