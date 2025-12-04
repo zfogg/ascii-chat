@@ -221,7 +221,7 @@ char *expand_path(const char *path) {
 
 char *get_config_dir(void) {
 #ifdef _WIN32
-  // Windows: Use %APPDATA%\ascii-chat\
+  // Windows: Use %APPDATA%/ascii-chat/
   const char *appdata = platform_getenv("APPDATA");
   if (appdata && appdata[0] != '\0') {
     size_t len = strlen(appdata) + strlen("\\ascii-chat\\") + 1;
@@ -232,7 +232,7 @@ char *get_config_dir(void) {
     safe_snprintf(dir, len, "%s\\ascii-chat\\", appdata);
     return dir;
   }
-  // Fallback to %USERPROFILE%\.ascii-chat\
+  // Fallback to %USERPROFILE%/.ascii-chat/
   const char *userprofile = platform_getenv("USERPROFILE");
   if (userprofile && userprofile[0] != '\0') {
     size_t len = strlen(userprofile) + strlen("\\.ascii-chat\\") + 1;
