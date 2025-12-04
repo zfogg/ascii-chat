@@ -307,15 +307,8 @@ runs:
         # because scoop/choco/winget LLVM packages don't include dev libraries
         # doxygen is needed for generating documentation included in installers
         # NOTE: git is already pre-installed on GitHub Actions Windows runners
-        $arch = "${{ runner.arch }}"
-
-        # On ARM64, skip 7zip - its scoop installation fails due to file locking
-        # issues with 7zr.exe during bootstrap. PowerShell's Expand-Archive handles zips.
-        if ($arch -eq "ARM64") {
-          $basePackages = @('ninja', 'ccache', 'doxygen')
-        } else {
-          $basePackages = @('7zip', 'ninja', 'ccache', 'doxygen')
-        }
+        # NOTE: 7zip not needed - scoop provides 7zr.exe during bootstrap for .7z extraction
+        $basePackages = @('ninja', 'ccache', 'doxygen')
 
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
@@ -380,7 +373,13 @@ runs:
             }
 
             Write-Host "Extracting LLVM to ${LLVM_INSTALL_DIR}..."
-            7z x $tempArchive -o"C:\" -y | Out-Null
+            # Use scoop's bundled 7zr.exe (no need to install full 7zip package)
+            $7zr = Join-Path $env:USERPROFILE "scoop\apps\scoop\current\supporting\7z\7zr.exe"
+            if (-not (Test-Path $7zr)) {
+              # Fallback to global scoop location
+              $7zr = "C:\ProgramData\scoop\apps\scoop\current\supporting\7z\7zr.exe"
+            }
+            & $7zr x $tempArchive -o"C:\" -y | Out-Null
 
             $extractedDir = "C:\clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt"
             if (Test-Path $extractedDir) {
