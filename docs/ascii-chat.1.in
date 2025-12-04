@@ -518,7 +518,9 @@ and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR 
 your shell profile and use \fCssh-add -s\fR to add keys to the agent.
 .IP \(bu 2
 \fBGitHub/GitLab Keys\fR: Use \fBgithub:username\fR or \fBgitlab:username\fR
-to fetch public keys directly. Only the first Ed25519 key is used.
+to fetch public keys directly. All Ed25519 keys from the user's profile are
+used, so users with multiple SSH keys (e.g., for different machines) can
+authenticate with any of them. RSA and ECDSA keys are ignored.
 .IP \(bu 2
 \fBRemote Sessions\fR: When using ascii-chat over SSH or in tmux/screen,
 truecolor may not work if $COLORTERM isn't forwarded. Try
