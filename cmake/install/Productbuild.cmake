@@ -33,8 +33,8 @@ endif()
 # Package identifier (reverse DNS notation)
 set(CPACK_PRODUCTBUILD_IDENTIFIER "${PROJECT_BUNDLE_ID}")
 
-# Installation location
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+# Note: CPACK_PACKAGING_INSTALL_PREFIX is set per-generator in CPackProjectConfig.cmake
+# This allows different prefixes for productbuild (/usr/local) vs STGZ/TGZ (/)
 
 # Override CPACK_PACKAGE_INSTALL_DIRECTORY for macOS
 # This variable is primarily for Windows installers and causes issues with productbuild

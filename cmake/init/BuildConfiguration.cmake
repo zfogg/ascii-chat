@@ -72,7 +72,14 @@ endif()
 option(BUILD_TESTS "Build test executables" ON)
 
 # Enforce static linking for Release builds by default
-option(ASCIICHAT_ENFORCE_STATIC_RELEASE "Fail Release builds if binaries are not statically linked" ON)
+# Automatically disable in Docker when USE_MUSL is OFF (no static linking available)
+if(EXISTS "/.dockerenv" AND NOT USE_MUSL AND UNIX AND NOT APPLE)
+    set(_default_enforce_static OFF)
+    message(STATUS "Docker detected without USE_MUSL - static linking enforcement ${BoldYellow}auto-disabled${ColorReset}")
+else()
+    set(_default_enforce_static ON)
+endif()
+option(ASCIICHAT_ENFORCE_STATIC_RELEASE "Fail Release builds if binaries are not statically linked" ${_default_enforce_static})
 
 # Skip hardening validation (useful for CI performance tests where linker checks may fail)
 option(ASCIICHAT_SKIP_HARDENING_VALIDATION "Skip security hardening validation for Release binaries" OFF)

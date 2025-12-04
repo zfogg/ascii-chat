@@ -731,8 +731,8 @@ After installation, run:
             # This variable is for Windows installers (NSIS/WIX) and productbuild doesn't use it correctly
             if(APPLE)
                 set(CPACK_PACKAGE_INSTALL_DIRECTORY "" CACHE STRING "Installation directory (empty for macOS)" FORCE)
-                # Set productbuild install prefix BEFORE include(CPack)
-                set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local" CACHE STRING "productbuild install location" FORCE)
+                # Note: CPACK_PACKAGING_INSTALL_PREFIX is set per-generator in CPackProjectConfig.cmake
+                # This allows different prefixes for productbuild (/usr/local) vs STGZ/TGZ (/)
 
                 # Set CMP0161 policy to suppress warning about CPACK_PRODUCTBUILD_DOMAINS
                 # NEW behavior: CPACK_PRODUCTBUILD_DOMAINS defaults to true
@@ -785,6 +785,13 @@ After installation, run:
         endif()
 
         set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+
+        # Set CPack project config file for per-generator settings (e.g., install prefix)
+        # This file is processed at cpack runtime, allowing different prefixes per generator:
+        #   - STGZ/TGZ: "/" for relative paths (Homebrew compatibility)
+        #   - productbuild: "/usr/local" for standard macOS .pkg location
+        #   - DEB/RPM: "/usr" for Linux FHS compliance
+        set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_SOURCE_DIR}/cmake/install/CPackProjectConfig.cmake")
 
         include(CPack)
 
