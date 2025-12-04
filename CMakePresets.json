@@ -232,5 +232,89 @@
       "name": "panic",
       "configurePreset": "panic"
     }
+  ],
+  "testPresets": [
+    {
+      "name": "base-test",
+      "hidden": true,
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "jobs": 0
+      }
+    },
+    {
+      "name": "unit",
+      "displayName": "Unit Tests",
+      "description": "Run unit tests only",
+      "configurePreset": "default",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "label": "^unit$"
+        }
+      }
+    },
+    {
+      "name": "integration",
+      "displayName": "Integration Tests",
+      "description": "Run integration tests only",
+      "configurePreset": "default",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "label": "^integration$"
+        }
+      }
+    },
+    {
+      "name": "performance",
+      "displayName": "Performance Tests",
+      "description": "Run performance tests only",
+      "configurePreset": "default",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "label": "^performance$"
+        }
+      }
+    },
+    {
+      "name": "github-unit",
+      "displayName": "Unit Tests (GitHub CI)",
+      "description": "Run unit tests in GitHub CI environment",
+      "configurePreset": "github",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "label": "^unit$"
+        }
+      }
+    },
+    {
+      "name": "github-integration",
+      "displayName": "Integration Tests (GitHub CI)",
+      "description": "Run integration tests in GitHub CI environment",
+      "configurePreset": "github",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "label": "^integration$"
+        }
+      }
+    },
+    {
+      "name": "github-performance",
+      "displayName": "Performance Tests (GitHub CI)",
+      "description": "Run performance tests in GitHub CI environment",
+      "configurePreset": "github",
+      "inherits": "base-test",
+      "filter": {
+        "include": {
+          "label": "^performance$"
+        }
+      }
+    }
   ]
 }

@@ -146,13 +146,9 @@ jobs:
         echo "Looking for test executables:"
         find . -name "test_unit_*" -type f 2>/dev/null | head -10
 
-        # Run unit tests via ctest with label filter
+        # Run unit tests via ctest preset
         # Criterion generates detailed XML in build/Testing/criterion-xml/
-        cd build
-        ctest --label-regex "^unit$" \
-          --output-on-failure \
-          --parallel 0 \
-          | tee ../unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
+        ctest --preset github-unit | tee unit-tests-${{ matrix.os-name }}-${{ matrix.build_type }}.log
 
         echo "Unit tests completed successfully"
 
@@ -334,13 +330,9 @@ jobs:
           -DCMAKE_C_FLAGS="${FLAGS}"
         cmake --build build
 
-        # Run integration tests via ctest with label filter
+        # Run integration tests via ctest preset
         # Criterion generates detailed XML in build/Testing/criterion-xml/
-        cd build
-        ctest --label-regex "^integration$" \
-          --output-on-failure \
-          --parallel 0 \
-          | tee ../integration-tests-${{ matrix.os-name }}.log
+        ctest --preset github-integration | tee integration-tests-${{ matrix.os-name }}.log
 
         echo "Integration tests completed successfully"
 
@@ -467,13 +459,9 @@ jobs:
       run: |
         echo "Running performance tests..."
 
-        # Run performance tests via ctest with label filter
+        # Run performance tests via ctest preset
         # Criterion generates detailed XML in build/Testing/criterion-xml/
-        cd build
-        ctest --label-regex "^performance$" \
-          --output-on-failure \
-          --parallel 0 \
-          | tee ../performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
+        ctest --preset github-performance | tee performance-tests-${{ startsWith(matrix.os, 'ubuntu') && 'ubuntu' || 'macos' }}.log
 
         echo "Performance tests completed successfully"
 
