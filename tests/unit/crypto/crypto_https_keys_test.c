@@ -494,17 +494,17 @@ Test(crypto_multi_keys, parse_public_keys_invalid_format) {
 // 1 RSA key + 3 Ed25519 keys - tests that RSA is skipped and all Ed25519 are parsed
 #define ZFOGG_RSA_KEY                                                                                                  \
   "ssh-rsa "                                                                                                           \
-  "AAAAB3NzaC1yc2EAAAADAQABAAACAQClCSY4EbOMUTgY2RNy8cyXvzv8Necb4u1n1E4l3xinPiEq3v8aI9vkStst4zPLV9+"                     \
+  "AAAAB3NzaC1yc2EAAAADAQABAAACAQClCSY4EbOMUTgY2RNy8cyXvzv8Necb4u1n1E4l3xinPiEq3v8aI9vkStst4zPLV9+"                    \
   "YfguKeZX0oJqzrdjGIkoktM6sxGY+s1Xq9MYRVgNsTHphgCA3pY4RvLJ6rJRQ415Sn9XIrGx0GcEv66Wp6v84v/"                            \
-  "NFZKXDuQxFrp9KFFmBcVe6ywKNQWXJD/"                                                                                    \
-  "lluZJhCb2M84EujMPugp/"                                                                                               \
+  "NFZKXDuQxFrp9KFFmBcVe6ywKNQWXJD/"                                                                                   \
+  "lluZJhCb2M84EujMPugp/"                                                                                              \
   "Z8Zxui8mKRFmDKLagHhemtbnspbnII69hBC2FJpqaVJ5NQ2irGvnevFmH4xDivl3Mn6TXjb4n93Uvm7ZUu8gk1UwhsShHIHR+"                  \
-  "ahK/"                                                                                                                \
-  "WN7N9aOMII6BK8qD25mK2vsoINnC/"                                                                                       \
-  "TUPjwnqzSiTN2GiHN1BhBMOJNiYmkMBI5sAQro+Kwppd7yhtXchhH3i/"                                                            \
+  "ahK/"                                                                                                               \
+  "WN7N9aOMII6BK8qD25mK2vsoINnC/"                                                                                      \
+  "TUPjwnqzSiTN2GiHN1BhBMOJNiYmkMBI5sAQro+Kwppd7yhtXchhH3i/"                                                           \
   "QQ7bEwB8P+jv40JerJ7RikfV8FRdTyvOQSLC2+gCWrGBC9OUknFyFVgVX+dKNvAI5lGV5mLWsSPlEPuLeUUFM+"                             \
-  "1IwsKOfWMh/"                                                                                                         \
-  "Nj427AX0BOTiU+TlfpzQdri0rRX7rkR81bCtbfkoqaVhj9nP3qjARVjAhRhavACWxQiEvDw4y6VWlgawBwGDnEiCpdh41OYW3Xnkg7bgL/"       \
+  "1IwsKOfWMh/"                                                                                                        \
+  "Nj427AX0BOTiU+TlfpzQdri0rRX7rkR81bCtbfkoqaVhj9nP3qjARVjAhRhavACWxQiEvDw4y6VWlgawBwGDnEiCpdh41OYW3Xnkg7bgL/"         \
   "jFMEaXVGrGsBW1gCY1d/9cVDGQQKe6653mRvmnlIIaT2waGiSoWQKP/6SlJ/hOHa6xUnJsTmlMndwUoVAtxDIvADtw=="
 #define ZFOGG_ED25519_KEY1 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFlsNir27dY0CPfWR/Nc8PcEwfcfkksSK/pAVr8nZan8"
 #define ZFOGG_ED25519_KEY2 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP5bVpBcszpper4Ln7zJGfs2I/4VytDZwy5nk7lksdyt"
@@ -514,7 +514,8 @@ Test(crypto_multi_keys, parse_public_keys_invalid_format) {
 Test(crypto_multi_keys, real_github_zfogg_multi_key_response) {
   // Simulate the exact response from github.com/zfogg.keys
   // 1 RSA key + 3 Ed25519 keys
-  const char *zfogg_keys_response = ZFOGG_RSA_KEY "\n" ZFOGG_ED25519_KEY1 "\n" ZFOGG_ED25519_KEY2 "\n" ZFOGG_ED25519_KEY3;
+  const char *zfogg_keys_response =
+      ZFOGG_RSA_KEY "\n" ZFOGG_ED25519_KEY1 "\n" ZFOGG_ED25519_KEY2 "\n" ZFOGG_ED25519_KEY3;
 
   char **raw_keys = NULL;
   size_t num_raw_keys = 0;

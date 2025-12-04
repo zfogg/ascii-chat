@@ -1609,4 +1609,3 @@ Test(config, invalid_address_skipped) {
   SAFE_FREE(config_path);
   restore_config_options(&backup);
 }
-
