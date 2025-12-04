@@ -306,7 +306,17 @@ runs:
         # NOTE: LLVM is installed separately from vovkos/llvm-package-windows
         # because scoop/choco/winget LLVM packages don't include dev libraries
         # doxygen is needed for generating documentation included in installers
-        $basePackages = @('git', '7zip', 'ninja', 'ccache', 'doxygen')
+        # NOTE: git is already pre-installed on GitHub Actions Windows runners
+        $arch = "${{ runner.arch }}"
+
+        # On ARM64, skip 7zip - its scoop installation fails due to file locking
+        # issues with 7zr.exe during bootstrap. PowerShell's Expand-Archive handles zips.
+        if ($arch -eq "ARM64") {
+          $basePackages = @('ninja', 'ccache', 'doxygen')
+        } else {
+          $basePackages = @('7zip', 'ninja', 'ccache', 'doxygen')
+        }
+
         $extra = @()
         if (-not [string]::IsNullOrWhiteSpace('${{ inputs.extra-packages }}')) {
           $extra = '${{ inputs.extra-packages }}'.Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)

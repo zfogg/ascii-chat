@@ -39,7 +39,15 @@ function(configure_musl_pre_project)
     # Detect Linux early (before project()) using CMAKE_HOST_SYSTEM_NAME
     # CMAKE_SYSTEM_NAME is only set after project() is called
     if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-        if(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        # Detect architecture early using uname (before project() sets CMAKE_SYSTEM_PROCESSOR)
+        execute_process(
+            COMMAND uname -m
+            OUTPUT_VARIABLE HOST_ARCH
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+        # Only enable musl by default on x86_64 - ARM64 musl support on GitHub runners is limited
+        if(HOST_ARCH STREQUAL "x86_64" AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
             option(USE_MUSL "Use musl libc + mimalloc for optimal performance (Linux Release builds)" ON)
         else()
             option(USE_MUSL "Use musl libc instead of glibc (Linux only)" OFF)
@@ -71,16 +79,22 @@ function(configure_musl_pre_project)
         set(CLANGXX_COMPILER "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
 
         # Verify musl development files are installed
-        # Check multiple locations (Arch vs Debian/Ubuntu)
+        # Check multiple locations (Arch vs Debian/Ubuntu) and architectures (x86_64 vs aarch64)
         if(EXISTS "/usr/lib/musl/lib/libc.a")
-            # Arch Linux location
+            # Arch Linux location (all architectures)
             set(MUSL_LIBC_PATH "/usr/lib/musl/lib/libc.a")
         elseif(EXISTS "/usr/lib/x86_64-linux-musl/libc.a")
-            # Debian/Ubuntu location
+            # Debian/Ubuntu x86_64 location
             set(MUSL_LIBC_PATH "/usr/lib/x86_64-linux-musl/libc.a")
+        elseif(EXISTS "/usr/lib/aarch64-linux-musl/libc.a")
+            # Debian/Ubuntu ARM64/aarch64 location
+            set(MUSL_LIBC_PATH "/usr/lib/aarch64-linux-musl/libc.a")
         elseif(EXISTS "/usr/x86_64-linux-musl/lib64/libc.a")
-            # Fedora location
+            # Fedora x86_64 location
             set(MUSL_LIBC_PATH "/usr/x86_64-linux-musl/lib64/libc.a")
+        elseif(EXISTS "/usr/aarch64-linux-musl/lib64/libc.a")
+            # Fedora ARM64/aarch64 location
+            set(MUSL_LIBC_PATH "/usr/aarch64-linux-musl/lib64/libc.a")
         else()
             message(FATAL_ERROR "musl development files not found. Install musl-dev:\n"
                                 "  Arch Linux: sudo pacman -S musl\n"
@@ -151,23 +165,38 @@ function(configure_musl_post_project)
     )
     get_filename_component(GCC_LIBDIR "${GCC_LIBGCC_PATH}" DIRECTORY)
 
-    # Detect musl library directory (Arch vs Debian/Ubuntu vs Fedora)
-    if(EXISTS "/usr/lib/musl/lib")
-        # Arch Linux location
-        set(MUSL_LIBDIR "/usr/lib/musl/lib")
-    elseif(EXISTS "/usr/x86_64-linux-musl/lib64")
-        # Fedora location
-        set(MUSL_LIBDIR "/usr/x86_64-linux-musl/lib64")
+    # Detect architecture for musl target triple
+    # CMAKE_SYSTEM_PROCESSOR is available after project()
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
+        set(MUSL_ARCH "aarch64")
     else()
+        set(MUSL_ARCH "x86_64")
+    endif()
+    set(MUSL_TARGET "${MUSL_ARCH}-linux-musl")
+
+    # Detect musl library directory (Arch vs Debian/Ubuntu vs Fedora)
+    # Check architecture-specific paths
+    if(EXISTS "/usr/lib/musl/lib")
+        # Arch Linux location (all architectures)
+        set(MUSL_LIBDIR "/usr/lib/musl/lib")
+    elseif(EXISTS "/usr/${MUSL_ARCH}-linux-musl/lib64")
+        # Fedora location
+        set(MUSL_LIBDIR "/usr/${MUSL_ARCH}-linux-musl/lib64")
+    elseif(EXISTS "/usr/lib/${MUSL_ARCH}-linux-musl")
         # Debian/Ubuntu location
-        set(MUSL_LIBDIR "/usr/lib/x86_64-linux-musl")
+        set(MUSL_LIBDIR "/usr/lib/${MUSL_ARCH}-linux-musl")
+    else()
+        message(FATAL_ERROR "musl library directory not found for ${MUSL_ARCH}. Install musl-dev:\n"
+                            "  Arch Linux: sudo pacman -S musl\n"
+                            "  Ubuntu/Debian: sudo apt install musl-tools musl-dev\n"
+                            "  Fedora: sudo dnf install musl-devel")
     endif()
 
     # Configure clang to use musl with static-PIE
     # Based on: https://wiki.debian.org/musl
     # Note: -fPIE is added by CompilerFlags.cmake for all PIE builds (dynamic and static)
     add_compile_options(
-        -target x86_64-linux-musl
+        -target ${MUSL_TARGET}
         -DUSE_MUSL
     )
 
@@ -177,13 +206,13 @@ function(configure_musl_post_project)
     # Force retention of custom sections with -Wl,--undefined to prevent LTO from removing them
     # Apply RELRO hardening: -Wl,-z,relro enables GOT read-only relocation, -Wl,-z,now enables full RELRO (BIND_NOW)
     set(CMAKE_EXE_LINKER_FLAGS
-        "-target x86_64-linux-musl -fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section -Wl,--undefined=ascii_chat_comment_string -Wl,--undefined=ascii_chat_version_string -Wl,-z,relro -Wl,-z,now"
+        "-target ${MUSL_TARGET} -fuse-ld=lld -static-pie -nostdlib -L${MUSL_LIBDIR} ${MUSL_LIBDIR}/rcrt1.o ${MUSL_LIBDIR}/crti.o -Wl,--undefined=ascii_chat_custom_section -Wl,--undefined=ascii_chat_comment_string -Wl,--undefined=ascii_chat_version_string -Wl,-z,relro -Wl,-z,now"
         CACHE STRING "Linker flags for musl static-PIE linking" FORCE
     )
 
     # Shared library linker flags for musl builds
     # Note: Shared libraries link against glibc (not musl) since they'll be used on glibc systems
-    # Don't use -target x86_64-linux-musl for shared libs - let it use default glibc
+    # Don't use musl target for shared libs - let it use default glibc
     set(CMAKE_SHARED_LINKER_FLAGS
         "-fuse-ld=lld -flto -Wl,--gc-sections"
         CACHE STRING "Shared linker flags for musl builds (uses glibc for compatibility)" FORCE
