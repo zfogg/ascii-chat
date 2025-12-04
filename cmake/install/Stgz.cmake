@@ -42,9 +42,10 @@ endif()
 # This allows users to override with: ./installer.sh --prefix=/custom/path
 set(CPACK_SET_DESTDIR OFF)
 
-# This sets the default installation directory shown in the STGZ installer
-# Users can override with: ./installer.sh --prefix=/custom/path
-set(CPACK_INSTALL_PREFIX "/usr/local")
-set(CPACK_PACKAGING_INSTALL_PREFIX "/usr/local")
+# Note: CPACK_PACKAGING_INSTALL_PREFIX is set per-generator in CPackProjectConfig.cmake
+# STGZ uses "/" which creates relative paths in the archive:
+#   bin/ascii-chat instead of usr/local/bin/ascii-chat
+# This allows: ./installer.sh --prefix=/opt/homebrew/Cellar/ascii-chat/0.3.56
+# to correctly install to /opt/homebrew/Cellar/ascii-chat/0.3.56/bin/ascii-chat
 
-message(STATUS "${Yellow}CPack:${ColorReset} STGZ configuration complete (default prefix: ${BoldBlue}/usr/local${ColorReset})")
+message(STATUS "${Yellow}CPack:${ColorReset} STGZ configuration complete (prefix set per-generator in CPackProjectConfig.cmake)")
