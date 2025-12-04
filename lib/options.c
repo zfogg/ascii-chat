@@ -153,6 +153,9 @@ ASCIICHAT_API unsigned short int opt_verbose_level = 0;
 // Enable snapshot mode when set via --snapshot (client only - capture one frame and exit)
 ASCIICHAT_API unsigned short int opt_snapshot_mode = 0;
 
+// Enable mirror mode when set via --mirror (client only - view webcam locally without server)
+ASCIICHAT_API unsigned short int opt_mirror_mode = 0;
+
 // Snapshot delay in seconds (float) - default 3.0 for webcam warmup
 #if defined(__APPLE__)
 // their macbook webcams shows pure black first then fade up into a real color image over a few seconds
@@ -224,6 +227,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
                                          {"snapshot-delay", required_argument, NULL, 'D'},
+                                         {"mirror", no_argument, NULL, 1016},
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
@@ -1205,6 +1209,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_snapshot_mode = 1;
       break;
 
+    case 1016: // --mirror (client only - view webcam locally without server)
+      opt_mirror_mode = 1;
+      break;
+
     case 'D': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", is_client);
       if (!value_str)
@@ -1520,6 +1528,14 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     log_set_level((log_level_t)new_level);
   }
 
+  // Check for incompatible options: mirror mode and audio are not compatible
+  if (opt_mirror_mode && opt_audio_enabled) {
+    (void)fprintf(stderr, "Error: --mirror and --audio are incompatible options.\n");
+    (void)fprintf(stderr, "Mirror mode displays local webcam without network or audio support.\n");
+    (void)fflush(stderr);
+    return ERROR_USAGE;
+  }
+
   return ASCIICHAT_OK;
 }
 
@@ -1581,6 +1597,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(
       desc, USAGE_INDENT "-D --snapshot-delay SECONDS  " USAGE_INDENT "delay SECONDS before snapshot (default: %.1f)\n",
       (double)SNAPSHOT_DELAY_DEFAULT);
+  (void)fprintf(desc, USAGE_INDENT "   --mirror                  " USAGE_INDENT
+                                   "view webcam locally without connecting to server (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT

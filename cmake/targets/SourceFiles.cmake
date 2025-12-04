@@ -274,6 +274,7 @@ set(APP_SRCS
     src/server/stats.c
     # Client mode sources
     src/client/main.c
+    src/client/mirror.c
     src/client/server.c
     src/client/protocol.c
     src/client/crypto.c

@@ -828,6 +828,33 @@ extern ASCIICHAT_API unsigned short int opt_verbose_level;
  */
 extern ASCIICHAT_API unsigned short int opt_snapshot_mode;
 
+/** @brief Enable mirror mode - view webcam locally without server (client only)
+ *
+ * If non-zero, enables mirror mode where the client displays the webcam feed
+ * as ASCII art directly to the terminal without connecting to any server.
+ * Useful for previewing your webcam appearance before joining a chat.
+ *
+ * **Default**: `0` (normal network mode)
+ *
+ * **Command-line**: `--mirror` (enable mirror mode)
+ *
+ * **Behavior**:
+ * - Captures frames from webcam continuously
+ * - Converts frames to ASCII art locally
+ * - Displays ASCII art to terminal in real-time
+ * - No network connection required
+ * - Press Ctrl+C to exit
+ *
+ * **Example**: `--mirror` (view local webcam as ASCII art)
+ *
+ * @note Client mode only: Not available in server mode
+ * @note Does not connect to server (standalone mode)
+ * @note Audio is disabled in mirror mode (not compatible)
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API unsigned short int opt_mirror_mode;
+
 /** @brief Snapshot delay in seconds (default 3.0 for webcam warmup)
  *
  * Delay in seconds to wait before capturing frame in snapshot mode. This delay
