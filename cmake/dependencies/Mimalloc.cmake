@@ -333,8 +333,12 @@ if(USE_MIMALLOC)
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${MIMALLOC_BUILD_DIR}/lib")
 
         # Make mimalloc sources available (EXCLUDE_FROM_ALL and SYSTEM set in FetchContent_Declare)
-        # This prevents mimalloc's install() commands from running and suppresses its warnings
+        # This prevents mimalloc's install() commands from running and suppresses compiler warnings
+        # Suppress CMake dev warnings from mimalloc (GNUInstallDirs before project() is upstream bug)
+        set(_SAVED_SUPPRESS_DEV_WARNINGS ${CMAKE_SUPPRESS_DEVELOPER_WARNINGS})
+        set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ON)
         FetchContent_MakeAvailable(mimalloc)
+        set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS ${_SAVED_SUPPRESS_DEV_WARNINGS})
 
         # Restore original output directory settings
         set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${_SAVED_ARCHIVE_OUTPUT_DIR})
