@@ -197,7 +197,8 @@ ParameterizedTest(crypto_options_test_case_t *tc, crypto_options, crypto_options
 
   // Build a proper char* array from the 2D char array
   // tc->argv is char[10][256], not char**, so we need to create an array of pointers
-  char *argv_ptrs[10];
+  // IMPORTANT: Initialize to NULL to prevent getopt_long from reading garbage beyond argc
+  char *argv_ptrs[10] = {NULL};
   for (int i = 0; i < tc->argc && i < 10; i++) {
     argv_ptrs[i] = tc->argv[i];
   }
