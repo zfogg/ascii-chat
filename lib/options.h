@@ -803,26 +803,35 @@ extern ASCIICHAT_API unsigned short int opt_verbose_level;
 
 /** @brief Enable snapshot mode - capture one frame and exit (client only)
  *
- * If non-zero, enables snapshot mode where the client captures a single frame
- * from the webcam, converts it to ASCII, prints it, and exits immediately.
- * Useful for one-time image capture without starting a full video stream.
+ * If non-zero, enables snapshot mode where the client connects to a server,
+ * receives a single frame, displays it as ASCII art, and exits immediately.
+ * Useful for one-time capture of the current call state without persistent streaming.
  *
  * **Default**: `0` (normal video streaming mode)
  *
  * **Command-line**: `--snapshot` (enable snapshot mode)
  *
  * **Behavior**:
- * - Waits for `opt_snapshot_delay` seconds (for webcam warmup)
- * - Captures one frame from webcam
+ * - Connects to the specified server (or localhost by default)
+ * - Waits for `opt_snapshot_delay` seconds (for frame warmup)
+ * - Receives one frame from server
  * - Converts frame to ASCII art
  * - Prints ASCII art to stdout
- * - Exits immediately (no connection to server)
+ * - Exits immediately after displaying the frame
+ *
+ * **Connection Behavior**:
+ * - **No retries**: If the connection fails, snapshot mode exits with an error
+ *   immediately instead of retrying. This is intentional for scripting and CI/CD
+ *   usage where quick failure is preferred over indefinite retry loops.
+ * - **No reconnection**: If the connection is lost during snapshot capture,
+ *   exits with an error instead of attempting to reconnect.
  *
  * **Example**: `--snapshot` (capture one frame and exit)
  *
  * @note Client mode only: Not available in server mode
- * @note Does not connect to server (standalone mode)
+ * @note Connects to server (unlike mirror mode which is standalone)
  * @note Uses `opt_snapshot_delay` for warmup time before capture
+ * @note Exits with error code 1 on any connection failure (no retries)
  *
  * @ingroup options
  */
@@ -845,11 +854,18 @@ extern ASCIICHAT_API unsigned short int opt_snapshot_mode;
  * - No network connection required
  * - Press Ctrl+C to exit
  *
+ * **Snapshot Support**:
+ * Can be combined with `--snapshot` to capture a single frame from your local
+ * webcam without connecting to a server:
+ * - `--mirror --snapshot` - Capture one local webcam frame and exit
+ * - Uses `opt_snapshot_delay` for webcam warmup before capture
+ *
  * **Example**: `--mirror` (view local webcam as ASCII art)
+ * **Example**: `--mirror --snapshot` (capture single frame locally)
  *
  * @note Client mode only: Not available in server mode
  * @note Does not connect to server (standalone mode)
- * @note Audio is disabled in mirror mode (not compatible)
+ * @note Audio is disabled in mirror mode (not compatible with --audio)
  *
  * @ingroup options
  */
@@ -1331,6 +1347,12 @@ extern unsigned short int GRAY[];
  * - Webcam: Index 0 (first device)
  * - Color mode: Auto-detect
  * - Encryption: Enabled if keys found, disabled otherwise
+ *
+ * **Environment Variables**:
+ * The following environment variables are checked during option parsing:
+ * - `WEBCAM_DISABLED`: When set to "1", "true", "yes", or "on", automatically
+ *   enables test pattern mode (`opt_test_pattern = true`). Useful for CI/CD
+ *   environments and testing without a physical webcam.
  *
  * @par Example:
  * @code{.c}

@@ -103,10 +103,25 @@ else()
         endif()
 
         # Copy asm/ headers (try arch-specific first, then generic)
-        if(EXISTS "/usr/include/x86_64-linux-gnu/asm")
-            file(COPY "/usr/include/x86_64-linux-gnu/asm" DESTINATION "${KERNEL_HEADERS_DIR}")
+        # Detect architecture-specific header path
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64|ARM64")
+            set(_ASM_ARCH_PATH "/usr/include/aarch64-linux-gnu/asm")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+            set(_ASM_ARCH_PATH "/usr/include/x86_64-linux-gnu/asm")
+        elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i686|i386")
+            set(_ASM_ARCH_PATH "/usr/include/i386-linux-gnu/asm")
+        else()
+            set(_ASM_ARCH_PATH "")
+        endif()
+
+        if(_ASM_ARCH_PATH AND EXISTS "${_ASM_ARCH_PATH}")
+            file(COPY "${_ASM_ARCH_PATH}" DESTINATION "${KERNEL_HEADERS_DIR}")
         elseif(EXISTS "/usr/include/asm")
             file(COPY "/usr/include/asm" DESTINATION "${KERNEL_HEADERS_DIR}")
+        else()
+            # Fallback: create asm symlink to asm-generic (works for many headers)
+            message(STATUS "No arch-specific asm headers found, creating symlink to asm-generic")
+            file(CREATE_LINK "${KERNEL_HEADERS_DIR}/asm-generic" "${KERNEL_HEADERS_DIR}/asm" SYMBOLIC)
         endif()
 
         # Copy asm-generic/ headers

@@ -464,9 +464,11 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
 
     // Verify server identity against expected key if --server-key is specified
     if (ctx->verify_server_key && strlen(ctx->expected_server_key) > 0) {
-      // Parse the expected server key
-      public_key_t expected_key;
-      if (parse_public_key(ctx->expected_server_key, &expected_key) != 0) {
+      // Parse ALL expected server keys (github:/gitlab: may have multiple keys)
+      public_key_t expected_keys[MAX_CLIENTS];
+      size_t num_expected_keys = 0;
+      if (parse_public_keys(ctx->expected_server_key, expected_keys, &num_expected_keys, MAX_CLIENTS) != 0 ||
+          num_expected_keys == 0) {
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
@@ -476,13 +478,22 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         return SET_ERRNO(ERROR_CONFIG,
                          "Failed to parse expected server key: %s. Check that "
                          "--server-key value is valid (ssh-ed25519 "
-                         "format or hex)",
+                         "format, github:username, or hex)",
                          ctx->expected_server_key);
       }
 
-      // Compare server's IDENTITY key with expected key (constant-time to
-      // prevent timing attacks)
-      if (sodium_memcmp(server_identity_key, expected_key.key, ED25519_PUBLIC_KEY_SIZE) != 0) {
+      // Compare server's IDENTITY key against ALL expected keys (match any one)
+      // This supports users with multiple SSH keys (e.g., different machines)
+      bool key_matched = false;
+      for (size_t i = 0; i < num_expected_keys; i++) {
+        if (sodium_memcmp(server_identity_key, expected_keys[i].key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+          key_matched = true;
+          log_info("Server identity key matched expected key %zu/%zu", i + 1, num_expected_keys);
+          break;
+        }
+      }
+
+      if (!key_matched) {
         if (payload) {
           buffer_pool_free(payload, payload_len);
         }
@@ -491,12 +502,12 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
         SAFE_FREE(server_signature);
         return SET_ERRNO(ERROR_CRYPTO,
                          "Server identity key mismatch - potential MITM attack! "
-                         "Expected key: %s, Server presented a different key "
+                         "Expected key(s) from: %s (checked %zu keys), Server presented a different key "
                          "than specified with --server-key, DO NOT CONNECT to this "
                          "server - likely man-in-the-middle attack!",
-                         ctx->expected_server_key);
+                         ctx->expected_server_key, num_expected_keys);
       }
-      log_info("Server identity key verified against --server-key");
+      log_info("Server identity key verified against --server-key (%zu key(s) checked)", num_expected_keys);
     }
 
     // Resolve server IP from socket if not already set

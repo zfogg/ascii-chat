@@ -603,7 +603,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
   if (opt_color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
     log_debug("CLAUDECODE detected: forcing mono color mode");
     caps.color_level = TERM_COLOR_NONE;
-    caps.capabilities &= ~(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
+    caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
     caps.color_count = 0;
     return caps;
   }
