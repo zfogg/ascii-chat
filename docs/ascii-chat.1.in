@@ -1,7 +1,7 @@
 .\" ascii-chat - terminal video chat with ASCII art
 .\" Manual page for ascii-chat(1)
 .\"
-.TH ASCII-CHAT 1 "November 2025" "ascii-chat @PROJECT_VERSION@" "User Commands"
+.TH ASCII-CHAT 1 "December 2025" "ascii-chat @PROJECT_VERSION@" "User Commands"
 .SH NAME
 ascii-chat \- Video chat in your terminal
 .SH SYNOPSIS
@@ -140,15 +140,27 @@ Shows device index and name for each detected camera.
 .TP
 .BR \-\-fps =\fIFPS\fR
 Desired frame rate (1-144).
-Default: \fB60\fR (Unix), \fB30\fR (Windows)
+Default: \fB60\fR
 .SS "Snapshot Mode (Client Only)"
 .TP
 .BR \-S ", " \-\-snapshot
-Capture a single frame, convert to ASCII, print, and exit.
-Does not connect to any server.
+Connect to a server and print at least one frame, then exit. 
+Some webcams "warm up" and need time, so there is --snapshot\-delay to control how long after the camera starts before a frame is sampled.
+In your terimanl you can pipe the stdout of \fIascii-chat client --snapshot\fR a file to take a photo.
+--snapshot is useful for testing, scripting, ai agent like Claude and Cursor, and CI/CD pipelines. It's also very useful when combined with \-\-mirror.
+.PP
+Connection behavior in snapshot mode:
+.RS
+.IP \(bu 2
+\fBNo retries\fR: If the connection fails, exits immediately with error code 1
+instead of retrying. Ideal for scripting and CI/CD pipelines.
+.IP \(bu 2
+\fBNo reconnection\fR: If the connection is lost during capture, exits with an error
+instead of attempting to reconnect.
+.RE
 .TP
 .BR \-D ", " \-\-snapshot\-delay =\fISECONDS\fR
-Delay in seconds before capturing snapshot (for webcam warmup).
+Delay in seconds before capturing snapshot (for frame warmup).
 Default: \fB3.0\fR
 .SS "Mirror Mode (Client Only)"
 .TP
@@ -158,6 +170,7 @@ to a server. This is a local-only mode that captures from your webcam,
 converts the video to ASCII art in real-time, and displays it in your terminal.
 Useful for testing your webcam setup or just watching yourself in ASCII.
 Press Ctrl-C to exit.
+Very useful when combined with \-\-snapshot.
 .PP
 Note: Mirror mode is incompatible with audio (\fB\-\-audio\fR).
 .SS "Audio Options (Client Only)"
@@ -201,6 +214,14 @@ Implies \-\-encrypt.
 Password for connection encryption. If PASSWORD is not provided,
 prompts interactively. Both client and server must use the same password.
 Implies \-\-encrypt.
+.RS
+.IP \(bu 2
+\fBLength\fR: 8-256 characters (inclusive)
+.IP \(bu 2
+\fBCharacters\fR: Any UTF-8 characters are supported. Cannot contain null bytes.
+.IP \(bu 2
+\fBKey Derivation\fR: Uses Argon2id (memory-hard, ~64MB RAM, ~0.1s)
+.RE
 .TP
 .BR \-F ", " \-\-keyfile =\fIFILE\fR
 Read encryption key from FILE. Implies \-\-encrypt.
@@ -214,7 +235,9 @@ Prevents man-in-the-middle attacks. Can be a key string or path to .pub file.
 .TP
 .BR \-\-client\-keys =\fIFILE\fR
 (Server only) File containing allowed client public keys for authentication.
-Format is similar to SSH authorized_keys file.
+Uses SSH \fIauthorized_keys\fR format: one key per line, each line formatted as
+\fCssh-ed25519 AAAAC3... [comment]\fR. Also accepts \fIknown_hosts\fR format.
+Only Ed25519 keys are parsed; RSA/ECDSA keys in the file are ignored.
 .SS "Configuration"
 .TP
 .BR \-\-config =\fIPATH\fR
@@ -252,6 +275,10 @@ ascii-chat client \-\-snapshot \-\-color\-mode truecolor
 .nf
 ascii-chat client \-\-mirror \-\-color\-mode truecolor
 .fi
+.SS "Capture local webcam snapshot (no server)"
+.nf
+ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 1.0
+.fi
 .SS "Test without webcam using test pattern"
 .nf
 ascii-chat client \-\-test\-pattern \-\-color\-mode truecolor
@@ -264,6 +291,104 @@ ascii-chat client \-\-render\-mode half\-block \-\-utf8
 .nf
 ascii-chat client \-\-key github:username \-\-address example.com
 .fi
+.SS "Use Unicode block characters for higher contrast"
+.nf
+ascii-chat client \-\-palette blocks \-\-utf8
+.fi
+.SH PALETTES
+Built-in ASCII character palettes for different visual styles.
+Characters are ordered from darkest (leftmost) to brightest (rightmost).
+.TP
+.B standard
+Default palette using ASCII characters only (no UTF-8 required).
+.br
+Characters: \fC   ...',;:clodxkO0KXNWM\fR
+.TP
+.B blocks
+Unicode block shading characters for smooth gradients (requires UTF-8).
+.br
+Characters: \fC   \[u2591]\[u2591]\[u2592]\[u2592]\[u2593]\[u2593]\[u2588]\[u2588]\fR
+.TP
+.B digital
+Digital/tech aesthetic with Unicode characters (requires UTF-8).
+.br
+Characters: \fC   -=\[u2261]\[u2263]\[u25B0]\[u25B1]\[u25FC]\fR
+.TP
+.B minimal
+Minimal palette with basic ASCII characters only.
+.br
+Characters: \fC   .-+*#\fR
+.TP
+.B cool
+Vertical bar progression for unique visual effect (requires UTF-8).
+.br
+Characters: \fC   \[u2581]\[u2582]\[u2583]\[u2584]\[u2585]\[u2586]\[u2587]\[u2588]\fR
+.TP
+.B custom
+User-defined palette via \fB\-\-palette\-chars\fR option.
+.PP
+Use \fB\-\-utf8\fR to force UTF-8 support when using Unicode palettes.
+.SH RENDER MODES
+Three rendering modes control how colors are applied:
+.TP
+.B foreground
+Default mode. ASCII characters are colored but displayed on the terminal's
+default background. Best compatibility across terminals.
+.TP
+.B background
+Terminal background cells are colored. Characters appear in the default
+foreground color. Creates a blocky, pixel-art appearance.
+.TP
+.B half\-block
+Uses Unicode half-block characters (\[u2580], \[u2584]) to achieve 2x vertical
+resolution. Each character cell displays two pixels (top and bottom halves).
+Requires UTF-8 support (\fB\-\-utf8\fR).
+.SH CONFIGURATION
+Configuration can be stored in a TOML file at the default location
+(see FILES section) or specified via \fB\-\-config\fR.
+.PP
+.B Configuration Priority:
+.RS
+Command-line arguments override config file values.
+Config file values override default values.
+.RE
+.PP
+.B Configuration Sections:
+.RS
+.IP \(bu 2
+\fB[network]\fR: port
+.IP \(bu 2
+\fB[server]\fR: bind_ipv4, bind_ipv6
+.IP \(bu 2
+\fB[client]\fR: address, width, height, webcam_index, webcam_flip, color_mode,
+render_mode, fps, stretch, quiet, snapshot_mode, snapshot_delay, test_pattern,
+show_capabilities, force_utf8
+.IP \(bu 2
+\fB[audio]\fR: enabled, device
+.IP \(bu 2
+\fB[palette]\fR: type, chars
+.IP \(bu 2
+\fB[crypto]\fR: encrypt_enabled, key, password, keyfile, no_encrypt,
+server_key (client), client_keys (server)
+.IP \(bu 2
+\fB[logging]\fR: log_file
+.RE
+.PP
+.B Security Warning:
+While passwords can be stored in the config file, this is discouraged.
+Use \fB\-\-password\fR interactively or environment variables instead.
+Secure your config file permissions if it contains sensitive data.
+.SH LIMITS
+.TP
+.B Maximum Clients
+Up to 10 clients can connect to a single server simultaneously.
+.TP
+.B Video Grid Layout
+Clients are arranged in an automatically-sized grid (e.g., 2x2, 3x3).
+The grid size adjusts based on the number of connected clients.
+.TP
+.B Frame Rate
+Default 60 FPS. Configurable from 1-144 FPS.
 .SH ENVIRONMENT
 .TP
 .B SSH_AUTH_SOCK
@@ -280,6 +405,11 @@ Terminal type, used for auto-detecting color capabilities.
 .TP
 .B COLORTERM
 Color terminal indicator. Set to "truecolor" or "24bit" for truecolor support.
+.TP
+.B WEBCAM_DISABLED
+Automatically enables test pattern mode when set to "1", "true", "yes", or "on".
+Useful for CI/CD pipelines and testing environments without a physical webcam.
+Equivalent to passing \fB\-\-test\-pattern\fR.
 .SH FILES
 .TP
 .I ~/.ssh/id_ed25519
@@ -360,6 +490,57 @@ Encryption is enabled by default. Use \fB\-\-no\-encrypt\fR to disable it.
 Use \fB\-\-server\-key\fR on the client to verify server identity and prevent
 man-in-the-middle attacks. Use \fB\-\-client\-keys\fR on the server to restrict
 access to specific clients.
+.SS "Trust On First Use (TOFU)"
+When connecting to a server without \fB\-\-server\-key\fR, ascii-chat uses
+TOFU verification similar to SSH. On first connection, the server's identity
+key fingerprint is displayed and stored in \fIknown_hosts\fR. Subsequent
+connections verify the server key matches the stored fingerprint.
+.PP
+If a server's key changes (possible MITM attack), the connection is rejected
+with a warning. To connect anyway, remove the server entry from
+\fIknown_hosts\fR and reconnect.
+.SH NOTES
+.IP \(bu 2
+\fBEd25519 Keys Only\fR: Only Ed25519 SSH keys are supported. RSA and ECDSA keys
+are NOT supported due to libsodium limitations. Generate Ed25519 keys with:
+\fCssh-keygen -t ed25519\fR
+.IP \(bu 2
+\fBTerminal Detection\fR: Color capabilities are auto-detected from $COLORTERM,
+$TERM, and terminal queries. Use \fB\-\-show\-capabilities\fR to see what was detected.
+If detection fails, terminal size falls back to 110x70 characters.
+.IP \(bu 2
+\fBWebcam Warmup\fR: Many webcams need 1-3 seconds to adjust exposure and focus.
+The \fB\-\-snapshot\-delay\fR option (default 3.0s) allows time for this.
+.IP \(bu 2
+\fBSSH Agent\fR: For password-free authentication with encrypted SSH keys,
+use ssh-agent. Set $SSH_AUTH_SOCK to the agent socket path. Keys stay in the agent
+and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR in 
+your shell profile and use \fCssh-add -s\fR to add keys to the agent.
+.IP \(bu 2
+\fBGitHub/GitLab Keys\fR: Use \fBgithub:username\fR or \fBgitlab:username\fR
+to fetch public keys directly. Only the first Ed25519 key is used.
+.IP \(bu 2
+\fBRemote Sessions\fR: When using ascii-chat over SSH or in tmux/screen,
+truecolor may not work if $COLORTERM isn't forwarded. Try
+\fB\-\-color\-mode truecolor\fR to force it, or add \fCset -g default-terminal "xterm-256color"\fR
+to your tmux.conf.
+.IP \(bu 2
+\fBUTF-8 Palettes\fR: The "blocks", "digital", and "cool" palettes require UTF-8
+terminal support. Use \fB\-\-utf8\fR to force UTF-8 mode if auto-detection fails.
+.IP \(bu 2
+\fBHalf-Block Mode\fR: The \fB\-\-render\-mode half\-block\fR option doubles vertical
+resolution but requires UTF-8 support. Always use \fB\-\-utf8\fR with half-block mode.
+.IP \(bu 2
+\fBPerformance\fR: For best performance, use truecolor mode with a modern
+terminal emulator (kitty, alacritty, iTerm2, Windows Terminal).
+256-color mode requires color distance calculations which are slower.
+.IP \(bu 2
+\fBAspect Ratio\fR: By default, the video preserves aspect ratio with letterboxing.
+Use \fB\-\-stretch\fR to fill the entire terminal (may distort the image).
+.IP \(bu 2
+\fBEncrypted SSH Keys\fR: Encrypted private keys work well with either ssh-agent or
+the $ASCII_CHAT_SSH_PASSWORD environment variable. The passphrase prompt
+only works in interactive terminals.
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .SH AUTHOR

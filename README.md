@@ -205,7 +205,7 @@ Run `ascii-chat client --help` to see all client options:
 
 - `-q --quiet`: Disable console logging (logs only to file)
 - `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
-- `-S --snapshot`: Capture one frame and exit (useful for testing)
+- `-S --snapshot`: Connect to server, capture one frame, and exit. Useful for scripting, llm ai agents, and ci. You can pipe the output to a file.
 - `-D --snapshot-delay SECONDS`: Delay before snapshot in seconds (default: 3.0/5.0)
 - `-L --log-file FILE`: Redirect logs to file
 - `-v --version`: Display version information
@@ -722,6 +722,13 @@ changing command-line arguments.
   - **Purpose**: Test environment detection
   - **Values**: Any non-empty value indicates test environment
   - **Used for**: Reducing test data sizes and adjusting performance expectations
+
+- `WEBCAM_DISABLED`
+
+  - **Purpose**: Automatically enables test pattern mode without requiring `--test-pattern` flag
+  - **Values**: `1`, `true`, `yes`, or `on` (case-insensitive for string values)
+  - **Used for**: CI/CD pipelines and testing environments where no physical webcam is available
+  - **Effect**: Sets `opt_test_pattern = true`, causing the client to use a generated test pattern instead of webcam input
 
 ## TODO
 
