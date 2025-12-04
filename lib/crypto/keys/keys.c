@@ -43,44 +43,14 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     return parse_gpg_key(input + 4, key_out);
   }
 
-  // Try HTTPS key fetching (GitHub/GitLab)
+  // Try HTTPS key fetching (GitHub/GitLab) - delegate to parse_public_keys and return first
   if (strncmp(input, "github:", 7) == 0 || strncmp(input, "gitlab:", 7) == 0) {
-    // Parse GitHub/GitLab key references
-    const char *username = input + 7; // Skip "github:" or "gitlab:"
-    bool is_github = (strncmp(input, "github:", 7) == 0);
-    bool is_gpg = (strstr(username, ".gpg") != NULL);
-
-    char **keys = NULL;
+    public_key_t keys[1];
     size_t num_keys = 0;
-    asciichat_error_t result;
-
-    if (is_github) {
-      if (is_gpg) {
-        result = fetch_github_gpg_keys(username, &keys, &num_keys);
-      } else {
-        result = fetch_github_ssh_keys(username, &keys, &num_keys);
-      }
-    } else {
-      if (is_gpg) {
-        result = fetch_gitlab_gpg_keys(username, &keys, &num_keys);
-      } else {
-        result = fetch_gitlab_ssh_keys(username, &keys, &num_keys);
-      }
+    asciichat_error_t result = parse_public_keys(input, keys, &num_keys, 1);
+    if (result == ASCIICHAT_OK && num_keys > 0) {
+      *key_out = keys[0];
     }
-
-    if (result != ASCIICHAT_OK || num_keys == 0) {
-      return SET_ERRNO(ERROR_CRYPTO, "Failed to fetch keys from %s", is_github ? "GitHub" : "GitLab");
-    }
-
-    // Parse the first key
-    result = parse_public_key(keys[0], key_out);
-
-    // Free the keys array
-    for (size_t i = 0; i < num_keys; i++) {
-      SAFE_FREE(keys[i]);
-    }
-    SAFE_FREE(keys);
-
     return result;
   }
 
@@ -159,17 +129,31 @@ asciichat_error_t parse_private_key(const char *key_path, private_key_t *key_out
   return result;
 }
 
-asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys, size_t max_keys) {
-  if (!keys_file || !keys_out || !num_keys) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for client key parsing");
+// =============================================================================
+// Multi-Key Public Key Parsing
+// =============================================================================
+
+asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, size_t *num_keys, size_t max_keys) {
+  if (!input || !keys_out || !num_keys || max_keys == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for multi-key parsing");
   }
 
   *num_keys = 0;
 
-  // Check if this is a GitHub/GitLab reference
-  if (strncmp(keys_file, "github:", 7) == 0 || strncmp(keys_file, "gitlab:", 7) == 0) {
-    const char *username = keys_file + 7; // Skip "github:" or "gitlab:"
-    bool is_github = (strncmp(keys_file, "github:", 7) == 0);
+  // Check for direct SSH Ed25519 key format BEFORE checking for file paths
+  // (SSH keys can contain '/' in base64, which would match path_looks_like_path)
+  if (strncmp(input, "ssh-ed25519", 11) == 0) {
+    asciichat_error_t result = parse_public_key(input, &keys_out[0]);
+    if (result == ASCIICHAT_OK) {
+      *num_keys = 1;
+    }
+    return result;
+  }
+
+  // Check if this is a GitHub/GitLab reference - these support multiple keys
+  if (strncmp(input, "github:", 7) == 0 || strncmp(input, "gitlab:", 7) == 0) {
+    const char *username = input + 7; // Skip "github:" or "gitlab:"
+    bool is_github = (strncmp(input, "github:", 7) == 0);
     bool is_gpg = (strstr(username, ".gpg") != NULL);
 
     char **keys = NULL;
@@ -195,13 +179,12 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
                        username);
     }
 
-    // Parse each fetched key
+    // Parse each fetched key (only Ed25519 keys will succeed)
     for (size_t i = 0; i < num_fetched_keys && *num_keys < max_keys; i++) {
       if (parse_public_key(keys[i], &keys_out[*num_keys]) == ASCIICHAT_OK) {
         (*num_keys)++;
-      } else {
-        log_warn("Failed to parse fetched key from %s: %s", is_github ? "GitHub" : "GitLab", keys[i]);
       }
+      // Non-Ed25519 keys are silently skipped
     }
 
     // Free the keys array
@@ -211,52 +194,25 @@ asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_ou
     SAFE_FREE(keys);
 
     if (*num_keys == 0) {
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid keys found for %s user: %s", is_github ? "GitHub" : "GitLab",
+      return SET_ERRNO(ERROR_CRYPTO_KEY, "No valid Ed25519 keys found for %s user: %s", is_github ? "GitHub" : "GitLab",
                        username);
     }
 
+    log_info("Parsed %zu Ed25519 key(s) from %s user: %s", *num_keys, is_github ? "GitHub" : "GitLab", username);
     return ASCIICHAT_OK;
   }
 
-  if (!path_looks_like_path(keys_file)) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse client key source: %s", keys_file);
+  // For file paths, delegate to parse_keys_from_file
+  if (path_looks_like_path(input)) {
+    return parse_keys_from_file(input, keys_out, num_keys, max_keys);
   }
 
-  char *normalized_keys_path = NULL;
-  asciichat_error_t path_result = path_validate_user_path(keys_file, PATH_ROLE_CLIENT_KEYS, &normalized_keys_path);
-  if (path_result != ASCIICHAT_OK) {
-    SAFE_FREE(normalized_keys_path);
-    return path_result;
+  // For all other formats, use single-key parsing
+  asciichat_error_t result = parse_public_key(input, &keys_out[0]);
+  if (result == ASCIICHAT_OK) {
+    *num_keys = 1;
   }
-
-  FILE *f = platform_fopen(normalized_keys_path, "r");
-  if (!f) {
-    SAFE_FREE(normalized_keys_path);
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to open client keys file: %s", keys_file);
-  }
-
-  char line[BUFFER_SIZE_LARGE];
-
-  while (fgets(line, sizeof(line), f) && *num_keys < max_keys) {
-    // Remove newline
-    line[strcspn(line, "\r\n")] = 0;
-
-    // Skip empty lines and comments
-    if (strlen(line) == 0 || line[0] == '#') {
-      continue;
-    }
-
-    if (parse_public_key(line, &keys_out[*num_keys]) == ASCIICHAT_OK) {
-      (*num_keys)++;
-    } else {
-      SAFE_FREE(normalized_keys_path);
-      return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to parse client key: %s, keys: %d", line, num_keys);
-    }
-  }
-
-  (void)fclose(f);
-  SAFE_FREE(normalized_keys_path);
-  return ASCIICHAT_OK;
+  return result;
 }
 
 // =============================================================================

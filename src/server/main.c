@@ -588,7 +588,7 @@ static int init_server_crypto(void) {
 
   // Load client whitelist if provided
   if (strlen(opt_client_keys) > 0) {
-    if (parse_client_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
+    if (parse_public_keys(opt_client_keys, g_client_whitelist, &g_num_whitelisted_clients, MAX_CLIENTS) != 0) {
       SET_ERRNO(ERROR_CRYPTO_KEY, "Client key parsing failed: %s", opt_client_keys);
       return -1;
     }

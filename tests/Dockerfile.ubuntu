@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y \
   musl-tools musl-dev \
   libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
   libcriterion-dev libffi-dev \
+  libprotobuf-c-dev libprotobuf-c1 \
   libssl-dev \
   doxygen \
   dpkg-dev rpm \

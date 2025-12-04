@@ -44,7 +44,7 @@
  */
 
 /**
- * @brief Parse SSH/GPG public key from any format
+ * @brief Parse SSH/GPG public key from any format (returns first key only)
  * @param input Key input in various formats (see below)
  * @param key_out Output structure for parsed public key (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
@@ -53,8 +53,8 @@
  *
  * Supported formats:
  * - SSH Ed25519: "ssh-ed25519 AAAAC3... comment" (direct key string)
- * - GitHub SSH: "github:username" (fetches from https://github.com/username.keys, uses first Ed25519 key)
- * - GitLab SSH: "gitlab:username" (fetches from https://gitlab.com/username.keys, uses first Ed25519 key)
+ * - GitHub SSH: "github:username" (fetches from https://github.com/username.keys, returns first Ed25519 key)
+ * - GitLab SSH: "gitlab:username" (fetches from https://gitlab.com/username.keys, returns first Ed25519 key)
  * - GitHub GPG: "github:username.gpg" (fetches GPG key from https://github.com/username.gpg)
  * - GitLab GPG: "gitlab:username.gpg" (fetches GPG key from https://gitlab.com/username.gpg)
  * - GPG keyring: "gpg:0xKEYID" (shells out to `gpg --export KEYID`)
@@ -74,7 +74,7 @@
  *       Format "gpg:0xKEYID" may not work until GPG support is re-enabled.
  *
  * @note GitHub/GitLab fetching: Uses BearSSL for HTTPS requests. Requires network connectivity.
- *       Only first Ed25519 key is used for SSH format (multiple keys may be returned).
+ *       Only first Ed25519 key is returned. For multiple keys, use `parse_public_keys()` instead.
  *
  * @note File path: Reads first line of file and parses as SSH key format.
  *       File must exist and be readable. For files with multiple keys (one per line),
@@ -88,6 +88,41 @@
  * @ingroup keys
  */
 asciichat_error_t parse_public_key(const char *input, public_key_t *key_out);
+
+/**
+ * @brief Parse all SSH/GPG public keys from any format (returns all keys)
+ * @param input Key input in various formats (see parse_public_key for supported formats)
+ * @param keys_out Output array for parsed public keys (must not be NULL)
+ * @param num_keys Output parameter for number of keys parsed (must not be NULL)
+ * @param max_keys Maximum number of keys to parse (must be > 0)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Similar to parse_public_key(), but returns ALL keys for formats that support multiple keys:
+ *
+ * **Multiple key support:**
+ * - GitHub SSH: "github:username" - returns ALL Ed25519 keys from user's profile
+ * - GitLab SSH: "gitlab:username" - returns ALL Ed25519 keys from user's profile
+ * - File path: Returns all keys from file (one per line)
+ *
+ * **Single key formats (behaves like parse_public_key):**
+ * - SSH Ed25519: "ssh-ed25519 AAAAC3..." - returns single key
+ * - Raw hex: 64 hex chars - returns single key
+ * - GPG formats: Returns single key
+ *
+ * This function is useful when you need to verify against ANY of a user's keys,
+ * such as when a user has multiple SSH keys for different machines on their
+ * GitHub/GitLab account.
+ *
+ * @note GitHub/GitLab: Users often have multiple SSH keys for different machines.
+ *       This function fetches all keys so you can verify against any of them.
+ *
+ * @note Key filtering: Only Ed25519 keys are returned. RSA/ECDSA keys are skipped.
+ *
+ * @warning Network operations: GitHub/GitLab fetching requires network connectivity.
+ *
+ * @ingroup keys
+ */
+asciichat_error_t parse_public_keys(const char *input, public_key_t *keys_out, size_t *num_keys, size_t max_keys);
 
 /** @} */
 
@@ -417,44 +452,6 @@ asciichat_error_t parse_gpg_key(const char *gpg_key_text, public_key_t *key_out)
  * @ingroup keys
  */
 asciichat_error_t parse_keys_from_file(const char *path, public_key_t *keys, size_t *num_keys, size_t max_keys);
-
-/**
- * @brief Parse client keys from file, comma-separated list, or single key
- * @param keys_file Keys input (file path, comma-separated list, or single key)
- * @param keys_out Output array for parsed public keys (must not be NULL)
- * @param num_keys_out Output parameter for number of keys parsed (must not be NULL)
- * @param max_keys Maximum number of keys to parse (must be > 0)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Parses client keys from various input formats:
- * - **File path**: Path to file containing SSH public keys (one per line)
- * - **Comma-separated list**: "key1,key2,key3" (parses each key)
- * - **Single key**: Direct key string (ssh-ed25519 format or raw hex)
- *
- * **File support**:
- * When a file path is provided, the file is read and parsed for SSH public keys.
- * The file can contain multiple public keys, one per line. Supported file formats:
- * - **authorized_keys format**: Standard SSH authorized_keys file format (one key per line)
- * - **.pub file with multiple entries**: File containing multiple SSH public key
- *   entries, one per line (each line in `ssh-ed25519 AAAAC3... comment` format)
- * - **known_hosts format**: SSH known_hosts file format (all keys from file)
- *
- * @note Supported formats: authorized_keys (one key per line), .pub files with multiple
- *       entries (one per line), known_hosts, bare base64, SSH Ed25519 format
- *
- * @note Comma-separated list: Splits by comma and parses each key separately.
- *       Skips invalid keys and continues parsing.
- *
- * @note File detection: If input looks like a file path (contains '/'), attempts to read from file.
- *       Otherwise, treats as direct key string or comma-separated list.
- *
- * @warning File paths: File must exist and be readable if input is a file path.
- *          Returns error if file cannot be opened.
- *
- * @ingroup keys
- */
-asciichat_error_t parse_client_keys(const char *keys_file, public_key_t *keys_out, size_t *num_keys_out,
-                                    size_t max_keys);
 
 /** @} */
 
