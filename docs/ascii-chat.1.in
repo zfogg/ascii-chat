@@ -514,7 +514,7 @@ The \fB\-\-snapshot\-delay\fR option (default 3.0s) allows time for this.
 .IP \(bu 2
 \fBSSH Agent\fR: For password-free authentication with encrypted SSH keys,
 use ssh-agent. Set $SSH_AUTH_SOCK to the agent socket path. Keys stay in the agent
-and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR in 
+and never touch disk in plaintext. Tip: put \fBeval $(ssh-agent) > /dev/null\fR in
 your shell profile and use \fCssh-add -s\fR to add keys to the agent.
 .IP \(bu 2
 \fBGitHub/GitLab Keys\fR: Use \fBgithub:username\fR or \fBgitlab:username\fR
@@ -539,10 +539,149 @@ terminal emulator (kitty, alacritty, iTerm2, Windows Terminal).
 .IP \(bu 2
 \fBAspect Ratio\fR: By default, the video preserves aspect ratio with letterboxing.
 Use \fB\-\-stretch\fR to fill the entire terminal (may distort the image).
+Terminal characters are assumed to be ~2:1 height:width ratio. Monospace fonts
+with different aspect ratios may show distorted video.
 .IP \(bu 2
 \fBEncrypted SSH Keys\fR: Encrypted private keys work well with either ssh-agent or
 the $ASCII_CHAT_SSH_PASSWORD environment variable. The passphrase prompt
 only works in interactive terminals.
+.SH GOTCHAS
+This section documents non-obvious behaviors, platform differences, and edge cases
+that may affect your experience with ascii-chat.
+.SS "Connection and Networking"
+.IP \(bu 2
+\fBConnection Timeout\fR: Connection establishment times out after 3 seconds.
+If the server is slow to respond or network is congested, connection may fail
+even if the server is running. The client will retry with exponential backoff.
+.IP \(bu 2
+\fBReceive Timeout\fR: Connections are considered dead after 15 seconds without
+data. With TCP keepalive enabled (default), dead connections are detected within
+~100 seconds (60s idle + 10s intervals \(mu 8 probes).
+.IP \(bu 2
+\fBSend Timeout\fR: Network sends have a 5-second base timeout. Large frames
+(>256KB) get proportionally longer timeouts (up to 60 seconds maximum) to
+prevent false timeout failures on slow networks.
+.IP \(bu 2
+\fBReconnection Behavior\fR: Client uses exponential backoff on connection loss
+(initial delay: 10ms, grows by 200ms per attempt, max 5 seconds). Connection
+loss triggers automatic reconnection\(emno manual restart required.
+.IP \(bu 2
+\fBSnapshot Mode No Retry\fR: In \fB\-\-snapshot\fR mode, connection failures
+cause immediate exit with error code 1. There are no retries or reconnection
+attempts. This is intentional for scripting and CI/CD usage.
+.IP \(bu 2
+\fBMaximum Packet Size\fR: Network packets are limited to 5MB. Extremely large
+terminal sizes may produce frames that exceed this limit, causing frame drops.
+.SS "Webcam and Video"
+.IP \(bu 2
+\fBmacOS Webcam Warmup\fR: macOS webcams display pure black initially and fade
+to color over ~3-4 seconds. The default \fB\-\-snapshot\-delay\fR is 4.0 seconds
+on macOS (3.0 seconds on Linux/Windows) to account for this. Capturing too
+quickly may result in black or very dark frames.
+.IP \(bu 2
+\fBWebcam Flip Default\fR: The webcam image is \fBflipped horizontally by default\fR
+(mirror mode) so you see yourself as in a mirror. Use \fB\-\-no\-flip\fR to disable.
+Flipping is applied before ASCII conversion.
+.IP \(bu 2
+\fBMaximum Resolution\fR: Input images are limited to 3840\(mu2160 pixels (4K).
+Larger images are rejected. This limit applies to the raw webcam capture, not
+the ASCII output size.
+.IP \(bu 2
+\fBFirst Frame Clears Display\fR: On the first video frame received, the console
+is cleared and scrollback is erased. This provides a clean slate for video
+display but destroys previous terminal content.
+.IP \(bu 2
+\fBGrid Transition Flash\fR: When a client joins or leaves the call, the display
+clears briefly before rendering the new grid layout. This prevents rendering
+artifacts but causes a visible transition.
+.SS "Audio"
+.IP \(bu 2
+\fBAudio Mixing on Server\fR: All audio mixing happens on the server. Clients
+simply capture and stream audio. Each client can send ~172 audio packets per
+second (separate from video FPS).
+.IP \(bu 2
+\fBMaximum Audio Sources\fR: The server mixer supports up to 10 simultaneous
+audio streams (same as MAX_CLIENTS). With more than 10 clients, some audio
+inputs would be discarded.
+.IP \(bu 2
+\fBAudio Bus Compression\fR: The server applies bus compression to mixed audio
+to prevent clipping when multiple clients speak simultaneously. This reduces
+peak loudness but may make quiet speakers less audible.
+.IP \(bu 2
+\fBJitter Buffer Latency\fR: Audio uses a jitter buffer to smooth playback.
+The buffer must reach a fill threshold before audio plays, adding slight latency
+but preventing underrun artifacts.
+.SS "Encryption and Authentication"
+.IP \(bu 2
+\fBEncryption Enabled by Default\fR: Encryption is enabled automatically when
+SSH keys or passwords are provided. Use \fB\-\-no\-encrypt\fR to explicitly
+disable encryption (not recommended for untrusted networks).
+.IP \(bu 2
+\fBNo MITM Protection by Default\fR: Default encryption (ephemeral Diffie-Hellman)
+protects against eavesdropping but \fBnot\fR man-in-the-middle attacks. Use
+\fB\-\-password\fR or \fB\-\-key\fR with \fB\-\-server\-key\fR for full security.
+.IP \(bu 2
+\fBPassword Requirements\fR: Passwords must be 8-256 characters. Shorter or
+longer passwords are rejected. Key derivation uses Argon2id which requires
+~64MB RAM and ~0.1 seconds.
+.IP \(bu 2
+\fBKnown Hosts TOFU\fR: Without \fB\-\-server\-key\fR, the client uses Trust On
+First Use (TOFU). The server's fingerprint is stored in \fIknown_hosts\fR on
+first connection and verified on subsequent connections. Changed server keys
+are rejected with a warning.
+.IP \(bu 2
+\fBNon-Interactive Prompts Skipped\fR: In non-interactive shells (pipes,
+background jobs, scripts), security prompts are skipped. The client will
+continue with degraded security when running non-interactively.
+.SS "Platform Differences"
+.IP \(bu 2
+\fBDefault Frame Rate\fR: Default is 60 FPS on Unix/Linux/macOS and 30 FPS on
+Windows. This can be changed with \fB\-\-fps\fR (valid range: 1-144).
+.IP \(bu 2
+\fBSnapshot Delay\fR: Default is 4.0 seconds on macOS (due to slow webcam
+warmup), 3.0 seconds on other platforms.
+.IP \(bu 2
+\fBTerminal Resize\fR: Terminal size is detected once at startup. Dynamic
+resizing (SIGWINCH) is \fBnot\fR monitored. Restart the client after resizing
+your terminal for the new dimensions to take effect.
+.IP \(bu 2
+\fBWindows Audio Priority\fR: Real-time audio thread priority is not yet
+implemented on Windows. Audio may have higher latency compared to Unix systems.
+.SS "Compression and Data"
+.IP \(bu 2
+\fBCompression Threshold\fR: Frames smaller than 1KB are sent uncompressed.
+The compression overhead isn't worth it for small frames.
+.IP \(bu 2
+\fBCompression Ratio Check\fR: If compression would make data larger (rare),
+the original uncompressed data is sent instead.
+.IP \(bu 2
+\fBCRC32 Verification\fR: All frames include CRC32 checksums. Checksum mismatches
+indicate TCP stream corruption\(emthe frame is dropped but the connection
+continues. This is logged but not visible to users.
+.SS "Logging and Debugging"
+.IP \(bu 2
+\fBLog File Rotation\fR: Log files auto-rotate when they exceed 3MB. The last
+2MB of the old log is preserved.
+.IP \(bu 2
+\fBTerminal Logging Disabled During Video\fR: Console logging is disabled after
+the first video frame to prevent log lines from interfering with video display.
+Logging continues to file. Logging is re-enabled if the connection is lost.
+.IP \(bu 2
+\fBVerbose Stacking\fR: The \fB\-V\fR option is stackable: \fB\-V\fR for debug,
+\fB\-VV\fR for dev-level, \fB\-VVV\fR for maximum verbosity.
+.SS "Known Limitations"
+.IP \(bu 2
+\fBNo Text Chat\fR: ascii-chat only supports video and audio. There is no
+built-in text chat or messaging functionality.
+.IP \(bu 2
+\fBNo Screen Sharing\fR: Only webcam video is supported. Desktop or screen
+sharing is not available.
+.IP \(bu 2
+\fBNo Bandwidth Limiting\fR: There is no built-in bandwidth throttling. On
+slow networks, large frames may cause timeouts.
+.IP \(bu 2
+\fBNo Keyboard Input\fR: The client does not process keyboard input during
+video display. Press Ctrl-C to exit.
 .SH BUGS
 Report bugs at: https://github.com/zfogg/ascii-chat/issues
 .SH AUTHOR
