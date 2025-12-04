@@ -5,10 +5,7 @@
       "label": "Configure (CMake default preset)",
       "type": "shell",
       "command": "cmake",
-      "args": [
-        "--preset",
-        "default"
-      ],
+      "args": ["--preset", "default"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -24,11 +21,7 @@
       "label": "Build (CMake default Debug)",
       "type": "shell",
       "command": "cmake",
-      "args": [
-        "--build",
-        "--preset",
-        "default"
-      ],
+      "args": ["--build", "--preset", "default"],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -38,8 +31,6 @@
         "clear": true,
         "focus": false
       },
-      "dependsOrder": "sequence",
-      "dependsOn": "Configure (CMake default preset)",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -48,4 +39,3 @@
     }
   ]
 }
-
