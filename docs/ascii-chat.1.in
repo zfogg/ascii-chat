@@ -418,6 +418,12 @@ Default SSH Ed25519 private key used for encryption if \fB\-\-key\fR is not spec
 .I ~/.ssh/id_ed25519.pub
 Public key corresponding to the default private key.
 .TP
+.I config.toml
+Configuration file in the configuration directory.
+.TP
+.I known_hosts
+Known hosts file for TOFU (Trust On First Use) server verification.
+.TP
 .I $XDG_CONFIG_HOME/ascii-chat/ \fRor\fI ~/.ascii-chat/
 Configuration directory on Linux/macOS.
 Uses $XDG_CONFIG_HOME/ascii-chat/ if XDG_CONFIG_HOME is set, otherwise ~/.ascii-chat/.
@@ -435,12 +441,6 @@ Used for server deployments or shared configurations.
 .I /usr/local/etc/ascii-chat/config.toml
 Alternative system-wide configuration file (BSD-style path).
 Used for locally-installed configurations.
-.TP
-.I config.toml
-Configuration file in the configuration directory.
-.TP
-.I known_hosts
-Known hosts file for TOFU (Trust On First Use) server verification.
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
 .TP
