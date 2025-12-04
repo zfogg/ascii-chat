@@ -340,7 +340,7 @@ jobs:
           mkdir -p dist
           shopt -s nullglob
           # CPack already includes architecture in filename, just copy
-          for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.zip; do
+          for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.zip build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
             cp "$artifact" dist/
           done
