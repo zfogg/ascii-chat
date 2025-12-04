@@ -429,6 +429,13 @@ int client_main(void) {
         return 1;
       }
 
+      // In snapshot mode, exit immediately on connection failure - no retries
+      // Snapshot mode is for quick single-frame captures, not persistent connections
+      if (opt_snapshot_mode) {
+        log_error("Connection failed in snapshot mode - exiting without retry");
+        return 1;
+      }
+
       // Connection failed - increment attempt counter and retry
       reconnect_attempt++;
 
@@ -466,6 +473,13 @@ int client_main(void) {
     if (protocol_start_connection() != 0) {
       log_error("Failed to start connection protocols");
       server_connection_close();
+
+      // In snapshot mode, exit immediately on protocol failure - no retries
+      if (opt_snapshot_mode) {
+        log_error("Protocol startup failed in snapshot mode - exiting without retry");
+        return 1;
+      }
+
       continue;
     }
 
@@ -506,6 +520,13 @@ int client_main(void) {
 
     protocol_stop_connection();
     server_connection_close();
+
+    // In snapshot mode, exit immediately on connection loss - no reconnection
+    // Snapshot mode is for quick single-frame captures, not persistent connections
+    if (opt_snapshot_mode) {
+      log_error("Connection lost in snapshot mode - exiting without reconnection");
+      return 1;
+    }
 
     // Add a brief delay before attempting reconnection to prevent excessive reconnection loops
     if (has_ever_connected) {
