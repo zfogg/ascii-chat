@@ -1528,6 +1528,14 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     log_set_level((log_level_t)new_level);
   }
 
+  // Check WEBCAM_DISABLED environment variable to enable test pattern mode
+  // Useful for CI/CD and testing environments without a physical webcam
+  const char *webcam_disabled = SAFE_GETENV("WEBCAM_DISABLED");
+  if (webcam_disabled && (strcmp(webcam_disabled, "1") == 0 || strcasecmp(webcam_disabled, "true") == 0 ||
+                          strcasecmp(webcam_disabled, "yes") == 0 || strcasecmp(webcam_disabled, "on") == 0)) {
+    opt_test_pattern = true;
+  }
+
   // Check for incompatible options: mirror mode and audio are not compatible
   if (opt_mirror_mode && opt_audio_enabled) {
     (void)fprintf(stderr, "Error: --mirror and --audio are incompatible options.\n");

@@ -618,7 +618,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
       caps.color_level = override_level;
 
       // Update capabilities flags and count
-      caps.capabilities &= ~(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
+      caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
       switch (override_level) {
       case TERM_COLOR_TRUECOLOR:
         caps.capabilities |= TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16;
