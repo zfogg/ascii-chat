@@ -146,7 +146,11 @@ bool terminal_supports_utf8(void) {
  * @return 0 on success, non-zero on failure
  */
 asciichat_error_t terminal_clear_screen(void) {
-  return system("clear");
+  // Use ANSI escape codes instead of system("clear") to avoid command processor
+  // \033[2J clears entire screen, \033[H moves cursor to home position
+  printf("\033[2J\033[H");
+  fflush(stdout);
+  return ASCIICHAT_OK;
 }
 
 /**
