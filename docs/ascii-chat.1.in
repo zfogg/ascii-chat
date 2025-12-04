@@ -284,6 +284,14 @@ Configuration directory on Windows.
 Uses %APPDATA%\eascii-chat\e if APPDATA is set, otherwise ~\e.ascii-chat\e.
 Contains config.toml and known_hosts.
 .TP
+.I /etc/ascii-chat/config.toml
+System-wide configuration file on Linux/macOS.
+Used for server deployments or shared configurations.
+.TP
+.I /usr/local/etc/ascii-chat/config.toml
+Alternative system-wide configuration file (BSD-style path).
+Used for locally-installed configurations.
+.TP
 .I config.toml
 Configuration file in the configuration directory.
 .TP
