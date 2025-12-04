@@ -414,6 +414,4 @@ if(DEFINED OUTPUT_DIR)
     )
 endif()
 
-install(TARGETS ascii-instr-defer
-    RUNTIME DESTINATION bin
-)
+# NOTE: No install() command - this is a build-time tool only, not distributed
