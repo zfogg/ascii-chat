@@ -239,6 +239,19 @@ bool path_looks_like_path(const char *value);
  * Resolves ~, relative segments, and enforces that the resulting absolute path
  * resides within the trusted base directories for the supplied role.
  *
+ * Trusted base directories include:
+ * - Current working directory
+ * - System temp directory
+ * - User config directory (~/.ascii-chat/ or %APPDATA%\ascii-chat\)
+ * - User home directory
+ * - User SSH directory (~/.ssh/)
+ * - System config directories (Unix: /etc/ascii-chat/, /usr/local/etc/ascii-chat/)
+ * - System log directories (Unix: /var/log/, /var/tmp/)
+ * - System-wide app data (Windows: %PROGRAMDATA%\ascii-chat\)
+ *
+ * @note For PATH_ROLE_LOG_FILE, the base directory check is skipped to allow
+ *       logging to any writable location.
+ *
  * @param input          Original user-provided path (must not be NULL)
  * @param role           Intended usage category
  * @param normalized_out Output pointer receiving SAFE_MALLOC'd canonical path

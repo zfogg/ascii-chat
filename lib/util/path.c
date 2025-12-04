@@ -534,6 +534,9 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     append_base_if_valid(program_data_logs, bases, &base_count);
   }
 #else
+  // System-wide config directories (for server deployments)
+  append_base_if_valid("/etc/ascii-chat", bases, &base_count);
+  append_base_if_valid("/usr/local/etc/ascii-chat", bases, &base_count);
   append_base_if_valid("/var/log", bases, &base_count);
   append_base_if_valid("/var/tmp", bases, &base_count);
 #endif
