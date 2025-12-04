@@ -39,6 +39,7 @@
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/password.h"
+#include "platform/internal.h"
 #include "version.h"
 #include "crypto/crypto.h"
 #include "util/levenshtein.h"
@@ -1531,8 +1532,9 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
   // Useful for CI/CD and testing environments without a physical webcam
   const char *webcam_disabled = SAFE_GETENV("WEBCAM_DISABLED");
-  if (webcam_disabled && (strcmp(webcam_disabled, "1") == 0 || strcasecmp(webcam_disabled, "true") == 0 ||
-                          strcasecmp(webcam_disabled, "yes") == 0 || strcasecmp(webcam_disabled, "on") == 0)) {
+  if (webcam_disabled &&
+      (strcmp(webcam_disabled, "1") == 0 || platform_strcasecmp(webcam_disabled, "true") == 0 ||
+       platform_strcasecmp(webcam_disabled, "yes") == 0 || platform_strcasecmp(webcam_disabled, "on") == 0)) {
     opt_test_pattern = true;
   }
 
