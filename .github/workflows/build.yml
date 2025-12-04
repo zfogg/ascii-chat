@@ -67,10 +67,10 @@ jobs:
           #   vcpkg-packages: ""
           #   vcpkg-static-packages: ""
 
-          # macOS AMD64 (Intel)
+          # macOS AMD64 (Intel) - using macos-15-intel (last Intel runner, supported until Aug 2027)
           - os: macOS
             arch: amd64
-            runner: macos-13
+            runner: macos-15-intel
             vcpkg-packages: ""
             vcpkg-static-packages: ""
 
