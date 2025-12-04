@@ -43,13 +43,14 @@ set(CPACK_PACKAGE_INSTALL_DIRECTORY "" CACHE STRING "Installation directory over
 # Note: Welcome and ReadMe files are created in Install.cmake before include(CPack)
 # This is required because CPack needs them to be set before it's included
 
-# Background image for installer
-if(EXISTS "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
-    set(CPACK_PRODUCTBUILD_BACKGROUND "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
+# Resources directory containing installer assets (background images, etc.)
+# CPACK_PRODUCTBUILD_BACKGROUND must be relative to this directory
+if(EXISTS "${CMAKE_SOURCE_DIR}/images")
+    set(CPACK_PRODUCTBUILD_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/images")
+    if(EXISTS "${CMAKE_SOURCE_DIR}/images/installer_icon.png")
+        set(CPACK_PRODUCTBUILD_BACKGROUND "installer_icon.png")
+    endif()
 endif()
-
-# Resources directory (can contain background images, license files, etc.)
-# set(CPACK_PRODUCTBUILD_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/packaging/resources")
 
 # Code signing identity (if you want to sign the package)
  set(CPACK_PRODUCTBUILD_IDENTITY_NAME "Zachary Fogg")
