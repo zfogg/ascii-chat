@@ -212,7 +212,7 @@ function(build_llvm_tool)
             BINARY_DIR "${_build_dir}"
             CMAKE_ARGS ${_cmake_args}
             BUILD_ALWAYS FALSE
-            INSTALL_COMMAND ""
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E true
             BUILD_BYPRODUCTS "${_tool_exe}"
         )
 
