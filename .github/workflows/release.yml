@@ -256,6 +256,15 @@ jobs:
           os: ubuntu
           extra-packages: "rpm dpkg-dev fakeroot"
 
+      - name: Verify packaging tools are available
+        run: |
+          echo "Verifying packaging tools..."
+          which dpkg-deb || (echo "ERROR: dpkg-deb not found" && exit 1)
+          which rpmbuild || (echo "ERROR: rpmbuild not found" && exit 1)
+          dpkg-deb --version
+          rpmbuild --version
+          echo "All packaging tools verified!"
+
       - name: Configure and package with CPack
         run: |
           cmake --preset release
@@ -263,7 +272,10 @@ jobs:
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
           cmake --build build_release --target docs
-          cmake --build build_release --target package
+
+          # Run CPack with verbose output to diagnose DEB/RPM generation issues
+          cd build_release
+          cpack --verbose
 
       - name: Print build logs on failure
         if: failure()
