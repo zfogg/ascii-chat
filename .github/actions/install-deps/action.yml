@@ -340,82 +340,69 @@ runs:
     # The official LLVM Windows installer and scoop/choco/winget packages only
     # include compiler binaries (clang.exe), NOT the development libraries
     # (LLVMSupport.lib, clangTooling.lib, etc.) needed to build the defer tool.
-    # We use vovkos/llvm-package-windows which provides full LLVM dev libraries.
+    # AMD64: Use vovkos/llvm-package-windows which provides full LLVM dev libraries.
+    # ARM64: Use scoop's LLVM (no vovkos ARM64 builds available yet).
     - name: Install LLVM with dev libraries (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
+        $arch = "${{ runner.arch }}"
+        Write-Host "Detected architecture: $arch"
 
-        $LLVM_VERSION = "20.1.8"
-        $LLVM_INSTALL_DIR = "C:\LLVM"
-        $LLVM_ARCHIVE = "clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt.7z"
-        $LLVM_URL = "https://github.com/vovkos/llvm-package-windows/releases/download/clang-${LLVM_VERSION}/${LLVM_ARCHIVE}"
+        if ($arch -eq "X64") {
+          # AMD64: Download from vovkos/llvm-package-windows
+          $LLVM_VERSION = "20.1.8"
+          $LLVM_INSTALL_DIR = "C:\LLVM"
+          $LLVM_ARCHIVE = "clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt.7z"
+          $LLVM_URL = "https://github.com/vovkos/llvm-package-windows/releases/download/clang-${LLVM_VERSION}/${LLVM_ARCHIVE}"
 
-        # Check if LLVM with dev libraries is already installed
-        if (Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib") {
-          Write-Host "LLVM with dev libraries already installed at ${LLVM_INSTALL_DIR}"
-        } else {
-          Write-Host "Downloading LLVM ${LLVM_VERSION} with dev libraries from vovkos/llvm-package-windows..."
-          $tempArchive = "$env:TEMP\${LLVM_ARCHIVE}"
-
-          # Download the archive
-          Invoke-WebRequest -Uri $LLVM_URL -OutFile $tempArchive -UseBasicParsing
-          Write-Host "Downloaded to ${tempArchive}"
-
-          # Extract to install directory
-          if (Test-Path $LLVM_INSTALL_DIR) {
-            Write-Host "Removing existing LLVM installation..."
-            Remove-Item -Recurse -Force $LLVM_INSTALL_DIR
-          }
-
-          Write-Host "Extracting LLVM to ${LLVM_INSTALL_DIR}..."
-          # 7zip is installed via scoop in the previous step
-          7z x $tempArchive -o"C:\" -y | Out-Null
-
-          # The archive extracts to clang-VERSION-windows-amd64-msvc17-msvcrt, rename it
-          $extractedDir = "C:\clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt"
-          if (Test-Path $extractedDir) {
-            Rename-Item -Path $extractedDir -NewName "LLVM"
-          }
-
-          Remove-Item $tempArchive -Force
-
-          # Verify installation - check for clangTooling.lib which is what defer tool needs
-          # Also check for LLVMSupport.lib as a secondary indicator
-          $hasClangTooling = Test-Path "${LLVM_INSTALL_DIR}\lib\clangTooling.lib"
-          $hasLLVMSupport = Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib"
-
-          Write-Host "Checking LLVM installation..."
-          Write-Host "  clangTooling.lib: $hasClangTooling"
-          Write-Host "  LLVMSupport.lib: $hasLLVMSupport"
-
-          if ($hasClangTooling) {
-            Write-Host "LLVM ${LLVM_VERSION} with dev libraries installed successfully"
-            # List some key libs for verification
-            Write-Host "Key libraries found:"
-            Get-ChildItem "${LLVM_INSTALL_DIR}\lib\*.lib" | Where-Object { $_.Name -match "^(clangTooling|clangFrontend|clangBasic|LLVMSupport)" } | ForEach-Object { Write-Host "  $($_.Name)" }
+          if (Test-Path "${LLVM_INSTALL_DIR}\lib\LLVMSupport.lib") {
+            Write-Host "LLVM with dev libraries already installed at ${LLVM_INSTALL_DIR}"
           } else {
-            Write-Host "ERROR: clangTooling.lib not found after installation" -ForegroundColor Red
-            Write-Host "Contents of ${LLVM_INSTALL_DIR}\lib:"
-            Get-ChildItem "${LLVM_INSTALL_DIR}\lib\*.lib" -ErrorAction SilentlyContinue | Select-Object -First 30 | ForEach-Object { Write-Host "  $($_.Name)" }
+            Write-Host "Downloading LLVM ${LLVM_VERSION} with dev libraries from vovkos/llvm-package-windows..."
+            $tempArchive = "$env:TEMP\${LLVM_ARCHIVE}"
+            Invoke-WebRequest -Uri $LLVM_URL -OutFile $tempArchive -UseBasicParsing
+            Write-Host "Downloaded to ${tempArchive}"
+
+            if (Test-Path $LLVM_INSTALL_DIR) {
+              Remove-Item -Recurse -Force $LLVM_INSTALL_DIR
+            }
+
+            Write-Host "Extracting LLVM to ${LLVM_INSTALL_DIR}..."
+            7z x $tempArchive -o"C:\" -y | Out-Null
+
+            $extractedDir = "C:\clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt"
+            if (Test-Path $extractedDir) {
+              Rename-Item -Path $extractedDir -NewName "LLVM"
+            }
+            Remove-Item $tempArchive -Force
+
+            # Verify installation
+            if (Test-Path "${LLVM_INSTALL_DIR}\lib\clangTooling.lib") {
+              Write-Host "LLVM ${LLVM_VERSION} with dev libraries installed successfully"
+            } else {
+              Write-Host "ERROR: clangTooling.lib not found" -ForegroundColor Red
+              exit 1
+            }
+          }
+
+          $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
+        } else {
+          # ARM64: Install via scoop (no vovkos ARM64 builds available)
+          Write-Host "Installing LLVM via scoop for ARM64..."
+          scoop install llvm --global
+          $llvmBinPath = "C:\ProgramData\scoop\apps\llvm\current\bin"
+          if (-not (Test-Path $llvmBinPath)) {
+            Write-Host "ERROR: Could not find scoop LLVM installation" -ForegroundColor Red
             exit 1
           }
         }
 
-        # Add LLVM to PATH (prepend by using GITHUB_PATH - entries are prepended)
-        $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
         Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
         Add-Content -Path $env:GITHUB_PATH -Value $llvmBinPath
-
-        # Set CC and CXX to full paths to our vovkos LLVM
-        # This overrides the workflow-level CC=clang, CXX=clang++ which would resolve to the pre-installed LLVM
-        Write-Host "Setting CC=${llvmBinPath}\clang.exe"
-        Write-Host "Setting CXX=${llvmBinPath}\clang++.exe"
         Add-Content -Path $env:GITHUB_ENV -Value "CC=${llvmBinPath}\clang.exe"
         Add-Content -Path $env:GITHUB_ENV -Value "CXX=${llvmBinPath}\clang++.exe"
-
-        # Verify clang is accessible
         & "${llvmBinPath}\clang.exe" --version
 
     - name: Set up build environment (macOS)
@@ -574,38 +561,43 @@ runs:
     # =========================================================================
     # Download pre-built defer tool and BearSSL from build-tools release
     # This avoids needing full LLVM dev libraries and nmake build issues
+    # AMD64: Download pre-built binaries
+    # ARM64: Will be built from source by CMake (no pre-built ARM64 binaries yet)
     - name: Download pre-built tools (Windows)
       id: download-prebuilt
       if: inputs.os == 'windows' && inputs.github-token != ''
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
+        $arch = "${{ runner.arch }}"
+        Write-Host "Detected architecture: $arch"
 
-        # Download pre-built defer tool and its DLL dependencies from build-tools release
-        # This avoids needing full LLVM dev libraries which aren't available in standard Windows LLVM packages
-        $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
-        New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
-        gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
-        gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
-        gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
-        $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
-        $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
-        Move-Item -Path $srcPath -Destination $dstPath -Force
-        Write-Host "Downloaded defer tool to: $dstPath"
-        Write-Host "Downloaded DLLs: zlib1.dll, zstd.dll"
+        if ($arch -eq "X64") {
+          # AMD64: Download pre-built binaries
+          $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
+          New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
+          gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
+          gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
+          gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
+          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
+          $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
+          Move-Item -Path $srcPath -Destination $dstPath -Force
+          Write-Host "Downloaded defer tool to: $dstPath"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
 
-        # Output the defer tool path for use by workflows
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
-
-        # Download pre-built BearSSL from build-tools release
-        # This avoids nmake build issues with shallow clones of BearSSL submodule
-        $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
-        New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
-        gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
-        $srcPathBearssl = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
-        $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
-        Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
-        Write-Host "Downloaded BearSSL to: $dstPathBearssl"
+          # Download pre-built BearSSL
+          $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
+          New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
+          gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
+          $srcPathBearssl = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
+          $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
+          Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
+          Write-Host "Downloaded BearSSL to: $dstPathBearssl"
+        } else {
+          # ARM64: No pre-built binaries available - CMake will build from source
+          Write-Host "ARM64: No pre-built binaries available - defer tool and BearSSL will be built from source"
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path="
+        }
       env:
         GH_TOKEN: ${{ inputs.github-token }}
 
