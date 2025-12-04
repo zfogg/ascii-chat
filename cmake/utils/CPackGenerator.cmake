@@ -166,5 +166,7 @@ function(enable_archive_generators)
         # Fallback
         enable_cpack_generator(NAME "TGZ" ALWAYS_AVAILABLE)
     endif()
+    # Propagate CPACK_GENERATOR to caller (PARENT_SCOPE in enable_cpack_generator only goes up one level)
+    set(CPACK_GENERATOR "${CPACK_GENERATOR}" PARENT_SCOPE)
 endfunction()
 
