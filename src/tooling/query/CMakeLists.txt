@@ -293,6 +293,4 @@ if(APPLE)
     endif()
 endif()
 
-install(TARGETS ascii-query-server
-    RUNTIME DESTINATION bin
-)
+# NOTE: No install() command - this is a build-time tool only, not distributed
