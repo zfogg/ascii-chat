@@ -460,7 +460,8 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
     }
 
     // Allocate device array
-    webcam_device_info_t *devices = SAFE_CALLOC((size_t)device_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
+    webcam_device_info_t *devices =
+        SAFE_CALLOC((size_t)device_count, sizeof(webcam_device_info_t), webcam_device_info_t *);
     if (!devices) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to allocate device info array");
     }
