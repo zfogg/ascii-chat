@@ -307,7 +307,6 @@ runs:
         # because scoop/choco/winget LLVM packages don't include dev libraries
         # doxygen is needed for generating documentation included in installers
         # NOTE: git is already pre-installed on GitHub Actions Windows runners
-        # NOTE: 7zip not needed - scoop provides 7zr.exe during bootstrap for .7z extraction
         $basePackages = @('ninja', 'ccache', 'doxygen')
 
         $extra = @()
@@ -373,13 +372,12 @@ runs:
             }
 
             Write-Host "Extracting LLVM to ${LLVM_INSTALL_DIR}..."
-            # Use scoop's bundled 7zr.exe (no need to install full 7zip package)
-            $7zr = Join-Path $env:USERPROFILE "scoop\apps\scoop\current\supporting\7z\7zr.exe"
-            if (-not (Test-Path $7zr)) {
-              # Fallback to global scoop location
-              $7zr = "C:\ProgramData\scoop\apps\scoop\current\supporting\7z\7zr.exe"
-            }
+            # Download standalone 7zr.exe (small ~500KB extractor, no install needed)
+            $7zrUrl = "https://www.7-zip.org/a/7zr.exe"
+            $7zr = "$env:TEMP\7zr.exe"
+            Invoke-WebRequest -Uri $7zrUrl -OutFile $7zr -UseBasicParsing
             & $7zr x $tempArchive -o"C:\" -y | Out-Null
+            Remove-Item $7zr -Force
 
             $extractedDir = "C:\clang-${LLVM_VERSION}-windows-amd64-msvc17-msvcrt"
             if (Test-Path $extractedDir) {
