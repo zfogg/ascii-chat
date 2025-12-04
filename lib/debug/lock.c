@@ -823,18 +823,16 @@ static uint32_t debug_decrement_lock_counter(void) {
  * @brief Common logic for creating and inserting lock records
  * @param lock_address Address of the lock object
  * @param lock_type Type of lock (MUTEX, RWLOCK_READ, RWLOCK_WRITE)
- * @param lock_type_str String description of lock type
  * @param file_name Source file name
  * @param line_number Source line number
  * @param function_name Function name
  * @return true if record was created and inserted successfully
  */
-static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t lock_type, const char *lock_type_str,
-                                                const char *file_name, int line_number, const char *function_name) {
+static bool debug_create_and_insert_lock_record(void *lock_address, lock_type_t lock_type, const char *file_name,
+                                                int line_number, const char *function_name) {
 #ifndef DEBUG_LOCKS
   UNUSED(lock_address);
   UNUSED(lock_type);
-  UNUSED(lock_type_str);
   UNUSED(file_name);
   UNUSED(line_number);
   UNUSED(function_name);
@@ -1052,7 +1050,7 @@ int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, con
   }
 
   // Create and add lock record
-  debug_create_and_insert_lock_record(mutex, LOCK_TYPE_MUTEX, "MUTEX", file_name, line_number, function_name);
+  debug_create_and_insert_lock_record(mutex, LOCK_TYPE_MUTEX, file_name, line_number, function_name);
 
   return 0;
 }
@@ -1092,8 +1090,7 @@ int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number
   }
 
   // Create and add lock record
-  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_READ, "RWLOCK READ", file_name, line_number,
-                                      function_name);
+  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_READ, file_name, line_number, function_name);
 
   return 0;
 }
@@ -1110,8 +1107,7 @@ int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number
   }
 
   // Create and add lock record
-  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_WRITE, "RWLOCK WRITE", file_name, line_number,
-                                      function_name);
+  debug_create_and_insert_lock_record(rwlock, LOCK_TYPE_RWLOCK_WRITE, file_name, line_number, function_name);
 
   return 0;
 }
