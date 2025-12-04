@@ -57,15 +57,17 @@ jobs:
             runner: ubuntu-latest
             vcpkg-packages: ""
             vcpkg-static-packages: ""
+            vcpkg-triplet: ""
+            vcpkg-static-triplet: ""
 
-          # Linux ARM64 (using QEMU emulation - slower but works)
-          # Note: Native ARM64 runners would require self-hosted
-          # Disabled for now - uncomment if you have self-hosted ARM64 runners
-          # - os: Linux
-          #   arch: arm64
-          #   runner: ubuntu-latest
-          #   vcpkg-packages: ""
-          #   vcpkg-static-packages: ""
+          # Linux ARM64 - Native GitHub-hosted runner (free for public repos)
+          - os: Linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            vcpkg-packages: ""
+            vcpkg-static-packages: ""
+            vcpkg-triplet: ""
+            vcpkg-static-triplet: ""
 
           # macOS AMD64 (Intel) - using macos-15-intel (last Intel runner, supported until Aug 2027)
           - os: macOS
@@ -73,6 +75,8 @@ jobs:
             runner: macos-15-intel
             vcpkg-packages: ""
             vcpkg-static-packages: ""
+            vcpkg-triplet: ""
+            vcpkg-static-triplet: ""
 
           # macOS ARM64 (Apple Silicon) - Native!
           - os: macOS
@@ -80,6 +84,8 @@ jobs:
             runner: macos-15
             vcpkg-packages: ""
             vcpkg-static-packages: ""
+            vcpkg-triplet: ""
+            vcpkg-static-triplet: ""
 
           # Windows AMD64
           - os: Windows
@@ -87,12 +93,17 @@ jobs:
             runner: windows-latest
             vcpkg-packages: "zstd portaudio libsodium"
             vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
+            vcpkg-triplet: "x64-windows"
+            vcpkg-static-triplet: "x64-windows-static"
 
-          # Windows ARM64 - Not available as hosted runner
-          # Would require self-hosted runner or cross-compilation
-          # - os: Windows
-          #   arch: arm64
-          #   runner: windows-arm64  # self-hosted only
+          # Windows ARM64 - Native GitHub-hosted runner (free for public repos)
+          - os: Windows
+            arch: arm64
+            runner: windows-11-arm
+            vcpkg-packages: "zstd portaudio libsodium"
+            vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
+            vcpkg-triplet: "arm64-windows"
+            vcpkg-static-triplet: "arm64-windows-static"
 
     steps:
       - name: Checkout code
@@ -107,7 +118,9 @@ jobs:
         with:
           os: ${{ matrix.os == 'Linux' && 'ubuntu' || (matrix.os == 'macOS' && 'macos' || 'windows') }}
           vcpkg-packages: ${{ matrix.vcpkg-packages }}
+          vcpkg-triplet: ${{ matrix.vcpkg-triplet }}
           vcpkg-static-packages: ${{ matrix.vcpkg-static-packages }}
+          vcpkg-static-triplet: ${{ matrix.vcpkg-static-triplet }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure (Unix)
@@ -122,7 +135,14 @@ jobs:
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
           # Disable tests - Criterion doesn't work well on Windows
-          cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF -DASCIICHAT_ENABLE_TESTS=OFF
+          $cmakeArgs = @("--preset", "release", "-DASCIICHAT_ENABLE_ANALYZERS=OFF", "-DASCIICHAT_ENABLE_TESTS=OFF")
+          if ($deferTool -and (Test-Path $deferTool)) {
+            Write-Host "Using pre-built defer tool: $deferTool"
+            $cmakeArgs += "-DASCIICHAT_DEFER_TOOL=$deferTool"
+          } else {
+            Write-Host "No pre-built defer tool available - CMake will build from source"
+          }
+          cmake @cmakeArgs
 
       - name: Build
         run: |
