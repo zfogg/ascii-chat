@@ -793,6 +793,57 @@ After installation, run:
         #   - DEB/RPM: "/usr" for Linux FHS compliance
         set(CPACK_PROJECT_CONFIG_FILE "${CMAKE_SOURCE_DIR}/cmake/install/CPackProjectConfig.cmake")
 
+        # =========================================================================
+        # Platform-Specific Package Generators (MUST be before include(CPack))
+        # =========================================================================
+        # Each generator is configured in its own module file in cmake/install/
+        # This keeps Install.cmake clean and makes it easy to maintain each format
+        #
+        # IMPORTANT: These includes MUST happen BEFORE include(CPack) because:
+        # 1. include(CPack) generates CPackConfig.cmake with the current CPACK_GENERATOR value
+        # 2. Any generators added AFTER include(CPack) won't appear in CPackConfig.cmake
+        # 3. CPack reads CPACK_GENERATOR from CPackConfig.cmake at package time
+
+        # Initialize generator list (will be appended by each module)
+        # On Windows, preserve the WIX generator that was set earlier in this file
+        if(NOT WIN32)
+            set(CPACK_GENERATOR "")
+        endif()
+
+        if(UNIX AND NOT APPLE)
+            # Linux: STGZ, TGZ, DEB, RPM
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Stgz.cmake")
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Deb.cmake")
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Rpm.cmake")
+
+        elseif(APPLE)
+            # macOS: STGZ, TGZ, productbuild
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Stgz.cmake")
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Productbuild.cmake")
+
+        elseif(WIN32)
+            # Windows: WIX, NSIS, ZIP
+            # WiX was already included earlier for CPACK_WIX_VERSION to work
+            # NSIS and Archive modules append to generator list
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Nsis.cmake")
+
+            # Set default message for Windows
+            if(WIX_FOUND)
+                message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ${Magenta}WIX${ColorReset} (MSI installer)")
+            else()
+                message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ${Magenta}ZIP${ColorReset} (${BoldBlue}WiX${ColorReset} not found)")
+            endif()
+
+        else()
+            # Unknown platform: fallback to archive formats
+            include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
+        endif()
+
+        message(STATUS "${Yellow}CPack:${ColorReset} Generators: ${Magenta}${CPACK_GENERATOR}${ColorReset}")
+
         include(CPack)
 
         # After include(CPack), enable binary generators for desired package types
@@ -940,52 +991,6 @@ After installation, run:
         set(CPACK_COMPONENT_MANPAGES_DESCRIPTION "Unix man pages generated with Doxygen")
         set(CPACK_COMPONENT_MANPAGES_DISABLED OFF)
     endif()
-
-    # =========================================================================
-    # Platform-Specific Package Generators
-    # =========================================================================
-    # Each generator is configured in its own module file in cmake/install/
-    # This keeps Install.cmake clean and makes it easy to maintain each format
-
-    # Initialize generator list (will be appended by each module)
-    # On Windows, preserve the WIX generator that was set before include(CPack)
-    if(NOT WIN32)
-        set(CPACK_GENERATOR "")
-    endif()
-
-    if(UNIX AND NOT APPLE)
-        # Linux: STGZ, TGZ, DEB, RPM
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Stgz.cmake")
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Deb.cmake")
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Rpm.cmake")
-
-    elseif(APPLE)
-        # macOS: STGZ, TGZ, productbuild
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Stgz.cmake")
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Productbuild.cmake")
-
-    elseif(WIN32)
-        # Windows: WIX, NSIS, ZIP
-        # WiX was already included before include(CPack) for CPACK_WIX_VERSION to work
-        # CPACK_GENERATOR was reset after include(CPack) to start with WIX (or ZIP if WiX not found)
-        # NSIS and Archive modules append to generator list
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Nsis.cmake")
-
-        # Set default message for Windows
-        if(WIX_FOUND)
-            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ${Magenta}WIX${ColorReset} (MSI installer)")
-        else()
-            message(STATUS "${Yellow}CPack:${ColorReset} Default generator: ${Magenta}ZIP${ColorReset} (${BoldBlue}WiX${ColorReset} not found)")
-        endif()
-
-    else()
-        # Unknown platform: fallback to archive formats
-        include("${CMAKE_SOURCE_DIR}/cmake/install/Archive.cmake")
-    endif()
-
 
     # =========================================================================
     # Component Configuration
