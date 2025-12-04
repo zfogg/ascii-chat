@@ -281,12 +281,28 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
-          # CPack already includes architecture in filename, just copy
+
+          # Copy all package artifacts
           for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
             cp "$artifact" dist/
           done
+
+          # Verify required package types exist
+          echo "Checking for required package types..."
           ls -l dist
+
+          missing=""
+          ls dist/*.deb 1>/dev/null 2>&1 || missing="$missing .deb"
+          ls dist/*.rpm 1>/dev/null 2>&1 || missing="$missing .rpm"
+          ls dist/*.tar.gz 1>/dev/null 2>&1 || missing="$missing .tar.gz"
+          ls dist/*.sh 1>/dev/null 2>&1 || missing="$missing .sh"
+
+          if [[ -n "$missing" ]]; then
+            echo "::error::Missing required package types:$missing"
+            exit 1
+          fi
+          echo "All required package types found"
 
       - name: Upload Linux packages to release
         uses: softprops/action-gh-release@v1
@@ -339,12 +355,27 @@ jobs:
         run: |
           mkdir -p dist
           shopt -s nullglob
-          # CPack already includes architecture in filename, just copy
-          for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.zip build_release/*.sh; do
+
+          # Copy all package artifacts
+          for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
             cp "$artifact" dist/
           done
+
+          # Verify required package types exist
+          echo "Checking for required package types..."
           ls -l dist
+
+          missing=""
+          ls dist/*.pkg 1>/dev/null 2>&1 || missing="$missing .pkg"
+          ls dist/*.tar.gz 1>/dev/null 2>&1 || missing="$missing .tar.gz"
+          ls dist/*.sh 1>/dev/null 2>&1 || missing="$missing .sh"
+
+          if [[ -n "$missing" ]]; then
+            echo "::error::Missing required package types:$missing"
+            exit 1
+          fi
+          echo "All required package types found"
 
       - name: Upload macOS packages to release
         uses: softprops/action-gh-release@v1
@@ -424,14 +455,28 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          # CPack already includes architecture in filename, just copy
+
+          # Copy all package artifacts
           $patterns = @("build_release/*.msi", "build_release/*.zip")
           foreach ($pattern in $patterns) {
             foreach ($artifact in Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue) {
               Copy-Item $artifact.FullName dist/
             }
           }
+
+          # Verify required package types exist
+          Write-Host "Checking for required package types..."
           Get-ChildItem dist
+
+          $missing = @()
+          if (-not (Get-ChildItem dist/*.msi -ErrorAction SilentlyContinue)) { $missing += ".msi" }
+          if (-not (Get-ChildItem dist/*.zip -ErrorAction SilentlyContinue)) { $missing += ".zip" }
+
+          if ($missing.Count -gt 0) {
+            Write-Host "::error::Missing required package types: $($missing -join ', ')"
+            exit 1
+          }
+          Write-Host "All required package types found"
 
       - name: Upload Windows packages to release
         uses: softprops/action-gh-release@v1
