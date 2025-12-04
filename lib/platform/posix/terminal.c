@@ -90,7 +90,7 @@ asciichat_error_t terminal_set_echo(bool enable) {
   if (enable) {
     tty.c_lflag |= ECHO;
   } else {
-    tty.c_lflag &= ~ECHO;
+    tty.c_lflag &= ~(tcflag_t)ECHO;
   }
 
   return tcsetattr(STDIN_FILENO, TCSANOW, &tty);
