@@ -150,6 +150,16 @@ Does not connect to any server.
 .BR \-D ", " \-\-snapshot\-delay =\fISECONDS\fR
 Delay in seconds before capturing snapshot (for webcam warmup).
 Default: \fB3.0\fR
+.SS "Mirror Mode (Client Only)"
+.TP
+.BR \-\-mirror
+View your webcam as ASCII art directly in the terminal without connecting
+to a server. This is a local-only mode that captures from your webcam,
+converts the video to ASCII art in real-time, and displays it in your terminal.
+Useful for testing your webcam setup or just watching yourself in ASCII.
+Press Ctrl-C to exit.
+.PP
+Note: Mirror mode is incompatible with audio (\fB\-\-audio\fR).
 .SS "Audio Options (Client Only)"
 .TP
 .BR \-A ", " \-\-audio
@@ -237,6 +247,10 @@ ascii-chat client \-\-address example.com \-\-server\-key ~/.ssh/server.pub
 .SS "Capture a single ASCII snapshot"
 .nf
 ascii-chat client \-\-snapshot \-\-color\-mode truecolor
+.fi
+.SS "View webcam locally in mirror mode"
+.nf
+ascii-chat client \-\-mirror \-\-color\-mode truecolor
 .fi
 .SS "Test without webcam using test pattern"
 .nf

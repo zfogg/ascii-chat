@@ -104,6 +104,8 @@ static bool config_stretch_set = false;
 static bool config_quiet_set = false;
 /** @brief Track if snapshot mode was set from config */
 static bool config_snapshot_mode_set = false;
+/** @brief Track if mirror mode was set from config */
+static bool config_mirror_mode_set = false;
 /** @brief Track if snapshot delay was set from config */
 static bool config_snapshot_delay_set = false;
 /** @brief Track if log file was set from config */
@@ -326,6 +328,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
  * - `client.stretch`: Stretch video to terminal size (boolean)
  * - `client.quiet`: Quiet mode (boolean)
  * - `client.snapshot_mode`: Snapshot mode (boolean)
+ * - `client.mirror_mode`: Mirror mode (boolean) - view webcam locally without server
  * - `client.snapshot_delay`: Snapshot delay in seconds (non-negative float)
  *
  * Invalid values are skipped with warnings.
@@ -481,6 +484,13 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   if (snapshot_mode.type == TOML_BOOLEAN && !config_snapshot_mode_set) {
     opt_snapshot_mode = snapshot_mode.u.boolean ? 1 : 0;
     config_snapshot_mode_set = true;
+  }
+
+  // Mirror mode
+  toml_datum_t mirror_mode = toml_seek(toptab, "client.mirror_mode");
+  if (mirror_mode.type == TOML_BOOLEAN && !config_mirror_mode_set) {
+    opt_mirror_mode = mirror_mode.u.boolean ? 1 : 0;
+    config_mirror_mode_set = true;
   }
 
   // Snapshot delay
@@ -1106,6 +1116,8 @@ asciichat_error_t config_create_default(const char *config_path) {
   (void)fprintf(f, "#quiet = %s\n", opt_quiet ? "true" : "false");
   (void)fprintf(f, "# Snapshot mode (capture one frame and exit)\n");
   (void)fprintf(f, "#snapshot_mode = %s\n", opt_snapshot_mode ? "true" : "false");
+  (void)fprintf(f, "# Mirror mode (view webcam locally without server)\n");
+  (void)fprintf(f, "#mirror_mode = %s\n", opt_mirror_mode ? "true" : "false");
   (void)fprintf(f, "# Snapshot delay in seconds (for webcam warmup)\n");
   (void)fprintf(f, "#snapshot_delay = %.1f\n", (double)opt_snapshot_delay);
   (void)fprintf(f, "# Use test pattern instead of real webcam\n");

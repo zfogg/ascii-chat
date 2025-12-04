@@ -91,7 +91,7 @@ static void check_crc32_hw_support(void) {
 //   - Intel _mm_crc32_* intrinsics
 //   - Our software fallback asciichat_crc32_sw()
 // Process byte-by-byte to ensure cross-platform consistency with x86
-static uint32_t crc32_arm_hw(const void *data, size_t len) {
+__attribute__((target("arch=armv8-a+crc"))) static uint32_t crc32_arm_hw(const void *data, size_t len) {
   const uint8_t *bytes = (const uint8_t *)data;
   uint32_t crc = 0xFFFFFFFF;
 
