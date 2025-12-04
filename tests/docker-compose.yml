@@ -46,6 +46,8 @@ services:
 
     environment:
       - DOCKER_DEFAULT_PLATFORM=linux/amd64
+      # Architecture-specific deps cache (prevents cross-arch binary conflicts)
+      - DOCKER_OS=amd64
       # ccache configuration
       - CCACHE_DIR=/ccache
       - CCACHE_UMASK=002
@@ -95,6 +97,8 @@ services:
              ctest --test-dir build_docker --output-on-failure --parallel 0"
 
     environment:
+      # Architecture-specific deps cache (prevents cross-arch binary conflicts)
+      - DOCKER_OS=arm64
       - CCACHE_DIR=/ccache
       - CCACHE_UMASK=002
       - CCACHE_HARDLINK=true
@@ -129,14 +133,15 @@ volumes:
     # Stores FetchContent dependencies (mimalloc, bearssl, etc.) and musl builds
     # Also stores .patch_applied files at root level
     # Separated from ccache for easier management and cleanup
-    # Path structure inside container: /app/.deps-cache/docker/<BuildType>/
+    # Path structure inside container: /app/.deps-cache/amd64/<BuildType>/
+    # (DOCKER_OS=amd64 env var selects architecture-specific cache)
     # Optional: specify host path for easier access
     # driver_opts:
     #   type: none
     #   device: ${PWD}/.deps-cache
     #   o: bind
 
-  # Ubuntu volumes (separate to avoid conflicts)
+  # Ubuntu volumes (separate to avoid cross-arch binary conflicts)
   build-data-ubuntu:
     driver: local
 
@@ -145,3 +150,5 @@ volumes:
 
   deps-cache-data-ubuntu:
     driver: local
+    # Path structure inside container: /app/.deps-cache/arm64/<BuildType>/
+    # (DOCKER_OS=arm64 env var selects architecture-specific cache)

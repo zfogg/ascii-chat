@@ -121,6 +121,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl-tools musl-dev \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
       libcriterion-dev libffi-dev \
+      libprotobuf-c-dev \
       doxygen \
       dpkg-dev rpm
 
@@ -268,6 +269,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel \
       jack-audio-connection-kit-devel \
       criterion-devel libffi-devel \
+      protobuf-c-devel \
       doxygen \
       rpm-build
 
@@ -282,6 +284,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       musl mimalloc \
       zstd zlib libsodium portaudio \
       criterion \
+      protobuf-c \
       doxygen \
       dpkg rpm-tools
 
