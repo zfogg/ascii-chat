@@ -28,6 +28,7 @@
 #include "os/webcam.h"
 #include "image2ascii/ascii.h"
 #include "image2ascii/image.h"
+#include "image2ascii/ansi_fast.h"
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
@@ -206,6 +207,15 @@ int mirror_main(void) {
   // Detect terminal capabilities
   terminal_capabilities_t caps = detect_terminal_capabilities();
   caps = apply_color_mode_override(caps);
+
+  // Initialize ANSI color lookup tables based on terminal capabilities
+  if (caps.color_level == TERM_COLOR_TRUECOLOR) {
+    ansi_fast_init();
+  } else if (caps.color_level == TERM_COLOR_256) {
+    ansi_fast_init_256color();
+  } else if (caps.color_level == TERM_COLOR_16) {
+    ansi_fast_init_16color();
+  }
 
   // Initialize palette
   char palette_chars[256] = {0};
