@@ -98,15 +98,16 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             endif()
             set(CLANG_CL_EXECUTABLE "${ASCIICHAT_CLANG_CL_EXECUTABLE}")
 
-            # Prefer MSVC lib.exe over llvm-lib - more reliable for nmake builds
-            if(ASCIICHAT_MSVC_LIB_EXECUTABLE)
-                set(BEARSSL_AR_EXECUTABLE "${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
-                message(STATUS "BearSSL: Using MSVC lib.exe: ${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
-            elseif(ASCIICHAT_LLVM_LIB_EXECUTABLE)
+            # Prefer llvm-lib over MSVC lib.exe for consistency across architectures
+            # (x64 lib.exe can't archive ARM64 COFF objects anyway)
+            if(ASCIICHAT_LLVM_LIB_EXECUTABLE)
                 set(BEARSSL_AR_EXECUTABLE "${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
                 message(STATUS "BearSSL: Using llvm-lib: ${ASCIICHAT_LLVM_LIB_EXECUTABLE}")
+            elseif(ASCIICHAT_MSVC_LIB_EXECUTABLE)
+                set(BEARSSL_AR_EXECUTABLE "${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
+                message(STATUS "BearSSL: Using MSVC lib.exe: ${ASCIICHAT_MSVC_LIB_EXECUTABLE}")
             else()
-                message(FATAL_ERROR "No archiver found (lib.exe or llvm-lib). Required for building BearSSL on Windows.")
+                message(FATAL_ERROR "No archiver found (llvm-lib or lib.exe). Required for building BearSSL on Windows.")
             endif()
 
             # Add custom command to build BearSSL if library is missing
