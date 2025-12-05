@@ -38,6 +38,7 @@ _ascii_chat() {
         -s --stretch
         -S --snapshot
         -D --snapshot-delay
+        --mirror
         --test-pattern
         --list-webcams
         --list-microphones
