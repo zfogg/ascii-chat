@@ -259,6 +259,65 @@ const char **log_get_color_array(void);
 void log_redetect_terminal_capabilities(void);
 
 /**
+ * @name Terminal Output Synchronization
+ * @{
+ *
+ * These functions provide mutex-based synchronization for terminal output
+ * between display threads (rendering ASCII frames) and logging threads.
+ *
+ * The design ensures the terminal mutex is always held by either:
+ * - The logging system (when not rendering video)
+ * - The display thread (while actively rendering frames)
+ *
+ * This prevents log messages from interleaving with video frame output.
+ */
+
+/**
+ * @brief Initialize terminal output synchronization
+ *
+ * Must be called once at startup before using terminal sync features.
+ * After initialization, logging will acquire the terminal mutex before
+ * writing to terminal, blocking if the display thread owns it.
+ *
+ * @ingroup logging
+ */
+void log_init_terminal_sync(void);
+
+/**
+ * @brief Take ownership of terminal for display rendering
+ *
+ * The display thread calls this before starting to render frames.
+ * Acquires the terminal mutex and holds it until release_ownership is called.
+ * While display owns the terminal, all log_*() calls that write to terminal
+ * will block until ownership is released.
+ *
+ * @note Must be paired with log_terminal_release_ownership()
+ * @ingroup logging
+ */
+void log_terminal_take_ownership(void);
+
+/**
+ * @brief Release ownership of terminal back to logging system
+ *
+ * The display thread calls this when stopping frame rendering (e.g., shutdown).
+ * Releases the terminal mutex, allowing any blocked log_*() calls to proceed.
+ *
+ * @note Must be called after log_terminal_take_ownership()
+ * @ingroup logging
+ */
+void log_terminal_release_ownership(void);
+
+/**
+ * @brief Check if display currently owns the terminal
+ *
+ * @return true if display thread owns terminal, false otherwise
+ * @ingroup logging
+ */
+bool log_terminal_is_display_owned(void);
+
+/** @} */
+
+/**
  * @brief Format a message using va_list
  * @param format Format string
  * @param args Variable arguments list

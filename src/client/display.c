@@ -76,6 +76,7 @@
 #include "platform/internal.h"
 #include "options.h"
 #include "image2ascii/ascii.h"
+#include "logging.h"
 
 #include <fcntl.h>
 #include <string.h>
@@ -256,6 +257,7 @@ static void write_frame_to_output(const char *frame_data, bool use_direct_tty) {
  * 2. Interactive mode determination
  * 3. ASCII rendering subsystem initialization
  * 4. Terminal dimension and capability setup
+ * 5. Take ownership of terminal from logging system
  *
  * @return 0 on success, negative on error
  *
@@ -275,6 +277,11 @@ int display_init() {
 
   // Initialize ASCII output for this connection
   ascii_write_init(g_tty_info.fd, false);
+
+  // Take ownership of terminal from logging system.
+  // While display owns the terminal, log_*() calls will block.
+  // This prevents log messages from interleaving with video frames.
+  log_terminal_take_ownership();
 
   return 0;
 }
@@ -379,10 +386,21 @@ void display_render_frame(const char *frame_data, bool is_snapshot_frame) {
  *
  * Performs graceful cleanup of display resources and terminal state.
  * Restores terminal to original state and closes owned file descriptors.
+ * Releases terminal ownership back to logging system so pending logs proceed.
  *
  * @ingroup client_display
  */
 void display_cleanup() {
+  // Re-enable terminal logging before releasing ownership.
+  // This causes any pending log_*() calls to start blocking on the mutex
+  // (previously they were returning early because terminal output was disabled).
+  // Then when we release ownership, those blocked calls will proceed.
+  log_set_terminal_output(true);
+
+  // Release terminal ownership back to logging system.
+  // Any blocked log_*() calls will now proceed.
+  log_terminal_release_ownership();
+
   // Cleanup ASCII rendering
   ascii_write_destroy(g_tty_info.fd, true);
 
