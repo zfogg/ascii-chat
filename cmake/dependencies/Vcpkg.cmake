@@ -10,7 +10,7 @@
 #
 # Outputs (variables set by this file):
 #   - VCPKG_ROOT: vcpkg root directory path
-#   - VCPKG_TRIPLET: Selected triplet (x64/arm64-windows or x64/arm64-windows-static)
+#   - VCPKG_TARGET_TRIPLET: Selected triplet (x64/arm64-windows or x64/arm64-windows-static)
 #   - VCPKG_LIB_PATH: Path to vcpkg libraries (release)
 #   - VCPKG_DEBUG_LIB_PATH: Path to vcpkg libraries (debug)
 #   - VCPKG_INCLUDE_PATH: Path to vcpkg headers
@@ -46,24 +46,21 @@ if(WIN32)
     # Release builds use static libraries to avoid DLL dependencies
     # Debug/Dev builds use dynamic libraries for easier debugging
     if(CMAKE_BUILD_TYPE MATCHES "Release")
-        set(VCPKG_TRIPLET "${_vcpkg_arch_prefix}-windows-static")
-        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/lib")
-        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/lib")
-        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/include")
-        message(STATUS "Using ${BoldGreen}static libraries${ColorReset} for Release build (triplet: ${BoldCyan}${VCPKG_TRIPLET}${ColorReset})")
+        set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch_prefix}-windows-static")
+        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib")
+        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib")
+        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include")
+        message(STATUS "Using ${BoldGreen}static libraries${ColorReset} for Release build (triplet: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset})")
     else()
-        set(VCPKG_TRIPLET "${_vcpkg_arch_prefix}-windows")
-        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/lib")
-        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/lib")
-        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/include")
-        message(STATUS "Using ${BoldYellow}dynamic libraries${ColorReset} for Debug/Dev build (triplet: ${BoldCyan}${VCPKG_TRIPLET}${ColorReset})")
+        set(VCPKG_TARGET_TRIPLET "${_vcpkg_arch_prefix}-windows")
+        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib")
+        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib")
+        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include")
+        message(STATUS "Using ${BoldYellow}dynamic libraries${ColorReset} for Debug/Dev build (triplet: ${BoldCyan}${VCPKG_TARGET_TRIPLET}${ColorReset})")
     endif()
 
-    # Set VCPKG_TARGET_TRIPLET for tools (e.g., BuildLLVMTool.cmake uses this name)
-    set(VCPKG_TARGET_TRIPLET "${VCPKG_TRIPLET}")
-
     # Set CMake paths to use the selected triplet
-    set(CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}" ${CMAKE_PREFIX_PATH})
+    set(CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}" ${CMAKE_PREFIX_PATH})
     include_directories("${VCPKG_INCLUDE_PATH}")
     link_directories("${VCPKG_LIB_PATH}")
 endif()

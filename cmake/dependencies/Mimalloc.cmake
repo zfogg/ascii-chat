@@ -10,7 +10,7 @@
 #   - CMAKE_BUILD_TYPE: Build type (affects debug settings)
 #   - REAL_GCC: (Optional) For musl builds
 #   - VCPKG_ROOT: (Windows only) vcpkg installation path
-#   - VCPKG_TRIPLET: (Windows only) vcpkg triplet (e.g., x64-windows-static)
+#   - VCPKG_TARGET_TRIPLET: (Windows only) vcpkg triplet (e.g., x64-windows-static)
 #
 # Outputs:
 #   - MIMALLOC_LIBRARIES: Target to link against (mimalloc-static)
@@ -122,11 +122,11 @@ if(USE_MIMALLOC)
     endif()
 
     # On Windows, prefer vcpkg; on Unix (if system not found), use FetchContent
-    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TRIPLET AND DEFINED VCPKG_ROOT)
+    if(NOT _MIMALLOC_FROM_SYSTEM AND WIN32 AND DEFINED VCPKG_TARGET_TRIPLET AND DEFINED VCPKG_ROOT)
         # Try to find mimalloc from vcpkg
-        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/include")
-        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/lib")
-        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}/debug/lib")
+        set(VCPKG_INCLUDE_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/include")
+        set(VCPKG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/lib")
+        set(VCPKG_DEBUG_LIB_PATH "${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/debug/lib")
 
         find_library(MIMALLOC_LIBRARY_RELEASE NAMES mimalloc-static mimalloc PATHS "${VCPKG_LIB_PATH}" NO_DEFAULT_PATH)
         find_library(MIMALLOC_LIBRARY_DEBUG NAMES mimalloc-static mimalloc PATHS "${VCPKG_DEBUG_LIB_PATH}" NO_DEFAULT_PATH)
