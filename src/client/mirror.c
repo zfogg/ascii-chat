@@ -33,6 +33,7 @@
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
 #include "common.h"
+#include "logging.h"
 #include "options.h"
 #include "palette.h"
 
@@ -180,6 +181,10 @@ static void mirror_write_frame(const char *frame_data) {
  * @return 0 on success, non-zero error code on failure
  */
 int mirror_main(void) {
+  // Initialize terminal output synchronization for display/logging coordination.
+  // Must be done early before any terminal rendering begins.
+  log_init_terminal_sync();
+
   log_info("Starting mirror mode");
 
   // Install console control-c handler
@@ -247,6 +252,10 @@ int mirror_main(void) {
   (void)clock_gettime(CLOCK_MONOTONIC, &fps_report_time);
 
   log_info("Mirror mode running - press Ctrl+C to exit");
+
+  // Take ownership of terminal from logging system.
+  // While we own the terminal, log_*() calls will block.
+  log_terminal_take_ownership();
   log_set_terminal_output(false);
 
   while (!mirror_should_exit()) {
@@ -317,8 +326,11 @@ int mirror_main(void) {
     }
   }
 
-  // Cleanup
+  // Cleanup - release terminal ownership back to logging system.
+  // Any blocked log_*() calls will now proceed.
   log_set_terminal_output(true);
+  log_terminal_release_ownership();
+
   log_info("Mirror mode shutting down");
 
   mirror_display_cleanup();

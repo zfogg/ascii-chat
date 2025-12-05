@@ -24,6 +24,26 @@ static terminal_capabilities_t g_terminal_caps = {0};
 static bool g_terminal_caps_initialized = false;
 static bool g_terminal_caps_detecting = false; /* Guard against recursion */
 
+/* ============================================================================
+ * Terminal Output Synchronization
+ *
+ * Provides mutex-based synchronization for terminal output between display
+ * threads (rendering ASCII frames) and logging threads. The mutex is always
+ * held by either the logging system or the display thread - never released
+ * into a gap where both have released it.
+ *
+ * Flow:
+ * 1. App boots: logging system implicitly "owns" terminal (no explicit lock)
+ * 2. Display starts: calls log_terminal_take_ownership() to acquire mutex
+ * 3. Display runs: holds mutex continuously while rendering frames
+ * 4. Shutdown: display calls log_terminal_release_ownership()
+ * 5. Blocked logs: all pending log_*() calls now proceed sequentially
+ * ============================================================================ */
+
+static mutex_t g_terminal_sync_mutex;
+static bool g_terminal_sync_initialized = false;
+static bool g_display_owns_terminal = false;
+
 size_t get_current_time_formatted(char *time_buf) {
   /* Log the rotation event */
   struct timespec ts;
@@ -452,13 +472,21 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   return result;
 }
 
-/* Helper: Write colored log entry to terminal (assumes mutex held)
- * Only writes if terminal output is enabled
+/* Helper: Write colored log entry to terminal (assumes g_log.mutex held)
+ * Only writes if terminal output is enabled.
+ * If terminal sync is enabled and display owns terminal, blocks until released.
  */
 static void write_to_terminal_unlocked(log_level_t level, const char *timestamp, const char *file, int line,
                                        const char *func, const char *fmt, va_list args) {
   if (!g_log.terminal_output_enabled) {
     return;
+  }
+
+  // If terminal sync is enabled, we need to acquire the terminal mutex.
+  // This will block if the display thread currently owns the terminal.
+  bool need_terminal_sync = g_terminal_sync_initialized;
+  if (need_terminal_sync) {
+    mutex_lock(&g_terminal_sync_mutex);
   }
 
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
@@ -473,6 +501,9 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
   if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
+    if (need_terminal_sync) {
+      mutex_unlock(&g_terminal_sync_mutex);
+    }
     return;
   }
 
@@ -501,6 +532,11 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
     safe_fprintf(output_stream, "\n");
   }
   (void)fflush(output_stream);
+
+  // Release terminal sync mutex if we acquired it
+  if (need_terminal_sync) {
+    mutex_unlock(&g_terminal_sync_mutex);
+  }
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
@@ -793,4 +829,36 @@ const char *log_level_color(logging_color_t color) {
     return colors[color];
   }
   return colors[LOGGING_COLOR_RESET]; /* Return reset color if invalid */
+}
+
+/* ============================================================================
+ * Terminal Output Synchronization API
+ * ============================================================================ */
+
+void log_init_terminal_sync(void) {
+  if (!g_terminal_sync_initialized) {
+    mutex_init(&g_terminal_sync_mutex);
+    g_terminal_sync_initialized = true;
+    g_display_owns_terminal = false;
+  }
+}
+
+void log_terminal_take_ownership(void) {
+  if (!g_terminal_sync_initialized) {
+    return;
+  }
+  mutex_lock(&g_terminal_sync_mutex);
+  g_display_owns_terminal = true;
+}
+
+void log_terminal_release_ownership(void) {
+  if (!g_terminal_sync_initialized) {
+    return;
+  }
+  g_display_owns_terminal = false;
+  mutex_unlock(&g_terminal_sync_mutex);
+}
+
+bool log_terminal_is_display_owned(void) {
+  return g_terminal_sync_initialized && g_display_owns_terminal;
 }

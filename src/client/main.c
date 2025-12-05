@@ -288,6 +288,11 @@ static int initialize_client_systems(bool shared_init_completed) {
       log_init("client.log", LOG_DEBUG);
     }
 
+    // Initialize terminal output synchronization for display/logging coordination.
+    // This allows display thread to take exclusive terminal access while rendering,
+    // blocking log_*() calls until display releases ownership on shutdown.
+    log_init_terminal_sync();
+
     // Initialize memory debugging if enabled
 #ifdef DEBUG_MEMORY
     debug_memory_set_quiet_mode(opt_quiet || opt_snapshot_mode);
