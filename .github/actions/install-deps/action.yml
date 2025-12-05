@@ -126,12 +126,12 @@ runs:
         # Output cache keys
         echo "cmake-cache-key=${os}-${arch}-cmake-deps-v9-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
         echo "ccache-key=${os}-${arch}-ccache-v1-${branch}" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v1-${branch}" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v2-${branch}" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
         echo "  cmake: ${os}-${arch}-cmake-deps-v9-${deps_hash}-${install_hash}"
         echo "  ccache: ${os}-${arch}-ccache-v1-${branch}"
-        echo "  build: ${os}-${arch}-build-v1-${branch}"
+        echo "  build: ${os}-${arch}-build-v2-${branch}"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -161,12 +161,12 @@ runs:
         # Output cache keys
         Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v9-${depsHash}-${installHash}"
         Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v1-${branch}"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v1-${branch}"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v2-${branch}"
 
         Write-Host "Computed cache keys:"
         Write-Host "  cmake: ${os}-${arch}-cmake-deps-v9-${depsHash}-${installHash}"
         Write-Host "  ccache: ${os}-${arch}-ccache-v1-${branch}"
-        Write-Host "  build: ${os}-${arch}-build-v1-${branch}"
+        Write-Host "  build: ${os}-${arch}-build-v2-${branch}"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
