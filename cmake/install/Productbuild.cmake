@@ -52,11 +52,21 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/images")
     endif()
 endif()
 
-# Code signing identity (if you want to sign the package)
- set(CPACK_PRODUCTBUILD_IDENTITY_NAME "Zachary Fogg")
+# Code signing configuration
+# Only sign if explicitly enabled via ASCIICHAT_CODESIGN_IDENTITY
+# GitHub runners don't have signing credentials, so signing is disabled by default
+if(DEFINED ASCIICHAT_CODESIGN_IDENTITY AND NOT ASCIICHAT_CODESIGN_IDENTITY STREQUAL "")
+    set(CPACK_PRODUCTBUILD_IDENTITY_NAME "${ASCIICHAT_CODESIGN_IDENTITY}")
+    message(STATUS "${Yellow}CPack:${ColorReset} productbuild signing enabled with identity: ${ASCIICHAT_CODESIGN_IDENTITY}")
 
-# Keychain to use for signing
-set(CPACK_PRODUCTBUILD_KEYCHAIN_PATH "~/Library/Keychains/ascii-chat-master.keychain")
+    # Keychain to use for signing (optional)
+    if(DEFINED ASCIICHAT_CODESIGN_KEYCHAIN AND NOT ASCIICHAT_CODESIGN_KEYCHAIN STREQUAL "")
+        set(CPACK_PRODUCTBUILD_KEYCHAIN_PATH "${ASCIICHAT_CODESIGN_KEYCHAIN}")
+        message(STATUS "${Yellow}CPack:${ColorReset} productbuild using keychain: ${ASCIICHAT_CODESIGN_KEYCHAIN}")
+    endif()
+else()
+    message(STATUS "${Yellow}CPack:${ColorReset} productbuild signing disabled (set ASCIICHAT_CODESIGN_IDENTITY to enable)")
+endif()
 
 set(CPACK_PRODUCTBUILD_DOMAINS true)
 
