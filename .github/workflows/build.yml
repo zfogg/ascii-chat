@@ -144,17 +144,6 @@ jobs:
           }
           cmake @cmakeArgs
 
-      # Save CMake deps cache AFTER configure so BearSSL and other deps built during
-      # cmake configure are included. This must run after configure but before build.
-      - name: Save CMake dependency cache
-        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .deps-cache
-            deps/bearssl/build
-          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
-
       - name: Build
         run: |
           cmake --build build_release --target ascii-chat
@@ -192,6 +181,17 @@ jobs:
         if: always()
         shell: bash
         run: ccache --show-stats || true
+
+      # Save CMake deps cache AFTER build so BearSSL, defer tool, and other deps
+      # built during cmake configure/build are included
+      - name: Save CMake dependency cache
+        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps-cache
+            deps/bearssl/build
+          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       # Save ccache after build for incremental compilation on next run
       - name: Save ccache
