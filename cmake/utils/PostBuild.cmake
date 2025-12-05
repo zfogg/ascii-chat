@@ -40,12 +40,12 @@ function(copy_windows_dlls TARGET_NAME)
             set(VCPKG_INSTALLED "$ENV{VCPKG_ROOT}/installed")
         endif()
 
-        if(DEFINED VCPKG_INSTALLED AND DEFINED VCPKG_TRIPLET)
+        if(DEFINED VCPKG_INSTALLED AND DEFINED VCPKG_TARGET_TRIPLET)
             # Use debug DLLs/PDBs for Debug build, release DLLs for Dev build
             if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-                set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/debug/bin")
+                set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TARGET_TRIPLET}/debug/bin")
             else()
-                set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TRIPLET}/bin")
+                set(DLL_SOURCE_DIR "${VCPKG_INSTALLED}/${VCPKG_TARGET_TRIPLET}/bin")
             endif()
 
             # DLLs to copy from vcpkg

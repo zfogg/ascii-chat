@@ -12,7 +12,7 @@
 #   - WIN32, UNIX, APPLE: Platform detection variables
 #   - USE_MUSL: Whether using musl libc
 #   - CMAKE_BUILD_TYPE: Build type
-#   - VCPKG_ROOT, VCPKG_TRIPLET: (Windows only) vcpkg configuration
+#   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
 #
 # Outputs (variables set by this file):
 #   - LIBSODIUM_LIBRARIES: Libraries to link against

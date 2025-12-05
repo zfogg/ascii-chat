@@ -22,7 +22,7 @@
 #   - WIN32, UNIX, APPLE: Platform detection variables
 #   - USE_MUSL: Whether using musl libc
 #   - CMAKE_BUILD_TYPE: Build type
-#   - VCPKG_ROOT, VCPKG_TRIPLET, VCPKG_LIB_PATH, etc.: (Windows) vcpkg config
+#   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET, VCPKG_LIB_PATH, etc.: (Windows) vcpkg config
 #   - Colors.cmake variables for status messages
 #
 # Outputs:
@@ -91,7 +91,7 @@ macro(find_dependency_library)
                 message(STATUS "Found ${BoldGreen}${_DEP_NAME}${ColorReset}: ${${_DEP_NAME}_LIBRARY_RELEASE}")
 
                 # Add static define if specified and using static triplet
-                if(_DEP_STATIC_DEFINE AND VCPKG_TRIPLET MATCHES "static")
+                if(_DEP_STATIC_DEFINE AND VCPKG_TARGET_TRIPLET MATCHES "static")
                     add_compile_definitions(${_DEP_STATIC_DEFINE})
                 endif()
             else()
