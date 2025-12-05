@@ -52,10 +52,15 @@ if(WIN32 AND ASCIICHAT_DOXYGEN_EXECUTABLE)
 endif()
 
 # Build exportable targets list
+# NOTE: We intentionally do NOT export ascii-chat-static or ascii-chat-static-lib
+# INTERFACE targets because they contain absolute paths to dependency libraries
+# (libsodium, zstd, mimalloc, portaudio, etc.) which would embed build machine
+# paths into the installed cmake files, causing AUR $srcdir warnings.
+# The static library (libasciichat.a) is installed separately as a plain file.
 # For musl builds, exclude the shared library (it's not built by default and can't link against musl)
-set(_ascii_chat_exportable_targets ascii-chat-static ascii-chat-static-lib)
+set(_ascii_chat_exportable_targets)
 if(NOT USE_MUSL)
-    list(PREPEND _ascii_chat_exportable_targets ascii-chat-shared)
+    list(APPEND _ascii_chat_exportable_targets ascii-chat-shared)
 endif()
 
 foreach(_ascii_target IN LISTS _ascii_chat_exportable_targets)
@@ -152,6 +157,34 @@ else()
         COMPONENT Development
         OPTIONAL
     )
+
+    # Strip debug info from static library after installation
+    # This removes DWARF sections containing source file paths (fixes AUR $srcdir warnings)
+    # Note: We use find_program at config time but run strip at install time
+    find_program(STRIP_EXECUTABLE strip)
+    if(STRIP_EXECUTABLE)
+        install(CODE "
+            # Handle DESTDIR for staged installs (like AUR/makepkg)
+            if(DEFINED ENV{DESTDIR})
+                set(_install_root \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}\")
+            else()
+                set(_install_root \"\${CMAKE_INSTALL_PREFIX}\")
+            endif()
+            set(_static_lib \"\${_install_root}/lib/libasciichat.a\")
+            if(EXISTS \"\${_static_lib}\")
+                message(STATUS \"Stripping debug info from libasciichat.a...\")
+                execute_process(
+                    COMMAND ${STRIP_EXECUTABLE} --strip-debug \"\${_static_lib}\"
+                    RESULT_VARIABLE _strip_result
+                )
+                if(_strip_result EQUAL 0)
+                    message(STATUS \"  Stripped debug info successfully\")
+                else()
+                    message(WARNING \"  Failed to strip debug info (exit code: \${_strip_result})\")
+                endif()
+            endif()
+        " COMPONENT Development)
+    endif()
 
     # Install platform-specific shared library (if present)
     if(APPLE)
