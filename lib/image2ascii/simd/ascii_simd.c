@@ -1020,7 +1020,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
     image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
-    char *result = render_ascii_sve_unified_optimized(&temp_image, background_mode, use_256color);
+    char *result =
+        render_ascii_sve_unified_optimized(&temp_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result)
       SAFE_FREE(result);
   }
