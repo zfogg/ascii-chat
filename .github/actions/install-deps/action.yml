@@ -595,9 +595,9 @@ runs:
         export CPPFLAGS="-I${BREW_PREFIX}/include"
         export LDFLAGS="-L${BREW_PREFIX}/lib"
 
-        if [ -d "${BREW_PREFIX}/opt/llvm/lib/unwind" ]; then
-          export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/unwind -lunwind"
-        fi
+        # NOTE: Do NOT add -lunwind here - macOS provides its own unwind library
+        # Linking to Homebrew's libunwind causes static linking check failures
+        # as the binary would depend on /opt/homebrew/opt/llvm/lib/unwind/libunwind.1.dylib
         if [ -d "${BREW_PREFIX}/opt/llvm/lib/c++" ]; then
           export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/c++"
         fi
