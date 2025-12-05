@@ -543,9 +543,33 @@ runs:
             exit 1
           }
           Write-Host "LLVM ${LLVM_ARM64_VERSION} ARM64 installed successfully"
+
+          # For ARM64: Also set LLVM/Clang CMake directories so CMake finds the right installation
+          # and remove or hide any conflicting x64 LLVM
+          $llvmCMakeDir = "${LLVM_ARM64_INSTALL_DIR}\lib\cmake\llvm"
+          $clangCMakeDir = "${LLVM_ARM64_INSTALL_DIR}\lib\cmake\clang"
+          if (Test-Path $llvmCMakeDir) {
+            Add-Content -Path $env:GITHUB_ENV -Value "LLVM_DIR=${llvmCMakeDir}"
+            Write-Host "Set LLVM_DIR: ${llvmCMakeDir}"
+          }
+          if (Test-Path $clangCMakeDir) {
+            Add-Content -Path $env:GITHUB_ENV -Value "Clang_DIR=${clangCMakeDir}"
+            Write-Host "Set Clang_DIR: ${clangCMakeDir}"
+          }
+
+          # Rename conflicting x64 LLVM if present (so llvm-config isn't found there)
+          if (Test-Path "C:\Program Files\LLVM") {
+            Write-Host "Renaming conflicting x64 LLVM at 'C:\Program Files\LLVM'"
+            Rename-Item -Path "C:\Program Files\LLVM" -NewName "LLVM-x64-disabled" -ErrorAction SilentlyContinue
+          }
+
+          # Set vcpkg triplet for ARM64 to ensure CMake uses ARM64 packages
+          Add-Content -Path $env:GITHUB_ENV -Value "VCPKG_TARGET_TRIPLET=arm64-windows-static"
+          Write-Host "Set VCPKG_TARGET_TRIPLET: arm64-windows-static"
         }
 
         Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
+        # Prepend to PATH so our LLVM is found first
         Add-Content -Path $env:GITHUB_PATH -Value $llvmBinPath
         Add-Content -Path $env:GITHUB_ENV -Value "CC=${llvmBinPath}\clang.exe"
         Add-Content -Path $env:GITHUB_ENV -Value "CXX=${llvmBinPath}\clang++.exe"
