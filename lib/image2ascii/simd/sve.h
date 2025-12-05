@@ -15,6 +15,8 @@
  * @date August 2025
  */
 
+#include "image2ascii/image.h" // For image_t type
+
 #if SIMD_SUPPORT_SVE
 #if (defined(__aarch64__) && !defined(__ARM_FEATURE_SVE))
 #error "SVE support required for ARM64"
