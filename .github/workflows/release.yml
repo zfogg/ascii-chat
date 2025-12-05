@@ -258,6 +258,7 @@ jobs:
           ref: ${{ needs.create-release.outputs.version }}
 
       - name: Install build dependencies
+        id: install-deps
         uses: ./.github/actions/install-deps
         with:
           os: ubuntu
@@ -272,9 +273,20 @@ jobs:
           rpmbuild --version
           echo "All packaging tools verified!"
 
-      - name: Configure and package with CPack
+      - name: Configure with CMake
+        run: cmake --preset release
+
+      - name: Save CMake dependency cache
+        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps-cache
+            deps/bearssl/build
+          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
+
+      - name: Build and package with CPack
         run: |
-          cmake --preset release
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
@@ -295,6 +307,24 @@ jobs:
           echo ""
           echo "=== CMake error log ==="
           cat build_release/CMakeFiles/CMakeError.log 2>/dev/null || echo "No CMake error log"
+
+      - name: Print ccache stats
+        if: always()
+        run: ccache --show-stats || true
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ${{ steps.install-deps.outputs.ccache-key }}
+
+      - name: Save build directory
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build_release
+          key: ${{ steps.install-deps.outputs.build-cache-key }}
 
       - name: Collect artifacts
         run: |
@@ -352,23 +382,49 @@ jobs:
           ref: ${{ needs.create-release.outputs.version }}
 
       - name: Install build dependencies
+        id: install-deps
         uses: ./.github/actions/install-deps
         with:
           os: macos
           extra-packages: ""
 
-      - name: Configure and package with CPack
+      - name: Configure with CMake
+        run: cmake --preset release
+
+      - name: Save CMake dependency cache
+        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps-cache
+            deps/bearssl/build
+          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
+
+      - name: Build and package with CPack
         run: |
-          # Clean BearSSL build artifacts to ensure fresh build
-          rm -rf deps/bearssl/build
-          rm -rf .deps-cache/*/bearssl
-          make -C deps/bearssl clean || true
-          cmake --preset release
           cmake --build build_release --target all
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
           cmake --build build_release --target docs
           cmake --build build_release --target package
+
+      - name: Print ccache stats
+        if: always()
+        run: ccache --show-stats || true
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ${{ steps.install-deps.outputs.ccache-key }}
+
+      - name: Save build directory
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build_release
+          key: ${{ steps.install-deps.outputs.build-cache-key }}
 
       - name: Collect artifacts
         run: |
@@ -438,11 +494,6 @@ jobs:
           }
           Write-Host "BearSSL source files verified OK"
 
-          # Clean any stale BearSSL build state
-          Write-Host "Cleaning BearSSL build directory..."
-          if (Test-Path "deps/bearssl/build") {
-            Remove-Item -Recurse -Force "deps/bearssl/build"
-          }
           Write-Host "BearSSL ready for build"
 
       - name: Install dependencies
@@ -458,17 +509,49 @@ jobs:
         run: |
           choco install wixtoolset --no-progress -y
 
-      - name: Configure and package with CPack
+      - name: Configure with CMake
         shell: pwsh
         run: |
           $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
           # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
           cmake --preset release -DASCIICHAT_DEFER_TOOL="$deferTool" -DASCIICHAT_ENABLE_ANALYZERS=OFF
+
+      - name: Save CMake dependency cache
+        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps-cache
+            deps/bearssl/build
+          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
+
+      - name: Build and package with CPack
+        shell: pwsh
+        run: |
           cmake --build build_release --target ascii-chat
           cmake --build build_release --target static-lib
           cmake --build build_release --target shared-lib
           cmake --build build_release --target docs
           cmake --build build_release --target package
+
+      - name: Print ccache stats
+        if: always()
+        shell: bash
+        run: ccache --show-stats || true
+
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ${{ steps.install-deps.outputs.ccache-key }}
+
+      - name: Save build directory
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build_release
+          key: ${{ steps.install-deps.outputs.build-cache-key }}
 
       - name: Collect artifacts
         shell: pwsh
