@@ -72,10 +72,25 @@ endif()
 option(BUILD_TESTS "Build test executables" ON)
 
 # Enforce static linking for Release builds by default
-# Automatically disable in Docker when USE_MUSL is OFF (no static linking available)
-if(EXISTS "/.dockerenv" AND NOT USE_MUSL AND UNIX AND NOT APPLE)
-    set(_default_enforce_static OFF)
-    message(STATUS "Docker detected without USE_MUSL - static linking enforcement ${BoldYellow}auto-disabled${ColorReset}")
+# Automatically disable when USE_MUSL is OFF on Linux (no static linking available)
+# - Docker without musl: dynamic glibc linking
+# - ARM64 Linux: musl not enabled by default (limited GitHub runner support)
+if(NOT USE_MUSL AND UNIX AND NOT APPLE)
+    # Check if we're on ARM64 (CMAKE_SYSTEM_PROCESSOR may not be set yet, use uname)
+    execute_process(
+        COMMAND uname -m
+        OUTPUT_VARIABLE _host_arch
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    if(EXISTS "/.dockerenv")
+        set(_default_enforce_static OFF)
+        message(STATUS "Docker detected without USE_MUSL - static linking enforcement ${BoldYellow}auto-disabled${ColorReset}")
+    elseif(_host_arch STREQUAL "aarch64" OR _host_arch STREQUAL "arm64")
+        set(_default_enforce_static OFF)
+        message(STATUS "ARM64 Linux without USE_MUSL - static linking enforcement ${BoldYellow}auto-disabled${ColorReset}")
+    else()
+        set(_default_enforce_static ON)
+    endif()
 else()
     set(_default_enforce_static ON)
 endif()
