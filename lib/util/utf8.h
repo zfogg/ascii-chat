@@ -2,8 +2,6 @@
  * @file util/utf8.h
  * @brief 🔤 UTF-8 Encoding and Decoding Utilities
  * @ingroup util
- * @addtogroup util
- * @{
  *
  * This header provides simple, efficient UTF-8 validation and decoding
  * without external dependencies. The implementation handles multi-byte
@@ -47,8 +45,7 @@
 
 /* ============================================================================
  * UTF-8 Decoding Functions
- * @{
- */
+ * ========================================================================== */
 
 /**
  * @brief Decode a UTF-8 sequence to a Unicode codepoint
@@ -83,5 +80,3 @@
  * @ingroup util
  */
 int utf8_decode(const uint8_t *s, uint32_t *codepoint);
-
-/** @} */

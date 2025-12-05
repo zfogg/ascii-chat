@@ -55,9 +55,11 @@
  *
  * @return 0 on success, non-zero error code on failure
  *
- * @example
- * // Invoked by dispatcher after options are parsed:
- * // $ ascii-chat server --port 8080
- * //   (Options parsed in main.c, then server_main() called)
+ * @par Example
+ * @code{.sh}
+ * # Invoked by dispatcher after options are parsed:
+ * ascii-chat server --port 8080
+ * # Options parsed in main.c, then server_main() called
+ * @endcode
  */
 int server_main(void);

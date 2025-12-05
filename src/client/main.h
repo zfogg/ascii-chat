@@ -56,10 +56,12 @@
  *
  * @return 0 on success, non-zero error code on failure
  *
- * @example
- * // Invoked by dispatcher after options are parsed:
- * // $ ascii-chat client --address localhost --audio
- * //   (Options parsed in main.c, then client_main() called)
+ * @par Example
+ * @code{.sh}
+ * # Invoked by dispatcher after options are parsed:
+ * ascii-chat client --address localhost --audio
+ * # Options parsed in main.c, then client_main() called
+ * @endcode
  */
 int client_main(void);
 
