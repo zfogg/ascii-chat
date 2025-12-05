@@ -178,6 +178,7 @@ jobs:
 
             **macOS Installers (x86_64 & arm64):**
             - Signed-compatible `.pkg` (productbuild)
+            - Self-extracting `.sh` installer
             - Portable `.tar.gz`
 
             **Windows Installers (x86_64):**
@@ -195,7 +196,7 @@ jobs:
             sudo rpm -i ascii-chat-${{ steps.version.outputs.version }}-$arch.rpm          # Fedora/RHEL
             ```
 
-            **Linux - Self-Extracting Installer:**
+            **Linux or macOS - Self-Extracting Installer:**
             ```bash
             chmod +x ascii-chat-${{ steps.version.outputs.version }}-$arch.sh
             sudo ./ascii-chat-${{ steps.version.outputs.version }}-$arch.sh --prefix=/usr/local
