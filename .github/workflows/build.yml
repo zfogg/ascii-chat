@@ -184,8 +184,9 @@ jobs:
 
       # Save CMake deps cache AFTER build so BearSSL, defer tool, and other deps
       # built during cmake configure/build are included
+      # IMPORTANT: Only save on success to avoid caching corrupted state
       - name: Save CMake dependency cache
-        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: |
@@ -194,6 +195,7 @@ jobs:
           key: ${{ steps.install-deps.outputs.cmake-cache-key }}
 
       # Save ccache after build for incremental compilation on next run
+      # ccache is safe to save even on failure - it stores compilation results
       - name: Save ccache
         if: always()
         uses: actions/cache/save@v4
@@ -202,8 +204,9 @@ jobs:
           key: ${{ steps.install-deps.outputs.ccache-key }}
 
       # Save build directory for incremental builds - Ninja will only rebuild changed files
+      # IMPORTANT: Only save on success to avoid caching corrupted ExternalProject stamps
       - name: Save build directory
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: build_release
