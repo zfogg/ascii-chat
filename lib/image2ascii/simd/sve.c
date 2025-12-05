@@ -11,6 +11,8 @@
 #include <stdint.h>
 #include "sve.h"
 #include "common.h"
+#include "ascii_simd.h"    // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
+#include "output_buffer.h" // For outbuf_t, emit_*, ob_*
 
 #include <arm_sve.h>
 
@@ -42,8 +44,7 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
   const size_t max_char_bytes = 4;
   const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
-  char *output;
-  output = len = SAFE_MALLOC(char *);
+  char *output = SAFE_MALLOC(len, char *);
 
   char *pos = output;
   const rgb_pixel_t *pixels = (const rgb_pixel_t *)image->pixels;
@@ -54,12 +55,14 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
     int x = 0;
 
     // Process pixels with SVE (scalable vector length - typically 128, 256, or 512 bits)
-    svuint8_t pg = svptrue_b8(); // Predicate for all lanes
+    svbool_t pg = svptrue_b8(); // Predicate for all lanes
+    (void)pg;                   // May be unused in some code paths
 
     while (x < w) {
       // Calculate how many pixels we can process in this iteration
       int remaining = w - x;
-      svuint8_t pg_active = svwhilelt_b8_s32(x, w);
+      (void)remaining;
+      svbool_t pg_active = svwhilelt_b8_s32(x, w);
       int vec_len = svcntb_pat(SV_ALL) / 3; // Vector length in RGB pixels (3 bytes per pixel)
       int process_count = (remaining < vec_len) ? remaining : vec_len;
 
@@ -90,8 +93,8 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
       luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
 
-      // Pack back to 8-bit
-      svuint8_t luminance = svqxtnb_u8(luma);
+      // Pack back to 8-bit (narrow from u16 to u8)
+      svuint8_t luminance = svqxtnb_u16(luma);
 
       // Store and convert to ASCII characters
       uint8_t luma_array[64];
@@ -149,7 +152,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 
   // Use monochrome optimization for simple case
   if (!use_background && !use_256color) {
-    return render_ascii_image_monochrome_sve(image);
+    return render_ascii_image_monochrome_sve(image, ascii_chars);
   }
 
   outbuf_t ob = {0};
@@ -177,7 +180,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 
     // Process with SVE scalable vectors (adapts to hardware vector length)
     while (x < width) {
-      svuint8_t pg_active = svwhilelt_b8_s32(x, width);
+      svbool_t pg_active = svwhilelt_b8_s32(x, width);
       int vec_len = svcntb_pat(SV_ALL) / 3; // Vector length in RGB pixels
       int remaining = width - x;
       int process_count = (remaining < vec_len) ? remaining : vec_len;
@@ -209,8 +212,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
 
-      // Pack back to 8-bit and store
-      svuint8_t luminance = svqxtnb_u8(luma);
+      // Pack back to 8-bit and store (narrow from u16 to u8)
+      svuint8_t luminance = svqxtnb_u16(luma);
       uint8_t luma_array[64];
       svst1_u8(pg_active, luma_array, luminance);
 
@@ -341,7 +344,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           cur_color_idx = color_idx;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
@@ -375,7 +379,8 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
           curB = (int)B;
         }
 
-        ob_putc(&ob, (char)ch);
+        // Emit UTF-8 character from cache
+        ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
         if (rep_is_profitable(run)) {
           emit_rep(&ob, run - 1);
         } else {
