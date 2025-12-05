@@ -465,7 +465,7 @@ runs:
     # include compiler binaries (clang.exe), NOT the development libraries
     # (LLVMSupport.lib, clangTooling.lib, etc.) needed to build the defer tool.
     # AMD64: Use vovkos/llvm-package-windows which provides full LLVM dev libraries.
-    # ARM64: Use scoop's LLVM (no vovkos ARM64 builds available yet).
+    # ARM64: Use official LLVM woa64 installer (LLVM 19.x has native ARM64 support).
     - name: Install LLVM with dev libraries (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
@@ -518,14 +518,31 @@ runs:
 
           $llvmBinPath = "${LLVM_INSTALL_DIR}\bin"
         } else {
-          # ARM64: Install via scoop (no vovkos ARM64 builds available)
-          Write-Host "Installing LLVM via scoop for ARM64..."
-          scoop install llvm --global
-          $llvmBinPath = "C:\ProgramData\scoop\apps\llvm\current\bin"
-          if (-not (Test-Path $llvmBinPath)) {
-            Write-Host "ERROR: Could not find scoop LLVM installation" -ForegroundColor Red
+          # ARM64: Download official LLVM woa64 installer (GitHub releases)
+          # LLVM 21.x doesn't ship woa64 binaries, so use 19.1.6 which has native ARM64 support
+          $LLVM_ARM64_VERSION = "19.1.6"
+          $LLVM_ARM64_URL = "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_ARM64_VERSION}/LLVM-${LLVM_ARM64_VERSION}-woa64.exe"
+          Write-Host "Detected architecture: ARM64"
+          Write-Host "Installing official LLVM ${LLVM_ARM64_VERSION} for Windows ARM64..."
+
+          $installerPath = "$env:TEMP\LLVM-${LLVM_ARM64_VERSION}-woa64.exe"
+          Write-Host "Downloading from: $LLVM_ARM64_URL"
+          Invoke-WebRequest -Uri $LLVM_ARM64_URL -OutFile $installerPath -UseBasicParsing
+
+          # Run installer silently (NSIS installer uses /S for silent mode)
+          # Install to C:\LLVM-ARM64 to avoid conflicts with x64 LLVM
+          $LLVM_ARM64_INSTALL_DIR = "C:\LLVM-ARM64"
+          Write-Host "Running silent installer to ${LLVM_ARM64_INSTALL_DIR}..."
+          Start-Process -Wait -FilePath $installerPath -ArgumentList "/S","/D=${LLVM_ARM64_INSTALL_DIR}"
+          Remove-Item $installerPath -Force -ErrorAction SilentlyContinue
+
+          $llvmBinPath = "${LLVM_ARM64_INSTALL_DIR}\bin"
+          if (-not (Test-Path "$llvmBinPath\clang.exe")) {
+            Write-Host "ERROR: LLVM ARM64 installation failed - clang.exe not found" -ForegroundColor Red
+            Get-ChildItem -Path $LLVM_ARM64_INSTALL_DIR -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20
             exit 1
           }
+          Write-Host "LLVM ${LLVM_ARM64_VERSION} ARM64 installed successfully"
         }
 
         Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
