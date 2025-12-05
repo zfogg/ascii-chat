@@ -59,6 +59,7 @@ complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s A -l audio -d 'E
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s s -l stretch -d 'Allow image stretching'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s S -l snapshot -d 'Capture single frame and exit'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -s D -l snapshot-delay -x -a '1.0 2.0 3.0 5.0' -d 'Delay before snapshot (seconds)'
+complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l mirror -d 'View local webcam as ASCII art without network'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l test-pattern -d 'Use test pattern instead of webcam'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l list-webcams -d 'List available webcam devices and exit'
 complete -c ascii-chat -n '__fish_ascii_chat_mode_is client' -l list-microphones -d 'List available audio input devices and exit'

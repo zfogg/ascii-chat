@@ -82,6 +82,7 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--snapshot'; Description = 'Capture single frame and exit' }
         @{ Name = '-D'; Description = 'Delay before snapshot (seconds)' }
         @{ Name = '--snapshot-delay'; Description = 'Delay before snapshot (seconds)' }
+        @{ Name = '--mirror'; Description = 'View local webcam as ASCII art without network' }
         @{ Name = '--test-pattern'; Description = 'Use test pattern instead of webcam' }
         @{ Name = '--list-webcams'; Description = 'List available webcam devices and exit' }
         @{ Name = '--list-microphones'; Description = 'List available audio input devices and exit' }
