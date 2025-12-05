@@ -566,40 +566,64 @@ runs:
     # =========================================================================
     # Pre-built Tools Download (Windows)
     # =========================================================================
-    # Download pre-built defer tool and BearSSL from build-tools release
+    # Try to download pre-built defer tool and BearSSL from build-tools release
     # This avoids needing full LLVM dev libraries and nmake build issues
-    # AMD64: Download pre-built binaries
+    # If build-tools release doesn't exist, CMake will build from source
+    # AMD64: Try to download pre-built binaries, fall back to source build
     # ARM64: Will be built from source by CMake (no pre-built ARM64 binaries yet)
     - name: Download pre-built tools (Windows)
       id: download-prebuilt
       if: inputs.os == 'windows' && inputs.github-token != ''
       shell: pwsh
       run: |
-        $ErrorActionPreference = 'Stop'
         $arch = "${{ runner.arch }}"
         Write-Host "Detected architecture: $arch"
 
         if ($arch -eq "X64") {
-          # AMD64: Download pre-built binaries
+          # AMD64: Try to download pre-built binaries
           $deferToolDir = Join-Path $PWD ".deps-cache" "defer-tool"
           New-Item -ItemType Directory -Force -Path $deferToolDir | Out-Null
-          gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
-          gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
-          gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
-          $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
-          $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
-          Move-Item -Path $srcPath -Destination $dstPath -Force
-          Write-Host "Downloaded defer tool to: $dstPath"
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
 
-          # Download pre-built BearSSL
-          $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
-          New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
-          gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
-          $srcPathBearssl = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
-          $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
-          Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
-          Write-Host "Downloaded BearSSL to: $dstPathBearssl"
+          # Check if build-tools release exists
+          $releaseExists = $false
+          try {
+            $result = gh release view build-tools --json tagName 2>&1
+            if ($LASTEXITCODE -eq 0) {
+              $releaseExists = $true
+              Write-Host "Found build-tools release, attempting to download pre-built binaries..."
+            }
+          } catch {
+            Write-Host "build-tools release not found, will build from source"
+          }
+
+          if ($releaseExists) {
+            try {
+              gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
+              gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
+              gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
+              $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
+              $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
+              Move-Item -Path $srcPath -Destination $dstPath -Force
+              Write-Host "Downloaded defer tool to: $dstPath"
+              Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
+
+              # Download pre-built BearSSL
+              $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
+              New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
+              gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
+              $srcPathBearssl = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
+              $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
+              Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
+              Write-Host "Downloaded BearSSL to: $dstPathBearssl"
+            } catch {
+              Write-Host "Failed to download pre-built binaries: $_"
+              Write-Host "Will build from source instead"
+              Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path="
+            }
+          } else {
+            Write-Host "No build-tools release available - defer tool and BearSSL will be built from source"
+            Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path="
+          }
         } else {
           # ARM64: No pre-built binaries available - CMake will build from source
           Write-Host "ARM64: No pre-built binaries available - defer tool and BearSSL will be built from source"
