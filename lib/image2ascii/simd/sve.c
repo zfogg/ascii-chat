@@ -93,12 +93,16 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
       luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
 
-      // Pack back to 8-bit (narrow from u16 to u8)
-      svuint8_t luminance = svqxtnb_u16(luma);
+      // Store u16 luminance values (SVE1 compatible - no SVE2 narrowing intrinsics)
+      // After right-shift by 8, values are already in 0-255 range
+      uint16_t luma_temp[64];
+      svst1_u16(svptrue_b16(), luma_temp, luma);
 
-      // Store and convert to ASCII characters
+      // Convert to u8 array for ASCII lookup
       uint8_t luma_array[64];
-      svst1_u8(pg_active, luma_array, luminance);
+      for (int j = 0; j < process_count; j++) {
+        luma_array[j] = (uint8_t)luma_temp[j];
+      }
 
       for (int j = 0; j < process_count; j++) {
         if (x + j < w) {
@@ -212,10 +216,16 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
       luma = svadd_n_u16_x(svptrue_b16(), luma, LUMA_THRESHOLD);
       luma = svlsr_n_u16_x(svptrue_b16(), luma, 8);
 
-      // Pack back to 8-bit and store (narrow from u16 to u8)
-      svuint8_t luminance = svqxtnb_u16(luma);
+      // Store u16 luminance values (SVE1 compatible - no SVE2 narrowing intrinsics)
+      // After right-shift by 8, values are already in 0-255 range
+      uint16_t luma_temp[64];
+      svst1_u16(svptrue_b16(), luma_temp, luma);
+
+      // Convert to u8 array for ASCII lookup
       uint8_t luma_array[64];
-      svst1_u8(pg_active, luma_array, luminance);
+      for (int j = 0; j < process_count; j++) {
+        luma_array[j] = (uint8_t)luma_temp[j];
+      }
 
       // FAST: Use svtbl_u8 to get character indices from the ramp (SVE advantage)
       // Convert luminance to 0-63 indices
