@@ -59,6 +59,9 @@ if(WIN32)
         message(STATUS "Using ${BoldYellow}dynamic libraries${ColorReset} for Debug/Dev build (triplet: ${BoldCyan}${VCPKG_TRIPLET}${ColorReset})")
     endif()
 
+    # Set VCPKG_TARGET_TRIPLET for tools (e.g., BuildLLVMTool.cmake uses this name)
+    set(VCPKG_TARGET_TRIPLET "${VCPKG_TRIPLET}")
+
     # Set CMake paths to use the selected triplet
     set(CMAKE_PREFIX_PATH "${VCPKG_ROOT}/installed/${VCPKG_TRIPLET}" ${CMAKE_PREFIX_PATH})
     include_directories("${VCPKG_INCLUDE_PATH}")
