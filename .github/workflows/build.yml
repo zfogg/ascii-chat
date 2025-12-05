@@ -144,6 +144,17 @@ jobs:
           }
           cmake @cmakeArgs
 
+      # Save CMake deps cache AFTER configure so BearSSL and other deps built during
+      # cmake configure are included. This must run after configure but before build.
+      - name: Save CMake dependency cache
+        if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps-cache
+            deps/bearssl/build
+          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
+
       - name: Build
         run: |
           cmake --build build_release --target ascii-chat
@@ -175,6 +186,28 @@ jobs:
           Write-Host "Build successful! Found ascii-chat.exe"
           Get-ChildItem -Path $binDir
           Get-ChildItem -Path "build_release/lib"
+
+      # Print ccache statistics for debugging
+      - name: Print ccache stats
+        if: always()
+        shell: bash
+        run: ccache --show-stats || true
+
+      # Save ccache after build for incremental compilation on next run
+      - name: Save ccache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .ccache
+          key: ${{ steps.install-deps.outputs.ccache-key }}
+
+      # Save build directory for incremental builds - Ninja will only rebuild changed files
+      - name: Save build directory
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build_release
+          key: ${{ steps.install-deps.outputs.build-cache-key }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

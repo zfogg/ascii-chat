@@ -116,7 +116,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     sudo apt-get install -y \
-      pkg-config make \
+      pkg-config make ccache \
       cmake ninja-build \
       musl-tools musl-dev \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \

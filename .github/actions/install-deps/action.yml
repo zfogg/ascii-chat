@@ -33,6 +33,24 @@ outputs:
   defer-tool-path:
     description: 'Path to the defer tool executable (Windows only)'
     value: ${{ steps.download-prebuilt.outputs.defer-tool-path }}
+  cmake-cache-key:
+    description: 'Cache key for CMake dependencies (for use in workflow cache save steps)'
+    value: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v8-${{ hashFiles('cmake/dependencies/**') }}-${{ steps.install-deps-hash.outputs.hash }}
+  cmake-cache-hit:
+    description: 'Whether CMake dependency cache was hit'
+    value: ${{ steps.cmake-cache.outputs.cache-hit }}
+  ccache-key:
+    description: 'Cache key for ccache (for use in workflow cache save steps)'
+    value: ${{ runner.os }}-${{ runner.arch }}-ccache-v1-${{ github.ref_name }}
+  ccache-restore-keys:
+    description: 'Restore keys for ccache (for use in workflow cache restore steps)'
+    value: ${{ runner.os }}-${{ runner.arch }}-ccache-v1-
+  ccache-hit:
+    description: 'Whether ccache was hit'
+    value: ${{ steps.ccache-restore.outputs.cache-hit }}
+  build-cache-key:
+    description: 'Cache key for build directory (for incremental builds)'
+    value: ${{ runner.os }}-${{ runner.arch }}-build-v1-${{ github.ref_name }}
 
 runs:
   using: 'composite'
@@ -96,7 +114,47 @@ runs:
           deps/bearssl/build
         # Include runner.arch to separate x86_64 and arm64 caches on macOS
         # Include install-deps.sh hash so defer tool rebuilds when system packages change
-        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}-${{ steps.install-deps-hash.outputs.hash }}
+        # v8: Fix cache timing - cache is now saved by workflows AFTER cmake configure
+        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v8-${{ hashFiles('cmake/dependencies/**') }}-${{ steps.install-deps-hash.outputs.hash }}
+
+    # Restore ccache for incremental compilation across CI runs
+    # Key includes branch name so each branch has its own cache, with fallback to any branch's cache
+    - name: Restore ccache (All platforms)
+      id: ccache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: .ccache
+        key: ${{ runner.os }}-${{ runner.arch }}-ccache-v1-${{ github.ref_name }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-ccache-v1-
+
+    # Set CCACHE_DIR to workspace-relative path for consistent caching
+    - name: Configure ccache directory (Unix)
+      if: inputs.os != 'windows'
+      shell: bash
+      run: |
+        mkdir -p .ccache
+        echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> $GITHUB_ENV
+        echo "CCACHE_MAXSIZE=500M" >> $GITHUB_ENV
+        echo "CCACHE_COMPRESS=1" >> $GITHUB_ENV
+
+    - name: Configure ccache directory (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path .ccache | Out-Null
+        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_DIR=${{ github.workspace }}\.ccache"
+        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_MAXSIZE=500M"
+        Add-Content -Path $env:GITHUB_ENV -Value "CCACHE_COMPRESS=1"
+
+    # Restore build directory for incremental builds
+    # Same key per branch - Ninja handles rebuilding only changed files
+    - name: Restore build directory (All platforms)
+      id: build-cache-restore
+      uses: actions/cache/restore@v4
+      with:
+        path: build_release
+        key: ${{ runner.os }}-${{ runner.arch }}-build-v1-${{ github.ref_name }}
 
     - name: Compute install-deps.sh hash (macOS)
       if: inputs.os == 'macos'
@@ -632,16 +690,9 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
 
-    - name: Save CMake dependency cache (All platforms)
-      if: always() && steps.cmake-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: |
-          .deps-cache
-          deps/bearssl/build
-        # Include runner.arch to separate x86_64 and arm64 caches on macOS
-        # Include install-deps.sh hash so defer tool rebuilds when system packages change
-        key: ${{ runner.os }}-${{ runner.arch }}-cmake-deps-v7-${{ hashFiles('cmake/dependencies/**') }}-${{ steps.install-deps-hash.outputs.hash }}
+    # NOTE: CMake dependency cache is saved by the workflow files (build.yml, release.yml)
+    # AFTER cmake configure runs, not here. This ensures BearSSL and other deps built
+    # during cmake configure are included in the cache.
 
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
