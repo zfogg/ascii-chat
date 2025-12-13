@@ -11,13 +11,16 @@
 
 cc_library(
     name = "llvm",
-    hdrs = glob([
-        "include/llvm/**/*.h",
-        "include/llvm/**/*.def",
-        "include/llvm/**/*.inc",
-        "include/llvm-c/**/*.h",
-    ]),
-    includes = ["include"],
+    hdrs = glob(
+        [
+            "root/include/llvm/**/*.h",
+            "root/include/llvm/**/*.def",
+            "root/include/llvm/**/*.inc",
+            "root/include/llvm-c/**/*.h",
+        ],
+        allow_empty = True,
+    ),
+    includes = ["root/include"],
     linkopts = select({
         "@platforms//os:linux": [
             "-lLLVM",
@@ -36,12 +39,15 @@ cc_library(
 
 cc_library(
     name = "clang",
-    hdrs = glob([
-        "include/clang/**/*.h",
-        "include/clang/**/*.def",
-        "include/clang-c/**/*.h",
-    ]),
-    includes = ["include"],
+    hdrs = glob(
+        [
+            "root/include/clang/**/*.h",
+            "root/include/clang/**/*.def",
+            "root/include/clang-c/**/*.h",
+        ],
+        allow_empty = True,
+    ),
+    includes = ["root/include"],
     linkopts = select({
         "@platforms//os:linux": [
             "-lclang-cpp",

@@ -38,6 +38,26 @@ def _get_include_paths(deps):
                 paths.append(inc)
     return paths
 
+def _generate_compile_db_entries_template(srcs, compiler_args):
+    """Generate compile_commands.json entries as a bash template.
+
+    Uses $SOURCE_ROOT variable which is resolved at runtime to handle
+    Bazel's symlink structure correctly.
+    """
+    entries = []
+    args_str = '","'.join(compiler_args)
+
+    for src in srcs:
+        # Use shell variable $SOURCE_ROOT which is resolved at runtime
+        entry = '''{{
+  "directory": "$SOURCE_ROOT",
+  "file": "$SOURCE_ROOT/{src_path}",
+  "arguments": ["clang","{args}","-c","$SOURCE_ROOT/{src_path}"]
+}}'''.format(src_path = src.path, args = args_str)
+        entries.append(entry)
+
+    return ",\n".join(entries)
+
 def _defer_transform_impl(ctx):
     """Transform source files that use defer() macro."""
 
@@ -95,23 +115,28 @@ def _defer_transform_impl(ctx):
         compiler_args.append("-D" + define)
 
     # Add include paths from dependencies
+    # Skip Bazel-specific paths (external/, bazel-out/) since we're using real source paths
     for inc in include_paths:
-        if inc:
-            compiler_args.append("-I" + inc)
+        if inc and not inc.startswith("external/") and not inc.startswith("bazel-out/"):
+            compiler_args.append("-I$SOURCE_ROOT/" + inc)
 
     # Add workspace root includes
-    compiler_args.append("-I.")
-    compiler_args.append("-Ilib")
-    compiler_args.append("-Iexternal/+non_bcr_deps+tomlc17/src")
-    compiler_args.append("-Iexternal/+non_bcr_deps+uthash/src")
-    compiler_args.append("-Iexternal/+non_bcr_deps+libsodium/src/libsodium/include")
-    compiler_args.append("-Iexternal/+non_bcr_deps+bearssl/inc")
+    # NOTE: These paths use $SOURCE_ROOT which gets expanded in the script
+    # We use source tree paths (deps/) not Bazel external paths (external/+non_bcr_deps+)
+    # because we're processing real source files, not Bazel-sandboxed files
+    compiler_args.append("-I$SOURCE_ROOT")
+    compiler_args.append("-I$SOURCE_ROOT/lib")
+    compiler_args.append("-I$SOURCE_ROOT/deps/tomlc17/src")
+    compiler_args.append("-I$SOURCE_ROOT/deps/uthash/src")
+    compiler_args.append("-I$SOURCE_ROOT/deps/libsodium/src/libsodium/include")
+    compiler_args.append("-I$SOURCE_ROOT/deps/bearssl/inc")
 
     # Add include path for generated headers (like version.h)
-    compiler_args.append("-I" + ctx.genfiles_dir.path)
-    compiler_args.append("-I" + ctx.genfiles_dir.path + "/lib")
-    compiler_args.append("-I" + ctx.bin_dir.path)
-    compiler_args.append("-I" + ctx.bin_dir.path + "/lib")
+    # The version.h may be in Bazel's output or the CMake build directory
+    # We add both to handle either case
+    compiler_args.append("-I$SOURCE_ROOT/build/generated")
+    compiler_args.append("-I$SOURCE_ROOT/build_release/generated")
+    compiler_args.append("-I$SOURCE_ROOT/build_debug/generated")
 
     # Declare output directory for compile_commands.json
     compile_db_dir = ctx.actions.declare_directory(ctx.label.name + "_compile_db")
@@ -119,23 +144,12 @@ def _defer_transform_impl(ctx):
     # Declare output directory for transformed files
     output_dir = ctx.actions.declare_directory(ctx.label.name + "_out")
 
-    # Generate compile_commands.json content
-    compile_commands = []
-    for src in all_srcs:
-        entry = {
-            "directory": "/proc/self/cwd",
-            "file": src.path,
-            "arguments": ["clang"] + compiler_args + ["-c", src.path],
-        }
-        compile_commands.append(entry)
-
-    compile_db_content = json.encode(compile_commands)
-
     # Build list of expected output paths (tool preserves directory structure)
     # e.g., lib/config.c -> output_dir/lib/config.c
     expected_outputs = " ".join([src.path for src in all_srcs])
 
     # Create a script that writes compile_commands.json and runs the tool
+    # The script will resolve symlinks at runtime to get real source paths
     script_content = """#!/bin/bash
 set -e
 
@@ -143,31 +157,52 @@ set -e
 export ASAN_OPTIONS="detect_leaks=0:halt_on_error=0"
 export UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=0"
 
+# Get the first source file and resolve its symlink to find the real source root
+FIRST_SRC="{first_src}"
+REAL_SRC_PATH=$(readlink -f "$FIRST_SRC" 2>/dev/null || realpath "$FIRST_SRC" 2>/dev/null || echo "")
+if [[ -z "$REAL_SRC_PATH" ]]; then
+    echo "Error: Could not resolve real path for $FIRST_SRC" >&2
+    exit 1
+fi
+
+# Extract the source root by removing the relative path suffix
+# e.g., /home/user/repo/lib/config.c with lib/config.c -> /home/user/repo
+RELATIVE_PATH="{first_src}"
+SOURCE_ROOT="${{REAL_SRC_PATH%/$RELATIVE_PATH}}"
+
+echo "Resolved source root: $SOURCE_ROOT" >&2
+
 # Create compile database directory
 mkdir -p "{compile_db_dir}"
 
-# Write compile_commands.json
-cat > "{compile_db_dir}/compile_commands.json" << 'COMPILE_DB_EOF'
-{compile_db_content}
+# Generate compile_commands.json with resolved absolute paths
+# This is critical: the defer tool follows symlinks, so we must use the real paths
+cat > "{compile_db_dir}/compile_commands.json" << COMPILE_DB_EOF
+[
+{compile_db_entries}
+]
 COMPILE_DB_EOF
+
+# Debug output
+echo "compile_commands.json:" >&2
+cat "{compile_db_dir}/compile_commands.json" >&2
 
 # Create output directory
 mkdir -p "{output_dir}"
 
-# Debug: show what we're doing
-echo "Running defer tool: {defer_tool}" >&2
-echo "Source files: {src_files}" >&2
-echo "Output dir: {output_dir}" >&2
-echo "Compile DB dir: {compile_db_dir}" >&2
-echo "PWD: $(pwd)" >&2
-echo "Source file exists: $(ls -la lib/config.c 2>&1)" >&2
-echo "compile_commands.json:" >&2
-cat "{compile_db_dir}/compile_commands.json" >&2
+# Build the list of real source file paths
+REAL_SRC_FILES=""
+for src in {src_files}; do
+    REAL_SRC_FILES="$REAL_SRC_FILES $SOURCE_ROOT/$src"
+done
 
-# Run the defer tool and capture output
-# Use --input-root to tell the tool to compute paths relative to execroot,
-# not follow symlinks to the actual source location
-"{defer_tool}" {src_files} --output-dir="{output_dir}" --input-root="$(pwd)" -p "{compile_db_dir}" 2>&1
+echo "Running defer tool: {defer_tool}" >&2
+echo "Real source files:$REAL_SRC_FILES" >&2
+echo "Output dir: {output_dir}" >&2
+echo "Input root: $SOURCE_ROOT" >&2
+
+# Run the defer tool with resolved paths
+"{defer_tool}" $REAL_SRC_FILES --output-dir="{output_dir}" --input-root="$SOURCE_ROOT" -p "{compile_db_dir}" 2>&1
 TOOL_EXIT=$?
 echo "Tool exit code: $TOOL_EXIT" >&2
 if [ $TOOL_EXIT -ne 0 ]; then
@@ -190,11 +225,13 @@ for src in {expected_outputs}; do
 done
 """.format(
         compile_db_dir = compile_db_dir.path,
-        compile_db_content = compile_db_content,
         output_dir = output_dir.path,
         defer_tool = defer_tool.path,
         src_files = " ".join([src.path for src in all_srcs]),
+        first_src = all_srcs[0].path,
         expected_outputs = expected_outputs,
+        # compile_db_entries will be dynamically generated by the script
+        compile_db_entries = _generate_compile_db_entries_template(all_srcs, compiler_args),
     )
 
     # Create the script file
@@ -236,10 +273,11 @@ defer_transform = rule(
             doc = "Additional headers needed (e.g., generated headers like version.h)",
         ),
         "_defer_tool": attr.label(
-            default = "//src/tooling/defer:ascii-instr-defer",
+            default = "//.deps-cache/defer-tool:ascii-instr-defer",
             executable = True,
+            allow_single_file = True,
             cfg = "exec",
-            doc = "The defer transformation tool",
+            doc = "The defer transformation tool (pre-built binary from CMake)",
         ),
     },
     doc = "Transform C sources that use defer() macro for RAII-style cleanup.",

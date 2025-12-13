@@ -159,7 +159,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          BAZEL_ARGS="--config=ci"
+          BAZEL_ARGS="--config=ci --define=skip_defer=true"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
           fi
@@ -171,7 +171,7 @@ jobs:
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
-          $bazelArgs = @("--config=ci")
+          $bazelArgs = @("--config=ci", "--define=skip_defer=true")
           if ($env:BUILDBUDDY_API_KEY) {
             $bazelArgs += "--remote_header=x-buildbuddy-api-key=$env:BUILDBUDDY_API_KEY"
           }

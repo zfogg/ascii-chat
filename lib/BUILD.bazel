@@ -16,6 +16,30 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//bazel/rules:defer.bzl", "defer_transform")
 
+# Config setting to skip defer transformation (useful for CI without defer tool)
+config_setting(
+    name = "skip_defer",
+    define_values = {"skip_defer": "true"},
+)
+
+# Filegroups that select between transformed and original sources
+# When --define=skip_defer=true, use original files (defer() becomes no-op)
+filegroup(
+    name = "config_srcs",
+    srcs = select({
+        ":skip_defer": ["config.c"],
+        "//conditions:default": [":config_defer"],
+    }),
+)
+
+filegroup(
+    name = "known_hosts_srcs",
+    srcs = select({
+        ":skip_defer": ["crypto/known_hosts.c"],
+        "//conditions:default": [":known_hosts_defer"],
+    }),
+)
+
 # Load auto-detected SIMD configuration
 # This provides SIMD_COPTS, SIMD_DEFINES, CRC32_HW_COPTS, CRC32_HW_DEFINES
 load("@simd_config//:defs.bzl", "CRC32_HW_COPTS", "CRC32_HW_DEFINES", "SIMD_COPTS", "SIMD_DEFINES")
@@ -247,7 +271,7 @@ cc_library(
     srcs = [
         "crypto/crypto.c",
         "crypto/keys/keys.c",
-        ":known_hosts_defer",  # defer() transformed known_hosts.c
+        ":known_hosts_srcs",  # defer() transformed or original known_hosts.c
         "crypto/handshake.c",
         "crypto/http_client.c",
         "crypto/pem_utils.c",
@@ -468,7 +492,7 @@ cc_library(
         "asciichat_errno.c",
         "logging.c",
         "options.c",
-        ":config_defer",  # defer() transformed config.c
+        ":config_srcs",  # defer() transformed or original config.c
         "version.c",
         "palette.c",
         ":version_h",  # Generated version header
