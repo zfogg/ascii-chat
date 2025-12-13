@@ -94,6 +94,7 @@ build:release --copt=-DNDEBUG
 build:release --copt=-fno-omit-frame-pointer
 build:release --strip=always
 build:release --features=thin_lto
+build:release --features=use_lto_native_object_directory
 
 # Release-specific optimizations
 build:release --copt=-ffunction-sections
@@ -220,6 +221,8 @@ build:ci --config=release
 build:ci --curses=no
 build:ci --color=yes
 build:ci --show_progress_rate_limit=10
+# Disable ThinLTO for CI - incompatible with default toolchain tree artifacts
+build:ci --features=-thin_lto
 test:ci --test_output=errors
 
 # =============================================================================
