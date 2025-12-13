@@ -877,8 +877,10 @@ runs:
           echo "# CI-generated BuildBuddy configuration" > user.bazelrc
           echo "build --bes_results_url=https://zfogg.buildbuddy.io/invocation/" >> user.bazelrc
           echo "build --bes_backend=grpcs://zfogg.buildbuddy.io" >> user.bazelrc
+          echo "build --remote_cache=grpcs://zfogg.buildbuddy.io" >> user.bazelrc
+          echo "build --noremote_upload_local_results" >> user.bazelrc
+          echo "build --remote_timeout=10m" >> user.bazelrc
           echo "build --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" >> user.bazelrc
-          echo "build --remote_cache=grpcs://remote.buildbuddy.io" >> user.bazelrc
           echo "build --remote_cache_compression" >> user.bazelrc
           echo "Created user.bazelrc with BuildBuddy remote cache config"
         else
@@ -897,7 +899,9 @@ runs:
           "build --bes_results_url=https://zfogg.buildbuddy.io/invocation/" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
           "build --bes_backend=grpcs://zfogg.buildbuddy.io" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
           "build --remote_header=x-buildbuddy-api-key=$($env:BUILDBUDDY_API_KEY)" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
-          "build --remote_cache=grpcs://remote.buildbuddy.io" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_cache=grpcs://zfogg.buildbuddy.io" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --noremote_upload_local_results" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_timeout=10m" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
           "build --remote_cache_compression" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
           Write-Host "Created user.bazelrc with BuildBuddy remote cache config"
         } else {
