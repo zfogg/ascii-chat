@@ -220,6 +220,8 @@ test:coverage --local_test_jobs=1
 # Usage: bazel build --config=ci //...
 
 build:ci --config=release
+# Explicit compilation_mode to override default --config=debug
+build:ci --compilation_mode=opt
 build:ci --curses=no
 build:ci --color=yes
 build:ci --show_progress_rate_limit=10
