@@ -15,6 +15,7 @@ package(default_visibility = ["//visibility:public"])
 alias(
     name = "defer_tool",
     actual = "//src/tooling/defer:defer",
+    tags = ["manual"],  # Requires hermetic LLVM - not available in CI
 )
 
 # =============================================================================
@@ -26,6 +27,7 @@ alias(
 alias(
     name = "panic_tool",
     actual = "//src/tooling/panic:panic",
+    tags = ["manual"],  # Requires hermetic LLVM - not available in CI
 )
 
 # =============================================================================
@@ -37,4 +39,5 @@ alias(
 alias(
     name = "query_tool",
     actual = "//src/tooling/query:query",
+    tags = ["manual"],  # Requires hermetic LLVM - not available in CI
 )
