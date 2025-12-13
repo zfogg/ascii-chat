@@ -260,8 +260,7 @@ build:ci --experimental_remote_merkle_tree_cache
 # Jobs - use all available cores
 build:ci --jobs=auto
 
-# Show cache statistics
-build:ci --execution_log_json_file=/tmp/bazel-exec-log.json
+# Note: execution_log_json_file removed - path was not portable to Windows
 
 # =============================================================================
 # Default Configuration
