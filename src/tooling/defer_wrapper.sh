@@ -34,16 +34,29 @@ for i in 1 2 3 4 5 6; do
     SCRIPT_DIR="$(dirname "${SCRIPT_DIR}")"
 done
 
-# Fallback: try common locations
-REPO_ROOT="/home/zfogg/src/github.com/zfogg/ascii-chat"
+# Fallback: try to find repo root by looking for marker files
+# Start from script's original location and search upward
+SEARCH_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT=""
+
+for i in 1 2 3 4 5 6 7 8; do
+    if [[ -f "${SEARCH_DIR}/CMakeLists.txt" && -f "${SEARCH_DIR}/CLAUDE.md" ]]; then
+        REPO_ROOT="${SEARCH_DIR}"
+        break
+    fi
+    SEARCH_DIR="$(dirname "${SEARCH_DIR}")"
+done
+
 DEFER_TOOL=""
 
-if [[ -x "${REPO_ROOT}/.deps-cache/defer-tool/ascii-instr-defer" ]]; then
-    DEFER_TOOL="${REPO_ROOT}/.deps-cache/defer-tool/ascii-instr-defer"
-elif [[ -x "${REPO_ROOT}/.deps-cache/Debug/defer-tool/ascii-instr-defer" ]]; then
-    DEFER_TOOL="${REPO_ROOT}/.deps-cache/Debug/defer-tool/ascii-instr-defer"
-elif [[ -x "${REPO_ROOT}/build/ascii-instr-defer" ]]; then
-    DEFER_TOOL="${REPO_ROOT}/build/ascii-instr-defer"
+if [[ -n "${REPO_ROOT}" ]]; then
+    if [[ -x "${REPO_ROOT}/.deps-cache/defer-tool/ascii-instr-defer" ]]; then
+        DEFER_TOOL="${REPO_ROOT}/.deps-cache/defer-tool/ascii-instr-defer"
+    elif [[ -x "${REPO_ROOT}/.deps-cache/Debug/defer-tool/ascii-instr-defer" ]]; then
+        DEFER_TOOL="${REPO_ROOT}/.deps-cache/Debug/defer-tool/ascii-instr-defer"
+    elif [[ -x "${REPO_ROOT}/build/ascii-instr-defer" ]]; then
+        DEFER_TOOL="${REPO_ROOT}/build/ascii-instr-defer"
+    fi
 fi
 
 if [[ -z "${DEFER_TOOL}" ]]; then

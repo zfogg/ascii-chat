@@ -801,6 +801,46 @@ runs:
     # AFTER cmake configure runs, not here. This ensures BearSSL and other deps built
     # during cmake configure are included in the cache.
 
+    # =========================================================================
+    # Bazel Configuration (BuildBuddy remote cache)
+    # =========================================================================
+    - name: Create user.bazelrc for BuildBuddy (Unix)
+      if: inputs.os != 'windows'
+      shell: bash
+      run: |
+        # Create user.bazelrc with BuildBuddy remote cache config
+        # This file is gitignored and imported by .bazelrc via try-import
+        if [ -n "$BUILDBUDDY_API_KEY" ]; then
+          cat > user.bazelrc << 'EOF'
+        # CI-generated BuildBuddy configuration
+        build --config=buildbuddy
+        build --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}
+        EOF
+          echo "Created user.bazelrc with BuildBuddy remote cache config"
+        else
+          echo "BUILDBUDDY_API_KEY not set, skipping user.bazelrc creation"
+        fi
+      env:
+        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
+
+    - name: Create user.bazelrc for BuildBuddy (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        # Create user.bazelrc with BuildBuddy remote cache config
+        if ($env:BUILDBUDDY_API_KEY) {
+          @"
+        # CI-generated BuildBuddy configuration
+        build --config=buildbuddy
+        build --remote_header=x-buildbuddy-api-key=$env:BUILDBUDDY_API_KEY
+        "@ | Out-File -FilePath user.bazelrc -Encoding utf8
+          Write-Host "Created user.bazelrc with BuildBuddy remote cache config"
+        } else {
+          Write-Host "BUILDBUDDY_API_KEY not set, skipping user.bazelrc creation"
+        }
+      env:
+        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
+
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4

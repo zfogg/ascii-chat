@@ -67,11 +67,25 @@ def _defer_transform_impl(ctx):
         "-DASCIICHAT_BUILD_WITH_DEFER",
         "-D__BAZEL_BUILD__",
         # System include paths for Clang tooling
+        # Include a wide range of clang versions (14-22) to support various systems
+        # Only the paths that exist on the build machine will be used
         "-isystem/usr/include",
+        "-isystem/usr/lib/clang/14/include",
+        "-isystem/usr/lib/clang/15/include",
+        "-isystem/usr/lib/clang/16/include",
+        "-isystem/usr/lib/clang/17/include",
+        "-isystem/usr/lib/clang/18/include",
         "-isystem/usr/lib/clang/19/include",
         "-isystem/usr/lib/clang/20/include",
         "-isystem/usr/lib/clang/21/include",
         "-isystem/usr/lib/clang/22/include",
+        # macOS Xcode toolchain paths
+        "-isystem/Library/Developer/CommandLineTools/usr/lib/clang/14.0.0/include",
+        "-isystem/Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include",
+        "-isystem/Library/Developer/CommandLineTools/usr/lib/clang/16/include",
+        "-isystem/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/14.0.0/include",
+        "-isystem/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/15.0.0/include",
+        "-isystem/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include",
     ]
 
     # Add SIMD defines

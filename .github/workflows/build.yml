@@ -149,17 +149,29 @@ jobs:
           restore-keys: |
             bazel-windows-${{ matrix.arch }}-
 
-      # Build
+      # Build with BuildBuddy remote cache
       - name: Build (Unix)
         if: matrix.os != 'Windows'
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
-          bazel build //src:ascii-chat //lib:all ${{ matrix.bazel-config }}
+          BAZEL_ARGS="--config=ci"
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          fi
+          bazel build //src:ascii-chat //lib:all $BAZEL_ARGS ${{ matrix.bazel-config }}
 
       - name: Build (Windows)
         if: matrix.os == 'Windows'
         shell: pwsh
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
-          bazel build //src:ascii-chat //lib:all ${{ matrix.bazel-config }}
+          $bazelArgs = @("--config=ci")
+          if ($env:BUILDBUDDY_API_KEY) {
+            $bazelArgs += "--remote_header=x-buildbuddy-api-key=$env:BUILDBUDDY_API_KEY"
+          }
+          bazel build //src:ascii-chat //lib:all @bazelArgs ${{ matrix.bazel-config }}
 
       # Verify build
       - name: Verify build (Unix)

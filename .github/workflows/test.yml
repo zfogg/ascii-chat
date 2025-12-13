@@ -97,15 +97,21 @@ jobs:
           restore-keys: |
             bazel-test-${{ matrix.os }}-
 
-      # Run tests
+      # Run tests with BuildBuddy
       - name: Run unit tests
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
+          BAZEL_ARGS="--config=ci"
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          fi
           echo "Running Bazel tests..."
-          bazel test //tests:all --test_output=errors --test_tag_filters=unit 2>&1 | tee test-output.log || true
+          bazel test //tests:all $BAZEL_ARGS --test_output=errors --test_tag_filters=unit 2>&1 | tee test-output.log || true
 
           echo ""
           echo "=== Test Summary ==="
-          bazel test //tests:all --test_output=summary --test_tag_filters=unit 2>&1 || true
+          bazel test //tests:all $BAZEL_ARGS --test_output=summary --test_tag_filters=unit 2>&1 || true
 
       - name: Upload test logs
         if: always()
@@ -173,9 +179,15 @@ jobs:
             bazel-integration-${{ matrix.os }}-
 
       - name: Run integration tests
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
+          BAZEL_ARGS="--config=ci"
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          fi
           echo "Running integration tests..."
-          bazel test //tests:all --test_output=errors --test_tag_filters=integration 2>&1 | tee test-output.log || true
+          bazel test //tests:all $BAZEL_ARGS --test_output=errors --test_tag_filters=integration 2>&1 | tee test-output.log || true
 
       - name: Upload test logs
         if: always()
@@ -243,7 +255,14 @@ jobs:
             bazel-functional-${{ matrix.os }}-
 
       - name: Build binary
-        run: bazel build //src:ascii-chat
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+        run: |
+          BAZEL_ARGS="--config=ci"
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          fi
+          bazel build //src:ascii-chat $BAZEL_ARGS
 
       - name: Test binary help and modes
         env:
@@ -299,7 +318,14 @@ jobs:
             bazel-memory-linux-
 
       - name: Build debug binary
-        run: bazel build //src:ascii-chat -c dbg
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+        run: |
+          BAZEL_ARGS=""
+          if [ -n "$BUILDBUDDY_API_KEY" ]; then
+            BAZEL_ARGS="--config=buildbuddy --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+          fi
+          bazel build //src:ascii-chat -c dbg $BAZEL_ARGS
 
       - name: Run memory leak detection
         run: |
