@@ -518,7 +518,6 @@ cc_library(
         ":config_srcs",  # defer() transformed or original config.c
         "version.c",
         "palette.c",
-        ":version_h",  # Generated version header
     ] + select({
         "//bazel/toolchains:debug": [
             "debug/lock.c",
@@ -533,6 +532,7 @@ cc_library(
         "options.h",
         "config.h",
         "palette.h",
+        ":version_h",  # Generated version header - needed by dependents
     ] + glob(["debug/*.h"]),
     copts = COMMON_COPTS + ["-I$(GENDIR)/lib"],
     includes = ["."],

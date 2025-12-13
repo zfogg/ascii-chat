@@ -139,7 +139,7 @@ jobs:
           if ($env:BUILDBUDDY_API_KEY) {
             $bazelArgs += "--remote_header=x-buildbuddy-api-key=$env:BUILDBUDDY_API_KEY"
           }
-          bazel build //src:ascii-chat //lib:all @bazelArgs ${{ matrix.bazel-config }}
+          bazel build //src:ascii-chat //lib:all $bazelArgs ${{ matrix.bazel-config }}
 
       # Verify build
       - name: Verify build (Unix)
