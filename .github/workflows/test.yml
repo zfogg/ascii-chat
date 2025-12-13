@@ -311,9 +311,9 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          BAZEL_ARGS=""
+          BAZEL_ARGS="--define=skip_defer=true"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
-            BAZEL_ARGS="--config=buildbuddy --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
+            BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
           fi
           bazel build //src:ascii-chat -c dbg $BAZEL_ARGS
 

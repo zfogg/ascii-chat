@@ -868,39 +868,37 @@ runs:
     - name: Create user.bazelrc for BuildBuddy (Unix)
       if: inputs.os != 'windows'
       shell: bash
+      env:
+        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
       run: |
         # Create user.bazelrc with BuildBuddy remote cache config
         # This file is gitignored and imported by .bazelrc via try-import
         if [ -n "$BUILDBUDDY_API_KEY" ]; then
-          cat > user.bazelrc << 'EOF'
-        # CI-generated BuildBuddy configuration
-        build --config=buildbuddy
-        build --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}
-        EOF
+          echo "# CI-generated BuildBuddy configuration" > user.bazelrc
+          echo "build --bes_results_url=https://zfogg.buildbuddy.io/invocation/" >> user.bazelrc
+          echo "build --bes_backend=grpcs://zfogg.buildbuddy.io" >> user.bazelrc
+          echo "build --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" >> user.bazelrc
           echo "Created user.bazelrc with BuildBuddy remote cache config"
         else
           echo "BUILDBUDDY_API_KEY not set, skipping user.bazelrc creation"
         fi
-      env:
-        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
 
     - name: Create user.bazelrc for BuildBuddy (Windows)
       if: inputs.os == 'windows'
       shell: pwsh
+      env:
+        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
       run: |
         # Create user.bazelrc with BuildBuddy remote cache config
         if ($env:BUILDBUDDY_API_KEY) {
-          @"
-        # CI-generated BuildBuddy configuration
-        build --config=buildbuddy
-        build --remote_header=x-buildbuddy-api-key=$env:BUILDBUDDY_API_KEY
-        "@ | Out-File -FilePath user.bazelrc -Encoding utf8
+          "# CI-generated BuildBuddy configuration" | Out-File -FilePath user.bazelrc -Encoding utf8
+          "build --bes_results_url=https://zfogg.buildbuddy.io/invocation/" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --bes_backend=grpcs://zfogg.buildbuddy.io" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_header=x-buildbuddy-api-key=$($env:BUILDBUDDY_API_KEY)" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
           Write-Host "Created user.bazelrc with BuildBuddy remote cache config"
         } else {
           Write-Host "BUILDBUDDY_API_KEY not set, skipping user.bazelrc creation"
         }
-      env:
-        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
 
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
