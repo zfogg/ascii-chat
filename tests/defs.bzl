@@ -38,6 +38,7 @@ COMMON_TEST_COPTS = [
 COMMON_TEST_DEFINES = PLATFORM_DEFINES + BUILD_MODE_DEFINES + [
     "CRITERION_TEST=1",
     "__BAZEL_BUILD__",
+    "TESTING=1",
 ]
 
 # All library deps needed by tests (order matters for linking)
