@@ -27,6 +27,8 @@ cc_library(
         "-DSODIUM_STATIC=1",
         "-DHAVE_WEAK_SYMBOLS=1",
         "-DCONFIGURED=1",
+        # Disable sanitizers for third-party code
+        "-fno-sanitize=all",
     ],
     includes = [
         "src/libsodium/include",

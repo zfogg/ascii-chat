@@ -19,6 +19,9 @@ cc_library(
     ]),
     copts = [
         "-Wno-unused-parameter",
+        # Disable sanitizers - BearSSL has known UBSan issues (unsigned negation)
+        # that are benign but trigger sanitizer errors
+        "-fno-sanitize=all",
     ],
     includes = [
         "inc",
