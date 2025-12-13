@@ -118,6 +118,11 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
+          # Help hermetic lld find system libraries (libxml2, etc.) on Linux
+          # The hermetic LLVM toolchain's lld is dynamically linked.
+          if [ "${{ matrix.os }}" = "Linux" ]; then
+            export LD_LIBRARY_PATH="/usr/lib/${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}-linux-gnu:/usr/lib:/lib"
+          fi
           BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"

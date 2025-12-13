@@ -23,6 +23,10 @@ common --enable_bzlmod
 build --action_env=CCACHE_DISABLE=1
 build --repo_env=CCACHE_DISABLE=1
 
+# Pass LD_LIBRARY_PATH to actions so hermetic lld can find system libraries (libxml2, etc.)
+# The hermetic LLVM toolchain's lld binary is dynamically linked and needs these at runtime.
+build --action_env=LD_LIBRARY_PATH
+
 # IDE integration notes:
 # To generate compile_commands.json, use bazel-compile-commands extractor:
 # https://github.com/hedronvision/bazel-compile-commands-extractor
