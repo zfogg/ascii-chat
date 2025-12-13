@@ -802,6 +802,67 @@ runs:
     # during cmake configure are included in the cache.
 
     # =========================================================================
+    # Bazelisk Installation and Caching
+    # =========================================================================
+    - name: Cache Bazelisk (Unix)
+      if: inputs.os != 'windows'
+      id: bazelisk-cache-unix
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/bazelisk
+          /usr/local/bin/bazel
+        key: bazelisk-${{ runner.os }}-${{ runner.arch }}-v1.25.0
+
+    - name: Cache Bazelisk (Windows)
+      if: inputs.os == 'windows'
+      id: bazelisk-cache-windows
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/AppData/Local/bazelisk
+          ~/bin/bazel.exe
+        key: bazelisk-windows-${{ runner.arch }}-v1.25.0
+
+    - name: Install Bazelisk (Linux)
+      if: inputs.os == 'ubuntu' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then
+          BAZELISK_ARCH="amd64"
+        elif [ "$ARCH" = "aarch64" ]; then
+          BAZELISK_ARCH="arm64"
+        fi
+        sudo curl -fsSL -o /usr/local/bin/bazel \
+          "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
+        sudo chmod +x /usr/local/bin/bazel
+        echo "Installed Bazelisk v1.25.0"
+
+    - name: Install Bazelisk (macOS)
+      if: inputs.os == 'macos' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        brew install bazelisk
+        echo "Installed Bazelisk via Homebrew"
+
+    - name: Install Bazelisk (Windows)
+      if: inputs.os == 'windows' && steps.bazelisk-cache-windows.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+        $url = "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-windows-${arch}.exe"
+        New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
+        Invoke-WebRequest -Uri $url -OutFile "$env:USERPROFILE\bin\bazel.exe"
+        Write-Host "Installed Bazelisk v1.25.0"
+
+    - name: Add Bazelisk to PATH (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        echo "$env:USERPROFILE\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    # =========================================================================
     # Bazel Configuration (BuildBuddy remote cache)
     # =========================================================================
     - name: Create user.bazelrc for BuildBuddy (Unix)

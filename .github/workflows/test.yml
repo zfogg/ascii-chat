@@ -53,25 +53,15 @@ jobs:
           fetch-tags: true
           submodules: true
 
-      # Install Bazelisk
-      - name: Install Bazelisk (Linux)
-        if: matrix.os == 'Linux'
-        run: |
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "x86_64" ]; then
-            BAZELISK_ARCH="amd64"
-          elif [ "$ARCH" = "aarch64" ]; then
-            BAZELISK_ARCH="arm64"
-          fi
-          sudo curl -fsSL -o /usr/local/bin/bazel \
-            "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
-          sudo chmod +x /usr/local/bin/bazel
+      # Install dependencies (including cached Bazelisk)
+      - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ${{ matrix.os == 'Linux' && 'ubuntu' || 'macos' }}
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
-      - name: Install Bazelisk (macOS)
-        if: matrix.os == 'macOS'
-        run: brew install bazelisk
-
-      # Install system dependencies
+      # Install additional system dependencies
       - name: Install dependencies (Linux)
         if: matrix.os == 'Linux'
         run: |
@@ -145,18 +135,13 @@ jobs:
           fetch-tags: true
           submodules: true
 
-      - name: Install Bazelisk (Linux)
-        if: matrix.os == 'Linux'
-        run: |
-          ARCH=$(uname -m)
-          BAZELISK_ARCH=$([ "$ARCH" = "x86_64" ] && echo "amd64" || echo "arm64")
-          sudo curl -fsSL -o /usr/local/bin/bazel \
-            "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
-          sudo chmod +x /usr/local/bin/bazel
-
-      - name: Install Bazelisk (macOS)
-        if: matrix.os == 'macOS'
-        run: brew install bazelisk
+      # Install dependencies (including cached Bazelisk)
+      - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ${{ matrix.os == 'Linux' && 'ubuntu' || 'macos' }}
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'Linux'
@@ -223,18 +208,13 @@ jobs:
           fetch-tags: true
           submodules: true
 
-      - name: Install Bazelisk (Linux)
-        if: matrix.os == 'Linux'
-        run: |
-          ARCH=$(uname -m)
-          BAZELISK_ARCH=$([ "$ARCH" = "x86_64" ] && echo "amd64" || echo "arm64")
-          sudo curl -fsSL -o /usr/local/bin/bazel \
-            "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
-          sudo chmod +x /usr/local/bin/bazel
-
-      - name: Install Bazelisk (macOS)
-        if: matrix.os == 'macOS'
-        run: brew install bazelisk
+      # Install dependencies (including cached Bazelisk)
+      - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ${{ matrix.os == 'Linux' && 'ubuntu' || 'macos' }}
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
       - name: Install dependencies (Linux)
         if: matrix.os == 'Linux'
@@ -300,13 +280,15 @@ jobs:
           fetch-tags: true
           submodules: true
 
-      - name: Install Bazelisk
-        run: |
-          sudo curl -fsSL -o /usr/local/bin/bazel \
-            "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-amd64"
-          sudo chmod +x /usr/local/bin/bazel
-
+      # Install dependencies (including cached Bazelisk)
       - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ubuntu
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+
+      - name: Install dependencies (Linux)
         run: |
           sudo apt-get update
           sudo apt-get install -y \

@@ -76,36 +76,15 @@ jobs:
           fetch-depth: 1
           submodules: true
 
-      # Install Bazelisk
-      - name: Install Bazelisk (Linux)
-        if: matrix.os == 'Linux'
-        run: |
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "x86_64" ]; then
-            BAZELISK_ARCH="amd64"
-          elif [ "$ARCH" = "aarch64" ]; then
-            BAZELISK_ARCH="arm64"
-          fi
-          sudo curl -fsSL -o /usr/local/bin/bazel \
-            "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
-          sudo chmod +x /usr/local/bin/bazel
+      # Install dependencies (including cached Bazelisk)
+      - name: Install dependencies
+        uses: ./.github/actions/install-deps
+        with:
+          os: ${{ matrix.os == 'Linux' && 'ubuntu' || (matrix.os == 'macOS' && 'macos' || 'windows') }}
+        env:
+          BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
 
-      - name: Install Bazelisk (macOS)
-        if: matrix.os == 'macOS'
-        run: brew install bazelisk
-
-      - name: Install Bazelisk (Windows)
-        if: matrix.os == 'Windows'
-        shell: pwsh
-        run: |
-          # Download bazelisk directly
-          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
-          $url = "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-windows-${arch}.exe"
-          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
-          Invoke-WebRequest -Uri $url -OutFile "$env:USERPROFILE\bin\bazel.exe"
-          echo "$env:USERPROFILE\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      # Install system dependencies for building
+      # Install additional system dependencies for building
       - name: Install dependencies (Linux)
         if: matrix.os == 'Linux'
         run: |
