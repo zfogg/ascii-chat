@@ -273,11 +273,10 @@ defer_transform = rule(
             doc = "Additional headers needed (e.g., generated headers like version.h)",
         ),
         "_defer_tool": attr.label(
-            default = "//.deps-cache/defer-tool:ascii-instr-defer",
+            default = "//src/tooling/defer:ascii-instr-defer",
             executable = True,
-            allow_single_file = True,
             cfg = "exec",
-            doc = "The defer transformation tool (pre-built binary from CMake)",
+            doc = "The defer transformation tool",
         ),
     },
     doc = "Transform C sources that use defer() macro for RAII-style cleanup.",
