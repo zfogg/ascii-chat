@@ -18,7 +18,15 @@ cc_library(
         ["root/include/sodium/**/*.h", "root/include/sodium.h"],
         allow_empty = True,
     ),
-    includes = ["root/include"],
+    # Include paths - root/include symlinks to system include dir
+    # On macOS, we also need to check the direct Homebrew paths
+    includes = ["root/include"] + select({
+        "@platforms//os:macos": [
+            "/opt/homebrew/include",  # macOS ARM64
+            "/usr/local/include",     # macOS Intel
+        ],
+        "//conditions:default": [],
+    }),
     linkopts = select({
         "@platforms//os:windows": [
             "-LIBPATH:root/lib",

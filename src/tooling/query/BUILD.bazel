@@ -94,6 +94,8 @@ cc_library(
 
 cc_binary(
     name = "query",
+    # Manual: requires hermetic LLVM/LLDB libraries which aren't available in CI
+    tags = ["manual"],
     srcs = [
         "main.cpp",
         "lldb_controller.cpp",
