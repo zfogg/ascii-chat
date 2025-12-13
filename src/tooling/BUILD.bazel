@@ -22,4 +22,7 @@ sh_binary(
     name = "defer-prebuilt",
     srcs = ["defer_wrapper.sh"],
     data = ["//.deps-cache/defer-tool:defer-bin"],
+    # Exclude from //... since .deps-cache is local-only (not in git)
+    # Use //src/tooling/defer:defer instead which builds from source
+    tags = ["manual"],
 )
