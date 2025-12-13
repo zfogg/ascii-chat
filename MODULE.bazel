@@ -1,0 +1,64 @@
+# =============================================================================
+# ascii-chat Bazel Module
+# =============================================================================
+# This is the main module file for Bazel's dependency management (Bzlmod).
+# See: https://bazel.build/external/module
+#
+# Build: bazel build //...
+# Test:  bazel test //...
+# Run:   bazel run //:ascii-chat -- server
+# =============================================================================
+
+module(
+    name = "ascii-chat",
+    version = "0.3.29",
+    compatibility_level = 1,
+)
+
+# =============================================================================
+# Bazel Central Registry Dependencies
+# =============================================================================
+
+# Core C/C++ rules
+bazel_dep(name = "rules_cc", version = "0.0.17")
+
+# Platform definitions
+bazel_dep(name = "platforms", version = "0.0.10")
+
+# Foreign build system support (for CMake/Make deps like BearSSL)
+bazel_dep(name = "rules_foreign_cc", version = "0.12.0")
+
+# Packaging rules (for archives - not full CPack replacement)
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+
+# Shell rules (for clang-format, etc.)
+bazel_dep(name = "rules_shell", version = "0.4.0")
+
+# Protocol buffers (if needed later)
+# bazel_dep(name = "protobuf", version = "29.0")
+
+# =============================================================================
+# Custom Extensions for External Dependencies
+# =============================================================================
+
+# Extension for non-registry dependencies
+non_module_deps = use_extension("//bazel:extensions.bzl", "non_module_deps")
+use_repo(
+    non_module_deps,
+    "zstd",
+    "libsodium",
+    "portaudio",
+    "bearssl",
+    "tomlc17",
+    "uthash",
+    "libsodium_bcrypt_pbkdf",
+)
+
+# =============================================================================
+# Toolchain Registration
+# =============================================================================
+
+# Register C/C++ toolchains
+register_toolchains(
+    "//bazel/toolchains:clang_toolchain",
+)
