@@ -186,21 +186,27 @@ else()
         " COMPONENT Development)
     endif()
 
-    # Install platform-specific shared library (if present)
+    # Install shared library with proper versioning (if built)
+    # Uses install(TARGETS) to properly handle VERSION/SOVERSION symlink chain:
+    #   libasciichat.so → libasciichat.so.X → libasciichat.so.X.Y.Z
+    # This ensures the SONAME is correctly installed for runtime linking.
+    # Note: ascii-chat-shared has EXCLUDE_FROM_ALL, so we install it separately
+    # (the main install(TARGETS) loop skips EXCLUDE_FROM_ALL targets)
     if(APPLE)
-        set(_ascii_chat_shared_lib "${CMAKE_BINARY_DIR}/lib/libasciichat.dylib")
         set(_ascii_chat_shared_label "libasciichat.dylib")
     else()
-        set(_ascii_chat_shared_lib "${CMAKE_BINARY_DIR}/lib/libasciichat.so")
-        set(_ascii_chat_shared_label "libasciichat.so")
+        set(_ascii_chat_shared_label "libasciichat.so[.VERSION]")
     endif()
 
-    install(FILES
-        "${_ascii_chat_shared_lib}"
-        DESTINATION lib
-        COMPONENT Development
-        OPTIONAL
-    )
+    if(TARGET ascii-chat-shared)
+        install(TARGETS ascii-chat-shared
+            LIBRARY DESTINATION lib
+                NAMELINK_COMPONENT Development  # libasciichat.so symlink
+            ARCHIVE DESTINATION lib
+            COMPONENT Development
+            OPTIONAL
+        )
+    endif()
 
     message(STATUS "${BoldGreen}Configured${ColorReset} library installation: ${BoldBlue}libasciichat.a${ColorReset} (optional) and ${BoldBlue}${_ascii_chat_shared_label}${ColorReset} (optional) → ${BoldYellow}lib/${ColorReset}")
 endif()
@@ -947,17 +953,19 @@ After installation, run:
 
     # On Unix platforms, explicitly list files to strip
     # CPack uses the 'strip' command (or CMAKE_STRIP if set)
+    # Note: For versioned libraries (libasciichat.so → libasciichat.so.X → libasciichat.so.X.Y.Z),
+    # strip follows symlinks so specifying the linker name strips the real versioned file
     if(UNIX AND NOT APPLE)
         # List of files to strip (relative to install prefix)
         set(CPACK_STRIP_FILES
             "bin/ascii-chat"                    # Main executable
-            "lib/libasciichat.so"               # Shared library (Linux)
+            "lib/libasciichat.so"               # Shared library symlink → real versioned file
         )
         message(STATUS "${Yellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
     elseif(APPLE)
         set(CPACK_STRIP_FILES
             "bin/ascii-chat"                    # Main executable
-            "lib/libasciichat.dylib"            # Shared library (macOS)
+            "lib/libasciichat.dylib"            # Shared library symlink → real versioned file
         )
         message(STATUS "${Yellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
     elseif(WIN32)

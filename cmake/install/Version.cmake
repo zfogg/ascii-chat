@@ -69,6 +69,55 @@ macro(version_detect)
 endmacro()
 
 # =============================================================================
+# library_version_detect() - Detect library version from lib/v* tags
+# Sets: ASCIICHAT_LIB_VERSION, ASCIICHAT_LIB_VERSION_MAJOR/MINOR/PATCH
+# Call AFTER version_detect() but can be called before or after project()
+# =============================================================================
+macro(library_version_detect)
+    # Get the highest lib/v* tag (sorted by version)
+    execute_process(
+        COMMAND git tag -l "lib/v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+        OUTPUT_VARIABLE _LIB_TAGS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+
+    # Extract the first (highest) tag
+    if(_LIB_TAGS)
+        string(REGEX MATCH "^lib/v([0-9]+)\\.([0-9]+)\\.([0-9]+)" _LIB_TAG_MATCH "${_LIB_TAGS}")
+        if(_LIB_TAG_MATCH)
+            set(ASCIICHAT_LIB_VERSION_MAJOR "${CMAKE_MATCH_1}")
+            set(ASCIICHAT_LIB_VERSION_MINOR "${CMAKE_MATCH_2}")
+            set(ASCIICHAT_LIB_VERSION_PATCH "${CMAKE_MATCH_3}")
+            set(ASCIICHAT_LIB_VERSION "${ASCIICHAT_LIB_VERSION_MAJOR}.${ASCIICHAT_LIB_VERSION_MINOR}.${ASCIICHAT_LIB_VERSION_PATCH}")
+            set(_LIB_VERSION_TYPE "tagged")
+        else()
+            # Fallback if regex didn't match
+            set(ASCIICHAT_LIB_VERSION_MAJOR "0")
+            set(ASCIICHAT_LIB_VERSION_MINOR "1")
+            set(ASCIICHAT_LIB_VERSION_PATCH "0")
+            set(ASCIICHAT_LIB_VERSION "0.1.0")
+            set(_LIB_VERSION_TYPE "fallback")
+        endif()
+    else()
+        # No lib/v* tags found - use fallback
+        set(ASCIICHAT_LIB_VERSION_MAJOR "0")
+        set(ASCIICHAT_LIB_VERSION_MINOR "1")
+        set(ASCIICHAT_LIB_VERSION_PATCH "0")
+        set(ASCIICHAT_LIB_VERSION "0.1.0")
+        set(_LIB_VERSION_TYPE "fallback")
+    endif()
+
+    # Print library version info
+    if(_LIB_VERSION_TYPE STREQUAL "tagged")
+        message(STATUS "Library version from ${BoldBlue}git${ColorReset} tag ${BoldMagenta}lib/v${ASCIICHAT_LIB_VERSION}${ColorReset}: ${BoldGreen}${ASCIICHAT_LIB_VERSION}${ColorReset}")
+    else()
+        message(STATUS "Library version: ${BoldYellow}${ASCIICHAT_LIB_VERSION}${ColorReset} (no lib/v* tags found)")
+    endif()
+endmacro()
+
+# =============================================================================
 # version_setup_targets() - Call AFTER project()
 # Creates: generate_version target, version.h generation
 # =============================================================================
@@ -234,18 +283,38 @@ configure_file(
     # - Release: Regenerate when any tracked files change (for reproducible builds)
     #
     # Strategy: Always generate to temp file, then copy_if_different to preserve timestamps
+    #
+    # Handle git worktrees: .git may be a file containing "gitdir: <path>" instead of a directory
+    # In worktrees, HEAD and index are in the gitdir, not .git/
+    if(IS_DIRECTORY "${CMAKE_SOURCE_DIR}/.git")
+        # Normal git repository
+        set(_GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/.git")
+        # Git worktree: .git is a file containing "gitdir: <path>"
+        file(READ "${CMAKE_SOURCE_DIR}/.git" _GITDIR_CONTENT)
+        string(REGEX REPLACE "gitdir: ([^\n]+)\n?" "\\1" _GIT_DIR "${_GITDIR_CONTENT}")
+        string(STRIP "${_GIT_DIR}" _GIT_DIR)
+        # Handle relative paths
+        if(NOT IS_ABSOLUTE "${_GIT_DIR}")
+            set(_GIT_DIR "${CMAKE_SOURCE_DIR}/${_GIT_DIR}")
+        endif()
+    else()
+        # No git directory found - use fallback that won't cause build errors
+        set(_GIT_DIR "${CMAKE_SOURCE_DIR}/.git")
+    endif()
+
     if(CMAKE_BUILD_TYPE MATCHES "^(Debug|Dev)$")
         # Debug/Dev: Only depend on .git/HEAD (commits/branches), NOT .git/index
         # This prevents rebuilds from uncommitted changes or staging
         set(VERSION_DEPENDENCIES
-            "${CMAKE_SOURCE_DIR}/.git/HEAD"
+            "${_GIT_DIR}/HEAD"
             "${CMAKE_SOURCE_DIR}/lib/version.h.in"
         )
     else()
         # Release: Also depend on .git/index for dirty state tracking
         set(VERSION_DEPENDENCIES
-            "${CMAKE_SOURCE_DIR}/.git/HEAD"
-            "${CMAKE_SOURCE_DIR}/.git/index"
+            "${_GIT_DIR}/HEAD"
+            "${_GIT_DIR}/index"
             "${CMAKE_SOURCE_DIR}/lib/version.h.in"
         )
     endif()
