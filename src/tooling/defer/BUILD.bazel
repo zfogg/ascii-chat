@@ -14,6 +14,10 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
 # =============================================================================
 # Import static libraries from the hermetic LLVM toolchain.
 # The toolchains_llvm module downloads pre-built LLVM binaries for each platform.
+#
+# Library naming conventions:
+#   - Linux/macOS: lib/libLLVMFoo.a (lib prefix, .a extension)
+#   - Windows:     lib/LLVMFoo.lib  (no lib prefix, .lib extension)
 
 # Clang libraries needed for source transformation
 CLANG_LIBS = [
@@ -109,9 +113,15 @@ LLVM_LIBS = [
 ]
 
 # Generate cc_import rules for each library
+# Uses select() to handle platform-specific library naming:
+#   - Linux/macOS: lib/libFoo.a
+#   - Windows:     lib/Foo.lib
 [cc_import(
     name = "lib" + lib,
-    static_library = "@llvm_toolchain_llvm//:lib/lib" + lib + ".a",
+    static_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:lib/" + lib + ".lib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/lib" + lib + ".a",
+    }),
     visibility = ["//visibility:private"],
 ) for lib in CLANG_LIBS + LLVM_LIBS]
 
@@ -168,6 +178,12 @@ cc_binary(
             "-lzstd",
             "-lcurses",
             "-lxml2",
+        ],
+        "@platforms//os:windows": [
+            "version.lib",
+            "advapi32.lib",
+            "shell32.lib",
+            "ole32.lib",
         ],
         "//conditions:default": [],
     }),

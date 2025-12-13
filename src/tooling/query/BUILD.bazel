@@ -13,10 +13,19 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
 # LLDB Library from Hermetic LLVM Toolchain
 # =============================================================================
 # Import the LLDB shared library from the hermetic LLVM toolchain.
+#
+# Library naming conventions:
+#   - Linux:   lib/liblldb.so
+#   - macOS:   lib/liblldb.dylib
+#   - Windows: bin/liblldb.dll (DLLs typically in bin/, import lib in lib/)
 
 cc_import(
     name = "liblldb",
-    shared_library = "@llvm_toolchain_llvm//:lib/liblldb.so",
+    shared_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:bin/liblldb.dll",
+        "@platforms//os:macos": "@llvm_toolchain_llvm//:lib/liblldb.dylib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/liblldb.so",
+    }),
     visibility = ["//visibility:private"],
 )
 
@@ -29,27 +38,42 @@ cc_library(
 )
 
 # LLVM support libraries that LLDB depends on
+# Uses select() to handle platform-specific library naming:
+#   - Linux/macOS: lib/libFoo.a
+#   - Windows:     lib/Foo.lib
 cc_import(
     name = "libLLVMSupport",
-    static_library = "@llvm_toolchain_llvm//:lib/libLLVMSupport.a",
+    static_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:lib/LLVMSupport.lib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/libLLVMSupport.a",
+    }),
     visibility = ["//visibility:private"],
 )
 
 cc_import(
     name = "libLLVMCore",
-    static_library = "@llvm_toolchain_llvm//:lib/libLLVMCore.a",
+    static_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:lib/LLVMCore.lib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/libLLVMCore.a",
+    }),
     visibility = ["//visibility:private"],
 )
 
 cc_import(
     name = "libLLVMDemangle",
-    static_library = "@llvm_toolchain_llvm//:lib/libLLVMDemangle.a",
+    static_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:lib/LLVMDemangle.lib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/libLLVMDemangle.a",
+    }),
     visibility = ["//visibility:private"],
 )
 
 cc_import(
     name = "libLLVMTargetParser",
-    static_library = "@llvm_toolchain_llvm//:lib/libLLVMTargetParser.a",
+    static_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:lib/LLVMTargetParser.lib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/libLLVMTargetParser.a",
+    }),
     visibility = ["//visibility:private"],
 )
 
@@ -113,6 +137,13 @@ cc_binary(
             "-lxml2",
             # RPATH for hermetic LLDB
             "-Wl,-rpath,@executable_path/../lib",
+        ],
+        "@platforms//os:windows": [
+            "version.lib",
+            "advapi32.lib",
+            "shell32.lib",
+            "ole32.lib",
+            "ws2_32.lib",  # Winsock for HTTP server
         ],
         "//conditions:default": [],
     }),
