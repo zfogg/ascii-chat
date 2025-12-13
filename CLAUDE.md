@@ -1,4 +1,4 @@
-uu# ascii-chat Development Guide for Claude
+# ascii-chat Development Guide for Claude
 
 ## Repository Information
 
@@ -20,7 +20,7 @@ uu# ascii-chat Development Guide for Claude
 - **Use asciichat_errno for error handling instead of system errno**
 - When debugging and testing, make a test_whatever.sh and use that so you don't bother the developer by requesting to run commands over and over
 - Use `cmake --preset` by  default. Use `cmake --preset default` as much as possible so you don't get confused and try to use UNIX Makefiles or Visual Studio 2017, when the build dir is supposed to be configured for Ninja files. This causes scripting errorrs which painfully slow down Claude's development progress and confuses him. Stick with Ninja.
-- **AVOID deleting the build directory** - Prefer reconfiguring (`cmake --preset default`) and rebuilding (`cmake --build build`) without `rm -rf build`. Only delete specific files if needed, not the entire build directory. Deleting rebuilds everything from scratch including PCH, defer tool, and dependencies which is slow. Only delete the build dir when absolutely necessary (e.g., switching build types, corrupted cache).
+- **AVOID deleting the build directory** - This is a bad workflow that wastes valuable development iteration time. The cmake configure step (`cmake --preset default`) to re-configure and `cmake --build build` is almost always all you need, even after editing CMakeLists.txt or other build system files. Deleting `build/` forces a full rebuild of everything from scratch including PCH, the defer tool, and all dependencies. Only delete the build dir when absolutely necessary (e.g., switching build types, corrupted cache state).
 
 ## Memory Management Macros (CRITICAL)
 
