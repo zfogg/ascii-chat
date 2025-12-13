@@ -97,3 +97,6 @@ endif()
 if(BEARSSL_FOUND)
     target_link_libraries(ascii-chat-crypto ${BEARSSL_LIBRARIES})
 endif()
+
+# Export sources to parent scope for unified library builds
+set(CRYPTO_SRCS ${CRYPTO_SRCS} PARENT_SCOPE)

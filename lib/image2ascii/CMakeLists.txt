@@ -31,3 +31,7 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-simd
     )
 endif()
+
+# Export sources to parent scope for unified library builds
+set(VIDEO_SRCS ${VIDEO_SRCS} PARENT_SCOPE)
+set(SIMD_SRCS ${SIMD_SRCS} PARENT_SCOPE)

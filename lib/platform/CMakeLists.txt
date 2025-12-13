@@ -88,3 +88,6 @@ else()
         target_link_libraries(ascii-chat-platform ${CMAKE_THREAD_LIBS_INIT})
     endif()
 endif()
+
+# Export sources to parent scope for unified library builds
+set(PLATFORM_SRCS ${PLATFORM_SRCS} PARENT_SCOPE)

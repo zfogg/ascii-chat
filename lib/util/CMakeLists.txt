@@ -24,3 +24,6 @@ if(USE_MUSL)
 endif()
 
 create_ascii_chat_module(ascii-chat-util "${UTIL_SRCS}")
+
+# Export sources to parent scope for unified library builds
+set(UTIL_SRCS ${UTIL_SRCS} PARENT_SCOPE)

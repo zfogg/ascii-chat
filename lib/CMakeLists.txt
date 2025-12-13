@@ -163,13 +163,34 @@ elseif(UNIX AND NOT USE_MUSL)
 endif()
 
 # =============================================================================
-# Video Frame Module
+# Add Webcam Sources to Module Targets
 # =============================================================================
-set(VIDEO_FRAME_SRCS
+# The webcam sources are defined in lib/os/ but need to be added to the
+# appropriate module targets. webcam.c (abstraction) goes to video module,
+# and platform-specific implementations go to platform module.
+
+# Add webcam abstraction to video module
+target_sources(ascii-chat-video PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/video_frame.c
+    ${CMAKE_SOURCE_DIR}/lib/os/webcam.c
 )
 
-# Video frame is part of ascii-chat-video module (defined in image2ascii/)
+# Add platform-specific webcam implementations to platform module
+target_sources(ascii-chat-platform PRIVATE ${OS_WEBCAM_SRCS})
+
+# =============================================================================
+# Complete Source Lists for Unified Library
+# =============================================================================
+# After subdirectories are processed, complete the source lists for UnifiedLibraries.cmake
+
+# VIDEO_SRCS needs video_frame.c and webcam abstraction
+list(APPEND VIDEO_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/video_frame.c
+    ${CMAKE_SOURCE_DIR}/lib/os/webcam.c
+)
+
+# PLATFORM_SRCS needs platform-specific webcam implementations
+list(APPEND PLATFORM_SRCS ${OS_WEBCAM_SRCS})
 
 # =============================================================================
 # Module Dependencies (non-OBJECT builds)
@@ -217,3 +238,10 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # =============================================================================
 # Include the unified library configuration (static and shared libraries)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/UnifiedLibraries.cmake)
+
+# =============================================================================
+# Export Variables to Parent Scope
+# =============================================================================
+# Export tooling variables needed by ToolingRuntime.cmake in the main CMakeLists.txt
+set(TOOLING_PANIC_REPORT_SRCS ${TOOLING_PANIC_REPORT_SRCS} PARENT_SCOPE)
+set(TOOLING_PANIC_SRCS ${TOOLING_PANIC_SRCS} PARENT_SCOPE)

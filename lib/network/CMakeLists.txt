@@ -30,3 +30,6 @@ else()
     # For OBJECT libs, link external deps only
     target_link_libraries(ascii-chat-network ${ZSTD_LIBRARIES})
 endif()
+
+# Export sources to parent scope for unified library builds
+set(NETWORK_SRCS ${NETWORK_SRCS} PARENT_SCOPE)

@@ -25,8 +25,9 @@ include_guard(GLOBAL)
 # =============================================================================
 macro(version_detect)
     # Get git describe output at configure time
+    # Use --match 'v[0-9]*' to filter to app version tags only (not lib/v* tags)
     execute_process(
-        COMMAND git describe --tags --long --dirty --always
+        COMMAND git describe --tags --long --dirty --always --match "v[0-9]*"
         WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
         OUTPUT_VARIABLE GIT_DESCRIBE_CONFIGURE
         OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -126,8 +127,9 @@ function(version_setup_targets)
     set(VERSION_SCRIPT_PATH "${CMAKE_BINARY_DIR}/generate_version.cmake")
     file(WRITE "${VERSION_SCRIPT_PATH}" "
 # Get git describe output (includes commits since last tag)
+# Use --match 'v[0-9]*' to filter to app version tags only (not lib/v* tags)
 execute_process(
-    COMMAND git describe --tags --long --dirty --always
+    COMMAND git describe --tags --long --dirty --always --match \"v[0-9]*\"
     WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\"
     OUTPUT_VARIABLE GIT_DESCRIBE
     OUTPUT_STRIP_TRAILING_WHITESPACE

@@ -45,3 +45,6 @@ set(TOOLING_PANIC_REPORT_SRCS
     ${CMAKE_SOURCE_DIR}/src/tooling/panic/report.c
     PARENT_SCOPE
 )
+
+# Export panic sources to parent scope for unified library builds
+set(TOOLING_PANIC_SRCS ${TOOLING_PANIC_SRCS} PARENT_SCOPE)
