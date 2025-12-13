@@ -101,6 +101,8 @@ jobs:
       - name: Run unit tests
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+          CC: clang
+          CXX: clang++
         run: |
           BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
@@ -181,6 +183,8 @@ jobs:
       - name: Run integration tests
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+          CC: clang
+          CXX: clang++
         run: |
           BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
@@ -257,6 +261,8 @@ jobs:
       - name: Build binary
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+          CC: clang
+          CXX: clang++
         run: |
           BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
@@ -320,6 +326,8 @@ jobs:
       - name: Build debug binary
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+          CC: clang
+          CXX: clang++
         run: |
           BAZEL_ARGS=""
           if [ -n "$BUILDBUDDY_API_KEY" ]; then

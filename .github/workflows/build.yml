@@ -154,6 +154,8 @@ jobs:
         if: matrix.os != 'Windows'
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
+          CC: clang
+          CXX: clang++
         run: |
           BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
