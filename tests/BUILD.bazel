@@ -7,9 +7,23 @@
 # Run unit tests:     bazel test //tests:unit
 # Run integration:    bazel test //tests:integration
 # Run performance:    bazel test //tests:performance
-# Run specific test:  bazel test //tests:buffer_pool
+# Run specific test:  bazel test //tests:unit_buffer_pool
 # Verbose output:     bazel test --test_output=all //tests/...
 # Filter by tag:      bazel test --test_tag_filters=unit //tests/...
+#
+# Domain-specific tag filters:
+#   bazel test --test_tag_filters=crypto //tests/...
+#   bazel test --test_tag_filters=network //tests/...
+#   bazel test --test_tag_filters=audio //tests/...
+#   bazel test --test_tag_filters=terminal //tests/...
+#   bazel test --test_tag_filters=simd //tests/...
+#   bazel test --test_tag_filters=data_structures //tests/...
+#
+# Available tags:
+#   Category:  unit, integration, performance
+#   Domain:    ascii, audio, client, compression, config, crypto, data_structures,
+#              network, platform, security, server, simd, terminal, tooling,
+#              utilities, video
 # =============================================================================
 
 load(":defs.bzl", "ascii_chat_test")
@@ -22,147 +36,149 @@ package(default_visibility = ["//visibility:private"])
 # Tests for individual components in isolation
 
 ascii_chat_test(
-    name = "ansi_fast",
+    name = "unit_ansi_fast",
     src = "unit/ansi_fast_test.c",
-    tags = ["unit"],
+    tags = ["unit", "terminal", "ascii"],
 )
 
 ascii_chat_test(
-    name = "ascii",
+    name = "unit_ascii",
     src = "unit/ascii_test.c",
-    tags = ["unit"],
+    tags = ["unit", "ascii", "video"],
 )
 
 ascii_chat_test(
-    name = "aspect_ratio",
+    name = "unit_aspect_ratio",
     src = "unit/aspect_ratio_test.c",
-    tags = ["unit"],
+    tags = ["unit", "video", "ascii"],
 )
 
 ascii_chat_test(
-    name = "audio",
+    name = "unit_audio",
     src = "unit/audio_test.c",
     size = "medium",  # Audio hardware initialization may be slow
-    tags = ["unit"],
+    tags = ["unit", "audio", "platform"],
 )
 
 ascii_chat_test(
-    name = "buffer_pool",
+    name = "unit_buffer_pool",
     src = "unit/buffer_pool_test.c",
-    tags = ["unit"],
+    tags = ["unit", "data_structures", "network"],
 )
 
 ascii_chat_test(
-    name = "common",
+    name = "unit_common",
     src = "unit/common_test.c",
-    tags = ["unit"],
+    tags = ["unit", "utilities"],
 )
 
 ascii_chat_test(
-    name = "compression",
+    name = "unit_compression",
     src = "unit/compression_test.c",
-    tags = ["unit"],
+    tags = ["unit", "compression", "network"],
 )
 
 ascii_chat_test(
-    name = "config",
+    name = "unit_config",
     src = "unit/config_test.c",
-    tags = ["unit"],
+    tags = ["unit", "config"],
 )
 
 ascii_chat_test(
-    name = "crc32_hw",
+    name = "unit_crc32_hw",
     src = "unit/crc32_hw_test.c",
-    tags = ["unit"],
+    tags = ["unit", "security", "simd"],
 )
 
 ascii_chat_test(
-    name = "grid_layout",
+    name = "unit_grid_layout",
     src = "unit/grid_layout_test.c",
-    tags = ["unit"],
+    tags = ["unit", "ascii", "terminal"],
 )
 
 ascii_chat_test(
-    name = "image",
+    name = "unit_image",
     src = "unit/image_test.c",
-    tags = ["unit"],
+    tags = ["unit", "video", "ascii"],
 )
 
 ascii_chat_test(
-    name = "ip",
+    name = "unit_ip",
     src = "unit/ip_test.c",
-    tags = ["unit"],
+    tags = ["unit", "network"],
 )
 
 ascii_chat_test(
-    name = "logging",
+    name = "unit_logging",
     src = "unit/logging_test.c",
-    tags = ["unit"],
+    tags = ["unit", "config", "utilities"],
 )
 
 ascii_chat_test(
-    name = "mixer",
+    name = "unit_mixer",
     src = "unit/mixer_test.c",
-    tags = ["unit"],
+    tags = ["unit", "audio"],
 )
 
 ascii_chat_test(
-    name = "network",
+    name = "unit_network",
     src = "unit/network_test.c",
-    tags = ["unit"],
+    tags = ["unit", "network"],
 )
 
 ascii_chat_test(
-    name = "options",
+    name = "unit_options",
     src = "unit/options_test.c",
-    tags = ["unit"],
+    tags = ["unit", "config"],
 )
 
 ascii_chat_test(
-    name = "output_buffer",
+    name = "unit_output_buffer",
     src = "unit/output_buffer_test.c",
-    tags = ["unit"],
+    tags = ["unit", "terminal", "data_structures"],
 )
 
 ascii_chat_test(
-    name = "packet_queue",
+    name = "unit_packet_queue",
     src = "unit/packet_queue_test.c",
-    tags = ["unit"],
+    tags = ["unit", "network", "data_structures"],
 )
 
 ascii_chat_test(
-    name = "palette",
+    name = "unit_palette",
     src = "unit/palette_test.c",
     tags = [
         "unit",
+        "terminal",
+        "ascii",
         "manual",  # Passes with `bazel run` but 70/71 under `bazel test`
                    # This is a Criterion/Bazel test runner interaction issue.
-                   # Run manually: bazel run //tests:palette -- --verbose
+                   # Run manually: bazel run //tests:unit_palette -- --verbose
     ],
 )
 
 ascii_chat_test(
-    name = "ringbuffer",
+    name = "unit_ringbuffer",
     src = "unit/ringbuffer_test.c",
-    tags = ["unit"],
+    tags = ["unit", "audio", "data_structures"],
 )
 
 ascii_chat_test(
-    name = "simd_scalar_comparison",
+    name = "unit_simd_scalar_comparison",
     src = "unit/simd_scalar_comparison_test.c",
-    tags = ["unit"],
+    tags = ["unit", "simd", "ascii", "video"],
 )
 
 ascii_chat_test(
-    name = "terminal_detect",
+    name = "unit_terminal_detect",
     src = "unit/terminal_detect_test.c",
-    tags = ["unit"],
+    tags = ["unit", "terminal", "platform"],
 )
 
 ascii_chat_test(
-    name = "webcam",
+    name = "unit_webcam",
     src = "unit/webcam_test.c",
-    tags = ["unit"],
+    tags = ["unit", "video", "platform"],
 )
 
 # =============================================================================
@@ -171,58 +187,58 @@ ascii_chat_test(
 # Cryptography-related unit tests (tests/unit/crypto/*)
 
 ascii_chat_test(
-    name = "crypto",
+    name = "unit_crypto",
     src = "unit/crypto/crypto_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security"],
 )
 
 ascii_chat_test(
-    name = "crypto_handshake",
+    name = "unit_crypto_handshake",
     src = "unit/crypto/crypto_handshake_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security", "network"],
 )
 
 ascii_chat_test(
-    name = "crypto_keys",
+    name = "unit_crypto_keys",
     src = "unit/crypto/crypto_keys_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security"],
 )
 
 ascii_chat_test(
-    name = "crypto_known_hosts",
+    name = "unit_crypto_known_hosts",
     src = "unit/crypto/crypto_known_hosts_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security", "config"],
 )
 
 ascii_chat_test(
-    name = "crypto_pem_utils",
+    name = "unit_crypto_pem_utils",
     src = "unit/crypto/crypto_pem_utils_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security"],
 )
 
 ascii_chat_test(
-    name = "crypto_ssh_agent",
+    name = "unit_crypto_ssh_agent",
     src = "unit/crypto/crypto_ssh_agent_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security", "platform"],
 )
 
 ascii_chat_test(
-    name = "crypto_validation",
+    name = "unit_crypto_validation",
     src = "unit/crypto/crypto_validation_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security"],
 )
 
 ascii_chat_test(
-    name = "crypto_https_keys",
+    name = "unit_crypto_https_keys",
     src = "unit/crypto/crypto_https_keys_test.c",
     size = "medium",  # Network operations may be slower
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security", "network"],
 )
 
 ascii_chat_test(
-    name = "crypto_options",
+    name = "unit_crypto_options",
     src = "unit/crypto/crypto_options_test.c",
-    tags = ["unit", "crypto"],
+    tags = ["unit", "crypto", "security", "config"],
 )
 
 # =============================================================================
@@ -231,7 +247,7 @@ ascii_chat_test(
 # Tests for development tooling (instrumentation, query, etc.)
 
 ascii_chat_test(
-    name = "instrument_log",
+    name = "unit_instrument_log",
     src = "unit/tooling/instrument_log_test.c",
     tags = ["unit", "tooling"],
     extra_deps = ["//lib:panic"],
@@ -240,7 +256,7 @@ ascii_chat_test(
 # Query test requires query runtime library
 # TODO: Add query runtime library to Bazel build, then enable this test
 # ascii_chat_test(
-#     name = "query",
+#     name = "unit_query",
 #     src = "unit/tooling/query_test.c",
 #     tags = ["unit", "tooling"],
 #     extra_deps = ["//lib:ascii-query-runtime"],
@@ -252,45 +268,47 @@ ascii_chat_test(
 # Tests that exercise multiple components together
 
 ascii_chat_test(
-    name = "ascii_simd_integration",
+    name = "integration_ascii_simd",
     src = "integration/ascii_simd_integration_test.c",
     size = "medium",
-    tags = ["integration"],
+    tags = ["integration", "simd", "ascii", "video"],
 )
 
 ascii_chat_test(
-    name = "client_mock",
+    name = "integration_client_mock",
     src = "integration/client_mock_test.c",
-    tags = ["integration"],
+    tags = ["integration", "client", "network"],
 )
 
 ascii_chat_test(
-    name = "crypto_handshake_integration",
+    name = "integration_crypto_handshake",
     src = "integration/crypto_handshake_integration_test.c",
     size = "medium",
-    tags = ["integration", "crypto"],
+    tags = ["integration", "crypto", "security", "network"],
 )
 
 ascii_chat_test(
-    name = "crypto_http_client",
+    name = "integration_crypto_http_client",
     src = "integration/crypto_http_client_test.c",
     size = "medium",
-    tags = ["integration", "crypto", "network"],
+    tags = ["integration", "crypto", "security", "network"],
 )
 
 ascii_chat_test(
-    name = "crypto_network",
+    name = "integration_crypto_network",
     src = "integration/crypto_network_test.c",
     size = "medium",
-    tags = ["integration", "crypto", "network"],
+    tags = ["integration", "crypto", "security", "network"],
 )
 
 ascii_chat_test(
-    name = "main_integration",
+    name = "integration_main",
     src = "integration/main_integration_test.c",
     size = "large",
     tags = [
         "integration",
+        "server",
+        "client",
         "exclusive",  # Run serially - spawns server/client processes
         "manual",  # Requires ascii-chat binary in PATH - run manually after build
     ],
@@ -299,10 +317,10 @@ ascii_chat_test(
 # Note: server_multiclient_test.c is excluded in CMake - complex multi-process test
 # that requires special handling. Enable when needed:
 # ascii_chat_test(
-#     name = "server_multiclient",
+#     name = "integration_server_multiclient",
 #     src = "integration/server_multiclient_test.c",
 #     size = "large",
-#     tags = ["integration", "exclusive", "manual"],
+#     tags = ["integration", "server", "network", "exclusive", "manual"],
 # )
 
 # =============================================================================
@@ -311,10 +329,10 @@ ascii_chat_test(
 # Performance benchmarks and stress tests
 
 ascii_chat_test(
-    name = "ascii_render_perf",
+    name = "performance_ascii_render",
     src = "performance/ascii_render_perf_test.c",
     size = "medium",
-    tags = ["performance"],
+    tags = ["performance", "ascii", "terminal", "simd"],
     extra_copts = ["-O3"],  # Performance tests should be optimized
     extra_defines = ["NDEBUG"],  # Disable debug checks for accurate timing
 )
@@ -329,68 +347,41 @@ test_suite(
     tags = ["unit"],
     tests = [
         # Core unit tests
-        ":ansi_fast",
-        ":ascii",
-        ":aspect_ratio",
-        ":audio",
-        ":buffer_pool",
-        ":common",
-        ":compression",
-        ":config",
-        ":crc32_hw",
-        ":grid_layout",
-        ":image",
-        ":ip",
-        ":logging",
-        ":mixer",
-        ":network",
-        ":options",
-        ":output_buffer",
-        ":packet_queue",
+        ":unit_ansi_fast",
+        ":unit_ascii",
+        ":unit_aspect_ratio",
+        ":unit_audio",
+        ":unit_buffer_pool",
+        ":unit_common",
+        ":unit_compression",
+        ":unit_config",
+        ":unit_crc32_hw",
+        ":unit_grid_layout",
+        ":unit_image",
+        ":unit_ip",
+        ":unit_logging",
+        ":unit_mixer",
+        ":unit_network",
+        ":unit_options",
+        ":unit_output_buffer",
+        ":unit_packet_queue",
         # palette excluded - Criterion/Bazel interaction issue (run manually)
-        ":ringbuffer",
-        ":simd_scalar_comparison",
-        ":terminal_detect",
-        ":webcam",
+        ":unit_ringbuffer",
+        ":unit_simd_scalar_comparison",
+        ":unit_terminal_detect",
+        ":unit_webcam",
         # Crypto unit tests
-        ":crypto",
-        ":crypto_handshake",
-        ":crypto_keys",
-        ":crypto_known_hosts",
-        ":crypto_pem_utils",
-        ":crypto_ssh_agent",
-        ":crypto_validation",
-        ":crypto_https_keys",
-        ":crypto_options",
+        ":unit_crypto",
+        ":unit_crypto_handshake",
+        ":unit_crypto_keys",
+        ":unit_crypto_known_hosts",
+        ":unit_crypto_pem_utils",
+        ":unit_crypto_ssh_agent",
+        ":unit_crypto_validation",
+        ":unit_crypto_https_keys",
+        ":unit_crypto_options",
         # Tooling unit tests
-        ":instrument_log",
-    ],
-)
-
-test_suite(
-    name = "tooling",
-    tags = ["tooling"],
-    tests = [
-        ":instrument_log",
-    ],
-)
-
-test_suite(
-    name = "crypto_suite",
-    tags = ["crypto"],
-    tests = [
-        ":crypto",
-        ":crypto_handshake",
-        ":crypto_keys",
-        ":crypto_known_hosts",
-        ":crypto_pem_utils",
-        ":crypto_ssh_agent",
-        ":crypto_validation",
-        ":crypto_https_keys",
-        ":crypto_options",
-        ":crypto_handshake_integration",
-        ":crypto_http_client",
-        ":crypto_network",
+        ":unit_instrument_log",
     ],
 )
 
@@ -398,13 +389,13 @@ test_suite(
     name = "integration",
     tags = ["integration"],
     tests = [
-        ":ascii_simd_integration",
-        ":client_mock",
-        ":crypto_handshake_integration",
-        ":crypto_http_client",
-        ":crypto_network",
+        ":integration_ascii_simd",
+        ":integration_client_mock",
+        ":integration_crypto_handshake",
+        ":integration_crypto_http_client",
+        ":integration_crypto_network",
         # main_integration excluded - requires ascii-chat binary in PATH
-        # Run separately with: bazel test //tests:main_integration
+        # Run separately with: bazel test //tests:integration_main
     ],
 )
 
@@ -412,7 +403,157 @@ test_suite(
     name = "performance",
     tags = ["performance"],
     tests = [
-        ":ascii_render_perf",
+        ":performance_ascii_render",
+    ],
+)
+
+# =============================================================================
+# Domain-Specific Test Suites
+# =============================================================================
+# Run tests by functional domain
+
+test_suite(
+    name = "crypto_tests",
+    tags = ["crypto"],
+    tests = [
+        ":unit_crypto",
+        ":unit_crypto_handshake",
+        ":unit_crypto_keys",
+        ":unit_crypto_known_hosts",
+        ":unit_crypto_pem_utils",
+        ":unit_crypto_ssh_agent",
+        ":unit_crypto_validation",
+        ":unit_crypto_https_keys",
+        ":unit_crypto_options",
+        ":integration_crypto_handshake",
+        ":integration_crypto_http_client",
+        ":integration_crypto_network",
+    ],
+)
+
+test_suite(
+    name = "network_tests",
+    tags = ["network"],
+    tests = [
+        ":unit_buffer_pool",
+        ":unit_compression",
+        ":unit_ip",
+        ":unit_network",
+        ":unit_packet_queue",
+        ":unit_crypto_handshake",
+        ":unit_crypto_https_keys",
+        ":integration_client_mock",
+        ":integration_crypto_handshake",
+        ":integration_crypto_http_client",
+        ":integration_crypto_network",
+    ],
+)
+
+test_suite(
+    name = "audio_tests",
+    tags = ["audio"],
+    tests = [
+        ":unit_audio",
+        ":unit_mixer",
+        ":unit_ringbuffer",
+    ],
+)
+
+test_suite(
+    name = "video_tests",
+    tags = ["video"],
+    tests = [
+        ":unit_ascii",
+        ":unit_aspect_ratio",
+        ":unit_image",
+        ":unit_simd_scalar_comparison",
+        ":unit_webcam",
+        ":integration_ascii_simd",
+    ],
+)
+
+test_suite(
+    name = "terminal_tests",
+    tags = ["terminal"],
+    tests = [
+        ":unit_ansi_fast",
+        ":unit_grid_layout",
+        ":unit_output_buffer",
+        ":unit_terminal_detect",
+        ":performance_ascii_render",
+    ],
+)
+
+test_suite(
+    name = "simd_tests",
+    tags = ["simd"],
+    tests = [
+        ":unit_crc32_hw",
+        ":unit_simd_scalar_comparison",
+        ":integration_ascii_simd",
+        ":performance_ascii_render",
+    ],
+)
+
+test_suite(
+    name = "data_structures_tests",
+    tags = ["data_structures"],
+    tests = [
+        ":unit_buffer_pool",
+        ":unit_output_buffer",
+        ":unit_packet_queue",
+        ":unit_ringbuffer",
+    ],
+)
+
+test_suite(
+    name = "config_tests",
+    tags = ["config"],
+    tests = [
+        ":unit_config",
+        ":unit_logging",
+        ":unit_options",
+        ":unit_crypto_known_hosts",
+        ":unit_crypto_options",
+    ],
+)
+
+test_suite(
+    name = "platform_tests",
+    tags = ["platform"],
+    tests = [
+        ":unit_audio",
+        ":unit_crypto_ssh_agent",
+        ":unit_terminal_detect",
+        ":unit_webcam",
+    ],
+)
+
+test_suite(
+    name = "security_tests",
+    tags = ["security"],
+    tests = [
+        ":unit_crc32_hw",
+        ":unit_crypto",
+        ":unit_crypto_handshake",
+        ":unit_crypto_keys",
+        ":unit_crypto_known_hosts",
+        ":unit_crypto_pem_utils",
+        ":unit_crypto_ssh_agent",
+        ":unit_crypto_validation",
+        ":unit_crypto_https_keys",
+        ":unit_crypto_options",
+        ":integration_crypto_handshake",
+        ":integration_crypto_http_client",
+        ":integration_crypto_network",
+    ],
+)
+
+test_suite(
+    name = "tooling_tests",
+    tags = ["tooling"],
+    tests = [
+        ":unit_instrument_log",
     ],
 )
 
