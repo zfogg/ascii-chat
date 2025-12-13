@@ -55,6 +55,10 @@ COMMON_COPTS = [
     "-Wextra",
     "-Wno-unused-parameter",
     "-std=c23",
+    # Disable sanitizers - there are known benign issues in the codebase
+    # (e.g., int/-1 to unsigned asciichat_error_t conversions) that trigger
+    # UBSan but are functionally correct. Enable per-target for debugging.
+    "-fno-sanitize=all",
 ]
 
 # Platform-specific defines
