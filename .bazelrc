@@ -27,6 +27,13 @@ build --repo_env=CCACHE_DISABLE=1
 # toolchain because the hermetic lld requires libxml2.so.2 which is not available
 # on modern Linux systems. The hermetic LLVM libraries are still used for the defer tool.
 
+# Use Clang as the compiler (required for -std=c23 and Clang-specific sanitizers)
+# On systems with GCC as default, set CC/CXX environment variables
+build --action_env=CC=clang
+build --action_env=CXX=clang++
+build --host_action_env=CC=clang
+build --host_action_env=CXX=clang++
+
 # IDE integration notes:
 # To generate compile_commands.json, use bazel-compile-commands extractor:
 # https://github.com/hedronvision/bazel-compile-commands-extractor
