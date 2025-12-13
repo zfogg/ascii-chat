@@ -2,15 +2,15 @@
 # ascii-chat Library Modules
 # =============================================================================
 # Library targets corresponding to CMake's module structure:
-#   - ascii-chat-util
-#   - ascii-chat-data-structures
-#   - ascii-chat-platform
-#   - ascii-chat-crypto
-#   - ascii-chat-video
-#   - ascii-chat-audio
-#   - ascii-chat-core
-#   - ascii-chat-network
-#   - ascii-chat-simd
+#   - //lib:util
+#   - //lib:data-structures
+#   - //lib:platform
+#   - //lib:crypto
+#   - //lib:video
+#   - //lib:audio
+#   - //lib:core
+#   - //lib:network
+#   - //lib:simd
 # =============================================================================
 
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
@@ -71,7 +71,7 @@ COMMON_LOCAL_DEFINES = PLATFORM_DEFINES + BUILD_MODE_DEFINES + ["__BAZEL_BUILD__
 # to everything. This header-only target breaks the util <-> platform cycle.
 
 cc_library(
-    name = "ascii-chat-platform-headers",
+    name = "platform-headers",
     hdrs = glob([
         "*.h",
         "**/*.h",
@@ -96,7 +96,7 @@ defer_transform(
     srcs = ["config.c"],
     hdrs = [":version_h"],  # Generated version.h
     deps = [
-        ":ascii-chat-platform-headers",
+        ":platform-headers",
         "@tomlc17//:tomlc17",
     ],
 )
@@ -105,7 +105,7 @@ defer_transform(
     name = "known_hosts_defer",
     srcs = ["crypto/known_hosts.c"],
     deps = [
-        ":ascii-chat-platform-headers",
+        ":platform-headers",
         "@libsodium//:libsodium",
         "@bearssl//:bearssl",
     ],
@@ -116,7 +116,7 @@ defer_transform(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-util",
+    name = "util",
     srcs = [
         "util/format.c",
         "util/parsing.c",
@@ -133,7 +133,7 @@ cc_library(
     includes = ["."],
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-platform-headers",
+        ":platform-headers",
         "@sokol//:sokol_time",
     ],
 )
@@ -143,7 +143,7 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-data-structures",
+    name = "data-structures",
     srcs = [
         "ringbuffer.c",
         "packet_queue.c",
@@ -157,8 +157,8 @@ cc_library(
     copts = COMMON_COPTS,
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-util",
-        ":ascii-chat-platform",
+        ":util",
+        ":platform",
     ],
 )
 
@@ -169,7 +169,7 @@ cc_library(
 # macOS Objective-C webcam implementation
 # objc_library is a native Bazel rule, no load statement needed
 objc_library(
-    name = "ascii-chat-webcam-macos",
+    name = "webcam-macos",
     srcs = ["os/macos/webcam_avfoundation.m"],
     hdrs = glob([
         "platform/*.h",
@@ -188,12 +188,12 @@ objc_library(
     ],
     target_compatible_with = ["@platforms//os:macos"],
     deps = [
-        ":ascii-chat-platform-headers",
+        ":platform-headers",
     ],
 )
 
 cc_library(
-    name = "ascii-chat-platform",
+    name = "platform",
     srcs = [
         "platform/abstraction.c",
     ] + select({
@@ -274,9 +274,9 @@ cc_library(
     }),
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-util",
+        ":util",
     ] + select({
-        "//bazel/toolchains:macos": [":ascii-chat-webcam-macos"],
+        "//bazel/toolchains:macos": [":webcam-macos"],
         "//conditions:default": [],
     }),
 )
@@ -286,7 +286,7 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-crypto",
+    name = "crypto",
     srcs = [
         "crypto/crypto.c",
         "crypto/keys/keys.c",
@@ -307,9 +307,9 @@ cc_library(
     copts = COMMON_COPTS,
     local_defines = COMMON_LOCAL_DEFINES + ["ASCIICHAT_BUILD_WITH_DEFER"],
     deps = [
-        ":ascii-chat-util",
-        ":ascii-chat-platform",
-        ":ascii-chat-core",  # For version.h
+        ":util",
+        ":platform",
+        ":core",  # For version.h
         "@bcrypt_pbkdf//:libsodium_bcrypt_pbkdf",
         "@libsodium//:libsodium",
         "@bearssl//:bearssl",
@@ -329,92 +329,92 @@ SIMD_COMMON_SRCS = [
 
 # Header-only target for SIMD implementations to access image_t
 cc_library(
-    name = "ascii-chat-simd-headers",
+    name = "simd-headers",
     hdrs = glob([
         "image2ascii/*.h",
         "image2ascii/simd/*.h",
     ]),
     includes = ["."],
-    deps = [":ascii-chat-platform-headers"],
+    deps = [":platform-headers"],
 )
 
 # SSE2 sources (x86_64)
 # alwayslink=True ensures symbols are included even with function pointer dispatch
 cc_library(
-    name = "ascii-chat-simd-sse2",
+    name = "simd-sse2",
     srcs = ["image2ascii/simd/sse2.c"],
     alwayslink = True,
     copts = COMMON_COPTS + ["-msse2"],
     local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_SSE2=1"],
     target_compatible_with = ["@platforms//cpu:x86_64"],
     deps = [
-        ":ascii-chat-simd-headers",
-        ":ascii-chat-util",
+        ":simd-headers",
+        ":util",
     ],
 )
 
 # SSSE3 sources (x86_64)
 cc_library(
-    name = "ascii-chat-simd-ssse3",
+    name = "simd-ssse3",
     srcs = ["image2ascii/simd/ssse3.c"],
     alwayslink = True,
     copts = COMMON_COPTS + ["-mssse3"],
     local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_SSSE3=1"],
     target_compatible_with = ["@platforms//cpu:x86_64"],
     deps = [
-        ":ascii-chat-simd-headers",
-        ":ascii-chat-util",
+        ":simd-headers",
+        ":util",
     ],
 )
 
 # AVX2 sources (x86_64)
 cc_library(
-    name = "ascii-chat-simd-avx2",
+    name = "simd-avx2",
     srcs = ["image2ascii/simd/avx2.c"],
     alwayslink = True,
     copts = COMMON_COPTS + ["-mavx2"],
     local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_AVX2=1"],
     target_compatible_with = ["@platforms//cpu:x86_64"],
     deps = [
-        ":ascii-chat-simd-headers",
-        ":ascii-chat-util",
+        ":simd-headers",
+        ":util",
     ],
 )
 
 # NEON sources (ARM64)
 cc_library(
-    name = "ascii-chat-simd-neon",
+    name = "simd-neon",
     srcs = ["image2ascii/simd/neon.c"],
     alwayslink = True,
     copts = COMMON_COPTS,
     local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_NEON=1"],
     target_compatible_with = ["@platforms//cpu:aarch64"],
     deps = [
-        ":ascii-chat-simd-headers",
-        ":ascii-chat-util",
+        ":simd-headers",
+        ":util",
     ],
 )
 
 # Main SIMD library with platform-specific deps
 # Uses auto-detected SIMD level from @simd_config (AVX2, SSSE3, SSE2, or NEON)
 cc_library(
-    name = "ascii-chat-simd",
+    name = "simd",
     srcs = SIMD_COMMON_SRCS,
     hdrs = glob(["image2ascii/simd/*.h", "image2ascii/*.h"]),
     # Use auto-detected SIMD copts and defines from @simd_config
     copts = COMMON_COPTS + SIMD_COPTS,
     local_defines = COMMON_LOCAL_DEFINES + SIMD_DEFINES,
     deps = [
-        ":ascii-chat-util",
+        ":util",
     ] + select({
         # Link platform-specific SIMD implementations
         "//bazel/toolchains:x86_64": [
-            ":ascii-chat-simd-sse2",
-            ":ascii-chat-simd-ssse3",
-            ":ascii-chat-simd-avx2",
+            ":simd-sse2",
+            ":simd-ssse3",
+            ":simd-avx2",
         ],
         "//bazel/toolchains:arm64": [
-            ":ascii-chat-simd-neon",
+            ":simd-neon",
         ],
         "//conditions:default": [],
     }),
@@ -425,7 +425,7 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-video",
+    name = "video",
     srcs = [
         "video_frame.c",
         "image2ascii/image.c",
@@ -443,9 +443,9 @@ cc_library(
     copts = COMMON_COPTS,
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-util",
-        ":ascii-chat-platform",
-        ":ascii-chat-simd",
+        ":util",
+        ":platform",
+        ":simd",
     ],
 )
 
@@ -454,7 +454,7 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-audio",
+    name = "audio",
     srcs = [
         "audio.c",
         "mixer.c",
@@ -466,8 +466,8 @@ cc_library(
     copts = COMMON_COPTS,
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-util",
-        ":ascii-chat-platform",
+        ":util",
+        ":platform",
         "@portaudio//:portaudio",
     ],
 )
@@ -477,7 +477,7 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-network",
+    name = "network",
     srcs = [
         "network/network.c",
         "network/packet.c",
@@ -493,9 +493,9 @@ cc_library(
     copts = COMMON_COPTS + CRC32_HW_COPTS,
     local_defines = COMMON_LOCAL_DEFINES + CRC32_HW_DEFINES,
     deps = [
-        ":ascii-chat-util",
-        ":ascii-chat-platform",
-        ":ascii-chat-crypto",
+        ":util",
+        ":platform",
+        ":crypto",
         "@zstd//:zstd",
     ],
 )
@@ -505,7 +505,7 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-core",
+    name = "core",
     srcs = [
         "common.c",
         "asciichat_errno.c",
@@ -534,8 +534,8 @@ cc_library(
     includes = ["."],
     local_defines = COMMON_LOCAL_DEFINES + ["ASCIICHAT_BUILD_WITH_DEFER"],
     deps = [
-        ":ascii-chat-util",
-        ":ascii-chat-platform",
+        ":util",
+        ":platform",
         "@tomlc17//:tomlc17",
         "@uthash//:uthash",
     ],
@@ -548,7 +548,7 @@ cc_library(
 # been processed by ascii-instr-panic to trace execution flow.
 
 cc_library(
-    name = "ascii-chat-panic",
+    name = "panic",
     srcs = [
         "tooling/panic/instrument_log.c",
         "tooling/panic/instrument_cov.c",
@@ -560,9 +560,9 @@ cc_library(
     includes = ["."],
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-core",
-        ":ascii-chat-platform",
-        ":ascii-chat-util",
+        ":core",
+        ":platform",
+        ":util",
     ],
 )
 
@@ -571,15 +571,15 @@ cc_library(
 # =============================================================================
 
 cc_library(
-    name = "ascii-chat-test-helpers",
+    name = "test-helpers",
     srcs = glob(["tests/*.c"]),
     hdrs = glob(["tests/*.h"]),
     copts = COMMON_COPTS,
     includes = ["."],
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
-        ":ascii-chat-core",
-        ":ascii-chat-platform",
+        ":core",
+        ":platform",
     ],
     testonly = True,
 )

@@ -43,16 +43,16 @@ COMMON_TEST_DEFINES = PLATFORM_DEFINES + BUILD_MODE_DEFINES + [
 
 # All library deps needed by tests (order matters for linking)
 COMMON_TEST_DEPS = [
-    "//lib:ascii-chat-test-helpers",
-    "//lib:ascii-chat-core",
-    "//lib:ascii-chat-util",
-    "//lib:ascii-chat-platform",
-    "//lib:ascii-chat-data-structures",
-    "//lib:ascii-chat-network",
-    "//lib:ascii-chat-crypto",
-    "//lib:ascii-chat-audio",
-    "//lib:ascii-chat-video",
-    "//lib:ascii-chat-simd",
+    "//lib:test-helpers",
+    "//lib:core",
+    "//lib:util",
+    "//lib:platform",
+    "//lib:data-structures",
+    "//lib:network",
+    "//lib:crypto",
+    "//lib:audio",
+    "//lib:video",
+    "//lib:simd",
 ]
 
 # Criterion library (system-installed)

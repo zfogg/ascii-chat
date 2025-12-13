@@ -234,7 +234,7 @@ ascii_chat_test(
     name = "instrument_log",
     src = "unit/tooling/instrument_log_test.c",
     tags = ["unit", "tooling"],
-    extra_deps = ["//lib:ascii-chat-panic"],
+    extra_deps = ["//lib:panic"],
 )
 
 # Query test requires query runtime library
