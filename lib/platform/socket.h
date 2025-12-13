@@ -42,7 +42,7 @@ typedef int socklen_t;
 typedef unsigned long nfds_t;
 #else
 #include <sys/socket.h>
-#include <sys/select.h>  // For fd_set, select(), struct timeval
+#include <sys/select.h> // For fd_set, select(), struct timeval
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
