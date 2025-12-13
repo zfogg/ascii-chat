@@ -39,31 +39,26 @@ jobs:
           - os: Linux
             arch: amd64
             runner: ubuntu-latest
-            bazel_config: linux
 
           # Linux ARM64
           - os: Linux
             arch: arm64
             runner: ubuntu-24.04-arm
-            bazel_config: linux
 
           # macOS AMD64 (Intel)
           - os: macOS
             arch: amd64
             runner: macos-15-intel
-            bazel_config: macos
 
           # macOS ARM64 (Apple Silicon)
           - os: macOS
             arch: arm64
             runner: macos-15
-            bazel_config: macos
 
           # Windows AMD64
           - os: Windows
             arch: amd64
             runner: windows-latest
-            bazel_config: windows
 
     steps:
       - name: Checkout code
@@ -123,7 +118,7 @@ jobs:
       # Build all targets
       - name: Build
         run: |
-          bazel build --config=${{ matrix.bazel_config }} --config=ci //...
+          bazel build --config=ci //...
 
       # Verify build artifacts
       - name: Verify build artifacts
