@@ -404,6 +404,10 @@ if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "De
         LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # .so goes in lib/
         ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}  # Import .lib goes in lib/
         WINDOWS_EXPORT_ALL_SYMBOLS FALSE  # Use generated .def file instead
+        # Windows: VERSION/SOVERSION embed version info in PE header (no symlinks)
+        # Library version is from lib/v* tags, separate from app version
+        VERSION ${ASCIICHAT_LIB_VERSION}
+        SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
 
     # Explicitly set import library location for Windows
@@ -504,6 +508,13 @@ else()
     set_target_properties(ascii-chat-shared PROPERTIES
         OUTPUT_NAME "asciichat"
         POSITION_INDEPENDENT_CODE ON
+        # Unix shared library versioning: creates symlink chain
+        # libasciichat.so → libasciichat.so.X → libasciichat.so.X.Y.Z
+        # The SOVERSION is embedded as the SONAME in the ELF header
+        # At runtime, ld.so looks for the SONAME (libasciichat.so.X), not the linker name
+        # Library version is from lib/v* tags, separate from app version
+        VERSION ${ASCIICHAT_LIB_VERSION}
+        SOVERSION ${ASCIICHAT_LIB_VERSION_MAJOR}
     )
 
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
