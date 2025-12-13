@@ -11,7 +11,7 @@
 # Common Settings
 # =============================================================================
 
-build --workspace_status_command=workspace_status.sh
+build --workspace_status_command=$(pwd)/workspace_status.sh
 
 # Use Bzlmod for dependency management (required for Bazel 8+ compatibility)
 # WORKSPACE is still used for local/vendored deps via module extensions
