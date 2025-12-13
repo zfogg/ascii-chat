@@ -802,27 +802,56 @@ runs:
     # during cmake configure are included in the cache.
 
     # =========================================================================
-    # Bazelisk Installation and Caching
+    # Bazel and Bazelisk Installation and Caching
     # =========================================================================
-    - name: Cache Bazelisk (Unix)
+    # Three cache types:
+    # 1. bazelisk: The Bazel binary itself
+    # 2. bazel-disk-cache: Local disk cache for build artifacts (fallback when remote cache misses)
+    # 3. bazel-repo-cache: Downloaded external repos (hermetic LLVM is ~500MB, caching avoids re-download)
+
+    - name: Restore Bazelisk cache (Unix)
       if: inputs.os != 'windows'
       id: bazelisk-cache-unix
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: |
           ~/.cache/bazelisk
           /usr/local/bin/bazel
         key: bazelisk-${{ runner.os }}-${{ runner.arch }}-v1.25.0
 
-    - name: Cache Bazelisk (Windows)
+    - name: Restore Bazelisk cache (Windows)
       if: inputs.os == 'windows'
       id: bazelisk-cache-windows
-      uses: actions/cache@v4
+      uses: actions/cache/restore@v4
       with:
         path: |
           ~/AppData/Local/bazelisk
           ~/bin/bazel.exe
         key: bazelisk-windows-${{ runner.arch }}-v1.25.0
+
+    - name: Restore Bazel caches (Unix)
+      if: inputs.os != 'windows'
+      id: bazel-cache-unix
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-${{ runner.os }}-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+        restore-keys: |
+          bazel-cache-${{ runner.os }}-${{ runner.arch }}-v1-
+
+    - name: Restore Bazel caches (Windows)
+      if: inputs.os == 'windows'
+      id: bazel-cache-windows
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-windows-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+        restore-keys: |
+          bazel-cache-windows-${{ runner.arch }}-v1-
 
     - name: Install Bazelisk (Linux)
       if: inputs.os == 'ubuntu' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
@@ -943,3 +972,39 @@ runs:
         # Cache to workspace directory to avoid permission issues
         path: .apt-cache
         key: ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+
+    - name: Save Bazelisk cache (Unix)
+      if: always() && inputs.os != 'windows' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/bazelisk
+          /usr/local/bin/bazel
+        key: bazelisk-${{ runner.os }}-${{ runner.arch }}-v1.25.0
+
+    - name: Save Bazelisk cache (Windows)
+      if: always() && inputs.os == 'windows' && steps.bazelisk-cache-windows.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/AppData/Local/bazelisk
+          ~/bin/bazel.exe
+        key: bazelisk-windows-${{ runner.arch }}-v1.25.0
+
+    - name: Save Bazel caches (Unix)
+      if: always() && inputs.os != 'windows'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-${{ runner.os }}-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+
+    - name: Save Bazel caches (Windows)
+      if: always() && inputs.os == 'windows'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-windows-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}

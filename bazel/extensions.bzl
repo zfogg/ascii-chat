@@ -198,15 +198,8 @@ def _non_bcr_deps_impl(module_ctx):
         build_file = "//bazel/third_party:portaudio_system.BUILD",
     )
 
-    # LLVM/Clang - System libraries for defer tool
-    # Unix: "auto" detects /opt/homebrew (macOS ARM), /usr/local (macOS Intel), /usr (Linux)
-    # Windows: LLVM is installed at C:\LLVM (x64) or C:\LLVM-ARM64 (arm64) by install-deps action
-    _system_lib_repo(
-        name = "llvm_clang",
-        path = "auto",
-        windows_path = "C:/LLVM",  # vovkos/llvm-package-windows installed here
-        build_file = "//bazel/third_party:llvm_clang.BUILD",
-    )
+    # Note: LLVM/Clang for the defer tool is now provided by the hermetic
+    # toolchains_llvm module (defined in MODULE.bazel), not a system library.
 
     # Vendored dependencies - BUILD files in bazel/third_party/, sources in deps/
     _local_repo(
@@ -241,7 +234,6 @@ def _non_bcr_deps_impl(module_ctx):
             "zstd",
             "libsodium",
             "portaudio",
-            "llvm_clang",
             "uthash",
             "bearssl",
             "tomlc17",

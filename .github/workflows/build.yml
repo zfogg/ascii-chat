@@ -108,27 +108,7 @@ jobs:
           $triplet = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64-windows" } else { "x64-windows" }
           vcpkg install "zstd:$triplet" "libsodium:$triplet" "portaudio:$triplet"
 
-      # Cache Bazel
-      - name: Cache Bazel repository
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: bazel-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
-          restore-keys: |
-            bazel-${{ matrix.os }}-${{ matrix.arch }}-
-
-      - name: Cache Bazel repository (Windows)
-        if: matrix.os == 'Windows'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/_bazel_*
-            ~/AppData/Local/bazelisk
-          key: bazel-windows-${{ matrix.arch }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
-          restore-keys: |
-            bazel-windows-${{ matrix.arch }}-
+      # NOTE: Bazel and Bazelisk caching is handled by install-deps action
 
       # Build with BuildBuddy remote cache
       - name: Build (Unix)

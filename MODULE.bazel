@@ -76,7 +76,6 @@ use_repo(
     "zstd",
     "libsodium",
     "portaudio",
-    "llvm_clang",
     "uthash",
     "bearssl",
     "tomlc17",

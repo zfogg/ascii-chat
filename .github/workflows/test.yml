@@ -76,16 +76,7 @@ jobs:
         run: |
           brew install llvm zstd libsodium portaudio criterion
 
-      # Cache Bazel
-      - name: Cache Bazel
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: bazel-test-${{ matrix.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
-          restore-keys: |
-            bazel-test-${{ matrix.os }}-
+      # NOTE: Bazel and Bazelisk caching is handled by install-deps action
 
       # Run tests with BuildBuddy
       - name: Run unit tests
@@ -155,15 +146,7 @@ jobs:
         if: matrix.os == 'macOS'
         run: brew install llvm zstd libsodium portaudio criterion
 
-      - name: Cache Bazel
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: bazel-integration-${{ matrix.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
-          restore-keys: |
-            bazel-integration-${{ matrix.os }}-
+      # NOTE: Bazel and Bazelisk caching is handled by install-deps action
 
       - name: Run integration tests
         env:
@@ -228,15 +211,7 @@ jobs:
         if: matrix.os == 'macOS'
         run: brew install llvm zstd libsodium portaudio
 
-      - name: Cache Bazel
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: bazel-functional-${{ matrix.os }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
-          restore-keys: |
-            bazel-functional-${{ matrix.os }}-
+      # NOTE: Bazel and Bazelisk caching is handled by install-deps action
 
       - name: Build binary
         env:
@@ -295,15 +270,7 @@ jobs:
             pkg-config libzstd-dev libsodium-dev portaudio19-dev \
             clang llvm lld valgrind
 
-      - name: Cache Bazel
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/bazel
-            ~/.cache/bazelisk
-          key: bazel-memory-linux-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
-          restore-keys: |
-            bazel-memory-linux-
+      # NOTE: Bazel and Bazelisk caching is handled by install-deps action
 
       - name: Build debug binary
         env:
