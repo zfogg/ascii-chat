@@ -230,11 +230,14 @@ echo "Output dir: {output_dir}" >&2
 echo "Input root: $SOURCE_ROOT" >&2
 
 # Run the defer tool with resolved paths
+# Temporarily disable errexit to capture exit code and provide helpful error message
+set +e
 "{defer_tool}" $REAL_SRC_FILES --output-dir="{output_dir}" --input-root="$SOURCE_ROOT" -p "{compile_db_dir}" 2>&1
 TOOL_EXIT=$?
+set -e
 echo "Tool exit code: $TOOL_EXIT" >&2
 if [ $TOOL_EXIT -ne 0 ]; then
-    echo "Defer tool failed" >&2
+    echo "Defer tool failed with exit code $TOOL_EXIT" >&2
     exit 1
 fi
 
