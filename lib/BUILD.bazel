@@ -177,7 +177,8 @@ objc_library(
         "os/*.h",
         "*.h",
     ]),
-    copts = COMMON_COPTS + ["-fobjc-arc"],
+    # Use manual memory management (not ARC) - the code uses explicit retain/release
+    copts = COMMON_COPTS + ["-fno-objc-arc"],
     includes = ["."],
     sdk_frameworks = [
         "Foundation",
