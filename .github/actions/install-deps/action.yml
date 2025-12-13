@@ -368,6 +368,19 @@ runs:
         Add-Content -Path $env:GITHUB_ENV -Value "CSTD=$value"
         Write-Host "Set CSTD to $value"
 
+    - name: Restore scoop cache (Windows)
+      if: inputs.os == 'windows'
+      id: scoop-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          C:\ProgramData\scoop
+          ~/scoop
+        key: ${{ runner.os }}-${{ runner.arch }}-scoop-v2-ninja-ccache-doxygen-${{ inputs.extra-packages }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-scoop-v2-ninja-ccache-doxygen-
+          ${{ runner.os }}-${{ runner.arch }}-scoop-v2-
+
     - name: Install Windows build tools (scoop)
       if: inputs.os == 'windows'
       shell: pwsh
@@ -954,6 +967,15 @@ runs:
           ${{ env.VCPKG_ROOT }}/packages
           ${{ env.VCPKG_ROOT }}/buildtrees
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
+
+    - name: Save scoop cache (Windows)
+      if: always() && inputs.os == 'windows' && steps.scoop-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          C:\ProgramData\scoop
+          ~/scoop
+        key: ${{ runner.os }}-${{ runner.arch }}-scoop-v2-ninja-ccache-doxygen-${{ inputs.extra-packages }}
 
     - name: Prepare APT cache for saving (Ubuntu)
       if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
