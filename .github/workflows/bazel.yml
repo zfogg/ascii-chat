@@ -114,7 +114,7 @@ jobs:
         env:
           BUILDBUDDY_API_KEY: ${{ secrets.BUILDBUDDY_API_KEY }}
         run: |
-          echo "build --remote_cache=grpcs://remote.buildbuddy.io" >> user.bazelrc
+          echo "build --remote_cache=grpcs://zfogg.buildbuddy.io" >> user.bazelrc
           echo "build --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY" >> user.bazelrc
 
       # Build all targets
