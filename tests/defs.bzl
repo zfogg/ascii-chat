@@ -116,10 +116,13 @@ def ascii_chat_test(
         extra_env: Additional environment variables
         **kwargs: Additional arguments passed to cc_test
     """
-    # Add "local" tag to all Criterion tests - Criterion uses boxfort for subprocess
-    # isolation which doesn't work in Bazel's sandboxed environment. The "local" tag
-    # tells Bazel to run these tests without sandboxing.
-    all_tags = ["local"] + tags
+    # Add "local" and "manual" tags to all Criterion tests:
+    # - "local": Criterion uses boxfort for subprocess isolation which doesn't work
+    #   in Bazel's sandboxed environment
+    # - "manual": Criterion is not available in most CI environments (not in Ubuntu
+    #   standard repos). Run tests with: bazel test --test_tag_filters=-manual //tests/...
+    #   after installing Criterion locally (apt install libcriterion-dev or brew install criterion)
+    all_tags = ["local", "manual"] + tags
 
     # Merge sanitizer suppressions with any extra env vars
     test_env = {}
