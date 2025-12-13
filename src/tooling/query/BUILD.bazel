@@ -116,6 +116,9 @@ cc_binary(
     features = ["-asan", "-ubsan", "-tsan", "-msan"],
     linkopts = select({
         "@platforms//os:linux": [
+            # Use hermetic lld to match hermetic LLVM libraries version
+            "-fuse-ld=external/toolchains_llvm~~llvm~llvm_toolchain_llvm/bin/ld.lld",
+            "-Bexternal/toolchains_llvm~~llvm~llvm_toolchain_llvm/bin",
             "-pthread",
             "-ldl",
             "-lm",
