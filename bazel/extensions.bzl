@@ -130,16 +130,26 @@ def _local_repo_impl(repository_ctx):
     src_path = repository_ctx.path(Label("@//:WORKSPACE.bzlmod")).dirname.get_child(repository_ctx.attr.path)
 
     # Read the source directory and symlink each item, skipping BUILD files
-    # Use platform-appropriate command
+    # Use platform-appropriate command to list directory contents
     if _is_windows(repository_ctx):
-        # Windows: use cmd /c dir /b
-        result = repository_ctx.execute(["cmd", "/c", "dir", "/b", str(src_path)])
+        # Windows: use PowerShell Get-ChildItem (more reliable than cmd dir)
+        # Convert path to Windows format
+        win_path = str(src_path).replace("/", "\\")
+        result = repository_ctx.execute([
+            "powershell", "-NoProfile", "-Command",
+            "(Get-ChildItem -Name -Path '{}')".format(win_path),
+        ])
     else:
         # Unix: use ls -A
         result = repository_ctx.execute(["ls", "-A", str(src_path)])
 
     if result.return_code != 0:
-        fail("Failed to list directory: " + repository_ctx.attr.path)
+        # Debug: print the error
+        print("Failed to list directory: {} (stderr: {})".format(
+            repository_ctx.attr.path,
+            result.stderr,
+        ))
+        fail("Failed to list directory: " + repository_ctx.attr.path + " - " + result.stderr)
 
     for item in result.stdout.strip().split("\n"):
         # Handle Windows CRLF line endings
