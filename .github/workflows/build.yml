@@ -4,44 +4,26 @@ on:
   push:
     branches: [master, main]
     paths:
-      - 'src/**.c'
-      - 'src/**.cpp'
-      - 'src/**.h'
-      - 'src/**.hpp'
-      - 'src/**.m'
-      - 'lib/**.c'
-      - 'lib/**.cpp'
-      - 'lib/**.h'
-      - 'lib/**.hpp'
-      - 'lib/**.m'
-      - 'cmake/**'
-      - 'CMakeLists.txt'
-      - 'CMakePresets.json'
+      - 'src/**'
+      - 'lib/**'
+      - 'bazel/**'
+      - 'BUILD.bazel'
+      - 'MODULE.bazel'
+      - 'WORKSPACE'
+      - '.bazelrc'
       - '.github/workflows/build.yml'
-      - '.github/actions/install-deps/**'
   pull_request:
     branches: [master, main]
     paths:
-      - 'src/**.c'
-      - 'src/**.cpp'
-      - 'src/**.h'
-      - 'src/**.hpp'
-      - 'src/**.m'
-      - 'lib/**.c'
-      - 'lib/**.cpp'
-      - 'lib/**.h'
-      - 'lib/**.hpp'
-      - 'lib/**.m'
-      - 'cmake/**'
-      - 'CMakeLists.txt'
-      - 'CMakePresets.json'
+      - 'src/**'
+      - 'lib/**'
+      - 'bazel/**'
+      - 'BUILD.bazel'
+      - 'MODULE.bazel'
+      - 'WORKSPACE'
+      - '.bazelrc'
       - '.github/workflows/build.yml'
-      - '.github/actions/install-deps/**'
   workflow_dispatch:
-
-env:
-  CC: clang
-  CXX: clang++
 
 jobs:
   build:
@@ -55,55 +37,37 @@ jobs:
           - os: Linux
             arch: amd64
             runner: ubuntu-latest
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
+            bazel-config: ""
 
-          # Linux ARM64 - Native GitHub-hosted runner (free for public repos)
+          # Linux ARM64
           - os: Linux
             arch: arm64
             runner: ubuntu-24.04-arm
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
+            bazel-config: ""
 
-          # macOS AMD64 (Intel) - using macos-15-intel (last Intel runner, supported until Aug 2027)
+          # macOS AMD64 (Intel)
           - os: macOS
             arch: amd64
             runner: macos-15-intel
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
+            bazel-config: ""
 
-          # macOS ARM64 (Apple Silicon) - Native!
+          # macOS ARM64 (Apple Silicon)
           - os: macOS
             arch: arm64
             runner: macos-15
-            vcpkg-packages: ""
-            vcpkg-static-packages: ""
-            vcpkg-triplet: ""
-            vcpkg-static-triplet: ""
+            bazel-config: ""
 
           # Windows AMD64
           - os: Windows
             arch: amd64
             runner: windows-latest
-            vcpkg-packages: "zstd portaudio libsodium"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
-            vcpkg-triplet: "x64-windows"
-            vcpkg-static-triplet: "x64-windows-static"
+            bazel-config: "--config=windows"
 
-          # Windows ARM64 - Native GitHub-hosted runner (free for public repos)
+          # Windows ARM64
           - os: Windows
             arch: arm64
             runner: windows-11-arm
-            vcpkg-packages: "zstd portaudio libsodium"
-            vcpkg-static-packages: "zstd portaudio libsodium mimalloc"
-            vcpkg-triplet: "arm64-windows"
-            vcpkg-static-triplet: "arm64-windows-static"
+            bazel-config: "--config=windows"
 
     steps:
       - name: Checkout code
@@ -112,112 +76,140 @@ jobs:
           fetch-depth: 1
           submodules: true
 
-      - name: Install dependencies
-        id: install-deps
-        uses: ./.github/actions/install-deps
-        with:
-          os: ${{ matrix.os == 'Linux' && 'ubuntu' || (matrix.os == 'macOS' && 'macos' || 'windows') }}
-          vcpkg-packages: ${{ matrix.vcpkg-packages }}
-          vcpkg-triplet: ${{ matrix.vcpkg-triplet }}
-          vcpkg-static-packages: ${{ matrix.vcpkg-static-packages }}
-          vcpkg-static-triplet: ${{ matrix.vcpkg-static-triplet }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure (Unix)
-        if: matrix.os != 'Windows'
+      # Install Bazelisk
+      - name: Install Bazelisk (Linux)
+        if: matrix.os == 'Linux'
         run: |
-          cmake --preset release
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+            BAZELISK_ARCH="amd64"
+          elif [ "$ARCH" = "aarch64" ]; then
+            BAZELISK_ARCH="arm64"
+          fi
+          sudo curl -fsSL -o /usr/local/bin/bazel \
+            "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
+          sudo chmod +x /usr/local/bin/bazel
 
-      - name: Configure (Windows)
+      - name: Install Bazelisk (macOS)
+        if: matrix.os == 'macOS'
+        run: brew install bazelisk
+
+      - name: Install Bazelisk (Windows)
         if: matrix.os == 'Windows'
         shell: pwsh
         run: |
-          $deferTool = "${{ steps.install-deps.outputs.defer-tool-path }}"
-          # Disable analyzers - GitHub Actions Windows runner has broken cppcheck from Strawberry Perl
-          # Disable tests - Criterion doesn't work well on Windows
-          $cmakeArgs = @("--preset", "release", "-DASCIICHAT_ENABLE_ANALYZERS=OFF", "-DASCIICHAT_ENABLE_TESTS=OFF")
-          if ($deferTool -and (Test-Path $deferTool)) {
-            Write-Host "Using pre-built defer tool: $deferTool"
-            $cmakeArgs += "-DASCIICHAT_DEFER_TOOL=$deferTool"
-          } else {
-            Write-Host "No pre-built defer tool available - CMake will build from source"
-          }
-          cmake @cmakeArgs
+          # Download bazelisk directly
+          $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+          $url = "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-windows-${arch}.exe"
+          New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
+          Invoke-WebRequest -Uri $url -OutFile "$env:USERPROFILE\bin\bazel.exe"
+          echo "$env:USERPROFILE\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Build
+      # Install system dependencies for building
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'Linux'
         run: |
-          cmake --build build_release --target ascii-chat
-          cmake --build build_release --target static-lib
-          cmake --build build_release --target shared-lib
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libzstd-dev libsodium-dev portaudio19-dev \
+            clang llvm lld
 
-      - name: Verify build artifacts (Unix)
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macOS'
+        run: |
+          brew install llvm zstd libsodium portaudio
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'Windows'
+        shell: pwsh
+        run: |
+          # vcpkg is pre-installed on GitHub runners
+          vcpkg install zstd:x64-windows libsodium:x64-windows portaudio:x64-windows
+
+      # Cache Bazel
+      - name: Cache Bazel repository
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/bazel
+            ~/.cache/bazelisk
+          key: bazel-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+          restore-keys: |
+            bazel-${{ matrix.os }}-${{ matrix.arch }}-
+
+      - name: Cache Bazel repository (Windows)
+        if: matrix.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/_bazel_*
+            ~/AppData/Local/bazelisk
+          key: bazel-windows-${{ matrix.arch }}-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+          restore-keys: |
+            bazel-windows-${{ matrix.arch }}-
+
+      # Build
+      - name: Build (Unix)
+        if: matrix.os != 'Windows'
+        run: |
+          bazel build //src:ascii-chat //lib:all ${{ matrix.bazel-config }}
+
+      - name: Build (Windows)
+        if: matrix.os == 'Windows'
+        shell: pwsh
+        run: |
+          bazel build //src:ascii-chat //lib:all ${{ matrix.bazel-config }}
+
+      # Verify build
+      - name: Verify build (Unix)
         if: matrix.os != 'Windows'
         run: |
           echo "=== Verifying build artifacts ==="
-          if [ ! -f "build_release/bin/ascii-chat" ]; then
+          ls -la bazel-bin/src/
+          if [ -f "bazel-bin/src/ascii-chat" ]; then
+            echo "Build successful! Found ascii-chat"
+            ./bazel-bin/src/ascii-chat --version || true
+          else
             echo "ERROR: ascii-chat binary not found!"
             exit 1
           fi
-          echo "Build successful! Found ascii-chat"
-          ls -la build_release/bin/
-          ls -la build_release/lib/
 
-      - name: Verify build artifacts (Windows)
+      - name: Verify build (Windows)
         if: matrix.os == 'Windows'
         shell: pwsh
         run: |
           Write-Host "=== Verifying build artifacts ==="
-          $binDir = "build_release/bin"
-          if (!(Test-Path "$binDir/ascii-chat.exe")) {
+          Get-ChildItem -Path bazel-bin/src/
+          if (Test-Path "bazel-bin/src/ascii-chat.exe") {
+            Write-Host "Build successful! Found ascii-chat.exe"
+          } else {
             Write-Host "ERROR: ascii-chat.exe not found!"
             exit 1
           }
-          Write-Host "Build successful! Found ascii-chat.exe"
-          Get-ChildItem -Path $binDir
-          Get-ChildItem -Path "build_release/lib"
 
-      # Print ccache statistics for debugging
-      - name: Print ccache stats
-        if: always()
-        shell: bash
-        run: ccache --show-stats || true
+      # Upload artifacts
+      - name: Prepare artifacts (Unix)
+        if: matrix.os != 'Windows'
+        run: |
+          mkdir -p artifacts/bin artifacts/lib
+          cp bazel-bin/src/ascii-chat artifacts/bin/ || true
+          cp bazel-bin/lib/*.a artifacts/lib/ 2>/dev/null || true
+          cp bazel-bin/lib/*.so artifacts/lib/ 2>/dev/null || true
+          cp bazel-bin/lib/*.dylib artifacts/lib/ 2>/dev/null || true
 
-      # Save CMake deps cache AFTER build so BearSSL, defer tool, and other deps
-      # built during cmake configure/build are included
-      # IMPORTANT: Only save on success to avoid caching corrupted state
-      - name: Save CMake dependency cache
-        if: success() && steps.install-deps.outputs.cmake-cache-hit != 'true'
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            .deps-cache
-            deps/bearssl/build
-          key: ${{ steps.install-deps.outputs.cmake-cache-key }}
-
-      # Save ccache after build for incremental compilation on next run
-      # ccache is safe to save even on failure - it stores compilation results
-      - name: Save ccache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: .ccache
-          key: ${{ steps.install-deps.outputs.ccache-key }}
-
-      # Save build directory for incremental builds - Ninja will only rebuild changed files
-      # IMPORTANT: Only save on success to avoid caching corrupted ExternalProject stamps
-      - name: Save build directory
-        if: success()
-        uses: actions/cache/save@v4
-        with:
-          path: build_release
-          key: ${{ steps.install-deps.outputs.build-cache-key }}
+      - name: Prepare artifacts (Windows)
+        if: matrix.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts/bin, artifacts/lib | Out-Null
+          Copy-Item bazel-bin/src/ascii-chat.exe artifacts/bin/ -ErrorAction SilentlyContinue
+          Copy-Item bazel-bin/lib/*.lib artifacts/lib/ -ErrorAction SilentlyContinue
+          Copy-Item bazel-bin/lib/*.dll artifacts/lib/ -ErrorAction SilentlyContinue
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ascii-chat-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            build_release/bin/ascii-chat*
-            build_release/lib/*
+          path: artifacts/
           retention-days: 7
-

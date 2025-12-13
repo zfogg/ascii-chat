@@ -60,70 +60,113 @@ def _defer_transform_impl(ctx):
     for hdr_target in ctx.attr.hdrs:
         all_hdrs.extend(hdr_target.files.to_list())
 
-    # Build compiler arguments
-    # The tool uses Clang's tooling infrastructure, so we pass flags after --
-    # We need to include system headers for the Clang AST parser to work
+    # Build compiler arguments list
     compiler_args = [
         "-std=c23",
         "-D_GNU_SOURCE",
         "-DASCIICHAT_BUILD_WITH_DEFER",
+        "-D__BAZEL_BUILD__",
         # System include paths for Clang tooling
-        "-isystem", "/usr/include",
-        "-isystem", "/usr/lib/clang/21/include",
+        "-isystem/usr/include",
+        "-isystem/usr/lib/clang/19/include",
+        "-isystem/usr/lib/clang/20/include",
+        "-isystem/usr/lib/clang/21/include",
+        "-isystem/usr/lib/clang/22/include",
     ]
 
     # Add SIMD defines
     for define in SIMD_DEFINES:
         compiler_args.append("-D" + define)
 
-    # Add include paths
+    # Add include paths from dependencies
     for inc in include_paths:
-        compiler_args.append("-I" + inc)
+        if inc:
+            compiler_args.append("-I" + inc)
 
-    # Add workspace root include
+    # Add workspace root includes
     compiler_args.append("-I.")
     compiler_args.append("-Ilib")
+    compiler_args.append("-Iexternal/+non_bcr_deps+tomlc17/src")
+    compiler_args.append("-Iexternal/+non_bcr_deps+uthash/src")
+    compiler_args.append("-Iexternal/+non_bcr_deps+libsodium/src/libsodium/include")
+    compiler_args.append("-Iexternal/+non_bcr_deps+bearssl/inc")
 
     # Add include path for generated headers (like version.h)
-    # The genfiles directory contains generated headers
     compiler_args.append("-I" + ctx.genfiles_dir.path)
     compiler_args.append("-I" + ctx.genfiles_dir.path + "/lib")
     compiler_args.append("-I" + ctx.bin_dir.path)
     compiler_args.append("-I" + ctx.bin_dir.path + "/lib")
 
+    # Declare output directory for compile_commands.json
+    compile_db_dir = ctx.actions.declare_directory(ctx.label.name + "_compile_db")
+
     # Declare output directory for transformed files
     output_dir = ctx.actions.declare_directory(ctx.label.name + "_out")
 
-    # Build arguments
-    args = ctx.actions.args()
-
-    # Add source files
+    # Generate compile_commands.json content
+    # The tool requires absolute paths in the compilation database
+    compile_commands = []
     for src in all_srcs:
-        args.add(src.path)
+        entry = {
+            "directory": "/proc/self/cwd",
+            "file": src.path,
+            "arguments": ["clang"] + compiler_args + ["-c", src.path],
+        }
+        compile_commands.append(entry)
 
-    # Add output directory option
-    args.add("--output-dir=" + output_dir.path)
+    compile_db_content = json.encode(compile_commands)
 
-    # Set input-root to flatten the output structure
-    # If source is lib/config.c, we want output to be just config.c
-    if all_srcs:
-        first_src = all_srcs[0]
-        src_dir = first_src.dirname
-        if src_dir:
-            args.add("--input-root=" + src_dir)
+    # Create a script that writes compile_commands.json and runs the tool
+    script_content = """#!/bin/bash
+set -e
 
-    # Add separator for compiler flags
-    args.add("--")
+# Disable sanitizers for the defer tool
+export ASAN_OPTIONS="detect_leaks=0:halt_on_error=0"
+export UBSAN_OPTIONS="halt_on_error=0:print_stacktrace=0"
 
-    # Add compiler flags
-    for arg in compiler_args:
-        args.add(arg)
+# Create compile database directory
+mkdir -p "{compile_db_dir}"
 
+# Write compile_commands.json
+cat > "{compile_db_dir}/compile_commands.json" << 'COMPILE_DB_EOF'
+{compile_db_content}
+COMPILE_DB_EOF
+
+# Create output directory
+mkdir -p "{output_dir}"
+
+# Run the defer tool
+"{defer_tool}" {src_files} --output-dir="{output_dir}" -p "{compile_db_dir}"
+
+# Check that output files were created
+for src in {src_basenames}; do
+    if [ ! -f "{output_dir}/$src" ]; then
+        echo "Error: Expected output file {output_dir}/$src not found" >&2
+        exit 1
+    fi
+done
+""".format(
+        compile_db_dir = compile_db_dir.path,
+        compile_db_content = compile_db_content,
+        output_dir = output_dir.path,
+        defer_tool = defer_tool.path,
+        src_files = " ".join([src.path for src in all_srcs]),
+        src_basenames = " ".join([src.basename for src in all_srcs]),
+    )
+
+    # Create the script file
+    script = ctx.actions.declare_file(ctx.label.name + "_transform.sh")
+    ctx.actions.write(
+        output = script,
+        content = script_content,
+        is_executable = True,
+    )
+
+    # Run the transformation
     ctx.actions.run(
-        inputs = depset(all_srcs + all_hdrs),
-        outputs = [output_dir],
-        executable = defer_tool,
-        arguments = [args],
+        inputs = depset(all_srcs + all_hdrs + [defer_tool]),
+        outputs = [compile_db_dir, output_dir],
+        executable = script,
         mnemonic = "DeferTransform",
         progress_message = "Transforming defer() in %d files" % len(all_srcs),
         use_default_shell_env = True,
@@ -150,7 +193,7 @@ defer_transform = rule(
             doc = "Additional headers needed (e.g., generated headers like version.h)",
         ),
         "_defer_tool": attr.label(
-            default = "//src/tooling/defer:ascii-instr-defer",
+            default = "//src/tooling:ascii-instr-defer",
             executable = True,
             cfg = "exec",
             doc = "The defer transformation tool",

@@ -61,11 +61,13 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio criterion libxml2 doxygen
+  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio criterion libxml2 doxygen bazelisk
 
   echo ""
   echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
+  echo "You can now build with:"
+  echo "  Bazel: bazel build //..."
+  echo "  CMake: cmake --preset debug && cmake --build build"
 
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
@@ -258,6 +260,27 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     which cmake
     cmake --version | head -1
 
+    # Install Bazelisk (Bazel version manager)
+    echo ""
+    echo "Installing Bazelisk..."
+    BAZELISK_VERSION="v1.25.0"
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+      BAZELISK_ARCH="amd64"
+    elif [ "$ARCH" = "aarch64" ]; then
+      BAZELISK_ARCH="arm64"
+    else
+      echo >&2 "WARNING: Unknown architecture $ARCH, skipping Bazelisk installation"
+      BAZELISK_ARCH=""
+    fi
+    if [ -n "$BAZELISK_ARCH" ]; then
+      sudo curl -fsSL -o /usr/local/bin/bazel \
+        "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-${BAZELISK_ARCH}"
+      sudo chmod +x /usr/local/bin/bazel
+      echo "Bazelisk installed:"
+      bazel --version
+    fi
+
   elif command -v yum &>/dev/null; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
@@ -273,6 +296,24 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       doxygen \
       rpm-build
 
+    # Install Bazelisk
+    echo ""
+    echo "Installing Bazelisk..."
+    BAZELISK_VERSION="v1.25.0"
+    ARCH=$(uname -m)
+    if [ "$ARCH" = "x86_64" ]; then
+      BAZELISK_ARCH="amd64"
+    elif [ "$ARCH" = "aarch64" ]; then
+      BAZELISK_ARCH="arm64"
+    else
+      BAZELISK_ARCH=""
+    fi
+    if [ -n "$BAZELISK_ARCH" ]; then
+      sudo curl -fsSL -o /usr/local/bin/bazel \
+        "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-${BAZELISK_ARCH}"
+      sudo chmod +x /usr/local/bin/bazel
+    fi
+
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
     echo "Installing dependencies..."
@@ -287,6 +328,29 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       protobuf-c \
       doxygen \
       dpkg rpm-tools
+
+    # Install Bazelisk from AUR or direct download
+    if command -v paru &>/dev/null; then
+      paru -S --needed bazelisk
+    elif command -v yay &>/dev/null; then
+      yay -S --needed bazelisk
+    else
+      echo "Installing Bazelisk directly (no AUR helper found)..."
+      BAZELISK_VERSION="v1.25.0"
+      ARCH=$(uname -m)
+      if [ "$ARCH" = "x86_64" ]; then
+        BAZELISK_ARCH="amd64"
+      elif [ "$ARCH" = "aarch64" ]; then
+        BAZELISK_ARCH="arm64"
+      else
+        BAZELISK_ARCH=""
+      fi
+      if [ -n "$BAZELISK_ARCH" ]; then
+        sudo curl -fsSL -o /usr/local/bin/bazel \
+          "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-linux-${BAZELISK_ARCH}"
+        sudo chmod +x /usr/local/bin/bazel
+      fi
+    fi
 
   else
     echo >&2 "ERROR: No supported package manager found (apt-get, yum, or pacman)"
@@ -308,7 +372,9 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
   echo ""
   echo "Dependencies installed successfully!"
-  echo "You can now run: cmake --build --preset debug"
+  echo "You can now build with:"
+  echo "  Bazel: bazel build //..."
+  echo "  CMake: cmake --preset debug && cmake --build build"
 
 # Windows: Direct to PowerShell script
 elif [[ "$PLATFORM" == "windows" ]]; then
