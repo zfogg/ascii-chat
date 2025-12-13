@@ -538,6 +538,8 @@ cc_library(
         ":platform",
         "@tomlc17//:tomlc17",
         "@uthash//:uthash",
+        # logging.c -> network/packet.h -> crypto/crypto.h -> sodium.h
+        "@libsodium//:libsodium",
     ],
 )
 
