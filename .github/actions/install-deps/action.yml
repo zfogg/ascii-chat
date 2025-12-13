@@ -64,10 +64,19 @@ runs:
       shell: pwsh
       run: |
         $CMAKE_VERSION = "4.2.0"
-        $CMAKE_URL = "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-windows-x86_64.zip"
+        $arch = "${{ runner.arch }}"
+
+        # Select architecture-appropriate binary
+        if ($arch -eq "ARM64") {
+          $CMAKE_ARCH = "windows-arm64"
+        } else {
+          $CMAKE_ARCH = "windows-x86_64"
+        }
+
+        $CMAKE_URL = "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${CMAKE_ARCH}.zip"
         $CMAKE_INSTALL_DIR = "C:\cmake-${CMAKE_VERSION}"
 
-        Write-Host "Installing CMake ${CMAKE_VERSION} from official release..."
+        Write-Host "Installing CMake ${CMAKE_VERSION} (${CMAKE_ARCH}) from official release..."
         $tempZip = "$env:TEMP\cmake.zip"
         Invoke-WebRequest -Uri $CMAKE_URL -OutFile $tempZip -UseBasicParsing
 
@@ -76,7 +85,7 @@ runs:
           Remove-Item -Recurse -Force $CMAKE_INSTALL_DIR
         }
         Expand-Archive -Path $tempZip -DestinationPath "C:\"
-        Rename-Item -Path "C:\cmake-${CMAKE_VERSION}-windows-x86_64" -NewName "cmake-${CMAKE_VERSION}"
+        Rename-Item -Path "C:\cmake-${CMAKE_VERSION}-${CMAKE_ARCH}" -NewName "cmake-${CMAKE_VERSION}"
         Remove-Item $tempZip
 
         # Add to PATH (prepend so it takes priority)
