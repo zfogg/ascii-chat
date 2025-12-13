@@ -113,7 +113,7 @@ jobs:
           sudo apt-get install -y \
             pkg-config \
             libzstd-dev libsodium-dev portaudio19-dev \
-            clang llvm lld
+            clang llvm lld llvm-dev libclang-dev
 
       - name: Install dependencies (macOS)
         if: matrix.os == 'macOS'
@@ -125,7 +125,9 @@ jobs:
         shell: pwsh
         run: |
           # vcpkg is pre-installed on GitHub runners
-          vcpkg install zstd:x64-windows libsodium:x64-windows portaudio:x64-windows
+          # Select correct triplet based on architecture
+          $triplet = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64-windows" } else { "x64-windows" }
+          vcpkg install "zstd:$triplet" "libsodium:$triplet" "portaudio:$triplet"
 
       # Cache Bazel
       - name: Cache Bazel repository

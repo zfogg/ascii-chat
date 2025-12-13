@@ -5,28 +5,56 @@
 # tools like the defer() transformation tool.
 #
 # Requires: LLVM/Clang development packages installed (llvm-config available)
+#
+# Linux: sudo apt install llvm-dev libclang-dev
+# macOS: brew install llvm
 
 cc_library(
     name = "llvm",
-    hdrs = glob(["root/include/llvm/**/*.h", "root/include/llvm/**/*.def", "root/include/llvm/**/*.inc", "root/include/llvm-c/**/*.h"]),
-    includes = ["root/include"],
-    linkopts = [
-        "-L/usr/local/lib",
-        "-lLLVM",
-        "-Wl,-rpath,/usr/local/lib",
-    ],
+    hdrs = glob([
+        "include/llvm/**/*.h",
+        "include/llvm/**/*.def",
+        "include/llvm/**/*.inc",
+        "include/llvm-c/**/*.h",
+    ]),
+    includes = ["include"],
+    linkopts = select({
+        "@platforms//os:linux": [
+            "-lLLVM",
+        ],
+        "@platforms//os:macos": [
+            "-L/usr/local/lib",
+            "-L/opt/homebrew/lib",
+            "-lLLVM",
+            "-Wl,-rpath,/usr/local/lib",
+            "-Wl,-rpath,/opt/homebrew/lib",
+        ],
+        "//conditions:default": ["-lLLVM"],
+    }),
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "clang",
-    hdrs = glob(["root/include/clang/**/*.h", "root/include/clang/**/*.def", "root/include/clang-c/**/*.h"]),
-    includes = ["root/include"],
-    linkopts = [
-        "-L/usr/local/lib",
-        "-lclang-cpp",
-        "-Wl,-rpath,/usr/local/lib",
-    ],
+    hdrs = glob([
+        "include/clang/**/*.h",
+        "include/clang/**/*.def",
+        "include/clang-c/**/*.h",
+    ]),
+    includes = ["include"],
+    linkopts = select({
+        "@platforms//os:linux": [
+            "-lclang-cpp",
+        ],
+        "@platforms//os:macos": [
+            "-L/usr/local/lib",
+            "-L/opt/homebrew/lib",
+            "-lclang-cpp",
+            "-Wl,-rpath,/usr/local/lib",
+            "-Wl,-rpath,/opt/homebrew/lib",
+        ],
+        "//conditions:default": ["-lclang-cpp"],
+    }),
     visibility = ["//visibility:public"],
     deps = [":llvm"],
 )

@@ -8,25 +8,28 @@
 # rather than in the deps/ submodules to avoid requiring forks.
 # =============================================================================
 
-def _zstd_repo_impl(repository_ctx):
-    """Repository rule for zstd."""
-    repository_ctx.download_and_extract(
-        url = "https://github.com/facebook/zstd/releases/download/v1.5.5/zstd-1.5.5.tar.gz",
-        sha256 = "9c4396cc829cfae319a6e2615202e82aad41372073482fce286fac78646d3ee4",
-        stripPrefix = "zstd-1.5.5",
-    )
-    repository_ctx.symlink(
-        repository_ctx.path(Label("//bazel/third_party:zstd.BUILD")),
-        "BUILD.bazel",
-    )
-
-_zstd_repo = repository_rule(
-    implementation = _zstd_repo_impl,
-)
+def _detect_system_lib_path(repository_ctx):
+    """Detect the correct system library path based on platform."""
+    # Check for macOS Homebrew paths first
+    # Apple Silicon: /opt/homebrew
+    # Intel Mac: /usr/local
+    result = repository_ctx.execute(["uname", "-s"])
+    if result.return_code == 0 and result.stdout.strip() == "Darwin":
+        # On macOS, prefer Homebrew paths
+        for path in ["/opt/homebrew", "/usr/local"]:
+            check = repository_ctx.execute(["test", "-d", path + "/include"])
+            if check.return_code == 0:
+                return path
+    # Default to /usr for Linux and other systems
+    return "/usr"
 
 def _system_lib_repo_impl(repository_ctx):
     """Repository rule for system libraries."""
-    path = repository_ctx.attr.path
+    # Use auto-detected path if attr.path is "auto", otherwise use specified path
+    if repository_ctx.attr.path == "auto":
+        path = _detect_system_lib_path(repository_ctx)
+    else:
+        path = repository_ctx.attr.path
     build_file = repository_ctx.attr.build_file
     repository_ctx.symlink(path, "root")
     repository_ctx.symlink(
@@ -78,27 +81,34 @@ _local_repo = repository_rule(
 def _non_bcr_deps_impl(module_ctx):
     """Implementation of non_bcr_deps module extension."""
 
-    # zstd - Compression library (downloaded)
-    _zstd_repo(name = "zstd")
+    # zstd - Compression library (system library)
+    # "auto" detects the correct path: /opt/homebrew (macOS ARM), /usr/local (macOS Intel), /usr (Linux)
+    _system_lib_repo(
+        name = "zstd",
+        path = "auto",
+        build_file = "//bazel/third_party:zstd_system.BUILD",
+    )
 
     # libsodium - Cryptography (system library)
+    # "auto" detects the correct path: /opt/homebrew (macOS ARM), /usr/local (macOS Intel), /usr (Linux)
     _system_lib_repo(
         name = "libsodium",
-        path = "/usr",
+        path = "auto",
         build_file = "//bazel/third_party:libsodium_system.BUILD",
     )
 
     # PortAudio - Audio I/O (system library)
     _system_lib_repo(
         name = "portaudio",
-        path = "/usr",
+        path = "auto",
         build_file = "//bazel/third_party:portaudio_system.BUILD",
     )
 
     # LLVM/Clang - System libraries for defer tool
+    # "auto" detects: /opt/homebrew (macOS ARM), /usr/local (macOS Intel), /usr (Linux)
     _system_lib_repo(
         name = "llvm_clang",
-        path = "/usr/local",
+        path = "auto",
         build_file = "//bazel/third_party:llvm_clang.BUILD",
     )
 

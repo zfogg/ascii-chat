@@ -60,33 +60,35 @@ def _defer_transform_impl(ctx):
     for hdr_target in ctx.attr.hdrs:
         all_hdrs.extend(hdr_target.files.to_list())
 
-    # Build compiler arguments list
+    # Build compiler arguments list - each as a separate array element for JSON
     compiler_args = [
         "-std=c23",
         "-D_GNU_SOURCE",
         "-DASCIICHAT_BUILD_WITH_DEFER",
         "-D__BAZEL_BUILD__",
-        # System include paths for Clang tooling
-        # Include a wide range of clang versions (14-22) to support various systems
-        # Only the paths that exist on the build machine will be used
-        "-isystem/usr/include",
-        "-isystem/usr/lib/clang/14/include",
-        "-isystem/usr/lib/clang/15/include",
-        "-isystem/usr/lib/clang/16/include",
-        "-isystem/usr/lib/clang/17/include",
-        "-isystem/usr/lib/clang/18/include",
-        "-isystem/usr/lib/clang/19/include",
-        "-isystem/usr/lib/clang/20/include",
-        "-isystem/usr/lib/clang/21/include",
-        "-isystem/usr/lib/clang/22/include",
-        # macOS Xcode toolchain paths
-        "-isystem/Library/Developer/CommandLineTools/usr/lib/clang/14.0.0/include",
-        "-isystem/Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include",
-        "-isystem/Library/Developer/CommandLineTools/usr/lib/clang/16/include",
-        "-isystem/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/14.0.0/include",
-        "-isystem/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/15.0.0/include",
-        "-isystem/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/16/include",
     ]
+
+    # System include paths for Clang tooling - use -isystem as prefix
+    system_includes = [
+        "/usr/include",
+        "/usr/lib/clang/14/include",
+        "/usr/lib/clang/15/include",
+        "/usr/lib/clang/16/include",
+        "/usr/lib/clang/17/include",
+        "/usr/lib/clang/18/include",
+        "/usr/lib/clang/19/include",
+        "/usr/lib/clang/20/include",
+        "/usr/lib/clang/21/include",
+        "/usr/lib/clang/22/include",
+        # macOS paths
+        "/Library/Developer/CommandLineTools/usr/lib/clang/14.0.0/include",
+        "/Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include",
+        "/Library/Developer/CommandLineTools/usr/lib/clang/16/include",
+    ]
+
+    for inc in system_includes:
+        compiler_args.append("-isystem")
+        compiler_args.append(inc)
 
     # Add SIMD defines
     for define in SIMD_DEFINES:
@@ -118,7 +120,6 @@ def _defer_transform_impl(ctx):
     output_dir = ctx.actions.declare_directory(ctx.label.name + "_out")
 
     # Generate compile_commands.json content
-    # The tool requires absolute paths in the compilation database
     compile_commands = []
     for src in all_srcs:
         entry = {
@@ -129,6 +130,10 @@ def _defer_transform_impl(ctx):
         compile_commands.append(entry)
 
     compile_db_content = json.encode(compile_commands)
+
+    # Build list of expected output paths (tool preserves directory structure)
+    # e.g., lib/config.c -> output_dir/lib/config.c
+    expected_outputs = " ".join([src.path for src in all_srcs])
 
     # Create a script that writes compile_commands.json and runs the tool
     script_content = """#!/bin/bash
@@ -149,13 +154,37 @@ COMPILE_DB_EOF
 # Create output directory
 mkdir -p "{output_dir}"
 
-# Run the defer tool
-"{defer_tool}" {src_files} --output-dir="{output_dir}" -p "{compile_db_dir}"
+# Debug: show what we're doing
+echo "Running defer tool: {defer_tool}" >&2
+echo "Source files: {src_files}" >&2
+echo "Output dir: {output_dir}" >&2
+echo "Compile DB dir: {compile_db_dir}" >&2
+echo "PWD: $(pwd)" >&2
+echo "Source file exists: $(ls -la lib/config.c 2>&1)" >&2
+echo "compile_commands.json:" >&2
+cat "{compile_db_dir}/compile_commands.json" >&2
 
-# Check that output files were created
-for src in {src_basenames}; do
+# Run the defer tool and capture output
+# Use --input-root to tell the tool to compute paths relative to execroot,
+# not follow symlinks to the actual source location
+"{defer_tool}" {src_files} --output-dir="{output_dir}" --input-root="$(pwd)" -p "{compile_db_dir}" 2>&1
+TOOL_EXIT=$?
+echo "Tool exit code: $TOOL_EXIT" >&2
+if [ $TOOL_EXIT -ne 0 ]; then
+    echo "Defer tool failed" >&2
+    exit 1
+fi
+
+# Debug: show what was created
+echo "Output directory contents:" >&2
+find "{output_dir}" -type f >&2 || true
+
+# Check that output files were created (tool preserves directory structure)
+for src in {expected_outputs}; do
     if [ ! -f "{output_dir}/$src" ]; then
         echo "Error: Expected output file {output_dir}/$src not found" >&2
+        echo "Contents of output directory:" >&2
+        find "{output_dir}" -type f >&2
         exit 1
     fi
 done
@@ -165,7 +194,7 @@ done
         output_dir = output_dir.path,
         defer_tool = defer_tool.path,
         src_files = " ".join([src.path for src in all_srcs]),
-        src_basenames = " ".join([src.basename for src in all_srcs]),
+        expected_outputs = expected_outputs,
     )
 
     # Create the script file
@@ -207,7 +236,7 @@ defer_transform = rule(
             doc = "Additional headers needed (e.g., generated headers like version.h)",
         ),
         "_defer_tool": attr.label(
-            default = "//src/tooling:ascii-instr-defer",
+            default = "//src/tooling/defer:ascii-instr-defer",
             executable = True,
             cfg = "exec",
             doc = "The defer transformation tool",
