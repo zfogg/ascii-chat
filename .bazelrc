@@ -54,7 +54,8 @@ build:debug --copt=-O0
 build:debug --copt=-g3
 build:debug --copt=-fno-omit-frame-pointer
 build:debug --copt=-DDEBUG
-build:debug --copt=-DDEBUG_MEMORY
+# Note: DEBUG_MEMORY is defined via select() in BUILD.bazel, not here.
+# This ensures the debug_memory library is properly linked when needed.
 build:debug --strip=never
 
 # AddressSanitizer + UndefinedBehaviorSanitizer for debug builds

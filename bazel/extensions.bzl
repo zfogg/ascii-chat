@@ -8,8 +8,33 @@
 # rather than in the deps/ submodules to avoid requiring forks.
 # =============================================================================
 
+def _is_windows(repository_ctx):
+    """Check if running on Windows."""
+    os_name = repository_ctx.os.name.lower()
+    # Bazel may report "windows 10", "windows 11", "windows server", etc.
+    return "windows" in os_name or os_name.startswith("win")
+
 def _detect_system_lib_path(repository_ctx):
     """Detect the correct system library path based on platform."""
+    # On Windows, use vcpkg installed path
+    if _is_windows(repository_ctx):
+        # Check common vcpkg locations
+        vcpkg_root = repository_ctx.os.environ.get("VCPKG_ROOT", "")
+        if not vcpkg_root:
+            # Try common vcpkg paths on Windows
+            vcpkg_root = "C:/vcpkg"
+        triplet = repository_ctx.os.environ.get("VCPKG_TARGET_TRIPLET", "x64-windows")
+        vcpkg_installed = vcpkg_root + "/installed/" + triplet
+
+        # Verify the path exists using cmd
+        result = repository_ctx.execute(["cmd", "/c", "if exist \"" + vcpkg_installed + "\" echo exists"])
+        if result.return_code == 0 and "exists" in result.stdout:
+            return vcpkg_installed
+
+        # Fallback: just return the vcpkg path even if it doesn't exist
+        # The BUILD file will handle missing libraries
+        return vcpkg_installed
+
     # Check for macOS Homebrew paths first
     # Apple Silicon: /opt/homebrew
     # Intel Mac: /usr/local
@@ -55,11 +80,20 @@ def _local_repo_impl(repository_ctx):
     src_path = repository_ctx.path(Label("@//:WORKSPACE.bzlmod")).dirname.get_child(repository_ctx.attr.path)
 
     # Read the source directory and symlink each item, skipping BUILD files
-    result = repository_ctx.execute(["ls", "-A", str(src_path)])
+    # Use platform-appropriate command
+    if _is_windows(repository_ctx):
+        # Windows: use cmd /c dir /b
+        result = repository_ctx.execute(["cmd", "/c", "dir", "/b", str(src_path)])
+    else:
+        # Unix: use ls -A
+        result = repository_ctx.execute(["ls", "-A", str(src_path)])
+
     if result.return_code != 0:
         fail("Failed to list directory: " + repository_ctx.attr.path)
 
     for item in result.stdout.strip().split("\n"):
+        # Handle Windows CRLF line endings
+        item = item.strip().replace("\r", "")
         if item and item not in ["BUILD", "BUILD.bazel"]:
             repository_ctx.symlink(src_path.get_child(item), item)
 
