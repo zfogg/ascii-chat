@@ -136,5 +136,10 @@ def ascii_chat_test(
         size = size,
         tags = all_tags,
         env = test_env,
+        # Criterion is POSIX-focused and doesn't work well on Windows
+        target_compatible_with = select({
+            "@platforms//os:windows": ["@platforms//:incompatible"],
+            "//conditions:default": [],
+        }),
         **kwargs
     )
