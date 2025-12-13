@@ -179,6 +179,31 @@ cc_library(
 # Module 3: Platform Abstraction
 # =============================================================================
 
+# macOS Objective-C webcam implementation
+# objc_library is a native Bazel rule, no load statement needed
+objc_library(
+    name = "ascii-chat-webcam-macos",
+    srcs = ["os/macos/webcam_avfoundation.m"],
+    hdrs = glob([
+        "platform/*.h",
+        "platform/**/*.h",
+        "os/*.h",
+        "*.h",
+    ]),
+    copts = COMMON_COPTS + ["-fobjc-arc"],
+    includes = ["."],
+    sdk_frameworks = [
+        "Foundation",
+        "AVFoundation",
+        "CoreMedia",
+        "CoreVideo",
+    ],
+    target_compatible_with = ["@platforms//os:macos"],
+    deps = [
+        ":ascii-chat-platform-headers",
+    ],
+)
+
 cc_library(
     name = "ascii-chat-platform",
     srcs = [
@@ -210,7 +235,6 @@ cc_library(
             "platform/posix/password.c",
             "platform/posix/symbols.c",
             "platform/posix/pipe.c",
-            "os/macos/webcam_avfoundation.m",
         ],
         "//bazel/toolchains:windows": [
             "platform/windows/thread.c",
@@ -263,7 +287,10 @@ cc_library(
     local_defines = COMMON_LOCAL_DEFINES,
     deps = [
         ":ascii-chat-util",
-    ],
+    ] + select({
+        "//bazel/toolchains:macos": [":ascii-chat-webcam-macos"],
+        "//conditions:default": [],
+    }),
 )
 
 # =============================================================================
