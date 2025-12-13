@@ -103,8 +103,10 @@ jobs:
         uses: bazel-contrib/setup-bazel@0.14.0
         with:
           bazelisk-cache: true
-          disk-cache: ${{ github.workflow }}
-          repository-cache: true
+          disk-cache: ${{ github.workflow }}-${{ matrix.os }}-${{ matrix.arch }}
+          # Disable repository-cache: our system library repos create symlinks
+          # to system paths which don't work when restored across runners
+          repository-cache: false
 
       # Configure BuildBuddy remote cache (if API key available)
       - name: Configure BuildBuddy
