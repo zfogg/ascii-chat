@@ -14,9 +14,11 @@
 
 package(default_visibility = ["//visibility:public"])
 
-# Placeholder - use pre-built defer tool
-# The actual tool is built by CMake and cached in .deps-cache/defer-tool/
+# Pre-built defer tool from CMake build
+# Build it first: cmake --preset debug && cmake --build build
+# This creates .deps-cache/defer-tool/ascii-instr-defer
 sh_binary(
     name = "ascii-instr-defer",
     srcs = ["defer_wrapper.sh"],
+    data = ["//.deps-cache/defer-tool:ascii-instr-defer-bin"],
 )

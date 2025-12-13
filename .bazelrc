@@ -11,7 +11,7 @@
 # Common Settings
 # =============================================================================
 
-build --workspace_status_command=$(pwd)/workspace_status.sh
+build --workspace_status_command=workspace_status.sh
 
 # Use Bzlmod for dependency management (required for Bazel 8+ compatibility)
 # WORKSPACE is still used for local/vendored deps via module extensions
@@ -153,9 +153,11 @@ build:linux --copt=-D_GNU_SOURCE
 build:linux --linkopt=-lpthread
 build:linux --linkopt=-lm
 build:linux --linkopt=-ldl
+build:linux --linkopt=-Wl,--gc-sections
 
 # macOS-specific
 build:macos --copt=-D_DARWIN_C_SOURCE
+build:macos --linkopt=-Wl,-dead_strip
 
 # Windows-specific (if ever needed)
 build:windows --copt=-D_WIN32

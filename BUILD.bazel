@@ -19,6 +19,22 @@ load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 package(default_visibility = ["//visibility:public"])
 
 # =============================================================================
+# Exported Files
+# =============================================================================
+# Files that need to be accessible from other packages
+
+exports_files([
+    "Info.plist",
+    ".clang-format",
+])
+
+# Filegroup for Info.plist (for macOS binary embedding)
+filegroup(
+    name = ".info_plist",
+    srcs = ["Info.plist"],
+)
+
+# =============================================================================
 # Main Executable Aliases
 # =============================================================================
 # The actual binary is defined in //src:ascii-chat

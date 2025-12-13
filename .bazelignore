@@ -7,8 +7,8 @@ build_release
 build_debug
 build_panic
 
-# Dependency cache (contains symlinks that cause infinite loops)
-.deps-cache
+# Note: .deps-cache is NOT ignored - it contains the pre-built defer tool
+# that Bazel needs for defer() transformations
 
 # IDE and editor directories
 .idea
