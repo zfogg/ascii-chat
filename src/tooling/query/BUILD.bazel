@@ -33,7 +33,7 @@ cc_import(
 cc_library(
     name = "lldb_headers",
     hdrs = ["@llvm_toolchain_llvm//:all_includes"],
-    includes = ["external/toolchains_llvm++llvm+llvm_toolchain_llvm/include"],
+    includes = ["external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include"],
     visibility = ["//visibility:private"],
 )
 
@@ -110,7 +110,7 @@ cc_binary(
         # Disable sanitizers - LLVM/LLDB headers may trigger issues
         "-fno-sanitize=all",
         # Include path for hermetic LLVM/LLDB headers
-        "-isystem", "external/toolchains_llvm++llvm+llvm_toolchain_llvm/include",
+        "-isystem", "external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include",
     ],
     # Disable sanitizers in linker too
     features = ["-asan", "-ubsan", "-tsan", "-msan"],

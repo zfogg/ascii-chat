@@ -136,7 +136,7 @@ cc_library(
 cc_library(
     name = "clang_headers",
     hdrs = ["@llvm_toolchain_llvm//:all_includes"],
-    includes = ["external/toolchains_llvm++llvm+llvm_toolchain_llvm/include"],
+    includes = ["external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include"],
     visibility = ["//visibility:private"],
 )
 
@@ -155,7 +155,7 @@ cc_binary(
         # Disable sanitizers - LLVM headers have known UBSan issues
         "-fno-sanitize=all",
         # Include path for hermetic LLVM headers
-        "-isystem", "external/toolchains_llvm++llvm+llvm_toolchain_llvm/include",
+        "-isystem", "external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include",
     ],
     # Disable sanitizers in linker too
     features = ["-asan", "-ubsan", "-tsan", "-msan"],
