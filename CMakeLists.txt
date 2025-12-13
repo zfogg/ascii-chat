@@ -56,7 +56,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/ProjectConstants.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Init.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/init/Options.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/install/Version.cmake)
-version_detect()  # Sets PROJECT_VERSION_FROM_GIT
+version_detect()          # Sets PROJECT_VERSION_FROM_GIT (app version from v* tags)
+library_version_detect()  # Sets ASCIICHAT_LIB_VERSION (library version from lib/v* tags)
 include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 
 # =============================================================================
