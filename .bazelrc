@@ -230,6 +230,11 @@ build:ci --show_progress_rate_limit=10
 build:ci --features=-thin_lto
 test:ci --test_output=errors
 
+# BuildBuddy metadata for test grid visibility
+# ROLE=CI tells BuildBuddy this is a CI build (enables test grid)
+# COMMIT_SHA and REPO_URL are provided by workspace_status.sh
+build:ci --build_metadata=ROLE=CI
+
 # =============================================================================
 # Bazel Caching (CI)
 # =============================================================================
