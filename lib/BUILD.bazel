@@ -16,28 +16,15 @@
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
 load("//bazel/rules:defer.bzl", "defer_transform")
 
-# Config setting to skip defer transformation (useful for CI without defer tool)
-config_setting(
-    name = "skip_defer",
-    define_values = {"skip_defer": "true"},
-)
-
-# Filegroups that select between transformed and original sources
-# When --define=skip_defer=true, use original files (defer() becomes no-op)
+# Filegroups for defer-transformed sources
 filegroup(
     name = "config_srcs",
-    srcs = select({
-        ":skip_defer": ["config.c"],
-        "//conditions:default": [":config_defer"],
-    }),
+    srcs = [":config_defer"],
 )
 
 filegroup(
     name = "known_hosts_srcs",
-    srcs = select({
-        ":skip_defer": ["crypto/known_hosts.c"],
-        "//conditions:default": [":known_hosts_defer"],
-    }),
+    srcs = [":known_hosts_defer"],
 )
 
 # Load auto-detected SIMD configuration

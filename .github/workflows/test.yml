@@ -94,7 +94,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          BAZEL_ARGS="--config=ci --define=skip_defer=true"
+          BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
           fi
@@ -171,7 +171,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          BAZEL_ARGS="--config=ci --define=skip_defer=true"
+          BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
           fi
@@ -244,7 +244,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          BAZEL_ARGS="--config=ci --define=skip_defer=true"
+          BAZEL_ARGS="--config=ci"
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
           fi
@@ -311,7 +311,7 @@ jobs:
           CC: clang
           CXX: clang++
         run: |
-          BAZEL_ARGS="--define=skip_defer=true"
+          BAZEL_ARGS=""
           if [ -n "$BUILDBUDDY_API_KEY" ]; then
             BAZEL_ARGS="$BAZEL_ARGS --remote_header=x-buildbuddy-api-key=$BUILDBUDDY_API_KEY"
           fi

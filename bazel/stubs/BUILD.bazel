@@ -1,32 +1,13 @@
 # =============================================================================
-# Stub Tools for CI
+# Defer Tool Alias
 # =============================================================================
-# These stubs are used when the real tools aren't available (e.g., in CI)
-# The actual tool paths are selected via config_setting in dependent rules.
+# Provides an alias to the defer() transformation tool.
+# The actual tool is built from source at //src/tooling/defer:ascii-instr-defer
 
 package(default_visibility = ["//visibility:public"])
 
-# Stub defer tool - does nothing, used when skip_defer=true
-# This stub always exists and is safe to reference.
-sh_binary(
-    name = "defer_tool_stub",
-    srcs = ["defer_tool_stub.sh"],
-)
-
-# The defer_tool is always the stub.
-# When skip_defer=true (CI), the select() in lib/BUILD.bazel chooses original
-# source files instead of transformed ones, so the defer tool is never executed.
-#
-# For local development with actual defer transformation:
-#   1. Build the defer tool with CMake:
-#      cmake --preset debug && cmake --build build --target ascii-instr-defer
-#   2. Copy to .deps-cache:
-#      mkdir -p .deps-cache/defer-tool && cp build/bin/ascii-instr-defer .deps-cache/defer-tool/
-#   3. Build without skip_defer to use transformed sources
-#
-# Note: We always use the stub here because .deps-cache is gitignored and
-# Bazel's select() resolves all branches during loading, even unused ones.
+# Point to the real defer tool built from source.
 alias(
     name = "defer_tool",
-    actual = ":defer_tool_stub",
+    actual = "//src/tooling/defer:ascii-instr-defer",
 )

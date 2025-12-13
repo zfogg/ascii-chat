@@ -272,14 +272,12 @@ defer_transform = rule(
             allow_files = [".h"],
             doc = "Additional headers needed (e.g., generated headers like version.h)",
         ),
-        # IMPORTANT: Use prebuilt binary from .deps-cache, NOT //src/tooling/defer
-        # which requires building LLVM from source and doesn't work with system LLVM
+        # The defer tool is built from source at //src/tooling/defer:ascii-instr-defer
         "_defer_tool": attr.label(
-            default = "//.deps-cache/defer-tool:ascii-instr-defer",
+            default = "//bazel/stubs:defer_tool",
             executable = True,
-            allow_single_file = True,
             cfg = "exec",
-            doc = "Pre-built defer tool from CMake build (.deps-cache/defer-tool/)",
+            doc = "Defer tool built from source",
         ),
     },
     doc = "Transform C sources that use defer() macro for RAII-style cleanup.",
