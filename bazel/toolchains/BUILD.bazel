@@ -1,0 +1,145 @@
+# =============================================================================
+# Toolchain Definitions for ascii-chat
+# =============================================================================
+# Defines Clang toolchains for all supported platforms.
+#
+# ascii-chat requires Clang - GCC and MSVC are not supported.
+# =============================================================================
+
+load("@rules_cc//cc:defs.bzl", "cc_toolchain", "cc_toolchain_suite")
+
+package(default_visibility = ["//visibility:public"])
+
+# =============================================================================
+# Toolchain Type Registration
+# =============================================================================
+
+# For now, use the default CC toolchain from rules_cc
+# In a more complete setup, we'd define custom cc_toolchain_config rules
+# to enforce Clang usage and configure compiler flags.
+
+toolchain(
+    name = "clang_toolchain",
+    toolchain = "@rules_cc//cc/toolchains:current_cc_toolchain",
+    toolchain_type = "@rules_cc//cc:toolchain_type",
+)
+
+# =============================================================================
+# Config Settings for Feature Detection
+# =============================================================================
+
+# Debug build
+config_setting(
+    name = "debug",
+    values = {"compilation_mode": "dbg"},
+)
+
+# Release build
+config_setting(
+    name = "release",
+    values = {"compilation_mode": "opt"},
+)
+
+# Linux
+config_setting(
+    name = "linux",
+    constraint_values = ["@platforms//os:linux"],
+)
+
+# macOS
+config_setting(
+    name = "macos",
+    constraint_values = ["@platforms//os:macos"],
+)
+
+# Windows
+config_setting(
+    name = "windows",
+    constraint_values = ["@platforms//os:windows"],
+)
+
+# x86_64 CPU
+config_setting(
+    name = "x86_64",
+    constraint_values = ["@platforms//cpu:x86_64"],
+)
+
+# ARM64 CPU
+config_setting(
+    name = "arm64",
+    constraint_values = ["@platforms//cpu:aarch64"],
+)
+
+# Linux x86_64 combination
+config_setting(
+    name = "linux_x86_64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+# Linux ARM64 combination
+config_setting(
+    name = "linux_arm64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+# macOS x86_64 combination
+config_setting(
+    name = "macos_x86_64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+# macOS ARM64 (Apple Silicon) combination
+config_setting(
+    name = "macos_arm64",
+    constraint_values = [
+        "@platforms//os:macos",
+        "@platforms//cpu:aarch64",
+    ],
+)
+
+# =============================================================================
+# SIMD Config Settings (set via --config flags in .bazelrc)
+# =============================================================================
+
+config_setting(
+    name = "simd_sse2",
+    define_values = {"simd": "sse2"},
+)
+
+config_setting(
+    name = "simd_ssse3",
+    define_values = {"simd": "ssse3"},
+)
+
+config_setting(
+    name = "simd_avx2",
+    define_values = {"simd": "avx2"},
+)
+
+config_setting(
+    name = "simd_neon",
+    define_values = {"simd": "neon"},
+)
+
+config_setting(
+    name = "simd_sve",
+    define_values = {"simd": "sve"},
+)
+
+# =============================================================================
+# mimalloc Config Setting
+# =============================================================================
+
+config_setting(
+    name = "use_mimalloc",
+    define_values = {"use_mimalloc": "true"},
+)

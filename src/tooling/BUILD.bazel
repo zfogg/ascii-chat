@@ -1,0 +1,22 @@
+# =============================================================================
+# Tooling Targets
+# =============================================================================
+# LLVM-based source transformation tools.
+#
+# These tools require LLVM libraries and are complex to build with Bazel.
+# For now, we support using pre-built tools from .deps-cache/ or system.
+#
+# To use defer transformation:
+#   1. Build with CMake first: cmake --preset debug && cmake --build build
+#   2. The tool will be at .deps-cache/defer-tool/ascii-instr-defer
+#   3. Bazel will use this pre-built tool
+# =============================================================================
+
+package(default_visibility = ["//visibility:public"])
+
+# Placeholder - use pre-built defer tool
+# The actual tool is built by CMake and cached in .deps-cache/defer-tool/
+sh_binary(
+    name = "ascii-instr-defer",
+    srcs = ["defer_wrapper.sh"],
+)

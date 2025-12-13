@@ -1,0 +1,419 @@
+# =============================================================================
+# ascii-chat Test Suite
+# =============================================================================
+# Criterion-based tests matching CMake configuration
+#
+# Run all tests:      bazel test //tests/...
+# Run unit tests:     bazel test //tests:unit
+# Run integration:    bazel test //tests:integration
+# Run performance:    bazel test //tests:performance
+# Run specific test:  bazel test //tests:buffer_pool
+# Verbose output:     bazel test --test_output=all //tests/...
+# Filter by tag:      bazel test --test_tag_filters=unit //tests/...
+# =============================================================================
+
+load(":defs.bzl", "ascii_chat_test")
+
+package(default_visibility = ["//visibility:private"])
+
+# =============================================================================
+# Unit Tests
+# =============================================================================
+# Tests for individual components in isolation
+
+ascii_chat_test(
+    name = "ansi_fast",
+    src = "unit/ansi_fast_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "ascii",
+    src = "unit/ascii_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "aspect_ratio",
+    src = "unit/aspect_ratio_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "audio",
+    src = "unit/audio_test.c",
+    size = "medium",  # Audio hardware initialization may be slow
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "buffer_pool",
+    src = "unit/buffer_pool_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "common",
+    src = "unit/common_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "compression",
+    src = "unit/compression_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "config",
+    src = "unit/config_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "crc32_hw",
+    src = "unit/crc32_hw_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "grid_layout",
+    src = "unit/grid_layout_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "image",
+    src = "unit/image_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "ip",
+    src = "unit/ip_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "logging",
+    src = "unit/logging_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "mixer",
+    src = "unit/mixer_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "network",
+    src = "unit/network_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "options",
+    src = "unit/options_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "output_buffer",
+    src = "unit/output_buffer_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "packet_queue",
+    src = "unit/packet_queue_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "palette",
+    src = "unit/palette_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "ringbuffer",
+    src = "unit/ringbuffer_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "simd_scalar_comparison",
+    src = "unit/simd_scalar_comparison_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "terminal_detect",
+    src = "unit/terminal_detect_test.c",
+    tags = ["unit"],
+)
+
+ascii_chat_test(
+    name = "webcam",
+    src = "unit/webcam_test.c",
+    tags = ["unit"],
+)
+
+# =============================================================================
+# Crypto Unit Tests
+# =============================================================================
+# Cryptography-related unit tests (tests/unit/crypto/*)
+
+ascii_chat_test(
+    name = "crypto",
+    src = "unit/crypto/crypto_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_handshake",
+    src = "unit/crypto/crypto_handshake_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_keys",
+    src = "unit/crypto/crypto_keys_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_known_hosts",
+    src = "unit/crypto/crypto_known_hosts_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_pem_utils",
+    src = "unit/crypto/crypto_pem_utils_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_ssh_agent",
+    src = "unit/crypto/crypto_ssh_agent_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_validation",
+    src = "unit/crypto/crypto_validation_test.c",
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_https_keys",
+    src = "unit/crypto/crypto_https_keys_test.c",
+    size = "medium",  # Network operations may be slower
+    tags = ["unit", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_options",
+    src = "unit/crypto/crypto_options_test.c",
+    tags = ["unit", "crypto"],
+)
+
+# =============================================================================
+# Tooling Unit Tests
+# =============================================================================
+# Tests for development tooling (instrumentation, query, etc.)
+
+ascii_chat_test(
+    name = "instrument_log",
+    src = "unit/tooling/instrument_log_test.c",
+    tags = ["unit", "tooling"],
+    extra_deps = ["//lib:ascii-chat-panic"],
+)
+
+# Query test requires query runtime library
+# TODO: Add query runtime library to Bazel build, then enable this test
+# ascii_chat_test(
+#     name = "query",
+#     src = "unit/tooling/query_test.c",
+#     tags = ["unit", "tooling"],
+#     extra_deps = ["//lib:ascii-query-runtime"],
+# )
+
+# =============================================================================
+# Integration Tests
+# =============================================================================
+# Tests that exercise multiple components together
+
+ascii_chat_test(
+    name = "ascii_simd_integration",
+    src = "integration/ascii_simd_integration_test.c",
+    size = "medium",
+    tags = ["integration"],
+)
+
+ascii_chat_test(
+    name = "client_mock",
+    src = "integration/client_mock_test.c",
+    tags = ["integration"],
+)
+
+ascii_chat_test(
+    name = "crypto_handshake_integration",
+    src = "integration/crypto_handshake_integration_test.c",
+    size = "medium",
+    tags = ["integration", "crypto"],
+)
+
+ascii_chat_test(
+    name = "crypto_http_client",
+    src = "integration/crypto_http_client_test.c",
+    size = "medium",
+    tags = ["integration", "crypto", "network"],
+)
+
+ascii_chat_test(
+    name = "crypto_network",
+    src = "integration/crypto_network_test.c",
+    size = "medium",
+    tags = ["integration", "crypto", "network"],
+)
+
+ascii_chat_test(
+    name = "main_integration",
+    src = "integration/main_integration_test.c",
+    size = "large",
+    tags = [
+        "integration",
+        "exclusive",  # Run serially - spawns server/client processes
+    ],
+)
+
+# Note: server_multiclient_test.c is excluded in CMake - complex multi-process test
+# that requires special handling. Enable when needed:
+# ascii_chat_test(
+#     name = "server_multiclient",
+#     src = "integration/server_multiclient_test.c",
+#     size = "large",
+#     tags = ["integration", "exclusive", "manual"],
+# )
+
+# =============================================================================
+# Performance Tests
+# =============================================================================
+# Performance benchmarks and stress tests
+
+ascii_chat_test(
+    name = "ascii_render_perf",
+    src = "performance/ascii_render_perf_test.c",
+    size = "medium",
+    tags = ["performance"],
+    extra_copts = ["-O3"],  # Performance tests should be optimized
+    extra_defines = ["NDEBUG"],  # Disable debug checks for accurate timing
+)
+
+# =============================================================================
+# Test Suites
+# =============================================================================
+# Aggregate targets for running test categories
+
+test_suite(
+    name = "unit",
+    tags = ["unit"],
+    tests = [
+        # Core unit tests
+        ":ansi_fast",
+        ":ascii",
+        ":aspect_ratio",
+        ":audio",
+        ":buffer_pool",
+        ":common",
+        ":compression",
+        ":config",
+        ":crc32_hw",
+        ":grid_layout",
+        ":image",
+        ":ip",
+        ":logging",
+        ":mixer",
+        ":network",
+        ":options",
+        ":output_buffer",
+        ":packet_queue",
+        ":palette",
+        ":ringbuffer",
+        ":simd_scalar_comparison",
+        ":terminal_detect",
+        ":webcam",
+        # Crypto unit tests
+        ":crypto",
+        ":crypto_handshake",
+        ":crypto_keys",
+        ":crypto_known_hosts",
+        ":crypto_pem_utils",
+        ":crypto_ssh_agent",
+        ":crypto_validation",
+        ":crypto_https_keys",
+        ":crypto_options",
+        # Tooling unit tests
+        ":instrument_log",
+    ],
+)
+
+test_suite(
+    name = "tooling",
+    tags = ["tooling"],
+    tests = [
+        ":instrument_log",
+    ],
+)
+
+test_suite(
+    name = "crypto_suite",
+    tags = ["crypto"],
+    tests = [
+        ":crypto",
+        ":crypto_handshake",
+        ":crypto_keys",
+        ":crypto_known_hosts",
+        ":crypto_pem_utils",
+        ":crypto_ssh_agent",
+        ":crypto_validation",
+        ":crypto_https_keys",
+        ":crypto_options",
+        ":crypto_handshake_integration",
+        ":crypto_http_client",
+        ":crypto_network",
+    ],
+)
+
+test_suite(
+    name = "integration",
+    tags = ["integration"],
+    tests = [
+        ":ascii_simd_integration",
+        ":client_mock",
+        ":crypto_handshake_integration",
+        ":crypto_http_client",
+        ":crypto_network",
+        ":main_integration",
+    ],
+)
+
+test_suite(
+    name = "performance",
+    tags = ["performance"],
+    tests = [
+        ":ascii_render_perf",
+    ],
+)
+
+test_suite(
+    name = "all",
+    tests = [
+        ":unit",
+        ":integration",
+        ":performance",
+    ],
+)

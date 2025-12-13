@@ -1,0 +1,5 @@
+# Custom rules package marker
+exports_files([
+    "defer.bzl",
+    "simd_detect.bzl",
+])

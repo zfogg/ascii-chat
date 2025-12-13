@@ -1,0 +1,237 @@
+# =============================================================================
+# ascii-chat Bazel Configuration
+# =============================================================================
+# Usage:
+#   bazel build --config=debug //:ascii-chat
+#   bazel build --config=release //:ascii-chat
+#   bazel test --config=debug //...
+# =============================================================================
+
+# =============================================================================
+# Common Settings
+# =============================================================================
+
+build --workspace_status_command=$(pwd)/workspace_status.sh
+
+# Use Bzlmod for dependency management (required for Bazel 8+ compatibility)
+# WORKSPACE is still used for local/vendored deps via module extensions
+common --enable_bzlmod
+
+# Bazel C/C++ toolchain configuration
+# Bazel has its own caching, so ccache is redundant
+# CCACHE_DISABLE=1 tells ccache wrappers to pass through to real compiler
+build --action_env=CCACHE_DISABLE=1
+build --repo_env=CCACHE_DISABLE=1
+
+# IDE integration notes:
+# To generate compile_commands.json, use bazel-compile-commands extractor:
+# https://github.com/hedronvision/bazel-compile-commands-extractor
+
+# Show all compiler warnings
+build --copt=-Wall
+build --copt=-Wextra
+build --copt=-Wno-unused-parameter
+
+# C/C++ standards
+build --copt=-std=c23
+build --cxxopt=-std=c++23
+build --host_copt=-std=c23
+build --host_cxxopt=-std=c++23
+
+# Enable colors in output
+build --color=yes
+
+# Show timestamps in output
+build --show_timestamps
+
+# =============================================================================
+# Debug Configuration (default)
+# =============================================================================
+# Usage: bazel build --config=debug //...
+
+build:debug --compilation_mode=dbg
+build:debug --copt=-O0
+build:debug --copt=-g3
+build:debug --copt=-fno-omit-frame-pointer
+build:debug --copt=-DDEBUG
+build:debug --copt=-DDEBUG_MEMORY
+build:debug --strip=never
+
+# AddressSanitizer + UndefinedBehaviorSanitizer for debug builds
+build:debug --features=asan
+build:debug --copt=-fsanitize=address
+build:debug --copt=-fsanitize=undefined
+build:debug --copt=-fsanitize=integer
+build:debug --copt=-fsanitize=nullability
+build:debug --copt=-fsanitize=float-divide-by-zero
+build:debug --copt=-fsanitize-address-use-after-scope
+build:debug --linkopt=-fsanitize=address
+build:debug --linkopt=-fsanitize=undefined
+build:debug --linkopt=-fsanitize=integer
+build:debug --linkopt=-fsanitize=nullability
+build:debug --linkopt=-fsanitize=float-divide-by-zero
+
+# =============================================================================
+# Dev Configuration (debug without sanitizers - faster iteration)
+# =============================================================================
+# Usage: bazel build --config=dev //...
+
+build:dev --compilation_mode=dbg
+build:dev --copt=-O0
+build:dev --copt=-g3
+build:dev --copt=-fno-omit-frame-pointer
+build:dev --copt=-DDEBUG
+build:dev --strip=never
+
+# =============================================================================
+# Release Configuration
+# =============================================================================
+# Usage: bazel build --config=release //...
+
+build:release --compilation_mode=opt
+build:release --copt=-O3
+build:release --copt=-DNDEBUG
+build:release --copt=-fno-omit-frame-pointer
+build:release --strip=always
+build:release --features=thin_lto
+
+# Release-specific optimizations
+build:release --copt=-ffunction-sections
+build:release --copt=-fdata-sections
+build:release --linkopt=-Wl,--gc-sections
+
+# =============================================================================
+# Sanitizer Configuration (dedicated sanitizer builds)
+# =============================================================================
+# Usage: bazel build --config=sanitize //...
+
+build:sanitize --compilation_mode=dbg
+build:sanitize --copt=-O1
+build:sanitize --copt=-g
+build:sanitize --copt=-fno-omit-frame-pointer
+build:sanitize --features=asan
+build:sanitize --copt=-fsanitize=address
+build:sanitize --copt=-fsanitize=undefined
+build:sanitize --copt=-fsanitize=leak
+build:sanitize --linkopt=-fsanitize=address
+build:sanitize --linkopt=-fsanitize=undefined
+build:sanitize --linkopt=-fsanitize=leak
+
+# =============================================================================
+# Thread Sanitizer Configuration
+# =============================================================================
+# Usage: bazel build --config=tsan //...
+
+build:tsan --compilation_mode=dbg
+build:tsan --copt=-O1
+build:tsan --copt=-g
+build:tsan --copt=-fno-omit-frame-pointer
+build:tsan --copt=-fsanitize=thread
+build:tsan --linkopt=-fsanitize=thread
+
+# =============================================================================
+# Coverage Configuration
+# =============================================================================
+# Usage: bazel coverage --config=coverage //...
+
+build:coverage --compilation_mode=dbg
+build:coverage --copt=-O0
+build:coverage --copt=-g
+build:coverage --copt=-fprofile-instr-generate
+build:coverage --copt=-fcoverage-mapping
+build:coverage --linkopt=-fprofile-instr-generate
+coverage:coverage --combined_report=lcov
+coverage:coverage --instrumentation_filter="//lib[/:]"
+
+# =============================================================================
+# Platform-Specific Settings
+# =============================================================================
+
+# Linux-specific
+build:linux --copt=-D_GNU_SOURCE
+build:linux --linkopt=-lpthread
+build:linux --linkopt=-lm
+build:linux --linkopt=-ldl
+
+# macOS-specific
+build:macos --copt=-D_DARWIN_C_SOURCE
+
+# Windows-specific (if ever needed)
+build:windows --copt=-D_WIN32
+build:windows --copt=-DWIN32_LEAN_AND_MEAN
+
+# =============================================================================
+# SIMD Configuration
+# =============================================================================
+# These can be combined: bazel build --config=release --config=avx2 //...
+
+build:sse2 --copt=-msse2
+build:sse2 --copt=-DENABLE_SIMD_SSE2
+
+build:ssse3 --copt=-mssse3
+build:ssse3 --copt=-DENABLE_SIMD_SSSE3
+
+build:avx2 --copt=-mavx2
+build:avx2 --copt=-DENABLE_SIMD_AVX2
+
+build:neon --copt=-DENABLE_SIMD_NEON
+
+# =============================================================================
+# CRC32 Hardware Acceleration
+# =============================================================================
+
+build:crc32_hw --copt=-msse4.2
+build:crc32_hw --copt=-DASCIICHAT_CRC32_HW=1
+
+# =============================================================================
+# mimalloc Configuration
+# =============================================================================
+# Usage: bazel build --config=mimalloc //...
+
+build:mimalloc --copt=-DUSE_MIMALLOC
+build:mimalloc --define=use_mimalloc=true
+
+# mimalloc conflicts with sanitizers - this is enforced in BUILD files
+# via select() that errors if both are enabled
+
+# =============================================================================
+# Testing Configuration
+# =============================================================================
+
+# Show test output
+test --test_output=errors
+
+# Verbose test output
+test:verbose --test_output=all
+
+# Test timeouts (default: short=60s, moderate=300s, long=900s, eternal=3600s)
+test --test_timeout=60,300,900,3600
+
+# For coverage builds, use longer timeouts and single job
+test:coverage --test_timeout=120,600,1800,7200
+test:coverage --local_test_jobs=1
+
+# =============================================================================
+# CI Configuration
+# =============================================================================
+# Usage: bazel build --config=ci //...
+
+build:ci --config=release
+build:ci --curses=no
+build:ci --color=yes
+build:ci --show_progress_rate_limit=10
+test:ci --test_output=errors
+
+# =============================================================================
+# Default Configuration
+# =============================================================================
+# When no --config is specified, use dev (fast iteration without sanitizers)
+
+build --config=debug
+
+# =============================================================================
+# User Configuration (for local overrides like remote cache API keys)
+# =============================================================================
+# Import user.bazelrc if it exists (not checked into git)
+
+try-import %workspace%/user.bazelrc

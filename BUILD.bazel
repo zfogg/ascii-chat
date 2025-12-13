@@ -1,0 +1,146 @@
+# =============================================================================
+# ascii-chat Root BUILD File
+# =============================================================================
+# Root-level aliases and packaging targets
+#
+# Build commands:
+#   bazel build --config=debug //:ascii-chat
+#   bazel build --config=release //:ascii-chat
+#   bazel test //...
+#   bazel run //:ascii-chat -- server
+#
+# Packaging:
+#   bazel build //:ascii-chat-release       # Full release archive
+#   bazel build //:ascii-chat-runtime       # Just the executable
+# =============================================================================
+
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+
+package(default_visibility = ["//visibility:public"])
+
+# =============================================================================
+# Main Executable Aliases
+# =============================================================================
+# The actual binary is defined in //src:ascii-chat
+# These aliases provide convenient root-level access
+
+alias(
+    name = "ascii-chat",
+    actual = "//src:ascii-chat",
+)
+
+alias(
+    name = "server",
+    actual = "//src:ascii-chat",
+)
+
+alias(
+    name = "client",
+    actual = "//src:ascii-chat",
+)
+
+# =============================================================================
+# Packaging: Runtime Component
+# =============================================================================
+# Just the executable and essential files
+
+pkg_tar(
+    name = "ascii-chat-runtime",
+    srcs = [
+        "LICENSE.txt",
+        "README.md",
+        "//src:ascii-chat",
+    ],
+    extension = "tar.gz",
+    package_dir = "ascii-chat",
+    strip_prefix = ".",
+)
+
+# =============================================================================
+# Packaging: Shell Completions (internal - no extension)
+# =============================================================================
+
+pkg_tar(
+    name = "ascii-chat-completions-layer",
+    srcs = glob(["share/completions/*"]),
+    mode = "0644",
+    package_dir = "share",
+    strip_prefix = "share",
+)
+
+# =============================================================================
+# Packaging: Linux Desktop Integration (internal - no extension)
+# =============================================================================
+# Includes .desktop file, icons, systemd service, AppStream metainfo
+
+pkg_tar(
+    name = "ascii-chat-desktop-layer",
+    srcs = glob([
+        "share/applications/*",
+        "share/icons/**/*",
+        "share/metainfo/*",
+        "share/systemd/*",
+    ]),
+    mode = "0644",
+    package_dir = "share",
+    strip_prefix = "share",
+)
+
+# =============================================================================
+# Packaging: Example Configuration (internal - no extension)
+# =============================================================================
+
+pkg_tar(
+    name = "ascii-chat-examples-layer",
+    srcs = glob(["share/examples/*"]),
+    mode = "0644",
+    package_dir = "share/doc/examples",
+    strip_prefix = "share/examples",
+)
+
+# =============================================================================
+# Packaging: Binary (internal - no extension)
+# =============================================================================
+
+pkg_tar(
+    name = "ascii-chat-bin-layer",
+    srcs = ["//src:ascii-chat"],
+    mode = "0755",
+    package_dir = "bin",
+)
+
+# =============================================================================
+# Packaging: Full Release Archive
+# =============================================================================
+# Combines all layers into a complete release archive
+# Usage: bazel build --config=release //:ascii-chat-release
+
+pkg_tar(
+    name = "ascii-chat-release",
+    srcs = [
+        "LICENSE.txt",
+        "README.md",
+    ],
+    deps = [
+        ":ascii-chat-bin-layer",
+        ":ascii-chat-completions-layer",
+        ":ascii-chat-desktop-layer",
+        ":ascii-chat-examples-layer",
+    ],
+    extension = "tar.gz",
+    package_dir = "ascii-chat",
+)
+
+# =============================================================================
+# clang-format Target
+# =============================================================================
+# Usage: bazel run //:format
+#
+# Note: Since lib/ and src/ are subpackages, we use a script that finds files
+# rather than glob patterns.
+
+sh_binary(
+    name = "format",
+    srcs = ["//bazel:scripts/format.sh"],
+    data = [".clang-format"],
+)

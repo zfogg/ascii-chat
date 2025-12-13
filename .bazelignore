@@ -1,0 +1,18 @@
+# Directories to ignore during Bazel builds
+# These contain CMake build artifacts and cached dependencies
+
+# CMake build directories
+build
+build_release
+build_debug
+build_panic
+
+# Dependency cache (contains symlinks that cause infinite loops)
+.deps-cache
+
+# IDE and editor directories
+.idea
+.vscode
+
+# Git directory
+.git

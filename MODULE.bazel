@@ -1,0 +1,68 @@
+# =============================================================================
+# ascii-chat Bazel Module
+# =============================================================================
+# This is the main module file for Bazel's dependency management (Bzlmod).
+# See: https://bazel.build/external/module
+#
+# Build: bazel build //...
+# Test:  bazel test //...
+# Run:   bazel run //:ascii-chat -- server
+# =============================================================================
+
+module(
+    name = "ascii-chat",
+    version = "0.3.29",
+    compatibility_level = 1,
+)
+
+# =============================================================================
+# Bazel Central Registry Dependencies
+# =============================================================================
+
+# Core C/C++ rules
+bazel_dep(name = "rules_cc", version = "0.1.1")
+
+# Platform definitions
+bazel_dep(name = "platforms", version = "0.0.11")
+
+# Packaging rules (for tar, zip, deb, rpm)
+bazel_dep(name = "rules_pkg", version = "1.0.1")
+
+# Foreign CC rules (for CMake/Make dependencies)
+bazel_dep(name = "rules_foreign_cc", version = "0.13.0")
+
+# =============================================================================
+# Non-registry dependencies via module extension
+# =============================================================================
+# These dependencies are not in the Bazel Central Registry:
+#   - zstd (http_archive with custom BUILD)
+#   - libsodium (system library)
+#   - portaudio (system library)
+#   - bearssl (local vendored copy)
+#   - uthash (local vendored copy)
+#   - tomlc17 (local vendored copy)
+#   - libsodium-bcrypt-pbkdf (local vendored copy)
+# =============================================================================
+
+non_bcr_deps = use_extension("//bazel:extensions.bzl", "non_bcr_deps")
+use_repo(
+    non_bcr_deps,
+    "zstd",
+    "libsodium",
+    "portaudio",
+    "llvm_clang",
+    "uthash",
+    "bearssl",
+    "tomlc17",
+    "bcrypt_pbkdf",
+    "sokol",
+)
+
+# =============================================================================
+# SIMD Auto-Detection
+# =============================================================================
+# Automatically detects CPU SIMD capabilities at analysis time.
+# Generates @simd_config repository with config_setting targets.
+
+simd = use_extension("//bazel/rules:simd_detect.bzl", "simd_detect_ext")
+use_repo(simd, "simd_config")

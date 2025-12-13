@@ -1,0 +1,36 @@
+# =============================================================================
+# defer() Transformation Tool
+# =============================================================================
+# Clang-based source-to-source transformer that implements defer() semantics.
+# This tool rewrites C source files to insert cleanup code at all exit points.
+#
+# Build: bazel build //src/tooling/defer:ascii-instr-defer
+# =============================================================================
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+cc_binary(
+    name = "ascii-instr-defer",
+    srcs = ["tool.cpp"],
+    copts = [
+        "-std=c++20",
+        "-O2",
+        "-fno-rtti",
+        "-fexceptions",
+        # Disable sanitizers - LLVM headers have known UBSan issues
+        "-fno-sanitize=all",
+    ],
+    # Disable sanitizers in linker too
+    features = ["-asan", "-ubsan", "-tsan", "-msan"],
+    linkopts = select({
+        "@platforms//os:linux": [
+            "-Wl,-rpath,/usr/local/lib",
+            "-fno-sanitize=all",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@llvm_clang//:clang",
+    ],
+)

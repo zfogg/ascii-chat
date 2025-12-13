@@ -7,6 +7,7 @@
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
+#include "clang/Tooling/CompilationDatabase.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
@@ -58,7 +59,11 @@ static cl::extrahelp MoreHelp("\nDefer transformation tool for ascii-chat\n");
 
 static cl::opt<std::string> OutputDirectoryOption("output-dir",
                                                   cl::desc("Directory where transformed sources will be written"),
-                                                  cl::value_desc("path"), cl::Required, cl::cat(ToolCategory));
+                                                  cl::value_desc("path"), cl::cat(ToolCategory));
+
+static cl::opt<std::string> OutputFileOption("output",
+                                             cl::desc("Direct output file path (for single input file)"),
+                                             cl::value_desc("path"), cl::cat(ToolCategory));
 
 static cl::opt<std::string>
     InputRootOption("input-root", cl::desc("Root directory of original sources (used to compute relative paths)"),
@@ -68,6 +73,9 @@ static cl::opt<std::string> BuildPath("p", cl::desc("Build path (directory conta
                                       cl::Optional, cl::cat(ToolCategory));
 
 static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [... <sourceN>]"), cl::cat(ToolCategory));
+
+// Store compiler flags passed after "--" for FixedCompilationDatabase
+static std::vector<std::string> g_compilerFlags;
 
 namespace {
 
@@ -588,8 +596,9 @@ private:
 
 class DeferFrontendAction : public ASTFrontendAction {
 public:
-  explicit DeferFrontendAction(const fs::path &outputDir, const fs::path &inputRoot)
-      : outputDir_(outputDir), inputRoot_(inputRoot) {
+  explicit DeferFrontendAction(const fs::path &outputDir, const fs::path &inputRoot,
+                               const fs::path &directOutputFile = {})
+      : outputDir_(outputDir), inputRoot_(inputRoot), directOutputFile_(directOutputFile) {
     initializeProtectedDirectories();
   }
 
@@ -613,8 +622,15 @@ public:
     }
 
     const fs::path originalPath = fs::path(filePathRef.str());
-    const std::string relativePath = visitor_->makeRelativePath(originalPath);
-    fs::path destinationPath = outputDir_ / relativePath;
+    fs::path destinationPath;
+    if (!directOutputFile_.empty()) {
+      // Direct output mode: use the exact output file path
+      destinationPath = directOutputFile_;
+    } else {
+      // Directory output mode: compute path relative to input root
+      const std::string relativePath = visitor_->makeRelativePath(originalPath);
+      destinationPath = outputDir_ / relativePath;
+    }
 
     // SAFETY CHECK: Never overwrite source files
     std::error_code ec;
@@ -701,6 +717,7 @@ private:
   Rewriter rewriter_;
   fs::path outputDir_;
   fs::path inputRoot_;
+  fs::path directOutputFile_;  // Direct output path for single-file mode
   fs::path inputRootCanonical_;
   fs::path protectedSrcDir_;
   fs::path protectedLibDir_;
@@ -764,16 +781,17 @@ private:
 
 class DeferActionFactory : public tooling::FrontendActionFactory {
 public:
-  DeferActionFactory(const fs::path &outputDir, const fs::path &inputRoot)
-      : outputDir_(outputDir), inputRoot_(inputRoot) {}
+  DeferActionFactory(const fs::path &outputDir, const fs::path &inputRoot, const fs::path &directOutputFile = {})
+      : outputDir_(outputDir), inputRoot_(inputRoot), directOutputFile_(directOutputFile) {}
 
   std::unique_ptr<FrontendAction> create() {
-    return std::make_unique<DeferFrontendAction>(outputDir_, inputRoot_);
+    return std::make_unique<DeferFrontendAction>(outputDir_, inputRoot_, directOutputFile_);
   }
 
 private:
   fs::path outputDir_;
   fs::path inputRoot_;
+  fs::path directOutputFile_;
 };
 
 } // namespace
@@ -787,13 +805,88 @@ int main(int argc, const char **argv) {
   // Capture CWD before anything else can change it
   g_originalCwd = fs::current_path();
 
-  cl::ParseCommandLineOptions(argc, argv, "ascii-defer transformation tool\n");
-
-  fs::path outputDir = fs::path(OutputDirectoryOption.getValue());
-  // Make output directory absolute relative to original CWD
-  if (!outputDir.is_absolute()) {
-    outputDir = g_originalCwd / outputDir;
+  // Pre-process argv to extract compiler flags after "--"
+  // These will be used to create a FixedCompilationDatabase if no compile_commands.json exists
+  std::vector<const char *> filteredArgv;
+  for (int i = 0; i < argc; ++i) {
+    if (std::string(argv[i]) == "--") {
+      // Collect remaining args as compiler flags
+      for (int j = i + 1; j < argc; ++j) {
+        g_compilerFlags.push_back(argv[j]);
+      }
+      break;
+    }
+    filteredArgv.push_back(argv[i]);
   }
+
+  int filteredArgc = static_cast<int>(filteredArgv.size());
+  cl::ParseCommandLineOptions(filteredArgc, filteredArgv.data(), "ascii-defer transformation tool\n");
+
+  // Collect source paths
+  std::vector<std::string> sourcePaths;
+  for (const auto &path : SourcePaths) {
+    if (!path.empty()) {
+      sourcePaths.push_back(path);
+    }
+  }
+
+  if (sourcePaths.empty()) {
+    llvm::errs() << "No translation units specified for transformation. Provide positional source paths.\n";
+    return 1;
+  }
+
+  // Determine output mode: direct file output vs directory output
+  bool directOutputMode = !OutputFileOption.getValue().empty();
+  fs::path outputDir;
+  fs::path directOutputFile;
+
+  if (directOutputMode) {
+    // Direct output mode: --output specifies exact output file path
+    if (sourcePaths.size() != 1) {
+      llvm::errs() << "Error: --output can only be used with a single input file.\n";
+      return 1;
+    }
+    directOutputFile = fs::path(OutputFileOption.getValue());
+    if (!directOutputFile.is_absolute()) {
+      directOutputFile = g_originalCwd / directOutputFile;
+    }
+    // Ensure parent directory exists
+    fs::path parentDir = directOutputFile.parent_path();
+    if (!parentDir.empty() && !fs::exists(parentDir)) {
+      std::error_code ec;
+      fs::create_directories(parentDir, ec);
+      if (ec) {
+        llvm::errs() << "Failed to create output directory: " << parentDir.c_str() << " - " << ec.message() << "\n";
+        return 1;
+      }
+    }
+    // Set outputDir to parent for the action factory
+    outputDir = parentDir;
+  } else {
+    // Directory output mode: --output-dir specifies output directory
+    if (OutputDirectoryOption.getValue().empty()) {
+      llvm::errs() << "Error: Either --output or --output-dir must be specified.\n";
+      return 1;
+    }
+    outputDir = fs::path(OutputDirectoryOption.getValue());
+    if (!outputDir.is_absolute()) {
+      outputDir = g_originalCwd / outputDir;
+    }
+    if (fs::exists(outputDir)) {
+      if (!fs::is_directory(outputDir)) {
+        llvm::errs() << "Output path exists and is not a directory: " << outputDir.c_str() << "\n";
+        return 1;
+      }
+    } else {
+      std::error_code ec;
+      fs::create_directories(outputDir, ec);
+      if (ec) {
+        llvm::errs() << "Failed to create output directory: " << outputDir.c_str() << " - " << ec.message() << "\n";
+        return 1;
+      }
+    }
+  }
+
   fs::path inputRoot;
   if (!InputRootOption.getValue().empty()) {
     inputRoot = fs::path(InputRootOption.getValue());
@@ -811,43 +904,26 @@ int main(int argc, const char **argv) {
     }
   }
 
-  std::vector<std::string> sourcePaths;
-  for (const auto &path : SourcePaths) {
-    if (!path.empty()) {
-      sourcePaths.push_back(path);
-    }
-  }
+  // Load or create compilation database
+  std::unique_ptr<tooling::CompilationDatabase> compilations;
 
-  if (sourcePaths.empty()) {
-    llvm::errs() << "No translation units specified for transformation. Provide positional source paths.\n";
-    return 1;
-  }
-
-  if (fs::exists(outputDir)) {
-    if (!fs::is_directory(outputDir)) {
-      llvm::errs() << "Output path exists and is not a directory: " << outputDir.c_str() << "\n";
-      return 1;
-    }
-  } else {
-    std::error_code errorCode;
-    fs::create_directories(outputDir, errorCode);
-    if (errorCode) {
-      llvm::errs() << "Failed to create output directory: " << outputDir.c_str() << " - " << errorCode.message()
-                   << "\n";
-      return 1;
-    }
-  }
-
-  // Load compilation database
+  // First, try loading from compile_commands.json if -p was specified or one exists nearby
   std::string buildPath = BuildPath.getValue();
   if (buildPath.empty()) {
     buildPath = ".";
   }
   std::string errorMessage;
-  std::unique_ptr<tooling::CompilationDatabase> compilations =
-      tooling::CompilationDatabase::loadFromDirectory(buildPath, errorMessage);
+  compilations = tooling::CompilationDatabase::loadFromDirectory(buildPath, errorMessage);
+
+  // If no compilation database found but we have compiler flags from "--", use FixedCompilationDatabase
+  if (!compilations && !g_compilerFlags.empty()) {
+    // Convert g_compilerFlags to the format FixedCompilationDatabase expects
+    compilations = std::make_unique<tooling::FixedCompilationDatabase>(".", g_compilerFlags);
+  }
+
   if (!compilations) {
-    llvm::errs() << "Error loading compilation database from '" << buildPath << "': " << errorMessage << "\n";
+    llvm::errs() << "Error: No compilation database found and no compiler flags provided after '--'.\n";
+    llvm::errs() << "Either provide -p path/to/compile_commands.json or pass flags: tool source.c -- -std=c23 -Iinclude\n";
     return 1;
   }
 
@@ -880,7 +956,7 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  DeferActionFactory actionFactory(outputDir, inputRoot);
+  DeferActionFactory actionFactory(outputDir, inputRoot, directOutputFile);
   const int executionResult = tool.run(&actionFactory);
   if (executionResult != 0) {
     llvm::errs() << "Defer transformation failed with code " << executionResult << "\n";

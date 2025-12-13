@@ -1,0 +1,644 @@
+# =============================================================================
+# ascii-chat Library Modules
+# =============================================================================
+# Library targets corresponding to CMake's module structure:
+#   - ascii-chat-util
+#   - ascii-chat-data-structures
+#   - ascii-chat-platform
+#   - ascii-chat-crypto
+#   - ascii-chat-video
+#   - ascii-chat-audio
+#   - ascii-chat-core
+#   - ascii-chat-network
+#   - ascii-chat-simd
+# =============================================================================
+
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("//bazel/rules:defer.bzl", "defer_transform")
+
+# Load auto-detected SIMD configuration
+# This provides SIMD_COPTS, SIMD_DEFINES, CRC32_HW_COPTS, CRC32_HW_DEFINES
+load("@simd_config//:defs.bzl", "CRC32_HW_COPTS", "CRC32_HW_DEFINES", "SIMD_COPTS", "SIMD_DEFINES")
+
+package(default_visibility = ["//visibility:public"])
+
+# =============================================================================
+# Common Compiler Options
+# =============================================================================
+
+COMMON_COPTS = [
+    "-Wall",
+    "-Wextra",
+    "-Wno-unused-parameter",
+    "-std=c23",
+]
+
+# Platform-specific defines
+PLATFORM_DEFINES = select({
+    "//bazel/toolchains:linux": ["_GNU_SOURCE"],
+    "//bazel/toolchains:macos": ["_DARWIN_C_SOURCE"],
+    "//conditions:default": [],
+})
+
+# Build mode defines - NDEBUG for optimized builds, DEBUG_LOCKS for debug builds
+BUILD_MODE_DEFINES = select({
+    "//bazel/toolchains:debug": ["DEBUG_LOCKS", "DEBUG_MEMORY"],
+    "//bazel/toolchains:release": ["NDEBUG"],
+    "//conditions:default": ["NDEBUG"],  # fastbuild acts like release
+})
+
+COMMON_LOCAL_DEFINES = PLATFORM_DEFINES + BUILD_MODE_DEFINES + ["__BAZEL_BUILD__"]
+
+# =============================================================================
+# Platform Headers (header-only, breaks dependency cycle)
+# =============================================================================
+# common.h includes platform/api.h, so we need platform headers available
+# to everything. This header-only target breaks the util <-> platform cycle.
+
+cc_library(
+    name = "ascii-chat-platform-headers",
+    hdrs = glob([
+        "*.h",
+        "**/*.h",
+    ]),
+    includes = ["."],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@uthash",
+        "@sokol",
+    ],
+)
+
+# =============================================================================
+# defer() Source Transformations
+# =============================================================================
+# These files use the defer() macro for RAII-style cleanup and need to be
+# transformed before compilation. The defer tool rewrites them to insert
+# cleanup code at all exit points (returns, breaks, gotos, etc.).
+
+defer_transform(
+    name = "config_defer",
+    srcs = ["config.c"],
+    hdrs = [":version_h"],  # Generated version.h
+    deps = [
+        ":ascii-chat-platform-headers",
+        "@tomlc17//:tomlc17",
+    ],
+)
+
+defer_transform(
+    name = "known_hosts_defer",
+    srcs = ["crypto/known_hosts.c"],
+    deps = [
+        ":ascii-chat-platform-headers",
+        "@libsodium//:libsodium",
+        "@bearssl//:bearssl",
+    ],
+)
+
+# =============================================================================
+# Module 1: Utilities (ultra-stable - changes rarely)
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-util",
+    srcs = [
+        "util/format.c",
+        "util/parsing.c",
+        "util/path.c",
+        "util/string.c",
+        "util/math.c",
+        "util/ip.c",
+        "util/aspect_ratio.c",
+        "util/time.c",
+        "util/levenshtein.c",
+    ],
+    hdrs = glob(["util/*.h"]),
+    copts = COMMON_COPTS,
+    includes = ["."],
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-platform-headers",
+        "@sokol//:sokol_time",
+    ],
+)
+
+# =============================================================================
+# Module 2: Data Structures
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-data-structures",
+    srcs = [
+        "ringbuffer.c",
+        "packet_queue.c",
+        "buffer_pool.c",
+    ],
+    hdrs = [
+        "ringbuffer.h",
+        "packet_queue.h",
+        "buffer_pool.h",
+    ],
+    copts = COMMON_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-util",
+        ":ascii-chat-platform",
+    ],
+)
+
+# =============================================================================
+# Module 3: Platform Abstraction
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-platform",
+    srcs = [
+        "platform/abstraction.c",
+    ] + select({
+        "//bazel/toolchains:linux": [
+            "platform/posix/thread.c",
+            "platform/posix/mutex.c",
+            "platform/posix/rwlock.c",
+            "platform/posix/cond.c",
+            "platform/posix/terminal.c",
+            "platform/posix/system.c",
+            "platform/posix/socket.c",
+            "platform/posix/string.c",
+            "platform/posix/password.c",
+            "platform/posix/symbols.c",
+            "platform/posix/pipe.c",
+            "os/linux/webcam_v4l2.c",
+        ],
+        "//bazel/toolchains:macos": [
+            "platform/posix/thread.c",
+            "platform/posix/mutex.c",
+            "platform/posix/rwlock.c",
+            "platform/posix/cond.c",
+            "platform/posix/terminal.c",
+            "platform/posix/system.c",
+            "platform/posix/socket.c",
+            "platform/posix/string.c",
+            "platform/posix/password.c",
+            "platform/posix/symbols.c",
+            "platform/posix/pipe.c",
+            "os/macos/webcam_avfoundation.m",
+        ],
+        "//bazel/toolchains:windows": [
+            "platform/windows/thread.c",
+            "platform/windows/mutex.c",
+            "platform/windows/rwlock.c",
+            "platform/windows/cond.c",
+            "platform/windows/terminal.c",
+            "platform/windows/system.c",
+            "platform/windows/socket.c",
+            "platform/windows/string.c",
+            "platform/windows/password.c",
+            "platform/windows/symbols.c",
+            "platform/windows/getopt.c",
+            "platform/windows/pipe.c",
+            "os/windows/webcam_mediafoundation.c",
+        ],
+        "//conditions:default": [],
+    }),
+    hdrs = glob([
+        "platform/*.h",
+        "platform/**/*.h",
+        "os/*.h",
+    ]),
+    # Common .c files that are textually included by platform-specific files
+    textual_hdrs = [
+        "platform/system.c",
+        "platform/symbols.c",
+    ],
+    copts = COMMON_COPTS + select({
+        "//bazel/toolchains:macos": ["-fobjc-arc"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "//bazel/toolchains:linux": ["-lpthread", "-ldl"],
+        "//bazel/toolchains:macos": [
+            "-framework Foundation",
+            "-framework AVFoundation",
+            "-framework CoreMedia",
+            "-framework CoreVideo",
+        ],
+        "//bazel/toolchains:windows": [
+            "-lws2_32",
+            "-lmfplat",
+            "-lmf",
+            "-lmfreadwrite",
+            "-lmfuuid",
+        ],
+        "//conditions:default": [],
+    }),
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-util",
+    ],
+)
+
+# =============================================================================
+# Module 4: Cryptography
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-crypto",
+    srcs = [
+        "crypto/crypto.c",
+        "crypto/keys/keys.c",
+        ":known_hosts_defer",  # defer() transformed known_hosts.c
+        "crypto/handshake.c",
+        "crypto/http_client.c",
+        "crypto/pem_utils.c",
+        "crypto/ssh_agent.c",
+        "crypto/keys/ssh_keys.c",
+        "crypto/keys/gpg_stubs.c",
+        "crypto/keys/https_keys.c",
+        "crypto/keys/validation.c",
+    ],
+    hdrs = glob([
+        "crypto/*.h",
+        "crypto/**/*.h",
+    ]),
+    copts = COMMON_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES + ["ASCIICHAT_BUILD_WITH_DEFER"],
+    deps = [
+        ":ascii-chat-util",
+        ":ascii-chat-platform",
+        ":ascii-chat-core",  # For version.h
+        "@bcrypt_pbkdf//:libsodium_bcrypt_pbkdf",
+        "@libsodium//:libsodium",
+        "@bearssl//:bearssl",
+    ],
+)
+
+# =============================================================================
+# Module 5: SIMD (performance-critical)
+# =============================================================================
+
+SIMD_COMMON_SRCS = [
+    "image2ascii/simd/ascii_simd.c",
+    "image2ascii/simd/ascii_simd_color.c",
+    "image2ascii/simd/common.c",
+    "image2ascii/output_buffer.c",
+]
+
+# Header-only target for SIMD implementations to access image_t
+cc_library(
+    name = "ascii-chat-simd-headers",
+    hdrs = glob([
+        "image2ascii/*.h",
+        "image2ascii/simd/*.h",
+    ]),
+    includes = ["."],
+    deps = [":ascii-chat-platform-headers"],
+)
+
+# SSE2 sources (x86_64)
+# alwayslink=True ensures symbols are included even with function pointer dispatch
+cc_library(
+    name = "ascii-chat-simd-sse2",
+    srcs = ["image2ascii/simd/sse2.c"],
+    alwayslink = True,
+    copts = COMMON_COPTS + ["-msse2"],
+    local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_SSE2=1"],
+    target_compatible_with = ["@platforms//cpu:x86_64"],
+    deps = [
+        ":ascii-chat-simd-headers",
+        ":ascii-chat-util",
+    ],
+)
+
+# SSSE3 sources (x86_64)
+cc_library(
+    name = "ascii-chat-simd-ssse3",
+    srcs = ["image2ascii/simd/ssse3.c"],
+    alwayslink = True,
+    copts = COMMON_COPTS + ["-mssse3"],
+    local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_SSSE3=1"],
+    target_compatible_with = ["@platforms//cpu:x86_64"],
+    deps = [
+        ":ascii-chat-simd-headers",
+        ":ascii-chat-util",
+    ],
+)
+
+# AVX2 sources (x86_64)
+cc_library(
+    name = "ascii-chat-simd-avx2",
+    srcs = ["image2ascii/simd/avx2.c"],
+    alwayslink = True,
+    copts = COMMON_COPTS + ["-mavx2"],
+    local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_AVX2=1"],
+    target_compatible_with = ["@platforms//cpu:x86_64"],
+    deps = [
+        ":ascii-chat-simd-headers",
+        ":ascii-chat-util",
+    ],
+)
+
+# NEON sources (ARM64)
+cc_library(
+    name = "ascii-chat-simd-neon",
+    srcs = ["image2ascii/simd/neon.c"],
+    alwayslink = True,
+    copts = COMMON_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES + ["SIMD_SUPPORT_NEON=1"],
+    target_compatible_with = ["@platforms//cpu:aarch64"],
+    deps = [
+        ":ascii-chat-simd-headers",
+        ":ascii-chat-util",
+    ],
+)
+
+# Main SIMD library with platform-specific deps
+# Uses auto-detected SIMD level from @simd_config (AVX2, SSSE3, SSE2, or NEON)
+cc_library(
+    name = "ascii-chat-simd",
+    srcs = SIMD_COMMON_SRCS,
+    hdrs = glob(["image2ascii/simd/*.h", "image2ascii/*.h"]),
+    # Use auto-detected SIMD copts and defines from @simd_config
+    copts = COMMON_COPTS + SIMD_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES + SIMD_DEFINES,
+    deps = [
+        ":ascii-chat-util",
+    ] + select({
+        # Link platform-specific SIMD implementations
+        "//bazel/toolchains:x86_64": [
+            ":ascii-chat-simd-sse2",
+            ":ascii-chat-simd-ssse3",
+            ":ascii-chat-simd-avx2",
+        ],
+        "//bazel/toolchains:arm64": [
+            ":ascii-chat-simd-neon",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+# =============================================================================
+# Module 6: Video Processing
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-video",
+    srcs = [
+        "video_frame.c",
+        "image2ascii/image.c",
+        "image2ascii/ascii.c",
+        "image2ascii/ansi_fast.c",
+        "util/utf8.c",
+        "os/webcam.c",
+    ],
+    hdrs = [
+        "video_frame.h",
+    ] + glob([
+        "image2ascii/*.h",
+        "os/*.h",
+    ]),
+    copts = COMMON_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-util",
+        ":ascii-chat-platform",
+        ":ascii-chat-simd",
+    ],
+)
+
+# =============================================================================
+# Module 7: Audio Processing
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-audio",
+    srcs = [
+        "audio.c",
+        "mixer.c",
+    ],
+    hdrs = [
+        "audio.h",
+        "mixer.h",
+    ],
+    copts = COMMON_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-util",
+        ":ascii-chat-platform",
+        "@portaudio//:portaudio",
+    ],
+)
+
+# =============================================================================
+# Module 8: Network
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-network",
+    srcs = [
+        "network/network.c",
+        "network/packet.c",
+        "network/av.c",
+        "compression.c",
+        "crc32.c",
+    ],
+    hdrs = glob(["network/*.h"]) + [
+        "compression.h",
+        "crc32.h",
+    ],
+    # Use auto-detected CRC32 hardware support from @simd_config
+    copts = COMMON_COPTS + CRC32_HW_COPTS,
+    local_defines = COMMON_LOCAL_DEFINES + CRC32_HW_DEFINES,
+    deps = [
+        ":ascii-chat-util",
+        ":ascii-chat-platform",
+        ":ascii-chat-crypto",
+        "@zstd//:zstd",
+    ],
+)
+
+# =============================================================================
+# Module 9: Core Application
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-core",
+    srcs = [
+        "common.c",
+        "asciichat_errno.c",
+        "logging.c",
+        "options.c",
+        ":config_defer",  # defer() transformed config.c
+        "version.c",
+        "palette.c",
+        ":version_h",  # Generated version header
+    ] + select({
+        "//bazel/toolchains:debug": [
+            "debug/lock.c",
+            "debug/memory.c",
+        ],
+        "//conditions:default": [],
+    }),
+    hdrs = [
+        "common.h",
+        "asciichat_errno.h",
+        "logging.h",
+        "options.h",
+        "config.h",
+        "palette.h",
+    ] + glob(["debug/*.h"]),
+    copts = COMMON_COPTS + ["-I$(GENDIR)/lib"],
+    includes = ["."],
+    local_defines = COMMON_LOCAL_DEFINES + ["ASCIICHAT_BUILD_WITH_DEFER"],
+    deps = [
+        ":ascii-chat-util",
+        ":ascii-chat-platform",
+        "@tomlc17//:tomlc17",
+        "@uthash//:uthash",
+    ],
+)
+
+# =============================================================================
+# Module 10: Panic Instrumentation Runtime
+# =============================================================================
+# Runtime library for panic instrumentation logging. Called by code that has
+# been processed by ascii-instr-panic to trace execution flow.
+
+cc_library(
+    name = "ascii-chat-panic",
+    srcs = [
+        "tooling/panic/instrument_log.c",
+        "tooling/panic/instrument_cov.c",
+    ],
+    hdrs = [
+        "tooling/panic/instrument_log.h",
+    ],
+    copts = COMMON_COPTS,
+    includes = ["."],
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-core",
+        ":ascii-chat-platform",
+        ":ascii-chat-util",
+    ],
+)
+
+# =============================================================================
+# Test Helpers (for test infrastructure)
+# =============================================================================
+
+cc_library(
+    name = "ascii-chat-test-helpers",
+    srcs = glob(["tests/*.c"]),
+    hdrs = glob(["tests/*.h"]),
+    copts = COMMON_COPTS,
+    includes = ["."],
+    local_defines = COMMON_LOCAL_DEFINES,
+    deps = [
+        ":ascii-chat-core",
+        ":ascii-chat-platform",
+    ],
+    testonly = True,
+)
+
+# =============================================================================
+# Version Header Generation
+# =============================================================================
+
+genrule(
+    name = "version_h",
+    srcs = ["version.h.in"],
+    outs = ["version.h"],
+    cmd = """
+        # Get git version info
+        GIT_DESCRIBE=$$(git describe --tags --long --dirty --always 2>/dev/null || echo "unknown")
+        GIT_COMMIT=$$(git rev-parse HEAD 2>/dev/null || echo "unknown")
+        SHORT_HASH=$$(echo "$$GIT_COMMIT" | cut -c1-7)
+        BUILD_DATE=$$(date -u +%Y-%m-%d)
+
+        # Parse version from git describe
+        if echo "$$GIT_DESCRIBE" | grep -qE '^v?[0-9]+\\.[0-9]+\\.[0-9]+-[0-9]+-g[0-9a-f]+'; then
+            VERSION_MAJOR=$$(echo "$$GIT_DESCRIBE" | sed -E 's/^v?([0-9]+)\\..*/\\1/')
+            VERSION_MINOR=$$(echo "$$GIT_DESCRIBE" | sed -E 's/^v?[0-9]+\\.([0-9]+)\\..*/\\1/')
+            VERSION_PATCH=$$(echo "$$GIT_DESCRIBE" | sed -E 's/^v?[0-9]+\\.[0-9]+\\.([0-9]+).*/\\1/')
+            COMMITS=$$(echo "$$GIT_DESCRIBE" | sed -E 's/.*-([0-9]+)-g.*/\\1/')
+            HASH=$$(echo "$$GIT_DESCRIBE" | sed -E 's/.*-g([0-9a-f]+).*/\\1/')
+            if [ "$$COMMITS" != "0" ]; then
+                VERSION_STRING="$$COMMITS+g$$HASH"
+                VERSION_SUFFIX="-"
+            else
+                VERSION_STRING=""
+                VERSION_SUFFIX=""
+            fi
+        else
+            VERSION_MAJOR=0
+            VERSION_MINOR=0
+            VERSION_PATCH=0
+            VERSION_STRING="g$$SHORT_HASH"
+            VERSION_SUFFIX="-"
+        fi
+
+        # Check dirty state
+        if echo "$$GIT_DESCRIBE" | grep -q dirty; then
+            GIT_DIRTY="true"
+            if [ -n "$$VERSION_STRING" ]; then
+                VERSION_STRING="$${VERSION_STRING}-dirty"
+            else
+                VERSION_STRING="dirty"
+                VERSION_SUFFIX="-"
+            fi
+        else
+            GIT_DIRTY="false"
+        fi
+
+        cat > $@ << 'HEADER_EOF'
+// Auto-generated version header - DO NOT EDIT
+// Generated by Bazel from version.h.in
+
+#pragma once
+
+HEADER_EOF
+
+        cat >> $@ << EOF
+#define ASCII_CHAT_VERSION_MAJOR $$VERSION_MAJOR
+#define ASCII_CHAT_VERSION_MINOR $$VERSION_MINOR
+#define ASCII_CHAT_VERSION_PATCH $$VERSION_PATCH
+#define ASCII_CHAT_VERSION_STRING "$$VERSION_MAJOR.$$VERSION_MINOR.$$VERSION_PATCH"
+#define ASCII_CHAT_GIT_VERSION "$$VERSION_STRING"
+#define ASCII_CHAT_GIT_VERSION_SUFFIX "$$VERSION_SUFFIX"
+#define ASCII_CHAT_GIT_COMMIT_HASH "$$GIT_COMMIT"
+#define ASCII_CHAT_GIT_IS_DIRTY $$GIT_DIRTY
+#define ASCII_CHAT_BUILD_TYPE "Bazel"
+#define ASCII_CHAT_OS "$(TARGET_CPU)"
+#define ASCII_CHAT_BUILD_DATE "$$BUILD_DATE"
+#define ASCII_CHAT_REPO_HASH "$$SHORT_HASH"
+EOF
+
+        cat >> $@ << 'FOOTER_EOF'
+
+// Full version string like "v0.3.29-42+gf811525" (nvim-style)
+// On clean release tags, this will be just "v0.3.29" without trailing dash
+#define ASCII_CHAT_VERSION_FULL "v" ASCII_CHAT_VERSION_STRING ASCII_CHAT_GIT_VERSION_SUFFIX ASCII_CHAT_GIT_VERSION
+
+// Description tagline
+#define ASCII_CHAT_DESCRIPTION_EMOJI_L "💻📸"
+#define ASCII_CHAT_DESCRIPTION_EMOJI_R "🔡💬"
+#define ASCII_CHAT_DESCRIPTION_TEXT "Video chat in your terminal"
+#define ASCII_CHAT_DESCRIPTION ASCII_CHAT_DESCRIPTION_EMOJI_L " " ASCII_CHAT_DESCRIPTION_TEXT " " ASCII_CHAT_DESCRIPTION_EMOJI_R
+
+// Full build info string used everywhere: "ascii-chat v0.2.0-... built on OS (yyyy-mm-dd, BuildType)"
+#define ASCII_CHAT_BUILD_INFO_STRING "ascii-chat " ASCII_CHAT_VERSION_FULL " built on " ASCII_CHAT_OS " (" ASCII_CHAT_BUILD_DATE ", " ASCII_CHAT_BUILD_TYPE ")"
+
+#define ASCII_CHAT_DOT_COMMENT_STRING ASCII_CHAT_BUILD_INFO_STRING "\\n" ASCII_CHAT_DESCRIPTION "\\n" "https://github.com/zfogg/ascii-chat"
+
+#define ASCII_CHAT_DOT_ASCII_CHAT_STRING ASCII_CHAT_DOT_COMMENT_STRING "\\n" "coded with 🖤 by Zachary Fogg <me@zfo.gg>"
+
+// Runtime version accessors
+const char *ascii_chat_get_version(void);
+const char *ascii_chat_get_comment(void);
+const char *ascii_chat_get_build_info(void);
+
+FOOTER_EOF
+    """,
+    visibility = ["//visibility:public"],
+)

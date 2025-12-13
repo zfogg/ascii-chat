@@ -1,0 +1,9 @@
+# =============================================================================
+# bazel/ package marker
+# =============================================================================
+# This file marks this directory as a Bazel package.
+
+exports_files([
+    "extensions.bzl",
+    "scripts/format.sh",
+])

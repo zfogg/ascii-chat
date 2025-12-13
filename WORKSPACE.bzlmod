@@ -1,0 +1,32 @@
+# =============================================================================
+# ascii-chat WORKSPACE.bzlmod
+# =============================================================================
+# This file defines repositories that are not available in the Bazel Central
+# Registry and need to coexist with Bzlmod. It runs after MODULE.bazel.
+#
+# Used for vendored local dependencies in deps/
+# =============================================================================
+
+# BearSSL - TLS library (vendored)
+local_repository(
+    name = "bearssl",
+    path = "deps/bearssl",
+)
+
+# uthash - Header-only hash tables (vendored)
+local_repository(
+    name = "uthash",
+    path = "deps/uthash",
+)
+
+# tomlc17 - TOML parser (vendored)
+local_repository(
+    name = "tomlc17",
+    path = "deps/tomlc17",
+)
+
+# bcrypt_pbkdf - Password hashing (vendored)
+local_repository(
+    name = "bcrypt_pbkdf",
+    path = "deps/libsodium-bcrypt-pbkdf",
+)

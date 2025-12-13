@@ -1,0 +1,133 @@
+# =============================================================================
+# ascii-chat Main Executable
+# =============================================================================
+# The unified binary for server and client modes
+#
+# Build commands:
+#   bazel build --config=debug //src:ascii-chat
+#   bazel build --config=release //src:ascii-chat
+#   bazel run //src:ascii-chat -- server
+#   bazel run //src:ascii-chat -- client --address localhost
+# =============================================================================
+
+load("@rules_cc//cc:defs.bzl", "cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+# =============================================================================
+# Platform-Specific Defines (must match lib/BUILD.bazel)
+# =============================================================================
+
+PLATFORM_DEFINES = select({
+    "//bazel/toolchains:linux": ["_GNU_SOURCE"],
+    "//bazel/toolchains:macos": ["_DARWIN_C_SOURCE"],
+    "//conditions:default": [],
+})
+
+BUILD_MODE_DEFINES = select({
+    "//bazel/toolchains:debug": ["DEBUG_LOCKS", "DEBUG_MEMORY"],
+    "//bazel/toolchains:release": ["NDEBUG"],
+    "//conditions:default": ["NDEBUG"],
+})
+
+COMMON_LOCAL_DEFINES = PLATFORM_DEFINES + BUILD_MODE_DEFINES + ["__BAZEL_BUILD__"]
+
+# =============================================================================
+# Platform-Specific Link Options
+# =============================================================================
+
+LINUX_LINKOPTS = [
+    "-lpthread",
+    "-lm",
+    "-ldl",
+]
+
+MACOS_LINKOPTS = [
+    "-framework", "CoreFoundation",
+    "-framework", "AVFoundation",
+    "-framework", "CoreMedia",
+    "-framework", "CoreVideo",
+    # Embed Info.plist for webcam access permissions
+    "-sectcreate", "__TEXT", "__info_plist", "Info.plist",
+]
+
+WINDOWS_LINKOPTS = [
+    "-lws2_32",
+    "-luser32",
+    "-ladvapi32",
+]
+
+# =============================================================================
+# Main Executable
+# =============================================================================
+# All source files are compiled directly into the binary (not as libraries)
+
+cc_binary(
+    name = "ascii-chat",
+    srcs = [
+        # Main entry point
+        "main.c",
+        # Server mode sources
+        "server/client.c",
+        "server/client.h",
+        "server/crypto.c",
+        "server/crypto.h",
+        "server/main.c",
+        "server/main.h",
+        "server/protocol.c",
+        "server/protocol.h",
+        "server/render.c",
+        "server/render.h",
+        "server/stats.c",
+        "server/stats.h",
+        "server/stream.c",
+        "server/stream.h",
+        # Client mode sources
+        "client/audio.c",
+        "client/audio.h",
+        "client/capture.c",
+        "client/capture.h",
+        "client/crypto.c",
+        "client/crypto.h",
+        "client/display.c",
+        "client/display.h",
+        "client/keepalive.c",
+        "client/keepalive.h",
+        "client/main.c",
+        "client/main.h",
+        "client/mirror.c",
+        "client/mirror.h",
+        "client/protocol.c",
+        "client/protocol.h",
+        "client/server.c",
+        "client/server.h",
+    ],
+    copts = [
+        "-Wall",
+        "-Wextra",
+        "-Wno-unused-parameter",
+        "-std=c23",
+    ],
+    local_defines = COMMON_LOCAL_DEFINES,
+    data = select({
+        "//bazel/toolchains:macos": ["//:.info_plist"],
+        "//conditions:default": [],
+    }),
+    linkopts = select({
+        "//bazel/toolchains:linux": LINUX_LINKOPTS,
+        "//bazel/toolchains:macos": MACOS_LINKOPTS,
+        "//bazel/toolchains:windows": WINDOWS_LINKOPTS,
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//lib:ascii-chat-audio",
+        "//lib:ascii-chat-core",
+        "//lib:ascii-chat-crypto",
+        "//lib:ascii-chat-data-structures",
+        "//lib:ascii-chat-network",
+        "//lib:ascii-chat-platform",
+        "//lib:ascii-chat-simd",
+        "//lib:ascii-chat-util",
+        "//lib:ascii-chat-video",
+    ],
+)
