@@ -1,13 +1,40 @@
 # =============================================================================
-# Defer Tool Alias
+# Tool Aliases
 # =============================================================================
-# Provides an alias to the defer() transformation tool.
-# The actual tool is built from source at //src/tooling/defer:ascii-instr-defer
+# Provides aliases to source transformation tools.
+# The actual tools are built from source using hermetic LLVM libraries.
 
 package(default_visibility = ["//visibility:public"])
 
-# Point to the real defer tool built from source.
+# =============================================================================
+# Defer Tool
+# =============================================================================
+# Source-to-source transformer for defer() statement expansion.
+# Converts defer() macros to proper RAII-style cleanup code.
+
 alias(
     name = "defer_tool",
-    actual = "//src/tooling/defer:ascii-instr-defer",
+    actual = "//src/tooling/defer:defer",
+)
+
+# =============================================================================
+# Panic Tool
+# =============================================================================
+# Source-to-source transformer for execution tracing instrumentation.
+# Adds function entry/exit logging for debugging.
+
+alias(
+    name = "panic_tool",
+    actual = "//src/tooling/panic:panic",
+)
+
+# =============================================================================
+# Query Tool
+# =============================================================================
+# LLDB-based debug tool for runtime variable inspection via HTTP.
+# Attaches to running processes and provides query access to variables.
+
+alias(
+    name = "query_tool",
+    actual = "//src/tooling/query:query",
 )

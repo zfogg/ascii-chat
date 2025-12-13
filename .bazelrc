@@ -23,9 +23,9 @@ common --enable_bzlmod
 build --action_env=CCACHE_DISABLE=1
 build --repo_env=CCACHE_DISABLE=1
 
-# Pass LD_LIBRARY_PATH to actions so hermetic lld can find system libraries (libxml2, etc.)
-# The hermetic LLVM toolchain's lld binary is dynamically linked and needs these at runtime.
-build --action_env=LD_LIBRARY_PATH
+# Note: We use the system C/C++ toolchain (clang/gcc) instead of the hermetic LLVM
+# toolchain because the hermetic lld requires libxml2.so.2 which is not available
+# on modern Linux systems. The hermetic LLVM libraries are still used for the defer tool.
 
 # IDE integration notes:
 # To generate compile_commands.json, use bazel-compile-commands extractor:
@@ -201,6 +201,30 @@ build:mimalloc --define=use_mimalloc=true
 
 # mimalloc conflicts with sanitizers - this is enforced in BUILD files
 # via select() that errors if both are enabled
+
+# =============================================================================
+# Panic Instrumentation Configuration
+# =============================================================================
+# Builds ascii-chat with execution tracing instrumentation.
+# Sources are transformed: original -> defer -> panic -> compile
+#
+# Usage:
+#   bazel build --config=panic //src:ascii-chat
+#   bazel build --config=debug --config=panic //src:ascii-chat
+#   bazel build --config=release --config=panic //src:ascii-chat
+#
+# The panic instrumentation adds function entry/exit logging and statement
+# execution tracing, useful for debugging crashes and understanding control flow.
+
+build:panic --define=enable_panic=true
+build:panic --copt=-DASCIICHAT_BUILD_WITH_DEFER
+build:panic --copt=-DASCIICHAT_BUILD_WITH_PANIC
+
+# Panic builds should include debug symbols even in release mode
+# to make the traces meaningful
+build:panic --copt=-g
+build:panic --copt=-fno-omit-frame-pointer
+build:panic --strip=never
 
 # =============================================================================
 # Testing Configuration

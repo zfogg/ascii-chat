@@ -143,3 +143,13 @@ config_setting(
     name = "use_mimalloc",
     define_values = {"use_mimalloc": "true"},
 )
+
+# =============================================================================
+# Panic Instrumentation Config Setting
+# =============================================================================
+# Enabled via --config=panic (which sets --define=enable_panic=true)
+
+config_setting(
+    name = "panic",
+    define_values = {"enable_panic": "true"},
+)

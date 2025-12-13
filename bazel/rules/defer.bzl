@@ -4,7 +4,7 @@
 # Custom Bazel rule for transforming sources that use defer() macro.
 #
 # The defer() macro provides RAII-style cleanup in C. The transformation tool
-# (ascii-instr-defer) rewrites sources to insert cleanup code at all exit points.
+# (defer) rewrites sources to insert cleanup code at all exit points.
 #
 # Usage:
 #   load("//bazel/rules:defer.bzl", "defer_transform")
@@ -302,7 +302,7 @@ defer_transform = rule(
             allow_files = [".h"],
             doc = "Additional headers needed (e.g., generated headers like version.h)",
         ),
-        # The defer tool is built from source at //src/tooling/defer:ascii-instr-defer
+        # The defer tool is built from source at //src/tooling/defer:defer
         "_defer_tool": attr.label(
             default = "//bazel/stubs:defer_tool",
             executable = True,

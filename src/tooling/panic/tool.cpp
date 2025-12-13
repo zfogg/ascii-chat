@@ -6,11 +6,11 @@
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Lex/Lexer.h"
+#include "clang/Rewrite/Core/RewriteBuffer.h"  // LLVM 19: clang path (20+: llvm/ADT)
 #include "clang/Rewrite/Core/Rewriter.h"
 #include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
-#include "llvm/ADT/RewriteBuffer.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Error.h"
@@ -584,7 +584,7 @@ public:
     ensureIncludeInserted(originalPath);
 
     std::string rewrittenContents;
-    if (const llvm::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(sourceManager.getMainFileID())) {
+    if (const clang::RewriteBuffer *buffer = rewriter_.getRewriteBufferFor(sourceManager.getMainFileID())) {
       rewrittenContents.assign(buffer->begin(), buffer->end());
     } else {
       rewrittenContents = sourceManager.getBufferData(sourceManager.getMainFileID()).str();

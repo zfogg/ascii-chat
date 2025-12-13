@@ -1,0 +1,125 @@
+# =============================================================================
+# Query Debug Tool
+# =============================================================================
+# LLDB-based debug tool for runtime variable inspection via HTTP.
+# Attaches to running processes and provides query access to variables.
+#
+# Build: bazel build //src/tooling/query:query
+# =============================================================================
+
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
+
+# =============================================================================
+# LLDB Library from Hermetic LLVM Toolchain
+# =============================================================================
+# Import the LLDB shared library from the hermetic LLVM toolchain.
+
+cc_import(
+    name = "liblldb",
+    shared_library = "@llvm_toolchain_llvm//:lib/liblldb.so",
+    visibility = ["//visibility:private"],
+)
+
+# Header-only library for LLDB includes
+cc_library(
+    name = "lldb_headers",
+    hdrs = ["@llvm_toolchain_llvm//:all_includes"],
+    includes = ["external/toolchains_llvm++llvm+llvm_toolchain_llvm/include"],
+    visibility = ["//visibility:private"],
+)
+
+# LLVM support libraries that LLDB depends on
+cc_import(
+    name = "libLLVMSupport",
+    static_library = "@llvm_toolchain_llvm//:lib/libLLVMSupport.a",
+    visibility = ["//visibility:private"],
+)
+
+cc_import(
+    name = "libLLVMCore",
+    static_library = "@llvm_toolchain_llvm//:lib/libLLVMCore.a",
+    visibility = ["//visibility:private"],
+)
+
+cc_import(
+    name = "libLLVMDemangle",
+    static_library = "@llvm_toolchain_llvm//:lib/libLLVMDemangle.a",
+    visibility = ["//visibility:private"],
+)
+
+cc_import(
+    name = "libLLVMTargetParser",
+    static_library = "@llvm_toolchain_llvm//:lib/libLLVMTargetParser.a",
+    visibility = ["//visibility:private"],
+)
+
+cc_library(
+    name = "llvm_support_libs",
+    visibility = ["//visibility:private"],
+    deps = [
+        ":libLLVMCore",
+        ":libLLVMDemangle",
+        ":libLLVMSupport",
+        ":libLLVMTargetParser",
+    ],
+)
+
+# =============================================================================
+# Query Tool Binary
+# =============================================================================
+
+cc_binary(
+    name = "query",
+    srcs = [
+        "main.cpp",
+        "lldb_controller.cpp",
+        "lldb_controller.h",
+        "http_server.cpp",
+        "http_server.h",
+        "json.h",
+    ],
+    copts = [
+        "-std=c++20",
+        "-O2",
+        "-fno-rtti",
+        "-fexceptions",
+        # Disable sanitizers - LLVM/LLDB headers may trigger issues
+        "-fno-sanitize=all",
+        # Include path for hermetic LLVM/LLDB headers
+        "-isystem", "external/toolchains_llvm++llvm+llvm_toolchain_llvm/include",
+    ],
+    # Disable sanitizers in linker too
+    features = ["-asan", "-ubsan", "-tsan", "-msan"],
+    linkopts = select({
+        "@platforms//os:linux": [
+            "-pthread",
+            "-ldl",
+            "-lm",
+            "-lz",
+            "-lzstd",
+            "-ltinfo",
+            "-lxml2",
+            "-fno-sanitize=all",
+            # RPATH for hermetic LLDB
+            "-Wl,-rpath,$$ORIGIN/../lib",
+        ],
+        "@platforms//os:macos": [
+            "-pthread",
+            "-ldl",
+            "-lm",
+            "-lz",
+            "-lzstd",
+            "-lcurses",
+            "-lxml2",
+            # RPATH for hermetic LLDB
+            "-Wl,-rpath,@executable_path/../lib",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":liblldb",
+        ":lldb_headers",
+        ":llvm_support_libs",
+    ],
+)

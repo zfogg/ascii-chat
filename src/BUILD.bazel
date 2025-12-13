@@ -129,5 +129,9 @@ cc_binary(
         "//lib:simd",
         "//lib:util",
         "//lib:video",
-    ],
+    ] + select({
+        # Add panic runtime library when building with --config=panic
+        "//bazel/toolchains:panic": ["//lib:panic"],
+        "//conditions:default": [],
+    }),
 )

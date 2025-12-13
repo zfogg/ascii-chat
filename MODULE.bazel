@@ -61,11 +61,14 @@ llvm.toolchain(
 )
 use_repo(llvm, "llvm_toolchain", "llvm_toolchain_llvm")
 
-# Register the hermetic LLVM toolchain for C/C++ compilation.
-# This ensures the compiler version matches the LLVM libraries used by the defer tool.
-# Note: The hermetic linker needs system libraries (libxml2, zstd, etc.) which are
-# installed by CI via install-deps.sh.
-register_toolchains("@llvm_toolchain//:all")
+# NOTE: We intentionally do NOT register the hermetic LLVM toolchain globally.
+# The hermetic lld requires libxml2.so.2 which is not available on modern Linux
+# systems (they have libxml2.so.16+). Instead, we use the system toolchain for
+# compilation and only use the hermetic LLVM libraries for the defer tool.
+#
+# If you need the hermetic toolchain (e.g., for reproducible builds), you can
+# manually register it, but you'll need to install compatible system libraries:
+#   register_toolchains("@llvm_toolchain//:all")
 
 # =============================================================================
 # Non-registry dependencies via module extension

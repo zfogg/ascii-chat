@@ -6,9 +6,14 @@ build
 build_release
 build_debug
 build_panic
+build_check
+build_test
 
-# Note: .deps-cache is NOT ignored - it contains the pre-built defer tool
-# that Bazel needs for defer() transformations
+# CMake cached deps that contain problematic symlinks (alsa-lib, etc.)
+# Note: .deps-cache/defer-tool is NOT here - we need it for Bazel defer transformations
+.deps-cache/Release
+.deps-cache/Debug
+.deps-cache/Dev
 
 # IDE and editor directories
 .idea

@@ -1,10 +1,10 @@
 # =============================================================================
-# defer() Transformation Tool
+# Panic Instrumentation Tool
 # =============================================================================
-# Clang-based source-to-source transformer that implements defer() semantics.
-# This tool rewrites C source files to insert cleanup code at all exit points.
+# Clang-based source-to-source transformer for execution tracing.
+# This tool instruments C source files to log function entry/exit and statements.
 #
-# Build: bazel build //src/tooling/defer:defer
+# Build: bazel build //src/tooling/panic:panic
 # =============================================================================
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
@@ -13,7 +13,7 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
 # Hermetic LLVM Clang Libraries
 # =============================================================================
 # Import static libraries from the hermetic LLVM toolchain.
-# The toolchains_llvm module downloads pre-built LLVM binaries for each platform.
+# Same libraries as the defer tool - Clang tooling for AST rewriting.
 
 # Clang libraries needed for source transformation
 CLANG_LIBS = [
@@ -131,11 +131,11 @@ cc_library(
 )
 
 # =============================================================================
-# Defer Tool Binary
+# Panic Tool Binary
 # =============================================================================
 
 cc_binary(
-    name = "defer",
+    name = "panic",
     srcs = ["tool.cpp"],
     copts = [
         "-std=c++20",

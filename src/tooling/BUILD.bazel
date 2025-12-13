@@ -14,11 +14,12 @@
 
 package(default_visibility = ["//visibility:public"])
 
-# Pre-built defer tool from CMake build
+# Pre-built defer tool from CMake build (fallback if not building from source)
 # Build it first: cmake --preset debug && cmake --build build
 # This creates .deps-cache/defer-tool/ascii-instr-defer
+# NOTE: Prefer //src/tooling/defer:defer which builds from source with hermetic LLVM
 sh_binary(
-    name = "ascii-instr-defer",
+    name = "defer-prebuilt",
     srcs = ["defer_wrapper.sh"],
-    data = ["//.deps-cache/defer-tool:ascii-instr-defer-bin"],
+    data = ["//.deps-cache/defer-tool:defer-bin"],
 )
