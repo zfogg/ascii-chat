@@ -8,6 +8,7 @@
 #   Debian/Ubuntu: apt install libsodium-dev
 #   macOS: brew install libsodium
 #   Fedora: dnf install libsodium-devel
+#   Windows: vcpkg install libsodium
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
@@ -18,6 +19,12 @@ cc_library(
         allow_empty = True,
     ),
     includes = ["root/include"],
-    linkopts = ["-lsodium"],
+    linkopts = select({
+        "@platforms//os:windows": [
+            "-LIBPATH:root/lib",
+            "libsodium.lib",
+        ],
+        "//conditions:default": ["-lsodium"],
+    }),
     visibility = ["//visibility:public"],
 )

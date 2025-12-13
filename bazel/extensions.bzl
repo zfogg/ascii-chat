@@ -50,22 +50,72 @@ def _detect_system_lib_path(repository_ctx):
 
 def _system_lib_repo_impl(repository_ctx):
     """Repository rule for system libraries."""
-    # Use auto-detected path if attr.path is "auto", otherwise use specified path
-    if repository_ctx.attr.path == "auto":
-        path = _detect_system_lib_path(repository_ctx)
-    else:
-        path = repository_ctx.attr.path
     build_file = repository_ctx.attr.build_file
-    repository_ctx.symlink(path, "root")
-    repository_ctx.symlink(
-        repository_ctx.path(Label(build_file)),
-        "BUILD.bazel",
-    )
+
+    # On Windows, use vcpkg-installed libraries or custom windows_path
+    if _is_windows(repository_ctx):
+        # Check for custom Windows path (e.g., for LLVM installed at C:\LLVM)
+        if repository_ctx.attr.windows_path:
+            windows_base = repository_ctx.attr.windows_path
+            # Handle ARM64 vs x64 LLVM paths (ARM64 is at C:\LLVM-ARM64)
+            if windows_base == "C:/LLVM":
+                arch = repository_ctx.os.arch
+                if arch == "aarch64" or arch == "arm64":
+                    windows_base = "C:/LLVM-ARM64"
+        else:
+            # Default to vcpkg path for most libraries
+            vcpkg_root = repository_ctx.os.environ.get("VCPKG_ROOT", "C:/vcpkg")
+            triplet = repository_ctx.os.environ.get("VCPKG_TARGET_TRIPLET", "x64-windows")
+            windows_base = vcpkg_root + "/installed/" + triplet
+
+        # Create root directory structure
+        repository_ctx.file("root/.keep", "# Windows library placeholder")
+
+        # Try to symlink directories (Windows supports directory junctions)
+        include_path = windows_base.replace("/", "\\") + "\\include"
+        lib_path = windows_base.replace("/", "\\") + "\\lib"
+        bin_path = windows_base.replace("/", "\\") + "\\bin"
+
+        # Check if paths exist and create symlinks
+        result = repository_ctx.execute(["cmd", "/c", "if exist \"" + include_path + "\" echo EXISTS"])
+        if result.return_code == 0 and "EXISTS" in result.stdout:
+            repository_ctx.symlink(windows_base + "/include", "root/include")
+        else:
+            repository_ctx.file("root/include/.keep", "# placeholder")
+
+        result = repository_ctx.execute(["cmd", "/c", "if exist \"" + lib_path + "\" echo EXISTS"])
+        if result.return_code == 0 and "EXISTS" in result.stdout:
+            repository_ctx.symlink(windows_base + "/lib", "root/lib")
+        else:
+            repository_ctx.file("root/lib/.keep", "# placeholder")
+
+        result = repository_ctx.execute(["cmd", "/c", "if exist \"" + bin_path + "\" echo EXISTS"])
+        if result.return_code == 0 and "EXISTS" in result.stdout:
+            repository_ctx.symlink(windows_base + "/bin", "root/bin")
+        else:
+            repository_ctx.file("root/bin/.keep", "# placeholder")
+
+        repository_ctx.symlink(
+            repository_ctx.path(Label(build_file)),
+            "BUILD.bazel",
+        )
+    else:
+        # Unix: symlink system paths directly
+        if repository_ctx.attr.path == "auto":
+            path = _detect_system_lib_path(repository_ctx)
+        else:
+            path = repository_ctx.attr.path
+        repository_ctx.symlink(path, "root")
+        repository_ctx.symlink(
+            repository_ctx.path(Label(build_file)),
+            "BUILD.bazel",
+        )
 
 _system_lib_repo = repository_rule(
     implementation = _system_lib_repo_impl,
     attrs = {
         "path": attr.string(mandatory = True),
+        "windows_path": attr.string(mandatory = False, default = ""),
         "build_file": attr.string(mandatory = True),
     },
 )
@@ -139,10 +189,12 @@ def _non_bcr_deps_impl(module_ctx):
     )
 
     # LLVM/Clang - System libraries for defer tool
-    # "auto" detects: /opt/homebrew (macOS ARM), /usr/local (macOS Intel), /usr (Linux)
+    # Unix: "auto" detects /opt/homebrew (macOS ARM), /usr/local (macOS Intel), /usr (Linux)
+    # Windows: LLVM is installed at C:\LLVM (x64) or C:\LLVM-ARM64 (arm64) by install-deps action
     _system_lib_repo(
         name = "llvm_clang",
         path = "auto",
+        windows_path = "C:/LLVM",  # vovkos/llvm-package-windows installed here
         build_file = "//bazel/third_party:llvm_clang.BUILD",
     )
 

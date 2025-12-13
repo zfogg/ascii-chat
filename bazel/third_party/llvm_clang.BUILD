@@ -8,6 +8,7 @@
 #
 # Linux: sudo apt install llvm-dev libclang-dev
 # macOS: brew install llvm
+# Windows: vovkos/llvm-package-windows installed at C:\LLVM
 
 cc_library(
     name = "llvm",
@@ -31,6 +32,24 @@ cc_library(
             "-lLLVM",
             "-Wl,-rpath,/usr/local/lib",
             "-Wl,-rpath,/opt/homebrew/lib",
+        ],
+        # Windows: Link against LLVM libraries from vovkos package
+        "@platforms//os:windows": [
+            "-LIBPATH:root/lib",
+            "LLVMSupport.lib",
+            "LLVMCore.lib",
+            "LLVMBinaryFormat.lib",
+            "LLVMRemarks.lib",
+            "LLVMBitstreamReader.lib",
+            "LLVMDemangle.lib",
+            "LLVMTargetParser.lib",
+            "LLVMFrontendOpenMP.lib",
+            "LLVMFrontendOffloading.lib",
+            "LLVMOption.lib",
+            "LLVMProfileData.lib",
+            "LLVMMCParser.lib",
+            "LLVMMC.lib",
+            "LLVMDebugInfoCodeView.lib",
         ],
         "//conditions:default": ["-lLLVM"],
     }),
@@ -58,6 +77,25 @@ cc_library(
             "-lclang-cpp",
             "-Wl,-rpath,/usr/local/lib",
             "-Wl,-rpath,/opt/homebrew/lib",
+        ],
+        # Windows: Link against Clang libraries from vovkos package
+        "@platforms//os:windows": [
+            "-LIBPATH:root/lib",
+            "clangTooling.lib",
+            "clangToolingCore.lib",
+            "clangToolingInclusions.lib",
+            "clangFrontend.lib",
+            "clangDriver.lib",
+            "clangParse.lib",
+            "clangSema.lib",
+            "clangAnalysis.lib",
+            "clangAST.lib",
+            "clangASTMatchers.lib",
+            "clangEdit.lib",
+            "clangLex.lib",
+            "clangBasic.lib",
+            "clangRewrite.lib",
+            "clangSerialization.lib",
         ],
         "//conditions:default": ["-lclang-cpp"],
     }),

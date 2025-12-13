@@ -8,6 +8,7 @@
 #   Debian/Ubuntu: apt install libzstd-dev
 #   macOS: brew install zstd
 #   Fedora: dnf install libzstd-devel
+#   Windows: vcpkg install zstd
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
@@ -18,6 +19,12 @@ cc_library(
         allow_empty = True,
     ),
     includes = ["root/include"],
-    linkopts = ["-lzstd"],
+    linkopts = select({
+        "@platforms//os:windows": [
+            "-LIBPATH:root/lib",
+            "zstd.lib",
+        ],
+        "//conditions:default": ["-lzstd"],
+    }),
     visibility = ["//visibility:public"],
 )

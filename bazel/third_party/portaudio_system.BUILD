@@ -8,6 +8,7 @@
 #   Debian/Ubuntu: apt install libportaudio2 portaudio19-dev
 #   macOS: brew install portaudio
 #   Fedora: dnf install portaudio-devel
+#   Windows: vcpkg install portaudio
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
 
@@ -27,6 +28,10 @@ cc_library(
             "-framework AudioUnit",
             "-framework CoreFoundation",
             "-framework CoreServices",
+        ],
+        "@platforms//os:windows": [
+            "-LIBPATH:root/lib",
+            "portaudio.lib",
         ],
         "//conditions:default": ["-lportaudio"],
     }),
