@@ -19,7 +19,7 @@ int main() {
   printf("=== ansi_fast.c Integration Test ===\n");
   printf("Testing non-SIMD image_print_color() with 10x faster string generation\n\n");
 
-  log_init(NULL, LOG_ERROR);
+  log_init(NULL, LOG_ERROR, false);
 
   // Create a small test image to minimize test time
   const int width = 320, height = 240;

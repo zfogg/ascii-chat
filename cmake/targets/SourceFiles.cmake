@@ -148,6 +148,7 @@ list(APPEND SIMD_SRCS
     lib/image2ascii/simd/ascii_simd_color.c
     lib/image2ascii/simd/common.c
     lib/image2ascii/output_buffer.c
+    lib/image2ascii/rle.c
 )
 
 # Architecture-specific SIMD sources based on detection
@@ -181,6 +182,7 @@ set(VIDEO_SRCS
     lib/image2ascii/image.c
     lib/image2ascii/ascii.c
     lib/image2ascii/ansi_fast.c
+    lib/image2ascii/ansi.c
     lib/util/utf8.c
     lib/os/webcam.c
 )

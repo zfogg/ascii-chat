@@ -599,9 +599,9 @@ void test_terminal_output_modes(void) {
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) {
 #ifndef NDEBUG
-  // In debug builds, force mono mode for Claude Code (LLM doesn't need colors, saves tokens)
+  // In debug builds, force no-color mode for Claude Code (LLM doesn't need colors, saves tokens)
   if (opt_color_mode == COLOR_MODE_AUTO && platform_getenv("CLAUDECODE")) {
-    log_debug("CLAUDECODE detected: forcing mono color mode");
+    log_debug("CLAUDECODE detected: forcing no color mode");
     caps.color_level = TERM_COLOR_NONE;
     caps.capabilities &= ~(uint32_t)(TERM_CAP_COLOR_16 | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_TRUE);
     caps.color_count = 0;
@@ -611,7 +611,26 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 
   // Apply color mode override if specified in options (not auto mode)
   if (opt_color_mode != COLOR_MODE_AUTO) {
-    terminal_color_level_t override_level = (terminal_color_level_t)opt_color_mode;
+    // Map color_mode_t to terminal_color_level_t (enum values don't align)
+    terminal_color_level_t override_level;
+    switch (opt_color_mode) {
+    case COLOR_MODE_NONE:
+      override_level = TERM_COLOR_NONE;
+      break;
+    case COLOR_MODE_16_COLOR:
+      override_level = TERM_COLOR_16;
+      break;
+    case COLOR_MODE_256_COLOR:
+      override_level = TERM_COLOR_256;
+      break;
+    case COLOR_MODE_TRUECOLOR:
+      override_level = TERM_COLOR_TRUECOLOR;
+      break;
+    default:
+      override_level = caps.color_level; // Keep detected level
+      break;
+    }
+
     if (override_level != caps.color_level) {
       log_debug("Color override: %s -> %s", terminal_color_level_name(caps.color_level),
                 terminal_color_level_name(override_level));

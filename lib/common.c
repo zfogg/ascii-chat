@@ -74,7 +74,7 @@ bool shutdown_is_requested(void) {
 static void print_mimalloc_stats(void);
 #endif
 
-asciichat_error_t asciichat_shared_init(const char *default_log_filename) {
+asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client) {
   // Initialize platform-specific functionality (Winsock, etc)
   if (platform_init() != ASCIICHAT_OK) {
     FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
@@ -82,11 +82,12 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename) {
   (void)atexit(platform_cleanup);
 
   // Initialize logging with default filename
+  // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;
 #ifdef NDEBUG
-  log_init(log_filename, LOG_INFO); /* Release build: INFO level */
+  log_init(log_filename, LOG_INFO, is_client); /* Release build: INFO level */
 #else
-  log_init(log_filename, LOG_DEBUG); /* Debug build: DEBUG level */
+  log_init(log_filename, LOG_DEBUG, is_client); /* Debug build: DEBUG level */
 #endif
 
   // Initialize palette based on command line options

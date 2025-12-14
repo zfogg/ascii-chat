@@ -166,6 +166,9 @@ ASCIICHAT_API unsigned short int opt_mirror_mode = 0;
 #endif
 ASCIICHAT_API float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
 
+// Strip ANSI escape sequences from output
+ASCIICHAT_API unsigned short int opt_strip_ansi = 0;
+
 // Log file path for file logging (empty string means no file logging)
 ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
@@ -229,6 +232,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"snapshot", no_argument, NULL, 'S'},
                                          {"snapshot-delay", required_argument, NULL, 'D'},
                                          {"mirror", no_argument, NULL, 1016},
+                                         {"strip-ansi", no_argument, NULL, 1017},
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
@@ -395,8 +399,8 @@ int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg
   if (strcmp(value_str, "auto") == 0) {
     return COLOR_MODE_AUTO;
   }
-  if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
-    return COLOR_MODE_MONO;
+  if (strcmp(value_str, "none") == 0) {
+    return COLOR_MODE_NONE;
   }
   if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
     return COLOR_MODE_16_COLOR;
@@ -408,7 +412,7 @@ int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg
     return COLOR_MODE_TRUECOLOR;
   }
   if (error_msg) {
-    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor",
+    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor",
                   value_str);
   }
   return -1;
@@ -993,8 +997,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         return ERROR_USAGE;
       if (strcmp(value_str, "auto") == 0) {
         opt_color_mode = COLOR_MODE_AUTO;
-      } else if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
-        opt_color_mode = COLOR_MODE_MONO;
+      } else if (strcmp(value_str, "none") == 0) {
+        opt_color_mode = COLOR_MODE_NONE;
       } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
         opt_color_mode = COLOR_MODE_16_COLOR;
       } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
@@ -1002,7 +1006,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
         opt_color_mode = COLOR_MODE_TRUECOLOR;
       } else {
-        (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n",
+        (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor\n",
                       value_str);
         return ERROR_USAGE;
       }
@@ -1212,6 +1216,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
 
     case 1016: // --mirror (client only - view webcam locally without server)
       opt_mirror_mode = 1;
+      break;
+
+    case 1017: // --strip-ansi (client only - remove ANSI escape sequences from output)
+      opt_strip_ansi = 1;
       break;
 
     case 'D': {
@@ -1582,7 +1590,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "(default: 60 for Unix)\n");
 #endif
   (void)fprintf(desc,
-                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
+                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, none, 16, 256, truecolor "
                              "(default: auto)\n");
   (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
                                    "show detected terminal capabilities and exit\n");
@@ -1609,6 +1617,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
       (double)SNAPSHOT_DELAY_DEFAULT);
   (void)fprintf(desc, USAGE_INDENT "   --mirror                  " USAGE_INDENT
                                    "view webcam locally without connecting to server (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --strip-ansi              " USAGE_INDENT
+                                   "remove all ANSI escape codes from output (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT

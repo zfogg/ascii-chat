@@ -514,8 +514,7 @@ typedef struct {
 static color_mode_test_case_t color_mode_cases[] = {
     // Valid modes
     {"auto", true, 0, "Valid mode: auto"},
-    {"mono", true, 0, "Valid mode: mono"},
-    {"monochrome", true, 0, "Valid mode: monochrome"},
+    {"none", true, 0, "Valid mode: none"},
     {"16", true, 0, "Valid mode: 16"},
     {"16color", true, 0, "Valid mode: 16color"},
     {"256", true, 0, "Valid mode: 256"},
@@ -1226,20 +1225,12 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "mixed syntax should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_monochrome_mode, ARGV_LIST("client", "--color-mode", "mono"), true,
+    test_none_mode, ARGV_LIST("client", "--color-mode", "none"), true,
     {
-      cr_assert_eq(opt_color_mode, COLOR_MODE_MONO);
-      // Should be disabled for monochrome
+      cr_assert_eq(opt_color_mode, COLOR_MODE_NONE);
+      // Color output should be disabled for none mode
     },
-    { cr_assert_eq(exit_code, 0, "monochrome mode should not cause exit"); })
-
-GENERATE_OPTIONS_TEST(
-    test_monochrome_alias, ARGV_LIST("client", "--color-mode", "monochrome"), true,
-    {
-      cr_assert_eq(opt_color_mode, COLOR_MODE_MONO);
-      // Should be disabled for monochrome
-    },
-    { cr_assert_eq(exit_code, 0, "monochrome alias should not cause exit"); })
+    { cr_assert_eq(exit_code, 0, "none mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
     test_16color_mode, ARGV_LIST("client", "--color-mode", "16"), true,
@@ -1408,9 +1399,9 @@ GENERATE_OPTIONS_TEST(
     { cr_assert_eq(exit_code, 0, "256 color mode should not cause exit"); })
 
 GENERATE_OPTIONS_TEST(
-    test_color_output_disabled_by_mono, ARGV_LIST("client", "--color-mode", "mono"), true,
+    test_color_output_disabled_by_none, ARGV_LIST("client", "--color-mode", "none"), true,
     {
-      cr_assert_eq(opt_color_mode, COLOR_MODE_MONO);
-      // Should be disabled
+      cr_assert_eq(opt_color_mode, COLOR_MODE_NONE);
+      // Color output should be disabled
     },
-    { cr_assert_eq(exit_code, 0, "mono color mode should not cause exit"); })
+    { cr_assert_eq(exit_code, 0, "none color mode should not cause exit"); })

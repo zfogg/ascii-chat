@@ -234,7 +234,7 @@ static void rotate_log_if_needed_unlocked(void) {
   }
 }
 
-void log_init(const char *filename, log_level_t level) {
+void log_init(const char *filename, log_level_t level, bool force_stderr) {
   // Initialize mutex if this is the first time
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
@@ -243,6 +243,10 @@ void log_init(const char *filename, log_level_t level) {
   }
 
   mutex_lock(&g_log.mutex);
+
+  // Set force_stderr EARLY before any logging happens
+  // This ensures all logs (including terminal capability detection) go to stderr
+  g_log.force_stderr = force_stderr;
 
   // Preserve the terminal output setting
   bool preserve_terminal_output = g_log.terminal_output_enabled;
@@ -341,6 +345,19 @@ void log_set_terminal_output(bool enabled) {
 bool log_get_terminal_output(void) {
   mutex_lock(&g_log.mutex);
   bool enabled = g_log.terminal_output_enabled;
+  mutex_unlock(&g_log.mutex);
+  return enabled;
+}
+
+void log_set_force_stderr(bool enabled) {
+  mutex_lock(&g_log.mutex);
+  g_log.force_stderr = enabled;
+  mutex_unlock(&g_log.mutex);
+}
+
+bool log_get_force_stderr(void) {
+  mutex_lock(&g_log.mutex);
+  bool enabled = g_log.force_stderr;
   mutex_unlock(&g_log.mutex);
   return enabled;
 }
@@ -462,7 +479,13 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
   }
 
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
-  FILE *output_stream = (level == LOG_ERROR || level == LOG_WARN) ? stderr : stdout;
+  // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
+  FILE *output_stream;
+  if (g_log.force_stderr) {
+    output_stream = stderr;
+  } else {
+    output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
+  }
   int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
 
   // Format the header using centralized formatting
