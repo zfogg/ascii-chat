@@ -199,7 +199,7 @@ Adds a trailing newline after the frame
 .PP
 This makes the output clean and suitable for saving to files or processing
 with other tools. Color escape codes (\fB[0m\fR resets) may still appear at line
-endings; use \fB\-\-strip\-ansi\fR or \fB\-\-color\-mode mono\fR for completely plain
+endings; use \fB\-\-strip\-ansi\fR with \fB\-\-color\-mode mono\fR for completely plain
 ASCII output.
 .TP
 .BR \-\-strip\-ansi
