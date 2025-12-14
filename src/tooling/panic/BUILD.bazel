@@ -135,7 +135,12 @@ cc_library(
 # Header-only library for includes
 cc_library(
     name = "clang_headers",
-    hdrs = ["@llvm_toolchain_llvm//:all_includes"],
+    hdrs = select({
+        # Windows LLVM toolchain doesn't provide :all_includes target
+        "@platforms//os:windows": [],
+        # Linux/macOS have the :all_includes filegroup
+        "//conditions:default": ["@llvm_toolchain_llvm//:all_includes"],
+    }),
     includes = ["external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include"],
     visibility = ["//visibility:private"],
 )
