@@ -193,7 +193,8 @@ SOURCE_ROOT="${{REAL_SRC_PATH%/$RELATIVE_PATH}}"
 echo "Resolved source root: $SOURCE_ROOT" >&2
 
 # Create directory for Bazel-generated headers
-BAZEL_GEN_DIR="{compile_db_dir}/gen"
+# Use absolute path so Clang can find headers regardless of working directory
+BAZEL_GEN_DIR="$(pwd)/{compile_db_dir}/gen"
 mkdir -p "$BAZEL_GEN_DIR"
 echo "Bazel generated header dir: $BAZEL_GEN_DIR" >&2
 
