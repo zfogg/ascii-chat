@@ -155,7 +155,8 @@ def _defer_transform_impl(ctx):
     compiler_args.append("-I$SOURCE_ROOT/build_release/generated")
     compiler_args.append("-I$SOURCE_ROOT/build_debug/generated")
     # Also add Bazel-specific generated header path (set by script)
-    compiler_args.append("-I$BAZEL_GEN_DIR")
+    # Use placeholder that gets replaced at runtime with actual path
+    compiler_args.append("-I__BAZEL_GEN_DIR__")
 
     # Declare output directory for compile_commands.json
     compile_db_dir = ctx.actions.declare_directory(ctx.label.name + "_compile_db")
@@ -205,11 +206,16 @@ mkdir -p "{compile_db_dir}"
 
 # Generate compile_commands.json with resolved absolute paths
 # This is critical: the defer tool follows symlinks, so we must use the real paths
+# Note: We use __BAZEL_GEN_DIR__ placeholder which gets replaced with actual path
 cat > "{compile_db_dir}/compile_commands.json" << COMPILE_DB_EOF
 [
 {compile_db_entries}
 ]
 COMPILE_DB_EOF
+
+# Replace the placeholder with the actual $BAZEL_GEN_DIR path
+# This is necessary because $BAZEL_GEN_DIR is only known at runtime
+sed -i "s|__BAZEL_GEN_DIR__|$BAZEL_GEN_DIR|g" "{compile_db_dir}/compile_commands.json"
 
 # Debug output
 echo "compile_commands.json:" >&2
