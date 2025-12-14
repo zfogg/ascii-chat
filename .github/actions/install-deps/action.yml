@@ -64,10 +64,19 @@ runs:
       shell: pwsh
       run: |
         $CMAKE_VERSION = "4.2.0"
-        $CMAKE_URL = "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-windows-x86_64.zip"
+        $arch = "${{ runner.arch }}"
+
+        # Select architecture-appropriate binary
+        if ($arch -eq "ARM64") {
+          $CMAKE_ARCH = "windows-arm64"
+        } else {
+          $CMAKE_ARCH = "windows-x86_64"
+        }
+
+        $CMAKE_URL = "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-${CMAKE_ARCH}.zip"
         $CMAKE_INSTALL_DIR = "C:\cmake-${CMAKE_VERSION}"
 
-        Write-Host "Installing CMake ${CMAKE_VERSION} from official release..."
+        Write-Host "Installing CMake ${CMAKE_VERSION} (${CMAKE_ARCH}) from official release..."
         $tempZip = "$env:TEMP\cmake.zip"
         Invoke-WebRequest -Uri $CMAKE_URL -OutFile $tempZip -UseBasicParsing
 
@@ -76,7 +85,7 @@ runs:
           Remove-Item -Recurse -Force $CMAKE_INSTALL_DIR
         }
         Expand-Archive -Path $tempZip -DestinationPath "C:\"
-        Rename-Item -Path "C:\cmake-${CMAKE_VERSION}-windows-x86_64" -NewName "cmake-${CMAKE_VERSION}"
+        Rename-Item -Path "C:\cmake-${CMAKE_VERSION}-${CMAKE_ARCH}" -NewName "cmake-${CMAKE_VERSION}"
         Remove-Item $tempZip
 
         # Add to PATH (prepend so it takes priority)
@@ -367,6 +376,19 @@ runs:
         $value = 'c2x'
         Add-Content -Path $env:GITHUB_ENV -Value "CSTD=$value"
         Write-Host "Set CSTD to $value"
+
+    - name: Restore scoop cache (Windows)
+      if: inputs.os == 'windows'
+      id: scoop-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          C:\ProgramData\scoop
+          ~/scoop
+        key: ${{ runner.os }}-${{ runner.arch }}-scoop-v2-ninja-ccache-doxygen-${{ inputs.extra-packages }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-scoop-v2-ninja-ccache-doxygen-
+          ${{ runner.os }}-${{ runner.arch }}-scoop-v2-
 
     - name: Install Windows build tools (scoop)
       if: inputs.os == 'windows'
@@ -801,6 +823,142 @@ runs:
     # AFTER cmake configure runs, not here. This ensures BearSSL and other deps built
     # during cmake configure are included in the cache.
 
+    # =========================================================================
+    # Bazel and Bazelisk Installation and Caching
+    # =========================================================================
+    # Three cache types:
+    # 1. bazelisk: The Bazel binary itself
+    # 2. bazel-disk-cache: Local disk cache for build artifacts (fallback when remote cache misses)
+    # 3. bazel-repo-cache: Downloaded external repos (hermetic LLVM is ~500MB, caching avoids re-download)
+
+    - name: Restore Bazelisk cache (Unix)
+      if: inputs.os != 'windows'
+      id: bazelisk-cache-unix
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.cache/bazelisk
+          /usr/local/bin/bazel
+        key: bazelisk-${{ runner.os }}-${{ runner.arch }}-v1.25.0
+
+    - name: Restore Bazelisk cache (Windows)
+      if: inputs.os == 'windows'
+      id: bazelisk-cache-windows
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/AppData/Local/bazelisk
+          ~/bin/bazel.exe
+        key: bazelisk-windows-${{ runner.arch }}-v1.25.0
+
+    - name: Restore Bazel caches (Unix)
+      if: inputs.os != 'windows'
+      id: bazel-cache-unix
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-${{ runner.os }}-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+        restore-keys: |
+          bazel-cache-${{ runner.os }}-${{ runner.arch }}-v1-
+
+    - name: Restore Bazel caches (Windows)
+      if: inputs.os == 'windows'
+      id: bazel-cache-windows
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-windows-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+        restore-keys: |
+          bazel-cache-windows-${{ runner.arch }}-v1-
+
+    - name: Install Bazelisk (Linux)
+      if: inputs.os == 'ubuntu' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        ARCH=$(uname -m)
+        if [ "$ARCH" = "x86_64" ]; then
+          BAZELISK_ARCH="amd64"
+        elif [ "$ARCH" = "aarch64" ]; then
+          BAZELISK_ARCH="arm64"
+        fi
+        sudo curl -fsSL -o /usr/local/bin/bazel \
+          "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-linux-${BAZELISK_ARCH}"
+        sudo chmod +x /usr/local/bin/bazel
+        echo "Installed Bazelisk v1.25.0"
+
+    - name: Install Bazelisk (macOS)
+      if: inputs.os == 'macos' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        brew install bazelisk
+        echo "Installed Bazelisk via Homebrew"
+
+    - name: Install Bazelisk (Windows)
+      if: inputs.os == 'windows' && steps.bazelisk-cache-windows.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        $arch = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "amd64" }
+        $url = "https://github.com/bazelbuild/bazelisk/releases/download/v1.25.0/bazelisk-windows-${arch}.exe"
+        New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\bin" | Out-Null
+        Invoke-WebRequest -Uri $url -OutFile "$env:USERPROFILE\bin\bazel.exe"
+        Write-Host "Installed Bazelisk v1.25.0"
+
+    - name: Add Bazelisk to PATH (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      run: |
+        echo "$env:USERPROFILE\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    # =========================================================================
+    # Bazel Configuration (BuildBuddy remote cache)
+    # =========================================================================
+    - name: Create user.bazelrc for BuildBuddy (Unix)
+      if: inputs.os != 'windows'
+      shell: bash
+      env:
+        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
+      run: |
+        # Create user.bazelrc with BuildBuddy remote cache config
+        # This file is gitignored and imported by .bazelrc via try-import
+        if [ -n "$BUILDBUDDY_API_KEY" ]; then
+          echo "# CI-generated BuildBuddy configuration" > user.bazelrc
+          echo "build --bes_results_url=https://zfogg.buildbuddy.io/invocation/" >> user.bazelrc
+          echo "build --bes_backend=grpcs://zfogg.buildbuddy.io" >> user.bazelrc
+          echo "build --remote_cache=grpcs://zfogg.buildbuddy.io" >> user.bazelrc
+          echo "build --noremote_upload_local_results" >> user.bazelrc
+          echo "build --remote_timeout=10m" >> user.bazelrc
+          echo "build --remote_header=x-buildbuddy-api-key=${BUILDBUDDY_API_KEY}" >> user.bazelrc
+          echo "build --remote_cache_compression" >> user.bazelrc
+          echo "Created user.bazelrc with BuildBuddy remote cache config"
+        else
+          echo "BUILDBUDDY_API_KEY not set, skipping user.bazelrc creation"
+        fi
+
+    - name: Create user.bazelrc for BuildBuddy (Windows)
+      if: inputs.os == 'windows'
+      shell: pwsh
+      env:
+        BUILDBUDDY_API_KEY: ${{ env.BUILDBUDDY_API_KEY }}
+      run: |
+        # Create user.bazelrc with BuildBuddy remote cache config
+        if ($env:BUILDBUDDY_API_KEY) {
+          "# CI-generated BuildBuddy configuration" | Out-File -FilePath user.bazelrc -Encoding utf8
+          "build --bes_results_url=https://zfogg.buildbuddy.io/invocation/" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --bes_backend=grpcs://zfogg.buildbuddy.io" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_header=x-buildbuddy-api-key=$($env:BUILDBUDDY_API_KEY)" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_cache=grpcs://zfogg.buildbuddy.io" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --noremote_upload_local_results" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_timeout=10m" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          "build --remote_cache_compression" | Out-File -FilePath user.bazelrc -Encoding utf8 -Append
+          Write-Host "Created user.bazelrc with BuildBuddy remote cache config"
+        } else {
+          Write-Host "BUILDBUDDY_API_KEY not set, skipping user.bazelrc creation"
+        }
+
     - name: Save Homebrew cache (macOS)
       if: always() && inputs.os == 'macos' && steps.homebrew-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
@@ -819,6 +977,15 @@ runs:
           ${{ env.VCPKG_ROOT }}/buildtrees
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
 
+    - name: Save scoop cache (Windows)
+      if: always() && inputs.os == 'windows' && steps.scoop-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          C:\ProgramData\scoop
+          ~/scoop
+        key: ${{ runner.os }}-${{ runner.arch }}-scoop-v2-ninja-ccache-doxygen-${{ inputs.extra-packages }}
+
     - name: Prepare APT cache for saving (Ubuntu)
       if: always() && inputs.os == 'ubuntu' && steps.apt-cache.outputs.cache-hit != 'true'
       shell: bash
@@ -836,3 +1003,39 @@ runs:
         # Cache to workspace directory to avoid permission issues
         path: .apt-cache
         key: ${{ runner.os }}-apt-v5-${{ steps.install-deps-sh-hash.outputs.hash }}-${{ inputs.extra-packages }}
+
+    - name: Save Bazelisk cache (Unix)
+      if: always() && inputs.os != 'windows' && steps.bazelisk-cache-unix.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/bazelisk
+          /usr/local/bin/bazel
+        key: bazelisk-${{ runner.os }}-${{ runner.arch }}-v1.25.0
+
+    - name: Save Bazelisk cache (Windows)
+      if: always() && inputs.os == 'windows' && steps.bazelisk-cache-windows.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/AppData/Local/bazelisk
+          ~/bin/bazel.exe
+        key: bazelisk-windows-${{ runner.arch }}-v1.25.0
+
+    - name: Save Bazel caches (Unix)
+      if: always() && inputs.os != 'windows'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-${{ runner.os }}-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}
+
+    - name: Save Bazel caches (Windows)
+      if: always() && inputs.os == 'windows'
+      uses: actions/cache/save@v4
+      with:
+        path: |
+          ~/.cache/bazel-disk-cache
+          ~/.cache/bazel-repo-cache
+        key: bazel-cache-windows-${{ runner.arch }}-v1-${{ hashFiles('MODULE.bazel', 'WORKSPACE', '.bazelrc') }}

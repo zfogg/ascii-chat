@@ -170,6 +170,37 @@ foreach ($Package in $RequiredPackages) {
     }
 }
 
+# Install Bazelisk (Bazel version manager)
+Write-Host "`n=== Installing Bazelisk ===" -ForegroundColor Cyan
+
+$BazeliskPath = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\bazel.exe"
+$BazeliskAltPath = (Get-Command bazel -ErrorAction SilentlyContinue)?.Source
+
+if ($BazeliskAltPath -or (Test-Path $BazeliskPath)) {
+    Write-Host "  ✓ Bazelisk already installed" -ForegroundColor Green
+    & bazel --version
+} else {
+    # Try winget first (preferred on Windows 10/11)
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "  Installing Bazelisk via winget..." -ForegroundColor Yellow
+        winget install --id Bazel.Bazelisk --accept-source-agreements --accept-package-agreements
+    }
+    # Fall back to scoop if available
+    elseif (Get-Command scoop -ErrorAction SilentlyContinue) {
+        Write-Host "  Installing Bazelisk via scoop..." -ForegroundColor Yellow
+        scoop install bazelisk
+    }
+    # Fall back to chocolatey if available
+    elseif (Get-Command choco -ErrorAction SilentlyContinue) {
+        Write-Host "  Installing Bazelisk via chocolatey..." -ForegroundColor Yellow
+        choco install bazelisk -y
+    }
+    else {
+        Write-Host "  WARNING: No package manager found (winget, scoop, or chocolatey)" -ForegroundColor Yellow
+        Write-Host "  Please install Bazelisk manually from: https://github.com/bazelbuild/bazelisk/releases" -ForegroundColor Yellow
+    }
+}
+
 Write-Host "`n=== Verifying Installation ===" -ForegroundColor Cyan
 Write-Host ""
 
@@ -190,8 +221,9 @@ Write-Host ""
 if ($AllInstalled) {
     Write-Host "All dependencies installed successfully!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "You can now run:" -ForegroundColor Cyan
-    Write-Host "  ./build.ps1 -Config $Config" -ForegroundColor White
+    Write-Host "You can now build with:" -ForegroundColor Cyan
+    Write-Host "  Bazel: bazel build //..." -ForegroundColor White
+    Write-Host "  CMake: ./build.ps1 -Config $Config" -ForegroundColor White
 
     if ($Triplet -like "*-static") {
         Write-Host ""

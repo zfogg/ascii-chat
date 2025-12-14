@@ -49,3 +49,11 @@ coverage_html/
 /docker_out/
 
 /branches/
+
+# Bazel
+user.bazelrc
+/bazel-ascii-chat
+/bazel-bin
+/bazel-out
+/bazel-testlogs
+MODULE.bazel.lock

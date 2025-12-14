@@ -1,0 +1,197 @@
+# =============================================================================
+# defer() Transformation Tool
+# =============================================================================
+# Clang-based source-to-source transformer that implements defer() semantics.
+# This tool rewrites C source files to insert cleanup code at all exit points.
+#
+# Build: bazel build //src/tooling/defer:defer
+# =============================================================================
+
+load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
+
+# =============================================================================
+# Hermetic LLVM Clang Libraries
+# =============================================================================
+# Import static libraries from the hermetic LLVM toolchain.
+# The toolchains_llvm module downloads pre-built LLVM binaries for each platform.
+#
+# Library naming conventions:
+#   - Linux/macOS: lib/libLLVMFoo.a (lib prefix, .a extension)
+#   - Windows:     lib/LLVMFoo.lib  (no lib prefix, .lib extension)
+
+# Clang libraries needed for source transformation
+CLANG_LIBS = [
+    "clangTooling",
+    "clangToolingCore",
+    "clangToolingInclusions",
+    "clangToolingInclusionsStdlib",
+    "clangFrontend",
+    "clangFrontendTool",
+    "clangDriver",
+    "clangParse",
+    "clangSema",
+    "clangAnalysis",
+    "clangAnalysisFlowSensitive",
+    "clangAnalysisFlowSensitiveModels",
+    "clangAST",
+    "clangASTMatchers",
+    "clangEdit",
+    "clangLex",
+    "clangBasic",
+    "clangRewrite",
+    "clangRewriteFrontend",
+    "clangSerialization",
+    "clangSupport",
+    "clangAPINotes",
+    "clangFormat",
+    "clangIndex",
+    "clangTransformer",
+]
+
+# LLVM libraries (dependencies of Clang)
+# Order matters for static linking - dependencies must come after dependents
+LLVM_LIBS = [
+    # Frontend/IR libraries (highest level)
+    "LLVMFrontendOpenMP",
+    "LLVMFrontendOffloading",
+    "LLVMFrontendHLSL",
+    "LLVMFrontendDriver",
+    "LLVMIRReader",
+    "LLVMAsmParser",
+    "LLVMBitReader",
+    "LLVMBitWriter",
+    # Transform/Analysis libraries (required by FrontendOpenMP)
+    "LLVMPasses",
+    "LLVMCoroutines",
+    "LLVMipo",
+    "LLVMVectorize",
+    "LLVMLinker",
+    "LLVMInstrumentation",
+    "LLVMScalarOpts",
+    "LLVMInstCombine",
+    "LLVMAggressiveInstCombine",
+    "LLVMTransformUtils",
+    "LLVMAnalysis",
+    "LLVMTarget",
+    "LLVMCodeGen",
+    "LLVMCodeGenTypes",
+    "LLVMObjCARCOpts",
+    "LLVMGlobalISel",
+    "LLVMSelectionDAG",
+    "LLVMAsmPrinter",
+    # Mid-level libraries
+    "LLVMProfileData",
+    "LLVMSymbolize",
+    "LLVMDebugInfoBTF",
+    "LLVMDebugInfoCodeView",
+    "LLVMDebugInfoDWARF",
+    "LLVMDebugInfoMSF",
+    "LLVMDebugInfoPDB",
+    "LLVMDebugInfoLogicalView",
+    "LLVMCFGuard",
+    "LLVMCoverage",
+    "LLVMLTO",
+    # Low-level libraries
+    "LLVMObject",
+    "LLVMTextAPI",
+    "LLVMTextAPIBinaryReader",
+    "LLVMMC",
+    "LLVMMCParser",
+    "LLVMMCDisassembler",
+    "LLVMWindowsDriver",
+    "LLVMWindowsManifest",
+    "LLVMOption",
+    "LLVMRemarks",
+    "LLVMBitstreamReader",
+    "LLVMTargetParser",
+    "LLVMBinaryFormat",
+    "LLVMCore",
+    "LLVMIRPrinter",
+    # Base libraries (lowest level - must come last)
+    "LLVMSupport",
+    "LLVMDemangle",
+]
+
+# Generate cc_import rules for each library
+# Uses select() to handle platform-specific library naming:
+#   - Linux/macOS: lib/libFoo.a
+#   - Windows:     lib/Foo.lib
+[cc_import(
+    name = "lib" + lib,
+    static_library = select({
+        "@platforms//os:windows": "@llvm_toolchain_llvm//:lib/" + lib + ".lib",
+        "//conditions:default": "@llvm_toolchain_llvm//:lib/lib" + lib + ".a",
+    }),
+    visibility = ["//visibility:private"],
+) for lib in CLANG_LIBS + LLVM_LIBS]
+
+# Combined library target
+cc_library(
+    name = "clang_tooling_libs",
+    visibility = ["//visibility:private"],
+    deps = ["lib" + lib for lib in CLANG_LIBS + LLVM_LIBS],
+)
+
+# Header-only library for includes
+cc_library(
+    name = "clang_headers",
+    hdrs = ["@llvm_toolchain_llvm//:all_includes"],
+    includes = ["external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include"],
+    visibility = ["//visibility:private"],
+)
+
+# =============================================================================
+# Defer Tool Binary
+# =============================================================================
+
+cc_binary(
+    name = "defer",
+    srcs = ["tool.cpp"],
+    copts = [
+        "-std=c++20",
+        "-O2",
+        "-fno-rtti",
+        "-fexceptions",
+        # Disable sanitizers - LLVM headers have known UBSan issues
+        "-fno-sanitize=all",
+        # Include path for hermetic LLVM headers
+        "-isystem", "external/toolchains_llvm~~llvm~llvm_toolchain_llvm/include",
+    ],
+    # Disable sanitizers in linker too
+    features = ["-asan", "-ubsan", "-tsan", "-msan"],
+    linkopts = select({
+        "@platforms//os:linux": [
+            # Use system lld (CI uses system Clang, not hermetic toolchain)
+            "-fuse-ld=lld",
+            "-pthread",
+            "-ldl",
+            "-lm",
+            "-lz",
+            "-lzstd",  # LLVM uses zstd for compression
+            "-ltinfo",  # Terminal info library
+            "-lxml2",  # libxml2 for LLVM
+            "-fno-sanitize=all",
+        ],
+        "@platforms//os:macos": [
+            "-pthread",
+            "-ldl",
+            "-lm",
+            "-lz",
+            "-lzstd",
+            "-lcurses",
+            "-lxml2",
+        ],
+        "@platforms//os:windows": [
+            "version.lib",
+            "advapi32.lib",
+            "shell32.lib",
+            "ole32.lib",
+        ],
+        "//conditions:default": [],
+    }),
+    visibility = ["//visibility:public"],
+    deps = [
+        ":clang_headers",
+        ":clang_tooling_libs",
+    ],
+)

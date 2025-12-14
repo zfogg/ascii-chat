@@ -118,8 +118,9 @@ static int mirror_display_init(void) {
     g_mirror_has_tty = platform_isatty(g_mirror_tty_info.fd) != 0;
   }
 
-  // Initialize ASCII output
-  ascii_write_init(g_mirror_tty_info.fd, !opt_snapshot_mode);
+  // Initialize ASCII output - use STDOUT as fallback when no TTY available
+  int output_fd = (g_mirror_tty_info.fd >= 0) ? g_mirror_tty_info.fd : STDOUT_FILENO;
+  ascii_write_init(output_fd, !opt_snapshot_mode && g_mirror_has_tty);
 
   return 0;
 }
