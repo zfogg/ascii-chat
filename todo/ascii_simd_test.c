@@ -609,7 +609,7 @@ int main(int argc, char *argv[]) {
   printf("\n");
 
   // Initialize logging and SIMD
-  log_init(NULL, LOG_ERROR);
+  log_init(NULL, LOG_ERROR, false);
   ascii_simd_init();
   printf("✅ SIMD system initialized\n\n");
 

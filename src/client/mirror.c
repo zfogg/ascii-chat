@@ -29,6 +29,8 @@
 #include "image2ascii/ascii.h"
 #include "image2ascii/image.h"
 #include "image2ascii/ansi_fast.h"
+#include "image2ascii/ansi.h"
+#include "image2ascii/rle.h"
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
@@ -114,8 +116,13 @@ static bool g_mirror_has_tty = false;
 static int mirror_display_init(void) {
   g_mirror_tty_info = get_current_tty();
 
-  if (g_mirror_tty_info.fd >= 0) {
+  // Only use TTY output if stdout is also a TTY (respects shell redirection)
+  // This ensures `cmd > file` works by detecting stdout redirection
+  bool stdout_is_tty = platform_isatty(STDOUT_FILENO) != 0;
+  if (g_mirror_tty_info.fd >= 0 && stdout_is_tty) {
     g_mirror_has_tty = platform_isatty(g_mirror_tty_info.fd) != 0;
+  } else {
+    g_mirror_has_tty = false;
   }
 
   // Initialize ASCII output - use STDOUT as fallback when no TTY available
@@ -160,11 +167,29 @@ static void mirror_write_frame(const char *frame_data) {
     platform_write(g_mirror_tty_info.fd, frame_data, frame_len);
     terminal_flush(g_mirror_tty_info.fd);
   } else {
+    // Expand RLE for pipe/file output where terminals can't interpret REP sequences
+    char *expanded = ansi_expand_rle(frame_data, frame_len);
+    const char *output_data = expanded ? expanded : frame_data;
+    size_t output_len = expanded ? strlen(expanded) : frame_len;
+
+    // Strip all ANSI escape sequences if --strip-ansi is set
+    char *stripped = NULL;
+    if (opt_strip_ansi) {
+      stripped = ansi_strip_escapes(output_data, output_len);
+      if (stripped) {
+        output_data = stripped;
+        output_len = strlen(stripped);
+      }
+    }
+
     if (!opt_snapshot_mode) {
       cursor_reset(STDOUT_FILENO);
     }
-    platform_write(STDOUT_FILENO, frame_data, frame_len);
+    platform_write(STDOUT_FILENO, output_data, output_len);
+    platform_write(STDOUT_FILENO, "\n", 1); // Trailing newline after frame
     (void)fflush(stdout);
+    SAFE_FREE(stripped);
+    SAFE_FREE(expanded);
   }
 }
 
@@ -263,13 +288,12 @@ int mirror_main(void) {
       continue;
     }
 
-    // Snapshot mode: check if delay has elapsed
+    // Snapshot mode: check if delay has elapsed (delay 0 = capture first frame immediately)
     if (opt_snapshot_mode && !snapshot_done) {
-      double snapshot_delay = opt_snapshot_delay > 0 ? opt_snapshot_delay : 0.1;
       double elapsed_sec = (double)(current_time.tv_sec - snapshot_start_time.tv_sec) +
                            (double)(current_time.tv_nsec - snapshot_start_time.tv_nsec) / 1e9;
 
-      if (elapsed_sec >= snapshot_delay) {
+      if (elapsed_sec >= opt_snapshot_delay) {
         snapshot_done = true;
       }
     }
@@ -289,11 +313,15 @@ int mirror_main(void) {
                                                         opt_stretch, palette_chars, luminance_palette);
 
     if (ascii_frame) {
-      mirror_write_frame(ascii_frame);
+      // When piping/redirecting in snapshot mode, only output the final frame
+      // When outputting to TTY, show live preview frames
+      bool should_write = !opt_snapshot_mode || g_mirror_has_tty || snapshot_done;
+      if (should_write) {
+        mirror_write_frame(ascii_frame);
+      }
 
-      // Snapshot mode: exit after capturing one frame
+      // Snapshot mode: exit after capturing the final frame
       if (opt_snapshot_mode && snapshot_done) {
-        printf("\n");
         SAFE_FREE(ascii_frame);
         image_destroy(image);
         break;

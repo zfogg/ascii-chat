@@ -504,18 +504,18 @@ Test(config_sections, client_webcam_settings) {
   restore_config_options(&backup);
 }
 
-Test(config_sections, client_color_mode_mono) {
+Test(config_sections, client_color_mode_none) {
   config_options_backup_t backup;
   save_config_options(&backup);
 
-  const char *content = "[client]\ncolor_mode = \"mono\"\n";
+  const char *content = "[client]\ncolor_mode = \"none\"\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false);
-  cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode mono should succeed");
-  cr_assert_eq(opt_color_mode, COLOR_MODE_MONO, "Color mode should be mono");
+  cr_assert_eq(result, ASCIICHAT_OK, "Valid color mode none should succeed");
+  cr_assert_eq(opt_color_mode, COLOR_MODE_NONE, "Color mode should be none");
 
   unlink(config_path);
   SAFE_FREE(config_path);

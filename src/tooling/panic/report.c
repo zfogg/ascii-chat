@@ -622,7 +622,7 @@ int main(int argc, char **argv) {
       .emit_raw_line = false,
   };
 
-  log_init(NULL, LOG_INFO);
+  log_init(NULL, LOG_INFO, false);
 
   int exit_code = EXIT_SUCCESS;
   if (!parse_arguments(argc, argv, &config)) {

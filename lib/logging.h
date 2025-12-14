@@ -78,6 +78,7 @@ static struct log_context_t {
   size_t current_size;                     /* Track current file size */
   bool terminal_output_enabled;            /* Control stderr output to terminal */
   bool level_manually_set;                 /* Track if level was set manually */
+  bool force_stderr;                       /* Force all terminal logs to stderr (client mode) */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .level = DEFAULT_LOG_LEVEL,
@@ -86,6 +87,7 @@ static struct log_context_t {
     .current_size = 0,
     .terminal_output_enabled = true,
     .level_manually_set = false,
+    .force_stderr = false,
 };
 
 static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
@@ -155,9 +157,10 @@ typedef enum {
  * @brief Initialize the logging system
  * @param filename Log file path (or NULL for no file logging)
  * @param level Minimum log level to output
+ * @param force_stderr If true, route ALL logs to stderr (for client mode to keep stdout clean)
  * @ingroup logging
  */
-void log_init(const char *filename, log_level_t level);
+void log_init(const char *filename, log_level_t level, bool force_stderr);
 
 /**
  * @brief Destroy the logging system and close log file
@@ -192,6 +195,26 @@ void log_set_terminal_output(bool enabled);
  * @ingroup logging
  */
 bool log_get_terminal_output(void);
+
+/**
+ * @brief Force all terminal log output to stderr
+ * @param enabled true to force all logs to stderr, false for normal routing
+ *
+ * When enabled, all log messages (including INFO, DEBUG, DEV) go to stderr
+ * instead of the default behavior where INFO/DEBUG/DEV go to stdout and
+ * WARN/ERROR/FATAL go to stderr. This is used by the client to keep stdout
+ * clean for ASCII art output.
+ *
+ * @ingroup logging
+ */
+void log_set_force_stderr(bool enabled);
+
+/**
+ * @brief Get current force_stderr setting
+ * @return true if all logs are forced to stderr, false otherwise
+ * @ingroup logging
+ */
+bool log_get_force_stderr(void);
 
 /**
  * @brief Manually truncate large log files

@@ -14,7 +14,9 @@ set(VIDEO_SRCS
     ${CMAKE_SOURCE_DIR}/lib/video_frame.c
     ${CMAKE_CURRENT_SOURCE_DIR}/image.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ansi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ansi_fast.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
 )
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")

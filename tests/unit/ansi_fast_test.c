@@ -631,14 +631,14 @@ Test(ansi_fast, append_color_fg_for_mode_16color) {
   cr_assert(strstr(buffer, "\033[") != NULL, "16-color mode should generate ANSI sequence");
 }
 
-Test(ansi_fast, append_color_fg_for_mode_mono) {
+Test(ansi_fast, append_color_fg_for_mode_none) {
   char buffer[256];
   char *result;
 
-  result = append_color_fg_for_mode(buffer, 255, 128, 64, COLOR_MODE_MONO);
+  result = append_color_fg_for_mode(buffer, 255, 128, 64, COLOR_MODE_NONE);
 
   // Should return unchanged buffer (no color output)
-  cr_assert_eq(result, buffer, "Mono mode should return unchanged buffer");
+  cr_assert_eq(result, buffer, "None mode should return unchanged buffer");
 }
 
 Test(ansi_fast, append_color_fg_for_mode_auto) {

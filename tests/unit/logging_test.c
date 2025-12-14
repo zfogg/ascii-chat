@@ -13,7 +13,7 @@ TestSuite(logging, .init = setup_quiet_logging, .fini = restore_logging);
 
 void setup_quiet_logging(void) {
   // Initialize logging system first to prevent auto-initialization
-  log_init(NULL, LOG_FATAL);
+  log_init(NULL, LOG_FATAL, false);
   // Suppress logging output during tests like other unit tests
   log_set_terminal_output(false);
   log_set_level(LOG_FATAL);
@@ -384,7 +384,7 @@ Test(logging, log_file_operations) {
   unlink(test_log_file);
 
   // Initialize logging to file
-  log_init(test_log_file, LOG_DEBUG);
+  log_init(test_log_file, LOG_DEBUG, false);
 
   // Write some test messages
   log_info("Test message 1");
@@ -409,7 +409,7 @@ Test(logging, log_file_initialization_failure) {
   const char *invalid_file = "/invalid/path/that/does/not/exist/test.log";
 
   // This should not crash, but should fall back to stderr
-  log_init(invalid_file, LOG_INFO);
+  log_init(invalid_file, LOG_INFO, false);
 
   // Should still be able to log
   log_info("This should go to stderr due to file failure");
@@ -428,11 +428,11 @@ Test(logging, log_file_reinitialization) {
   unlink(test_log_file2);
 
   // Initialize with first file
-  log_init(test_log_file1, LOG_INFO);
+  log_init(test_log_file1, LOG_INFO, false);
   log_info("Message to first file");
 
   // Reinitialize with second file
-  log_init(test_log_file2, LOG_DEBUG);
+  log_init(test_log_file2, LOG_DEBUG, false);
   log_info("Message to second file");
 
   // Check both files exist
@@ -452,7 +452,7 @@ Test(logging, log_file_null_filename) {
   log_level_t original_level = log_get_level();
   bool original_terminal_output = log_get_terminal_output();
 
-  log_init(NULL, LOG_INFO);
+  log_init(NULL, LOG_INFO, false);
 
   // Should still be able to log
   log_info("This should go to stderr");
@@ -487,7 +487,7 @@ Test(logging, terminal_output_with_file_logging) {
   // Clean up any existing test file
   unlink(test_log_file);
 
-  log_init(test_log_file, LOG_DEBUG);
+  log_init(test_log_file, LOG_DEBUG, false);
 
   // Test with terminal output enabled
   log_set_terminal_output(true);
@@ -517,7 +517,7 @@ Test(logging, log_truncation_manual) {
   // Clean up any existing test file
   unlink(test_log_file);
 
-  log_init(test_log_file, LOG_DEBUG);
+  log_init(test_log_file, LOG_DEBUG, false);
 
   // Write some messages
   for (int i = 0; i < 10; i++) {
@@ -635,7 +635,7 @@ Test(logging, log_rotation_simulation) {
   // Clean up any existing test file
   unlink(test_log_file);
 
-  log_init(test_log_file, LOG_DEBUG);
+  log_init(test_log_file, LOG_DEBUG, false);
 
   // Write many messages to simulate a large log file
   for (int i = 0; i < 1000; i++) {
@@ -673,7 +673,7 @@ ParameterizedTestParameters(logging, log_initialization_variations) {
 }
 
 ParameterizedTest(log_init_test_case_t *tc, logging, log_initialization_variations) {
-  log_init(NULL, tc->level);
+  log_init(NULL, tc->level, false);
 
   // Log message appropriate to the level
   switch (tc->level) {
@@ -770,7 +770,7 @@ Test(logging, log_level_env_string_values) {
   // Test DEBUG
   safe_setenv("LOG_LEVEL", "DEBUG");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL); // Should be overridden by env var
+  log_init(test_log_file, LOG_FATAL, false); // Should be overridden by env var
   log_set_terminal_output(false);
   log_debug("Debug message");
   log_destroy();
@@ -793,7 +793,7 @@ Test(logging, log_level_env_string_values) {
   // Test INFO
   safe_setenv("LOG_LEVEL", "INFO");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_info("Info message");
   log_destroy();
@@ -814,7 +814,7 @@ Test(logging, log_level_env_string_values) {
   // Test WARN
   safe_setenv("LOG_LEVEL", "WARN");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_warn("Warn message");
   log_destroy();
@@ -835,7 +835,7 @@ Test(logging, log_level_env_string_values) {
   // Test ERROR
   safe_setenv("LOG_LEVEL", "ERROR");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_error("Error message");
   log_destroy();
@@ -864,7 +864,7 @@ Test(logging, log_level_env_case_insensitive) {
   // Test lowercase "debug"
   safe_setenv("LOG_LEVEL", "debug");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_debug("Debug lowercase");
   log_destroy();
@@ -886,7 +886,7 @@ Test(logging, log_level_env_case_insensitive) {
   // Test mixed case "DeBuG"
   safe_setenv("LOG_LEVEL", "DeBuG");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_debug("Debug mixed case");
   log_destroy();
@@ -915,7 +915,7 @@ Test(logging, log_level_env_numeric_values) {
   // Test "0" (DEBUG)
   safe_setenv("LOG_LEVEL", "0");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_debug("Debug numeric 0");
   log_destroy();
@@ -937,7 +937,7 @@ Test(logging, log_level_env_numeric_values) {
   // Test "2" (WARN)
   safe_setenv("LOG_LEVEL", "2");
   log_destroy();
-  log_init(test_log_file, LOG_FATAL);
+  log_init(test_log_file, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_warn("Warn numeric 2");
   log_debug("Debug should not appear");
@@ -971,7 +971,7 @@ Test(logging, log_level_env_unset_uses_default) {
   // Ensure LOG_LEVEL is not set
   safe_setenv("LOG_LEVEL", NULL);
   log_destroy();
-  log_init(test_log_file, LOG_WARN); // Should use this level
+  log_init(test_log_file, LOG_WARN, false); // Should use this level
   log_set_terminal_output(false);
 
   log_warn("Warn should appear");
@@ -1005,7 +1005,7 @@ Test(logging, log_level_env_invalid_uses_default) {
   // Set invalid LOG_LEVEL values
   safe_setenv("LOG_LEVEL", "INVALID_VALUE");
   log_destroy();
-  log_init(test_log_file, LOG_INFO); // Should use default (INFO) when env is invalid
+  log_init(test_log_file, LOG_INFO, false); // Should use default (INFO) when env is invalid
   log_set_terminal_output(false);
 
   log_info("Info should appear");
@@ -1054,7 +1054,7 @@ Test(logging, log_level_env_dos_protection) {
   log_destroy();
 
   // Should not hang or crash, should use default (INFO)
-  log_init(test_log_file, LOG_INFO);
+  log_init(test_log_file, LOG_INFO, false);
   log_set_terminal_output(false);
   log_info("Info after large LOG_LEVEL");
   log_debug("Debug should not appear");
@@ -1100,7 +1100,7 @@ Test(logging, log_level_env_boundary_64_chars) {
 
   safe_setenv("LOG_LEVEL", exactly_64);
   log_destroy();
-  log_init(test_log_file, LOG_INFO);
+  log_init(test_log_file, LOG_INFO, false);
   log_set_terminal_output(false);
   log_info("Info with 64 char env");
   log_destroy();
@@ -1126,7 +1126,7 @@ Test(logging, log_level_env_boundary_64_chars) {
 
   safe_setenv("LOG_LEVEL", exactly_63);
   log_destroy();
-  log_init(test_log_file, LOG_INFO);
+  log_init(test_log_file, LOG_INFO, false);
   log_set_terminal_output(false);
   log_info("Info with 63 char env");
   log_destroy();
@@ -1162,7 +1162,7 @@ Test(logging, log_level_env_before_init) {
   log_debug("Debug before init");
 
   // Now properly init
-  log_init(test_log_file, LOG_FATAL); // Should still respect LOG_LEVEL=DEBUG
+  log_init(test_log_file, LOG_FATAL, false); // Should still respect LOG_LEVEL=DEBUG
   log_debug("Debug after init");
   log_destroy();
 
