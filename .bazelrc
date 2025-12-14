@@ -111,7 +111,7 @@ build:release --features=use_lto_native_object_directory
 # Release-specific optimizations
 build:release --copt=-ffunction-sections
 build:release --copt=-fdata-sections
-build:release --linkopt=-Wl,--gc-sections
+# Note: --gc-sections is platform-specific (see Linux/macOS configs below)
 
 # =============================================================================
 # Sanitizer Configuration (dedicated sanitizer builds)

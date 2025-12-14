@@ -106,8 +106,13 @@ def _defer_transform_impl(ctx):
     ]
 
     # System include paths for Clang tooling - use -isystem as prefix
+    # These paths cover common Clang installations:
+    #   - /usr/lib/clang/*/include: Clang installed in /usr
+    #   - /usr/lib/llvm-*/lib/clang/*/include: Ubuntu/Debian apt packages
+    #   - /Library/Developer/CommandLineTools: macOS Xcode Command Line Tools
     system_includes = [
         "/usr/include",
+        # Direct /usr/lib/clang paths (standalone Clang)
         "/usr/lib/clang/14/include",
         "/usr/lib/clang/15/include",
         "/usr/lib/clang/16/include",
@@ -117,10 +122,32 @@ def _defer_transform_impl(ctx):
         "/usr/lib/clang/20/include",
         "/usr/lib/clang/21/include",
         "/usr/lib/clang/22/include",
-        # macOS paths
+        # Ubuntu/Debian apt package paths (GitHub Actions uses these)
+        "/usr/lib/llvm-14/lib/clang/14/include",
+        "/usr/lib/llvm-14/lib/clang/14.0.0/include",
+        "/usr/lib/llvm-15/lib/clang/15/include",
+        "/usr/lib/llvm-15/lib/clang/15.0.0/include",
+        "/usr/lib/llvm-16/lib/clang/16/include",
+        "/usr/lib/llvm-16/lib/clang/16.0.0/include",
+        "/usr/lib/llvm-17/lib/clang/17/include",
+        "/usr/lib/llvm-17/lib/clang/17.0.0/include",
+        "/usr/lib/llvm-18/lib/clang/18/include",
+        "/usr/lib/llvm-18/lib/clang/18.0.0/include",
+        "/usr/lib/llvm-19/lib/clang/19/include",
+        "/usr/lib/llvm-19/lib/clang/19.0.0/include",
+        "/usr/lib/llvm-20/lib/clang/20/include",
+        "/usr/lib/llvm-20/lib/clang/20.0.0/include",
+        "/usr/lib/llvm-21/lib/clang/21/include",
+        "/usr/lib/llvm-21/lib/clang/21.0.0/include",
+        "/usr/lib/llvm-22/lib/clang/22/include",
+        "/usr/lib/llvm-22/lib/clang/22.0.0/include",
+        # macOS paths (Xcode Command Line Tools)
         "/Library/Developer/CommandLineTools/usr/lib/clang/14.0.0/include",
         "/Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include",
         "/Library/Developer/CommandLineTools/usr/lib/clang/16/include",
+        "/Library/Developer/CommandLineTools/usr/lib/clang/16.0.0/include",
+        "/Library/Developer/CommandLineTools/usr/lib/clang/17/include",
+        "/Library/Developer/CommandLineTools/usr/lib/clang/17.0.0/include",
     ]
 
     for inc in system_includes:
