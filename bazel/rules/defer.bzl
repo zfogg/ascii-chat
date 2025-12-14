@@ -109,18 +109,21 @@ def _defer_transform_impl(ctx):
         "-resource-dir=__CLANG_RESOURCE_DIR__",
     ]
 
-    # System include paths for Clang tooling - use -isystem as prefix
-    # These paths cover common Clang installations:
-    #   - /usr/lib/clang/*/include: Clang installed in /usr
-    #   - /usr/lib/llvm-*/lib/clang/*/include: Ubuntu/Debian apt packages
-    #   - /Library/Developer/CommandLineTools: macOS Xcode Command Line Tools
-    #   - /usr/include/*-linux-gnu: Architecture-specific C library headers on Ubuntu/Debian
-    system_includes = [
+    # System include paths for Clang tooling
+    # IMPORTANT: We use -I (not -isystem) for /usr/include to ensure glibc headers
+    # are found correctly by LibTooling. -isystem can cause issues with system headers.
+    # For Clang resource dirs, we continue to use -isystem since those are compiler-specific.
+    system_includes_I = [
+        # C library headers - use -I to avoid -isystem issues with glibc
         "/usr/include",
         # Architecture-specific C library headers (Ubuntu/Debian)
         "/usr/include/x86_64-linux-gnu",
         "/usr/include/aarch64-linux-gnu",
         "/usr/include/arm-linux-gnueabihf",
+    ]
+
+    # Clang resource directories - these can safely use -isystem
+    system_includes_isystem = [
         # Direct /usr/lib/clang paths (standalone Clang)
         "/usr/lib/clang/14/include",
         "/usr/lib/clang/15/include",
@@ -159,7 +162,12 @@ def _defer_transform_impl(ctx):
         "/Library/Developer/CommandLineTools/usr/lib/clang/17.0.0/include",
     ]
 
-    for inc in system_includes:
+    # Add C library paths with -I (not -isystem) to avoid glibc parsing issues
+    for inc in system_includes_I:
+        compiler_args.append("-I" + inc)
+
+    # Add Clang resource paths with -isystem
+    for inc in system_includes_isystem:
         compiler_args.append("-isystem")
         compiler_args.append(inc)
 
