@@ -94,8 +94,6 @@ cc_library(
 
 cc_binary(
     name = "query",
-    # Manual: requires hermetic LLVM/LLDB libraries which aren't available in CI
-    tags = ["manual"],
     srcs = [
         "main.cpp",
         "lldb_controller.cpp",
@@ -118,9 +116,8 @@ cc_binary(
     features = ["-asan", "-ubsan", "-tsan", "-msan"],
     linkopts = select({
         "@platforms//os:linux": [
-            # Use hermetic lld to match hermetic LLVM libraries version
-            "-fuse-ld=external/toolchains_llvm~~llvm~llvm_toolchain_llvm/bin/ld.lld",
-            "-Bexternal/toolchains_llvm~~llvm~llvm_toolchain_llvm/bin",
+            # Use system lld (CI uses system Clang, not hermetic toolchain)
+            "-fuse-ld=lld",
             "-pthread",
             "-ldl",
             "-lm",
@@ -129,7 +126,7 @@ cc_binary(
             "-ltinfo",
             "-lxml2",
             "-fno-sanitize=all",
-            # RPATH for hermetic LLDB
+            # RPATH for LLDB libraries
             "-Wl,-rpath,$$ORIGIN/../lib",
         ],
         "@platforms//os:macos": [
