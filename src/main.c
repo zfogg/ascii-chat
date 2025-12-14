@@ -569,14 +569,22 @@ int main(int argc, char *argv[]) {
   }
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
+  // For client mode, this also sets log_force_stderr(true) to route all logs to stderr
   const char *default_log_filename = is_client ? "client.log" : "server.log";
-  asciichat_error_t init_result = asciichat_shared_init(default_log_filename);
+  asciichat_error_t init_result = asciichat_shared_init(default_log_filename, is_client);
   if (init_result != ASCIICHAT_OK) {
     UNTRACKED_FREE(mode_argv);
     return init_result;
   }
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;
   log_warn("Logging initialized to %s", log_filename);
+
+  // Client-specific: auto-detect piping and default to mono color mode
+  // This keeps stdout clean for piping: `ascii-chat client --snapshot | tee file.ascii_art`
+  if (is_client && !platform_isatty(STDOUT_FILENO) && opt_color_mode == COLOR_MODE_AUTO) {
+    opt_color_mode = COLOR_MODE_MONO;
+    log_info("stdout is piped/redirected - defaulting to mono (override with --color-mode)");
+  }
 
 #ifndef NDEBUG
   // Initialize lock debugging system after logging is fully set up

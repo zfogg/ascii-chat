@@ -18,7 +18,7 @@
 #endif
 
 static void setup_quiet_logging(void) {
-  log_init(NULL, LOG_FATAL);
+  log_init(NULL, LOG_FATAL, false);
   log_set_terminal_output(false);
   log_set_level(LOG_FATAL);
 }

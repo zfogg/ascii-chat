@@ -17,7 +17,7 @@
 
 // Custom setup function that combines logging setup and known_hosts cleanup
 void setup_crypto_known_hosts_tests(void) {
-  log_init(NULL, LOG_INFO);
+  log_init(NULL, LOG_INFO, false);
   log_set_level(LOG_INFO);
   test_logging_disable(false, false);
 

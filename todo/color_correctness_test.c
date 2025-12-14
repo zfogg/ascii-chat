@@ -108,7 +108,7 @@ void run_color_test(const rgb_pixel_t *test_pixels, int width, int height, char 
 
 // Test colored ASCII correctness by comparing scalar vs SIMD implementations
 int main() {
-  log_init(NULL, LOG_ERROR);
+  log_init(NULL, LOG_ERROR, false);
 
   printf("=== Color ASCII Correctness Test ===\n\n");
 

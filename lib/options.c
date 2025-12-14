@@ -166,6 +166,9 @@ ASCIICHAT_API unsigned short int opt_mirror_mode = 0;
 #endif
 ASCIICHAT_API float opt_snapshot_delay = SNAPSHOT_DELAY_DEFAULT;
 
+// Strip ANSI escape sequences from output
+ASCIICHAT_API unsigned short int opt_strip_ansi = 0;
+
 // Log file path for file logging (empty string means no file logging)
 ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
@@ -229,6 +232,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"snapshot", no_argument, NULL, 'S'},
                                          {"snapshot-delay", required_argument, NULL, 'D'},
                                          {"mirror", no_argument, NULL, 1016},
+                                         {"strip-ansi", no_argument, NULL, 1017},
                                          {"log-file", required_argument, NULL, 'L'},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
@@ -1214,6 +1218,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_mirror_mode = 1;
       break;
 
+    case 1017: // --strip-ansi (client only - remove ANSI escape sequences from output)
+      opt_strip_ansi = 1;
+      break;
+
     case 'D': {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "snapshot-delay", is_client);
       if (!value_str)
@@ -1609,6 +1617,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
       (double)SNAPSHOT_DELAY_DEFAULT);
   (void)fprintf(desc, USAGE_INDENT "   --mirror                  " USAGE_INDENT
                                    "view webcam locally without connecting to server (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --strip-ansi              " USAGE_INDENT
+                                   "remove all ANSI escape codes from output (default: [unset])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-L --log-file FILE           " USAGE_INDENT "redirect logs to FILE (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-E --encrypt                 " USAGE_INDENT

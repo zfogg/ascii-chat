@@ -168,11 +168,48 @@ Default: \fB3.0\fR
 View your webcam as ASCII art directly in the terminal without connecting
 to a server. This is a local-only mode that captures from your webcam,
 converts the video to ASCII art in real-time, and displays it in your terminal.
-Useful for testing your webcam setup or just watching yourself in ASCII.
-Press Ctrl-C to exit.
-Very useful when combined with \-\-snapshot.
+.PP
+Mirror mode is great for:
+.RS
+.IP \(bu 2
+\fBTesting your webcam\fR: See how your camera looks as ASCII art before joining a call
+.IP \(bu 2
+\fBPlaying with the ASCII renderer\fR: Experiment with different palettes, color modes,
+and render modes without needing to run a server
+.IP \(bu 2
+\fBTaking ASCII selfies\fR: Combine with \fB\-\-snapshot\fR to capture a single frame
+.RE
+.PP
+Press Ctrl-C to exit mirror mode.
 .PP
 Note: Mirror mode is incompatible with audio (\fB\-\-audio\fR).
+.SS "Piping and Redirecting (Mirror + Snapshot)"
+.PP
+When you combine \fB\-\-mirror\fR with \fB\-\-snapshot\fR, the output is optimized for
+piping to other commands or redirecting to files. When stdout is redirected
+(not a terminal), ascii-chat automatically:
+.RS
+.IP \(bu 2
+Outputs only the final frame (after \fB\-\-snapshot\-delay\fR has elapsed)
+.IP \(bu 2
+Disables ANSI cursor movement and RLE compression codes
+.IP \(bu 2
+Adds a trailing newline after the frame
+.RE
+.PP
+This makes the output clean and suitable for saving to files or processing
+with other tools. Color escape codes (\fB[0m\fR resets) may still appear at line
+endings; use \fB\-\-strip\-ansi\fR or \fB\-\-color\-mode mono\fR for completely plain
+ASCII output.
+.TP
+.BR \-\-strip\-ansi
+Remove ALL ANSI escape sequences from the output, producing completely plain
+ASCII text with no color codes, cursor movement, or any other escape sequences.
+This is more aggressive than \fB\-\-color\-mode mono\fR which only disables color
+generation but may still include reset codes.
+.PP
+Useful when piping to commands that don't understand ANSI codes, or when
+saving to plain text files.
 .SS "Audio Options (Client Only)"
 .TP
 .BR \-A ", " \-\-audio
@@ -278,6 +315,22 @@ ascii-chat client \-\-mirror \-\-color\-mode truecolor
 .SS "Capture local webcam snapshot (no server)"
 .nf
 ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 1.0
+.fi
+.SS "Save ASCII selfie to a file"
+.nf
+ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 2 > selfie.txt
+.fi
+.SS "Save ASCII selfie with no ANSI codes (plain text)"
+.nf
+ascii-chat client \-\-mirror \-\-snapshot \-\-strip\-ansi > selfie.txt
+.fi
+.SS "Pipe ASCII art to another command"
+.nf
+ascii-chat client \-\-mirror \-\-snapshot | head \-10
+.fi
+.SS "Instant capture (no delay)"
+.nf
+ascii-chat client \-\-mirror \-\-snapshot \-\-snapshot\-delay 0 > instant.txt
 .fi
 .SS "Test without webcam using test pattern"
 .nf
@@ -539,6 +592,12 @@ terminal emulator (kitty, alacritty, iTerm2, Windows Terminal).
 .IP \(bu 2
 \fBAspect Ratio\fR: By default, the video preserves aspect ratio with letterboxing.
 Use \fB\-\-stretch\fR to fill the entire terminal (may distort the image).
+.IP \(bu 2
+\fBPiping Output\fR: When piping or redirecting stdout in snapshot mode
+(\fBclient \-\-mirror \-\-snapshot > file\fR), ascii-chat automatically detects
+that stdout is not a terminal and outputs clean ASCII without cursor movement
+or RLE compression codes. Only the final frame is output. Use
+\fB\-\-color\-mode mono\fR for completely plain ASCII with no escape codes at all.
 .IP \(bu 2
 \fBEncrypted SSH Keys\fR: Encrypted private keys work well with either ssh-agent or
 the $ASCII_CHAT_SSH_PASSWORD environment variable. The passphrase prompt
