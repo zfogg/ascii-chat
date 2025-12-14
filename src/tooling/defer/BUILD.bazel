@@ -43,7 +43,7 @@ CLANG_LIBS = [
     "clangSerialization",
     "clangSupport",
     "clangAPINotes",
-    "clangFormat",
+    # "clangFormat",  # Not available on Windows LLVM toolchain, not needed for AST transformation
     "clangIndex",
     "clangTransformer",
 ]

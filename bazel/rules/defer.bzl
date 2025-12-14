@@ -110,8 +110,13 @@ def _defer_transform_impl(ctx):
     #   - /usr/lib/clang/*/include: Clang installed in /usr
     #   - /usr/lib/llvm-*/lib/clang/*/include: Ubuntu/Debian apt packages
     #   - /Library/Developer/CommandLineTools: macOS Xcode Command Line Tools
+    #   - /usr/include/*-linux-gnu: Architecture-specific C library headers on Ubuntu/Debian
     system_includes = [
         "/usr/include",
+        # Architecture-specific C library headers (Ubuntu/Debian)
+        "/usr/include/x86_64-linux-gnu",
+        "/usr/include/aarch64-linux-gnu",
+        "/usr/include/arm-linux-gnueabihf",
         # Direct /usr/lib/clang paths (standalone Clang)
         "/usr/lib/clang/14/include",
         "/usr/lib/clang/15/include",
