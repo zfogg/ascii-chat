@@ -71,10 +71,13 @@ jobs:
       - name: Install dependencies (Linux)
         if: matrix.os == 'Linux'
         run: |
+          # Add LLVM 19 repository (hermetic LLVM libs are v19, need matching linker)
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm-19.list
           sudo apt-get update
           sudo apt-get install -y \
-            clang \
-            lld \
+            clang-19 \
+            lld-19 \
             libzstd-dev \
             libsodium-dev \
             portaudio19-dev \
@@ -82,6 +85,11 @@ jobs:
             libxml2-dev \
             libffi-dev \
             libcriterion-dev
+          # Set LLVM 19 as default
+          sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-19 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-19 100
+          sudo update-alternatives --install /usr/bin/lld lld /usr/bin/lld-19 100
+          sudo update-alternatives --install /usr/bin/ld.lld ld.lld /usr/bin/ld.lld-19 100
 
       # Install system dependencies (macOS)
       - name: Install dependencies (macOS)
