@@ -103,6 +103,10 @@ def _defer_transform_impl(ctx):
         "-D_GNU_SOURCE",
         "-DASCIICHAT_BUILD_WITH_DEFER",
         "-D__BAZEL_BUILD__",
+        # Add Clang resource directory so LibTooling can find builtin headers
+        # This is critical for Clang to find system headers correctly
+        # We'll detect it at runtime in the script below
+        "-resource-dir=__CLANG_RESOURCE_DIR__",
     ]
 
     # System include paths for Clang tooling - use -isystem as prefix
@@ -246,9 +250,20 @@ cat > "{compile_db_dir}/compile_commands.json" << COMPILE_DB_EOF
 ]
 COMPILE_DB_EOF
 
-# Replace the placeholder with the actual $BAZEL_GEN_DIR path
-# This is necessary because $BAZEL_GEN_DIR is only known at runtime
+# Detect Clang resource directory (contains builtin headers)
+# This is critical for LibTooling to find system headers correctly
+CLANG_RESOURCE_DIR=$(clang -print-resource-dir 2>/dev/null || echo "")
+if [[ -z "$CLANG_RESOURCE_DIR" ]]; then
+    echo "Warning: Could not detect Clang resource directory" >&2
+    CLANG_RESOURCE_DIR="/usr/lib/clang/19"  # Fallback
+fi
+echo "Clang resource directory: $CLANG_RESOURCE_DIR" >&2
+
+# Replace placeholders in compile_commands.json
+# - __BAZEL_GEN_DIR__: Bazel-generated header directory (only known at runtime)
+# - __CLANG_RESOURCE_DIR__: Clang resource directory (detected above)
 sed -i "s|__BAZEL_GEN_DIR__|$BAZEL_GEN_DIR|g" "{compile_db_dir}/compile_commands.json"
+sed -i "s|__CLANG_RESOURCE_DIR__|$CLANG_RESOURCE_DIR|g" "{compile_db_dir}/compile_commands.json"
 
 # Debug output
 echo "compile_commands.json:" >&2
