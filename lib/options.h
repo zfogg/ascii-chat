@@ -893,6 +893,27 @@ extern ASCIICHAT_API unsigned short int opt_mirror_mode;
  */
 extern ASCIICHAT_API float opt_snapshot_delay;
 
+/** @brief Strip ANSI escape sequences from output (client only)
+ *
+ * When enabled, all ANSI escape sequences (colors, cursor movement, etc.)
+ * are removed from the output, producing plain ASCII text.
+ *
+ * **Default**: `0` (disabled - ANSI codes preserved)
+ *
+ * **Command-line**: `--strip-ansi` (enable ANSI stripping)
+ *
+ * **Purpose**: Useful when piping or redirecting output to files or commands
+ * that don't understand ANSI escape codes. Produces clean plain text output.
+ *
+ * **Example**: `ascii-chat client --mirror --snapshot --strip-ansi > file.txt`
+ *
+ * @note This is more aggressive than --color-mode mono, which only disables
+ *       color codes. --strip-ansi removes ALL escape sequences.
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API unsigned short int opt_strip_ansi;
+
 /** @brief Log file path (empty string means no file logging)
  *
  * Path to log file for writing log output. If empty string, no file logging

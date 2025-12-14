@@ -279,13 +279,13 @@ static int initialize_client_systems(bool shared_init_completed) {
       if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
         // Invalid log file path, fall back to default and warn
         (void)fprintf(stderr, "WARNING: Invalid log file path specified, using default 'client.log'\n");
-        log_init("client.log", LOG_DEBUG);
+        log_init("client.log", LOG_DEBUG, true);
       } else {
-        log_init(validated_log_file, LOG_DEBUG);
+        log_init(validated_log_file, LOG_DEBUG, true);
       }
       SAFE_FREE(validated_log_file);
     } else {
-      log_init("client.log", LOG_DEBUG);
+      log_init("client.log", LOG_DEBUG, true);
     }
 
     // Initialize memory debugging if enabled

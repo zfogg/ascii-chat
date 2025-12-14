@@ -611,7 +611,26 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps) 
 
   // Apply color mode override if specified in options (not auto mode)
   if (opt_color_mode != COLOR_MODE_AUTO) {
-    terminal_color_level_t override_level = (terminal_color_level_t)opt_color_mode;
+    // Map color_mode_t to terminal_color_level_t (enum values don't align)
+    terminal_color_level_t override_level;
+    switch (opt_color_mode) {
+    case COLOR_MODE_MONO:
+      override_level = TERM_COLOR_NONE;
+      break;
+    case COLOR_MODE_16_COLOR:
+      override_level = TERM_COLOR_16;
+      break;
+    case COLOR_MODE_256_COLOR:
+      override_level = TERM_COLOR_256;
+      break;
+    case COLOR_MODE_TRUECOLOR:
+      override_level = TERM_COLOR_TRUECOLOR;
+      break;
+    default:
+      override_level = caps.color_level; // Keep detected level
+      break;
+    }
+
     if (override_level != caps.color_level) {
       log_debug("Color override: %s -> %s", terminal_color_level_name(caps.color_level),
                 terminal_color_level_name(override_level));
