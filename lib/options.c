@@ -399,8 +399,8 @@ int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg
   if (strcmp(value_str, "auto") == 0) {
     return COLOR_MODE_AUTO;
   }
-  if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
-    return COLOR_MODE_MONO;
+  if (strcmp(value_str, "none") == 0) {
+    return COLOR_MODE_NONE;
   }
   if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
     return COLOR_MODE_16_COLOR;
@@ -412,7 +412,7 @@ int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg
     return COLOR_MODE_TRUECOLOR;
   }
   if (error_msg) {
-    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor",
+    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor",
                   value_str);
   }
   return -1;
@@ -997,8 +997,8 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         return ERROR_USAGE;
       if (strcmp(value_str, "auto") == 0) {
         opt_color_mode = COLOR_MODE_AUTO;
-      } else if (strcmp(value_str, "mono") == 0 || strcmp(value_str, "monochrome") == 0) {
-        opt_color_mode = COLOR_MODE_MONO;
+      } else if (strcmp(value_str, "none") == 0) {
+        opt_color_mode = COLOR_MODE_NONE;
       } else if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
         opt_color_mode = COLOR_MODE_16_COLOR;
       } else if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
@@ -1006,7 +1006,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
         opt_color_mode = COLOR_MODE_TRUECOLOR;
       } else {
-        (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, mono, 16, 256, truecolor\n",
+        (void)fprintf(stderr, "Error: Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor\n",
                       value_str);
         return ERROR_USAGE;
       }
@@ -1590,7 +1590,7 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "(default: 60 for Unix)\n");
 #endif
   (void)fprintf(desc,
-                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, mono, 16, 256, truecolor "
+                USAGE_INDENT "   --color-mode MODE         " USAGE_INDENT "color modes: auto, none, 16, 256, truecolor "
                              "(default: auto)\n");
   (void)fprintf(desc, USAGE_INDENT "   --show-capabilities       " USAGE_INDENT
                                    "show detected terminal capabilities and exit\n");

@@ -592,7 +592,7 @@ connection_success:
   if (opt_audio_enabled) {
     my_capabilities |= CLIENT_CAP_AUDIO;
   }
-  if (opt_color_mode != COLOR_MODE_MONO) {
+  if (opt_color_mode != COLOR_MODE_NONE) {
     my_capabilities |= CLIENT_CAP_COLOR;
   }
   if (opt_stretch) {

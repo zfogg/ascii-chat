@@ -467,7 +467,7 @@ extern ASCIICHAT_API bool opt_test_pattern;
  *
  * **Mode Selection**:
  * - `COLOR_MODE_AUTO`: Automatically detect terminal color capabilities (default)
- * - `COLOR_MODE_MONO`: Force monochrome/grayscale output (no colors)
+ * - `COLOR_MODE_NONE`: Force no color output (plain ASCII, no color ANSI codes)
  * - `COLOR_MODE_16_COLOR`: Force 16-color ANSI mode (basic color support)
  * - `COLOR_MODE_256_COLOR`: Force 256-color palette mode (extended colors)
  * - `COLOR_MODE_TRUECOLOR`: Force 24-bit truecolor mode (full RGB colors)
@@ -526,14 +526,14 @@ typedef enum {
    */
   COLOR_MODE_AUTO = 0,
 
-  /** @brief Force monochrome/grayscale output
+  /** @brief Force no color output (plain ASCII)
    *
-   * Disables all colors and uses only ASCII characters for rendering.
-   * Useful for terminals without color support or for monochrome aesthetic.
+   * Disables all colors and ANSI escape codes. Produces completely plain
+   * ASCII output with no escape sequences of any kind.
    *
    * @ingroup options
    */
-  COLOR_MODE_MONO = 1,
+  COLOR_MODE_NONE = 1,
 
   /** @brief Force 16-color ANSI mode
    *

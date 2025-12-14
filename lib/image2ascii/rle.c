@@ -19,8 +19,10 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
   outbuf_t ob = {0};
   ob_reserve(&ob, input_len * 2);
 
-  // Track the last printable character for RLE expansion
-  char last_char = ' ';
+  // Track the last character/grapheme for RLE expansion
+  // UTF-8 characters can be up to 4 bytes
+  char last_char[5] = " ";
+  size_t last_char_len = 1;
 
   size_t i = 0;
   while (i < input_len) {
@@ -48,7 +50,7 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
         // Handle RLE: ESC[Nb repeats previous character N times
         if (final_byte == 'b' && param > 0) {
           for (uint32_t r = 0; r < param; r++) {
-            ob_putc(&ob, last_char);
+            ob_write(&ob, last_char, last_char_len);
           }
         } else {
           // Not RLE - copy the entire escape sequence as-is
@@ -56,15 +58,36 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
         }
       }
     } else {
-      // Regular character - copy to output
-      char c = input[i];
-      ob_putc(&ob, c);
+      // Regular character - copy to output and track for RLE
+      unsigned char c = (unsigned char)input[i];
+      size_t char_len = 1;
 
-      // Track last printable character for RLE
-      if (c >= 0x20 && c != 0x7F) {
-        last_char = c;
+      // Determine UTF-8 character length from first byte
+      if ((c & 0x80) == 0) {
+        char_len = 1; // ASCII
+      } else if ((c & 0xE0) == 0xC0) {
+        char_len = 2; // 2-byte UTF-8
+      } else if ((c & 0xF0) == 0xE0) {
+        char_len = 3; // 3-byte UTF-8
+      } else if ((c & 0xF8) == 0xF0) {
+        char_len = 4; // 4-byte UTF-8
       }
-      i++;
+
+      // Make sure we don't read past end of input
+      if (i + char_len > input_len) {
+        char_len = input_len - i;
+      }
+
+      // Copy full UTF-8 character to output
+      ob_write(&ob, input + i, char_len);
+
+      // Track last printable character for RLE (skip control chars)
+      if (c >= 0x20 && c != 0x7F) {
+        SAFE_MEMCPY(last_char, sizeof(last_char), input + i, char_len);
+        last_char[char_len] = '\0';
+        last_char_len = char_len;
+      }
+      i += char_len;
     }
   }
 
@@ -106,7 +129,6 @@ char *ansi_compress_rle(const char *input, size_t input_len) {
       // Only compress printable characters (not newlines, not control chars)
       if (c >= 0x20 && c != 0x7F) {
         // Count run length
-        size_t run_start = i;
         size_t run_len = 1;
         i++;
 
