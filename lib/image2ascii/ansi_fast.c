@@ -447,7 +447,7 @@ char *append_color_fg_for_mode(char *dst, uint8_t r, uint8_t g, uint8_t b, color
     return append_16color_fg(dst, color_index);
   }
 
-  case COLOR_MODE_MONO:
+  case COLOR_MODE_NONE:
   case COLOR_MODE_AUTO:
   default:
     // No color output for monochrome mode or auto mode (fallback)

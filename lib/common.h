@@ -891,8 +891,9 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
  * different requirements (client has snapshot mode, server doesn't).
  *
  * @param default_log_filename Default log filename (e.g., "client.log" or "server.log")
+ * @param is_client true for client mode (routes all logs to stderr), false for server mode
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t asciichat_shared_init(const char *default_log_filename);
+asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client);
 
 /** @} */

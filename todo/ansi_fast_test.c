@@ -338,7 +338,7 @@ int main(void) {
   printf("========================================\n\n");
 
   // Initialize logging (required by SAFE_MALLOC)
-  log_init(NULL, LOG_ERROR);
+  log_init(NULL, LOG_ERROR, false);
 
   // Run all tests
   test_decimal_lookup();
