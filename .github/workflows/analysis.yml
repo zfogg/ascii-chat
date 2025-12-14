@@ -102,11 +102,10 @@ jobs:
           fetch-tags: true
           submodules: true
 
-      - name: Install dependencies with caching
-        uses: ./.github/actions/install-deps
-        with:
-          os: ubuntu
-          extra-packages: clang-format
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
 
       - name: Check code formatting
         run: |
