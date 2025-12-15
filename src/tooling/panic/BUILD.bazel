@@ -20,7 +20,25 @@ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_import", "cc_library")
 #   - Windows:     lib/LLVMFoo.lib  (no lib prefix, .lib extension)
 
 # Clang libraries needed for source transformation
-CLANG_LIBS = [
+# Note: Windows hermetic toolchain has limited library availability
+
+# Minimal set for Windows hermetic toolchain
+CLANG_LIBS_WINDOWS = [
+    "clangTooling",
+    "clangFrontend",
+    "clangDriver",
+    "clangParse",
+    "clangSema",
+    "clangAST",
+    "clangBasic",
+    "clangLex",
+    "clangRewrite",
+    "clangEdit",
+    "clangAPINotes",
+]
+
+# Full set for Linux/macOS
+CLANG_LIBS_UNIX = [
     "clangTooling",
     "clangToolingCore",
     "clangToolingInclusions",
@@ -40,17 +58,36 @@ CLANG_LIBS = [
     "clangBasic",
     "clangRewrite",
     "clangRewriteFrontend",
-    # "clangSerialization",  # Not available on Windows LLVM toolchain
+    "clangSerialization",  # Needed on Linux (used by clangFrontend)
     "clangSupport",
     "clangAPINotes",
-    # "clangFormat",  # Not available on Windows LLVM toolchain, not needed for AST transformation
     "clangIndex",
     "clangTransformer",
 ]
 
 # LLVM libraries (dependencies of Clang)
 # Order matters for static linking - dependencies must come after dependents
-LLVM_LIBS = [
+# Note: Windows hermetic toolchain has limited library availability
+
+# Minimal set for Windows (based on CMake defer build)
+LLVM_LIBS_WINDOWS = [
+    "LLVMSupport",
+    "LLVMCore",
+    "LLVMBinaryFormat",
+    "LLVMRemarks",
+    "LLVMBitstreamReader",
+    "LLVMOption",
+    "LLVMProfileData",
+    "LLVMFrontendOpenMP",
+    "LLVMDemangle",
+    "LLVMTargetParser",
+    "LLVMMC",
+    "LLVMMCParser",
+    "LLVMWindowsDriver",
+]
+
+# Full set for Linux/macOS
+LLVM_LIBS_UNIX = [
     # Frontend/IR libraries (highest level)
     "LLVMFrontendOpenMP",
     "LLVMFrontendOffloading",
@@ -60,7 +97,7 @@ LLVM_LIBS = [
     "LLVMAsmParser",
     "LLVMBitReader",
     "LLVMBitWriter",
-    # Transform/Analysis libraries (required by FrontendOpenMP)
+    # Transform/Analysis libraries
     "LLVMPasses",
     "LLVMCoroutines",
     "LLVMipo",
@@ -112,10 +149,14 @@ LLVM_LIBS = [
     "LLVMDemangle",
 ]
 
-# Generate cc_import rules for each library
+# Generate cc_import rules for all libraries (both platforms)
 # Uses select() to handle platform-specific library naming:
 #   - Linux/macOS: lib/libFoo.a
 #   - Windows:     lib/Foo.lib
+
+# Union of all libraries across all platforms
+ALL_LIBS = list(dict.fromkeys(CLANG_LIBS_WINDOWS + CLANG_LIBS_UNIX + LLVM_LIBS_WINDOWS + LLVM_LIBS_UNIX))
+
 [cc_import(
     name = "lib" + lib,
     static_library = select({
@@ -123,13 +164,16 @@ LLVM_LIBS = [
         "//conditions:default": "@llvm_toolchain_llvm//:lib/lib" + lib + ".a",
     }),
     visibility = ["//visibility:private"],
-) for lib in CLANG_LIBS + LLVM_LIBS]
+) for lib in ALL_LIBS]
 
-# Combined library target
+# Combined library target with platform-specific deps
 cc_library(
     name = "clang_tooling_libs",
     visibility = ["//visibility:private"],
-    deps = ["lib" + lib for lib in CLANG_LIBS + LLVM_LIBS],
+    deps = select({
+        "@platforms//os:windows": ["lib" + lib for lib in CLANG_LIBS_WINDOWS + LLVM_LIBS_WINDOWS],
+        "//conditions:default": ["lib" + lib for lib in CLANG_LIBS_UNIX + LLVM_LIBS_UNIX],
+    }),
 )
 
 # Header-only library for includes
