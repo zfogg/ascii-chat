@@ -44,12 +44,18 @@
 #endif
 
 // This fixes clangd errors about missing types. I DID include stdint.h, but
-// it's not enough.
-#ifndef UINT8_MAX
+// it's not enough in some environments.
+// Don't redefine types when building with LibTooling (defer/panic) or when stdint.h worked
+#if !defined(UINT8_MAX) && !defined(ASCIICHAT_DEFER_TOOL_PARSING) && !defined(ASCIICHAT_PANIC_TOOL_PARSING)
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
+#endif
+
+// SIZE_MAX should come from <stdint.h> but may not be defined in all contexts
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
 #endif
 
 /* ============================================================================

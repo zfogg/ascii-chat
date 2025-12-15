@@ -40,7 +40,7 @@ CLANG_LIBS = [
     "clangBasic",
     "clangRewrite",
     "clangRewriteFrontend",
-    "clangSerialization",
+    # "clangSerialization",  # Not available on Windows LLVM toolchain
     "clangSupport",
     "clangAPINotes",
     # "clangFormat",  # Not available on Windows LLVM toolchain, not needed for AST transformation
