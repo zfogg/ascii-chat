@@ -155,7 +155,8 @@ LLVM_LIBS_UNIX = [
 #   - Windows:     lib/Foo.lib
 
 # Union of all libraries across all platforms
-ALL_LIBS = list(dict.fromkeys(CLANG_LIBS_WINDOWS + CLANG_LIBS_UNIX + LLVM_LIBS_WINDOWS + LLVM_LIBS_UNIX))
+# Deduplicate using dict comprehension (Starlark compatible)
+ALL_LIBS = list({lib: True for lib in (CLANG_LIBS_WINDOWS + CLANG_LIBS_UNIX + LLVM_LIBS_WINDOWS + LLVM_LIBS_UNIX)}.keys())
 
 [cc_import(
     name = "lib" + lib,
