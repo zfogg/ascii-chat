@@ -125,9 +125,6 @@ def _defer_transform_impl(ctx):
     # Clang resource directories - these can safely use -isystem
     system_includes_isystem = [
         # Direct /usr/lib/clang paths (standalone Clang)
-    # System include paths for Clang tooling - use -isystem as prefix
-    system_includes = [
-        # Clang built-in headers (must come first for stddef.h, etc.)
         "/usr/lib/clang/14/include",
         "/usr/lib/clang/15/include",
         "/usr/lib/clang/16/include",
@@ -157,12 +154,6 @@ def _defer_transform_impl(ctx):
         "/usr/lib/llvm-22/lib/clang/22/include",
         "/usr/lib/llvm-22/lib/clang/22.0.0/include",
         # macOS paths (Xcode Command Line Tools)
-        # Standard C library headers
-        "/usr/include",
-        # Architecture-specific system headers (Linux)
-        "/usr/include/x86_64-linux-gnu",  # AMD64/x86_64
-        "/usr/include/aarch64-linux-gnu",  # ARM64
-        # macOS paths
         "/Library/Developer/CommandLineTools/usr/lib/clang/14.0.0/include",
         "/Library/Developer/CommandLineTools/usr/lib/clang/15.0.0/include",
         "/Library/Developer/CommandLineTools/usr/lib/clang/16/include",
@@ -177,10 +168,6 @@ def _defer_transform_impl(ctx):
 
     # Add Clang resource paths with -isystem
     for inc in system_includes_isystem:
-        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include",
-    ]
-
-    for inc in system_includes:
         compiler_args.append("-isystem")
         compiler_args.append(inc)
 
