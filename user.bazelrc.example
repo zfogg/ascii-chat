@@ -1,0 +1,30 @@
+# Cache to disk
+build --disk_cache=~/.cache/bazel-disk-cache
+
+# Use ramdisk for sandboxing operations (reduces I/O bottlenecks)
+# Requires ~1GB available in /dev/shm
+build --sandbox_base=/dev/shm
+
+# Use all available CPU cores
+build --jobs=auto
+
+# Show progress on long-running actions
+build --show_progress_rate_limit=0.5
+
+# Use user-installed compilers
+build --repo_env=CC=/usr/local/bin/clang
+build --repo_env=CXX=/usr/local/bin/clang++
+
+
+# CI-generated BuildBuddy configuration
+build --bes_results_url=https://remote.buildbuddy.io/invocation/
+build --bes_backend=grpcs://remote.buildbuddy.io
+build --remote_header=x-buildbuddy-api-key=MY_API_KEY
+
+# Use remote cache
+build --remote_cache=grpcs://remote.buildbuddy.io
+build --remote_cache_compression
+
+build --noslim_profile
+build --experimental_profile_include_target_label
+build --experimental_profile_include_primary_output

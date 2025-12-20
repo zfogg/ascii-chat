@@ -1,0 +1,2 @@
+# Third-party dependency BUILD files package marker
+exports_files(glob(["*.BUILD"]))

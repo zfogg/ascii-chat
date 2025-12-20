@@ -14,6 +14,9 @@
  * @date August 2025
  */
 
+#include <stdbool.h>
+#include "../image.h"
+
 #if SIMD_SUPPORT_SSE2
 #if (!defined(__SSE2__) && !defined(_M_X64) && !(defined(_M_IX86_FP) && _M_IX86_FP >= 2))
 #error "SSE2 support required"

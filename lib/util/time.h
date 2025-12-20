@@ -42,7 +42,11 @@
 
 // Include sokol_time.h declarations (WITHOUT implementation)
 // SOKOL_IMPL is defined only in time.c to avoid duplicate symbols
+#if defined(__BAZEL_BUILD__)
+#include <sokol_time.h>
+#else
 #include "../../deps/sokol/sokol_time.h"
+#endif
 #include "util/uthash.h"
 
 // ============================================================================

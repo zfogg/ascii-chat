@@ -14,8 +14,10 @@
  * @date August 2025
  */
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
+#include "../image.h"
 
 #if SIMD_SUPPORT_NEON
 #include <arm_neon.h>

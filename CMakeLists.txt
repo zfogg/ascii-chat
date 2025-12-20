@@ -170,7 +170,7 @@ endif()
 # =============================================================================
 # ascii-chat-Specific Stuff: Source code, Library modules, Headers, and Executable Config
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/targets/SourceFiles.cmake)
+# Tooling setup (defer, panic, query) - must run before library creation
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Defer.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Panic.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
@@ -185,21 +185,35 @@ ascii_query_prepare()
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 # Configure archiver wrapper BEFORE creating any static libraries
 include(${CMAKE_SOURCE_DIR}/cmake/init/ArchiverWrapper.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/targets/Libraries.cmake)
 
-# Build panic runtime after Libraries.cmake creates ascii-chat-panic target
+# =============================================================================
+# Library Modules (lib/)
+# =============================================================================
+# Creates all ascii-chat-* library modules and unified libraries
+add_subdirectory(lib)
+
+# Build panic runtime after lib/ creates ascii-chat-panic target
 include(${CMAKE_SOURCE_DIR}/cmake/tooling/ToolingRuntime.cmake)
 ascii_build_tooling_runtime()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/TestLibs.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
-include(${CMAKE_SOURCE_DIR}/cmake/targets/Executables.cmake)
+# =============================================================================
+# Main Executable (src/)
+# =============================================================================
+add_subdirectory(src)
 ascii_panic_finalize()
 ascii_defer_finalize()
 ascii_query_finalize()
 
-include(${CMAKE_SOURCE_DIR}/cmake/targets/Tests.cmake)
+# =============================================================================
+# Tests (tests/)
+# =============================================================================
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
 # Optional CTest dashboard integration
 if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
     include(CTest)
@@ -207,7 +221,7 @@ if(ASCIICHAT_ENABLE_CTEST_DASHBOARD)
 endif()
 
 # =============================================================================
-# Post-Build Processing (must come after Executables.cmake)
+# Post-Build Processing (must come after src/ subdirectory)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/utils/PostBuild.cmake)
 # Copy DLL dependencies to bin directory on Windows (for non-static builds)

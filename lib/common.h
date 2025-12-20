@@ -44,12 +44,18 @@
 #endif
 
 // This fixes clangd errors about missing types. I DID include stdint.h, but
-// it's not enough.
+// it's not enough in some environments.
+// Only define fallback types if stdint.h didn't provide them (UINT8_MAX not defined)
 #ifndef UINT8_MAX
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
+#endif
+
+// SIZE_MAX should come from <stdint.h> but may not be defined in all contexts
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t)-1)
 #endif
 
 /* ============================================================================

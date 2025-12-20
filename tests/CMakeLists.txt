@@ -1,10 +1,10 @@
 # =============================================================================
 # Tests Module (Criterion-based tests)
 # =============================================================================
-# This module sets up the Criterion test framework and creates test executables
+# This module sets up the Criterion test framework and creates test executables.
 #
 # Prerequisites:
-#   - Libraries created (via Libraries.cmake)
+#   - Libraries created (via lib/CMakeLists.txt)
 #   - BUILD_CRITERION_TESTS option set (from Criterion.cmake)
 #   - CRITERION_FOUND (required for BUILD_CRITERION_TESTS)
 #   - Platform detection complete
@@ -14,20 +14,12 @@
 #   - All test_* executable targets (Criterion-based)
 #   - tests, test_debug, test_release, test_all custom targets
 #   - tests-timer-start, tests-timer-end (build timing targets)
-#   - tests-criterion-build or tests-lib-build (internal build targets)
 #
 # Note: Library runtime tests (test-static-lib, test-shared-lib) are handled
 # by TestLibs.cmake and only require BUILD_TESTS, not Criterion.
-#
-# Build Timing:
-#   When BUILD_TESTS is enabled, the module creates timer targets that measure
-#   how long it takes to build all test executables. The timing includes:
-#   - All Criterion test executables (when available)
-#   - Library runtime tests (test-static-lib, test-shared-lib)
-#   - Future defer tests (prepared for in this infrastructure)
 # =============================================================================
 
-# Enable CTest if any tests are being built (Criterion or lib runtime)
+# Enable CTest if any tests are being built
 if(BUILD_TESTS)
     enable_testing()
 endif()
@@ -37,9 +29,7 @@ endif()
 # =============================================================================
 # Configure Criterion-specific test options based on build type.
 # Coverage builds are slower due to instrumentation, so we use longer timeouts.
-# XML output is generated for coverage builds to capture detailed test results.
 
-# Detect coverage build via ASCIICHAT_ENABLE_COVERAGE option
 set(IS_COVERAGE_BUILD OFF)
 if(ASCIICHAT_ENABLE_COVERAGE)
     set(IS_COVERAGE_BUILD ON)
@@ -63,8 +53,6 @@ file(MAKE_DIRECTORY ${CRITERION_XML_DIR})
 # =============================================================================
 # Test Build Timing
 # =============================================================================
-# Create timer start target for all tests (Criterion, library, and future defer tests)
-# This target is created unconditionally so other modules can depend on it
 if(BUILD_TESTS AND NOT TARGET tests-timer-start)
     add_custom_target(tests-timer-start
         COMMAND ${CMAKE_COMMAND}
@@ -78,24 +66,25 @@ if(BUILD_TESTS AND NOT TARGET tests-timer-start)
     )
 endif()
 
-# Collect all test targets for timing (populated by Criterion tests, lib tests, etc.)
+# Collect all test targets for timing
 set(ALL_TIMED_TEST_TARGETS "" CACHE INTERNAL "All test targets for timing")
 
-# Criterion test framework setup
+# =============================================================================
+# Criterion Test Framework Setup
+# =============================================================================
 if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
-    # Build test LDFLAGS systematically (matches Makefile complex setup)
+    # Build test LDFLAGS systematically
     set(TEST_LDFLAGS ${CRITERION_LIBRARIES})
     # Criterion requires libffi for theories support
     list(APPEND TEST_LDFLAGS ffi)
 
     if(PLATFORM_LINUX)
-        # Add Linux-specific test dependencies (matching Makefile order)
+        # Add Linux-specific test dependencies
         if(PROTOBUF_C_FOUND)
             list(APPEND TEST_LDFLAGS ${PROTOBUF_C_LIBRARIES})
         elseif(PROTOBUF_C_LIBRARIES)
             list(APPEND TEST_LDFLAGS ${PROTOBUF_C_LIBRARIES})
         else()
-            # Protobuf-C is optional - only add if library exists
             find_library(PROTOBUF_C_LIB protobuf-c)
             if(PROTOBUF_C_LIB)
                 list(APPEND TEST_LDFLAGS protobuf-c)
@@ -117,7 +106,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             elseif(BOXFORT_LIBRARIES)
                 list(APPEND TEST_LDFLAGS ${BOXFORT_LIBRARIES})
             else()
-                # Boxfort is optional - only add if library exists
                 find_library(BOXFORT_LIB boxfort)
                 if(BOXFORT_LIB)
                     list(APPEND TEST_LDFLAGS boxfort)
@@ -125,7 +113,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
-        # Optional dependencies (skip for musl static builds to avoid dynamic library issues)
+        # Optional dependencies (skip for musl static builds)
         if(NOT USE_MUSL)
             if(NANOMSG_FOUND)
                 list(APPEND TEST_LDFLAGS ${NANOMSG_LIBRARIES})
@@ -133,20 +121,13 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             if(LIBGIT2_FOUND)
                 list(APPEND TEST_LDFLAGS ${LIBGIT2_LIBRARIES})
 
-                # libgit2 requires OpenSSL and libssh2 when statically linked
                 find_package(OpenSSL)
                 if(OpenSSL_FOUND)
                     list(APPEND TEST_LDFLAGS OpenSSL::SSL OpenSSL::Crypto)
                 else()
-                    # Fallback to direct library names
                     list(APPEND TEST_LDFLAGS ssl crypto)
                 endif()
 
-                # Additional libgit2 dependencies (required for static linking)
-                # These must be linked unconditionally when using static libgit2
-                # Check if each library exists before adding
-
-                # On Linux, provide search hints for standard locations
                 if(PLATFORM_LINUX)
                     find_library(SSH2_LIB ssh2 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
                     find_library(PCRE2_LIB pcre2-8 HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
@@ -155,7 +136,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                     find_library(PCRE2_LIB pcre2-8)
                 endif()
 
-                # Only link libgit2 dependencies if they exist (make them optional)
                 if(SSH2_LIB)
                     list(APPEND TEST_LDFLAGS ssh2)
                     message(STATUS "Added libssh2 for tests")
@@ -170,7 +150,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                     message(WARNING "pcre2-8 not found - some git features may not work")
                 endif()
 
-                # libgit2 also requires zlib for compression
                 find_library(ZLIB_LIB z HINTS /usr/lib/x86_64-linux-gnu /usr/lib /lib)
                 if(ZLIB_LIB)
                     list(APPEND TEST_LDFLAGS z)
@@ -185,7 +164,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif() # LIBGIT2_FOUND
         endif() # NOT USE_MUSL
 
-        # GSSAPI/Kerberos support (skip for musl to avoid dynamic library issues)
+        # GSSAPI/Kerberos support (skip for musl)
         if(NOT USE_MUSL)
             if(KRB5_GSSAPI_FOUND)
                 list(APPEND TEST_LDFLAGS ${KRB5_GSSAPI_LIBRARIES})
@@ -196,9 +175,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             endif()
         endif()
 
-        # Additional system libraries (matches Makefile)
-        # Make these optional - only link if available
-        # Note: ssh2 and and pcre2-8 are already handled above with libgit2
+        # Additional system libraries
         foreach(lib dl resolv)
             find_library(${lib}_LIB ${lib})
             if(${lib}_LIB)
@@ -207,16 +184,12 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endforeach()
 
     elseif(PLATFORM_DARWIN)
-        # macOS test linking - must add library directories from pkg-config
-        # pkg-config sets CRITERION_LIBRARY_DIRS but CMake doesn't automatically use it
-        # This is especially important when using Homebrew LLVM which doesn't search
-        # /opt/homebrew/lib by default
+        # macOS test linking
         if(CRITERION_LIBRARY_DIRS)
             foreach(dir ${CRITERION_LIBRARY_DIRS})
                 list(APPEND TEST_LDFLAGS "-L${dir}")
             endforeach()
         else()
-            # Fallback for Homebrew (Criterion is keg-only, so provide both opt prefixes)
             list(APPEND TEST_LDFLAGS
                 "-L/opt/homebrew/opt/criterion/lib"
                 "-L/usr/local/opt/criterion/lib"
@@ -224,7 +197,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 "-L/usr/local/lib"
             )
         endif()
-        # Add criterion library name (pkg-config provides this in CRITERION_LIBRARIES)
         if(CRITERION_LIBRARIES)
             list(APPEND TEST_LDFLAGS ${CRITERION_LIBRARIES})
         else()
@@ -235,16 +207,21 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
     # Use mimalloc include directories from Mimalloc.cmake
     set(_ascii_tests_mimalloc_include "${MIMALLOC_INCLUDE_DIRS}")
 
-    # Find test files (excluding problematic ones, matches Makefile)
-    file(GLOB_RECURSE TEST_SRCS_ALL tests/unit/*.c tests/integration/*.c tests/performance/*.c)
-    # GLOB_RECURSE returns absolute paths, so TEST_EXCLUDES must also be absolute
-    set(TEST_EXCLUDES
-        ${PROJECT_SOURCE_DIR}/tests/integration/server_multiclient_test.c
-        ${PROJECT_SOURCE_DIR}/tests/integration/video_pipeline_test.c
+    # Find test files (excluding problematic ones)
+    file(GLOB_RECURSE TEST_SRCS_ALL
+        ${CMAKE_CURRENT_SOURCE_DIR}/unit/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/*.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/performance/*.c
     )
+
+    set(TEST_EXCLUDES
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/server_multiclient_test.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/integration/video_pipeline_test.c
+    )
+
     # Exclude query tests if query runtime library not available
     if(NOT TARGET ascii-query-runtime)
-        list(APPEND TEST_EXCLUDES ${PROJECT_SOURCE_DIR}/tests/unit/tooling/query_test.c)
+        list(APPEND TEST_EXCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/unit/tooling/query_test.c)
     endif()
 
     set(TEST_SRCS)
@@ -255,21 +232,18 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
     endforeach()
 
-    # Create test executables (matches Makefile naming convention)
+    # Create test executables
     set(ALL_TEST_TARGETS)
     foreach(test_src ${TEST_SRCS})
         # Transform test file paths to executable names with flattened structure
-        # tests/unit/common_test.c -> test_unit_common
-        # tests/integration/crypto_network_test.c -> test_integration_crypto_network
-        # Determine the top-level test category (unit/integration/performance)
-        file(RELATIVE_PATH test_rel ${PROJECT_SOURCE_DIR}/tests ${test_src})
+        file(RELATIVE_PATH test_rel ${CMAKE_CURRENT_SOURCE_DIR} ${test_src})
         string(REPLACE "\\" "/" test_rel ${test_rel})
         string(REGEX MATCH "^[^/]+" test_category ${test_rel})
         if(NOT test_category)
             message(FATAL_ERROR "Failed to determine test category for ${test_src}")
         endif()
 
-        # Create a flattened executable name that preserves subdirectory information
+        # Create a flattened executable name
         string(REPLACE ".c" "" test_rel_noext ${test_rel})
         string(REPLACE "/" "_" test_rel_flat ${test_rel_noext})
         string(REGEX REPLACE "_test$" "" test_rel_flat ${test_rel_flat})
@@ -277,17 +251,18 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         list(APPEND ALL_TEST_TARGETS ${test_exe_name})
 
         # Add test executable with test utilities
-        # - common.c: Provides shared test utilities (test_get_binary_path, etc.)
-        # - globals.c: Provides global symbols (g_should_exit) needed by lib code
-        # - logging.c: Provides test-specific logging utilities (stdout/stderr redirection)
-        add_executable(${test_exe_name} ${test_src} lib/tests/common.c lib/tests/globals.c lib/tests/logging.c)
+        add_executable(${test_exe_name} ${test_src}
+            ${CMAKE_SOURCE_DIR}/lib/tests/common.c
+            ${CMAKE_SOURCE_DIR}/lib/tests/globals.c
+            ${CMAKE_SOURCE_DIR}/lib/tests/logging.c
+        )
 
-        # Add timer dependency so timing starts before first test compiles
+        # Add timer dependency
         if(TARGET tests-timer-start)
             add_dependencies(${test_exe_name} tests-timer-start)
         endif()
 
-        # Disable precompiled headers for test targets to avoid conflicts with Criterion macros
+        # Disable precompiled headers for test targets
         set_target_properties(${test_exe_name} PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
         # Add Criterion include directories
@@ -296,19 +271,14 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         # Define CRITERION_TEST for test environment detection
         target_compile_definitions(${test_exe_name} PRIVATE CRITERION_TEST=1)
 
-        # For musl builds, disable subprocess isolation (no forking)
+        # For musl builds, disable subprocess isolation
         if(USE_MUSL)
             target_compile_definitions(${test_exe_name} PRIVATE CRITERION_NO_EARLY_EXIT=1)
         endif()
 
         # Link test dependencies (order matters for linking)
-        # Handle circular dependencies between libraries
-        # This is needed because core→network→core and core→crypto have circular refs
         if(NOT WIN32 AND NOT APPLE)
             # Linux: Use --start-group/--end-group to resolve circular dependencies
-            # IMPORTANT: All internal libraries must be inside the group, otherwise
-            # the linker will process libraries outside the group first and fail
-            # to resolve circular references
             set(_linux_test_libs
                 ascii-chat-simd
                 ascii-chat-video
@@ -321,7 +291,6 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ascii-chat-data-structures
                 ascii-chat-util
             )
-            # Add query runtime if available (must be in group for symbol resolution)
             if(TARGET ascii-query-runtime)
                 list(APPEND _linux_test_libs ascii-query-runtime)
             endif()
@@ -332,7 +301,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 ${TEST_LDFLAGS}
             )
         elseif(APPLE)
-            # macOS: List libraries multiple times (ld64 doesn't have --start-group)
+            # macOS: List libraries multiple times
             target_link_libraries(${test_exe_name}
                 ascii-chat-lib
                 ${TEST_LDFLAGS}
@@ -351,12 +320,12 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             )
         endif()
 
-        # Add query runtime library for macOS and Windows (Linux handled in --start-group above)
+        # Add query runtime library for macOS and Windows
         if(TARGET ascii-query-runtime AND (APPLE OR WIN32))
             target_link_libraries(${test_exe_name} ascii-query-runtime)
         endif()
 
-        # For musl static builds, allow undefined boxfort references (they won't be called)
+        # For musl static builds, allow undefined boxfort references
         if(USE_MUSL)
             target_link_options(${test_exe_name} PRIVATE
                 -Wl,--allow-shlib-undefined
@@ -370,37 +339,15 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         endif()
 
         # CRITICAL: Disable dead code elimination for test executables
-        # Criterion uses __attribute__((constructor)) to register tests, which the linker
-        # considers "unused" and removes with --gc-sections/-dead_strip. This causes all
-        # tests to be stripped in Release builds, resulting in "Tested: 0" output.
-        #
-        # On macOS: We cannot use -Wl,-no_dead_strip to disable stripping, so we use
-        # -Wl,-all_load on static libraries instead (via target_link_options below).
-        # On Linux: Use --no-gc-sections to override the global --gc-sections flag.
-        #
-        # IMPORTANT: We must NOT replace LINK_OPTIONS entirely on macOS as that would
-        # remove sanitizer link flags. Instead we add flags to counteract dead stripping.
         if(NOT WIN32)
             if(APPLE)
-                # macOS: Add -all_load to prevent stripping constructor functions from static libs
-                # Keep -pie for ASLR security. Don't clear other link options (sanitizers!)
-                target_link_options(${test_exe_name} PRIVATE
-                    -Wl,-all_load
-                )
+                target_link_options(${test_exe_name} PRIVATE -Wl,-all_load)
             else()
-                # Linux: Use --no-gc-sections to override the global --gc-sections flag
-                target_link_options(${test_exe_name} PRIVATE
-                    -Wl,--no-gc-sections
-                )
+                target_link_options(${test_exe_name} PRIVATE -Wl,--no-gc-sections)
             endif()
         endif()
 
         # CRITICAL: Disable IPO/LTO for test executables
-        # LTO can see that Criterion's __attribute__((constructor)) test registration
-        # functions are never called and removes them as dead code. This happens even
-        # with --no-gc-sections because LTO operates at a different (interprocedural)
-        # level than section-based dead stripping. Without this, Release builds show
-        # "Synthesis: Tested: 0" because all test functions are stripped.
         set_target_properties(${test_exe_name} PROPERTIES
             INTERPROCEDURAL_OPTIMIZATION OFF
             INTERPROCEDURAL_OPTIMIZATION_RELEASE OFF
@@ -415,7 +362,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             --short-filename
         )
 
-        # Add XML output for all builds (needed for CI test reporting)
+        # Add XML output for all builds
         list(APPEND _criterion_args --xml=${CRITERION_XML_DIR}/${test_exe_name}.xml)
 
         # Add to CTest with Criterion flags
@@ -430,24 +377,22 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             LABELS "${test_category}"
         )
 
-        # Tests that spawn subprocesses (server/client) must run serially
-        # to avoid port conflicts and resource contention
+        # Tests that spawn subprocesses must run serially
         if(test_exe_name MATCHES "main_integration")
             set_tests_properties(${test_exe_name} PROPERTIES RUN_SERIAL TRUE)
         endif()
     endforeach()
 
-    # Update timed test targets list with Criterion tests
+    # Update timed test targets list
     set(ALL_TIMED_TEST_TARGETS ${ALL_TEST_TARGETS} CACHE INTERNAL "All test targets for timing")
 
-    # Internal target to build all Criterion tests (without timing)
+    # Internal target to build all Criterion tests
     add_custom_target(tests-criterion-build
         DEPENDS ${ALL_TEST_TARGETS}
         COMMENT "Building Criterion test executables"
     )
 
-    # Target to build all tests without running them (excluded from default build)
-    # This is the main public target that includes timing
+    # Target to build all tests without running them
     add_custom_target(tests
         COMMENT "Building all test executables"
     )
@@ -464,16 +409,13 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
             COMMENT "Finishing test build timing"
             VERBATIM
         )
-        # Timer end depends on timer start and the actual test build
         add_dependencies(tests-timer-end tests-timer-start tests-criterion-build)
-        # Main tests target depends on timer end (so timing is shown)
         add_dependencies(tests tests-timer-end)
     else()
-        # No timer, just depend on the build target directly
         add_dependencies(tests tests-criterion-build)
     endif()
 
-    # Custom targets for different test modes (matches Makefile)
+    # Custom targets for different test modes
     add_custom_target(test_debug
         DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
@@ -486,16 +428,13 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         COMMENT "Running tests in release mode"
     )
 
-    # Overall test target
     add_custom_target(test_all
         DEPENDS tests
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         COMMENT "Running all tests"
     )
 
-    # Add library test targets to test_all so they're built when running ctest
-    # These are defined in TestLibs.cmake but need to be added here after test_all exists
-    # Also add them to the timed test targets and timer dependency chain
+    # Add library test targets to test_all
     if(TARGET test-static-lib)
         add_dependencies(test_all test-static-lib)
         add_dependencies(tests-criterion-build test-static-lib)
@@ -523,12 +462,10 @@ else()
 
     # Even without Criterion, create tests target for library tests with timing
     if(BUILD_TESTS)
-        # Create tests target that depends on lib tests with timing
         add_custom_target(tests-lib-build
             COMMENT "Building library test executables"
         )
 
-        # Add library tests to the build target
         if(TARGET test-static-lib)
             add_dependencies(tests-lib-build test-static-lib)
             if(TARGET tests-timer-start)
@@ -542,7 +479,6 @@ else()
             endif()
         endif()
 
-        # Create tests target with timing
         add_custom_target(tests
             COMMENT "Building all test executables"
         )
@@ -564,7 +500,6 @@ else()
             add_dependencies(tests tests-lib-build)
         endif()
 
-        # Test mode targets
         add_custom_target(test_all
             DEPENDS tests
             COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
@@ -572,11 +507,3 @@ else()
         )
     endif()
 endif()
-
-# =============================================================================
-# Standalone Tests (No Criterion Dependency)
-# =============================================================================
-# Library runtime tests (test-static-lib, test-shared-lib) are handled by
-# TestLibs.cmake and only require BUILD_TESTS, not Criterion.
-# Note: The defer runtime library was removed when we switched to direct code insertion.
-

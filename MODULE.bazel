@@ -19,46 +19,88 @@ module(
 # Bazel Central Registry Dependencies
 # =============================================================================
 
+# Apple support - MUST come before rules_cc for proper toolchain registration
+# See: https://github.com/bazelbuild/apple_support#toolchain-setup
+bazel_dep(name = "apple_support", version = "1.17.1")
+
 # Core C/C++ rules
-bazel_dep(name = "rules_cc", version = "0.0.17")
+bazel_dep(name = "rules_cc", version = "0.2.2")
 
 # Platform definitions
-bazel_dep(name = "platforms", version = "0.0.10")
+bazel_dep(name = "platforms", version = "0.0.11")
 
-# Foreign build system support (for CMake/Make deps like BearSSL)
-bazel_dep(name = "rules_foreign_cc", version = "0.12.0")
-
-# Packaging rules (for archives - not full CPack replacement)
+# Packaging rules (for tar, zip, deb, rpm)
 bazel_dep(name = "rules_pkg", version = "1.0.1")
 
-# Shell rules (for clang-format, etc.)
-bazel_dep(name = "rules_shell", version = "0.4.0")
-
-# Protocol buffers (if needed later)
-# bazel_dep(name = "protobuf", version = "29.0")
+# Foreign CC rules (for CMake/Make dependencies)
+bazel_dep(name = "rules_foreign_cc", version = "0.13.0")
 
 # =============================================================================
-# Custom Extensions for External Dependencies
+# Hermetic LLVM Toolchain
+# =============================================================================
+# Provides hermetic LLVM/Clang for building the defer tool and as C++ toolchain.
+# Downloads pre-built LLVM binaries - no system LLVM required.
+# See: https://github.com/bazel-contrib/toolchains_llvm
+
+bazel_dep(name = "toolchains_llvm", version = "1.5.0")
+
+llvm = use_extension("@toolchains_llvm//toolchain/extensions:llvm.bzl", "llvm")
+llvm.toolchain(
+    name = "llvm_toolchain",
+    llvm_versions = {
+        "": "19.1.3",
+        "linux-x86_64": "19.1.3",
+        "linux-aarch64": "19.1.3",
+        "darwin-x86_64": "19.1.3",
+        "darwin-aarch64": "19.1.3",
+    },
+    stdlib = {
+        "linux-x86_64": "stdc++",
+        "linux-aarch64": "stdc++",
+    },
+)
+use_repo(llvm, "llvm_toolchain", "llvm_toolchain_llvm")
+
+# NOTE: We intentionally do NOT register the hermetic LLVM toolchain globally.
+# The hermetic lld requires libxml2.so.2 which is not available on modern Linux
+# systems (they have libxml2.so.16+). Instead, we use the system toolchain for
+# compilation and only use the hermetic LLVM libraries for the defer tool.
+#
+# If you need the hermetic toolchain (e.g., for reproducible builds), you can
+# manually register it, but you'll need to install compatible system libraries:
+#   register_toolchains("@llvm_toolchain//:all")
+
+# =============================================================================
+# Non-registry dependencies via module extension
+# =============================================================================
+# These dependencies are not in the Bazel Central Registry:
+#   - zstd (http_archive with custom BUILD)
+#   - libsodium (system library)
+#   - portaudio (system library)
+#   - bearssl (local vendored copy)
+#   - uthash (local vendored copy)
+#   - tomlc17 (local vendored copy)
+#   - libsodium-bcrypt-pbkdf (local vendored copy)
 # =============================================================================
 
-# Extension for non-registry dependencies
-non_module_deps = use_extension("//bazel:extensions.bzl", "non_module_deps")
+non_bcr_deps = use_extension("//bazel:extensions.bzl", "non_bcr_deps")
 use_repo(
-    non_module_deps,
+    non_bcr_deps,
     "zstd",
     "libsodium",
     "portaudio",
+    "uthash",
     "bearssl",
     "tomlc17",
-    "uthash",
-    "libsodium_bcrypt_pbkdf",
+    "bcrypt_pbkdf",
+    "sokol",
 )
 
 # =============================================================================
-# Toolchain Registration
+# SIMD Auto-Detection
 # =============================================================================
+# Automatically detects CPU SIMD capabilities at analysis time.
+# Generates @simd_config repository with config_setting targets.
 
-# Register C/C++ toolchains
-register_toolchains(
-    "//bazel/toolchains:clang_toolchain",
-)
+simd = use_extension("//bazel/rules:simd_detect.bzl", "simd_detect_ext")
+use_repo(simd, "simd_config")
