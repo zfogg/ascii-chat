@@ -45,8 +45,8 @@
 
 // This fixes clangd errors about missing types. I DID include stdint.h, but
 // it's not enough in some environments.
-// Don't redefine types when building with LibTooling (defer/panic) or when stdint.h worked
-#if !defined(UINT8_MAX) && !defined(ASCIICHAT_DEFER_TOOL_PARSING) && !defined(ASCIICHAT_PANIC_TOOL_PARSING)
+// Only define fallback types if stdint.h didn't provide them (UINT8_MAX not defined)
+#ifndef UINT8_MAX
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
