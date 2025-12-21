@@ -989,7 +989,10 @@ void *client_receive_thread(void *arg) {
 
       // Send REKEY_RESPONSE
       mutex_lock(&client->client_state_mutex);
+      // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
+      mutex_lock(&client->send_mutex);
       crypto_result = crypto_handshake_rekey_response(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->send_mutex);
       mutex_unlock(&client->client_state_mutex);
 
       if (crypto_result != ASCIICHAT_OK) {

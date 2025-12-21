@@ -184,6 +184,10 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   log_warn("Disconnecting client %u due to protocol violation: %s", client_id, reason_str);
 
   if (socket_snapshot != INVALID_SOCKET_VALUE) {
+    // CRITICAL: Protect socket writes with send_mutex to prevent race with send_thread
+    // This receive_thread and send_thread both write to same socket
+    mutex_lock(&client->send_mutex);
+
     asciichat_error_t log_result =
         log_network_message(socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_ERROR,
                             REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Protocol violation: %s", reason_str);
@@ -195,6 +199,8 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
     if (send_result != ASCIICHAT_OK) {
       log_warn("Failed to send error packet to client %u: %s", client_id, asciichat_error_string(send_result));
     }
+
+    mutex_unlock(&client->send_mutex);
   }
 
   platform_sleep_ms(500);
