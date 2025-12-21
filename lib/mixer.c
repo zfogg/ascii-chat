@@ -445,7 +445,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     for (int i = 0; i < mixer->max_sources; i++) {
       if (mixer->source_ids[i] != 0 && mixer->source_active[i] && mixer->source_buffers[i]) {
         // Read samples from this source's ring buffer
-        int samples_read = audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        size_t samples_read_size =
+            audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        int samples_read = (int)samples_read_size;
 
         // If we didn't get enough samples, pad with silence
         if (samples_read < frame_size) {
@@ -558,7 +560,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       // Verify source is valid (defensive programming)
       if (i < mixer->max_sources && mixer->source_ids[i] != 0 && mixer->source_buffers[i]) {
         // Read samples from this source's ring buffer
-        int samples_read = audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        size_t samples_read_size =
+            audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
+        int samples_read = (int)samples_read_size;
 
         // If we didn't get enough samples, pad with silence
         if (samples_read < frame_size) {

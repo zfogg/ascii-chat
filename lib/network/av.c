@@ -371,8 +371,15 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   // Use memcpy to avoid alignment issues when casting from uint8_t* to uint32_t*
   uint8_t *sample_data_ptr = buffer + sizeof(header);
   for (int i = 0; i < num_samples; i++) {
+    // Clamp samples to [-1.0, 1.0] range before scaling to prevent overflow
+    float clamped_sample = samples[i];
+    if (clamped_sample > 1.0f)
+      clamped_sample = 1.0f;
+    if (clamped_sample < -1.0f)
+      clamped_sample = -1.0f;
+
     // Scale float [-1.0, 1.0] to int32 range and convert to network byte order
-    int32_t scaled = (int32_t)(samples[i] * 2147483647.0f);
+    int32_t scaled = (int32_t)(clamped_sample * 2147483647.0f);
     uint32_t network_value = htonl((uint32_t)scaled);
     memcpy(sample_data_ptr + (size_t)i * sizeof(uint32_t), &network_value, sizeof(uint32_t));
   }
