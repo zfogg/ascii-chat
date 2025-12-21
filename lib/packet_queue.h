@@ -230,6 +230,26 @@ typedef struct {
 
   /** @brief Shutdown flag (true = dequeue returns NULL) - atomic for lock-free access */
   _Atomic bool shutdown;
+
+  /** @brief Mutex protecting tail->next updates during enqueue to prevent lost updates
+   *
+   * CRITICAL FIX FOR RACE CONDITION:
+   * When multiple threads enqueue simultaneously and get the same tail pointer,
+   * they would both try to update tail->next without synchronization, causing
+   * one thread's node to be lost from the queue (lost update race condition).
+   *
+   * This mutex protects only the critical section where we:
+   * 1. Read the current tail
+   * 2. Update tail->next (link the new node)
+   * 3. Atomically update the tail pointer
+   *
+   * This ensures only one thread can append to the tail at a time,
+   * preventing lost updates while maintaining overall lock-free design
+   * for dequeue and other operations.
+   *
+   * @see packet_queue_enqueue() Line 277-281 where race condition occurs
+   */
+  mutex_t enqueue_mutex;
 } packet_queue_t;
 
 /**

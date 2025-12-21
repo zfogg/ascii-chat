@@ -150,6 +150,21 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   atomic_init(&queue->packets_dropped, (uint64_t)0);
   atomic_init(&queue->shutdown, false);
 
+  // Initialize enqueue mutex to protect concurrent tail updates
+  // CRITICAL: This prevents lost updates when multiple threads enqueue simultaneously
+  if (mutex_init(&queue->enqueue_mutex) != 0) {
+    log_error("Failed to initialize enqueue mutex for packet queue");
+    // Clean up on failure
+    if (queue->node_pool) {
+      node_pool_destroy(queue->node_pool);
+    }
+    if (queue->buffer_pool) {
+      data_buffer_pool_destroy(queue->buffer_pool);
+    }
+    SAFE_FREE(queue);
+    return NULL;
+  }
+
   return queue;
 }
 
@@ -181,7 +196,8 @@ void packet_queue_destroy(packet_queue_t *queue) {
     data_buffer_pool_destroy(queue->buffer_pool);
   }
 
-  // No mutex/cond to destroy (lock-free design)
+  // Destroy enqueue mutex (protects concurrent tail updates)
+  mutex_destroy(&queue->enqueue_mutex);
 
   SAFE_FREE(queue);
 }
@@ -273,11 +289,17 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   node->packet.data_len = data_len;
   node->next = NULL;
 
-  // Add to queue atomically (lock-free enqueue)
+  // CRITICAL FIX: Protect tail update with mutex to prevent lost updates
+  // When multiple threads enqueue simultaneously and get the same tail pointer,
+  // they must not concurrently update tail->next as this causes lost updates.
+  // The mutex ensures only one thread at a time can append to the tail.
+  mutex_lock(&queue->enqueue_mutex);
+
+  // Add to queue (with mutex protection for tail updates)
   packet_node_t *tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
   if (tail) {
     // Queue has existing nodes - append to tail
-    tail->next = node; // Publish node before updating tail
+    tail->next = node; // PROTECTED: Only one thread can reach here at a time
     atomic_store_explicit(&queue->tail, node, memory_order_release);
   } else {
     // Empty queue - atomically set both head and tail
@@ -290,7 +312,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
       // Another thread added a node - append to new tail
       packet_node_t *new_tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
       if (new_tail) {
-        new_tail->next = node;
+        new_tail->next = node; // PROTECTED: Only one thread can reach here at a time
         atomic_store_explicit(&queue->tail, node, memory_order_release);
       } else {
         // Retry: tail was NULL but head was set (race condition)
@@ -300,16 +322,19 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
           while (tail->next != NULL) {
             tail = tail->next;
           }
-          tail->next = node;
+          tail->next = node; // PROTECTED: Only one thread can reach here at a time
           atomic_store_explicit(&queue->tail, node, memory_order_release);
         } else {
           // Should not happen, but handle gracefully
+          mutex_unlock(&queue->enqueue_mutex);
           node_pool_put(queue->node_pool, node);
           return -1;
         }
       }
     }
   }
+
+  mutex_unlock(&queue->enqueue_mutex);
 
   // Update counters atomically
   atomic_fetch_add(&queue->count, (size_t)1);
@@ -402,11 +427,15 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
 
   node->next = NULL;
 
-  // Add to queue atomically (lock-free enqueue - same logic as enqueue)
+  // CRITICAL FIX: Protect tail update with mutex to prevent lost updates
+  // Same race condition fix as in packet_queue_enqueue()
+  mutex_lock(&queue->enqueue_mutex);
+
+  // Add to queue (with mutex protection for tail updates)
   packet_node_t *tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
   if (tail) {
     // Queue has existing nodes - append to tail
-    tail->next = node; // Publish node before updating tail
+    tail->next = node; // PROTECTED: Only one thread can reach here at a time
     atomic_store_explicit(&queue->tail, node, memory_order_release);
   } else {
     // Empty queue - atomically set both head and tail
@@ -419,7 +448,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
       // Another thread added a node - append to new tail
       packet_node_t *new_tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
       if (new_tail) {
-        new_tail->next = node;
+        new_tail->next = node; // PROTECTED: Only one thread can reach here at a time
         atomic_store_explicit(&queue->tail, node, memory_order_release);
       } else {
         // Retry: tail was NULL but head was set (race condition)
@@ -429,16 +458,19 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
           while (tail->next != NULL) {
             tail = tail->next;
           }
-          tail->next = node;
+          tail->next = node; // PROTECTED: Only one thread can reach here at a time
           atomic_store_explicit(&queue->tail, node, memory_order_release);
         } else {
           // Should not happen, but handle gracefully
+          mutex_unlock(&queue->enqueue_mutex);
           node_pool_put(queue->node_pool, node);
           return -1;
         }
       }
     }
   }
+
+  mutex_unlock(&queue->enqueue_mutex);
 
   // Update counters atomically
   atomic_fetch_add(&queue->count, (size_t)1);
