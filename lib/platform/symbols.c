@@ -457,7 +457,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   // SECURITY: Validate executable path to prevent command injection
   // Paths from system APIs should be safe, but validate to be thorough
   if (!validate_shell_safe(exe_path, ".-/\\:")) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid executable path - contains unsafe characters: %s", exe_path);
+    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
     return NULL;
   }
 
@@ -476,12 +476,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
+      log_error("Failed to escape executable path for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
+      log_error("Failed to escape executable path for shell command");
       return NULL;
     }
 #endif
@@ -508,12 +508,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (symbolizer_needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape llvm-symbolizer path for shell command");
+      log_error("Failed to escape llvm-symbolizer path for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape llvm-symbolizer path for shell command");
+      log_error("Failed to escape llvm-symbolizer path for shell command");
       return NULL;
     }
 #endif
@@ -528,7 +528,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 #ifdef BUILD_DIR
   // SECURITY: Validate BUILD_DIR (compile-time constant, but validate to be thorough)
   if (!validate_shell_safe(BUILD_DIR, ".-/\\:")) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid BUILD_DIR - contains unsafe characters: %s", BUILD_DIR);
+    log_error("Invalid BUILD_DIR - contains unsafe characters: %s", BUILD_DIR);
     return NULL;
   }
 
@@ -546,12 +546,12 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (build_dir_needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape BUILD_DIR for shell command");
+      log_error("Failed to escape BUILD_DIR for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape BUILD_DIR for shell command");
+      log_error("Failed to escape BUILD_DIR for shell command");
       return NULL;
     }
 #endif
@@ -569,7 +569,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 #endif
 
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to build llvm-symbolizer command");
+    log_error("Failed to build llvm-symbolizer command");
     return NULL;
   }
 
@@ -586,7 +586,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   // Execute llvm-symbolizer
   FILE *fp = popen(cmd, "r");
   if (!fp) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to execute llvm-symbolizer command");
+    log_error("Failed to execute llvm-symbolizer command");
     return NULL;
   }
 
@@ -688,7 +688,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
  */
 static char **run_addr2line_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
+    log_error("Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
     return NULL;
   }
 
@@ -707,7 +707,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   // SECURITY: Validate executable path to prevent command injection
   // Paths from system APIs should be safe, but validate to be thorough
   if (!validate_shell_safe(exe_path, ".-/\\:")) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid executable path - contains unsafe characters: %s", exe_path);
+    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
     return NULL;
   }
 
@@ -726,12 +726,12 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   if (needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
+      log_error("Failed to escape executable path for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape executable path for shell command");
+      log_error("Failed to escape executable path for shell command");
       return NULL;
     }
 #endif
@@ -756,12 +756,12 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   if (addr2line_needs_quoting) {
 #ifdef _WIN32
     if (!escape_shell_double_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape addr2line path for shell command");
+      log_error("Failed to escape addr2line path for shell command");
       return NULL;
     }
 #else
     if (!escape_shell_single_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
-      SET_ERRNO(ERROR_STRING, "Failed to escape addr2line path for shell command");
+      log_error("Failed to escape addr2line path for shell command");
       return NULL;
     }
 #endif
@@ -772,7 +772,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   char cmd[4096];
   int offset = snprintf(cmd, sizeof(cmd), "%s -e %s -f -C -i ", escaped_addr2line_cmd, escaped_exe_path);
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to build addr2line command");
+    log_error("Failed to build addr2line command");
     return NULL;
   }
 
@@ -780,7 +780,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   for (int i = 0; i < size; i++) {
     int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
     if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Failed to build addr2line command");
+      log_error("Failed to build addr2line command");
       break;
     }
     offset += n;
@@ -789,7 +789,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   // Execute addr2line
   FILE *fp = popen(cmd, "r");
   if (!fp) {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to execute addr2line command");
+    log_error("Failed to execute addr2line command");
     return NULL;
   }
 
@@ -851,7 +851,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
 char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
+    log_error("Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
     return NULL;
   }
 
@@ -926,13 +926,13 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
           result[orig_idx] = platform_strdup(resolved[i]);
           // If strdup failed, use sentinel string instead of NULL
           if (!result[orig_idx]) {
-            SET_ERRNO(ERROR_MEMORY, "Failed to duplicate string for result[%d]", orig_idx);
+            log_error("Failed to duplicate string for result[%d]", orig_idx);
             result[orig_idx] = platform_strdup(NULL_SENTINEL);
           }
           // Only insert into cache if strdup succeeded (and it's not the sentinel)
           if (result[orig_idx] && strcmp(result[orig_idx], NULL_SENTINEL) != 0) {
             if (!symbol_cache_insert(uncached_addrs[i], resolved[i])) {
-              SET_ERRNO(ERROR_MEMORY, "Failed to insert symbol into cache for result[%d]", orig_idx);
+              log_error("Failed to insert symbol into cache for result[%d]", orig_idx);
             }
           }
           SAFE_FREE(resolved[i]);
@@ -943,7 +943,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
           }
         }
         if (!result[orig_idx]) {
-          SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for result[%d]", orig_idx);
+          log_error("Failed to allocate memory for result[%d]", orig_idx);
         }
       }
 
@@ -962,7 +962,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
           }
         }
         if (!result[orig_idx]) {
-          SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for result[%d]", orig_idx);
+          log_error("Failed to allocate memory for result[%d]", orig_idx);
         }
       }
     }
