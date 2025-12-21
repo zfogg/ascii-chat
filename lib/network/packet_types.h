@@ -446,16 +446,6 @@ PACKED_ATTR /** @endcond */ packet_header_t;
  */
 #define MAX_DISPLAY_NAME_LEN 32
 
-/**
- * @brief Maximum number of clients supported (10 clients)
- *
- * Maximum number of clients that can connect to the server simultaneously.
- * Used for array sizing in client_list_packet_t.
- *
- * @ingroup packet
- */
-#define MAX_CLIENTS 10
-
 /** @} */
 
 /**

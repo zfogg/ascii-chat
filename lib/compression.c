@@ -10,14 +10,17 @@
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 
-// Compression level - level 1 provides best balance of speed and compression ratio
-#define ZSTD_COMPRESSION_LEVEL 1
-
-// Compress data using zstd level 1
-int compress_data(const void *input, size_t input_size, void **output, size_t *output_size) {
+// Compress data using zstd with configurable compression level
+int compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level) {
   if (!input || input_size == 0 || !output || !output_size) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: input=%p, input_size=%zu, output=%p, output_size=%p", input,
               input_size, output, output_size);
+    return -1;
+  }
+
+  // Validate compression level (1-9 for real-time streaming)
+  if (compression_level < 1 || compression_level > 9) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid compression level %d: must be between 1 and 9", compression_level);
     return -1;
   }
 
@@ -31,8 +34,8 @@ int compress_data(const void *input, size_t input_size, void **output, size_t *o
     return -1;
   }
 
-  // Compress using zstd level 1 for optimal speed/compression balance
-  size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, ZSTD_COMPRESSION_LEVEL);
+  // Compress using zstd with user-specified compression level
+  size_t ret = ZSTD_compress(compressed_data, compressed_size, input, input_size, compression_level);
 
   if (ZSTD_isError(ret)) {
     SET_ERRNO(ERROR_GENERAL, "zstd compression failed: %s", ZSTD_getErrorName(ret));

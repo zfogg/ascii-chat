@@ -389,6 +389,120 @@ extern ASCIICHAT_API char opt_port[];
 /** @} */
 
 /**
+ * @name Server Options
+ * @{
+ */
+
+/** @brief Maximum concurrent clients (server only)
+ *
+ * Maximum number of clients that can connect to the server simultaneously.
+ * This limit prevents resource exhaustion and ensures stable performance.
+ *
+ * **Default**: `10` (10 concurrent clients)
+ *
+ * **Valid range**: 1 to 32
+ *
+ * **Command-line**: `--max-clients <N>`
+ *
+ * **Example**: `--max-clients 16` (allow up to 16 concurrent clients)
+ *
+ * @note Server only: This option is ignored by clients
+ * @note Clients beyond this limit are rejected with an error message
+ * @note Higher values require more server resources (CPU, memory, bandwidth)
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API int opt_max_clients;
+
+/** @} */
+
+/**
+ * @name Network Performance Options
+ * @{
+ */
+
+/** @brief zstd compression level for video frames
+ *
+ * Compression level for zstd algorithm used to compress video frames before transmission.
+ * Higher levels provide better compression ratios but use more CPU time.
+ *
+ * **Default**: `1` (fastest standard level, optimal for real-time streaming)
+ *
+ * **Valid range**: 1 to 9
+ * - Level 1: Fastest compression, lowest ratio (best for real-time)
+ * - Level 3: Balanced speed/ratio
+ * - Level 9: Slower compression, best ratio (for limited bandwidth)
+ *
+ * **Command-line**: `--compression-level <N>`
+ *
+ * **Example**: `--compression-level 3` (better compression for slow connections)
+ *
+ * @note Both client and server must use compatible compression
+ * @note Levels above 5 may cause frame drops on slower machines
+ * @note Compression is skipped if compressed size >= original size
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API int opt_compression_level;
+
+/** @brief Disable compression entirely
+ *
+ * When enabled, disables all video frame compression regardless of the
+ * compression level setting. Useful for debugging, testing, or when CPU
+ * usage is more critical than bandwidth.
+ *
+ * **Default**: `false` (compression enabled)
+ *
+ * **Command-line**: `--no-compress`
+ *
+ * **Example**: `--no-compress` (send uncompressed frames)
+ *
+ * @note Both client and server can use this flag independently
+ * @note Disabling compression significantly increases bandwidth usage
+ * @note Useful for local testing or debugging compression issues
+ * @note When enabled, --compression-level is ignored
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API bool opt_no_compress;
+
+/** @} */
+
+/**
+ * @name Client Reconnection Options
+ * @{
+ */
+
+/** @brief Number of reconnection attempts after connection loss
+ *
+ * Controls automatic reconnection behavior when the connection to the server
+ * is lost unexpectedly (network issues, server restart, etc.).
+ *
+ * **Default**: `0` (no automatic reconnection)
+ *
+ * **Valid values**:
+ * - `0` or "off": No reconnection attempts (exit on disconnect)
+ * - Positive number (1-999): Exact number of reconnection attempts
+ * - `-1` or "auto": Unlimited reconnection attempts (retry forever)
+ *
+ * **Command-line**: `--reconnect <value>`
+ *
+ * **Examples**:
+ * - `--reconnect off` (disable reconnection)
+ * - `--reconnect 5` (try 5 times then give up)
+ * - `--reconnect auto` (reconnect indefinitely)
+ *
+ * @note Client only: This option is ignored by servers
+ * @note Snapshot mode always disables reconnection
+ * @note Each attempt waits 2 seconds before retrying
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API int opt_reconnect_attempts;
+
+/** @} */
+
+/**
  * @name Webcam Options
  * @{
  */

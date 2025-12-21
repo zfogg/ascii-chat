@@ -122,6 +122,7 @@
 #include "buffer_pool.h"
 #include "network/network.h"
 #include "network/packet.h"
+#include "network/av.h"
 #include "packet_queue.h"
 #include "audio.h"
 #include "mixer.h"
@@ -308,10 +309,24 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     }
   }
 
+  // Check if we've hit the configured max-clients limit (not the array size)
+  if (existing_count >= opt_max_clients) {
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "Maximum client limit reached (%d/%d active clients)", existing_count,
+              opt_max_clients);
+    log_error("Maximum client limit reached (%d/%d active clients)", existing_count, opt_max_clients);
+
+    // Send a rejection message to the client before closing
+    const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
+    send(socket, reject_msg, strlen(reject_msg), 0); // MSG_NOSIGNAL not on Windows
+
+    return -1;
+  }
+
   if (slot == -1) {
     rwlock_wrunlock(&g_client_manager_rwlock);
-    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "No available client slots (all %d slots are in use)", MAX_CLIENTS);
-    log_error("No available client slots (all %d slots are in use)", MAX_CLIENTS);
+    SET_ERRNO(ERROR_RESOURCE_EXHAUSTED, "No available client slots (all %d array slots are in use)", MAX_CLIENTS);
+    log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
@@ -394,8 +409,10 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
   // Create packet queues for outgoing data
   // Use node pools but share the global buffer pool
+  // Audio queue needs larger capacity to handle jitter and render thread lag
+  // 500 packets @ 172fps = ~2.9 seconds of buffering (was 100 = 0.58s)
   client->audio_queue =
-      packet_queue_create_with_pools(100, 200, false); // Max 100 audio packets, 200 nodes, NO local buffer pool
+      packet_queue_create_with_pools(500, 1000, false); // Max 500 audio packets, 1000 nodes, NO local buffer pool
   if (!client->audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
     video_frame_buffer_destroy(client->incoming_video_buffer);
@@ -1139,15 +1156,26 @@ void *client_send_thread_func(void *arg) {
       }
     }
 
-    // Try to get audio packet first (higher priority for low latency)
-    queued_packet_t *audio_packet = NULL;
+// Try to batch audio packets for efficiency (reduces encryption overhead)
+// Batch up to 8 packets (46.4ms worth) to reduce from 172 encryptions/sec to ~21/sec
+#define MAX_AUDIO_BATCH 8
+    queued_packet_t *audio_packets[MAX_AUDIO_BATCH];
+    int audio_packet_count = 0;
+
     if (client->audio_queue) {
-      audio_packet = packet_queue_try_dequeue(client->audio_queue);
+      // Try to dequeue multiple audio packets
+      for (int i = 0; i < MAX_AUDIO_BATCH; i++) {
+        audio_packets[i] = packet_queue_try_dequeue(client->audio_queue);
+        if (audio_packets[i]) {
+          audio_packet_count++;
+        } else {
+          break; // No more packets available
+        }
+      }
     }
 
-    // Send audio packet if we have one
-    if (audio_packet) {
-      // FIX: Use send_packet_secure() to encrypt audio packets
+    // Send batched audio if we have packets
+    if (audio_packet_count > 0) {
       // Get crypto context for this client
       const crypto_context_t *crypto_ctx = NULL;
       bool crypto_ready =
@@ -1156,25 +1184,63 @@ void *client_send_thread_func(void *arg) {
         crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
       }
 
-      // Extract packet type from header
-      packet_type_t pkt_type = (packet_type_t)ntohs(audio_packet->header.type);
+      int result = 0;
 
-      // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
-      mutex_lock(&client->send_mutex);
-      // Send using secure packet function
-      int result = send_packet_secure(client->socket, pkt_type, audio_packet->data, audio_packet->data_len,
-                                      (crypto_context_t *)crypto_ctx);
-      mutex_unlock(&client->send_mutex);
+      if (audio_packet_count == 1) {
+        // Single packet - send directly for low latency
+        packet_type_t pkt_type = (packet_type_t)ntohs(audio_packets[0]->header.type);
+
+        mutex_lock(&client->send_mutex);
+        result = send_packet_secure(client->socket, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len,
+                                    (crypto_context_t *)crypto_ctx);
+        mutex_unlock(&client->send_mutex);
+      } else {
+        // Multiple packets - batch them together
+        // Calculate total size for all audio frames
+        size_t total_samples = 0;
+        for (int i = 0; i < audio_packet_count; i++) {
+          total_samples += audio_packets[i]->data_len / sizeof(float);
+        }
+
+        // Allocate buffer for batched audio
+        float *batched_audio = SAFE_MALLOC(total_samples * sizeof(float), float *);
+        if (batched_audio) {
+          // Copy all audio packets into batch buffer
+          size_t offset = 0;
+          for (int i = 0; i < audio_packet_count; i++) {
+            size_t packet_samples = audio_packets[i]->data_len / sizeof(float);
+            memcpy(batched_audio + offset, audio_packets[i]->data, audio_packets[i]->data_len);
+            offset += packet_samples;
+          }
+
+          // Send batched audio packet
+          mutex_lock(&client->send_mutex);
+          result = send_audio_batch_packet(client->socket, batched_audio, (int)total_samples, audio_packet_count,
+                                           (crypto_context_t *)crypto_ctx);
+          mutex_unlock(&client->send_mutex);
+
+          free(batched_audio);
+
+          log_debug_every(1000000, "Sent audio batch: %d packets (%zu samples) to client %u", audio_packet_count,
+                          total_samples, client->client_id);
+        } else {
+          log_error("Failed to allocate buffer for audio batch");
+          result = -1;
+        }
+      }
+
+      // Free all audio packets
+      for (int i = 0; i < audio_packet_count; i++) {
+        packet_queue_free_packet(audio_packets[i]);
+      }
 
       if (result != 0) {
         if (!atomic_load(&g_server_should_exit)) {
-          log_error("Failed to send audio packet to client %u", client->client_id);
+          log_error("Failed to send audio to client %u", client->client_id);
         }
-        packet_queue_free_packet(audio_packet);
         break; // Socket error, exit thread
       }
 
-      packet_queue_free_packet(audio_packet);
       sent_something = true;
     }
 
@@ -1424,8 +1490,8 @@ void broadcast_server_state_to_all_clients(void) {
       // IMPORTANT: Verify client_id matches expected value - prevents use-after-free
       // if client was removed and replaced with another client in same slot
       if (atomic_load(&target->client_id) != client_snapshots[i].client_id) {
-        log_warn("Client %u ID mismatch during broadcast (found %u), skipping send",
-                 client_snapshots[i].client_id, atomic_load(&target->client_id));
+        log_warn("Client %u ID mismatch during broadcast (found %u), skipping send", client_snapshots[i].client_id,
+                 atomic_load(&target->client_id));
         continue;
       }
 
@@ -1434,13 +1500,13 @@ void broadcast_server_state_to_all_clients(void) {
       // Double-check client_id again after acquiring mutex (stronger protection)
       if (atomic_load(&target->client_id) != client_snapshots[i].client_id) {
         mutex_unlock(&target->send_mutex);
-        log_warn("Client %u was removed during broadcast send (now %u), skipping",
-                 client_snapshots[i].client_id, atomic_load(&target->client_id));
+        log_warn("Client %u was removed during broadcast send (now %u), skipping", client_snapshots[i].client_id,
+                 atomic_load(&target->client_id));
         continue;
       }
 
-      int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                      (crypto_context_t *)client_snapshots[i].crypto_ctx);
+      int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state,
+                                      sizeof(net_state), (crypto_context_t *)client_snapshots[i].crypto_ctx);
       mutex_unlock(&target->send_mutex);
 
       if (result != 0) {

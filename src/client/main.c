@@ -436,8 +436,21 @@ int client_main(void) {
         return 1;
       }
 
-      // Connection failed - increment attempt counter and retry
+      // Connection failed - check if we should retry based on --reconnect setting
       reconnect_attempt++;
+
+      // Check reconnection policy
+      if (opt_reconnect_attempts == 0) {
+        // --reconnect off: Exit immediately on first failure
+        log_error("Connection failed (reconnection disabled via --reconnect off)");
+        return 1;
+      } else if (opt_reconnect_attempts > 0 && reconnect_attempt > opt_reconnect_attempts) {
+        // --reconnect N: Exceeded max retry attempts
+        log_error("Connection failed after %d attempts (limit set by --reconnect %d)", reconnect_attempt - 1,
+                  opt_reconnect_attempts);
+        return 1;
+      }
+      // else: opt_reconnect_attempts == -1 (auto) means retry forever
 
       if (has_ever_connected) {
         display_full_reset();
@@ -448,12 +461,20 @@ int client_main(void) {
       }
 
       if (has_ever_connected) {
-        log_info("Reconnection attempt #%d...", reconnect_attempt);
+        if (opt_reconnect_attempts == -1) {
+          log_info("Reconnection attempt #%d... (unlimited retries)", reconnect_attempt);
+        } else {
+          log_info("Reconnection attempt #%d/%d...", reconnect_attempt, opt_reconnect_attempts);
+        }
       } else {
-        log_info("Connection attempt #%d...", reconnect_attempt);
+        if (opt_reconnect_attempts == -1) {
+          log_info("Connection attempt #%d... (unlimited retries)", reconnect_attempt);
+        } else {
+          log_info("Connection attempt #%d/%d...", reconnect_attempt, opt_reconnect_attempts);
+        }
       }
 
-      // Continue retrying forever until user cancels (Ctrl+C)
+      // Continue retrying based on reconnection policy
       continue;
     }
 

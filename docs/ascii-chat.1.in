@@ -85,10 +85,57 @@ Default: \fB27224\fR ("ASCII" on a phone dial pad)
 IPv6 bind address. Use "::" to bind to all IPv6 interfaces.
 Can be used with \fB\-\-address\fR for dual-stack support.
 Default: \fB::1\fR
+.TP
+.BR \-\-max\-clients =\fIN\fR
+Maximum number of concurrent client connections allowed.
+Valid range: 1-32.
+Default: \fB10\fR
+.br
+Higher values require more server resources (CPU, memory, bandwidth).
+Clients attempting to connect when the limit is reached will be rejected.
+.SS "Network Performance Options"
+.TP
+.BR \-\-compression\-level =\fIN\fR
+zstd compression level for video frames. Valid range: 1-9.
+Default: \fB1\fR (fastest, best for real-time)
+.RS
+.IP \(bu 2
+\fBLevel 1\fR: Fastest compression, lowest ratio (best for real-time streaming)
+.IP \(bu 2
+\fBLevel 3\fR: Balanced speed/ratio
+.IP \(bu 2
+\fBLevel 9\fR: Slower compression, best ratio (for limited bandwidth)
+.RE
+.IP
+Levels above 5 may cause frame drops on slower machines.
+Both client and server must use compatible compression settings.
+.TP
+.BR \-\-no\-compress
+Disable video frame compression entirely.
+Useful for debugging, local testing, or when CPU usage is more critical than bandwidth.
+Significantly increases network traffic.
+When enabled, \-\-compression\-level is ignored.
+Available for both client and server.
 .SS "Network Options (Client Only)"
 .TP
 .BR \-H ", " \-\-host =\fIHOSTNAME\fR
 Hostname for DNS lookup (alternative to \-\-address).
+.TP
+.BR \-\-reconnect =\fIVALUE\fR
+Automatic reconnection behavior after connection loss.
+Valid values: \fBoff\fR, \fBauto\fR, or a number (1-999).
+Default: \fB0\fR (disabled)
+.RS
+.IP \(bu 2
+\fBoff\fR (or 0): Exit immediately on connection failure
+.IP \(bu 2
+\fB1-999\fR: Retry up to N times before giving up
+.IP \(bu 2
+\fBauto\fR (or -1): Retry indefinitely until successful
+.RE
+.IP
+Each retry attempt waits 2 seconds before connecting again.
+Snapshot mode always disables reconnection regardless of this setting.
 .SS "Terminal Dimensions (Client Only)"
 .TP
 .BR \-x ", " \-\-width =\fICOLS\fR
@@ -305,6 +352,26 @@ ascii-chat client
 .nf
 ascii-chat client \-\-address example.com \-\-color\-mode truecolor
 .fi
+.SS "Server with custom client limit"
+.nf
+ascii-chat server \-\-max\-clients 20
+.fi
+.SS "Server with higher compression for bandwidth savings"
+.nf
+ascii-chat server \-\-compression\-level 5
+.fi
+.SS "Server without compression (for local testing)"
+.nf
+ascii-chat server \-\-no\-compress
+.fi
+.SS "Client with automatic reconnection"
+.nf
+ascii-chat client \-\-address example.com \-\-reconnect auto
+.fi
+.SS "Client with limited reconnection attempts"
+.nf
+ascii-chat client \-\-address example.com \-\-reconnect 5
+.fi
 .SS "Server with encryption using SSH key"
 .nf
 ascii-chat server \-\-key ~/.ssh/id_ed25519
@@ -443,7 +510,8 @@ Secure your config file permissions if it contains sensitive data.
 .SH LIMITS
 .TP
 .B Maximum Clients
-Up to 10 clients can connect to a single server simultaneously.
+Default 10 clients per server (configurable 1-32 via \fB\-\-max\-clients\fR).
+Higher values increase server resource requirements.
 .TP
 .B Video Grid Layout
 Clients are arranged in an automatically-sized grid (e.g., 2x2, 3x3).
