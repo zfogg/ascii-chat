@@ -141,8 +141,8 @@ typedef struct packet_node packet_node_t;
 struct packet_node {
   /** @brief The queued packet data */
   queued_packet_t packet;
-  /** @brief Pointer to next node in linked list (NULL for tail) */
-  packet_node_t *next;
+  /** @brief Pointer to next node in linked list (NULL for tail) - atomic for lock-free operations */
+  _Atomic(packet_node_t *) next;
 };
 
 /**
