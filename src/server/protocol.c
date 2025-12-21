@@ -911,7 +911,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     return;
   }
 
-  const uint32_t *network_samples = (const uint32_t *)((const uint8_t *)data + sizeof(audio_batch_packet_t));
+  const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
 
   float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
   if (!samples) {
@@ -920,18 +920,24 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   }
 
   for (uint32_t i = 0; i < total_samples; i++) {
-    int32_t scaled = (int32_t)ntohl(network_samples[i]);
+    uint32_t network_sample;
+    // Use memcpy to safely handle potential misalignment from packet header
+    memcpy(&network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
+    int32_t scaled = (int32_t)ntohl(network_sample);
     samples[i] = (float)scaled / 2147483647.0f;
   }
 
   static int recv_count = 0;
   recv_count++;
   if (recv_count % 100 == 0) {
-    int32_t scaled0 = (int32_t)ntohl(network_samples[0]);
-    int32_t scaled1 = (int32_t)ntohl(network_samples[1]);
-    int32_t scaled2 = (int32_t)ntohl(network_samples[2]);
-    log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", network_samples[0], network_samples[1],
-             network_samples[2]);
+    uint32_t raw0, raw1, raw2;
+    memcpy(&raw0, samples_ptr + 0 * sizeof(uint32_t), sizeof(uint32_t));
+    memcpy(&raw1, samples_ptr + 1 * sizeof(uint32_t), sizeof(uint32_t));
+    memcpy(&raw2, samples_ptr + 2 * sizeof(uint32_t), sizeof(uint32_t));
+    int32_t scaled0 = (int32_t)ntohl(raw0);
+    int32_t scaled1 = (int32_t)ntohl(raw1);
+    int32_t scaled2 = (int32_t)ntohl(raw2);
+    log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", raw0, raw1, raw2);
     log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
     log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
   }
