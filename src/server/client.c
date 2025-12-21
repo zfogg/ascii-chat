@@ -467,6 +467,14 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     return -1;
   }
 
+  // Initialize send mutex to protect concurrent socket writes
+  if (mutex_init(&client->send_mutex) != 0) {
+    log_error("Failed to initialize send mutex for client %u", atomic_load(&client->client_id));
+    mutex_destroy(&client->client_state_mutex);
+    rwlock_wrunlock(&g_client_manager_rwlock);
+    return -1;
+  }
+
   rwlock_wrunlock(&g_client_manager_rwlock);
 
   // CRITICAL: Perform crypto handshake BEFORE starting threads
@@ -741,6 +749,7 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // IMPORTANT: Always destroy these even if threads didn't join properly
   // to prevent issues when the slot is reused
   mutex_destroy(&target_client->client_state_mutex);
+  mutex_destroy(&target_client->send_mutex);
 
   // Clear client structure
   // NOTE: After memset, the mutex handles are zeroed but the OS resources
@@ -1110,7 +1119,10 @@ void *client_send_thread_func(void *arg) {
     if (should_rekey) {
       log_debug("Rekey threshold reached for client %u, initiating session rekey", client->client_id);
       mutex_lock(&client->client_state_mutex);
+      // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+      mutex_lock(&client->send_mutex);
       asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->send_mutex);
       mutex_unlock(&client->client_state_mutex);
 
       if (result != ASCIICHAT_OK) {
@@ -1141,9 +1153,13 @@ void *client_send_thread_func(void *arg) {
       // Extract packet type from header
       packet_type_t pkt_type = (packet_type_t)ntohs(audio_packet->header.type);
 
+      // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+      mutex_lock(&client->send_mutex);
       // Send using secure packet function
       int result = send_packet_secure(client->socket, pkt_type, audio_packet->data, audio_packet->data_len,
                                       (crypto_context_t *)crypto_ctx);
+      mutex_unlock(&client->send_mutex);
+
       if (result != 0) {
         if (!atomic_load(&g_server_should_exit)) {
           log_error("Failed to send audio packet to client %u", client->client_id);
@@ -1185,7 +1201,10 @@ void *client_send_thread_func(void *arg) {
         // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
         // Crypto context is stable after handshake and stored in client struct
         const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+        // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+        mutex_lock(&client->send_mutex);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
+        mutex_unlock(&client->send_mutex);
         log_debug("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
                   rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
@@ -1262,9 +1281,12 @@ void *client_send_thread_func(void *arg) {
       // Crypto context is stable after handshake and stored in client struct
       const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
 
+      // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+      mutex_lock(&client->send_mutex);
       // Send packet without holding any locks (crypto_ctx is safe to use)
       int send_result = send_packet_secure(client->socket, PACKET_TYPE_ASCII_FRAME, payload, payload_size,
                                            (crypto_context_t *)crypto_ctx);
+      mutex_unlock(&client->send_mutex);
       (void)clock_gettime(CLOCK_MONOTONIC, &step5);
 
       if (send_result != 0) {
@@ -1377,26 +1399,37 @@ void broadcast_server_state_to_all_clients(void) {
   net_state.active_client_count = htonl(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  // Send to all clients WHILE HOLDING THE LOCK
-  // This ensures crypto contexts remain valid during transmission
-  for (int i = 0; i < snapshot_count; i++) {
-    log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
-              client_snapshots[i].client_id, client_snapshots[i].socket, (void *)client_snapshots[i].crypto_ctx);
-    int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                    (crypto_context_t *)client_snapshots[i].crypto_ctx);
-
-    if (result != 0) {
-      log_error("Failed to send server state to client %u", client_snapshots[i].client_id);
-    } else {
-      log_debug("Sent server state to client %u: %u connected, %u active", client_snapshots[i].client_id,
-                state.connected_client_count, state.active_client_count);
-    }
-  }
-
+  // CRITICAL FIX: Release lock BEFORE sending (snapshot pattern)
+  // Sending while holding lock blocks all client operations
   (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
   uint64_t lock_held_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
                           ((uint64_t)lock_start.tv_sec * 1000000 + (uint64_t)lock_start.tv_nsec / 1000);
   rwlock_rdunlock(&g_client_manager_rwlock);
+
+  // Send to all clients AFTER releasing the lock
+  // This prevents blocking other threads during network I/O
+  for (int i = 0; i < snapshot_count; i++) {
+    log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
+              client_snapshots[i].client_id, client_snapshots[i].socket, (void *)client_snapshots[i].crypto_ctx);
+
+    // CRITICAL: Protect socket write with per-client send_mutex
+    client_info_t *target = find_client_by_id(client_snapshots[i].client_id);
+    if (target) {
+      mutex_lock(&target->send_mutex);
+      int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                      (crypto_context_t *)client_snapshots[i].crypto_ctx);
+      mutex_unlock(&target->send_mutex);
+
+      if (result != 0) {
+        log_error("Failed to send server state to client %u", client_snapshots[i].client_id);
+      } else {
+        log_debug("Sent server state to client %u: %u connected, %u active", client_snapshots[i].client_id,
+                  state.connected_client_count, state.active_client_count);
+      }
+    } else {
+      log_warn("Client %u removed before broadcast send could complete", client_snapshots[i].client_id);
+    }
+  }
 
   if (lock_held_us > 1000) { // Log if held > 1ms (should be very rare now with optimized send)
     log_warn("broadcast_server_state: rwlock held for %.2fms (includes network I/O)", lock_held_us / 1000.0);
