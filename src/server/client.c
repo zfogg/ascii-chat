@@ -1019,7 +1019,10 @@ void *client_receive_thread(void *arg) {
 
       // Send REKEY_COMPLETE to confirm and activate new key
       mutex_lock(&client->client_state_mutex);
+      // CRITICAL: Also protect socket write with send_mutex (follows lock ordering)
+      mutex_lock(&client->send_mutex);
       crypto_result = crypto_handshake_rekey_complete(&client->crypto_handshake_ctx, client->socket);
+      mutex_unlock(&client->send_mutex);
       mutex_unlock(&client->client_state_mutex);
 
       if (crypto_result != ASCIICHAT_OK) {
@@ -1603,9 +1606,12 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_PING:
     // Respond with PONG
+    // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+    mutex_lock(&client->send_mutex);
     if (send_pong_packet(client->socket) < 0) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u", client->client_id);
     }
+    mutex_unlock(&client->send_mutex);
     break;
 
   case PACKET_TYPE_PONG:
