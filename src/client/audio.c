@@ -240,16 +240,13 @@ static void *audio_capture_thread_func(void *arg) {
   int batch_chunks_collected = 0;          // How many chunks we've collected
 
   // Audio processing components
-  static noise_gate_t noise_gate;
   static highpass_filter_t hp_filter;
   static bool processors_initialized = false;
 
   // Initialize audio processors on first run
   if (!processors_initialized) {
-    noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE); // Use correct sample rate
-    noise_gate_set_params(&noise_gate, 0.01F, 2.0F, 50.0F, 0.9F);
-
-    highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE); // Use correct sample rate
+    // Initialize high-pass filter to remove DC offset and subsonic frequencies
+    highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE);
 
     processors_initialized = true;
   }
@@ -303,10 +300,10 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Apply audio processing chain
-      // 1. High-pass filter to remove low-frequency rumble
+      // 1. High-pass filter to remove low-frequency rumble (DC offset and very low frequencies)
       highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
 
-      // 2. Apply automatic gain control - boost quiet audio
+      // 2. Apply conservative automatic gain control - gently boost quiet audio
       // Calculate RMS to measure audio level
       float sum_squares = 0.0f;
       for (int i = 0; i < samples_read; i++) {
@@ -314,14 +311,18 @@ static void *audio_capture_thread_func(void *arg) {
       }
       float rms = sqrtf(sum_squares / samples_read);
 
-      // Target RMS level (aim for moderate volume, not too quiet)
-      const float target_rms = 0.1f; // 10% of full scale
-      const float max_gain = 20.0f;  // Maximum 20x amplification
+      // Conservative AGC settings to avoid amplifying noise
+      const float target_rms = 0.05f;       // Lower target - 5% of full scale (was 0.1f)
+      const float max_gain = 3.0f;          // Maximum 3x amplification (was 20x!)
+      const float min_rms_for_gain = 0.01f; // Don't amplify very quiet audio (noise floor)
 
-      if (rms > 0.001f) { // Only apply gain if there's actual audio (not silence)
+      if (rms > min_rms_for_gain) { // Only apply gain if there's actual audio above noise floor
         float gain = target_rms / rms;
+        // Clamp gain to reasonable range [0.5x, 3.0x]
         if (gain > max_gain)
-          gain = max_gain; // Limit maximum gain
+          gain = max_gain;
+        if (gain < 0.5f)
+          gain = 0.5f;     // Also limit attenuation
         if (gain > 1.0f) { // Only apply if we need to boost
           for (int i = 0; i < samples_read; i++) {
             audio_buffer[i] *= gain;
@@ -329,62 +330,39 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      // 3. Noise gate to eliminate background noise
-      noise_gate_process_buffer(&noise_gate, audio_buffer, samples_read);
+      // 3. Gentle soft clipping to prevent harsh distortion
+      // Use higher threshold (0.98 vs 0.95) to reduce clipping artifacts
+      soft_clip_buffer(audio_buffer, samples_read, 0.98F);
 
-      // 4. Soft clipping to prevent harsh distortion after gain
-      soft_clip_buffer(audio_buffer, samples_read, 0.95F);
+      // Copy processed samples to batch buffer using platform-safe memcpy
+      size_t copy_size = samples_read * sizeof(float);
+      size_t dest_space = (AUDIO_BATCH_SAMPLES - batch_samples_collected) * sizeof(float);
+      if (platform_memcpy(&batch_buffer[batch_samples_collected], dest_space, audio_buffer, copy_size) != 0) {
+        log_error("Failed to copy audio samples to batch buffer");
+        continue;
+      }
+      batch_samples_collected += samples_read;
+      batch_chunks_collected++;
 
-      // TEMPORARILY DISABLE NOISE GATE CHECK FOR TESTING
-      // Only batch if gate is open (reduces network traffic for silence)
-      // NOLINTNEXTLINE(readability-simplify-boolean-expr)
-      if (true || noise_gate_is_open(&noise_gate)) {
-        // Copy processed samples to batch buffer using platform-safe memcpy
-        size_t copy_size = samples_read * sizeof(float);
-        size_t dest_space = (AUDIO_BATCH_SAMPLES - batch_samples_collected) * sizeof(float);
-        if (platform_memcpy(&batch_buffer[batch_samples_collected], dest_space, audio_buffer, copy_size) != 0) {
-          log_error("Failed to copy audio samples to batch buffer");
-          continue;
-        }
-        batch_samples_collected += samples_read;
-        batch_chunks_collected++;
+      log_info("Audio batch collecting: chunks=%d/%d, samples=%d/%d", batch_chunks_collected, AUDIO_BATCH_COUNT,
+               batch_samples_collected, AUDIO_BATCH_SAMPLES);
 
-        log_info("Audio batch collecting: chunks=%d/%d, samples=%d/%d", batch_chunks_collected, AUDIO_BATCH_COUNT,
-                 batch_samples_collected, AUDIO_BATCH_SAMPLES);
+      // Send batch when we have enough chunks or buffer is full
+      if (batch_chunks_collected >= AUDIO_BATCH_COUNT ||
+          batch_samples_collected + AUDIO_SAMPLES_PER_PACKET > AUDIO_BATCH_SAMPLES) {
 
-        // Send batch when we have enough chunks or buffer is full
-        if (batch_chunks_collected >= AUDIO_BATCH_COUNT ||
-            batch_samples_collected + AUDIO_SAMPLES_PER_PACKET > AUDIO_BATCH_SAMPLES) {
+        log_info("Sending audio batch: %d chunks, %d samples", batch_chunks_collected, batch_samples_collected);
 
-          log_info("Sending audio batch: %d chunks, %d samples", batch_chunks_collected, batch_samples_collected);
-
-          if (threaded_send_audio_batch_packet(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
-            log_error("Failed to send audio batch to server");
-            // Don't set connection lost here as receive thread will detect it
-          } else {
-            log_info("Audio batch sent successfully");
-          }
-#ifdef DEBUG_AUDIO
-          else {
-            log_debug("Sent audio batch: %d chunks, %d total samples (gate: %s)", batch_chunks_collected,
-                      batch_samples_collected, noise_gate_is_open(&noise_gate) ? "open" : "closed");
-          }
-#endif
-          // Reset batch counters
-          batch_samples_collected = 0;
-          batch_chunks_collected = 0;
-        }
-      } else if (batch_samples_collected > 0) {
-        // Gate closed but we have pending samples - send what we have
         if (threaded_send_audio_batch_packet(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
-          log_debug("Failed to send final audio batch to server");
+          log_error("Failed to send audio batch to server");
+          // Don't set connection lost here as receive thread will detect it
+        } else {
+          log_info("Audio batch sent successfully");
         }
 #ifdef DEBUG_AUDIO
-        else {
-          log_debug("Sent final audio batch before silence: %d chunks, %d samples", batch_chunks_collected,
-                    batch_samples_collected);
-        }
+        log_debug("Sent audio batch: %d chunks, %d total samples", batch_chunks_collected, batch_samples_collected);
 #endif
+        // Reset batch counters
         batch_samples_collected = 0;
         batch_chunks_collected = 0;
       }

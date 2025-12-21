@@ -30,8 +30,19 @@ endif()
 # ProductBuild Package Configuration
 # =============================================================================
 
+# Enable component-based packaging - creates separate .pkg for each component
+# This creates: ascii-chat.pkg and libasciichat.pkg
+set(CPACK_PRODUCTBUILD_COMPONENT_INSTALL ON)
+
 # Package identifier (reverse DNS notation)
 set(CPACK_PRODUCTBUILD_IDENTIFIER "${PROJECT_BUNDLE_ID}")
+
+# Component-specific package naming
+# Note: Component groups use uppercase names in CPack variables
+set(CPACK_PRODUCTBUILD_RUNTIMEGROUP_PACKAGE_NAME "ascii-chat")
+set(CPACK_PRODUCTBUILD_DEVELOPMENTGROUP_PACKAGE_NAME "libasciichat")
+set(CPACK_PRODUCTBUILD_DOCUMENTATION_PACKAGE_NAME "libasciichat-doc")
+set(CPACK_PRODUCTBUILD_MANPAGES_PACKAGE_NAME "libasciichat")
 
 # Note: CPACK_PACKAGING_INSTALL_PREFIX is set per-generator in CPackProjectConfig.cmake
 # This allows different prefixes for productbuild (/usr/local) vs STGZ/TGZ (/)
