@@ -69,6 +69,12 @@ endif()
 # WiX Package Configuration
 # =============================================================================
 
+# Enable component-based packaging
+# Note: WiX doesn't support creating truly separate .msi files per component
+# Instead, this creates a single .msi with selectable features/components
+# For truly separate packages on Windows, use ZIP archives (Archive.cmake)
+set(CPACK_WIX_COMPONENT_INSTALL ON)
+
 # Product name and version
 set(CPACK_WIX_PRODUCT_NAME "${CPACK_PACKAGE_NAME}")
 set(CPACK_WIX_PRODUCT_VERSION "${CPACK_PACKAGE_VERSION}")

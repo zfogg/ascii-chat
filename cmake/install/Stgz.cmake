@@ -30,6 +30,9 @@ enable_cpack_generator(
 # STGZ Configuration
 # =============================================================================
 
+# Enable component-based packaging - creates separate .sh installers per component
+set(CPACK_STGZ_COMPONENT_INSTALL ON)
+
 # Use custom STGZ header with FHS-compliant defaults (/usr/local, no subdirectory)
 # CMake's default header uses current directory, not /usr/local
 # CPack will substitute @CPACK_*@ variables and calculate header length automatically
