@@ -1305,11 +1305,17 @@ int send_server_state_to_client(client_info_t *client) {
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Send server state directly via socket
+  // CRITICAL: Protect socket writes with send_mutex to prevent race with send_thread
   // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
   // Crypto context is stable after handshake and stored in client struct
   const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+
+  mutex_lock(&client->send_mutex);
+
   int result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                   (crypto_context_t *)crypto_ctx);
+
+  mutex_unlock(&client->send_mutex);
 
   if (result != 0) {
     SET_ERRNO(ERROR_NETWORK, "Failed to send server state to client %u", client->client_id);

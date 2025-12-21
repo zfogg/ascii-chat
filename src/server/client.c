@@ -1421,7 +1421,24 @@ void broadcast_server_state_to_all_clients(void) {
     // CRITICAL: Protect socket write with per-client send_mutex
     client_info_t *target = find_client_by_id(client_snapshots[i].client_id);
     if (target) {
+      // IMPORTANT: Verify client_id matches expected value - prevents use-after-free
+      // if client was removed and replaced with another client in same slot
+      if (atomic_load(&target->client_id) != client_snapshots[i].client_id) {
+        log_warn("Client %u ID mismatch during broadcast (found %u), skipping send",
+                 client_snapshots[i].client_id, atomic_load(&target->client_id));
+        continue;
+      }
+
       mutex_lock(&target->send_mutex);
+
+      // Double-check client_id again after acquiring mutex (stronger protection)
+      if (atomic_load(&target->client_id) != client_snapshots[i].client_id) {
+        mutex_unlock(&target->send_mutex);
+        log_warn("Client %u was removed during broadcast send (now %u), skipping",
+                 client_snapshots[i].client_id, atomic_load(&target->client_id));
+        continue;
+      }
+
       int result = send_packet_secure(client_snapshots[i].socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
                                       (crypto_context_t *)client_snapshots[i].crypto_ctx);
       mutex_unlock(&target->send_mutex);
