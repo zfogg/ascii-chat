@@ -525,12 +525,20 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
-  // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
+  // Find the index of the client to exclude by searching through source IDs
+  // (hash table was unreliable with collisions for client IDs like 1 and 257)
+  int exclude_index = -1;
+  for (int i = 0; i < mixer->max_sources; i++) {
+    if (mixer->source_ids[i] == exclude_client_id) {
+      exclude_index = i;
+      break;
+    }
+  }
+
   uint64_t active_mask = mixer->active_sources_mask;
 
-  // Clear bit for excluded source (O(1) vs O(n) scan)
-  if (exclude_index < 64) {
+  // Clear bit for excluded source if found
+  if (exclude_index >= 0 && exclude_index < 64) {
     active_mask &= ~(1ULL << exclude_index);
   }
 
