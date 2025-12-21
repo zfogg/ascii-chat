@@ -474,9 +474,12 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
         src_lines++;
     }
 
-    int v_padding = (height - src_lines) / 2;
-    if (v_padding < 0)
-      v_padding = 0;
+    // Safely calculate vertical padding (clamp to non-negative)
+    int v_padding = 0;
+    if (src_lines < height) {
+      v_padding = (height - src_lines) / 2;
+    }
+    // If source is taller than available height, v_padding remains 0 (display from top)
 
     int dst_row = v_padding;
     src_pos = 0;
@@ -516,9 +519,23 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // Multiple sources: create grid layout
-  // Calculate grid dimensions that maximize the use of terminal space
-  // Character aspect ratio: terminal chars are typically ~2x taller than wide
-  float char_aspect = 2.0f;
+  // Algorithm: Grid Selection with Multi-Objective Scoring
+  //
+  // This algorithm finds the optimal rectangular grid (cols × rows) that maximizes:
+  // 1. Cell readability (minimum size for ASCII art)
+  // 2. Space utilization (minimize empty cells)
+  // 3. Aspect ratio match (terminal character aspect ratio is ~2:1)
+  // 4. Visual balance (prefer square-ish grids)
+  // 5. Terminal shape matching (wide terminals prefer wide grids, etc.)
+  //
+  // The algorithm enumerates all possible grid configurations and scores each based
+  // on these factors. O(N) complexity where N = source_count.
+  //
+  // Terminal character aspect ratio: chars are typically ~2:1 (height/width)
+  // Optimal cell aspect for ASCII art: ~2:1 width/height
+  const float TARGET_CELL_ASPECT = 2.0f;      // Ideal cell aspect ratio
+  const int MIN_CELL_WIDTH = 15;               // Minimum readable width
+  const int MIN_CELL_HEIGHT = 6;               // Minimum readable height
 
   int grid_cols, grid_rows;
   float best_score = -1.0f;
@@ -529,46 +546,64 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   for (int test_cols = 1; test_cols <= source_count; test_cols++) {
     int test_rows = (int)ceil((double)source_count / test_cols);
 
-    // Skip configurations with too many empty cells
+    // Filter 1: Skip configurations with excessive empty cells
+    // Don't waste more than one full row/column of space
     int empty_cells = (test_cols * test_rows) - source_count;
-    if (empty_cells > source_count / 2)
-      continue; // Don't waste more than 50% space
-
-    // Calculate the size each cell would have
-    int cell_width = (width - (test_cols - 1)) / test_cols;   // -1 per separator
-    int cell_height = (height - (test_rows - 1)) / test_rows; // -1 per separator
-
-    // Skip if cells would be too small
-    if (cell_width < 10 || cell_height < 3)
+    int max_empty = (test_cols < test_rows) ? test_cols : test_rows;
+    if (empty_cells > max_empty)
       continue;
 
-    // Calculate the aspect ratio of each cell (accounting for char aspect)
-    float cell_aspect = ((float)cell_width / (float)cell_height) / char_aspect;
+    // Calculate the size each cell would have (accounting for separators)
+    // Note: separators are 1 char wide/tall between cells
+    int cell_width = (width - (test_cols > 1 ? test_cols - 1 : 0)) / test_cols;
+    int cell_height = (height - (test_rows > 1 ? test_rows - 1 : 0)) / test_rows;
 
-    // Score based on how close to square (1:1) each video cell would be
-    // This naturally adapts to any terminal size
-    float aspect_score = 1.0f - fabsf(logf(cell_aspect)); // log makes it symmetric around 1
-    if (aspect_score < 0)
-      aspect_score = 0;
+    // Filter 2: Skip if cells would be too small to read
+    if (cell_width < MIN_CELL_WIDTH || cell_height < MIN_CELL_HEIGHT)
+      continue;
 
-    // Bonus for better space utilization
-    float utilization = (float)source_count / (float)(test_cols * test_rows);
+    // MULTI-OBJECTIVE SCORING
+    // Score 1: Aspect Ratio (0-1, higher is better)
+    // Target 2:1 aspect ratio (optimal for ASCII art with terminal chars)
+    float cell_aspect = (float)cell_width / (float)cell_height;
+    float aspect_diff = fabsf(cell_aspect - TARGET_CELL_ASPECT);
+    float aspect_score = 1.0f / (1.0f + aspect_diff);  // Closer to 2.0 = higher score
 
-    // For 2 clients specifically, heavily weight the aspect score
-    // This makes 2 clients naturally go horizontal on wide terminals and vertical on tall ones
-    float total_score;
-    if (source_count == 2) {
-      // For 2 clients, we want the layout that gives the most square-ish cells
-      total_score = aspect_score * 0.9f + utilization * 0.1f;
-    } else {
-      // For 3+ clients, balance aspect ratio with space utilization
-      total_score = aspect_score * 0.7f + utilization * 0.3f;
-    }
+    // Score 2: Space Utilization (0-1, higher is better)
+    // Minimize wasted space with empty cells
+    int total_cells = test_cols * test_rows;
+    float utilization_score = (float)source_count / (float)total_cells;
 
-    // Small bonus for simpler grids (prefer 2x2 over 3x1, etc.)
-    if (test_cols == test_rows) {
-      total_score += 0.05f; // Slight preference for square grids
-    }
+    // Score 3: Cell Size (0-1, higher is better)
+    // Larger cells are more readable. Normalize against minimum (15×6).
+    // Cap at 3x minimum (additional size doesn't improve much)
+    float size_w = fminf((float)cell_width / (float)MIN_CELL_WIDTH, 3.0f);
+    float size_h = fminf((float)cell_height / (float)MIN_CELL_HEIGHT, 3.0f);
+    float size_score = (size_w * size_h) / 9.0f;  // Normalize to 0-1
+
+    // Score 4: Square Grid Preference (0-1, higher is better)
+    // Prefer balanced grids (cols ≈ rows) over extreme aspect ratios
+    float grid_aspect_diff = fabsf((float)test_cols - (float)test_rows);
+    float shape_score = 1.0f / (1.0f + grid_aspect_diff);
+
+    // Score 5: Terminal Shape Matching (0-1, higher is better)
+    // Wide terminals should prefer wide grids, tall terminals prefer tall grids
+    float terminal_aspect = (float)width / (float)height;
+    float grid_ratio = (float)test_cols / (float)test_rows;
+    float aspect_match = 1.0f / (1.0f + fabsf(terminal_aspect - grid_ratio));
+
+    // WEIGHTED COMBINATION
+    // Priorities: readability > utilization > aspect > balance > shape match
+    float total_score =
+        aspect_score * 0.30f +      // Cell aspect ratio (important)
+        utilization_score * 0.25f +  // Space utilization (minimize waste)
+        size_score * 0.35f +         // Cell size/readability (MOST important)
+        shape_score * 0.05f +        // Square grid preference (minor)
+        aspect_match * 0.05f;        // Terminal shape matching (minor)
+
+    log_debug_every(1000000, "Grid %dx%d: cells %dx%d, aspect=%.2f, util=%.2f, size=%.2f, score=%.3f",
+                    test_cols, test_rows, cell_width, cell_height, aspect_score, utilization_score,
+                    size_score, total_score);
 
     if (total_score > best_score) {
       best_score = total_score;
@@ -580,12 +615,16 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   grid_cols = best_cols;
   grid_rows = best_rows;
 
-  // Calculate dimensions for each cell (leave 1 char for separators)
-  int cell_width = (width - (grid_cols - 1)) / grid_cols;
-  int cell_height = (height - (grid_rows - 1)) / grid_rows;
+  log_debug("Selected grid layout: %dx%d (score: %.3f)", grid_cols, grid_rows, best_score);
 
-  if (cell_width < 10 || cell_height < 3) {
+  // Calculate dimensions for each cell
+  // Only subtract separators if there are actually separators (>1 rows/cols)
+  int cell_width = (width - (grid_cols > 1 ? grid_cols - 1 : 0)) / grid_cols;
+  int cell_height = (height - (grid_rows > 1 ? grid_rows - 1 : 0)) / grid_rows;
+
+  if (cell_width < MIN_CELL_WIDTH || cell_height < MIN_CELL_HEIGHT) {
     // Too small for grid layout, just use first source
+    // This can happen if terminal is very small or many clients trying to fit
     char *result;
     result = SAFE_MALLOC(sources[0].frame_size + 1, char *);
     if (sources[0].frame_data && sources[0].frame_size > 0) {
