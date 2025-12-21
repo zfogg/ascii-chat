@@ -1,0 +1,13 @@
+# AddressSanitizer suppressions for ascii-chat
+# These are indirect leaks from third-party libraries (PortAudio, PulseAudio, ALSA)
+# that allocate memory during initialization and don't free it until program exit.
+# These are not true memory leaks - they're one-time allocations that don't grow.
+
+# PortAudio/PulseAudio/ALSA library initialization leaks
+leak:Pa_Initialize
+leak:libpulse.so
+leak:libasound.so
+leak:libasyncns.so
+
+# These are common library initialization leaks that are suppressed by default
+# in most real-world applications since they're one-time allocations
