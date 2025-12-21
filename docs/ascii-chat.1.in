@@ -61,6 +61,15 @@ Increase output verbosity. Can be specified multiple times for increased detail:
 .BR \-L ", " \-\-log\-file =\fIPATH\fR
 Write log output to the specified file. The default log files are client.log and
 server.log in your current working directory.
+.TP
+.BR \-\-log\-level =\fILEVEL\fR
+Set logging verbosity level: dev, debug, info, warn, error, fatal.
+.RS
+.IP \(bu 2
+\fBDefault\fR: debug (Debug/Dev builds), info (Release/RelWithDebInfo builds)
+.IP \(bu 2
+\fBPrecedence\fR: LOG_LEVEL environment variable > \-\-log\-level > build type default
+.RE
 .SS "Network Options
 .TP
 .BR \-a ", " \-\-address =\fIADDR\fR
@@ -451,7 +460,11 @@ Path to SSH agent socket for password-free key authentication (Unix only).
 Passphrase for encrypted SSH keys. Prefer using ssh-agent when possible.
 .TP
 .B LOG_LEVEL
-Set logging verbosity: 0=DEV, 1=DEBUG, 2=INFO, 3=WARN, 4=ERROR, 5=FATAL.
+Set logging verbosity level. Accepts either numeric (0-5) or string values:
+.br
+0/DEV, 1/DEBUG, 2/INFO, 3/WARN, 4/ERROR, 5/FATAL.
+.br
+Takes precedence over \fB\-\-log\-level\fR command-line argument and build type defaults.
 .TP
 .B TERM
 Terminal type, used for auto-detecting color capabilities.
