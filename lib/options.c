@@ -172,6 +172,13 @@ ASCIICHAT_API unsigned short int opt_strip_ansi = 0;
 // Log file path for file logging (empty string means no file logging)
 ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE] = "";
 
+// Log level for console and file output
+#ifdef NDEBUG
+ASCIICHAT_API log_level_t opt_log_level = LOG_INFO;
+#else
+ASCIICHAT_API log_level_t opt_log_level = LOG_DEBUG;
+#endif
+
 // Encryption options
 ASCIICHAT_API unsigned short int opt_encrypt_enabled = 0;       // Enable AES encryption via --encrypt
 ASCIICHAT_API char opt_encrypt_key[OPTIONS_BUFF_SIZE] = "";     // SSH/GPG key file from --key (file-based only)
@@ -234,6 +241,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"mirror", no_argument, NULL, 1016},
                                          {"strip-ansi", no_argument, NULL, 1017},
                                          {"log-file", required_argument, NULL, 'L'},
+                                         {"log-level", required_argument, NULL, 1018},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"password", optional_argument, NULL, 1009},
@@ -256,6 +264,7 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
                                          {"log-file", required_argument, NULL, 'L'},
+                                         {"log-level", required_argument, NULL, 1018},
                                          {"encrypt", no_argument, NULL, 'E'},
                                          {"key", required_argument, NULL, 'K'},
                                          {"password", optional_argument, NULL, 1009},
@@ -475,6 +484,39 @@ int validate_palette(const char *value_str, char *error_msg, size_t error_msg_si
       SAFE_SNPRINTF(error_msg, error_msg_size,
                     "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom",
                     value_str);
+    }
+    return -1;
+  }
+}
+
+/**
+ * Validate log level string
+ * Returns parsed log level on success, -1 on error
+ */
+int validate_log_level(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Log level value is required");
+    }
+    return -1;
+  }
+
+  if (platform_strcasecmp(value_str, "dev") == 0) {
+    return LOG_DEV;
+  } else if (platform_strcasecmp(value_str, "debug") == 0) {
+    return LOG_DEBUG;
+  } else if (platform_strcasecmp(value_str, "info") == 0) {
+    return LOG_INFO;
+  } else if (platform_strcasecmp(value_str, "warn") == 0) {
+    return LOG_WARN;
+  } else if (platform_strcasecmp(value_str, "error") == 0) {
+    return LOG_ERROR;
+  } else if (platform_strcasecmp(value_str, "fatal") == 0) {
+    return LOG_FATAL;
+  } else {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size,
+                    "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal", value_str);
     }
     return -1;
   }
@@ -1257,6 +1299,19 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
+    case 1018: { // --log-level
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-level", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+      int log_level = validate_log_level(value_str, NULL, 0);
+      if (log_level < 0) {
+        (void)fprintf(stderr, "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal\n", value_str);
+        return ERROR_USAGE;
+      }
+      opt_log_level = (log_level_t)log_level;
+      break;
+    }
+
     case 'E':
       opt_encrypt_enabled = 1;
       break;
@@ -1610,6 +1665,9 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "disable console logging (log only to file) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-V --verbose                 " USAGE_INDENT
                                    "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --log-level LEVEL         " USAGE_INDENT
+                                   "set log level: dev, debug, info, warn, error, fatal "
+                                   "(default: debug in debug builds, info in release)\n");
   (void)fprintf(desc, USAGE_INDENT "-S --snapshot                " USAGE_INDENT
                                    "capture single frame and exit (default: [unset])\n");
   (void)fprintf(
@@ -1652,6 +1710,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     "
                                    "Custom palette characters for --palette=custom (implies --palette=custom)\n");
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --log-level LEVEL  " USAGE_INDENT "set log level: dev, debug, info, warn, error, fatal "
+                                   "(default: debug in debug builds, info in release)\n");
   (void)fprintf(desc, USAGE_INDENT "-V --verbose         " USAGE_INDENT
                                    "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");
   (void)fprintf(desc,

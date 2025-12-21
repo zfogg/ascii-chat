@@ -938,6 +938,46 @@ extern ASCIICHAT_API unsigned short int opt_strip_ansi;
  */
 extern ASCIICHAT_API char opt_log_file[OPTIONS_BUFF_SIZE];
 
+/** @brief Log level threshold for console and file output
+ *
+ * Controls which log messages are displayed. Only messages at this level
+ * or more severe are shown.
+ *
+ * **Default**:
+ * - DEBUG in debug builds (when NDEBUG is not defined)
+ * - INFO in release builds (when NDEBUG is defined)
+ *
+ * **Command-line**: `--log-level <level>` (set minimum log level)
+ *
+ * **Valid log levels** (from most verbose to least):
+ * - `dev`: Development-level messages (most verbose)
+ * - `debug`: Debug messages
+ * - `info`: Informational messages
+ * - `warn`: Warning messages
+ * - `error`: Error messages
+ * - `fatal`: Fatal error messages (least verbose)
+ *
+ * **Example**: `--log-level warn` (show warnings and errors only)
+ *
+ * **Environment variable**: Can be overridden by `LOG_LEVEL` environment variable
+ * - Format: Same as command-line levels (case-insensitive)
+ * - Example: `LOG_LEVEL=debug ./ascii-chat server`
+ *
+ * **Interaction with --verbose**:
+ * - `--verbose` (or `-V`) decreases the log level threshold, showing more messages
+ * - Applied after `--log-level` option parsing
+ * - Each `-V` flag lowers the threshold by one level
+ * - Example: `--log-level warn -VV` would lower warn to debug level
+ *
+ * @note Log level is a global setting that applies to all logging output
+ * @note Option is available for both client and server modes
+ * @note Environment variable `LOG_LEVEL` takes precedence over default, but not command-line
+ * @note Default level is set based on build type (debug vs release)
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API log_level_t opt_log_level;
+
 /** @} */
 
 /**
