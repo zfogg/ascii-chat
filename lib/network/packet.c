@@ -13,6 +13,7 @@
 #include "crc32.h"
 #include "crypto/crypto.h"
 #include "compression.h"
+#include "options.h" // For opt_compression_level
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -423,11 +424,13 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   size_t final_len = len;
   void *compressed_data = NULL;
 
-  if (len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
+  // Skip compression if --no-compress flag is set
+  if (!opt_no_compress && len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
     void *temp_compressed = NULL;
     size_t compressed_size = 0;
 
-    if (compress_data(data, len, &temp_compressed, &compressed_size) == 0) {
+    // Use configured compression level from --compression-level flag
+    if (compress_data(data, len, &temp_compressed, &compressed_size, opt_compression_level) == 0) {
       double ratio = (double)compressed_size / (double)len;
       if (ratio < COMPRESSION_RATIO_THRESHOLD) {
         final_data = temp_compressed;

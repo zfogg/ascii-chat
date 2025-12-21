@@ -388,8 +388,8 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
 
 /** @brief Maximum display name length in characters */
 #define MAX_DISPLAY_NAME_LEN 32
-/** @brief Maximum number of clients supported */
-#define MAX_CLIENTS 10
+/** @brief Maximum possible clients (static array size) - actual runtime limit set by --max-clients (1-32) */
+#define MAX_CLIENTS 32
 
 /** @brief Default maximum frame rate (frames per second) */
 #define DEFAULT_MAX_FPS 60

@@ -62,15 +62,19 @@
 /** @} */
 
 /**
- * @brief Compress data using zstd
+ * @brief Compress data using zstd with configurable compression level
  * @param input Input data to compress (must not be NULL)
  * @param input_size Size of input data in bytes
  * @param output Output buffer pointer (pointer-to-pointer; function allocates and stores address here)
  * @param output_size Size of compressed data in bytes (output parameter, must not be NULL)
+ * @param compression_level zstd compression level (1-9)
+ *   - Level 1: Fastest compression, lowest ratio (best for real-time streaming)
+ *   - Level 3: Balanced speed/ratio
+ *   - Level 9: Slower compression, best ratio (for limited bandwidth)
  * @return 0 on success, non-zero on error
  *
- * Compresses input data using zstd's compression algorithm. The output buffer
- * is automatically allocated by the function and must be freed by the caller
+ * Compresses input data using zstd's compression algorithm with the specified compression level.
+ * The output buffer is automatically allocated by the function and must be freed by the caller
  * using SAFE_FREE() or the appropriate memory management function.
  *
  * @note The output buffer is allocated using SAFE_MALLOC(). Caller must free it
@@ -82,9 +86,12 @@
  * @note For best performance, use should_compress() first to determine
  *       if compression is beneficial before calling this function.
  *
+ * @note Compression level must be between 1 and 9. Levels above 9 are not
+ *       recommended for real-time streaming due to CPU overhead.
+ *
  * @warning Caller must SAFE_FREE() the output buffer to avoid memory leaks.
  */
-int compress_data(const void *input, size_t input_size, void **output, size_t *output_size);
+int compress_data(const void *input, size_t input_size, void **output, size_t *output_size, int compression_level);
 
 /**
  * @brief Decompress data using zstd

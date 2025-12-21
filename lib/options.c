@@ -127,6 +127,16 @@ ASCIICHAT_API bool auto_width = true, auto_height = true;
 ASCIICHAT_API char opt_address[OPTIONS_BUFF_SIZE] = "localhost", opt_address6[OPTIONS_BUFF_SIZE] = "",
                    opt_port[OPTIONS_BUFF_SIZE] = "27224";
 
+// Server options
+ASCIICHAT_API int opt_max_clients = 10; // Maximum concurrent clients (min 1, max 32)
+
+// Network performance options
+ASCIICHAT_API int opt_compression_level = 1; // zstd compression level (min 1, max 9, default 1)
+ASCIICHAT_API bool opt_no_compress = false;  // Disable compression entirely (default: false)
+
+// Client reconnection options
+ASCIICHAT_API int opt_reconnect_attempts = 0; // Number of reconnection attempts (0=off, -1=unlimited)
+
 ASCIICHAT_API unsigned short int opt_webcam_index = 0;
 
 ASCIICHAT_API bool opt_webcam_flip = true;
@@ -254,6 +264,9 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"list-webcams", no_argument, NULL, 1013},
                                          {"list-microphones", no_argument, NULL, 1014},
                                          {"list-speakers", no_argument, NULL, 1015},
+                                         {"compression-level", required_argument, NULL, 1019},
+                                         {"no-compress", no_argument, NULL, 1022},
+                                         {"reconnect", required_argument, NULL, 1020},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -274,6 +287,9 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"config", required_argument, NULL, 1010},
                                          {"config-create", optional_argument, NULL, 1011},
                                          {"verbose", no_argument, NULL, 'V'},
+                                         {"compression-level", required_argument, NULL, 1019},
+                                         {"no-compress", no_argument, NULL, 1022},
+                                         {"max-clients", required_argument, NULL, 1021},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -1305,12 +1321,112 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         return ERROR_USAGE;
       int log_level = validate_log_level(value_str, NULL, 0);
       if (log_level < 0) {
-        (void)fprintf(stderr, "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal\n", value_str);
+        (void)fprintf(stderr, "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal\n",
+                      value_str);
         return ERROR_USAGE;
       }
       opt_log_level = (log_level_t)log_level;
       break;
     }
+
+    case 1019: { // --compression-level
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "compression-level", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+
+      char *endptr;
+      long level = strtol(value_str, &endptr, 10);
+
+      // Validate number parsing
+      if (*endptr != '\0' || endptr == value_str) {
+        (void)fprintf(stderr, "Invalid compression level '%s': must be a number\n", value_str);
+        return ERROR_USAGE;
+      }
+
+      // Validate range (zstd levels 1-9 for real-time streaming)
+      if (level < 1 || level > 9) {
+        (void)fprintf(stderr, "Invalid compression level '%s': must be between 1 and 9\n", value_str);
+        (void)fprintf(stderr, "  Level 1: Fastest compression (best for real-time)\n");
+        (void)fprintf(stderr, "  Level 3: Balanced speed/ratio\n");
+        (void)fprintf(stderr, "  Level 9: Best compression (for limited bandwidth)\n");
+        return ERROR_USAGE;
+      }
+
+      opt_compression_level = (int)level;
+      break;
+    }
+
+    case 1020: { // --reconnect (client only)
+      if (!is_client) {
+        (void)fprintf(stderr, "Warning: --reconnect is ignored in server mode\n");
+        break;
+      }
+
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "reconnect", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+
+      // Check for special values: "off" or "auto"
+      if (strcmp(value_str, "off") == 0) {
+        opt_reconnect_attempts = 0;
+      } else if (strcmp(value_str, "auto") == 0) {
+        opt_reconnect_attempts = -1; // Unlimited reconnection
+      } else {
+        // Parse as number
+        char *endptr;
+        long attempts = strtol(value_str, &endptr, 10);
+
+        // Validate number parsing
+        if (*endptr != '\0' || endptr == value_str) {
+          (void)fprintf(stderr, "Invalid reconnect value '%s': must be 'off', 'auto', or a number\n", value_str);
+          return ERROR_USAGE;
+        }
+
+        // Validate range (0-999 attempts)
+        if (attempts < 0 || attempts > 999) {
+          (void)fprintf(stderr, "Invalid reconnect attempts '%s': must be between 0 and 999\n", value_str);
+          (void)fprintf(stderr, "  Use 'off' for no reconnection\n");
+          (void)fprintf(stderr, "  Use 'auto' for unlimited reconnection\n");
+          return ERROR_USAGE;
+        }
+
+        opt_reconnect_attempts = (int)attempts;
+      }
+      break;
+    }
+
+    case 1021: { // --max-clients (server only)
+      if (is_client) {
+        (void)fprintf(stderr, "Warning: --max-clients is ignored in client mode\n");
+        break;
+      }
+
+      char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "max-clients", is_client);
+      if (!value_str)
+        return ERROR_USAGE;
+
+      char *endptr;
+      long max_clients = strtol(value_str, &endptr, 10);
+
+      // Validate number parsing
+      if (*endptr != '\0' || endptr == value_str) {
+        (void)fprintf(stderr, "Invalid max-clients '%s': must be a number\n", value_str);
+        return ERROR_USAGE;
+      }
+
+      // Validate range (1-32 clients)
+      if (max_clients < 1 || max_clients > 32) {
+        (void)fprintf(stderr, "Invalid max-clients '%s': must be between 1 and 32\n", value_str);
+        return ERROR_USAGE;
+      }
+
+      opt_max_clients = (int)max_clients;
+      break;
+    }
+
+    case 1022: // --no-compress
+      opt_no_compress = true;
+      break;
 
     case 'E':
       opt_encrypt_enabled = 1;
@@ -1710,7 +1826,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-C --palette-chars CHARS     "
                                    "Custom palette characters for --palette=custom (implies --palette=custom)\n");
   (void)fprintf(desc, USAGE_INDENT "-L --log-file FILE   " USAGE_INDENT "redirect logs to file (default: [unset])\n");
-  (void)fprintf(desc, USAGE_INDENT "   --log-level LEVEL  " USAGE_INDENT "set log level: dev, debug, info, warn, error, fatal "
+  (void)fprintf(desc, USAGE_INDENT "   --log-level LEVEL  " USAGE_INDENT
+                                   "set log level: dev, debug, info, warn, error, fatal "
                                    "(default: debug in debug builds, info in release)\n");
   (void)fprintf(desc, USAGE_INDENT "-V --verbose         " USAGE_INDENT
                                    "increase log verbosity (stackable: -VV, -VVV) (default: [unset])\n");

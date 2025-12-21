@@ -161,7 +161,7 @@ Theory((size_t data_size), compression, compression_roundtrip_property) {
 
   void *compressed_data = NULL;
   size_t compressed_size = 0;
-  int compress_result = compress_data(original_data, data_size, &compressed_data, &compressed_size);
+  int compress_result = compress_data(original_data, data_size, &compressed_data, &compressed_size, 3);
 
   if (compress_result != 0 || compressed_data == NULL) {
     SAFE_FREE(original_data);
@@ -197,7 +197,7 @@ Theory((size_t data_size), compression, compressible_data_property) {
 
   void *compressed_data = NULL;
   size_t compressed_size = 0;
-  int result = compress_data(original_data, data_size, &compressed_data, &compressed_size);
+  int result = compress_data(original_data, data_size, &compressed_data, &compressed_size, 3);
 
   if (result == 0 && compressed_data != NULL) {
     float ratio = (float)compressed_size / (float)data_size;
