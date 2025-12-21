@@ -84,11 +84,12 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   // Initialize logging with default filename
   // Client mode: route ALL logs to stderr to keep stdout clean for ASCII art output
   const char *log_filename = (strlen(opt_log_file) > 0) ? opt_log_file : default_log_filename;
-#ifdef NDEBUG
-  log_init(log_filename, LOG_INFO, is_client); /* Release build: INFO level */
-#else
-  log_init(log_filename, LOG_DEBUG, is_client); /* Debug build: DEBUG level */
-#endif
+  // Use opt_log_level from command-line argument (set by options_init in main.c)
+  // Default levels (when no --log-level arg or LOG_LEVEL env var):
+  //   Debug/Dev builds: LOG_DEBUG
+  //   Release/RelWithDebInfo builds: LOG_INFO
+  // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
+  log_init(log_filename, opt_log_level, is_client);
 
   // Initialize palette based on command line options
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;
