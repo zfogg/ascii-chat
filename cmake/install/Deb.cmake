@@ -33,17 +33,61 @@ endif()
 # Note: CPACK_DEBIAN_PACKAGE_SECTION, CPACK_DEBIAN_PACKAGE_PRIORITY, and
 # CPACK_DEBIAN_PACKAGE_HOMEPAGE are set in Install.cmake BEFORE include(CPack)
 
-set(CPACK_DEBIAN_PACKAGE_NAME "ascii-chat")
-set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION_SUMMARY}")
+# Enable component-based packaging - creates separate .deb for each component group
+set(CPACK_DEB_COMPONENT_INSTALL ON)
+
+# Determine architecture
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
     set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "arm64")
 endif()
 
-# Note: CPACK_DEBIAN_PACKAGE_DEPENDS is set in Install.cmake before include(CPack)
+# =============================================================================
+# Runtime Package (ascii-chat) - The executable
+# =============================================================================
+# Note: Component group is "RuntimeGroup" so variables use RUNTIMEGROUP (uppercase)
+set(CPACK_DEBIAN_RUNTIMEGROUP_PACKAGE_NAME "ascii-chat")
+set(CPACK_DEBIAN_RUNTIMEGROUP_FILE_NAME "ascii-chat-${PROJECT_VERSION}-${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_RUNTIMEGROUP_PACKAGE_SECTION "net")
+set(CPACK_DEBIAN_RUNTIMEGROUP_PACKAGE_DESCRIPTION "Terminal-based video chat with ASCII art conversion
+ ascii-chat converts webcam video into ASCII art in real-time, enabling video
+ chat right in your terminal. Supports multiple clients with video mixing and
+ audio streaming capabilities.")
 
-# Use our custom package naming (matches CPACK_PACKAGE_FILE_NAME)
-set(CPACK_DEBIAN_FILE_NAME "${CPACK_PACKAGE_FILE_NAME}.deb")
+# =============================================================================
+# Development Package (libasciichat-dev) - Libraries and headers
+# =============================================================================
+# Note: Component group is "DevelopmentGroup" so variables use DEVELOPMENTGROUP (uppercase)
+set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_NAME "libasciichat-dev")
+set(CPACK_DEBIAN_DEVELOPMENTGROUP_FILE_NAME "libasciichat-dev-${PROJECT_VERSION}-${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_SECTION "libdevel")
+set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_DESCRIPTION "Development files for libasciichat
+ This package contains the static and shared libraries, C headers, pkg-config
+ files, and CMake configuration files needed to build applications using
+ libasciichat.")
+set(CPACK_DEBIAN_DEVELOPMENTGROUP_PACKAGE_DEPENDS "ascii-chat (= ${PROJECT_VERSION}), libportaudio2, libzstd1, libsodium23")
+
+# =============================================================================
+# Documentation Package (libasciichat-doc) - HTML docs
+# =============================================================================
+# Note: Documentation is part of DevelopmentGroup, not a separate component group
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_NAME "libasciichat-doc")
+set(CPACK_DEBIAN_DOCUMENTATION_FILE_NAME "libasciichat-doc-${PROJECT_VERSION}-all.deb")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_ARCHITECTURE "all")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_SECTION "doc")
+set(CPACK_DEBIAN_DOCUMENTATION_PACKAGE_DESCRIPTION "Developer documentation for libasciichat
+ This package contains HTML API documentation and examples for developing
+ applications with libasciichat.")
+
+# =============================================================================
+# Manpages Package (included in -dev) - API manpages
+# =============================================================================
+# Note: Manpages is part of DevelopmentGroup, not a separate component group
+set(CPACK_DEBIAN_MANPAGES_PACKAGE_NAME "libasciichat-dev")
+set(CPACK_DEBIAN_MANPAGES_FILE_NAME "libasciichat-dev-${PROJECT_VERSION}-${CPACK_DEBIAN_PACKAGE_ARCHITECTURE}.deb")
+set(CPACK_DEBIAN_MANPAGES_PACKAGE_SECTION "libdevel")
+
+# Note: CPACK_DEBIAN_PACKAGE_DEPENDS is set in Install.cmake before include(CPack)
 
 # Maintainer info is set in ProjectConstants.cmake
 # Can be overridden via environment variable DEBEMAIL

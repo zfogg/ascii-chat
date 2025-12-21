@@ -407,7 +407,7 @@ if(UNIX)
     # Install to share/man/man1/ (section 1 = user commands)
     install(FILES "${CMAKE_BINARY_DIR}/docs/ascii-chat.1"
         DESTINATION share/man/man1
-        COMPONENT Manpages
+        COMPONENT Runtime
     )
     message(STATUS "${BoldGreen}Configured${ColorReset} manpage installation: ${BoldBlue}ascii-chat.1${ColorReset} → ${BoldYellow}share/man/man1/${ColorReset}")
 endif()
@@ -957,16 +957,22 @@ After installation, run:
     # strip follows symlinks so specifying the linker name strips the real versioned file
     if(UNIX AND NOT APPLE)
         # List of files to strip (relative to install prefix)
-        set(CPACK_STRIP_FILES
-            "bin/ascii-chat"                    # Main executable
-            "lib/libasciichat.so"               # Shared library symlink → real versioned file
-        )
+        set(CPACK_STRIP_FILES "bin/ascii-chat")  # Main executable
+
+        # Only include shared library if it was built (musl builds don't support shared libs)
+        if(TARGET ascii-chat-shared)
+            list(APPEND CPACK_STRIP_FILES "lib/libasciichat.so")  # Shared library symlink → real versioned file
+        endif()
+
         message(STATUS "${Yellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
     elseif(APPLE)
-        set(CPACK_STRIP_FILES
-            "bin/ascii-chat"                    # Main executable
-            "lib/libasciichat.dylib"            # Shared library symlink → real versioned file
-        )
+        set(CPACK_STRIP_FILES "bin/ascii-chat")  # Main executable
+
+        # Only include shared library if it was built
+        if(TARGET ascii-chat-shared)
+            list(APPEND CPACK_STRIP_FILES "lib/libasciichat.dylib")  # Shared library symlink → real versioned file
+        endif()
+
         message(STATUS "${Yellow}CPack:${ColorReset} Binary stripping ${BoldGreen}enabled${ColorReset} for ${BoldBlue}${CPACK_STRIP_FILES}")
     elseif(WIN32)
         # Windows: Use llvm-strip if available (for Clang builds)
@@ -998,9 +1004,9 @@ After installation, run:
     # Component Groups (legacy API - also set via cpack_add_component_group below)
     set(CPACK_COMPONENT_RUNTIME_GROUP "RUNTIMEGROUP")
     set(CPACK_COMPONENT_DEVELOPMENT_GROUP "DEVELOPMENTGROUP")
-    set(CPACK_COMPONENT_DOCUMENTATION_GROUP "RUNTIMEGROUP")
+    set(CPACK_COMPONENT_DOCUMENTATION_GROUP "DEVELOPMENTGROUP")
     if(NOT WIN32)
-        set(CPACK_COMPONENT_MANPAGES_GROUP "MANPAGESGROUP")
+        set(CPACK_COMPONENT_MANPAGES_GROUP "DEVELOPMENTGROUP")
     endif()
 
     # Runtime Group
@@ -1051,15 +1057,15 @@ After installation, run:
 
     # Runtime group - components needed to run ascii-chat
     cpack_add_component_group(RuntimeGroup
-        DISPLAY_NAME "Runtime"
-        DESCRIPTION "Core files needed to run ascii-chat, including the executable and documentation"
+        DISPLAY_NAME "ascii-chat"
+        DESCRIPTION "Terminal video chat application - the ascii-chat executable and user documentation"
         EXPANDED
     )
 
     # Development group - components needed to develop with ascii-chat
     cpack_add_component_group(DevelopmentGroup
-        DISPLAY_NAME "Development"
-        DESCRIPTION "All of the tools you'll ever need to develop software using ascii-chat libraries"
+        DISPLAY_NAME "libasciichat"
+        DESCRIPTION "Development package - libraries, headers, API documentation, and build system integration files"
     )
 
     # -------------------------------------------------------------------------

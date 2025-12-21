@@ -26,6 +26,25 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CPackGenerator.cmake)
 enable_archive_generators()
 
 # =============================================================================
+# Component-Based Archive Packaging
+# =============================================================================
+# Create separate archives for each component:
+#   - ascii-chat-VERSION-OS-ARCH.tar.gz (Runtime component)
+#   - libasciichat-VERSION-OS-ARCH.tar.gz (Development + Documentation + Manpages)
+set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+
+# Component-specific archive naming
+# Note: Component groups use uppercase names in CPack variables
+# Runtime package (ascii-chat) - RuntimeGroup component group
+set(CPACK_ARCHIVE_RUNTIMEGROUP_FILE_NAME "ascii-chat-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+
+# Development package (libasciichat) - DevelopmentGroup component group
+# Note: DevelopmentGroup includes Development, Documentation, and Manpages components
+set(CPACK_ARCHIVE_DEVELOPMENTGROUP_FILE_NAME "libasciichat-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+set(CPACK_ARCHIVE_DOCUMENTATION_FILE_NAME "libasciichat-doc-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+set(CPACK_ARCHIVE_MANPAGES_FILE_NAME "libasciichat-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
+
+# =============================================================================
 # Source Package Configuration (Optional)
 # =============================================================================
 # Source packages contain the source code for distribution

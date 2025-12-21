@@ -170,20 +170,26 @@ jobs:
 
             ## Download
 
+            **Two Package Types:**
+            - **ascii-chat**: Runtime package (executable + man page + shell completions)
+            - **libasciichat**: Development package (libraries + headers + API docs + build integration)
+
             **Linux Installers (x86_64 & arm64):**
-            - Debian/Ubuntu `.deb`
-            - Fedora/RHEL `.rpm`
-            - Self-extracting `.sh` installer
-            - Portable `.tar.gz`
+            - Runtime: `ascii-chat-*.deb` or `ascii-chat-*.rpm`
+            - Development: `libasciichat-dev-*.deb` or `libasciichat-devel-*.rpm`
+            - Documentation: `libasciichat-doc-*.deb` or `libasciichat-doc-*.rpm` (optional)
+            - Archives: `ascii-chat-*.tar.gz`, `libasciichat-*.tar.gz`
+            - Self-extracting: `ascii-chat-*.sh`, `libasciichat-*.sh`
 
             **macOS Installers (x86_64 & arm64):**
-            - Signed-compatible `.pkg` (productbuild)
-            - Self-extracting `.sh` installer
-            - Portable `.tar.gz`
+            - Runtime: `ascii-chat-*.pkg`
+            - Development: `libasciichat-*.pkg`
+            - Archives: `ascii-chat-*.tar.gz`, `libasciichat-*.tar.gz`
+            - Self-extracting: `ascii-chat-*.sh`, `libasciichat-*.sh`
 
             **Windows Installers (x86_64):**
-            - WiX `.msi` installer
-            - Portable `.zip`
+            - Installer: `ascii-chat-*.msi` (single installer with optional components)
+            - Archives: `ascii-chat-*.zip`, `libasciichat-*.zip`
 
             ## Quick Start
 
@@ -331,7 +337,18 @@ jobs:
           mkdir -p dist
           shopt -s nullglob
 
-          # Copy all package artifacts
+          # Copy all package artifacts (component-based packaging creates multiple packages)
+          # Expected packages per architecture:
+          #   - ascii-chat-*.deb (runtime package)
+          #   - libasciichat-dev-*.deb (development package)
+          #   - libasciichat-doc-*.deb (documentation package, arch=all)
+          #   - ascii-chat-*.rpm (runtime package)
+          #   - libasciichat-devel-*.rpm (development package)
+          #   - libasciichat-doc-*.rpm (documentation package, arch=noarch)
+          #   - ascii-chat-*.tar.gz (runtime archive)
+          #   - libasciichat-*.tar.gz (development archive)
+          #   - ascii-chat-*.sh (runtime self-extracting installer)
+          #   - libasciichat-*.sh (development self-extracting installer)
           for artifact in build_release/*.deb build_release/*.rpm build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
             cp "$artifact" dist/
@@ -342,16 +359,20 @@ jobs:
           ls -l dist
 
           missing=""
-          ls dist/*.deb 1>/dev/null 2>&1 || missing="$missing .deb"
-          ls dist/*.rpm 1>/dev/null 2>&1 || missing="$missing .rpm"
-          ls dist/*.tar.gz 1>/dev/null 2>&1 || missing="$missing .tar.gz"
-          ls dist/*.sh 1>/dev/null 2>&1 || missing="$missing .sh"
+          ls dist/*ascii-chat*.deb 1>/dev/null 2>&1 || missing="$missing ascii-chat.deb"
+          ls dist/*libasciichat*.deb 1>/dev/null 2>&1 || missing="$missing libasciichat.deb"
+          ls dist/*ascii-chat*.rpm 1>/dev/null 2>&1 || missing="$missing ascii-chat.rpm"
+          ls dist/*libasciichat*.rpm 1>/dev/null 2>&1 || missing="$missing libasciichat.rpm"
+          ls dist/*ascii-chat*.tar.gz 1>/dev/null 2>&1 || missing="$missing ascii-chat.tar.gz"
+          ls dist/*libasciichat*.tar.gz 1>/dev/null 2>&1 || missing="$missing libasciichat.tar.gz"
+          ls dist/*ascii-chat*.sh 1>/dev/null 2>&1 || missing="$missing ascii-chat.sh"
+          ls dist/*libasciichat*.sh 1>/dev/null 2>&1 || missing="$missing libasciichat.sh"
 
           if [[ -n "$missing" ]]; then
-            echo "::error::Missing required package types:$missing"
+            echo "::error::Missing required packages:$missing"
             exit 1
           fi
-          echo "All required package types found"
+          echo "All required packages found (runtime + development)"
 
       - name: Upload Linux packages to release
         uses: softprops/action-gh-release@v1
@@ -431,7 +452,14 @@ jobs:
           mkdir -p dist
           shopt -s nullglob
 
-          # Copy all package artifacts
+          # Copy all package artifacts (component-based packaging creates multiple packages)
+          # Expected packages per architecture:
+          #   - ascii-chat-*.pkg (runtime package)
+          #   - libasciichat-*.pkg (development package)
+          #   - ascii-chat-*.tar.gz (runtime archive)
+          #   - libasciichat-*.tar.gz (development archive)
+          #   - ascii-chat-*.sh (runtime self-extracting installer)
+          #   - libasciichat-*.sh (development self-extracting installer)
           for artifact in build_release/*.pkg build_release/*.tar.gz build_release/*.sh; do
             [[ -e "$artifact" ]] || continue
             cp "$artifact" dist/
@@ -442,15 +470,18 @@ jobs:
           ls -l dist
 
           missing=""
-          ls dist/*.pkg 1>/dev/null 2>&1 || missing="$missing .pkg"
-          ls dist/*.tar.gz 1>/dev/null 2>&1 || missing="$missing .tar.gz"
-          ls dist/*.sh 1>/dev/null 2>&1 || missing="$missing .sh"
+          ls dist/*ascii-chat*.pkg 1>/dev/null 2>&1 || missing="$missing ascii-chat.pkg"
+          ls dist/*libasciichat*.pkg 1>/dev/null 2>&1 || missing="$missing libasciichat.pkg"
+          ls dist/*ascii-chat*.tar.gz 1>/dev/null 2>&1 || missing="$missing ascii-chat.tar.gz"
+          ls dist/*libasciichat*.tar.gz 1>/dev/null 2>&1 || missing="$missing libasciichat.tar.gz"
+          ls dist/*ascii-chat*.sh 1>/dev/null 2>&1 || missing="$missing ascii-chat.sh"
+          ls dist/*libasciichat*.sh 1>/dev/null 2>&1 || missing="$missing libasciichat.sh"
 
           if [[ -n "$missing" ]]; then
-            echo "::error::Missing required package types:$missing"
+            echo "::error::Missing required packages:$missing"
             exit 1
           fi
-          echo "All required package types found"
+          echo "All required packages found (runtime + development)"
 
       - name: Upload macOS packages to release
         uses: softprops/action-gh-release@v1
@@ -558,7 +589,12 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
 
-          # Copy all package artifacts
+          # Copy all package artifacts (component-based packaging creates multiple packages)
+          # Expected packages:
+          #   - ascii-chat.msi (runtime package - single installer with optional components)
+          #   - ascii-chat-*.zip (runtime archive)
+          #   - libasciichat-*.zip (development archive)
+          # Note: WIX creates a single .msi with selectable components, not separate .msi files
           $patterns = @("build_release/*.msi", "build_release/*.zip")
           foreach ($pattern in $patterns) {
             foreach ($artifact in Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue) {
@@ -571,14 +607,15 @@ jobs:
           Get-ChildItem dist
 
           $missing = @()
-          if (-not (Get-ChildItem dist/*.msi -ErrorAction SilentlyContinue)) { $missing += ".msi" }
-          if (-not (Get-ChildItem dist/*.zip -ErrorAction SilentlyContinue)) { $missing += ".zip" }
+          if (-not (Get-ChildItem dist/*.msi -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.msi" }
+          if (-not (Get-ChildItem dist/*ascii-chat*.zip -ErrorAction SilentlyContinue)) { $missing += "ascii-chat.zip" }
+          if (-not (Get-ChildItem dist/*libasciichat*.zip -ErrorAction SilentlyContinue)) { $missing += "libasciichat.zip" }
 
           if ($missing.Count -gt 0) {
-            Write-Host "::error::Missing required package types: $($missing -join ', ')"
+            Write-Host "::error::Missing required packages: $($missing -join ', ')"
             exit 1
           }
-          Write-Host "All required package types found"
+          Write-Host "All required packages found (runtime + development)"
 
       - name: Upload Windows packages to release
         uses: softprops/action-gh-release@v1
