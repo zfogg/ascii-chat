@@ -75,7 +75,7 @@ static inline uint32_t fnv1a_hash_bytes(const void *data, size_t len) {
     return 0;
   }
 
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *bytes = (const unsigned char *)data;
 
   for (size_t i = 0; i < len; i++) {
@@ -101,7 +101,7 @@ static inline uint32_t fnv1a_hash_string(const char *str) {
     return 0;
   }
 
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *p = (const unsigned char *)str;
 
   while (*p) {
@@ -122,7 +122,7 @@ static inline uint32_t fnv1a_hash_string(const char *str) {
  * @ingroup util
  */
 static inline uint32_t fnv1a_hash_uint32(uint32_t value) {
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
   // Hash each byte of the 32-bit value
   FNV1A_32_HASH(hash, (value >> 0) & FNV1A_32_MASK);
@@ -144,7 +144,7 @@ static inline uint32_t fnv1a_hash_uint32(uint32_t value) {
  * @ingroup util
  */
 static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
   // Hash each byte of the 64-bit value
   for (int i = 0; i < 8; i++) {
