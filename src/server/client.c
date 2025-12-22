@@ -343,11 +343,12 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   memset(client, 0, sizeof(client_info_t));
 
   client->socket = socket;
-  log_debug("SOCKET_DEBUG: Client socket set to %d", socket);
-  atomic_store(&client->client_id, atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1);
+  uint32_t new_client_id = atomic_fetch_add(&g_client_manager.next_client_id, 1) + 1;
+  atomic_store(&client->client_id, new_client_id);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
   atomic_store(&client->active, true);
+  log_info("Added new client ID=%u from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
   atomic_store(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
   atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
@@ -639,9 +640,11 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
     client_info_t *client = &g_client_manager.clients[i];
     if (client->client_id == client_id && client->client_id != 0) {
       // Mark as shutting down and inactive immediately to stop new operations
-      log_debug("SOCKET_DEBUG: Found client %d to remove, socket=%d", client_id, client->socket);
+      log_info("Removing client %d (socket=%d) - marking inactive and clearing video flags", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
       atomic_store(&client->active, false);
+      atomic_store(&client->is_sending_video, false);
+      atomic_store(&client->is_sending_audio, false);
       target_client = client;
 
       // Store display name before clearing
