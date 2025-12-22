@@ -860,24 +860,8 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
  * @ingroup client_connection
  */
 int threaded_send_ping_packet(void) {
-  mutex_lock(&g_send_mutex);
-
-  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    mutex_unlock(&g_send_mutex);
-    return -1;
-  }
-
-  int result = send_ping_packet(sockfd);
-  mutex_unlock(&g_send_mutex);
-
-  // If send failed, signal connection loss
-  if (result < 0) {
-    server_connection_lost();
-  }
-
-  return result;
+  // Use threaded_send_packet which handles encryption, mutex locking, and connection state
+  return threaded_send_packet(PACKET_TYPE_PING, NULL, 0);
 }
 
 /**
@@ -888,24 +872,8 @@ int threaded_send_ping_packet(void) {
  * @ingroup client_connection
  */
 int threaded_send_pong_packet(void) {
-  mutex_lock(&g_send_mutex);
-
-  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
-  socket_t sockfd = server_connection_get_socket();
-  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
-    mutex_unlock(&g_send_mutex);
-    return -1;
-  }
-
-  int result = send_pong_packet(sockfd);
-  mutex_unlock(&g_send_mutex);
-
-  // If send failed, signal connection loss
-  if (result < 0) {
-    server_connection_lost();
-  }
-
-  return result;
+  // Use threaded_send_packet which handles encryption, mutex locking, and connection state
+  return threaded_send_packet(PACKET_TYPE_PONG, NULL, 0);
 }
 
 /**

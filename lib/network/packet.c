@@ -660,7 +660,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // Handle unencrypted packets
   if (enforce_encryption && !packet_is_handshake_type(pkt_type)) {
-    SET_ERRNO(ERROR_CRYPTO, "Received unencrypted packet but encryption is required");
+    SET_ERRNO(ERROR_CRYPTO, "Received unencrypted packet type %d but encryption is required", pkt_type);
     return PACKET_RECV_ERROR;
   }
 

@@ -946,6 +946,14 @@ int protocol_start_connection() {
   }
   log_info("Audio capture thread started successfully (or skipped if audio disabled)");
 
+  // Start keepalive/ping thread to prevent server timeout
+  log_info("Starting keepalive/ping thread...");
+  if (keepalive_start_thread() != 0) {
+    log_error("Failed to start keepalive/ping thread");
+    return -1;
+  }
+  log_info("Keepalive/ping thread started successfully");
+
   g_data_thread_created = true;
   return 0;
 }
