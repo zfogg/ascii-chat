@@ -479,7 +479,7 @@ Theory((const char *auth_method, bool known_hosts_verification, bool client_whit
     public_key_t client_key;
     client_key.type = KEY_TYPE_ED25519;
     memset(client_key.key, 0x42, 32);
-    strcpy(client_key.comment, "test-client");
+    SAFE_STRNCPY(client_key.comment, "test-client", sizeof(client_key.comment));
 
     // This would normally be done through parse_keys_from_file
     // For testing, we'll simulate the check

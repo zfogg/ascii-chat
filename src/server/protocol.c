@@ -508,14 +508,16 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     }
   } else {
     // Log periodically to confirm we're receiving frames
-    static int frame_count[MAX_CLIENTS] = {0};
-    frame_count[atomic_load(&client->client_id) % MAX_CLIENTS]++;
-    if (frame_count[atomic_load(&client->client_id) % MAX_CLIENTS] % 25000 == 0) {
+    // Use per-client counter protected by client_state_mutex to avoid race conditions
+    mutex_lock(&client->client_state_mutex);
+    client->frames_received_logged++;
+    if (client->frames_received_logged % 25000 == 0) {
       char pretty[64];
       format_bytes_pretty(len, pretty, sizeof(pretty));
-      log_debug("Client %u has sent %d IMAGE_FRAME packets (%s)", atomic_load(&client->client_id),
-                frame_count[atomic_load(&client->client_id) % MAX_CLIENTS], pretty);
+      log_debug("Client %u has sent %u IMAGE_FRAME packets (%s)", atomic_load(&client->client_id),
+                client->frames_received_logged, pretty);
     }
+    mutex_unlock(&client->client_state_mutex);
   }
 
   // Parse image dimensions (use memcpy to avoid unaligned access)
