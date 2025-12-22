@@ -1008,7 +1008,7 @@ main_loop:
         FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM, NULL, saved_errno, 0, error_buf, sizeof(error_buf), NULL);
         log_debug("accept() failed because socket was closed: %s", error_buf);
 #else
-        log_debug("accept() failed because socket was closed: %s", strerror(saved_errno));
+        log_debug("accept() failed because socket was closed: %s", SAFE_STRERROR(saved_errno));
 #endif
         break;
       }

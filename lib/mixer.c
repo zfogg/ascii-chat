@@ -150,13 +150,14 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   // Allocate arrays
   duck->envelope = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
   if (!duck->envelope) {
-    log_error("Failed to allocate envelope array for ducking (%zu bytes)", (size_t)num_sources * sizeof(float));
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking envelope array");
+    duck->gain = NULL;
     return;
   }
 
   duck->gain = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
   if (!duck->gain) {
-    log_error("Failed to allocate gain array for ducking (%zu bytes)", (size_t)num_sources * sizeof(float));
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking gain array");
     SAFE_FREE(duck->envelope);
     duck->envelope = NULL;
     return;

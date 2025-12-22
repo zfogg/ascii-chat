@@ -101,7 +101,7 @@ asciichat_error_t terminal_set_echo(bool enable) {
  * @return True if color is supported, false otherwise
  */
 bool terminal_supports_color(void) {
-  const char *term = getenv("TERM");
+  const char *term = SAFE_GETENV("TERM");
   if (!term)
     return false;
 
@@ -115,9 +115,9 @@ bool terminal_supports_color(void) {
  * @return True if Unicode is supported, false otherwise
  */
 bool terminal_supports_unicode(void) {
-  const char *lang = getenv("LANG");
-  const char *lc_all = getenv("LC_ALL");
-  const char *lc_ctype = getenv("LC_CTYPE");
+  const char *lang = SAFE_GETENV("LANG");
+  const char *lc_all = SAFE_GETENV("LC_ALL");
+  const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
 
   const char *check;
   if (lc_all) {
@@ -252,7 +252,7 @@ tty_info_t get_current_tty(void) {
   tty_info_t result = {-1, NULL, false};
 
   // Method 1: Check $TTY environment variable first (most specific on macOS)
-  const char *tty_env = getenv("TTY");
+  const char *tty_env = SAFE_GETENV("TTY");
   if (tty_env && strlen(tty_env) > 0 && is_valid_tty_path(tty_env)) {
     // Strict validation: path must start with "/dev/", and not contain ".." or extra slashes after "/dev/"
     if (strncmp(tty_env, "/dev/", 5) == 0 && strstr(tty_env, "..") == NULL && strchr(tty_env + 5, '/') == NULL) {
@@ -355,8 +355,8 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   }
 
   // Method 2: Environment variables
-  const char *lines_env = getenv("LINES");
-  const char *cols_env = getenv("COLUMNS");
+  const char *lines_env = SAFE_GETENV("LINES");
+  const char *cols_env = SAFE_GETENV("COLUMNS");
   if (lines_env && cols_env) {
     char *endptr_height, *endptr_width;
     long env_height = strtol(lines_env, &endptr_height, 10);
@@ -395,8 +395,8 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
   terminal_capabilities_t caps = {0};
 
   // Get terminal type information
-  const char *term = getenv("TERM");
-  const char *colorterm = getenv("COLORTERM");
+  const char *term = SAFE_GETENV("TERM");
+  const char *colorterm = SAFE_GETENV("COLORTERM");
 
   SAFE_STRNCPY(caps.term_type, term ? term : "unknown", sizeof(caps.term_type));
   SAFE_STRNCPY(caps.colorterm, colorterm ? colorterm : "", sizeof(caps.colorterm));
@@ -431,9 +431,9 @@ terminal_capabilities_t detect_terminal_capabilities(void) {
 
   // Detect UTF-8 support from locale
   caps.utf8_support = false;
-  const char *lang = getenv("LANG");
-  const char *lc_all = getenv("LC_ALL");
-  const char *lc_ctype = getenv("LC_CTYPE");
+  const char *lang = SAFE_GETENV("LANG");
+  const char *lc_all = SAFE_GETENV("LC_ALL");
+  const char *lc_ctype = SAFE_GETENV("LC_CTYPE");
 
   const char *check;
   if (lc_all) {

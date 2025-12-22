@@ -20,7 +20,7 @@ cd "$REPO_ROOT"
 if [[ -n "$1" ]]; then
   VERSION="$1"
 else
-  VERSION="$(git describe --tags --abbrev=0 2>/dev/null || echo "dev")"
+  VERSION="$("${REPO_ROOT}/scripts/version.sh")"
 fi
 
 # Remove leading 'v' if present

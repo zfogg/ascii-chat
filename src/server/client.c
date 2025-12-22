@@ -494,7 +494,18 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   // Initialize send mutex to protect concurrent socket writes
   if (mutex_init(&client->send_mutex) != 0) {
     log_error("Failed to initialize send mutex for client %u", atomic_load(&client->client_id));
+    // Clean up all allocated resources
+    video_frame_buffer_destroy(client->incoming_video_buffer);
+    video_frame_buffer_destroy(client->outgoing_video_buffer);
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    packet_queue_destroy(client->audio_queue);
+    SAFE_FREE(client->send_buffer);
     mutex_destroy(&client->client_state_mutex);
+    client->incoming_video_buffer = NULL;
+    client->outgoing_video_buffer = NULL;
+    client->incoming_audio_buffer = NULL;
+    client->audio_queue = NULL;
+    client->send_buffer = NULL;
     rwlock_wrunlock(&g_client_manager_rwlock);
     return -1;
   }
@@ -605,6 +616,33 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 #ifdef DEBUG_NETWORK
     log_info("Sent initial server state to client %u", atomic_load(&client->client_id));
 #endif
+  }
+  
+  // Queue initial server state to the new client
+  server_state_packet_t state;
+  state.connected_client_count = g_client_manager.client_count;
+  state.active_client_count = 0; // Will be updated by broadcast thread
+  memset(state.reserved, 0, sizeof(state.reserved));
+
+  // Convert to network byte order
+  server_state_packet_t net_state;
+  net_state.connected_client_count = htonl(state.connected_client_count);
+  net_state.active_client_count = htonl(state.active_client_count);
+  memset(net_state.reserved, 0, sizeof(net_state.reserved));
+
+  // Send initial server state directly to the new client
+  const crypto_context_t *crypto_ctx = NULL;
+  if (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx)) {
+    crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+  }
+
+  int send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state,
+                                       sizeof(net_state), (crypto_context_t *)crypto_ctx);
+  if (send_result != 0) {
+    log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
+  } else {
+    log_debug("Sent initial server state to client %u: %u connected clients", atomic_load(&client->client_id),
+              state.connected_client_count);
   }
 
   // NEW: Create per-client rendering threads
@@ -847,7 +885,7 @@ void *client_receive_thread(void *arg) {
     // CRITICAL: Check client_id is still valid before accessing client fields
     // This prevents accessing freed memory if remove_client() has zeroed the client struct
     if (atomic_load(&client->client_id) == 0) {
-      log_debug("Client %d client_id reset, exiting receive thread", client->client_id);
+      log_debug("Client client_id reset, exiting receive thread");
       break;
     }
 
@@ -898,7 +936,7 @@ void *client_receive_thread(void *arg) {
     socket_t socket = client->socket;
 
     if (socket == INVALID_SOCKET_VALUE) {
-      log_warn("SOCKET_DEBUG: Client %d socket is INVALID, client may be disconnecting", client->client_id);
+      log_warn("SOCKET_DEBUG: socket is INVALID, client may be disconnecting");
       break;
     }
 

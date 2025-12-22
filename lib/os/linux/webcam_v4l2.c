@@ -141,7 +141,7 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
   req.memory = V4L2_MEMORY_MMAP;
 
   if (ioctl(ctx->fd, VIDIOC_REQBUFS, &req) == -1) {
-    log_error("Failed to request V4L2 buffers: %s", strerror(errno));
+    log_error("Failed to request V4L2 buffers: %s", SAFE_STRERROR(errno));
     return -1;
   }
 
@@ -175,7 +175,7 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
     buf.index = i;
 
     if (ioctl(ctx->fd, VIDIOC_QUERYBUF, &buf) == -1) {
-      log_error("Failed to query buffer %d: %s", i, strerror(errno));
+      log_error("Failed to query buffer %d: %s", i, SAFE_STRERROR(errno));
       return -1;
     }
 
@@ -183,7 +183,7 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
     ctx->buffers[i].start = mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED, ctx->fd, buf.m.offset);
 
     if (ctx->buffers[i].start == MAP_FAILED) {
-      log_error("Failed to mmap buffer %d: %s", i, strerror(errno));
+      log_error("Failed to mmap buffer %d: %s", i, SAFE_STRERROR(errno));
       return -1;
     }
   }
@@ -200,14 +200,14 @@ static int webcam_v4l2_start_streaming(webcam_context_t *ctx) {
     buf.index = i;
 
     if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-      log_error("Failed to queue buffer %d: %s", i, strerror(errno));
+      log_error("Failed to queue buffer %d: %s", i, SAFE_STRERROR(errno));
       return -1;
     }
   }
 
   enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   if (ioctl(ctx->fd, VIDIOC_STREAMON, &type) == -1) {
-    log_error("Failed to start V4L2 streaming: %s", strerror(errno));
+    log_error("Failed to start V4L2 streaming: %s", SAFE_STRERROR(errno));
     return -1;
   }
 
@@ -366,7 +366,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
     retry_count++;
     if (retry_count >= WEBCAM_READ_RETRY_COUNT) {
-      log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, strerror(errno));
+      log_error("Failed to dequeue V4L2 buffer after %d retries: %s", retry_count, SAFE_STRERROR(errno));
       return NULL;
     }
 
@@ -392,7 +392,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     log_error("Failed to allocate image buffer");
     // Re-queue the buffer - use safe error handling
     if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-      log_error("Failed to re-queue buffer after image allocation failure: %s", strerror(errno));
+      log_error("Failed to re-queue buffer after image allocation failure: %s", SAFE_STRERROR(errno));
     }
     return NULL;
   }
@@ -409,7 +409,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Re-queue the buffer for future use
   if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, strerror(errno), ctx->fd,
+    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, SAFE_STRERROR(errno), ctx->fd,
               buf.type, buf.memory);
     // Still return the image - the frame data was already copied
   }
