@@ -54,6 +54,16 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
       vfb->frames[1].data = SAFE_MALLOC_ALIGNED(frame_size, 64, void *);
   }
 
+  // CRITICAL: Zero-initialize both frame buffers to prevent stale data from pool reuse
+  // When buffers are allocated from the pool, they may contain leftover data from previous clients
+  // This ensures frames with size=0 are truly empty, preventing ghost frames during reconnection
+  if (vfb->frames[0].data) {
+    memset(vfb->frames[0].data, 0, frame_size);
+  }
+  if (vfb->frames[1].data) {
+    memset(vfb->frames[1].data, 0, frame_size);
+  }
+
   // Initialize synchronization
   mutex_init(&vfb->swap_mutex);
   atomic_store(&vfb->new_frame_available, false);

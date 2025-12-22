@@ -1247,13 +1247,21 @@ void *client_send_thread_func(void *arg) {
     // Always consume frames from the buffer to prevent accumulation
     // Rate-limit the actual sending, but always mark frames as consumed
     if (!client->outgoing_video_buffer) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no outgoing video buffer", client->client_id);
+      // CRITICAL: Buffer has been destroyed (client is shutting down)
+      // Exit cleanly instead of looping forever trying to access freed memory
+      log_debug("Client %u send thread exiting: outgoing_video_buffer is NULL", client->client_id);
       break;
     }
 
     // Get latest frame from double buffer (lock-free operation)
     // This marks the frame as consumed even if we don't send it yet
     const video_frame_t *frame = video_frame_get_latest(client->outgoing_video_buffer);
+
+    // Check if get_latest failed (buffer might have been destroyed)
+    if (!frame) {
+      log_debug("Client %u send thread: video_frame_get_latest returned NULL, buffer may be destroyed", client->client_id);
+      break;  // Exit thread if buffer is invalid
+    }
 
     // Check if it's time to send a video frame (60fps rate limiting)
     // Only rate-limit the SEND operation, not frame consumption
@@ -1283,13 +1291,13 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
-      if (!frame || !frame->data) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame or frame->data: frame=%p, data=%p",
+      if (!frame->data) {
+        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame data: frame=%p, data=%p",
                   client->client_id, frame, frame->data);
         continue;
       }
 
-      if (frame && frame->data && frame->size == 0) {
+      if (frame->data && frame->size == 0) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
         log_warn_every(1000000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
