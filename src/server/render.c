@@ -778,9 +778,14 @@ void *client_audio_render_thread(void *arg) {
   uint64_t audio_packet_count = 0;
   struct timespec last_audio_fps_report_time;
   struct timespec last_audio_packet_time;
+  struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_fps_report_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
   int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
+
+  // Target packet interval: 20ms (one Opus frame per 20ms = 960 samples at 48kHz)
+  const uint64_t target_packet_interval_us = 20000;
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
@@ -1040,10 +1045,10 @@ void *client_audio_render_thread(void *arg) {
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target loop time based on sample rate and buffer size:
-    // 256 samples / 48000 Hz = 5333.33μs per frame (187.5 FPS)
-    // Using 5333μs ensures audio is generated at the correct rate
-    const uint64_t target_loop_us = (uint64_t)AUDIO_FRAMES_PER_BUFFER * 1000000ULL / AUDIO_SAMPLE_RATE;
+    // Target loop time: 10ms (two iterations per Opus frame)
+    // Balances between fast ring buffer consumption and accumulation time
+    // Too fast (5.3ms) = frequent empty reads; too slow (20ms) = buffer accumulation issues
+    const uint64_t target_loop_us = 10000; // 10ms = reasonable compromise
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {
