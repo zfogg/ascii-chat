@@ -50,8 +50,7 @@
 /** @brief FNV-1a 32-bit hash macro for a single byte */
 #define FNV1A_32_HASH(hash, byte)                                                                                      \
   do {                                                                                                                 \
-    (hash) ^= (uint64_t)(byte);                                                                                        \
-    (hash) = ((hash) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                                                \
+    (hash) = (((hash) ^ (uint64_t)(byte)) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                           \
   } while (0)
 
 /* ============================================================================
@@ -75,11 +74,12 @@ static inline uint32_t fnv1a_hash_bytes(const void *data, size_t len) {
     return 0;
   }
 
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *bytes = (const unsigned char *)data;
 
   for (size_t i = 0; i < len; i++) {
-    FNV1A_32_HASH(hash, bytes[i]);
+    uint64_t byte = (uint64_t)bytes[i];
+    hash = ((hash ^ byte) * FNV1A_32_PRIME) & FNV1A_32_MASK;
   }
 
   return (uint32_t)hash;
@@ -101,11 +101,12 @@ static inline uint32_t fnv1a_hash_string(const char *str) {
     return 0;
   }
 
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *p = (const unsigned char *)str;
 
   while (*p) {
-    FNV1A_32_HASH(hash, *p++);
+    uint64_t byte = (uint64_t)*p++;
+    hash = ((hash ^ byte) * FNV1A_32_PRIME) & FNV1A_32_MASK;
   }
 
   return (uint32_t)hash;
@@ -122,7 +123,7 @@ static inline uint32_t fnv1a_hash_string(const char *str) {
  * @ingroup util
  */
 static inline uint32_t fnv1a_hash_uint32(uint32_t value) {
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
   // Hash each byte of the 32-bit value
   FNV1A_32_HASH(hash, (value >> 0) & FNV1A_32_MASK);
@@ -144,11 +145,12 @@ static inline uint32_t fnv1a_hash_uint32(uint32_t value) {
  * @ingroup util
  */
 static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
-  FNV1A_INIT(hash);
+  uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
   // Hash each byte of the 64-bit value
   for (int i = 0; i < 8; i++) {
-    FNV1A_32_HASH(hash, (value >> (i * 8)) & FNV1A_32_MASK);
+    uint64_t byte = (value >> (i * 8)) & FNV1A_32_MASK;
+    hash = ((hash ^ byte) * FNV1A_32_PRIME) & FNV1A_32_MASK;
   }
 
   return (uint32_t)hash;

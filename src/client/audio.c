@@ -116,6 +116,16 @@ static audio_context_t g_audio_context = {0};
  */
 static opus_codec_t *g_opus_encoder = NULL;
 
+/**
+ * @brief Global Opus decoder for receiving server audio
+ *
+ * Decodes Opus-compressed audio from server before playback.
+ * Created when audio is initialized, destroyed on shutdown.
+ *
+ * @ingroup client_audio
+ */
+static opus_codec_t *g_opus_decoder = NULL;
+
 /* ============================================================================
  * Audio Debugging - WAV File Dumpers
  * ============================================================================ */
@@ -535,11 +545,26 @@ int audio_client_init() {
 
   log_info("Opus encoder created: 24 kbps VOIP mode, %d Hz sample rate", AUDIO_SAMPLE_RATE);
 
+  // Create Opus decoder for receiving server audio
+  g_opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
+  if (!g_opus_decoder) {
+    log_error("Failed to create Opus decoder");
+    opus_codec_destroy(g_opus_encoder);
+    g_opus_encoder = NULL;
+    audio_destroy(&g_audio_context);
+    return -1;
+  }
+
+  log_info("Opus decoder created: %d Hz sample rate", AUDIO_SAMPLE_RATE);
+
   // Start audio playback
   if (audio_start_playback(&g_audio_context) != 0) {
     log_error("Failed to start audio playback");
     opus_codec_destroy(g_opus_encoder);
     g_opus_encoder = NULL;
+    opus_codec_destroy(g_opus_decoder);
+    g_opus_decoder = NULL;
+    audio_destroy(&g_audio_context);
     return -1;
   }
 
@@ -548,6 +573,10 @@ int audio_client_init() {
     log_error("Failed to start audio capture");
     opus_codec_destroy(g_opus_encoder);
     g_opus_encoder = NULL;
+    opus_codec_destroy(g_opus_decoder);
+    g_opus_decoder = NULL;
+    audio_stop_playback(&g_audio_context);
+    audio_destroy(&g_audio_context);
     return -1;
   }
 
@@ -663,11 +692,16 @@ void audio_cleanup() {
   // Stop capture thread
   audio_stop_thread();
 
-  // Destroy Opus encoder
+  // Destroy Opus encoder and decoder
   if (g_opus_encoder) {
     opus_codec_destroy(g_opus_encoder);
     g_opus_encoder = NULL;
     log_info("Opus encoder destroyed");
+  }
+  if (g_opus_decoder) {
+    opus_codec_destroy(g_opus_decoder);
+    g_opus_decoder = NULL;
+    log_info("Opus decoder destroyed");
   }
 
   // Close WAV dumpers
@@ -693,4 +727,14 @@ void audio_cleanup() {
     audio_stop_capture(&g_audio_context);
     audio_destroy(&g_audio_context);
   }
+}
+
+/**
+ * @brief Get Opus decoder for receiving server audio
+ * @return Pointer to Opus decoder, or NULL if not initialized
+ *
+ * @ingroup client_audio
+ */
+opus_codec_t *audio_get_opus_decoder(void) {
+  return g_opus_decoder;
 }
