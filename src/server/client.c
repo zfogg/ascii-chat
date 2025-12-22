@@ -1280,12 +1280,12 @@ void *client_send_thread_func(void *arg) {
 
       sent_something = true;
 
-      // BATCHING OPTIMIZATION: Sleep briefly after sending audio to allow more packets
-      // to accumulate in the queue for the next batch. This increases batch size from
-      // 2-3 packets to 4-8 packets, reducing encryption overhead further.
-      // 20ms delay allows ~3-4 more packets to queue (172fps = 5.8ms per packet)
+      // BATCHING OPTIMIZATION: Brief sleep to allow minimal packet accumulation
+      // while maintaining real-time audio delivery. 1ms allows 1-2 more packets
+      // to queue without introducing audible latency or buffer underruns.
+      // Previous 20ms sleep caused scratchy audio due to buffer underruns.
       if (audio_packet_count > 0) {
-        platform_sleep_usec(20000); // 20ms - allows batching 4-8 packets instead of 2-3
+        platform_sleep_usec(1000); // 1ms - balance between batching and real-time delivery
       }
     }
 

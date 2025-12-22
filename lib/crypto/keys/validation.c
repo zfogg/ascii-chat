@@ -303,24 +303,29 @@ asciichat_error_t check_key_patterns(const public_key_t *key, bool *has_weak_pat
     return ASCIICHAT_OK;
   }
 
-  // Check for repeated byte patterns (e.g., 0xAA, 0x55)
-  for (size_t i = 0; i < 32; i++) {
-    if (key->key[i] == 0xAA || key->key[i] == 0x55) {
-      // Check if this pattern repeats throughout the key
-      bool is_repeated = true;
-      for (size_t j = 1; j < 32; j++) {
-        if (key->key[j] != key->key[0]) {
-          is_repeated = false;
-          break;
-        }
+  // Check for repeated byte patterns (e.g., all 0xAA, all 0x55)
+  // Common weak patterns to check
+  const uint8_t weak_bytes[] = {0x00, 0xFF, 0xAA, 0x55, 0x11, 0x22, 0x33, 0x44,
+                                0x66, 0x77, 0x88, 0x99, 0xBB, 0xCC, 0xDD, 0xEE};
+  for (size_t pattern_idx = 0; pattern_idx < sizeof(weak_bytes); pattern_idx++) {
+    uint8_t pattern_byte = weak_bytes[pattern_idx];
+    bool is_repeated = true;
+    for (size_t j = 0; j < 32; j++) {
+      // CORRECT: Compare against pattern_byte, not key->key[0]
+      if (key->key[j] != pattern_byte) {
+        is_repeated = false;
+        break;
       }
-      if (is_repeated) {
-        *has_weak_patterns = true;
-        return ASCIICHAT_OK;
-      }
-      break;
+    }
+    if (is_repeated) {
+      *has_weak_patterns = true;
+      return ASCIICHAT_OK;
     }
   }
+
+  // TODO: Add more pattern detection
+  // - Check for known weak sequences
+  // - Validate key randomness
 
   return ASCIICHAT_OK;
 }
