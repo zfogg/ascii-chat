@@ -318,7 +318,10 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    send(socket, reject_msg, strlen(reject_msg), 0); // MSG_NOSIGNAL not on Windows
+    ssize_t send_result = send(socket, reject_msg, strlen(reject_msg), 0);
+    if (send_result < 0) {
+      log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
+    }
 
     return -1;
   }
@@ -330,7 +333,10 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
     // Send a rejection message to the client before closing
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    send(socket, reject_msg, strlen(reject_msg), 0); // MSG_NOSIGNAL not on Windows
+    ssize_t send_result = send(socket, reject_msg, strlen(reject_msg), 0);
+    if (send_result < 0) {
+      log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
+    }
 
     return -1;
   }
@@ -592,24 +598,14 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     return -1;
   }
 
-  // Queue initial server state to the new client
-  server_state_packet_t state;
-  state.connected_client_count = g_client_manager.client_count;
-  state.active_client_count = 0; // Will be updated by broadcast thread
-  memset(state.reserved, 0, sizeof(state.reserved));
-
-  // Convert to network byte order
-  server_state_packet_t net_state;
-  net_state.connected_client_count = htonl(state.connected_client_count);
-  net_state.active_client_count = htonl(state.active_client_count);
-  memset(net_state.reserved, 0, sizeof(net_state.reserved));
-
-  // TODO: Send initial server state directly via socket
-  (void)net_state; // Suppress unused variable warning
+  // Send initial server state to the new client
+  if (send_server_state_to_client(client) != 0) {
+    log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
+  } else {
 #ifdef DEBUG_NETWORK
-  log_info("Queued initial server state for client %u: %u connected clients", atomic_load(&client->client_id),
-           state.connected_client_count);
+    log_info("Sent initial server state to client %u", atomic_load(&client->client_id));
 #endif
+  }
 
   // NEW: Create per-client rendering threads
   log_debug("Creating render threads for client %u", client->client_id);
