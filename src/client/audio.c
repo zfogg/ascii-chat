@@ -437,7 +437,7 @@ static void *audio_capture_thread_func(void *arg) {
         sample_offset += samples_to_copy;
         samples_to_process -= samples_to_copy;
 
-        // Do we have a complete Opus frame (882 samples)?
+        // Do we have a complete Opus frame (960 samples = 20ms @ 48kHz)?
         if (opus_frame_samples_collected >= OPUS_FRAME_SAMPLES) {
           // Encode frame with Opus
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
@@ -445,9 +445,11 @@ static void *audio_capture_thread_func(void *arg) {
                                                    OPUS_MAX_PACKET_SIZE);
 
           if (encoded_bytes == 0) {
-            log_error("Opus encoding failed");
-            opus_frame_samples_collected = 0; // Reset frame
-            break;
+            // DTX (Discontinuous Transmission) - Opus detected silence and produced no output
+            // This is valid behavior, not an error. Skip this frame but don't break the batch.
+            log_debug_every(100000, "Opus DTX frame (silence detected), skipping");
+            opus_frame_samples_collected = 0; // Reset frame for next accumulation
+            continue;                         // Continue processing, don't break
           }
 
           log_debug_every(100000, "Opus encoded: %d samples -> %zu bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
