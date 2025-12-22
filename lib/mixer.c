@@ -8,6 +8,7 @@
 #include "mixer.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
+#include "util/time.h"       // For timing instrumentation
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -45,6 +46,19 @@ static inline int find_first_set_bit(uint64_t mask) {
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+// Hash function for 32-bit client IDs to 8-bit hash index
+// Uses FNV-1a-like mixing to distribute client IDs evenly across 256 buckets
+static inline uint8_t mixer_hash_client_id(uint32_t client_id) {
+  // XOR folding: fold 32 bits into 8 bits with mixing
+  uint32_t hash = client_id;
+  hash ^= (hash >> 16);
+  hash *= 0x85ebca6b;  // FNV-like prime multiplier
+  hash ^= (hash >> 13);
+  hash *= 0xc2b2ae35;
+  hash ^= (hash >> 16);
+  return (uint8_t)(hash & 0xFF);
+}
 
 // Utility functions
 float db_to_linear(float db) {
@@ -277,6 +291,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->active_sources_mask = 0ULL; // No sources active initially
   SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
               sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
+  SAFE_MEMSET(mixer->source_id_at_hash, sizeof(mixer->source_id_at_hash), 0,
+              sizeof(mixer->source_id_at_hash)); // 0 = no client at this hash index
 
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
@@ -284,7 +300,6 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
-    SAFE_FREE(mixer->mix_buffer);
     SAFE_FREE(mixer);
     return NULL;
   }
@@ -299,6 +314,15 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Allocate mix buffer
   mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
+  if (!mixer->mix_buffer) {
+    rwlock_destroy(&mixer->source_lock);
+    ducking_free(&mixer->ducking);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
 
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
@@ -350,8 +374,10 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
-  mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
+  mixer->active_sources_mask |= (1ULL << slot);                      // Set bit for this slot
+  uint8_t hash_idx = mixer_hash_client_id(client_id);
+  mixer->source_id_to_index[hash_idx] = (uint8_t)slot;               // Hash table: client_id → slot
+  mixer->source_id_at_hash[hash_idx] = client_id;                    // Store ID for collision detection
 
   rwlock_wrunlock(&mixer->source_lock);
 
@@ -374,8 +400,10 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
-      mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
+      mixer->active_sources_mask &= ~(1ULL << i);                   // Clear bit for this slot
+      uint8_t hash_idx = mixer_hash_client_id(client_id);
+      mixer->source_id_to_index[hash_idx] = 0xFF;                   // Mark as invalid in hash table
+      mixer->source_id_at_hash[hash_idx] = 0;                       // Clear stored ID
 
       // Reset ducking state for this source (with NULL safety)
       if (mixer->ducking.envelope) {
@@ -542,26 +570,31 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // Acquire read lock to prevent source removal during processing
-  // This prevents TOCTOU race where source_buffers[i] becomes NULL mid-operation
+  // Acquire reader lock to prevent race conditions with source add/remove operations
   rwlock_rdlock(&mixer->source_lock);
+  START_TIMER("mixer_total");
+
+  // NOTE: No locks needed for audio processing - concurrent reads are safe
+  // Only source add/remove operations use write locks
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
+  uint8_t hash_idx = mixer_hash_client_id(exclude_client_id);
+  uint8_t exclude_index = mixer->source_id_to_index[hash_idx];
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Clear bit for excluded source (O(1) vs O(n) scan)
-  // Check for 0xFF (invalid marker) AND ensure index is within bounds to avoid UB
-  if (exclude_index != 0xFF && exclude_index < mixer->max_sources) {
+  // Verify client ID matches to handle hash collisions correctly
+  if (exclude_index < 64 && mixer->source_id_at_hash[hash_idx] == exclude_client_id) {
     active_mask &= ~(1ULL << exclude_index);
   }
 
   // Fast check: any sources to process?
   if (active_mask == 0) {
     rwlock_rdunlock(&mixer->source_lock);
+    STOP_TIMER("mixer_total");
     return 0; // No active sources (excluding the specified client), output silence
   }
 
@@ -577,6 +610,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     int source_count = 0;
     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
 
+    START_TIMER("mixer_read_sources");
     // OPTIMIZATION 1: Iterate only over active sources using bitset
     uint64_t current_mask = active_mask;
     while (current_mask && source_count < MIXER_MAX_SOURCES) {
@@ -604,7 +638,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         }
       }
     }
+    STOP_TIMER("mixer_read_sources");
 
+    START_TIMER("mixer_per_sample_loop");
     // Process each sample in the frame
     for (int s = 0; s < frame_size; s++) {
       // Update envelopes for active speaker detection
@@ -652,6 +688,14 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       // Clamp and output
       output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
     }
+    STOP_TIMER("mixer_per_sample_loop");
+  }
+
+  double total_ns = STOP_TIMER("mixer_total");
+  if (total_ns > 2000000) { // > 2ms
+    char duration_str[32];
+    format_duration_ns(total_ns, duration_str, sizeof(duration_str));
+    log_warn("Slow mixer: total=%s, num_samples=%d", duration_str, num_samples);
   }
 
   rwlock_rdunlock(&mixer->source_lock);

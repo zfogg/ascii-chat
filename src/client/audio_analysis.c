@@ -243,15 +243,35 @@ void audio_analysis_print_report(void) {
   }
 
   // Scratchy/distorted diagnosis
-  if (g_received_stats.discontinuity_count > 0 || g_received_stats.max_gap_ms > 100) {
-    log_plain("  LIKELY CAUSE OF SCRATCHY AUDIO: Sparse packet delivery detected!");
-    log_plain("    - Packets arriving with gaps > 100ms causes jitter buffer underruns");
-    log_plain("    - This results in dropouts, clicks, and distorted playback");
-    log_plain("    - Root cause: Lock contention in packet queue (target: 172 fps, actual: ~34 fps)");
+  double received_silence_pct = g_received_stats.total_samples > 0
+                                    ? (100.0 * g_received_stats.silent_samples / g_received_stats.total_samples)
+                                    : 0;
+
+  if (received_silence_pct > 30.0) {
+    log_plain("  ⚠️  SCRATCHY AUDIO DETECTED: Too much silence in received audio!");
+    log_plain("    - Silence: %.1f%% of received samples (should be < 10%%)", received_silence_pct);
+    log_plain("    - This creates jittery/choppy playback between audio bursts");
+    log_plain("    - Root cause: Server sends silence-padded packets when other clients have no audio");
+    log_plain("    - Fix: Only send packets with actual audio data (rate-matched to packet arrival)");
+  } else if (g_received_stats.max_gap_ms > 40) {
+    log_plain("  ⚠️  DISTORTION DETECTED: Packet delivery gaps too large!");
+    log_plain("    - Max gap: %u ms (should be ~20ms for smooth audio)", g_received_stats.max_gap_ms);
+    if (g_received_stats.max_gap_ms > 80) {
+      log_plain("    - SEVERE: Gaps > 80ms cause severe distortion and dropouts");
+    } else if (g_received_stats.max_gap_ms > 50) {
+      log_plain("    - Gaps > 50ms cause noticeable distortion");
+    }
+    log_plain("    - Root cause: Server audio rendering is too slow (lock contention)");
+    log_plain("    - Target audio FPS: 172 fps (5.8ms per packet)");
+    log_plain("    - Fix: Optimize packet queue synchronization or use lock-free structures");
+  }
+  if (g_received_stats.discontinuity_count > 0) {
+    log_plain("  Packet delivery discontinuities: %llu gaps > 100ms detected",
+              (unsigned long long)g_received_stats.discontinuity_count);
   }
   if (g_received_stats.jitter_count > (g_received_stats.total_samples / 100)) {
     log_plain("  High jitter detected: > 1%% of samples have rapid amplitude changes");
-    log_plain("    - May indicate network quality issues or buffer underruns");
+    log_plain("    - May indicate buffer underruns from sparse packet delivery");
   }
 
   log_plain("================================================================================");
