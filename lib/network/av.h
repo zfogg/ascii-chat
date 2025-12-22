@@ -186,6 +186,52 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
  */
 int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, int sample_rate);
 
+/**
+ * @brief Send Opus-encoded audio frame
+ * @param sockfd Socket file descriptor
+ * @param opus_data Opus-encoded audio data (bytes)
+ * @param opus_size Size of encoded data in bytes
+ * @param sample_rate Sample rate in Hz (e.g., 44100)
+ * @param frame_duration Frame duration in milliseconds (e.g., 20)
+ * @return 0 on success, -1 on error
+ *
+ * Sends a PACKET_TYPE_AUDIO_OPUS packet containing Opus-encoded audio.
+ * Includes metadata about encoding parameters for decoder configuration.
+ *
+ * @note Encoded size is typically 30-100 bytes (vs 3528 bytes raw for 20ms).
+ *
+ * @note Frame duration helps decoder determine sample count.
+ *
+ * @ingroup av
+ * @ingroup network
+ */
+int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
+                       int frame_duration);
+
+/**
+ * @brief Send batched Opus-encoded audio frames
+ * @param sockfd Socket file descriptor
+ * @param opus_data Opus-encoded audio data (bytes)
+ * @param opus_size Size of encoded data in bytes
+ * @param sample_rate Sample rate in Hz
+ * @param frame_duration Frame duration in milliseconds
+ * @param frame_count Number of frames in batch
+ * @param crypto_ctx Cryptographic context for encryption (NULL for plaintext)
+ * @return 0 on success, -1 on error
+ *
+ * Sends a PACKET_TYPE_AUDIO_OPUS_BATCH packet containing multiple Opus-encoded
+ * frames. Reduces packet overhead for efficient streaming.
+ *
+ * @note Batching is more efficient for real-time streaming.
+ *
+ * @note Encryption is applied automatically when crypto_ctx is provided.
+ *
+ * @ingroup av
+ * @ingroup network
+ */
+int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
+                             int frame_duration, int frame_count, crypto_context_t *crypto_ctx);
+
 /** @} */
 
 /**
