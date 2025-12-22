@@ -1219,7 +1219,7 @@ void *client_send_thread_func(void *arg) {
                                            (crypto_context_t *)crypto_ctx);
           mutex_unlock(&client->send_mutex);
 
-          free(batched_audio);
+          SAFE_FREE(batched_audio);
 
           log_debug_every(1000000, "Sent audio batch: %d packets (%zu samples) to client %u", audio_packet_count,
                           total_samples, client->client_id);
