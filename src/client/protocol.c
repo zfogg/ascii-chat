@@ -759,8 +759,8 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
 
     // Decode frame - use remaining buffer space (not 2880-total which would fail after 3 frames)
     float *frame_buffer = all_samples + total_decoded_samples;
-    int remaining_space = (int)(max_decoded_samples - (size_t)total_decoded_samples);
-    int decoded = opus_codec_decode(decoder, ptr, frame_size, frame_buffer, remaining_space);
+    int remaining_space = (int)(total_samples - (size_t)total_decoded_samples);
+    int decoded = opus_codec_decode(decoder, opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
 
     if (decoded < 0) {
       log_warn("Failed to decode Opus frame %d/%d (size=%zu)", i + 1, frame_count, frame_size);
