@@ -507,15 +507,15 @@ int audio_client_init() {
     return -1;
   }
 
-  // Create Opus encoder for audio compression (24 kbps VOIP mode)
-  g_opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, AUDIO_SAMPLE_RATE, 24000);
+  // Create Opus encoder for audio compression (128 kbps AUDIO mode for music quality)
+  g_opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000);
   if (!g_opus_encoder) {
     log_error("Failed to create Opus encoder");
     audio_destroy(&g_audio_context);
     return -1;
   }
 
-  log_info("Opus encoder created: 24 kbps VOIP mode, %d Hz sample rate", AUDIO_SAMPLE_RATE);
+  log_info("Opus encoder created: 128 kbps AUDIO mode, %d Hz sample rate", AUDIO_SAMPLE_RATE);
 
   // Create Opus decoder for receiving server audio
   g_opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);

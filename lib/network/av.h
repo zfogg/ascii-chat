@@ -186,27 +186,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
  */
 int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, int sample_rate);
 
-/**
- * @brief Send Opus-encoded audio frame
- * @param sockfd Socket file descriptor
- * @param opus_data Opus-encoded audio data (bytes)
- * @param opus_size Size of encoded data in bytes
- * @param sample_rate Sample rate in Hz (e.g., 44100)
- * @param frame_duration Frame duration in milliseconds (e.g., 20)
- * @return 0 on success, -1 on error
- *
- * Sends a PACKET_TYPE_AUDIO_OPUS packet containing Opus-encoded audio.
- * Includes metadata about encoding parameters for decoder configuration.
- *
- * @note Encoded size is typically 30-100 bytes (vs 3528 bytes raw for 20ms).
- *
- * @note Frame duration helps decoder determine sample count.
- *
- * @ingroup av
- * @ingroup network
- */
-int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
-                       int frame_duration);
+// NOTE: av_send_audio_opus() was removed - use threaded_send_audio_opus() in client/server.c instead
 
 /**
  * @brief Send batched Opus-encoded audio frames
@@ -342,29 +322,8 @@ int av_parse_size_message(const char *message, unsigned short *width, unsigned s
  * @ingroup network
  */
 
-/**
- * @brief Receive and parse Opus audio packet
- * @param packet_data Packet payload data
- * @param packet_len Packet payload length
- * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
- * @param out_opus_size Output: Size of Opus-encoded data
- * @param out_sample_rate Output: Sample rate in Hz
- * @param out_frame_duration Output: Frame duration in milliseconds
- * @return 0 on success, -1 on error
- *
- * Parses PACKET_TYPE_AUDIO_OPUS packet and extracts metadata and Opus data.
- * The Opus data pointer points into the packet_data buffer (NOT copied),
- * so packet_data must remain valid while using out_opus_data.
- *
- * @note out_opus_data points into packet_data - do not free separately
- *
- * @warning packet_data must remain valid while using out_opus_data
- *
- * @ingroup av
- * @ingroup network
- */
-int av_receive_audio_opus(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
-                          size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration);
+// NOTE: av_receive_audio_opus() was removed - server handles PACKET_TYPE_AUDIO_OPUS
+// directly in handle_audio_opus_packet() in src/server/protocol.c
 
 /**
  * @brief Receive and parse batched Opus audio packet

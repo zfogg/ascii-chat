@@ -102,7 +102,7 @@
  * @brief Number of samples processed per audio frame
  *
  * Fixed frame size for consistent latency and processing behavior.
- * 256 samples at 44.1kHz = ~5.8ms per frame.
+ * 256 samples at 48kHz = ~5.3ms per frame.
  *
  * @ingroup audio
  */
@@ -313,8 +313,10 @@ typedef struct {
 
   /** @brief Bitset of active sources (bit i = source i is active, O(1) iteration) */
   uint64_t active_sources_mask;
-  /** @brief Hash table mapping client_id → mixer source index */
+  /** @brief Hash table mapping client_id → mixer source index (uses hash function for 32-bit IDs) */
   uint8_t source_id_to_index[256];
+  /** @brief Client IDs stored at each hash index for collision detection */
+  uint32_t source_id_at_hash[256];
 
   /** @brief Reader-writer lock protecting source arrays and bitset */
   rwlock_t source_lock;

@@ -149,6 +149,9 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   if (samples > available) {
     int samples_to_drop = samples - available;
     rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
+    // Reset jitter buffer state - dropping samples indicates buffer overflow,
+    // so we need to refill before playing to avoid audio glitches
+    rb->jitter_buffer_filled = false;
     // Now we have enough space to write all samples
   }
 
@@ -221,7 +224,9 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   if (!rb)
     return 0;
 
-  // Note: This function must be called with mutex already locked
+  // NOTE: This function is safe to call without the mutex for approximate values.
+  // The volatile indices provide atomic reads on aligned 32-bit integers.
+  // For exact values during concurrent modification, hold rb->mutex first.
   int write_idx = rb->write_index;
   int read_idx = rb->read_index;
 
