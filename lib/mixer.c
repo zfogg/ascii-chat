@@ -497,11 +497,11 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
       // Update envelope using frame peak (one update per frame instead of per-sample)
       if (peak > mixer->ducking.envelope[slot]) {
-        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                        (1.0f - mixer->ducking.attack_coeff) * peak;
+        mixer->ducking.envelope[slot] =
+            mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.attack_coeff) * peak;
       } else {
-        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                        (1.0f - mixer->ducking.release_coeff) * peak;
+        mixer->ducking.envelope[slot] =
+            mixer->ducking.release_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.release_coeff) * peak;
       }
 
       // Count speaking sources
@@ -630,11 +630,11 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
       // Update envelope using frame peak (one update per frame instead of per-sample)
       if (peak > mixer->ducking.envelope[slot]) {
-        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                        (1.0f - mixer->ducking.attack_coeff) * peak;
+        mixer->ducking.envelope[slot] =
+            mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.attack_coeff) * peak;
       } else {
-        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                        (1.0f - mixer->ducking.release_coeff) * peak;
+        mixer->ducking.envelope[slot] =
+            mixer->ducking.release_coeff * mixer->ducking.envelope[slot] + (1.0f - mixer->ducking.release_coeff) * peak;
       }
 
       // Count speaking sources

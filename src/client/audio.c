@@ -396,7 +396,7 @@ static void *audio_capture_thread_func(void *arg) {
 
       // AGC time constants (in terms of smoothing coefficient per 10ms buffer)
       // Attack: ~50ms, Release: ~200ms at 48kHz with 480 sample buffers (10ms each)
-      const float attack_coeff = 0.2f;  // Fast attack: 20% per buffer (~50ms to reach target)
+      const float attack_coeff = 0.2f;   // Fast attack: 20% per buffer (~50ms to reach target)
       const float release_coeff = 0.05f; // Slow release: 5% per buffer (~200ms to reach target)
 
       if (rms > min_rms_for_gain) { // Only apply gain if there's actual audio above noise floor
