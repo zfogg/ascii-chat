@@ -30,82 +30,82 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
 
     # Common options (available in both modes)
     $commonOptions = @(
-        @{ Name = '-h'; Description = 'Print usage information and exit' }
-        @{ Name = '--help'; Description = 'Print usage information and exit' }
-        @{ Name = '-v'; Description = 'Print version information and exit' }
-        @{ Name = '--version'; Description = 'Print version information and exit' }
-        @{ Name = '-a'; Description = 'Server address' }
-        @{ Name = '--address'; Description = 'Server address' }
-        @{ Name = '-p'; Description = 'Server port number (default: 27224)' }
-        @{ Name = '--port'; Description = 'Server port number (default: 27224)' }
-        @{ Name = '-q'; Description = 'Suppress console logging output' }
-        @{ Name = '--quiet'; Description = 'Suppress console logging output' }
-        @{ Name = '-V'; Description = 'Increase verbosity (stackable)' }
-        @{ Name = '--verbose'; Description = 'Increase verbosity (stackable)' }
-        @{ Name = '-L'; Description = 'Write log output to file' }
-        @{ Name = '--log-file'; Description = 'Write log output to file' }
+        @{ Name = '-h'; Description = 'print this help' }
+        @{ Name = '--help'; Description = 'print this help' }
+        @{ Name = '-a'; Description = 'IPv4 address to bind/connect to' }
+        @{ Name = '--address'; Description = 'IPv4 address to bind/connect to' }
+        @{ Name = '-p'; Description = 'TCP port' }
+        @{ Name = '--port'; Description = 'TCP port' }
         @{ Name = '-P'; Description = 'ASCII character palette' }
         @{ Name = '--palette'; Description = 'ASCII character palette' }
         @{ Name = '-C'; Description = 'Custom palette characters' }
         @{ Name = '--palette-chars'; Description = 'Custom palette characters' }
-        @{ Name = '-E'; Description = 'Enable packet encryption' }
-        @{ Name = '--encrypt'; Description = 'Enable packet encryption' }
-        @{ Name = '-K'; Description = 'SSH key for authentication' }
-        @{ Name = '--key'; Description = 'SSH key for authentication' }
-        @{ Name = '-F'; Description = 'Read encryption key from file' }
-        @{ Name = '--keyfile'; Description = 'Read encryption key from file' }
-        @{ Name = '--password'; Description = 'Password for connection encryption' }
-        @{ Name = '--no-encrypt'; Description = 'Explicitly disable encryption' }
-        @{ Name = '--config'; Description = 'Load configuration from TOML file' }
-        @{ Name = '--config-create'; Description = 'Create a default configuration file' }
+        @{ Name = '-L'; Description = 'redirect logs to file' }
+        @{ Name = '--log-file'; Description = 'redirect logs to file' }
+        @{ Name = '--log-level'; Description = 'set log level: dev, debug, info, warn, error, fatal' }
+        @{ Name = '-V'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
+        @{ Name = '--verbose'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
+        @{ Name = '-E'; Description = 'enable packet encryption' }
+        @{ Name = '--encrypt'; Description = 'enable packet encryption' }
+        @{ Name = '-K'; Description = 'SSH/GPG key for authentication' }
+        @{ Name = '--key'; Description = 'SSH/GPG key for authentication' }
+        @{ Name = '-F'; Description = 'read encryption key from file' }
+        @{ Name = '--keyfile'; Description = 'read encryption key from file' }
+        @{ Name = '--password'; Description = 'password for connection encryption (prompts if not provided)' }
+        @{ Name = '--no-encrypt'; Description = 'disable encryption' }
     )
 
     # Client-only options
     $clientOptions = @(
-        @{ Name = '-x'; Description = 'Set terminal width in characters' }
-        @{ Name = '--width'; Description = 'Set terminal width in characters' }
-        @{ Name = '-y'; Description = 'Set terminal height in characters' }
-        @{ Name = '--height'; Description = 'Set terminal height in characters' }
-        @{ Name = '-H'; Description = 'Hostname for DNS lookup' }
-        @{ Name = '--host'; Description = 'Hostname for DNS lookup' }
-        @{ Name = '-c'; Description = 'Webcam device index' }
-        @{ Name = '--webcam-index'; Description = 'Webcam device index' }
-        @{ Name = '-f'; Description = 'Toggle horizontal flipping of webcam' }
-        @{ Name = '--webcam-flip'; Description = 'Toggle horizontal flipping of webcam' }
-        @{ Name = '-M'; Description = 'Rendering mode' }
-        @{ Name = '--render-mode'; Description = 'Rendering mode' }
-        @{ Name = '-A'; Description = 'Enable audio capture and streaming' }
-        @{ Name = '--audio'; Description = 'Enable audio capture and streaming' }
-        @{ Name = '-s'; Description = 'Allow image stretching' }
-        @{ Name = '--stretch'; Description = 'Allow image stretching' }
-        @{ Name = '-S'; Description = 'Capture single frame and exit' }
-        @{ Name = '--snapshot'; Description = 'Capture single frame and exit' }
-        @{ Name = '-D'; Description = 'Delay before snapshot (seconds)' }
-        @{ Name = '--snapshot-delay'; Description = 'Delay before snapshot (seconds)' }
-        @{ Name = '--mirror'; Description = 'View local webcam as ASCII art without network' }
-        @{ Name = '--test-pattern'; Description = 'Use test pattern instead of webcam' }
-        @{ Name = '--list-webcams'; Description = 'List available webcam devices and exit' }
-        @{ Name = '--list-microphones'; Description = 'List available audio input devices and exit' }
-        @{ Name = '--list-speakers'; Description = 'List available audio output devices and exit' }
-        @{ Name = '--fps'; Description = 'Desired frame rate' }
-        @{ Name = '--color-mode'; Description = 'Terminal color mode' }
-        @{ Name = '--show-capabilities'; Description = 'Print terminal capabilities and exit' }
-        @{ Name = '--utf8'; Description = 'Force enable UTF-8 support' }
-        @{ Name = '--audio-device'; Description = 'Audio input device index' }
-        @{ Name = '--server-key'; Description = 'Expected server public key' }
+        @{ Name = '-x'; Description = 'render width' }
+        @{ Name = '--width'; Description = 'render width' }
+        @{ Name = '-y'; Description = 'render height' }
+        @{ Name = '--height'; Description = 'render height' }
+        @{ Name = '-H'; Description = 'hostname for DNS lookup' }
+        @{ Name = '--host'; Description = 'hostname for DNS lookup' }
+        @{ Name = '-c'; Description = 'webcam device index (0-based)' }
+        @{ Name = '--webcam-index'; Description = 'webcam device index (0-based)' }
+        @{ Name = '--list-webcams'; Description = 'list available webcam devices and exit' }
+        @{ Name = '--list-microphones'; Description = 'list available audio input devices and exit' }
+        @{ Name = '--list-speakers'; Description = 'list available audio output devices and exit' }
+        @{ Name = '-f'; Description = 'toggle horizontal flip of webcam image' }
+        @{ Name = '--webcam-flip'; Description = 'toggle horizontal flip of webcam image' }
+        @{ Name = '--test-pattern'; Description = 'use test pattern instead of webcam (for testing multiple clients)' }
+        @{ Name = '--fps'; Description = 'desired frame rate 1-144' }
+        @{ Name = '--color-mode'; Description = 'color modes: auto, none, 16, 256, truecolor' }
+        @{ Name = '--show-capabilities'; Description = 'show detected terminal capabilities and exit' }
+        @{ Name = '--utf8'; Description = 'force enable UTF-8/Unicode support' }
+        @{ Name = '-M'; Description = 'rendering mode: foreground, background, half-block' }
+        @{ Name = '--render-mode'; Description = 'rendering mode: foreground, background, half-block' }
+        @{ Name = '-A'; Description = 'enable audio capture and playback' }
+        @{ Name = '--audio'; Description = 'enable audio capture and playback' }
+        @{ Name = '-s'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
+        @{ Name = '--stretch'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
+        @{ Name = '-q'; Description = 'disable console logging (log only to file)' }
+        @{ Name = '--quiet'; Description = 'disable console logging (log only to file)' }
+        @{ Name = '-S'; Description = 'capture single frame and exit' }
+        @{ Name = '--snapshot'; Description = 'capture single frame and exit' }
+        @{ Name = '-D'; Description = 'delay SECONDS before snapshot' }
+        @{ Name = '--snapshot-delay'; Description = 'delay SECONDS before snapshot' }
+        @{ Name = '--mirror'; Description = 'view webcam locally without connecting to server' }
+        @{ Name = '--strip-ansi'; Description = 'remove all ANSI escape codes from output' }
+        @{ Name = '--server-key'; Description = 'expected server public key for verification' }
     )
 
     # Server-only options
     $serverOptions = @(
-        @{ Name = '--address6'; Description = 'IPv6 bind address' }
-        @{ Name = '--client-keys'; Description = 'Allowed client keys file' }
+        @{ Name = '--address6'; Description = 'IPv6 address to bind to' }
+        @{ Name = '--client-keys'; Description = 'allowed client keys file for authentication' }
     )
 
     # Palette values
     $paletteValues = @('standard', 'blocks', 'digital', 'minimal', 'cool', 'custom')
 
     # Color mode values
-    $colorModeValues = @('auto', 'mono', '16', '256', 'truecolor')
+    $colorModeValues = @('auto', 'none', '16', '256', 'truecolor')
+
+    # Log level values
+    $logLevelValues = @('dev', 'debug', 'info', 'warn', 'error', 'fatal')
 
     # Render mode values
     $renderModeValues = @('foreground', 'background', 'half-block')
@@ -139,17 +139,23 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
             }
             return
         }
+        '^(--log-level)$' {
+            $logLevelValues | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+                [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "Log level: $_")
+            }
+            return
+        }
         '^(-M|--render-mode)$' {
             $renderModeValues | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
                 [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', "Render mode: $_")
             }
             return
         }
-        '^(-L|--log-file|-K|--key|-F|--keyfile|--config|--client-keys|--server-key)$' {
+        '^(-L|--log-file|-K|--key|-F|--keyfile|--client-keys|--server-key)$' {
             # File path completion - let PowerShell handle it
             return
         }
-        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|--audio-device|-C|--palette-chars|--password)$' {
+        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password)$' {
             # These take values but don't have predefined completions
             return
         }
