@@ -361,7 +361,7 @@ void *client_video_render_thread(void *arg) {
   uint32_t thread_client_id = client->client_id;
   socket_t thread_socket = client->socket;
 
-  log_debug("Video render thread: client_id=%u, socket=%p", thread_client_id, (void *)thread_socket);
+  log_debug("Video render thread: client_id=%u", thread_client_id);
 
   if (thread_socket == INVALID_SOCKET_VALUE) {
     log_error("Invalid socket in video render thread for client %u", thread_client_id);
