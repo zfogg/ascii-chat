@@ -405,9 +405,13 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->source_id_to_index[hash_idx] = 0xFF;                   // Mark as invalid in hash table
       mixer->source_id_at_hash[hash_idx] = 0;                       // Clear stored ID
 
-      // Reset ducking state for this source
-      mixer->ducking.envelope[i] = 0.0f;
-      mixer->ducking.gain[i] = 1.0f;
+      // Reset ducking state for this source (with NULL safety)
+      if (mixer->ducking.envelope) {
+        mixer->ducking.envelope[i] = 0.0f;
+      }
+      if (mixer->ducking.gain) {
+        mixer->ducking.gain[i] = 1.0f;
+      }
 
       rwlock_wrunlock(&mixer->source_lock);
 
@@ -450,7 +454,8 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // Acquire reader lock to prevent race conditions with source add/remove operations
+  // Acquire read lock to prevent source removal during processing
+  // This prevents TOCTOU race where source_buffers[i] becomes NULL mid-operation
   rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
