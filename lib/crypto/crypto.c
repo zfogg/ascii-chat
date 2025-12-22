@@ -12,9 +12,10 @@
 #include <string.h>
 #include <time.h>
 #include <inttypes.h>
+#include <stdatomic.h>
 
-// Static initialization flag for libsodium
-static bool g_libsodium_initialized = false;
+// Static initialization flag for libsodium (atomic for thread-safe check)
+static _Atomic bool g_libsodium_initialized = false;
 
 // Internal packet type constants (for test helper functions only)
 // These are NOT part of the main network protocol - they're used for simple
@@ -30,16 +31,20 @@ static const uint32_t CRYPTO_PACKET_AUTH_RESPONSE = 104;
 
 // Initialize libsodium (thread-safe, idempotent)
 static crypto_result_t init_libsodium(void) {
-  if (g_libsodium_initialized) {
+  // Fast path: if already initialized, return immediately
+  if (atomic_load(&g_libsodium_initialized)) {
     return CRYPTO_OK;
   }
 
+  // Slow path: attempt initialization
+  // Note: sodium_init() is itself idempotent and thread-safe, but we use
+  // atomic flag to prevent redundant calls from multiple threads
   if (sodium_init() < 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to initialize libsodium");
     return CRYPTO_ERROR_LIBSODIUM;
   }
 
-  g_libsodium_initialized = true;
+  atomic_store(&g_libsodium_initialized, true);
   return CRYPTO_OK;
 }
 
@@ -895,7 +900,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   return crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
 }
 
-crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
+crypto_result_t crypto_create_auth_challenge(crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
                                              size_t *packet_len_out) {
   if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
     SET_ERRNO(
@@ -912,8 +917,8 @@ crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_
     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
   }
 
-  // Generate random nonce
-  crypto_result_t result = crypto_generate_nonce((uint8_t *)ctx->auth_nonce);
+  // Generate random nonce (stores result in ctx->auth_nonce)
+  crypto_result_t result = crypto_generate_nonce(ctx->auth_nonce);
   if (result != CRYPTO_OK) {
     return result;
   }

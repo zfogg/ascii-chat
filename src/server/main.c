@@ -54,7 +54,7 @@
 #include <winsock2.h>
 #include <mmsystem.h> // For timeEndPeriod()
 #else
-#include <unistd.h>
+#include <unistd.h>  // For write() and STDOUT_FILENO (signal-safe I/O)
 #include <netdb.h>     // For getaddrinfo(), gai_strerror()
 #include <arpa/inet.h> // For inet_ntop()
 #endif
@@ -304,18 +304,21 @@ size_t g_num_whitelisted_clients = 0;
  */
 static void sigint_handler(int sigint) {
   (void)(sigint);
-  static int sigint_count = 0;
-  sigint_count++;
-  if (sigint_count > 1) {
+  static _Atomic int sigint_count = 0;
+  int count = atomic_fetch_add(&sigint_count, 1) + 1;
+  if (count > 1) {
     _exit(1);
   }
 
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
   atomic_store(&g_server_should_exit, true);
 
-  // STEP 2: Use printf for output (signal-safe)
-  printf("SIGINT received - shutting down server...\n");
-  (void)fflush(stdout);
+  // STEP 2: Use write() for output (async-signal-safe)
+  // NOTE: printf() and fflush() are NOT async-signal-safe and can cause deadlocks
+  // Use write() which is guaranteed to be safe in signal handlers
+  const char *msg = "SIGINT received - shutting down server...\n";
+  ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
+  (void)unused;  // Suppress unused variable warning
 
   // STEP 3: Close listening socket to interrupt accept() in main loop
   // This is signal-safe on Windows and necessary to wake up blocked accept()
