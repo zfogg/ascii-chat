@@ -192,6 +192,12 @@ else()
     # This ensures the SONAME is correctly installed for runtime linking.
     # Note: ascii-chat-shared has EXCLUDE_FROM_ALL, so we install it separately
     # (the main install(TARGETS) loop skips EXCLUDE_FROM_ALL targets)
+    #
+    # We split the installation into two rules to ensure ALL files go to Development:
+    # 1. Real library + SOVERSION symlink → Development (NAMELINK_SKIP)
+    # 2. Namelink → Development + exported (NAMELINK_ONLY)
+    # This overrides CMake's default behavior of splitting namelink (Development)
+    # and real library (Runtime) when using EXPORT.
     if(APPLE)
         set(_ascii_chat_shared_label "libasciichat.dylib")
     else()
@@ -199,11 +205,24 @@ else()
     endif()
 
     if(TARGET ascii-chat-shared)
+        # Install the real library file and SOVERSION symlink to Development
+        # (without EXPORT - this prevents CMake from putting it in Runtime component)
         install(TARGETS ascii-chat-shared
             LIBRARY DESTINATION lib
-                NAMELINK_COMPONENT Development  # libasciichat.so symlink
+                NAMELINK_SKIP
+                COMPONENT Development
             ARCHIVE DESTINATION lib
-            COMPONENT Development
+                COMPONENT Development
+            OPTIONAL
+        )
+
+        # Install the namelink to Development AND export it for cmake config files
+        # This allows find_package(ascii-chat) to work while keeping everything in Development
+        install(TARGETS ascii-chat-shared
+            EXPORT ascii-chat-targets
+            LIBRARY DESTINATION lib
+                NAMELINK_ONLY
+                COMPONENT Development
             OPTIONAL
         )
     endif()

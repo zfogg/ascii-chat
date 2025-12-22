@@ -196,6 +196,7 @@ set(VIDEO_SRCS
 set(AUDIO_SRCS
     lib/audio.c
     lib/mixer.c
+    lib/wav_writer.c
 )
 
 # =============================================================================
