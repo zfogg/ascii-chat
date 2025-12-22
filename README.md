@@ -93,24 +93,31 @@ ascii-chat v0.3.5 in 2025. Here are 3 clients connected to a single server, in a
 **macOS (Homebrew):**
 
 ```bash
-brew install zfogg/ascii-chat/ascii-chat
+# Add the tap
+brew tap zfogg/ascii-chat
+
+# Install runtime binary
+brew install ascii-chat
+
+# Install development libraries (headers, static/shared libs, docs)
+brew install libasciichat
 ```
 
 **Arch Linux (AUR):**
 
 ```bash
-# Using paru
-paru -S ascii-chat
-# Using yay
-yay -S ascii-chat
+# Stable releases
+paru -S ascii-chat           # Runtime binary
+paru -S libasciichat         # Development libraries (headers, libs, docs)
 
-# For latest git version
-paru -S ascii-chat-git
+# Latest git versions (recommended for development)
+paru -S ascii-chat-git       # Runtime binary from git
+paru -S libasciichat-git     # Development libraries from git
 ```
 
 **All Platforms:**
 
-- Latest release: [v0.4.6](https://github.com/zfogg/ascii-chat/releases/tag/v0.4.6)
+- Latest release: [v0.4.12](https://github.com/zfogg/ascii-chat/releases/tag/v0.4.12)
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
 - Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
 - Source installation: see the [Dependencies](#dependencies) section below, then follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
