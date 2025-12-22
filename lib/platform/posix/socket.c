@@ -174,7 +174,7 @@ int socket_get_error(socket_t sock) {
 }
 
 const char *socket_error_string(int error) {
-  return strerror(error);
+  return SAFE_STRERROR(error);
 }
 
 // Check if socket is valid
@@ -306,7 +306,7 @@ int socket_get_last_error(void) {
  * @return Error string
  */
 const char *socket_get_error_string(void) {
-  return strerror(errno);
+  return SAFE_STRERROR(errno);
 }
 
 #endif // !_WIN32
