@@ -79,10 +79,11 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
 
       // Debug: Log every 1000 callbacks (~10 seconds at 256 frames/callback, 44.1kHz)
+      // Note: We already hold the mutex from audio_ring_buffer_read(), so we can safely
+      // check buffer state. But since read already returned, just log what we read.
       if (callback_count % 1000 == 0) {
-        size_t available = audio_ring_buffer_available_read(ctx->playback_buffer);
-        log_debug("Audio output callback #%llu: samples_read=%d/%lu, buffer_available=%zu", callback_count,
-                  samples_read, framesPerBuffer * AUDIO_CHANNELS, available);
+        log_debug("Audio output callback #%llu: samples_read=%d/%lu", callback_count,
+                  samples_read, framesPerBuffer * AUDIO_CHANNELS);
       }
 
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
@@ -494,15 +495,14 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
 
   if (ctx->playing) {
     mutex_unlock(&ctx->state_mutex);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   PaStreamParameters outputParameters;
   outputParameters.device = Pa_GetDefaultOutputDevice();
   if (outputParameters.device == paNoDevice) {
-    SET_ERRNO(ERROR_AUDIO, "No default output device available");
     mutex_unlock(&ctx->state_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_AUDIO, "No default output device available");
   }
 
   outputParameters.channelCount = AUDIO_CHANNELS;

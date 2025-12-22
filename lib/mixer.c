@@ -377,9 +377,13 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
       mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
 
-      // Reset ducking state for this source
-      mixer->ducking.envelope[i] = 0.0f;
-      mixer->ducking.gain[i] = 1.0f;
+      // Reset ducking state for this source (with NULL safety)
+      if (mixer->ducking.envelope) {
+        mixer->ducking.envelope[i] = 0.0f;
+      }
+      if (mixer->ducking.gain) {
+        mixer->ducking.gain[i] = 1.0f;
+      }
 
       rwlock_wrunlock(&mixer->source_lock);
 
@@ -422,8 +426,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // NOTE: No locks needed for audio processing - concurrent reads are safe
-  // Only source add/remove operations use write locks
+  // Acquire read lock to prevent source removal during processing
+  // This prevents TOCTOU race where source_buffers[i] becomes NULL mid-operation
+  rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -438,6 +443,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
   if (active_count == 0) {
     // No active sources, output silence
+    rwlock_rdunlock(&mixer->source_lock);
     return 0;
   }
 
@@ -528,6 +534,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     }
   }
 
+  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
@@ -535,8 +542,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // NOTE: No locks needed for audio processing - concurrent reads are safe
-  // Only source add/remove operations use write locks
+  // Acquire read lock to prevent source removal during processing
+  // This prevents TOCTOU race where source_buffers[i] becomes NULL mid-operation
+  rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -546,12 +554,14 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Clear bit for excluded source (O(1) vs O(n) scan)
-  if (exclude_index < 64) {
+  // Check for 0xFF (invalid marker) AND ensure index is within bounds to avoid UB
+  if (exclude_index != 0xFF && exclude_index < mixer->max_sources) {
     active_mask &= ~(1ULL << exclude_index);
   }
 
   // Fast check: any sources to process?
   if (active_mask == 0) {
+    rwlock_rdunlock(&mixer->source_lock);
     return 0; // No active sources (excluding the specified client), output silence
   }
 
@@ -644,6 +654,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     }
   }
 
+  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
