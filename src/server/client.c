@@ -1739,18 +1739,12 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
   case PACKET_TYPE_AUDIO_OPUS:
     // Single-frame Opus packet: 16-byte header (sample_rate + frame_duration + reserved) + Opus data
     // Extract metadata and forward to mixer
-    log_debug_every(1000000, "SERVER: Received PACKET_TYPE_AUDIO_OPUS (type=34) from client %u, len=%zu",
-                    client->client_id, len);
-
     if (len >= 16) {
       const uint8_t *payload = (const uint8_t *)data;
       int sample_rate = (int)ntohl(*(uint32_t *)payload);
       int frame_duration = (int)ntohl(*(uint32_t *)(payload + 4));
       // Reserved bytes at offset 8-15
       size_t opus_size = len - 16;
-
-      log_debug_every(1000000, "SERVER: AUDIO_OPUS - sample_rate=%d, frame_duration=%d, opus_size=%zu", sample_rate,
-                      frame_duration, opus_size);
 
       if (opus_size > 0 && opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
         // Create a synthetic Opus batch packet (frame_count=1) and process it
