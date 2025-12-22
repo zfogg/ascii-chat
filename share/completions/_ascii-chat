@@ -21,6 +21,8 @@ _ascii-chat-client() {
         '(-M --render-mode)'{-M,--render-mode}'[rendering mode]:(foreground background half-block)' \
         '(-A --audio)'{-A,--audio}'[enable audio capture and playback]' \
         '--audio-device[audio input device index]' \
+        '--audio-analysis[enable audio analysis for debugging]' \
+        '--no-audio-playback[disable speaker playback while keeping audio recording]' \
         '(-s --stretch)'{-s,--stretch}'[stretch or shrink video to fit]' \
         '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
         '(-S --snapshot)'{-S,--snapshot}'[capture single frame and exit]' \
@@ -34,6 +36,8 @@ _ascii-chat-client() {
         '--log-level[set log level]:(dev debug info warn error fatal)' \
         '--compression-level[zstd compression level 1-9]' \
         '--no-compress[disable video frame compression]' \
+        '--encode-audio[force enable Opus audio encoding]' \
+        '--no-encode-audio[disable Opus audio encoding]' \
         '--reconnect[automatic reconnection behavior]:(off auto)' \
         '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
@@ -59,6 +63,9 @@ _ascii-chat-server() {
         '--log-level[set log level]:(dev debug info warn error fatal)' \
         '--compression-level[zstd compression level 1-9]' \
         '--no-compress[disable video frame compression]' \
+        '--encode-audio[force enable Opus audio encoding]' \
+        '--no-encode-audio[disable Opus audio encoding]' \
+        '--no-audio-mixer[disable audio mixer, send silence instead (debug only)]' \
         '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
         '(-K --key)'{-K,--key}'[SSH/GPG key for authentication]:file:_files' \
