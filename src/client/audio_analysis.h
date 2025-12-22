@@ -30,6 +30,11 @@ typedef struct {
   uint32_t packets_dropped;   // Dropped packets
   int64_t timestamp_start_us; // Start timestamp (microseconds)
   int64_t timestamp_end_us;   // End timestamp (microseconds)
+  // Quality indicators for "scratchy/distorted" detection
+  uint64_t jitter_count;        // Rapid amplitude changes (jitter events)
+  uint64_t discontinuity_count; // Packet arrival gaps (sparse delivery)
+  float avg_packet_spacing_ms;  // Average time between packets (ms)
+  uint32_t max_gap_ms;          // Largest gap between consecutive packets (ms)
 } audio_analysis_stats_t;
 
 /**

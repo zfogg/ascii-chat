@@ -286,15 +286,10 @@ static void *audio_capture_thread_func(void *arg) {
 // Opus frame size: 960 samples = 20ms @ 48kHz
 #define OPUS_FRAME_SAMPLES 960
 #define OPUS_MAX_PACKET_SIZE 250 // Opus can encode to ~60 bytes @ 24kbps, 250 is safe max
-#define OPUS_BATCH_FRAMES 20     // Batch 20 frames = 400ms of audio
 
-  // Audio batching buffers for Opus encoding
-  float opus_frame_buffer[OPUS_FRAME_SAMPLES];                         // Accumulate samples for one Opus frame
-  int opus_frame_samples_collected = 0;                                // Samples in current Opus frame
-  uint8_t opus_batch_buffer[OPUS_MAX_PACKET_SIZE * OPUS_BATCH_FRAMES]; // Encoded Opus data batch
-  uint16_t opus_frame_sizes[OPUS_BATCH_FRAMES];                        // Size of each frame in batch
-  size_t opus_batch_size = 0;                                          // Total bytes in opus_batch_buffer
-  int opus_batch_frame_count = 0;                                      // Number of Opus frames in batch
+  // Audio encoding buffer for Opus
+  float opus_frame_buffer[OPUS_FRAME_SAMPLES]; // Accumulate samples for one Opus frame
+  int opus_frame_samples_collected = 0;        // Samples in current Opus frame
 
   // Audio processing components
   static highpass_filter_t hp_filter;
@@ -446,51 +441,28 @@ static void *audio_capture_thread_func(void *arg) {
 
           if (encoded_bytes == 0) {
             // DTX (Discontinuous Transmission) - Opus detected silence and produced no output
-            // This is valid behavior, not an error. Skip this frame but don't break the batch.
+            // This is valid behavior, not an error. Skip this frame.
             log_debug_every(100000, "Opus DTX frame (silence detected), skipping");
             opus_frame_samples_collected = 0; // Reset frame for next accumulation
-            continue;                         // Continue processing, don't break
+            continue;                         // Continue processing
           }
 
           log_debug_every(100000, "Opus encoded: %d samples -> %zu bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
                           encoded_bytes, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)encoded_bytes);
 
-          // Append encoded data to batch buffer and track frame size
-          if (opus_batch_size + encoded_bytes <= sizeof(opus_batch_buffer) &&
-              opus_batch_frame_count < OPUS_BATCH_FRAMES) {
-            memcpy(&opus_batch_buffer[opus_batch_size], opus_packet, encoded_bytes);
-            opus_frame_sizes[opus_batch_frame_count] = (uint16_t)encoded_bytes;
-            opus_batch_size += encoded_bytes;
-            opus_batch_frame_count++;
+          // Send single Opus frame immediately
+          if (threaded_send_audio_opus((const uint8_t *)opus_packet, encoded_bytes, 48000, 20) < 0) {
+            log_error("Failed to send Opus audio frame to server");
+            // Don't set connection lost here as receive thread will detect it
           } else {
-            log_error("Opus batch buffer overflow, discarding frame");
+            // Track packet for analysis
+            if (opt_audio_analysis_enabled) {
+              audio_analysis_track_sent_packet(encoded_bytes);
+            }
           }
 
           // Reset frame buffer for next frame
           opus_frame_samples_collected = 0;
-
-          // Send batch when we have collected enough Opus frames
-          if (opus_batch_frame_count >= OPUS_BATCH_FRAMES) {
-            log_info("Sending Opus batch: %d frames, %zu bytes", opus_batch_frame_count, opus_batch_size);
-
-            if (threaded_send_audio_opus_batch(opus_batch_buffer, opus_batch_size, opus_frame_sizes,
-                                               opus_batch_frame_count) < 0) {
-              log_error("Failed to send Opus audio batch to server");
-              // Don't set connection lost here as receive thread will detect it
-            } else {
-              log_debug("Opus audio batch sent successfully: %d frames, %zu bytes", opus_batch_frame_count,
-                        opus_batch_size);
-
-              // Track packet for analysis
-              if (opt_audio_analysis_enabled) {
-                audio_analysis_track_sent_packet(opus_batch_size);
-              }
-            }
-
-            // Reset batch counters
-            opus_batch_size = 0;
-            opus_batch_frame_count = 0;
-          }
         }
       }
     } else {
