@@ -987,10 +987,14 @@ void *client_audio_render_thread(void *arg) {
             audio_packet_count = 0;
             last_audio_fps_report_time = current_time;
           }
-          // Reset accumulation buffer after successfully encoding and queueing
-          opus_frame_accumulated = 0;
         }
       }
+
+      // CRITICAL: Always reset accumulation buffer after attempting to encode a full frame.
+      // Without this reset, encoding failures would cause the buffer to stay full forever,
+      // preventing any new audio samples from being accumulated (audio stall bug).
+      // The samples have been consumed whether encoding succeeded or failed.
+      opus_frame_accumulated = 0;
     }
 
     // Audio mixing rate - 5.8ms to match buffer size
