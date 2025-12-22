@@ -282,6 +282,7 @@ asciichat_error_t symbol_cache_init(void) {
   atomic_store(&g_cache_hits, 0);
   atomic_store(&g_cache_misses, 0);
 
+  log_debug("Symbol cache initialized");
   return 0;
 }
 
@@ -296,16 +297,23 @@ void symbol_cache_cleanup(void) {
   // Acquire write lock to prevent any concurrent operations
   rwlock_wrlock(&g_symbol_cache_lock);
 
+  // Count entries before freeing for debugging
+  size_t entry_count = HASH_COUNT(g_symbol_cache);
+
   // Free all symbol entries using HASH_ITER
   symbol_entry_t *entry, *tmp;
+  size_t freed_count = 0;
   HASH_ITER(hh, g_symbol_cache, entry, tmp) {
-    HASH_DEL(g_symbol_cache, entry);
-    if (entry->symbol) {
-      // Use SAFE_FREE() because entry->symbol was allocated with platform_strdup()
-      // which uses SAFE_MALLOC(), so it's tracked by debug memory system
-      SAFE_FREE(entry->symbol);
+    if (entry) {
+      HASH_DEL(g_symbol_cache, entry);
+      if (entry->symbol) {
+        // Use SAFE_FREE() because entry->symbol was allocated with platform_strdup()
+        // which uses SAFE_MALLOC(), so it's tracked by debug memory system
+        SAFE_FREE(entry->symbol);
+      }
+      SAFE_FREE(entry);
+      freed_count++;
     }
-    SAFE_FREE(entry);
   }
 
   // Release lock and destroy rwlock
@@ -314,7 +322,8 @@ void symbol_cache_cleanup(void) {
 
   g_symbol_cache = NULL;
 
-  log_debug("Symbol cache cleaned up (hits=%llu, misses=%llu)", (unsigned long long)atomic_load(&g_cache_hits),
+  log_debug("Symbol cache cleaned up: %zu entries counted, %zu entries freed (hits=%llu, misses=%llu)", entry_count,
+            freed_count, (unsigned long long)atomic_load(&g_cache_hits),
             (unsigned long long)atomic_load(&g_cache_misses));
 }
 
