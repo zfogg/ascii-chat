@@ -67,10 +67,10 @@ _ascii_chat() {
 
   # Client-only options with help text
   local -a client_opts=(
-    '-x' 'render width'
-    '--width' 'render width'
-    '-y' 'render height'
-    '--height' 'render height'
+    '-x' 'render width (characters)'
+    '--width' 'render width (characters)'
+    '-y' 'render height (characters)'
+    '--height' 'render height (characters)'
     '-H' 'hostname for DNS lookup'
     '--host' 'hostname for DNS lookup'
     '-c' 'webcam device index (0-based)'
@@ -81,15 +81,17 @@ _ascii_chat() {
     '-f' 'toggle horizontal flip of webcam image'
     '--webcam-flip' 'toggle horizontal flip of webcam image'
     '--test-pattern' 'use test pattern instead of webcam'
-    '--fps' 'desired frame rate 1-144'
+    '--fps' 'desired frame rate 1-144 (default: 60)'
     '--color-mode' 'color modes: auto, none, 16, 256, truecolor'
     '--show-capabilities' 'show detected terminal capabilities and exit'
     '--utf8' 'force enable UTF-8/Unicode support'
-    '-M' 'rendering mode: foreground, background, half-block'
-    '--render-mode' 'rendering mode: foreground, background, half-block'
+    '-M' 'rendering mode: foreground/fg, background/bg, half-block'
+    '--render-mode' 'rendering mode: foreground/fg, background/bg, half-block'
     '-A' 'enable audio capture and playback'
     '--audio' 'enable audio capture and playback'
-    '--audio-device' 'audio input device index'
+    '--audio-device' 'audio input device index (-1 for default)'
+    '--audio-analysis' 'enable audio analysis for debugging'
+    '--no-audio-playback' 'disable speaker playback while keeping audio recording'
     '-s' 'stretch or shrink video to fit (ignore aspect ratio)'
     '--stretch' 'stretch or shrink video to fit (ignore aspect ratio)'
     '-q' 'disable console logging (log only to file)'
@@ -97,24 +99,29 @@ _ascii_chat() {
     '-S' 'capture single frame and exit'
     '--snapshot' 'capture single frame and exit'
     '-D' 'delay SECONDS before snapshot'
-    '--snapshot-delay' 'delay SECONDS before snapshot'
+    '--snapshot-delay' 'delay SECONDS before snapshot (default: 3.0-4.0)'
     '--mirror' 'view webcam locally without connecting to server'
     '--strip-ansi' 'remove all ANSI escape codes from output'
     '--server-key' 'expected server public key for verification'
-    '--compression-level' 'zstd compression level 1-9'
+    '--compression-level' 'zstd compression level 1-9 (default: 1)'
     '--no-compress' 'disable video frame compression'
-    '--reconnect' 'automatic reconnection behavior (off or auto)'
+    '--encode-audio' 'force enable Opus audio encoding'
+    '--no-encode-audio' 'disable Opus audio encoding'
+    '--reconnect' 'automatic reconnection: off, auto, or number 1-999'
     '--config' 'load configuration from TOML file'
     '--config-create' 'create default configuration file'
   )
 
   # Server-only options with help text
   local -a server_opts=(
-    '--address6' 'IPv6 address to bind to'
-    '--max-clients' 'maximum concurrent client connections'
-    '--client-keys' 'allowed client keys file for authentication'
-    '--compression-level' 'zstd compression level 1-9'
+    '--address6' 'IPv6 address to bind to (default: ::1)'
+    '--max-clients' 'maximum concurrent client connections (default: 10, max: 32)'
+    '--client-keys' 'allowed client keys file for authentication (authorized_keys format)'
+    '--compression-level' 'zstd compression level 1-9 (default: 1)'
     '--no-compress' 'disable video frame compression'
+    '--encode-audio' 'force enable Opus audio encoding'
+    '--no-encode-audio' 'disable Opus audio encoding'
+    '--no-audio-mixer' 'disable audio mixer, send silence instead (debug only)'
     '--config' 'load configuration from TOML file'
     '--config-create' 'create default configuration file'
   )
@@ -136,7 +143,7 @@ _ascii_chat() {
 
   case "$prev" in
   # Options that take file paths
-  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key)
+  -L | --log-file | -K | --key | -F | --keyfile | --client-keys | --server-key | --config)
     _filedir
     return
     ;;
@@ -154,14 +161,22 @@ _ascii_chat() {
     return
     ;;
   -M | --render-mode)
-    COMPREPLY=($(compgen -W "foreground background half-block" -- "$cur"))
+    COMPREPLY=($(compgen -W "foreground fg background bg half-block" -- "$cur"))
+    return
+    ;;
+  --reconnect)
+    COMPREPLY=($(compgen -W "off auto" -- "$cur"))
+    return
+    ;;
+  --compression-level)
+    COMPREPLY=($(compgen -W "1 2 3 4 5 6 7 8 9" -- "$cur"))
     return
     ;;
   # Options that take numeric values - no completion
   -a | --address | -H | --host | --address6)
     return
     ;;
-  -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps)
+  -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps | --audio-device | --max-clients)
     return
     ;;
   -C | --palette-chars | --password)

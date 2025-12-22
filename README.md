@@ -168,53 +168,77 @@ Run `ascii-chat client --help` to see all client options:
 
 **Connection:**
 
-- `-a --address ADDRESS`: IPv4 address to connect to (default: 127.0.0.1)
+- `-a --address ADDRESS`: IPv4 address or hostname to connect to (default: localhost)
 - `-H --host HOSTNAME`: Hostname for DNS lookup (alternative to --address)
 - `-p --port PORT`: TCP port (default: 27224)
+- `--reconnect VALUE`: Automatic reconnection behavior: `off`, `auto`, or number 1-999 (default: auto)
 
-**Video:**
+**Terminal Dimensions:**
 
-- `-x --width WIDTH`: Render width (auto-detected by default)
-- `-y --height HEIGHT`: Render height (auto-detected by default)
-- `-c --webcam-index INDEX`: Webcam device index (default: 0)
-- `-f --webcam-flip`: Horizontally flip webcam (default: enabled)
-- `--test-pattern`: Use test pattern instead of webcam (for debugging)
-- `-s --stretch`: Stretch video to fit without preserving aspect ratio
+- `-x --width WIDTH`: Terminal width in characters (auto-detected by default)
+- `-y --height HEIGHT`: Terminal height in characters (auto-detected by default)
+- `--stretch`: Stretch video to fit without preserving aspect ratio
 
-**Display:**
+**Webcam Options:**
 
-- `--color-mode MODE`: Color modes: auto, mono, 16, 256, truecolor (default: auto)
-- `--render-mode MODE`: Render modes: foreground, background, half-block (default: foreground)
+- `-c --webcam-index INDEX`: Webcam device index (0-based, default: 0)
+- `-f --webcam-flip`: Toggle horizontal flip of webcam image (default: flipped)
+- `--test-pattern`: Use test pattern instead of real webcam (for debugging/testing)
+- `--list-webcams`: List available webcam devices and exit
+
+**Display & Color:**
+
+- `--color-mode MODE`: Color modes: auto, none, 16, 256, truecolor (default: auto)
+- `-M --render-mode MODE`: Render modes: foreground (fg), background (bg), half-block (default: foreground)
 - `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
 - `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
-- `--show-capabilities`: Display terminal color capabilities and exit
+- `--show-capabilities`: Display detected terminal color capabilities and exit
 - `--utf8`: Force enable UTF-8/Unicode support
-- `--fps FPS`: Desired frame rate 1-144 (default: 60)
 
-**Audio:**
+**Audio Options:**
 
 - `-A --audio`: Enable audio capture and playback
-
-**Cryptography:**
-
-- `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, gpg:keyid, github:user, gitlab:user, or 'ssh' for auto-detect
-- `--password PASS`: Password for connection encryption
-- `--no-encrypt`: Disable encryption (for local testing)
-- `--server-key KEY`: Expected server public key for verification
-
-**Device Enumeration:**
-
-- `--list-webcams`: List available webcam devices and exit
+- `--audio-device INDEX`: Audio input device index (-1 for system default)
 - `--list-microphones`: List available audio input devices and exit
 - `--list-speakers`: List available audio output devices and exit
+- `--audio-analysis`: Enable audio analysis for debugging audio quality issues
+- `--no-audio-playback`: Disable speaker playback while keeping received audio recording
 
-**Misc:**
+**Performance:**
 
+- `--fps FPS`: Desired frame rate, 1-144 (default: 60)
+- `--compression-level LEVEL`: zstd compression level 1-9 (default: 1, fastest)
+- `--no-compress`: Disable video frame compression entirely
+- `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
+- `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
+
+**Snapshot & Mirror Modes:**
+
+- `-S --snapshot`: Capture single frame from server and exit (useful for scripting, CI/CD)
+- `-D --snapshot-delay SECONDS`: Delay in seconds before capturing snapshot (default: 3.0-4.0 for webcam warmup)
+- `--mirror`: View local webcam as ASCII art without connecting to server (standalone mode)
+- `--strip-ansi`: Remove all ANSI escape codes from output (plain ASCII only)
+
+**Encryption:**
+
+- `-E --encrypt`: Enable packet encryption (default: enabled if keys are available)
+- `-K --key FILE`: SSH/GPG key file for authentication (supports /path/to/key, github:user, gitlab:user, or 'ssh' for auto-detect)
+- `--password PASSWORD`: Password for connection encryption
+- `-F --keyfile FILE`: Alternative way to specify key file (alias for --key)
+- `--no-encrypt`: Disable encryption (for local testing)
+- `--server-key KEY`: Expected server public key for identity verification (prevents MITM attacks)
+
+**Configuration & Output:**
+
+- `--config FILE`: Load configuration from TOML file
+- `--config-create [PATH]`: Create default configuration file and exit
+- `-L --log-file FILE`: Redirect logs to file
+- `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal
 - `-q --quiet`: Disable console logging (logs only to file)
 - `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
-- `-S --snapshot`: Connect to server, capture one frame, and exit. Useful for scripting, llm ai agents, and ci. You can pipe the output to a file.
-- `-D --snapshot-delay SECONDS`: Delay before snapshot in seconds (default: 3.0/5.0)
-- `-L --log-file FILE`: Redirect logs to file
+
+**Information:**
+
 - `-v --version`: Display version information
 - `-h --help`: Show help message
 
@@ -222,31 +246,45 @@ Run `ascii-chat client --help` to see all client options:
 
 Run `./bin/ascii-chat server --help` to see all server options:
 
-**Connection:**
+**Network Binding:**
 
-- `-a --address ADDRESS`: IPv4 address to bind to (default: 0.0.0.0)
+- `-a --address ADDRESS`: IPv4 address to bind to (default: 127.0.0.1)
+- `--address6 ADDRESS6`: IPv6 address to bind to (default: ::1, use `::` for all interfaces)
 - `-p --port PORT`: TCP port to listen on (default: 27224)
+- `--max-clients N`: Maximum concurrent client connections, 1-32 (default: 10)
 
-**Display:**
+**Display & Palette:**
 
 - `-P --palette TYPE`: ASCII palette: standard, blocks, digital, minimal, cool, custom (default: standard)
 - `-C --palette-chars CHARS`: Custom palette characters (implies --palette=custom)
 
-**Audio:**
+**Performance:**
 
-- Audio is always enabled on the server (no flag needed)
+- `--compression-level LEVEL`: zstd compression level 1-9 (default: 1, fastest)
+- `--no-compress`: Disable video frame compression entirely
+- `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
+- `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
+- `--no-audio-mixer`: Disable audio mixer, send silence instead of mixing (debug only)
 
-**Cryptography:**
+**Encryption:**
 
-- `-K --key FILE`: SSH key info for authentication: /path/to/key, github:user, gitlab:user, or 'ssh' for auto-detect
-- `--password PASS`: Password for connection encryption
+- `-E --encrypt`: Enable packet encryption (default: enabled if keys are available)
+- `-K --key FILE`: SSH/GPG key file for authentication: /path/to/key, github:user, gitlab:user, or 'ssh' for auto-detect
+- `--password PASSWORD`: Password for connection encryption
+- `-F --keyfile FILE`: Alternative way to specify key file (alias for --key)
 - `--no-encrypt`: Disable encryption (for local testing)
-- `--client-keys FILE`: Allowed client keys file for authentication (whitelist)
+- `--client-keys FILE`: File containing allowed client public keys for authentication (whitelist, one per line in authorized_keys format)
 
-**Misc:**
+**Configuration & Output:**
 
-- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
+- `--config FILE`: Load configuration from TOML file
+- `--config-create [PATH]`: Create default configuration file and exit
 - `-L --log-file FILE`: Redirect logs to file
+- `--log-level LEVEL`: Set log level: dev, debug, info, warn, error, fatal
+- `-V --verbose`: Increase verbosity (stackable: -V, -VV, -VVV for more detail)
+
+**Information:**
+
 - `-v --version`: Display version information
 - `-h --help`: Show help message
 
@@ -303,6 +341,48 @@ ascii-chat server --key ~/.ssh/id_ed25519 --client-keys allowed_clients.txt
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys ~/.ssh/client1.pub --password "password123"
 # You need to know (1) the server public key and (2) the password before connecting, and the server needs to know (3) your public key and (4) the same password.
 ```
+
+## libasciichat
+
+ascii-chat is built on a modern, reusable C library called **libasciichat** that can be embedded in other projects. The library provides production-ready implementations for video processing, networking, cryptography, and cross-platform development. You can install libasciichat as a development dependency and use it in your own applications.
+
+**What's in the library:**
+
+- **Network Protocol**: Full implementation of the ascii-chat client/server protocol with encrypted packet exchange, lossless frame compression (zstd), and audio codec integration (Opus). See the protocol reference in the docs.
+- **Image Processing**: The `image2ascii` module converts images to ASCII art with hardware acceleration via SIMD (AVX2, NEON, SSE) for 1-4x performance gains. Includes grid layout algorithms for multi-client rendering.
+- **Platform Abstraction**: Write once, run anywhere. Cross-platform abstractions for threads, mutexes, read-write locks, condition variables, sockets, and terminal I/O that work identically on Windows, macOS, and Linux.
+- **Media Support**: Audio capture, mixing, and playback via PortAudio; webcam integration with V4L2 (Linux), AVFoundation (macOS), and Media Foundation (Windows); frame buffering and synchronization.
+- **Cryptography**: End-to-end encryption with libsodium (X25519 key exchange, XSalsa20-Poly1305 AEAD, Ed25519 signatures) and SSH key authentication with agent support.
+- **Debugging & Profiling**: Built-in memory leak detection with source file/line tracking, lock contention analysis, AddressSanitizer integration, and comprehensive logging infrastructure.
+- **Memory Management**: High-performance buffer pooling, lock-free ring buffers, and thread-safe packet queues designed for real-time video/audio applications.
+
+**Install libasciichat:**
+
+```bash
+# macOS (Homebrew)
+brew install libasciichat
+
+# Arch Linux (AUR)
+paru -S libasciichat       # Stable release
+paru -S libasciichat-git   # Latest from git
+```
+
+The library headers, static and shared libraries, and API documentation are included. Installation also provides CMake config files (`asciichatConfig.cmake`) and pkg-config metadata (`libasciichat.pc`) for integration into your own projects.
+
+**Using libasciichat in your CMake project:**
+
+```cmake
+find_package(asciichat REQUIRED)
+target_link_libraries(your_project asciichat::asciichat)
+```
+
+**Using libasciichat with pkg-config:**
+
+```bash
+pkg-config --cflags --libs libasciichat
+```
+
+See the online **[API documentation](https://zfogg.github.io/ascii-chat/)** for detailed function references and architecture guides.
 
 ## Open Source
 
