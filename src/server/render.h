@@ -21,7 +21,8 @@ void stop_client_render_threads(client_info_t *client);
 #else
 #define VIDEO_RENDER_FPS 60 // Linux/macOS can handle higher rates
 #endif
-#define AUDIO_RENDER_FPS 172 // ~5.8ms interval for smooth audio
+// Audio render rate: 256 samples / 48000 Hz = 5.33ms per frame = 187.5 FPS
+#define AUDIO_RENDER_FPS 188 // ~5.33ms interval for 48kHz audio
 
 // Render utilities
 void calculate_render_interval(int target_fps, struct timespec *interval);
