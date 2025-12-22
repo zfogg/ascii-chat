@@ -219,6 +219,13 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     wav_writer_write(g_wav_playback_received, samples, num_samples);
   }
 
+  // Track samples for analysis
+  if (opt_audio_analysis_enabled) {
+    for (int i = 0; i < num_samples; i++) {
+      audio_analysis_track_received_sample(samples[i]);
+    }
+  }
+
   // Apply volume boost and clipping protection
   // Buffer must accommodate batched packets (up to AUDIO_BATCH_SAMPLES)
   float audio_buffer[AUDIO_BATCH_SAMPLES];
@@ -291,23 +298,21 @@ static void *audio_capture_thread_func(void *arg) {
   float opus_frame_buffer[OPUS_FRAME_SAMPLES]; // Accumulate samples for one Opus frame
   int opus_frame_samples_collected = 0;        // Samples in current Opus frame
 
-  // Audio processing components
+  // Audio processing components - initialized fresh on each thread start
+  // to avoid stale filter state from previous runs
   static highpass_filter_t hp_filter;
-  static bool processors_initialized = false;
+  static bool wav_dumpers_initialized = false;
 
-  // Initialize audio processors on first run
-  if (!processors_initialized) {
-    // Initialize high-pass filter to remove DC offset and subsonic frequencies
-    highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE);
+  // Always reinitialize the high-pass filter when thread starts
+  // This ensures clean state (no stale prev_input/prev_output values)
+  highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE);
 
-    // Initialize WAV dumpers if debugging enabled
-    if (wav_dump_enabled()) {
-      g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
-      g_wav_capture_processed = wav_writer_open("/tmp/audio_capture_processed.wav", AUDIO_SAMPLE_RATE, 1);
-      log_info("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
-    }
-
-    processors_initialized = true;
+  // Initialize WAV dumpers only once (file handles persist)
+  if (!wav_dumpers_initialized && wav_dump_enabled()) {
+    g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
+    g_wav_capture_processed = wav_writer_open("/tmp/audio_capture_processed.wav", AUDIO_SAMPLE_RATE, 1);
+    log_info("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
+    wav_dumpers_initialized = true;
   }
 
   while (!should_exit() && !server_connection_is_lost()) {

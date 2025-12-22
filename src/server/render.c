@@ -153,6 +153,7 @@
 #include <string.h>
 #include <time.h>
 #include <errno.h>
+#include <math.h>
 
 #include "render.h"
 #include "client.h"
@@ -759,7 +760,9 @@ void *client_audio_render_thread(void *arg) {
   log_debug("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
 #endif
 
-  float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
+  // Mix buffer: 480 samples = 10ms @ 48kHz (matches loop iteration timing)
+  // Sized to ensure 960 samples accumulate in ~2 iterations for 20ms packets
+  float mix_buffer[480];
 
 // Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
 // Opus requires minimum 480 samples, 960 is optimal for 20ms frames
@@ -841,7 +844,14 @@ void *client_audio_render_thread(void *arg) {
     if (opt_no_audio_mixer) {
       // Disable mixer.h processing: simple mixing without ducking/compression/etc
       // Just add audio from all sources except this client, no processing
-      SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+      //
+      // CRITICAL TIMING FIX: Read 480 samples per 10ms loop iteration
+      // At 48kHz sample rate, 10ms = 480 samples
+      // This ensures 960 samples accumulate in ~2 iterations = ~20ms packets
+      // (Previously read only 256 samples per iteration, causing 40ms packets and stuttering)
+      const int samples_per_iteration = 480; // 48kHz * 10ms
+
+      SAFE_MEMSET(mix_buffer, samples_per_iteration * sizeof(float), 0, samples_per_iteration * sizeof(float));
 
       if (g_audio_mixer) {
         int max_samples_in_frame = 0;
@@ -850,9 +860,9 @@ void *client_audio_render_thread(void *arg) {
           if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
               g_audio_mixer->source_buffers[i]) {
             // Read from this source and add to mix buffer
-            float temp_buffer[AUDIO_FRAMES_PER_BUFFER];
+            float temp_buffer[480];
             int samples_read =
-                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, AUDIO_FRAMES_PER_BUFFER);
+                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, samples_per_iteration);
 
             // Track the maximum samples we got from any source
             if (samples_read > max_samples_in_frame) {
@@ -871,8 +881,8 @@ void *client_audio_render_thread(void *arg) {
       log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u",
                       samples_mixed, client_id_snapshot);
     } else {
-      samples_mixed =
-          mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+      // Also use 480 samples per iteration in normal mixer mode for consistent timing
+      samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, 480, client_id_snapshot);
     }
 
     struct timespec mix_end_time;
@@ -933,6 +943,9 @@ void *client_audio_render_thread(void *arg) {
 
       if (apply_backpressure) {
         // Skip this packet to let the queue drain
+        // CRITICAL: Reset accumulation buffer so fresh samples can be captured on next iteration
+        // Without this reset, we'd loop forever with stale audio and no space for new samples
+        opus_frame_accumulated = 0;
         platform_sleep_usec(5800);
         continue;
       }
@@ -1029,12 +1042,7 @@ void *client_audio_render_thread(void *arg) {
           }
         }
       }
-
-      // CRITICAL: Always reset accumulation buffer after attempting to encode a full frame.
-      // Without this reset, encoding failures would cause the buffer to stay full forever,
-      // preventing any new audio samples from being accumulated (audio stall bug).
-      // The samples have been consumed whether encoding succeeded or failed.
-      opus_frame_accumulated = 0;
+      // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
     }
 
     // Audio mixing rate - 5.8ms to match buffer size

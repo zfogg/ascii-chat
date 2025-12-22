@@ -93,6 +93,12 @@ Default: \fB10\fR
 .br
 Higher values require more server resources (CPU, memory, bandwidth).
 Clients attempting to connect when the limit is reached will be rejected.
+.SS "Server Audio Options"
+.TP
+.BR \-\-no\-audio\-mixer
+Disable audio mixer, send silence instead of mixing client audio streams.
+Useful for debugging audio pipeline issues without hearing mixed output.
+Server-only option (client audio is still received and recorded).
 .SS "Network Performance Options"
 .TP
 .BR \-\-compression\-level =\fIN\fR
@@ -116,6 +122,14 @@ Useful for debugging, local testing, or when CPU usage is more critical than ban
 Significantly increases network traffic.
 When enabled, \-\-compression\-level is ignored.
 Available for both client and server.
+.TP
+.BR \-\-encode\-audio
+Force enable Opus audio encoding for compression and bandwidth savings.
+When used with \-\-no\-compress, still enables audio encoding.
+.TP
+.BR \-\-no\-encode\-audio
+Disable Opus audio encoding, send raw audio samples instead.
+Increases bandwidth but slightly reduces CPU usage.
 .SS "Network Options (Client Only)"
 .TP
 .BR \-H ", " \-\-host =\fIHOSTNAME\fR
@@ -282,6 +296,14 @@ Shows device index, name, and capabilities.
 .BR \-\-list\-speakers
 List all available audio output devices (speakers) and exit.
 Shows device index, name, and capabilities.
+.TP
+.BR \-\-audio\-analysis
+Enable audio analysis for debugging audio quality and levels.
+Shows detailed analysis of captured and received audio.
+.TP
+.BR \-\-no\-audio\-playback
+Disable speaker playback while keeping received audio recording.
+Useful for debugging audio pipeline issues without hearing playback.
 .SS "Encryption Options"
 .TP
 .BR \-E ", " \-\-encrypt
