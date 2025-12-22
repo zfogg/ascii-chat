@@ -437,7 +437,7 @@ static void *audio_capture_thread_func(void *arg) {
         sample_offset += samples_to_copy;
         samples_to_process -= samples_to_copy;
 
-        // Do we have a complete Opus frame (882 samples)?
+        // Do we have a complete Opus frame (960 samples = 20ms @ 48kHz)?
         if (opus_frame_samples_collected >= OPUS_FRAME_SAMPLES) {
           // Encode frame with Opus
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
