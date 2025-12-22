@@ -88,7 +88,7 @@ done
 # Strips the 'v' prefix if present
 get_current_version() {
     local version
-    version=$(git describe --tags --abbrev=0 --match v[0-9]*.[0-9].[0-9]* 2>/dev/null || echo "v0.0.0")
+    version=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo "v0.0.0")
     echo "${version#v}"
 }
 

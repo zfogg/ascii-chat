@@ -52,7 +52,7 @@ jobs:
         run: |
           # Get version from git describe (same as cmake/install/Version.cmake)
           # Use --long --dirty --always to match Version.cmake, then extract version number
-          GIT_DESCRIBE=$(git describe --tags --long --dirty --always 2>/dev/null || echo "")
+          GIT_DESCRIBE=$(git describe --tags --long --dirty --always --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo "")
           if [[ "$GIT_DESCRIBE" =~ ^v?([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
             VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
           else
