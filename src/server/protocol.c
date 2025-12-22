@@ -601,7 +601,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
     if (compressed_flag) {
       // Decompress the data
-      rgb_data = ALLOC_MALLOC(rgb_size);
+      rgb_data = SAFE_MALLOC(rgb_size, void *);
       if (!rgb_data) {
         SET_ERRNO(ERROR_MEMORY, "Failed to allocate decompression buffer for client %u",
                   atomic_load(&client->client_id));
