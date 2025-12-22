@@ -767,8 +767,8 @@ void *client_audio_render_thread(void *arg) {
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_accumulated = 0;
 
-  // Create Opus encoder for this client's audio stream (48kHz, mono, 24kbps, VOIP mode)
-  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+  // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
+  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 128000);
   if (!opus_encoder) {
     log_error("Failed to create Opus encoder for audio render thread (client %u)", thread_client_id);
     return NULL;
@@ -883,22 +883,21 @@ void *client_audio_render_thread(void *arg) {
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
     // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
-    // Only accumulate if we have actual audio samples to process
-    // Skip empty frames - don't pad with silence for immediate rendering
-    if (samples_mixed == 0) {
-      continue; // Wait for actual audio data from other clients
-    }
-
+    // Accumulate all samples (including 0 or partial) until we have a full Opus frame
+    // This maintains continuous stream without silence padding
     struct timespec accum_start = {0};
     (void)clock_gettime(CLOCK_MONOTONIC, &accum_start);
 
     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
     int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
 
-    SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
-                (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
-                samples_to_copy * sizeof(float));
-    opus_frame_accumulated += samples_to_copy;
+    // Only copy if we have samples, otherwise just wait for next frame
+    if (samples_to_copy > 0) {
+      SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
+                  (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
+                  samples_to_copy * sizeof(float));
+      opus_frame_accumulated += samples_to_copy;
+    }
 
     struct timespec accum_end = {0};
     (void)clock_gettime(CLOCK_MONOTONIC, &accum_end);

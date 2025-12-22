@@ -243,7 +243,17 @@ void audio_analysis_print_report(void) {
   }
 
   // Scratchy/distorted diagnosis
-  if (g_received_stats.max_gap_ms > 40) {
+  double received_silence_pct = g_received_stats.total_samples > 0
+                                    ? (100.0 * g_received_stats.silent_samples / g_received_stats.total_samples)
+                                    : 0;
+
+  if (received_silence_pct > 30.0) {
+    log_plain("  ⚠️  SCRATCHY AUDIO DETECTED: Too much silence in received audio!");
+    log_plain("    - Silence: %.1f%% of received samples (should be < 10%%)", received_silence_pct);
+    log_plain("    - This creates jittery/choppy playback between audio bursts");
+    log_plain("    - Root cause: Server sends silence-padded packets when other clients have no audio");
+    log_plain("    - Fix: Only send packets with actual audio data (rate-matched to packet arrival)");
+  } else if (g_received_stats.max_gap_ms > 40) {
     log_plain("  ⚠️  DISTORTION DETECTED: Packet delivery gaps too large!");
     log_plain("    - Max gap: %u ms (should be ~20ms for smooth audio)", g_received_stats.max_gap_ms);
     if (g_received_stats.max_gap_ms > 80) {
