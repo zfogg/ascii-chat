@@ -228,10 +228,10 @@ int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_si
     return -1;
   }
 
-  // Write header
+  // Write header (network byte order for cross-platform compatibility)
   uint8_t *buf = (uint8_t *)packet_data;
-  uint32_t sr = (uint32_t)sample_rate;
-  uint32_t fd = (uint32_t)frame_duration;
+  uint32_t sr = htonl((uint32_t)sample_rate);
+  uint32_t fd = htonl((uint32_t)frame_duration);
   memcpy(buf, &sr, 4);
   memcpy(buf + 4, &fd, 4);
   memset(buf + 8, 0, 8); // Reserved
@@ -551,13 +551,13 @@ int av_receive_audio_opus(const void *packet_data, size_t packet_len, const uint
     return -1;
   }
 
-  // Parse header
+  // Parse header (convert from network byte order)
   const uint8_t *buf = (const uint8_t *)packet_data;
   uint32_t sr, fd;
   memcpy(&sr, buf, 4);
   memcpy(&fd, buf + 4, 4);
-  *out_sample_rate = (int)sr;
-  *out_frame_duration = (int)fd;
+  *out_sample_rate = (int)ntohl(sr);
+  *out_frame_duration = (int)ntohl(fd);
 
   // Extract Opus data (everything after 16-byte header)
   *out_opus_data = buf + header_size;
