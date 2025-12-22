@@ -124,7 +124,7 @@ Hostname for DNS lookup (alternative to \-\-address).
 .BR \-\-reconnect =\fIVALUE\fR
 Automatic reconnection behavior after connection loss.
 Valid values: \fBoff\fR, \fBauto\fR, or a number (1-999).
-Default: \fB0\fR (disabled)
+Default: \fBauto\fR (unlimited)
 .RS
 .IP \(bu 2
 \fBoff\fR (or 0): Exit immediately on connection failure
