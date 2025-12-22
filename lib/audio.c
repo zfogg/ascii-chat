@@ -71,15 +71,26 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   audio_context_t *ctx = (audio_context_t *)userData;
   float *output = (float *)outputBuffer;
 
+  static uint64_t callback_count = 0;
+  callback_count++;
+
   if (output != NULL) {
     if (ctx->playback_buffer != NULL) {
       int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
+
+      // Debug: Log every 1000 callbacks (~10 seconds at 256 frames/callback, 44.1kHz)
+      if (callback_count % 1000 == 0) {
+        size_t available = audio_ring_buffer_available_read(ctx->playback_buffer);
+        log_debug("Audio output callback #%llu: samples_read=%d/%lu, buffer_available=%zu", callback_count,
+                  samples_read, framesPerBuffer * AUDIO_CHANNELS, available);
+      }
 
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
         SAFE_MEMSET(output + samples_read, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float), 0,
                     (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
       }
     } else {
+      log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
                   framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
     }
@@ -564,7 +575,24 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
                      num_samples);
   }
 
-  return audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
+  // Debug: Log writes to playback buffer
+  static uint64_t write_count = 0;
+  write_count++;
+  if (write_count % 100 == 0) {
+    size_t available_before = audio_ring_buffer_available_read(ctx->playback_buffer);
+    log_debug("audio_write_samples #%llu: writing %d samples, buffer_available_before=%zu", write_count, num_samples,
+              available_before);
+  }
+
+  asciichat_error_t result = audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
+
+  if (write_count % 100 == 0) {
+    size_t available_after = audio_ring_buffer_available_read(ctx->playback_buffer);
+    log_debug("audio_write_samples #%llu: after write, buffer_available_after=%zu, result=%d", write_count,
+              available_after, result);
+  }
+
+  return result;
 }
 
 // Internal helper to list audio devices (input or output)

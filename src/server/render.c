@@ -769,6 +769,10 @@ void *client_audio_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+    // Capture loop start time for precise timing
+    struct timespec loop_start_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &loop_start_time);
+
     log_debug_every(10000000, "Audio render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
@@ -892,8 +896,29 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Audio mixing rate - 5.8ms to match buffer size
+    // Calculate elapsed time and sleep for remainder to maintain constant FPS
+    struct timespec loop_end_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &loop_end_time);
+
+    uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
+                               ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
+
+    // Target 5800us per loop for 172 FPS
+    const uint64_t target_loop_us = 5800;
+    long remaining_sleep_us;
+
+    if (loop_elapsed_us >= target_loop_us) {
+      // Processing took longer than target - skip sleep but warn
+      log_warn_every(1000000, "Audio processing took %lluus (%.1fms) - exceeds target %lluus (%.1fms) for client %u",
+                     loop_elapsed_us, (float)loop_elapsed_us / 1000.0f, target_loop_us, (float)target_loop_us / 1000.0f,
+                     thread_client_id);
+      remaining_sleep_us = 0;
+    } else {
+      // Sleep for remaining time to maintain constant FPS
+      remaining_sleep_us = (long)(target_loop_us - loop_elapsed_us);
+    }
+
     // Sleep in small chunks for better shutdown responsiveness
-    long remaining_sleep_us = 5800;
     const long sleep_chunk = 1000; // 1ms chunks for reasonable shutdown response
     while (remaining_sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
       long chunk = remaining_sleep_us > sleep_chunk ? sleep_chunk : remaining_sleep_us;
