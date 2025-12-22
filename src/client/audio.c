@@ -481,9 +481,17 @@ int audio_start_thread() {
     return 0; // Audio disabled - not an error
   }
 
-  if (g_audio_capture_thread_created) {
-    log_warn("Audio capture thread already created");
+  // Check if thread is already running (not just created flag)
+  if (g_audio_capture_thread_created && !atomic_load(&g_audio_capture_thread_exited)) {
+    log_warn("Audio capture thread already running");
     return 0;
+  }
+
+  // If thread exited, allow recreation
+  if (g_audio_capture_thread_created && atomic_load(&g_audio_capture_thread_exited)) {
+    log_info("Previous audio capture thread exited, recreating");
+    ascii_thread_join(&g_audio_capture_thread, NULL);
+    g_audio_capture_thread_created = false;
   }
 
   // Start audio capture thread
