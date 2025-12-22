@@ -141,7 +141,7 @@ typedef struct {
 
   // Per-client synchronization
   mutex_t client_state_mutex;
-  mutex_t send_mutex;  // Protects socket writes (prevents concurrent send race)
+  mutex_t send_mutex; // Protects socket writes (prevents concurrent send race)
 
   // Per-client crypto context for secure communication
   crypto_handshake_context_t crypto_handshake_ctx;
