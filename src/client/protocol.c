@@ -83,6 +83,7 @@
 #include "keepalive.h"
 
 #include "network/packet.h"
+#include "network/av.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "options.h"
@@ -750,6 +751,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     return;
   }
 
+  // Decode each Opus frame using frame_sizes array
   int total_decoded_samples = 0;
   size_t opus_offset = 0;
 
@@ -763,7 +765,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
       break;
     }
 
-    // Decode frame
+    // Decode frame - use remaining buffer space (not 2880-total which would fail after 3 frames)
     float *frame_buffer = all_samples + total_decoded_samples;
     int decoded = opus_codec_decode(decoder, opus_data + opus_offset, frame_size, frame_buffer,
                                     samples_per_frame);
