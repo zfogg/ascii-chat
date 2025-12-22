@@ -50,8 +50,9 @@
 /** @brief FNV-1a 32-bit hash macro for a single byte */
 #define FNV1A_32_HASH(hash, byte)                                                                                      \
   do {                                                                                                                 \
-    (hash) ^= (uint64_t)(byte);                                                                                        \
-    (hash) = ((hash) * FNV1A_32_PRIME) & FNV1A_32_MASK;                                                                \
+    uint64_t _byte_val = (uint64_t)(byte);                                                                             \
+    (hash) = ((hash) ^ _byte_val) * FNV1A_32_PRIME;                                                                    \
+    (hash) &= FNV1A_32_MASK;                                                                                           \
   } while (0)
 
 /* ============================================================================
