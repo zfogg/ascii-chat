@@ -598,8 +598,11 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       return PACKET_RECV_ERROR;
     }
 
-    // Decrypt
-    size_t plaintext_size = pkt_len + 1024; // Extra space for decryption
+    // Decrypt - check for integer overflow before allocating
+    // pkt_len is already validated to be <= MAX_PACKET_SIZE
+    // Need at least pkt_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE for ciphertext overhead
+    // But our buffer needs plaintext space, which is pkt_len (already includes overhead)
+    size_t plaintext_size = pkt_len > SIZE_MAX - 1024 ? pkt_len : pkt_len + 1024; // Extra space for decryption
     uint8_t *plaintext = buffer_pool_alloc(plaintext_size);
     if (!plaintext) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext");
