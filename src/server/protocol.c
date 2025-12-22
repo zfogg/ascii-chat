@@ -1063,8 +1063,8 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   size_t opus_offset = 0;
 
   for (int i = 0; i < frame_count; i++) {
-    // Get exact frame size from frame_sizes array
-    size_t frame_size = (size_t)frame_sizes[i];
+    // Get exact frame size from frame_sizes array (convert from network byte order)
+    size_t frame_size = (size_t)ntohs(frame_sizes[i]);
 
     if (opus_offset + frame_size > opus_size) {
       log_error("Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)",
