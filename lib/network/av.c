@@ -279,18 +279,21 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
     return -1;
   }
 
-  // Write header
+  // Write header (network byte order for cross-platform compatibility)
   uint8_t *buf = (uint8_t *)packet_data;
-  uint32_t sr = (uint32_t)sample_rate;
-  uint32_t fd = (uint32_t)frame_duration;
-  uint32_t fc = (uint32_t)frame_count;
+  uint32_t sr = htonl((uint32_t)sample_rate);
+  uint32_t fd = htonl((uint32_t)frame_duration);
+  uint32_t fc = htonl((uint32_t)frame_count);
   memcpy(buf, &sr, 4);
   memcpy(buf + 4, &fd, 4);
   memcpy(buf + 8, &fc, 4);
   memset(buf + 12, 0, 4); // Reserved
 
-  // Write frame sizes array
-  memcpy(buf + header_size, frame_sizes, frame_sizes_bytes);
+  // Write frame sizes array (convert each to network byte order)
+  uint16_t *frame_sizes_out = (uint16_t *)(buf + header_size);
+  for (int i = 0; i < frame_count; i++) {
+    frame_sizes_out[i] = htons(frame_sizes[i]);
+  }
 
   // Copy Opus data
   memcpy(buf + header_size + frame_sizes_bytes, opus_data, opus_size);
@@ -600,23 +603,25 @@ int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, cons
     return -1;
   }
 
-  // Parse header
+  // Parse header (convert from network byte order)
   const uint8_t *buf = (const uint8_t *)packet_data;
   uint32_t sr, fd, fc;
   memcpy(&sr, buf, 4);
   memcpy(&fd, buf + 4, 4);
   memcpy(&fc, buf + 8, 4);
-  *out_sample_rate = (int)sr;
-  *out_frame_duration = (int)fd;
-  *out_frame_count = (int)fc;
+  *out_sample_rate = (int)ntohl(sr);
+  *out_frame_duration = (int)ntohl(fd);
+  int frame_count = (int)ntohl(fc);
+  *out_frame_count = frame_count;
 
   // Extract frame sizes array (after 16-byte header)
-  size_t frame_sizes_bytes = (size_t)fc * sizeof(uint16_t);
+  size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
   if (packet_len < header_size + frame_sizes_bytes) {
     SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small for frame sizes: %zu < %zu", packet_len,
               header_size + frame_sizes_bytes);
     return -1;
   }
+  // NOTE: Caller must use ntohs() when reading frame_sizes[i] as they are in network byte order
   *out_frame_sizes = (const uint16_t *)(buf + header_size);
 
   // Extract Opus data (after header + frame sizes)
