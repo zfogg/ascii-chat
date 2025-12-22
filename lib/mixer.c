@@ -480,47 +480,57 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       }
     }
 
-    // Process each sample in the frame
-    for (int s = 0; s < frame_size; s++) {
-      // Update envelopes for active speaker detection
-      int speaking_count = 0;
-      for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float abs_sample = fabsf(sample);
+    // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
+    // Calculate peak amplitude for each source over the entire frame
+    int speaking_count = 0;
 
-        // Update envelope
-        if (abs_sample > mixer->ducking.envelope[slot]) {
-          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
-        } else {
-          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
-        }
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      float peak = 0.0f;
 
-        // Count speaking sources
-        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
-          speaking_count++;
+      // Find peak amplitude in frame (much faster than per-sample envelope)
+      for (int s = 0; s < frame_size; s++) {
+        float abs_sample = fabsf(source_samples[i][s]);
+        if (abs_sample > peak)
+          peak = abs_sample;
       }
 
-      // Apply ducking
-      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+      // Update envelope using frame peak (one update per frame instead of per-sample)
+      if (peak > mixer->ducking.envelope[slot]) {
+        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.attack_coeff) * peak;
+      } else {
+        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.release_coeff) * peak;
+      }
 
-      // Calculate crowd scaling
-      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
-      float pre_bus = mixer->base_gain * crowd_gain;
+      // Count speaking sources
+      if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+        speaking_count++;
+    }
 
-      // Mix sources with ducking and crowd scaling
+    // Apply ducking ONCE per frame (not per-sample)
+    ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+    // Calculate crowd scaling ONCE per frame
+    float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+    float pre_bus = mixer->base_gain * crowd_gain;
+
+    // Pre-calculate combined gains for each source (ducking * pre_bus)
+    float combined_gains[MIXER_MAX_SOURCES];
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      combined_gains[i] = mixer->ducking.gain[slot] * pre_bus;
+    }
+
+    // Fast mixing loop - simple multiply-add with pre-calculated gains
+    for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float gain = mixer->ducking.gain[slot];
-        mix += sample * gain;
+        mix += source_samples[i][s] * combined_gains[i];
       }
-      mix *= pre_bus;
 
-      // Apply bus compression
+      // Apply bus compression (still per-sample for smooth dynamics)
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
@@ -602,53 +612,65 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     STOP_TIMER("mixer_read_sources");
 
     START_TIMER("mixer_per_sample_loop");
-    // Process each sample in the frame
-    for (int s = 0; s < frame_size; s++) {
-      // Update envelopes for active speaker detection
-      int speaking_count = 0;
-      for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float abs_sample = fabsf(sample);
 
-        // Update envelope
-        if (abs_sample > mixer->ducking.envelope[slot]) {
-          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
-        } else {
-          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
-        }
+    // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
+    // Calculate peak amplitude for each source over the entire frame
+    int speaking_count = 0;
 
-        // Count speaking sources
-        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
-          speaking_count++;
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      float peak = 0.0f;
+
+      // Find peak amplitude in frame (much faster than per-sample envelope)
+      for (int s = 0; s < frame_size; s++) {
+        float abs_sample = fabsf(source_samples[i][s]);
+        if (abs_sample > peak)
+          peak = abs_sample;
       }
 
-      // Apply ducking
-      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+      // Update envelope using frame peak (one update per frame instead of per-sample)
+      if (peak > mixer->ducking.envelope[slot]) {
+        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.attack_coeff) * peak;
+      } else {
+        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.release_coeff) * peak;
+      }
 
-      // Calculate crowd scaling
-      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
-      float pre_bus = mixer->base_gain * crowd_gain;
+      // Count speaking sources
+      if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+        speaking_count++;
+    }
 
-      // Mix sources with ducking and crowd scaling
+    // Apply ducking ONCE per frame (not per-sample)
+    ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+    // Calculate crowd scaling ONCE per frame
+    float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+    float pre_bus = mixer->base_gain * crowd_gain;
+
+    // Pre-calculate combined gains for each source (ducking * pre_bus)
+    float combined_gains[MIXER_MAX_SOURCES];
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      combined_gains[i] = mixer->ducking.gain[slot] * pre_bus;
+    }
+
+    // Fast mixing loop - simple multiply-add with pre-calculated gains
+    for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float gain = mixer->ducking.gain[slot];
-        mix += sample * gain;
+        mix += source_samples[i][s] * combined_gains[i];
       }
-      mix *= pre_bus;
 
-      // Apply bus compression
+      // Apply bus compression (still per-sample for smooth dynamics)
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
       // Clamp and output
       output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
     }
+
     STOP_TIMER("mixer_per_sample_loop");
   }
 
