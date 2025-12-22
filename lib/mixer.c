@@ -8,6 +8,7 @@
 #include "mixer.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
+#include "util/time.h"       // For timing instrumentation
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -547,6 +548,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   // Acquire reader lock to prevent race conditions with source add/remove operations
   rwlock_rdlock(&mixer->source_lock);
+  START_TIMER("mixer_total");
+
+  // NOTE: No locks needed for audio processing - concurrent reads are safe
+  // Only source add/remove operations use write locks
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -563,6 +568,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // Fast check: any sources to process?
   if (active_mask == 0) {
     rwlock_rdunlock(&mixer->source_lock);
+    STOP_TIMER("mixer_total");
     return 0; // No active sources (excluding the specified client), output silence
   }
 
@@ -578,6 +584,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     int source_count = 0;
     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
 
+    START_TIMER("mixer_read_sources");
     // OPTIMIZATION 1: Iterate only over active sources using bitset
     uint64_t current_mask = active_mask;
     while (current_mask && source_count < MIXER_MAX_SOURCES) {
@@ -605,7 +612,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         }
       }
     }
+    STOP_TIMER("mixer_read_sources");
 
+    START_TIMER("mixer_per_sample_loop");
     // Process each sample in the frame
     for (int s = 0; s < frame_size; s++) {
       // Update envelopes for active speaker detection
@@ -653,6 +662,14 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       // Clamp and output
       output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
     }
+    STOP_TIMER("mixer_per_sample_loop");
+  }
+
+  double total_ns = STOP_TIMER("mixer_total");
+  if (total_ns > 2000000) { // > 2ms
+    char duration_str[32];
+    format_duration_ns(total_ns, duration_str, sizeof(duration_str));
+    log_warn("Slow mixer: total=%s, num_samples=%d", duration_str, num_samples);
   }
 
   rwlock_rdunlock(&mixer->source_lock);
