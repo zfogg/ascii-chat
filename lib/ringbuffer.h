@@ -115,16 +115,32 @@ typedef struct {
 /** @brief Audio ring buffer size in samples (81920 samples = ~1.7s @ 48kHz, 4x Opus batch) */
 #define AUDIO_RING_BUFFER_SIZE (256 * 320)
 
-/** @brief Jitter buffer threshold (wait for ~40ms before starting playback = 1920 samples @ 48kHz)
+/** @brief Jitter buffer threshold (wait for ~60ms before starting playback = 2880 samples @ 48kHz)
  *
  * This threshold determines how much audio must be buffered before playback starts.
  * Too small = underruns and audio gaps when network packets arrive late
  * Too large = excessive latency in audio playback
  *
- * 1920 samples @ 48kHz = 40ms = 2 Opus frames (20ms each)
+ * 2880 samples @ 48kHz = 60ms = 3 Opus frames (20ms each)
  * This provides enough buffer to absorb typical network jitter while keeping latency low.
+ * Increased from 40ms to 60ms to better handle network variance.
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 2)
+#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 3)
+
+/** @brief Low water mark - refill jitter buffer when available drops below this
+ *
+ * When playback buffer drops below this threshold, we reset jitter_buffer_filled
+ * to pause playback and let the buffer refill. This prevents continuous underruns.
+ * 960 samples = 20ms = 1 Opus frame
+ */
+#define AUDIO_JITTER_LOW_WATER_MARK 960
+
+/** @brief Crossfade duration in samples for smooth underrun recovery
+ *
+ * When recovering from an underrun, we fade in the audio over this many samples
+ * to prevent clicks and pops. 256 samples @ 48kHz = ~5.3ms
+ */
+#define AUDIO_CROSSFADE_SAMPLES 256
 
 /** @} */
 
@@ -134,6 +150,12 @@ typedef struct {
  * Specialized ring buffer for audio samples with jitter buffering to
  * compensate for network latency and packet timing variations. Uses
  * mutex-protected operations for thread-safe audio access.
+ *
+ * Features:
+ * - Jitter buffering: waits for threshold fill before starting playback
+ * - Low water mark: resets jitter state when buffer runs low
+ * - Crossfade: smoothly fades audio in/out during underrun recovery
+ * - Underrun tracking: counts underruns for diagnostics
  *
  * @ingroup ringbuffer
  */
@@ -146,6 +168,14 @@ typedef struct audio_ring_buffer {
   volatile int read_index;
   /** @brief True after initial jitter buffer fill */
   volatile bool jitter_buffer_filled;
+  /** @brief Samples remaining in crossfade (0 = no crossfade active) */
+  volatile int crossfade_samples_remaining;
+  /** @brief True if we're fading in (recovering from underrun) */
+  volatile bool crossfade_fade_in;
+  /** @brief Last sample value for smooth fade-out during underrun */
+  volatile float last_sample;
+  /** @brief Count of underrun events for diagnostics */
+  volatile uint32_t underrun_count;
   /** @brief Mutex for thread-safe operations */
   mutex_t mutex;
 } audio_ring_buffer_t;
