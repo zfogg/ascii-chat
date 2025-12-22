@@ -933,6 +933,9 @@ void *client_audio_render_thread(void *arg) {
 
       if (apply_backpressure) {
         // Skip this packet to let the queue drain
+        // CRITICAL: Reset accumulation buffer so fresh samples can be captured on next iteration
+        // Without this reset, we'd loop forever with stale audio and no space for new samples
+        opus_frame_accumulated = 0;
         platform_sleep_usec(5800);
         continue;
       }
@@ -1029,12 +1032,7 @@ void *client_audio_render_thread(void *arg) {
           }
         }
       }
-
-      // CRITICAL: Always reset accumulation buffer after attempting to encode a full frame.
-      // Without this reset, encoding failures would cause the buffer to stay full forever,
-      // preventing any new audio samples from being accumulated (audio stall bug).
-      // The samples have been consumed whether encoding succeeded or failed.
-      opus_frame_accumulated = 0;
+      // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
     }
 
     // Audio mixing rate - 5.8ms to match buffer size

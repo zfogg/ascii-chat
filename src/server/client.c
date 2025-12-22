@@ -1781,6 +1781,10 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     handle_audio_opus_batch_packet(client, data, len);
     break;
 
+  case PACKET_TYPE_AUDIO_OPUS:
+    handle_audio_opus_packet(client, data, len);
+    break;
+
   case PACKET_TYPE_CLIENT_JOIN:
     handle_client_join_packet(client, data, len);
     break;
