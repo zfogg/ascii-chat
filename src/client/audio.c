@@ -371,7 +371,17 @@ static void *audio_capture_thread_func(void *arg) {
       // 1. High-pass filter to remove low-frequency rumble (DC offset and very low frequencies)
       highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
 
-      // 2. Apply conservative automatic gain control - gently boost quiet audio
+      // 2. Apply smoothed automatic gain control - gently boost quiet audio
+      // Uses attack/release envelope to prevent abrupt gain changes (zipper noise)
+
+      // Static state for smoothed AGC - persists across calls
+      static float agc_smoothed_gain = 1.0f;
+      static bool agc_initialized = false;
+      if (!agc_initialized) {
+        agc_smoothed_gain = 1.0f;
+        agc_initialized = true;
+      }
+
       // Calculate RMS to measure audio level
       float sum_squares = 0.0f;
       for (int i = 0; i < samples_read; i++) {
@@ -384,19 +394,35 @@ static void *audio_capture_thread_func(void *arg) {
       const float max_gain = 20.0f;           // Maximum 20x amplification
       const float min_rms_for_gain = 0.0001f; // Noise floor threshold (lower for quiet environments)
 
+      // AGC time constants (in terms of smoothing coefficient per 10ms buffer)
+      // Attack: ~50ms, Release: ~200ms at 48kHz with 480 sample buffers (10ms each)
+      const float attack_coeff = 0.2f;  // Fast attack: 20% per buffer (~50ms to reach target)
+      const float release_coeff = 0.05f; // Slow release: 5% per buffer (~200ms to reach target)
+
       if (rms > min_rms_for_gain) { // Only apply gain if there's actual audio above noise floor
-        float gain = target_rms / rms;
+        float target_gain = target_rms / rms;
         // Clamp gain to reasonable range [0.5x, max_gain]
-        if (gain > max_gain)
-          gain = max_gain;
-        if (gain < 0.5f)
-          gain = 0.5f;     // Also limit attenuation
-        if (gain > 1.0f) { // Only apply if we need to boost
+        if (target_gain > max_gain)
+          target_gain = max_gain;
+        if (target_gain < 0.5f)
+          target_gain = 0.5f;
+
+        // Smooth gain transitions using attack/release envelope
+        // Fast attack (quickly reduce gain to prevent clipping)
+        // Slow release (gradually increase gain to avoid pumping)
+        float coeff = (target_gain < agc_smoothed_gain) ? attack_coeff : release_coeff;
+        agc_smoothed_gain = agc_smoothed_gain + coeff * (target_gain - agc_smoothed_gain);
+
+        // Apply smoothed gain (only boost, don't attenuate below 1.0)
+        if (agc_smoothed_gain > 1.0f) {
           for (int i = 0; i < samples_read; i++) {
-            audio_buffer[i] *= gain;
+            audio_buffer[i] *= agc_smoothed_gain;
           }
         }
-        log_debug_every(2000000, "AGC: rms=%.6f, gain=%.2fx (target=%.2f)", rms, gain, target_rms);
+        log_debug_every(2000000, "AGC: rms=%.6f, target=%.2fx, smoothed=%.2fx", rms, target_gain, agc_smoothed_gain);
+      } else {
+        // No audio detected - slowly release gain back to 1.0
+        agc_smoothed_gain = agc_smoothed_gain + release_coeff * (1.0f - agc_smoothed_gain);
       }
 
       // 3. Gentle soft clipping to prevent harsh distortion
