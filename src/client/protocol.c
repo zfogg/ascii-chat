@@ -547,6 +547,87 @@ static void handle_audio_packet(const void *data, size_t len) {
 #endif
 }
 
+/**
+ * @brief Handle incoming audio batch packet from server
+ *
+ * Processes batched audio packets more efficiently than individual packets.
+ * Parses the audio batch header, converts quantized samples to float, and
+ * processes them through the audio subsystem.
+ *
+ * @param data Packet payload containing audio batch header + quantized samples
+ * @param len Total packet length in bytes
+ *
+ * @ingroup client_protocol
+ */
+static void handle_audio_batch_packet(const void *data, size_t len) {
+  if (!opt_audio_enabled || !data) {
+    return;
+  }
+
+  if (len < sizeof(audio_batch_packet_t)) {
+    log_warn("Audio batch packet too small: %zu bytes", len);
+    return;
+  }
+
+  // Parse batch header
+  const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+  uint32_t batch_count = ntohl(batch_header->batch_count);
+  uint32_t total_samples = ntohl(batch_header->total_samples);
+  uint32_t sample_rate = ntohl(batch_header->sample_rate);
+  uint32_t channels = ntohl(batch_header->channels);
+
+  (void)batch_count;
+  (void)sample_rate;
+  (void)channels;
+
+  if (batch_count == 0 || total_samples == 0) {
+    log_warn("Empty audio batch: batch_count=%u, total_samples=%u", batch_count, total_samples);
+    return;
+  }
+
+  // Validate packet size
+  size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
+  if (len != expected_size) {
+    log_warn("Audio batch size mismatch: got %zu expected %zu", len, expected_size);
+    return;
+  }
+
+  if (total_samples > AUDIO_BATCH_SAMPLES * 2) {
+    log_warn("Audio batch too large: %u samples", total_samples);
+    return;
+  }
+
+  // Extract quantized samples (uint32_t network byte order)
+  const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
+
+  // Convert quantized samples to float
+  float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+  if (!samples) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio batch conversion");
+    return;
+  }
+
+  // Dequantize: int32_t -> float (scale from [-2147483647, 2147483647] to [-1.0, 1.0])
+  for (uint32_t i = 0; i < total_samples; i++) {
+    uint32_t network_sample;
+    SAFE_MEMCPY(&network_sample, sizeof(network_sample), samples_ptr + (i * sizeof(uint32_t)), sizeof(uint32_t));
+
+    // Convert from network byte order and treat as signed int32_t
+    int32_t scaled = (int32_t)ntohl(network_sample);
+
+    // Scale signed int32_t to float range [-1.0, 1.0]
+    samples[i] = (float)scaled / 2147483647.0f;
+  }
+
+  // Process through audio subsystem
+  audio_process_received_samples(samples, (int)total_samples);
+
+  // Clean up
+  free(samples);
+
+  log_debug_every(5000000, "Processed audio batch: %u samples from server", total_samples);
+}
+
 static bool handle_error_message_packet(const void *data, size_t len) {
   asciichat_error_t remote_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
@@ -718,6 +799,10 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_AUDIO:
       handle_audio_packet(data, len);
+      break;
+
+    case PACKET_TYPE_AUDIO_BATCH:
+      handle_audio_batch_packet(data, len);
       break;
 
     case PACKET_TYPE_PING:

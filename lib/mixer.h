@@ -96,7 +96,7 @@
  *
  * @ingroup audio
  */
-#define MIXER_MAX_SOURCES 10
+#define MIXER_MAX_SOURCES 32 // Increased to match MAX_CLIENTS
 
 /**
  * @brief Number of samples processed per audio frame

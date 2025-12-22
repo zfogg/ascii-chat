@@ -856,12 +856,8 @@ void handle_remote_log_packet_from_client(client_info_t *client, const void *dat
  */
 void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len) {
   // Log every audio batch packet reception
-  static int batch_count = 0;
-  batch_count++;
-  if (batch_count % 10 == 0) {
-    log_debug("Received audio batch packet #%d from client %u (len=%zu, is_sending_audio=%d)", batch_count,
-              atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
-  }
+  log_debug_every(5000000, "Received audio batch packet from client %u (len=%zu, is_sending_audio=%d)",
+                  atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
 
   if (!data) {
     disconnect_client_for_bad_data(client, "AUDIO_BATCH payload missing (len=%zu)", len);
@@ -911,8 +907,8 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   // This prevents total_samples * sizeof(float) from exceeding 8KB
   const uint32_t MAX_AUDIO_SAMPLES = AUDIO_BATCH_SAMPLES * 2;
   if (total_samples > MAX_AUDIO_SAMPLES) {
-    disconnect_client_for_bad_data(client, "AUDIO_BATCH too many samples: %u (max: %u)",
-                                   total_samples, MAX_AUDIO_SAMPLES);
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH too many samples: %u (max: %u)", total_samples,
+                                   MAX_AUDIO_SAMPLES);
     return;
   }
 
