@@ -145,18 +145,13 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   int available = audio_ring_buffer_available_write(rb);
 
-  // FIX: Never modify read_index from writer - this causes race conditions with reader.
-  // If buffer is full, drop the NEW samples (writer's responsibility to not overwrite).
-  // This is safer than corrupting the read_index which can cause audio glitches.
-  int samples_to_write = samples;
-  int samples_dropped = 0;
-  if (samples > available) {
-    int samples_to_drop = samples - available;
-    rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
-    // Reset jitter buffer state - dropping samples indicates buffer overflow,
-    // so we need to refill before playing to avoid audio glitches
-    rb->jitter_buffer_filled = false;
-    // Now we have enough space to write all samples
+  // Never modify read_index from writer - this causes race conditions with reader.
+  // If buffer is full, drop the NEW samples (only write what fits).
+  int samples_to_write = (samples <= available) ? samples : available;
+
+  if (samples_to_write < samples) {
+    // Log dropped samples only occasionally to avoid log spam
+    log_debug_every(1000000, "Audio ring buffer full: dropped %d of %d samples", samples - samples_to_write, samples);
   }
 
   // Write only the samples that fit (preserves existing data integrity)
