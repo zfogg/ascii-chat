@@ -285,7 +285,6 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
-    SAFE_FREE(mixer->mix_buffer);
     SAFE_FREE(mixer);
     return NULL;
   }
@@ -300,6 +299,15 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Allocate mix buffer
   mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
+  if (!mixer->mix_buffer) {
+    rwlock_destroy(&mixer->source_lock);
+    ducking_free(&mixer->ducking);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
 
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
@@ -423,8 +431,8 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // NOTE: No locks needed for audio processing - concurrent reads are safe
-  // Only source add/remove operations use write locks
+  // Acquire reader lock to prevent race conditions with source add/remove operations
+  rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -439,6 +447,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
   if (active_count == 0) {
     // No active sources, output silence
+    rwlock_rdunlock(&mixer->source_lock);
     return 0;
   }
 
@@ -529,6 +538,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     }
   }
 
+  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
@@ -536,6 +546,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
+  // Acquire reader lock to prevent race conditions with source add/remove operations
+  rwlock_rdlock(&mixer->source_lock);
   START_TIMER("mixer_total");
 
   // NOTE: No locks needed for audio processing - concurrent reads are safe
@@ -555,6 +567,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   // Fast check: any sources to process?
   if (active_mask == 0) {
+    rwlock_rdunlock(&mixer->source_lock);
     STOP_TIMER("mixer_total");
     return 0; // No active sources (excluding the specified client), output silence
   }
@@ -659,6 +672,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     log_warn("Slow mixer: total=%s, num_samples=%d", duration_str, num_samples);
   }
 
+  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
