@@ -70,6 +70,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
+#include "audio_analysis.h"
 #include "os/webcam.h"
 
 #include "platform/abstraction.h"
@@ -222,6 +223,13 @@ static void shutdown_client() {
 
   // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
   capture_cleanup();
+
+  // Print audio analysis report if enabled
+  if (opt_audio_analysis_enabled) {
+    audio_analysis_print_report();
+    audio_analysis_cleanup();
+  }
+
   audio_cleanup();
 
 #ifndef NDEBUG
@@ -329,6 +337,13 @@ static int initialize_client_systems(bool shared_init_completed) {
     if (audio_client_init() != 0) {
       log_fatal("Failed to initialize audio system");
       return ERROR_AUDIO;
+    }
+
+    // Initialize audio analysis if requested
+    if (opt_audio_analysis_enabled) {
+      if (audio_analysis_init() != 0) {
+        log_warn("Failed to initialize audio analysis");
+      }
     }
   }
 

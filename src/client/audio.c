@@ -72,6 +72,7 @@
  */
 
 #include "audio.h"
+#include "audio_analysis.h"
 #include "main.h"
 #include "server.h"
 
@@ -219,6 +220,11 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     }
     if (audio_buffer[i] < -1.0F) {
       audio_buffer[i] = -1.0F;
+    }
+
+    // Track received samples for analysis
+    if (opt_audio_analysis_enabled) {
+      audio_analysis_track_received_sample(audio_buffer[i]);
     }
   }
 
@@ -410,6 +416,13 @@ static void *audio_capture_thread_func(void *arg) {
           break;
         }
 
+        // Track sent samples for analysis
+        if (opt_audio_analysis_enabled) {
+          for (int i = 0; i < samples_to_copy; i++) {
+            audio_analysis_track_sent_sample(audio_buffer[sample_offset + i]);
+          }
+        }
+
         opus_frame_samples_collected += samples_to_copy;
         sample_offset += samples_to_copy;
         samples_to_process -= samples_to_copy;
@@ -455,6 +468,11 @@ static void *audio_capture_thread_func(void *arg) {
             } else {
               log_debug("Opus audio batch sent successfully: %d frames, %zu bytes", opus_batch_frame_count,
                         opus_batch_size);
+
+              // Track packet for analysis
+              if (opt_audio_analysis_enabled) {
+                audio_analysis_track_sent_packet(opus_batch_size);
+              }
             }
 
             // Reset batch counters
