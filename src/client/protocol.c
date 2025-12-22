@@ -699,8 +699,8 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   // Process decoded audio through audio subsystem
   audio_process_received_samples(samples, decoded_samples);
 
-  log_debug_every(5000000, "Processed Opus audio: %d decoded samples (sample_rate=%d, duration=%dms)",
-                  decoded_samples, sample_rate, frame_duration);
+  log_debug_every(5000000, "Processed Opus audio: %d decoded samples (sample_rate=%d, duration=%dms)", decoded_samples,
+                  sample_rate, frame_duration);
 }
 
 /**

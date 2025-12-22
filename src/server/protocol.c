@@ -1052,10 +1052,10 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     return;
   }
 
-  // Use static buffer for common case to avoid malloc in hot path
-  // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
-  // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
-  #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
+// Use static buffer for common case to avoid malloc in hot path
+// Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
+// Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
+#define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
 
   size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
@@ -1205,7 +1205,8 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
     return;
   }
 
-  log_debug_every(100000, "Client %u: Decoded Opus frame -> %d samples", atomic_load(&client->client_id), decoded_count);
+  log_debug_every(100000, "Client %u: Decoded Opus frame -> %d samples", atomic_load(&client->client_id),
+                  decoded_count);
 
   // Write decoded samples to client's incoming audio buffer
   if (client->incoming_audio_buffer && decoded_count > 0) {
