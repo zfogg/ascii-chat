@@ -86,8 +86,8 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // Debug: Log every 1000 callbacks (~10 seconds at 256 frames/callback, 48kHz)
       if (callback_count % 1000 == 0) {
         size_t available = audio_ring_buffer_available_read(ctx->playback_buffer);
-        log_debug("Audio output callback #%llu: samples_read=%zu/%lu, buffer_available=%zu",
-                  callback_count, samples_read, framesPerBuffer * AUDIO_CHANNELS, available);
+        log_debug("Audio output callback #%llu: samples_read=%zu/%lu, buffer_available=%zu", callback_count,
+                  samples_read, framesPerBuffer * AUDIO_CHANNELS, available);
       }
 
       // Only fill with silence if read returned 0 (jitter buffer not yet filled)
@@ -165,8 +165,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     int samples_dropped = samples - available;
     samples_to_write = available;
     // Log overflow so we can diagnose audio quality issues (rate-limited to avoid spam)
-    log_warn_every(1000000, "Audio buffer overflow: dropping %d of %d incoming samples (available=%d)",
-                   samples_dropped, samples, available);
+    log_warn_every(1000000, "Audio buffer overflow: dropping %d of %d incoming samples (available=%d)", samples_dropped,
+                   samples, available);
     // NOTE: We do NOT reset jitter_buffer_filled here because:
     // 1. We're dropping NEW data, not corrupting existing buffered data
     // 2. Resetting jitter causes audible gaps when playback pauses for threshold refill
@@ -226,7 +226,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     // Buffer critically low - trigger fade-out and pause playback
     rb->underrun_count++;
     rb->jitter_buffer_filled = false;
-    log_warn_every(1000000, "Audio buffer underrun #%u: only %zu samples available (low water mark: %d), pausing for refill",
+    log_warn_every(1000000,
+                   "Audio buffer underrun #%u: only %zu samples available (low water mark: %d), pausing for refill",
                    rb->underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
 
     // Fade out smoothly from last sample to silence
@@ -236,7 +237,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     }
 
     // Generate fade-out samples
-    size_t fade_samples = (samples < (size_t)rb->crossfade_samples_remaining) ? samples : (size_t)rb->crossfade_samples_remaining;
+    size_t fade_samples =
+        (samples < (size_t)rb->crossfade_samples_remaining) ? samples : (size_t)rb->crossfade_samples_remaining;
     float last = rb->last_sample;
     for (size_t i = 0; i < fade_samples; i++) {
       float fade_factor = 1.0f - ((float)i / (float)AUDIO_CROSSFADE_SAMPLES);
@@ -276,7 +278,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // Apply fade-in if recovering from underrun
   if (rb->crossfade_fade_in && rb->crossfade_samples_remaining > 0) {
     int fade_start = AUDIO_CROSSFADE_SAMPLES - rb->crossfade_samples_remaining;
-    size_t fade_samples = (to_read < (size_t)rb->crossfade_samples_remaining) ? to_read : (size_t)rb->crossfade_samples_remaining;
+    size_t fade_samples =
+        (to_read < (size_t)rb->crossfade_samples_remaining) ? to_read : (size_t)rb->crossfade_samples_remaining;
 
     for (size_t i = 0; i < fade_samples; i++) {
       float fade_factor = (float)(fade_start + (int)i + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
