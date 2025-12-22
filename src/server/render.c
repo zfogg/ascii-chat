@@ -359,12 +359,12 @@ void *client_video_render_thread(void *arg) {
 
   // Take snapshot of client ID and socket at start to avoid race conditions
   uint32_t thread_client_id = client->client_id;
-  int thread_socket = client->socket;
+  socket_t thread_socket = client->socket;
 
-  log_debug("Video render thread: client_id=%u, socket=%d", thread_client_id, thread_socket);
+  log_debug("Video render thread: client_id=%u, socket=%p", thread_client_id, (void *)thread_socket);
 
-  if (thread_socket <= 0) {
-    log_error("Invalid socket (%d) in video render thread for client %u", thread_socket, thread_client_id);
+  if (thread_socket == INVALID_SOCKET_VALUE) {
+    log_error("Invalid socket in video render thread for client %u", thread_client_id);
     return NULL;
   }
 
@@ -738,7 +738,7 @@ void *client_video_render_thread(void *arg) {
 void *client_audio_render_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
 
-  if (!client || client->socket <= 0) {
+  if (!client || client->socket == INVALID_SOCKET_VALUE) {
     log_error("Invalid client info in audio render thread");
     return NULL;
   }

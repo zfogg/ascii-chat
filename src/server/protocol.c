@@ -906,14 +906,21 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     return;
   }
 
-  if (total_samples > AUDIO_BATCH_SAMPLES * 2) {
-    disconnect_client_for_bad_data(client, "AUDIO_BATCH too many samples: %u", total_samples);
+  // Bounds check to prevent integer overflow on allocation
+  // Maximum allowed samples: AUDIO_BATCH_SAMPLES * 2 (2048 samples)
+  // This prevents total_samples * sizeof(float) from exceeding 8KB
+  const uint32_t MAX_AUDIO_SAMPLES = AUDIO_BATCH_SAMPLES * 2;
+  if (total_samples > MAX_AUDIO_SAMPLES) {
+    disconnect_client_for_bad_data(client, "AUDIO_BATCH too many samples: %u (max: %u)",
+                                   total_samples, MAX_AUDIO_SAMPLES);
     return;
   }
 
   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
 
-  float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+  // Safe allocation: total_samples is bounded above, so multiplication won't overflow
+  size_t alloc_size = (size_t)total_samples * sizeof(float);
+  float *samples = SAFE_MALLOC(alloc_size, float *);
   if (!samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio sample conversion");
     return;
