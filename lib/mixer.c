@@ -402,8 +402,11 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       // OPTIMIZATION 1: Update bitset optimization structures
       mixer->active_sources_mask &= ~(1ULL << i); // Clear bit for this slot
       uint8_t hash_idx = mixer_hash_client_id(client_id);
-      mixer->source_id_to_index[hash_idx] = 0xFF; // Mark as invalid in hash table
-      mixer->source_id_at_hash[hash_idx] = 0;     // Clear stored ID
+      // Only clear hash entry if it belongs to this client (handle collisions correctly)
+      if (mixer->source_id_at_hash[hash_idx] == client_id) {
+        mixer->source_id_to_index[hash_idx] = 0xFF; // Mark as invalid in hash table
+        mixer->source_id_at_hash[hash_idx] = 0;     // Clear stored ID
+      }
 
       // Reset ducking state for this source (with NULL safety)
       if (mixer->ducking.envelope) {
