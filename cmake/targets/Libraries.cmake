@@ -16,6 +16,7 @@
 # =============================================================================
 
 include(CheckCCompilerFlag)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 
 # Check for warning flags that may not exist in older Clang versions
 # -Wno-unterminated-string-initialization was added in Clang 20
@@ -638,12 +639,13 @@ endif()
 
 # Add system library dependencies
 if(WIN32)
+    get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat-shared PRIVATE
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
         ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
         crypt32  # For Windows crypto certificate functions (matches ascii-chat-platform)
         Winmm    # For timeBeginPeriod/timeEndPeriod
-        ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+        ${CORE_LIBS}
     )
     if(BEARSSL_FOUND)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
@@ -663,18 +665,18 @@ else()
         pkg_check_modules(PORTAUDIO_SYS portaudio-2.0)
         pkg_check_modules(ZSTD_SYS libzstd)
         pkg_check_modules(LIBSODIUM_SYS libsodium)
+        pkg_check_modules(OPUS_SYS opus)
+
+        get_core_deps_sys_libraries(CORE_SYS_LIBS)
+        get_core_deps_sys_include_dirs(CORE_SYS_INCS)
 
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${PORTAUDIO_SYS_LIBRARIES}
-            ${ZSTD_SYS_LIBRARIES}
-            ${LIBSODIUM_SYS_LIBRARIES}
+            ${CORE_SYS_LIBS}
             m
             ${CMAKE_THREAD_LIBS_INIT}
         )
         target_include_directories(ascii-chat-shared PRIVATE
-            ${PORTAUDIO_SYS_INCLUDE_DIRS}
-            ${ZSTD_SYS_INCLUDE_DIRS}
-            ${LIBSODIUM_SYS_INCLUDE_DIRS}
+            ${CORE_SYS_INCS}
         )
 
         # Link BearSSL and mimalloc static libraries into shared library
@@ -702,10 +704,10 @@ else()
         endif()
     else()
         # Non-musl builds use normal dependencies
-        # Note: PORTAUDIO_LIBRARIES, ZSTD_LIBRARIES, and LIBSODIUM_LIBRARIES are
-        # PkgConfig::* IMPORTED targets that include library paths automatically
+        # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
+        get_core_deps_libraries(CORE_LIBS)
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES} m
+            ${CORE_LIBS} m
         )
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})

@@ -1,6 +1,7 @@
 # =============================================================================
 # Executables Module
 # =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 # This module creates the main executable target
 #
 # Prerequisites:
@@ -37,12 +38,13 @@ if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NO
     if(WIN32)
         # Import library is in bin directory with the DLL
         target_link_directories(ascii-chat PRIVATE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+        get_core_deps_libraries(CORE_LIBS)
         target_link_libraries(ascii-chat
             ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
             ${MF_LIB} ${MFPLAT_LIB} ${MFREADWRITE_LIB} ${MFUUID_LIB} ${OLE32_LIB}
             crypt32
             Winmm  # For timeBeginPeriod/timeEndPeriod
-            ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+            ${CORE_LIBS}
         )
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
@@ -50,8 +52,9 @@ if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NO
         # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
     else()
         # Unix: Also need explicit dependencies when linking against shared library
+        get_core_deps_libraries(CORE_LIBS)
         target_link_libraries(ascii-chat
-            ${PORTAUDIO_LIBRARIES} ${ZSTD_LIBRARIES} ${LIBSODIUM_LIBRARIES}
+            ${CORE_LIBS}
         )
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
