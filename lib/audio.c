@@ -145,18 +145,21 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   int available = audio_ring_buffer_available_write(rb);
 
-  // FIX: Never modify read_index from writer - this causes race conditions with reader.
-  // If buffer is full, drop the NEW samples (writer's responsibility to not overwrite).
-  // This is safer than corrupting the read_index which can cause audio glitches.
+  // IMPORTANT: Never modify read_index from writer - this causes race conditions with reader.
+  // If buffer doesn't have enough space, drop the INCOMING (new) samples.
+  // This is the writer's responsibility - better to drop new data than corrupt existing playback.
   int samples_to_write = samples;
-  int samples_dropped = 0;
   if (samples > available) {
-    int samples_to_drop = samples - available;
-    rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
-    // Reset jitter buffer state - dropping samples indicates buffer overflow,
-    // so we need to refill before playing to avoid audio glitches
-    rb->jitter_buffer_filled = false;
-    // Now we have enough space to write all samples
+    // Only write what we can fit - drop the rest of the incoming samples
+    int samples_dropped = samples - available;
+    samples_to_write = available;
+    // Log overflow so we can diagnose audio quality issues (rate-limited to avoid spam)
+    log_warn_every(1000000, "Audio buffer overflow: dropping %d of %d incoming samples (available=%d)",
+                   samples_dropped, samples, available);
+    // NOTE: We do NOT reset jitter_buffer_filled here because:
+    // 1. We're dropping NEW data, not corrupting existing buffered data
+    // 2. Resetting jitter causes audible gaps when playback pauses for threshold refill
+    // 3. The reader's existing data is still valid and should continue playing
   }
 
   // Write only the samples that fit (preserves existing data integrity)
