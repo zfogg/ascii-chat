@@ -115,8 +115,13 @@ typedef struct {
 /** @brief Audio ring buffer size in samples (81920 samples = ~1.7s @ 48kHz, 4x Opus batch) */
 #define AUDIO_RING_BUFFER_SIZE (256 * 320)
 
-/** @brief Jitter buffer threshold (wait for ~5.3ms before starting playback = 256 samples @ 48kHz) */
-#define AUDIO_JITTER_BUFFER_THRESHOLD (256 * 1)
+/** @brief Jitter buffer threshold (wait for ~40ms before starting playback = 1920 samples @ 48kHz)
+ *
+ * A larger threshold provides better tolerance for network jitter and packet timing variations.
+ * 40ms buffer absorbs typical network delays without causing perceptible latency.
+ * Previous value of 256 samples (~5.3ms) was too small and caused audio clicks/pops.
+ */
+#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 2)
 
 /** @} */
 
