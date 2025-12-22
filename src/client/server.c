@@ -788,18 +788,27 @@ void server_connection_cleanup() {
  * @ingroup client_connection
  */
 int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
+  mutex_lock(&g_send_mutex);
+
+  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
+  // The socket can be shutdown between an earlier check and this point
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&g_send_mutex);
     return -1;
   }
-
-  mutex_lock(&g_send_mutex);
 
   // Use send_packet_secure() which handles encryption and compression automatically
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
   int result = send_packet_secure(sockfd, type, data, len, (crypto_context_t *)crypto_ctx);
 
   mutex_unlock(&g_send_mutex);
+
+  // If send failed due to network error, signal connection loss
+  if (result < 0) {
+    server_connection_lost();
+  }
+
   return result;
 }
 
@@ -818,18 +827,26 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len) {
  * @ingroup client_connection
  */
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count) {
+  mutex_lock(&g_send_mutex);
+
+  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&g_send_mutex);
     return -1;
   }
-
-  mutex_lock(&g_send_mutex);
 
   // Get crypto context if encryption is enabled
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
   int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
 
   mutex_unlock(&g_send_mutex);
+
+  // If send failed due to network error, signal connection loss
+  if (result < 0) {
+    server_connection_lost();
+  }
+
   return result;
 }
 
@@ -841,14 +858,23 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
  * @ingroup client_connection
  */
 int threaded_send_ping_packet(void) {
+  mutex_lock(&g_send_mutex);
+
+  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&g_send_mutex);
     return -1;
   }
 
-  mutex_lock(&g_send_mutex);
   int result = send_ping_packet(sockfd);
   mutex_unlock(&g_send_mutex);
+
+  // If send failed, signal connection loss
+  if (result < 0) {
+    server_connection_lost();
+  }
+
   return result;
 }
 
@@ -860,14 +886,23 @@ int threaded_send_ping_packet(void) {
  * @ingroup client_connection
  */
 int threaded_send_pong_packet(void) {
+  mutex_lock(&g_send_mutex);
+
+  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
   socket_t sockfd = server_connection_get_socket();
   if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&g_send_mutex);
     return -1;
   }
 
-  mutex_lock(&g_send_mutex);
   int result = send_pong_packet(sockfd);
   mutex_unlock(&g_send_mutex);
+
+  // If send failed, signal connection loss
+  if (result < 0) {
+    server_connection_lost();
+  }
+
   return result;
 }
 
