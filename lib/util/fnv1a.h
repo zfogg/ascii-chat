@@ -76,9 +76,10 @@ static inline uint32_t fnv1a_hash_bytes(const void *data, size_t len) {
 
   uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *bytes = (const unsigned char *)data;
+  const unsigned char *end = bytes + len;
 
-  for (size_t i = 0; i < len; i++) {
-    uint64_t byte = (uint64_t)bytes[i];
+  while (bytes < end) {
+    uint64_t byte = (uint64_t)*bytes++;
     hash = ((hash ^ byte) * FNV1A_32_PRIME) & FNV1A_32_MASK;
   }
 
