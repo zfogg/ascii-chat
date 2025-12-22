@@ -135,7 +135,7 @@ ASCIICHAT_API int opt_compression_level = 1; // zstd compression level (min 1, m
 ASCIICHAT_API bool opt_no_compress = false;  // Disable compression entirely (default: false)
 
 // Client reconnection options
-ASCIICHAT_API int opt_reconnect_attempts = 0; // Number of reconnection attempts (0=off, -1=unlimited)
+ASCIICHAT_API int opt_reconnect_attempts = -1; // Number of reconnection attempts (0=off, -1=unlimited/auto)
 
 ASCIICHAT_API unsigned short int opt_webcam_index = 0;
 
@@ -1739,6 +1739,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "-H --host HOSTNAME           " USAGE_INDENT
                                    "hostname for DNS lookup (alternative to --address)\n");
   (void)fprintf(desc, USAGE_INDENT "-p --port PORT               " USAGE_INDENT "TCP port (default: 27224)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --reconnect VALUE         " USAGE_INDENT
+                                   "reconnection behavior: off, auto, or 1-999 (default: auto)\n");
   (void)fprintf(desc, USAGE_INDENT "-x --width WIDTH             " USAGE_INDENT "render width (default: [auto-set])\n");
   (void)fprintf(desc,
                 USAGE_INDENT "-y --height HEIGHT           " USAGE_INDENT "render height (default: [auto-set])\n");
