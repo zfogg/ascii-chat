@@ -944,6 +944,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     samples[i] = (float)scaled / 2147483647.0f;
   }
 
+#ifndef NDEBUG
   static int recv_count = 0;
   recv_count++;
   if (recv_count % 100 == 0) {
@@ -958,6 +959,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
     log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
   }
+#endif
 
   if (client->incoming_audio_buffer) {
     int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
