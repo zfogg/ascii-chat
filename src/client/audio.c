@@ -81,6 +81,7 @@
 #include "options.h"
 #include "platform/system.h" // For platform_memcpy
 #include "wav_writer.h"      // WAV file dumping for debugging
+#include "opus_codec.h"      // Opus audio compression
 
 #include <stdatomic.h>
 #include <string.h>
@@ -102,6 +103,17 @@
  * @ingroup client_audio
  */
 static audio_context_t g_audio_context = {0};
+
+/**
+ * @brief Opus encoder for audio compression
+ *
+ * Encodes audio samples before network transmission. Uses VOIP application
+ * mode optimized for speech with 24 kbps bitrate for excellent quality
+ * with ~98% bandwidth reduction (3528 bytes -> ~60 bytes for 20ms).
+ *
+ * @ingroup client_audio
+ */
+static opus_codec_t *g_opus_encoder = NULL;
 
 /* ============================================================================
  * Audio Debugging - WAV File Dumpers
@@ -255,10 +267,18 @@ static void *audio_capture_thread_func(void *arg) {
 
   float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
 
-  // Audio batching buffers
-  float batch_buffer[AUDIO_BATCH_SAMPLES]; // Buffer for accumulating samples
-  int batch_samples_collected = 0;         // How many samples we've collected
-  int batch_chunks_collected = 0;          // How many chunks we've collected
+// Opus frame size: 960 samples = 20ms @ 48kHz
+#define OPUS_FRAME_SAMPLES 960
+#define OPUS_MAX_PACKET_SIZE 250 // Opus can encode to ~60 bytes @ 24kbps, 250 is safe max
+#define OPUS_BATCH_FRAMES 20     // Batch 20 frames = 400ms of audio
+
+  // Audio batching buffers for Opus encoding
+  float opus_frame_buffer[OPUS_FRAME_SAMPLES];                         // Accumulate samples for one Opus frame
+  int opus_frame_samples_collected = 0;                                // Samples in current Opus frame
+  uint8_t opus_batch_buffer[OPUS_MAX_PACKET_SIZE * OPUS_BATCH_FRAMES]; // Encoded Opus data batch
+  uint16_t opus_frame_sizes[OPUS_BATCH_FRAMES];                        // Size of each frame in batch
+  size_t opus_batch_size = 0;                                          // Total bytes in opus_batch_buffer
+  int opus_batch_frame_count = 0;                                      // Number of Opus frames in batch
 
   // Audio processing components
   static highpass_filter_t hp_filter;
@@ -372,37 +392,76 @@ static void *audio_capture_thread_func(void *arg) {
         wav_writer_write(g_wav_capture_processed, audio_buffer, samples_read);
       }
 
-      // Copy processed samples to batch buffer using platform-safe memcpy
-      size_t copy_size = samples_read * sizeof(float);
-      size_t dest_space = (AUDIO_BATCH_SAMPLES - batch_samples_collected) * sizeof(float);
-      if (platform_memcpy(&batch_buffer[batch_samples_collected], dest_space, audio_buffer, copy_size) != 0) {
-        log_error("Failed to copy audio samples to batch buffer");
-        continue;
-      }
-      batch_samples_collected += samples_read;
-      batch_chunks_collected++;
+      // Accumulate samples into Opus frame buffer
+      int samples_to_process = samples_read;
+      int sample_offset = 0;
 
-      log_info("Audio batch collecting: chunks=%d/%d, samples=%d/%d", batch_chunks_collected, AUDIO_BATCH_COUNT,
-               batch_samples_collected, AUDIO_BATCH_SAMPLES);
+      while (samples_to_process > 0) {
+        // How many samples can we add to current Opus frame?
+        int space_in_frame = OPUS_FRAME_SAMPLES - opus_frame_samples_collected;
+        int samples_to_copy = (samples_to_process < space_in_frame) ? samples_to_process : space_in_frame;
 
-      // Send batch when we have enough chunks or buffer is full
-      if (batch_chunks_collected >= AUDIO_BATCH_COUNT ||
-          batch_samples_collected + AUDIO_SAMPLES_PER_PACKET > AUDIO_BATCH_SAMPLES) {
-
-        log_info("Sending audio batch: %d chunks, %d samples", batch_chunks_collected, batch_samples_collected);
-
-        if (threaded_send_audio_batch_packet(batch_buffer, batch_samples_collected, batch_chunks_collected) < 0) {
-          log_error("Failed to send audio batch to server");
-          // Don't set connection lost here as receive thread will detect it
-        } else {
-          log_info("Audio batch sent successfully");
+        // Copy samples to Opus frame buffer
+        size_t copy_size = (size_t)samples_to_copy * sizeof(float);
+        size_t dest_space = (size_t)(OPUS_FRAME_SAMPLES - opus_frame_samples_collected) * sizeof(float);
+        if (platform_memcpy(&opus_frame_buffer[opus_frame_samples_collected], dest_space, &audio_buffer[sample_offset],
+                            copy_size) != 0) {
+          log_error("Failed to copy audio samples to Opus frame buffer");
+          break;
         }
-#ifdef DEBUG_AUDIO
-        log_debug("Sent audio batch: %d chunks, %d total samples", batch_chunks_collected, batch_samples_collected);
-#endif
-        // Reset batch counters
-        batch_samples_collected = 0;
-        batch_chunks_collected = 0;
+
+        opus_frame_samples_collected += samples_to_copy;
+        sample_offset += samples_to_copy;
+        samples_to_process -= samples_to_copy;
+
+        // Do we have a complete Opus frame (882 samples)?
+        if (opus_frame_samples_collected >= OPUS_FRAME_SAMPLES) {
+          // Encode frame with Opus
+          uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
+          size_t encoded_bytes = opus_codec_encode(g_opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_packet,
+                                                   OPUS_MAX_PACKET_SIZE);
+
+          if (encoded_bytes == 0) {
+            log_error("Opus encoding failed");
+            opus_frame_samples_collected = 0; // Reset frame
+            break;
+          }
+
+          log_debug_every(100000, "Opus encoded: %d samples -> %zu bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
+                          encoded_bytes, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)encoded_bytes);
+
+          // Append encoded data to batch buffer and track frame size
+          if (opus_batch_size + encoded_bytes <= sizeof(opus_batch_buffer) &&
+              opus_batch_frame_count < OPUS_BATCH_FRAMES) {
+            memcpy(&opus_batch_buffer[opus_batch_size], opus_packet, encoded_bytes);
+            opus_frame_sizes[opus_batch_frame_count] = (uint16_t)encoded_bytes;
+            opus_batch_size += encoded_bytes;
+            opus_batch_frame_count++;
+          } else {
+            log_error("Opus batch buffer overflow, discarding frame");
+          }
+
+          // Reset frame buffer for next frame
+          opus_frame_samples_collected = 0;
+
+          // Send batch when we have collected enough Opus frames
+          if (opus_batch_frame_count >= OPUS_BATCH_FRAMES) {
+            log_info("Sending Opus batch: %d frames, %zu bytes", opus_batch_frame_count, opus_batch_size);
+
+            if (threaded_send_audio_opus_batch(opus_batch_buffer, opus_batch_size, opus_frame_sizes,
+                                               opus_batch_frame_count) < 0) {
+              log_error("Failed to send Opus audio batch to server");
+              // Don't set connection lost here as receive thread will detect it
+            } else {
+              log_debug("Opus audio batch sent successfully: %d frames, %zu bytes", opus_batch_frame_count,
+                        opus_batch_size);
+            }
+
+            // Reset batch counters
+            opus_batch_size = 0;
+            opus_batch_frame_count = 0;
+          }
+        }
       }
     } else {
       // Small delay if no audio available
@@ -448,15 +507,29 @@ int audio_client_init() {
     return -1;
   }
 
+  // Create Opus encoder for audio compression (24 kbps VOIP mode)
+  g_opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, AUDIO_SAMPLE_RATE, 24000);
+  if (!g_opus_encoder) {
+    log_error("Failed to create Opus encoder");
+    audio_destroy(&g_audio_context);
+    return -1;
+  }
+
+  log_info("Opus encoder created: 24 kbps VOIP mode, %d Hz sample rate", AUDIO_SAMPLE_RATE);
+
   // Start audio playback
   if (audio_start_playback(&g_audio_context) != 0) {
     log_error("Failed to start audio playback");
+    opus_codec_destroy(g_opus_encoder);
+    g_opus_encoder = NULL;
     return -1;
   }
 
   // Start audio capture
   if (audio_start_capture(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to start audio capture");
+    opus_codec_destroy(g_opus_encoder);
+    g_opus_encoder = NULL;
     return -1;
   }
 
@@ -571,6 +644,13 @@ void audio_cleanup() {
 
   // Stop capture thread
   audio_stop_thread();
+
+  // Destroy Opus encoder
+  if (g_opus_encoder) {
+    opus_codec_destroy(g_opus_encoder);
+    g_opus_encoder = NULL;
+    log_info("Opus encoder destroyed");
+  }
 
   // Close WAV dumpers
   if (g_wav_capture_raw) {

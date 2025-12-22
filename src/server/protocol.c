@@ -125,6 +125,8 @@
 #include "compression.h"
 #include "util/format.h"
 #include "platform/system.h"
+#include "opus_codec.h"
+#include "network/av.h"
 
 /**
  * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown
@@ -351,6 +353,16 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
     atomic_store(&client->is_sending_audio, true);
+
+    // Create Opus decoder for this client if not already created
+    if (!client->opus_decoder) {
+      client->opus_decoder = opus_codec_create_decoder(48000);
+      if (client->opus_decoder) {
+        log_info("Client %u: Opus decoder created (48kHz)", atomic_load(&client->client_id));
+      } else {
+        log_error("Client %u: Failed to create Opus decoder", atomic_load(&client->client_id));
+      }
+    }
   }
 
   if (stream_type & STREAM_TYPE_VIDEO) {
@@ -953,6 +965,138 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   }
 
   SAFE_FREE(samples);
+}
+
+/**
+ * @brief Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch from client
+ *
+ * Handles batched Opus-encoded audio frames sent by the client. This provides
+ * ~98% bandwidth reduction compared to raw PCM audio while maintaining excellent
+ * audio quality.
+ *
+ * PACKET STRUCTURE EXPECTED:
+ * - opus_batch_header_t (16 bytes):
+ *   - sample_rate (4 bytes)
+ *   - frame_duration (4 bytes)
+ *   - frame_count (4 bytes)
+ *   - reserved (4 bytes)
+ * - Opus encoded data (variable size, typically ~60 bytes/frame @ 24kbps)
+ *
+ * PROCESSING FLOW:
+ * 1. Parse batch header
+ * 2. Decode each Opus frame back to PCM samples (960 samples/frame @ 48kHz)
+ * 3. Write decoded samples to client's incoming audio buffer
+ *
+ * PERFORMANCE:
+ * - Bandwidth: ~60 bytes/frame vs ~3840 bytes/frame for raw PCM (64:1 compression)
+ * - Quality: Excellent at 24 kbps VOIP mode
+ * - Latency: 20ms frames for real-time audio
+ *
+ * @param client Client that sent the audio packet
+ * @param data Packet payload data
+ * @param len Packet payload length
+ *
+ * @see av_receive_audio_opus_batch() For packet parsing
+ * @see opus_codec_decode() For Opus decoding
+ * @see handle_audio_batch_packet() For raw PCM audio batch handling
+ *
+ * @ingroup server_protocol
+ */
+void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len) {
+  log_debug_every(5000000, "Received Opus audio batch from client %u (len=%zu)", atomic_load(&client->client_id), len);
+
+  if (!data) {
+    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH payload missing");
+    return;
+  }
+
+  if (!atomic_load(&client->is_sending_audio)) {
+    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH received before audio stream enabled");
+    return;
+  }
+
+  if (!client->opus_decoder) {
+    log_error("Client %u: Opus decoder not initialized", atomic_load(&client->client_id));
+    return;
+  }
+
+  // Parse Opus batch packet
+  const uint8_t *opus_data = NULL;
+  size_t opus_size = 0;
+  const uint16_t *frame_sizes = NULL;
+  int sample_rate = 0;
+  int frame_duration = 0;
+  int frame_count = 0;
+
+  int result = av_receive_audio_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
+                                           &frame_duration, &frame_count);
+
+  if (result < 0) {
+    disconnect_client_for_bad_data(client, "Failed to parse AUDIO_OPUS_BATCH packet");
+    return;
+  }
+
+  if (frame_count <= 0 || opus_size == 0) {
+    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH empty (frame_count=%d, opus_size=%zu)", frame_count,
+                                   opus_size);
+    return;
+  }
+
+  // Calculate samples per frame (20ms @ 48kHz = 960 samples)
+  int samples_per_frame = (sample_rate * frame_duration) / 1000;
+  if (samples_per_frame <= 0 || samples_per_frame > 4096) {
+    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH invalid frame size (samples_per_frame=%d)",
+                                   samples_per_frame);
+    return;
+  }
+
+  // Allocate buffer for decoded samples (all frames)
+  size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
+  float *decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+  if (!decoded_samples) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus decoded samples");
+    return;
+  }
+
+  // Decode each Opus frame using frame_sizes array
+  int total_decoded = 0;
+  size_t opus_offset = 0;
+
+  for (int i = 0; i < frame_count; i++) {
+    // Get exact frame size from frame_sizes array
+    size_t frame_size = (size_t)frame_sizes[i];
+
+    if (opus_offset + frame_size > opus_size) {
+      log_error("Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)",
+                atomic_load(&client->client_id), i + 1, opus_offset, frame_size, opus_size);
+      SAFE_FREE(decoded_samples);
+      return;
+    }
+
+    int decoded_count = opus_codec_decode((opus_codec_t *)client->opus_decoder, &opus_data[opus_offset], frame_size,
+                                          &decoded_samples[total_decoded], samples_per_frame);
+
+    if (decoded_count < 0) {
+      log_error("Client %u: Opus decoding failed for frame %d/%d (size=%zu)", atomic_load(&client->client_id), i + 1,
+                frame_count, frame_size);
+      SAFE_FREE(decoded_samples);
+      return;
+    }
+
+    total_decoded += decoded_count;
+    opus_offset += frame_size;
+  }
+
+  log_debug_every(100000, "Client %u: Decoded %d Opus frames -> %d samples", atomic_load(&client->client_id),
+                  frame_count, total_decoded);
+
+  // Write decoded samples to client's incoming audio buffer
+  if (client->incoming_audio_buffer && total_decoded > 0) {
+    int written = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
+    (void)written;
+  }
+
+  SAFE_FREE(decoded_samples);
 }
 
 /* ============================================================================

@@ -152,6 +152,23 @@ int threaded_send_packet(packet_type_t type, const void *data, size_t len);
 int threaded_send_audio_batch_packet(const float *samples, int num_samples, int batch_count);
 
 /**
+ * @brief Thread-safe Opus audio batch packet transmission
+ *
+ * Sends a batch of Opus-encoded audio frames to the server with proper
+ * synchronization and encryption support.
+ *
+ * @param opus_data Opus-encoded audio data (multiple frames concatenated)
+ * @param opus_size Total size of Opus data in bytes
+ * @param frame_sizes Array of individual frame sizes (variable-length frames)
+ * @param frame_count Number of Opus frames in the batch
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
+int threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
+                                   int frame_count);
+
+/**
  * @brief Thread-safe ping packet transmission
  *
  * @return 0 on success, negative on error
