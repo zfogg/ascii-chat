@@ -47,6 +47,19 @@ static inline int find_first_set_bit(uint64_t mask) {
 #define M_PI 3.14159265358979323846
 #endif
 
+// Hash function for 32-bit client IDs to 8-bit hash index
+// Uses FNV-1a-like mixing to distribute client IDs evenly across 256 buckets
+static inline uint8_t mixer_hash_client_id(uint32_t client_id) {
+  // XOR folding: fold 32 bits into 8 bits with mixing
+  uint32_t hash = client_id;
+  hash ^= (hash >> 16);
+  hash *= 0x85ebca6b;  // FNV-like prime multiplier
+  hash ^= (hash >> 13);
+  hash *= 0xc2b2ae35;
+  hash ^= (hash >> 16);
+  return (uint8_t)(hash & 0xFF);
+}
+
 // Utility functions
 float db_to_linear(float db) {
   return powf(10.0f, db / 20.0f);
@@ -278,6 +291,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->active_sources_mask = 0ULL; // No sources active initially
   SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
               sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
+  SAFE_MEMSET(mixer->source_id_at_hash, sizeof(mixer->source_id_at_hash), 0,
+              sizeof(mixer->source_id_at_hash)); // 0 = no client at this hash index
 
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
@@ -359,8 +374,10 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
-  mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
+  mixer->active_sources_mask |= (1ULL << slot);                      // Set bit for this slot
+  uint8_t hash_idx = mixer_hash_client_id(client_id);
+  mixer->source_id_to_index[hash_idx] = (uint8_t)slot;               // Hash table: client_id → slot
+  mixer->source_id_at_hash[hash_idx] = client_id;                    // Store ID for collision detection
 
   rwlock_wrunlock(&mixer->source_lock);
 
@@ -383,8 +400,10 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
-      mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
+      mixer->active_sources_mask &= ~(1ULL << i);                   // Clear bit for this slot
+      uint8_t hash_idx = mixer_hash_client_id(client_id);
+      mixer->source_id_to_index[hash_idx] = 0xFF;                   // Mark as invalid in hash table
+      mixer->source_id_at_hash[hash_idx] = 0;                       // Clear stored ID
 
       // Reset ducking state for this source
       mixer->ducking.envelope[i] = 0.0f;
@@ -557,11 +576,13 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
+  uint8_t hash_idx = mixer_hash_client_id(exclude_client_id);
+  uint8_t exclude_index = mixer->source_id_to_index[hash_idx];
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Clear bit for excluded source (O(1) vs O(n) scan)
-  if (exclude_index < 64) {
+  // Verify client ID matches to handle hash collisions correctly
+  if (exclude_index < 64 && mixer->source_id_at_hash[hash_idx] == exclude_client_id) {
     active_mask &= ~(1ULL << exclude_index);
   }
 

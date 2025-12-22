@@ -29,7 +29,7 @@
  *
  * AUDIO PARAMETERS:
  * =================
- * - Sample Rate: 44.1kHz (CD quality)
+ * - Sample Rate: 48kHz (professional quality, Opus-compatible)
  * - Channels: Mono (1 channel)
  * - Buffer Size: 256 frames per buffer (low latency)
  * - Format: 32-bit floating point samples
@@ -311,6 +311,13 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
  *
  * @warning Real-time priority can cause system instability if misused.
  *          Only use in audio threads that process data quickly.
+ *
+ * @warning LIMITATION: This function only affects the calling thread. When used
+ *          with PortAudio, the audio callbacks run in PortAudio's internal threads,
+ *          not the thread that calls audio_start_capture/playback. Some PortAudio
+ *          backends (WASAPI, CoreAudio) automatically use real-time priority for
+ *          their callback threads. For other backends, this function has limited
+ *          effect when called from the main thread.
  *
  * @ingroup audio
  */
