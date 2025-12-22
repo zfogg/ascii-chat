@@ -451,7 +451,7 @@ int main(int argc, char *argv[]) {
         print_version();
         return 0;
       }
-      // Any other option before the mode - check if it's a typo of --help or --version
+      // Any other option before the mode - check if it's a typo of a top-level option or mode name
       // Extract the option name (skip leading dashes)
       const char *opt_name = argv[i];
       if (opt_name[0] == '-')
@@ -459,16 +459,29 @@ int main(int argc, char *argv[]) {
       if (opt_name[0] == '-')
         opt_name++;
 
-      const char *suggestion = levenshtein_find_similar(opt_name, g_top_level_options);
-      if (suggestion) {
-        fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
-        fprintf(stderr, "Did you mean '--%s'?\n", suggestion);
-      } else {
-        fprintf(stderr, "Error: Option '%s' must come after the mode\n", argv[i]);
+      fprintf(stderr, "Error: Unknown option '%s'\n", argv[i]);
+
+      // Check if it's a typo of a top-level option (--help, --version)
+      const char *top_level_suggestion = levenshtein_find_similar(opt_name, g_top_level_options);
+      if (top_level_suggestion) {
+        fprintf(stderr, "Did you mean '--%s'?\n", top_level_suggestion);
+        return ERROR_USAGE;
+      }
+
+      // Check if it's a typo of a mode name (server, client)
+      const char *mode_suggestion = levenshtein_find_similar(opt_name, g_mode_names);
+      if (mode_suggestion) {
+        fprintf(stderr, "Did you mean '%s'? Usage: ascii-chat %s [options...]\n", mode_suggestion, mode_suggestion);
+        return ERROR_USAGE;
+      }
+
+      // Not a close match to anything - provide helpful message
+      fprintf(stderr, "Available modes:\n");
+      for (const mode_descriptor_t *m = g_mode_table; m->name != NULL; m++) {
+        fprintf(stderr, "  ascii-chat %s [options...]  - %s\n", m->name, m->description);
       }
 #ifndef NDEBUG
-      fprintf(stderr, "\n");
-      print_usage(program_name);
+      fprintf(stderr, "\nUse 'ascii-chat <mode> --help' for mode-specific options\n");
 #endif
       return ERROR_USAGE;
     }
