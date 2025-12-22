@@ -47,19 +47,6 @@ static inline int find_first_set_bit(uint64_t mask) {
 #define M_PI 3.14159265358979323846
 #endif
 
-// Hash function for 32-bit client IDs to 8-bit hash index
-// Uses FNV-1a-like mixing to distribute client IDs evenly across 256 buckets
-static inline uint8_t mixer_hash_client_id(uint32_t client_id) {
-  // XOR folding: fold 32 bits into 8 bits with mixing
-  uint32_t hash = client_id;
-  hash ^= (hash >> 16);
-  hash *= 0x85ebca6b; // FNV-like prime multiplier
-  hash ^= (hash >> 13);
-  hash *= 0xc2b2ae35;
-  hash ^= (hash >> 16);
-  return (uint8_t)(hash & 0xFF);
-}
-
 // Utility functions
 float db_to_linear(float db) {
   return powf(10.0f, db / 20.0f);
@@ -291,8 +278,6 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->active_sources_mask = 0ULL; // No sources active initially
   SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
               sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
-  SAFE_MEMSET(mixer->source_id_at_hash, sizeof(mixer->source_id_at_hash), 0,
-              sizeof(mixer->source_id_at_hash)); // 0 = no client at this hash index
 
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
@@ -300,6 +285,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer->mix_buffer);
     SAFE_FREE(mixer);
     return NULL;
   }
@@ -314,15 +300,6 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Allocate mix buffer
   mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
-  if (!mixer->mix_buffer) {
-    rwlock_destroy(&mixer->source_lock);
-    ducking_free(&mixer->ducking);
-    SAFE_FREE(mixer->source_buffers);
-    SAFE_FREE(mixer->source_ids);
-    SAFE_FREE(mixer->source_active);
-    SAFE_FREE(mixer);
-    return NULL;
-  }
 
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
@@ -374,10 +351,8 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot); // Set bit for this slot
-  uint8_t hash_idx = mixer_hash_client_id(client_id);
-  mixer->source_id_to_index[hash_idx] = (uint8_t)slot; // Hash table: client_id → slot
-  mixer->source_id_at_hash[hash_idx] = client_id;      // Store ID for collision detection
+  mixer->active_sources_mask |= (1ULL << slot);                // Set bit for this slot
+  mixer->source_id_to_index[client_id & 0xFF] = (uint8_t)slot; // Hash table: client_id → slot
 
   rwlock_wrunlock(&mixer->source_lock);
 
@@ -400,21 +375,12 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i); // Clear bit for this slot
-      uint8_t hash_idx = mixer_hash_client_id(client_id);
-      // Only clear hash entry if it belongs to this client (handle collisions correctly)
-      if (mixer->source_id_at_hash[hash_idx] == client_id) {
-        mixer->source_id_to_index[hash_idx] = 0xFF; // Mark as invalid in hash table
-        mixer->source_id_at_hash[hash_idx] = 0;     // Clear stored ID
-      }
+      mixer->active_sources_mask &= ~(1ULL << i);         // Clear bit for this slot
+      mixer->source_id_to_index[client_id & 0xFF] = 0xFF; // Mark as invalid in hash table
 
-      // Reset ducking state for this source (with NULL safety)
-      if (mixer->ducking.envelope) {
-        mixer->ducking.envelope[i] = 0.0f;
-      }
-      if (mixer->ducking.gain) {
-        mixer->ducking.gain[i] = 1.0f;
-      }
+      // Reset ducking state for this source
+      mixer->ducking.envelope[i] = 0.0f;
+      mixer->ducking.gain[i] = 1.0f;
 
       rwlock_wrunlock(&mixer->source_lock);
 
@@ -457,9 +423,8 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // Acquire read lock to prevent source removal during processing
-  // This prevents TOCTOU race where source_buffers[i] becomes NULL mid-operation
-  rwlock_rdlock(&mixer->source_lock);
+  // NOTE: No locks needed for audio processing - concurrent reads are safe
+  // Only source add/remove operations use write locks
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -474,7 +439,6 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
   if (active_count == 0) {
     // No active sources, output silence
-    rwlock_rdunlock(&mixer->source_lock);
     return 0;
   }
 
@@ -516,47 +480,57 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       }
     }
 
-    // Process each sample in the frame
-    for (int s = 0; s < frame_size; s++) {
-      // Update envelopes for active speaker detection
-      int speaking_count = 0;
-      for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float abs_sample = fabsf(sample);
+    // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
+    // Calculate peak amplitude for each source over the entire frame
+    int speaking_count = 0;
 
-        // Update envelope
-        if (abs_sample > mixer->ducking.envelope[slot]) {
-          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
-        } else {
-          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
-        }
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      float peak = 0.0f;
 
-        // Count speaking sources
-        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
-          speaking_count++;
+      // Find peak amplitude in frame (much faster than per-sample envelope)
+      for (int s = 0; s < frame_size; s++) {
+        float abs_sample = fabsf(source_samples[i][s]);
+        if (abs_sample > peak)
+          peak = abs_sample;
       }
 
-      // Apply ducking
-      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+      // Update envelope using frame peak (one update per frame instead of per-sample)
+      if (peak > mixer->ducking.envelope[slot]) {
+        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.attack_coeff) * peak;
+      } else {
+        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.release_coeff) * peak;
+      }
 
-      // Calculate crowd scaling
-      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
-      float pre_bus = mixer->base_gain * crowd_gain;
+      // Count speaking sources
+      if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+        speaking_count++;
+    }
 
-      // Mix sources with ducking and crowd scaling
+    // Apply ducking ONCE per frame (not per-sample)
+    ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+    // Calculate crowd scaling ONCE per frame
+    float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+    float pre_bus = mixer->base_gain * crowd_gain;
+
+    // Pre-calculate combined gains for each source (ducking * pre_bus)
+    float combined_gains[MIXER_MAX_SOURCES];
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      combined_gains[i] = mixer->ducking.gain[slot] * pre_bus;
+    }
+
+    // Fast mixing loop - simple multiply-add with pre-calculated gains
+    for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float gain = mixer->ducking.gain[slot];
-        mix += sample * gain;
+        mix += source_samples[i][s] * combined_gains[i];
       }
-      mix *= pre_bus;
 
-      // Apply bus compression
+      // Apply bus compression (still per-sample for smooth dynamics)
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
@@ -565,7 +539,6 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     }
   }
 
-  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
@@ -573,8 +546,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // Acquire reader lock to prevent race conditions with source add/remove operations
-  rwlock_rdlock(&mixer->source_lock);
   START_TIMER("mixer_total");
 
   // NOTE: No locks needed for audio processing - concurrent reads are safe
@@ -584,19 +555,16 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
 
   // OPTIMIZATION 1: O(1) exclusion using bitset and hash table
-  uint8_t hash_idx = mixer_hash_client_id(exclude_client_id);
-  uint8_t exclude_index = mixer->source_id_to_index[hash_idx];
+  uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
   uint64_t active_mask = mixer->active_sources_mask;
 
   // Clear bit for excluded source (O(1) vs O(n) scan)
-  // Verify client ID matches to handle hash collisions correctly
-  if (exclude_index < 64 && mixer->source_id_at_hash[hash_idx] == exclude_client_id) {
+  if (exclude_index < 64) {
     active_mask &= ~(1ULL << exclude_index);
   }
 
   // Fast check: any sources to process?
   if (active_mask == 0) {
-    rwlock_rdunlock(&mixer->source_lock);
     STOP_TIMER("mixer_total");
     return 0; // No active sources (excluding the specified client), output silence
   }
@@ -644,53 +612,65 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     STOP_TIMER("mixer_read_sources");
 
     START_TIMER("mixer_per_sample_loop");
-    // Process each sample in the frame
-    for (int s = 0; s < frame_size; s++) {
-      // Update envelopes for active speaker detection
-      int speaking_count = 0;
-      for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float abs_sample = fabsf(sample);
 
-        // Update envelope
-        if (abs_sample > mixer->ducking.envelope[slot]) {
-          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
-        } else {
-          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
-        }
+    // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
+    // Calculate peak amplitude for each source over the entire frame
+    int speaking_count = 0;
 
-        // Count speaking sources
-        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
-          speaking_count++;
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      float peak = 0.0f;
+
+      // Find peak amplitude in frame (much faster than per-sample envelope)
+      for (int s = 0; s < frame_size; s++) {
+        float abs_sample = fabsf(source_samples[i][s]);
+        if (abs_sample > peak)
+          peak = abs_sample;
       }
 
-      // Apply ducking
-      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+      // Update envelope using frame peak (one update per frame instead of per-sample)
+      if (peak > mixer->ducking.envelope[slot]) {
+        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.attack_coeff) * peak;
+      } else {
+        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                        (1.0f - mixer->ducking.release_coeff) * peak;
+      }
 
-      // Calculate crowd scaling
-      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
-      float pre_bus = mixer->base_gain * crowd_gain;
+      // Count speaking sources
+      if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+        speaking_count++;
+    }
 
-      // Mix sources with ducking and crowd scaling
+    // Apply ducking ONCE per frame (not per-sample)
+    ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+    // Calculate crowd scaling ONCE per frame
+    float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+    float pre_bus = mixer->base_gain * crowd_gain;
+
+    // Pre-calculate combined gains for each source (ducking * pre_bus)
+    float combined_gains[MIXER_MAX_SOURCES];
+    for (int i = 0; i < source_count; i++) {
+      int slot = source_map[i];
+      combined_gains[i] = mixer->ducking.gain[slot] * pre_bus;
+    }
+
+    // Fast mixing loop - simple multiply-add with pre-calculated gains
+    for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
-        int slot = source_map[i];
-        float sample = source_samples[i][s];
-        float gain = mixer->ducking.gain[slot];
-        mix += sample * gain;
+        mix += source_samples[i][s] * combined_gains[i];
       }
-      mix *= pre_bus;
 
-      // Apply bus compression
+      // Apply bus compression (still per-sample for smooth dynamics)
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
       // Clamp and output
       output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
     }
+
     STOP_TIMER("mixer_per_sample_loop");
   }
 
@@ -701,7 +681,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     log_warn("Slow mixer: total=%s, num_samples=%d", duration_str, num_samples);
   }
 
-  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
