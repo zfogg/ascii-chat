@@ -834,29 +834,36 @@ void *client_audio_render_thread(void *arg) {
 
     int samples_mixed = 0;
     if (opt_no_audio_mixer) {
-      // Bypass mixer: forward audio directly from first other client's ring buffer (no ducking/gain/compression)
+      // Disable mixer.h processing: simple mixing without ducking/compression/etc
+      // Just add audio from all sources except this client, no processing
       SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
-      samples_mixed = 0;
 
       if (g_audio_mixer) {
-        // Find first active source that's not the current client
+        int max_samples_in_frame = 0;
+        // Simple mixing: just add all sources except current client
         for (int i = 0; i < g_audio_mixer->max_sources; i++) {
           if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
               g_audio_mixer->source_buffers[i]) {
-            // Found another client's source - read directly from ring buffer
-            samples_mixed =
-                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], mix_buffer, AUDIO_FRAMES_PER_BUFFER);
-            // Pad with silence if partial frame
-            if (samples_mixed < AUDIO_FRAMES_PER_BUFFER && samples_mixed > 0) {
-              SAFE_MEMSET(&mix_buffer[samples_mixed], (AUDIO_FRAMES_PER_BUFFER - samples_mixed) * sizeof(float), 0,
-                          (AUDIO_FRAMES_PER_BUFFER - samples_mixed) * sizeof(float));
+            // Read from this source and add to mix buffer
+            float temp_buffer[AUDIO_FRAMES_PER_BUFFER];
+            int samples_read =
+                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, AUDIO_FRAMES_PER_BUFFER);
+
+            // Track the maximum samples we got from any source
+            if (samples_read > max_samples_in_frame) {
+              max_samples_in_frame = samples_read;
             }
-            break; // Only forward first active source when bypassing mixer
+
+            // Add to mix buffer
+            for (int j = 0; j < samples_read; j++) {
+              mix_buffer[j] += temp_buffer[j];
+            }
           }
         }
+        samples_mixed = max_samples_in_frame; // Only count samples we actually read
       }
 
-      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): forwarding directly, samples=%d for client %u",
+      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u",
                       samples_mixed, client_id_snapshot);
     } else {
       samples_mixed =
@@ -876,20 +883,17 @@ void *client_audio_render_thread(void *arg) {
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
     // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
-    // Always send audio packets, even if silent (samples_mixed == 0)
-    // This prevents buffer underruns on the client side which cause "scratchy" audio.
-    // When no audio is mixed, send zero-filled buffer to maintain continuous stream.
+    // Only accumulate if we have actual audio samples to process
+    // Skip empty frames - don't pad with silence for immediate rendering
     if (samples_mixed == 0) {
-      SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+      continue; // Wait for actual audio data from other clients
     }
 
-    // Accumulate samples for Opus encoding (Opus requires 960 samples = 20ms @ 48kHz)
-    // Copy AUDIO_FRAMES_PER_BUFFER (256) samples to accumulation buffer
     struct timespec accum_start = {0};
     (void)clock_gettime(CLOCK_MONOTONIC, &accum_start);
 
     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
-    int samples_to_copy = (AUDIO_FRAMES_PER_BUFFER <= space_available) ? AUDIO_FRAMES_PER_BUFFER : space_available;
+    int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
 
     SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
                 (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
