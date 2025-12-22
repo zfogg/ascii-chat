@@ -1214,36 +1214,80 @@ void *client_send_thread_func(void *arg) {
         mutex_unlock(&client->send_mutex);
       } else {
         // Multiple packets - batch them together
-        // Calculate total size for all audio frames
-        size_t total_samples = 0;
-        for (int i = 0; i < audio_packet_count; i++) {
-          total_samples += audio_packets[i]->data_len / sizeof(float);
-        }
+        // Check if these are Opus-encoded packets or raw float audio
+        packet_type_t first_pkt_type = (packet_type_t)ntohs(audio_packets[0]->header.type);
 
-        // Allocate buffer for batched audio
-        float *batched_audio = SAFE_MALLOC(total_samples * sizeof(float), float *);
-        if (batched_audio) {
-          // Copy all audio packets into batch buffer
-          size_t offset = 0;
+        if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS) {
+          // Opus packets - batch using proper Opus batching format
+          // Calculate total Opus data size
+          size_t total_opus_size = 0;
           for (int i = 0; i < audio_packet_count; i++) {
-            size_t packet_samples = audio_packets[i]->data_len / sizeof(float);
-            memcpy(batched_audio + offset, audio_packets[i]->data, audio_packets[i]->data_len);
-            offset += packet_samples;
+            total_opus_size += audio_packets[i]->data_len;
           }
 
-          // Send batched audio packet
-          mutex_lock(&client->send_mutex);
-          result = send_audio_batch_packet(client->socket, batched_audio, (int)total_samples, audio_packet_count,
-                                           (crypto_context_t *)crypto_ctx);
-          mutex_unlock(&client->send_mutex);
+          // Allocate buffers for batched Opus data and frame sizes
+          uint8_t *batched_opus = SAFE_MALLOC(total_opus_size, uint8_t *);
+          uint16_t *frame_sizes = SAFE_MALLOC((size_t)audio_packet_count * sizeof(uint16_t), uint16_t *);
 
-          SAFE_FREE(batched_audio);
+          if (batched_opus && frame_sizes) {
+            // Copy all Opus frames into batch buffer
+            size_t offset = 0;
+            for (int i = 0; i < audio_packet_count; i++) {
+              frame_sizes[i] = (uint16_t)audio_packets[i]->data_len;
+              memcpy(batched_opus + offset, audio_packets[i]->data, audio_packets[i]->data_len);
+              offset += audio_packets[i]->data_len;
+            }
 
-          log_debug_every(1000000, "Sent audio batch: %d packets (%zu samples) to client %u", audio_packet_count,
-                          total_samples, client->client_id);
+            // Send batched Opus packet
+            mutex_lock(&client->send_mutex);
+            result =
+                av_send_audio_opus_batch(client->socket, batched_opus, total_opus_size, frame_sizes, AUDIO_SAMPLE_RATE,
+                                         20, audio_packet_count, (crypto_context_t *)crypto_ctx);
+            mutex_unlock(&client->send_mutex);
+
+            log_debug_every(1000000, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
+                            total_opus_size, client->client_id);
+          } else {
+            log_error("Failed to allocate buffer for Opus batch");
+            result = -1;
+          }
+
+          if (batched_opus)
+            SAFE_FREE(batched_opus);
+          if (frame_sizes)
+            SAFE_FREE(frame_sizes);
         } else {
-          log_error("Failed to allocate buffer for audio batch");
-          result = -1;
+          // Raw float audio - use existing batching logic
+          size_t total_samples = 0;
+          for (int i = 0; i < audio_packet_count; i++) {
+            total_samples += audio_packets[i]->data_len / sizeof(float);
+          }
+
+          // Allocate buffer for batched audio
+          float *batched_audio = SAFE_MALLOC(total_samples * sizeof(float), float *);
+          if (batched_audio) {
+            // Copy all audio packets into batch buffer
+            size_t offset = 0;
+            for (int i = 0; i < audio_packet_count; i++) {
+              size_t packet_samples = audio_packets[i]->data_len / sizeof(float);
+              memcpy(batched_audio + offset, audio_packets[i]->data, audio_packets[i]->data_len);
+              offset += packet_samples;
+            }
+
+            // Send batched audio packet
+            mutex_lock(&client->send_mutex);
+            result = send_audio_batch_packet(client->socket, batched_audio, (int)total_samples, audio_packet_count,
+                                             (crypto_context_t *)crypto_ctx);
+            mutex_unlock(&client->send_mutex);
+
+            SAFE_FREE(batched_audio);
+
+            log_debug_every(1000000, "Sent audio batch: %d packets (%zu samples) to client %u", audio_packet_count,
+                            total_samples, client->client_id);
+          } else {
+            log_error("Failed to allocate buffer for audio batch");
+            result = -1;
+          }
         }
       }
 
