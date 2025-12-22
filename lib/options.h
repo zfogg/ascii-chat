@@ -596,6 +596,12 @@ extern ASCIICHAT_API bool opt_webcam_flip;
  */
 extern ASCIICHAT_API bool opt_test_pattern;
 
+/**
+ * @brief Disable audio mixer (send silence instead of mixing)
+ * @note For debugging audio issues - useful for isolating mixer performance problems
+ */
+extern ASCIICHAT_API bool opt_no_audio_mixer;
+
 /** @} */
 
 /**
