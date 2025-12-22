@@ -888,14 +888,23 @@ void *client_audio_render_thread(void *arg) {
 
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
-      // BACKPRESSURE: Check queue depth before sending
-      // If queue is getting full, slow down to prevent drops over slow networks
-      size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-      bool apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
+      // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
+      // Only check periodically every 100 iterations (~0.6s at 172 fps)
+      static int backpressure_check_counter = 0;
+      bool apply_backpressure = false;
+
+      if (++backpressure_check_counter >= 100) {
+        backpressure_check_counter = 0;
+        size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+        apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
+
+        if (apply_backpressure) {
+          log_warn("Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)", client_id_snapshot,
+                   queue_depth, (float)queue_depth / 172.0f);
+        }
+      }
 
       if (apply_backpressure) {
-        log_warn_every(1000000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
-                       client_id_snapshot, queue_depth, (float)queue_depth / 172.0f);
         // Skip this packet to let the queue drain
         platform_sleep_usec(5800);
         continue;
