@@ -117,9 +117,12 @@ typedef struct {
 
 /** @brief Jitter buffer threshold (wait for ~40ms before starting playback = 1920 samples @ 48kHz)
  *
- * A larger threshold provides better tolerance for network jitter and packet timing variations.
- * 40ms buffer absorbs typical network delays without causing perceptible latency.
- * Previous value of 256 samples (~5.3ms) was too small and caused audio clicks/pops.
+ * This threshold determines how much audio must be buffered before playback starts.
+ * Too small = underruns and audio gaps when network packets arrive late
+ * Too large = excessive latency in audio playback
+ *
+ * 1920 samples @ 48kHz = 40ms = 2 Opus frames (20ms each)
+ * This provides enough buffer to absorb typical network jitter while keeping latency low.
  */
 #define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 2)
 
