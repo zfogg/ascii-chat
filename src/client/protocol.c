@@ -79,6 +79,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
+#include "audio_analysis.h"
 #include "keepalive.h"
 
 #include "network/packet.h"
@@ -617,6 +618,11 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
 
     // Scale signed int32_t to float range [-1.0, 1.0]
     samples[i] = (float)scaled / 2147483647.0f;
+  }
+
+  // Track received packet for analysis
+  if (opt_audio_analysis_enabled) {
+    audio_analysis_track_received_packet(len);
   }
 
   // Process through audio subsystem

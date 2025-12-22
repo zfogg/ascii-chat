@@ -285,6 +285,7 @@ set(APP_SRCS
     src/client/display.c
     src/client/capture.c
     src/client/audio.c
+    src/client/audio_analysis.c
     src/client/keepalive.c
 )
 

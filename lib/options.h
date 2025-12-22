@@ -223,7 +223,7 @@
  *
  * @ingroup options
  */
-asciichat_error_t strtoint_safe(const char *str);
+int strtoint_safe(const char *str);
 
 /** @} */
 
@@ -860,6 +860,23 @@ extern ASCIICHAT_API unsigned short int opt_audio_enabled;
  * @ingroup options
  */
 extern ASCIICHAT_API int opt_audio_device;
+
+/** @brief Enable audio analysis for debugging
+ *
+ * When enabled, tracks sent and received audio characteristics for debugging
+ * audio quality issues. Generates analysis report in snapshot mode.
+ *
+ * **Default**: `0` (disabled)
+ *
+ * **Command-line**: `--audio-analysis` (enable audio analysis)
+ *
+ * **Output**: Prints audio statistics (peak level, clipping, silence, packets) on exit
+ *
+ * **Note**: Only useful with `--audio` and `--snapshot` flags
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API unsigned short int opt_audio_analysis_enabled;
 
 /** @} */
 
