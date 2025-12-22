@@ -664,12 +664,16 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
     return;
   }
 
+  // Data is raw Opus-encoded frame (no header parsing needed)
+  const uint8_t *opus_data = (const uint8_t *)data;
+  size_t opus_size = len;
+
   // Opus max frame size is 2880 samples (120ms @ 48kHz)
   float samples[2880];
-  int decoded_samples = opus_codec_decode(decoder, (const uint8_t *)data, len, samples, 2880);
+  int decoded_samples = opus_codec_decode(decoder, opus_data, opus_size, samples, 2880);
 
   if (decoded_samples <= 0) {
-    log_warn("Failed to decode Opus audio packet, size=%d", decoded_samples);
+    log_warn("Failed to decode Opus audio packet, decoded=%d", decoded_samples);
     return;
   }
 
@@ -681,7 +685,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   // Process decoded audio through audio subsystem
   audio_process_received_samples(samples, decoded_samples);
 
-  log_debug_every(5000000, "Processed Opus audio: %d decoded samples", decoded_samples);
+  log_debug_every(5000000, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, opus_size);
 }
 
 /**

@@ -86,6 +86,10 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '-A'; Description = 'enable audio capture and playback' }
         @{ Name = '--audio'; Description = 'enable audio capture and playback' }
         @{ Name = '--audio-device'; Description = 'audio input device index' }
+        @{ Name = '--audio-analysis'; Description = 'enable audio analysis for debugging' }
+        @{ Name = '--no-audio-playback'; Description = 'disable speaker playback while keeping audio recording' }
+        @{ Name = '--encode-audio'; Description = 'force enable Opus audio encoding' }
+        @{ Name = '--no-encode-audio'; Description = 'disable Opus audio encoding' }
         @{ Name = '-s'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
         @{ Name = '--stretch'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
         @{ Name = '-q'; Description = 'disable console logging (log only to file)' }
@@ -105,6 +109,9 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--address6'; Description = 'IPv6 address to bind to' }
         @{ Name = '--max-clients'; Description = 'maximum concurrent client connections' }
         @{ Name = '--client-keys'; Description = 'allowed client keys file for authentication' }
+        @{ Name = '--encode-audio'; Description = 'force enable Opus audio encoding' }
+        @{ Name = '--no-encode-audio'; Description = 'disable Opus audio encoding' }
+        @{ Name = '--no-audio-mixer'; Description = 'disable audio mixer, send silence instead (debug only)' }
     )
 
     # Palette values

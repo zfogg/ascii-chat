@@ -200,53 +200,8 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
   return result;
 }
 
-/**
- * @brief Send Opus-encoded audio frame
- * @param sockfd Socket file descriptor
- * @param opus_data Opus-encoded audio data
- * @param opus_size Size of encoded data
- * @param sample_rate Sample rate in Hz
- * @param frame_duration Frame duration in milliseconds
- * @return 0 on success, -1 on error
- * @ingroup av
- */
-int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
-                       int frame_duration) {
-  if (!opus_data || opus_size == 0 || sample_rate <= 0 || frame_duration <= 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid Opus parameters: opus_data=%p, opus_size=%zu, sample_rate=%d, frame_duration=%d",
-              (const void *)opus_data, opus_size, sample_rate, frame_duration);
-    return -1;
-  }
-
-  // Allocate buffer for header + encoded data
-  size_t header_size = 16; // Metadata: sample_rate (4), frame_duration (4), reserved (8)
-  size_t total_size = header_size + opus_size;
-  void *packet_data = buffer_pool_alloc(total_size);
-  if (!packet_data) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
-    return -1;
-  }
-
-  // Write header (network byte order for cross-platform compatibility)
-  uint8_t *buf = (uint8_t *)packet_data;
-  uint32_t sr = htonl((uint32_t)sample_rate);
-  uint32_t fd = htonl((uint32_t)frame_duration);
-  memcpy(buf, &sr, 4);
-  memcpy(buf + 4, &fd, 4);
-  memset(buf + 8, 0, 8); // Reserved
-
-  // Copy Opus data
-  memcpy(buf + header_size, opus_data, opus_size);
-
-  // Send packet
-  int result = packet_send(sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
-
-  // Clean up
-  buffer_pool_free(packet_data, total_size);
-
-  return result;
-}
+// NOTE: av_send_audio_opus() was removed as dead code - the client uses
+// threaded_send_audio_opus() directly instead.
 
 /**
  * @brief Send batched Opus-encoded audio frames
@@ -499,6 +454,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
     memcpy(sample_data_ptr + (size_t)i * sizeof(uint32_t), &network_value, sizeof(uint32_t));
   }
 
+#ifndef NDEBUG
   // Debug: Log first few samples to verify conversion
   static int send_count = 0;
   send_count++;
@@ -508,6 +464,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
     log_info("SEND: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", (int32_t)(samples[0] * 2147483647.0f),
              (int32_t)(samples[1] * 2147483647.0f), (int32_t)(samples[2] * 2147483647.0f));
   }
+#endif
 
   // Send packet with encryption support
   int result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);
@@ -516,55 +473,8 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   return result;
 }
 
-/**
- * @brief Receive and parse Opus audio packet
- * @param packet_data Packet payload data
- * @param packet_len Packet payload length
- * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
- * @param out_opus_size Output: Size of Opus-encoded data
- * @param out_sample_rate Output: Sample rate in Hz
- * @param out_frame_duration Output: Frame duration in milliseconds
- * @return 0 on success, -1 on error
- *
- * Parses PACKET_TYPE_AUDIO_OPUS packet and extracts metadata and Opus data.
- * The Opus data pointer points into the packet_data buffer (NOT copied),
- * so packet_data must remain valid while using out_opus_data.
- *
- * @note out_opus_data points into packet_data - do not free separately
- * @ingroup av
- */
-int av_receive_audio_opus(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
-                          size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration) {
-  if (!packet_data || !out_opus_data || !out_opus_size || !out_sample_rate || !out_frame_duration) {
-    SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid parameters: packet_data=%p, out_opus_data=%p, out_opus_size=%p, "
-              "out_sample_rate=%p, out_frame_duration=%p",
-              (const void *)packet_data, (void *)out_opus_data, (void *)out_opus_size, (void *)out_sample_rate,
-              (void *)out_frame_duration);
-    return -1;
-  }
-
-  // Verify minimum packet size (16-byte header)
-  size_t header_size = 16;
-  if (packet_len < header_size) {
-    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus packet too small: %zu < %zu", packet_len, header_size);
-    return -1;
-  }
-
-  // Parse header (convert from network byte order)
-  const uint8_t *buf = (const uint8_t *)packet_data;
-  uint32_t sr, fd;
-  memcpy(&sr, buf, 4);
-  memcpy(&fd, buf + 4, 4);
-  *out_sample_rate = (int)ntohl(sr);
-  *out_frame_duration = (int)ntohl(fd);
-
-  // Extract Opus data (everything after 16-byte header)
-  *out_opus_data = buf + header_size;
-  *out_opus_size = packet_len - header_size;
-
-  return 0;
-}
+// NOTE: av_receive_audio_opus() was removed as dead code - the server handles
+// PACKET_TYPE_AUDIO_OPUS directly in handle_audio_opus_packet().
 
 /**
  * @brief Receive and parse batched Opus audio packet

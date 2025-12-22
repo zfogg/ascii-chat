@@ -884,6 +884,19 @@ extern ASCIICHAT_API int opt_audio_device;
  */
 extern ASCIICHAT_API unsigned short int opt_audio_analysis_enabled;
 
+/**
+ * @brief Disable speaker playback while keeping received audio recording (`--no-audio-playback`)
+ *
+ * When enabled, audio received from the server is recorded to a file but NOT played through speakers.
+ * This is useful for debugging to isolate whether audio quality issues are in capture/encoding,
+ * network transmission, or local playback/decoding.
+ *
+ * **Note**: Only useful with `--audio` flag
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API unsigned short int opt_audio_no_playback;
+
 /** @} */
 
 /**

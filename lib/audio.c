@@ -79,10 +79,11 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
 
       // Debug: Log every 1000 callbacks (~10 seconds at 256 frames/callback, 44.1kHz)
+      // Note: We already hold the mutex from audio_ring_buffer_read(), so we can safely
+      // check buffer state. But since read already returned, just log what we read.
       if (callback_count % 1000 == 0) {
-        size_t available = audio_ring_buffer_available_read(ctx->playback_buffer);
-        log_debug("Audio output callback #%llu: samples_read=%d/%lu, buffer_available=%zu", callback_count,
-                  samples_read, framesPerBuffer * AUDIO_CHANNELS, available);
+        log_debug("Audio output callback #%llu: samples_read=%d/%lu", callback_count, samples_read,
+                  framesPerBuffer * AUDIO_CHANNELS);
       }
 
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
@@ -150,15 +151,12 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   int samples_to_write = samples;
   int samples_dropped = 0;
   if (samples > available) {
-    samples_dropped = samples - available;
-    samples_to_write = available;
-    // Log overflow only occasionally to avoid spam
-    static int overflow_count = 0;
-    overflow_count++;
-    if (overflow_count % 100 == 1) {
-      log_warn_every(5000000, "Audio ring buffer overflow: dropped %d samples (available=%d, requested=%d)",
-                     samples_dropped, available, samples);
-    }
+    int samples_to_drop = samples - available;
+    rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
+    // Reset jitter buffer state - dropping samples indicates buffer overflow,
+    // so we need to refill before playing to avoid audio glitches
+    rb->jitter_buffer_filled = false;
+    // Now we have enough space to write all samples
   }
 
   // Write only the samples that fit (preserves existing data integrity)
@@ -232,7 +230,9 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   if (!rb)
     return 0;
 
-  // Note: This function must be called with mutex already locked
+  // NOTE: This function is safe to call without the mutex for approximate values.
+  // The volatile indices provide atomic reads on aligned 32-bit integers.
+  // For exact values during concurrent modification, hold rb->mutex first.
   int write_idx = rb->write_index;
   int read_idx = rb->read_index;
 
@@ -506,15 +506,14 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
 
   if (ctx->playing) {
     mutex_unlock(&ctx->state_mutex);
-    return 0;
+    return ASCIICHAT_OK;
   }
 
   PaStreamParameters outputParameters;
   outputParameters.device = Pa_GetDefaultOutputDevice();
   if (outputParameters.device == paNoDevice) {
-    SET_ERRNO(ERROR_AUDIO, "No default output device available");
     mutex_unlock(&ctx->state_mutex);
-    return -1;
+    return SET_ERRNO(ERROR_AUDIO, "No default output device available");
   }
 
   outputParameters.channelCount = AUDIO_CHANNELS;
