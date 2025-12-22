@@ -220,7 +220,9 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   if (!rb)
     return 0;
 
-  // Note: This function must be called with mutex already locked
+  // NOTE: This function is safe to call without the mutex for approximate values.
+  // The volatile indices provide atomic reads on aligned 32-bit integers.
+  // For exact values during concurrent modification, hold rb->mutex first.
   int write_idx = rb->write_index;
   int read_idx = rb->read_index;
 
