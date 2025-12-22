@@ -301,12 +301,15 @@ static void *audio_capture_thread_func(void *arg) {
   // Audio processing components - initialized fresh on each thread start
   // to avoid stale filter state from previous runs
   static highpass_filter_t hp_filter;
+  static lowpass_filter_t lp_filter;
   static noise_gate_t noise_gate;
   static bool wav_dumpers_initialized = false;
 
-  // Always reinitialize the high-pass filter when thread starts
-  // This ensures clean state (no stale prev_input/prev_output values)
-  highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE);
+  // Initialize band-pass filter for voice frequencies (100Hz - 4kHz)
+  // High-pass at 100Hz: removes low rumble, HVAC noise, footsteps
+  // Low-pass at 4kHz: removes hiss, electronic noise, preserves voice clarity
+  highpass_filter_init(&hp_filter, 100.0F, AUDIO_SAMPLE_RATE);
+  lowpass_filter_init(&lp_filter, 4000.0F, AUDIO_SAMPLE_RATE);
 
   // Initialize noise gate to cut background noise when not speaking
   // threshold=0.02 (2% amplitude), attack=5ms, release=100ms, hysteresis=0.5
@@ -374,8 +377,10 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Apply audio processing chain
-      // 1. High-pass filter to remove low-frequency rumble (DC offset and very low frequencies)
+      // 1. Band-pass filter for voice frequencies (100Hz - 4kHz)
+      //    High-pass removes rumble, low-pass removes hiss
       highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
+      lowpass_filter_process_buffer(&lp_filter, audio_buffer, samples_read);
 
       // 2. Apply smoothed automatic gain control - gently boost quiet audio
       // Uses attack/release envelope to prevent abrupt gain changes (zipper noise)
