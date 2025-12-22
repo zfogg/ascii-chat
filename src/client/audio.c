@@ -219,6 +219,13 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     wav_writer_write(g_wav_playback_received, samples, num_samples);
   }
 
+  // Track samples for analysis
+  if (opt_audio_analysis_enabled) {
+    for (int i = 0; i < num_samples; i++) {
+      audio_analysis_track_received_sample(samples[i]);
+    }
+  }
+
   // Apply volume boost and clipping protection
   // Buffer must accommodate batched packets (up to AUDIO_BATCH_SAMPLES)
   float audio_buffer[AUDIO_BATCH_SAMPLES];
