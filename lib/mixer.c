@@ -815,6 +815,55 @@ void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, in
 }
 
 /* ============================================================================
+ * Low-Pass Filter Implementation
+ * ============================================================================
+ */
+
+void lowpass_filter_init(lowpass_filter_t *filter, float cutoff_hz, float sample_rate) {
+  if (!filter)
+    return;
+
+  filter->cutoff_hz = cutoff_hz;
+  filter->sample_rate = sample_rate;
+
+  // Calculate filter coefficient using RC time constant formula
+  // alpha = dt / (RC + dt) where RC = 1 / (2 * pi * fc)
+  float dt = 1.0f / sample_rate;
+  float rc = 1.0f / (2.0f * (float)M_PI * cutoff_hz);
+  filter->alpha = dt / (rc + dt);
+
+  lowpass_filter_reset(filter);
+}
+
+void lowpass_filter_reset(lowpass_filter_t *filter) {
+  if (!filter)
+    return;
+
+  filter->prev_output = 0.0f;
+}
+
+float lowpass_filter_process_sample(lowpass_filter_t *filter, float input) {
+  if (!filter)
+    return input;
+
+  // First-order IIR low-pass filter: y[n] = alpha * x[n] + (1 - alpha) * y[n-1]
+  float output = filter->alpha * input + (1.0f - filter->alpha) * filter->prev_output;
+
+  filter->prev_output = output;
+
+  return output;
+}
+
+void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int num_samples) {
+  if (!filter || !buffer || num_samples <= 0)
+    return;
+
+  for (int i = 0; i < num_samples; i++) {
+    buffer[i] = lowpass_filter_process_sample(filter, buffer[i]);
+  }
+}
+
+/* ============================================================================
  * Soft Clipping Implementation
  * ============================================================================
  */

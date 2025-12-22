@@ -225,6 +225,27 @@ typedef struct {
 } highpass_filter_t;
 
 /**
+ * @brief Low-pass filter state
+ *
+ * First-order IIR low-pass filter for removing high-frequency noise
+ * (hiss, electronic interference) while preserving voice clarity.
+ * Combined with high-pass filter creates voice-focused band-pass effect.
+ *
+ * @ingroup audio
+ */
+typedef struct {
+  /** @brief Cutoff frequency in Hz (frequencies above this are attenuated) */
+  float cutoff_hz;
+  /** @brief Sample rate in Hz (set during initialization) */
+  float sample_rate;
+
+  /** @brief Filter coefficient alpha (calculated from cutoff_hz) */
+  float alpha;
+  /** @brief Previous output sample (filter state) */
+  float prev_output;
+} lowpass_filter_t;
+
+/**
  * @brief Ducking system settings and state
  *
  * Implements active speaker detection and automatic ducking (attenuation)
@@ -774,6 +795,62 @@ float highpass_filter_process_sample(highpass_filter_t *filter, float input);
  * @ingroup audio
  */
 void highpass_filter_process_buffer(highpass_filter_t *filter, float *buffer, int num_samples);
+
+/** @} */
+
+/**
+ * @name Low-Pass Filter Functions
+ * @{
+ * @ingroup audio
+ */
+
+/**
+ * @brief Initialize a low-pass filter
+ * @param filter Low-pass filter structure
+ * @param cutoff_hz Cutoff frequency in Hz
+ * @param sample_rate Sample rate in Hz
+ *
+ * Initializes filter state and calculates filter coefficient alpha
+ * from cutoff frequency. Frequencies above cutoff are attenuated.
+ *
+ * @ingroup audio
+ */
+void lowpass_filter_init(lowpass_filter_t *filter, float cutoff_hz, float sample_rate);
+
+/**
+ * @brief Reset low-pass filter state
+ * @param filter Low-pass filter structure
+ *
+ * Resets filter state (prev_output) to zero.
+ *
+ * @ingroup audio
+ */
+void lowpass_filter_reset(lowpass_filter_t *filter);
+
+/**
+ * @brief Process a single sample through low-pass filter
+ * @param filter Low-pass filter structure
+ * @param input Input sample value
+ * @return Filtered output sample
+ *
+ * Processes input sample through first-order IIR low-pass filter.
+ * Filter state is updated for next sample.
+ *
+ * @ingroup audio
+ */
+float lowpass_filter_process_sample(lowpass_filter_t *filter, float input);
+
+/**
+ * @brief Process a buffer of samples through low-pass filter
+ * @param filter Low-pass filter structure
+ * @param buffer Audio buffer (modified in-place)
+ * @param num_samples Number of samples to process
+ *
+ * Processes entire buffer through low-pass filter. Buffer is modified in-place.
+ *
+ * @ingroup audio
+ */
+void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int num_samples);
 
 /** @} */
 
