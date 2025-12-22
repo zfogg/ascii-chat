@@ -509,7 +509,7 @@ Test(audio, audio_playback_operations) {
 
 Test(audio, audio_constants) {
   // Test that audio constants are sensible
-  cr_assert_eq(AUDIO_SAMPLE_RATE, 48000, "Sample rate should be 48kHz");
+  cr_assert_eq(AUDIO_SAMPLE_RATE, 48000, "Sample rate should be 48kHz for Opus compatibility");
   cr_assert_eq(AUDIO_CHANNELS, 1, "Should be mono audio");
   cr_assert_gt(AUDIO_FRAMES_PER_BUFFER, 0, "Frame buffer size should be positive");
   cr_assert_leq(AUDIO_FRAMES_PER_BUFFER, 2048, "Frame buffer should be reasonable size");
