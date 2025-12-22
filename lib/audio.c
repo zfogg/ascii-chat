@@ -82,8 +82,8 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // Note: We already hold the mutex from audio_ring_buffer_read(), so we can safely
       // check buffer state. But since read already returned, just log what we read.
       if (callback_count % 1000 == 0) {
-        log_debug("Audio output callback #%llu: samples_read=%d/%lu", callback_count,
-                  samples_read, framesPerBuffer * AUDIO_CHANNELS);
+        log_debug("Audio output callback #%llu: samples_read=%d/%lu", callback_count, samples_read,
+                  framesPerBuffer * AUDIO_CHANNELS);
       }
 
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {

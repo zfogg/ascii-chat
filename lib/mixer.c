@@ -53,7 +53,7 @@ static inline uint8_t mixer_hash_client_id(uint32_t client_id) {
   // XOR folding: fold 32 bits into 8 bits with mixing
   uint32_t hash = client_id;
   hash ^= (hash >> 16);
-  hash *= 0x85ebca6b;  // FNV-like prime multiplier
+  hash *= 0x85ebca6b; // FNV-like prime multiplier
   hash ^= (hash >> 13);
   hash *= 0xc2b2ae35;
   hash ^= (hash >> 16);
@@ -374,10 +374,10 @@ int mixer_add_source(mixer_t *mixer, uint32_t client_id, audio_ring_buffer_t *bu
   mixer->num_sources++;
 
   // OPTIMIZATION 1: Update bitset optimization structures
-  mixer->active_sources_mask |= (1ULL << slot);                      // Set bit for this slot
+  mixer->active_sources_mask |= (1ULL << slot); // Set bit for this slot
   uint8_t hash_idx = mixer_hash_client_id(client_id);
-  mixer->source_id_to_index[hash_idx] = (uint8_t)slot;               // Hash table: client_id → slot
-  mixer->source_id_at_hash[hash_idx] = client_id;                    // Store ID for collision detection
+  mixer->source_id_to_index[hash_idx] = (uint8_t)slot; // Hash table: client_id → slot
+  mixer->source_id_at_hash[hash_idx] = client_id;      // Store ID for collision detection
 
   rwlock_wrunlock(&mixer->source_lock);
 
@@ -400,10 +400,10 @@ void mixer_remove_source(mixer_t *mixer, uint32_t client_id) {
       mixer->num_sources--;
 
       // OPTIMIZATION 1: Update bitset optimization structures
-      mixer->active_sources_mask &= ~(1ULL << i);                   // Clear bit for this slot
+      mixer->active_sources_mask &= ~(1ULL << i); // Clear bit for this slot
       uint8_t hash_idx = mixer_hash_client_id(client_id);
-      mixer->source_id_to_index[hash_idx] = 0xFF;                   // Mark as invalid in hash table
-      mixer->source_id_at_hash[hash_idx] = 0;                       // Clear stored ID
+      mixer->source_id_to_index[hash_idx] = 0xFF; // Mark as invalid in hash table
+      mixer->source_id_at_hash[hash_idx] = 0;     // Clear stored ID
 
       // Reset ducking state for this source (with NULL safety)
       if (mixer->ducking.envelope) {
