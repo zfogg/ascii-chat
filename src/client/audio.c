@@ -80,6 +80,7 @@
 #include "common.h"
 #include "options.h"
 #include "platform/system.h" // For platform_memcpy
+#include "wav_writer.h"      // WAV file dumping for debugging
 
 #include <stdatomic.h>
 #include <string.h>
@@ -101,6 +102,19 @@
  * @ingroup client_audio
  */
 static audio_context_t g_audio_context = {0};
+
+/* ============================================================================
+ * Audio Debugging - WAV File Dumpers
+ * ============================================================================ */
+
+/** WAV writer for raw captured audio (before processing) */
+static wav_writer_t *g_wav_capture_raw = NULL;
+
+/** WAV writer for processed audio (after AGC/filters, before network) */
+static wav_writer_t *g_wav_capture_processed = NULL;
+
+/** WAV writer for received audio (from server, before playback) */
+static wav_writer_t *g_wav_playback_received = NULL;
 
 /* ============================================================================
  * Audio Capture Thread Management
@@ -171,13 +185,20 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     return;
   }
 
-  if (num_samples > AUDIO_SAMPLES_PER_PACKET) {
-    log_warn("Audio packet too large: %d samples", num_samples);
+  // Allow both single packets and batched packets
+  if (num_samples > AUDIO_BATCH_SAMPLES) {
+    log_warn("Audio packet too large: %d samples (max %d)", num_samples, AUDIO_BATCH_SAMPLES);
     return;
   }
 
+  // DUMP: Received audio from server (before playback processing)
+  if (g_wav_playback_received) {
+    wav_writer_write(g_wav_playback_received, samples, num_samples);
+  }
+
   // Apply volume boost and clipping protection
-  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
+  // Buffer must accommodate batched packets (up to AUDIO_BATCH_SAMPLES)
+  float audio_buffer[AUDIO_BATCH_SAMPLES];
   for (int i = 0; i < num_samples; i++) {
     audio_buffer[i] = samples[i] * AUDIO_VOLUME_BOOST;
     // Clamp to prevent distortion
@@ -248,6 +269,13 @@ static void *audio_capture_thread_func(void *arg) {
     // Initialize high-pass filter to remove DC offset and subsonic frequencies
     highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE);
 
+    // Initialize WAV dumpers if debugging enabled
+    if (wav_dump_enabled()) {
+      g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
+      g_wav_capture_processed = wav_writer_open("/tmp/audio_capture_processed.wav", AUDIO_SAMPLE_RATE, 1);
+      log_info("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
+    }
+
     processors_initialized = true;
   }
 
@@ -285,6 +313,10 @@ static void *audio_capture_thread_func(void *arg) {
     }
 
     if (samples_read > 0) {
+      // DUMP: Raw captured audio (before any processing)
+      if (g_wav_capture_raw) {
+        wav_writer_write(g_wav_capture_raw, audio_buffer, samples_read);
+      }
       // Log sample levels every 100 reads for debugging
       static int read_count = 0;
       read_count++;
@@ -333,6 +365,11 @@ static void *audio_capture_thread_func(void *arg) {
       // 3. Gentle soft clipping to prevent harsh distortion
       // Use higher threshold (0.98 vs 0.95) to reduce clipping artifacts
       soft_clip_buffer(audio_buffer, samples_read, 0.98F);
+
+      // DUMP: Processed audio (after all filtering, before network send)
+      if (g_wav_capture_processed) {
+        wav_writer_write(g_wav_capture_processed, audio_buffer, samples_read);
+      }
 
       // Copy processed samples to batch buffer using platform-safe memcpy
       size_t copy_size = samples_read * sizeof(float);
@@ -394,6 +431,14 @@ static void *audio_capture_thread_func(void *arg) {
 int audio_client_init() {
   if (!opt_audio_enabled) {
     return 0; // Audio disabled - not an error
+  }
+
+  // Initialize WAV dumper for received audio if debugging enabled
+  if (wav_dump_enabled()) {
+    g_wav_playback_received = wav_writer_open("/tmp/audio_playback_received.wav", AUDIO_SAMPLE_RATE, 1);
+    if (g_wav_playback_received) {
+      log_info("Audio debugging enabled: dumping received audio to /tmp/audio_playback_received.wav");
+    }
   }
 
   // Initialize PortAudio context using library function
@@ -517,6 +562,23 @@ void audio_cleanup() {
 
   // Stop capture thread
   audio_stop_thread();
+
+  // Close WAV dumpers
+  if (g_wav_capture_raw) {
+    wav_writer_close(g_wav_capture_raw);
+    g_wav_capture_raw = NULL;
+    log_info("Closed audio capture raw dump");
+  }
+  if (g_wav_capture_processed) {
+    wav_writer_close(g_wav_capture_processed);
+    g_wav_capture_processed = NULL;
+    log_info("Closed audio capture processed dump");
+  }
+  if (g_wav_playback_received) {
+    wav_writer_close(g_wav_playback_received);
+    g_wav_playback_received = NULL;
+    log_info("Closed audio playback received dump");
+  }
 
   // Stop audio playback and capture
   if (g_audio_context.initialized) {

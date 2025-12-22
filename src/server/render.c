@@ -819,58 +819,75 @@ void *client_audio_render_thread(void *arg) {
     // Debug logging every 100 iterations
     log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
+    // Always send audio packets, even if silent (samples_mixed == 0)
+    // This prevents buffer underruns on the client side which cause "scratchy" audio.
+    // When no audio is mixed, send zero-filled buffer to maintain continuous stream.
+    if (samples_mixed == 0) {
+      SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+    }
+
+    // BACKPRESSURE: Check queue depth before sending
+    // If queue is getting full, slow down to prevent drops over slow networks
+    size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+    bool apply_backpressure = (queue_depth > 250); // > 250 packets = 1.45s buffered
+
+    if (apply_backpressure) {
+      log_warn_every(1000000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
+                     client_id_snapshot, queue_depth, (float)queue_depth / 172.0f);
+      // Skip this packet to let the queue drain
+      platform_sleep_usec(5800);
+      continue;
+    }
+
     // Queue audio directly for this specific client using snapshot data
-    if (samples_mixed > 0) {
-      size_t data_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
-      int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO, mix_buffer, data_size, 0, true);
-      if (result < 0) {
-        log_debug("Failed to queue audio for client %u", client_id_snapshot);
-      } else {
-        // FPS tracking - audio packet successfully queued
-        audio_packet_count++;
+    size_t data_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
+    int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO, mix_buffer, data_size, 0, true);
+    if (result < 0) {
+      log_debug("Failed to queue audio for client %u", client_id_snapshot);
+    } else {
+      // FPS tracking - audio packet successfully queued
+      audio_packet_count++;
 
-        struct timespec current_time;
-        (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+      struct timespec current_time;
+      (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-        // Calculate time since last packet
-        uint64_t packet_interval_us =
-            ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-            ((uint64_t)last_audio_packet_time.tv_sec * 1000000 + (uint64_t)last_audio_packet_time.tv_nsec / 1000);
-        last_audio_packet_time = current_time;
+      // Calculate time since last packet
+      uint64_t packet_interval_us =
+          ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+          ((uint64_t)last_audio_packet_time.tv_sec * 1000000 + (uint64_t)last_audio_packet_time.tv_nsec / 1000);
+      last_audio_packet_time = current_time;
 
-        // Expected packet interval in microseconds (5800us for 172fps)
-        uint64_t expected_interval_us = 1000000 / expected_audio_fps;
-        uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
+      // Expected packet interval in microseconds (5800us for 172fps)
+      uint64_t expected_interval_us = 1000000 / expected_audio_fps;
+      uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
 
-        // Log warning if packet took too long to process
-        if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
-          log_warn_every(
-              1000000,
-              "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
-              "fps: %.1f)",
-              thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
-              (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
-              1000000.0f / packet_interval_us);
-        }
+      // Log warning if packet took too long to process
+      if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
+        log_warn_every(1000000,
+                       "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
+                       "fps: %.1f)",
+                       thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
+                       (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
+                       1000000.0f / packet_interval_us);
+      }
 
-        // Report FPS every 5 seconds
-        uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                              ((uint64_t)last_audio_fps_report_time.tv_sec * 1000000 +
-                               (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
+      // Report FPS every 5 seconds
+      uint64_t elapsed_us =
+          ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+          ((uint64_t)last_audio_fps_report_time.tv_sec * 1000000 + (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
 
-        if (elapsed_us >= 5000000) { // 5 seconds
-          float elapsed_seconds = (float)elapsed_us / 1000000.0f;
-          float actual_fps = (float)audio_packet_count / elapsed_seconds;
+      if (elapsed_us >= 5000000) { // 5 seconds
+        float elapsed_seconds = (float)elapsed_us / 1000000.0f;
+        float actual_fps = (float)audio_packet_count / elapsed_seconds;
 
-          char duration_str[32];
-          format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
-          log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %s)", thread_client_id, actual_fps,
-                    audio_packet_count, duration_str);
+        char duration_str[32];
+        format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
+        log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %s)", thread_client_id, actual_fps,
+                  audio_packet_count, duration_str);
 
-          // Reset counters for next interval
-          audio_packet_count = 0;
-          last_audio_fps_report_time = current_time;
-        }
+        // Reset counters for next interval
+        audio_packet_count = 0;
+        last_audio_fps_report_time = current_time;
       }
     }
 

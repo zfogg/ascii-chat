@@ -1242,6 +1242,14 @@ void *client_send_thread_func(void *arg) {
       }
 
       sent_something = true;
+
+      // BATCHING OPTIMIZATION: Sleep briefly after sending audio to allow more packets
+      // to accumulate in the queue for the next batch. This increases batch size from
+      // 2-3 packets to 4-8 packets, reducing encryption overhead further.
+      // 20ms delay allows ~3-4 more packets to queue (172fps = 5.8ms per packet)
+      if (audio_packet_count > 0) {
+        platform_sleep_usec(20000); // 20ms - allows batching 4-8 packets instead of 2-3
+      }
     }
 
     // Always consume frames from the buffer to prevent accumulation
@@ -1259,8 +1267,9 @@ void *client_send_thread_func(void *arg) {
 
     // Check if get_latest failed (buffer might have been destroyed)
     if (!frame) {
-      log_debug("Client %u send thread: video_frame_get_latest returned NULL, buffer may be destroyed", client->client_id);
-      break;  // Exit thread if buffer is invalid
+      log_debug("Client %u send thread: video_frame_get_latest returned NULL, buffer may be destroyed",
+                client->client_id);
+      break; // Exit thread if buffer is invalid
     }
 
     // Check if it's time to send a video frame (60fps rate limiting)
@@ -1292,8 +1301,8 @@ void *client_send_thread_func(void *arg) {
       }
 
       if (!frame->data) {
-        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame data: frame=%p, data=%p",
-                  client->client_id, frame, frame->data);
+        SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no valid frame data: frame=%p, data=%p", client->client_id, frame,
+                  frame->data);
         continue;
       }
 
@@ -1393,7 +1402,8 @@ void *client_send_thread_func(void *arg) {
                             ((uint64_t)step3.tv_sec * 1000000 + (uint64_t)step3.tv_nsec / 1000);
         uint64_t step5_us = ((uint64_t)step5.tv_sec * 1000000 + (uint64_t)step5.tv_nsec / 1000) -
                             ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000);
-        log_warn(
+        log_warn_every(
+            5000000,
             "SEND_THREAD: Frame send took %.2fms for client %u | Snapshot: %.2fms | Memcpy: %.2fms | CRC32: %.2fms | "
             "Header: %.2fms | send_packet_secure: %.2fms",
             frame_time_us / 1000.0, client->client_id, step1_us / 1000.0, step2_us / 1000.0, step3_us / 1000.0,

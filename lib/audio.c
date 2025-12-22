@@ -15,6 +15,11 @@
 #include <string.h>
 #include <math.h>
 
+#ifndef _WIN32
+#include <unistd.h> // For dup, dup2, close, STDERR_FILENO
+#include <fcntl.h>  // For O_WRONLY
+#endif
+
 // PortAudio initialization reference counter
 // Tracks how many audio contexts are using PortAudio to avoid conflicts
 static unsigned int g_pa_init_refcount = 0;
@@ -238,12 +243,39 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   // Initialize PortAudio with reference counting
   static_mutex_lock(&g_pa_refcount_mutex);
   if (g_pa_init_refcount == 0) {
+    // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
+    // These are harmless - PortAudio tries multiple backends until one works
+    int stderr_fd_backup = -1;
+    int devnull_fd = -1;
+#ifndef _WIN32
+    stderr_fd_backup = dup(STDERR_FILENO);
+    devnull_fd = platform_open("/dev/null", O_WRONLY, 0);
+    if (stderr_fd_backup >= 0 && devnull_fd >= 0) {
+      dup2(devnull_fd, STDERR_FILENO);
+    }
+#endif
+
     PaError err = Pa_Initialize();
+
+    // Restore stderr IMMEDIATELY so real errors are visible
+#ifndef _WIN32
+    if (stderr_fd_backup >= 0) {
+      dup2(stderr_fd_backup, STDERR_FILENO);
+      close(stderr_fd_backup);
+    }
+    if (devnull_fd >= 0) {
+      close(devnull_fd);
+    }
+#endif
+
     if (err != paNoError) {
       static_mutex_unlock(&g_pa_refcount_mutex);
       mutex_destroy(&ctx->state_mutex);
+      // stderr is restored, so this error will be visible
       return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
     }
+
+    log_debug("PortAudio initialized successfully (probe warnings suppressed)");
   }
   g_pa_init_refcount++;
   static_mutex_unlock(&g_pa_refcount_mutex);
@@ -551,7 +583,31 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
 
   // Initialize PortAudio only if not already initialized
   if (!pa_was_initialized) {
+    // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
+    // These are harmless - PortAudio tries multiple backends until one works
+    int stderr_fd_backup = -1;
+    int devnull_fd = -1;
+#ifndef _WIN32
+    stderr_fd_backup = dup(STDERR_FILENO);
+    devnull_fd = platform_open("/dev/null", O_WRONLY, 0);
+    if (stderr_fd_backup >= 0 && devnull_fd >= 0) {
+      dup2(devnull_fd, STDERR_FILENO);
+    }
+#endif
+
     PaError err = Pa_Initialize();
+
+    // Restore stderr
+#ifndef _WIN32
+    if (stderr_fd_backup >= 0) {
+      dup2(stderr_fd_backup, STDERR_FILENO);
+      close(stderr_fd_backup);
+    }
+    if (devnull_fd >= 0) {
+      close(devnull_fd);
+    }
+#endif
+
     if (err != paNoError) {
       static_mutex_unlock(&g_pa_refcount_mutex);
       return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
