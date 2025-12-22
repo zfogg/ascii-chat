@@ -83,6 +83,7 @@
 #include "keepalive.h"
 
 #include "network/packet.h"
+#include "network/av.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "options.h"
@@ -705,65 +706,68 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Parse batch header (uint32_t: batch_count, then frame_sizes for each frame, then Opus data)
-  if (len < sizeof(uint32_t)) {
-    log_warn("Opus batch packet too small: %zu bytes", len);
+  // Parse Opus batch packet using the proper AV parsing function
+  // Packet format: [sample_rate:4][frame_duration:4][frame_count:4][reserved:4][frame_sizes:n*2][opus_data]
+  const uint8_t *opus_data = NULL;
+  size_t opus_size = 0;
+  const uint16_t *frame_sizes = NULL;
+  int sample_rate = 0;
+  int frame_duration = 0;
+  int frame_count = 0;
+
+  int result = av_receive_audio_opus_batch(data, len, &opus_data, &opus_size, &frame_sizes, &sample_rate,
+                                           &frame_duration, &frame_count);
+
+  if (result < 0) {
+    log_warn("Failed to parse AUDIO_OPUS_BATCH packet");
     return;
   }
 
-  uint32_t batch_count;
-  SAFE_MEMCPY(&batch_count, sizeof(batch_count), data, sizeof(batch_count));
-  batch_count = ntohl(batch_count);
-
-  if (batch_count == 0 || batch_count > 256) {
-    log_warn("Invalid Opus batch count: %u", batch_count);
+  if (frame_count <= 0 || opus_size == 0) {
+    log_warn("AUDIO_OPUS_BATCH empty (frame_count=%d, opus_size=%zu)", frame_count, opus_size);
     return;
   }
 
-  // Allocate buffer for all decoded samples (max 2880 * batch_count)
-  size_t max_decoded_samples = 2880 * batch_count;
-  float *all_samples = SAFE_MALLOC(max_decoded_samples * sizeof(float), float *);
+  // Calculate samples per frame (e.g., 20ms @ 48kHz = 960 samples)
+  int samples_per_frame = (sample_rate * frame_duration) / 1000;
+  if (samples_per_frame <= 0 || samples_per_frame > 4096) {
+    log_warn("AUDIO_OPUS_BATCH invalid frame size (samples_per_frame=%d)", samples_per_frame);
+    return;
+  }
+
+  // Allocate buffer for all decoded samples
+  size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
+  float *all_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
   if (!all_samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for Opus batch decoding");
     return;
   }
 
+  // Decode each Opus frame using frame_sizes array
   int total_decoded_samples = 0;
+  size_t opus_offset = 0;
 
-  // Parse frame sizes and data
-  const uint8_t *ptr = (const uint8_t *)data + sizeof(uint32_t);
-  size_t remaining = len - sizeof(uint32_t);
+  for (int i = 0; i < frame_count; i++) {
+    // Get exact frame size from frame_sizes array (convert from network byte order)
+    size_t frame_size = (size_t)ntohs(frame_sizes[i]);
 
-  for (uint32_t i = 0; i < batch_count; i++) {
-    // Read frame size (uint16_t network byte order)
-    if (remaining < sizeof(uint16_t)) {
-      log_warn("Opus batch truncated at frame %u", i);
-      break;
-    }
-
-    uint16_t frame_size_net;
-    SAFE_MEMCPY(&frame_size_net, sizeof(frame_size_net), ptr, sizeof(frame_size_net));
-    uint16_t frame_size = ntohs(frame_size_net);
-    ptr += sizeof(uint16_t);
-    remaining -= sizeof(uint16_t);
-
-    if (frame_size == 0 || frame_size > remaining) {
-      log_warn("Invalid Opus frame size: %u", frame_size);
+    if (opus_offset + frame_size > opus_size) {
+      log_warn("Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)", i + 1, opus_offset, frame_size,
+               opus_size);
       break;
     }
 
     // Decode frame
     float *frame_buffer = all_samples + total_decoded_samples;
-    int decoded = opus_codec_decode(decoder, ptr, frame_size, frame_buffer, 2880 - total_decoded_samples);
+    int decoded = opus_codec_decode(decoder, &opus_data[opus_offset], frame_size, frame_buffer, samples_per_frame);
 
-    if (decoded <= 0) {
-      log_warn("Failed to decode Opus frame %u in batch, decoded=%d", i, decoded);
+    if (decoded < 0) {
+      log_warn("Failed to decode Opus frame %d/%d (size=%zu)", i + 1, frame_count, frame_size);
       break;
     }
 
     total_decoded_samples += decoded;
-    ptr += frame_size;
-    remaining -= frame_size;
+    opus_offset += frame_size;
   }
 
   if (total_decoded_samples > 0) {
@@ -775,8 +779,8 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     // Process decoded audio through audio subsystem
     audio_process_received_samples(all_samples, total_decoded_samples);
 
-    log_debug_every(5000000, "Processed Opus batch: %d decoded samples from %u frames", total_decoded_samples,
-                    batch_count);
+    log_debug_every(5000000, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
+                    frame_count);
   }
 
   // Clean up
