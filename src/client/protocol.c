@@ -664,23 +664,9 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
     return;
   }
 
-  // Parse Opus packet header using av_receive_audio_opus for consistency
-  // Packet format: [sample_rate:4][frame_duration:4][reserved:8][opus_data:...]
-  const uint8_t *opus_data = NULL;
-  size_t opus_size = 0;
-  int sample_rate = 0;
-  int frame_duration = 0;
-
-  int result = av_receive_audio_opus(data, len, &opus_data, &opus_size, &sample_rate, &frame_duration);
-  if (result < 0) {
-    log_warn("Failed to parse Opus audio packet header");
-    return;
-  }
-
-  if (opus_size == 0 || !opus_data) {
-    log_warn("Empty Opus audio data after header parse");
-    return;
-  }
+  // Data is raw Opus-encoded frame (no header parsing needed)
+  const uint8_t *opus_data = (const uint8_t *)data;
+  size_t opus_size = len;
 
   // Opus max frame size is 2880 samples (120ms @ 48kHz)
   float samples[2880];
@@ -699,8 +685,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   // Process decoded audio through audio subsystem
   audio_process_received_samples(samples, decoded_samples);
 
-  log_debug_every(5000000, "Processed Opus audio: %d decoded samples (sample_rate=%d, duration=%dms)", decoded_samples,
-                  sample_rate, frame_duration);
+  log_debug_every(5000000, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, opus_size);
 }
 
 /**
