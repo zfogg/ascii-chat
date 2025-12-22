@@ -13,6 +13,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include "opus_codec.h"
 
 /**
  * @brief Process received audio samples from server
@@ -60,3 +61,11 @@ bool audio_thread_exited();
  * @ingroup client_audio
  */
 void audio_cleanup();
+
+/**
+ * @brief Get Opus decoder for receiving server audio
+ * @return Pointer to Opus decoder, or NULL if not initialized
+ *
+ * @ingroup client_audio
+ */
+opus_codec_t *audio_get_opus_decoder(void);

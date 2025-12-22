@@ -112,11 +112,11 @@ typedef struct {
  * @{
  */
 
-/** @brief Audio ring buffer size in samples (~1.7s @ 48kHz, 4x Opus batch) */
-#define AUDIO_RING_BUFFER_SIZE (960 * 20 * 4)
+/** @brief Audio ring buffer size in samples (81920 samples = ~1.7s @ 48kHz, 4x Opus batch) */
+#define AUDIO_RING_BUFFER_SIZE (256 * 320)
 
-/** @brief Jitter buffer threshold (wait for one full Opus batch = 400ms before starting playback) */
-#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 20)
+/** @brief Jitter buffer threshold (wait for ~5.3ms before starting playback = 256 samples @ 48kHz) */
+#define AUDIO_JITTER_BUFFER_THRESHOLD (256 * 1)
 
 /** @} */
 
