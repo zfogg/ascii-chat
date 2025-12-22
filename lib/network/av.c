@@ -454,6 +454,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
     memcpy(sample_data_ptr + (size_t)i * sizeof(uint32_t), &network_value, sizeof(uint32_t));
   }
 
+#ifndef NDEBUG
   // Debug: Log first few samples to verify conversion
   static int send_count = 0;
   send_count++;
@@ -463,6 +464,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
     log_info("SEND: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", (int32_t)(samples[0] * 2147483647.0f),
              (int32_t)(samples[1] * 2147483647.0f), (int32_t)(samples[2] * 2147483647.0f));
   }
+#endif
 
   // Send packet with encryption support
   int result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);

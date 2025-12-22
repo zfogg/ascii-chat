@@ -1015,6 +1015,7 @@ void *client_receive_thread(void *arg) {
     case PACKET_TYPE_IMAGE_FRAME:
     case PACKET_TYPE_AUDIO:
     case PACKET_TYPE_AUDIO_BATCH:
+    case PACKET_TYPE_AUDIO_OPUS:
     case PACKET_TYPE_AUDIO_OPUS_BATCH:
     case PACKET_TYPE_CLIENT_CAPABILITIES:
     case PACKET_TYPE_PING:
@@ -1733,6 +1734,47 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_AUDIO_BATCH:
     handle_audio_batch_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_AUDIO_OPUS:
+    // Single-frame Opus packet: 16-byte header (sample_rate + frame_duration + reserved) + Opus data
+    // Extract metadata and forward to mixer
+    if (len >= 16) {
+      const uint8_t *payload = (const uint8_t *)data;
+      int sample_rate = (int)ntohl(*(uint32_t *)payload);
+      int frame_duration = (int)ntohl(*(uint32_t *)(payload + 4));
+      // Reserved bytes at offset 8-15
+      size_t opus_size = len - 16;
+
+      if (opus_size > 0 && opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
+        // Create a synthetic Opus batch packet (frame_count=1) and process it
+        // This reuses the batch handler logic
+        uint8_t batch_buffer[1024 + 20]; // Max Opus + header
+        uint8_t *batch_ptr = batch_buffer;
+
+        // Write batch header
+        *(uint32_t *)batch_ptr = htonl((uint32_t)sample_rate);
+        batch_ptr += 4;
+        *(uint32_t *)batch_ptr = htonl((uint32_t)frame_duration);
+        batch_ptr += 4;
+        *(uint32_t *)batch_ptr = htonl(1); // frame_count = 1
+        batch_ptr += 4;
+        memset(batch_ptr, 0, 4); // reserved
+        batch_ptr += 4;
+
+        // Write frame size
+        *(uint16_t *)batch_ptr = htons((uint16_t)opus_size);
+        batch_ptr += 2;
+
+        // Write Opus data
+        memcpy(batch_ptr, payload + 16, opus_size);
+        batch_ptr += opus_size;
+
+        // Process as batch packet
+        size_t batch_size = (size_t)(batch_ptr - batch_buffer);
+        handle_audio_opus_batch_packet(client, batch_buffer, batch_size);
+      }
+    }
     break;
 
   case PACKET_TYPE_AUDIO_OPUS_BATCH:
