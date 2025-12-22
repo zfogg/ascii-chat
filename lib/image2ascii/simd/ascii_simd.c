@@ -517,8 +517,8 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
 
   // Use synthetic gradient data for consistent cross-platform benchmarking
   printf("Using coherent gradient data for realistic color testing\n");
-  srand(12345); // For consistent gradient variation across runs //
-                // NOLINT(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
+  // NOLINTNEXTLINE(bugprone-random-generator-seed)
+  srand(12345); // For consistent gradient variation across runs
   for (int i = 0; i < pixel_count; i++) {
     int x = i % width;
     int y = i / width;
@@ -907,8 +907,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     printf("Using synthetic gradient data for COLOR %s %dx%d benchmarking with %d iterations...\n", mode_str, width,
            height, adaptive_iterations);
 
-    srand(
-        12345); // Consistent results across runs // NOLINT(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
+    // NOLINTNEXTLINE(bugprone-random-generator-seed)
+    srand(12345); // Consistent results across runs
     for (int i = 0; i < pixel_count; i++) {
       int x = i % width;
       int y = i / width;

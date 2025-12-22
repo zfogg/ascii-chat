@@ -77,6 +77,7 @@ static inline uint32_t fnv1a_hash_bytes(const void *data, size_t len) {
   uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *bytes = (const unsigned char *)data;
 
+  // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult)
   for (size_t i = 0; i < len; i++) {
     FNV1A_32_HASH(hash, bytes[i]);
   }
@@ -103,6 +104,7 @@ static inline uint32_t fnv1a_hash_string(const char *str) {
   uint64_t hash = FNV1A_32_OFFSET_BASIS;
   const unsigned char *p = (const unsigned char *)str;
 
+  // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult)
   while (*p) {
     FNV1A_32_HASH(hash, *p++);
   }
@@ -146,6 +148,7 @@ static inline uint32_t fnv1a_hash_uint64(uint64_t value) {
   uint64_t hash = FNV1A_32_OFFSET_BASIS;
 
   // Hash each byte of the 64-bit value
+  // NOLINTNEXTLINE(clang-analyzer-core.UndefinedBinaryOperatorResult)
   for (int i = 0; i < 8; i++) {
     FNV1A_32_HASH(hash, (value >> (i * 8)) & FNV1A_32_MASK);
   }
