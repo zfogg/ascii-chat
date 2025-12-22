@@ -884,6 +884,29 @@ extern ASCIICHAT_API int opt_audio_device;
  */
 extern ASCIICHAT_API unsigned short int opt_audio_analysis_enabled;
 
+/** @brief Audio jitter buffer size in milliseconds
+ *
+ * Controls how much audio is buffered before playback begins. Higher values
+ * provide more resilience against network jitter but add latency.
+ *
+ * **Default**: `100` (100ms - good balance for typical networks)
+ *
+ * **Command-line**: `--audio-jitter-buffer <ms>` (set jitter buffer size)
+ *
+ * **Recommended values**:
+ * - 50ms: Low latency, requires stable network
+ * - 100ms: Good balance (default)
+ * - 200ms: High latency tolerance, poor network conditions
+ *
+ * **Example**: `--audio-jitter-buffer 150` (use 150ms jitter buffer)
+ *
+ * @note Higher values = more latency but less stuttering
+ * @note Lower values = less latency but more stuttering on jittery networks
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API int opt_audio_jitter_buffer_ms;
+
 /** @} */
 
 /**

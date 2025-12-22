@@ -25,6 +25,24 @@
 static unsigned int g_pa_init_refcount = 0;
 static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 
+/**
+ * @brief Get the jitter buffer threshold in samples from runtime option
+ *
+ * Converts opt_audio_jitter_buffer_ms (milliseconds) to samples at the current sample rate.
+ * Falls back to AUDIO_JITTER_BUFFER_THRESHOLD if the option value is invalid.
+ *
+ * @return Number of samples for the jitter buffer threshold
+ */
+static inline int get_jitter_buffer_threshold_samples(void) {
+  int ms = opt_audio_jitter_buffer_ms;
+  if (ms < 10 || ms > 500) {
+    // Invalid value, use default
+    return AUDIO_JITTER_BUFFER_THRESHOLD;
+  }
+  // Convert ms to samples: samples = (ms * sample_rate) / 1000
+  return (ms * AUDIO_SAMPLE_RATE) / 1000;
+}
+
 static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
   (void)outputBuffer;
@@ -130,6 +148,40 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
 }
 
+/* ============================================================================
+ * Internal Ring Buffer Helper Functions (must be before write/read functions)
+ * ============================================================================
+ */
+
+/**
+ * @brief Internal helper to calculate available samples for reading (assumes lock held)
+ *
+ * This is an internal function used by other ring buffer operations that already
+ * hold the mutex. Do NOT call this from external code - use audio_ring_buffer_available_read() instead.
+ */
+static inline size_t audio_ring_buffer_available_read_locked(audio_ring_buffer_t *rb) {
+  int write_idx = rb->write_index;
+  int read_idx = rb->read_index;
+
+  if (write_idx >= read_idx) {
+    return (size_t)(write_idx - read_idx);
+  }
+
+  return (size_t)(AUDIO_RING_BUFFER_SIZE - read_idx + write_idx);
+}
+
+/**
+ * @brief Internal helper to calculate available space for writing (assumes lock held)
+ */
+static inline size_t audio_ring_buffer_available_write_locked(audio_ring_buffer_t *rb) {
+  return AUDIO_RING_BUFFER_SIZE - audio_ring_buffer_available_read_locked(rb) - 1;
+}
+
+/* ============================================================================
+ * Ring Buffer Write/Read Functions
+ * ============================================================================
+ */
+
 asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples) {
   if (!rb || !data || samples <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: rb=%p, data=%p, samples=%d", rb, data, samples);
@@ -142,36 +194,51 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   mutex_lock(&rb->mutex);
 
-  int available = audio_ring_buffer_available_write(rb);
+  int available = (int)audio_ring_buffer_available_write_locked(rb);
 
-  // If we need more space than available, drop old samples by advancing read index
+  // If we don't have enough space, drop INCOMING samples instead of old ones
+  // This preserves audio continuity - dropping old samples creates discontinuities
+  // that sound like clicks/pops/static. Dropping new samples just means we miss
+  // the latest audio, which is less disruptive perceptually.
+  int samples_to_write = samples;
   if (samples > available) {
     int samples_to_drop = samples - available;
-    rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
-    // Now we have enough space to write all samples
+    samples_to_write = available;
+    // Log overflow condition (rate-limited to avoid spam)
+    log_warn_every(1000000, "Audio ring buffer overflow: dropping %d incoming samples (buffer full, available=%d)",
+                   samples_to_drop, available);
+
+    // If no space at all, just return without writing
+    if (samples_to_write <= 0) {
+      mutex_unlock(&rb->mutex);
+      return ASCIICHAT_OK; // Not an error - just flow control
+    }
   }
 
-  // Write all samples (we've made room if needed)
+  // Write samples (may be fewer than requested if buffer was nearly full)
   int write_idx = rb->write_index;
   int remaining = AUDIO_RING_BUFFER_SIZE - write_idx;
 
-  if (samples <= remaining) {
+  if (samples_to_write <= remaining) {
     // Can copy in one chunk
-    SAFE_MEMCPY(&rb->data[write_idx], samples * sizeof(float), data, samples * sizeof(float));
+    SAFE_MEMCPY(&rb->data[write_idx], samples_to_write * sizeof(float), data, samples_to_write * sizeof(float));
   } else {
     // Need to wrap around - copy in two chunks
     SAFE_MEMCPY(&rb->data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
-    SAFE_MEMCPY(&rb->data[0], (samples - remaining) * sizeof(float), &data[remaining],
-                (samples - remaining) * sizeof(float));
+    SAFE_MEMCPY(&rb->data[0], (samples_to_write - remaining) * sizeof(float), &data[remaining],
+                (samples_to_write - remaining) * sizeof(float));
   }
 
-  rb->write_index = (write_idx + samples) % AUDIO_RING_BUFFER_SIZE;
+  rb->write_index = (write_idx + samples_to_write) % AUDIO_RING_BUFFER_SIZE;
 
   // Check if jitter buffer threshold has been reached
   if (!rb->jitter_buffer_filled) {
-    int available_to_read = audio_ring_buffer_available_read(rb);
-    if (available_to_read >= AUDIO_JITTER_BUFFER_THRESHOLD) {
+    size_t available_to_read = audio_ring_buffer_available_read_locked(rb);
+    int threshold = get_jitter_buffer_threshold_samples();
+    if ((int)available_to_read >= threshold) {
       rb->jitter_buffer_filled = true;
+      log_debug("Audio jitter buffer filled: %zu samples buffered (threshold=%d, %dms)",
+                available_to_read, threshold, opt_audio_jitter_buffer_ms);
     }
   }
 
@@ -193,7 +260,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     return 0; // Return silence until buffer is filled
   }
 
-  size_t available = audio_ring_buffer_available_read(rb);
+  size_t available = audio_ring_buffer_available_read_locked(rb);
   size_t to_read = (samples > available) ? available : samples;
 
   // Optimize: copy in chunks instead of one sample at a time
@@ -216,19 +283,21 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   return to_read; // Return number of samples actually read
 }
 
+/* ============================================================================
+ * Public Ring Buffer Query Functions (thread-safe)
+ * ============================================================================
+ */
+
 size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   if (!rb)
     return 0;
 
-  // Note: This function must be called with mutex already locked
-  int write_idx = rb->write_index;
-  int read_idx = rb->read_index;
+  // Thread-safe: acquire mutex before reading indices
+  mutex_lock(&rb->mutex);
+  size_t available = audio_ring_buffer_available_read_locked(rb);
+  mutex_unlock(&rb->mutex);
 
-  if (write_idx >= read_idx) {
-    return write_idx - read_idx;
-  }
-
-  return AUDIO_RING_BUFFER_SIZE - read_idx + write_idx;
+  return available;
 }
 
 size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
@@ -237,7 +306,12 @@ size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb) {
     return 0;
   }
 
-  return AUDIO_RING_BUFFER_SIZE - audio_ring_buffer_available_read(rb) - 1;
+  // Thread-safe: acquire mutex before reading indices
+  mutex_lock(&rb->mutex);
+  size_t available = audio_ring_buffer_available_write_locked(rb);
+  mutex_unlock(&rb->mutex);
+
+  return available;
 }
 
 asciichat_error_t audio_init(audio_context_t *ctx) {

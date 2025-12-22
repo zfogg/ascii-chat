@@ -916,24 +916,24 @@ void *client_audio_render_thread(void *arg) {
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
       // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
-      // Only check periodically every 100 iterations (~0.6s at 172 fps)
+      // Only check periodically every 100 iterations (~0.5s at 188 fps)
       static int backpressure_check_counter = 0;
       bool apply_backpressure = false;
 
       if (++backpressure_check_counter >= 100) {
         backpressure_check_counter = 0;
         size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-        apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
+        apply_backpressure = (queue_depth > 1000); // > 1000 packets = ~5.3s buffered
 
         if (apply_backpressure) {
           log_warn("Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)", client_id_snapshot,
-                   queue_depth, (float)queue_depth / 172.0f);
+                   queue_depth, (float)queue_depth / (float)AUDIO_RENDER_FPS);
         }
       }
 
       if (apply_backpressure) {
         // Skip this packet to let the queue drain
-        platform_sleep_usec(5800);
+        platform_sleep_usec(5333); // One loop interval at 188fps
         continue;
       }
 
@@ -1037,18 +1037,22 @@ void *client_audio_render_thread(void *arg) {
       opus_frame_accumulated = 0;
     }
 
-    // Audio mixing rate - 5.8ms to match buffer size
-    // Calculate elapsed time and sleep for remainder to maintain constant FPS
+    // Audio mixing rate - must match sample production rate to avoid buffer issues
+    // Calculate elapsed time and sleep for remainder to maintain constant rate
     struct timespec loop_end_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &loop_end_time);
 
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target loop time: 10ms (two iterations per Opus frame)
-    // Balances between fast ring buffer consumption and accumulation time
-    // Too fast (5.3ms) = frequent empty reads; too slow (20ms) = buffer accumulation issues
-    const uint64_t target_loop_us = 10000; // 10ms = reasonable compromise
+    // Target loop time: 5333us (5.33ms) to match audio sample rate
+    // At 48kHz with 256 samples per read: 256/48000 = 0.00533s = 5.33ms
+    // This ensures we consume audio at the same rate it's produced by clients,
+    // preventing ring buffer overflow/underflow issues.
+    //
+    // Previous value (10ms) was too slow - only consumed at half the production rate,
+    // causing ring buffer overflow and audio stuttering/static.
+    const uint64_t target_loop_us = 5333; // 5.33ms = matches 256 samples @ 48kHz
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {

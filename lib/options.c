@@ -154,6 +154,7 @@ ASCIICHAT_API unsigned short int opt_force_utf8 = 0;                  // Don't f
 ASCIICHAT_API unsigned short int opt_audio_enabled = 0;
 ASCIICHAT_API int opt_audio_device = -1; // -1 means use default device
 ASCIICHAT_API unsigned short int opt_audio_analysis_enabled = 0;
+ASCIICHAT_API int opt_audio_jitter_buffer_ms = 100; // Default 100ms jitter buffer
 
 // Allow stretching/shrinking without preserving aspect ratio when set via -s/--stretch
 ASCIICHAT_API unsigned short int opt_stretch = 0;
@@ -248,6 +249,7 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"audio", no_argument, NULL, 'A'},
                                          {"audio-device", required_argument, NULL, 1007},
                                          {"audio-analysis", no_argument, NULL, 1025},
+                                         {"audio-jitter-buffer", required_argument, NULL, 1027},
                                          {"stretch", no_argument, NULL, 's'},
                                          {"quiet", no_argument, NULL, 'q'},
                                          {"snapshot", no_argument, NULL, 'S'},
@@ -1286,6 +1288,15 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_audio_analysis_enabled = 1;
       break;
 
+    case 1027: // --audio-jitter-buffer
+      opt_audio_jitter_buffer_ms = atoi(optarg);
+      if (opt_audio_jitter_buffer_ms < 10 || opt_audio_jitter_buffer_ms > 500) {
+        safe_fprintf(stderr, "Error: Audio jitter buffer must be between 10 and 500 ms (got %d)\n",
+                     opt_audio_jitter_buffer_ms);
+        return -1;
+      }
+      break;
+
     case 'q':
       opt_quiet = 1;
       break;
@@ -1823,6 +1834,8 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "enable audio capture and playback (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --audio-analysis          " USAGE_INDENT
                                    "track and report audio quality metrics (with --audio) (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --audio-jitter-buffer MS  " USAGE_INDENT
+                                   "audio jitter buffer size in milliseconds (default: 100)\n");
   (void)fprintf(desc, USAGE_INDENT "-s --stretch                 " USAGE_INDENT "stretch or shrink video to fit "
                                    "(ignore aspect ratio) (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "-q --quiet                   " USAGE_INDENT
