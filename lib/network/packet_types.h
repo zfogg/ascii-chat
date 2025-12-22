@@ -195,26 +195,26 @@
  *
  * @ingroup packet
  */
-#define AUDIO_BATCH_COUNT 4
+#define AUDIO_BATCH_COUNT 32
 
 /**
- * @brief Total samples in audio batch (1024 samples)
+ * @brief Total samples in audio batch (8192 samples)
  *
  * Total audio samples across all chunks in a batch. At 44.1kHz,
- * this equals ~23.2ms of audio.
+ * this equals ~185.8ms of audio.
  *
  * @ingroup packet
  */
 #define AUDIO_BATCH_SAMPLES (AUDIO_SAMPLES_PER_PACKET * AUDIO_BATCH_COUNT)
 
 /**
- * @brief Audio batch duration in milliseconds (~23ms)
+ * @brief Audio batch duration in milliseconds (~186ms)
  *
  * Approximate duration of audio batch at 44.1kHz sample rate.
  *
  * @ingroup packet
  */
-#define AUDIO_BATCH_MS 23
+#define AUDIO_BATCH_MS 186
 
 /**
  * @brief Samples per audio packet (256 samples)
@@ -715,18 +715,18 @@ PACKED_ATTR /** @endcond */ image_frame_packet_t;
  * @brief Audio batch packet structure (Packet Type 28)
  *
  * Contains multiple audio chunks batched together for efficiency.
- * Reduces packet overhead by aggregating 4 chunks (1024 samples) per packet.
+ * Reduces packet overhead by aggregating 32 chunks (8192 samples) per packet.
  *
  * @note Audio samples follow this header in the packet payload.
  * @note Format: float samples[total_samples] (interleaved if stereo)
- * @note At 44.1kHz, this represents ~23ms of audio per batch.
+ * @note At 44.1kHz, this represents ~186ms of audio per batch.
  *
  * @ingroup packet
  */
 typedef struct {
-  /** @brief Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT = 4) */
+  /** @brief Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT = 32) */
   uint32_t batch_count;
-  /** @brief Total audio samples across all chunks (typically 1024) */
+  /** @brief Total audio samples across all chunks (typically 8192) */
   uint32_t total_samples;
   /** @brief Sample rate in Hz (e.g., 44100, 48000) */
   uint32_t sample_rate;

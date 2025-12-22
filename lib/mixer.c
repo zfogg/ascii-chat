@@ -449,17 +449,21 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
             audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
         int samples_read = (int)samples_read_size;
 
-        // If we didn't get enough samples, pad with silence
-        if (samples_read < frame_size) {
-          SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
-                      (frame_size - samples_read) * sizeof(float));
+        // Accept partial frames - pad with silence if needed
+        // This prevents audio dropouts when ring buffers are temporarily under-filled
+        if (samples_read > 0) {
+          // Pad remaining samples with silence if we got a partial frame
+          if (samples_read < frame_size) {
+            SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
+                        (frame_size - samples_read) * sizeof(float));
+          }
+
+          source_map[source_count] = i;
+          source_count++;
+
+          if (source_count >= MIXER_MAX_SOURCES)
+            break;
         }
-
-        source_map[source_count] = i;
-        source_count++;
-
-        if (source_count >= MIXER_MAX_SOURCES)
-          break;
       }
     }
 
@@ -564,14 +568,18 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
             audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
         int samples_read = (int)samples_read_size;
 
-        // If we didn't get enough samples, pad with silence
-        if (samples_read < frame_size) {
-          SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
-                      (frame_size - samples_read) * sizeof(float));
-        }
+        // Accept partial frames - pad with silence if needed
+        // This prevents audio dropouts when ring buffers are temporarily under-filled
+        if (samples_read > 0) {
+          // Pad remaining samples with silence if we got a partial frame
+          if (samples_read < frame_size) {
+            SAFE_MEMSET(&source_samples[source_count][samples_read], (frame_size - samples_read) * sizeof(float), 0,
+                        (frame_size - samples_read) * sizeof(float));
+          }
 
-        source_map[source_count] = i;
-        source_count++;
+          source_map[source_count] = i;
+          source_count++;
+        }
       }
     }
 
