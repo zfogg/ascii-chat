@@ -104,7 +104,7 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
   }
 
   // Find the corresponding node
-  size_t index = (size_t)((ptrdiff_t)(buffer - pool_start) / (ptrdiff_t)(ssize_t)pool->buffer_size);
+  size_t index = (size_t)((buffer - pool_start) / (ptrdiff_t)pool->buffer_size);
   if (index >= pool->pool_size) {
     return false;
   }
