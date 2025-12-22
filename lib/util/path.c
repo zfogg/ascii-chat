@@ -435,8 +435,70 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
     return SET_ERRNO(map_role_to_error(role), "Path is empty for role %d", role);
   }
 
-  // For log files, allow simple filenames (e.g., "trace.log") without path separators
-  // They will be treated as relative to the current directory
+  // SECURITY: For log files, if input is a simple filename (no separators or ..), constrain it to a safe directory
+  if (role == PATH_ROLE_LOG_FILE) {
+    // Check if input contains path separators or parent directory references
+    bool is_simple_filename = true;
+    for (const char *p = input; *p; p++) {
+      if (*p == PATH_DELIM || *p == '/' || *p == '\\') {
+        is_simple_filename = false;
+        break;
+      }
+    }
+    // Also reject ".." components (even without separators like "..something")
+    if (strstr(input, "..") != NULL) {
+      is_simple_filename = false;
+    }
+
+    // If it's a simple filename, resolve it to a safe base directory
+    if (is_simple_filename) {
+      // Use config dir if available, otherwise current directory
+      char *config_dir = get_config_dir();
+      char safe_base[PLATFORM_MAX_PATH_LENGTH];
+
+      if (config_dir) {
+        SAFE_STRNCPY(safe_base, config_dir, sizeof(safe_base));
+        SAFE_FREE(config_dir);
+      } else {
+        // Fallback to current working directory
+        if (!platform_get_cwd(safe_base, sizeof(safe_base))) {
+          return SET_ERRNO(ERROR_LOGGING_INIT, "Failed to determine safe directory for log file");
+        }
+      }
+
+      // Build the full path: safe_base + separator + input
+      size_t base_len = strlen(safe_base);
+      size_t input_len = strlen(input);
+      bool needs_sep = base_len > 0 && safe_base[base_len - 1] != PATH_DELIM;
+      size_t total_len = base_len + (needs_sep ? 1 : 0) + input_len + 1;
+
+      if (total_len > PLATFORM_MAX_PATH_LENGTH) {
+        return SET_ERRNO(ERROR_LOGGING_INIT, "Log file path too long: %s/%s", safe_base, input);
+      }
+
+      char resolved_buf[PLATFORM_MAX_PATH_LENGTH];
+      safe_snprintf(resolved_buf, sizeof(resolved_buf), "%s%s%s", safe_base, needs_sep ? PATH_SEPARATOR_STR : "",
+                    input);
+
+      // Normalize the resolved path
+      char normalized_buf[PLATFORM_MAX_PATH_LENGTH];
+      if (!path_normalize_copy(resolved_buf, normalized_buf, sizeof(normalized_buf))) {
+        return SET_ERRNO(ERROR_LOGGING_INIT, "Failed to normalize log file path: %s", resolved_buf);
+      }
+
+      // Allocate and return the result
+      char *result = SAFE_MALLOC(strlen(normalized_buf) + 1, char *);
+      if (!result) {
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate normalized path");
+      }
+      safe_snprintf(result, strlen(normalized_buf) + 1, "%s", normalized_buf);
+      *normalized_out = result;
+      return ASCIICHAT_OK;
+    }
+    // If not a simple filename (contains separators), continue with normal validation below
+  }
+
+  // For non-log-files or log files with path separators, validate as usual
   if (role != PATH_ROLE_LOG_FILE && !path_looks_like_path(input)) {
     return SET_ERRNO(map_role_to_error(role), "Value does not look like a filesystem path: %s", input);
   }
@@ -541,13 +603,9 @@ asciichat_error_t path_validate_user_path(const char *input, path_role_t role, c
   append_base_if_valid("/var/tmp", bases, &base_count);
 #endif
 
-  // For log files, skip the "allowed directories" check - allow any path
-  bool allowed;
-  if (role == PATH_ROLE_LOG_FILE) {
-    allowed = true;
-  } else {
-    allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
-  }
+  // Validate that the path is within allowed directories
+  // Note: Simple log filenames without separators are already resolved to safe dirs above
+  bool allowed = base_count == 0 ? true : path_is_within_any_base(normalized_buf, bases, base_count);
 
   if (!allowed) {
     SAFE_FREE(expanded);
