@@ -20,6 +20,7 @@ _ascii-chat-client() {
         '--utf8[force enable UTF-8/Unicode support]' \
         '(-M --render-mode)'{-M,--render-mode}'[rendering mode]:(foreground background half-block)' \
         '(-A --audio)'{-A,--audio}'[enable audio capture and playback]' \
+        '--audio-device[audio input device index]' \
         '(-s --stretch)'{-s,--stretch}'[stretch or shrink video to fit]' \
         '(-q --quiet)'{-q,--quiet}'[disable console logging]' \
         '(-S --snapshot)'{-S,--snapshot}'[capture single frame and exit]' \
@@ -31,12 +32,17 @@ _ascii-chat-client() {
         '(-C --palette-chars)'{-C,--palette-chars}'[Custom palette characters]' \
         '(-L --log-file)'{-L,--log-file}'[redirect logs to file]:file:_files' \
         '--log-level[set log level]:(dev debug info warn error fatal)' \
+        '--compression-level[zstd compression level 1-9]' \
+        '--no-compress[disable video frame compression]' \
+        '--reconnect[automatic reconnection behavior]:(off auto)' \
         '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
         '(-K --key)'{-K,--key}'[SSH/GPG key for authentication]:file:_files' \
         '(-F --keyfile)'{-F,--keyfile}'[read encryption key from file]:file:_files' \
         '--password[password for connection encryption]' \
-        '--no-encrypt[disable encryption]'
+        '--no-encrypt[disable encryption]' \
+        '--config[load configuration from TOML file]:file:_files' \
+        '--config-create[create default configuration file]'
 }
 
 _ascii-chat-server() {
@@ -45,17 +51,22 @@ _ascii-chat-server() {
         '(-a --address)'{-a,--address}'[IPv4 address to bind to]' \
         '--address6[IPv6 address to bind to]' \
         '(-p --port)'{-p,--port}'[TCP port]' \
+        '--max-clients[maximum concurrent client connections]' \
         '--client-keys[allowed client keys file]:file:_files' \
         '(-P --palette)'{-P,--palette}'[ASCII character palette]:(standard blocks digital minimal cool custom)' \
         '(-C --palette-chars)'{-C,--palette-chars}'[Custom palette characters]' \
         '(-L --log-file)'{-L,--log-file}'[redirect logs to file]:file:_files' \
         '--log-level[set log level]:(dev debug info warn error fatal)' \
+        '--compression-level[zstd compression level 1-9]' \
+        '--no-compress[disable video frame compression]' \
         '*'{-V,--verbose}'[increase log verbosity (stackable)]' \
         '(-E --encrypt)'{-E,--encrypt}'[enable packet encryption]' \
         '(-K --key)'{-K,--key}'[SSH/GPG key for authentication]:file:_files' \
         '(-F --keyfile)'{-F,--keyfile}'[read encryption key from file]:file:_files' \
         '--password[password for connection encryption]' \
-        '--no-encrypt[disable encryption]'
+        '--no-encrypt[disable encryption]' \
+        '--config[load configuration from TOML file]:file:_files' \
+        '--config-create[create default configuration file]'
 }
 
 _ascii_chat() {

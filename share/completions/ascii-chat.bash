@@ -89,6 +89,7 @@ _ascii_chat() {
     '--render-mode' 'rendering mode: foreground, background, half-block'
     '-A' 'enable audio capture and playback'
     '--audio' 'enable audio capture and playback'
+    '--audio-device' 'audio input device index'
     '-s' 'stretch or shrink video to fit (ignore aspect ratio)'
     '--stretch' 'stretch or shrink video to fit (ignore aspect ratio)'
     '-q' 'disable console logging (log only to file)'
@@ -100,12 +101,22 @@ _ascii_chat() {
     '--mirror' 'view webcam locally without connecting to server'
     '--strip-ansi' 'remove all ANSI escape codes from output'
     '--server-key' 'expected server public key for verification'
+    '--compression-level' 'zstd compression level 1-9'
+    '--no-compress' 'disable video frame compression'
+    '--reconnect' 'automatic reconnection behavior (off or auto)'
+    '--config' 'load configuration from TOML file'
+    '--config-create' 'create default configuration file'
   )
 
   # Server-only options with help text
   local -a server_opts=(
     '--address6' 'IPv6 address to bind to'
+    '--max-clients' 'maximum concurrent client connections'
     '--client-keys' 'allowed client keys file for authentication'
+    '--compression-level' 'zstd compression level 1-9'
+    '--no-compress' 'disable video frame compression'
+    '--config' 'load configuration from TOML file'
+    '--config-create' 'create default configuration file'
   )
 
   # Modes

@@ -32,6 +32,8 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
     $commonOptions = @(
         @{ Name = '-h'; Description = 'print this help' }
         @{ Name = '--help'; Description = 'print this help' }
+        @{ Name = '-v'; Description = 'print version information and exit' }
+        @{ Name = '--version'; Description = 'print version information and exit' }
         @{ Name = '-a'; Description = 'IPv4 address to bind/connect to' }
         @{ Name = '--address'; Description = 'IPv4 address to bind/connect to' }
         @{ Name = '-p'; Description = 'TCP port' }
@@ -45,6 +47,10 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--log-level'; Description = 'set log level: dev, debug, info, warn, error, fatal' }
         @{ Name = '-V'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
         @{ Name = '--verbose'; Description = 'increase log verbosity (stackable: -VV, -VVV)' }
+        @{ Name = '--compression-level'; Description = 'zstd compression level 1-9' }
+        @{ Name = '--no-compress'; Description = 'disable video frame compression' }
+        @{ Name = '--config'; Description = 'load configuration from TOML file' }
+        @{ Name = '--config-create'; Description = 'create default configuration file' }
         @{ Name = '-E'; Description = 'enable packet encryption' }
         @{ Name = '--encrypt'; Description = 'enable packet encryption' }
         @{ Name = '-K'; Description = 'SSH/GPG key for authentication' }
@@ -79,6 +85,7 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--render-mode'; Description = 'rendering mode: foreground, background, half-block' }
         @{ Name = '-A'; Description = 'enable audio capture and playback' }
         @{ Name = '--audio'; Description = 'enable audio capture and playback' }
+        @{ Name = '--audio-device'; Description = 'audio input device index' }
         @{ Name = '-s'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
         @{ Name = '--stretch'; Description = 'stretch or shrink video to fit (ignore aspect ratio)' }
         @{ Name = '-q'; Description = 'disable console logging (log only to file)' }
@@ -90,11 +97,13 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--mirror'; Description = 'view webcam locally without connecting to server' }
         @{ Name = '--strip-ansi'; Description = 'remove all ANSI escape codes from output' }
         @{ Name = '--server-key'; Description = 'expected server public key for verification' }
+        @{ Name = '--reconnect'; Description = 'automatic reconnection behavior (off or auto)' }
     )
 
     # Server-only options
     $serverOptions = @(
         @{ Name = '--address6'; Description = 'IPv6 address to bind to' }
+        @{ Name = '--max-clients'; Description = 'maximum concurrent client connections' }
         @{ Name = '--client-keys'; Description = 'allowed client keys file for authentication' }
     )
 
@@ -151,11 +160,11 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
             }
             return
         }
-        '^(-L|--log-file|-K|--key|-F|--keyfile|--client-keys|--server-key)$' {
+        '^(-L|--log-file|-K|--key|-F|--keyfile|--client-keys|--server-key|--config)$' {
             # File path completion - let PowerShell handle it
             return
         }
-        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password)$' {
+        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password|--audio-device|--compression-level|--max-clients|--reconnect)$' {
             # These take values but don't have predefined completions
             return
         }
