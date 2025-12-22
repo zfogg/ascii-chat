@@ -833,19 +833,33 @@ bool shutdown_is_requested(void);
 #define SAFE_MEMMOVE(dest, dest_size, src, count) platform_memmove((dest), (dest_size), (src), (count))
 #define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
 
-/* Safe size_t multiplication with overflow detection */
+/**
+ * @brief Safe size_t multiplication with overflow detection
+ *
+ * IMPORTANT: Return value semantics are counter-intuitive!
+ * - Returns TRUE if overflow occurred OR result pointer is NULL
+ * - Returns FALSE on successful multiplication
+ *
+ * USAGE:
+ *   size_t product;
+ *   if (safe_size_mul(width, height, &product)) {
+ *     // OVERFLOW occurred - product is set to 0
+ *   } else {
+ *     // SUCCESS - product contains valid result
+ *   }
+ */
 static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
   if (result == NULL) {
-    return true;
+    return true;  // ERROR: NULL pointer
   }
 
   if (a != 0 && b > SIZE_MAX / a) {
     *result = 0;
-    return true;
+    return true;  // ERROR: Overflow detected
   }
 
   *result = a * b;
-  return false;
+  return false;  // SUCCESS
 }
 
 /* Safe string formatting */
