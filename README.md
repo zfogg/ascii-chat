@@ -372,6 +372,11 @@ ascii-chat is built on operating system code and several libraries.
   - **Purpose**: To make the protocol more efficient. Makes all the protocol packets smaller at the cost of some compute time every frame. Check out `lib/compression.c`, it's pretty small.
   - **License**: BSD/GPLv2
 
+- [Opus](https://opus-codec.org/) - Audio Codec Library
+
+  - **Purpose**: Real-time audio compression for low-bandwidth audio transmission. Enables high-quality bidirectional voice and audio communication between clients with minimal latency and bandwidth overhead.
+  - **License**: BSD
+
 - [Sokol](https://github.com/floooh/sokol) - Utility Library
   - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
   - **License**: zlib/libpng
@@ -397,7 +402,7 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 **macOS**:
 
 ```bash
-brew install make cmake ninja llvm zstd portaudio libsodium criterion
+brew install make cmake ninja llvm zstd portaudio opus libsodium criterion
 ```
 
 #### Install Dependencies on Windows
@@ -429,10 +434,10 @@ brew install make cmake ninja llvm zstd portaudio libsodium criterion
    .\bootstrap-vcpkg.bat
 
    # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows libsodium:x64-windows
+   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows
 
    # If you want to do a release build
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.

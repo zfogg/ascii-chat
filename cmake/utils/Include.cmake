@@ -7,12 +7,15 @@
 # Prerequisites:
 #   - Must run after Dependencies.cmake (for ZSTD_INCLUDE_DIRS, etc.)
 #   - Must run after Mimalloc.cmake (for USE_MIMALLOC and FETCHCONTENT_BASE_DIR)
+#   - Must run after CoreDependencies.cmake (for helper functions)
 #
 # Outputs:
 #   - Base include directories added (lib/, src/)
 #   - Dependency include directories added (platform-specific)
 #   - Mimalloc include directory added if USE_MIMALLOC is ON
 # =============================================================================
+
+include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 
 function(configure_include_directories)
     # Base include directories (source tree). Panic-instrumentation-enabled builds prepend
@@ -30,17 +33,13 @@ function(configure_include_directories)
         if(DEFINED VCPKG_INCLUDE_PATH)
             include_directories(${VCPKG_INCLUDE_PATH})
         endif()
-        # Add additional Windows include paths if found
-        # Use SYSTEM for musl to avoid glibc header conflicts (-isystem vs -I)
-        if(ZSTD_INCLUDE_DIRS)
-            include_directories(SYSTEM ${ZSTD_INCLUDE_DIRS})
-        endif()
-        if(LIBSODIUM_INCLUDE_DIRS)
-            include_directories(SYSTEM ${LIBSODIUM_INCLUDE_DIRS})
-        endif()
-        if(PORTAUDIO_INCLUDE_DIRS)
-            include_directories(SYSTEM ${PORTAUDIO_INCLUDE_DIRS})
-        endif()
+
+        # Add core dependencies with SYSTEM flag (avoid conflicts)
+        # Strip /opus suffix from OPUS_INCLUDE_DIRS (macOS pkg-config quirk)
+        get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
+        strip_suffix_from_list("${CORE_INCLUDE_DIRS}" "/opus" CORE_INCLUDE_DIRS)
+        include_directories(SYSTEM ${CORE_INCLUDE_DIRS})
+
         # Add mimalloc include directory for USE_MIMALLOC builds
         # Use MIMALLOC_INCLUDE_DIRS which handles system vs FetchContent mimalloc
         if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
@@ -48,35 +47,29 @@ function(configure_include_directories)
         endif()
     else()
         # Use pkg-config flags (matches Makefile CFLAGS approach)
-        if(ZSTD_CFLAGS_OTHER)
-            add_compile_options(${ZSTD_CFLAGS_OTHER})
-        endif()
-        if(LIBSODIUM_CFLAGS_OTHER)
-            add_compile_options(${LIBSODIUM_CFLAGS_OTHER})
-        endif()
-        if(PORTAUDIO_CFLAGS_OTHER)
-            add_compile_options(${PORTAUDIO_CFLAGS_OTHER})
-        endif()
+        add_core_deps_compile_flags()
 
         # Don't add system include paths when using musl - musl-gcc handles this via -specs
         if(NOT USE_MUSL)
-            include_directories(
-                ${ZSTD_INCLUDE_DIRS}
-                ${LIBSODIUM_INCLUDE_DIRS}
-                ${PORTAUDIO_INCLUDE_DIRS}
-            )
+            # Strip /opus suffix from OPUS_INCLUDE_DIRS (macOS pkg-config quirk)
+            get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
+            strip_suffix_from_list("${CORE_INCLUDE_DIRS}" "/opus" CORE_INCLUDE_DIRS)
+            include_directories(${CORE_INCLUDE_DIRS})
         else()
-            # When using musl, strip /usr/include from all include paths and add the cleaned paths
-            list(REMOVE_ITEM ZSTD_INCLUDE_DIRS "/usr/include")
-            list(REMOVE_ITEM LIBSODIUM_INCLUDE_DIRS "/usr/include")
-            list(REMOVE_ITEM PORTAUDIO_INCLUDE_DIRS "/usr/include")
-            list(REMOVE_ITEM BEARSSL_INCLUDE_DIRS "/usr/include")
+            # When using musl, strip /usr/include from all include paths
+            get_core_deps_include_dirs(CORE_INCLUDE_DIRS)
+            list(REMOVE_ITEM CORE_INCLUDE_DIRS "/usr/include")
+            # Also strip /opus suffix if present
+            strip_suffix_from_list("${CORE_INCLUDE_DIRS}" "/opus" CORE_INCLUDE_DIRS)
 
-            # Add the musl-built library include paths (after removing /usr/include)
+            # Strip /usr/include from BearSSL as well
+            if(BEARSSL_INCLUDE_DIRS)
+                list(REMOVE_ITEM BEARSSL_INCLUDE_DIRS "/usr/include")
+            endif()
+
+            # Add the musl-built library include paths
             include_directories(
-                ${ZSTD_INCLUDE_DIRS}
-                ${LIBSODIUM_INCLUDE_DIRS}
-                ${PORTAUDIO_INCLUDE_DIRS}
+                ${CORE_INCLUDE_DIRS}
                 ${BEARSSL_INCLUDE_DIRS}
             )
         endif()
