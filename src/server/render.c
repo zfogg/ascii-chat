@@ -834,11 +834,30 @@ void *client_audio_render_thread(void *arg) {
 
     int samples_mixed = 0;
     if (opt_no_audio_mixer) {
-      // Debug mode: disable mixer, just fill with silence
+      // Bypass mixer: forward audio directly from first other client's ring buffer (no ducking/gain/compression)
       SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
       samples_mixed = 0;
-      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): sending silence for client %u",
-                      client_id_snapshot);
+
+      if (g_audio_mixer) {
+        // Find first active source that's not the current client
+        for (int i = 0; i < g_audio_mixer->max_sources; i++) {
+          if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+              g_audio_mixer->source_buffers[i]) {
+            // Found another client's source - read directly from ring buffer
+            samples_mixed =
+                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], mix_buffer, AUDIO_FRAMES_PER_BUFFER);
+            // Pad with silence if partial frame
+            if (samples_mixed < AUDIO_FRAMES_PER_BUFFER && samples_mixed > 0) {
+              SAFE_MEMSET(&mix_buffer[samples_mixed], (AUDIO_FRAMES_PER_BUFFER - samples_mixed) * sizeof(float), 0,
+                          (AUDIO_FRAMES_PER_BUFFER - samples_mixed) * sizeof(float));
+            }
+            break; // Only forward first active source when bypassing mixer
+          }
+        }
+      }
+
+      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): forwarding directly, samples=%d for client %u",
+                      samples_mixed, client_id_snapshot);
     } else {
       samples_mixed =
           mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
