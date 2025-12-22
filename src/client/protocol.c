@@ -109,6 +109,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 
 #include "compression.h"
 #include "opus_codec.h"
+#include "network/av.h"
 
 #include <errno.h>
 
@@ -689,6 +690,14 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
  * Processes batched Opus-encoded audio packets for efficiency.
  * Each batch contains multiple Opus frames.
  *
+ * Batch packet format (from av_send_audio_opus_batch):
+ * - Offset 0: sample_rate (uint32_t, network byte order)
+ * - Offset 4: frame_duration (uint32_t, network byte order)
+ * - Offset 8: frame_count (uint32_t, network byte order)
+ * - Offset 12: reserved (4 bytes)
+ * - Offset 16: frame_sizes array (uint16_t * frame_count, network byte order)
+ * - After frame_sizes: Opus encoded data
+ *
  * @param data Packet payload containing Opus batch header + Opus frames
  * @param len Total packet length in bytes
  *
@@ -706,8 +715,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Parse Opus batch packet using the proper AV parsing function
-  // Packet format: [sample_rate:4][frame_duration:4][frame_count:4][reserved:4][frame_sizes:n*2][opus_data]
+  // Parse batch header using av_receive_audio_opus_batch() for consistency
   const uint8_t *opus_data = NULL;
   size_t opus_size = 0;
   const uint16_t *frame_sizes = NULL;
@@ -719,25 +727,25 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
                                            &frame_duration, &frame_count);
 
   if (result < 0) {
-    log_warn("Failed to parse AUDIO_OPUS_BATCH packet");
+    log_warn("Failed to parse Opus batch packet");
     return;
   }
 
-  if (frame_count <= 0 || opus_size == 0) {
-    log_warn("AUDIO_OPUS_BATCH empty (frame_count=%d, opus_size=%zu)", frame_count, opus_size);
+  if (frame_count <= 0 || frame_count > 256 || opus_size == 0) {
+    log_warn("Invalid Opus batch: frame_count=%d, opus_size=%zu", frame_count, opus_size);
     return;
   }
 
-  // Calculate samples per frame (e.g., 20ms @ 48kHz = 960 samples)
+  // Calculate samples per frame
   int samples_per_frame = (sample_rate * frame_duration) / 1000;
-  if (samples_per_frame <= 0 || samples_per_frame > 4096) {
-    log_warn("AUDIO_OPUS_BATCH invalid frame size (samples_per_frame=%d)", samples_per_frame);
+  if (samples_per_frame <= 0 || samples_per_frame > 2880) {
+    log_warn("Invalid Opus frame parameters: samples_per_frame=%d", samples_per_frame);
     return;
   }
 
   // Allocate buffer for all decoded samples
-  size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
-  float *all_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+  size_t max_decoded_samples = (size_t)samples_per_frame * (size_t)frame_count;
+  float *all_samples = SAFE_MALLOC(max_decoded_samples * sizeof(float), float *);
   if (!all_samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for Opus batch decoding");
     return;
@@ -748,22 +756,22 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
   size_t opus_offset = 0;
 
   for (int i = 0; i < frame_count; i++) {
-    // Get exact frame size from frame_sizes array (convert from network byte order)
+    // Get frame size (convert from network byte order)
     size_t frame_size = (size_t)ntohs(frame_sizes[i]);
 
     if (opus_offset + frame_size > opus_size) {
-      log_warn("Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)", i + 1, opus_offset, frame_size,
+      log_warn("Opus batch truncated at frame %d (offset=%zu, frame_size=%zu, total=%zu)", i, opus_offset, frame_size,
                opus_size);
       break;
     }
 
     // Decode frame - use remaining buffer space (not 2880-total which would fail after 3 frames)
     float *frame_buffer = all_samples + total_decoded_samples;
-    int remaining_space = (int)(max_decoded_samples - (size_t)total_decoded_samples);
-    int decoded = opus_codec_decode(decoder, ptr, frame_size, frame_buffer, remaining_space);
+    int decoded = opus_codec_decode(decoder, opus_data + opus_offset, frame_size, frame_buffer,
+                                    samples_per_frame);
 
-    if (decoded < 0) {
-      log_warn("Failed to decode Opus frame %d/%d (size=%zu)", i + 1, frame_count, frame_size);
+    if (decoded <= 0) {
+      log_warn("Failed to decode Opus frame %d in batch, decoded=%d", i, decoded);
       break;
     }
 
