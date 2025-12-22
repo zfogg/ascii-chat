@@ -12,6 +12,7 @@
 void handle_image_frame_packet(client_info_t *client, void *data, size_t len);
 void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len);
 void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len);
+void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len);
 void handle_audio_packet(client_info_t *client, const void *data, size_t len);
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len);
 void handle_size_packet(client_info_t *client, const void *data, size_t len);
