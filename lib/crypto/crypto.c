@@ -903,7 +903,7 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   return crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
 }
 
-crypto_result_t crypto_create_auth_challenge(crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
+crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
                                              size_t *packet_len_out) {
   if (!ctx || !ctx->initialized || !packet_out || !packet_len_out) {
     SET_ERRNO(
