@@ -623,7 +623,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   audio_process_received_samples(samples, (int)total_samples);
 
   // Clean up
-  free(samples);
+  SAFE_FREE(samples);
 
   log_debug_every(5000000, "Processed audio batch: %u samples from server", total_samples);
 }
