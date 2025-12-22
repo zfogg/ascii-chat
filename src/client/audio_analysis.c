@@ -52,8 +52,6 @@ static uint64_t g_sent_sharp_transitions = 0;     // Sudden amplitude jumps (pot
 static uint64_t g_received_sharp_transitions = 0; // Sudden amplitude jumps
 
 // For dynamic range and musicality detection
-static float g_sent_sample_variance = 0.0f;
-static float g_received_sample_variance = 0.0f;
 static float g_sent_mean = 0.0f;
 static float g_received_mean = 0.0f;
 static uint64_t g_sent_transition_samples = 0;
@@ -61,12 +59,6 @@ static uint64_t g_received_transition_samples = 0;
 
 // For frame-based analysis (Opus frames are 960 samples = 20ms)
 #define FRAME_SIZE 960
-static float g_sent_frame_rms_sum = 0.0f;
-static float g_sent_frame_rms_sq_sum = 0.0f;
-static uint64_t g_sent_frame_count = 0;
-static float g_received_frame_rms_sum = 0.0f;
-static float g_received_frame_rms_sq_sum = 0.0f;
-static uint64_t g_received_frame_count = 0;
 
 // For zero-crossing detection (indicates spectral content)
 static uint64_t g_sent_zero_crossings = 0;
@@ -194,6 +186,7 @@ void audio_analysis_track_sent_sample(float sample) {
 }
 
 void audio_analysis_track_sent_packet(size_t size) {
+  (void)size; // Unused parameter - reserved for future per-packet analysis
   if (!g_analysis_enabled)
     return;
 
@@ -313,6 +306,7 @@ void audio_analysis_track_received_sample(float sample) {
 }
 
 void audio_analysis_track_received_packet(size_t size) {
+  (void)size; // Unused parameter - reserved for future per-packet analysis
   if (!g_analysis_enabled)
     return;
 
