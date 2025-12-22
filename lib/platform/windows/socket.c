@@ -47,14 +47,14 @@ socket_t socket_create(int domain, int type, int protocol) {
     return INVALID_SOCKET;
   }
 
-  // Map POSIX constants to Windows constants
-  int win_domain = domain;
+  // AF_UNIX is not supported on Windows - return error instead of silently converting
   if (domain == AF_UNIX) {
-    // Windows doesn't support AF_UNIX in the same way
-    win_domain = AF_INET;
+    SET_ERRNO(ERROR_NETWORK, "AF_UNIX sockets are not supported on Windows");
+    return INVALID_SOCKET;
   }
 
-  return socket(win_domain, type, protocol);
+  // For other domains, use as-is
+  return socket(domain, type, protocol);
 }
 
 int socket_close(socket_t sock) {
@@ -196,7 +196,9 @@ int socket_get_error(socket_t sock) {
 }
 
 const char *socket_error_string(int error) {
-  static char buffer[256];
+  // Use thread-local storage to avoid race conditions between threads
+  static __declspec(thread) char buffer[256] = {0};
+  buffer[0] = '\0';  // Clear buffer on each call
   FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, (DWORD)error,
                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, sizeof(buffer), NULL);
   return buffer;
