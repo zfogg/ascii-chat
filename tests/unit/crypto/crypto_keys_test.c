@@ -511,7 +511,7 @@ Test(crypto_keys, format_public_key_ed25519) {
   public_key_t key;
   key.type = KEY_TYPE_ED25519;
   memset(key.key, 0x42, 32);
-  strcpy(key.comment, "test-key");
+  SAFE_STRNCPY(key.comment, "test-key", sizeof(key.comment));
 
   char output[512];
   format_public_key(&key, output, sizeof(output));
@@ -524,7 +524,7 @@ Test(crypto_keys, format_public_key_x25519) {
   public_key_t key;
   key.type = KEY_TYPE_X25519;
   memset(key.key, 0x42, 32);
-  strcpy(key.comment, "x25519-key");
+  SAFE_STRNCPY(key.comment, "x25519-key", sizeof(key.comment));
 
   char output[512];
   format_public_key(&key, output, sizeof(output));
@@ -536,7 +536,7 @@ Test(crypto_keys, format_public_key_gpg) {
   public_key_t key;
   key.type = KEY_TYPE_GPG;
   memset(key.key, 0x42, 32);
-  strcpy(key.comment, "gpg-key");
+  SAFE_STRNCPY(key.comment, "gpg-key", sizeof(key.comment));
 
   char output[512];
   format_public_key(&key, output, sizeof(output));
