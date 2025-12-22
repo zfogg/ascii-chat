@@ -23,6 +23,7 @@
  */
 
 #include "av.h"
+#include "audio.h"
 #include "network.h"
 #include "packet.h"
 #include "common.h"
@@ -460,7 +461,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   audio_batch_packet_t header;
   header.batch_count = htonl((u_long)batch_count);
   header.total_samples = htonl((u_long)num_samples);
-  header.sample_rate = htonl(44100UL); // Could make this configurable
+  header.sample_rate = htonl(AUDIO_SAMPLE_RATE); // Use system-defined sample rate
   header.channels = htonl(1UL);        // Mono for now
 
   // Calculate total payload size
