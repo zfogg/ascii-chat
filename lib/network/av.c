@@ -219,7 +219,7 @@ int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_si
   }
 
   // Allocate buffer for header + encoded data
-  size_t header_size = 16;  // Metadata: sample_rate (4), frame_duration (4), reserved (8)
+  size_t header_size = 16; // Metadata: sample_rate (4), frame_duration (4), reserved (8)
   size_t total_size = header_size + opus_size;
   void *packet_data = buffer_pool_alloc(total_size);
   if (!packet_data) {
@@ -233,7 +233,7 @@ int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_si
   uint32_t fd = (uint32_t)frame_duration;
   memcpy(buf, &sr, 4);
   memcpy(buf + 4, &fd, 4);
-  memset(buf + 8, 0, 8);  // Reserved
+  memset(buf + 8, 0, 8); // Reserved
 
   // Copy Opus data
   memcpy(buf + header_size, opus_data, opus_size);
@@ -270,7 +270,7 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
   }
 
   // Allocate buffer for header + encoded data
-  size_t header_size = 16;  // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
+  size_t header_size = 16; // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
   size_t total_size = header_size + opus_size;
   void *packet_data = buffer_pool_alloc(total_size);
   if (!packet_data) {
@@ -286,7 +286,7 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
   memcpy(buf, &sr, 4);
   memcpy(buf + 4, &fd, 4);
   memcpy(buf + 8, &fc, 4);
-  memset(buf + 12, 0, 4);  // Reserved
+  memset(buf + 12, 0, 4); // Reserved
 
   // Copy Opus data
   memcpy(buf + header_size, opus_data, opus_size);
@@ -506,4 +506,108 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   buffer_pool_free(buffer, total_size);
 
   return result;
+}
+
+/**
+ * @brief Receive and parse Opus audio packet
+ * @param packet_data Packet payload data
+ * @param packet_len Packet payload length
+ * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
+ * @param out_opus_size Output: Size of Opus-encoded data
+ * @param out_sample_rate Output: Sample rate in Hz
+ * @param out_frame_duration Output: Frame duration in milliseconds
+ * @return 0 on success, -1 on error
+ *
+ * Parses PACKET_TYPE_AUDIO_OPUS packet and extracts metadata and Opus data.
+ * The Opus data pointer points into the packet_data buffer (NOT copied),
+ * so packet_data must remain valid while using out_opus_data.
+ *
+ * @note out_opus_data points into packet_data - do not free separately
+ * @ingroup av
+ */
+int av_receive_audio_opus(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
+                          size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration) {
+  if (!packet_data || !out_opus_data || !out_opus_size || !out_sample_rate || !out_frame_duration) {
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "Invalid parameters: packet_data=%p, out_opus_data=%p, out_opus_size=%p, "
+              "out_sample_rate=%p, out_frame_duration=%p",
+              (const void *)packet_data, (void *)out_opus_data, (void *)out_opus_size, (void *)out_sample_rate,
+              (void *)out_frame_duration);
+    return -1;
+  }
+
+  // Verify minimum packet size (16-byte header)
+  size_t header_size = 16;
+  if (packet_len < header_size) {
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus packet too small: %zu < %zu", packet_len, header_size);
+    return -1;
+  }
+
+  // Parse header
+  const uint8_t *buf = (const uint8_t *)packet_data;
+  uint32_t sr, fd;
+  memcpy(&sr, buf, 4);
+  memcpy(&fd, buf + 4, 4);
+  *out_sample_rate = (int)sr;
+  *out_frame_duration = (int)fd;
+
+  // Extract Opus data (everything after 16-byte header)
+  *out_opus_data = buf + header_size;
+  *out_opus_size = packet_len - header_size;
+
+  return 0;
+}
+
+/**
+ * @brief Receive and parse batched Opus audio packet
+ * @param packet_data Packet payload data
+ * @param packet_len Packet payload length
+ * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
+ * @param out_opus_size Output: Size of Opus-encoded data
+ * @param out_sample_rate Output: Sample rate in Hz
+ * @param out_frame_duration Output: Frame duration in milliseconds
+ * @param out_frame_count Output: Number of frames in batch
+ * @return 0 on success, -1 on error
+ *
+ * Parses PACKET_TYPE_AUDIO_OPUS_BATCH packet and extracts metadata and Opus data.
+ * The Opus data pointer points into the packet_data buffer (NOT copied),
+ * so packet_data must remain valid while using out_opus_data.
+ *
+ * @note out_opus_data points into packet_data - do not free separately
+ * @ingroup av
+ */
+int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
+                                size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration,
+                                int *out_frame_count) {
+  if (!packet_data || !out_opus_data || !out_opus_size || !out_sample_rate || !out_frame_duration || !out_frame_count) {
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "Invalid parameters: packet_data=%p, out_opus_data=%p, out_opus_size=%p, "
+              "out_sample_rate=%p, out_frame_duration=%p, out_frame_count=%p",
+              (const void *)packet_data, (void *)out_opus_data, (void *)out_opus_size, (void *)out_sample_rate,
+              (void *)out_frame_duration, (void *)out_frame_count);
+    return -1;
+  }
+
+  // Verify minimum packet size (16-byte header)
+  size_t header_size = 16;
+  if (packet_len < header_size) {
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small: %zu < %zu", packet_len, header_size);
+    return -1;
+  }
+
+  // Parse header
+  const uint8_t *buf = (const uint8_t *)packet_data;
+  uint32_t sr, fd, fc;
+  memcpy(&sr, buf, 4);
+  memcpy(&fd, buf + 4, 4);
+  memcpy(&fc, buf + 8, 4);
+  *out_sample_rate = (int)sr;
+  *out_frame_duration = (int)fd;
+  *out_frame_count = (int)fc;
+
+  // Extract Opus data (everything after 16-byte header)
+  *out_opus_data = buf + header_size;
+  *out_opus_size = packet_len - header_size;
+
+  return 0;
 }

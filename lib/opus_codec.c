@@ -15,7 +15,7 @@
  * Encoder Creation
  * ============================================================================ */
 
-opus_codec_t *opus_codec_create(opus_application_t application, int sample_rate, int bitrate) {
+opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate) {
   if (sample_rate <= 0 || bitrate <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid codec parameters: sample_rate=%d, bitrate=%d", sample_rate, bitrate);
     return NULL;
@@ -32,7 +32,7 @@ opus_codec_t *opus_codec_create(opus_application_t application, int sample_rate,
   codec->encoder = opus_encoder_create(sample_rate, 1, (int)application, &error);
   if (error != OPUS_OK || !codec->encoder) {
     SET_ERRNO(ERROR_AUDIO, "Failed to create Opus encoder: %s", opus_strerror(error));
-    SAFE_FREE(codec, sizeof(opus_codec_t));
+    SAFE_FREE(codec);
     return NULL;
   }
 
@@ -41,7 +41,7 @@ opus_codec_t *opus_codec_create(opus_application_t application, int sample_rate,
   if (error != OPUS_OK) {
     SET_ERRNO(ERROR_AUDIO, "Failed to set Opus bitrate: %s", opus_strerror(error));
     opus_encoder_destroy(codec->encoder);
-    SAFE_FREE(codec, sizeof(opus_codec_t));
+    SAFE_FREE(codec);
     return NULL;
   }
 
@@ -76,13 +76,13 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
   codec->decoder = opus_decoder_create(sample_rate, 1, &error);
   if (error != OPUS_OK || !codec->decoder) {
     SET_ERRNO(ERROR_AUDIO, "Failed to create Opus decoder: %s", opus_strerror(error));
-    SAFE_FREE(codec, sizeof(opus_codec_t));
+    SAFE_FREE(codec);
     return NULL;
   }
 
   codec->encoder = NULL;
   codec->sample_rate = sample_rate;
-  codec->bitrate = 0;  // N/A for decoder
+  codec->bitrate = 0; // N/A for decoder
   codec->tmp_buffer = NULL;
 
   log_debug("Opus decoder created: sample_rate=%d", sample_rate);
@@ -94,8 +94,8 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
  * Encoding
  * ============================================================================ */
 
-size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples,
-                         uint8_t *out_data, size_t out_size) {
+size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples, uint8_t *out_data,
+                         size_t out_size) {
   if (!codec || !codec->encoder || !samples || num_samples <= 0 || !out_data || out_size == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
               "Invalid encode parameters: codec=%p, encoder=%p, samples=%p, num_samples=%d, out_data=%p, "
@@ -162,8 +162,8 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
 
 asciichat_error_t opus_codec_set_bitrate(opus_codec_t *codec, int bitrate) {
   if (!codec || !codec->encoder || bitrate <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid bitrate parameters: codec=%p, encoder=%p, bitrate=%d",
-                     (void *)codec, (void *)(codec ? codec->encoder : NULL), bitrate);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid bitrate parameters: codec=%p, encoder=%p, bitrate=%d", (void *)codec,
+                     (void *)(codec ? codec->encoder : NULL), bitrate);
   }
 
   int error = opus_encoder_ctl(codec->encoder, OPUS_SET_BITRATE(bitrate));
@@ -228,9 +228,9 @@ void opus_codec_destroy(opus_codec_t *codec) {
   }
 
   if (codec->tmp_buffer) {
-    SAFE_FREE(codec->tmp_buffer, 0);
+    SAFE_FREE(codec->tmp_buffer);
     codec->tmp_buffer = NULL;
   }
 
-  SAFE_FREE(codec, sizeof(opus_codec_t));
+  SAFE_FREE(codec);
 }

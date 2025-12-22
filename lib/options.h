@@ -457,6 +457,11 @@ extern ASCIICHAT_API int opt_compression_level;
  *
  * **Example**: `--no-compress` (send uncompressed frames)
  *
+ * **Interaction with audio encoding**:
+ * - When `--no-compress` is set, audio encoding is also disabled by default
+ * - Use `--encode-audio` to explicitly enable audio encoding despite `--no-compress`
+ * - Use `--no-encode-audio` to explicitly disable audio encoding
+ *
  * @note Both client and server can use this flag independently
  * @note Disabling compression significantly increases bandwidth usage
  * @note Useful for local testing or debugging compression issues
@@ -465,6 +470,32 @@ extern ASCIICHAT_API int opt_compression_level;
  * @ingroup options
  */
 extern ASCIICHAT_API bool opt_no_compress;
+
+/** @brief Enable Opus audio encoding
+ *
+ * When enabled, audio is compressed using the Opus codec before transmission.
+ * When disabled, raw float samples are sent without encoding.
+ *
+ * **Default**: `true` (Opus encoding enabled)
+ *
+ * **Command-line**: `--encode-audio` (force enable), `--no-encode-audio` (force disable)
+ *
+ * **Example**:
+ * - `--encode-audio` (force Opus encoding even with `--no-compress`)
+ * - `--no-encode-audio` (send raw float audio samples)
+ *
+ * **Interaction with --no-compress**:
+ * - If `--no-compress` is set WITHOUT explicit audio encoding flag: encoding disabled
+ * - If `--encode-audio` is explicitly set: encoding enabled (overrides `--no-compress`)
+ * - If `--no-encode-audio` is explicitly set: encoding disabled
+ *
+ * @note Audio encoding significantly reduces bandwidth (raw: ~176KB/s, Opus: ~6KB/s at 48kbps)
+ * @note Disabling encoding is useful for debugging audio issues or testing raw audio pipeline
+ * @note Both client and server must agree on encoding format
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API bool opt_encode_audio;
 
 /** @} */
 

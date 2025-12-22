@@ -332,3 +332,62 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
 int av_parse_size_message(const char *message, unsigned short *width, unsigned short *height);
 
 /** @} */
+
+/**
+ * @name Opus Packet Reception Functions
+ * @{
+ * @ingroup av
+ * @ingroup network
+ */
+
+/**
+ * @brief Receive and parse Opus audio packet
+ * @param packet_data Packet payload data
+ * @param packet_len Packet payload length
+ * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
+ * @param out_opus_size Output: Size of Opus-encoded data
+ * @param out_sample_rate Output: Sample rate in Hz
+ * @param out_frame_duration Output: Frame duration in milliseconds
+ * @return 0 on success, -1 on error
+ *
+ * Parses PACKET_TYPE_AUDIO_OPUS packet and extracts metadata and Opus data.
+ * The Opus data pointer points into the packet_data buffer (NOT copied),
+ * so packet_data must remain valid while using out_opus_data.
+ *
+ * @note out_opus_data points into packet_data - do not free separately
+ *
+ * @warning packet_data must remain valid while using out_opus_data
+ *
+ * @ingroup av
+ * @ingroup network
+ */
+int av_receive_audio_opus(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
+                          size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration);
+
+/**
+ * @brief Receive and parse batched Opus audio packet
+ * @param packet_data Packet payload data
+ * @param packet_len Packet payload length
+ * @param out_opus_data Output: Pointer to Opus-encoded data within packet (NOT copied)
+ * @param out_opus_size Output: Size of Opus-encoded data
+ * @param out_sample_rate Output: Sample rate in Hz
+ * @param out_frame_duration Output: Frame duration in milliseconds
+ * @param out_frame_count Output: Number of frames in batch
+ * @return 0 on success, -1 on error
+ *
+ * Parses PACKET_TYPE_AUDIO_OPUS_BATCH packet and extracts metadata and Opus data.
+ * The Opus data pointer points into the packet_data buffer (NOT copied),
+ * so packet_data must remain valid while using out_opus_data.
+ *
+ * @note out_opus_data points into packet_data - do not free separately
+ *
+ * @warning packet_data must remain valid while using out_opus_data
+ *
+ * @ingroup av
+ * @ingroup network
+ */
+int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
+                                size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration,
+                                int *out_frame_count);
+
+/** @} */

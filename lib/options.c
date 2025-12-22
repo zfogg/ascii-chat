@@ -133,6 +133,7 @@ ASCIICHAT_API int opt_max_clients = 10; // Maximum concurrent clients (min 1, ma
 // Network performance options
 ASCIICHAT_API int opt_compression_level = 1; // zstd compression level (min 1, max 9, default 1)
 ASCIICHAT_API bool opt_no_compress = false;  // Disable compression entirely (default: false)
+ASCIICHAT_API bool opt_encode_audio = true;  // Enable Opus audio encoding (default: true)
 
 // Client reconnection options
 ASCIICHAT_API int opt_reconnect_attempts = -1; // Number of reconnection attempts (0=off, -1=unlimited/auto)
@@ -266,6 +267,8 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"list-speakers", no_argument, NULL, 1015},
                                          {"compression-level", required_argument, NULL, 1019},
                                          {"no-compress", no_argument, NULL, 1022},
+                                         {"encode-audio", no_argument, NULL, 1023},
+                                         {"no-encode-audio", no_argument, NULL, 1024},
                                          {"reconnect", required_argument, NULL, 1020},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
@@ -289,6 +292,8 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"verbose", no_argument, NULL, 'V'},
                                          {"compression-level", required_argument, NULL, 1019},
                                          {"no-compress", no_argument, NULL, 1022},
+                                         {"encode-audio", no_argument, NULL, 1023},
+                                         {"no-encode-audio", no_argument, NULL, 1024},
                                          {"max-clients", required_argument, NULL, 1021},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
@@ -695,6 +700,9 @@ error:
 }
 
 asciichat_error_t options_init(int argc, char **argv, bool is_client) {
+  // Track whether audio encoding flags were explicitly set
+  bool encode_audio_explicitly_set = false;
+
   // Validate arguments (safety check for tests)
   if (argc < 0 || argc > 1000) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid argc: %d", argc);
@@ -1428,6 +1436,16 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_no_compress = true;
       break;
 
+    case 1023: // --encode-audio
+      opt_encode_audio = true;
+      encode_audio_explicitly_set = true;
+      break;
+
+    case 1024: // --no-encode-audio
+      opt_encode_audio = false;
+      encode_audio_explicitly_set = true;
+      break;
+
     case 'E':
       opt_encrypt_enabled = 1;
       break;
@@ -1723,6 +1741,14 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     (void)fprintf(stderr, "Mirror mode displays local webcam without network or audio support.\n");
     (void)fflush(stderr);
     return SET_ERRNO(ERROR_USAGE, "Invalid option or argument");
+  }
+
+  // Apply --no-compress interaction with audio encoding:
+  // If --no-compress is set AND audio encoding was NOT explicitly set via flags,
+  // disable audio encoding by default
+  if (opt_no_compress && !encode_audio_explicitly_set) {
+    opt_encode_audio = false;
+    log_debug("--no-compress set without explicit audio encoding flag: disabling audio encoding");
   }
 
   return ASCIICHAT_OK;
