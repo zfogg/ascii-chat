@@ -71,6 +71,7 @@
 #include "display.h"
 #include "options.h"
 #include "palette.h"
+#include "buffer_pool.h"
 
 #include <string.h>
 #include <stdarg.h>
@@ -842,6 +843,75 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
   int result = send_audio_batch_packet(sockfd, samples, num_samples, batch_count, (crypto_context_t *)crypto_ctx);
 
+  mutex_unlock(&g_send_mutex);
+
+  // If send failed due to network error, signal connection loss
+  if (result < 0) {
+    server_connection_lost();
+  }
+
+  return result;
+}
+
+/**
+ * @brief Thread-safe Opus audio frame transmission
+ *
+ * Sends a single Opus-encoded audio frame to the server with proper
+ * synchronization and encryption support.
+ *
+ * @param opus_data Opus-encoded audio data
+ * @param opus_size Size of encoded frame
+ * @param sample_rate Sample rate in Hz
+ * @param frame_duration Frame duration in milliseconds
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
+int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sample_rate, int frame_duration) {
+  mutex_lock(&g_send_mutex);
+
+  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&g_send_mutex);
+    return -1;
+  }
+
+  // Get crypto context if encryption is enabled
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+  // Build Opus packet with header
+  size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
+  size_t total_size = header_size + opus_size;
+  void *packet_data = buffer_pool_alloc(total_size);
+  if (!packet_data) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
+    mutex_unlock(&g_send_mutex);
+    return -1;
+  }
+
+  // Write header
+  uint8_t *buf = (uint8_t *)packet_data;
+  uint32_t sr = (uint32_t)sample_rate;
+  uint32_t fd = (uint32_t)frame_duration;
+  memcpy(buf, &sr, 4);
+  memcpy(buf + 4, &fd, 4);
+  memset(buf + 8, 0, 8); // Reserved
+
+  // Copy Opus data
+  memcpy(buf + header_size, opus_data, opus_size);
+
+  // Send packet with encryption if available
+  int result;
+  if (crypto_ctx) {
+    result =
+        send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size, (crypto_context_t *)crypto_ctx);
+  } else {
+    result = packet_send(sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
+  }
+
+  // Clean up
+  buffer_pool_free(packet_data, total_size);
   mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss
