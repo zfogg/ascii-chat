@@ -505,3 +505,30 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
 size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb);
 
 /** @} */
+
+/* ============================================================================
+ * Clock Synchronization Monitoring
+ * @{
+ */
+
+/**
+ * @brief Check audio buffer fill level for clock synchronization diagnostics
+ * @param rb Audio ring buffer (can be NULL)
+ * @return Fill percentage (0-100), or -1 if buffer is NULL
+ *
+ * Returns the current buffer fill level as a percentage. Used for monitoring
+ * clock drift between audio capture and playback threads. A healthy buffer
+ * should remain near 50% (middle of the safe zone).
+ *
+ * - **< 25%**: Buffer draining (playback faster than capture)
+ * - **25-75%**: Healthy operating range
+ * - **> 75%**: Buffer filling (capture faster than playback)
+ *
+ * @note This is purely diagnostic - the actual clock sync is handled
+ *       by packet loss concealment in the playback callback.
+ *
+ * @ingroup audio
+ */
+int audio_ring_buffer_fill_percent(audio_ring_buffer_t *rb);
+
+/** @} */

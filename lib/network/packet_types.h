@@ -724,6 +724,8 @@ PACKED_ATTR /** @endcond */ image_frame_packet_t;
  * @ingroup packet
  */
 typedef struct {
+  /** @brief Sequence number for detecting packet loss (increments per batch) */
+  uint32_t sequence;
   /** @brief Number of audio chunks in this batch (usually AUDIO_BATCH_COUNT = 32) */
   uint32_t batch_count;
   /** @brief Total audio samples across all chunks (typically 8192) */

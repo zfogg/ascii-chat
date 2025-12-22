@@ -36,8 +36,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdatomic.h>
 
 // Use network_network_is_test_environment() from network.h
+
+/** @brief Global audio packet sequence counter for detecting packet loss */
+static _Atomic(uint32_t) g_audio_sequence = 0;
 
 /**
  * @brief Send ASCII frame packet
@@ -169,6 +173,7 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
 
   // Create audio batch packet
   audio_batch_packet_t packet;
+  packet.sequence = atomic_fetch_add(&g_audio_sequence, 1);  // Increment and use sequence
   packet.batch_count = 1;
   packet.total_samples = (uint32_t)num_samples;
   packet.sample_rate = (uint32_t)sample_rate;
@@ -347,6 +352,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
   // Build batch header
   audio_batch_packet_t header;
+  header.sequence = htonl((u_long)atomic_fetch_add(&g_audio_sequence, 1));  // Increment and use sequence
   header.batch_count = htonl((u_long)batch_count);
   header.total_samples = htonl((u_long)num_samples);
   header.sample_rate = htonl(44100UL); // Could make this configurable

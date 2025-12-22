@@ -571,10 +571,26 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
 
   // Parse batch header
   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+  uint32_t sequence = ntohl(batch_header->sequence);
   uint32_t batch_count = ntohl(batch_header->batch_count);
   uint32_t total_samples = ntohl(batch_header->total_samples);
   uint32_t sample_rate = ntohl(batch_header->sample_rate);
   uint32_t channels = ntohl(batch_header->channels);
+
+  // Track audio packet sequence for loss detection
+  static uint32_t last_audio_sequence = 0;
+  static bool first_packet = true;
+
+  if (!first_packet && sequence > last_audio_sequence + 1) {
+    uint32_t packets_lost = sequence - last_audio_sequence - 1;
+    log_warn("Audio packet loss detected: %u packets lost (expected seq %u, got %u)",
+             packets_lost, last_audio_sequence + 1, sequence);
+  }
+  if (first_packet) {
+    first_packet = false;
+    log_debug("First audio packet received (seq=%u)", sequence);
+  }
+  last_audio_sequence = sequence;
 
   (void)batch_count;
   (void)sample_rate;
@@ -748,6 +764,15 @@ static void *data_reception_thread_func(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Data reception thread started");
 #endif
+
+  // REQUEST REAL-TIME PRIORITY FOR NETWORK I/O
+  // This helps ensure timely packet delivery for audio streaming.
+  // The network thread needs good scheduling priority to prevent audio jitter
+  // from OS scheduling delays.
+  asciichat_error_t rt_result = audio_set_realtime_priority();
+  if (rt_result != ASCIICHAT_OK) {
+    log_debug("Could not set real-time priority for network reception thread (non-critical)");
+  }
 
   while (!should_exit()) {
     socket_t sockfd = server_connection_get_socket();

@@ -76,8 +76,28 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
 
       if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
-        SAFE_MEMSET(output + samples_read, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float), 0,
-                    (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
+        int shortage = (int)(framesPerBuffer * AUDIO_CHANNELS) - samples_read;
+
+        // CLOCK SYNCHRONIZATION: Handle underrun with packet loss concealment
+        // Instead of silent zeros, repeat the last sample with gradual fade
+        // This prevents audible clicks and provides continuity
+        float last_sample = (samples_read > 0) ? output[samples_read - 1] : 0.0f;
+
+        for (int i = 0; i < shortage; i++) {
+          // Repeat last sample with gradual fade to prevent clicks
+          // Fade factor: 0.95 per repeated sample = smooth decay
+          float fade = powf(0.95f, (float)(i + 1));
+          output[samples_read + i] = last_sample * fade;
+        }
+
+        // Log underrun with buffer diagnostics for debugging
+        static int underrun_count = 0;
+        underrun_count++;
+        if (underrun_count % 100 == 0) {
+          int available = (int)audio_ring_buffer_available_read(ctx->playback_buffer);
+          log_warn("Audio underrun #%d: wanted %lu samples, got %d, buffer has %d samples available",
+                   underrun_count, framesPerBuffer * AUDIO_CHANNELS, samples_read, available);
+        }
       }
     } else {
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
@@ -741,6 +761,15 @@ asciichat_error_t audio_list_output_devices(audio_device_info_t **out_devices, u
 
 void audio_free_device_list(audio_device_info_t *devices) {
   SAFE_FREE(devices);
+}
+
+int audio_ring_buffer_fill_percent(audio_ring_buffer_t *rb) {
+  if (!rb)
+    return -1;
+
+  size_t available = audio_ring_buffer_available_read(rb);
+  int fill_percent = (int)((available * 100) / AUDIO_RING_BUFFER_SIZE);
+  return (fill_percent > 100) ? 100 : fill_percent;
 }
 
 asciichat_error_t audio_set_realtime_priority(void) {

@@ -856,6 +856,15 @@ void *client_receive_thread(void *arg) {
 
   log_debug("Started receive thread for client %u (%s)", atomic_load(&client->client_id), client->display_name);
 
+  // REQUEST REAL-TIME PRIORITY FOR NETWORK I/O
+  // This helps ensure timely packet delivery for audio streaming.
+  // The network thread needs good scheduling priority to prevent audio jitter
+  // from OS scheduling delays. This is non-critical if it fails.
+  asciichat_error_t rt_result = audio_set_realtime_priority();
+  if (rt_result != ASCIICHAT_OK) {
+    log_debug("Could not set real-time priority for receive thread (non-critical)");
+  }
+
   // DEBUG: Check loop entry conditions
   bool should_exit = atomic_load(&g_server_should_exit);
   bool is_active = atomic_load(&client->active);
@@ -1142,6 +1151,15 @@ void *client_send_thread_func(void *arg) {
   }
 
   log_debug("Started send thread for client %u (%s)", client->client_id, client->display_name);
+
+  // REQUEST REAL-TIME PRIORITY FOR NETWORK I/O
+  // This helps ensure timely packet delivery for audio streaming.
+  // The network thread needs good scheduling priority to prevent audio jitter
+  // from OS scheduling delays. This is non-critical if it fails.
+  asciichat_error_t rt_result = audio_set_realtime_priority();
+  if (rt_result != ASCIICHAT_OK) {
+    log_debug("Could not set real-time priority for send thread (non-critical)");
+  }
 
   // Mark thread as running
   atomic_store(&client->send_thread_running, true);
