@@ -245,10 +245,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-platform
         ascii-chat-data-structures
         ${PORTAUDIO_LIBRARIES}
+        ${OPUS_LIBRARIES}
     )
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES})
+    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES})
 endif()
 
 # Link platform-specific audio libraries
@@ -897,7 +898,7 @@ endif()
 target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
 
 # Audio dependencies (from ascii-chat-audio)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES})
 if(APPLE)
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${COREAUDIO_FRAMEWORK}

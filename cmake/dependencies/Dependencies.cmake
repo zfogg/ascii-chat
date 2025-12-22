@@ -48,6 +48,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libsodium.cmake)
 # PortAudio - Audio I/O library for capture/playback
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Portaudio.cmake)
 
+# Opus - Audio codec for real-time compression
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Opus.cmake)
+
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 
