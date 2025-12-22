@@ -434,7 +434,10 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
   }
 
-  // Check for nonce counter exhaustion (extremely unlikely)
+  // Check for nonce counter exhaustion (extremely unlikely in practice)
+  // Starting from 1, reaching UINT64_MAX would require ~292 billion years at 60 FPS.
+  // With key rotation required at 1M packets (~16 seconds), exhaustion is virtually impossible.
+  // This check is a safety fallback that should never trigger in practice.
   if (ctx->nonce_counter == 0 || ctx->nonce_counter == UINT64_MAX) {
     SET_ERRNO(ERROR_CRYPTO, "Nonce counter exhausted - key rotation required");
     return CRYPTO_ERROR_NONCE_EXHAUSTED;
