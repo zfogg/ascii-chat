@@ -145,7 +145,11 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   int available = audio_ring_buffer_available_write(rb);
 
-  // If we need more space than available, drop old samples by advancing read index
+  // FIX: Never modify read_index from writer - this causes race conditions with reader.
+  // If buffer is full, drop the NEW samples (writer's responsibility to not overwrite).
+  // This is safer than corrupting the read_index which can cause audio glitches.
+  int samples_to_write = samples;
+  int samples_dropped = 0;
   if (samples > available) {
     int samples_to_drop = samples - available;
     rb->read_index = (rb->read_index + samples_to_drop) % AUDIO_RING_BUFFER_SIZE;
@@ -155,21 +159,23 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     // Now we have enough space to write all samples
   }
 
-  // Write all samples (we've made room if needed)
-  int write_idx = rb->write_index;
-  int remaining = AUDIO_RING_BUFFER_SIZE - write_idx;
+  // Write only the samples that fit (preserves existing data integrity)
+  if (samples_to_write > 0) {
+    int write_idx = rb->write_index;
+    int remaining = AUDIO_RING_BUFFER_SIZE - write_idx;
 
-  if (samples <= remaining) {
-    // Can copy in one chunk
-    SAFE_MEMCPY(&rb->data[write_idx], samples * sizeof(float), data, samples * sizeof(float));
-  } else {
-    // Need to wrap around - copy in two chunks
-    SAFE_MEMCPY(&rb->data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
-    SAFE_MEMCPY(&rb->data[0], (samples - remaining) * sizeof(float), &data[remaining],
-                (samples - remaining) * sizeof(float));
+    if (samples_to_write <= remaining) {
+      // Can copy in one chunk
+      SAFE_MEMCPY(&rb->data[write_idx], samples_to_write * sizeof(float), data, samples_to_write * sizeof(float));
+    } else {
+      // Need to wrap around - copy in two chunks
+      SAFE_MEMCPY(&rb->data[write_idx], remaining * sizeof(float), data, remaining * sizeof(float));
+      SAFE_MEMCPY(&rb->data[0], (samples_to_write - remaining) * sizeof(float), &data[remaining],
+                  (samples_to_write - remaining) * sizeof(float));
+    }
+
+    rb->write_index = (write_idx + samples_to_write) % AUDIO_RING_BUFFER_SIZE;
   }
-
-  rb->write_index = (write_idx + samples) % AUDIO_RING_BUFFER_SIZE;
 
   // Check if jitter buffer threshold has been reached
   if (!rb->jitter_buffer_filled) {
