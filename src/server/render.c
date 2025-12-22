@@ -1112,7 +1112,7 @@ void stop_client_render_threads(client_info_t *client) {
     return;
   }
 
-  log_debug("Starting render thread for client %u", client->client_id);
+  log_debug("Stopping render threads for client %u", client->client_id);
 
   // Signal threads to stop (atomic operations, no mutex needed)
   atomic_store(&client->video_render_thread_running, false);
