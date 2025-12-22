@@ -292,7 +292,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Set crowd scaling parameters
   mixer->crowd_alpha = 0.5f; // Square root scaling
-  mixer->base_gain = 1.5f;   // Balanced gain - prevents clipping with AGC
+  mixer->base_gain = 1.0f;   // Unity gain - prevents clipping (soft_clip handles peaks)
 
   // Initialize processing
   ducking_init(&mixer->ducking, max_sources, (float)sample_rate);
@@ -534,8 +534,8 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Clamp and output
-      output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
+      // Soft clip to prevent harsh digital clipping artifacts (threshold 0.8)
+      output[frame_start + s] = soft_clip(mix, 0.8f);
     }
   }
 
@@ -667,8 +667,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Clamp and output
-      output[frame_start + s] = clamp_float(mix, -1.0f, 1.0f);
+      // Soft clip to prevent harsh digital clipping artifacts (threshold 0.8)
+      output[frame_start + s] = soft_clip(mix, 0.8f);
     }
 
     STOP_TIMER("mixer_per_sample_loop");
