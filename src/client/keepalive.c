@@ -238,8 +238,8 @@ void keepalive_stop_thread() {
     return;
   }
 
-  // Signal thread to stop
-  signal_exit();
+  // Don't call signal_exit() here - that's for global shutdown only!
+  // The ping thread monitors connection state and will exit when connection is lost
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
