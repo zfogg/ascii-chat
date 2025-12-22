@@ -259,19 +259,20 @@ int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_si
  * @return 0 on success, -1 on error
  * @ingroup av
  */
-int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
-                             int frame_duration, int frame_count, crypto_context_t *crypto_ctx) {
-  if (!opus_data || opus_size == 0 || sample_rate <= 0 || frame_duration <= 0 || frame_count <= 0) {
+int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
+                             int sample_rate, int frame_duration, int frame_count, crypto_context_t *crypto_ctx) {
+  if (!opus_data || opus_size == 0 || !frame_sizes || sample_rate <= 0 || frame_duration <= 0 || frame_count <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, sample_rate=%d, "
+              "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, frame_sizes=%p, sample_rate=%d, "
               "frame_duration=%d, frame_count=%d",
-              (const void *)opus_data, opus_size, sample_rate, frame_duration, frame_count);
+              (const void *)opus_data, opus_size, (const void *)frame_sizes, sample_rate, frame_duration, frame_count);
     return -1;
   }
 
-  // Allocate buffer for header + encoded data
+  // Allocate buffer for header + frame sizes + encoded data
   size_t header_size = 16; // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
-  size_t total_size = header_size + opus_size;
+  size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
+  size_t total_size = header_size + frame_sizes_bytes + opus_size;
   void *packet_data = buffer_pool_alloc(total_size);
   if (!packet_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus batch packet: %zu bytes", total_size);
@@ -288,8 +289,11 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
   memcpy(buf + 8, &fc, 4);
   memset(buf + 12, 0, 4); // Reserved
 
+  // Write frame sizes array
+  memcpy(buf + header_size, frame_sizes, frame_sizes_bytes);
+
   // Copy Opus data
-  memcpy(buf + header_size, opus_data, opus_size);
+  memcpy(buf + header_size + frame_sizes_bytes, opus_data, opus_size);
 
   // Send packet (with encryption support)
   int result;
@@ -577,14 +581,15 @@ int av_receive_audio_opus(const void *packet_data, size_t packet_len, const uint
  * @ingroup av
  */
 int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, const uint8_t **out_opus_data,
-                                size_t *out_opus_size, int *out_sample_rate, int *out_frame_duration,
-                                int *out_frame_count) {
-  if (!packet_data || !out_opus_data || !out_opus_size || !out_sample_rate || !out_frame_duration || !out_frame_count) {
+                                size_t *out_opus_size, const uint16_t **out_frame_sizes, int *out_sample_rate,
+                                int *out_frame_duration, int *out_frame_count) {
+  if (!packet_data || !out_opus_data || !out_opus_size || !out_frame_sizes || !out_sample_rate || !out_frame_duration ||
+      !out_frame_count) {
     SET_ERRNO(ERROR_INVALID_PARAM,
-              "Invalid parameters: packet_data=%p, out_opus_data=%p, out_opus_size=%p, "
+              "Invalid parameters: packet_data=%p, out_opus_data=%p, out_opus_size=%p, out_frame_sizes=%p, "
               "out_sample_rate=%p, out_frame_duration=%p, out_frame_count=%p",
-              (const void *)packet_data, (void *)out_opus_data, (void *)out_opus_size, (void *)out_sample_rate,
-              (void *)out_frame_duration, (void *)out_frame_count);
+              (const void *)packet_data, (void *)out_opus_data, (void *)out_opus_size, (void *)out_frame_sizes,
+              (void *)out_sample_rate, (void *)out_frame_duration, (void *)out_frame_count);
     return -1;
   }
 
@@ -605,9 +610,18 @@ int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, cons
   *out_frame_duration = (int)fd;
   *out_frame_count = (int)fc;
 
-  // Extract Opus data (everything after 16-byte header)
-  *out_opus_data = buf + header_size;
-  *out_opus_size = packet_len - header_size;
+  // Extract frame sizes array (after 16-byte header)
+  size_t frame_sizes_bytes = (size_t)fc * sizeof(uint16_t);
+  if (packet_len < header_size + frame_sizes_bytes) {
+    SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Opus batch packet too small for frame sizes: %zu < %zu", packet_len,
+              header_size + frame_sizes_bytes);
+    return -1;
+  }
+  *out_frame_sizes = (const uint16_t *)(buf + header_size);
+
+  // Extract Opus data (after header + frame sizes)
+  *out_opus_data = buf + header_size + frame_sizes_bytes;
+  *out_opus_size = packet_len - header_size - frame_sizes_bytes;
 
   return 0;
 }

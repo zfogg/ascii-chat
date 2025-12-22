@@ -81,6 +81,9 @@ typedef struct {
   atomic_bool is_sending_video; // Thread-safe video stream state
   atomic_bool is_sending_audio; // Thread-safe audio stream state
 
+  // Opus codec for audio compression/decompression
+  void *opus_decoder; // opus_codec_t* - Opus decoder for this client's audio
+
   // Terminal capabilities (for rendering appropriate ASCII frames)
   terminal_capabilities_t terminal_caps;
   bool has_terminal_caps; // Whether we've received terminal capabilities from this client

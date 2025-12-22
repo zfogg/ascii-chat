@@ -853,6 +853,48 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
 }
 
 /**
+ * @brief Thread-safe Opus audio batch packet transmission
+ *
+ * Sends a batch of Opus-encoded audio frames to the server with proper
+ * synchronization and encryption support.
+ *
+ * @param opus_data Opus-encoded audio data (multiple frames concatenated)
+ * @param opus_size Total size of Opus data in bytes
+ * @param frame_sizes Array of individual frame sizes (variable-length frames)
+ * @param frame_count Number of Opus frames in the batch
+ * @return 0 on success, negative on error
+ *
+ * @ingroup client_connection
+ */
+int threaded_send_audio_opus_batch(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
+                                   int frame_count) {
+  mutex_lock(&g_send_mutex);
+
+  // Recheck connection status INSIDE the mutex to prevent TOCTOU race
+  socket_t sockfd = server_connection_get_socket();
+  if (!atomic_load(&g_connection_active) || sockfd == INVALID_SOCKET_VALUE) {
+    mutex_unlock(&g_send_mutex);
+    return -1;
+  }
+
+  // Get crypto context if encryption is enabled
+  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+
+  // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
+  int result = av_send_audio_opus_batch(sockfd, opus_data, opus_size, frame_sizes, 48000, 20, frame_count,
+                                        (crypto_context_t *)crypto_ctx);
+
+  mutex_unlock(&g_send_mutex);
+
+  // If send failed due to network error, signal connection loss
+  if (result < 0) {
+    server_connection_lost();
+  }
+
+  return result;
+}
+
+/**
  * @brief Thread-safe ping packet transmission
  *
  * @return 0 on success, negative on error

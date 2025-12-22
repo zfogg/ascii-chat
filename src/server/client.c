@@ -126,6 +126,7 @@
 #include "packet_queue.h"
 #include "audio.h"
 #include "mixer.h"
+#include "opus_codec.h"
 #include "video_frame.h"
 #include "util/uthash.h"
 #include "platform/abstraction.h"
@@ -617,7 +618,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_info("Sent initial server state to client %u", atomic_load(&client->client_id));
 #endif
   }
-  
+
   // Queue initial server state to the new client
   server_state_packet_t state;
   state.connected_client_count = g_client_manager.client_count;
@@ -636,8 +637,8 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
   }
 
-  int send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state,
-                                       sizeof(net_state), (crypto_context_t *)crypto_ctx);
+  int send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                       (crypto_context_t *)crypto_ctx);
   if (send_result != 0) {
     log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
   } else {
@@ -1014,6 +1015,7 @@ void *client_receive_thread(void *arg) {
     case PACKET_TYPE_IMAGE_FRAME:
     case PACKET_TYPE_AUDIO:
     case PACKET_TYPE_AUDIO_BATCH:
+    case PACKET_TYPE_AUDIO_OPUS_BATCH:
     case PACKET_TYPE_CLIENT_CAPABILITIES:
     case PACKET_TYPE_PING:
     case PACKET_TYPE_PONG:
@@ -1632,6 +1634,12 @@ void cleanup_client_media_buffers(client_info_t *client) {
     audio_ring_buffer_destroy(client->incoming_audio_buffer);
     client->incoming_audio_buffer = NULL;
   }
+
+  // Clean up Opus decoder
+  if (client->opus_decoder) {
+    opus_codec_destroy((opus_codec_t *)client->opus_decoder);
+    client->opus_decoder = NULL;
+  }
 }
 
 void cleanup_client_packet_queues(client_info_t *client) {
@@ -1724,6 +1732,10 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_AUDIO_BATCH:
     handle_audio_batch_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_AUDIO_OPUS_BATCH:
+    handle_audio_opus_batch_packet(client, data, len);
     break;
 
   case PACKET_TYPE_CLIENT_JOIN:

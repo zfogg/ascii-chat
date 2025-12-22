@@ -76,8 +76,8 @@
  * ============================================================================
  */
 
-/** @brief Audio sample rate (44.1kHz CD quality) */
-#define AUDIO_SAMPLE_RATE 44100
+/** @brief Audio sample rate (48kHz professional quality, Opus-compatible) */
+#define AUDIO_SAMPLE_RATE 48000
 /** @brief Audio frames per buffer (256 frames for low latency) */
 #define AUDIO_FRAMES_PER_BUFFER 256
 /** @brief Number of audio channels (1 = mono) */
