@@ -941,15 +941,15 @@ Test(options, very_long_arguments) {
 
   memset(long_address, '1', sizeof(long_address) - 1);
   long_address[sizeof(long_address) - 1] = '\0';
-  strcpy(long_address, "192.168.1.1"); // Valid but test the buffer handling
+  SAFE_STRNCPY(long_address, "192.168.1.1", sizeof(long_address)); // Valid but test the buffer handling
 
   memset(long_port, '2', sizeof(long_port) - 1);
   long_port[sizeof(long_port) - 1] = '\0';
-  strcpy(long_port, "8080");
+  SAFE_STRNCPY(long_port, "8080", sizeof(long_port));
 
   memset(long_logfile, '3', sizeof(long_logfile) - 1);
   long_logfile[sizeof(long_logfile) - 1] = '\0';
-  strcpy(long_logfile, "/tmp/test.log");
+  SAFE_STRNCPY(long_logfile, "/tmp/test.log", sizeof(long_logfile));
 
   char *argv[] = {"client", "-a", long_address, "-p", long_port, "-L", long_logfile, NULL};
   int result = test_options_init_with_fork(argv, 7, true);

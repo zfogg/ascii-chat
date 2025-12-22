@@ -210,7 +210,7 @@ Test(packet_queue, enqueue_without_copy) {
   // Allocate data that we'll pass ownership to queue
   char *data;
   data = SAFE_MALLOC(100, char *);
-  strcpy(data, "Test data without copy");
+  SAFE_STRNCPY(data, "Test data without copy", 100);
 
   // Enqueue without copying (queue takes ownership)
   int result = packet_queue_enqueue(queue, PACKET_TYPE_IMAGE_FRAME, data, strlen(data), 456, false);
