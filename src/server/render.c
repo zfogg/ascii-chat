@@ -159,6 +159,7 @@
 #include "stream.h"
 #include "protocol.h"
 #include "common.h"
+#include "options.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "packet_queue.h"
@@ -814,16 +815,13 @@ void *client_audio_render_thread(void *arg) {
       continue;
     }
 
-    // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
-    // We already have a stable client pointer, no need for g_client_manager_rwlock
-    mutex_lock(&client->client_state_mutex);
-
-    // Snapshot client state while holding mutex
-    uint32_t client_id_snapshot = client->client_id;            // client_id is set once and never changed
-    bool active_snapshot = client->active;                      // Direct read under mutex protection
-    packet_queue_t *audio_queue_snapshot = client->audio_queue; // audio_queue is set once and never changed
-
-    mutex_unlock(&client->client_state_mutex);
+    // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
+    // client_id: Set once at initialization, never changes
+    // active: atomic_bool - use atomic_load
+    // audio_queue: Assigned once at init and never changes
+    uint32_t client_id_snapshot = client->client_id;            // Stable after init
+    bool active_snapshot = atomic_load(&client->active);        // Atomic read
+    packet_queue_t *audio_queue_snapshot = client->audio_queue; // Stable after init
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
@@ -831,11 +829,33 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Create mix excluding THIS client's audio using snapshot data
-    int samples_mixed =
-        mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+    struct timespec mix_start_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &mix_start_time);
 
-    // Debug logging every 100 iterations
-    log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
+    int samples_mixed = 0;
+    if (opt_no_audio_mixer) {
+      // Debug mode: disable mixer, just fill with silence
+      SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+      samples_mixed = 0;
+      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): sending silence for client %u",
+                      client_id_snapshot);
+    } else {
+      samples_mixed =
+          mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+    }
+
+    struct timespec mix_end_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &mix_end_time);
+    uint64_t mix_time_us = ((uint64_t)mix_end_time.tv_sec * 1000000 + (uint64_t)mix_end_time.tv_nsec / 1000) -
+                           ((uint64_t)mix_start_time.tv_sec * 1000000 + (uint64_t)mix_start_time.tv_nsec / 1000);
+
+    if (mix_time_us > 2000) { // Log if mixing takes > 2ms
+      log_warn_every(5000000, "Slow mixer for client %u: took %lluus (%.2fms)", client_id_snapshot, mix_time_us,
+                     (float)mix_time_us / 1000.0f);
+    }
+
+    // Debug logging every 100 iterations (disabled - can slow down audio rendering)
+    // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Always send audio packets, even if silent (samples_mixed == 0)
     // This prevents buffer underruns on the client side which cause "scratchy" audio.
@@ -846,6 +866,9 @@ void *client_audio_render_thread(void *arg) {
 
     // Accumulate samples for Opus encoding (Opus requires 960 samples = 20ms @ 48kHz)
     // Copy AUDIO_FRAMES_PER_BUFFER (256) samples to accumulation buffer
+    struct timespec accum_start = {0};
+    (void)clock_gettime(CLOCK_MONOTONIC, &accum_start);
+
     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
     int samples_to_copy = (AUDIO_FRAMES_PER_BUFFER <= space_available) ? AUDIO_FRAMES_PER_BUFFER : space_available;
 
@@ -854,12 +877,21 @@ void *client_audio_render_thread(void *arg) {
                 samples_to_copy * sizeof(float));
     opus_frame_accumulated += samples_to_copy;
 
+    struct timespec accum_end = {0};
+    (void)clock_gettime(CLOCK_MONOTONIC, &accum_end);
+    uint64_t accum_time_us = ((uint64_t)accum_end.tv_sec * 1000000 + (uint64_t)accum_end.tv_nsec / 1000) -
+                             ((uint64_t)accum_start.tv_sec * 1000000 + (uint64_t)accum_start.tv_nsec / 1000);
+
+    if (accum_time_us > 500) {
+      log_warn_every(5000000, "Slow accumulate for client %u: took %lluus", client_id_snapshot, accum_time_us);
+    }
+
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
       // BACKPRESSURE: Check queue depth before sending
       // If queue is getting full, slow down to prevent drops over slow networks
       size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-      bool apply_backpressure = (queue_depth > 250); // > 250 packets = 1.45s buffered
+      bool apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
 
       if (apply_backpressure) {
         log_warn_every(1000000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
@@ -871,15 +903,42 @@ void *client_audio_render_thread(void *arg) {
 
       // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
       uint8_t opus_buffer[1024]; // Max Opus frame size
+
+      struct timespec opus_start_time;
+      (void)clock_gettime(CLOCK_MONOTONIC, &opus_start_time);
+
       int opus_size =
           opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
+
+      struct timespec opus_end_time;
+      (void)clock_gettime(CLOCK_MONOTONIC, &opus_end_time);
+      uint64_t opus_time_us = ((uint64_t)opus_end_time.tv_sec * 1000000 + (uint64_t)opus_end_time.tv_nsec / 1000) -
+                              ((uint64_t)opus_start_time.tv_sec * 1000000 + (uint64_t)opus_start_time.tv_nsec / 1000);
+
+      if (opus_time_us > 2000) { // Log if encoding takes > 2ms
+        log_warn_every(5000000, "Slow Opus encode for client %u: took %lluus (%.2fms), size=%d", client_id_snapshot,
+                       opus_time_us, (float)opus_time_us / 1000.0f, opus_size);
+      }
 
       if (opus_size <= 0) {
         log_error("Failed to encode audio to Opus for client %u: opus_size=%d", client_id_snapshot, opus_size);
       } else {
         // Queue Opus-encoded audio for this specific client
+        struct timespec queue_start = {0};
+        (void)clock_gettime(CLOCK_MONOTONIC, &queue_start);
+
         int result =
             packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS, opus_buffer, (size_t)opus_size, 0, true);
+
+        struct timespec queue_end = {0};
+        (void)clock_gettime(CLOCK_MONOTONIC, &queue_end);
+        uint64_t queue_time_us = ((uint64_t)queue_end.tv_sec * 1000000 + (uint64_t)queue_end.tv_nsec / 1000) -
+                                 ((uint64_t)queue_start.tv_sec * 1000000 + (uint64_t)queue_start.tv_nsec / 1000);
+
+        if (queue_time_us > 500) {
+          log_warn_every(5000000, "Slow queue for client %u: took %lluus", client_id_snapshot, queue_time_us);
+        }
+
         if (result < 0) {
           log_debug("Failed to queue Opus audio for client %u", client_id_snapshot);
         } else {
