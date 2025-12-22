@@ -890,7 +890,7 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
     return -1;
   }
 
-  // Write header (network byte order for cross-platform compatibility)
+  // Write header in network byte order
   uint8_t *buf = (uint8_t *)packet_data;
   uint32_t sr = htonl((uint32_t)sample_rate);
   uint32_t fd = htonl((uint32_t)frame_duration);

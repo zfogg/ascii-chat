@@ -767,8 +767,8 @@ void *client_audio_render_thread(void *arg) {
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
   int opus_frame_accumulated = 0;
 
-  // Create Opus encoder for this client's audio stream (48kHz, mono, 24kbps, VOIP mode)
-  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+  // Create Opus encoder for this client's audio stream (48kHz, mono, 128kbps, AUDIO mode for music quality)
+  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, 48000, 128000);
   if (!opus_encoder) {
     log_error("Failed to create Opus encoder for audio render thread (client %u)", thread_client_id);
     return NULL;
@@ -778,9 +778,14 @@ void *client_audio_render_thread(void *arg) {
   uint64_t audio_packet_count = 0;
   struct timespec last_audio_fps_report_time;
   struct timespec last_audio_packet_time;
+  struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_fps_report_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
+  (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
   int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
+
+  // Target packet interval: 20ms (one Opus frame per 20ms = 960 samples at 48kHz)
+  const uint64_t target_packet_interval_us = 20000;
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
@@ -834,11 +839,37 @@ void *client_audio_render_thread(void *arg) {
 
     int samples_mixed = 0;
     if (opt_no_audio_mixer) {
-      // Debug mode: disable mixer, just fill with silence
+      // Disable mixer.h processing: simple mixing without ducking/compression/etc
+      // Just add audio from all sources except this client, no processing
       SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
-      samples_mixed = 0;
-      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): sending silence for client %u",
-                      client_id_snapshot);
+
+      if (g_audio_mixer) {
+        int max_samples_in_frame = 0;
+        // Simple mixing: just add all sources except current client
+        for (int i = 0; i < g_audio_mixer->max_sources; i++) {
+          if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+              g_audio_mixer->source_buffers[i]) {
+            // Read from this source and add to mix buffer
+            float temp_buffer[AUDIO_FRAMES_PER_BUFFER];
+            int samples_read =
+                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, AUDIO_FRAMES_PER_BUFFER);
+
+            // Track the maximum samples we got from any source
+            if (samples_read > max_samples_in_frame) {
+              max_samples_in_frame = samples_read;
+            }
+
+            // Add to mix buffer
+            for (int j = 0; j < samples_read; j++) {
+              mix_buffer[j] += temp_buffer[j];
+            }
+          }
+        }
+        samples_mixed = max_samples_in_frame; // Only count samples we actually read
+      }
+
+      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u",
+                      samples_mixed, client_id_snapshot);
     } else {
       samples_mixed =
           mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
@@ -857,25 +888,21 @@ void *client_audio_render_thread(void *arg) {
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
     // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
-    // Always send audio packets, even if silent (samples_mixed == 0)
-    // This prevents buffer underruns on the client side which cause "scratchy" audio.
-    // When no audio is mixed, send zero-filled buffer to maintain continuous stream.
-    if (samples_mixed == 0) {
-      SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
-    }
-
-    // Accumulate samples for Opus encoding (Opus requires 960 samples = 20ms @ 48kHz)
-    // Copy AUDIO_FRAMES_PER_BUFFER (256) samples to accumulation buffer
+    // Accumulate all samples (including 0 or partial) until we have a full Opus frame
+    // This maintains continuous stream without silence padding
     struct timespec accum_start = {0};
     (void)clock_gettime(CLOCK_MONOTONIC, &accum_start);
 
     int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
-    int samples_to_copy = (AUDIO_FRAMES_PER_BUFFER <= space_available) ? AUDIO_FRAMES_PER_BUFFER : space_available;
+    int samples_to_copy = (samples_mixed <= space_available) ? samples_mixed : space_available;
 
-    SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
-                (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
-                samples_to_copy * sizeof(float));
-    opus_frame_accumulated += samples_to_copy;
+    // Only copy if we have samples, otherwise just wait for next frame
+    if (samples_to_copy > 0) {
+      SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
+                  (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
+                  samples_to_copy * sizeof(float));
+      opus_frame_accumulated += samples_to_copy;
+    }
 
     struct timespec accum_end = {0};
     (void)clock_gettime(CLOCK_MONOTONIC, &accum_end);
@@ -888,14 +915,23 @@ void *client_audio_render_thread(void *arg) {
 
     // Only encode and send when we have accumulated a full Opus frame
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
-      // BACKPRESSURE: Check queue depth before sending
-      // If queue is getting full, slow down to prevent drops over slow networks
-      size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-      bool apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
+      // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
+      // Only check periodically every 100 iterations (~0.6s at 172 fps)
+      static int backpressure_check_counter = 0;
+      bool apply_backpressure = false;
+
+      if (++backpressure_check_counter >= 100) {
+        backpressure_check_counter = 0;
+        size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+        apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
+
+        if (apply_backpressure) {
+          log_warn("Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)", client_id_snapshot,
+                   queue_depth, (float)queue_depth / 172.0f);
+        }
+      }
 
       if (apply_backpressure) {
-        log_warn_every(1000000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
-                       client_id_snapshot, queue_depth, (float)queue_depth / 172.0f);
         // Skip this packet to let the queue drain
         // CRITICAL: Reset accumulation buffer so fresh samples can be captured on next iteration
         // Without this reset, we'd loop forever with stale audio and no space for new samples
@@ -1007,10 +1043,10 @@ void *client_audio_render_thread(void *arg) {
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target loop time based on sample rate and buffer size:
-    // 256 samples / 48000 Hz = 5333.33μs per frame (187.5 FPS)
-    // Using 5333μs ensures audio is generated at the correct rate
-    const uint64_t target_loop_us = (uint64_t)AUDIO_FRAMES_PER_BUFFER * 1000000ULL / AUDIO_SAMPLE_RATE;
+    // Target loop time: 10ms (two iterations per Opus frame)
+    // Balances between fast ring buffer consumption and accumulation time
+    // Too fast (5.3ms) = frequent empty reads; too slow (20ms) = buffer accumulation issues
+    const uint64_t target_loop_us = 10000; // 10ms = reasonable compromise
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {
