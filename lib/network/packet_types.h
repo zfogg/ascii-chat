@@ -345,7 +345,12 @@ typedef enum {
   /** @brief Error packet with asciichat_error_t code and human-readable message */
   PACKET_TYPE_ERROR_MESSAGE = 32,
   /** @brief Bidirectional remote logging packet */
-  PACKET_TYPE_REMOTE_LOG = 33
+  PACKET_TYPE_REMOTE_LOG = 33,
+
+  /** @brief Opus-encoded single audio frame */
+  PACKET_TYPE_AUDIO_OPUS = 34,
+  /** @brief Batched Opus-encoded audio frames */
+  PACKET_TYPE_AUDIO_OPUS_BATCH = 35
 } packet_type_t;
 
 /**

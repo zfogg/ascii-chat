@@ -28,6 +28,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
+#include "opus_codec.h"
 #include "platform/string.h"
 #include "buffer_pool.h"
 #include "packet_types.h"
@@ -191,6 +192,112 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
 
   // Send packet
   int result = packet_send(sockfd, PACKET_TYPE_AUDIO_BATCH, packet_data, total_size);
+
+  // Clean up
+  buffer_pool_free(packet_data, total_size);
+
+  return result;
+}
+
+/**
+ * @brief Send Opus-encoded audio frame
+ * @param sockfd Socket file descriptor
+ * @param opus_data Opus-encoded audio data
+ * @param opus_size Size of encoded data
+ * @param sample_rate Sample rate in Hz
+ * @param frame_duration Frame duration in milliseconds
+ * @return 0 on success, -1 on error
+ * @ingroup av
+ */
+int av_send_audio_opus(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
+                       int frame_duration) {
+  if (!opus_data || opus_size == 0 || sample_rate <= 0 || frame_duration <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "Invalid Opus parameters: opus_data=%p, opus_size=%zu, sample_rate=%d, frame_duration=%d",
+              (const void *)opus_data, opus_size, sample_rate, frame_duration);
+    return -1;
+  }
+
+  // Allocate buffer for header + encoded data
+  size_t header_size = 16;  // Metadata: sample_rate (4), frame_duration (4), reserved (8)
+  size_t total_size = header_size + opus_size;
+  void *packet_data = buffer_pool_alloc(total_size);
+  if (!packet_data) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
+    return -1;
+  }
+
+  // Write header
+  uint8_t *buf = (uint8_t *)packet_data;
+  uint32_t sr = (uint32_t)sample_rate;
+  uint32_t fd = (uint32_t)frame_duration;
+  memcpy(buf, &sr, 4);
+  memcpy(buf + 4, &fd, 4);
+  memset(buf + 8, 0, 8);  // Reserved
+
+  // Copy Opus data
+  memcpy(buf + header_size, opus_data, opus_size);
+
+  // Send packet
+  int result = packet_send(sockfd, PACKET_TYPE_AUDIO_OPUS, packet_data, total_size);
+
+  // Clean up
+  buffer_pool_free(packet_data, total_size);
+
+  return result;
+}
+
+/**
+ * @brief Send batched Opus-encoded audio frames
+ * @param sockfd Socket file descriptor
+ * @param opus_data Opus-encoded audio data
+ * @param opus_size Size of encoded data
+ * @param sample_rate Sample rate in Hz
+ * @param frame_duration Frame duration in milliseconds
+ * @param frame_count Number of frames in batch
+ * @param crypto_ctx Cryptographic context for encryption
+ * @return 0 on success, -1 on error
+ * @ingroup av
+ */
+int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t opus_size, int sample_rate,
+                             int frame_duration, int frame_count, crypto_context_t *crypto_ctx) {
+  if (!opus_data || opus_size == 0 || sample_rate <= 0 || frame_duration <= 0 || frame_count <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM,
+              "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, sample_rate=%d, "
+              "frame_duration=%d, frame_count=%d",
+              (const void *)opus_data, opus_size, sample_rate, frame_duration, frame_count);
+    return -1;
+  }
+
+  // Allocate buffer for header + encoded data
+  size_t header_size = 16;  // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
+  size_t total_size = header_size + opus_size;
+  void *packet_data = buffer_pool_alloc(total_size);
+  if (!packet_data) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus batch packet: %zu bytes", total_size);
+    return -1;
+  }
+
+  // Write header
+  uint8_t *buf = (uint8_t *)packet_data;
+  uint32_t sr = (uint32_t)sample_rate;
+  uint32_t fd = (uint32_t)frame_duration;
+  uint32_t fc = (uint32_t)frame_count;
+  memcpy(buf, &sr, 4);
+  memcpy(buf + 4, &fd, 4);
+  memcpy(buf + 8, &fc, 4);
+  memset(buf + 12, 0, 4);  // Reserved
+
+  // Copy Opus data
+  memcpy(buf + header_size, opus_data, opus_size);
+
+  // Send packet (with encryption support)
+  int result;
+  if (crypto_ctx) {
+    result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, crypto_ctx);
+  } else {
+    result = packet_send(sockfd, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size);
+  }
 
   // Clean up
   buffer_pool_free(packet_data, total_size);

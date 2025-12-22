@@ -301,6 +301,45 @@ set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
 set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
 
 # =============================================================================
+# libopus - Audio codec library
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}libopus${ColorReset} from source...")
+
+set(OPUS_PREFIX "${MUSL_DEPS_DIR_STATIC}/opus")
+set(OPUS_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/opus-build")
+
+# Only add external project if library doesn't exist
+if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
+    message(STATUS "  libopus library not found in cache, will build from source")
+    ExternalProject_Add(opus-musl
+        URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
+        URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${OPUS_BUILD_DIR}
+        STAMP_DIR ${OPUS_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc
+        BUILD_COMMAND env REALGCC=${REAL_GCC} make
+        INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}libopus${ColorReset} library found in cache: ${BoldMagenta}${OPUS_PREFIX}/lib/libopus.a${ColorReset}")
+    # Create a dummy target so dependencies can reference it
+    add_custom_target(opus-musl)
+endif()
+
+set(OPUS_FOUND TRUE)
+set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
+set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+
+# =============================================================================
 # libexecinfo - Backtrace support for musl
 # =============================================================================
 message(STATUS "Configuring ${BoldBlue}libexecinfo${ColorReset} from source...")
