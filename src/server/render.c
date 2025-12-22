@@ -787,9 +787,6 @@ void *client_audio_render_thread(void *arg) {
   (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
   int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
 
-  // Target packet interval: 20ms (one Opus frame per 20ms = 960 samples at 48kHz)
-  const uint64_t target_packet_interval_us = 20000;
-
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
     // Capture loop start time for precise timing
