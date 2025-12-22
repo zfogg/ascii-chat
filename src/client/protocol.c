@@ -107,6 +107,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #endif
 
 #include "compression.h"
+#include "opus_codec.h"
 
 #include <errno.h>
 
@@ -638,6 +639,150 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   log_debug_every(5000000, "Processed audio batch: %u samples from server", total_samples);
 }
 
+/**
+ * @brief Handle incoming Opus-encoded audio packet from server
+ *
+ * Decodes single Opus-encoded audio frame and processes for playback.
+ * Opus provides ~98% bandwidth reduction compared to raw PCM.
+ *
+ * @param data Packet payload containing Opus-encoded audio
+ * @param len Total packet length in bytes
+ *
+ * @ingroup client_protocol
+ */
+static void handle_audio_opus_packet(const void *data, size_t len) {
+  if (!opt_audio_enabled || !data || len == 0) {
+    return;
+  }
+
+  // Get Opus decoder
+  opus_codec_t *decoder = audio_get_opus_decoder();
+  if (!decoder) {
+    log_warn("Opus decoder not initialized, cannot decode audio");
+    return;
+  }
+
+  // Opus max frame size is 2880 samples (120ms @ 48kHz)
+  float samples[2880];
+  int decoded_samples = opus_codec_decode(decoder, (const uint8_t *)data, len, samples, 2880);
+
+  if (decoded_samples <= 0) {
+    log_warn("Failed to decode Opus audio packet, size=%d", decoded_samples);
+    return;
+  }
+
+  // Track received packet for analysis
+  if (opt_audio_analysis_enabled) {
+    audio_analysis_track_received_packet(len);
+  }
+
+  // Process decoded audio through audio subsystem
+  audio_process_received_samples(samples, decoded_samples);
+
+  log_debug_every(5000000, "Processed Opus audio: %d decoded samples", decoded_samples);
+}
+
+/**
+ * @brief Handle incoming Opus batch packet from server
+ *
+ * Processes batched Opus-encoded audio packets for efficiency.
+ * Each batch contains multiple Opus frames.
+ *
+ * @param data Packet payload containing Opus batch header + Opus frames
+ * @param len Total packet length in bytes
+ *
+ * @ingroup client_protocol
+ */
+static void handle_audio_opus_batch_packet(const void *data, size_t len) {
+  if (!opt_audio_enabled || !data || len == 0) {
+    return;
+  }
+
+  // Get Opus decoder
+  opus_codec_t *decoder = audio_get_opus_decoder();
+  if (!decoder) {
+    log_warn("Opus decoder not initialized, cannot decode audio batch");
+    return;
+  }
+
+  // Parse batch header (uint32_t: batch_count, then frame_sizes for each frame, then Opus data)
+  if (len < sizeof(uint32_t)) {
+    log_warn("Opus batch packet too small: %zu bytes", len);
+    return;
+  }
+
+  uint32_t batch_count;
+  SAFE_MEMCPY(&batch_count, sizeof(batch_count), data, sizeof(batch_count));
+  batch_count = ntohl(batch_count);
+
+  if (batch_count == 0 || batch_count > 256) {
+    log_warn("Invalid Opus batch count: %u", batch_count);
+    return;
+  }
+
+  // Allocate buffer for all decoded samples (max 2880 * batch_count)
+  size_t max_decoded_samples = 2880 * batch_count;
+  float *all_samples = SAFE_MALLOC(max_decoded_samples * sizeof(float), float *);
+  if (!all_samples) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for Opus batch decoding");
+    return;
+  }
+
+  int total_decoded_samples = 0;
+
+  // Parse frame sizes and data
+  const uint8_t *ptr = (const uint8_t *)data + sizeof(uint32_t);
+  size_t remaining = len - sizeof(uint32_t);
+
+  for (uint32_t i = 0; i < batch_count; i++) {
+    // Read frame size (uint16_t network byte order)
+    if (remaining < sizeof(uint16_t)) {
+      log_warn("Opus batch truncated at frame %u", i);
+      break;
+    }
+
+    uint16_t frame_size_net;
+    SAFE_MEMCPY(&frame_size_net, sizeof(frame_size_net), ptr, sizeof(frame_size_net));
+    uint16_t frame_size = ntohs(frame_size_net);
+    ptr += sizeof(uint16_t);
+    remaining -= sizeof(uint16_t);
+
+    if (frame_size == 0 || frame_size > remaining) {
+      log_warn("Invalid Opus frame size: %u", frame_size);
+      break;
+    }
+
+    // Decode frame
+    float *frame_buffer = all_samples + total_decoded_samples;
+    int decoded = opus_codec_decode(decoder, ptr, frame_size, frame_buffer, 2880 - total_decoded_samples);
+
+    if (decoded <= 0) {
+      log_warn("Failed to decode Opus frame %u in batch, decoded=%d", i, decoded);
+      break;
+    }
+
+    total_decoded_samples += decoded;
+    ptr += frame_size;
+    remaining -= frame_size;
+  }
+
+  if (total_decoded_samples > 0) {
+    // Track received packet for analysis
+    if (opt_audio_analysis_enabled) {
+      audio_analysis_track_received_packet(len);
+    }
+
+    // Process decoded audio through audio subsystem
+    audio_process_received_samples(all_samples, total_decoded_samples);
+
+    log_debug_every(5000000, "Processed Opus batch: %d decoded samples from %u frames", total_decoded_samples,
+                    batch_count);
+  }
+
+  // Clean up
+  SAFE_FREE(all_samples);
+}
+
 static bool handle_error_message_packet(const void *data, size_t len) {
   asciichat_error_t remote_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
@@ -813,6 +958,14 @@ static void *data_reception_thread_func(void *arg) {
 
     case PACKET_TYPE_AUDIO_BATCH:
       handle_audio_batch_packet(data, len);
+      break;
+
+    case PACKET_TYPE_AUDIO_OPUS:
+      handle_audio_opus_packet(data, len);
+      break;
+
+    case PACKET_TYPE_AUDIO_OPUS_BATCH:
+      handle_audio_opus_batch_packet(data, len);
       break;
 
     case PACKET_TYPE_PING:
