@@ -430,7 +430,7 @@ int gpg_agent_sign(int handle_as_int, const char *keygrip, const uint8_t *messag
   }
 
   for (size_t i = 0; i < message_len; i++) {
-    sprintf(hex_message + i * 2, "%02X", message[i]);
+    snprintf(hex_message + i * 2, 3, "%02X", message[i]);
   }
   hex_message[message_len * 2] = '\0';
 
@@ -773,12 +773,12 @@ int gpg_verify_signature(const uint8_t *public_key, const uint8_t *message, size
   char msg_hex[128];
 
   for (int i = 0; i < 32; i++) {
-    sprintf(pubkey_hex + i * 2, "%02x", public_key[i]);
-    sprintf(r_hex + i * 2, "%02x", signature[i]);
-    sprintf(s_hex + i * 2, "%02x", signature[32 + i]);
+    snprintf(pubkey_hex + i * 2, 3, "%02x", public_key[i]);
+    snprintf(r_hex + i * 2, 3, "%02x", signature[i]);
+    snprintf(s_hex + i * 2, 3, "%02x", signature[32 + i]);
   }
   for (size_t i = 0; i < (message_len < 32 ? message_len : 32); i++) {
-    sprintf(msg_hex + i * 2, "%02x", message[i]);
+    snprintf(msg_hex + i * 2, 3, "%02x", message[i]);
   }
 
   log_debug("gpg_verify_signature: pubkey=%s", pubkey_hex);
