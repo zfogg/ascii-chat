@@ -169,7 +169,7 @@ static atomic_bool g_audio_capture_thread_exited = false;
  * ============================================================================ */
 
 /** Audio volume boost multiplier for received samples */
-#define AUDIO_VOLUME_BOOST 2.0f // 2x boost - balanced with AGC to prevent clipping
+#define AUDIO_VOLUME_BOOST 1.0f // No boost/attenuation
 
 /* ============================================================================
  * Audio Processing Functions
