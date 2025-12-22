@@ -1167,37 +1167,15 @@ void *client_send_thread_func(void *arg) {
   uint64_t last_video_send_time = 0;
   const uint64_t video_send_interval_us = 16666; // 60fps = ~16.67ms
 
+  // High-frequency audio loop - separate from video frame loop
+  // to ensure audio packets are sent immediately, not rate-limited by video
+#define MAX_AUDIO_BATCH 8
   while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     bool sent_something = false;
 
-    // Check if session rekeying should be triggered
-    mutex_lock(&client->client_state_mutex);
-    bool should_rekey = !opt_no_encrypt && client->crypto_initialized &&
-                        crypto_handshake_is_ready(&client->crypto_handshake_ctx) &&
-                        crypto_handshake_should_rekey(&client->crypto_handshake_ctx);
-    mutex_unlock(&client->client_state_mutex);
-
-    if (should_rekey) {
-      log_debug("Rekey threshold reached for client %u, initiating session rekey", client->client_id);
-      mutex_lock(&client->client_state_mutex);
-      // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
-      mutex_lock(&client->send_mutex);
-      asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
-      mutex_unlock(&client->send_mutex);
-      mutex_unlock(&client->client_state_mutex);
-
-      if (result != ASCIICHAT_OK) {
-        log_error("Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
-        // Don't break - continue with packet sending, rekey will be retried
-      } else {
-        log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
-      }
-    }
-
-// Try to batch audio packets for efficiency (reduces encryption overhead)
-// Batch up to 8 packets (46.4ms worth) to reduce from 172 encryptions/sec to ~21/sec
-#define MAX_AUDIO_BATCH 8
+    // PRIORITY: Drain all queued audio packets before video
+    // Audio must not be rate-limited by video frame sending (16.67ms)
     queued_packet_t *audio_packets[MAX_AUDIO_BATCH];
     int audio_packet_count = 0;
 
@@ -1282,12 +1260,35 @@ void *client_send_thread_func(void *arg) {
 
       sent_something = true;
 
-      // BATCHING OPTIMIZATION: Brief sleep to allow minimal packet accumulation
-      // while maintaining real-time audio delivery. 1ms allows 1-2 more packets
-      // to queue without introducing audible latency or buffer underruns.
-      // Previous 20ms sleep caused scratchy audio due to buffer underruns.
+      // Small sleep to let more audio packets queue (helps batching efficiency)
       if (audio_packet_count > 0) {
-        platform_sleep_usec(1000); // 1ms - balance between batching and real-time delivery
+        platform_sleep_usec(100); // 0.1ms - minimal delay
+      }
+    } else {
+      // No audio packets - brief sleep to avoid busy-looping, then check for other tasks
+      platform_sleep_usec(1000); // 1ms - enough for audio render thread to queue more packets
+
+      // Check if session rekeying should be triggered
+      mutex_lock(&client->client_state_mutex);
+      bool should_rekey = !opt_no_encrypt && client->crypto_initialized &&
+                          crypto_handshake_is_ready(&client->crypto_handshake_ctx) &&
+                          crypto_handshake_should_rekey(&client->crypto_handshake_ctx);
+      mutex_unlock(&client->client_state_mutex);
+
+      if (should_rekey) {
+        log_debug("Rekey threshold reached for client %u, initiating session rekey", client->client_id);
+        mutex_lock(&client->client_state_mutex);
+        // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+        mutex_lock(&client->send_mutex);
+        asciichat_error_t result = crypto_handshake_rekey_request(&client->crypto_handshake_ctx, client->socket);
+        mutex_unlock(&client->send_mutex);
+        mutex_unlock(&client->client_state_mutex);
+
+        if (result != ASCIICHAT_OK) {
+          log_error("Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
+        } else {
+          log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
+        }
       }
     }
 

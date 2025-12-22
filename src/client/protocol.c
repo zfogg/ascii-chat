@@ -540,8 +540,12 @@ static void handle_audio_packet(const void *data, size_t len) {
     return;
   }
 
+  // Copy data to properly aligned buffer to avoid UndefinedBehaviorSanitizer errors
+  float samples[AUDIO_SAMPLES_PER_PACKET];
+  SAFE_MEMCPY(samples, sizeof(samples), data, len);
+
   // Process audio through audio subsystem
-  audio_process_received_samples((const float *)data, num_samples);
+  audio_process_received_samples(samples, num_samples);
 
 #ifdef DEBUG_AUDIO
   log_debug("Processed %d audio samples", num_samples);
