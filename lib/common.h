@@ -850,16 +850,16 @@ bool shutdown_is_requested(void);
  */
 static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
   if (result == NULL) {
-    return true;  // ERROR: NULL pointer
+    return true; // ERROR: NULL pointer
   }
 
   if (a != 0 && b > SIZE_MAX / a) {
     *result = 0;
-    return true;  // ERROR: Overflow detected
+    return true; // ERROR: Overflow detected
   }
 
   *result = a * b;
-  return false;  // SUCCESS
+  return false; // SUCCESS
 }
 
 /* Safe string formatting */

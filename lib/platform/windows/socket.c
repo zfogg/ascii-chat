@@ -198,7 +198,7 @@ int socket_get_error(socket_t sock) {
 const char *socket_error_string(int error) {
   // Use thread-local storage to avoid race conditions between threads
   static __declspec(thread) char buffer[256] = {0};
-  buffer[0] = '\0';  // Clear buffer on each call
+  buffer[0] = '\0'; // Clear buffer on each call
   FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, (DWORD)error,
                  MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), buffer, sizeof(buffer), NULL);
   return buffer;

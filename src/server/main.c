@@ -54,7 +54,7 @@
 #include <winsock2.h>
 #include <mmsystem.h> // For timeEndPeriod()
 #else
-#include <unistd.h>  // For write() and STDOUT_FILENO (signal-safe I/O)
+#include <unistd.h>    // For write() and STDOUT_FILENO (signal-safe I/O)
 #include <netdb.h>     // For getaddrinfo(), gai_strerror()
 #include <arpa/inet.h> // For inet_ntop()
 #endif
@@ -318,7 +318,7 @@ static void sigint_handler(int sigint) {
   // Use write() which is guaranteed to be safe in signal handlers
   const char *msg = "SIGINT received - shutting down server...\n";
   ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
-  (void)unused;  // Suppress unused variable warning
+  (void)unused; // Suppress unused variable warning
 
   // STEP 3: Close listening socket to interrupt accept() in main loop
   // This is signal-safe on Windows and necessary to wake up blocked accept()
