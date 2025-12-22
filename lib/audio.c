@@ -76,20 +76,27 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   if (output != NULL) {
     if (ctx->playback_buffer != NULL) {
-      int samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
+      // audio_ring_buffer_read now handles all underrun cases internally:
+      // - Returns 0 if jitter buffer not yet filled (caller should fill with silence)
+      // - Returns full samples with fade-out if underrunning
+      // - Returns full samples with fade-in when recovering
+      // - Pads with silence if not enough data
+      size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
 
-      // Debug: Log every 1000 callbacks (~10 seconds at 256 frames/callback, 44.1kHz)
-      // Note: We already hold the mutex from audio_ring_buffer_read(), so we can safely
-      // check buffer state. But since read already returned, just log what we read.
+      // Debug: Log every 1000 callbacks (~10 seconds at 256 frames/callback, 48kHz)
       if (callback_count % 1000 == 0) {
-        log_debug("Audio output callback #%llu: samples_read=%d/%lu", callback_count, samples_read,
-                  framesPerBuffer * AUDIO_CHANNELS);
+        size_t available = audio_ring_buffer_available_read(ctx->playback_buffer);
+        log_debug("Audio output callback #%llu: samples_read=%zu/%lu, buffer_available=%zu",
+                  callback_count, samples_read, framesPerBuffer * AUDIO_CHANNELS, available);
       }
 
-      if (samples_read < (int)(framesPerBuffer * AUDIO_CHANNELS)) {
-        SAFE_MEMSET(output + samples_read, (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float), 0,
-                    (framesPerBuffer * AUDIO_CHANNELS - samples_read) * sizeof(float));
+      // Only fill with silence if read returned 0 (jitter buffer not yet filled)
+      if (samples_read == 0) {
+        SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
+                    framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
       }
+      // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
+      // silence padding, so no need to fill remaining samples here
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
@@ -113,6 +120,10 @@ audio_ring_buffer_t *audio_ring_buffer_create(void) {
   rb->write_index = 0;
   rb->read_index = 0;
   rb->jitter_buffer_filled = false;
+  rb->crossfade_samples_remaining = 0;
+  rb->crossfade_fade_in = false;
+  rb->last_sample = 0.0f;
+  rb->underrun_count = 0;
 
   if (mutex_init(&rb->mutex) != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize audio ring buffer mutex");
@@ -180,13 +191,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     rb->write_index = (write_idx + samples_to_write) % AUDIO_RING_BUFFER_SIZE;
   }
 
-  // Check if jitter buffer threshold has been reached
-  if (!rb->jitter_buffer_filled) {
-    int available_to_read = audio_ring_buffer_available_read(rb);
-    if (available_to_read >= AUDIO_JITTER_BUFFER_THRESHOLD) {
-      rb->jitter_buffer_filled = true;
-    }
-  }
+  // Note: jitter buffer fill check is now done in read function for better control
 
   mutex_unlock(&rb->mutex);
   return ASCIICHAT_OK; // Success
@@ -200,13 +205,56 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
 
   mutex_lock(&rb->mutex);
 
+  size_t available = audio_ring_buffer_available_read(rb);
+
   // Jitter buffer: don't read until initial fill threshold is reached
   if (!rb->jitter_buffer_filled) {
-    mutex_unlock(&rb->mutex);
-    return 0; // Return silence until buffer is filled
+    // Check if we've accumulated enough samples to start playback
+    if (available >= AUDIO_JITTER_BUFFER_THRESHOLD) {
+      rb->jitter_buffer_filled = true;
+      rb->crossfade_samples_remaining = AUDIO_CROSSFADE_SAMPLES;
+      rb->crossfade_fade_in = true;
+      log_info("Jitter buffer filled (%zu samples), starting playback with fade-in", available);
+    } else {
+      mutex_unlock(&rb->mutex);
+      return 0; // Return silence until buffer is filled
+    }
   }
 
-  size_t available = audio_ring_buffer_available_read(rb);
+  // Check low water mark - if buffer is running too low, pause and refill
+  if (available < AUDIO_JITTER_LOW_WATER_MARK && available < samples) {
+    // Buffer critically low - trigger fade-out and pause playback
+    rb->underrun_count++;
+    rb->jitter_buffer_filled = false;
+    log_warn_every(1000000, "Audio buffer underrun #%u: only %zu samples available (low water mark: %d), pausing for refill",
+                   rb->underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
+
+    // Fade out smoothly from last sample to silence
+    if (rb->crossfade_samples_remaining == 0) {
+      rb->crossfade_samples_remaining = AUDIO_CROSSFADE_SAMPLES;
+      rb->crossfade_fade_in = false;
+    }
+
+    // Generate fade-out samples
+    size_t fade_samples = (samples < (size_t)rb->crossfade_samples_remaining) ? samples : (size_t)rb->crossfade_samples_remaining;
+    float last = rb->last_sample;
+    for (size_t i = 0; i < fade_samples; i++) {
+      float fade_factor = 1.0f - ((float)i / (float)AUDIO_CROSSFADE_SAMPLES);
+      data[i] = last * fade_factor;
+    }
+    // Fill rest with silence
+    for (size_t i = fade_samples; i < samples; i++) {
+      data[i] = 0.0f;
+    }
+    rb->crossfade_samples_remaining -= (int)fade_samples;
+    if (rb->crossfade_samples_remaining <= 0) {
+      rb->last_sample = 0.0f;
+    }
+
+    mutex_unlock(&rb->mutex);
+    return samples; // Return full buffer (with fade-out to silence)
+  }
+
   size_t to_read = (samples > available) ? available : samples;
 
   // Optimize: copy in chunks instead of one sample at a time
@@ -223,10 +271,37 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
                 (to_read - remaining) * sizeof(float));
   }
 
-  rb->read_index = (read_idx + to_read) % AUDIO_RING_BUFFER_SIZE;
+  rb->read_index = (read_idx + (int)to_read) % AUDIO_RING_BUFFER_SIZE;
+
+  // Apply fade-in if recovering from underrun
+  if (rb->crossfade_fade_in && rb->crossfade_samples_remaining > 0) {
+    int fade_start = AUDIO_CROSSFADE_SAMPLES - rb->crossfade_samples_remaining;
+    size_t fade_samples = (to_read < (size_t)rb->crossfade_samples_remaining) ? to_read : (size_t)rb->crossfade_samples_remaining;
+
+    for (size_t i = 0; i < fade_samples; i++) {
+      float fade_factor = (float)(fade_start + (int)i + 1) / (float)AUDIO_CROSSFADE_SAMPLES;
+      data[i] *= fade_factor;
+    }
+
+    rb->crossfade_samples_remaining -= (int)fade_samples;
+    if (rb->crossfade_samples_remaining <= 0) {
+      rb->crossfade_fade_in = false;
+      log_debug("Audio fade-in complete");
+    }
+  }
+
+  // Save last sample for potential fade-out
+  if (to_read > 0) {
+    rb->last_sample = data[to_read - 1];
+  }
+
+  // Fill any remaining samples with silence if we couldn't read enough
+  if (to_read < samples) {
+    SAFE_MEMSET(data + to_read, (samples - to_read) * sizeof(float), 0, (samples - to_read) * sizeof(float));
+  }
 
   mutex_unlock(&rb->mutex);
-  return to_read; // Return number of samples actually read
+  return samples; // Always return full buffer (with silence padding if needed)
 }
 
 size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
