@@ -780,7 +780,7 @@ void *client_audio_render_thread(void *arg) {
   struct timespec last_audio_packet_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_fps_report_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
-  int expected_audio_fps = 187; // 1000000us / 5333us ≈ 187 fps (256 samples @ 48kHz)
+  int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
@@ -1001,9 +1001,10 @@ void *client_audio_render_thread(void *arg) {
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target 5333us per loop for 256 samples @ 48kHz (256/48000 = 5.333ms)
-    // Previous value of 5800us was ~9% too slow, causing audio underruns
-    const uint64_t target_loop_us = 5333;
+    // Target loop time based on sample rate and buffer size:
+    // 256 samples / 48000 Hz = 5333.33μs per frame (187.5 FPS)
+    // Using 5333μs ensures audio is generated at the correct rate
+    const uint64_t target_loop_us = (uint64_t)AUDIO_FRAMES_PER_BUFFER * 1000000ULL / AUDIO_SAMPLE_RATE;
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {
