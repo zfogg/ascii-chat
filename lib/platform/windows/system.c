@@ -100,6 +100,12 @@ void platform_cleanup(void) {
   // Cleanup binary PATH cache
   platform_cleanup_binary_path_cache();
 
+  // Print symbol cache statistics before cleanup
+  symbol_cache_print_stats();
+
+  // Clean up symbol cache
+  symbol_cache_cleanup();
+
   socket_cleanup();
 
   // Restore original Windows timer resolution

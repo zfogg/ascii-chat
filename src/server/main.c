@@ -1181,9 +1181,10 @@ main_loop:
   // Clean up SIMD caches
   simd_caches_destroy_all();
 
-  // Clean up symbol cache (Windows doesn't call this in platform_cleanup, only POSIX does)
+  // Clean up symbol cache
   // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
   // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
+  // Also called via platform_cleanup() atexit handler, but explicit call ensures proper ordering
   symbol_cache_cleanup();
 
   // Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
@@ -1215,8 +1216,7 @@ main_loop:
 
   log_destroy();
 
-  // Use _exit() instead of return/exit() to bypass atexit() handlers
-  // We've already explicitly called all cleanup functions above
-  // _exit() doesn't call atexit() handlers, preventing double-free issues
+  // Use exit() to allow atexit() handlers to run
+  // Cleanup functions are idempotent (check if initialized first)
   exit(0);
 }

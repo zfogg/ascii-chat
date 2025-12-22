@@ -76,6 +76,8 @@
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "platform/terminal.h"
+#include "platform/symbols.h"
+#include "platform/system.h"
 #include "common.h"
 #include "options.h"
 #include "buffer_pool.h"
@@ -244,6 +246,16 @@ static void shutdown_client() {
 
   // Cleanup core systems
   data_buffer_pool_cleanup_global();
+
+  // Clean up symbol cache (before log_destroy)
+  // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
+  // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
+  // Also called via platform_cleanup() atexit handler, but explicit call ensures proper ordering
+  symbol_cache_cleanup();
+
+  // Clean up binary path cache explicitly
+  // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent
+  platform_cleanup_binary_path_cache();
 
   log_info("Client shutdown complete");
   log_destroy();

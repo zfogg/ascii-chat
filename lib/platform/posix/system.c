@@ -89,6 +89,7 @@ void platform_cleanup(void) {
   symbol_cache_print_stats();
 
   // Clean up symbol cache
+  log_debug("Platform cleanup: calling symbol_cache_cleanup()");
   symbol_cache_cleanup();
 }
 
