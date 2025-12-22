@@ -465,7 +465,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   header.batch_count = htonl((u_long)batch_count);
   header.total_samples = htonl((u_long)num_samples);
   header.sample_rate = htonl(AUDIO_SAMPLE_RATE); // Use system-defined sample rate
-  header.channels = htonl(1UL);        // Mono for now
+  header.channels = htonl(1UL);                  // Mono for now
 
   // Calculate total payload size
   size_t data_size = (size_t)num_samples * sizeof(uint32_t); // Send as 32-bit integers for portability
