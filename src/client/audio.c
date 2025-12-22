@@ -301,11 +301,17 @@ static void *audio_capture_thread_func(void *arg) {
   // Audio processing components - initialized fresh on each thread start
   // to avoid stale filter state from previous runs
   static highpass_filter_t hp_filter;
+  static noise_gate_t noise_gate;
   static bool wav_dumpers_initialized = false;
 
   // Always reinitialize the high-pass filter when thread starts
   // This ensures clean state (no stale prev_input/prev_output values)
   highpass_filter_init(&hp_filter, 80.0F, AUDIO_SAMPLE_RATE);
+
+  // Initialize noise gate to cut background noise when not speaking
+  // threshold=0.02 (2% amplitude), attack=5ms, release=100ms, hysteresis=0.5
+  noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE);
+  noise_gate_set_params(&noise_gate, 0.02f, 5.0f, 100.0f, 0.5f);
 
   // Initialize WAV dumpers only once (file handles persist)
   if (!wav_dumpers_initialized && wav_dump_enabled()) {
@@ -389,8 +395,8 @@ static void *audio_capture_thread_func(void *arg) {
       }
       float rms = sqrtf(sum_squares / samples_read);
 
-      // Conservative AGC settings to avoid amplifying noise
-      const float target_rms = 0.05f;         // Target RMS - 5% of full scale (prevent over-amplification)
+      // AGC settings - boost quiet audio to comfortable listening level
+      const float target_rms = 0.15f;         // Target RMS - 15% of full scale (audible but not clipping)
       const float max_gain = 20.0f;           // Maximum 20x amplification
       const float min_rms_for_gain = 0.0001f; // Noise floor threshold (lower for quiet environments)
 
@@ -425,7 +431,11 @@ static void *audio_capture_thread_func(void *arg) {
         agc_smoothed_gain = agc_smoothed_gain + release_coeff * (1.0f - agc_smoothed_gain);
       }
 
-      // 3. Gentle soft clipping to prevent harsh distortion
+      // 3. Noise gate to cut background noise when not speaking
+      // This reduces network traffic and prevents constant low-level noise
+      noise_gate_process_buffer(&noise_gate, audio_buffer, samples_read);
+
+      // 4. Gentle soft clipping to prevent harsh distortion
       // Use higher threshold (0.98 vs 0.95) to reduce clipping artifacts
       soft_clip_buffer(audio_buffer, samples_read, 0.98F);
 
