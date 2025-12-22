@@ -409,8 +409,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   // Re-queue the buffer for future use
   if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
-    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, SAFE_STRERROR(errno), ctx->fd,
-              buf.type, buf.memory);
+    log_error("Failed to re-queue V4L2 buffer %u: %s (fd=%d, type=%d, memory=%d)", buf.index, SAFE_STRERROR(errno),
+              ctx->fd, buf.type, buf.memory);
     // Still return the image - the frame data was already copied
   }
 
