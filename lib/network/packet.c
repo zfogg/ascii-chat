@@ -424,8 +424,9 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   size_t final_len = len;
   void *compressed_data = NULL;
 
-  // Skip compression if --no-compress flag is set
-  if (!opt_no_compress && len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
+  // Skip compression for pre-compressed data (Opus audio) or if --no-compress flag is set
+  bool should_skip_compression = packet_is_precompressed(type) || opt_no_compress;
+  if (!should_skip_compression && len > COMPRESSION_MIN_SIZE && should_compress(len, len)) {
     void *temp_compressed = NULL;
     size_t compressed_size = 0;
 

@@ -392,6 +392,30 @@ static inline bool packet_is_handshake_type(packet_type_t type) {
 }
 
 /**
+ * @brief Check if packet type contains already-compressed data
+ *
+ * Returns true for packet types that contain pre-compressed data that should
+ * NOT be compressed again (double-compression is wasteful and counterproductive).
+ *
+ * Currently includes:
+ * - PACKET_TYPE_AUDIO_OPUS (34): Opus-encoded audio (already compressed)
+ * - PACKET_TYPE_AUDIO_OPUS_BATCH (35): Batched Opus frames (already compressed)
+ *
+ * @param type Packet type to check
+ * @return true if packet contains pre-compressed data, false otherwise
+ *
+ * @note Opus codec compresses audio from ~3528 bytes (20ms raw) to ~30-100 bytes.
+ *       Attempting to compress this further with zstd provides no benefit and
+ *       wastes CPU cycles.
+ *
+ * @ingroup packet
+ */
+static inline bool packet_is_precompressed(packet_type_t type) {
+  // Opus audio packets are already compressed by Opus codec
+  return (type == PACKET_TYPE_AUDIO_OPUS || type == PACKET_TYPE_AUDIO_OPUS_BATCH);
+}
+
+/**
  * @brief Network packet header structure
  *
  * Standard header for all network packets. Contains magic number for

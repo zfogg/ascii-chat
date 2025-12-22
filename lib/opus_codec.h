@@ -20,7 +20,7 @@
  * ==============
  * @code
  * // Create encoder for voice at 24 kbps
- * opus_codec_t *encoder = opus_codec_create(OPUS_APPLICATION_VOIP, 44100, 24000);
+ * opus_codec_t *encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 44100, 24000);
  *
  * // Encode audio (882 samples = 20ms at 44.1kHz)
  * float samples[882];
@@ -74,9 +74,9 @@ typedef struct OpusDecoder OpusDecoder;
  * @ingroup audio
  */
 typedef enum {
-  OPUS_APPLICATION_VOIP = 2048,      ///< Voice over IP (optimized for speech)
-  OPUS_APPLICATION_AUDIO = 2049,     ///< General audio (optimized for music)
-  OPUS_APPLICATION_RESTRICTED_LOWDELAY = 2051  ///< Low-latency mode
+  OPUS_APPLICATION_VOIP = 2048,               ///< Voice over IP (optimized for speech)
+  OPUS_APPLICATION_AUDIO = 2049,              ///< General audio (optimized for music)
+  OPUS_APPLICATION_RESTRICTED_LOWDELAY = 2051 ///< Low-latency mode
 } opus_application_t;
 
 /* ============================================================================
@@ -93,11 +93,11 @@ typedef enum {
  * @ingroup audio
  */
 typedef struct {
-  OpusEncoder *encoder;      ///< Encoder state (NULL if decoder)
-  OpusDecoder *decoder;      ///< Decoder state (NULL if encoder)
-  int sample_rate;           ///< Sample rate in Hz (e.g., 44100)
-  int bitrate;               ///< Bitrate in bits per second (encoder only)
-  uint8_t *tmp_buffer;       ///< Temporary buffer for internal use
+  OpusEncoder *encoder; ///< Encoder state (NULL if decoder)
+  OpusDecoder *decoder; ///< Decoder state (NULL if encoder)
+  int sample_rate;      ///< Sample rate in Hz (e.g., 44100)
+  int bitrate;          ///< Bitrate in bits per second (encoder only)
+  uint8_t *tmp_buffer;  ///< Temporary buffer for internal use
 } opus_codec_t;
 
 /* ============================================================================
@@ -122,7 +122,7 @@ typedef struct {
  *
  * @ingroup audio
  */
-opus_codec_t *opus_codec_create(opus_application_t application, int sample_rate, int bitrate);
+opus_codec_t *opus_codec_create_encoder(opus_application_t application, int sample_rate, int bitrate);
 
 /**
  * @brief Create an Opus decoder
@@ -139,7 +139,7 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate);
 
 /**
  * @brief Encode audio frame with Opus
- * @param codec Opus encoder (created with opus_codec_create)
+ * @param codec Opus encoder (created with opus_codec_create_encoder)
  * @param samples Input audio samples (float, -1.0 to 1.0 range)
  * @param num_samples Number of input samples (882 for 20ms @ 44.1kHz)
  * @param out_data Output buffer for compressed audio
@@ -154,8 +154,8 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate);
  *
  * @ingroup audio
  */
-size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples,
-                         uint8_t *out_data, size_t out_size);
+size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samples, uint8_t *out_data,
+                         size_t out_size);
 
 /* ============================================================================
  * Decoder Functions
@@ -178,8 +178,8 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
  *
  * @ingroup audio
  */
-int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
-                      float *out_samples, int out_num_samples);
+int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len, float *out_samples,
+                      int out_num_samples);
 
 /* ============================================================================
  * Configuration Functions
@@ -187,7 +187,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
 
 /**
  * @brief Set encoder bitrate
- * @param codec Opus encoder (created with opus_codec_create)
+ * @param codec Opus encoder (created with opus_codec_create_encoder)
  * @param bitrate New bitrate in bits per second
  * @return 0 on success, negative on error
  *
