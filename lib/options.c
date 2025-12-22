@@ -142,7 +142,8 @@ ASCIICHAT_API unsigned short int opt_webcam_index = 0;
 
 ASCIICHAT_API bool opt_webcam_flip = true;
 
-ASCIICHAT_API bool opt_test_pattern = false; // Use test pattern instead of real webcam
+ASCIICHAT_API bool opt_test_pattern = false;   // Use test pattern instead of real webcam
+ASCIICHAT_API bool opt_no_audio_mixer = false; // Disable audio mixer (debug only)
 
 // Terminal color mode and capability options
 ASCIICHAT_API terminal_color_mode_t opt_color_mode = COLOR_MODE_AUTO; // Auto-detect by default
@@ -297,6 +298,7 @@ static struct option server_options[] = {{"address", required_argument, NULL, 'a
                                          {"encode-audio", no_argument, NULL, 1023},
                                          {"no-encode-audio", no_argument, NULL, 1024},
                                          {"max-clients", required_argument, NULL, 1021},
+                                         {"no-audio-mixer", no_argument, NULL, 1026},
                                          {"help", optional_argument, NULL, 'h'},
                                          {0, 0, 0, 0}};
 
@@ -1116,6 +1118,16 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       break;
     }
 
+    case 1026: { // --no-audio-mixer (server only - disable audio mixer for debugging)
+      if (is_client) {
+        (void)fprintf(stderr, "Error: --no-audio-mixer is a server-only option.\n");
+        return SET_ERRNO(ERROR_USAGE, "Invalid option or argument");
+      }
+      opt_no_audio_mixer = true;
+      log_info("Audio mixer disabled - will send silence instead of mixing");
+      break;
+    }
+
     case 1013: { // --list-webcams (client only - list available webcam devices and exit)
       if (!is_client) {
         (void)fprintf(stderr, "Error: --list-webcams is a client-only option.\n");
@@ -1882,6 +1894,8 @@ void usage_server(FILE *desc /* stdout|stderr*/) {
   (void)fprintf(desc, USAGE_INDENT "   --no-encrypt      " USAGE_INDENT "disable encryption (default: [unset])\n");
   (void)fprintf(desc, USAGE_INDENT "   --client-keys FILE" USAGE_INDENT
                                    "allowed client keys file for authentication (default: [unset])\n");
+  (void)fprintf(desc, USAGE_INDENT "   --no-audio-mixer  " USAGE_INDENT
+                                   "disable audio mixer - send silence (debug mode only)\n");
 }
 
 void usage(FILE *desc /* stdout|stderr*/, bool is_client) {

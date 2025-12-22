@@ -159,12 +159,14 @@
 #include "stream.h"
 #include "protocol.h"
 #include "common.h"
+#include "options.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "packet_queue.h"
 #include "util/time.h"
 #include "mixer.h"
 #include "audio.h"
+#include "opus_codec.h"
 #include "util/format.h"
 
 // Global client manager lock for thread-safe access
@@ -759,13 +761,26 @@ void *client_audio_render_thread(void *arg) {
 
   float mix_buffer[AUDIO_FRAMES_PER_BUFFER];
 
+// Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
+// Opus requires minimum 480 samples, 960 is optimal for 20ms frames
+#define OPUS_FRAME_SAMPLES 960
+  float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+  int opus_frame_accumulated = 0;
+
+  // Create Opus encoder for this client's audio stream (48kHz, mono, 24kbps, VOIP mode)
+  opus_codec_t *opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_VOIP, 48000, 24000);
+  if (!opus_encoder) {
+    log_error("Failed to create Opus encoder for audio render thread (client %u)", thread_client_id);
+    return NULL;
+  }
+
   // FPS tracking for audio render thread
   uint64_t audio_packet_count = 0;
   struct timespec last_audio_fps_report_time;
   struct timespec last_audio_packet_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_fps_report_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
-  int expected_audio_fps = 172; // 1000000us / 5800us ≈ 172 fps
+  int expected_audio_fps = 187; // 1000000us / 5333us ≈ 187 fps (256 samples @ 48kHz)
 
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
@@ -800,16 +815,13 @@ void *client_audio_render_thread(void *arg) {
       continue;
     }
 
-    // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
-    // We already have a stable client pointer, no need for g_client_manager_rwlock
-    mutex_lock(&client->client_state_mutex);
-
-    // Snapshot client state while holding mutex
-    uint32_t client_id_snapshot = client->client_id;            // client_id is set once and never changed
-    bool active_snapshot = client->active;                      // Direct read under mutex protection
-    packet_queue_t *audio_queue_snapshot = client->audio_queue; // audio_queue is set once and never changed
-
-    mutex_unlock(&client->client_state_mutex);
+    // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
+    // client_id: Set once at initialization, never changes
+    // active: atomic_bool - use atomic_load
+    // audio_queue: Assigned once at init and never changes
+    uint32_t client_id_snapshot = client->client_id;            // Stable after init
+    bool active_snapshot = atomic_load(&client->active);        // Atomic read
+    packet_queue_t *audio_queue_snapshot = client->audio_queue; // Stable after init
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {
@@ -817,11 +829,33 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Create mix excluding THIS client's audio using snapshot data
-    int samples_mixed =
-        mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+    struct timespec mix_start_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &mix_start_time);
 
-    // Debug logging every 100 iterations
-    log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
+    int samples_mixed = 0;
+    if (opt_no_audio_mixer) {
+      // Debug mode: disable mixer, just fill with silence
+      SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
+      samples_mixed = 0;
+      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): sending silence for client %u",
+                      client_id_snapshot);
+    } else {
+      samples_mixed =
+          mixer_process_excluding_source(g_audio_mixer, mix_buffer, AUDIO_FRAMES_PER_BUFFER, client_id_snapshot);
+    }
+
+    struct timespec mix_end_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &mix_end_time);
+    uint64_t mix_time_us = ((uint64_t)mix_end_time.tv_sec * 1000000 + (uint64_t)mix_end_time.tv_nsec / 1000) -
+                           ((uint64_t)mix_start_time.tv_sec * 1000000 + (uint64_t)mix_start_time.tv_nsec / 1000);
+
+    if (mix_time_us > 2000) { // Log if mixing takes > 2ms
+      log_warn_every(5000000, "Slow mixer for client %u: took %lluus (%.2fms)", client_id_snapshot, mix_time_us,
+                     (float)mix_time_us / 1000.0f);
+    }
+
+    // Debug logging every 100 iterations (disabled - can slow down audio rendering)
+    // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // Always send audio packets, even if silent (samples_mixed == 0)
     // This prevents buffer underruns on the client side which cause "scratchy" audio.
@@ -830,68 +864,132 @@ void *client_audio_render_thread(void *arg) {
       SAFE_MEMSET(mix_buffer, AUDIO_FRAMES_PER_BUFFER * sizeof(float), 0, AUDIO_FRAMES_PER_BUFFER * sizeof(float));
     }
 
-    // BACKPRESSURE: Check queue depth before sending
-    // If queue is getting full, slow down to prevent drops over slow networks
-    size_t queue_depth = packet_queue_size(audio_queue_snapshot);
-    bool apply_backpressure = (queue_depth > 250); // > 250 packets = 1.45s buffered
+    // Accumulate samples for Opus encoding (Opus requires 960 samples = 20ms @ 48kHz)
+    // Copy AUDIO_FRAMES_PER_BUFFER (256) samples to accumulation buffer
+    struct timespec accum_start = {0};
+    (void)clock_gettime(CLOCK_MONOTONIC, &accum_start);
 
-    if (apply_backpressure) {
-      log_warn_every(1000000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
-                     client_id_snapshot, queue_depth, (float)queue_depth / 172.0f);
-      // Skip this packet to let the queue drain
-      platform_sleep_usec(5800);
-      continue;
+    int space_available = OPUS_FRAME_SAMPLES - opus_frame_accumulated;
+    int samples_to_copy = (AUDIO_FRAMES_PER_BUFFER <= space_available) ? AUDIO_FRAMES_PER_BUFFER : space_available;
+
+    SAFE_MEMCPY(opus_frame_buffer + opus_frame_accumulated,
+                (OPUS_FRAME_SAMPLES - opus_frame_accumulated) * sizeof(float), mix_buffer,
+                samples_to_copy * sizeof(float));
+    opus_frame_accumulated += samples_to_copy;
+
+    struct timespec accum_end = {0};
+    (void)clock_gettime(CLOCK_MONOTONIC, &accum_end);
+    uint64_t accum_time_us = ((uint64_t)accum_end.tv_sec * 1000000 + (uint64_t)accum_end.tv_nsec / 1000) -
+                             ((uint64_t)accum_start.tv_sec * 1000000 + (uint64_t)accum_start.tv_nsec / 1000);
+
+    if (accum_time_us > 500) {
+      log_warn_every(5000000, "Slow accumulate for client %u: took %lluus", client_id_snapshot, accum_time_us);
     }
 
-    // Queue audio directly for this specific client using snapshot data
-    size_t data_size = AUDIO_FRAMES_PER_BUFFER * sizeof(float);
-    int result = packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO, mix_buffer, data_size, 0, true);
-    if (result < 0) {
-      log_debug("Failed to queue audio for client %u", client_id_snapshot);
-    } else {
-      // FPS tracking - audio packet successfully queued
-      audio_packet_count++;
+    // Only encode and send when we have accumulated a full Opus frame
+    if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
+      // BACKPRESSURE: Check queue depth before sending
+      // If queue is getting full, slow down to prevent drops over slow networks
+      size_t queue_depth = packet_queue_size(audio_queue_snapshot);
+      bool apply_backpressure = (queue_depth > 1000); // > 1000 packets = 5.8s buffered
 
-      struct timespec current_time;
-      (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
-      // Calculate time since last packet
-      uint64_t packet_interval_us =
-          ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-          ((uint64_t)last_audio_packet_time.tv_sec * 1000000 + (uint64_t)last_audio_packet_time.tv_nsec / 1000);
-      last_audio_packet_time = current_time;
-
-      // Expected packet interval in microseconds (5800us for 172fps)
-      uint64_t expected_interval_us = 1000000 / expected_audio_fps;
-      uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
-
-      // Log warning if packet took too long to process
-      if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
-        log_warn_every(1000000,
-                       "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
-                       "fps: %.1f)",
-                       thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
-                       (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
-                       1000000.0f / packet_interval_us);
+      if (apply_backpressure) {
+        log_warn_every(1000000, "Audio backpressure for client %u: queue depth %zu packets (%.1fs buffered)",
+                       client_id_snapshot, queue_depth, (float)queue_depth / 172.0f);
+        // Skip this packet to let the queue drain
+        platform_sleep_usec(5800);
+        continue;
       }
 
-      // Report FPS every 5 seconds
-      uint64_t elapsed_us =
-          ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-          ((uint64_t)last_audio_fps_report_time.tv_sec * 1000000 + (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
+      // Encode accumulated Opus frame (960 samples = 20ms @ 48kHz)
+      uint8_t opus_buffer[1024]; // Max Opus frame size
 
-      if (elapsed_us >= 5000000) { // 5 seconds
-        float elapsed_seconds = (float)elapsed_us / 1000000.0f;
-        float actual_fps = (float)audio_packet_count / elapsed_seconds;
+      struct timespec opus_start_time;
+      (void)clock_gettime(CLOCK_MONOTONIC, &opus_start_time);
 
-        char duration_str[32];
-        format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
-        log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %s)", thread_client_id, actual_fps,
-                  audio_packet_count, duration_str);
+      int opus_size =
+          opus_codec_encode(opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_buffer, sizeof(opus_buffer));
 
-        // Reset counters for next interval
-        audio_packet_count = 0;
-        last_audio_fps_report_time = current_time;
+      struct timespec opus_end_time;
+      (void)clock_gettime(CLOCK_MONOTONIC, &opus_end_time);
+      uint64_t opus_time_us = ((uint64_t)opus_end_time.tv_sec * 1000000 + (uint64_t)opus_end_time.tv_nsec / 1000) -
+                              ((uint64_t)opus_start_time.tv_sec * 1000000 + (uint64_t)opus_start_time.tv_nsec / 1000);
+
+      if (opus_time_us > 2000) { // Log if encoding takes > 2ms
+        log_warn_every(5000000, "Slow Opus encode for client %u: took %lluus (%.2fms), size=%d", client_id_snapshot,
+                       opus_time_us, (float)opus_time_us / 1000.0f, opus_size);
+      }
+
+      if (opus_size <= 0) {
+        log_error("Failed to encode audio to Opus for client %u: opus_size=%d", client_id_snapshot, opus_size);
+      } else {
+        // Queue Opus-encoded audio for this specific client
+        struct timespec queue_start = {0};
+        (void)clock_gettime(CLOCK_MONOTONIC, &queue_start);
+
+        int result =
+            packet_queue_enqueue(audio_queue_snapshot, PACKET_TYPE_AUDIO_OPUS, opus_buffer, (size_t)opus_size, 0, true);
+
+        struct timespec queue_end = {0};
+        (void)clock_gettime(CLOCK_MONOTONIC, &queue_end);
+        uint64_t queue_time_us = ((uint64_t)queue_end.tv_sec * 1000000 + (uint64_t)queue_end.tv_nsec / 1000) -
+                                 ((uint64_t)queue_start.tv_sec * 1000000 + (uint64_t)queue_start.tv_nsec / 1000);
+
+        if (queue_time_us > 500) {
+          log_warn_every(5000000, "Slow queue for client %u: took %lluus", client_id_snapshot, queue_time_us);
+        }
+
+        if (result < 0) {
+          log_debug("Failed to queue Opus audio for client %u", client_id_snapshot);
+        } else {
+          // FPS tracking - audio packet successfully queued
+          audio_packet_count++;
+
+          struct timespec current_time;
+          (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+
+          // Calculate time since last packet
+          uint64_t packet_interval_us =
+              ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+              ((uint64_t)last_audio_packet_time.tv_sec * 1000000 + (uint64_t)last_audio_packet_time.tv_nsec / 1000);
+          last_audio_packet_time = current_time;
+
+          // Expected packet interval in microseconds (5800us for 172fps)
+          uint64_t expected_interval_us = 1000000 / expected_audio_fps;
+          uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
+
+          // Log warning if packet took too long to process
+          if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
+            log_warn_every(
+                1000000,
+                "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
+                "fps: %.1f)",
+                thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
+                (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
+                1000000.0f / packet_interval_us);
+          }
+
+          // Report FPS every 5 seconds
+          uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
+                                ((uint64_t)last_audio_fps_report_time.tv_sec * 1000000 +
+                                 (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
+
+          if (elapsed_us >= 5000000) { // 5 seconds
+            float elapsed_seconds = (float)elapsed_us / 1000000.0f;
+            float actual_fps = (float)audio_packet_count / elapsed_seconds;
+
+            char duration_str[32];
+            format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
+            log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %s)", thread_client_id, actual_fps,
+                      audio_packet_count, duration_str);
+
+            // Reset counters for next interval
+            audio_packet_count = 0;
+            last_audio_fps_report_time = current_time;
+          }
+          // Reset accumulation buffer after successfully encoding and queueing
+          opus_frame_accumulated = 0;
+        }
       }
     }
 
@@ -903,8 +1001,9 @@ void *client_audio_render_thread(void *arg) {
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target 5800us per loop for 172 FPS
-    const uint64_t target_loop_us = 5800;
+    // Target 5333us per loop for 256 samples @ 48kHz (256/48000 = 5.333ms)
+    // Previous value of 5800us was ~9% too slow, causing audio underruns
+    const uint64_t target_loop_us = 5333;
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {
@@ -938,6 +1037,12 @@ void *client_audio_render_thread(void *arg) {
 #ifdef DEBUG_THREADS
   log_debug("Audio render thread stopped for client %u", thread_client_id);
 #endif
+
+  // Clean up Opus encoder
+  if (opus_encoder) {
+    opus_codec_destroy(opus_encoder);
+  }
+
   return NULL;
 }
 
