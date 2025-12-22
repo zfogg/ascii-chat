@@ -85,6 +85,7 @@
 #include "logging.h"
 #include "platform/terminal.h"
 #include "util/levenshtein.h"
+#include "util/path.h"
 
 #ifndef NDEBUG
 #include "asciichat_errno.h"
@@ -566,6 +567,24 @@ int main(int argc, char *argv[]) {
     print_terminal_capabilities(&caps);
     UNTRACKED_FREE(mode_argv);
     return 0;
+  }
+
+  // Validate log file path if specified (security: prevent path traversal)
+  if (strlen(opt_log_file) > 0) {
+    char *validated_log_file = NULL;
+    asciichat_error_t log_path_result = path_validate_user_path(opt_log_file, PATH_ROLE_LOG_FILE, &validated_log_file);
+    if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
+      // Invalid log file path - warn and fall back to default
+      const char *default_log_filename = is_client ? "client.log" : "server.log";
+      fprintf(stderr, "WARNING: Invalid log file path '%s', using default '%s'\n", opt_log_file, default_log_filename);
+      // Clear opt_log_file so asciichat_shared_init uses default
+      opt_log_file[0] = '\0';
+      SAFE_FREE(validated_log_file);
+    } else {
+      // Replace opt_log_file with validated path
+      SAFE_STRNCPY(opt_log_file, validated_log_file, sizeof(opt_log_file));
+      SAFE_FREE(validated_log_file);
+    }
   }
 
   // Initialize shared subsystems (platform, logging, palette, buffer pool, cleanup)
