@@ -279,7 +279,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Set crowd scaling parameters
   mixer->crowd_alpha = 0.5f; // Square root scaling
-  mixer->base_gain = 0.7f;   // Base gain to prevent clipping
+  mixer->base_gain = 1.5f;   // Balanced gain - prevents clipping with AGC
 
   // Initialize processing
   ducking_init(&mixer->ducking, max_sources, (float)sample_rate);

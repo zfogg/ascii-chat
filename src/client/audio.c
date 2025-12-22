@@ -156,7 +156,7 @@ static atomic_bool g_audio_capture_thread_exited = false;
  * ============================================================================ */
 
 /** Audio volume boost multiplier for received samples */
-#define AUDIO_VOLUME_BOOST 1.0f // No boost - use natural volume
+#define AUDIO_VOLUME_BOOST 2.0f // 2x boost - balanced with AGC to prevent clipping
 
 /* ============================================================================
  * Audio Processing Functions
@@ -344,13 +344,13 @@ static void *audio_capture_thread_func(void *arg) {
       float rms = sqrtf(sum_squares / samples_read);
 
       // Conservative AGC settings to avoid amplifying noise
-      const float target_rms = 0.05f;       // Lower target - 5% of full scale (was 0.1f)
-      const float max_gain = 3.0f;          // Maximum 3x amplification (was 20x!)
-      const float min_rms_for_gain = 0.01f; // Don't amplify very quiet audio (noise floor)
+      const float target_rms = 0.05f;         // Target RMS - 5% of full scale (prevent over-amplification)
+      const float max_gain = 20.0f;           // Maximum 20x amplification
+      const float min_rms_for_gain = 0.0001f; // Noise floor threshold (lower for quiet environments)
 
       if (rms > min_rms_for_gain) { // Only apply gain if there's actual audio above noise floor
         float gain = target_rms / rms;
-        // Clamp gain to reasonable range [0.5x, 3.0x]
+        // Clamp gain to reasonable range [0.5x, max_gain]
         if (gain > max_gain)
           gain = max_gain;
         if (gain < 0.5f)
@@ -360,6 +360,7 @@ static void *audio_capture_thread_func(void *arg) {
             audio_buffer[i] *= gain;
           }
         }
+        log_debug_every(2000000, "AGC: rms=%.6f, gain=%.2fx (target=%.2f)", rms, gain, target_rms);
       }
 
       // 3. Gentle soft clipping to prevent harsh distortion
