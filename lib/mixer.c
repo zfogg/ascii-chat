@@ -602,39 +602,37 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     STOP_TIMER("mixer_read_sources");
 
     START_TIMER("mixer_per_sample_loop");
-
-    // CRITICAL OPTIMIZATION: Pre-compute frame-level metadata BEFORE per-sample loop
-    // Calculate speaking count for ALL samples at once using first sample as representative
-    int speaking_count = 0;
-    for (int i = 0; i < source_count; i++) {
-      int slot = source_map[i];
-      float first_sample = source_samples[i][0]; // Use first sample of frame for speaking detection
-      float abs_sample = fabsf(first_sample);
-
-      // Update envelope with first sample
-      if (abs_sample > mixer->ducking.envelope[slot]) {
-        mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
-                                        (1.0f - mixer->ducking.attack_coeff) * abs_sample;
-      } else {
-        mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
-                                        (1.0f - mixer->ducking.release_coeff) * abs_sample;
-      }
-
-      // Count speaking sources
-      if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
-        speaking_count++;
-    }
-
-    // Apply ducking ONCE per frame, not per sample (was 256x per frame before!)
-    ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
-
-    // Calculate crowd scaling once per frame
-    float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
-    float pre_bus = mixer->base_gain * crowd_gain;
-
     // Process each sample in the frame
     for (int s = 0; s < frame_size; s++) {
-      // Mix sources with pre-computed ducking and crowd scaling
+      // Update envelopes for active speaker detection
+      int speaking_count = 0;
+      for (int i = 0; i < source_count; i++) {
+        int slot = source_map[i];
+        float sample = source_samples[i][s];
+        float abs_sample = fabsf(sample);
+
+        // Update envelope
+        if (abs_sample > mixer->ducking.envelope[slot]) {
+          mixer->ducking.envelope[slot] = mixer->ducking.attack_coeff * mixer->ducking.envelope[slot] +
+                                          (1.0f - mixer->ducking.attack_coeff) * abs_sample;
+        } else {
+          mixer->ducking.envelope[slot] = mixer->ducking.release_coeff * mixer->ducking.envelope[slot] +
+                                          (1.0f - mixer->ducking.release_coeff) * abs_sample;
+        }
+
+        // Count speaking sources
+        if (mixer->ducking.envelope[slot] > db_to_linear(-60.0f))
+          speaking_count++;
+      }
+
+      // Apply ducking
+      ducking_process_frame(&mixer->ducking, mixer->ducking.envelope, mixer->ducking.gain, mixer->max_sources);
+
+      // Calculate crowd scaling
+      float crowd_gain = (speaking_count > 0) ? (1.0f / powf((float)speaking_count, mixer->crowd_alpha)) : 1.0f;
+      float pre_bus = mixer->base_gain * crowd_gain;
+
+      // Mix sources with ducking and crowd scaling
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
         int slot = source_map[i];
