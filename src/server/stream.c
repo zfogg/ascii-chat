@@ -365,6 +365,12 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
       // Validate that the frame size matches expected size
       size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+
+      // Log frame sizes for debugging grid display issues
+      log_debug_every(1000, "Client %u: Reading frame, got_size=%zu, expected=%zu, dims=%ux%u, rgb_size=%zu",
+                      snap->client_id, frame_to_use->size, expected_size, img_width, img_height,
+                      (size_t)img_width * (size_t)img_height * sizeof(rgb_t));
+
       if (frame_to_use->size != expected_size) {
         SET_ERRNO(ERROR_INVALID_STATE,
                   "Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",

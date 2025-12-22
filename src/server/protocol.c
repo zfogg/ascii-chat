@@ -669,6 +669,12 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         frame->height = img_height;
         frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
         frame->sequence_number = ++client->frames_received;
+
+        // Debug logging for grid display issues
+        log_debug_every(1000, "Client %u: Stored frame %llu, size=%zu, dims=%ux%u, rgb_size=%zu",
+                        atomic_load(&client->client_id), frame->sequence_number, frame->size,
+                        img_width, img_height, rgb_data_size);
+
         video_frame_commit(client->incoming_video_buffer);
       } else {
         if (needs_free && rgb_data) {
