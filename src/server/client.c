@@ -823,7 +823,7 @@ void *client_receive_thread(void *arg) {
   }
 
   // Additional validation: check socket is valid
-  if (client->socket <= 0 || client->socket == INVALID_SOCKET_VALUE) {
+  if (client->socket == INVALID_SOCKET_VALUE) {
     log_error("Invalid client socket in receive thread");
     return NULL;
   }
@@ -1114,7 +1114,7 @@ void *client_send_thread_func(void *arg) {
   }
 
   // Additional validation: check socket is valid
-  if (client->socket <= 0 || client->socket == INVALID_SOCKET_VALUE) {
+  if (client->socket == INVALID_SOCKET_VALUE) {
     log_error("Invalid client socket in send thread");
     return NULL;
   }
