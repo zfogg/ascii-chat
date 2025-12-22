@@ -473,8 +473,42 @@ void *stats_logger_thread(void *arg) {
  * @note Function currently serves as placeholder for future development
  */
 void update_server_stats(void) {
-  // TODO: Implement server statistics update
-  // This would update g_stats with current performance metrics
+  // Aggregate statistics from all active clients
+  uint64_t total_frames_sent = 0;
+  uint64_t total_frames_dropped = 0;
+
+  // Read-lock to safely iterate over all clients
+  rwlock_rdlock(&g_client_manager_rwlock);
+
+  for (int i = 0; i < MAX_CLIENTS; i++) {
+    client_info_t *client = &g_client_manager.clients[i];
+    if (atomic_load(&client->client_id) != 0 && atomic_load(&client->active)) {
+      // Aggregate frames sent to all clients
+      total_frames_sent += client->frames_sent;
+
+      // Get dropped frame statistics from outgoing video buffer
+      if (client->outgoing_video_buffer) {
+        video_frame_stats_t stats;
+        video_frame_get_stats(client->outgoing_video_buffer, &stats);
+        total_frames_dropped += stats.dropped_frames;
+      }
+    }
+  }
+
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
+  // Update global statistics atomically
+  mutex_lock(&g_stats_mutex);
+  g_stats.frames_sent = total_frames_sent;
+  g_stats.frames_dropped = total_frames_dropped;
+
+  // Calculate frames_captured from frames_sent and frames_dropped
+  // frames_captured = frames_sent + frames_dropped (total output frames)
+  if (total_frames_sent > 0 || total_frames_dropped > 0) {
+    g_stats.frames_captured = total_frames_sent + total_frames_dropped;
+  }
+
+  mutex_unlock(&g_stats_mutex);
 }
 
 /**
