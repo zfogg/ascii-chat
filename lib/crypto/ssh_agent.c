@@ -165,7 +165,8 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
 
     // Compare public key (should be 32 bytes for Ed25519)
     if (pubkey_len == 32 && blob_pos + 32 <= pos + blob_len) {
-      if (memcmp(response + blob_pos, public_key->key, 32) == 0) {
+      // BUGFIX: Use constant-time comparison to prevent timing attacks
+      if (sodium_memcmp(response + blob_pos, public_key->key, 32) == 0) {
         log_debug("Found matching key in ssh-agent");
         return true;
       }

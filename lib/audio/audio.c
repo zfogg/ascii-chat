@@ -556,6 +556,11 @@ asciichat_error_t audio_start_capture(audio_context_t *ctx) {
   }
 
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(inputParameters.device);
+  // BUGFIX: Pa_GetDeviceInfo can return NULL if device is invalid or disconnected
+  if (!deviceInfo) {
+    mutex_unlock(&ctx->state_mutex);
+    return SET_ERRNO(ERROR_AUDIO, "Device info not found for input device %d", inputParameters.device);
+  }
   log_info("Opening audio input device %d: %s (%d channels, %.0f Hz)%s", inputParameters.device, deviceInfo->name,
            deviceInfo->maxInputChannels, deviceInfo->defaultSampleRate, (opt_microphone_index < 0) ? " [DEFAULT]" : "");
 
@@ -644,6 +649,11 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
   }
 
   const PaDeviceInfo *outputDeviceInfo = Pa_GetDeviceInfo(outputParameters.device);
+  // BUGFIX: Pa_GetDeviceInfo can return NULL if device is invalid or disconnected
+  if (!outputDeviceInfo) {
+    mutex_unlock(&ctx->state_mutex);
+    return SET_ERRNO(ERROR_AUDIO, "Device info not found for output device %d", outputParameters.device);
+  }
   log_info("Opening audio output device %d: %s (%d channels, %.0f Hz)%s", outputParameters.device,
            outputDeviceInfo->name, outputDeviceInfo->maxOutputChannels, outputDeviceInfo->defaultSampleRate,
            (opt_speakers_index < 0) ? " [DEFAULT]" : "");

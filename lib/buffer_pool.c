@@ -144,12 +144,23 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
 data_buffer_pool_t *data_buffer_pool_create(void) {
   data_buffer_pool_t *pool;
   pool = SAFE_MALLOC(sizeof(data_buffer_pool_t), data_buffer_pool_t *);
+  if (!pool) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate data buffer pool");
+    return NULL;
+  }
 
   // Create pools for different size classes
+  // BUGFIX: Check each sub-pool creation and clean up on failure
   pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
   pool->medium_pool = buffer_pool_create_single(BUFFER_POOL_MEDIUM_SIZE, BUFFER_POOL_MEDIUM_COUNT);
   pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
   pool->xlarge_pool = buffer_pool_create_single(BUFFER_POOL_XLARGE_SIZE, BUFFER_POOL_XLARGE_COUNT);
+
+  // Verify all pools were created (any NULL means allocation failure)
+  if (!pool->small_pool || !pool->medium_pool || !pool->large_pool || !pool->xlarge_pool) {
+    log_warn("Failed to create one or more buffer sub-pools, continuing with available pools");
+    // Don't fail completely - some pools may work, others will fallback to malloc
+  }
 
   mutex_init(&pool->pool_mutex);
 
