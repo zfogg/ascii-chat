@@ -9,7 +9,7 @@
 #include "tests/common.h"
 #include "tests/logging.h"
 #include "ringbuffer.h"
-#include "audio.h"
+#include "audio/audio.h"
 #include "buffer_pool.h"
 
 // Use the enhanced macro to create complete test suites with custom log levels

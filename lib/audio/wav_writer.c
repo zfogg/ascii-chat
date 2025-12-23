@@ -3,7 +3,7 @@
  * @brief Simple WAV file writer implementation for audio debugging
  */
 
-#include "wav_writer.h"
+#include "audio/wav_writer.h"
 #include "common.h"
 #include "platform/string.h"
 #include <stdio.h>

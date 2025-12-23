@@ -194,11 +194,11 @@ set(VIDEO_SRCS
 # Module 6: Audio Processing (changes weekly)
 # =============================================================================
 set(AUDIO_SRCS
-    lib/audio.c
-    lib/mixer.c
-    lib/wav_writer.c
-    lib/opus_codec.c
-    lib/echo_cancel.c
+    lib/audio/audio.c
+    lib/audio/mixer.c
+    lib/audio/wav_writer.c
+    lib/audio/opus_codec.c
+    lib/audio/client_audio_pipeline.c
 )
 
 # =============================================================================

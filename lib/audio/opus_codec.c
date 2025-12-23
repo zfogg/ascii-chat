@@ -4,7 +4,7 @@
  * @ingroup audio
  */
 
-#include "opus_codec.h"
+#include "audio/opus_codec.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include <opus/opus.h>

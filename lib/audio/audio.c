@@ -5,11 +5,10 @@
  * @brief 🔊 Audio capture and playback using PortAudio with buffer management
  */
 
-#include "audio.h"
+#include "audio/audio.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
-#include "echo_cancel.h"
 #include "options.h"
 #include "platform/init.h" // For static_mutex_t
 #include <stdlib.h>
@@ -98,10 +97,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
-
-      // Feed playback audio to AEC as reference signal (what speakers are playing)
-      // This must be called for every buffer going to the speakers
-      echo_cancel_playback(output, (int)(framesPerBuffer * AUDIO_CHANNELS));
+      // Note: Echo reference is fed through ClientAudioPipeline when samples are received
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,

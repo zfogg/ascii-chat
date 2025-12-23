@@ -7,8 +7,8 @@
 
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "mixer.h"
-#include "audio.h"
+#include "audio/mixer.h"
+#include "audio/audio.h"
 #include "../../lib/asciichat_errno.h"
 
 // Custom init function

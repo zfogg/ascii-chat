@@ -165,9 +165,9 @@
 #include "platform/init.h"
 #include "packet_queue.h"
 #include "util/time.h"
-#include "mixer.h"
-#include "audio.h"
-#include "opus_codec.h"
+#include "audio/mixer.h"
+#include "audio/audio.h"
+#include "audio/opus_codec.h"
 #include "util/format.h"
 
 // Global client manager lock for thread-safe access
