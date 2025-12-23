@@ -106,8 +106,23 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   }
 
   // Calculate total allocation size (structure + pixel data in single buffer)
+  // CRITICAL: Check for integer overflow before multiplication (prevents heap corruption)
+  if (width > SIZE_MAX / height) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions overflow: %zu x %zu", width, height);
+    return NULL;
+  }
   size_t pixel_count = width * height;
+
+  if (pixel_count > SIZE_MAX / sizeof(rgb_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: pixel buffer overflow: %zu pixels", pixel_count);
+    return NULL;
+  }
   size_t pixels_size = pixel_count * sizeof(rgb_t);
+
+  if (pixels_size > SIZE_MAX - sizeof(image_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: total size overflow");
+    return NULL;
+  }
   size_t total_size = sizeof(image_t) + pixels_size;
 
   // Allocate from buffer pool as single contiguous block
@@ -149,8 +164,20 @@ void image_clear(image_t *p) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: p or p->pixels is NULL");
     return;
   }
-  SAFE_MEMSET(p->pixels, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t), 0,
-              (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t));
+  // CRITICAL: Check for integer overflow before multiplication
+  unsigned long w_ul = (unsigned long)p->w;
+  unsigned long h_ul = (unsigned long)p->h;
+  if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: dimensions overflow: %d x %d", p->w, p->h);
+    return;
+  }
+  unsigned long pixel_count = w_ul * h_ul;
+  if (pixel_count > ULONG_MAX / sizeof(rgb_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: buffer size overflow");
+    return;
+  }
+  size_t clear_size = pixel_count * sizeof(rgb_t);
+  SAFE_MEMSET(p->pixels, clear_size, 0, clear_size);
 }
 
 inline rgb_t *image_pixel(image_t *p, const int x, const int y) {

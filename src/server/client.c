@@ -318,8 +318,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_error("Maximum client limit reached (%d/%d active clients)", existing_count, opt_max_clients);
 
     // Send a rejection message to the client before closing
+    // FIX: Use platform-abstracted socket_send() instead of raw send() for Windows portability
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    ssize_t send_result = send(socket, reject_msg, strlen(reject_msg), 0);
+    ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
       log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
     }
@@ -333,8 +334,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
+    // FIX: Use platform-abstracted socket_send() instead of raw send() for Windows portability
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
-    ssize_t send_result = send(socket, reject_msg, strlen(reject_msg), 0);
+    ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
       log_warn("Failed to send rejection message to client: %s", SAFE_STRERROR(errno));
     }

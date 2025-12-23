@@ -838,9 +838,12 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   // Skip the rest of the public key data to get to the private key
   // We've already parsed: 4 (key_type_len) + 11 (ssh-ed25519) + 4 (pubkey_data_len) + 32 (key) = 51 bytes
   // So we need to skip the remaining pubkey_len - 51 bytes
-  size_t remaining_pubkey = pubkey_len - 51;
-  if (remaining_pubkey > 0) {
-    offset += remaining_pubkey;
+  // SECURITY FIX: Check for underflow before subtraction
+  if (pubkey_len >= 51) {
+    size_t remaining_pubkey = pubkey_len - 51;
+    if (remaining_pubkey > 0) {
+      offset += remaining_pubkey;
+    }
   }
 
   // Read private key
@@ -890,6 +893,12 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t key_type_len_priv = READ_BE32(key_blob, offset);
+  // SECURITY FIX: Check for integer overflow before adding to offset
+  if (key_type_len_priv > key_blob_len || offset + 4 + key_type_len_priv > key_blob_len) {
+    SAFE_FREE(key_blob);
+    SAFE_FREE(file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key type length overflow: %u", key_type_len_priv);
+  }
   offset += 4 + key_type_len_priv;
 
   // Skip public key
@@ -900,6 +909,12 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t pubkey_len_priv = READ_BE32(key_blob, offset);
+  // SECURITY FIX: Check for integer overflow before adding to offset
+  if (pubkey_len_priv > key_blob_len || offset + 4 + pubkey_len_priv > key_blob_len) {
+    SAFE_FREE(key_blob);
+    SAFE_FREE(file_content);
+    return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key public key length overflow: %u", pubkey_len_priv);
+  }
   offset += 4 + pubkey_len_priv;
 
   // Read private key
