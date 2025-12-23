@@ -1004,7 +1004,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
  * @ingroup server_protocol
  */
 void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len) {
-  log_debug_every(5000000, "Received Opus audio batch from client %u (len=%zu)", atomic_load(&client->client_id), len);
+  log_debug_every(10000000, "Received Opus audio batch from client %u (len=%zu)", atomic_load(&client->client_id), len);
 
   if (!data) {
     disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH payload missing");
@@ -1108,7 +1108,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     opus_offset += frame_size;
   }
 
-  log_debug_every(1000000, "Client %u: Decoded %d Opus frames -> %d samples", atomic_load(&client->client_id),
+  log_debug_every(5000000, "Client %u: Decoded %d Opus frames -> %d samples", atomic_load(&client->client_id),
                   frame_count, total_decoded);
 
   // DEBUG: Log sample values to detect all-zero issue
@@ -1121,7 +1121,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
       rms += decoded_samples[i] * decoded_samples[i];
     }
     rms = sqrtf(rms / (total_decoded > 100 ? 100 : total_decoded));
-    log_info_every(500000, "Client %u: Opus decoded - Peak=%.6f, RMS=%.6f, First5=[%.6f,%.6f,%.6f,%.6f,%.6f]",
+    log_info_every(1000000, "Client %u: Opus decoded - Peak=%.6f, RMS=%.6f, First5=[%.6f,%.6f,%.6f,%.6f,%.6f]",
                    atomic_load(&client->client_id), peak, rms, total_decoded > 0 ? decoded_samples[0] : 0.0f,
                    total_decoded > 1 ? decoded_samples[1] : 0.0f, total_decoded > 2 ? decoded_samples[2] : 0.0f,
                    total_decoded > 3 ? decoded_samples[3] : 0.0f, total_decoded > 4 ? decoded_samples[4] : 0.0f);
