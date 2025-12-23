@@ -61,11 +61,15 @@ image_t *webcam_read(void) {
     static int frame_counter = 0;
     frame_counter++;
 
-    // Create a new image with standard webcam dimensions (1280x720)
-    image_t *test_frame = image_new(1280, 720);
+    // Use static buffer to avoid memory leak - caller doesn't free test pattern frames
+    static image_t *test_frame = NULL;
     if (!test_frame) {
-      SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
-      return NULL;
+      // Create a new image with standard webcam dimensions (1280x720)
+      test_frame = image_new(1280, 720);
+      if (!test_frame) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
+        return NULL;
+      }
     }
 
     // Generate a colorful test pattern with moving elements
@@ -175,7 +179,7 @@ image_t *webcam_read(void) {
   }
 
   // Apply horizontal flip if requested
-  if (opt_webcam_flip) {
+  if (opt_webcam_flip && frame->w > 1) {
     // Flip the image horizontally - optimized for large images
     // Process entire rows to improve cache locality
     rgb_t *left = frame->pixels;
