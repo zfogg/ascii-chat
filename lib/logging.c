@@ -248,7 +248,12 @@ void log_init(const char *filename, log_level_t level, bool force_stderr) {
   // Initialize mutex if this is the first time
   static bool mutex_initialized = false;
   if (!mutex_initialized) {
-    mutex_init(&g_log.mutex);
+    if (mutex_init(&g_log.mutex) != 0) {
+      // Cannot log the error since logging isn't initialized yet
+      // This is a critical failure that should terminate the program
+      fprintf(stderr, "FATAL: Failed to initialize logging mutex\n");
+      exit(1);
+    }
     mutex_initialized = true;
   }
 
