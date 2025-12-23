@@ -351,6 +351,13 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
+    // BUGFIX: Validate size before allocation to prevent integer overflow
+    // If original_size is UINT32_MAX, adding 1 would overflow to 0
+    if (header.original_size > SIZE_MAX - 1 || header.original_size > 100 * 1024 * 1024) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
+      return;
+    }
+
     frame_data = SAFE_MALLOC(header.original_size + 1, char *);
 
     // Decompress using compression API
@@ -370,6 +377,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     // Uncompressed frame
     if (frame_data_len != header.original_size) {
       log_error("Uncompressed frame size mismatch: expected %u, got %zu", header.original_size, frame_data_len);
+      return;
+    }
+
+    // BUGFIX: Validate size before allocation to prevent integer overflow
+    if (header.original_size > SIZE_MAX - 1 || header.original_size > 100 * 1024 * 1024) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
       return;
     }
 
