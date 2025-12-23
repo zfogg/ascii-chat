@@ -71,6 +71,11 @@ image_t *image_new(size_t width, size_t height) {
 
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
   p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_t *);
+  if (!p->pixels) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate image pixels: %zu bytes", pixels_size);
+    SAFE_FREE(p);
+    return NULL;
+  }
 
   p->w = (int)width;
   p->h = (int)height;
@@ -172,11 +177,27 @@ void image_clear(image_t *p) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: p or p->pixels is NULL");
     return;
   }
-  SAFE_MEMSET(p->pixels, (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t), 0,
-              (unsigned long)p->w * (unsigned long)p->h * sizeof(rgb_t));
+  // CRITICAL: Check for integer overflow before multiplication
+  unsigned long w_ul = (unsigned long)p->w;
+  unsigned long h_ul = (unsigned long)p->h;
+  if (w_ul > 0 && h_ul > ULONG_MAX / w_ul) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: dimensions overflow: %d x %d", p->w, p->h);
+    return;
+  }
+  unsigned long pixel_count = w_ul * h_ul;
+  if (pixel_count > ULONG_MAX / sizeof(rgb_t)) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_clear: buffer size overflow");
+    return;
+  }
+  size_t clear_size = pixel_count * sizeof(rgb_t);
+  SAFE_MEMSET(p->pixels, clear_size, 0, clear_size);
 }
 
 inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
+  // BUGFIX: Add bounds checking to prevent buffer overflow on invalid coordinates
+  if (!p || !p->pixels || x < 0 || x >= p->w || y < 0 || y >= p->h) {
+    return NULL;
+  }
   return &p->pixels[x + y * p->w];
 }
 
@@ -326,19 +347,14 @@ char *image_print(const image_t *p, const char *palette) {
 
   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
   const size_t max_char_bytes = 4; // Max UTF-8 character size
-  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   const rgb_t *pix = p->pixels;
 
-  char *lines;
-  lines = SAFE_MALLOC(len * sizeof(char), char *);
-
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
-  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
+  ob.cap = (size_t)h * ((size_t)w * max_char_bytes + 1);
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf) {
-    SAFE_FREE(lines);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate output buffer for scalar rendering");
     return NULL;
   }
@@ -393,7 +409,6 @@ char *image_print(const image_t *p, const char *palette) {
   }
 
   ob_term(&ob);
-  SAFE_FREE(lines); // Free the old buffer
   return ob.buf;
 }
 

@@ -164,8 +164,9 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
     blob_pos += 4;
 
     // Compare public key (should be 32 bytes for Ed25519)
+    // SECURITY FIX: Use constant-time comparison to prevent timing side channels
     if (pubkey_len == 32 && blob_pos + 32 <= pos + blob_len) {
-      if (memcmp(response + blob_pos, public_key->key, 32) == 0) {
+      if (sodium_memcmp(response + blob_pos, public_key->key, 32) == 0) {
         log_debug("Found matching key in ssh-agent");
         return true;
       }
@@ -245,6 +246,16 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
 
   // Comment (key path)
   len = key_path ? strlen(key_path) : 0;
+
+  // SECURITY: Validate key path length to prevent buffer overflow
+  // Buffer is BUFFER_SIZE_XXLARGE (4096), pos is ~128 at this point, need 4 bytes for length prefix
+  size_t max_key_path_len = sizeof(buf) - pos - 4;
+  if (len > max_key_path_len) {
+    platform_pipe_close(pipe);
+    sodium_memzero(buf, sizeof(buf));
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "SSH key path too long: %u bytes (max %zu)", len, max_key_path_len);
+  }
+
   buf[pos++] = (len >> 24) & 0xFF;
   buf[pos++] = (len >> 16) & 0xFF;
   buf[pos++] = (len >> 8) & 0xFF;

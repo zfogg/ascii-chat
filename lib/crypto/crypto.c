@@ -687,8 +687,27 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
     return CRYPTO_ERROR_KEY_EXCHANGE_INCOMPLETE;
   }
 
+  // CRITICAL: Validate data_len to prevent integer overflow in size calculations
+  if (data_len > CRYPTO_MAX_PLAINTEXT_SIZE) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "crypto_create_encrypted_packet: data_len %zu exceeds max %d", data_len,
+              CRYPTO_MAX_PLAINTEXT_SIZE);
+    return CRYPTO_ERROR_INVALID_PARAMS;
+  }
+
+  // Check for integer overflow: data_len + nonce_size + mac_size
+  if (data_len > SIZE_MAX - ctx->nonce_size - ctx->mac_size) {
+    SET_ERRNO(ERROR_BUFFER, "crypto_create_encrypted_packet: encrypted_size overflow");
+    return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+  }
   size_t encrypted_size = data_len + ctx->nonce_size + ctx->mac_size;
-  size_t required_size = sizeof(uint32_t) + sizeof(uint32_t) + encrypted_size; // type + len + encrypted_data
+
+  // Check for integer overflow: header + encrypted_size
+  size_t header_size = sizeof(uint32_t) + sizeof(uint32_t);
+  if (encrypted_size > SIZE_MAX - header_size) {
+    SET_ERRNO(ERROR_BUFFER, "crypto_create_encrypted_packet: required_size overflow");
+    return CRYPTO_ERROR_BUFFER_TOO_SMALL;
+  }
+  size_t required_size = header_size + encrypted_size; // type + len + encrypted_data
 
   if (packet_size < required_size) {
     SET_ERRNO(ERROR_BUFFER, "crypto_create_encrypted_packet: Buffer too small (size=%zu, required=%zu)", packet_size,
