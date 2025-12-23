@@ -112,8 +112,14 @@ typedef struct {
  * @{
  */
 
-/** @brief Audio ring buffer size in samples (81920 samples = ~1.7s @ 48kHz, 4x Opus batch) */
-#define AUDIO_RING_BUFFER_SIZE (256 * 320)
+/** @brief Audio ring buffer size in samples (9600 samples = 200ms @ 48kHz) for low-latency audio
+ *
+ * Reduced from 81920 samples (1.7s) to improve latency for interactive two-way audio.
+ * Previous size caused ~1.7 second end-to-end delay.
+ * New size trades resilience to network jitter for responsive audio communication.
+ * 9600 = 48000 Hz * 0.2 seconds
+ */
+#define AUDIO_RING_BUFFER_SIZE 9600
 
 /** @brief Jitter buffer threshold (wait for ~60ms before starting playback = 2880 samples @ 48kHz)
  *
