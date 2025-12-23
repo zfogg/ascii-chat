@@ -462,6 +462,14 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
                             .client_id = htonl(0)}; // Always 0 - client_id is not used in practice
 
   // Combine header + payload for encryption
+  // BUGFIX: Check for integer overflow before addition
+  if (final_len > SIZE_MAX - sizeof(header)) {
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow plaintext buffer size");
+    if (compressed_data) {
+      SAFE_FREE(compressed_data);
+    }
+    return -1;
+  }
   size_t plaintext_len = sizeof(header) + final_len;
   uint8_t *plaintext = buffer_pool_alloc(plaintext_len);
   if (!plaintext) {
@@ -478,6 +486,15 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Encrypt
+  // BUGFIX: Check for integer overflow before calculating ciphertext size
+  if (plaintext_len > SIZE_MAX - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
+    buffer_pool_free(plaintext, plaintext_len);
+    if (compressed_data) {
+      SAFE_FREE(compressed_data);
+    }
+    return -1;
+  }
   size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
   uint8_t *ciphertext = buffer_pool_alloc(ciphertext_size);
   if (!ciphertext) {

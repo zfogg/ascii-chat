@@ -284,6 +284,17 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
               sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
 
+  // Allocate mix buffer BEFORE rwlock_init so cleanup path is correct
+  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
+  if (!mixer->mix_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate mix buffer");
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize mixer source lock");
@@ -583,8 +594,12 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
   uint64_t active_mask = mixer->active_sources_mask;
 
-  // Clear bit for excluded source (O(1) vs O(n) scan)
-  if (exclude_index < 64) {
+  // BUGFIX: Validate exclude_index before using in bitshift
+  // - exclude_index == 0xFF means "not found" (sentinel value from initialization)
+  // - exclude_index >= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
+  // - Also verify hash table lookup actually matched the client_id (collision detection)
+  if (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF &&
+      mixer->source_ids[exclude_index] == exclude_client_id) {
     active_mask &= ~(1ULL << exclude_index);
   }
 
