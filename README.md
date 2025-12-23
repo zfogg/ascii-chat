@@ -209,7 +209,7 @@ Run `ascii-chat client --help` to see all client options:
 
 - `--fps FPS`: Desired frame rate, 1-144 (default: 60)
 - `--compression-level LEVEL`: zstd compression level 1-9 (default: 1, fastest)
-- `--no-compress`: Disable video frame compression entirely
+- `--no-compress`: Disable video frame compression and audio encoding entirely
 - `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
 - `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
 
@@ -458,7 +458,7 @@ ascii-chat is built on operating system code and several libraries.
   - **Purpose**: Real-time audio compression for low-bandwidth audio transmission. Enables high-quality bidirectional voice and audio communication between clients with minimal latency and bandwidth overhead.
   - **License**: BSD
 
-- [Speex DSP](https://www.speex.org/) - Audio DSP Library (optional)
+- [Speex DSP](https://www.speex.org/) - Audio DSP Library
 
   - **Purpose**: Acoustic Echo Cancellation (AEC) to prevent feedback loops when speakers and microphones are used without headphones. Enables hands-free audio chat.
   - **License**: BSD
@@ -858,11 +858,12 @@ changing command-line arguments.
 - [x] Crypto.
 - [ ] GPG key support for crypto (there's a bug upstream in libgcrypt).
 - [ ] zalgo text generator
-- [ ] v4l2 webcam images working.
+- [x] v4l2 webcam images working.
 - [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)
 - [ ] submit an ascii-chat internet protocol (ACIP) ietf rfc
 - [ ] ascii-chat discovery service
 - [ ] submit an ascii-chat discovery service (ACDS) ietf rfc
+- [ ] ascii-chat official homebrew bottles
 
 ## Notes
 

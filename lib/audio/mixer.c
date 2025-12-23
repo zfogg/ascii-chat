@@ -279,6 +279,17 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   SAFE_MEMSET(mixer->source_id_to_index, sizeof(mixer->source_id_to_index), 0xFF,
               sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
 
+  // Allocate mix buffer BEFORE rwlock_init so cleanup path is correct
+  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
+  if (!mixer->mix_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate mix buffer");
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+
   // OPTIMIZATION 2: Initialize reader-writer lock
   if (rwlock_init(&mixer->source_lock) != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize mixer source lock");
@@ -297,9 +308,6 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   // Initialize processing
   ducking_init(&mixer->ducking, max_sources, (float)sample_rate);
   compressor_init(&mixer->compressor, (float)sample_rate);
-
-  // Allocate mix buffer
-  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
 
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 

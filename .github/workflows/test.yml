@@ -65,7 +65,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v5
+        cache-version: v6
         build-cache-key: ${{ matrix.build_type }}
 
     - name: Clean build directory to force reconfigure
@@ -289,7 +289,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v5
+        cache-version: v6
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -404,7 +404,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v5
+        cache-version: v6
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -529,7 +529,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v5
+        cache-version: v6
 
     - name: Clean build directory to force reconfigure
       run: |
@@ -624,7 +624,7 @@ jobs:
       id: cache-build
       uses: ./.github/actions/cache-build
       with:
-        cache-version: v5
+        cache-version: v6
 
     - name: Clean build directory to force reconfigure
       run: |
