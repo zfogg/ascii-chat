@@ -23,6 +23,10 @@
 
 #pragma once
 
+/* CRITICAL: string.h must come before any platform includes
+ * that might use memcpy (used in unaligned access helpers below) */
+#include <string.h> // For memcpy in unaligned access helpers
+
 // DLL export/import macros (must be included first to avoid circular dependencies)
 #include "platform/api.h" // IWYU pragma: keep
 
@@ -31,7 +35,6 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h> // For malloc/free in ALLOC_* macros
-#include <string.h> // For memcpy in unaligned access helpers
 
 /** @brief Application name for key comments ("ascii-chat") */
 #define ASCII_CHAT_APP_NAME "ascii-chat"
