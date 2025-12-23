@@ -113,10 +113,23 @@ typedef struct {
 // Lazy initialization functions
 static inline void static_mutex_lock(static_mutex_t *m) {
 #if PLATFORM_WINDOWS
-  // Use InterlockedCompareExchange for thread-safe lazy init
-  if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
+  // Use InterlockedCompareExchange for thread-safe lazy init with proper synchronization
+  // Pattern: First thread sets flag to 1, initializes, then sets to 2
+  // Other threads spin until flag is 2 (fully initialized)
+  LONG prev = InterlockedCompareExchange(&m->initialized, 1, 0);
+  if (prev == 0) {
+    // We won the race - initialize the mutex
     mutex_init(&m->mutex);
+    // Memory barrier to ensure init is visible before flag update
+    MemoryBarrier();
+    InterlockedExchange(&m->initialized, 2);
+  } else if (prev == 1) {
+    // Another thread is initializing - spin until done
+    while (InterlockedCompareExchange(&m->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
+  // prev == 2 means already initialized, proceed directly
 #endif
   mutex_lock(&m->mutex);
 }
@@ -127,8 +140,15 @@ static inline void static_mutex_unlock(static_mutex_t *m) {
 
 static inline void static_rwlock_rdlock(static_rwlock_t *l) {
 #if PLATFORM_WINDOWS
-  if (InterlockedCompareExchange(&l->initialized, 1, 0) == 0) {
+  LONG prev = InterlockedCompareExchange(&l->initialized, 1, 0);
+  if (prev == 0) {
     rwlock_init(&l->lock);
+    MemoryBarrier();
+    InterlockedExchange(&l->initialized, 2);
+  } else if (prev == 1) {
+    while (InterlockedCompareExchange(&l->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
 #endif
   rwlock_rdlock(&l->lock);
@@ -136,8 +156,15 @@ static inline void static_rwlock_rdlock(static_rwlock_t *l) {
 
 static inline void static_rwlock_wrlock(static_rwlock_t *l) {
 #if PLATFORM_WINDOWS
-  if (InterlockedCompareExchange(&l->initialized, 1, 0) == 0) {
+  LONG prev = InterlockedCompareExchange(&l->initialized, 1, 0);
+  if (prev == 0) {
     rwlock_init(&l->lock);
+    MemoryBarrier();
+    InterlockedExchange(&l->initialized, 2);
+  } else if (prev == 1) {
+    while (InterlockedCompareExchange(&l->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
 #endif
   rwlock_wrlock(&l->lock);
@@ -145,8 +172,15 @@ static inline void static_rwlock_wrlock(static_rwlock_t *l) {
 
 static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
 #if PLATFORM_WINDOWS
-  if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {
+  LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
+  if (prev == 0) {
     cond_init(&c->cond);
+    MemoryBarrier();
+    InterlockedExchange(&c->initialized, 2);
+  } else if (prev == 1) {
+    while (InterlockedCompareExchange(&c->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
 #endif
   cond_wait(&c->cond, &m->mutex);
@@ -154,8 +188,15 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
 
 static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, int timeout_ms) {
 #if PLATFORM_WINDOWS
-  if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {
+  LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
+  if (prev == 0) {
     cond_init(&c->cond);
+    MemoryBarrier();
+    InterlockedExchange(&c->initialized, 2);
+  } else if (prev == 1) {
+    while (InterlockedCompareExchange(&c->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
 #endif
   cond_timedwait(&c->cond, &m->mutex, timeout_ms);
@@ -163,8 +204,15 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
 
 static inline void static_cond_signal(static_cond_t *c) {
 #if PLATFORM_WINDOWS
-  if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {
+  LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
+  if (prev == 0) {
     cond_init(&c->cond);
+    MemoryBarrier();
+    InterlockedExchange(&c->initialized, 2);
+  } else if (prev == 1) {
+    while (InterlockedCompareExchange(&c->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
 #endif
   cond_signal(&c->cond);
@@ -172,8 +220,15 @@ static inline void static_cond_signal(static_cond_t *c) {
 
 static inline void static_cond_broadcast(static_cond_t *c) {
 #if PLATFORM_WINDOWS
-  if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {
+  LONG prev = InterlockedCompareExchange(&c->initialized, 1, 0);
+  if (prev == 0) {
     cond_init(&c->cond);
+    MemoryBarrier();
+    InterlockedExchange(&c->initialized, 2);
+  } else if (prev == 1) {
+    while (InterlockedCompareExchange(&c->initialized, 2, 2) != 2) {
+      YieldProcessor();
+    }
   }
 #endif
   cond_broadcast(&c->cond);

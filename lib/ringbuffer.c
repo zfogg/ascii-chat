@@ -40,6 +40,11 @@ static inline size_t next_power_of_two(size_t n) {
 /* ============================================================================
  * Ring Buffer Implementation
  * ============================================================================
+ *
+ * THREAD SAFETY NOTE: This ring buffer is designed for single-producer,
+ * single-consumer (SPSC) use only. The atomic operations provide memory
+ * ordering guarantees but do NOT support concurrent writes from multiple
+ * producers. For multi-writer scenarios, external synchronization is required.
  */
 
 ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
