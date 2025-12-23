@@ -322,7 +322,28 @@ void client_audio_pipeline_set_flags(client_audio_pipeline_t *pipeline, client_a
   if (!pipeline)
     return;
   mutex_lock(&pipeline->mutex);
+
+  // Check if preprocessor flags changed (before overwriting)
+  bool vad_changed = (pipeline->flags.vad != flags.vad);
+  bool preprocess_changed =
+      (pipeline->flags.noise_suppress != flags.noise_suppress) || (pipeline->flags.agc != flags.agc) || vad_changed;
+
   pipeline->flags = flags;
+
+  // Apply preprocessor settings if they changed
+  if (preprocess_changed && pipeline->preprocess) {
+    int denoise = flags.noise_suppress ? 1 : 0;
+    int agc = flags.agc ? 1 : 0;
+
+    speex_preprocess_ctl(pipeline->preprocess, SPEEX_PREPROCESS_SET_DENOISE, &denoise);
+    speex_preprocess_ctl(pipeline->preprocess, SPEEX_PREPROCESS_SET_AGC, &agc);
+
+    // VAD setting change requires stderr suppression (prints warning)
+    if (vad_changed) {
+      suppress_stderr_for_vad_init(pipeline->preprocess);
+    }
+  }
+
   mutex_unlock(&pipeline->mutex);
 }
 
@@ -379,16 +400,8 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   }
 
   // Speex preprocessor (noise suppression, AGC, VAD)
+  // Settings are configured once in create() and set_flags(), not per-frame
   if ((pipeline->flags.noise_suppress || pipeline->flags.agc || pipeline->flags.vad) && pipeline->preprocess) {
-    // Enable/disable individual features based on flags
-    int denoise = pipeline->flags.noise_suppress ? 1 : 0;
-    int agc = pipeline->flags.agc ? 1 : 0;
-    int vad = pipeline->flags.vad ? 1 : 0;
-
-    speex_preprocess_ctl(pipeline->preprocess, SPEEX_PREPROCESS_SET_DENOISE, &denoise);
-    speex_preprocess_ctl(pipeline->preprocess, SPEEX_PREPROCESS_SET_AGC, &agc);
-    speex_preprocess_ctl(pipeline->preprocess, SPEEX_PREPROCESS_SET_VAD, &vad);
-
     speex_preprocess_run(pipeline->preprocess, pipeline->work_i16);
   }
 
