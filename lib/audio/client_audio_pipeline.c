@@ -12,32 +12,10 @@
 #include <speex/speex_echo.h>
 #include <speex/speex_jitter.h>
 #include <speex/speex_preprocess.h>
-#include <stdio.h>
 #include <string.h>
 
 #include "platform/abstraction.h"
 #include <fcntl.h>
-#include <unistd.h>
-
-// Helper to suppress speex stderr warnings using file descriptor redirection
-static int suppress_stderr_start(void) {
-  fflush(stderr); // Flush any pending output first
-  int saved_fd = dup(STDERR_FILENO);
-  int devnull = open("/dev/null", O_WRONLY);
-  if (devnull >= 0) {
-    dup2(devnull, STDERR_FILENO);
-    close(devnull);
-  }
-  return saved_fd;
-}
-
-static void suppress_stderr_end(int saved_fd) {
-  if (saved_fd >= 0) {
-    fflush(stderr); // Flush any output to /dev/null
-    dup2(saved_fd, STDERR_FILENO);
-    close(saved_fd);
-  }
-}
 
 // Suppress stderr temporarily (SpeexDSP prints "VAD has been replaced by a hack" warning)
 static void suppress_stderr_for_vad_init(SpeexPreprocessState *preprocess) {
@@ -256,6 +234,16 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     goto error;
   }
 
+  // Allocate echo reference ring buffer (500ms at 48kHz = 24000 samples)
+  p->echo_ref_size = CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE;
+  p->echo_ref_buffer = SAFE_CALLOC((size_t)p->echo_ref_size, sizeof(int16_t), int16_t *);
+  if (!p->echo_ref_buffer) {
+    log_error("Failed to allocate echo reference buffer");
+    goto error;
+  }
+  p->echo_ref_write_pos = 0;
+  p->echo_ref_available = 0;
+
   p->initialized = true;
 
   log_info("Client audio pipeline created: sample_rate=%d, frame_size=%d, echo_filter=%dms", p->config.sample_rate,
@@ -310,6 +298,10 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
 
   if (pipeline->work_float) {
     SAFE_FREE(pipeline->work_float);
+  }
+
+  if (pipeline->echo_ref_buffer) {
+    SAFE_FREE(pipeline->echo_ref_buffer);
   }
 
   pipeline->initialized = false;
@@ -398,21 +390,44 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   // Convert input float to int16 for Speex
   float_to_int16(input, pipeline->work_i16, num_samples);
 
-  // Echo cancellation using buffered API
-  // This uses speex_echo_capture which internally manages timing with proper
-  // 2-frame delay compensation to account for system audio latency
+  // Echo cancellation using manual API with buffered reference
+  // We manually manage the echo reference buffer because capture and playback
+  // are asynchronous (network-based) and need explicit synchronization
   if (pipeline->flags.echo_cancel && pipeline->echo_state) {
+    // Read echo reference from ring buffer (circular history buffer)
+    // We read the most recent N samples without consuming them
+    // (this is a history buffer, not a queue)
+    int read_pos = (pipeline->echo_ref_write_pos - num_samples + pipeline->echo_ref_size) % pipeline->echo_ref_size;
+
+    for (int i = 0; i < num_samples; i++) {
+      // Read from the history buffer with wraparound
+      if (pipeline->echo_ref_available >= num_samples) {
+        // We have full history available
+        pipeline->echo_i16[i] = pipeline->echo_ref_buffer[read_pos];
+      } else {
+        // Partial history - pad with zeros for earlier samples
+        int distance = (pipeline->echo_ref_write_pos - read_pos + pipeline->echo_ref_size) % pipeline->echo_ref_size;
+        if (distance < pipeline->echo_ref_available) {
+          pipeline->echo_i16[i] = pipeline->echo_ref_buffer[read_pos];
+        } else {
+          pipeline->echo_i16[i] = 0;
+        }
+      }
+      read_pos = (read_pos + 1) % pipeline->echo_ref_size;
+    }
+
+    // Apply echo cancellation with the reference data
     int16_t *aec_output = SAFE_MALLOC((size_t)num_samples * sizeof(int16_t), int16_t *);
     if (aec_output) {
-      // speex_echo_capture handles buffering and timing internally
-      speex_echo_capture(pipeline->echo_state, pipeline->work_i16, aec_output);
+      speex_echo_cancellation(pipeline->echo_state, pipeline->work_i16, pipeline->echo_i16, aec_output);
       memcpy(pipeline->work_i16, aec_output, (size_t)num_samples * sizeof(int16_t));
       SAFE_FREE(aec_output);
 
       static int aec_count = 0;
       aec_count++;
       if (aec_count <= 5 || aec_count % 100 == 0) {
-        log_debug("AEC processing: frame %d, samples %d", aec_count, num_samples);
+        log_debug("AEC processing: frame %d, samples %d, echo_ref_avail=%d/%d", aec_count, num_samples,
+                  pipeline->echo_ref_available, pipeline->echo_ref_size);
       }
     }
   } else {
@@ -519,17 +534,15 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     jitter_buffer_tick(pipeline->jitter);
 
     // Get packet from jitter buffer
-    // (speex may print warnings if buffer is empty, but this is handled via Opus PLC)
     JitterBufferPacket out_packet;
     char jitter_data[CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET];
     out_packet.data = jitter_data;
     out_packet.len = CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET;
 
     spx_int32_t start_offset;
-    // Suppress speex jitter buffer warnings - we handle missing frames with Opus PLC
-    int saved_stderr = suppress_stderr_start();
+    // Note: speex may print "No playback frame available" warnings to stderr
+    // This is expected behavior when jitter buffer is empty - we handle it with Opus PLC
     int jitter_result = jitter_buffer_get(pipeline->jitter, &out_packet, pipeline->jitter_frame_span, &start_offset);
-    suppress_stderr_end(saved_stderr);
 
     if (jitter_result == JITTER_BUFFER_OK) {
       // Decode the packet from jitter buffer
@@ -641,28 +654,37 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
   mutex_lock(&pipeline->mutex);
 
   // Only process if echo cancellation is enabled
-  if (!pipeline->flags.echo_cancel || !pipeline->echo_state) {
+  if (!pipeline->flags.echo_cancel || !pipeline->echo_state || !pipeline->echo_ref_buffer) {
     static bool playback_warned = false;
     if (!playback_warned) {
-      log_warn("Echo playback not enabled: echo_cancel=%d, echo_state=%p", pipeline->flags.echo_cancel,
-               (void *)pipeline->echo_state);
+      log_warn("Echo playback not enabled: echo_cancel=%d, echo_state=%p, echo_ref_buffer=%p",
+               pipeline->flags.echo_cancel, (void *)pipeline->echo_state, (void *)pipeline->echo_ref_buffer);
       playback_warned = true;
     }
     mutex_unlock(&pipeline->mutex);
     return;
   }
 
-  // Convert float to int16 for Speex (use echo_i16 buffer which is dedicated to this)
+  // Convert float to int16 for Speex
   float_to_int16(samples, pipeline->echo_i16, num_samples);
 
-  // Register this playback data with the echo canceller
-  // speex_echo_playback buffers this internally with proper delay compensation
-  speex_echo_playback(pipeline->echo_state, pipeline->echo_i16);
+  // Write playback samples to echo reference ring buffer
+  // This provides the capture thread with the speaker output history for AEC
+  for (int i = 0; i < num_samples; i++) {
+    pipeline->echo_ref_buffer[pipeline->echo_ref_write_pos] = pipeline->echo_i16[i];
+    pipeline->echo_ref_write_pos = (pipeline->echo_ref_write_pos + 1) % pipeline->echo_ref_size;
+
+    // Keep track of available samples (cap at buffer size)
+    if (pipeline->echo_ref_available < pipeline->echo_ref_size) {
+      pipeline->echo_ref_available++;
+    }
+  }
 
   static int playback_count = 0;
   playback_count++;
   if (playback_count <= 5 || playback_count % 100 == 0) {
-    log_debug("Echo playback registered: frame %d, samples %d", playback_count, num_samples);
+    log_debug("Echo playback buffered: frame %d, samples %d, buffer_available=%d/%d", playback_count, num_samples,
+              pipeline->echo_ref_available, pipeline->echo_ref_size);
   }
 
   mutex_unlock(&pipeline->mutex);
@@ -715,6 +737,12 @@ void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
   // Reset echo canceller
   if (pipeline->echo_state) {
     speex_echo_state_reset(pipeline->echo_state);
+  }
+
+  // Reset echo reference buffer
+  if (pipeline->echo_ref_buffer) {
+    pipeline->echo_ref_write_pos = 0;
+    pipeline->echo_ref_available = 0;
   }
 
   // Reset jitter buffer
