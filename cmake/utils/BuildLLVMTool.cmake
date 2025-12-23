@@ -161,24 +161,6 @@ function(build_llvm_tool)
         endif()
 
         # ------------------------------------------------------------------
-        # Detect Clang Resource Directory
-        # ------------------------------------------------------------------
-        # Required for LibTooling tools to find clang's builtin headers (stddef.h, stdbool.h, etc.)
-        # when they invoke clang internally for code transformation
-        if(_cxx_compiler MATCHES "clang")
-            execute_process(
-                COMMAND ${_cxx_compiler} -print-resource-dir
-                OUTPUT_VARIABLE _clang_resource_dir
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-            if(_clang_resource_dir AND EXISTS "${_clang_resource_dir}")
-                list(APPEND _cmake_args -DCLANG_RESOURCE_DIR=${_clang_resource_dir})
-                message(STATUS "${_TOOL_NAME} tool: Using clang resource dir: ${_clang_resource_dir}")
-            endif()
-        endif()
-
-        # ------------------------------------------------------------------
         # Windows vcpkg Integration
         # ------------------------------------------------------------------
         if(WIN32 AND DEFINED VCPKG_INSTALLED_DIR)

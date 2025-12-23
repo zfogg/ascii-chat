@@ -251,20 +251,6 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     return false;
   }
 
-  // Allocate a copy of the frame data using buffer pool for better performance
-  // Do this BEFORE acquiring the mutex to minimize lock hold time
-  char *frame_copy = (char *)buffer_pool_alloc(frame_size + 1);
-  if (!frame_copy) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
-    return false;
-  }
-
-  SAFE_MEMCPY(frame_copy, frame_size, frame_data, frame_size);
-  frame_copy[frame_size] = '\0'; // Ensure null termination
-
-  // Create a frame_t struct with the copy (store allocated size for proper cleanup)
-  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
-
   // BUGFIX: Thread-safe access to framebuffer (was missing, causing race conditions)
   mutex_lock(&fb->mutex);
 
@@ -298,8 +284,6 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
 
   bool result = ringbuffer_write(fb->rb, &frame);
-
-  mutex_unlock(&fb->mutex);
 
   if (!result) {
     // If we still couldn't write to ringbuffer, return the buffer to pool

@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <unistd.h>
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)

@@ -134,7 +134,7 @@ float compressor_process_sample(compressor_t *comp, float sidechain) {
 }
 
 // Ducking implementation
-asciichat_error_t ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
+int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   if (!duck) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "ducking_init: duck is NULL");
   }
