@@ -23,15 +23,21 @@
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-if(WIN32 AND DEFINED ENV{VCPKG_ROOT})
-    # Windows: Try find_package first (for CMake config files from vcpkg)
-    find_package(speexdsp CONFIG QUIET)
-    if(speexdsp_FOUND)
+# For Windows: Try to find speexdsp via vcpkg first, then fall back to find_dependency_library
+if(WIN32)
+    # Try to find speexdsp from vcpkg directly
+    find_library(SPEEXDSP_LIB NAMES speexdsp libspeexdsp
+                 PATHS "${_VCPKG_INSTALLED_DIR}" NO_DEFAULT_PATH)
+    find_path(SPEEXDSP_INC NAMES speex/speex_echo.h
+              PATHS "${_VCPKG_INSTALLED_DIR}" NO_DEFAULT_PATH)
+
+    if(SPEEXDSP_LIB AND SPEEXDSP_INC)
         set(SPEEXDSP_FOUND TRUE)
-        set(SPEEXDSP_LIBRARIES speexdsp::speexdsp)
-        message(STATUS "Found ${BoldGreen}SPEEXDSP${ColorReset} (vcpkg CMake config): speexdsp::speexdsp")
+        set(SPEEXDSP_LIBRARIES "${SPEEXDSP_LIB}")
+        set(SPEEXDSP_INCLUDE_DIRS "${SPEEXDSP_INC}")
+        message(STATUS "${BoldGreen}SPEEXDSP${ColorReset} found (Windows Vcpkg): ${SPEEXDSP_LIB}")
     else()
-        # Fallback to find_library if no CMake config
+        # Fall back to find_dependency_library for more robust searching
         find_dependency_library(
             NAME SPEEXDSP
             VCPKG_NAMES speexdsp
