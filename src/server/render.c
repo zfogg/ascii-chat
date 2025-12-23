@@ -827,8 +827,8 @@ void *client_audio_render_thread(void *arg) {
     // active: atomic_bool - use atomic_load
     // audio_queue: Assigned once at init and never changes
     uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read
-    bool active_snapshot = atomic_load(&client->active);        // Atomic read
-    packet_queue_t *audio_queue_snapshot = client->audio_queue; // Stable after init
+    bool active_snapshot = atomic_load(&client->active);           // Atomic read
+    packet_queue_t *audio_queue_snapshot = client->audio_queue;    // Stable after init
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot || !audio_queue_snapshot) {

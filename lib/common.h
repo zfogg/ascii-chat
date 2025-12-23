@@ -872,14 +872,18 @@ static inline uint32_t read_u32_unaligned(const void *ptr) {
  * @param ptr Pointer to memory (may be unaligned)
  * @param value 16-bit value in host byte order
  */
-static inline void write_u16_unaligned(void *ptr, uint16_t value) { memcpy(ptr, &value, sizeof(value)); }
+static inline void write_u16_unaligned(void *ptr, uint16_t value) {
+  memcpy(ptr, &value, sizeof(value));
+}
 
 /**
  * @brief Write a 32-bit value to potentially unaligned memory
  * @param ptr Pointer to memory (may be unaligned)
  * @param value 32-bit value in host byte order
  */
-static inline void write_u32_unaligned(void *ptr, uint32_t value) { memcpy(ptr, &value, sizeof(value)); }
+static inline void write_u32_unaligned(void *ptr, uint32_t value) {
+  memcpy(ptr, &value, sizeof(value));
+}
 
 /**
  * @brief Safe size_t multiplication with overflow detection
