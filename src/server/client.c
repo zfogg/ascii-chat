@@ -795,11 +795,10 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // Use exponential backoff for thread termination verification
   int retry_count = 0;
   const int max_retries = 5;
-  while (retry_count < max_retries &&
-         (ascii_thread_is_initialized(&target_client->send_thread) ||
-          ascii_thread_is_initialized(&target_client->receive_thread) ||
-          ascii_thread_is_initialized(&target_client->video_render_thread) ||
-          ascii_thread_is_initialized(&target_client->audio_render_thread))) {
+  while (retry_count < max_retries && (ascii_thread_is_initialized(&target_client->send_thread) ||
+                                       ascii_thread_is_initialized(&target_client->receive_thread) ||
+                                       ascii_thread_is_initialized(&target_client->video_render_thread) ||
+                                       ascii_thread_is_initialized(&target_client->audio_render_thread))) {
     // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
     uint32_t delay_ms = 10 * (1 << retry_count);
     log_warn("Client %u: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,

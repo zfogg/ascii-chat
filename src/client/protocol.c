@@ -351,9 +351,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    // BUGFIX: Validate size before allocation to prevent integer overflow
-    // If original_size is UINT32_MAX, adding 1 would overflow to 0
-    if (header.original_size > SIZE_MAX - 1 || header.original_size > 100 * 1024 * 1024) {
+    // BUGFIX: Validate size before allocation to prevent excessive memory usage
+    if (header.original_size > 100 * 1024 * 1024) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
       return;
     }
@@ -380,8 +379,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    // BUGFIX: Validate size before allocation to prevent integer overflow
-    if (header.original_size > SIZE_MAX - 1 || header.original_size > 100 * 1024 * 1024) {
+    // BUGFIX: Validate size before allocation to prevent excessive memory usage
+    if (header.original_size > 100 * 1024 * 1024) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
       return;
     }

@@ -80,8 +80,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
     // Pool exhausted, fallback to malloc
     node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
     // BUGFIX: Remove extra text from format string that had no matching argument
-    log_debug("Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)", pool->used_count,
-              pool->pool_size);
+    log_debug("Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)", pool->used_count, pool->pool_size);
   }
 
   return node;
