@@ -108,7 +108,6 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #endif
 
 #include "compression.h"
-#include "opus_codec.h"
 #include "network/av.h"
 
 #include <errno.h>
@@ -657,20 +656,12 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
     return;
   }
 
-  // Get Opus decoder
-  opus_codec_t *decoder = audio_get_opus_decoder();
-  if (!decoder) {
-    log_warn("Opus decoder not initialized, cannot decode audio");
-    return;
-  }
-
   // Data is raw Opus-encoded frame (no header parsing needed)
   const uint8_t *opus_data = (const uint8_t *)data;
-  size_t opus_size = len;
 
   // Opus max frame size is 2880 samples (120ms @ 48kHz)
   float samples[2880];
-  int decoded_samples = opus_codec_decode(decoder, opus_data, opus_size, samples, 2880);
+  int decoded_samples = audio_decode_opus(opus_data, len, samples, 2880);
 
   if (decoded_samples <= 0) {
     log_warn("Failed to decode Opus audio packet, decoded=%d", decoded_samples);
@@ -685,7 +676,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   // Process decoded audio through audio subsystem
   audio_process_received_samples(samples, decoded_samples);
 
-  log_debug_every(5000000, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, opus_size);
+  log_debug_every(5000000, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, len);
 }
 
 /**
@@ -709,13 +700,6 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
  */
 static void handle_audio_opus_batch_packet(const void *data, size_t len) {
   if (!opt_audio_enabled || !data || len == 0) {
-    return;
-  }
-
-  // Get Opus decoder
-  opus_codec_t *decoder = audio_get_opus_decoder();
-  if (!decoder) {
-    log_warn("Opus decoder not initialized, cannot decode audio batch");
     return;
   }
 
@@ -769,10 +753,10 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
       break;
     }
 
-    // Decode frame - use remaining buffer space (not 2880-total which would fail after 3 frames)
+    // Decode frame through audio pipeline
     float *frame_buffer = all_samples + total_decoded_samples;
     int remaining_space = (int)(max_decoded_samples - (size_t)total_decoded_samples);
-    int decoded = opus_codec_decode(decoder, opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
+    int decoded = audio_decode_opus(opus_data + opus_offset, frame_size, frame_buffer, remaining_space);
 
     if (decoded <= 0) {
       log_warn("Failed to decode Opus frame %d in batch, decoded=%d", i, decoded);

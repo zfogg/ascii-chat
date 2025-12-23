@@ -119,13 +119,13 @@
 #include "client.h"
 #include "common.h"
 #include "video_frame.h"
-#include "audio.h"
+#include "audio/audio.h"
 #include "palette.h"
 #include "image2ascii/image.h"
 #include "compression.h"
 #include "util/format.h"
 #include "platform/system.h"
-#include "opus_codec.h"
+#include "audio/opus_codec.h"
 #include "network/av.h"
 
 /**
