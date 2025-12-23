@@ -196,7 +196,8 @@ TheoryDataPoints(audio, ringbuffer_roundtrip_property) = {
 Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
   cr_assume(sample_count > 0 && sample_count <= 1024);
 
-  audio_ring_buffer_t *rb = audio_ring_buffer_create();
+  // Use capture buffer which disables jitter buffering for basic roundtrip testing
+  audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   cr_assume(rb != NULL);
 
   float *test_data = SAFE_MALLOC(sample_count * sizeof(float), void *);
@@ -208,21 +209,8 @@ Theory((int sample_count), audio, ringbuffer_roundtrip_property) {
     test_data[i] = sinf(2.0f * M_PI * 440.0f * i / 44100.0f);
   }
 
-  // Fill jitter buffer threshold first (2048 samples)
-  float dummy_samples[2048];
-  for (int i = 0; i < 2048; i++) {
-    dummy_samples[i] = 0.0f;
-  }
-  asciichat_error_t result = audio_ring_buffer_write(rb, dummy_samples, 2048);
-  cr_assert_eq(result, ASCIICHAT_OK);
-
-  // Read the dummy samples to fill jitter buffer
-  float dummy_read[2048];
-  int dummy_read_count = audio_ring_buffer_read(rb, dummy_read, 2048);
-  cr_assert_eq(dummy_read_count, 2048);
-
   // Write data
-  result = audio_ring_buffer_write(rb, test_data, sample_count);
+  asciichat_error_t result = audio_ring_buffer_write(rb, test_data, sample_count);
   cr_assert_eq(result, ASCIICHAT_OK, "Should write samples successfully for count=%d", sample_count);
 
   // Read data back
@@ -253,11 +241,12 @@ Test(audio, ringbuffer_basic_operations) {
 }
 
 Test(audio, ringbuffer_write_read) {
-  audio_ring_buffer_t *rb = audio_ring_buffer_create();
+  // Use capture buffer which disables jitter buffering for basic read/write testing
+  audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
 
-  // Use enough samples to exceed jitter buffer threshold (2048 samples)
-  const int num_samples = 2500;
+  // Test basic write/read functionality without jitter buffer overhead
+  const int num_samples = 3000;
   float *test_data = SAFE_MALLOC(num_samples * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(num_samples * sizeof(float), float *);
 
@@ -339,11 +328,12 @@ Test(audio, ringbuffer_overflow_behavior) {
 }
 
 Test(audio, ringbuffer_wrap_around) {
-  audio_ring_buffer_t *rb = audio_ring_buffer_create();
+  // Use capture buffer which disables jitter buffering for basic wrap-around testing
+  audio_ring_buffer_t *rb = audio_ring_buffer_create_for_capture();
   cr_assert_not_null(rb, "Ringbuffer creation should succeed");
 
-  // Use enough samples to exceed jitter buffer threshold (2048 samples)
-  const int batch_size = 2500; // Must be > 2048 to fill jitter buffer
+  // Test wrap-around behavior without jitter buffer overhead
+  const int batch_size = 3000;
   float *data1 = SAFE_MALLOC(batch_size * sizeof(float), float *);
   float *data2 = SAFE_MALLOC(batch_size * sizeof(float), float *);
   float *read_data = SAFE_MALLOC(batch_size * sizeof(float), float *);
