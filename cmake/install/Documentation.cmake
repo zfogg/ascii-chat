@@ -1,15 +1,35 @@
 # =============================================================================
 # Documentation Module
 # =============================================================================
-# This module creates targets for generating Doxygen API documentation
+# This module creates targets for generating documentation:
+#   - man1 target: Generates main user manual page (no Doxygen required)
+#   - docs target: Generates full Doxygen API documentation (requires Doxygen)
 #
 # Prerequisites:
-#   - Doxygen executable must be installed
+#   - man1: None - uses configure_file() for template substitution
+#   - docs: Doxygen executable must be installed
 #
 # Outputs:
-#   - docs target for building documentation
-#   - Documentation will be generated in ${CMAKE_BINARY_DIR}/docs/html/
+#   - man1: ${CMAKE_BINARY_DIR}/docs/ascii-chat.1 (main user manual)
+#   - docs: ${CMAKE_BINARY_DIR}/docs/html/ and ${CMAKE_BINARY_DIR}/docs/man/man3/
 # =============================================================================
+
+# =============================================================================
+# Man1 Target (User Manual - No Doxygen Required)
+# =============================================================================
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/docs")
+
+configure_file(
+    "${CMAKE_SOURCE_DIR}/docs/ascii-chat.1.in"
+    "${CMAKE_BINARY_DIR}/docs/ascii-chat.1"
+    @ONLY
+)
+
+add_custom_target(man1
+    COMMENT "Man1 manual page generated"
+)
+
+message(STATUS "Man1 target ${BoldCyan}'man1'${ColorReset} is available (no Doxygen required). Build with: ${BoldYellow}cmake --build build --target man1${ColorReset}")
 
 # Use centralized ASCIICHAT_DOXYGEN_EXECUTABLE from FindPrograms.cmake
 if(ASCIICHAT_DOXYGEN_EXECUTABLE)
