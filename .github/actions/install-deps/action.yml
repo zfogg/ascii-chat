@@ -121,16 +121,16 @@ runs:
         install_hash="${{ steps.install-deps-hash.outputs.hash }}"
 
         # Output cache keys
-        # v11/v5: Invalidate caches corrupted by previous 'if: always()' saves
+        # v12/v2/v6: Invalidate defer tool build failures and corrupted caches
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v11-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
-        echo "ccache-key=${os}-${arch}-ccache-v1" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v5" >> $GITHUB_OUTPUT
+        echo "cmake-cache-key=${os}-${arch}-cmake-deps-v12-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
+        echo "ccache-key=${os}-${arch}-ccache-v2" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v6" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
-        echo "  cmake: ${os}-${arch}-cmake-deps-v11-${deps_hash}-${install_hash}"
-        echo "  ccache: ${os}-${arch}-ccache-v1"
-        echo "  build: ${os}-${arch}-build-v5"
+        echo "  cmake: ${os}-${arch}-cmake-deps-v12-${deps_hash}-${install_hash}"
+        echo "  ccache: ${os}-${arch}-ccache-v2"
+        echo "  build: ${os}-${arch}-build-v6"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -155,16 +155,16 @@ runs:
         $installHash = "${{ steps.install-deps-hash.outputs.hash }}"
 
         # Output cache keys
-        # v11/v5: Invalidate caches corrupted by previous 'if: always()' saves
+        # v12/v2/v6: Invalidate defer tool build failures and corrupted caches
         # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v11-${depsHash}-${installHash}"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v1"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v5"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v12-${depsHash}-${installHash}"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v2"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v6"
 
         Write-Host "Computed cache keys:"
-        Write-Host "  cmake: ${os}-${arch}-cmake-deps-v11-${depsHash}-${installHash}"
-        Write-Host "  ccache: ${os}-${arch}-ccache-v1"
-        Write-Host "  build: ${os}-${arch}-build-v5"
+        Write-Host "  cmake: ${os}-${arch}-cmake-deps-v12-${depsHash}-${installHash}"
+        Write-Host "  ccache: ${os}-${arch}-ccache-v2"
+        Write-Host "  build: ${os}-${arch}-build-v6"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
