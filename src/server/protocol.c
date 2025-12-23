@@ -516,7 +516,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   bool was_sending_video = atomic_load(&client->is_sending_video);
   if (!was_sending_video) {
     // Try to atomically enable video sending
-    if (atomic_compare_exchange_weak(&client->is_sending_video, &was_sending_video, true)) {
+    // Use atomic_compare_exchange_strong to avoid spurious failures
+    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", atomic_load(&client->client_id));
     }
   } else {
