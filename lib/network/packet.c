@@ -339,12 +339,7 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   if ((size_t)received != sizeof(header)) {
     if (received == 0) {
       log_warn("Connection closed while reading packet header");
-      // Set output parameters to indicate connection closed
-      *type = 0;
-      *data = NULL;
-      *len = 0;
-      log_debug("Connection closed while reading packet header, setting type=0, data=NULL, len=0");
-      return ASCIICHAT_OK;
+      return SET_ERRNO(ERROR_NETWORK, "Connection closed by peer while reading packet header");
     }
 
     return SET_ERRNO(ERROR_NETWORK, "Partial packet header received: %zd/%zu bytes", received, sizeof(header));
