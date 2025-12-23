@@ -34,13 +34,14 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   audio_context_t *ctx = (audio_context_t *)userData;
   const float *input = (const float *)inputBuffer;
 
-  static int callback_count = 0;
-  callback_count++;
+  // Use atomic for thread-safe callback counting (PortAudio callbacks can come from multiple threads)
+  static _Atomic int callback_count = 0;
+  int current_count = atomic_fetch_add(&callback_count, 1) + 1;
 
   // DEBUG: Log EVERY callback to see what we're getting
-  if (callback_count <= 10 || callback_count % 100 == 0) {
+  if (current_count <= 10 || current_count % 100 == 0) {
     if (input == NULL) {
-      log_warn("Audio input callback #%d: inputBuffer is NULL!", callback_count);
+      log_warn("Audio input callback #%d: inputBuffer is NULL!", current_count);
     } else {
       float sum_squares = 0.0f;
       size_t total_samples = framesPerBuffer * AUDIO_CHANNELS;
@@ -49,7 +50,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
       }
       float rms = sqrtf(sum_squares / total_samples);
       log_info("Audio input callback #%d: frames=%lu, channels=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f, total_samples=%zu",
-               callback_count, framesPerBuffer, AUDIO_CHANNELS, input[0], input[1], input[2], rms, total_samples);
+               current_count, framesPerBuffer, AUDIO_CHANNELS, input[0], input[1], input[2], rms, total_samples);
     }
   }
 
