@@ -493,6 +493,9 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
       pipeline->jitter_timestamp += (uint32_t)pipeline->jitter_frame_span;
     }
 
+    // Tick the jitter buffer first to advance its state
+    jitter_buffer_tick(pipeline->jitter);
+
     // Get packet from jitter buffer
     JitterBufferPacket out_packet;
     char jitter_data[CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET];
@@ -500,9 +503,9 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     out_packet.len = CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET;
 
     spx_int32_t start_offset;
+    // Note: speex may print "No playback frame available" warnings to stderr
+    // This is expected behavior when jitter buffer is empty - we handle it with Opus PLC
     int jitter_result = jitter_buffer_get(pipeline->jitter, &out_packet, pipeline->jitter_frame_span, &start_offset);
-
-    jitter_buffer_tick(pipeline->jitter);
 
     if (jitter_result == JITTER_BUFFER_OK) {
       // Decode the packet from jitter buffer
@@ -512,9 +515,8 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
       // Packet loss - use Opus PLC
       samples_decoded = opus_decode_float(pipeline->decoder, NULL, 0, pipeline->work_float, pipeline->frame_size, 0);
     } else {
-      // Insertion or error - output silence
-      samples_decoded = pipeline->frame_size;
-      memset(pipeline->work_float, 0, (size_t)samples_decoded * sizeof(float));
+      // Insertion or error - use Opus PLC instead of silence for better quality
+      samples_decoded = opus_decode_float(pipeline->decoder, NULL, 0, pipeline->work_float, pipeline->frame_size, 0);
     }
   } else {
     // No jitter buffer - decode directly
