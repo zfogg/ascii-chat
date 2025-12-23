@@ -353,13 +353,14 @@ set(SPEEXDSP_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/speexdsp-build")
 if(NOT EXISTS "${SPEEXDSP_PREFIX}/lib/libspeexdsp.a")
     message(STATUS "  speexdsp library not found in cache, will build from source")
     ExternalProject_Add(speexdsp-musl
-        URL https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz
-        URL_HASH SHA256=46bdf374cf082194199ffab59de5a0fd4a0b0e924703e4a232224e78b946f3f2
+        URL https://api.github.com/repos/xiph/speexdsp/tarball/SpeexDSP-1.2.1
+        URL_HASH SHA256=33dc01fb91d951ebc07d505cf83533f46b69cabafccf801cdc57a6679e257284
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${SPEEXDSP_BUILD_DIR}
         STAMP_DIR ${SPEEXDSP_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
+        PATCH_COMMAND bash -c "cd <SOURCE_DIR> && ls -la && for dir in xiph-speexdsp-*; do if [ -d \"\\$dir\" ]; then mv \"\\$dir\"/* .; rmdir \"\\$dir\"; fi; done"
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${SPEEXDSP_PREFIX} --enable-static --disable-shared
         BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
