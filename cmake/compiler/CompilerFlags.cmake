@@ -103,6 +103,13 @@ endfunction()
 function(configure_base_compiler_flags)
     configure_toolchain_capabilities()
 
+    # If CLANG_RESOURCE_DIR is set (from compilation database generation), pass it to the compiler
+    # This ensures clang can find its builtin headers (stddef.h, stdbool.h, etc.) when
+    # the defer tool or other LibTooling tools invoke clang internally
+    if(DEFINED CLANG_RESOURCE_DIR AND CLANG_RESOURCE_DIR)
+        add_compile_options(-resource-dir "${CLANG_RESOURCE_DIR}")
+    endif()
+
     # Base warning flags for Clang/GCC compilers
     # -Wall: Enable common warnings
     # -Wextra: Enable extra warnings
