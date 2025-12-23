@@ -306,17 +306,53 @@ else()
     find_library(CLANG_SERIALIZATION_LIB NAMES clangSerialization.a clangSerialization PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     find_library(CLANG_EDIT_LIB NAMES clangEdit.a clangEdit PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     find_library(CLANG_ANALYSIS_LIB NAMES clangAnalysis.a clangAnalysis PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(CLANG_ANALYSIS_LIFETIME_SAFETY_LIB NAMES clangAnalysisLifetimeSafety.a clangAnalysisLifetimeSafety PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_ANALYSIS_LIFETIME_SAFETY_LIB NAMES clangAnalysisLifetimeSafety.a clangAnalysisLifetimeSafety PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH QUIET)
     find_library(CLANG_ASTMATCHERS_LIB NAMES clangASTMatchers.a clangASTMatchers PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     find_library(CLANG_APINOTES_LIB NAMES clangAPINotes.a clangAPINotes PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     find_library(CLANG_SUPPORT_LIB NAMES clangSupport.a clangSupport PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(CLANG_DAEMON_LIB NAMES clangDaemon.a clangDaemon PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(CLANG_DAEMON_TWEAKS_LIB NAMES clangDaemonTweaks.a clangDaemonTweaks PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(CLANG_OPTIONS_LIB NAMES clangOptions.a clangOptions PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_DAEMON_LIB NAMES clangDaemon.a clangDaemon PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH QUIET)
+    find_library(CLANG_DAEMON_TWEAKS_LIB NAMES clangDaemonTweaks.a clangDaemonTweaks PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH QUIET)
+    find_library(CLANG_OPTIONS_LIB NAMES clangOptions.a clangOptions PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH QUIET)
     find_library(CLANG_TOOLING_CORE_LIB NAMES clangToolingCore.a clangToolingCore PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 
     if(NOT CLANG_TOOLING_LIB)
         message(FATAL_ERROR "Could not find Clang libraries. Please install clang-dev or llvm-dev package.")
+    endif()
+
+    # Build list of clang libraries to link, including only those that were found
+    set(_clang_libs
+        ${CLANG_TOOLING_LIB}
+        ${CLANG_TOOLING_CORE_LIB}
+        ${CLANG_FRONTEND_LIB}
+        ${CLANG_DRIVER_LIB}
+        ${CLANG_SERIALIZATION_LIB}
+        ${CLANG_CODEGEN_LIB}
+        ${CLANG_REWRITEFRONTEND_LIB}
+        ${CLANG_REWRITE_LIB}
+        ${CLANG_PARSE_LIB}
+        ${CLANG_SEMA_LIB}
+        ${CLANG_ANALYSIS_LIB}
+        ${CLANG_ASTMATCHERS_LIB}
+        ${CLANG_AST_LIB}
+        ${CLANG_EDIT_LIB}
+        ${CLANG_LEX_LIB}
+        ${CLANG_BASIC_LIB}
+        ${CLANG_APINOTES_LIB}
+        ${CLANG_SUPPORT_LIB}
+        ${LLVM_LIBS_FLAGS}
+    )
+    # Add optional libraries only if they were found
+    if(CLANG_ANALYSIS_LIFETIME_SAFETY_LIB)
+        list(APPEND _clang_libs ${CLANG_ANALYSIS_LIFETIME_SAFETY_LIB})
+    endif()
+    if(CLANG_OPTIONS_LIB)
+        list(APPEND _clang_libs ${CLANG_OPTIONS_LIB})
+    endif()
+    if(CLANG_DAEMON_LIB)
+        list(APPEND _clang_libs ${CLANG_DAEMON_LIB})
+    endif()
+    if(CLANG_DAEMON_TWEAKS_LIB)
+        list(APPEND _clang_libs ${CLANG_DAEMON_TWEAKS_LIB})
     endif()
 
     # Use linker group to handle complex interdependencies between Clang static libraries
@@ -329,58 +365,14 @@ else()
         # Linux: Use linker group to handle circular dependencies between Clang and LLVM libraries
         target_link_libraries(ascii-instr-defer PRIVATE
             -Wl,--start-group
-            ${CLANG_TOOLING_LIB}
-            ${CLANG_TOOLING_CORE_LIB}
-            ${CLANG_FRONTEND_LIB}
-            ${CLANG_DRIVER_LIB}
-            ${CLANG_SERIALIZATION_LIB}
-            ${CLANG_CODEGEN_LIB}
-            ${CLANG_REWRITEFRONTEND_LIB}
-            ${CLANG_REWRITE_LIB}
-            ${CLANG_PARSE_LIB}
-            ${CLANG_SEMA_LIB}
-            ${CLANG_ANALYSIS_LIB}
-            ${CLANG_ANALYSIS_LIFETIME_SAFETY_LIB}
-            ${CLANG_ASTMATCHERS_LIB}
-            ${CLANG_AST_LIB}
-            ${CLANG_EDIT_LIB}
-            ${CLANG_LEX_LIB}
-            ${CLANG_BASIC_LIB}
-            ${CLANG_OPTIONS_LIB}
-            ${CLANG_APINOTES_LIB}
-            ${CLANG_SUPPORT_LIB}
-            ${CLANG_DAEMON_LIB}
-            ${CLANG_DAEMON_TWEAKS_LIB}
-            ${LLVM_LIBS_FLAGS}
+            ${_clang_libs}
             -Wl,--end-group
         )
     else()
         # macOS: ld64 handles circular dependencies automatically
         # Link Clang libraries + LLVM libraries by name (will be found via target_link_directories)
         target_link_libraries(ascii-instr-defer PRIVATE
-            ${CLANG_TOOLING_LIB}
-            ${CLANG_TOOLING_CORE_LIB}
-            ${CLANG_FRONTEND_LIB}
-            ${CLANG_DRIVER_LIB}
-            ${CLANG_SERIALIZATION_LIB}
-            ${CLANG_CODEGEN_LIB}
-            ${CLANG_REWRITEFRONTEND_LIB}
-            ${CLANG_REWRITE_LIB}
-            ${CLANG_PARSE_LIB}
-            ${CLANG_SEMA_LIB}
-            ${CLANG_ANALYSIS_LIB}
-            ${CLANG_ANALYSIS_LIFETIME_SAFETY_LIB}
-            ${CLANG_ASTMATCHERS_LIB}
-            ${CLANG_AST_LIB}
-            ${CLANG_EDIT_LIB}
-            ${CLANG_LEX_LIB}
-            ${CLANG_BASIC_LIB}
-            ${CLANG_OPTIONS_LIB}
-            ${CLANG_APINOTES_LIB}
-            ${CLANG_SUPPORT_LIB}
-            ${CLANG_DAEMON_LIB}
-            ${CLANG_DAEMON_TWEAKS_LIB}
-            ${LLVM_LIBS_FLAGS}
+            ${_clang_libs}
         )
     endif()
 
@@ -396,21 +388,25 @@ else()
         target_link_libraries(ascii-instr-defer PRIVATE ZLIB::ZLIB)
     else()
         # Fallback: try to find zlib directly
-        find_library(ZLIB_LIBRARY NAMES z zlib)
+        find_library(ZLIB_LIBRARY NAMES z zlib QUIET)
         if(ZLIB_LIBRARY)
             target_link_libraries(ascii-instr-defer PRIVATE ${ZLIB_LIBRARY})
+        else()
+            message(WARNING "Could not find zlib - linking may fail if LLVM requires it")
         endif()
     endif()
 
-    # Find zstd library (required by LLVM compression)
-    find_package(zstd QUIET)
+    # Find zstd library (optional, some LLVM builds may not need it)
+    find_package(zstd CONFIG QUIET)
     if(zstd_FOUND)
         target_link_libraries(ascii-instr-defer PRIVATE zstd::libzstd)
     else()
         # Fallback: try to find zstd library directly
-        find_library(ZSTD_LIBRARY NAMES zstd)
+        find_library(ZSTD_LIBRARY NAMES zstd QUIET)
         if(ZSTD_LIBRARY)
             target_link_libraries(ascii-instr-defer PRIVATE ${ZSTD_LIBRARY})
+        else()
+            message(STATUS "zstd library not found - some LLVM builds may still work without it")
         endif()
     endif()
 
