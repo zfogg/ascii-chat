@@ -1,7 +1,7 @@
 services:
   # Arch Linux container (x86_64 only)
   ascii-chat-tests:
-    image: ascii-chat-tests
+    image: zfogg/ascii-chat-tests:latest
     build:
       context: ..
       dockerfile: tests/Dockerfile
@@ -76,7 +76,7 @@ services:
   # Ubuntu container (ARM64 + x86_64)
   # Use this on Apple Silicon Macs or ARM64 Linux
   ascii-chat-tests-ubuntu:
-    image: ascii-chat-tests-ubuntu
+    image: zfogg/ascii-chat-tests-ubuntu:latest
     build:
       context: ..
       dockerfile: tests/Dockerfile.ubuntu

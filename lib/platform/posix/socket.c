@@ -312,7 +312,6 @@ const char *socket_get_error_string(void) {
   return SAFE_STRERROR(errno);
 }
 
-#endif // !_WIN32
 // Platform-aware select wrapper
 int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout) {
   // On POSIX, select() needs the max file descriptor + 1
@@ -332,3 +331,5 @@ void socket_fd_set(socket_t sock, fd_set *set) {
 int socket_fd_isset(socket_t sock, fd_set *set) {
   return FD_ISSET(sock, set);
 }
+
+#endif // !_WIN32
