@@ -451,8 +451,10 @@ int audio_client_init() {
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
   pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
-  pipeline_config.flags =
-      CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL; // Disable aggressive processing (VAD was filtering audio)
+
+  // Use full processing with echo cancellation enabled
+  // (default config already has all flags enabled including VAD)
+  pipeline_config.flags.echo_cancel = true; // Ensure echo cancellation is enabled
 
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
   if (!g_audio_pipeline) {
