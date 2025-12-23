@@ -75,14 +75,13 @@ function(ascii_query_prepare)
         set(_query_tool_exe "${_query_build_dir}/ascii-query-server${CMAKE_EXECUTABLE_SUFFIX}")
 
         # Detect the C++ compiler for building the query tool
-        # On macOS, use Apple's system clang for compilation (Homebrew LLVM for libraries)
-        if(APPLE AND EXISTS "/usr/bin/clang++")
-            set(_query_cxx_compiler "/usr/bin/clang++")
-            message(STATUS "Query tool: Using Apple system clang for compilation: ${_query_cxx_compiler}")
+        # Prioritize Homebrew LLVM's clang++ for consistency
+        if(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+            set(_query_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
+            message(STATUS "Query tool: Using clang++ from Homebrew LLVM: ${_query_cxx_compiler}")
         elseif(CMAKE_CXX_COMPILER)
             set(_query_cxx_compiler "${CMAKE_CXX_COMPILER}")
-        elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
-            set(_query_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
+            message(STATUS "Query tool: Using CMAKE_CXX_COMPILER: ${_query_cxx_compiler}")
         else()
             message(FATAL_ERROR "Cannot find clang++ for building query tool. Set CMAKE_CXX_COMPILER or ensure clang++ is in PATH.")
         endif()
@@ -207,20 +206,16 @@ function(ascii_query_finalize)
         if(WIN32)
             include(${CMAKE_SOURCE_DIR}/cmake/utils/CopyDLL.cmake)
 
-            find_program(LLVM_CONFIG_EXE
-                NAMES llvm-config llvm-config.exe
-                HINTS
-                    /opt/homebrew/opt/llvm/bin
-                    /usr/local/opt/llvm/bin
-                    /usr/lib/llvm-21/bin
-                    /usr/lib/llvm-20/bin
-                    /usr/lib/llvm-19/bin
-                DOC "Path to llvm-config"
-            )
-            if(LLVM_CONFIG_EXE)
-                execute_process(COMMAND ${LLVM_CONFIG_EXE} --bindir
-                    OUTPUT_VARIABLE _llvm_bindir OUTPUT_STRIP_TRAILING_WHITESPACE)
+            # Use LLVM_ROOT_PREFIX from LLVM.cmake (single source of truth)
+            if(LLVM_ROOT_PREFIX)
+                set(_llvm_bindir "${LLVM_ROOT_PREFIX}/bin")
+                message(STATUS "Query tool: Using LLVM bindir from LLVM_ROOT_PREFIX: ${_llvm_bindir}")
+            else()
+                message(WARNING "Query tool: LLVM_ROOT_PREFIX not set, cannot find liblldb.dll")
+                set(_llvm_bindir "")
+            endif()
 
+            if(_llvm_bindir)
                 # liblldb.dll from LLVM install
                 copy_dll(
                     NAME liblldb.dll
