@@ -158,6 +158,9 @@ function(build_llvm_tool)
         # Optionally pass llvm-config path
         if(_TOOL_PASS_LLVM_CONFIG AND ASCIICHAT_LLVM_CONFIG_EXECUTABLE)
             list(APPEND _cmake_args -DLLVM_CONFIG_EXECUTABLE=${ASCIICHAT_LLVM_CONFIG_EXECUTABLE})
+            message(STATUS "${_TOOL_NAME} tool: Configuring with llvm-config: ${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
+        else()
+            message(STATUS "${_TOOL_NAME} tool: Configuring without explicit llvm-config")
         endif()
 
         # ------------------------------------------------------------------
@@ -220,9 +223,8 @@ function(build_llvm_tool)
             list(APPEND _ep_args CMAKE_CACHE_ARGS ${_cache_args})
         endif()
 
-        if(_TOOL_ENABLE_LOG_OUTPUT)
-            list(APPEND _ep_args LOG_CONFIGURE TRUE LOG_BUILD TRUE)
-        endif()
+        # Always show configure and build output for debugging
+        list(APPEND _ep_args LOG_CONFIGURE FALSE LOG_BUILD FALSE)
 
         ExternalProject_Add(${_external_target} ${_ep_args})
 
