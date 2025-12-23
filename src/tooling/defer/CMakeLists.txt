@@ -6,11 +6,10 @@ if(WIN32)
     set(CMAKE_C_COMPILER_WORKS TRUE CACHE BOOL "Skip compiler test" FORCE)
 endif()
 
-# Note: On macOS, the parent build (cmake/tooling/Defer.cmake) sets CMAKE_CXX_COMPILER
-# to Apple's system clang (/usr/bin/clang++) BEFORE invoking this ExternalProject.
-# This is necessary because Homebrew LLVM's bundled libc++ headers are incompatible
-# with manual header path configuration (-nostdinc/-nostdinc++). We use Apple's clang
-# for compilation but link against Homebrew's LLVM/Clang libraries.
+# Note: On macOS, the parent build (BuildLLVMTool.cmake) sets CMAKE_CXX_COMPILER
+# to Homebrew LLVM's clang++ BEFORE invoking this ExternalProject.
+# This ensures consistency between the compiler and the libraries we're linking against,
+# and enables LTO support throughout the build.
 
 project(ascii-instr-defer CXX)
 
@@ -62,17 +61,13 @@ if(APPLE)
         -O2
         -fno-rtti
         -fexceptions
-        -fno-lto
     )
 
     # Link against Homebrew LLVM libraries with proper rpath
-    # Note: -fno-lto disables LTO to avoid bitcode compatibility issues when
-    # linking system clang's output against Homebrew LLVM libraries
     target_link_directories(ascii-instr-defer PRIVATE
         ${LLVM_LIBRARY_DIRS}
     )
     target_link_options(ascii-instr-defer PRIVATE
-        -fno-lto
         "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
     )
 else()
