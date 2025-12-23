@@ -386,6 +386,19 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
       speex_echo_capture(pipeline->echo_state, pipeline->work_i16, aec_output);
       memcpy(pipeline->work_i16, aec_output, (size_t)num_samples * sizeof(int16_t));
       SAFE_FREE(aec_output);
+
+      static int aec_count = 0;
+      aec_count++;
+      if (aec_count <= 5 || aec_count % 100 == 0) {
+        log_debug("AEC processing: frame %d, samples %d", aec_count, num_samples);
+      }
+    }
+  } else {
+    static bool aec_warned = false;
+    if (!aec_warned) {
+      log_warn("AEC not enabled: echo_cancel=%d, echo_state=%p", pipeline->flags.echo_cancel,
+               (void *)pipeline->echo_state);
+      aec_warned = true;
     }
   }
 
@@ -603,6 +616,12 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
 
   // Only process if echo cancellation is enabled
   if (!pipeline->flags.echo_cancel || !pipeline->echo_state) {
+    static bool playback_warned = false;
+    if (!playback_warned) {
+      log_warn("Echo playback not enabled: echo_cancel=%d, echo_state=%p", pipeline->flags.echo_cancel,
+               (void *)pipeline->echo_state);
+      playback_warned = true;
+    }
     mutex_unlock(&pipeline->mutex);
     return;
   }
@@ -614,6 +633,12 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
   // Register this playback data with the echo canceller
   // speex_echo_playback buffers this internally with proper delay compensation
   speex_echo_playback(pipeline->echo_state, play_i16);
+
+  static int playback_count = 0;
+  playback_count++;
+  if (playback_count <= 5 || playback_count % 100 == 0) {
+    log_debug("Echo playback registered: frame %d, samples %d", playback_count, num_samples);
+  }
 
   mutex_unlock(&pipeline->mutex);
 }
