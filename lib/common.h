@@ -854,6 +854,8 @@ bool shutdown_is_requested(void);
  * @return 16-bit value in host byte order
  */
 static inline uint16_t read_u16_unaligned(const void *ptr) {
+  // Ensure memcpy is available (string.h might not be processed in all contexts)
+  extern void *memcpy(void *, const void *, __SIZE_TYPE__);
   uint16_t value;
   memcpy(&value, ptr, sizeof(value));
   return value;
@@ -865,6 +867,8 @@ static inline uint16_t read_u16_unaligned(const void *ptr) {
  * @return 32-bit value in host byte order
  */
 static inline uint32_t read_u32_unaligned(const void *ptr) {
+  // Ensure memcpy is available (string.h might not be processed in all contexts)
+  extern void *memcpy(void *, const void *, __SIZE_TYPE__);
   uint32_t value;
   memcpy(&value, ptr, sizeof(value));
   return value;
@@ -876,6 +880,8 @@ static inline uint32_t read_u32_unaligned(const void *ptr) {
  * @param value 16-bit value in host byte order
  */
 static inline void write_u16_unaligned(void *ptr, uint16_t value) {
+  // Ensure memcpy is available (string.h might not be processed in all contexts)
+  extern void *memcpy(void *, const void *, __SIZE_TYPE__);
   memcpy(ptr, &value, sizeof(value));
 }
 
@@ -885,6 +891,8 @@ static inline void write_u16_unaligned(void *ptr, uint16_t value) {
  * @param value 32-bit value in host byte order
  */
 static inline void write_u32_unaligned(void *ptr, uint32_t value) {
+  // Ensure memcpy is available (string.h might not be processed in all contexts)
+  extern void *memcpy(void *, const void *, __SIZE_TYPE__);
   memcpy(ptr, &value, sizeof(value));
 }
 
