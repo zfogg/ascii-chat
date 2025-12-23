@@ -405,7 +405,10 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Create individual audio buffer for this client
-  client->incoming_audio_buffer = audio_ring_buffer_create();
+  // NOTE: Use capture version (no jitter buffering) because incoming audio is from network decode,
+  // not from real-time microphone. Jitter buffering would cause buffer overflow since decoder
+  // outputs at constant rate (48kHz) but mixer needs time to process.
+  client->incoming_audio_buffer = audio_ring_buffer_create_for_capture();
   if (!client->incoming_audio_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %u", atomic_load(&client->client_id));
     log_error("Failed to create audio buffer for client %u", atomic_load(&client->client_id));
