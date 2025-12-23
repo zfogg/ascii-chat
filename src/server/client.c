@@ -1790,8 +1790,9 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     // Extract metadata and forward to mixer
     if (len >= 16) {
       const uint8_t *payload = (const uint8_t *)data;
-      int sample_rate = (int)ntohl(*(uint32_t *)payload);
-      int frame_duration = (int)ntohl(*(uint32_t *)(payload + 4));
+      // Use unaligned read helpers - network data may not be aligned
+      int sample_rate = (int)ntohl(read_u32_unaligned(payload));
+      int frame_duration = (int)ntohl(read_u32_unaligned(payload + 4));
       // Reserved bytes at offset 8-15
       size_t opus_size = len - 16;
 
@@ -1801,18 +1802,18 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
         uint8_t batch_buffer[1024 + 20]; // Max Opus + header
         uint8_t *batch_ptr = batch_buffer;
 
-        // Write batch header
-        *(uint32_t *)batch_ptr = htonl((uint32_t)sample_rate);
+        // Write batch header (batch_buffer is stack-aligned, writes are safe)
+        write_u32_unaligned(batch_ptr, htonl((uint32_t)sample_rate));
         batch_ptr += 4;
-        *(uint32_t *)batch_ptr = htonl((uint32_t)frame_duration);
+        write_u32_unaligned(batch_ptr, htonl((uint32_t)frame_duration));
         batch_ptr += 4;
-        *(uint32_t *)batch_ptr = htonl(1); // frame_count = 1
+        write_u32_unaligned(batch_ptr, htonl(1)); // frame_count = 1
         batch_ptr += 4;
         memset(batch_ptr, 0, 4); // reserved
         batch_ptr += 4;
 
         // Write frame size
-        *(uint16_t *)batch_ptr = htons((uint16_t)opus_size);
+        write_u16_unaligned(batch_ptr, htons((uint16_t)opus_size));
         batch_ptr += 2;
 
         // Write Opus data
