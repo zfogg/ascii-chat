@@ -334,7 +334,8 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
   simd_benchmark_t result = {0};
 
-  int pixel_count = width * height;
+  // INTEGER OVERFLOW FIX: Cast to size_t before multiplication
+  size_t pixel_count = (size_t)width * (size_t)height;
 
   // Generate test data and test image
   rgb_pixel_t *test_pixels;
@@ -495,7 +496,8 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode) {
   simd_benchmark_t result = {0};
 
-  int pixel_count = width * height;
+  // INTEGER OVERFLOW FIX: Cast to size_t before multiplication
+  size_t pixel_count = (size_t)width * (size_t)height;
 
   // Estimate output buffer size for colored ASCII (much larger than monochrome)
   // Each pixel can generate ~25 bytes of ANSI escape codes + 1 char
@@ -649,7 +651,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   (void)background_mode; // Suppress unused parameter warning
   (void)use_256color;    // Suppress unused parameter warning
 
-  int pixel_count = width * height;
+  // INTEGER OVERFLOW FIX: Cast to size_t before multiplication
+  size_t pixel_count = (size_t)width * (size_t)height;
 
   // Generate test data
   rgb_pixel_t *test_pixels;
@@ -675,10 +678,11 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
         for (int x = 0; x < width; x++) {
           int src_x = (x * source_image->w) / width;
           int src_y = (y * source_image->h) / height;
-          int src_idx = src_y * source_image->w + src_x;
-          int dst_idx = y * width + x;
+          // INTEGER OVERFLOW FIX: Use size_t for index calculations
+          size_t src_idx = (size_t)src_y * (size_t)source_image->w + (size_t)src_x;
+          size_t dst_idx = (size_t)y * (size_t)width + (size_t)x;
 
-          if (src_idx < source_image->w * source_image->h) {
+          if (src_idx < (size_t)source_image->w * (size_t)source_image->h) {
             test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
             test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
             test_pixels[dst_idx].b = source_image->pixels[src_idx].b;
@@ -849,7 +853,8 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   simd_benchmark_t result = {0};
   (void)use_256color; // Suppress unused parameter warning
 
-  int pixel_count = width * height;
+  // INTEGER OVERFLOW FIX: Cast to size_t before multiplication
+  size_t pixel_count = (size_t)width * (size_t)height;
   size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;
 
   // Allocate buffers for benchmarking
@@ -893,8 +898,9 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
           if (src_y >= source_image->h)
             src_y = source_image->h - 1;
 
-          int src_idx = src_y * source_image->w + src_x;
-          int dst_idx = y * width + x;
+          // INTEGER OVERFLOW FIX: Use size_t for index calculations
+          size_t src_idx = (size_t)src_y * (size_t)source_image->w + (size_t)src_x;
+          size_t dst_idx = (size_t)y * (size_t)width + (size_t)x;
 
           test_pixels[dst_idx].r = source_image->pixels[src_idx].r;
           test_pixels[dst_idx].g = source_image->pixels[src_idx].g;
