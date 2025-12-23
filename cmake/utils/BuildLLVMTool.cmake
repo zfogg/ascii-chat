@@ -131,9 +131,15 @@ function(build_llvm_tool)
         # ------------------------------------------------------------------
         # Detect C++ Compiler
         # ------------------------------------------------------------------
-        # On macOS, use Apple's system clang because Homebrew LLVM's libc++
-        # headers are incompatible with -nostdinc.
-        if(APPLE AND EXISTS "/usr/bin/clang++")
+        # For the defer tool specifically, prefer Homebrew LLVM's clang to match
+        # the LLVM libraries we're linking against. This avoids bitcode compatibility
+        # issues on macOS where system LLVM can't parse bitcode from newer Homebrew LLVM.
+        if(_TOOL_NAME STREQUAL "defer" AND ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+            set(_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
+            message(STATUS "${_TOOL_NAME} tool: Using Homebrew LLVM clang++ to match LLVM libraries: ${_cxx_compiler}")
+        elseif(APPLE AND EXISTS "/usr/bin/clang++")
+            # On macOS, use Apple's system clang for most tools because Homebrew LLVM's
+            # libc++ headers are incompatible with -nostdinc.
             set(_cxx_compiler "/usr/bin/clang++")
             message(STATUS "${_TOOL_NAME} tool: Using Apple system clang for compilation: ${_cxx_compiler}")
         elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
