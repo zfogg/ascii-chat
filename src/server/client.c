@@ -623,8 +623,13 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Queue initial server state to the new client
+  // THREAD SAFETY: Protect read of client_count with rwlock
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
   server_state_packet_t state;
-  state.connected_client_count = g_client_manager.client_count;
+  state.connected_client_count = connected_count;
   state.active_client_count = 0; // Will be updated by broadcast thread
   memset(state.reserved, 0, sizeof(state.reserved));
 
