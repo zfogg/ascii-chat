@@ -31,6 +31,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h> // For malloc/free in ALLOC_* macros
+#include <string.h> // For memcpy in unaligned access helpers
 
 /** @brief Application name for key comments ("ascii-chat") */
 #define ASCII_CHAT_APP_NAME "ascii-chat"
@@ -832,6 +833,53 @@ bool shutdown_is_requested(void);
 #define SAFE_MEMSET(dest, dest_size, ch, count) platform_memset((dest), (dest_size), (ch), (count))
 #define SAFE_MEMMOVE(dest, dest_size, src, count) platform_memmove((dest), (dest_size), (src), (count))
 #define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
+
+/* ============================================================================
+ * Unaligned Memory Access Helpers
+ * ============================================================================
+ * These functions safely read/write multi-byte values from/to potentially
+ * unaligned memory addresses. Direct pointer casts like *(uint32_t*)ptr cause
+ * undefined behavior on architectures requiring aligned access.
+ *
+ * Uses memcpy which compilers optimize to single instructions when possible
+ * while remaining safe on all platforms (ARM, SPARC, etc.).
+ */
+
+/**
+ * @brief Read a 16-bit value from potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @return 16-bit value in host byte order
+ */
+static inline uint16_t read_u16_unaligned(const void *ptr) {
+  uint16_t value;
+  memcpy(&value, ptr, sizeof(value));
+  return value;
+}
+
+/**
+ * @brief Read a 32-bit value from potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @return 32-bit value in host byte order
+ */
+static inline uint32_t read_u32_unaligned(const void *ptr) {
+  uint32_t value;
+  memcpy(&value, ptr, sizeof(value));
+  return value;
+}
+
+/**
+ * @brief Write a 16-bit value to potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @param value 16-bit value in host byte order
+ */
+static inline void write_u16_unaligned(void *ptr, uint16_t value) { memcpy(ptr, &value, sizeof(value)); }
+
+/**
+ * @brief Write a 32-bit value to potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @param value 32-bit value in host byte order
+ */
+static inline void write_u32_unaligned(void *ptr, uint32_t value) { memcpy(ptr, &value, sizeof(value)); }
 
 /**
  * @brief Safe size_t multiplication with overflow detection
