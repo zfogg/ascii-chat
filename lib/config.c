@@ -303,7 +303,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
   } else if (port.type == TOML_INT64 && !config_port_set) {
     int64_t port_val = port.u.int64;
     if (port_val >= 1 && port_val <= 65535) {
-      SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%ld", port_val);
+      SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%lld", (long long)port_val);
       config_port_set = true;
     } else {
       CONFIG_WARN("Invalid port value %lld (must be 1-65535, skipping network.port)", (long long)port_val);
@@ -504,6 +504,15 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
       config_snapshot_delay_set = true;
     } else {
       CONFIG_WARN("Invalid snapshot_delay value %.2f (must be non-negative, skipping)", delay);
+    }
+  } else if (snapshot_delay.type == TOML_INT64 && !config_snapshot_delay_set) {
+    // Handle integer values like: snapshot_delay = 5
+    int64_t delay = snapshot_delay.u.int64;
+    if (delay >= 0) {
+      opt_snapshot_delay = (float)delay;
+      config_snapshot_delay_set = true;
+    } else {
+      CONFIG_WARN("Invalid snapshot_delay value %lld (must be non-negative, skipping)", (long long)delay);
     }
   } else if (snapshot_delay.type == TOML_STRING && !config_snapshot_delay_set) {
     const char *delay_str = snapshot_delay.u.s;
@@ -962,10 +971,35 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     return log_result;
   }
 
-  // Reset config flags for next call
+  // Reset ALL config flags for next call
+  // (e.g., if config_load_and_apply is called multiple times)
   config_address_set = false;
   config_address6_set = false;
   config_port_set = false;
+  config_width_set = false;
+  config_height_set = false;
+  config_webcam_index_set = false;
+  config_webcam_flip_set = false;
+  config_color_mode_set = false;
+  config_render_mode_set = false;
+  config_palette_set = false;
+  config_palette_chars_set = false;
+  config_audio_enabled_set = false;
+  config_microphone_index_set = false;
+  config_speakers_index_set = false;
+  config_stretch_set = false;
+  config_quiet_set = false;
+  config_snapshot_mode_set = false;
+  config_mirror_mode_set = false;
+  config_snapshot_delay_set = false;
+  config_log_file_set = false;
+  config_encrypt_enabled_set = false;
+  config_encrypt_key_set = false;
+  config_password_set = false;
+  config_encrypt_keyfile_set = false;
+  config_no_encrypt_set = false;
+  config_server_key_set = false;
+  config_client_keys_set = false;
 
   CONFIG_DEBUG("Loaded configuration from %s", display_path);
   return ASCIICHAT_OK;
@@ -991,9 +1025,6 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
  * @ingroup config
  */
 asciichat_error_t config_create_default(const char *config_path) {
-  (void)fprintf(stderr, "[DEBUG] config_create_default: called with config_path=%s\n",
-                config_path ? config_path : "(NULL)");
-
   char *config_path_expanded = NULL;
   defer(SAFE_FREE(config_path_expanded));
 
@@ -1070,8 +1101,10 @@ asciichat_error_t config_create_default(const char *config_path) {
       struct stat test_st;
       if (stat(dir_path, &test_st) != 0) {
         // Directory doesn't exist and we couldn't create it
+        // Note: Must use dir_path in error message BEFORE freeing it
+        asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
         SAFE_FREE(dir_path);
-        return SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
+        return err;
       }
       // Directory exists despite error, proceed
     }
