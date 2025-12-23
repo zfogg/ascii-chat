@@ -187,7 +187,7 @@ runs:
         # Use computed key from cache-keys step (github.ref_name not available in composite actions)
         key: ${{ steps.cache-keys.outputs.ccache-key || steps.cache-keys-win.outputs.ccache-key }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-ccache-v1-
+          ${{ runner.os }}-${{ runner.arch }}-ccache-v2-
 
     # Set CCACHE_DIR to workspace-relative path for consistent caching
     - name: Configure ccache directory (Unix)
