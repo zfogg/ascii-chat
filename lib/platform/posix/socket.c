@@ -56,7 +56,10 @@ socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
   // Automatically optimize all accepted sockets for high-throughput video streaming
   // 1. Disable Nagle algorithm - CRITICAL for real-time video
   int nodelay = 1;
-  setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay));
+  // BUGFIX: Log warning if critical socket option fails
+  if (setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) != 0) {
+    log_warn("Failed to disable Nagle algorithm (TCP_NODELAY) on accepted socket");
+  }
 
   // 2. Increase send buffer for video streaming (2MB with fallbacks)
   int send_buffer = 2 * 1024 * 1024; // 2MB
@@ -309,7 +312,6 @@ const char *socket_get_error_string(void) {
   return SAFE_STRERROR(errno);
 }
 
-#endif // !_WIN32
 // Platform-aware select wrapper
 int socket_select(socket_t max_fd, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout) {
   // On POSIX, select() needs the max file descriptor + 1
@@ -329,3 +331,5 @@ void socket_fd_set(socket_t sock, fd_set *set) {
 int socket_fd_isset(socket_t sock, fd_set *set) {
   return FD_ISSET(sock, set);
 }
+
+#endif // !_WIN32

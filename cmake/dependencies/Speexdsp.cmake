@@ -4,7 +4,7 @@
 # Finds and configures Speex DSP library for acoustic echo cancellation
 #
 # Platform-specific dependency management:
-#   - Windows: Uses vcpkg
+#   - Windows: Uses vcpkg (CMake config or find_library fallback)
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Linux (musl): Dependencies built from source (see MuslDependencies.cmake)
 #
@@ -23,15 +23,29 @@
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
-find_dependency_library(
-    NAME SPEEXDSP
-    VCPKG_NAMES speexdsp
-    HEADER speex/speex_echo.h
-    PKG_CONFIG speexdsp
-    HOMEBREW_PKG speexdsp
-    STATIC_LIB_NAME libspeexdsp.a
-    REQUIRED
-)
+# For Windows: Use find_dependency_library which handles vcpkg paths correctly
+if(WIN32)
+    find_dependency_library(
+        NAME SPEEXDSP
+        VCPKG_NAMES libspeexdsp speexdsp
+        HEADER speex/speex_echo.h
+        PKG_CONFIG speexdsp
+        HOMEBREW_PKG speexdsp
+        STATIC_LIB_NAME libspeexdsp.a
+        REQUIRED
+    )
+else()
+    # Unix/Linux/macOS: Use find_dependency_library as normal
+    find_dependency_library(
+        NAME SPEEXDSP
+        VCPKG_NAMES speexdsp
+        HEADER speex/speex_echo.h
+        PKG_CONFIG speexdsp
+        HOMEBREW_PKG speexdsp
+        STATIC_LIB_NAME libspeexdsp.a
+        REQUIRED
+    )
+endif()
 
 # Set compile definition for speexdsp
 add_compile_definitions(HAVE_SPEEXDSP)

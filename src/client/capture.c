@@ -223,6 +223,8 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
   image_t *resized = image_new(resized_width, resized_height);
   if (!resized) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate resized image buffer");
+    // BUGFIX: Destroy original image on allocation failure to prevent memory leak
+    image_destroy(original_image);
     return NULL;
   }
 

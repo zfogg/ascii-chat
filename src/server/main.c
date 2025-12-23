@@ -817,10 +817,14 @@ main_loop:
 
     // Rate-limited logging: Only show status when client count actually changes
     // This prevents log spam while maintaining visibility into server state
+    // THREAD SAFETY: Protect read of client_count with rwlock
     static int last_logged_count = -1;
-    if (g_client_manager.client_count != last_logged_count) {
-      log_debug("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
-      last_logged_count = g_client_manager.client_count;
+    rwlock_rdlock(&g_client_manager_rwlock);
+    int current_count = g_client_manager.client_count;
+    rwlock_rdunlock(&g_client_manager_rwlock);
+    if (current_count != last_logged_count) {
+      log_debug("Waiting for client connections... (%d/%d clients)", current_count, MAX_CLIENTS);
+      last_logged_count = current_count;
     }
 
     // ====================================================================
@@ -843,8 +847,9 @@ main_loop:
     int cleanup_count = 0;
 
     // FIXED: Only do cleanup if there are actually clients connected
+    // THREAD SAFETY: Check client_count under the lock to avoid race
+    rwlock_rdlock(&g_client_manager_rwlock);
     if (g_client_manager.client_count > 0) {
-      rwlock_rdlock(&g_client_manager_rwlock);
       for (int i = 0; i < MAX_CLIENTS; i++) {
         client_info_t *client = &g_client_manager.clients[i];
         // Check if this client has been marked inactive by its receive thread
@@ -870,8 +875,8 @@ main_loop:
           ascii_thread_init(&client->receive_thread);
         }
       }
-      rwlock_rdunlock(&g_client_manager_rwlock);
     }
+    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
@@ -909,6 +914,8 @@ main_loop:
     // Build fd_set for select() if we have multiple sockets
     fd_set read_fds;
     socket_fd_zero(&read_fds);
+    // NOTE: max_fd starts at 0 for select() calculation - this is correct
+    // On Windows, select() ignores this parameter anyway
     socket_t max_fd = 0;
 
     if (current_listenfd != INVALID_SOCKET_VALUE) {
