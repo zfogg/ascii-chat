@@ -12,7 +12,7 @@
  *
  * CAPTURE PATH (microphone → network):
  *   Mic Input (float32, 48kHz)
- *     ↓ Echo Cancellation (Speex AEC)
+ *     ↓ Echo Cancellation (Speex AEC with internal buffering + delay compensation)
  *     ↓ Preprocessor (Noise/AGC/VAD)
  *     ↓ High-Pass Filter (remove rumble)
  *     ↓ Low-Pass Filter (remove hiss)
@@ -25,9 +25,9 @@
  *   Network
  *     ↓ Speex Jitter Buffer
  *     ↓ Opus Decode
+ *     ↓ Register with AEC (speex_echo_playback for timing sync)
  *     ↓ Soft Clipping
  *     → Speakers
- *     → Echo Reference (fed back to capture path)
  *
  * COMPONENT FLAGS:
  * ================
@@ -239,17 +239,6 @@ typedef struct {
   /** Low-pass filter */
   lowpass_filter_t lowpass;
 
-  /** Echo reference ring buffer (int16 for Speex) */
-  int16_t *echo_ref_buffer;
-  /** Echo reference buffer size */
-  int echo_ref_size;
-  /** Echo reference write position */
-  int echo_ref_write_pos;
-  /** Echo reference read position */
-  int echo_ref_read_pos;
-  /** Echo reference available samples */
-  int echo_ref_available;
-
   /** Configuration */
   client_audio_pipeline_config_t config;
 
@@ -390,23 +379,24 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 /** @} */
 
 /**
- * @name Echo Reference
+ * @name Echo Playback (for Buffered AEC)
  * @{
  */
 
 /**
- * @brief Feed speaker output as echo reference for AEC
+ * @brief Register speaker output for echo cancellation
  * @param pipeline Pipeline instance
  * @param samples Audio samples being played to speakers (float32)
  * @param num_samples Number of samples
  *
- * Call this from the audio output callback AFTER sending samples
- * to the speakers. The AEC uses this to identify and remove
- * speaker output that gets picked up by the microphone.
+ * Call this from the audio playback path to register what's being sent
+ * to the speakers. The AEC internally buffers this with proper delay
+ * compensation (2-frame delay) to match microphone latency.
  *
  * Thread-safe. Can be called from audio callback thread.
  */
-void client_audio_pipeline_feed_echo_ref(client_audio_pipeline_t *pipeline, const float *samples, int num_samples);
+void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeline, const float *samples,
+                                                 int num_samples);
 
 /** @} */
 
