@@ -47,7 +47,9 @@ function(configure_musl_pre_project)
         )
 
         # Only enable musl by default on x86_64 - ARM64 musl support on GitHub runners is limited
-        if(HOST_ARCH STREQUAL "x86_64" AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        # Also require autotools to be available for building musl from source
+        find_program(AUTORECONF_FOUND autoreconf)
+        if(HOST_ARCH STREQUAL "x86_64" AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo") AND AUTORECONF_FOUND)
             option(USE_MUSL "Use musl libc + mimalloc for optimal performance (Linux Release builds)" ON)
         else()
             option(USE_MUSL "Use musl libc instead of glibc (Linux only)" OFF)
