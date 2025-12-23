@@ -350,7 +350,8 @@ void get_16color_rgb(uint8_t color_index, uint8_t *r, uint8_t *g, uint8_t *b) {
 uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, int height, rgb_error_t *error_buffer) {
   // Add accumulated error from previous pixels
   if (error_buffer) {
-    int error_idx = y * width + x;
+    // BUGFIX: Use size_t for index calculation to prevent integer overflow on large images
+    size_t error_idx = (size_t)y * (size_t)width + (size_t)x;
     r += error_buffer[error_idx].r;
     g += error_buffer[error_idx].g;
     b += error_buffer[error_idx].b;
@@ -395,8 +396,9 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
     // 3/16 5/16 1/16
 
     // Error to right pixel (x+1, y)
+    // BUGFIX: Use size_t for all index calculations to prevent integer overflow
     if (x + 1 < width) {
-      int right_idx = y * width + (x + 1);
+      size_t right_idx = (size_t)y * (size_t)width + (size_t)(x + 1);
       error_buffer[right_idx].r += (error_r * 7) / 16;
       error_buffer[right_idx].g += (error_g * 7) / 16;
       error_buffer[right_idx].b += (error_b * 7) / 16;
@@ -406,21 +408,21 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
     if (y + 1 < height) {
       // Bottom-left pixel (x-1, y+1)
       if (x - 1 >= 0) {
-        int bl_idx = (y + 1) * width + (x - 1);
+        size_t bl_idx = (size_t)(y + 1) * (size_t)width + (size_t)(x - 1);
         error_buffer[bl_idx].r += (error_r * 3) / 16;
         error_buffer[bl_idx].g += (error_g * 3) / 16;
         error_buffer[bl_idx].b += (error_b * 3) / 16;
       }
 
       // Bottom pixel (x, y+1)
-      int bottom_idx = (y + 1) * width + x;
+      size_t bottom_idx = (size_t)(y + 1) * (size_t)width + (size_t)x;
       error_buffer[bottom_idx].r += (error_r * 5) / 16;
       error_buffer[bottom_idx].g += (error_g * 5) / 16;
       error_buffer[bottom_idx].b += (error_b * 5) / 16;
 
       // Bottom-right pixel (x+1, y+1)
       if (x + 1 < width) {
-        int br_idx = (y + 1) * width + (x + 1);
+        size_t br_idx = (size_t)(y + 1) * (size_t)width + (size_t)(x + 1);
         error_buffer[br_idx].r += (error_r * 1) / 16;
         error_buffer[br_idx].g += (error_g * 1) / 16;
         error_buffer[br_idx].b += (error_b * 1) / 16;
