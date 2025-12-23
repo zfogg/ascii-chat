@@ -20,7 +20,8 @@ _ascii-chat-client() {
         '--utf8[force enable UTF-8/Unicode support]' \
         '(-M --render-mode)'{-M,--render-mode}'[rendering mode]:(foreground background half-block)' \
         '(-A --audio)'{-A,--audio}'[enable audio capture and playback]' \
-        '--audio-device[audio input device index]:(-1 0 1 2 3 4)' \
+        '--microphone-index[microphone device index]:(-1 0 1 2 3 4)' \
+        '--speakers-index[speakers device index]:(-1 0 1 2 3 4)' \
         '--audio-analysis[enable audio analysis for debugging]' \
         '--no-audio-playback[disable speaker playback while keeping audio recording]' \
         '(-s --stretch)'{-s,--stretch}'[stretch or shrink video to fit]' \

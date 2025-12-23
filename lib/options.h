@@ -839,33 +839,52 @@ extern ASCIICHAT_API unsigned short int opt_force_utf8;
  * **Example**: `--audio` (enable audio capture and streaming)
  *
  * @note Audio requires PortAudio library support
- * @note Audio device selection via `opt_audio_device`
+ * @note Audio device selection via `opt_microphone_index` and `opt_speakers_index`
  * @note Client mode only: Audio streaming is client-side only
  *
  * @ingroup options
  */
 extern ASCIICHAT_API unsigned short int opt_audio_enabled;
 
-/** @brief Audio input device index (-1 = use default)
+/** @brief Microphone (audio input) device index (-1 = use default)
  *
- * Index of the audio input device to use for audio capture. Index -1 indicates
+ * Index of the microphone device to use for audio capture. Index -1 indicates
  * to use the system default audio input device.
  *
- * **Default**: `-1` (use default audio device)
+ * **Default**: `-1` (use default microphone)
  *
  * **Valid range**: -1 (default) or 0 to maximum available devices - 1
  *
- * **Command-line**: `--audio-device <index>` (specify audio device index)
+ * **Command-line**: `--microphone-index <index>` (specify microphone device index)
  *
- * **Example**: `--audio-device 1` (use second audio input device)
+ * **Example**: `--microphone-index 1` (use second microphone device)
  *
  * @note Device index -1 means use system default device
- * @note Device index is validated against available PortAudio devices
- * @note Use PortAudio device enumeration to list available devices
+ * @note Use `--list-microphones` to list available devices
  *
  * @ingroup options
  */
-extern ASCIICHAT_API int opt_audio_device;
+extern ASCIICHAT_API int opt_microphone_index;
+
+/** @brief Speakers (audio output) device index (-1 = use default)
+ *
+ * Index of the speaker device to use for audio playback. Index -1 indicates
+ * to use the system default audio output device.
+ *
+ * **Default**: `-1` (use default speakers)
+ *
+ * **Valid range**: -1 (default) or 0 to maximum available devices - 1
+ *
+ * **Command-line**: `--speakers-index <index>` (specify speaker device index)
+ *
+ * **Example**: `--speakers-index 1` (use second speaker device)
+ *
+ * @note Device index -1 means use system default device
+ * @note Use `--list-speakers` to list available devices
+ *
+ * @ingroup options
+ */
+extern ASCIICHAT_API int opt_speakers_index;
 
 /** @brief Enable audio analysis for debugging
  *

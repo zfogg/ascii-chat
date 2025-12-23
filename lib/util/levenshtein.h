@@ -26,7 +26,7 @@ extern "C" {
  * Threshold of 2 catches most typos (single char errors, transpositions)
  * without suggesting unrelated options.
  */
-#define LEVENSHTEIN_SUGGESTION_THRESHOLD 2
+#define LEVENSHTEIN_SUGGESTION_THRESHOLD 3
 
 /**
  * @brief Calculate Levenshtein distance between two strings
