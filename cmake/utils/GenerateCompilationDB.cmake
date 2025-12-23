@@ -117,8 +117,6 @@ function(generate_compilation_database)
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
-            # Fix compilation database directory field: LibTooling tools need source dir context
-            COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/FixCompilationDB.cmake
             COMMENT "${_DB_COMMENT}"
             VERBATIM
         )
