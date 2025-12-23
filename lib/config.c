@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <inttypes.h>
 #include <sys/stat.h>
 #ifdef _WIN32
 #include <io.h>
@@ -307,7 +306,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%lld", (long long)port_val);
       config_port_set = true;
     } else {
-      CONFIG_WARN("Invalid port value %" PRId64 " (must be 1-65535, skipping network.port)", port_val);
+      CONFIG_WARN("Invalid port value %lld (must be 1-65535, skipping network.port)", (long long)port_val);
     }
   }
 }
@@ -506,15 +505,6 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
     } else {
       CONFIG_WARN("Invalid snapshot_delay value %.2f (must be non-negative, skipping)", delay);
     }
-  } else if (snapshot_delay.type == TOML_INT64 && !config_snapshot_delay_set) {
-    // Handle integer values like: snapshot_delay = 5
-    int64_t delay = snapshot_delay.u.int64;
-    if (delay >= 0) {
-      opt_snapshot_delay = (float)delay;
-      config_snapshot_delay_set = true;
-    } else {
-      CONFIG_WARN("Invalid snapshot_delay value %lld (must be non-negative, skipping)", (long long)delay);
-    }
   } else if (snapshot_delay.type == TOML_STRING && !config_snapshot_delay_set) {
     const char *delay_str = snapshot_delay.u.s;
     char error_msg[256];
@@ -562,7 +552,7 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
     config_audio_enabled_set = true;
   }
 
-  // Microphone index (-1 = default, 0+ = specific device)
+  // Microphone index
   toml_datum_t microphone_index = toml_seek(toptab, "audio.microphone_index");
   if (microphone_index.type == TOML_INT64 && !config_microphone_index_set) {
     int64_t mic_idx = microphone_index.u.int64;
@@ -572,20 +562,23 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
     }
   } else if (microphone_index.type == TOML_STRING && !config_microphone_index_set) {
     const char *mic_str = microphone_index.u.s;
-    char error_msg[256];
-    // Note: validate_non_negative_int returns -1 on error, so we can't use it for values that allow -1
-    // Instead, use strtoint_safe directly and check for INT_MIN (the error sentinel)
-    int mic_idx = strtoint_safe(mic_str);
-    if (mic_idx != INT_MIN && mic_idx >= -1) {
-      opt_microphone_index = mic_idx;
+    // Special case: "-1" means use default device
+    if (strcmp(mic_str, "-1") == 0) {
+      opt_microphone_index = -1;
       config_microphone_index_set = true;
     } else {
-      SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid microphone_index value '%s'. Must be -1 or greater.", mic_str);
-      CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
+      char error_msg[256];
+      int mic_idx = validate_non_negative_int(mic_str, error_msg, sizeof(error_msg));
+      if (mic_idx >= 0) {
+        opt_microphone_index = mic_idx;
+        config_microphone_index_set = true;
+      } else {
+        CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
+      }
     }
   }
 
-  // Speakers index (-1 = default, 0+ = specific device)
+  // Speakers index
   toml_datum_t speakers_index = toml_seek(toptab, "audio.speakers_index");
   if (speakers_index.type == TOML_INT64 && !config_speakers_index_set) {
     int64_t spk_idx = speakers_index.u.int64;
@@ -595,16 +588,19 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
     }
   } else if (speakers_index.type == TOML_STRING && !config_speakers_index_set) {
     const char *spk_str = speakers_index.u.s;
-    char error_msg[256];
-    // Note: validate_non_negative_int returns -1 on error, so we can't use it for values that allow -1
-    // Instead, use strtoint_safe directly and check for INT_MIN (the error sentinel)
-    int spk_idx = strtoint_safe(spk_str);
-    if (spk_idx != INT_MIN && spk_idx >= -1) {
-      opt_speakers_index = spk_idx;
+    // Special case: "-1" means use default device
+    if (strcmp(spk_str, "-1") == 0) {
+      opt_speakers_index = -1;
       config_speakers_index_set = true;
     } else {
-      SAFE_SNPRINTF(error_msg, sizeof(error_msg), "Invalid speakers_index value '%s'. Must be -1 or greater.", spk_str);
-      CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
+      char error_msg[256];
+      int spk_idx = validate_non_negative_int(spk_str, error_msg, sizeof(error_msg));
+      if (spk_idx >= 0) {
+        opt_speakers_index = spk_idx;
+        config_speakers_index_set = true;
+      } else {
+        CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
+      }
     }
   }
 }
@@ -890,11 +886,14 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     char *config_dir = get_config_dir();
     defer(SAFE_FREE(config_dir));
     if (config_dir) {
-      // Note: get_config_dir() returns path with trailing separator
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
       if (config_path_expanded) {
+#ifdef _WIN32
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
+#else
+        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
+#endif
       }
     }
 
@@ -975,7 +974,7 @@ asciichat_error_t config_load_and_apply(bool is_client, const char *config_path,
     return log_result;
   }
 
-  // Reset all config flags for next call (in case config_load_and_apply is called multiple times)
+  // Reset all config flags for next call
   config_address_set = false;
   config_address6_set = false;
   config_port_set = false;
@@ -1043,11 +1042,14 @@ asciichat_error_t config_create_default(const char *config_path) {
     char *config_dir = get_config_dir();
     defer(SAFE_FREE(config_dir));
     if (config_dir) {
-      // Note: get_config_dir() returns path with trailing separator
       size_t len = strlen(config_dir) + strlen("config.toml") + 1;
       config_path_expanded = SAFE_MALLOC(len, char *);
       if (config_path_expanded) {
+#ifdef _WIN32
         safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
+#else
+        safe_snprintf(config_path_expanded, len, "%sconfig.toml", config_dir);
+#endif
       }
     }
 
@@ -1101,7 +1103,6 @@ asciichat_error_t config_create_default(const char *config_path) {
       struct stat test_st;
       if (stat(dir_path, &test_st) != 0) {
         // Directory doesn't exist and we couldn't create it
-        // Note: Must use dir_path in error message BEFORE freeing it
         asciichat_error_t err = SET_ERRNO_SYS(ERROR_CONFIG, "Failed to create config directory: %s", dir_path);
         SAFE_FREE(dir_path);
         return err;
