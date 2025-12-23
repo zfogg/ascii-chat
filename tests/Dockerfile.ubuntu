@@ -43,7 +43,7 @@ RUN apt-get update && apt-get install -y \
   pkg-config make \
   cmake ninja-build ccache \
   musl-tools musl-dev \
-  libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev \
+  libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libspeexdsp-dev \
   libcriterion-dev libffi-dev \
   libprotobuf-c-dev libprotobuf-c1 \
   libssl-dev \
