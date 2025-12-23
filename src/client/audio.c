@@ -456,6 +456,9 @@ int audio_client_init() {
   // (default config already has all flags enabled including VAD)
   pipeline_config.flags.echo_cancel = true; // Ensure echo cancellation is enabled
 
+  // Increase jitter buffer margin to prevent underruns
+  pipeline_config.jitter_margin_ms = 200; // Increased from default 60ms for better buffering
+
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
   if (!g_audio_pipeline) {
     log_error("Failed to create audio pipeline");
