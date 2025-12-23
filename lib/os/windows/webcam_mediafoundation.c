@@ -486,12 +486,29 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   UINT32 width = (UINT32)ctx->width;
   UINT32 height = (UINT32)ctx->height;
 
+  // CRITICAL: Check for integer overflow before multiplication (prevents heap corruption)
+  if (width > SIZE_MAX / height) {
+    log_error("webcam_read_context: dimensions overflow: %u x %u", width, height);
+    IMFMediaBuffer_Unlock(buffer);
+    IMFMediaBuffer_Release(buffer);
+    IMFSample_Release(sample);
+    return NULL;
+  }
+  size_t pixel_count_check = (size_t)width * (size_t)height;
+  if (pixel_count_check > SIZE_MAX / sizeof(rgb_t)) {
+    log_error("webcam_read_context: pixel buffer overflow: %zu pixels", pixel_count_check);
+    IMFMediaBuffer_Unlock(buffer);
+    IMFMediaBuffer_Release(buffer);
+    IMFSample_Release(sample);
+    return NULL;
+  }
+
   // Create image_t structure
   image_t *img = SAFE_MALLOC(sizeof(image_t), image_t *);
   img->w = (int)(unsigned int)width;
   img->h = (int)(unsigned int)height;
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
-  img->pixels = SAFE_MALLOC_SIMD(width * height * sizeof(rgb_t), rgb_t *);
+  img->pixels = SAFE_MALLOC_SIMD(pixel_count_check * sizeof(rgb_t), rgb_t *);
 
   // Copy RGB32 data (BGRA order in Media Foundation)
   // Media Foundation converts YUV->RGB32 via GPU-accelerated pipeline

@@ -37,9 +37,19 @@ static void check_crc32_hw_support(void) {
   bool expected = false;
   if (!atomic_compare_exchange_strong(&crc32_hw_checked, &expected, true)) {
     // Another thread is initializing or already initialized, wait for it
-    // Spin briefly then check again (most common case: already initialized)
+    // FIX: Add backoff sleep to prevent 100% CPU burn if init thread is preempted
+    int spin_count = 0;
     while (!atomic_load(&crc32_hw_checked)) {
-      // Brief spin wait - initialization is very fast
+      spin_count++;
+      if (spin_count > 100) {
+        // After 100 spins, sleep briefly to avoid CPU waste
+#ifdef _WIN32
+        Sleep(0); // Yield to other threads
+#else
+        usleep(1); // Sleep 1 microsecond
+#endif
+        spin_count = 0;
+      }
     }
     return;
   }
