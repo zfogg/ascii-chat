@@ -152,7 +152,8 @@ ASCIICHAT_API unsigned short int opt_show_capabilities = 0;           // Don't s
 ASCIICHAT_API unsigned short int opt_force_utf8 = 0;                  // Don't force UTF-8 by default
 
 ASCIICHAT_API unsigned short int opt_audio_enabled = 0;
-ASCIICHAT_API int opt_audio_device = -1; // -1 means use default device
+ASCIICHAT_API int opt_microphone_index = -1; // -1 means use default microphone
+ASCIICHAT_API int opt_speakers_index = -1;   // -1 means use default speakers
 ASCIICHAT_API unsigned short int opt_audio_analysis_enabled = 0;
 ASCIICHAT_API unsigned short int opt_audio_no_playback = 0; // Disable speaker playback for debugging
 
@@ -247,7 +248,8 @@ static struct option client_options[] = {{"address", required_argument, NULL, 'a
                                          {"palette", required_argument, NULL, 'P'},
                                          {"palette-chars", required_argument, NULL, 'C'},
                                          {"audio", no_argument, NULL, 'A'},
-                                         {"audio-device", required_argument, NULL, 1007},
+                                         {"microphone-index", required_argument, NULL, 1028},
+                                         {"speakers-index", required_argument, NULL, 1029},
                                          {"audio-analysis", no_argument, NULL, 1025},
                                          {"no-audio-playback", no_argument, NULL, 1027},
                                          {"stretch", no_argument, NULL, 's'},
@@ -1276,10 +1278,18 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_audio_enabled = 1;
       break;
 
-    case 1007: // --audio-device
-      opt_audio_device = strtoint_safe(optarg);
-      if (opt_audio_device < 0) {
-        safe_fprintf(stderr, "Error: Invalid audio device index '%s'\n", optarg);
+    case 1028: // --microphone-index
+      opt_microphone_index = strtoint_safe(optarg);
+      if (opt_microphone_index < -1) {
+        safe_fprintf(stderr, "Error: Invalid microphone index '%s'\n", optarg);
+        return -1;
+      }
+      break;
+
+    case 1029: // --speakers-index
+      opt_speakers_index = strtoint_safe(optarg);
+      if (opt_speakers_index < -1) {
+        safe_fprintf(stderr, "Error: Invalid speakers index '%s'\n", optarg);
         return -1;
       }
       break;
@@ -1802,6 +1812,10 @@ void usage_client(FILE *desc /* stdout|stderr*/) {
                                    "list available audio input devices and exit\n");
   (void)fprintf(desc, USAGE_INDENT "   --list-speakers           " USAGE_INDENT
                                    "list available audio output devices and exit\n");
+  (void)fprintf(desc, USAGE_INDENT "   --microphone-index INDEX  " USAGE_INDENT
+                                   "microphone device index (-1 for default) (default: -1)\n");
+  (void)fprintf(desc, USAGE_INDENT "   --speakers-index INDEX    " USAGE_INDENT
+                                   "speakers device index (-1 for default) (default: -1)\n");
   (void)fprintf(desc, USAGE_INDENT "-f --webcam-flip             " USAGE_INDENT "toggle horizontal flip of webcam "
                                    "image (default: flipped)\n");
   (void)fprintf(desc, USAGE_INDENT "   --test-pattern            " USAGE_INDENT "use test pattern instead of webcam "

@@ -89,7 +89,8 @@ _ascii_chat() {
     '--render-mode' 'rendering mode: foreground/fg, background/bg, half-block'
     '-A' 'enable audio capture and playback'
     '--audio' 'enable audio capture and playback'
-    '--audio-device' 'audio input device index (-1 for default)'
+    '--microphone-index' 'microphone device index (-1 for default)'
+    '--speakers-index' 'speakers device index (-1 for default)'
     '--audio-analysis' 'enable audio analysis for debugging'
     '--no-audio-playback' 'disable speaker playback while keeping audio recording'
     '-s' 'stretch or shrink video to fit (ignore aspect ratio)'
@@ -176,7 +177,7 @@ _ascii_chat() {
   -a | --address | -H | --host | --address6)
     return
     ;;
-  -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps | --audio-device | --max-clients)
+  -p | --port | -x | --width | -y | --height | -c | --webcam-index | -D | --snapshot-delay | --fps | --microphone-index | --speakers-index | --max-clients)
     return
     ;;
   -C | --palette-chars | --password)

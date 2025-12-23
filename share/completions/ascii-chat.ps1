@@ -85,7 +85,8 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
         @{ Name = '--render-mode'; Description = 'rendering mode: foreground, background, half-block' }
         @{ Name = '-A'; Description = 'enable audio capture and playback' }
         @{ Name = '--audio'; Description = 'enable audio capture and playback' }
-        @{ Name = '--audio-device'; Description = 'audio input device index' }
+        @{ Name = '--microphone-index'; Description = 'microphone device index (-1 for default)' }
+        @{ Name = '--speakers-index'; Description = 'speakers device index (-1 for default)' }
         @{ Name = '--audio-analysis'; Description = 'enable audio analysis for debugging' }
         @{ Name = '--no-audio-playback'; Description = 'disable speaker playback while keeping audio recording' }
         @{ Name = '--encode-audio'; Description = 'force enable Opus audio encoding' }
@@ -171,7 +172,7 @@ Register-ArgumentCompleter -Native -CommandName ascii-chat, ascii-chat.exe -Scri
             # File path completion - let PowerShell handle it
             return
         }
-        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password|--audio-device|--compression-level|--max-clients|--reconnect)$' {
+        '^(-a|--address|-H|--host|--address6|-p|--port|-x|--width|-y|--height|-c|--webcam-index|-D|--snapshot-delay|--fps|-C|--palette-chars|--password|--microphone-index|--speakers-index|--compression-level|--max-clients|--reconnect)$' {
             # These take values but don't have predefined completions
             return
         }

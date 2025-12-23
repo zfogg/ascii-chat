@@ -96,8 +96,10 @@ static bool config_palette_set = false;
 static bool config_palette_chars_set = false;
 /** @brief Track if audio enabled was set from config */
 static bool config_audio_enabled_set = false;
-/** @brief Track if audio device was set from config */
-static bool config_audio_device_set = false;
+/** @brief Track if microphone index was set from config */
+static bool config_microphone_index_set = false;
+/** @brief Track if speakers index was set from config */
+static bool config_speakers_index_set = false;
 /** @brief Track if stretch was set from config */
 static bool config_stretch_set = false;
 /** @brief Track if quiet mode was set from config */
@@ -526,7 +528,8 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
  *
  * Supported options:
  * - `audio.enabled`: Enable audio streaming (boolean)
- * - `audio.device`: Audio device index (integer, -1 for default)
+ * - `audio.microphone_index`: Microphone device index (integer, -1 for default)
+ * - `audio.speakers_index`: Speakers device index (integer, -1 for default)
  *
  * Invalid values are skipped with warnings.
  *
@@ -549,23 +552,43 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
     config_audio_enabled_set = true;
   }
 
-  // Audio device
-  toml_datum_t audio_device = toml_seek(toptab, "audio.device");
-  if (audio_device.type == TOML_INT64 && !config_audio_device_set) {
-    int64_t device_idx = audio_device.u.int64;
-    if (device_idx >= -1) {
-      opt_audio_device = (int)device_idx;
-      config_audio_device_set = true;
+  // Microphone index
+  toml_datum_t microphone_index = toml_seek(toptab, "audio.microphone_index");
+  if (microphone_index.type == TOML_INT64 && !config_microphone_index_set) {
+    int64_t mic_idx = microphone_index.u.int64;
+    if (mic_idx >= -1) {
+      opt_microphone_index = (int)mic_idx;
+      config_microphone_index_set = true;
     }
-  } else if (audio_device.type == TOML_STRING && !config_audio_device_set) {
-    const char *device_str = audio_device.u.s;
+  } else if (microphone_index.type == TOML_STRING && !config_microphone_index_set) {
+    const char *mic_str = microphone_index.u.s;
     char error_msg[256];
-    int device_idx = validate_non_negative_int(device_str, error_msg, sizeof(error_msg));
-    if (device_idx >= -1) {
-      opt_audio_device = device_idx;
-      config_audio_device_set = true;
+    int mic_idx = validate_non_negative_int(mic_str, error_msg, sizeof(error_msg));
+    if (mic_idx >= -1) {
+      opt_microphone_index = mic_idx;
+      config_microphone_index_set = true;
     } else {
-      CONFIG_WARN("%s (skipping audio.device)", error_msg);
+      CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
+    }
+  }
+
+  // Speakers index
+  toml_datum_t speakers_index = toml_seek(toptab, "audio.speakers_index");
+  if (speakers_index.type == TOML_INT64 && !config_speakers_index_set) {
+    int64_t spk_idx = speakers_index.u.int64;
+    if (spk_idx >= -1) {
+      opt_speakers_index = (int)spk_idx;
+      config_speakers_index_set = true;
+    }
+  } else if (speakers_index.type == TOML_STRING && !config_speakers_index_set) {
+    const char *spk_str = speakers_index.u.s;
+    char error_msg[256];
+    int spk_idx = validate_non_negative_int(spk_str, error_msg, sizeof(error_msg));
+    if (spk_idx >= -1) {
+      opt_speakers_index = spk_idx;
+      config_speakers_index_set = true;
+    } else {
+      CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
     }
   }
 }
@@ -1131,8 +1154,10 @@ asciichat_error_t config_create_default(const char *config_path) {
   (void)fprintf(f, "[audio]\n");
   (void)fprintf(f, "# Enable audio streaming\n");
   (void)fprintf(f, "#enabled = %s\n", opt_audio_enabled ? "true" : "false");
-  (void)fprintf(f, "# Audio device index (-1 = use default)\n");
-  (void)fprintf(f, "#device = %d\n\n", opt_audio_device);
+  (void)fprintf(f, "# Microphone device index (-1 = use default)\n");
+  (void)fprintf(f, "#microphone_index = %d\n", opt_microphone_index);
+  (void)fprintf(f, "# Speakers device index (-1 = use default)\n");
+  (void)fprintf(f, "#speakers_index = %d\n\n", opt_speakers_index);
 
   // Write palette section
   (void)fprintf(f, "[palette]\n");

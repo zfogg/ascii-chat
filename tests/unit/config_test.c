@@ -53,7 +53,8 @@ typedef struct {
   terminal_color_mode_t opt_color_mode;
   render_mode_t opt_render_mode;
   unsigned short int opt_audio_enabled;
-  int opt_audio_device;
+  int opt_microphone_index;
+  int opt_speakers_index;
   unsigned short int opt_stretch, opt_quiet, opt_snapshot_mode;
   float opt_snapshot_delay;
   char opt_log_file[OPTIONS_BUFF_SIZE];
@@ -85,7 +86,8 @@ static void save_config_options(config_options_backup_t *backup) {
   backup->opt_color_mode = opt_color_mode;
   backup->opt_render_mode = opt_render_mode;
   backup->opt_audio_enabled = opt_audio_enabled;
-  backup->opt_audio_device = opt_audio_device;
+  backup->opt_microphone_index = opt_microphone_index;
+  backup->opt_speakers_index = opt_speakers_index;
   backup->opt_stretch = opt_stretch;
   backup->opt_quiet = opt_quiet;
   backup->opt_snapshot_mode = opt_snapshot_mode;
@@ -119,7 +121,8 @@ static void restore_config_options(const config_options_backup_t *backup) {
   opt_color_mode = backup->opt_color_mode;
   opt_render_mode = backup->opt_render_mode;
   opt_audio_enabled = backup->opt_audio_enabled;
-  opt_audio_device = backup->opt_audio_device;
+  opt_microphone_index = backup->opt_microphone_index;
+  opt_speakers_index = backup->opt_speakers_index;
   opt_stretch = backup->opt_stretch;
   opt_quiet = backup->opt_quiet;
   opt_snapshot_mode = backup->opt_snapshot_mode;
@@ -735,7 +738,8 @@ Test(config_sections, audio_settings) {
 
   const char *content = "[audio]\n"
                         "enabled = true\n"
-                        "device = 1\n";
+                        "microphone_index = 1\n"
+                        "speakers_index = 2\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -743,7 +747,8 @@ Test(config_sections, audio_settings) {
   asciichat_error_t result = config_load_and_apply(true, config_path, false);
   cr_assert_eq(result, ASCIICHAT_OK, "Valid audio settings should succeed");
   cr_assert_eq(opt_audio_enabled, 1, "Audio should be enabled");
-  cr_assert_eq(opt_audio_device, 1, "Audio device should be 1");
+  cr_assert_eq(opt_microphone_index, 1, "Microphone index should be 1");
+  cr_assert_eq(opt_speakers_index, 2, "Speakers index should be 2");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -756,14 +761,14 @@ Test(config_sections, audio_device_default) {
 
   const char *content = "[audio]\n"
                         "enabled = true\n"
-                        "device = -1\n"; // -1 means default device
+                        "microphone_index = -1\n"; // -1 means default device
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
 
   asciichat_error_t result = config_load_and_apply(true, config_path, false);
-  cr_assert_eq(result, ASCIICHAT_OK, "Audio device -1 should succeed");
-  cr_assert_eq(opt_audio_device, -1, "Audio device should be -1 (default)");
+  cr_assert_eq(result, ASCIICHAT_OK, "Microphone index -1 should succeed");
+  cr_assert_eq(opt_microphone_index, -1, "Microphone index should be -1 (default)");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -775,11 +780,11 @@ Test(config_sections, audio_config_ignored_for_server) {
   save_config_options(&backup);
 
   opt_audio_enabled = 0;
-  opt_audio_device = 0;
+  opt_microphone_index = 0;
 
   const char *content = "[audio]\n"
                         "enabled = true\n"
-                        "device = 5\n";
+                        "microphone_index = 5\n";
 
   char *config_path = create_temp_config(content);
   cr_assert_not_null(config_path, "Failed to create temp config file");
@@ -788,7 +793,7 @@ Test(config_sections, audio_config_ignored_for_server) {
   asciichat_error_t result = config_load_and_apply(false, config_path, false);
   cr_assert_eq(result, ASCIICHAT_OK, "Loading audio config as server should succeed");
   cr_assert_eq(opt_audio_enabled, 0, "Audio enabled should remain unchanged for server");
-  cr_assert_eq(opt_audio_device, 0, "Audio device should remain unchanged for server");
+  cr_assert_eq(opt_microphone_index, 0, "Microphone index should remain unchanged for server");
 
   unlink(config_path);
   SAFE_FREE(config_path);
@@ -1084,7 +1089,7 @@ Test(config_sections, full_client_config) {
                         "\n"
                         "[audio]\n"
                         "enabled = true\n"
-                        "device = 0\n"
+                        "microphone_index = 0\n"
                         "\n"
                         "[palette]\n"
                         "type = \"digital\"\n"
@@ -1119,7 +1124,7 @@ Test(config_sections, full_client_config) {
   cr_assert_eq(opt_snapshot_mode, 0, "Snapshot mode should be disabled");
   cr_assert_float_eq(opt_snapshot_delay, 1.0f, 0.01f, "Snapshot delay should be 1.0");
   cr_assert_eq(opt_audio_enabled, 1, "Audio should be enabled");
-  cr_assert_eq(opt_audio_device, 0, "Audio device should be 0");
+  cr_assert_eq(opt_microphone_index, 0, "Microphone index should be 0");
   cr_assert_eq(opt_palette_type, PALETTE_DIGITAL, "Palette should be digital");
   cr_assert_eq(opt_encrypt_enabled, 1, "Encryption should be enabled");
   cr_assert_str_eq(opt_log_file, "/tmp/ascii-chat-test.log", "Log file should be set");

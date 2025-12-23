@@ -285,8 +285,12 @@ saving to plain text files.
 .BR \-A ", " \-\-audio
 Enable audio capture and streaming.
 .TP
-.BR \-\-audio\-device =\fIINDEX\fR
-Audio input device index. Use \fB-1\fR for system default.
+.BR \-\-microphone\-index =\fIINDEX\fR
+Microphone (audio input) device index. Use \fB-1\fR for system default.
+Default: \fB-1\fR
+.TP
+.BR \-\-speakers\-index =\fIINDEX\fR
+Speakers (audio output) device index. Use \fB-1\fR for system default.
 Default: \fB-1\fR
 .TP
 .BR \-\-list\-microphones
@@ -515,7 +519,7 @@ Config file values override default values.
 render_mode, fps, stretch, quiet, snapshot_mode, snapshot_delay, test_pattern,
 show_capabilities, force_utf8
 .IP \(bu 2
-\fB[audio]\fR: enabled, device
+\fB[audio]\fR: enabled, microphone_index, speakers_index
 .IP \(bu 2
 \fB[palette]\fR: type, chars
 .IP \(bu 2
