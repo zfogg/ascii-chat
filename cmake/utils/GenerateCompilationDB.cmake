@@ -85,8 +85,12 @@ function(generate_compilation_database)
         list(APPEND _cmake_configure_args "-D${_opt}=OFF")
     endforeach()
 
-    # Note: Don't explicitly set resource-dir - clang auto-detects it and CMake adds it
-    # Adding it manually causes duplicate -resource-dir flags which confuses the compiler
+    # Detect clang resource directory for compilation database
+    # Required for LibTooling tools to find clang's builtin headers (stddef.h, stdbool.h, etc.)
+    detect_clang_resource_dir(_detected_resource_dir)
+    if(_detected_resource_dir)
+        list(APPEND _cmake_configure_args "-DCLANG_RESOURCE_DIR=${_detected_resource_dir}")
+    endif()
 
     # Convert to space-separated string for shell command
     list(JOIN _cmake_configure_args " " _cmake_args_str)
