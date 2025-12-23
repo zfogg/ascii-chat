@@ -7,6 +7,7 @@
 #include "common.h"
 #include "logging.h"
 
+#include <math.h>
 #include <opus/opus.h>
 #include <speex/speex_echo.h>
 #include <speex/speex_jitter.h>
@@ -371,6 +372,20 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     num_samples = pipeline->frame_size;
   }
 
+  // DEBUG: Log what we receive as input
+  static int capture_count = 0;
+  capture_count++;
+  if (capture_count <= 5 || capture_count % 20 == 0) {
+    float sum_squares = 0.0f;
+    for (int i = 0; i < num_samples && i < 10; i++) {
+      sum_squares += input[i] * input[i];
+    }
+    float rms = sqrtf(sum_squares / (num_samples > 10 ? 10 : num_samples));
+    log_info("Pipeline capture #%d: num_samples=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f", capture_count, num_samples,
+             num_samples > 0 ? input[0] : 0.0f, num_samples > 1 ? input[1] : 0.0f, num_samples > 2 ? input[2] : 0.0f,
+             rms);
+  }
+
   mutex_lock(&pipeline->mutex);
 
   // Convert input float to int16 for Speex
@@ -438,6 +453,18 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
   // Opus encode
   int opus_bytes = opus_encode_float(pipeline->encoder, pipeline->work_float, num_samples, opus_out, opus_out_size);
+
+  // DEBUG: Log Opus output to see if encoding worked
+  if (opus_bytes > 0) {
+    static int opus_count = 0;
+    opus_count++;
+    if (opus_count <= 5 || opus_count % 20 == 0) {
+      // Show opus packet size and first bytes (as hex)
+      log_info("Pipeline Opus encode #%d: num_samples=%d, opus_bytes=%d, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]",
+               opus_count, num_samples, opus_bytes, opus_bytes > 0 ? opus_out[0] : 0, opus_bytes > 1 ? opus_out[1] : 0,
+               opus_bytes > 2 ? opus_out[2] : 0, opus_bytes > 3 ? opus_out[3] : 0);
+    }
+  }
 
   mutex_unlock(&pipeline->mutex);
 

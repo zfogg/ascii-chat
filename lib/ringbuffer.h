@@ -176,6 +176,8 @@ typedef struct audio_ring_buffer {
   volatile float last_sample;
   /** @brief Count of underrun events for diagnostics */
   volatile uint32_t underrun_count;
+  /** @brief Whether jitter buffering is enabled (false for capture, true for playback) */
+  volatile bool jitter_buffer_enabled;
   /** @brief Mutex for thread-safe operations */
   mutex_t mutex;
 } audio_ring_buffer_t;

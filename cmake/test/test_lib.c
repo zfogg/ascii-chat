@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>  // For memcpy used in common.h
 #include "logging.h"
 
 int main(void) {

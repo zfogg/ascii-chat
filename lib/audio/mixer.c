@@ -595,6 +595,23 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
             audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
         int samples_read = (int)samples_read_size;
 
+        // DEBUG: Log what we read from ring buffer
+        if (samples_read > 0) {
+          float peak = 0.0f, rms = 0.0f;
+          for (int s = 0; s < samples_read && s < 10; s++) {
+            float abs_val = fabsf(source_samples[source_count][s]);
+            if (abs_val > peak)
+              peak = abs_val;
+            rms += source_samples[source_count][s] * source_samples[source_count][s];
+          }
+          rms = sqrtf(rms / (samples_read > 10 ? 10 : samples_read));
+          log_debug_every(1000000, "Mixer: Source %u read %d samples - Peak=%.6f, RMS=%.6f, First3=[%.6f,%.6f,%.6f]",
+                          mixer->source_ids[i], samples_read, peak, rms,
+                          samples_read > 0 ? source_samples[source_count][0] : 0.0f,
+                          samples_read > 1 ? source_samples[source_count][1] : 0.0f,
+                          samples_read > 2 ? source_samples[source_count][2] : 0.0f);
+        }
+
         // Accept partial frames - pad with silence if needed
         // This prevents audio dropouts when ring buffers are temporarily under-filled
         if (samples_read > 0) {
@@ -657,6 +674,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     }
 
     // Fast mixing loop - simple multiply-add with pre-calculated gains
+    float output_peak = 0.0f, output_rms = 0.0f;
     for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
@@ -668,8 +686,19 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       mix *= comp_gain;
 
       // Soft clip to prevent harsh digital clipping artifacts (threshold 0.8)
-      output[frame_start + s] = soft_clip(mix, 0.8f);
+      float clipped = soft_clip(mix, 0.8f);
+      output[frame_start + s] = clipped;
+
+      // DEBUG: Track output stats
+      float abs_val = fabsf(clipped);
+      if (abs_val > output_peak)
+        output_peak = abs_val;
+      output_rms += clipped * clipped;
     }
+    output_rms = sqrtf(output_rms / frame_size);
+
+    log_debug_every(1000000, "Mixer output frame (size=%d): Peak=%.6f, RMS=%.6f, sources=%d, speaking=%d", frame_size,
+                    output_peak, output_rms, source_count, speaking_count);
 
     STOP_TIMER("mixer_per_sample_loop");
   }

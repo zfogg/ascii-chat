@@ -334,17 +334,18 @@ static void *audio_capture_thread_func(void *arg) {
         wav_writer_write(g_wav_capture_raw, audio_buffer, samples_read);
       }
 
-      // Log sample levels every 100 reads for debugging
+      // DEBUG: Log EVERY read to see what we're getting from the ring buffer
       static int read_count = 0;
       read_count++;
-      if (read_count % 100 == 0) {
-        float sum_squares = 0.0f;
-        for (int i = 0; i < samples_read; i++) {
-          sum_squares += audio_buffer[i] * audio_buffer[i];
-        }
-        float rms = sqrtf(sum_squares / (float)samples_read);
-        log_info("Audio capture read #%d: samples=%d, first=[%.4f, %.4f, %.4f], RMS=%.6f", read_count, samples_read,
-                 audio_buffer[0], audio_buffer[1], audio_buffer[2], rms);
+      float sum_squares = 0.0f;
+      for (int i = 0; i < samples_read && i < 10; i++) {
+        sum_squares += audio_buffer[i] * audio_buffer[i];
+      }
+      float rms = sqrtf(sum_squares / (samples_read > 10 ? 10 : samples_read));
+      if (read_count <= 5 || read_count % 20 == 0) {
+        log_info("Audio capture read #%d: available=%d, samples_read=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f", read_count,
+                 available, samples_read, samples_read > 0 ? audio_buffer[0] : 0.0f,
+                 samples_read > 1 ? audio_buffer[1] : 0.0f, samples_read > 2 ? audio_buffer[2] : 0.0f, rms);
       }
 
       // Track sent samples for analysis
@@ -448,8 +449,9 @@ int audio_client_init() {
 
   // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
-  pipeline_config.opus_bitrate = 128000;                   // 128 kbps AUDIO mode for music quality
-  pipeline_config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL; // Enable all processing
+  pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
+  pipeline_config.flags =
+      CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL; // Disable aggressive processing (VAD was filtering audio)
 
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
   if (!g_audio_pipeline) {

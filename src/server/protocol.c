@@ -109,6 +109,7 @@
  * @see network.h For packet structure definitions
  */
 
+#include <math.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -783,8 +784,7 @@ void handle_audio_packet(client_info_t *client, const void *data, size_t len) {
   }
 
   const float *samples = (const float *)data;
-  int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
-  (void)written;
+  audio_ring_buffer_write(client->incoming_audio_buffer, samples, num_samples);
 }
 
 void handle_remote_log_packet_from_client(client_info_t *client, const void *data, size_t len) {
@@ -962,8 +962,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 #endif
 
   if (client->incoming_audio_buffer) {
-    int written = audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
-    (void)written;
+    audio_ring_buffer_write(client->incoming_audio_buffer, samples, total_samples);
   }
 
   SAFE_FREE(samples);
@@ -1112,10 +1111,30 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   log_debug_every(100000, "Client %u: Decoded %d Opus frames -> %d samples", atomic_load(&client->client_id),
                   frame_count, total_decoded);
 
+  // DEBUG: Log sample values to detect all-zero issue
+  if (total_decoded > 0) {
+    float peak = 0.0f, rms = 0.0f;
+    for (int i = 0; i < total_decoded && i < 100; i++) {
+      float abs_val = fabsf(decoded_samples[i]);
+      if (abs_val > peak)
+        peak = abs_val;
+      rms += decoded_samples[i] * decoded_samples[i];
+    }
+    rms = sqrtf(rms / (total_decoded > 100 ? 100 : total_decoded));
+    log_info("Client %u: Opus decoded - Peak=%.6f, RMS=%.6f, First5=[%.6f,%.6f,%.6f,%.6f,%.6f]",
+             atomic_load(&client->client_id), peak, rms, total_decoded > 0 ? decoded_samples[0] : 0.0f,
+             total_decoded > 1 ? decoded_samples[1] : 0.0f, total_decoded > 2 ? decoded_samples[2] : 0.0f,
+             total_decoded > 3 ? decoded_samples[3] : 0.0f, total_decoded > 4 ? decoded_samples[4] : 0.0f);
+  }
+
   // Write decoded samples to client's incoming audio buffer
+  // Note: audio_ring_buffer_write returns error code, not sample count
+  // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
   if (client->incoming_audio_buffer && total_decoded > 0) {
-    int written = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
-    (void)written;
+    asciichat_error_t result = audio_ring_buffer_write(client->incoming_audio_buffer, decoded_samples, total_decoded);
+    if (result != ASCIICHAT_OK) {
+      log_error("Client %u: Failed to write decoded audio to buffer: %d", atomic_load(&client->client_id), result);
+    }
   }
 
   if (used_malloc) {
