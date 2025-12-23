@@ -46,57 +46,31 @@ add_executable(ascii-instr-defer tool.cpp)
 
 # Platform-specific include and compile setup
 if(APPLE)
-    # macOS: Using Apple's system clang for compilation, Homebrew LLVM for libraries
-    # Apple's clang handles header resolution automatically with -isysroot
-    execute_process(
-        COMMAND xcrun --show-sdk-path
-        OUTPUT_VARIABLE MACOS_SDK_PATH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
+    # macOS: Use Homebrew LLVM's clang for compilation to match the libclang/libclang-cpp
+    # we're linking against. This ensures compatible resource-dir and include paths.
+    message(STATUS "macOS: Using Homebrew LLVM clang for compilation and Homebrew LLVM libraries")
+    message(STATUS "  Compiler: ${CMAKE_CXX_COMPILER}")
+    message(STATUS "  LLVM libraries: ${LLVM_LIBRARY_DIRS}")
+    message(STATUS "  LLVM headers: ${LLVM_INCLUDE_DIRS}")
+
+    # macOS: Homebrew LLVM's clang can find libc++ headers automatically
+    target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+        ${LLVM_INCLUDE_DIRS}
     )
 
-    if(MACOS_SDK_PATH)
-        message(STATUS "macOS SDK: ${MACOS_SDK_PATH}")
-        message(STATUS "macOS: Using Apple system clang for compilation, Homebrew LLVM for libraries")
-        message(STATUS "  Compiler: ${CMAKE_CXX_COMPILER}")
-        message(STATUS "  LLVM libraries: ${LLVM_LIBRARY_DIRS}")
-        message(STATUS "  LLVM headers: ${LLVM_INCLUDE_DIRS}")
+    target_compile_options(ascii-instr-defer PRIVATE
+        -O2
+        -fno-rtti
+        -fexceptions
+    )
 
-        # Simple compilation setup - Apple's clang handles standard library automatically
-        target_include_directories(ascii-instr-defer SYSTEM PRIVATE
-            ${LLVM_INCLUDE_DIRS}
-        )
-
-        target_compile_options(ascii-instr-defer PRIVATE
-            -O2
-            -fno-rtti
-            -fexceptions
-            -isysroot ${MACOS_SDK_PATH}
-            -stdlib=libc++
-        )
-
-        # Link against Homebrew LLVM libraries
-        target_link_directories(ascii-instr-defer PRIVATE
-            ${LLVM_LIBRARY_DIRS}
-        )
-        target_link_options(ascii-instr-defer PRIVATE
-            -isysroot ${MACOS_SDK_PATH}
-            -stdlib=libc++
-            "-L${LLVM_LIBRARY_DIRS}"
-            "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
-        )
-    else()
-        message(WARNING "Could not detect macOS SDK path - defer tool may fail to build")
-        # Fallback: use SYSTEM includes
-        target_include_directories(ascii-instr-defer SYSTEM PRIVATE
-            ${LLVM_INCLUDE_DIRS}
-        )
-        target_compile_options(ascii-instr-defer PRIVATE
-            -O2
-            -fno-rtti
-            -fexceptions
-        )
-    endif()
+    # Link against Homebrew LLVM libraries with proper rpath
+    target_link_directories(ascii-instr-defer PRIVATE
+        ${LLVM_LIBRARY_DIRS}
+    )
+    target_link_options(ascii-instr-defer PRIVATE
+        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
+    )
 else()
     # Non-macOS (Linux, Windows)
     # Standard compile flags for the defer tool
@@ -289,111 +263,155 @@ if(WIN32)
         ${_zstd_target}
     )
 else()
-    # Linux/macOS: Use shared Clang/LLVM libraries
-    # Try to find clang-cpp first (newer LLVM versions)
-    find_library(CLANG_CPP_SHARED_LIB
-        NAMES clang-cpp libclang-cpp
-        PATHS ${LLVM_LIBRARY_DIRS}
-        NO_DEFAULT_PATH
-    )
+    # Get LLVM libraries from llvm-config
+    if(LLVM_CONFIG_EXECUTABLE AND EXISTS "${LLVM_CONFIG_EXECUTABLE}")
+        execute_process(
+            COMMAND "${LLVM_CONFIG_EXECUTABLE}" --libs
+            OUTPUT_VARIABLE LLVM_LIBS_FLAGS
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        message(STATUS "LLVM libraries from llvm-config: ${LLVM_LIBS_FLAGS}")
+    endif()
 
-    find_library(LLVM_SHARED_LIB
-        NAMES LLVM LLVM-18 LLVM-19 LLVM-20 LLVM-21 LLVM-22
-        PATHS ${LLVM_LIBRARY_DIRS}
-        NO_DEFAULT_PATH
-    )
-
-    # If clang-cpp not found, try linking individual Clang libraries
-    if(NOT CLANG_CPP_SHARED_LIB)
-        message(STATUS "clang-cpp not found, trying individual Clang libraries")
-
-        # Find all required Clang static libraries
-        # These libraries have many interdependencies, so we need most of them
-        find_library(CLANG_TOOLING_LIB NAMES clangTooling PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_FRONTEND_LIB NAMES clangFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_DRIVER_LIB NAMES clangDriver PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_SEMA_LIB NAMES clangSema PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_CODEGEN_LIB NAMES clangCodeGen PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_PARSE_LIB NAMES clangParse PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_AST_LIB NAMES clangAST PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_BASIC_LIB NAMES clangBasic PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_LEX_LIB NAMES clangLex PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_REWRITE_LIB NAMES clangRewrite PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_REWRITEFRONTEND_LIB NAMES clangRewriteFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_SERIALIZATION_LIB NAMES clangSerialization PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_EDIT_LIB NAMES clangEdit PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_ANALYSIS_LIB NAMES clangAnalysis PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_ASTMATCHERS_LIB NAMES clangASTMatchers PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_APINOTES_LIB NAMES clangAPINotes PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(CLANG_SUPPORT_LIB NAMES clangSupport PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-
-        if(NOT CLANG_TOOLING_LIB OR NOT LLVM_SHARED_LIB)
-            message(FATAL_ERROR "Could not find Clang libraries. Please install clang-dev or llvm-dev package.")
-        endif()
-
-        # Use linker group to handle complex interdependencies between Clang static libraries
-        # This is necessary because libraries like clangAnalysis depend on clangASTMatchers,
-        # clangParse depends on clangSema, and clangAPINotes depends on clangFrontend
-        # The group allows the linker to iterate until all symbols are resolved
-        # Note: We embed --start-group/--end-group directly in target_link_libraries
-        # because target_link_options places flags before libraries, not around them
-        if(NOT APPLE)
-            target_link_libraries(ascii-instr-defer PRIVATE
-                -Wl,--start-group
-                ${CLANG_TOOLING_LIB}
-                ${CLANG_FRONTEND_LIB}
-                ${CLANG_DRIVER_LIB}
-                ${CLANG_SERIALIZATION_LIB}
-                ${CLANG_CODEGEN_LIB}
-                ${CLANG_REWRITEFRONTEND_LIB}
-                ${CLANG_REWRITE_LIB}
-                ${CLANG_PARSE_LIB}
-                ${CLANG_SEMA_LIB}
-                ${CLANG_ANALYSIS_LIB}
-                ${CLANG_ASTMATCHERS_LIB}
-                ${CLANG_AST_LIB}
-                ${CLANG_EDIT_LIB}
-                ${CLANG_LEX_LIB}
-                ${CLANG_BASIC_LIB}
-                ${CLANG_APINOTES_LIB}
-                ${CLANG_SUPPORT_LIB}
-                -Wl,--end-group
-                ${LLVM_SHARED_LIB}
-            )
-        else()
-            # macOS: ld64 handles circular dependencies automatically
-            target_link_libraries(ascii-instr-defer PRIVATE
-                ${CLANG_TOOLING_LIB}
-                ${CLANG_FRONTEND_LIB}
-                ${CLANG_DRIVER_LIB}
-                ${CLANG_SERIALIZATION_LIB}
-                ${CLANG_CODEGEN_LIB}
-                ${CLANG_REWRITEFRONTEND_LIB}
-                ${CLANG_REWRITE_LIB}
-                ${CLANG_PARSE_LIB}
-                ${CLANG_SEMA_LIB}
-                ${CLANG_ANALYSIS_LIB}
-                ${CLANG_ASTMATCHERS_LIB}
-                ${CLANG_AST_LIB}
-                ${CLANG_EDIT_LIB}
-                ${CLANG_LEX_LIB}
-                ${CLANG_BASIC_LIB}
-                ${CLANG_APINOTES_LIB}
-                ${CLANG_SUPPORT_LIB}
-                ${LLVM_SHARED_LIB}
-            )
-        endif()
-    else()
-        target_link_libraries(ascii-instr-defer PRIVATE
-            ${CLANG_CPP_SHARED_LIB}
-            ${LLVM_SHARED_LIB}
+    # Get LLVM library directory
+    if(LLVM_CONFIG_EXECUTABLE AND EXISTS "${LLVM_CONFIG_EXECUTABLE}")
+        execute_process(
+            COMMAND "${LLVM_CONFIG_EXECUTABLE}" --libdir
+            OUTPUT_VARIABLE LLVM_LIBDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
         )
     endif()
 
-    # Add ncurses/tinfo which LLVM needs
+    # Add LLVM library directory
+    if(LLVM_LIBDIR)
+        target_link_directories(ascii-instr-defer PRIVATE ${LLVM_LIBDIR})
+    endif()
+
+    # Find all required Clang static libraries
+    # NOTE: On macOS, find_library may prefer .dylib over .a - we explicitly search for static libraries
+    # by looking for .a extension directly
+    find_library(CLANG_TOOLING_LIB NAMES clangTooling.a clangTooling PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_FRONTEND_LIB NAMES clangFrontend.a clangFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_DRIVER_LIB NAMES clangDriver.a clangDriver PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_SEMA_LIB NAMES clangSema.a clangSema PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_CODEGEN_LIB NAMES clangCodeGen.a clangCodeGen PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_PARSE_LIB NAMES clangParse.a clangParse PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_AST_LIB NAMES clangAST.a clangAST PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_BASIC_LIB NAMES clangBasic.a clangBasic PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_LEX_LIB NAMES clangLex.a clangLex PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_REWRITE_LIB NAMES clangRewrite.a clangRewrite PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_REWRITEFRONTEND_LIB NAMES clangRewriteFrontend.a clangRewriteFrontend PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_SERIALIZATION_LIB NAMES clangSerialization.a clangSerialization PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_EDIT_LIB NAMES clangEdit.a clangEdit PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_ANALYSIS_LIB NAMES clangAnalysis.a clangAnalysis PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_ANALYSIS_LIFETIME_SAFETY_LIB NAMES clangAnalysisLifetimeSafety.a clangAnalysisLifetimeSafety PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_ASTMATCHERS_LIB NAMES clangASTMatchers.a clangASTMatchers PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_APINOTES_LIB NAMES clangAPINotes.a clangAPINotes PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_SUPPORT_LIB NAMES clangSupport.a clangSupport PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_DAEMON_LIB NAMES clangDaemon.a clangDaemon PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_DAEMON_TWEAKS_LIB NAMES clangDaemonTweaks.a clangDaemonTweaks PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_OPTIONS_LIB NAMES clangOptions.a clangOptions PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(CLANG_TOOLING_CORE_LIB NAMES clangToolingCore.a clangToolingCore PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+
+    if(NOT CLANG_TOOLING_LIB)
+        message(FATAL_ERROR "Could not find Clang libraries. Please install clang-dev or llvm-dev package.")
+    endif()
+
+    # Use linker group to handle complex interdependencies between Clang static libraries
+    # This is necessary because libraries like clangAnalysis depend on clangASTMatchers,
+    # clangParse depends on clangSema, and clangAPINotes depends on clangFrontend
+    # The group allows the linker to iterate until all symbols are resolved
+    # Note: We embed --start-group/--end-group directly in target_link_libraries
+    # because target_link_options places flags before libraries, not around them
+    if(NOT APPLE)
+        # Linux: Use linker group to handle circular dependencies between Clang and LLVM libraries
+        target_link_libraries(ascii-instr-defer PRIVATE
+            -Wl,--start-group
+            ${CLANG_TOOLING_LIB}
+            ${CLANG_TOOLING_CORE_LIB}
+            ${CLANG_FRONTEND_LIB}
+            ${CLANG_DRIVER_LIB}
+            ${CLANG_SERIALIZATION_LIB}
+            ${CLANG_CODEGEN_LIB}
+            ${CLANG_REWRITEFRONTEND_LIB}
+            ${CLANG_REWRITE_LIB}
+            ${CLANG_PARSE_LIB}
+            ${CLANG_SEMA_LIB}
+            ${CLANG_ANALYSIS_LIB}
+            ${CLANG_ANALYSIS_LIFETIME_SAFETY_LIB}
+            ${CLANG_ASTMATCHERS_LIB}
+            ${CLANG_AST_LIB}
+            ${CLANG_EDIT_LIB}
+            ${CLANG_LEX_LIB}
+            ${CLANG_BASIC_LIB}
+            ${CLANG_OPTIONS_LIB}
+            ${CLANG_APINOTES_LIB}
+            ${CLANG_SUPPORT_LIB}
+            ${CLANG_DAEMON_LIB}
+            ${CLANG_DAEMON_TWEAKS_LIB}
+            ${LLVM_LIBS_FLAGS}
+            -Wl,--end-group
+        )
+    else()
+        # macOS: ld64 handles circular dependencies automatically
+        # Link Clang libraries + LLVM libraries by name (will be found via target_link_directories)
+        target_link_libraries(ascii-instr-defer PRIVATE
+            ${CLANG_TOOLING_LIB}
+            ${CLANG_TOOLING_CORE_LIB}
+            ${CLANG_FRONTEND_LIB}
+            ${CLANG_DRIVER_LIB}
+            ${CLANG_SERIALIZATION_LIB}
+            ${CLANG_CODEGEN_LIB}
+            ${CLANG_REWRITEFRONTEND_LIB}
+            ${CLANG_REWRITE_LIB}
+            ${CLANG_PARSE_LIB}
+            ${CLANG_SEMA_LIB}
+            ${CLANG_ANALYSIS_LIB}
+            ${CLANG_ANALYSIS_LIFETIME_SAFETY_LIB}
+            ${CLANG_ASTMATCHERS_LIB}
+            ${CLANG_AST_LIB}
+            ${CLANG_EDIT_LIB}
+            ${CLANG_LEX_LIB}
+            ${CLANG_BASIC_LIB}
+            ${CLANG_OPTIONS_LIB}
+            ${CLANG_APINOTES_LIB}
+            ${CLANG_SUPPORT_LIB}
+            ${CLANG_DAEMON_LIB}
+            ${CLANG_DAEMON_TWEAKS_LIB}
+            ${LLVM_LIBS_FLAGS}
+        )
+    endif()
+
+    # Find and link required system libraries
     find_library(TINFO_LIBRARY NAMES tinfo ncurses)
     if(TINFO_LIBRARY)
         target_link_libraries(ascii-instr-defer PRIVATE ${TINFO_LIBRARY})
+    endif()
+
+    # Find zlib (required by LLVM for compression functions: compress2, uncompress, crc32)
+    find_package(ZLIB QUIET)
+    if(ZLIB_FOUND)
+        target_link_libraries(ascii-instr-defer PRIVATE ZLIB::ZLIB)
+    else()
+        # Fallback: try to find zlib directly
+        find_library(ZLIB_LIBRARY NAMES z zlib)
+        if(ZLIB_LIBRARY)
+            target_link_libraries(ascii-instr-defer PRIVATE ${ZLIB_LIBRARY})
+        endif()
+    endif()
+
+    # Find zstd library (required by LLVM compression)
+    find_package(zstd QUIET)
+    if(zstd_FOUND)
+        target_link_libraries(ascii-instr-defer PRIVATE zstd::libzstd)
+    else()
+        # Fallback: try to find zstd library directly
+        find_library(ZSTD_LIBRARY NAMES zstd)
+        if(ZSTD_LIBRARY)
+            target_link_libraries(ascii-instr-defer PRIVATE ${ZSTD_LIBRARY})
+        endif()
     endif()
 
     # Add standard library support (needed when overriding musl flags)

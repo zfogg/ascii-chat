@@ -141,6 +141,15 @@ static void rotate_log_if_needed_unlocked(void) {
 
     /* Seek to position where we want to start keeping data (keep last 2MB) */
     size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
+    // BUGFIX: Check for underflow before subtraction (size_t is unsigned)
+    if (g_log.current_size < keep_size) {
+      platform_close(read_file);
+      /* Fall back to truncation since we don't have enough data to rotate */
+      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+      g_log.file = fd;
+      g_log.current_size = 0;
+      return;
+    }
     if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
       platform_close(read_file);
       /* Fall back to truncation */

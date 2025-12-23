@@ -74,6 +74,7 @@ asciichat_error_t platform_init(void) {
   // With timeBeginPeriod(1), Sleep(1) sleeps 1-2ms which is acceptable for 144 FPS capture
   timeBeginPeriod(1);
 
+  // Initialize username cache (only need to call once)
   get_username_env();
 
   // Install crash handlers for automatic backtrace on crashes

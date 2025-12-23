@@ -71,6 +71,11 @@ image_t *image_new(size_t width, size_t height) {
 
   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
   p->pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_t *);
+  if (!p->pixels) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate image pixels: %zu bytes", pixels_size);
+    SAFE_FREE(p);
+    return NULL;
+  }
 
   p->w = (int)width;
   p->h = (int)height;
@@ -149,6 +154,10 @@ void image_clear(image_t *p) {
 }
 
 inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
+  // BUGFIX: Add bounds checking to prevent buffer overflow on invalid coordinates
+  if (!p || !p->pixels || x < 0 || x >= p->w || y < 0 || y >= p->h) {
+    return NULL;
+  }
   return &p->pixels[x + y * p->w];
 }
 

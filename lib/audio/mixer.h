@@ -615,9 +615,10 @@ float compressor_process_sample(compressor_t *comp, float sidechain);
  *
  * @warning Must be paired with ducking_free() to prevent memory leaks.
  *
+ * @return ASCIICHAT_OK on success, error code on failure
  * @ingroup audio
  */
-void ducking_init(ducking_t *duck, int num_sources, float sample_rate);
+asciichat_error_t ducking_init(ducking_t *duck, int num_sources, float sample_rate);
 
 /**
  * @brief Free ducking system resources
