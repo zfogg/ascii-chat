@@ -361,7 +361,8 @@ void *client_video_render_thread(void *arg) {
   }
 
   // Take snapshot of client ID and socket at start to avoid race conditions
-  uint32_t thread_client_id = client->client_id;
+  // CRITICAL: Use atomic_load for client_id to prevent data races
+  uint32_t thread_client_id = atomic_load(&client->client_id);
   socket_t thread_socket = client->socket;
 
   log_debug("Video render thread: client_id=%u", thread_client_id);
@@ -378,15 +379,15 @@ void *client_video_render_thread(void *arg) {
   int desired_fps = has_caps ? client->terminal_caps.desired_fps : 0;
   if (has_caps && desired_fps > 0) {
     client_fps = desired_fps;
-    log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+    log_debug("Client %u requested FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
               desired_fps);
   } else {
-    log_debug("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", client->client_id, client_fps, has_caps,
+    log_debug("Client %u using default FPS: %d (has_caps=%d, desired_fps=%d)", thread_client_id, client_fps, has_caps,
               desired_fps);
   }
 
   int base_frame_interval_ms = 1000 / client_fps;
-  log_debug("Client %u render interval: %dms (%d FPS)", client->client_id, base_frame_interval_ms, client_fps);
+  log_debug("Client %u render interval: %dms (%d FPS)", thread_client_id, base_frame_interval_ms, client_fps);
   struct timespec last_render_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &last_render_time);
 
@@ -462,10 +463,10 @@ void *client_video_render_thread(void *arg) {
     }
 
     // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
-    // client_id: Set once at initialization, never changes
+    // client_id: atomic_uint - use atomic_load for thread safety
     // width/height: atomic_ushort - use atomic_load
     // active: atomic_bool - use atomic_load
-    uint32_t client_id_snapshot = client->client_id;               // Stable after init
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read
     unsigned short width_snapshot = atomic_load(&client->width);   // Atomic read
     unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
     bool active_snapshot = atomic_load(&client->active);           // Atomic read
@@ -747,7 +748,8 @@ void *client_audio_render_thread(void *arg) {
   }
 
   // Take snapshot of client ID and display name at start to avoid race conditions
-  uint32_t thread_client_id = client->client_id;
+  // CRITICAL: Use atomic_load for client_id to prevent data races
+  uint32_t thread_client_id = atomic_load(&client->client_id);
   char thread_display_name[64];
 
   // LOCK OPTIMIZATION: Only need client_state_mutex, not global rwlock
@@ -821,10 +823,10 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // CRITICAL OPTIMIZATION: No mutex needed - all fields are atomic or stable!
-    // client_id: Set once at initialization, never changes
+    // client_id: atomic_uint - use atomic_load for thread safety
     // active: atomic_bool - use atomic_load
     // audio_queue: Assigned once at init and never changes
-    uint32_t client_id_snapshot = client->client_id;            // Stable after init
+    uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read
     bool active_snapshot = atomic_load(&client->active);        // Atomic read
     packet_queue_t *audio_queue_snapshot = client->audio_queue; // Stable after init
 
