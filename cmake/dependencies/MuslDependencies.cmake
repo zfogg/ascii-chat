@@ -360,7 +360,7 @@ if(NOT EXISTS "${SPEEXDSP_PREFIX}/lib/libspeexdsp.a")
         STAMP_DIR ${SPEEXDSP_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        PATCH_COMMAND bash -c "cd <SOURCE_DIR> && ls -la && for dir in xiph-speexdsp-*; do if [ -d \"\\$dir\" ]; then mv \"\\$dir\"/* .; rmdir \"\\$dir\"; fi; done"
+        PATCH_COMMAND bash -c "cd '<SOURCE_DIR>' && for d in xiph-speexdsp-*; do [ -d \"$d\" ] && (mv \"$d\"/* . 2>/dev/null; rmdir \"$d\") || true; done && ls -la"
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${SPEEXDSP_PREFIX} --enable-static --disable-shared
         BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install

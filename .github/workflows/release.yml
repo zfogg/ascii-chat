@@ -532,8 +532,8 @@ jobs:
         uses: ./.github/actions/install-deps
         with:
           os: windows
-          vcpkg-packages: "zstd portaudio libsodium opus"
-          vcpkg-static-packages: "zstd portaudio libsodium opus mimalloc"
+          vcpkg-packages: "zstd portaudio libsodium opus speexdsp"
+          vcpkg-static-packages: "zstd portaudio libsodium opus speexdsp mimalloc"
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install WiX toolset
