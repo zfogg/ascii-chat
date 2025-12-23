@@ -785,14 +785,25 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // CRITICAL: Verify all threads have actually exited before resetting client_id
   // Threads that are still starting (at RtlUserThreadStart) haven't checked client_id yet
   // We must ensure threads are fully joined before zeroing the client struct
-  // Check if any threads are still running - if so, wait a bit longer
-  if (ascii_thread_is_initialized(&target_client->send_thread) ||
-      ascii_thread_is_initialized(&target_client->receive_thread) ||
-      ascii_thread_is_initialized(&target_client->video_render_thread) ||
-      ascii_thread_is_initialized(&target_client->audio_render_thread)) {
-    log_warn("Client %u: Some threads still appear initialized, waiting longer before cleanup", client_id);
-    // Wait longer for threads that might still be starting
-    platform_sleep_usec(10000); // 10ms delay
+  // Use exponential backoff for thread termination verification
+  int retry_count = 0;
+  const int max_retries = 5;
+  while (retry_count < max_retries &&
+         (ascii_thread_is_initialized(&target_client->send_thread) ||
+          ascii_thread_is_initialized(&target_client->receive_thread) ||
+          ascii_thread_is_initialized(&target_client->video_render_thread) ||
+          ascii_thread_is_initialized(&target_client->audio_render_thread))) {
+    // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
+    uint32_t delay_ms = 10 * (1 << retry_count);
+    log_warn("Client %u: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,
+             retry_count + 1, max_retries, delay_ms);
+    platform_sleep_usec(delay_ms * 1000);
+    retry_count++;
+  }
+
+  if (retry_count == max_retries) {
+    log_error("Client %u: Threads did not terminate after %d retries, proceeding with cleanup anyway", client_id,
+              max_retries);
   }
 
   // Only reset client_id to 0 AFTER confirming threads are joined
@@ -802,9 +813,9 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // If we destroy the mutex first, threads might try to access a destroyed mutex
   atomic_store(&target_client->client_id, 0);
 
-  // Small delay to ensure all threads have seen the client_id reset
-  // This prevents race conditions where threads might access mutexes after they're destroyed
-  platform_sleep_usec(1000); // 1ms delay
+  // Wait for threads to observe the client_id reset
+  // Use sufficient delay for memory visibility across all CPU cores
+  platform_sleep_usec(5000); // 5ms delay for memory barrier propagation
 
   // Destroy mutexes
   // IMPORTANT: Always destroy these even if threads didn't join properly
@@ -938,9 +949,10 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // LOCK OPTIMIZATION: Socket is set once at initialization and only invalidated during shutdown
-    // No mutex needed for read during normal operation
+    // Socket access needs mutex protection to prevent race with remove_client()
+    mutex_lock(&client->client_state_mutex);
     socket_t socket = client->socket;
+    mutex_unlock(&client->client_state_mutex);
 
     if (socket == INVALID_SOCKET_VALUE) {
       log_warn("SOCKET_DEBUG: socket is INVALID, client may be disconnecting");
