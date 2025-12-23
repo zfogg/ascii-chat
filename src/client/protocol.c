@@ -1000,8 +1000,6 @@ static void *data_reception_thread_func(void *arg) {
 
     // Session rekeying packets
     case PACKET_TYPE_CRYPTO_REKEY_REQUEST: {
-      log_debug("Received REKEY_REQUEST from server");
-
       // Process the server's rekey request
       asciichat_error_t crypto_result = crypto_client_process_rekey_request(data, len);
       if (crypto_result != ASCIICHAT_OK) {
@@ -1013,15 +1011,11 @@ static void *data_reception_thread_func(void *arg) {
       crypto_result = crypto_client_send_rekey_response();
       if (crypto_result != ASCIICHAT_OK) {
         log_error("Failed to send REKEY_RESPONSE: %d", crypto_result);
-      } else {
-        log_debug("Sent REKEY_RESPONSE to server");
       }
       break;
     }
 
     case PACKET_TYPE_CRYPTO_REKEY_RESPONSE: {
-      log_debug("Received REKEY_RESPONSE from server");
-
       // Process server's response
       asciichat_error_t crypto_result = crypto_client_process_rekey_response(data, len);
       if (crypto_result != ASCIICHAT_OK) {
@@ -1033,8 +1027,6 @@ static void *data_reception_thread_func(void *arg) {
       crypto_result = crypto_client_send_rekey_complete();
       if (crypto_result != ASCIICHAT_OK) {
         log_error("Failed to send REKEY_COMPLETE: %d", crypto_result);
-      } else {
-        log_debug("Session rekeying completed successfully");
       }
       break;
     }
