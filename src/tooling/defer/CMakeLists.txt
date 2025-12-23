@@ -396,6 +396,20 @@ else()
         endif()
     endif()
 
+    # Find zstd library (required by LLVM for compression support)
+    find_package(zstd QUIET)
+    if(zstd_FOUND AND TARGET zstd::libzstd)
+        target_link_libraries(ascii-instr-defer PRIVATE zstd::libzstd)
+    else()
+        # Fallback: try to find zstd library directly
+        find_library(ZSTD_LIBRARY NAMES zstd QUIET)
+        if(ZSTD_LIBRARY)
+            target_link_libraries(ascii-instr-defer PRIVATE ${ZSTD_LIBRARY})
+        else()
+            message(STATUS "zstd library not found - LLVM compression may not work, but linking will attempt to proceed")
+        endif()
+    endif()
+
     # Add standard library support (needed when overriding musl flags)
     # Only on Linux - macOS uses libc++ which is linked via -stdlib=libc++
     if(NOT APPLE)
