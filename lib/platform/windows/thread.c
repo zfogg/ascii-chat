@@ -393,13 +393,6 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     return 1;
   }
 
-  // Check if function pointer is valid
-  if (!wrapper->posix_func) {
-    log_error("THREAD_WRAPPER: NULL function pointer!");
-    SAFE_FREE(wrapper);
-    return 1;
-  }
-
   void *result = NULL;
 
   __try {
@@ -721,7 +714,12 @@ void ascii_thread_exit(void *retval) {
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_detach(asciithread_t *thread) {
+  if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
+    SET_ERRNO(ERROR_THREAD, "Invalid thread handle for detach operation");
+    return -1;
+  }
   CloseHandle((*thread));
+  *thread = NULL; // Clear the handle to prevent reuse
   return 0;
 }
 

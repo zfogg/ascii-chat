@@ -496,11 +496,13 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
         h_padding = 0;
 
       // Copy line to result with padding
-      int dst_pos = dst_row * (width + 1) + h_padding;
+      // Use size_t for position calculation to prevent integer underflow
+      size_t row_offset = (size_t)dst_row * (size_t)(width + 1);
+      size_t dst_pos = row_offset + (size_t)h_padding;
       int copy_len = (line_len > width - h_padding) ? width - h_padding : line_len;
 
-      if (copy_len > 0 && (size_t)dst_pos + (size_t)copy_len < target_size) {
-        SAFE_MEMCPY(&result[dst_pos], target_size - (size_t)dst_pos, &src_data[line_start], (size_t)copy_len);
+      if (copy_len > 0 && dst_pos + (size_t)copy_len < target_size) {
+        SAFE_MEMCPY(&result[dst_pos], target_size - dst_pos, &src_data[line_start], (size_t)copy_len);
       }
 
       // Skip newline in source
