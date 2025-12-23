@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio opus criterion libxml2 doxygen
+  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio opus speexdsp criterion libxml2 doxygen
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -119,7 +119,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config make ccache \
       cmake ninja-build \
       musl-tools musl-dev \
-      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev \
+      libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libspeexdsp-dev \
       libcriterion-dev libffi-dev \
       libprotobuf-c-dev \
       doxygen \
@@ -266,7 +266,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       clang llvm \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
-      mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel \
+      mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel speexdsp-devel \
       jack-audio-connection-kit-devel \
       criterion-devel libffi-devel \
       protobuf-c-devel \
@@ -282,7 +282,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       lld \
       cmake ninja make \
       musl mimalloc \
-      zstd zlib libsodium portaudio opus \
+      zstd zlib libsodium portaudio opus speexdsp \
       criterion \
       protobuf-c \
       doxygen \
@@ -301,6 +301,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo >&2 "  - libsodium (library and development headers)"
     echo >&2 "  - portaudio (library and development headers)"
     echo >&2 "  - opus (library and development headers, for audio codec)"
+    echo >&2 "  - speexdsp (optional: library and development headers, for acoustic echo cancellation)"
     echo >&2 "  - criterion (testing framework, library and development headers)"
     echo >&2 "  - libffi (foreign function interface, required by criterion)"
     echo >&2 "  - * jack (library and development headers. * you might need this - on some Linux systems, the Portaudio build from the system package repos is linked to Jack but doesn't list Jack as a dependency so it won't be automatically installed and builds will fail without it)"

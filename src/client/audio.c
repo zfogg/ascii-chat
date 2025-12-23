@@ -79,6 +79,7 @@
 #include "../lib/audio.h" // lib/audio.h for PortAudio wrapper
 #include "mixer.h"        // Audio processing functions
 #include "common.h"
+#include "echo_cancel.h" // Acoustic echo cancellation
 #include "options.h"
 #include "platform/system.h" // For platform_memcpy
 #include "wav_writer.h"      // WAV file dumping for debugging
@@ -316,6 +317,19 @@ static void *audio_capture_thread_func(void *arg) {
   noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE);
   noise_gate_set_params(&noise_gate, 0.02f, 5.0f, 100.0f, 0.5f);
 
+  // Initialize Acoustic Echo Cancellation (AEC)
+  // frame_size=960 (20ms @ 48kHz), filter_length=250ms for typical room acoustics
+  static bool aec_initialized = false;
+  if (!aec_initialized) {
+    if (!echo_cancel_init(AUDIO_SAMPLE_RATE, 960, 250)) {
+      log_error("Failed to initialize Acoustic Echo Cancellation");
+    }
+    aec_initialized = true;
+  }
+
+  // Buffer for AEC-processed audio (used when AEC is active)
+  float aec_output_buffer[AUDIO_SAMPLES_PER_PACKET];
+
   // Initialize WAV dumpers only once (file handles persist)
   if (!wav_dumpers_initialized && wav_dump_enabled()) {
     g_wav_capture_raw = wav_writer_open("/tmp/audio_capture_raw.wav", AUDIO_SAMPLE_RATE, 1);
@@ -377,6 +391,15 @@ static void *audio_capture_thread_func(void *arg) {
       }
 
       // Apply audio processing chain
+
+      // 0. Acoustic Echo Cancellation (AEC) - must be first to see raw echo
+      //    Removes speaker output that leaked into the microphone
+      if (echo_cancel_is_active()) {
+        echo_cancel_capture(audio_buffer, aec_output_buffer, samples_read);
+        // Copy AEC output back to audio_buffer for further processing
+        memcpy(audio_buffer, aec_output_buffer, (size_t)samples_read * sizeof(float));
+      }
+
       // 1. Band-pass filter for voice frequencies (100Hz - 4kHz)
       //    High-pass removes rumble, low-pass removes hiss
       highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
@@ -747,6 +770,9 @@ void audio_cleanup() {
     audio_stop_capture(&g_audio_context);
     audio_destroy(&g_audio_context);
   }
+
+  // Cleanup Acoustic Echo Cancellation
+  echo_cancel_destroy();
 }
 
 /**
