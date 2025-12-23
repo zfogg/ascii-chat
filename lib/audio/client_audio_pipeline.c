@@ -13,6 +13,54 @@
 #include <speex/speex_preprocess.h>
 #include <string.h>
 
+#include "platform/abstraction.h"
+#include <fcntl.h>
+
+// Suppress stderr temporarily (SpeexDSP prints "VAD has been replaced by a hack" warning)
+static void suppress_stderr_for_vad_init(SpeexPreprocessState *preprocess) {
+  int saved_stderr = -1;
+  int devnull = -1;
+
+  // Save stderr and redirect to /dev/null
+#ifdef _WIN32
+  saved_stderr = _dup(2);
+  devnull = platform_open("NUL", O_WRONLY, 0);
+#else
+  saved_stderr = dup(2);
+  devnull = platform_open("/dev/null", O_WRONLY, 0);
+#endif
+
+  if (saved_stderr >= 0 && devnull >= 0) {
+#ifdef _WIN32
+    _dup2(devnull, 2);
+#else
+    dup2(devnull, 2);
+#endif
+  }
+
+  // Enable VAD (this prints the warning we want to suppress)
+  int vad = 1;
+  speex_preprocess_ctl(preprocess, SPEEX_PREPROCESS_SET_VAD, &vad);
+
+  // Restore stderr
+  if (saved_stderr >= 0) {
+#ifdef _WIN32
+    _dup2(saved_stderr, 2);
+    _close(saved_stderr);
+#else
+    dup2(saved_stderr, 2);
+    close(saved_stderr);
+#endif
+  }
+  if (devnull >= 0) {
+#ifdef _WIN32
+    _close(devnull);
+#else
+    close(devnull);
+#endif
+  }
+}
+
 // ============================================================================
 // Conversion Helpers
 // ============================================================================
@@ -130,9 +178,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC_LEVEL, &p->config.agc_level);
   speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC_MAX_GAIN, &p->config.agc_max_gain);
 
-  // Configure VAD
-  int vad = 1;
-  speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_VAD, &vad);
+  // Configure VAD (suppress "VAD has been replaced by a hack" warning)
+  suppress_stderr_for_vad_init(p->preprocess);
 
   // Create Speex jitter buffer
   p->jitter = jitter_buffer_init(p->frame_size);
