@@ -62,13 +62,17 @@ if(APPLE)
         -O2
         -fno-rtti
         -fexceptions
+        -fno-lto
     )
 
     # Link against Homebrew LLVM libraries with proper rpath
+    # Note: -fno-lto disables LTO to avoid bitcode compatibility issues when
+    # linking system clang's output against Homebrew LLVM libraries
     target_link_directories(ascii-instr-defer PRIVATE
         ${LLVM_LIBRARY_DIRS}
     )
     target_link_options(ascii-instr-defer PRIVATE
+        -fno-lto
         "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
     )
 else()
