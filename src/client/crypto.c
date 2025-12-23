@@ -705,14 +705,12 @@ int crypto_client_initiate_rekey(void) {
     return -1;
   }
 
-  log_debug("Initiating session rekey");
   asciichat_error_t result = crypto_handshake_rekey_request(&g_crypto_ctx, socket);
   if (result != ASCIICHAT_OK) {
     log_error("Failed to send REKEY_REQUEST: %d", result);
     return -1;
   }
 
-  log_debug("Sent REKEY_REQUEST to server");
   return 0;
 }
 

@@ -576,13 +576,6 @@ void *client_video_render_thread(void *arg) {
                                  (uint64_t)last_video_fps_report_time.tv_nsec / 1000);
 
           if (elapsed_us >= 5000000) { // 5 seconds
-            float elapsed_seconds = (float)elapsed_us / 1000000.0f;
-            float actual_fps = (float)video_frame_count / elapsed_seconds;
-
-            char duration_str[32];
-            format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
-            log_debug("SERVER VIDEO FPS: Client %u: %.1f fps (%llu frames in %s)", thread_client_id, actual_fps,
-                      video_frame_count, duration_str);
             // Reset counters for next interval
             video_frame_count = 0;
             last_video_fps_report_time = current_time;
@@ -781,10 +774,8 @@ void *client_audio_render_thread(void *arg) {
 
   // FPS tracking for audio render thread
   uint64_t audio_packet_count = 0;
-  struct timespec last_audio_fps_report_time;
   struct timespec last_audio_packet_time;
   struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_fps_report_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
   int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
@@ -1019,25 +1010,6 @@ void *client_audio_render_thread(void *arg) {
                 thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
                 (float)expected_interval_us / 1000.0f, (float)packet_interval_us / 1000.0f,
                 1000000.0f / packet_interval_us);
-          }
-
-          // Report FPS every 5 seconds
-          uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                                ((uint64_t)last_audio_fps_report_time.tv_sec * 1000000 +
-                                 (uint64_t)last_audio_fps_report_time.tv_nsec / 1000);
-
-          if (elapsed_us >= 5000000) { // 5 seconds
-            float elapsed_seconds = (float)elapsed_us / 1000000.0f;
-            float actual_fps = (float)audio_packet_count / elapsed_seconds;
-
-            char duration_str[32];
-            format_duration_s((double)elapsed_seconds, duration_str, sizeof(duration_str));
-            log_debug("SERVER AUDIO FPS: Client %u: %.1f fps (%llu packets in %s)", thread_client_id, actual_fps,
-                      audio_packet_count, duration_str);
-
-            // Reset counters for next interval
-            audio_packet_count = 0;
-            last_audio_fps_report_time = current_time;
           }
         }
       }

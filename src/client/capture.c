@@ -270,9 +270,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
   // FPS tracking for webcam capture thread
   uint64_t capture_frame_count = 0;
-  struct timespec last_capture_fps_report_time;
   struct timespec last_capture_frame_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_capture_fps_report_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_capture_frame_time);
   int expected_capture_fps = 144; // 144 fps target
 
@@ -428,24 +426,6 @@ static void *webcam_capture_thread_func(void *arg) {
                      "CLIENT CAPTURE LAG: Frame captured %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)",
                      (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
                      (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
-    }
-
-    // Report FPS every 5 seconds
-    uint64_t elapsed_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                          ((uint64_t)last_capture_fps_report_time.tv_sec * 1000000 +
-                           (uint64_t)last_capture_fps_report_time.tv_nsec / 1000);
-
-    if (elapsed_us >= 5000000) { // 5 seconds
-      double elapsed_seconds = (double)elapsed_us / 1000000.0;
-      double actual_fps = (double)capture_frame_count / elapsed_seconds;
-
-      char duration_str[32];
-      format_duration_s(elapsed_seconds, duration_str, sizeof(duration_str));
-      log_debug("CLIENT CAPTURE FPS: %.1f fps (%llu frames in %s)", actual_fps, capture_frame_count, duration_str);
-
-      // Reset counters for next interval
-      capture_frame_count = 0;
-      last_capture_fps_report_time = current_time;
     }
 
     // Update capture timing
