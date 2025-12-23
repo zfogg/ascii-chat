@@ -224,17 +224,6 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   highpass_filter_init(&p->highpass, p->config.highpass_hz, (float)p->config.sample_rate);
   lowpass_filter_init(&p->lowpass, p->config.lowpass_hz, (float)p->config.sample_rate);
 
-  // Allocate echo reference ring buffer
-  p->echo_ref_size = CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE;
-  p->echo_ref_buffer = SAFE_CALLOC((size_t)p->echo_ref_size, sizeof(int16_t), int16_t *);
-  if (!p->echo_ref_buffer) {
-    log_error("Failed to allocate echo reference buffer");
-    goto error;
-  }
-  p->echo_ref_write_pos = 0;
-  p->echo_ref_read_pos = 0;
-  p->echo_ref_available = 0;
-
   // Allocate work buffers
   p->work_i16 = SAFE_CALLOC((size_t)p->frame_size, sizeof(int16_t), int16_t *);
   p->echo_i16 = SAFE_CALLOC((size_t)p->frame_size, sizeof(int16_t), int16_t *);
@@ -287,10 +276,6 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (pipeline->decoder) {
     opus_decoder_destroy(pipeline->decoder);
     pipeline->decoder = NULL;
-  }
-
-  if (pipeline->echo_ref_buffer) {
-    SAFE_FREE(pipeline->echo_ref_buffer);
   }
 
   if (pipeline->work_i16) {
@@ -391,24 +376,14 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   // Convert input float to int16 for Speex
   float_to_int16(input, pipeline->work_i16, num_samples);
 
-  // Echo cancellation
+  // Echo cancellation using buffered API
+  // This uses speex_echo_capture which internally manages timing with proper
+  // 2-frame delay compensation to account for system audio latency
   if (pipeline->flags.echo_cancel && pipeline->echo_state) {
-    // Get echo reference from ring buffer
-    if (pipeline->echo_ref_available >= num_samples) {
-      for (int i = 0; i < num_samples; i++) {
-        pipeline->echo_i16[i] = pipeline->echo_ref_buffer[pipeline->echo_ref_read_pos];
-        pipeline->echo_ref_read_pos = (pipeline->echo_ref_read_pos + 1) % pipeline->echo_ref_size;
-        pipeline->echo_ref_available--;
-      }
-    } else {
-      // Not enough reference data - use silence
-      memset(pipeline->echo_i16, 0, (size_t)num_samples * sizeof(int16_t));
-    }
-
-    // Apply echo cancellation
     int16_t *aec_output = SAFE_MALLOC((size_t)num_samples * sizeof(int16_t), int16_t *);
     if (aec_output) {
-      speex_echo_cancellation(pipeline->echo_state, pipeline->work_i16, pipeline->echo_i16, aec_output);
+      // speex_echo_capture handles buffering and timing internally
+      speex_echo_capture(pipeline->echo_state, pipeline->work_i16, aec_output);
       memcpy(pipeline->work_i16, aec_output, (size_t)num_samples * sizeof(int16_t));
       SAFE_FREE(aec_output);
     }
@@ -615,34 +590,30 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 }
 
 // ============================================================================
-// Echo Reference
+// Echo Playback Registration (Buffered AEC)
 // ============================================================================
 
-void client_audio_pipeline_feed_echo_ref(client_audio_pipeline_t *pipeline, const float *samples, int num_samples) {
+void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeline, const float *samples,
+                                                 int num_samples) {
   if (!pipeline || !pipeline->initialized || !samples || num_samples <= 0) {
     return;
   }
 
   mutex_lock(&pipeline->mutex);
 
-  // Convert float to int16 and add to ring buffer
-  for (int i = 0; i < num_samples; i++) {
-    float s = samples[i] * 32767.0f;
-    if (s > 32767.0f)
-      s = 32767.0f;
-    if (s < -32768.0f)
-      s = -32768.0f;
-
-    pipeline->echo_ref_buffer[pipeline->echo_ref_write_pos] = (int16_t)s;
-    pipeline->echo_ref_write_pos = (pipeline->echo_ref_write_pos + 1) % pipeline->echo_ref_size;
-
-    if (pipeline->echo_ref_available < pipeline->echo_ref_size) {
-      pipeline->echo_ref_available++;
-    } else {
-      // Buffer overflow - advance read position
-      pipeline->echo_ref_read_pos = (pipeline->echo_ref_read_pos + 1) % pipeline->echo_ref_size;
-    }
+  // Only process if echo cancellation is enabled
+  if (!pipeline->flags.echo_cancel || !pipeline->echo_state) {
+    mutex_unlock(&pipeline->mutex);
+    return;
   }
+
+  // Convert float to int16 for Speex
+  int16_t play_i16[num_samples];
+  float_to_int16(samples, play_i16, num_samples);
+
+  // Register this playback data with the echo canceller
+  // speex_echo_playback buffers this internally with proper delay compensation
+  speex_echo_playback(pipeline->echo_state, play_i16);
 
   mutex_unlock(&pipeline->mutex);
 }
@@ -701,12 +672,6 @@ void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
     jitter_buffer_reset(pipeline->jitter);
     pipeline->jitter_timestamp = 0;
   }
-
-  // Clear echo reference buffer
-  memset(pipeline->echo_ref_buffer, 0, (size_t)pipeline->echo_ref_size * sizeof(int16_t));
-  pipeline->echo_ref_write_pos = 0;
-  pipeline->echo_ref_read_pos = 0;
-  pipeline->echo_ref_available = 0;
 
   // Reset filters
   highpass_filter_reset(&pipeline->highpass);

@@ -228,9 +228,10 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     audio_buffer[i] = s;
   }
 
-  // Feed echo reference to pipeline for AEC
+  // Register speaker output with AEC for proper echo cancellation
+  // speex_echo_playback buffers this with internal delay compensation
   if (g_audio_pipeline) {
-    client_audio_pipeline_feed_echo_ref(g_audio_pipeline, audio_buffer, num_samples);
+    client_audio_pipeline_process_echo_playback(g_audio_pipeline, audio_buffer, num_samples);
   }
 
   // Submit to audio playback system
