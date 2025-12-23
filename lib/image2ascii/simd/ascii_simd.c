@@ -354,7 +354,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
   // Use synthetic data for consistent cross-platform testing
   printf("Using synthetic gradient data for consistent benchmarking\n");
   srand(12345); // Consistent results across runs // NOLINT(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
-  for (int i = 0; i < pixel_count; i++) {
+  for (size_t i = 0; i < pixel_count; i++) {
     int x = i % width;
     int y = i / width;
     // Create realistic gradient pattern with some variation
@@ -377,7 +377,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  printf("Benchmarking MONO %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width,
+  printf("Benchmarking MONO %dx%d (%zu pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width,
          height, pixel_count, adaptive_iterations);
 
   // Benchmark scalar using image-based API
@@ -521,7 +521,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   printf("Using coherent gradient data for realistic color testing\n");
   // NOLINTNEXTLINE(bugprone-random-generator-seed)
   srand(12345); // For consistent gradient variation across runs
-  for (int i = 0; i < pixel_count; i++) {
+  for (size_t i = 0; i < pixel_count; i++) {
     int x = i % width;
     int y = i / width;
     // Create smooth gradients with some variation (mimics real images)
@@ -543,7 +543,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   frame->pixels = test_pixels;
 
   const char *mode_str = background_mode ? "background" : "foreground";
-  printf("Benchmarking COLOR %s %dx%d (%d pixels) x %d iterations...\n", mode_str, width, height, pixel_count,
+  printf("Benchmarking COLOR %s %dx%d (%zu pixels) x %d iterations...\n", mode_str, width, height, pixel_count,
          iterations);
 
   // Benchmark scalar color version
@@ -667,7 +667,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
     // Resize source image to test dimensions if needed
     if (source_image->w == width && source_image->h == height) {
       // Direct copy
-      for (int i = 0; i < pixel_count; i++) {
+      for (size_t i = 0; i < pixel_count; i++) {
         test_pixels[i].r = source_image->pixels[i].r;
         test_pixels[i].g = source_image->pixels[i].g;
         test_pixels[i].b = source_image->pixels[i].b;
@@ -695,7 +695,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
     // Fall back to synthetic gradient data
     printf("No source image provided, using synthetic gradient data\n");
     srand(12345); // NOLINT(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
-    for (int i = 0; i < pixel_count; i++) {
+    for (size_t i = 0; i < pixel_count; i++) {
       int x = i % width;
       int y = i / width;
       int base_r = (x * 255 / width);
@@ -714,8 +714,8 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
 
   // Calculate adaptive iterations for reliable timing
   int adaptive_iterations = calculate_adaptive_iterations(pixel_count, 10.0);
-  printf("Benchmarking %dx%d (%d pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width, height,
-         pixel_count, adaptive_iterations);
+  printf("Benchmarking %dx%d (%zu pixels) using %d adaptive iterations (ignoring passed iterations)...\n", width,
+         height, pixel_count, adaptive_iterations);
 
   // Benchmark all available SIMD variants using unified image-based API
   image_t *frame = image_new(width, height);
@@ -877,7 +877,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
     // Use provided source image - resize if needed
     if (source_image->w == width && source_image->h == height) {
       // Direct copy
-      for (int i = 0; i < pixel_count; i++) {
+      for (size_t i = 0; i < pixel_count; i++) {
         test_pixels[i].r = source_image->pixels[i].r;
         test_pixels[i].g = source_image->pixels[i].g;
         test_pixels[i].b = source_image->pixels[i].b;
@@ -915,7 +915,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
     // NOLINTNEXTLINE(bugprone-random-generator-seed)
     srand(12345); // Consistent results across runs
-    for (int i = 0; i < pixel_count; i++) {
+    for (size_t i = 0; i < pixel_count; i++) {
       int x = i % width;
       int y = i / width;
       int base_r = (x * 255) / width;

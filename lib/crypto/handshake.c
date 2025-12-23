@@ -1565,8 +1565,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       // BUGFIX: Actually verify the Ed25519 signature on the challenge nonce
       // This was missing, allowing authentication bypass
       if (ctx->client_ed25519_key_verified) {
-        if (crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce,
-                                        ctx->crypto_ctx.auth_challenge_size,
+        if (crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce, ctx->crypto_ctx.auth_challenge_size,
                                         ctx->client_ed25519_key.key) != 0) {
           if (payload) {
             buffer_pool_free(payload, payload_len);
