@@ -791,7 +791,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (create_path[0] == '\0') {
         create_path = NULL;
       }
-      (void)fprintf(stderr, "[DEBUG] options_init: Found --config-create=%s\n", create_path ? create_path : "(empty)");
       asciichat_error_t create_result = config_create_default(create_path);
       if (create_result != ASCIICHAT_OK) {
         (void)fprintf(stderr, "Failed to create config file: %s\n", asciichat_error_string(create_result));
@@ -811,8 +810,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
           create_path = argv[i + 1];
         }
       }
-      (void)fprintf(stderr, "[DEBUG] options_init: Found --config-create with path=%s\n",
-                    create_path ? create_path : "(NULL - using default location)");
       asciichat_error_t create_result = config_create_default(create_path);
       if (create_result != ASCIICHAT_OK) {
         (void)fprintf(stderr, "Failed to create config file: %s\n", asciichat_error_string(create_result));
