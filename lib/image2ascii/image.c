@@ -154,6 +154,10 @@ void image_clear(image_t *p) {
 }
 
 inline rgb_t *image_pixel(image_t *p, const int x, const int y) {
+  // BUGFIX: Add bounds checking to prevent buffer overflow on invalid coordinates
+  if (!p || !p->pixels || x < 0 || x >= p->w || y < 0 || y >= p->h) {
+    return NULL;
+  }
   return &p->pixels[x + y * p->w];
 }
 

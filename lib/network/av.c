@@ -103,6 +103,13 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
     return -1;
   }
 
+  // BUG FIX: Validate dimensions to prevent integer overflow
+  // Max reasonable dimensions: 4K (3840x2160) = ~25MB per frame
+  if (width > 4096 || height > 4096) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large: %ux%u (max 4096x4096)", width, height);
+    return -1;
+  }
+
   // Create image frame packet
   image_frame_packet_t packet;
   packet.width = width;
@@ -170,6 +177,13 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
     return -1;
   }
 
+  // BUG FIX: Validate sample count to prevent integer overflow
+  // Max samples per batch: ~1 second of 48kHz stereo = 96000 samples
+  if (num_samples > 100000) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Too many samples: %d (max 100000)", num_samples);
+    return -1;
+  }
+
   // Create audio batch packet
   audio_batch_packet_t packet;
   packet.batch_count = 1;
@@ -223,6 +237,13 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
               "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, frame_sizes=%p, sample_rate=%d, "
               "frame_duration=%d, frame_count=%d",
               (const void *)opus_data, opus_size, (const void *)frame_sizes, sample_rate, frame_duration, frame_count);
+    return -1;
+  }
+
+  // BUG FIX: Validate frame_count to prevent integer overflow in size calculations
+  // Max reasonable frames per batch: ~1 second of 10ms frames = 100 frames
+  if (frame_count > 1000) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Too many Opus frames: %d (max 1000)", frame_count);
     return -1;
   }
 

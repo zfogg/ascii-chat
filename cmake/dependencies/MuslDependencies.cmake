@@ -8,6 +8,8 @@
 #   - zstd (compression)
 #   - libsodium (crypto)
 #   - PortAudio (audio I/O)
+#   - Opus (audio codec)
+#   - speexdsp (audio DSP for echo cancellation)
 #   - BearSSL (TLS for SSH key fetching)
 #
 # All cached in ${FETCHCONTENT_BASE_DIR} to persist across build/ deletions.
@@ -319,7 +321,7 @@ if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
         STAMP_DIR ${OPUS_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc --disable-extra-programs
         BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
@@ -338,6 +340,46 @@ endif()
 set(OPUS_FOUND TRUE)
 set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
 set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+
+# =============================================================================
+# speexdsp - Audio DSP library for echo cancellation
+# =============================================================================
+message(STATUS "Configuring ${BoldBlue}speexdsp${ColorReset} from source...")
+
+set(SPEEXDSP_PREFIX "${MUSL_DEPS_DIR_STATIC}/speexdsp")
+set(SPEEXDSP_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/speexdsp-build")
+
+# Only add external project if library doesn't exist
+if(NOT EXISTS "${SPEEXDSP_PREFIX}/lib/libspeexdsp.a")
+    message(STATUS "  speexdsp library not found in cache, will build from source")
+    ExternalProject_Add(speexdsp-musl
+        URL https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz
+        URL_HASH SHA256=d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PREFIX ${SPEEXDSP_BUILD_DIR}
+        STAMP_DIR ${SPEEXDSP_BUILD_DIR}/stamps
+        UPDATE_DISCONNECTED 1
+        BUILD_ALWAYS 0
+        PATCH_COMMAND sh "${CMAKE_SOURCE_DIR}/cmake/dependencies/patch-speexdsp.sh" <SOURCE_DIR>
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${SPEEXDSP_PREFIX} --enable-static --disable-shared
+        BUILD_COMMAND env REALGCC=${REAL_GCC} make
+        INSTALL_COMMAND make install
+        BUILD_BYPRODUCTS ${SPEEXDSP_PREFIX}/lib/libspeexdsp.a
+        LOG_DOWNLOAD TRUE
+        LOG_CONFIGURE TRUE
+        LOG_BUILD TRUE
+        LOG_INSTALL TRUE
+        LOG_OUTPUT_ON_FAILURE TRUE
+    )
+else()
+    message(STATUS "  ${BoldBlue}speexdsp${ColorReset} library found in cache: ${BoldMagenta}${SPEEXDSP_PREFIX}/lib/libspeexdsp.a${ColorReset}")
+    # Create a dummy target so dependencies can reference it
+    add_custom_target(speexdsp-musl)
+endif()
+
+set(SPEEXDSP_FOUND TRUE)
+set(SPEEXDSP_LIBRARIES "${SPEEXDSP_PREFIX}/lib/libspeexdsp.a")
+set(SPEEXDSP_INCLUDE_DIRS "${SPEEXDSP_PREFIX}/include")
 
 # =============================================================================
 # libexecinfo - Backtrace support for musl
