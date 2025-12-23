@@ -104,7 +104,13 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
   }
 
   // Find the corresponding node
-  size_t index = (size_t)((buffer - pool_start) / (ptrdiff_t)pool->buffer_size);
+  // VALIDATION FIX: Verify pointer is aligned to buffer boundary before calculating index
+  ptrdiff_t offset = buffer - pool_start;
+  if (offset < 0 || (size_t)offset % pool->buffer_size != 0) {
+    log_error("Misaligned buffer pointer: offset=%td, buffer_size=%zu", offset, pool->buffer_size);
+    return false; // Pointer is not aligned to a buffer boundary (corrupted?)
+  }
+  size_t index = (size_t)offset / pool->buffer_size;
   if (index >= pool->pool_size) {
     return false;
   }

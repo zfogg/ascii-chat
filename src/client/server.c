@@ -212,12 +212,14 @@ static bool g_encryption_enabled = false;
  *
  * @ingroup client_connection
  */
-static float get_reconnect_delay(unsigned int reconnect_attempt) {
-  // Increased initial delay to allow socket cleanup
-  float delay = 0.1f + 0.2f * (reconnect_attempt - 1) * 1000 * 1000;
-  if (delay > MAX_RECONNECT_DELAY)
-    delay = (float)MAX_RECONNECT_DELAY;
-  return delay;
+static unsigned int get_reconnect_delay(unsigned int reconnect_attempt) {
+  // ARITHMETIC FIX: Use integer arithmetic for microsecond calculations
+  // Initial delay: 100,000 us (0.1 seconds)
+  // Additional delay per attempt: 200,000 us (0.2 seconds)
+  unsigned int delay_us = 100000 + (reconnect_attempt - 1) * 200000;
+  if (delay_us > MAX_RECONNECT_DELAY)
+    delay_us = MAX_RECONNECT_DELAY;
+  return delay_us;
 }
 
 /* ============================================================================
@@ -318,9 +320,9 @@ int server_connection_establish(const char *address, int port, int reconnect_att
 
   // Apply reconnection delay if this is a retry
   if (reconnect_attempt > 0) {
-    float delay = get_reconnect_delay(reconnect_attempt);
+    unsigned int delay_us = get_reconnect_delay(reconnect_attempt);
     // Reconnection attempt logged only to file
-    platform_sleep_usec((unsigned int)delay);
+    platform_sleep_usec(delay_us);
 
     // Check if user requested exit during reconnection delay
     if (should_exit()) {

@@ -145,8 +145,12 @@ static inline void static_rwlock_wrlock(static_rwlock_t *l) {
 
 static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
 #if PLATFORM_WINDOWS
+  // THREAD SAFETY FIX: Ensure both cond and mutex are initialized before use
   if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {
     cond_init(&c->cond);
+  }
+  if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
+    mutex_init(&m->mutex);
   }
 #endif
   cond_wait(&c->cond, &m->mutex);
@@ -154,8 +158,12 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
 
 static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, int timeout_ms) {
 #if PLATFORM_WINDOWS
+  // THREAD SAFETY FIX: Ensure both cond and mutex are initialized before use
   if (InterlockedCompareExchange(&c->initialized, 1, 0) == 0) {
     cond_init(&c->cond);
+  }
+  if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
+    mutex_init(&m->mutex);
   }
 #endif
   cond_timedwait(&c->cond, &m->mutex, timeout_ms);

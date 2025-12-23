@@ -26,6 +26,15 @@ int compress_data(const void *input, size_t input_size, void **output, size_t *o
 
   // Calculate maximum compressed size
   size_t compressed_size = ZSTD_compressBound(input_size);
+
+  // VALIDATION FIX: Sanity check ZSTD_compressBound result
+  // ZSTD_compressBound returns 0 for errors or very large values for huge inputs
+  if (compressed_size == 0 || compressed_size > 256 * 1024 * 1024) { // Max 256MB compressed buffer
+    SET_ERRNO(ERROR_INVALID_PARAM, "ZSTD_compressBound returned unreasonable size: %zu for input %zu", compressed_size,
+              input_size);
+    return -1;
+  }
+
   unsigned char *compressed_data = NULL;
   compressed_data = SAFE_MALLOC(compressed_size, unsigned char *);
 
