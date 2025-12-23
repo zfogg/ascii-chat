@@ -626,13 +626,12 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
     return;
   }
 
-  // Convert float to int16 for Speex
-  int16_t play_i16[num_samples];
-  float_to_int16(samples, play_i16, num_samples);
+  // Convert float to int16 for Speex (use echo_i16 buffer which is dedicated to this)
+  float_to_int16(samples, pipeline->echo_i16, num_samples);
 
   // Register this playback data with the echo canceller
   // speex_echo_playback buffers this internally with proper delay compensation
-  speex_echo_playback(pipeline->echo_state, play_i16);
+  speex_echo_playback(pipeline->echo_state, pipeline->echo_i16);
 
   static int playback_count = 0;
   playback_count++;
