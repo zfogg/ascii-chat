@@ -248,9 +248,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         ${PORTAUDIO_LIBRARIES}
         ${OPUS_LIBRARIES}
     )
+    # Speex DSP for acoustic echo cancellation
+    target_link_libraries(ascii-chat-audio ${SPEEXDSP_LIBRARIES})
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES})
+    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} ${SPEEXDSP_LIBRARIES})
 endif()
 
 # Link platform-specific audio libraries
@@ -599,6 +601,10 @@ else()
     if(BEARSSL_FOUND)
         target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
     endif()
+    # Speex DSP for acoustic echo cancellation
+    if(SPEEXDSP_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-shared PRIVATE ${SPEEXDSP_INCLUDE_DIRS})
+    endif()
 
     # Add dependency on libsodium build target if building from source
     if(DEFINED LIBSODIUM_BUILD_TARGET)
@@ -712,6 +718,8 @@ else()
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
+        # Speex DSP for acoustic echo cancellation
+        target_link_libraries(ascii-chat-shared PRIVATE ${SPEEXDSP_LIBRARIES})
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use force_load/whole-archive to export all mimalloc symbols from the shared library
         if(USE_MIMALLOC)
@@ -900,7 +908,7 @@ endif()
 target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
 
 # Audio dependencies (from ascii-chat-audio)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} ${SPEEXDSP_LIBRARIES})
 if(APPLE)
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${COREAUDIO_FRAMEWORK}

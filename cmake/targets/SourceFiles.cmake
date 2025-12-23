@@ -198,6 +198,7 @@ set(AUDIO_SRCS
     lib/mixer.c
     lib/wav_writer.c
     lib/opus_codec.c
+    lib/echo_cancel.c
 )
 
 # =============================================================================

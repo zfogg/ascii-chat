@@ -9,6 +9,7 @@
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
+#include "echo_cancel.h"
 #include "options.h"
 #include "platform/init.h" // For static_mutex_t
 #include <stdlib.h>
@@ -97,6 +98,10 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
+
+      // Feed playback audio to AEC as reference signal (what speakers are playing)
+      // This must be called for every buffer going to the speakers
+      echo_cancel_playback(output, (int)(framesPerBuffer * AUDIO_CHANNELS));
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
@@ -502,13 +507,13 @@ asciichat_error_t audio_start_capture(audio_context_t *ctx) {
 
   PaStreamParameters inputParameters;
 
-  // Use specified device or default
-  if (opt_audio_device >= 0) {
+  // Determine which microphone device to use
+  if (opt_microphone_index >= 0) {
     // User specified a device index
-    inputParameters.device = opt_audio_device;
+    inputParameters.device = opt_microphone_index;
     if (inputParameters.device >= Pa_GetDeviceCount()) {
       mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Audio device index %d out of range (max %d)", opt_audio_device,
+      return SET_ERRNO(ERROR_AUDIO, "Microphone index %d out of range (max %d)", opt_microphone_index,
                        Pa_GetDeviceCount() - 1);
     }
   } else {
@@ -523,7 +528,7 @@ asciichat_error_t audio_start_capture(audio_context_t *ctx) {
 
   const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(inputParameters.device);
   log_info("Opening audio input device %d: %s (%d channels, %.0f Hz)%s", inputParameters.device, deviceInfo->name,
-           deviceInfo->maxInputChannels, deviceInfo->defaultSampleRate, (opt_audio_device < 0) ? " [DEFAULT]" : "");
+           deviceInfo->maxInputChannels, deviceInfo->defaultSampleRate, (opt_microphone_index < 0) ? " [DEFAULT]" : "");
 
   inputParameters.channelCount = AUDIO_CHANNELS;
   inputParameters.sampleFormat = paFloat32;
@@ -591,16 +596,32 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
   }
 
   PaStreamParameters outputParameters;
-  outputParameters.device = Pa_GetDefaultOutputDevice();
+
+  // Determine which speaker device to use
+  if (opt_speakers_index >= 0) {
+    outputParameters.device = opt_speakers_index;
+    if (outputParameters.device >= Pa_GetDeviceCount()) {
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Speakers index %d out of range (max %d)", opt_speakers_index,
+                       Pa_GetDeviceCount() - 1);
+    }
+  } else {
+    outputParameters.device = Pa_GetDefaultOutputDevice();
+  }
+
   if (outputParameters.device == paNoDevice) {
     mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "No default output device available");
+    return SET_ERRNO(ERROR_AUDIO, "No output device available");
   }
+
+  const PaDeviceInfo *outputDeviceInfo = Pa_GetDeviceInfo(outputParameters.device);
+  log_info("Opening audio output device %d: %s (%d channels, %.0f Hz)%s", outputParameters.device,
+           outputDeviceInfo->name, outputDeviceInfo->maxOutputChannels, outputDeviceInfo->defaultSampleRate,
+           (opt_speakers_index < 0) ? " [DEFAULT]" : "");
 
   outputParameters.channelCount = AUDIO_CHANNELS;
   outputParameters.sampleFormat = paFloat32;
-  outputParameters.suggestedLatency =
-      Pa_GetDeviceInfo(outputParameters.device)->defaultLowOutputLatency; // Low latency for real-time
+  outputParameters.suggestedLatency = outputDeviceInfo->defaultLowOutputLatency; // Low latency for real-time
   outputParameters.hostApiSpecificStreamInfo = NULL;
 
   PaError err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParameters, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,

@@ -51,6 +51,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Portaudio.cmake)
 # Opus - Audio codec for real-time compression
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Opus.cmake)
 
+# Speex DSP - Audio DSP library for echo cancellation (optional)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Speexdsp.cmake)
+
 # BearSSL - SSL/TLS library for HTTPS key fetching
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 

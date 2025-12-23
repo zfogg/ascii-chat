@@ -198,7 +198,8 @@ Run `ascii-chat client --help` to see all client options:
 **Audio Options:**
 
 - `-A --audio`: Enable audio capture and playback
-- `--audio-device INDEX`: Audio input device index (-1 for system default)
+- `--microphone-index INDEX`: Microphone device index (-1 for system default)
+- `--speakers-index INDEX`: Speakers device index (-1 for system default)
 - `--list-microphones`: List available audio input devices and exit
 - `--list-speakers`: List available audio output devices and exit
 - `--audio-analysis`: Enable audio analysis for debugging audio quality issues
@@ -457,6 +458,11 @@ ascii-chat is built on operating system code and several libraries.
   - **Purpose**: Real-time audio compression for low-bandwidth audio transmission. Enables high-quality bidirectional voice and audio communication between clients with minimal latency and bandwidth overhead.
   - **License**: BSD
 
+- [Speex DSP](https://www.speex.org/) - Audio DSP Library (optional)
+
+  - **Purpose**: Acoustic Echo Cancellation (AEC) to prevent feedback loops when speakers and microphones are used without headphones. Enables hands-free audio chat.
+  - **License**: BSD
+
 - [Sokol](https://github.com/floooh/sokol) - Utility Library
   - **Purpose**: Header-only C library providing simple cross-platform APIs (random collection of header-only SDKs for things like timing and audio and async downloads).
   - **License**: zlib/libpng
@@ -482,7 +488,7 @@ ascii-chat uses native platform APIs for each platform for webcam access:
 **macOS**:
 
 ```bash
-brew install make cmake ninja llvm zstd portaudio opus libsodium criterion
+brew install make cmake ninja llvm zstd portaudio opus speexdsp libsodium criterion
 ```
 
 #### Install Dependencies on Windows
@@ -514,10 +520,10 @@ brew install make cmake ninja llvm zstd portaudio opus libsodium criterion
    .\bootstrap-vcpkg.bat
 
    # Install required packages for a development build
-   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows libsodium:x64-windows
+   vcpkg install zstd:x64-windows portaudio:x64-windows opus:x64-windows speexdsp:x64-windows libsodium:x64-windows
 
    # If you want to do a release build
-   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
+   vcpkg install zstd:x64-windows-static portaudio:x64-windows-static opus:x64-windows-static speexdsp:x64-windows-static libsodium:x64-windows-static mimalloc:x64-windows
    ```
 
 ‼️ **Note:** Criterion, our test framework, is POSIX based, and so tests don't work on Windows natively. You can run tests via Docker with `./tests/scripts/run-docker-tests.ps1`.
