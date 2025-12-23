@@ -33,7 +33,7 @@
 #include "common.h"
 #include "logging.h"
 #include "os/webcam.h"
-#include "audio.h"
+#include "audio/audio.h"
 #include "util/ip.h"
 #include "util/path.h"
 #include "platform/system.h"
@@ -1737,6 +1737,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       (void)fflush(stdout);
       _exit(0);
     }
+
+    case 1010: // --config (handled in pre-pass)
+    case 1011: // --config-create (handled in pre-pass)
+      break;
 
     default:
       abort();

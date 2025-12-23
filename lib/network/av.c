@@ -23,13 +23,13 @@
  */
 
 #include "av.h"
-#include "audio.h"
+#include "audio/audio.h"
 #include "network.h"
 #include "packet.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
-#include "opus_codec.h"
+#include "audio/opus_codec.h"
 #include "platform/string.h"
 #include "buffer_pool.h"
 #include "packet_types.h"

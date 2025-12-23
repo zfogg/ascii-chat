@@ -7,7 +7,7 @@
 #include "audio_analysis.h"
 #include "common.h"
 #include "logging.h"
-#include "wav_writer.h"
+#include "audio/wav_writer.h"
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
