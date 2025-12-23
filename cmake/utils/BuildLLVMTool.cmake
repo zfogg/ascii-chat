@@ -131,11 +131,11 @@ function(build_llvm_tool)
         # ------------------------------------------------------------------
         # Detect C++ Compiler
         # ------------------------------------------------------------------
-        # Prioritize Homebrew LLVM's clang++ to ensure consistency between
-        # compiler and linked libraries, and to enable LTO throughout the build.
+        # Use the C++ compiler from the detected LLVM installation (found via llvm-config)
+        # to ensure consistency between compiler and linked libraries.
         if(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
             set(_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
-            message(STATUS "${_TOOL_NAME} tool: Using clang++ from Homebrew LLVM installation: ${_cxx_compiler}")
+            message(STATUS "${_TOOL_NAME} tool: Using clang++ from detected LLVM installation: ${_cxx_compiler}")
         elseif(CMAKE_CXX_COMPILER)
             set(_cxx_compiler "${CMAKE_CXX_COMPILER}")
             message(STATUS "${_TOOL_NAME} tool: Using CMAKE_CXX_COMPILER: ${_cxx_compiler}")
