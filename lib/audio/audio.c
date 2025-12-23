@@ -336,10 +336,10 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // Save last sample for potential fade-out
-  // Note: to_read is guaranteed >= 1 here because:
-  // - samples >= 1 (checked at function entry)
-  // - available >= AUDIO_JITTER_LOW_WATER_MARK (passed underrun check)
-  rb->last_sample = data[to_read - 1];
+  // Note: only update if we actually read some data
+  if (to_read > 0) {
+    rb->last_sample = data[to_read - 1];
+  }
 
   // Fill any remaining samples with silence if we couldn't read enough
   if (to_read < samples) {
