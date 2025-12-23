@@ -150,11 +150,15 @@ void audio_analysis_track_sent_sample(float sample) {
   g_sent_mean += sample;
 
   // Detect zero crossings (waveform crossing zero) - indicates spectral content
-  static float g_sent_prev_sample = 0.0f;
-  if ((g_sent_prev_sample > 0 && sample < 0) || (g_sent_prev_sample < 0 && sample > 0)) {
+  // THREAD SAFETY FIX: Use file-scope static variable for prev sample tracking
+  // (This function is only called from the audio capture thread, but using file-scope
+  // static is clearer and avoids shadowing the existing g_sent_last_sample variable)
+  static float s_sent_prev_sample_for_zero_crossing = 0.0f;
+  if ((s_sent_prev_sample_for_zero_crossing > 0 && sample < 0) ||
+      (s_sent_prev_sample_for_zero_crossing < 0 && sample > 0)) {
     g_sent_zero_crossings++;
   }
-  g_sent_prev_sample = sample;
+  s_sent_prev_sample_for_zero_crossing = sample;
 
   // Track silence (very low level)
   if (abs_sample < 0.001f) {
@@ -243,11 +247,15 @@ void audio_analysis_track_received_sample(float sample) {
   g_received_mean += sample;
 
   // Detect zero crossings (waveform crossing zero) - indicates spectral content
-  static float g_received_prev_sample = 0.0f;
-  if ((g_received_prev_sample > 0 && sample < 0) || (g_received_prev_sample < 0 && sample > 0)) {
+  // THREAD SAFETY FIX: Use file-scope static variable for prev sample tracking
+  // (This function is called from the protocol reception thread, separate from the
+  // audio capture thread, so using distinct static variables is safe)
+  static float s_received_prev_sample_for_zero_crossing = 0.0f;
+  if ((s_received_prev_sample_for_zero_crossing > 0 && sample < 0) ||
+      (s_received_prev_sample_for_zero_crossing < 0 && sample > 0)) {
     g_received_zero_crossings++;
   }
-  g_received_prev_sample = sample;
+  s_received_prev_sample_for_zero_crossing = sample;
 
   // Track silence and low-energy audio
   if (abs_sample < 0.001f) {

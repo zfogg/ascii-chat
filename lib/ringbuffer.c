@@ -283,6 +283,20 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     }
   }
 
+  // Allocate a copy of the frame data using buffer pool for better performance
+  char *frame_copy = (char *)buffer_pool_alloc(frame_size + 1);
+  if (!frame_copy) {
+    mutex_unlock(&fb->mutex);
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
+    return false;
+  }
+
+  SAFE_MEMCPY(frame_copy, frame_size, frame_data, frame_size);
+  frame_copy[frame_size] = '\0'; // Ensure null termination
+
+  // Create a frame_t struct with the copy (store allocated size for proper cleanup)
+  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
+
   bool result = ringbuffer_write(fb->rb, &frame);
 
   mutex_unlock(&fb->mutex);
@@ -293,6 +307,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     SET_ERRNO(ERROR_INVALID_STATE, "Failed to write frame to ringbuffer even after dropping oldest");
   }
 
+  mutex_unlock(&fb->mutex);
   return result;
 }
 
@@ -306,7 +321,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
   frame->data = NULL;
   frame->size = 0;
 
-  // BUGFIX: Thread-safe access to framebuffer (was missing, causing race conditions)
+  // Thread-safe access to framebuffer (fixes TOCTOU race condition)
   mutex_lock(&fb->mutex);
 
   bool result = ringbuffer_read(fb->rb, frame);

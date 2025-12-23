@@ -199,11 +199,14 @@ asciichat_error_t check_known_host(const char *server_ip, uint16_t port, const u
         }
       }
 
-      // If both keys are zero, this is a secure no-identity connection
-      // that was previously accepted by the user
+      // If both keys are zero, this is a no-identity connection
+      // that was previously accepted by the user. Note: This provides weaker
+      // security than key-based verification since any server at this IP:port
+      // without an identity key will match.
       if (server_key_is_zero && stored_key_is_zero) {
-        log_info("SECURITY: Zero key matches known_hosts - connection verified (no-identity server)");
-        return 1; // Match found!
+        log_warn("SECURITY: Connecting to no-identity server at known IP:port. "
+                 "This provides weaker security than key-based verification.");
+        return 1; // Match found (no-identity server)
       }
 
       // Compare keys (constant-time to prevent timing attacks)

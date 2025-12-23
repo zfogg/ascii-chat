@@ -182,6 +182,9 @@ static inline void static_cond_wait(static_cond_t *c, static_mutex_t *m) {
       YieldProcessor();
     }
   }
+  if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
+    mutex_init(&m->mutex);
+  }
 #endif
   cond_wait(&c->cond, &m->mutex);
 }
@@ -197,6 +200,9 @@ static inline void static_cond_timedwait(static_cond_t *c, static_mutex_t *m, in
     while (InterlockedCompareExchange(&c->initialized, 2, 2) != 2) {
       YieldProcessor();
     }
+  }
+  if (InterlockedCompareExchange(&m->initialized, 1, 0) == 0) {
+    mutex_init(&m->mutex);
   }
 #endif
   cond_timedwait(&c->cond, &m->mutex, timeout_ms);

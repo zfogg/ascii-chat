@@ -807,7 +807,7 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   }
 
   if (!result) {
-    freeaddrinfo(result);
+    // Note: Don't call freeaddrinfo(NULL) - it's undefined behavior
     return SET_ERRNO(ERROR_NETWORK, "No address found for hostname: %s", hostname);
   }
 

@@ -83,10 +83,11 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
     return false;
   }
 
-  static volatile int ctrl_c_count = 0;
-  ctrl_c_count++;
+  // THREAD SAFETY FIX: Use atomic instead of volatile for signal handler
+  static _Atomic int ctrl_c_count = 0;
+  int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
-  if (ctrl_c_count > 1) {
+  if (count > 1) {
 #ifdef _WIN32
     TerminateProcess(GetCurrentProcess(), 1);
 #else

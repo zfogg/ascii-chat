@@ -110,8 +110,14 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     return NULL;
   }
 
+  // TYPE SAFETY FIX: Validate dimensions fit in image_t's int fields before casting
+  if (resized_width > INT_MAX || resized_height > INT_MAX) {
+    log_error("Dimensions exceed INT_MAX: width=%zd, height=%zd", resized_width, resized_height);
+    return NULL;
+  }
+
   // Always resize to target dimensions
-  image_t *resized = image_new((size_t)(int)resized_width, (size_t)(int)resized_height);
+  image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
     return NULL;
@@ -219,11 +225,17 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
+  // TYPE SAFETY FIX: Validate dimensions fit in image_t's int fields before casting
+  if (resized_width > INT_MAX || resized_height > INT_MAX) {
+    log_error("Dimensions exceed INT_MAX: width=%zd, height=%zd", resized_width, resized_height);
+    return NULL;
+  }
+
   // PROFILING: Time image allocation and resize
   struct timespec prof_alloc_start, prof_alloc_end, prof_resize_start, prof_resize_end;
   (void)clock_gettime(CLOCK_MONOTONIC, &prof_alloc_start);
 
-  image_t *resized = image_new((size_t)(int)resized_width, (size_t)(int)resized_height);
+  image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
   if (!resized) {
     log_error("Failed to allocate resized image");
     return NULL;
@@ -444,7 +456,14 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   // If only one source, center it properly to maintain aspect ratio and look good
   if (source_count == 1) {
     // Create a frame of the target size filled with spaces
-    size_t target_size = (size_t)width * (size_t)height + (size_t)height + 1; // +height for newlines, +1 for null
+    // Check for integer overflow before multiplication
+    size_t w = (size_t)width;
+    size_t h = (size_t)height;
+    if (w > SIZE_MAX / h) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "ascii_create_grid: dimensions would overflow: %dx%d", width, height);
+      return NULL;
+    }
+    size_t target_size = w * h + h + 1; // +height for newlines, +1 for null
     char *result;
     result = SAFE_MALLOC(target_size, char *);
     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
@@ -603,8 +622,14 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // Allocate mixed frame buffer
-  size_t mixed_size =
-      (size_t)width * (size_t)height + (size_t)height + 1; // +1 for null terminator, +height for newlines
+  // Check for integer overflow before multiplication
+  size_t w_sz = (size_t)width;
+  size_t h_sz = (size_t)height;
+  if (w_sz > SIZE_MAX / h_sz) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "ascii_create_grid: dimensions would overflow: %dx%d", width, height);
+    return NULL;
+  }
+  size_t mixed_size = w_sz * h_sz + h_sz + 1; // +1 for null terminator, +height for newlines
   char *mixed_frame;
   mixed_frame = SAFE_MALLOC(mixed_size, char *);
 
@@ -653,22 +678,31 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
       src_row++;
     }
 
-    // Draw separators
+    // Draw separators with bounds checking to prevent buffer overflow
     if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
       // Vertical separator
       for (int row = start_row; row < start_row + cell_height && row < height; row++) {
-        mixed_frame[row * (width + 1) + start_col + cell_width] = '|';
+        size_t idx = (size_t)row * (size_t)(width + 1) + (size_t)(start_col + cell_width);
+        if (idx < mixed_size - 1) { // -1 to preserve null terminator
+          mixed_frame[idx] = '|';
+        }
       }
     }
 
     if (grid_row < grid_rows - 1 && start_row + cell_height < height) {
       // Horizontal separator
       for (int col = start_col; col < start_col + cell_width && col < width; col++) {
-        mixed_frame[(start_row + cell_height) * (width + 1) + col] = '_';
+        size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)col;
+        if (idx < mixed_size - 1) { // -1 to preserve null terminator
+          mixed_frame[idx] = '_';
+        }
       }
       // Corner character where separators meet
       if (grid_col < grid_cols - 1 && start_col + cell_width < width) {
-        mixed_frame[(start_row + cell_height) * (width + 1) + start_col + cell_width] = '+';
+        size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)(start_col + cell_width);
+        if (idx < mixed_size - 1) { // -1 to preserve null terminator
+          mixed_frame[idx] = '+';
+        }
       }
     }
   }

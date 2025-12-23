@@ -106,21 +106,21 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   }
 
   // Calculate total allocation size (structure + pixel data in single buffer)
-  // CRITICAL: Check for integer overflow before multiplication (prevents heap corruption)
+  // Check for integer overflow before multiplication
   if (width > SIZE_MAX / height) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions overflow: %zu x %zu", width, height);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions would overflow: %zux%zu", width, height);
     return NULL;
   }
   size_t pixel_count = width * height;
 
   if (pixel_count > SIZE_MAX / sizeof(rgb_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: pixel buffer overflow: %zu pixels", pixel_count);
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: pixel count would overflow: %zu", pixel_count);
     return NULL;
   }
   size_t pixels_size = pixel_count * sizeof(rgb_t);
 
   if (pixels_size > SIZE_MAX - sizeof(image_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: total size overflow");
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: total size would overflow");
     return NULL;
   }
   size_t total_size = sizeof(image_t) + pixels_size;
@@ -149,8 +149,21 @@ void image_destroy_to_pool(image_t *image) {
     return;
   }
 
+  // Validate dimensions before calculating size (guard against corruption)
+  if (image->w <= 0 || image->h <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy_to_pool: invalid dimensions %dx%d", image->w, image->h);
+    return;
+  }
+
   // Calculate original allocation size for proper buffer pool free
-  size_t pixel_count = (size_t)image->w * (size_t)image->h;
+  // Check for overflow (defensive - should match original allocation)
+  size_t w = (size_t)image->w;
+  size_t h = (size_t)image->h;
+  if (w > SIZE_MAX / h) {
+    SET_ERRNO(ERROR_INVALID_STATE, "image_destroy_to_pool: dimensions would overflow: %dx%d", image->w, image->h);
+    return;
+  }
+  size_t pixel_count = w * h;
   size_t pixels_size = pixel_count * sizeof(rgb_t);
   size_t total_size = sizeof(image_t) + pixels_size;
 
