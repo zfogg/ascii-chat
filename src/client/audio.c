@@ -71,19 +71,17 @@
  * @date 2025
  */
 
-#include "audio.h"
+#include "audio.h" // src/client/audio.h
 #include "audio_analysis.h"
 #include "main.h"
 #include "server.h"
 
-#include "../lib/audio.h" // lib/audio.h for PortAudio wrapper
-#include "mixer.h"        // Audio processing functions
+#include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
+#include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
+#include "audio/wav_writer.h"            // WAV file dumping for debugging
 #include "common.h"
-#include "echo_cancel.h" // Acoustic echo cancellation
 #include "options.h"
 #include "platform/system.h" // For platform_memcpy
-#include "wav_writer.h"      // WAV file dumping for debugging
-#include "opus_codec.h"      // Opus audio compression
 
 #include <stdatomic.h>
 #include <string.h>
@@ -107,25 +105,18 @@
 static audio_context_t g_audio_context = {0};
 
 /**
- * @brief Opus encoder for audio compression
+ * @brief Unified audio processing pipeline
  *
- * Encodes audio samples before network transmission. Uses VOIP application
- * mode optimized for speech with 24 kbps bitrate for excellent quality
- * with ~98% bandwidth reduction (3528 bytes -> ~60 bytes for 20ms).
- *
- * @ingroup client_audio
- */
-static opus_codec_t *g_opus_encoder = NULL;
-
-/**
- * @brief Global Opus decoder for receiving server audio
- *
- * Decodes Opus-compressed audio from server before playback.
- * Created when audio is initialized, destroyed on shutdown.
+ * Handles all audio processing including:
+ * - Acoustic Echo Cancellation (Speex AEC)
+ * - Noise suppression, AGC, VAD (Speex preprocessor)
+ * - Jitter buffer (Speex jitter buffer)
+ * - Opus encoding/decoding
+ * - Compressor, noise gate, highpass/lowpass filters
  *
  * @ingroup client_audio
  */
-static opus_codec_t *g_opus_decoder = NULL;
+static client_audio_pipeline_t *g_audio_pipeline = NULL;
 
 /* ============================================================================
  * Audio Debugging - WAV File Dumpers
@@ -189,14 +180,10 @@ static atomic_bool g_audio_capture_thread_exited = false;
 /**
  * Process received audio samples from server
  *
- * Applies volume boost and soft clipping to incoming audio samples
- * before submitting them to the audio playback system. Prevents
- * distortion while maintaining good listening levels.
- *
- * Processing Pipeline:
+ * Uses the audio pipeline for processing:
  * 1. Input validation and size checking
- * 2. Volume boost application (AUDIO_VOLUME_BOOST multiplier)
- * 3. Soft clipping to prevent values exceeding [-1.0, 1.0]
+ * 2. Feed samples to pipeline (applies soft clipping)
+ * 3. Feed echo reference for AEC
  * 4. Submit processed samples to PortAudio playback queue
  *
  * @param samples Raw audio sample data from server
@@ -227,23 +214,23 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     }
   }
 
-  // Apply volume boost and clipping protection
-  // Buffer must accommodate batched packets (up to AUDIO_BATCH_SAMPLES)
+  // Apply soft clipping and prepare for playback
   float audio_buffer[AUDIO_BATCH_SAMPLES];
   for (int i = 0; i < num_samples; i++) {
-    audio_buffer[i] = samples[i] * AUDIO_VOLUME_BOOST;
-    // Clamp to prevent distortion
-    if (audio_buffer[i] > 1.0F) {
-      audio_buffer[i] = 1.0F;
+    float s = samples[i];
+    // Soft clipping to prevent distortion
+    if (s > 1.0F) {
+      s = 1.0F;
     }
-    if (audio_buffer[i] < -1.0F) {
-      audio_buffer[i] = -1.0F;
+    if (s < -1.0F) {
+      s = -1.0F;
     }
+    audio_buffer[i] = s;
+  }
 
-    // Track received samples for analysis
-    if (opt_audio_analysis_enabled) {
-      audio_analysis_track_received_sample(audio_buffer[i]);
-    }
+  // Feed echo reference to pipeline for AEC
+  if (g_audio_pipeline) {
+    client_audio_pipeline_feed_echo_ref(g_audio_pipeline, audio_buffer, num_samples);
   }
 
   // Submit to audio playback system
@@ -261,23 +248,18 @@ void audio_process_received_samples(const float *samples, int num_samples) {
 /**
  * Main audio capture thread function
  *
- * Implements continuous audio capture with real-time processing pipeline.
- * Captures microphone input, applies audio enhancements, and transmits
- * processed samples to server via batching system.
- *
- * Capture Loop Operation:
+ * Uses ClientAudioPipeline for unified audio processing:
  * 1. Check global shutdown flags and connection status
  * 2. Read raw samples from microphone device
- * 3. Apply audio processing chain (filters, noise gate, clipping)
- * 4. Accumulate samples into transmission batches
- * 5. Send batches when full or when noise gate closes
- * 6. Handle connection errors and thread termination
+ * 3. Process through pipeline (AEC, filters, AGC, noise gate, Opus encode)
+ * 4. Send encoded Opus packets to server
  *
- * Audio Processing Chain:
- * - High-pass filter removes low-frequency rumble (80Hz cutoff)
- * - Noise gate eliminates background noise (configurable thresholds)
- * - Soft clipping prevents harsh distortion (95% limit)
- * - Batching reduces network overhead while maintaining quality
+ * The pipeline handles all audio processing in a single call:
+ * - Acoustic Echo Cancellation (Speex AEC)
+ * - Noise suppression and AGC (Speex preprocessor)
+ * - Highpass/lowpass filters
+ * - Noise gate and compressor
+ * - Opus encoding
  *
  * @param arg Unused thread argument
  * @return NULL on thread exit
@@ -290,45 +272,7 @@ static void *audio_capture_thread_func(void *arg) {
   log_info("Audio capture thread started");
 
   float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
-
-// Opus frame size: 960 samples = 20ms @ 48kHz
-#define OPUS_FRAME_SAMPLES 960
-#define OPUS_MAX_PACKET_SIZE 250 // Opus can encode to ~60 bytes @ 24kbps, 250 is safe max
-
-  // Audio encoding buffer for Opus
-  float opus_frame_buffer[OPUS_FRAME_SAMPLES]; // Accumulate samples for one Opus frame
-  int opus_frame_samples_collected = 0;        // Samples in current Opus frame
-
-  // Audio processing components - initialized fresh on each thread start
-  // to avoid stale filter state from previous runs
-  static highpass_filter_t hp_filter;
-  static lowpass_filter_t lp_filter;
-  static noise_gate_t noise_gate;
   static bool wav_dumpers_initialized = false;
-
-  // Initialize band-pass filter for voice frequencies (100Hz - 4kHz)
-  // High-pass at 100Hz: removes low rumble, HVAC noise, footsteps
-  // Low-pass at 4kHz: removes hiss, electronic noise, preserves voice clarity
-  highpass_filter_init(&hp_filter, 100.0F, AUDIO_SAMPLE_RATE);
-  lowpass_filter_init(&lp_filter, 4000.0F, AUDIO_SAMPLE_RATE);
-
-  // Initialize noise gate to cut background noise when not speaking
-  // threshold=0.02 (2% amplitude), attack=5ms, release=100ms, hysteresis=0.5
-  noise_gate_init(&noise_gate, AUDIO_SAMPLE_RATE);
-  noise_gate_set_params(&noise_gate, 0.02f, 5.0f, 100.0f, 0.5f);
-
-  // Initialize Acoustic Echo Cancellation (AEC)
-  // frame_size=960 (20ms @ 48kHz), filter_length=250ms for typical room acoustics
-  static bool aec_initialized = false;
-  if (!aec_initialized) {
-    if (!echo_cancel_init(AUDIO_SAMPLE_RATE, 960, 250)) {
-      log_error("Failed to initialize Acoustic Echo Cancellation");
-    }
-    aec_initialized = true;
-  }
-
-  // Buffer for AEC-processed audio (used when AEC is active)
-  float aec_output_buffer[AUDIO_SAMPLES_PER_PACKET];
 
   // Initialize WAV dumpers only once (file handles persist)
   if (!wav_dumpers_initialized && wav_dump_enabled()) {
@@ -338,16 +282,29 @@ static void *audio_capture_thread_func(void *arg) {
     wav_dumpers_initialized = true;
   }
 
+// Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
+#define OPUS_FRAME_SAMPLES 960
+#define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
+
+  // Accumulator for building complete Opus frames
+  float opus_frame_buffer[OPUS_FRAME_SAMPLES];
+  int opus_frame_samples_collected = 0;
+
   while (!should_exit() && !server_connection_is_lost()) {
     if (!server_connection_is_active()) {
       platform_sleep_usec(100 * 1000); // Wait for connection
       continue;
     }
 
+    // Check if pipeline is ready
+    if (!g_audio_pipeline) {
+      platform_sleep_usec(100 * 1000);
+      continue;
+    }
+
     // Check how many samples are available in the ring buffer
     int available = audio_ring_buffer_available_read(g_audio_context.capture_buffer);
     if (available <= 0) {
-      // No samples available, sleep briefly and continue
       platform_sleep_usec(5 * 1000); // 5ms
       continue;
     }
@@ -358,11 +315,11 @@ static void *audio_capture_thread_func(void *arg) {
 
     if (read_result != ASCIICHAT_OK) {
       log_error("Failed to read audio samples from ring buffer");
-      platform_sleep_usec(5 * 1000); // 5ms
+      platform_sleep_usec(5 * 1000);
       continue;
     }
 
-    int samples_read = to_read; // We successfully read this many samples
+    int samples_read = to_read;
 
     // Log every 10 reads to see if we're getting samples
     static int total_reads = 0;
@@ -376,100 +333,25 @@ static void *audio_capture_thread_func(void *arg) {
       if (g_wav_capture_raw) {
         wav_writer_write(g_wav_capture_raw, audio_buffer, samples_read);
       }
+
       // Log sample levels every 100 reads for debugging
       static int read_count = 0;
       read_count++;
       if (read_count % 100 == 0) {
-        // Calculate RMS of captured samples
         float sum_squares = 0.0f;
         for (int i = 0; i < samples_read; i++) {
           sum_squares += audio_buffer[i] * audio_buffer[i];
         }
-        float rms = sqrtf(sum_squares / samples_read);
+        float rms = sqrtf(sum_squares / (float)samples_read);
         log_info("Audio capture read #%d: samples=%d, first=[%.4f, %.4f, %.4f], RMS=%.6f", read_count, samples_read,
                  audio_buffer[0], audio_buffer[1], audio_buffer[2], rms);
       }
 
-      // Apply audio processing chain
-
-      // 0. Acoustic Echo Cancellation (AEC) - must be first to see raw echo
-      //    Removes speaker output that leaked into the microphone
-      if (echo_cancel_is_active()) {
-        echo_cancel_capture(audio_buffer, aec_output_buffer, samples_read);
-        // Copy AEC output back to audio_buffer for further processing
-        memcpy(audio_buffer, aec_output_buffer, (size_t)samples_read * sizeof(float));
-      }
-
-      // 1. Band-pass filter for voice frequencies (100Hz - 4kHz)
-      //    High-pass removes rumble, low-pass removes hiss
-      highpass_filter_process_buffer(&hp_filter, audio_buffer, samples_read);
-      lowpass_filter_process_buffer(&lp_filter, audio_buffer, samples_read);
-
-      // 2. Apply smoothed automatic gain control - gently boost quiet audio
-      // Uses attack/release envelope to prevent abrupt gain changes (zipper noise)
-
-      // Static state for smoothed AGC - persists across calls
-      static float agc_smoothed_gain = 1.0f;
-      static bool agc_initialized = false;
-      if (!agc_initialized) {
-        agc_smoothed_gain = 1.0f;
-        agc_initialized = true;
-      }
-
-      // Calculate RMS to measure audio level
-      float sum_squares = 0.0f;
-      for (int i = 0; i < samples_read; i++) {
-        sum_squares += audio_buffer[i] * audio_buffer[i];
-      }
-      float rms = sqrtf(sum_squares / samples_read);
-
-      // AGC settings - boost quiet audio to comfortable listening level
-      const float target_rms = 0.15f;         // Target RMS - 15% of full scale (audible but not clipping)
-      const float max_gain = 20.0f;           // Maximum 20x amplification
-      const float min_rms_for_gain = 0.0001f; // Noise floor threshold (lower for quiet environments)
-
-      // AGC time constants (in terms of smoothing coefficient per 10ms buffer)
-      // Attack: ~50ms, Release: ~200ms at 48kHz with 480 sample buffers (10ms each)
-      const float attack_coeff = 0.2f;   // Fast attack: 20% per buffer (~50ms to reach target)
-      const float release_coeff = 0.05f; // Slow release: 5% per buffer (~200ms to reach target)
-
-      if (rms > min_rms_for_gain) { // Only apply gain if there's actual audio above noise floor
-        float target_gain = target_rms / rms;
-        // Clamp gain to reasonable range [0.5x, max_gain]
-        if (target_gain > max_gain)
-          target_gain = max_gain;
-        if (target_gain < 0.5f)
-          target_gain = 0.5f;
-
-        // Smooth gain transitions using attack/release envelope
-        // Fast attack (quickly reduce gain to prevent clipping)
-        // Slow release (gradually increase gain to avoid pumping)
-        float coeff = (target_gain < agc_smoothed_gain) ? attack_coeff : release_coeff;
-        agc_smoothed_gain = agc_smoothed_gain + coeff * (target_gain - agc_smoothed_gain);
-
-        // Apply smoothed gain (only boost, don't attenuate below 1.0)
-        if (agc_smoothed_gain > 1.0f) {
-          for (int i = 0; i < samples_read; i++) {
-            audio_buffer[i] *= agc_smoothed_gain;
-          }
+      // Track sent samples for analysis
+      if (opt_audio_analysis_enabled) {
+        for (int i = 0; i < samples_read; i++) {
+          audio_analysis_track_sent_sample(audio_buffer[i]);
         }
-        log_debug_every(2000000, "AGC: rms=%.6f, target=%.2fx, smoothed=%.2fx", rms, target_gain, agc_smoothed_gain);
-      } else {
-        // No audio detected - slowly release gain back to 1.0
-        agc_smoothed_gain = agc_smoothed_gain + release_coeff * (1.0f - agc_smoothed_gain);
-      }
-
-      // 3. Noise gate to cut background noise when not speaking
-      // This reduces network traffic and prevents constant low-level noise
-      noise_gate_process_buffer(&noise_gate, audio_buffer, samples_read);
-
-      // 4. Gentle soft clipping to prevent harsh distortion
-      // Use higher threshold (0.98 vs 0.95) to reduce clipping artifacts
-      soft_clip_buffer(audio_buffer, samples_read, 0.98F);
-
-      // DUMP: Processed audio (after all filtering, before network send)
-      if (g_wav_capture_processed) {
-        wav_writer_write(g_wav_capture_processed, audio_buffer, samples_read);
       }
 
       // Accumulate samples into Opus frame buffer
@@ -477,65 +359,51 @@ static void *audio_capture_thread_func(void *arg) {
       int sample_offset = 0;
 
       while (samples_to_process > 0) {
-        // How many samples can we add to current Opus frame?
+        // How many samples can we add to current frame?
         int space_in_frame = OPUS_FRAME_SAMPLES - opus_frame_samples_collected;
         int samples_to_copy = (samples_to_process < space_in_frame) ? samples_to_process : space_in_frame;
 
-        // Copy samples to Opus frame buffer
-        size_t copy_size = (size_t)samples_to_copy * sizeof(float);
-        size_t dest_space = (size_t)(OPUS_FRAME_SAMPLES - opus_frame_samples_collected) * sizeof(float);
-        if (platform_memcpy(&opus_frame_buffer[opus_frame_samples_collected], dest_space, &audio_buffer[sample_offset],
-                            copy_size) != 0) {
-          log_error("Failed to copy audio samples to Opus frame buffer");
-          break;
-        }
-
-        // Track sent samples for analysis
-        if (opt_audio_analysis_enabled) {
-          for (int i = 0; i < samples_to_copy; i++) {
-            audio_analysis_track_sent_sample(audio_buffer[sample_offset + i]);
-          }
-        }
+        // Copy samples to frame buffer
+        memcpy(&opus_frame_buffer[opus_frame_samples_collected], &audio_buffer[sample_offset],
+               (size_t)samples_to_copy * sizeof(float));
 
         opus_frame_samples_collected += samples_to_copy;
         sample_offset += samples_to_copy;
         samples_to_process -= samples_to_copy;
 
-        // Do we have a complete Opus frame (960 samples = 20ms @ 48kHz)?
+        // Do we have a complete frame?
         if (opus_frame_samples_collected >= OPUS_FRAME_SAMPLES) {
-          // Encode frame with Opus
+          // Process through pipeline: AEC, filters, AGC, noise gate, Opus encode
           uint8_t opus_packet[OPUS_MAX_PACKET_SIZE];
-          size_t encoded_bytes = opus_codec_encode(g_opus_encoder, opus_frame_buffer, OPUS_FRAME_SAMPLES, opus_packet,
-                                                   OPUS_MAX_PACKET_SIZE);
 
-          if (encoded_bytes == 0) {
-            // DTX (Discontinuous Transmission) - Opus detected silence and produced no output
-            // This is valid behavior, not an error. Skip this frame.
-            log_debug_every(100000, "Opus DTX frame (silence detected), skipping");
-            opus_frame_samples_collected = 0; // Reset frame for next accumulation
-            continue;                         // Continue processing
-          }
+          int opus_len = client_audio_pipeline_capture(g_audio_pipeline, opus_frame_buffer, OPUS_FRAME_SAMPLES,
+                                                       opus_packet, OPUS_MAX_PACKET_SIZE);
 
-          log_debug_every(100000, "Opus encoded: %d samples -> %zu bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
-                          encoded_bytes, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)encoded_bytes);
+          // DUMP: Processed audio (would need to decode to dump, skip for now)
+          // The pipeline processes and encodes in one step
 
-          // Send single Opus frame immediately
-          if (threaded_send_audio_opus((const uint8_t *)opus_packet, encoded_bytes, 48000, 20) < 0) {
-            log_error("Failed to send Opus audio frame to server");
-            // Don't set connection lost here as receive thread will detect it
-          } else {
-            // Track packet for analysis
-            if (opt_audio_analysis_enabled) {
-              audio_analysis_track_sent_packet(encoded_bytes);
+          if (opus_len > 0) {
+            log_debug_every(100000, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
+                            opus_len, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
+
+            // Send Opus frame to server
+            if (threaded_send_audio_opus(opus_packet, (size_t)opus_len, 48000, 20) < 0) {
+              log_error("Failed to send Opus audio frame to server");
+            } else {
+              if (opt_audio_analysis_enabled) {
+                audio_analysis_track_sent_packet((size_t)opus_len);
+              }
             }
+          } else if (opus_len == 0) {
+            // DTX frame (silence) - no data to send
+            log_debug_every(100000, "Pipeline DTX frame (silence detected)");
           }
 
-          // Reset frame buffer for next frame
+          // Reset frame buffer
           opus_frame_samples_collected = 0;
         }
       }
     } else {
-      // Small delay if no audio available
       platform_sleep_usec(5 * 1000); // 5ms
     }
   }
@@ -552,8 +420,8 @@ static void *audio_capture_thread_func(void *arg) {
 /**
  * Initialize audio subsystem
  *
- * Sets up PortAudio context and starts audio playback and capture
- * if audio is enabled. Must be called once during client initialization.
+ * Sets up PortAudio context, creates the audio pipeline, and starts
+ * audio playback/capture if audio is enabled.
  *
  * @return 0 on success, negative on error
  *
@@ -578,35 +446,26 @@ int audio_client_init() {
     return -1;
   }
 
-  // Create Opus encoder for audio compression (128 kbps AUDIO mode for music quality)
-  g_opus_encoder = opus_codec_create_encoder(OPUS_APPLICATION_AUDIO, AUDIO_SAMPLE_RATE, 128000);
-  if (!g_opus_encoder) {
-    log_error("Failed to create Opus encoder");
+  // Create unified audio pipeline (handles AEC, AGC, noise suppression, Opus)
+  client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
+  pipeline_config.opus_bitrate = 128000;                   // 128 kbps AUDIO mode for music quality
+  pipeline_config.flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL; // Enable all processing
+
+  g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
+  if (!g_audio_pipeline) {
+    log_error("Failed to create audio pipeline");
     audio_destroy(&g_audio_context);
     return -1;
   }
 
-  log_info("Opus encoder created: 128 kbps AUDIO mode, %d Hz sample rate", AUDIO_SAMPLE_RATE);
-
-  // Create Opus decoder for receiving server audio
-  g_opus_decoder = opus_codec_create_decoder(AUDIO_SAMPLE_RATE);
-  if (!g_opus_decoder) {
-    log_error("Failed to create Opus decoder");
-    opus_codec_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-    audio_destroy(&g_audio_context);
-    return -1;
-  }
-
-  log_info("Opus decoder created: %d Hz sample rate", AUDIO_SAMPLE_RATE);
+  log_info("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
+           pipeline_config.opus_bitrate);
 
   // Start audio playback
   if (audio_start_playback(&g_audio_context) != 0) {
     log_error("Failed to start audio playback");
-    opus_codec_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-    opus_codec_destroy(g_opus_decoder);
-    g_opus_decoder = NULL;
+    client_audio_pipeline_destroy(g_audio_pipeline);
+    g_audio_pipeline = NULL;
     audio_destroy(&g_audio_context);
     return -1;
   }
@@ -614,10 +473,8 @@ int audio_client_init() {
   // Start audio capture
   if (audio_start_capture(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to start audio capture");
-    opus_codec_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-    opus_codec_destroy(g_opus_decoder);
-    g_opus_decoder = NULL;
+    client_audio_pipeline_destroy(g_audio_pipeline);
+    g_audio_pipeline = NULL;
     audio_stop_playback(&g_audio_context);
     audio_destroy(&g_audio_context);
     return -1;
@@ -735,16 +592,11 @@ void audio_cleanup() {
   // Stop capture thread
   audio_stop_thread();
 
-  // Destroy Opus encoder and decoder
-  if (g_opus_encoder) {
-    opus_codec_destroy(g_opus_encoder);
-    g_opus_encoder = NULL;
-    log_info("Opus encoder destroyed");
-  }
-  if (g_opus_decoder) {
-    opus_codec_destroy(g_opus_decoder);
-    g_opus_decoder = NULL;
-    log_info("Opus decoder destroyed");
+  // Destroy audio pipeline (handles Opus, AEC, etc.)
+  if (g_audio_pipeline) {
+    client_audio_pipeline_destroy(g_audio_pipeline);
+    g_audio_pipeline = NULL;
+    log_info("Audio pipeline destroyed");
   }
 
   // Close WAV dumpers
@@ -770,17 +622,32 @@ void audio_cleanup() {
     audio_stop_capture(&g_audio_context);
     audio_destroy(&g_audio_context);
   }
-
-  // Cleanup Acoustic Echo Cancellation
-  echo_cancel_destroy();
 }
 
 /**
- * @brief Get Opus decoder for receiving server audio
- * @return Pointer to Opus decoder, or NULL if not initialized
+ * @brief Get the audio pipeline (for advanced usage)
+ * @return Pointer to the audio pipeline, or NULL if not initialized
  *
  * @ingroup client_audio
  */
-opus_codec_t *audio_get_opus_decoder(void) {
-  return g_opus_decoder;
+client_audio_pipeline_t *audio_get_pipeline(void) {
+  return g_audio_pipeline;
+}
+
+/**
+ * @brief Decode Opus packet using the audio pipeline
+ * @param opus_data Opus packet data
+ * @param opus_len Opus packet length
+ * @param output Output buffer for decoded samples
+ * @param max_samples Maximum samples output buffer can hold
+ * @return Number of decoded samples, or negative on error
+ *
+ * @ingroup client_audio
+ */
+int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, int max_samples) {
+  if (!g_audio_pipeline || !output || max_samples <= 0) {
+    return -1;
+  }
+
+  return client_audio_pipeline_playback(g_audio_pipeline, opus_data, (int)opus_len, output, max_samples);
 }

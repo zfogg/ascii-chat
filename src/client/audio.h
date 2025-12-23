@@ -13,7 +13,10 @@
 #pragma once
 
 #include <stdbool.h>
-#include "opus_codec.h"
+#include <stdint.h>
+#include <stddef.h>
+
+#include "audio/client_audio_pipeline.h"
 
 /**
  * @brief Process received audio samples from server
@@ -30,7 +33,7 @@ void audio_process_received_samples(const float *samples, int num_samples);
  *
  * @ingroup client_audio
  */
-int audio_client_init();
+int audio_client_init(void);
 
 /**
  * @brief Start audio capture thread
@@ -38,14 +41,14 @@ int audio_client_init();
  *
  * @ingroup client_audio
  */
-int audio_start_thread();
+int audio_start_thread(void);
 
 /**
  * @brief Stop audio capture thread
  *
  * @ingroup client_audio
  */
-void audio_stop_thread();
+void audio_stop_thread(void);
 
 /**
  * @brief Check if audio capture thread has exited
@@ -53,19 +56,31 @@ void audio_stop_thread();
  *
  * @ingroup client_audio
  */
-bool audio_thread_exited();
+bool audio_thread_exited(void);
 
 /**
  * @brief Cleanup audio subsystem
  *
  * @ingroup client_audio
  */
-void audio_cleanup();
+void audio_cleanup(void);
 
 /**
- * @brief Get Opus decoder for receiving server audio
- * @return Pointer to Opus decoder, or NULL if not initialized
+ * @brief Get the audio pipeline (for advanced usage)
+ * @return Pointer to the audio pipeline, or NULL if not initialized
  *
  * @ingroup client_audio
  */
-opus_codec_t *audio_get_opus_decoder(void);
+client_audio_pipeline_t *audio_get_pipeline(void);
+
+/**
+ * @brief Decode Opus packet using the audio pipeline
+ * @param opus_data Opus packet data
+ * @param opus_len Opus packet length
+ * @param output Output buffer for decoded samples
+ * @param max_samples Maximum samples output buffer can hold
+ * @return Number of decoded samples, or negative on error
+ *
+ * @ingroup client_audio
+ */
+int audio_decode_opus(const uint8_t *opus_data, size_t opus_len, float *output, int max_samples);
