@@ -1551,7 +1551,6 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
     log_info("Password authentication successful");
   } else {
     // Ed25519 signature auth (payload is signature(signature_size) + client_nonce(auth_challenge_size) bytes)
-    // Note: Ed25519 verification happens during key exchange, not here. Just extract the client nonce from the payload
     size_t expected_signature_size = ctx->crypto_ctx.signature_size + ctx->crypto_ctx.auth_challenge_size;
     size_t expected_password_size = ctx->crypto_ctx.hmac_size + ctx->crypto_ctx.auth_challenge_size;
     if (!payload) {
@@ -1559,9 +1558,29 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       return ERROR_CRYPTO;
     }
     if (payload_len == expected_signature_size) {
-      // Signature + client nonce
-      memcpy(ctx->client_challenge_nonce, payload + ctx->crypto_ctx.signature_size,
-             ctx->crypto_ctx.auth_challenge_size);
+      // Signature + client nonce - VERIFY the signature on the challenge nonce
+      const uint8_t *signature = payload;
+      const uint8_t *client_nonce = payload + ctx->crypto_ctx.signature_size;
+
+      // BUGFIX: Actually verify the Ed25519 signature on the challenge nonce
+      // This was missing, allowing authentication bypass
+      if (ctx->client_ed25519_key_verified) {
+        if (crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce,
+                                        ctx->crypto_ctx.auth_challenge_size,
+                                        ctx->client_ed25519_key.key) != 0) {
+          if (payload) {
+            buffer_pool_free(payload, payload_len);
+          }
+          auth_failure_packet_t failure = {0};
+          failure.reason_flags = AUTH_FAIL_CLIENT_KEY_REJECTED;
+          SET_ERRNO(ERROR_CRYPTO_AUTH, "Ed25519 signature verification failed on challenge nonce");
+          send_packet(client_socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &failure, sizeof(failure));
+          return ERROR_CRYPTO_AUTH;
+        }
+        log_debug("Ed25519 signature on challenge nonce verified successfully");
+      }
+
+      memcpy(ctx->client_challenge_nonce, client_nonce, ctx->crypto_ctx.auth_challenge_size);
     } else if (payload_len == expected_password_size) {
       // Just client nonce (legacy or password-only mode without password enabled)
       // Use ctx->crypto_ctx.hmac_size and ctx->crypto_ctx.auth_challenge_size (negotiated during handshake)

@@ -625,8 +625,13 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Queue initial server state to the new client
+  // THREAD SAFETY: Protect read of client_count with rwlock
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
   server_state_packet_t state;
-  state.connected_client_count = g_client_manager.client_count;
+  state.connected_client_count = connected_count;
   state.active_client_count = 0; // Will be updated by broadcast thread
   memset(state.reserved, 0, sizeof(state.reserved));
 
@@ -787,14 +792,25 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // CRITICAL: Verify all threads have actually exited before resetting client_id
   // Threads that are still starting (at RtlUserThreadStart) haven't checked client_id yet
   // We must ensure threads are fully joined before zeroing the client struct
-  // Check if any threads are still running - if so, wait a bit longer
-  if (ascii_thread_is_initialized(&target_client->send_thread) ||
-      ascii_thread_is_initialized(&target_client->receive_thread) ||
-      ascii_thread_is_initialized(&target_client->video_render_thread) ||
-      ascii_thread_is_initialized(&target_client->audio_render_thread)) {
-    log_warn("Client %u: Some threads still appear initialized, waiting longer before cleanup", client_id);
-    // Wait longer for threads that might still be starting
-    platform_sleep_usec(10000); // 10ms delay
+  // Use exponential backoff for thread termination verification
+  int retry_count = 0;
+  const int max_retries = 5;
+  while (retry_count < max_retries &&
+         (ascii_thread_is_initialized(&target_client->send_thread) ||
+          ascii_thread_is_initialized(&target_client->receive_thread) ||
+          ascii_thread_is_initialized(&target_client->video_render_thread) ||
+          ascii_thread_is_initialized(&target_client->audio_render_thread))) {
+    // Exponential backoff: 10ms, 20ms, 40ms, 80ms, 160ms
+    uint32_t delay_ms = 10 * (1 << retry_count);
+    log_warn("Client %u: Some threads still appear initialized (attempt %d/%d), waiting %ums", client_id,
+             retry_count + 1, max_retries, delay_ms);
+    platform_sleep_usec(delay_ms * 1000);
+    retry_count++;
+  }
+
+  if (retry_count == max_retries) {
+    log_error("Client %u: Threads did not terminate after %d retries, proceeding with cleanup anyway", client_id,
+              max_retries);
   }
 
   // Only reset client_id to 0 AFTER confirming threads are joined
@@ -804,9 +820,9 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // If we destroy the mutex first, threads might try to access a destroyed mutex
   atomic_store(&target_client->client_id, 0);
 
-  // Small delay to ensure all threads have seen the client_id reset
-  // This prevents race conditions where threads might access mutexes after they're destroyed
-  platform_sleep_usec(1000); // 1ms delay
+  // Wait for threads to observe the client_id reset
+  // Use sufficient delay for memory visibility across all CPU cores
+  platform_sleep_usec(5000); // 5ms delay for memory barrier propagation
 
   // Destroy mutexes
   // IMPORTANT: Always destroy these even if threads didn't join properly
@@ -940,9 +956,10 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // LOCK OPTIMIZATION: Socket is set once at initialization and only invalidated during shutdown
-    // No mutex needed for read during normal operation
+    // Socket access needs mutex protection to prevent race with remove_client()
+    mutex_lock(&client->client_state_mutex);
     socket_t socket = client->socket;
+    mutex_unlock(&client->client_state_mutex);
 
     if (socket == INVALID_SOCKET_VALUE) {
       log_warn("SOCKET_DEBUG: socket is INVALID, client may be disconnecting");
@@ -1729,22 +1746,25 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
     return -1;
   }
 
-  void *decrypted_data = buffer_pool_alloc(*len);
+  // BUGFIX: Store original allocation size before it gets modified
+  size_t original_alloc_size = *len;
+  void *decrypted_data = buffer_pool_alloc(original_alloc_size);
   size_t decrypted_len;
   int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t *)*data, *len,
-                                                    (uint8_t *)decrypted_data, *len, &decrypted_len);
+                                                    (uint8_t *)decrypted_data, original_alloc_size, &decrypted_len);
 
   if (decrypt_result != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to process encrypted packet from client %u (result=%d)", client->client_id,
               decrypt_result);
-    buffer_pool_free(*data, *len);
-    buffer_pool_free(decrypted_data, *len);
+    buffer_pool_free(*data, original_alloc_size);
+    buffer_pool_free(decrypted_data, original_alloc_size);
     *data = NULL;
     return -1;
   }
 
   // Replace encrypted data with decrypted data
-  buffer_pool_free(*data, *len);
+  // BUGFIX: Use original allocation size for freeing the encrypted buffer
+  buffer_pool_free(*data, original_alloc_size);
 
   *data = decrypted_data;
   *len = decrypted_len;

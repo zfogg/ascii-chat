@@ -393,13 +393,6 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
     return 1;
   }
 
-  // Check if function pointer is valid
-  if (!wrapper->posix_func) {
-    log_error("THREAD_WRAPPER: NULL function pointer!");
-    SAFE_FREE(wrapper);
-    return 1;
-  }
-
   void *result = NULL;
 
   __try {
@@ -657,6 +650,13 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
     *thread = NULL; // Clear the handle to prevent reuse
     return 0;
   }
+
+  // BUGFIX: Always close handle on error to prevent handle leak
+  // WaitForSingleObject failed (not WAIT_OBJECT_0), so thread is in unknown state
+  // We must still close the handle to prevent resource exhaustion
+  CloseHandle((*thread));
+  *thread = NULL;
+  SET_ERRNO(ERROR_THREAD, "WaitForSingleObject failed with result %lu", result);
   return -1;
 }
 
@@ -692,6 +692,11 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
     return -2; // Return timeout error code - thread handle remains valid
   }
 
+  // BUGFIX: For WAIT_FAILED or other unexpected errors, close the handle to prevent leak
+  // The thread is in an unknown state, but we must release the OS handle resource
+  CloseHandle((*thread));
+  *thread = NULL;
+  SET_ERRNO(ERROR_THREAD, "WaitForSingleObject failed with result %lu", result);
   return -1;
 }
 
@@ -709,7 +714,12 @@ void ascii_thread_exit(void *retval) {
  * @return 0 on success, -1 on failure
  */
 int ascii_thread_detach(asciithread_t *thread) {
+  if (!thread || (*thread) == NULL || (*thread) == INVALID_HANDLE_VALUE) {
+    SET_ERRNO(ERROR_THREAD, "Invalid thread handle for detach operation");
+    return -1;
+  }
   CloseHandle((*thread));
+  *thread = NULL; // Clear the handle to prevent reuse
   return 0;
 }
 

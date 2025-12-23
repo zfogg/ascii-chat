@@ -328,6 +328,9 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
 
   // Allocate array for key strings
   *keys_out = SAFE_MALLOC(sizeof(char *) * key_count, char **);
+  if (!*keys_out) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SSH keys array");
+  }
 
   // Parse each SSH key line
   line_start = response_text;
@@ -340,6 +343,15 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
     if (line_len > 0 && line_start[0] != '\r' && line_start[0] != '\n') {
       // Allocate space for this key line
       (*keys_out)[parsed_keys] = SAFE_MALLOC(line_len + 1, char *);
+      if (!(*keys_out)[parsed_keys]) {
+        // Cleanup previously allocated keys
+        for (size_t i = 0; i < parsed_keys; i++) {
+          SAFE_FREE((*keys_out)[i]);
+        }
+        SAFE_FREE(*keys_out);
+        *keys_out = NULL;
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SSH key string");
+      }
 
       // Copy the key line
       memcpy((*keys_out)[parsed_keys], line_start, line_len);
@@ -356,6 +368,15 @@ asciichat_error_t parse_ssh_keys_from_response(const char *response_text, size_t
     size_t line_len = (response_text + response_len) - line_start;
     if (line_len > 0) {
       (*keys_out)[parsed_keys] = SAFE_MALLOC(line_len + 1, char *);
+      if (!(*keys_out)[parsed_keys]) {
+        // Cleanup previously allocated keys
+        for (size_t i = 0; i < parsed_keys; i++) {
+          SAFE_FREE((*keys_out)[i]);
+        }
+        SAFE_FREE(*keys_out);
+        *keys_out = NULL;
+        return SET_ERRNO(ERROR_MEMORY, "Failed to allocate SSH key string");
+      }
       memcpy((*keys_out)[parsed_keys], line_start, line_len);
       (*keys_out)[parsed_keys][line_len] = '\0';
       parsed_keys++;
@@ -388,7 +409,16 @@ asciichat_error_t parse_gpg_keys_from_response(const char *response_text, size_t
 
   // Allocate space for one GPG key
   *keys_out = SAFE_MALLOC(sizeof(char *), char **);
+  if (!*keys_out) {
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG keys array");
+  }
+
   (*keys_out)[0] = SAFE_MALLOC(response_len + 1, char *);
+  if (!(*keys_out)[0]) {
+    SAFE_FREE(*keys_out);
+    *keys_out = NULL;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate GPG key string");
+  }
 
   // Copy the entire GPG key
   memcpy((*keys_out)[0], response_text, response_len);

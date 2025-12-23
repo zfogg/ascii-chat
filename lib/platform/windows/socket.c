@@ -17,27 +17,41 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-// Winsock initialization state
-static int winsock_initialized = 0;
+// Winsock initialization state - use atomic for thread safety
+// States: 0 = not initialized, 1 = initializing, 2 = initialized
+static volatile LONG winsock_initialized = 0;
 static WSADATA wsaData;
 
 // Socket implementation
 asciichat_error_t socket_init(void) {
-  if (!winsock_initialized) {
-    int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (result != 0) {
-      return SET_ERRNO(ERROR_NETWORK, "WSAStartup failed");
-    }
-    winsock_initialized = 1;
+  // Use InterlockedCompareExchange for thread-safe initialization
+  LONG prev = InterlockedCompareExchange(&winsock_initialized, 1, 0);
+  if (prev == 2) {
+    // Already initialized
+    return ASCIICHAT_OK;
   }
+  if (prev == 1) {
+    // Another thread is initializing, spin-wait for completion
+    while (InterlockedCompareExchange(&winsock_initialized, 1, 1) == 1) {
+      Sleep(1); // Yield to other threads
+    }
+    return ASCIICHAT_OK;
+  }
+
+  // We won the race, initialize Winsock
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result != 0) {
+    InterlockedExchange(&winsock_initialized, 0); // Reset on failure
+    return SET_ERRNO(ERROR_NETWORK, "WSAStartup failed with error %d", result);
+  }
+  InterlockedExchange(&winsock_initialized, 2); // Mark as initialized
 
   return ASCIICHAT_OK;
 }
 
 void socket_cleanup(void) {
-  if (winsock_initialized) {
+  if (InterlockedCompareExchange(&winsock_initialized, 0, 2) == 2) {
     WSACleanup();
-    winsock_initialized = 0;
   }
 }
 
@@ -58,10 +72,11 @@ socket_t socket_create(int domain, int type, int protocol) {
 }
 
 int socket_close(socket_t sock) {
-  if (sock != INVALID_SOCKET) {
-    return closesocket(sock);
+  if (sock == INVALID_SOCKET) {
+    SET_ERRNO(ERROR_NETWORK, "Invalid socket handle");
+    return -1;
   }
-  return -1;
+  return closesocket(sock);
 }
 
 int socket_bind(socket_t sock, const struct sockaddr *addr, socklen_t addrlen) {
