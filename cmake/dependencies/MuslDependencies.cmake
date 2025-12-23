@@ -321,7 +321,7 @@ if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
         STAMP_DIR ${OPUS_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc
+        CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${OPUS_PREFIX} --enable-static --disable-shared --disable-doc --disable-extra-programs
         BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
         BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
@@ -353,14 +353,14 @@ set(SPEEXDSP_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/speexdsp-build")
 if(NOT EXISTS "${SPEEXDSP_PREFIX}/lib/libspeexdsp.a")
     message(STATUS "  speexdsp library not found in cache, will build from source")
     ExternalProject_Add(speexdsp-musl
-        URL https://api.github.com/repos/xiph/speexdsp/tarball/SpeexDSP-1.2.1
-        URL_HASH SHA256=33dc01fb91d951ebc07d505cf83533f46b69cabafccf801cdc57a6679e257284
+        URL https://github.com/xiph/speexdsp/archive/refs/tags/SpeexDSP-1.2.1.tar.gz
+        URL_HASH SHA256=d17ca363654556a4ff1d02cc13d9eb1fc5a8642c90b40bd54ce266c3807b91a7
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${SPEEXDSP_BUILD_DIR}
         STAMP_DIR ${SPEEXDSP_BUILD_DIR}/stamps
         UPDATE_DISCONNECTED 1
         BUILD_ALWAYS 0
-        PATCH_COMMAND bash -c "cd '<SOURCE_DIR>' && for d in xiph-speexdsp-*; do [ -d \"$d\" ] && (mv \"$d\"/* . 2>/dev/null; rmdir \"$d\") || true; done && ls -la"
+        PATCH_COMMAND sh "${CMAKE_SOURCE_DIR}/cmake/dependencies/patch-speexdsp.sh" <SOURCE_DIR>
         CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC <SOURCE_DIR>/configure --prefix=${SPEEXDSP_PREFIX} --enable-static --disable-shared
         BUILD_COMMAND env REALGCC=${REAL_GCC} make
         INSTALL_COMMAND make install
