@@ -253,7 +253,8 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     if (ringbuffer_read(fb->rb, &old_frame)) {
       if (old_frame.magic == FRAME_MAGIC && old_frame.data) {
         old_frame.magic = FRAME_FREED;
-        SAFE_FREE(old_frame.data);
+        // BUG FIX: Use buffer_pool_free since data was allocated with buffer_pool_alloc
+        buffer_pool_free(old_frame.data, old_frame.size);
       } else if (old_frame.magic != FRAME_MAGIC) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
       }
