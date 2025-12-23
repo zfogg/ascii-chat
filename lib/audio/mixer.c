@@ -134,13 +134,19 @@ float compressor_process_sample(compressor_t *comp, float sidechain) {
 }
 
 // Ducking implementation
-void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
+asciichat_error_t ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
+  if (!duck) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "ducking_init: duck is NULL");
+  }
+
   // Set default parameters
   duck->threshold_dB = -40.0f;
   duck->leader_margin_dB = 3.0f;
   duck->atten_dB = -12.0f;
   duck->attack_ms = 5.0f;
   duck->release_ms = 100.0f;
+  duck->envelope = NULL;
+  duck->gain = NULL;
 
   // Calculate time constants
   float attack_tau = duck->attack_ms / 1000.0f;
@@ -151,17 +157,14 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   // Allocate arrays
   duck->envelope = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
   if (!duck->envelope) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking envelope array");
-    duck->gain = NULL;
-    return;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking envelope array");
   }
 
   duck->gain = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
   if (!duck->gain) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking gain array");
     SAFE_FREE(duck->envelope);
     duck->envelope = NULL;
-    return;
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking gain array");
   }
 
   // Initialize
@@ -169,6 +172,8 @@ void ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   for (int i = 0; i < num_sources; i++) {
     duck->gain[i] = 1.0f;
   }
+
+  return ASCIICHAT_OK;
 }
 
 void ducking_free(ducking_t *duck) {
@@ -306,8 +311,28 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->base_gain = 1.0f;   // Unity gain - prevents clipping (soft_clip handles peaks)
 
   // Initialize processing
-  ducking_init(&mixer->ducking, max_sources, (float)sample_rate);
+  if (ducking_init(&mixer->ducking, max_sources, (float)sample_rate) != ASCIICHAT_OK) {
+    rwlock_destroy(&mixer->source_lock);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
   compressor_init(&mixer->compressor, (float)sample_rate);
+
+  // Allocate mix buffer
+  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
+  if (!mixer->mix_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate mix buffer");
+    ducking_free(&mixer->ducking);
+    rwlock_destroy(&mixer->source_lock);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
 
   log_info("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
@@ -431,8 +456,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
-  // NOTE: No locks needed for audio processing - concurrent reads are safe
-  // Only source add/remove operations use write locks
+  // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
+  // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
+  rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -547,6 +573,7 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     }
   }
 
+  rwlock_rdunlock(&mixer->source_lock);
   return num_samples;
 }
 
@@ -556,8 +583,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   START_TIMER("mixer_total");
 
-  // NOTE: No locks needed for audio processing - concurrent reads are safe
-  // Only source add/remove operations use write locks
+  // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
+  // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
+  rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
   SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -577,6 +605,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
   // Fast check: any sources to process?
   if (active_mask == 0) {
+    rwlock_rdunlock(&mixer->source_lock);
     STOP_TIMER("mixer_total");
     return 0; // No active sources (excluding the specified client), output silence
   }
@@ -714,6 +743,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
     STOP_TIMER("mixer_per_sample_loop");
   }
+
+  rwlock_rdunlock(&mixer->source_lock);
 
   double total_ns = STOP_TIMER("mixer_total");
   if (total_ns > 2000000) { // > 2ms

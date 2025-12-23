@@ -325,15 +325,26 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
 
     // Every 10th access: Update heap position (requires write lock)
     if (new_access_count % 10 == 0) {
+      // TOCTOU FIX: Save the key before releasing read lock
+      uint32_t saved_key = cache->key;
+
       // Release read lock and upgrade to write lock
       rwlock_rdunlock(&g_utf8_cache_rwlock);
       rwlock_wrlock(&g_utf8_cache_rwlock);
 
-      // Update heap position (modifies heap structure)
-      uint64_t last_access = atomic_load(&cache->last_access_time);
-      uint32_t access_count = atomic_load(&cache->access_count);
-      double new_score = calculate_cache_eviction_score(last_access, access_count, cache->creation_time, current_time);
-      utf8_heap_update_score(cache, new_score);
+      // TOCTOU FIX: Re-lookup cache entry after lock upgrade
+      // Another thread could have evicted this entry while we were upgrading locks
+      utf8_palette_cache_t *cache_relookup = NULL;
+      HASH_FIND_INT(g_utf8_cache_table, &saved_key, cache_relookup);
+      if (cache_relookup) {
+        // Cache entry still exists - safe to update heap position
+        uint64_t last_access = atomic_load(&cache_relookup->last_access_time);
+        uint32_t access_count = atomic_load(&cache_relookup->access_count);
+        double new_score =
+            calculate_cache_eviction_score(last_access, access_count, cache_relookup->creation_time, current_time);
+        utf8_heap_update_score(cache_relookup, new_score);
+      }
+      // If cache_relookup is NULL, entry was evicted - skip update (not an error)
 
       rwlock_wrunlock(&g_utf8_cache_rwlock);
     } else {
