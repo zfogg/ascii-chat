@@ -1121,10 +1121,10 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
       rms += decoded_samples[i] * decoded_samples[i];
     }
     rms = sqrtf(rms / (total_decoded > 100 ? 100 : total_decoded));
-    log_info("Client %u: Opus decoded - Peak=%.6f, RMS=%.6f, First5=[%.6f,%.6f,%.6f,%.6f,%.6f]",
-             atomic_load(&client->client_id), peak, rms, total_decoded > 0 ? decoded_samples[0] : 0.0f,
-             total_decoded > 1 ? decoded_samples[1] : 0.0f, total_decoded > 2 ? decoded_samples[2] : 0.0f,
-             total_decoded > 3 ? decoded_samples[3] : 0.0f, total_decoded > 4 ? decoded_samples[4] : 0.0f);
+    log_info_every(500000, "Client %u: Opus decoded - Peak=%.6f, RMS=%.6f, First5=[%.6f,%.6f,%.6f,%.6f,%.6f]",
+                   atomic_load(&client->client_id), peak, rms, total_decoded > 0 ? decoded_samples[0] : 0.0f,
+                   total_decoded > 1 ? decoded_samples[1] : 0.0f, total_decoded > 2 ? decoded_samples[2] : 0.0f,
+                   total_decoded > 3 ? decoded_samples[3] : 0.0f, total_decoded > 4 ? decoded_samples[4] : 0.0f);
   }
 
   // Write decoded samples to client's incoming audio buffer
