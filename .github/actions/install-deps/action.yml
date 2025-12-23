@@ -343,10 +343,7 @@ runs:
       id: vcpkg-cache
       uses: actions/cache/restore@v4
       with:
-        path: |
-          ${{ env.VCPKG_ROOT }}/installed
-          ${{ env.VCPKG_ROOT }}/packages
-          ${{ env.VCPKG_ROOT }}/buildtrees
+        path: ${{ env.VCPKG_ROOT }}
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
         restore-keys: |
           ${{ runner.os }}-vcpkg-v1-
@@ -813,10 +810,7 @@ runs:
       if: always() && inputs.os == 'windows' && env.VCPKG_ROOT != '' && steps.vcpkg-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: |
-          ${{ env.VCPKG_ROOT }}/installed
-          ${{ env.VCPKG_ROOT }}/packages
-          ${{ env.VCPKG_ROOT }}/buildtrees
+        path: ${{ env.VCPKG_ROOT }}
         key: ${{ runner.os }}-vcpkg-v1-${{ inputs.vcpkg-packages }}-${{ inputs.vcpkg-static-packages }}
 
     - name: Prepare APT cache for saving (Ubuntu)
