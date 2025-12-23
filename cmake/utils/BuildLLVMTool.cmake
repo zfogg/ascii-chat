@@ -131,18 +131,14 @@ function(build_llvm_tool)
         # ------------------------------------------------------------------
         # Detect C++ Compiler
         # ------------------------------------------------------------------
-        # On macOS, use Apple's system clang because Homebrew LLVM's libc++
-        # headers are incompatible with Xcode's system SDK headers.
-        # We link against Homebrew LLVM libraries but compile with system clang.
-        if(APPLE AND EXISTS "/usr/bin/clang++")
-            set(_cxx_compiler "/usr/bin/clang++")
-            message(STATUS "${_TOOL_NAME} tool: Using Apple system clang for compilation: ${_cxx_compiler}")
-        elseif(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
+        # Prioritize Homebrew LLVM's clang++ to ensure consistency between
+        # compiler and linked libraries, and to enable LTO throughout the build.
+        if(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE)
             set(_cxx_compiler "${ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE}")
-            message(STATUS "${_TOOL_NAME} tool: Using clang++ from llvm-config installation: ${_cxx_compiler}")
+            message(STATUS "${_TOOL_NAME} tool: Using clang++ from Homebrew LLVM installation: ${_cxx_compiler}")
         elseif(CMAKE_CXX_COMPILER)
             set(_cxx_compiler "${CMAKE_CXX_COMPILER}")
-            message(WARNING "${_TOOL_NAME} tool: Using CMAKE_CXX_COMPILER which may not match llvm-config installation: ${_cxx_compiler}")
+            message(STATUS "${_TOOL_NAME} tool: Using CMAKE_CXX_COMPILER: ${_cxx_compiler}")
         else()
             message(FATAL_ERROR "Cannot find clang++ for building ${_TOOL_NAME} tool. Set CMAKE_CXX_COMPILER or ensure clang++ is in PATH.")
         endif()
