@@ -116,8 +116,9 @@ else()
         /usr/lib/llvm-16/bin
         /usr/lib/llvm-15/bin
         /usr/bin
+        /usr/sbin
     )
-    set(_BASH_SEARCH_PATHS /bin /usr/bin)
+    set(_BASH_SEARCH_PATHS /bin /usr/bin /usr/sbin)
 endif()
 
 # Export LLVM search paths for use by other modules (e.g., LLVM.cmake)

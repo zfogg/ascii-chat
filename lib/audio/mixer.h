@@ -81,6 +81,7 @@
 // Include ringbuffer.h to get the audio_ring_buffer_t type
 #include "ringbuffer.h"
 #include "platform/rwlock.h"
+#include "asciichat_errno.h"
 
 /**
  * @name Audio Mixing Configuration
@@ -618,7 +619,7 @@ float compressor_process_sample(compressor_t *comp, float sidechain);
  * @return ASCIICHAT_OK on success, error code on failure
  * @ingroup audio
  */
-asciichat_error_t ducking_init(ducking_t *duck, int num_sources, float sample_rate);
+int ducking_init(ducking_t *duck, int num_sources, float sample_rate);
 
 /**
  * @brief Free ducking system resources
