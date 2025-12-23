@@ -61,7 +61,7 @@ if [[ "$PLATFORM" == "macos" ]]; then
   fi
 
   echo "Installing dependencies via Homebrew..."
-  brew install cmake coreutils pkg-config llvm ccache make ninja mimalloc zstd libsodium portaudio opus speexdsp criterion libxml2 doxygen
+  brew install cmake coreutils pkg-config llvm ccache make autoconf automake libtool ninja mimalloc zstd libsodium portaudio opus speexdsp criterion libxml2 doxygen
 
   echo ""
   echo "Dependencies installed successfully!"
@@ -116,7 +116,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Install non-LLVM dependencies first
     sudo apt-get install -y \
-      pkg-config make ccache \
+      pkg-config make autoconf automake libtool ccache \
       cmake ninja-build \
       musl-tools musl-dev \
       libmimalloc-dev libzstd-dev zlib1g-dev libsodium-dev portaudio19-dev libopus-dev libspeexdsp-dev \
@@ -262,7 +262,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
     sudo yum install -y \
-      pkg-config make \
+      pkg-config make autoconf automake libtool \
       clang llvm \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
@@ -277,7 +277,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Detected pacman package manager"
     echo "Installing dependencies..."
     sudo pacman -S --needed \
-      pkg-config \
+      pkg-config autoconf automake libtool \
       clang llvm lldb ccache \
       lld \
       cmake ninja make \
