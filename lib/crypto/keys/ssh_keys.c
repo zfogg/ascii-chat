@@ -934,7 +934,8 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   // Verify the public key matches
   // The public key in the privkey section is raw Ed25519, while the one in pubkey section is SSH format
   // We need to compare the raw public key from privkey with the raw public key extracted from pubkey
-  if (memcmp(key_blob + offset + 32, ed25519_pubkey, 32) != 0) {
+  // BUGFIX: Use constant-time comparison for cryptographic material
+  if (sodium_memcmp(key_blob + offset + 32, ed25519_pubkey, 32) != 0) {
     SAFE_FREE(key_blob);
     SAFE_FREE(file_content);
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key public key mismatch: %s", key_path);

@@ -1093,6 +1093,17 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
       return;
     }
 
+    // SECURITY: Bounds check before writing decoded samples to prevent buffer overflow
+    // An attacker could send malicious Opus frames that decode to more samples than expected
+    if ((size_t)total_decoded + (size_t)samples_per_frame > total_samples) {
+      log_error("Client %u: Opus decode would overflow buffer (decoded=%d, frame_samples=%d, max=%zu)",
+                atomic_load(&client->client_id), total_decoded, samples_per_frame, total_samples);
+      if (used_malloc) {
+        SAFE_FREE(decoded_samples);
+      }
+      return;
+    }
+
     int decoded_count = opus_codec_decode((opus_codec_t *)client->opus_decoder, &opus_data[opus_offset], frame_size,
                                           &decoded_samples[total_decoded], samples_per_frame);
 

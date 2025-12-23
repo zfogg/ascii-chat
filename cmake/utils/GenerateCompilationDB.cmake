@@ -62,6 +62,9 @@ function(generate_compilation_database)
     endif()
 
     # Build the cmake configure command
+    # NOTE: CMAKE_EXPORT_COMPILE_COMMANDS generates compile_commands.json with absolute paths,
+    # but uses the build directory as the "directory" field. We need to fix this later
+    # to use CMAKE_SOURCE_DIR instead, so that LibTooling-based tools run from the project root.
     set(_cmake_configure_args
         "-G" "Ninja"
         "-S" "${CMAKE_SOURCE_DIR}"
@@ -82,9 +85,19 @@ function(generate_compilation_database)
         list(APPEND _cmake_configure_args "-D${_opt}=OFF")
     endforeach()
 
-    # Add clang resource directory if specified
-    if(_DB_CLANG_RESOURCE_DIR)
-        list(APPEND _cmake_configure_args "-DCMAKE_C_FLAGS=-resource-dir=${_DB_CLANG_RESOURCE_DIR}")
+    # Detect clang resource directory for compilation database
+    # Required for LibTooling tools to find clang's builtin headers (stddef.h, stdbool.h, etc.)
+    # Only pass this to the temporary cmake, not to the main build's cache
+    if(CMAKE_C_COMPILER MATCHES "clang")
+        execute_process(
+            COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
+            OUTPUT_VARIABLE _detected_resource_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(_detected_resource_dir AND EXISTS "${_detected_resource_dir}")
+            list(APPEND _cmake_configure_args "-DCLANG_RESOURCE_DIR=${_detected_resource_dir}")
+        endif()
     endif()
 
     # Convert to space-separated string for shell command
@@ -104,6 +117,8 @@ function(generate_compilation_database)
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
+            # Fix compilation database directory field: LibTooling tools need source dir context
+            COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_LIST_DIR}/FixCompilationDB.cmake
             COMMENT "${_DB_COMMENT}"
             VERBATIM
         )

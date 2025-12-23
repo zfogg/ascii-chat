@@ -869,7 +869,12 @@ crypto_result_t crypto_compute_auth_response(const crypto_context_t *ctx, const 
   // Use password_key if available, otherwise use shared_key
   const uint8_t *auth_key = ctx->has_password ? ctx->password_key : ctx->shared_key;
 
-  return crypto_compute_hmac_ex(ctx, auth_key, combined_data, 64, hmac_out);
+  crypto_result_t result = crypto_compute_hmac_ex(ctx, auth_key, combined_data, 64, hmac_out);
+
+  // Securely zero sensitive data containing shared secret
+  sodium_memzero(combined_data, sizeof(combined_data));
+
+  return result;
 }
 
 bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonce[32],
@@ -900,7 +905,12 @@ bool crypto_verify_auth_response(const crypto_context_t *ctx, const uint8_t nonc
   log_debug("Verifying auth response: has_password=%d, key_exchange_complete=%d, using_password_key=%d",
             ctx->has_password, ctx->key_exchange_complete, (auth_key == ctx->password_key));
 
-  return crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
+  bool result = crypto_verify_hmac_ex(auth_key, combined_data, 64, expected_hmac);
+
+  // Securely zero sensitive data containing shared secret
+  sodium_memzero(combined_data, sizeof(combined_data));
+
+  return result;
 }
 
 crypto_result_t crypto_create_auth_challenge(const crypto_context_t *ctx, uint8_t *packet_out, size_t packet_size,
@@ -1025,8 +1035,13 @@ asciichat_error_t crypto_compute_password_hmac(crypto_context_t *ctx, const uint
 
   // Compute HMAC using the password-derived key
   if (crypto_compute_hmac_ex(ctx, password_key, combined_data, 64, hmac_out) != 0) {
+    // Securely zero sensitive data containing shared secret even on error
+    sodium_memzero(combined_data, sizeof(combined_data));
     return SET_ERRNO(ERROR_CRYPTO, "Failed to compute password HMAC");
   }
+
+  // Securely zero sensitive data containing shared secret
+  sodium_memzero(combined_data, sizeof(combined_data));
 
   return ASCIICHAT_OK;
 }

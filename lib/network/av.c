@@ -103,6 +103,13 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
     return -1;
   }
 
+  // BUG FIX: Validate dimensions to prevent integer overflow
+  // Max reasonable dimensions: 4K (3840x2160) = ~25MB per frame
+  if (width > 4096 || height > 4096) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large: %ux%u (max 4096x4096)", width, height);
+    return -1;
+  }
+
   // Create image frame packet
   image_frame_packet_t packet;
   packet.width = width;
@@ -113,7 +120,8 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
   packet.timestamp = 0; // Will be set by receiver
 
   // Calculate total packet size
-  size_t frame_size = (size_t)width * height * 3; // Assume RGB format
+  // INTEGER OVERFLOW FIX: Cast both width and height to size_t before multiplication
+  size_t frame_size = (size_t)width * (size_t)height * 3; // Assume RGB format
   size_t total_size = sizeof(image_frame_packet_t) + frame_size;
 
   // Allocate buffer for complete packet
@@ -166,6 +174,13 @@ int av_send_audio(socket_t sockfd, const float *samples, int num_samples) {
 int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, int sample_rate) {
   if (!samples || num_samples <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: samples=%p, num_samples=%d", samples, num_samples);
+    return -1;
+  }
+
+  // BUG FIX: Validate sample count to prevent integer overflow
+  // Max samples per batch: ~1 second of 48kHz stereo = 96000 samples
+  if (num_samples > 100000) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Too many samples: %d (max 100000)", num_samples);
     return -1;
   }
 
@@ -222,6 +237,13 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
               "Invalid Opus batch parameters: opus_data=%p, opus_size=%zu, frame_sizes=%p, sample_rate=%d, "
               "frame_duration=%d, frame_count=%d",
               (const void *)opus_data, opus_size, (const void *)frame_sizes, sample_rate, frame_duration, frame_count);
+    return -1;
+  }
+
+  // BUG FIX: Validate frame_count to prevent integer overflow in size calculations
+  // Max reasonable frames per batch: ~1 second of 10ms frames = 100 frames
+  if (frame_count > 1000) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Too many Opus frames: %d (max 1000)", frame_count);
     return -1;
   }
 

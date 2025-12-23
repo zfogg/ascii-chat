@@ -623,8 +623,13 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Queue initial server state to the new client
+  // THREAD SAFETY: Protect read of client_count with rwlock
+  rwlock_rdlock(&g_client_manager_rwlock);
+  uint32_t connected_count = g_client_manager.client_count;
+  rwlock_rdunlock(&g_client_manager_rwlock);
+
   server_state_packet_t state;
-  state.connected_client_count = g_client_manager.client_count;
+  state.connected_client_count = connected_count;
   state.active_client_count = 0; // Will be updated by broadcast thread
   memset(state.reserved, 0, sizeof(state.reserved));
 
@@ -1739,22 +1744,25 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
     return -1;
   }
 
-  void *decrypted_data = buffer_pool_alloc(*len);
+  // BUGFIX: Store original allocation size before it gets modified
+  size_t original_alloc_size = *len;
+  void *decrypted_data = buffer_pool_alloc(original_alloc_size);
   size_t decrypted_len;
   int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t *)*data, *len,
-                                                    (uint8_t *)decrypted_data, *len, &decrypted_len);
+                                                    (uint8_t *)decrypted_data, original_alloc_size, &decrypted_len);
 
   if (decrypt_result != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to process encrypted packet from client %u (result=%d)", client->client_id,
               decrypt_result);
-    buffer_pool_free(*data, *len);
-    buffer_pool_free(decrypted_data, *len);
+    buffer_pool_free(*data, original_alloc_size);
+    buffer_pool_free(decrypted_data, original_alloc_size);
     *data = NULL;
     return -1;
   }
 
   // Replace encrypted data with decrypted data
-  buffer_pool_free(*data, *len);
+  // BUGFIX: Use original allocation size for freeing the encrypted buffer
+  buffer_pool_free(*data, original_alloc_size);
 
   *data = decrypted_data;
   *len = decrypted_len;

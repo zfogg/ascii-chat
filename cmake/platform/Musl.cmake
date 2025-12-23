@@ -47,6 +47,7 @@ function(configure_musl_pre_project)
         )
 
         # Only enable musl by default on x86_64 - ARM64 musl support on GitHub runners is limited
+        # Autotools (autoconf, automake, libtool) are installed by scripts/install-deps.sh before cmake runs
         if(HOST_ARCH STREQUAL "x86_64" AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
             option(USE_MUSL "Use musl libc + mimalloc for optimal performance (Linux Release builds)" ON)
         else()
