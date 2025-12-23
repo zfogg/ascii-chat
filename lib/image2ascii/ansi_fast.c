@@ -125,7 +125,7 @@ void ansi_rle_add_pixel(ansi_rle_context_t *ctx, uint8_t r, uint8_t g, uint8_t b
   // Check if we need to emit a new SGR sequence
   bool color_changed = ctx->first_pixel || (r != ctx->last_r) || (g != ctx->last_g) || (b != ctx->last_b);
 
-  if (color_changed && (ctx->length + 32 < ctx->capacity)) { // Reserve space for SGR
+  if (color_changed && (ctx->length + 40 < ctx->capacity)) { // Reserve 40 bytes for SGR (FG+BG max is 38)
     char *pos = ctx->buffer + ctx->length;
 
     switch (ctx->mode) {
