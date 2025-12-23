@@ -75,8 +75,6 @@ asciichat_error_t platform_init(void) {
   timeBeginPeriod(1);
 
   get_username_env();
-  get_username_env();
-  get_username_env();
 
   // Install crash handlers for automatic backtrace on crashes
   platform_install_crash_handler();
