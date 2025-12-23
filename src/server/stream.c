@@ -337,8 +337,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     if (frame_to_use && frame_to_use->data && frame_to_use->size > sizeof(uint32_t) * 2) {
       // Parse the image data
       // Format: [width:4][height:4][rgb_data:w*h*3]
-      uint32_t img_width = ntohl(*(uint32_t *)frame_to_use->data);
-      uint32_t img_height = ntohl(*(uint32_t *)(frame_to_use->data + sizeof(uint32_t)));
+      // Use unaligned read helpers - frame data may not be aligned
+      uint32_t img_width = ntohl(read_u32_unaligned(frame_to_use->data));
+      uint32_t img_height = ntohl(read_u32_unaligned(frame_to_use->data + sizeof(uint32_t)));
 
       // Debug logging to understand the data
       if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
