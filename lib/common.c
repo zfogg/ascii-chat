@@ -50,17 +50,20 @@ int g_max_fps = 0; // 0 means use default
  * ============================================================================
  */
 
-static shutdown_check_fn g_shutdown_callback = NULL;
+// BUGFIX: Use atomic for thread-safe access to shutdown callback
+#include <stdatomic.h>
+static _Atomic(shutdown_check_fn) g_shutdown_callback = NULL;
 
 void shutdown_register_callback(shutdown_check_fn callback) {
-  g_shutdown_callback = callback;
+  atomic_store(&g_shutdown_callback, callback);
 }
 
 bool shutdown_is_requested(void) {
-  if (g_shutdown_callback == NULL) {
+  shutdown_check_fn callback = atomic_load(&g_shutdown_callback);
+  if (callback == NULL) {
     return false; // No callback registered, assume not shutting down
   }
-  return g_shutdown_callback();
+  return callback();
 }
 
 /* ============================================================================

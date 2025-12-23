@@ -25,13 +25,28 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
 
   buffer_pool_t *pool;
   pool = SAFE_MALLOC(sizeof(buffer_pool_t), buffer_pool_t *);
+  if (!pool) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer pool structure");
+    return NULL;
+  }
 
   // Allocate array of buffer nodes
   pool->nodes = SAFE_MALLOC(sizeof(buffer_node_t) * pool_size, buffer_node_t *);
+  if (!pool->nodes) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer nodes array");
+    SAFE_FREE(pool);
+    return NULL;
+  }
 
   // Allocate single memory block for all buffers with cache-line alignment
   // 64-byte alignment improves cache performance and reduces false sharing
   pool->memory_block = SAFE_MALLOC_ALIGNED(buffer_size * pool_size, 64, void *);
+  if (!pool->memory_block) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer memory block");
+    SAFE_FREE(pool->nodes);
+    SAFE_FREE(pool);
+    return NULL;
+  }
 
   // Initialize each buffer node
   uint8_t *current_buffer = (uint8_t *)pool->memory_block;
@@ -150,14 +165,52 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
 data_buffer_pool_t *data_buffer_pool_create(void) {
   data_buffer_pool_t *pool;
   pool = SAFE_MALLOC(sizeof(data_buffer_pool_t), data_buffer_pool_t *);
+  if (!pool) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate data buffer pool");
+    return NULL;
+  }
 
   // Create pools for different size classes
+  // BUGFIX: Check each sub-pool creation and clean up on failure
   pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
-  pool->medium_pool = buffer_pool_create_single(BUFFER_POOL_MEDIUM_SIZE, BUFFER_POOL_MEDIUM_COUNT);
-  pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
-  pool->xlarge_pool = buffer_pool_create_single(BUFFER_POOL_XLARGE_SIZE, BUFFER_POOL_XLARGE_COUNT);
+  if (!pool->small_pool) {
+    SAFE_FREE(pool);
+    return NULL;
+  }
 
-  mutex_init(&pool->pool_mutex);
+  pool->medium_pool = buffer_pool_create_single(BUFFER_POOL_MEDIUM_SIZE, BUFFER_POOL_MEDIUM_COUNT);
+  if (!pool->medium_pool) {
+    buffer_pool_destroy_single(pool->small_pool);
+    SAFE_FREE(pool);
+    return NULL;
+  }
+
+  pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
+  if (!pool->large_pool) {
+    buffer_pool_destroy_single(pool->medium_pool);
+    buffer_pool_destroy_single(pool->small_pool);
+    SAFE_FREE(pool);
+    return NULL;
+  }
+
+  pool->xlarge_pool = buffer_pool_create_single(BUFFER_POOL_XLARGE_SIZE, BUFFER_POOL_XLARGE_COUNT);
+  if (!pool->xlarge_pool) {
+    buffer_pool_destroy_single(pool->large_pool);
+    buffer_pool_destroy_single(pool->medium_pool);
+    buffer_pool_destroy_single(pool->small_pool);
+    SAFE_FREE(pool);
+    return NULL;
+  }
+
+  if (mutex_init(&pool->pool_mutex) != 0) {
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize pool mutex");
+    buffer_pool_destroy_single(pool->xlarge_pool);
+    buffer_pool_destroy_single(pool->large_pool);
+    buffer_pool_destroy_single(pool->medium_pool);
+    buffer_pool_destroy_single(pool->small_pool);
+    SAFE_FREE(pool);
+    return NULL;
+  }
 
   pool->total_allocs = 0;
   pool->pool_hits = 0;

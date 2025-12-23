@@ -452,8 +452,11 @@ static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
-  printf("SIGTERM received - shutting down server...\n");
-  (void)fflush(stdout);
+  // CRITICAL FIX: Use async-signal-safe write() instead of printf()/fflush()
+  // printf() and fflush() are NOT async-signal-safe and can cause deadlocks
+  const char *msg = "SIGTERM received - shutting down server...\n";
+  ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
+  (void)unused; // Suppress unused variable warning
   // Return immediately - signal handlers must be minimal
   // Main thread will detect g_server_should_exit and perform complete shutdown
 }
@@ -814,10 +817,14 @@ main_loop:
 
     // Rate-limited logging: Only show status when client count actually changes
     // This prevents log spam while maintaining visibility into server state
+    // THREAD SAFETY: Protect read of client_count with rwlock
     static int last_logged_count = -1;
-    if (g_client_manager.client_count != last_logged_count) {
-      log_debug("Waiting for client connections... (%d/%d clients)", g_client_manager.client_count, MAX_CLIENTS);
-      last_logged_count = g_client_manager.client_count;
+    rwlock_rdlock(&g_client_manager_rwlock);
+    int current_count = g_client_manager.client_count;
+    rwlock_rdunlock(&g_client_manager_rwlock);
+    if (current_count != last_logged_count) {
+      log_debug("Waiting for client connections... (%d/%d clients)", current_count, MAX_CLIENTS);
+      last_logged_count = current_count;
     }
 
     // ====================================================================
@@ -840,8 +847,9 @@ main_loop:
     int cleanup_count = 0;
 
     // FIXED: Only do cleanup if there are actually clients connected
+    // THREAD SAFETY: Check client_count under the lock to avoid race
+    rwlock_rdlock(&g_client_manager_rwlock);
     if (g_client_manager.client_count > 0) {
-      rwlock_rdlock(&g_client_manager_rwlock);
       for (int i = 0; i < MAX_CLIENTS; i++) {
         client_info_t *client = &g_client_manager.clients[i];
         // Check if this client has been marked inactive by its receive thread
@@ -867,8 +875,8 @@ main_loop:
           ascii_thread_init(&client->receive_thread);
         }
       }
-      rwlock_rdunlock(&g_client_manager_rwlock);
     }
+    rwlock_rdunlock(&g_client_manager_rwlock);
 
     // Process cleanup tasks without holding lock (prevents infinite loops)
     for (int i = 0; i < cleanup_count; i++) {
@@ -906,6 +914,8 @@ main_loop:
     // Build fd_set for select() if we have multiple sockets
     fd_set read_fds;
     socket_fd_zero(&read_fds);
+    // NOTE: max_fd starts at 0 for select() calculation - this is correct
+    // On Windows, select() ignores this parameter anyway
     socket_t max_fd = 0;
 
     if (current_listenfd != INVALID_SOCKET_VALUE) {
@@ -1078,14 +1088,17 @@ main_loop:
   // (like packet queues) to ensure responsive shutdown
   // This must happen BEFORE client cleanup to wake up any blocked threads
   static_cond_broadcast(&g_shutdown_cond);
-  cond_destroy(&g_shutdown_cond.cond);
+  // NOTE: Do NOT call cond_destroy() on statically-initialized condition variables
+  // g_shutdown_cond uses STATIC_COND_INIT which doesn't allocate resources that need cleanup
+  // Calling cond_destroy() on a static cond is undefined behavior on some platforms
 
   // CRITICAL: Close all client sockets immediately to unblock receive threads
   // The signal handler only closed the listening socket, but client receive threads
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
   log_info("Closing all client sockets to unblock receive threads...");
 
-  rwlock_rdlock(&g_client_manager_rwlock);
+  // FIX: Use write lock since we're modifying client->socket
+  rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
     if (atomic_load(&client->client_id) != 0 && client->socket != INVALID_SOCKET_VALUE) {
@@ -1093,7 +1106,7 @@ main_loop:
       client->socket = INVALID_SOCKET_VALUE;
     }
   }
-  rwlock_rdunlock(&g_client_manager_rwlock);
+  rwlock_wrunlock(&g_client_manager_rwlock);
 
   log_info("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
 

@@ -87,9 +87,17 @@ function(generate_compilation_database)
 
     # Detect clang resource directory for compilation database
     # Required for LibTooling tools to find clang's builtin headers (stddef.h, stdbool.h, etc.)
-    detect_clang_resource_dir(_detected_resource_dir)
-    if(_detected_resource_dir)
-        list(APPEND _cmake_configure_args "-DCLANG_RESOURCE_DIR=${_detected_resource_dir}")
+    # Only pass this to the temporary cmake, not to the main build's cache
+    if(CMAKE_C_COMPILER MATCHES "clang")
+        execute_process(
+            COMMAND ${CMAKE_C_COMPILER} -print-resource-dir
+            OUTPUT_VARIABLE _detected_resource_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(_detected_resource_dir AND EXISTS "${_detected_resource_dir}")
+            list(APPEND _cmake_configure_args "-DCLANG_RESOURCE_DIR=${_detected_resource_dir}")
+        endif()
     endif()
 
     # Convert to space-separated string for shell command

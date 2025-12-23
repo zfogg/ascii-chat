@@ -40,6 +40,11 @@ static inline size_t next_power_of_two(size_t n) {
 /* ============================================================================
  * Ring Buffer Implementation
  * ============================================================================
+ *
+ * THREAD SAFETY NOTE: This ring buffer is designed for single-producer,
+ * single-consumer (SPSC) use only. The atomic operations provide memory
+ * ordering guarantees but do NOT support concurrent writes from multiple
+ * producers. For multi-writer scenarios, external synchronization is required.
  */
 
 ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
@@ -246,7 +251,21 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     return false;
   }
 
-  // Thread-safe access to framebuffer (fixes TOCTOU race condition)
+  // Allocate a copy of the frame data using buffer pool for better performance
+  // Do this BEFORE acquiring the mutex to minimize lock hold time
+  char *frame_copy = (char *)buffer_pool_alloc(frame_size + 1);
+  if (!frame_copy) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
+    return false;
+  }
+
+  SAFE_MEMCPY(frame_copy, frame_size, frame_data, frame_size);
+  frame_copy[frame_size] = '\0'; // Ensure null termination
+
+  // Create a frame_t struct with the copy (store allocated size for proper cleanup)
+  frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
+
+  // BUGFIX: Thread-safe access to framebuffer (was missing, causing race conditions)
   mutex_lock(&fb->mutex);
 
   // Check if buffer is full - if so, we need to drop the oldest frame
@@ -279,6 +298,8 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   frame_t frame = {.magic = FRAME_MAGIC, .size = frame_size + 1, .data = frame_copy};
 
   bool result = ringbuffer_write(fb->rb, &frame);
+
+  mutex_unlock(&fb->mutex);
 
   if (!result) {
     // If we still couldn't write to ringbuffer, return the buffer to pool
@@ -331,16 +352,6 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
       mutex_unlock(&fb->mutex);
       return false;
     }
-
-    // Additional check - validate pointer is not obviously bad
-    // NOTE: unreliable across platforms
-    // if ((uintptr_t)frame->data < 0x1000) {
-    //   log_error("CORRUPTION: Invalid frame data pointer: %p", frame->data);
-    //   frame->data = NULL;
-    //   frame->size = 0;
-    //   mutex_unlock(&fb->mutex);
-    //   return false;
-    // }
   }
 
   mutex_unlock(&fb->mutex);
@@ -350,6 +361,9 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
 void framebuffer_clear(framebuffer_t *fb) {
   if (!fb || !fb->rb)
     return;
+
+  // BUGFIX: Thread-safe access to framebuffer (was missing, causing race conditions)
+  mutex_lock(&fb->mutex);
 
   // Check the element size to determine frame type
   if (fb->rb->element_size == sizeof(multi_source_frame_t)) {
@@ -386,6 +400,8 @@ void framebuffer_clear(framebuffer_t *fb) {
   if (fb->rb->buffer) {
     SAFE_MEMSET(fb->rb->buffer, fb->rb->capacity * fb->rb->element_size, 0, fb->rb->capacity * fb->rb->element_size);
   }
+
+  mutex_unlock(&fb->mutex);
 }
 
 // Multi-source frame functions for multi-user support
