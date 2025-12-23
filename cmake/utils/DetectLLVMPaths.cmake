@@ -137,6 +137,7 @@ else()
         endforeach()
 
         # Search paths for llvm-config
+        # find_program respects PATH, so user's PATH takes priority
         if(APPLE)
             set(_llvm_config_hints
                 /opt/homebrew/opt/llvm/bin    # Homebrew on Apple Silicon
@@ -160,6 +161,8 @@ else()
             )
         endif()
 
+        # Use find_program which respects PATH ordering
+        # This allows user's PATH to take priority over our hardcoded search paths
         find_program(_LLVM_CONFIG_EXECUTABLE
             NAMES ${_llvm_config_names}
             HINTS ${_llvm_config_hints}

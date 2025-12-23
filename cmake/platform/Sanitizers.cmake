@@ -259,16 +259,20 @@ function(fix_macos_asan_runtime)
     endif()
     set_property(GLOBAL PROPERTY _MACOS_ASAN_RUNTIME_FIXED TRUE)
 
-    if(APPLE AND DEFINED HOMEBREW_LLVM_LIB_DIR)
+    if(APPLE AND DEFINED LLVM_ROOT_PREFIX)
+        # Derive the LLVM lib directory from LLVM_ROOT_PREFIX (single source of truth)
+        set(_llvm_lib_dir "${LLVM_ROOT_PREFIX}/lib")
+
         # Find the clang version directory dynamically
-        file(GLOB CLANG_VERSION_DIRS "${HOMEBREW_LLVM_LIB_DIR}/clang/*")
+        file(GLOB CLANG_VERSION_DIRS "${_llvm_lib_dir}/clang/*")
         if(CLANG_VERSION_DIRS)
             list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
             get_filename_component(CLANG_VERSION_NAME "${CLANG_VERSION_DIR}" NAME)
-            # Explicitly link against the correct ASan runtime from Homebrew LLVM
-            add_link_options(-L${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin)
+            # Explicitly link against the correct ASan runtime from LLVM
+            add_link_options(-L${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin)
             # NOTE: Don't add -rpath explicitly - clang automatically adds it when using -fsanitize
-            message(STATUS "Using ASan runtime from: ${HOMEBREW_LLVM_LIB_DIR}/clang/${CLANG_VERSION_NAME}/lib/darwin")
+            message(STATUS "Using ASan runtime from: ${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin")
         endif()
+        unset(_llvm_lib_dir)
     endif()
 endfunction()

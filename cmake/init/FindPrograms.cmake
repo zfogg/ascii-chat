@@ -160,6 +160,10 @@ set(_LLVM_SUPPORTED_VERSIONS 21 20 19 18)
 # All other LLVM tools (clang, clang++, llvm-ar, etc.) are discovered from
 # the same installation via `llvm-config --bindir`.
 #
+# Detection strategy:
+#   1. Trust the PATH: find_program will search user's PATH first
+#   2. Fallback to known LLVM locations if not in PATH
+#
 # To use a specific LLVM installation, set ASCIICHAT_LLVM_CONFIG_EXECUTABLE:
 #   cmake -B build -DASCIICHAT_LLVM_CONFIG_EXECUTABLE=/usr/bin/llvm-config
 
@@ -169,8 +173,8 @@ foreach(_ver IN LISTS _LLVM_SUPPORTED_VERSIONS)
     list(APPEND _llvm_config_names llvm-config-${_ver})
 endforeach()
 
-# Use HINTS (not PATHS) to prioritize our search paths over system PATH
-# This ensures we find vovkos LLVM at C:/LLVM before official LLVM at C:/Program Files/LLVM
+# Use find_program which respects PATH ordering
+# This allows user's PATH to take priority over our hardcoded search paths
 find_program(ASCIICHAT_LLVM_CONFIG_EXECUTABLE
     NAMES ${_llvm_config_names}
     HINTS ${ASCIICHAT_LLVM_SEARCH_PATHS}
