@@ -246,6 +246,9 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     return false;
   }
 
+  // Thread-safe access to framebuffer (fixes TOCTOU race condition)
+  mutex_lock(&fb->mutex);
+
   // Check if buffer is full - if so, we need to drop the oldest frame
   if (ringbuffer_size(fb->rb) >= fb->rb->capacity) {
     // Buffer is full, read and free the oldest frame before writing new one
@@ -264,6 +267,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
   // Allocate a copy of the frame data using buffer pool for better performance
   char *frame_copy = (char *)buffer_pool_alloc(frame_size + 1);
   if (!frame_copy) {
+    mutex_unlock(&fb->mutex);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate %zu bytes from buffer pool for frame", frame_size + 1);
     return false;
   }
@@ -282,6 +286,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     SET_ERRNO(ERROR_INVALID_STATE, "Failed to write frame to ringbuffer even after dropping oldest");
   }
 
+  mutex_unlock(&fb->mutex);
   return result;
 }
 
@@ -295,6 +300,9 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
   frame->data = NULL;
   frame->size = 0;
 
+  // Thread-safe access to framebuffer (fixes TOCTOU race condition)
+  mutex_lock(&fb->mutex);
+
   bool result = ringbuffer_read(fb->rb, frame);
 
   // Validate the frame we just read
@@ -303,6 +311,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid frame magic 0x%x (expected 0x%x)", frame->magic, FRAME_MAGIC);
       frame->data = NULL;
       frame->size = 0;
+      mutex_unlock(&fb->mutex);
       return false;
     }
 
@@ -310,6 +319,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
       SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Reading already-freed frame!");
       frame->data = NULL;
       frame->size = 0;
+      mutex_unlock(&fb->mutex);
       return false;
     }
 
@@ -318,6 +328,7 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
       SAFE_FREE(frame->data);
       frame->data = NULL;
       frame->size = 0;
+      mutex_unlock(&fb->mutex);
       return false;
     }
 
@@ -327,10 +338,12 @@ bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame) {
     //   log_error("CORRUPTION: Invalid frame data pointer: %p", frame->data);
     //   frame->data = NULL;
     //   frame->size = 0;
+    //   mutex_unlock(&fb->mutex);
     //   return false;
     // }
   }
 
+  mutex_unlock(&fb->mutex);
   return result;
 }
 

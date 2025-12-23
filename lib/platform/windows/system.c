@@ -263,19 +263,26 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
  * @brief Get environment variable value
  * @param name Environment variable name
  * @return Variable value or NULL if not found
+ * @note MEMORY FIX: Uses thread-local static buffer to avoid memory leaks.
+ *       The returned pointer is valid until the next call to platform_getenv
+ *       from the same thread.
  */
 const char *platform_getenv(const char *name) {
   if (!name || name[0] == '\0') {
     SET_ERRNO(ERROR_INVALID_PARAM, "Empty environment variable name is invalid");
     return NULL;
   }
-  char *value = NULL;
-  errno_t err = _dupenv_s(&value, NULL, name);
-  if (err != 0) {
-    log_warn("Failed to get environment variable %s: %lu", name, err);
+  // Use thread-local static buffer to avoid memory leak
+  // (callers never free the returned pointer, matching POSIX getenv behavior)
+  _Thread_local static char buffer[4096];
+  size_t required_size = 0;
+
+  errno_t err = getenv_s(&required_size, buffer, sizeof(buffer), name);
+  if (err != 0 || required_size == 0) {
+    // Variable not found or error
     return NULL;
   }
-  return value;
+  return buffer;
 }
 
 /**

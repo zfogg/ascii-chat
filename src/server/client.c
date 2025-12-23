@@ -916,6 +916,8 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
+    // THREAD SAFETY FIX: Protect crypto field access with mutex to prevent race conditions
+    mutex_lock(&client->client_state_mutex);
     bool crypto_ready =
         !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
 
@@ -923,12 +925,13 @@ void *client_receive_thread(void *arg) {
       // CRITICAL: Check client_id again before getting crypto context - prevent use-after-free
       client_id_check = atomic_load(&client->client_id);
       if (client_id_check == 0) {
+        mutex_unlock(&client->client_state_mutex);
         log_debug("Client client_id reset before getting crypto context, exiting receive thread");
         break;
       }
       crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    } else {
     }
+    mutex_unlock(&client->client_state_mutex);
     packet_envelope_t envelope;
 
     // CRITICAL: Check client_id again before accessing socket - prevent use-after-free
@@ -1201,12 +1204,15 @@ void *client_send_thread_func(void *arg) {
     // Send batched audio if we have packets
     if (audio_packet_count > 0) {
       // Get crypto context for this client
+      // THREAD SAFETY FIX: Protect crypto field access with mutex
       const crypto_context_t *crypto_ctx = NULL;
+      mutex_lock(&client->client_state_mutex);
       bool crypto_ready =
           !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
       if (crypto_ready) {
         crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
       }
+      mutex_unlock(&client->client_state_mutex);
 
       int result = 0;
 
@@ -1378,9 +1384,10 @@ void *client_send_thread_func(void *arg) {
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame
-        // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
-        // Crypto context is stable after handshake and stored in client struct
+        // THREAD SAFETY FIX: Protect crypto context access with mutex during rekeying
+        mutex_lock(&client->client_state_mutex);
         const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+        mutex_unlock(&client->client_state_mutex);
         // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
         mutex_lock(&client->send_mutex);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
@@ -1457,9 +1464,10 @@ void *client_send_thread_func(void *arg) {
       }
 
       // Now perform network I/O without holding video buffer lock
-      // LOCK OPTIMIZATION: Access crypto context directly - no need for find_client_by_id() rwlock!
-      // Crypto context is stable after handshake and stored in client struct
+      // THREAD SAFETY FIX: Protect crypto context access with mutex during rekeying
+      mutex_lock(&client->client_state_mutex);
       const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+      mutex_unlock(&client->client_state_mutex);
 
       // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
       mutex_lock(&client->send_mutex);
@@ -1850,17 +1858,20 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     handle_client_capabilities_packet(client, data, len);
     break;
 
-  case PACKET_TYPE_PING:
+  case PACKET_TYPE_PING: {
     // Respond with PONG
+    // THREAD SAFETY FIX: Protect crypto context access with mutex during rekeying
+    mutex_lock(&client->client_state_mutex);
+    const crypto_context_t *ping_crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    mutex_unlock(&client->client_state_mutex);
     // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
     mutex_lock(&client->send_mutex);
-    // Get crypto context for encryption
-    const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    if (send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)crypto_ctx) < 0) {
+    if (send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx) < 0) {
       SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u", client->client_id);
     }
     mutex_unlock(&client->send_mutex);
     break;
+  }
 
   case PACKET_TYPE_PONG:
     // Client acknowledged our PING - no action needed

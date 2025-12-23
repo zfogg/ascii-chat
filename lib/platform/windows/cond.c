@@ -8,6 +8,7 @@
 
 #include "../abstraction.h"
 #include "../windows_compat.h"
+#include <errno.h> // For ETIMEDOUT
 
 /**
  * @brief Initialize a condition variable
@@ -47,11 +48,19 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @param cond Pointer to condition variable to wait on
  * @param mutex Pointer to associated mutex (must be locked by caller)
  * @param timeout_ms Timeout in milliseconds
- * @return 0 on success, -1 on timeout or failure
+ * @return 0 on success, ETIMEDOUT on timeout, -1 on other failure
  * @note The mutex is automatically released while waiting and reacquired before returning
+ * @note CROSS-PLATFORM FIX: Returns ETIMEDOUT on timeout for POSIX compatibility
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
-  return SleepConditionVariableCS(cond, mutex, (DWORD)timeout_ms) ? 0 : -1;
+  if (!SleepConditionVariableCS(cond, mutex, (DWORD)timeout_ms)) {
+    DWORD err = GetLastError();
+    if (err == ERROR_TIMEOUT) {
+      return ETIMEDOUT; // Match POSIX pthread_cond_timedwait behavior
+    }
+    return -1; // Other error
+  }
+  return 0;
 }
 
 /**
