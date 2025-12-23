@@ -647,19 +647,21 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // NEW: Create per-client rendering threads
-  log_debug("Creating render threads for client %u", client->client_id);
+  // CRITICAL: Use atomic_load for client_id to prevent data races
+  uint32_t client_id_snapshot = atomic_load(&client->client_id);
+  log_debug("Creating render threads for client %u", client_id_snapshot);
   if (create_client_render_threads(client) != 0) {
-    log_error("Failed to create render threads for client %u", client->client_id);
-    (void)remove_client(client->client_id);
+    log_error("Failed to create render threads for client %u", client_id_snapshot);
+    (void)remove_client(client_id_snapshot);
     return -1;
   }
-  log_debug("Successfully created render threads for client %u", client->client_id);
+  log_debug("Successfully created render threads for client %u", client_id_snapshot);
 
   // Broadcast server state to ALL clients AFTER the new client is fully set up
   // This notifies all clients (including the new one) about the updated grid
   broadcast_server_state_to_all_clients();
 
-  return client->client_id;
+  return (int)client_id_snapshot;
 }
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
@@ -673,7 +675,8 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id == client_id && client->client_id != 0) {
+    uint32_t cid = atomic_load(&client->client_id);
+    if (cid == client_id && cid != 0) {
       // Mark as shutting down and inactive immediately to stop new operations
       log_info("Removing client %d (socket=%d) - marking inactive and clearing video flags", client_id, client->socket);
       atomic_store(&client->shutting_down, true);
@@ -811,10 +814,10 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // have been released by the destroy calls above
   memset(target_client, 0, sizeof(client_info_t));
 
-  // Recalculate client count
+  // Recalculate client count using atomic reads
   int remaining_count = 0;
   for (int j = 0; j < MAX_CLIENTS; j++) {
-    if (g_client_manager.clients[j].client_id != 0) {
+    if (atomic_load(&g_client_manager.clients[j].client_id) != 0) {
       remaining_count++;
     }
   }
@@ -1540,23 +1543,25 @@ void broadcast_server_state_to_all_clients(void) {
   }
 
   // Count active clients and snapshot client data while holding lock
+  // CRITICAL: Use atomic_load for all atomic fields to prevent data races
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].active && atomic_load(&g_client_manager.clients[i].is_sending_video)) {
+    bool is_active = atomic_load(&g_client_manager.clients[i].active);
+    if (is_active && atomic_load(&g_client_manager.clients[i].is_sending_video)) {
       active_video_count++;
     }
-    if (g_client_manager.clients[i].active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
+    if (is_active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
       // Get crypto context and skip if not ready (handshake still in progress)
       const crypto_context_t *crypto_ctx =
           crypto_handshake_get_context(&g_client_manager.clients[i].crypto_handshake_ctx);
       if (!crypto_ctx) {
         // Skip clients that haven't completed crypto handshake yet
         log_debug("Skipping server_state broadcast to client %u: crypto handshake not ready",
-                  g_client_manager.clients[i].client_id);
+                  atomic_load(&g_client_manager.clients[i].client_id));
         continue;
       }
 
       client_snapshots[snapshot_count].socket = g_client_manager.clients[i].socket;
-      client_snapshots[snapshot_count].client_id = g_client_manager.clients[i].client_id;
+      client_snapshots[snapshot_count].client_id = atomic_load(&g_client_manager.clients[i].client_id);
       client_snapshots[snapshot_count].crypto_ctx = crypto_ctx;
       snapshot_count++;
     }
