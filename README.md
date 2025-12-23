@@ -458,7 +458,7 @@ ascii-chat is built on operating system code and several libraries.
   - **Purpose**: Real-time audio compression for low-bandwidth audio transmission. Enables high-quality bidirectional voice and audio communication between clients with minimal latency and bandwidth overhead.
   - **License**: BSD
 
-- [Speex DSP](https://www.speex.org/) - Audio DSP Library (optional)
+- [Speex DSP](https://www.speex.org/) - Audio DSP Library
 
   - **Purpose**: Acoustic Echo Cancellation (AEC) to prevent feedback loops when speakers and microphones are used without headphones. Enables hands-free audio chat.
   - **License**: BSD
