@@ -351,6 +351,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
+    // BUG FIX: Validate size before allocation to prevent DoS from malicious packets
+    if (header.original_size > MAX_PACKET_SIZE) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame original_size too large: %u > %d", header.original_size, MAX_PACKET_SIZE);
+      return;
+    }
+
     frame_data = SAFE_MALLOC(header.original_size + 1, char *);
 
     // Decompress using compression API
