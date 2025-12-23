@@ -891,9 +891,13 @@ if(NOT BUILDING_OBJECT_LIBS)
         COMMAND_EXPAND_LISTS
     )
 
+# Create a custom target that depends on the static library file
+add_custom_target(ascii-chat-static-lib-combined DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a)
+
 # Create interface library target that wraps the combined static library
 # and propagates all external dependencies
 add_library(ascii-chat-static-lib INTERFACE)
+add_dependencies(ascii-chat-static-lib ascii-chat-static-lib-combined)
 target_link_libraries(ascii-chat-static-lib INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/lib/libasciichat.a>
     $<INSTALL_INTERFACE:lib/libasciichat.a>

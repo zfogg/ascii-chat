@@ -316,28 +316,25 @@ function(configure_llvm_pre_project)
                 message(WARNING "${BoldRed}Could not find Clang resource directory at: ${CLANG_RESOURCE_DIR}${ColorReset}")
             endif()
 
-            # Get macOS SDK path for standard headers
-            execute_process(
-                COMMAND xcrun --show-sdk-path
-                OUTPUT_VARIABLE MACOS_SDK_PATH
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET
-            )
-
-            if(MACOS_SDK_PATH)
-                message(STATUS "${BoldGreen}Found${ColorReset} ${BoldYellow}macOS SDK${ColorReset} at: ${BoldCyan}${MACOS_SDK_PATH}${ColorReset}")
-                # Append SDK flags to CMAKE_*_FLAGS before project()
-                string(APPEND CMAKE_C_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_CXX_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_OBJC_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_EXE_LINKER_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                string(APPEND CMAKE_SHARED_LINKER_FLAGS " -isysroot ${MACOS_SDK_PATH}")
-                # Export to parent scope
-                set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
-                set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
-                set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
-                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}" PARENT_SCOPE)
-                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}" PARENT_SCOPE)
+            # macOS SDK handling:
+            # - Self-contained LLVM (Homebrew, git-built, llvm-config): clang finds headers automatically, don't use -isysroot
+            # - System clang: needs Apple's SDK path to find system headers
+            if(LLVM_SOURCE STREQUAL "Homebrew" OR LLVM_SOURCE STREQUAL "git-built" OR LLVM_SOURCE STREQUAL "llvm-config")
+                # Self-contained LLVM: unset CMAKE_OSX_SYSROOT so CMake doesn't add -isysroot
+                set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
+                message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}LLVM${ColorReset}: disabling SDK root (-isysroot)")
+            else()
+                # System clang: use Apple's SDK for system headers
+                execute_process(
+                    COMMAND xcrun --show-sdk-path
+                    OUTPUT_VARIABLE MACOS_SDK_PATH
+                    OUTPUT_STRIP_TRAILING_WHITESPACE
+                    ERROR_QUIET
+                )
+                if(MACOS_SDK_PATH)
+                    message(STATUS "${BoldGreen}Found${ColorReset} ${BoldYellow}macOS SDK${ColorReset} at: ${BoldCyan}${MACOS_SDK_PATH}${ColorReset}")
+                    set(CMAKE_OSX_SYSROOT "${MACOS_SDK_PATH}" CACHE STRING "macOS SDK root" FORCE)
+                endif()
             endif()
 
             if(LLVM_SOURCE STREQUAL "llvm-config")
