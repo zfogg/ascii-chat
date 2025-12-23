@@ -12,10 +12,32 @@
 #include <speex/speex_echo.h>
 #include <speex/speex_jitter.h>
 #include <speex/speex_preprocess.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "platform/abstraction.h"
 #include <fcntl.h>
+#include <unistd.h>
+
+// Helper to suppress speex stderr warnings using file descriptor redirection
+static int suppress_stderr_start(void) {
+  fflush(stderr); // Flush any pending output first
+  int saved_fd = dup(STDERR_FILENO);
+  int devnull = open("/dev/null", O_WRONLY);
+  if (devnull >= 0) {
+    dup2(devnull, STDERR_FILENO);
+    close(devnull);
+  }
+  return saved_fd;
+}
+
+static void suppress_stderr_end(int saved_fd) {
+  if (saved_fd >= 0) {
+    fflush(stderr); // Flush any output to /dev/null
+    dup2(saved_fd, STDERR_FILENO);
+    close(saved_fd);
+  }
+}
 
 // Suppress stderr temporarily (SpeexDSP prints "VAD has been replaced by a hack" warning)
 static void suppress_stderr_for_vad_init(SpeexPreprocessState *preprocess) {
@@ -497,15 +519,17 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     jitter_buffer_tick(pipeline->jitter);
 
     // Get packet from jitter buffer
+    // (speex may print warnings if buffer is empty, but this is handled via Opus PLC)
     JitterBufferPacket out_packet;
     char jitter_data[CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET];
     out_packet.data = jitter_data;
     out_packet.len = CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET;
 
     spx_int32_t start_offset;
-    // Note: speex may print "No playback frame available" warnings to stderr
-    // This is expected behavior when jitter buffer is empty - we handle it with Opus PLC
+    // Suppress speex jitter buffer warnings - we handle missing frames with Opus PLC
+    int saved_stderr = suppress_stderr_start();
     int jitter_result = jitter_buffer_get(pipeline->jitter, &out_packet, pipeline->jitter_frame_span, &start_offset);
+    suppress_stderr_end(saved_stderr);
 
     if (jitter_result == JITTER_BUFFER_OK) {
       // Decode the packet from jitter buffer
