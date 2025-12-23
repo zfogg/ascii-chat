@@ -406,22 +406,41 @@ void audio_free_device_list(audio_device_info_t *devices);
  */
 
 /**
- * @brief Create a new audio ring buffer
+ * @brief Create a new audio ring buffer (for playback with jitter buffering)
  * @return Pointer to newly created audio ring buffer, or NULL on failure
  *
  * Creates a new audio ring buffer for storing audio samples. The buffer has
  * a fixed size defined by AUDIO_RING_BUFFER_SIZE and is optimized for real-time
- * audio streaming with jitter buffering support.
+ * audio streaming with jitter buffering support (enabled by default).
  *
  * @note The ring buffer is thread-safe and can be used concurrently by capture
  *       and playback threads.
  * @note Ring buffer includes jitter buffer threshold for network latency compensation.
+ * @note Use audio_ring_buffer_create_for_capture() for capture buffers.
  *
  * @warning Must call audio_ring_buffer_destroy() to free resources.
  *
  * @ingroup audio
  */
 audio_ring_buffer_t *audio_ring_buffer_create(void);
+
+/**
+ * @brief Create a new audio ring buffer for capture (without jitter buffering)
+ * @return Pointer to newly created audio ring buffer, or NULL on failure
+ *
+ * Creates an audio ring buffer optimized for direct microphone input from PortAudio.
+ * Unlike playback buffers, capture buffers disable jitter buffering since PortAudio
+ * writes directly from the microphone with no network latency.
+ *
+ * @note The ring buffer is thread-safe and can be used concurrently by capture
+ *       and playback threads.
+ * @note Jitter buffering is disabled for capture buffers.
+ *
+ * @warning Must call audio_ring_buffer_destroy() to free resources.
+ *
+ * @ingroup audio
+ */
+audio_ring_buffer_t *audio_ring_buffer_create_for_capture(void);
 
 /**
  * @brief Destroy an audio ring buffer
