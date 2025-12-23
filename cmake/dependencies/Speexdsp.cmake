@@ -27,7 +27,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 if(WIN32)
     find_dependency_library(
         NAME SPEEXDSP
-        VCPKG_NAMES speexdsp
+        VCPKG_NAMES libspeexdsp speexdsp
         HEADER speex/speex_echo.h
         PKG_CONFIG speexdsp
         HOMEBREW_PKG speexdsp
