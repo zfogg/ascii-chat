@@ -298,19 +298,14 @@ char *image_print(const image_t *p, const char *palette) {
 
   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
   const size_t max_char_bytes = 4; // Max UTF-8 character size
-  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
 
   const rgb_t *pix = p->pixels;
 
-  char *lines;
-  lines = SAFE_MALLOC(len * sizeof(char), char *);
-
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
-  ob.cap = (size_t)h * ((size_t)w * 4 + 1); // 4 = max UTF-8 char bytes
+  ob.cap = (size_t)h * ((size_t)w * max_char_bytes + 1);
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf) {
-    SAFE_FREE(lines);
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate output buffer for scalar rendering");
     return NULL;
   }
@@ -365,7 +360,6 @@ char *image_print(const image_t *p, const char *palette) {
   }
 
   ob_term(&ob);
-  SAFE_FREE(lines); // Free the old buffer
   return ob.buf;
 }
 
