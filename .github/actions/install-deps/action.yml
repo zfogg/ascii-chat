@@ -115,9 +115,6 @@ runs:
           deps_hash=$(find cmake/dependencies -type f -exec shasum -a 256 {} \; 2>/dev/null | sort | shasum -a 256 | cut -c1-16)
         fi
 
-        # Get branch name from GITHUB_REF
-        branch="${GITHUB_REF_NAME:-master}"
-
         # Get runner info
         os="${RUNNER_OS}"
         arch="${RUNNER_ARCH}"
@@ -125,14 +122,15 @@ runs:
 
         # Output cache keys
         # v11/v5: Invalidate caches corrupted by previous 'if: always()' saves
+        # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         echo "cmake-cache-key=${os}-${arch}-cmake-deps-v11-${deps_hash}-${install_hash}" >> $GITHUB_OUTPUT
-        echo "ccache-key=${os}-${arch}-ccache-v1-${branch}" >> $GITHUB_OUTPUT
-        echo "build-cache-key=${os}-${arch}-build-v5-${branch}" >> $GITHUB_OUTPUT
+        echo "ccache-key=${os}-${arch}-ccache-v1" >> $GITHUB_OUTPUT
+        echo "build-cache-key=${os}-${arch}-build-v5" >> $GITHUB_OUTPUT
 
         echo "Computed cache keys:"
         echo "  cmake: ${os}-${arch}-cmake-deps-v11-${deps_hash}-${install_hash}"
-        echo "  ccache: ${os}-${arch}-ccache-v1-${branch}"
-        echo "  build: ${os}-${arch}-build-v5-${branch}"
+        echo "  ccache: ${os}-${arch}-ccache-v1"
+        echo "  build: ${os}-${arch}-build-v5"
 
     - name: Compute cache keys (Windows)
       if: inputs.os == 'windows'
@@ -151,9 +149,6 @@ runs:
         $hashBytes = $sha256.ComputeHash($bytes)
         $depsHash = [BitConverter]::ToString($hashBytes).Replace("-", "").Substring(0, 16).ToLower()
 
-        # Get branch name from GITHUB_REF_NAME
-        $branch = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "master" }
-
         # Get runner info
         $os = $env:RUNNER_OS
         $arch = $env:RUNNER_ARCH
@@ -161,14 +156,15 @@ runs:
 
         # Output cache keys
         # v11/v5: Invalidate caches corrupted by previous 'if: always()' saves
+        # Use fixed cache keys (no branch/tag suffix) so caches are shared across all branches and releases
         Add-Content -Path $env:GITHUB_OUTPUT -Value "cmake-cache-key=${os}-${arch}-cmake-deps-v11-${depsHash}-${installHash}"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v1-${branch}"
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v5-${branch}"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "ccache-key=${os}-${arch}-ccache-v1"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "build-cache-key=${os}-${arch}-build-v5"
 
         Write-Host "Computed cache keys:"
         Write-Host "  cmake: ${os}-${arch}-cmake-deps-v11-${depsHash}-${installHash}"
-        Write-Host "  ccache: ${os}-${arch}-ccache-v1-${branch}"
-        Write-Host "  build: ${os}-${arch}-build-v5-${branch}"
+        Write-Host "  ccache: ${os}-${arch}-ccache-v1"
+        Write-Host "  build: ${os}-${arch}-build-v5"
 
     - name: Restore CMake dependency cache (All platforms)
       id: cmake-cache
