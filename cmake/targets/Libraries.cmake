@@ -718,8 +718,13 @@ else()
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         endif()
-        # Speex DSP for acoustic echo cancellation
-        target_link_libraries(ascii-chat-shared PRIVATE ${SPEEXDSP_LIBRARIES})
+        # Audio codec and processing
+        if(OPUS_LIBRARIES)
+            target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
+        endif()
+        if(SPEEXDSP_LIBRARIES)
+            target_link_libraries(ascii-chat-shared PRIVATE ${SPEEXDSP_LIBRARIES})
+        endif()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use force_load/whole-archive to export all mimalloc symbols from the shared library
         if(USE_MIMALLOC)
