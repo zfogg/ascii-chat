@@ -209,7 +209,7 @@ Run `ascii-chat client --help` to see all client options:
 
 - `--fps FPS`: Desired frame rate, 1-144 (default: 60)
 - `--compression-level LEVEL`: zstd compression level 1-9 (default: 1, fastest)
-- `--no-compress`: Disable video frame compression entirely
+- `--no-compress`: Disable video frame compression and audio encoding entirely
 - `--encode-audio`: Force enable Opus audio encoding (overrides --no-compress)
 - `--no-encode-audio`: Disable Opus audio encoding, send raw audio samples
 
