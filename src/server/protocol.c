@@ -1108,7 +1108,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     opus_offset += frame_size;
   }
 
-  log_debug_every(100000, "Client %u: Decoded %d Opus frames -> %d samples", atomic_load(&client->client_id),
+  log_debug_every(1000000, "Client %u: Decoded %d Opus frames -> %d samples", atomic_load(&client->client_id),
                   frame_count, total_decoded);
 
   // DEBUG: Log sample values to detect all-zero issue
