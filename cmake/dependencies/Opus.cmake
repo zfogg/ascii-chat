@@ -68,25 +68,32 @@ endif()
 # Otherwise use pkg-config for dynamic linking
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release")
     # Try to find static libopus.a for static release builds
-    find_library(OPUS_STATIC_LIB NAMES opus)
-    find_path(OPUS_INC NAMES opus/opus.h PATH_SUFFIXES include)
+    # Search in standard homebrew paths first
+    find_library(OPUS_STATIC_LIB
+        NAMES libopus.a
+        PATHS
+            /usr/local/opt/opus/lib
+            /opt/homebrew/opt/opus/lib
+            /usr/local/lib
+            /opt/homebrew/lib
+        NO_DEFAULT_PATH
+    )
+    find_path(OPUS_INC NAMES opus/opus.h PATH_SUFFIXES include
+        PATHS
+            /usr/local/opt/opus/include
+            /opt/homebrew/opt/opus/include
+            /usr/local/include
+            /opt/homebrew/include
+        NO_DEFAULT_PATH
+    )
 
     if(OPUS_STATIC_LIB AND OPUS_INC)
-        # Check if it's actually a static library
-        if(OPUS_STATIC_LIB MATCHES "\\.a$")
-            set(OPUS_FOUND TRUE)
-            set(OPUS_LIBRARIES "${OPUS_STATIC_LIB}")
-            set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
-            message(STATUS "${BoldGreen}Opus${ColorReset} found (macOS static): ${OPUS_STATIC_LIB}")
-        else()
-            # Fall back to pkg-config for dynamic library
-            pkg_check_modules(OPUS REQUIRED opus IMPORTED_TARGET)
-            if(OPUS_FOUND)
-                message(STATUS "${BoldGreen}Opus${ColorReset} found via pkg-config: ${OPUS_LIBRARIES}")
-            endif()
-        endif()
+        set(OPUS_FOUND TRUE)
+        set(OPUS_LIBRARIES "${OPUS_STATIC_LIB}")
+        set(OPUS_INCLUDE_DIRS "${OPUS_INC}")
+        message(STATUS "${BoldGreen}Opus${ColorReset} found (macOS static): ${OPUS_STATIC_LIB}")
     else()
-        # Fall back to pkg-config
+        # Fall back to pkg-config if static not found
         pkg_check_modules(OPUS REQUIRED opus IMPORTED_TARGET)
         if(OPUS_FOUND)
             message(STATUS "${BoldGreen}Opus${ColorReset} found via pkg-config: ${OPUS_LIBRARIES}")
