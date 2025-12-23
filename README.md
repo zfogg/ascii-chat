@@ -858,11 +858,12 @@ changing command-line arguments.
 - [x] Crypto.
 - [ ] GPG key support for crypto (there's a bug upstream in libgcrypt).
 - [ ] zalgo text generator
-- [ ] v4l2 webcam images working.
+- [x] v4l2 webcam images working.
 - [ ] make more little todos from the github issues so they're tracked in the readme because i like the changelog (i can check with git when things are checked off)
 - [ ] submit an ascii-chat internet protocol (ACIP) ietf rfc
 - [ ] ascii-chat discovery service
 - [ ] submit an ascii-chat discovery service (ACDS) ietf rfc
+- [ ] ascii-chat official homebrew bottles
 
 ## Notes
 
