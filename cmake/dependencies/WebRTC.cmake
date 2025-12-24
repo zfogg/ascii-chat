@@ -111,10 +111,12 @@ if(TARGET AudioProcess)
     else()
         # Linux/Unix: Use WHOLE_ARCHIVE wrapper to embed all symbols
         # This ensures all WebRTC symbols are available when the shared library is used
+        # CRITICAL: Must also link C++ standard library for exception handling, RTTI, and C++ runtime
         target_link_libraries(webrtc_audio_processing INTERFACE
             -Wl,--whole-archive
             AudioProcess aec3 api base
             -Wl,--no-whole-archive
+            stdc++
         )
     endif()
 
