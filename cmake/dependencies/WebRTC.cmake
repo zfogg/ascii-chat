@@ -83,13 +83,20 @@ message(STATUS "  ${BoldGreen}✓ WebRTC AEC3 configured and built successfully$
 message(STATUS "  Source dir: ${webrtc_aec3_SOURCE_DIR}")
 
 # The AEC3 project builds libraries: AudioProcess, base, api, aec3
-# We only link AudioProcess - it includes all necessary dependencies internally
-# Linking extra libraries causes duplicate symbol linker errors
+# AudioProcess internally depends on these other libraries (see audio_processing/CMakeLists.txt:40)
+# For shared library builds to work correctly, we must link all transitive dependencies
 if(TARGET AudioProcess)
     message(STATUS "  Library target: AudioProcess")
     add_library(webrtc_audio_processing INTERFACE)
+
+    # Link all WebRTC libraries that AudioProcess depends on
+    # AudioProcess needs: aec3, api, base (from audio_processing/CMakeLists.txt:4)
+    # For shared library builds, transitive dependencies must be explicitly linked
     target_link_libraries(webrtc_audio_processing INTERFACE
         AudioProcess
+        aec3
+        api
+        base
     )
 
     # Add include path for AEC3 headers
@@ -102,9 +109,6 @@ if(TARGET AudioProcess)
         "${webrtc_aec3_SOURCE_DIR}/base"
         "${webrtc_aec3_SOURCE_DIR}/base/abseil"
     )
-
-    # Also link against the base library which includes Abseil
-    target_link_libraries(webrtc_audio_processing INTERFACE base)
 
     # Suppress all warnings on WebRTC targets using target_compile_options
     # This ensures warnings are suppressed regardless of how CMAKE_CXX_FLAGS are modified
