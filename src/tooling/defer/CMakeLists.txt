@@ -109,9 +109,11 @@ if(APPLE)
     )
 
     # Link against Homebrew LLVM libraries with proper rpath
+    # Note: libc++ is in the c++ subdirectory of Homebrew LLVM
     target_link_directories(ascii-instr-defer PRIVATE
         ${LLVM_LIBRARY_DIRS}
         /opt/homebrew/opt/llvm/lib
+        /opt/homebrew/opt/llvm/lib/c++
     )
 
     # Find all required Clang static libraries on macOS
