@@ -52,6 +52,38 @@ if(APPLE)
     message(STATUS "  LLVM libraries: ${LLVM_LIBRARY_DIRS}")
     message(STATUS "  LLVM headers: ${LLVM_INCLUDE_DIRS}")
 
+    # Detect macOS SDK for proper system header inclusion
+    # This is necessary when using Homebrew LLVM to ensure system headers are found correctly
+    find_program(_XCRUN_EXECUTABLE xcrun)
+    set(_macos_sdk_path "")
+    if(_XCRUN_EXECUTABLE)
+        execute_process(
+            COMMAND ${_XCRUN_EXECUTABLE} --show-sdk-path
+            OUTPUT_VARIABLE _macos_sdk_path
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+    endif()
+
+    if(_macos_sdk_path AND EXISTS "${_macos_sdk_path}")
+        message(STATUS "Using macOS SDK: ${_macos_sdk_path}")
+    else()
+        # Fallback to CommandLineTools SDK
+        set(_macos_sdk_path "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+        if(NOT EXISTS "${_macos_sdk_path}")
+            # Try to find any available MacOSX SDK
+            find_path(_macos_sdk_path NAME "usr/include/stdlib.h"
+                PATHS "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs"
+                      "/Library/Developer/CommandLineTools/SDKs"
+                NO_DEFAULT_PATH
+            )
+            if(_macos_sdk_path)
+                get_filename_component(_macos_sdk_path "${_macos_sdk_path}" DIRECTORY)
+            endif()
+        endif()
+        message(STATUS "Using detected macOS SDK: ${_macos_sdk_path}")
+    endif()
+
     # macOS: Homebrew LLVM's clang can find libc++ headers automatically
     target_include_directories(ascii-instr-defer SYSTEM PRIVATE
         ${LLVM_INCLUDE_DIRS}
@@ -62,11 +94,15 @@ if(APPLE)
         -fno-rtti
         -fexceptions
         -stdlib=libc++
+        -isysroot
+        ${_macos_sdk_path}
     )
 
     # Link against Homebrew LLVM's libc++ C++ standard library
     target_link_options(ascii-instr-defer PRIVATE
         -stdlib=libc++
+        -isysroot
+        ${_macos_sdk_path}
         "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
     )
 
