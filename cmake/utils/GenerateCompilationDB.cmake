@@ -89,9 +89,9 @@ function(generate_compilation_database)
             )
             if(_MACOS_SDK_PATH AND EXISTS "${_MACOS_SDK_PATH}")
                 # Add SDK flags to CMAKE_C_FLAGS and CMAKE_CXX_FLAGS so they appear in compilation database
-                set(_SDK_FLAGS "-isysroot ${_MACOS_SDK_PATH}")
-                list(APPEND _cmake_configure_args "-DCMAKE_C_FLAGS=${_SDK_FLAGS}")
-                list(APPEND _cmake_configure_args "-DCMAKE_CXX_FLAGS=${_SDK_FLAGS}")
+                # Note: Properly quote the flags to handle spaces in SDK path
+                list(APPEND _cmake_configure_args "-DCMAKE_C_FLAGS=-isysroot;${_MACOS_SDK_PATH}")
+                list(APPEND _cmake_configure_args "-DCMAKE_CXX_FLAGS=-isysroot;${_MACOS_SDK_PATH}")
             endif()
         endif()
     endif()
