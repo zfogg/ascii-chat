@@ -20,12 +20,20 @@
 #define WEBRTC_MODULE_AUDIO_PROCESSING 1
 #define WEBRTC_POSIX 1
 
+// Suppress WebRTC/Abseil warnings about deprecated builtins and unused parameters
+// These are third-party code issues, not our code
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-builtins"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+
 // WebRTC AEC3 extracted repository has different include paths
 // than full WebRTC (no api/audio/ subdirectory)
 #include "api/echo_canceller3_factory.h"
 #include "api/echo_control.h"
 // Note: extracted AEC3 doesn't have environment API - using direct classes
 #include "audio_processing/audio_buffer.h"
+
+#pragma clang diagnostic pop
 
 // WebRTC defines FATAL() with no parameters, but ascii-chat defines
 // FATAL(code, ...) with parameters. Undefine the WebRTC version before
@@ -45,27 +53,6 @@
 
 // Prevent stdatomic.h from defining conflicting macros in C++ context
 #define __STDC_NO_ATOMICS__ 1
-
-// ============================================================================
-// Conversion Helpers
-// ============================================================================
-
-static void float_to_int16(const float *in, int16_t *out, int n) {
-  for (int i = 0; i < n; i++) {
-    float s = in[i] * 32767.0f;
-    if (s > 32767.0f)
-      s = 32767.0f;
-    if (s < -32768.0f)
-      s = -32768.0f;
-    out[i] = (int16_t)s;
-  }
-}
-
-static void int16_to_float(const int16_t *in, float *out, int n) {
-  for (int i = 0; i < n; i++) {
-    out[i] = (float)in[i] / 32768.0f;
-  }
-}
 
 // ============================================================================
 // WebRTC AEC3 C++ Wrapper (hidden from C code)

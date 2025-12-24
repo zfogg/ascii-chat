@@ -69,6 +69,10 @@ typedef enum {
 /** @brief Maximum log file size in bytes (3MB) before rotation */
 #define MAX_LOG_SIZE (3 * 1024 * 1024)
 
+/* Suppress missing field initializers for mutex_t which has opaque internal fields */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+
 static struct log_context_t {
   int file;
   log_level_t level;
@@ -89,6 +93,8 @@ static struct log_context_t {
     .level_manually_set = false,
     .force_stderr = false,
 };
+
+#pragma GCC diagnostic pop
 
 static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
 
