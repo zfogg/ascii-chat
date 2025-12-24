@@ -641,6 +641,19 @@ void audio_cleanup() {
   // Stop capture thread
   audio_stop_thread();
 
+  // CRITICAL: Stop audio streams BEFORE destroying pipeline to prevent race condition
+  // The PortAudio output_callback is still executing after audio_stop_playback() returns
+  // because PortAudio may invoke the callback one more time. We need to clear the
+  // pipeline pointer first so the callback can't access freed memory.
+  if (g_audio_context.initialized) {
+    audio_stop_playback(&g_audio_context);
+    audio_stop_capture(&g_audio_context);
+  }
+
+  // Clear the pipeline pointer from audio context BEFORE destroying pipeline
+  // This prevents any lingering PortAudio callbacks from trying to access freed memory
+  audio_set_pipeline(&g_audio_context, NULL);
+
   // Destroy audio pipeline (handles Opus, AEC, etc.)
   if (g_audio_pipeline) {
     client_audio_pipeline_destroy(g_audio_pipeline);
@@ -665,10 +678,8 @@ void audio_cleanup() {
     log_info("Closed audio playback received dump");
   }
 
-  // Stop audio playback and capture
+  // Finally destroy the audio context
   if (g_audio_context.initialized) {
-    audio_stop_playback(&g_audio_context);
-    audio_stop_capture(&g_audio_context);
     audio_destroy(&g_audio_context);
   }
 }
