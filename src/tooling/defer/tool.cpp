@@ -1,3 +1,14 @@
+#include <cstddef>
+#include <filesystem>
+#include <fstream>
+#include <mutex>
+#include <optional>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/RecursiveASTVisitor.h"
@@ -12,17 +23,6 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"
-
-#include <cstddef>
-#include <filesystem>
-#include <fstream>
-#include <mutex>
-#include <optional>
-#include <set>
-#include <string>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 using namespace llvm;
 using namespace clang;
