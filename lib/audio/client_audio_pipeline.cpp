@@ -196,14 +196,14 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
         // CRITICAL: Set audio buffer delay to help AEC3 properly synchronize render and capture
         // The delay includes:
-        // - Jitter buffer delay (120-170ms depending on configuration and fill)
+        // - Jitter buffer delay (80-170ms depending on fill)
         // - PortAudio output latency (~5-10ms)
         // - Audio frame accumulation (20ms)
         // - Network packet buffering (10-30ms)
-        // - AEC3 processing and capture analysis (20-40ms)
-        // Total observed system delay: ~200ms
+        // Total observed system delay: ~150ms
         // This tells AEC3 when samples sent to AnalyzeRender() will appear as echo in capture
-        int estimated_delay_ms = 200;  // Total system audio delay
+        // Note: AEC3 has automatic network delay estimation (0-500ms), so this is a hint
+        int estimated_delay_ms = 150;  // Total system audio delay
         wrapper->aec3->SetAudioBufferDelay(estimated_delay_ms);
         log_info("✓ WebRTC AEC3 echo cancellation initialized");
         log_info("  - Network delay estimation: 0-500ms");
