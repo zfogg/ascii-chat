@@ -564,11 +564,35 @@ runs:
         }
 
         Write-Host "Adding LLVM to PATH: ${llvmBinPath}"
+
+        # Verify clang.exe exists before adding to PATH
+        $clangPath = Join-Path $llvmBinPath "clang.exe"
+        if (-not (Test-Path $clangPath)) {
+          Write-Host "WARNING: clang.exe not found at: $clangPath" -ForegroundColor Yellow
+          Write-Host "Contents of ${llvmBinPath}:" -ForegroundColor Yellow
+          Get-ChildItem -Path $llvmBinPath -Filter "clang*" -ErrorAction SilentlyContinue
+        }
+
         # Prepend to PATH so our LLVM is found first
+        # Use $env:PATH directly to ensure it's available immediately in this step
+        $env:PATH = "${llvmBinPath};${env:PATH}"
+        # Also write to GITHUB_PATH for subsequent steps
         Add-Content -Path $env:GITHUB_PATH -Value $llvmBinPath
+
         Add-Content -Path $env:GITHUB_ENV -Value "CC=${llvmBinPath}\clang.exe"
         Add-Content -Path $env:GITHUB_ENV -Value "CXX=${llvmBinPath}\clang++.exe"
         & "${llvmBinPath}\clang.exe" --version
+
+        # Verify clang can be found in PATH
+        Write-Host "Verifying clang.exe is in PATH..."
+        $clangInPath = (Get-Command clang.exe -ErrorAction SilentlyContinue)
+        if ($clangInPath) {
+          Write-Host "✓ clang.exe found in PATH: $($clangInPath.Source)"
+        } else {
+          Write-Host "✗ clang.exe NOT found in PATH" -ForegroundColor Red
+          Write-Host "Current PATH: $env:PATH" -ForegroundColor Red
+          exit 1
+        }
 
     - name: Set up build environment (macOS)
       if: inputs.os == 'macos'

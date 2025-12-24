@@ -43,50 +43,75 @@ function(configure_llvm_pre_project)
     endif()
 
     # =============================================================================
-    # SINGLE SOURCE OF TRUTH: Determine LLVM root directory via llvm-config
+    # SINGLE SOURCE OF TRUTH: Determine LLVM root directory via llvm-config or clang path
     # Trust PATH: use FindPrograms.cmake result which respects user's PATH
     # =============================================================================
     set(LLVM_ROOT_PREFIX "")
     set(LLVM_CONFIG_EXECUTABLE "${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
 
-    if(NOT LLVM_CONFIG_EXECUTABLE)
+    if(LLVM_CONFIG_EXECUTABLE)
+        # Get LLVM root directory from llvm-config (Unix/macOS)
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix
+            OUTPUT_VARIABLE LLVM_ROOT_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+
+        if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${LLVM_ROOT_PREFIX}/bin/clang")
+            message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${LLVM_ROOT_PREFIX}/bin/clang\n"
+                            "Verify llvm-config is working correctly:\n"
+                            "  ${LLVM_CONFIG_EXECUTABLE} --prefix")
+        endif()
+    elseif(WIN32 AND ASCIICHAT_CLANG_EXECUTABLE)
+        # Windows: derive LLVM root from clang executable location
+        # Official pre-built LLVM on Windows doesn't include llvm-config
+        get_filename_component(_clang_dir "${ASCIICHAT_CLANG_EXECUTABLE}" DIRECTORY)
+        get_filename_component(LLVM_ROOT_PREFIX "${_clang_dir}" DIRECTORY)
+        unset(_clang_dir)
+
+        if(NOT EXISTS "${LLVM_ROOT_PREFIX}/bin/clang.exe")
+            message(FATAL_ERROR "Failed to determine LLVM root directory from clang path: ${ASCIICHAT_CLANG_EXECUTABLE}\n"
+                            "Expected clang at: ${LLVM_ROOT_PREFIX}/bin/clang.exe")
+        endif()
+        message(STATUS "${BoldGreen}Detected LLVM${ColorReset} root from clang: ${BoldCyan}${LLVM_ROOT_PREFIX}${ColorReset}")
+    else()
         message(FATAL_ERROR "llvm-config not found in PATH. Install LLVM and ensure it's in PATH:\n"
-                        "  Windows: scoop install llvm\n"
+                        "  Windows: winget install LLVM.LLVM  OR  scoop install llvm\n"
                         "  macOS: brew install llvm\n"
                         "  Debian/Ubuntu: sudo apt install llvm\n"
                         "  Fedora/RHEL: sudo dnf install llvm\n"
                         "  Arch: sudo pacman -S llvm")
     endif()
 
-    # Get LLVM root directory from llvm-config
-    execute_process(
-        COMMAND ${LLVM_CONFIG_EXECUTABLE} --prefix
-        OUTPUT_VARIABLE LLVM_ROOT_PREFIX
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
-
-    if(NOT LLVM_ROOT_PREFIX OR NOT EXISTS "${LLVM_ROOT_PREFIX}/bin/clang")
-        message(FATAL_ERROR "llvm-config reported LLVM at ${LLVM_ROOT_PREFIX}, but clang not found at ${LLVM_ROOT_PREFIX}/bin/clang\n"
-                        "Verify llvm-config is working correctly:\n"
-                        "  ${LLVM_CONFIG_EXECUTABLE} --prefix")
-    endif()
-
     message(STATUS "${BoldGreen}Found LLVM${ColorReset} at: ${BoldCyan}${LLVM_ROOT_PREFIX}${ColorReset}")
 
     # Get LLVM CMake directories for find_package()
-    execute_process(
-        COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir
-        OUTPUT_VARIABLE LLVM_CMAKEDIR
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-    )
+    set(LLVM_CMAKEDIR "")
+    if(LLVM_CONFIG_EXECUTABLE)
+        execute_process(
+            COMMAND ${LLVM_CONFIG_EXECUTABLE} --cmakedir
+            OUTPUT_VARIABLE LLVM_CMAKEDIR
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+    endif()
 
     if(LLVM_CMAKEDIR AND EXISTS "${LLVM_CMAKEDIR}")
         message(STATUS "${BoldGreen}Found LLVM CMake${ColorReset} directory: ${BoldCyan}${LLVM_CMAKEDIR}${ColorReset}")
         list(APPEND CMAKE_PREFIX_PATH "${LLVM_ROOT_PREFIX}")
         list(APPEND CMAKE_PREFIX_PATH "${LLVM_CMAKEDIR}")
         set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+    else()
+        # Fallback: add LLVM root and common CMake paths
+        list(APPEND CMAKE_PREFIX_PATH "${LLVM_ROOT_PREFIX}")
+        if(EXISTS "${LLVM_ROOT_PREFIX}/lib/cmake/llvm")
+            list(APPEND CMAKE_PREFIX_PATH "${LLVM_ROOT_PREFIX}/lib/cmake/llvm")
+        endif()
+        set(CMAKE_PREFIX_PATH "${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+        if(LLVM_CONFIG_EXECUTABLE OR NOT WIN32)
+            message(WARNING "${BoldYellow}Could not determine LLVM CMake directory${ColorReset}, using fallback paths")
+        endif()
     endif()
 
     # Add Clang cmake directory as well
