@@ -735,21 +735,11 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
 
   // Wait for send thread to exit
   if (ascii_thread_is_initialized(&target_client->send_thread)) {
-    bool is_shutting_down = atomic_load(&g_server_should_exit);
     int join_result;
-
-    if (is_shutting_down) {
-      join_result = ascii_thread_join_timeout(&target_client->send_thread, NULL, 100);
-      if (join_result == -2) {
-        log_warn("Send thread for client %u timed out during shutdown (continuing)", client_id);
-        // Clear thread handle using platform abstraction
-        ascii_thread_init(&target_client->send_thread);
-      }
-    } else {
-      join_result = ascii_thread_join(&target_client->send_thread, NULL);
-      if (join_result != 0) {
-        log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
-      }
+    // Always wait for send thread - don't use timeout that masks the problem
+    join_result = ascii_thread_join(&target_client->send_thread, NULL);
+    if (join_result != 0) {
+      log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
     }
   }
 
