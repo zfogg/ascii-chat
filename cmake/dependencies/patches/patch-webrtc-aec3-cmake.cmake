@@ -89,13 +89,19 @@ string(REPLACE
             resampler/sinc_resampler.cc
             resampler/sinc_resampler_sse.cc
             )"
-    "# Conditionally include SSE-specific files based on ascii-chat's SIMD configuration
+    "# Conditionally include SIMD-specific files based on ascii-chat's SIMD configuration
+set(AUDIO_PROCESS_SIMD_SOURCES \"\")
+
+# NEON support (ARM64)
+if(ENABLE_SIMD_NEON)
+    list(APPEND AUDIO_PROCESS_SIMD_SOURCES utility/ooura_fft_neon.cc)
+    list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_neon.cc)
+endif()
+
+# SSE2 support (x86/x86_64) - SSSE3 and AVX2 require SSE2
 if(ENABLE_SIMD_SSE2 OR ENABLE_SIMD_SSSE3 OR ENABLE_SIMD_AVX2)
-    set(AUDIO_PROCESS_SIMD_SOURCES
-        resampler/sinc_resampler_sse.cc
-    )
-else()
-    set(AUDIO_PROCESS_SIMD_SOURCES \"\")
+    list(APPEND AUDIO_PROCESS_SIMD_SOURCES utility/ooura_fft_sse2.cc)
+    list(APPEND AUDIO_PROCESS_SIMD_SOURCES resampler/sinc_resampler_sse.cc)
 endif()
 
 add_library(AudioProcess
@@ -217,5 +223,105 @@ string(REPLACE
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/CMakeLists.txt" "${ABSEIL_CMAKE_CONTENT}")
 
 message(STATUS "Patched WebRTC AEC3 base/abseil/CMakeLists.txt - disabled test framework requirements")
+
+# =============================================================================
+# Patch 6: absl/strings/internal/str_format/extension.h - Add missing includes
+# =============================================================================
+# Abseil's extension.h uses uint8_t and uint64_t but doesn't include <cstdint>
+# This is a compatibility issue with C++23 mode on Linux.
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/strings/internal/str_format/extension.h" EXTENSION_H_CONTENT)
+
+# Add include directive at the beginning of the file if not already present
+if(NOT EXTENSION_H_CONTENT MATCHES "#include <cstdint>")
+    string(REPLACE
+        "#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_"
+        "#ifndef ABSL_STRINGS_INTERNAL_STR_FORMAT_EXTENSION_H_\n#include <cstdint>"
+        EXTENSION_H_CONTENT
+        "${EXTENSION_H_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/strings/internal/str_format/extension.h" "${EXTENSION_H_CONTENT}")
+    message(STATUS "Patched Abseil extension.h - added missing <cstdint> include")
+endif()
+
+# =============================================================================
+# Patch 7: absl/synchronization/internal/graphcycles.cc - Add missing includes
+# =============================================================================
+# graphcycles.cc uses std::numeric_limits but doesn't include <limits>
+# This causes compilation failures in C++23 mode on Linux.
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/synchronization/internal/graphcycles.cc" GRAPHCYCLES_CONTENT)
+
+# Add include directive if not already present
+if(NOT GRAPHCYCLES_CONTENT MATCHES "#include <limits>")
+    string(REPLACE
+        "#include <algorithm>"
+        "#include <algorithm>\n#include <limits>"
+        GRAPHCYCLES_CONTENT
+        "${GRAPHCYCLES_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/synchronization/internal/graphcycles.cc" "${GRAPHCYCLES_CONTENT}")
+    message(STATUS "Patched Abseil graphcycles.cc - added missing <limits> include")
+endif()
+
+# =============================================================================
+# Patch 8: absl/base/config.h - Add required standard library includes
+# =============================================================================
+# Abseil's headers use std::numeric_limits, uint32_t, uint64_t, intptr_t
+# but don't include the necessary headers. Add them to config.h since
+# nearly all Abseil files include this header.
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/base/config.h" CONFIG_H_CONTENT)
+
+# Add standard library includes after the copyright notice and before other content
+if(NOT CONFIG_H_CONTENT MATCHES "#include <cstdint>")
+    string(REPLACE
+        "#ifndef ABSL_BASE_CONFIG_H_"
+        "#ifndef ABSL_BASE_CONFIG_H_\n#include <cstdint>\n#include <cstddef>\n#include <climits>\n#include <limits>\n#include <memory>\n#include <utility>\n#include <vector>\n#include <string>\n#include <cstring>\n#include <algorithm>\n#include <cstdlib>"
+        CONFIG_H_CONTENT
+        "${CONFIG_H_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/base/config.h" "${CONFIG_H_CONTENT}")
+    message(STATUS "Patched Abseil config.h - added missing standard library includes")
+endif()
+
+# =============================================================================
+# Patch 9: audio_processing/aec3/clockdrift_detector.h - Add missing includes
+# =============================================================================
+# WebRTC headers use size_t without including <cstddef>
+
+if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/aec3/clockdrift_detector.h")
+    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/aec3/clockdrift_detector.h" CLOCKDRIFT_CONTENT)
+
+    if(NOT CLOCKDRIFT_CONTENT MATCHES "#include <cstddef>")
+        string(REPLACE
+            "#ifndef MODULES_AUDIO_PROCESSING_AEC3_CLOCKDRIFT_DETECTOR_H_"
+            "#ifndef MODULES_AUDIO_PROCESSING_AEC3_CLOCKDRIFT_DETECTOR_H_\n#include <cstddef>"
+            CLOCKDRIFT_CONTENT
+            "${CLOCKDRIFT_CONTENT}"
+        )
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/aec3/clockdrift_detector.h" "${CLOCKDRIFT_CONTENT}")
+        message(STATUS "Patched WebRTC clockdrift_detector.h - added missing <cstddef> include")
+    endif()
+endif()
+
+# =============================================================================
+# Patch 10: absl/debugging/failure_signal_handler.cc - Fix std::max type mismatch
+# =============================================================================
+# failure_signal_handler.cc has std::max(SIGSTKSZ, 65536) where SIGSTKSZ is long
+# but 65536 is int. Cast to size_t to fix the type mismatch.
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/debugging/failure_signal_handler.cc" FSH_CONTENT)
+
+if(FSH_CONTENT MATCHES "std::max\\(SIGSTKSZ, 65536\\)")
+    string(REPLACE
+        "std::max(SIGSTKSZ, 65536)"
+        "std::max(static_cast<size_t>(SIGSTKSZ), static_cast<size_t>(65536))"
+        FSH_CONTENT
+        "${FSH_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/debugging/failure_signal_handler.cc" "${FSH_CONTENT}")
+    message(STATUS "Patched Abseil failure_signal_handler.cc - fixed std::max type mismatch")
+endif()
 
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")
