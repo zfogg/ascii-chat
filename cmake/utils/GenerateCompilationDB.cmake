@@ -92,8 +92,7 @@ function(generate_compilation_database)
                 # Use CMAKE_OSX_SYSROOT which cmake uses to set -isysroot automatically
                 list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_MACOS_SDK_PATH}")
                 # Also explicitly add to CMAKE_C_FLAGS/CMAKE_CXX_FLAGS for the compilation database.
-                # When we pass this through the shell command, the quotes are part of the string literal,
-                # so they will be preserved as part of the cmake argument value itself.
+                # The quotes are literal parts of the argument value, not shell quoting.
                 list(APPEND _cmake_configure_args "-DCMAKE_C_FLAGS=\"-isysroot ${_MACOS_SDK_PATH}\"")
                 list(APPEND _cmake_configure_args "-DCMAKE_CXX_FLAGS=\"-isysroot ${_MACOS_SDK_PATH}\"")
             endif()
