@@ -78,6 +78,19 @@ static uint32_t g_received_packet_times_count = 0;                  // Number of
 static uint32_t g_received_packet_sizes[MAX_PACKET_SAMPLES];        // Size of each packet in bytes
 static uint64_t g_received_total_audio_samples = 0;                 // Total decoded audio samples
 
+// Echo detection: store recent sent samples to check if they appear in received audio
+#define ECHO_BUFFER_SIZE 48000                       // 1 second at 48kHz
+static float g_echo_buffer[ECHO_BUFFER_SIZE];        // Circular buffer of sent samples
+static uint64_t g_echo_buffer_pos = 0;               // Write position in echo buffer
+static uint64_t g_echo_correlation_sample_count = 0; // Samples checked for echo
+
+// Echo detection metrics at different delays (in milliseconds)
+#define ECHO_DELAY_COUNT 5
+static uint32_t g_echo_delays_ms[ECHO_DELAY_COUNT] = {50, 100, 150, 200, 250};
+static uint64_t g_echo_correlation_strength[ECHO_DELAY_COUNT] = {0, 0, 0, 0, 0};
+static uint64_t g_echo_match_count[ECHO_DELAY_COUNT] = {0, 0, 0, 0, 0};
+static uint32_t g_detected_echo_delay_ms = 0; // If echo detected, at what delay
+
 int audio_analysis_init(void) {
   SAFE_MEMSET(&g_sent_stats, sizeof(g_sent_stats), 0, sizeof(g_sent_stats));
   SAFE_MEMSET(&g_received_stats, sizeof(g_received_stats), 0, sizeof(g_received_stats));
@@ -91,6 +104,16 @@ int audio_analysis_init(void) {
   g_received_packet_times_count = 0;
   SAFE_MEMSET(g_received_packet_sizes, sizeof(g_received_packet_sizes), 0, sizeof(g_received_packet_sizes));
   g_received_total_audio_samples = 0;
+
+  // Reset echo detection
+  SAFE_MEMSET(g_echo_buffer, sizeof(g_echo_buffer), 0, sizeof(g_echo_buffer));
+  g_echo_buffer_pos = 0;
+  g_echo_correlation_sample_count = 0;
+  for (int i = 0; i < ECHO_DELAY_COUNT; i++) {
+    g_echo_correlation_strength[i] = 0;
+    g_echo_match_count[i] = 0;
+  }
+  g_detected_echo_delay_ms = 0;
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -187,6 +210,10 @@ void audio_analysis_track_sent_sample(float sample) {
   if (g_sent_wav) {
     wav_writer_write(g_sent_wav, &sample, 1);
   }
+
+  // Store in echo detection buffer (circular)
+  g_echo_buffer[g_echo_buffer_pos] = sample;
+  g_echo_buffer_pos = (g_echo_buffer_pos + 1) % ECHO_BUFFER_SIZE;
 }
 
 void audio_analysis_track_sent_packet(size_t size) {
@@ -306,6 +333,33 @@ void audio_analysis_track_received_sample(float sample) {
   // Accumulate for RMS calculation
   g_received_rms_accumulator += sample * sample;
   g_received_rms_sample_count++;
+
+  // Echo detection: check if received sample matches sent sample from N ms ago
+  // This detects if echo cancellation is working (it shouldn't find matches)
+  if (g_echo_correlation_sample_count < 500000) { // Limit to first ~10 seconds
+    for (int delay_idx = 0; delay_idx < ECHO_DELAY_COUNT; delay_idx++) {
+      // Calculate sample delay: delay_ms * (sample_rate / 1000)
+      uint32_t delay_samples = (g_echo_delays_ms[delay_idx] * 48000) / 1000;
+
+      // Get sent sample from that delay ago (from circular buffer)
+      uint64_t sent_pos;
+      if (g_echo_buffer_pos >= delay_samples) {
+        sent_pos = g_echo_buffer_pos - delay_samples;
+      } else {
+        sent_pos = (g_echo_buffer_pos + ECHO_BUFFER_SIZE) - delay_samples;
+      }
+
+      float sent_sample = g_echo_buffer[sent_pos];
+
+      // Check if samples match (correlation threshold = 0.1)
+      float diff = fabsf(sample - sent_sample);
+      if (diff < 0.1f && fabsf(sent_sample) > 0.01f) { // Only count if sent is not silence
+        g_echo_match_count[delay_idx]++;
+        g_echo_correlation_strength[delay_idx] += (0.1f - diff); // Accumulate strength
+      }
+    }
+    g_echo_correlation_sample_count++;
+  }
 
   // Write to WAV file if enabled
   if (g_received_wav) {
@@ -446,6 +500,44 @@ void audio_analysis_print_report(void) {
   }
   if (g_sent_stats.clipping_count > 0) {
     log_plain("  Microphone input is clipping - reduce microphone volume");
+  }
+
+  // Echo detection diagnostics
+  log_plain("ECHO DETECTION (Echo Cancellation Quality Check):");
+  if (g_echo_correlation_sample_count > 0 && g_sent_stats.total_samples > 0) {
+    uint64_t max_matches = 0;
+    int best_delay_idx = -1;
+
+    // Find which delay has the most matches (if any)
+    for (int i = 0; i < ECHO_DELAY_COUNT; i++) {
+      if (g_echo_match_count[i] > max_matches) {
+        max_matches = g_echo_match_count[i];
+        best_delay_idx = i;
+      }
+    }
+
+    double echo_threshold_pct = 5.0; // If > 5% of samples match at a delay, it's echo
+
+    if (best_delay_idx >= 0) {
+      double match_pct = (100.0 * g_echo_match_count[best_delay_idx]) / g_echo_correlation_sample_count;
+      log_plain("  Echo correlation at different delays:");
+      for (int i = 0; i < ECHO_DELAY_COUNT; i++) {
+        double pct = (100.0 * g_echo_match_count[i]) / g_echo_correlation_sample_count;
+        const char *status = pct > echo_threshold_pct ? "⚠️  ECHO DETECTED" : "✓ OK";
+        log_plain("    %3u ms delay: %.1f%% match rate %s", g_echo_delays_ms[i], pct, status);
+      }
+
+      if (match_pct > echo_threshold_pct) {
+        g_detected_echo_delay_ms = g_echo_delays_ms[best_delay_idx];
+        log_plain("  🔴 ECHO CANCELLATION NOT WORKING: Strong echo at %u ms delay!", g_detected_echo_delay_ms);
+        log_plain("     Received audio contains %.1f%% samples matching sent audio from %u ms ago", match_pct,
+                  g_detected_echo_delay_ms);
+      } else {
+        log_plain("  ✓ Echo cancellation working: No significant echo detected");
+      }
+    }
+  } else {
+    log_plain("  Insufficient data for echo detection (need both sent and received audio)");
   }
 
   // Audio quality diagnostics
