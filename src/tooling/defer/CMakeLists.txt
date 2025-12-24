@@ -113,11 +113,11 @@ if(APPLE)
 
     # Link against Homebrew LLVM libraries with proper rpath
     # Note: libc++ is in the c++ subdirectory, libunwind is in unwind subdirectory
+    # Use LLVM_LIBRARY_DIRS dynamically instead of hardcoded paths for portability
     target_link_directories(ascii-instr-defer PRIVATE
         ${LLVM_LIBRARY_DIRS}
-        /opt/homebrew/opt/llvm/lib
-        /opt/homebrew/opt/llvm/lib/c++
-        /opt/homebrew/opt/llvm/lib/unwind
+        "${LLVM_LIBRARY_DIRS}/c++"
+        "${LLVM_LIBRARY_DIRS}/unwind"
     )
 
     # Find all required Clang static libraries on macOS
