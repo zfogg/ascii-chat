@@ -452,6 +452,10 @@ int audio_client_init() {
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
   pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
 
+  // Use default FLAGS_MINIMAL: all Speex preprocessing disabled (noise suppression, AGC, VAD, AEC)
+  // These filters are designed for voice calls and destroy music/non-voice audio
+  // Default config already has all flags set to false
+
   // Increase jitter buffer margin to prevent underruns
   pipeline_config.jitter_margin_ms = 200; // Increased from default 60ms for better buffering
 
