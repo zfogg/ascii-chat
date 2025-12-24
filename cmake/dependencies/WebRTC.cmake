@@ -36,11 +36,14 @@ FetchContent_Declare(
     GIT_TAG ${WEBRTC_AEC3_TAG}
 )
 
-# Use FetchContent_MakeAvailable for modern CMake 3.14+
-# This will call FetchContent_Populate automatically
+# We need to apply patches before add_subdirectory(), so we manually control the population.
+# We set CMP0169 policy to OLD to use FetchContent_Populate() directly.
+# This is intentional and necessary for our patching workflow.
+cmake_policy(SET CMP0169 OLD)
+
 FetchContent_GetProperties(webrtc_aec3)
 if(NOT webrtc_aec3_POPULATED)
-    # Manually populate to have control over patch timing
+    # Manually populate the source (allows us to apply patches before add_subdirectory)
     FetchContent_Populate(webrtc_aec3)
 
     # Apply patch after source is populated
