@@ -76,7 +76,7 @@ function(generate_compilation_database)
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
-    # On macOS, add SDK path flags to ensure compilation database includes them
+    # On macOS, set CMAKE_OSX_SYSROOT so that clang automatically knows where system headers are
     if(APPLE)
         # Try to detect SDK path using xcrun (if available)
         find_program(_XCRUN_EXECUTABLE xcrun)
@@ -88,10 +88,8 @@ function(generate_compilation_database)
                 ERROR_QUIET
             )
             if(_MACOS_SDK_PATH AND EXISTS "${_MACOS_SDK_PATH}")
-                # Add SDK flags to CMAKE_C_FLAGS and CMAKE_CXX_FLAGS so they appear in compilation database
-                # Note: Quote the value to handle spaces in SDK path
-                list(APPEND _cmake_configure_args "\"-DCMAKE_C_FLAGS=-isysroot ${_MACOS_SDK_PATH}\"")
-                list(APPEND _cmake_configure_args "\"-DCMAKE_CXX_FLAGS=-isysroot ${_MACOS_SDK_PATH}\"")
+                # Use CMAKE_OSX_SYSROOT which cmake uses to set -isysroot automatically
+                list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_MACOS_SDK_PATH}")
             endif()
         endif()
     endif()
