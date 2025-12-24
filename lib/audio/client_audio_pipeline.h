@@ -4,15 +4,15 @@
  * @ingroup audio
  *
  * This header provides a complete audio processing pipeline for ascii-chat clients,
- * integrating SpeexDSP (echo cancellation, noise suppression, AGC, VAD, jitter buffer),
- * Opus codec, and mixer components (compression, noise gate, filters).
+ * integrating WebRTC AEC3 (production-grade echo cancellation), SpeexDSP (noise suppression, AGC, VAD),
+ * Speex jitter buffer, Opus codec, and mixer components (compression, noise gate, filters).
  *
  * PIPELINE ARCHITECTURE:
  * ======================
  *
  * CAPTURE PATH (microphone → network):
  *   Mic Input (float32, 48kHz)
- *     ↓ Echo Cancellation (Speex AEC with internal buffering + delay compensation)
+ *     ↓ Echo Cancellation (WebRTC AEC3 - automatic network delay estimation + adaptive filtering)
  *     ↓ Preprocessor (Noise/AGC/VAD)
  *     ↓ High-Pass Filter (remove rumble)
  *     ↓ Low-Pass Filter (remove hiss)
@@ -25,7 +25,7 @@
  *   Network
  *     ↓ Speex Jitter Buffer
  *     ↓ Opus Decode
- *     ↓ Register with AEC (speex_echo_playback for timing sync)
+ *     ↓ Register with AEC (WebRTC AEC3 reference signal for echo learning)
  *     ↓ Soft Clipping
  *     → Speakers
  *
@@ -53,13 +53,19 @@
 #include "platform/mutex.h"
 
 // Forward declarations for SpeexDSP types
-typedef struct SpeexEchoState_ SpeexEchoState;
 typedef struct SpeexPreprocessState_ SpeexPreprocessState;
 typedef struct JitterBuffer_ JitterBuffer;
+
+// Forward declarations for WebRTC types (opaque pointers for C compatibility)
+typedef struct webrtc_EchoCanceller3 webrtc_EchoCanceller3;
 
 // Forward declarations for Opus types
 typedef struct OpusEncoder OpusEncoder;
 typedef struct OpusDecoder OpusDecoder;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @name Audio Pipeline Constants
@@ -213,8 +219,8 @@ typedef struct {
   /** Component enable flags */
   client_audio_pipeline_flags_t flags;
 
-  /** Speex echo cancellation state */
-  SpeexEchoState *echo_state;
+  /** WebRTC AEC3 echo cancellation (opaque pointer to webrtc::EchoCanceller3) */
+  void *echo_canceller;
   /** Speex preprocessor state (noise/AGC/VAD) */
   SpeexPreprocessState *preprocess;
 
@@ -438,3 +444,7 @@ bool client_audio_pipeline_voice_detected(client_audio_pipeline_t *pipeline);
 void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

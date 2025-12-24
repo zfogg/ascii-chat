@@ -118,7 +118,14 @@ function(ascii_defer_prepare)
         LOG_FILE "${CMAKE_BINARY_DIR}/defer_compile_db.log"
         COMMENT "Generating compilation database for defer transformation tool"
         CLANG_RESOURCE_DIR "${_clang_resource_dir_db}"
-        DISABLE_OPTIONS ASCIICHAT_BUILD_WITH_DEFER ASCIICHAT_USE_PCH ASCIICHAT_ENABLE_ANALYZERS
+        DISABLE_OPTIONS
+            ASCIICHAT_BUILD_WITH_DEFER
+            ASCIICHAT_USE_PCH
+            ASCIICHAT_ENABLE_ANALYZERS
+            ASCIICHAT_BUILD_WITH_PANIC
+            ASCIICHAT_BUILD_WITH_QUERY
+            ASCIICHAT_ENABLE_COVERAGE
+            ASCIICHAT_BUILD_TESTS
     )
 
     # Create timer targets for defer transformation

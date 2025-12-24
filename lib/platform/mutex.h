@@ -38,6 +38,19 @@ typedef CRITICAL_SECTION mutex_t;
 typedef pthread_mutex_t mutex_t;
 #endif
 
+// Forward declare debug_mutex functions (full declarations in debug/lock.h)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef NDEBUG
+// Only declare these when not in release mode
+// The actual implementations are in lib/debug/lock.c when DEBUG_LOCKS is enabled
+int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+bool lock_debug_is_initialized(void);
+#endif
+
 // ============================================================================
 // Mutex Functions
 // ============================================================================
@@ -143,5 +156,9 @@ int mutex_unlock_impl(mutex_t *mutex);
 #endif
 
 /** @} */ /* Mutex Locking Macros */
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */ /* platform */

@@ -550,6 +550,10 @@ static DWORD WINAPI windows_thread_wrapper(LPVOID param) {
 #else
   SAFE_FREE(wrapper);
 #endif
+
+  // Clean up thread-local error context to prevent leaks
+  asciichat_clear_errno();
+
   return (DWORD)(uintptr_t)result;
 }
 
@@ -703,8 +707,14 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
 /**
  * @brief Exit the current thread with a return value
  * @param retval Return value for the thread
+ *
+ * Automatically cleans up thread-local error context before exiting.
+ * This prevents memory leaks from error messages allocated in thread-local storage.
  */
 void ascii_thread_exit(void *retval) {
+  // Clean up thread-local error context to prevent leaks
+  asciichat_clear_errno();
+
   ExitThread((DWORD)(uintptr_t)retval);
 }
 

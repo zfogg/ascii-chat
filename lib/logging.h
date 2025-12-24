@@ -153,6 +153,10 @@ typedef enum {
   LOGGING_COLOR_RESET = COLOR_RESET    /**< Reset color */
 } logging_color_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Initialize the logging system
  * @param filename Log file path (or NULL for no file logging)
@@ -557,6 +561,10 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
     platform_write(g_log.file, "\n", 1);                                                                               \
     platform_print_backtrace(0);                                                                                       \
   } while (0)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 /** @} */ /* logging */

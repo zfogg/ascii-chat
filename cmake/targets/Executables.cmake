@@ -49,6 +49,10 @@ if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NO
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
         endif()
+        # Link WebRTC audio processing for echo cancellation
+        if(TARGET webrtc_audio_processing)
+            target_link_libraries(ascii-chat webrtc_audio_processing)
+        endif()
         # Note: mimalloc comes from ascii-chat-shared (PUBLIC linkage), no need to link explicitly
     else()
         # Unix: Also need explicit dependencies when linking against shared library
@@ -58,6 +62,10 @@ if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NO
         )
         if(BEARSSL_FOUND)
             target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
+        endif()
+        # Link WebRTC audio processing for echo cancellation
+        if(TARGET webrtc_audio_processing)
+            target_link_libraries(ascii-chat webrtc_audio_processing)
         endif()
         # Link mimalloc explicitly - the shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
@@ -132,6 +140,9 @@ if(PLATFORM_DARWIN AND EXISTS "${CMAKE_SOURCE_DIR}/Info.plist")
     set_target_properties(ascii-chat PROPERTIES
         LINK_FLAGS "-sectcreate __TEXT __info_plist ${CMAKE_SOURCE_DIR}/Info.plist"
     )
+    # Note: WebRTC library is cleaned by CMake to remove build tool objects with duplicate
+    # main() symbols. Any remaining undefined symbols (like CACurrentMediaTime from video
+    # capture code) are acceptable since that code won't be called in audio-only builds.
 endif()
 
 # Add musl dependency if building with musl

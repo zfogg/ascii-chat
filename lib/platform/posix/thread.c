@@ -78,8 +78,17 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
 /**
  * @brief Exit the current thread with a return value
  * @param retval Return value for the thread
+ *
+ * Automatically cleans up thread-local error context before exiting.
+ * This prevents memory leaks from error messages allocated in thread-local storage.
  */
 void ascii_thread_exit(void *retval) {
+  // Clean up thread-local error context to prevent leaks
+  // Declared in asciichat_errno.h but we need to avoid circular dependency
+  // so we use weak symbol or forward declaration
+  extern void asciichat_clear_errno(void);
+  asciichat_clear_errno();
+
   pthread_exit(retval);
 }
 
