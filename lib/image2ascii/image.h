@@ -105,6 +105,20 @@ typedef struct rgb_pixel_simd_t {
 } ALIGNED_ATTR(16) rgb_pixel_simd_t;
 
 /**
+ * @brief Pixel allocation method tracking
+ *
+ * Tracks which allocation method was used for image pixels to ensure
+ * correct deallocation. Must match the allocation method used when
+ * creating the image.
+ *
+ * @ingroup image2ascii
+ */
+typedef enum {
+  IMAGE_ALLOC_SIMD = 0, ///< Pixels allocated with SAFE_MALLOC_SIMD()
+  IMAGE_ALLOC_POOL = 1  ///< Pixels allocated with buffer_pool_alloc()
+} image_alloc_method_t;
+
+/**
  * @brief Image structure
  *
  * Complete image structure containing dimensions and pixel data.
@@ -112,7 +126,7 @@ typedef struct rgb_pixel_simd_t {
  * order. Compatible with webcam capture and image processing pipeline.
  *
  * MEMORY LAYOUT:
- * - pixels array is allocated separately from image structure
+ * - pixels array is allocated separately from image structure (except for pool alloc)
  * - pixels array size: width * height * sizeof(rgb_t)
  * - Pixel access: pixels[row * width + col]
  * - Row-major order (first row, then second row, etc.)
@@ -120,13 +134,15 @@ typedef struct rgb_pixel_simd_t {
  * @note Pixel array must be allocated (by image_new() or image_new_from_pool()).
  * @note Image structure and pixels array can be freed separately if needed.
  * @note Compatible with webcam capture functions (webcam_read()).
+ * @note alloc_method tracks allocation source for correct deallocation.
  *
  * @ingroup image2ascii
  */
 typedef struct image_t {
-  int w;         ///< Image width in pixels (must be > 0)
-  int h;         ///< Image height in pixels (must be > 0)
-  rgb_t *pixels; ///< Pixel data array (width * height RGB pixels, row-major order)
+  int w;                ///< Image width in pixels (must be > 0)
+  int h;                ///< Image height in pixels (must be > 0)
+  rgb_t *pixels;        ///< Pixel data array (width * height RGB pixels, row-major order)
+  uint8_t alloc_method; ///< Allocation method (image_alloc_method_t) for correct deallocation
 } image_t;
 
 /* ============================================================================

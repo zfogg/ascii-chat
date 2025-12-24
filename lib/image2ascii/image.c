@@ -79,6 +79,7 @@ image_t *image_new(size_t width, size_t height) {
 
   p->w = (int)width;
   p->h = (int)height;
+  p->alloc_method = IMAGE_ALLOC_SIMD; // Track allocation method for correct deallocation
   return p;
 }
 
@@ -88,8 +89,42 @@ void image_destroy(image_t *p) {
     return;
   }
 
-  SAFE_FREE(p->pixels);
-  SAFE_FREE(p);
+  // Debug: log destruction attempt
+  log_debug_every(1000, "image_destroy: w=%d h=%d alloc_method=%d pixels=%p", p->w, p->h, p->alloc_method,
+                  (void *)p->pixels);
+
+  // Check allocation method and deallocate appropriately
+  if (p->alloc_method == IMAGE_ALLOC_POOL) {
+    // Pool-allocated images: free entire contiguous buffer (image + pixels)
+    // Validate dimensions before calculating size (guard against corruption)
+    if (p->w <= 0 || p->h <= 0) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy: invalid dimensions %dx%d (pool-allocated)", p->w, p->h);
+      return;
+    }
+
+    // Calculate original allocation size for proper buffer pool free
+    size_t w = (size_t)p->w;
+    size_t h = (size_t)p->h;
+    if (w > SIZE_MAX / h) {
+      SET_ERRNO(ERROR_INVALID_STATE, "image_destroy: dimensions would overflow: %dx%d", p->w, p->h);
+      return;
+    }
+    size_t pixel_count = w * h;
+    size_t pixels_size = pixel_count * sizeof(rgb_t);
+    size_t total_size = sizeof(image_t) + pixels_size;
+
+    log_debug("image_destroy: freeing pool-allocated image (%zu bytes)", total_size);
+    // Free the entire contiguous buffer back to pool
+    buffer_pool_free(p, total_size);
+  } else {
+    // SIMD-allocated images: free pixels and structure separately
+    // SAFE_MALLOC_SIMD allocates with aligned allocation (posix_memalign on macOS, aligned_alloc on Linux)
+    // These can be freed with standard free() / SAFE_FREE()
+    log_debug("image_destroy: freeing SIMD-allocated image (pixels=%zu bytes)",
+              (size_t)p->w * (size_t)p->h * sizeof(rgb_t));
+    SAFE_FREE(p->pixels);
+    SAFE_FREE(p);
+  }
 }
 
 // Buffer pool allocation for video pipeline (consistent memory management)
@@ -139,6 +174,7 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   image->h = (int)height;
   // Pixel data immediately follows the image structure
   image->pixels = (rgb_t *)((uint8_t *)buffer + sizeof(image_t));
+  image->alloc_method = IMAGE_ALLOC_POOL; // Track allocation method for correct deallocation
 
   return image;
 }
