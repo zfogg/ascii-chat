@@ -488,9 +488,9 @@ int audio_client_init() {
   pipeline_config.flags.lowpass = false;        // DISABLED: minimal processing
 
   // Set jitter buffer margin for smooth playback without excessive delay
-  // 160ms provides balanced buffering: handles network packet bursts without excessive AEC3 latency
-  // Prevents buffer overflow while keeping total delay low enough for echo cancellation
-  pipeline_config.jitter_margin_ms = 160;
+  // 100ms is conservative - AEC3 will adapt to actual network delay automatically
+  // We don't tune this; let the system adapt to its actual conditions
+  pipeline_config.jitter_margin_ms = 100;
 
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
   if (!g_audio_pipeline) {

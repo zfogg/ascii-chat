@@ -194,22 +194,14 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = webrtc::EchoCanceller3Config{};  // Use default config
         p->echo_canceller = wrapper;
 
-        // CRITICAL: Set audio buffer delay to help AEC3 properly synchronize render and capture
-        // The delay includes:
-        // - Jitter buffer delay (80-170ms depending on fill)
-        // - PortAudio output latency (~5-10ms)
-        // - Audio frame accumulation (20ms)
-        // - Network packet buffering (10-30ms)
-        // Total observed system delay: ~150ms
-        // This tells AEC3 when samples sent to AnalyzeRender() will appear as echo in capture
-        // Note: AEC3 has automatic network delay estimation (0-500ms), so this is a hint
-        int estimated_delay_ms = 150;  // Total system audio delay
-        wrapper->aec3->SetAudioBufferDelay(estimated_delay_ms);
+        // NOTE: Removed SetAudioBufferDelay - AEC3 has built-in automatic delay estimation
+        // that adapts to network conditions (0-500ms range). Manual delay hints were fighting
+        // against this adaptation and preventing echo cancellation from working.
+        // AEC3 will automatically estimate and track the actual echo delay over time.
         log_info("✓ WebRTC AEC3 echo cancellation initialized");
-        log_info("  - Network delay estimation: 0-500ms");
+        log_info("  - Automatic network delay estimation: 0-500ms");
         log_info("  - Adaptive filtering to echo path");
         log_info("  - Residual echo suppression enabled");
-        log_info("  - Audio buffer delay: %d ms", estimated_delay_ms);
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
