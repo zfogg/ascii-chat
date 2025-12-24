@@ -13,6 +13,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief WAV file writer context
  */
@@ -52,3 +56,7 @@ void wav_writer_close(wav_writer_t *writer);
  * @return true if ASCIICHAT_DUMP_AUDIO=1
  */
 bool wav_dump_enabled(void);
+
+#ifdef __cplusplus
+}
+#endif

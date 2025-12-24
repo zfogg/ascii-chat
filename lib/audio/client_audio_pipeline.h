@@ -51,6 +51,7 @@
 
 #include "audio/mixer.h"
 #include "platform/mutex.h"
+#include "platform/cond.h"
 
 // Forward declarations for SpeexDSP types
 typedef struct SpeexPreprocessState_ SpeexPreprocessState;
@@ -259,19 +260,31 @@ typedef struct {
   float *work_float;
 
   /** Echo reference ring buffer (playback samples for AEC) */
-  int16_t *echo_ref_buffer;
+  float *echo_ref_buffer;
   /** Echo reference buffer size in samples (500ms @ 48kHz = 24000 samples) */
   int echo_ref_size;
   /** Write position in echo reference ring buffer */
   int echo_ref_write_pos;
+  /** Read position in echo reference ring buffer */
+  int echo_ref_read_pos;
   /** Number of valid samples available in echo reference buffer */
   int echo_ref_available;
 
   /** Pipeline mutex for thread safety */
   mutex_t mutex;
 
+  /** Condition variable for synchronizing capture with render analysis */
+  cond_t render_analyzed_cond;
+
+  /** Flag indicating render signal for current frame has been analyzed */
+  bool render_analyzed_for_capture;
+
   /** Initialization state */
   bool initialized;
+
+  /** Debug WAV writers for AEC3 analysis */
+  void *debug_wav_aec3_in;  // Microphone input before AEC3
+  void *debug_wav_aec3_out; // Microphone output after AEC3
 } client_audio_pipeline_t;
 
 /**

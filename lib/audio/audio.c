@@ -91,7 +91,21 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // CRITICAL: Feed render (speaker output) signal to AEC3 for echo cancellation
       // This must happen here in the output callback where audio actually goes to speakers,
       // not when packets are decoded from network (which happens 50-100ms earlier in the jitter buffer)
+      // PortAudio is configured for MONO (AUDIO_CHANNELS=1), so output is mono, not stereo
       if (ctx->audio_pipeline) {
+        // DEBUG: Check what's actually in the output buffer
+        static int output_callback_count = 0;
+        output_callback_count++;
+        if (output_callback_count <= 5 || output_callback_count % 100 == 0) {
+          float sum_sq = 0.0f;
+          for (unsigned long i = 0; i < framesPerBuffer && i < 100; i++) {
+            sum_sq += output[i] * output[i];
+          }
+          float rms = sqrtf(sum_sq / (framesPerBuffer < 100 ? framesPerBuffer : 100));
+          log_info("DEBUG output_callback #%d: framesPerBuffer=%lu, RMS=%.6f, first_3=[%.6f,%.6f,%.6f]",
+                   output_callback_count, framesPerBuffer, rms, output[0], output[1], output[2]);
+        }
+
         // Forward declare to avoid including client_audio_pipeline.h in this low-level audio file
         extern void client_audio_pipeline_process_echo_playback(void *pipeline, const float *samples, int num_samples);
         client_audio_pipeline_process_echo_playback(ctx->audio_pipeline, output, (int)framesPerBuffer);
