@@ -91,12 +91,10 @@ function(generate_compilation_database)
             if(_MACOS_SDK_PATH AND EXISTS "${_MACOS_SDK_PATH}")
                 # Use CMAKE_OSX_SYSROOT which cmake uses to set -isysroot automatically
                 list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_MACOS_SDK_PATH}")
-                # Also explicitly add to CMAKE_C_FLAGS/CMAKE_CXX_FLAGS to ensure compilation database includes them
-                # This is needed because the compilation database might not pick up CMAKE_OSX_SYSROOT
-                set(_cmake_osx_c_flags "-isysroot;${_MACOS_SDK_PATH}")
-                set(_cmake_osx_cxx_flags "-isysroot;${_MACOS_SDK_PATH}")
-                list(APPEND _cmake_configure_args "-DCMAKE_C_FLAGS=${_cmake_osx_c_flags}")
-                list(APPEND _cmake_configure_args "-DCMAKE_CXX_FLAGS=${_cmake_osx_cxx_flags}")
+                # Note: SDK path is passed via CMAKE_OSX_SYSROOT above, which cmake uses to set
+                # -isysroot automatically. We don't need to add it again to CMAKE_C_FLAGS as that
+                # causes shell quoting issues. The CMAKE_OSX_SYSROOT is sufficient for both the
+                # default compilation and for the compilation database generation.
             endif()
         endif()
     endif()
