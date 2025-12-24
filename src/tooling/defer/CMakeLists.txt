@@ -102,18 +102,22 @@ if(APPLE)
     # Note: We use -stdlib=libc++ for linking but NOT -isysroot, because
     # -isysroot causes the linker to prefer SDK stub libraries over Homebrew's real libc++
     # We explicitly add -lc++ to ensure the actual libc++ library is linked
+    # We need RPATHs for both the main lib dir and the subdirectories (c++, unwind)
     target_link_options(ascii-instr-defer PRIVATE
         -stdlib=libc++
         "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
+        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/c++"
+        "-Wl,-rpath,${LLVM_LIBRARY_DIRS}/unwind"
         "LINKER:-lc++"
     )
 
     # Link against Homebrew LLVM libraries with proper rpath
-    # Note: libc++ is in the c++ subdirectory of Homebrew LLVM
+    # Note: libc++ is in the c++ subdirectory, libunwind is in unwind subdirectory
     target_link_directories(ascii-instr-defer PRIVATE
         ${LLVM_LIBRARY_DIRS}
         /opt/homebrew/opt/llvm/lib
         /opt/homebrew/opt/llvm/lib/c++
+        /opt/homebrew/opt/llvm/lib/unwind
     )
 
     # Find all required Clang static libraries on macOS
