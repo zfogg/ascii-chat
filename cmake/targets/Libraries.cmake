@@ -931,7 +931,7 @@ endif()
 target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
 
 # Audio dependencies (from ascii-chat-audio)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} ${SPEEXDSP_LIBRARIES})
+target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} ${SPEEXDSP_LIBRARIES} webrtc_audio_processing)
 if(APPLE)
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${COREAUDIO_FRAMEWORK}
