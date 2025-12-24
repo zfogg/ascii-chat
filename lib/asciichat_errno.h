@@ -141,6 +141,11 @@ typedef struct {
  *
  * @ingroup errno
  */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern __thread asciichat_error_context_t asciichat_errno_context;
 
 /**
@@ -753,3 +758,9 @@ void asciichat_errno_cleanup(void);
       asciichat_print_error_context(&asciichat_errno_context);                                                         \
     }                                                                                                                  \
   } while (0)
+
+#ifdef __cplusplus
+}
+#endif
+
+/** @} */ /* errno */

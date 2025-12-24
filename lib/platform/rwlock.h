@@ -44,11 +44,23 @@ typedef pthread_rwlock_t rwlock_t;
 // Note: Full lock_debug.h cannot be included here due to circular dependencies
 // Files that use both rwlock and lock_debug must include lock_debug.h separately
 #ifndef NDEBUG
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool lock_debug_is_initialized(void);
 int debug_rwlock_rdlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 int debug_rwlock_wrlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 int debug_rwlock_rdunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
 int debug_rwlock_wrunlock(rwlock_t *rwlock, const char *file_name, int line_number, const char *function_name);
+
+#ifdef __cplusplus
+}
+#endif
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 // ============================================================================
@@ -236,6 +248,10 @@ int rwlock_wrunlock_impl(rwlock_t *lock);
 #else
 #define rwlock_wrunlock(lock)                                                                                          \
   (lock_debug_is_initialized() ? debug_rwlock_wrunlock(lock, __FILE__, __LINE__, __func__) : rwlock_wrunlock_impl(lock))
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 /** @} */

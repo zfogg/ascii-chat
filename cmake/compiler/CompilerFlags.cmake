@@ -236,6 +236,12 @@ function(configure_debug_build_flags BUILD_TYPE)
             )
             if(LLD_CHECK_RESULT EQUAL 0)
                 add_link_options(-fuse-ld=lld)
+                # Allow undefined symbols and multiple definitions for WebRTC build tools
+                if(PLATFORM_LINUX)
+                    # Linux ld.lld: use --allow-multiple-definition (GNU ld compatibility)
+                    # This handles any duplicate symbols that might arise from linking WebRTC
+                    add_link_options("LINKER:--allow-multiple-definition")
+                endif()
                 message(STATUS "Using ${BoldCyan}LLD linker${ColorReset} for faster Debug/Dev builds (${ASCIICHAT_LLD_EXECUTABLE})")
             else()
                 message(STATUS "${Yellow}LLD linker found but not functional${ColorReset} - using default linker")

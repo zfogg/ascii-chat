@@ -51,6 +51,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Enable or disable quiet mode for memory reports
  *
@@ -215,5 +219,9 @@ void debug_free(void *ptr, const char *file, int line);
 void debug_track_aligned(void *ptr, size_t size, const char *file, int line);
 
 /** @} */
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif /* DEBUG_MEMORY */

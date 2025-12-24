@@ -383,6 +383,7 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
         if(NOT WIN32)
             if(APPLE)
                 # macOS: Add -all_load to prevent stripping constructor functions from static libs
+                # The global -undefined dynamic_lookup flag handles undefined symbols from WebRTC
                 # Keep -pie for ASLR security. Don't clear other link options (sanitizers!)
                 target_link_options(${test_exe_name} PRIVATE
                     -Wl,-all_load

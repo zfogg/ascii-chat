@@ -193,9 +193,17 @@ typedef enum {
 
 } asciichat_error_t;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Forward declaration for asciichat_fatal_with_context - now after asciichat_error_t is defined */
 void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int line, const char *function,
                                   const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif
 
 /* ============================================================================
  * Error String Utilities

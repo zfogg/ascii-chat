@@ -238,8 +238,18 @@ endif()
 
 # -----------------------------------------------------------------------------
 # Module 6: Audio Processing (depends on: util, platform, data-structures)
-# -----------------------------------------------------------------------------
+# Add WebRTC AEC3 include directories BEFORE creating the module
+if(TARGET webrtc_audio_processing)
+    get_target_property(WEBRTC_INCLUDES webrtc_audio_processing INTERFACE_INCLUDE_DIRECTORIES)
+    if(WEBRTC_INCLUDES)
+        # Set globally so they apply during compilation
+        include_directories(${WEBRTC_INCLUDES})
+    endif()
+endif()
+
+# Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
+
 if(NOT BUILDING_OBJECT_LIBS)
     target_link_libraries(ascii-chat-audio
         ascii-chat-util
@@ -247,12 +257,11 @@ if(NOT BUILDING_OBJECT_LIBS)
         ascii-chat-data-structures
         ${PORTAUDIO_LIBRARIES}
         ${OPUS_LIBRARIES}
+        webrtc_audio_processing
     )
-    # Speex DSP for acoustic echo cancellation
-    target_link_libraries(ascii-chat-audio ${SPEEXDSP_LIBRARIES})
 else()
     # For OBJECT libs, link external deps only
-    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} ${SPEEXDSP_LIBRARIES})
+    target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
 endif()
 
 # Link platform-specific audio libraries
@@ -780,6 +789,11 @@ else()
             endif()
         endif()
     endif()
+endif()
+
+# Link WebRTC audio processing library (AEC3) to shared library
+if(TARGET webrtc_audio_processing)
+    target_link_libraries(ascii-chat-shared PRIVATE webrtc_audio_processing)
 endif()
 
 # Add build timing for ascii-chat-shared library

@@ -76,8 +76,8 @@ function(generate_compilation_database)
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
-    # On macOS, set CMAKE_OSX_SYSROOT and also add explicit SDK flags to CMAKE_C/CXX_FLAGS
-    # This ensures both cmake's default behavior and explicit compilation database entries include SDK paths
+    # On macOS, set CMAKE_OSX_SYSROOT to ensure SDK is properly configured
+    # CMAKE will automatically add -isysroot flags to the compiler
     if(APPLE)
         # Try to detect SDK path using xcrun (if available)
         find_program(_XCRUN_EXECUTABLE xcrun)
@@ -89,12 +89,8 @@ function(generate_compilation_database)
                 ERROR_QUIET
             )
             if(_MACOS_SDK_PATH AND EXISTS "${_MACOS_SDK_PATH}")
-                # Use CMAKE_OSX_SYSROOT which cmake uses to set -isysroot automatically
+                # Pass CMAKE_OSX_SYSROOT to ensure -isysroot is set automatically by cmake
                 list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_MACOS_SDK_PATH}")
-                # Also explicitly add to CMAKE_C_FLAGS/CMAKE_CXX_FLAGS for the compilation database.
-                # The quotes are literal parts of the argument value, not shell quoting.
-                list(APPEND _cmake_configure_args "-DCMAKE_C_FLAGS=\"-isysroot ${_MACOS_SDK_PATH}\"")
-                list(APPEND _cmake_configure_args "-DCMAKE_CXX_FLAGS=\"-isysroot ${_MACOS_SDK_PATH}\"")
             endif()
         endif()
     endif()

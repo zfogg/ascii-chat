@@ -50,6 +50,10 @@
 #include "util/uthash.h"
 #include "util/fnv1a.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Constants and Limits
 // ============================================================================
@@ -406,6 +410,10 @@ void lock_debug_print_state(void);
  * @ingroup lock_debug
  */
 void print_orphaned_release_callback(lock_record_t *record, void *user_data);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // DEBUG_LOCKS
 
