@@ -63,14 +63,20 @@ if(NOT webrtc_aec3_POPULATED)
     string(REPLACE "-std=c++26" "-std=c++17" WEBRTC_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     string(REPLACE "-std=gnu++26" "-std=c++17" WEBRTC_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
 
-    set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
+    # Suppress all warnings for third-party WebRTC code (not our code to fix)
+    string(APPEND WEBRTC_CXX_FLAGS " -w")
 
-    # Build WebRTC subdirectory with C++17
+    set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w")
+
+    # Build WebRTC subdirectory with C++17 and warnings suppressed
     add_subdirectory(${webrtc_aec3_SOURCE_DIR} ${CMAKE_BINARY_DIR}/webrtc_aec3-build)
 
-    # Restore the original C++ flags for ascii-chat
+    # Restore the original C++ and C flags for ascii-chat
     set(CMAKE_CXX_FLAGS "${SAVED_CMAKE_CXX_FLAGS}")
+    set(CMAKE_C_FLAGS "${SAVED_CMAKE_C_FLAGS}")
 endif()
 
 message(STATUS "  ${BoldGreen}✓ WebRTC AEC3 configured and built successfully${ColorReset}")
@@ -99,6 +105,14 @@ if(TARGET AudioProcess)
 
     # Also link against the base library which includes Abseil
     target_link_libraries(webrtc_audio_processing INTERFACE base)
+
+    # Suppress all warnings on WebRTC targets using target_compile_options
+    # This ensures warnings are suppressed regardless of how CMAKE_CXX_FLAGS are modified
+    foreach(target AudioProcess base api aec3)
+        if(TARGET ${target})
+            target_compile_options(${target} PRIVATE -w)
+        endif()
+    endforeach()
 else()
     message(FATAL_ERROR "AEC3 build failed - Missing targets: AudioProcess=${TARGET AudioProcess} api=${TARGET api}")
 endif()
