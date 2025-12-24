@@ -199,7 +199,11 @@ static void calculate_optimal_dimensions(ssize_t original_width, ssize_t origina
  * Creates new image buffer only when resizing is required, otherwise
  * reuses original frame to minimize memory allocations.
  *
- * @param original_image Input frame from webcam
+ * IMPORTANT: Caller retains ownership of input image. Caller must destroy
+ * the returned image if not NULL. Do not call image_destroy() on the input
+ * before calling this function - let the caller manage its lifecycle.
+ *
+ * @param original_image Input frame from webcam (caller owns it)
  * @param max_width Maximum allowed frame width
  * @param max_height Maximum allowed frame height
  * @return Processed image ready for transmission, or NULL on error
@@ -216,23 +220,23 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
                                &resized_height);
   // Check if resizing is needed
   if (original_image->w == resized_width && original_image->h == resized_height) {
-    // No resizing needed - return original image
+    // No resizing needed - return original image as-is
+    // Caller retains ownership and must destroy when done
     return original_image;
   }
   // Create new image for resized frame
   image_t *resized = image_new(resized_width, resized_height);
   if (!resized) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate resized image buffer");
-    // BUGFIX: Destroy original image on allocation failure to prevent memory leak
-    image_destroy(original_image);
+    // Do not destroy original_image - caller owns it
     return NULL;
   }
 
   // Perform resizing operation
   image_resize(original_image, resized);
 
-  // Destroy original image since we created a new one
-  image_destroy(original_image);
+  // Return resized image without destroying original
+  // Caller is responsible for destroying both input and output
   return resized;
 }
 /* ============================================================================
@@ -307,9 +311,16 @@ static void *webcam_capture_thread_func(void *arg) {
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
     if (!processed_image) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
-      // Note: process_frame_for_transmission() already destroys image on failure,
-      // so we don't need to destroy it again here (avoid use-after-free)
+      // process_frame_for_transmission() doesn't own the input image,
+      // so we need to destroy it here
+      image_destroy(image);
       continue;
+    }
+
+    // If processed_image is different from input image, destroy the input
+    // (caller now owns the processed image instead)
+    if (processed_image != image) {
+      image_destroy(image);
     }
     // Serialize image data for network transmission
 
