@@ -87,7 +87,15 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       }
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
-      // Note: Echo reference is fed through ClientAudioPipeline when samples are received
+
+      // CRITICAL: Feed render (speaker output) signal to AEC3 for echo cancellation
+      // This must happen here in the output callback where audio actually goes to speakers,
+      // not when packets are decoded from network (which happens 50-100ms earlier in the jitter buffer)
+      if (ctx->audio_pipeline) {
+        // Forward declare to avoid including client_audio_pipeline.h in this low-level audio file
+        extern void client_audio_pipeline_process_echo_playback(void *pipeline, const float *samples, int num_samples);
+        client_audio_pipeline_process_echo_playback(ctx->audio_pipeline, output, (int)framesPerBuffer);
+      }
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
@@ -521,6 +529,12 @@ void audio_destroy(audio_context_t *ctx) {
   mutex_destroy(&ctx->state_mutex);
 
   log_info("Audio system destroyed");
+}
+
+void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
+  if (!ctx)
+    return;
+  ctx->audio_pipeline = pipeline;
 }
 
 asciichat_error_t audio_start_capture(audio_context_t *ctx) {

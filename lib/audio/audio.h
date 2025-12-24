@@ -112,6 +112,7 @@ typedef struct {
   bool recording;                       ///< True if audio capture is active
   bool playing;                         ///< True if audio playback is active
   mutex_t state_mutex;                  ///< Mutex protecting context state
+  void *audio_pipeline;                 ///< Client audio pipeline for echo cancellation (opaque pointer)
 } audio_context_t;
 
 /* ============================================================================
@@ -152,6 +153,22 @@ asciichat_error_t audio_init(audio_context_t *ctx);
  * @ingroup audio
  */
 void audio_destroy(audio_context_t *ctx);
+
+/**
+ * @brief Set audio pipeline for echo cancellation
+ * @param ctx Audio context (must not be NULL)
+ * @param pipeline Client audio pipeline pointer (opaque, can be NULL)
+ *
+ * Associates an audio pipeline with the context for echo cancellation.
+ * The pipeline is fed playback samples from the output callback,
+ * allowing AEC3 to properly synchronize render and capture signals.
+ *
+ * @note Safe to call at any time, including before/after audio streams are started.
+ * @note Pass NULL to disable pipeline integration.
+ *
+ * @ingroup audio
+ */
+void audio_set_pipeline(audio_context_t *ctx, void *pipeline);
 
 /** @} */
 
