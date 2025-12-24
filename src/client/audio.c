@@ -487,8 +487,10 @@ int audio_client_init() {
   pipeline_config.flags.highpass = false;       // DISABLED: minimal processing
   pipeline_config.flags.lowpass = false;        // DISABLED: minimal processing
 
-  // Increase jitter buffer margin to prevent underruns
-  pipeline_config.jitter_margin_ms = 200; // Increased from default 60ms for better buffering
+  // Set jitter buffer margin for smooth playback without excessive delay
+  // 100ms provides sufficient buffering for typical network jitter without creating silence gaps
+  // Too high (200ms) causes audio to be very quiet and adds latency that breaks AEC3 echo detection
+  pipeline_config.jitter_margin_ms = 100;
 
   g_audio_pipeline = client_audio_pipeline_create(&pipeline_config);
   if (!g_audio_pipeline) {
@@ -653,6 +655,14 @@ void audio_cleanup() {
   // Clear the pipeline pointer from audio context BEFORE destroying pipeline
   // This prevents any lingering PortAudio callbacks from trying to access freed memory
   audio_set_pipeline(&g_audio_context, NULL);
+
+  // CRITICAL: Sleep to allow CoreAudio threads to finish executing callbacks
+  // On macOS, CoreAudio's internal threads may continue running after Pa_StopStream() returns.
+  // The output_callback may still be in-flight on other threads. Even after we set the pipeline
+  // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.
+  // This sleep ensures all in-flight callbacks have fully completed before we destroy the pipeline.
+  // 500ms is sufficient on macOS for CoreAudio's internal thread pool to completely wind down.
+  platform_sleep_usec(500000); // 500ms - macOS CoreAudio needs time to shut down all threads
 
   // Destroy audio pipeline (handles Opus, AEC, etc.)
   if (g_audio_pipeline) {
