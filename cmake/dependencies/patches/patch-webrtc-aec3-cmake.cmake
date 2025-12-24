@@ -325,68 +325,107 @@ if(FSH_CONTENT MATCHES "std::max\\(SIGSTKSZ, 65536\\)")
 endif()
 
 # =============================================================================
-# Patch 11: audio_processing/splitting_filter.h - Add missing <cstring> include
+# Patch 11: audio_processing - Add missing C++ standard library includes
 # =============================================================================
-# splitting_filter.h uses memcpy but doesn't include <cstring>
-# This causes compilation failures in strict C++ environments like musl.
+# WebRTC audio_processing headers use standard library classes without including headers
+# This is critical for musl libc environments where headers must be explicitly included
 
-if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/splitting_filter.h")
-    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/splitting_filter.h" SF_CONTENT)
+# Add <cstring> for headers using memcpy/memset
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/splitting_filter.h" _TMP_CONTENT)
+if(NOT _TMP_CONTENT MATCHES "include.*cstring")
+    string(REPLACE
+        "#define MODULES_AUDIO_PROCESSING_SPLITTING_FILTER_H_\n"
+        "#define MODULES_AUDIO_PROCESSING_SPLITTING_FILTER_H_\n#include <cstring>\n"
+        _TMP_CONTENT
+        "${_TMP_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/splitting_filter.h" "${_TMP_CONTENT}")
+    message(STATUS "Patched WebRTC splitting_filter.h - added missing <cstring> include")
+endif()
 
-    if(NOT SF_CONTENT MATCHES "#include <cstring>")
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/three_band_filter_bank.h" _TMP_CONTENT)
+if(NOT _TMP_CONTENT MATCHES "include.*cstring")
+    string(REPLACE
+        "#define MODULES_AUDIO_PROCESSING_THREE_BAND_FILTER_BANK_H_\n"
+        "#define MODULES_AUDIO_PROCESSING_THREE_BAND_FILTER_BANK_H_\n#include <cstring>\n"
+        _TMP_CONTENT
+        "${_TMP_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/three_band_filter_bank.h" "${_TMP_CONTENT}")
+    message(STATUS "Patched WebRTC three_band_filter_bank.h - added missing <cstring> include")
+endif()
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/sparse_fir_filter.h" _TMP_CONTENT)
+if(NOT _TMP_CONTENT MATCHES "include.*cstring")
+    string(REPLACE
+        "#define MODULES_AUDIO_PROCESSING_SPARSE_FIR_FILTER_H_\n"
+        "#define MODULES_AUDIO_PROCESSING_SPARSE_FIR_FILTER_H_\n#include <cstring>\n"
+        _TMP_CONTENT
+        "${_TMP_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/sparse_fir_filter.h" "${_TMP_CONTENT}")
+    message(STATUS "Patched WebRTC sparse_fir_filter.h - added missing <cstring> include")
+endif()
+
+# Add <memory> for headers using unique_ptr
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/high_pass_filter.h" _TMP_CONTENT)
+if(NOT _TMP_CONTENT MATCHES "include.*memory")
+    string(REPLACE
+        "#define MODULES_AUDIO_PROCESSING_HIGH_PASS_FILTER_H_\n"
+        "#define MODULES_AUDIO_PROCESSING_HIGH_PASS_FILTER_H_\n#include <memory>\n"
+        _TMP_CONTENT
+        "${_TMP_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/high_pass_filter.h" "${_TMP_CONTENT}")
+    message(STATUS "Patched WebRTC high_pass_filter.h - added missing <memory> include")
+endif()
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/audio_buffer.h" _TMP_CONTENT)
+if(NOT _TMP_CONTENT MATCHES "include.*memory")
+    string(REPLACE
+        "#define MODULES_AUDIO_PROCESSING_AUDIO_BUFFER_H_\n"
+        "#define MODULES_AUDIO_PROCESSING_AUDIO_BUFFER_H_\n#include <memory>\n"
+        _TMP_CONTENT
+        "${_TMP_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/audio_buffer.h" "${_TMP_CONTENT}")
+    message(STATUS "Patched WebRTC audio_buffer.h - added missing <memory> include")
+endif()
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/channel_buffer.h" _TMP_CONTENT)
+if(NOT _TMP_CONTENT MATCHES "include.*memory")
+    string(REPLACE
+        "#define MODULES_AUDIO_PROCESSING_CHANNEL_BUFFER_H_\n"
+        "#define MODULES_AUDIO_PROCESSING_CHANNEL_BUFFER_H_\n#include <memory>\n"
+        _TMP_CONTENT
+        "${_TMP_CONTENT}"
+    )
+    file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/channel_buffer.h" "${_TMP_CONTENT}")
+    message(STATUS "Patched WebRTC channel_buffer.h - added missing <memory> include")
+endif()
+
+# =============================================================================
+# Patch 12: base/rtc_base/checks.h - Add missing <string> include
+# =============================================================================
+# checks.h uses std::string but doesn't include <string>
+
+if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/checks.h")
+    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/checks.h" CHECKS_CONTENT)
+
+    if(NOT CHECKS_CONTENT MATCHES "#include <string>")
         string(REPLACE
-            "#ifndef MODULES_AUDIO_PROCESSING_SPLITTING_FILTER_H_"
-            "#ifndef MODULES_AUDIO_PROCESSING_SPLITTING_FILTER_H_\n#include <cstring>"
-            SF_CONTENT
-            "${SF_CONTENT}"
+            "#include \"rtc_base/type_traits.h\""
+            "#include \"rtc_base/type_traits.h\"\n#include <string>"
+            CHECKS_CONTENT
+            "${CHECKS_CONTENT}"
         )
-        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/splitting_filter.h" "${SF_CONTENT}")
-        message(STATUS "Patched WebRTC splitting_filter.h - added missing <cstring> include")
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/checks.h" "${CHECKS_CONTENT}")
+        message(STATUS "Patched WebRTC checks.h - added missing <string> include")
     endif()
 endif()
 
 # =============================================================================
-# Patch 12: audio_processing/high_pass_filter.h - Add missing <memory> include
-# =============================================================================
-# high_pass_filter.h uses unique_ptr but doesn't include <memory>
-
-if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/high_pass_filter.h")
-    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/high_pass_filter.h" HPF_CONTENT)
-
-    if(NOT HPF_CONTENT MATCHES "#include <memory>")
-        string(REPLACE
-            "#ifndef MODULES_AUDIO_PROCESSING_HIGH_PASS_FILTER_H_"
-            "#ifndef MODULES_AUDIO_PROCESSING_HIGH_PASS_FILTER_H_\n#include <memory>"
-            HPF_CONTENT
-            "${HPF_CONTENT}"
-        )
-        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/high_pass_filter.h" "${HPF_CONTENT}")
-        message(STATUS "Patched WebRTC high_pass_filter.h - added missing <memory> include")
-    endif()
-endif()
-
-# =============================================================================
-# Patch 13: audio_processing/audio_buffer.h - Add missing <memory> include
-# =============================================================================
-# audio_buffer.h uses unique_ptr but doesn't include <memory>
-
-if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/audio_buffer.h")
-    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/audio_buffer.h" AB_CONTENT)
-
-    if(NOT AB_CONTENT MATCHES "#include <memory>")
-        string(REPLACE
-            "#ifndef MODULES_AUDIO_PROCESSING_AUDIO_BUFFER_H_"
-            "#ifndef MODULES_AUDIO_PROCESSING_AUDIO_BUFFER_H_\n#include <memory>"
-            AB_CONTENT
-            "${AB_CONTENT}"
-        )
-        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/audio_processing/audio_buffer.h" "${AB_CONTENT}")
-        message(STATUS "Patched WebRTC audio_buffer.h - added missing <memory> include")
-    endif()
-endif()
-
-# =============================================================================
-# Patch 14: demo/demo.cc - Add missing <string> include
+# Patch 13: demo/demo.cc - Add missing <string> include
 # =============================================================================
 # demo.cc uses std::string but doesn't include <string>
 
@@ -402,26 +441,6 @@ if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/demo/demo.cc")
         )
         file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/demo/demo.cc" "${DEMO_CONTENT}")
         message(STATUS "Patched WebRTC demo.cc - added missing <string> include")
-    endif()
-endif()
-
-# =============================================================================
-# Patch 15: base/rtc_base/checks.h - Add missing <string> include
-# =============================================================================
-# checks.h uses std::string but doesn't include <string>
-
-if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/checks.h")
-    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/checks.h" CHECKS_CONTENT)
-
-    if(NOT CHECKS_CONTENT MATCHES "#include <string>")
-        string(REPLACE
-            "#define RTC_ABORT_ON_DFATAL"
-            "#include <string>\n\n#define RTC_ABORT_ON_DFATAL"
-            CHECKS_CONTENT
-            "${CHECKS_CONTENT}"
-        )
-        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/rtc_base/checks.h" "${CHECKS_CONTENT}")
-        message(STATUS "Patched WebRTC checks.h - added missing <string> include")
     endif()
 endif()
 

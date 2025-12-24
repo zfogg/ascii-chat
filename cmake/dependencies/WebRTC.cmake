@@ -91,13 +91,27 @@ if(TARGET AudioProcess)
 
     # Link all WebRTC libraries that AudioProcess depends on
     # AudioProcess needs: aec3, api, base (from audio_processing/CMakeLists.txt:4)
-    # For shared library builds, transitive dependencies must be explicitly linked
-    target_link_libraries(webrtc_audio_processing INTERFACE
-        AudioProcess
-        aec3
-        api
-        base
-    )
+    # For shared library builds on Linux/Unix, we must use WHOLE_ARCHIVE to force all symbols
+    # to be embedded in the shared object (not just referenced). On macOS use -force_load.
+    # This is critical for symbol resolution when the shared library is used.
+
+    if(APPLE)
+        # macOS uses -force_load to embed all symbols from static libraries
+        target_link_libraries(webrtc_audio_processing INTERFACE
+            -force_load $<TARGET_FILE:AudioProcess>
+            -force_load $<TARGET_FILE:aec3>
+            -force_load $<TARGET_FILE:api>
+            -force_load $<TARGET_FILE:base>
+        )
+    else()
+        # Linux/Unix: Use WHOLE_ARCHIVE wrapper to embed all symbols
+        # This ensures all WebRTC symbols are available when the shared library is used
+        target_link_libraries(webrtc_audio_processing INTERFACE
+            -Wl,--whole-archive
+            AudioProcess aec3 api base
+            -Wl,--no-whole-archive
+        )
+    endif()
 
     # Add include path for AEC3 headers
     # Use INTERFACE since this is an INTERFACE library
