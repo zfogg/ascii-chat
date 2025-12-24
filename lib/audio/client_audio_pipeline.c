@@ -39,8 +39,9 @@ static void suppress_stderr_for_vad_init(SpeexPreprocessState *preprocess) {
 #endif
   }
 
-  // Enable VAD (this prints the warning we want to suppress)
-  int vad = 1;
+  // Set VAD based on config (this prints the warning we want to suppress if VAD is enabled)
+  // VAD suppresses non-voice audio, so it should only be used for voice communication
+  int vad = 0; // Disabled by default - music/audio content is suppressed by VAD
   speex_preprocess_ctl(preprocess, SPEEX_PREPROCESS_SET_VAD, &vad);
 
   // Restore stderr
@@ -115,7 +116,7 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .gate_release_ms = 50.0f,
       .gate_hysteresis = 0.9f,
 
-      .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
+      .flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL,
   };
 }
 
@@ -168,16 +169,20 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // Link preprocessor to echo canceller
   speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_ECHO_STATE, p->echo_state);
 
-  // Configure noise suppression
-  int denoise = 1;
+  // Configure noise suppression (only if enabled)
+  int denoise = p->flags.noise_suppress ? 1 : 0;
   speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_DENOISE, &denoise);
-  speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_NOISE_SUPPRESS, &p->config.noise_suppress_db);
+  if (p->flags.noise_suppress) {
+    speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_NOISE_SUPPRESS, &p->config.noise_suppress_db);
+  }
 
-  // Configure AGC
-  int agc = 1;
+  // Configure AGC (only if enabled)
+  int agc = p->flags.agc ? 1 : 0;
   speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC, &agc);
-  speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC_LEVEL, &p->config.agc_level);
-  speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC_MAX_GAIN, &p->config.agc_max_gain);
+  if (p->flags.agc) {
+    speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC_LEVEL, &p->config.agc_level);
+    speex_preprocess_ctl(p->preprocess, SPEEX_PREPROCESS_SET_AGC_MAX_GAIN, &p->config.agc_max_gain);
+  }
 
   // Configure VAD (suppress "VAD has been replaced by a hack" warning)
   suppress_stderr_for_vad_init(p->preprocess);
@@ -437,6 +442,24 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
       log_warn("AEC not enabled: echo_cancel=%d, echo_state=%p", pipeline->flags.echo_cancel,
                (void *)pipeline->echo_state);
       aec_warned = true;
+    }
+  }
+
+  // DEBUG: Log audio BEFORE Speex preprocessing
+  {
+    float peak = 0.0f, rms = 0.0f;
+    for (int i = 0; i < num_samples; i++) {
+      float val = (float)pipeline->work_i16[i] / 32767.0f;
+      float abs_val = fabsf(val);
+      if (abs_val > peak)
+        peak = abs_val;
+      rms += val * val;
+    }
+    rms = sqrtf(rms / num_samples);
+    static int pre_speex_count = 0;
+    pre_speex_count++;
+    if (pre_speex_count <= 5 || pre_speex_count % 20 == 0) {
+      log_info("Pre-Speex audio #%d: Peak=%.6f, RMS=%.6f (all %d samples)", pre_speex_count, peak, rms, num_samples);
     }
   }
 
