@@ -149,14 +149,15 @@
     {
       "name": "docker",
       "displayName": "Docker",
-      "description": "Configuration for Docker container builds (tests enabled)",
+      "description": "Configuration for Docker container builds (tests enabled, C++20 for WebRTC AEC3 compatibility)",
       "inherits": "base-debug",
       "binaryDir": "${sourceDir}/build_docker",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
         "USE_CPACK": "OFF",
-        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON"
+        "ASCIICHAT_FORCE_CRITERION_TESTS": "ON",
+        "CMAKE_CXX_STANDARD": "20"
       }
     },
     {
