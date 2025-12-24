@@ -314,20 +314,17 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     // Process frame for network transmission
+    // process_frame_for_transmission() always returns a new image that we own
+    // and takes ownership of a copy/resize operation, leaving original intact
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
     if (!processed_image) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
-      // process_frame_for_transmission() doesn't own the input image,
-      // so we need to destroy it here
-      image_destroy(image);
+      // Caller owns the original image - don't destroy it (may be static test pattern)
       continue;
     }
 
-    // If processed_image is different from input image, destroy the input
-    // (caller now owns the processed image instead)
-    if (processed_image != image) {
-      image_destroy(image);
-    }
+    // processed_image is always a new image (copy or resized) - we own it and must destroy it
+    // The original image is left intact for the next iteration
     // Serialize image data for network transmission
 
     // Create image frame packet in new format: [width:4][height:4][compressed_flag:4][data_size:4][pixel_data]
