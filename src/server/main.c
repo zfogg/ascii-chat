@@ -1211,6 +1211,9 @@ main_loop:
   // Safe to call even if atexit() runs later
   platform_cleanup_binary_path_cache();
 
+  // Clean up errno context (allocated strings, backtrace symbols)
+  asciichat_errno_cleanup();
+
   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
   // POSIX: minimal cleanup (symbol cache already handled above on Windows)
 #ifdef _WIN32

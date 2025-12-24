@@ -257,6 +257,9 @@ static void shutdown_client() {
   // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent
   platform_cleanup_binary_path_cache();
 
+  // Clean up errno context (allocated strings, backtrace symbols)
+  asciichat_errno_cleanup();
+
   log_info("Client shutdown complete");
   log_destroy();
 
