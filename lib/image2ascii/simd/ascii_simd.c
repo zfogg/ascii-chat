@@ -593,7 +593,7 @@ simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iter
   start = get_time_seconds();
   for (int i = 0; i < iterations; i++) {
     // Create temporary image for unified function
-    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
+    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height, .alloc_method = IMAGE_ALLOC_SIMD};
     char *ascii_output = render_ascii_neon_unified_optimized(&temp_image, background_mode, true, DEFAULT_ASCII_PALETTE);
     if (ascii_output)
       SAFE_FREE(ascii_output);
@@ -1012,7 +1012,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
-    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
+    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height, .alloc_method = IMAGE_ALLOC_SIMD};
     char *result =
         render_ascii_neon_unified_optimized(&temp_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result)
@@ -1025,7 +1025,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   start = get_time_seconds();
   for (int i = 0; i < adaptive_iterations; i++) {
     // Create temporary image for unified function
-    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height};
+    image_t temp_image = {.pixels = test_pixels, .w = width, .h = height, .alloc_method = IMAGE_ALLOC_SIMD};
     char *result =
         render_ascii_sve_unified_optimized(&temp_image, background_mode, use_256color, DEFAULT_ASCII_PALETTE);
     if (result)
