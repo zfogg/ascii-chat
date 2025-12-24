@@ -76,6 +76,23 @@ function(generate_compilation_database)
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
+    # On macOS, pass SDK path to ensure compilation database includes SDK flags
+    if(APPLE)
+        # Try to detect SDK path using xcrun (if available)
+        find_program(_XCRUN_EXECUTABLE xcrun)
+        if(_XCRUN_EXECUTABLE)
+            execute_process(
+                COMMAND ${_XCRUN_EXECUTABLE} --show-sdk-path
+                OUTPUT_VARIABLE _MACOS_SDK_PATH
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(_MACOS_SDK_PATH AND EXISTS "${_MACOS_SDK_PATH}")
+                list(APPEND _cmake_configure_args "-DASCIICHAT_MACOS_SDK_PATH=${_MACOS_SDK_PATH}")
+            endif()
+        endif()
+    endif()
+
     if(WIN32)
         list(APPEND _cmake_configure_args "-DCMAKE_RC_COMPILER=CMAKE_RC_COMPILER-NOTFOUND")
     endif()
