@@ -1084,6 +1084,15 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     // Get exact frame size from frame_sizes array (convert from network byte order)
     size_t frame_size = (size_t)ntohs(frame_sizes[i]);
 
+    // DEBUG: Log the actual bytes of each Opus frame
+    if (frame_size > 0) {
+      log_debug_every(5000000, "Client %u: Opus frame %d: size=%zu, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]",
+                      atomic_load(&client->client_id), i, frame_size, opus_data[opus_offset] & 0xFF,
+                      frame_size > 1 ? (opus_data[opus_offset + 1] & 0xFF) : 0,
+                      frame_size > 2 ? (opus_data[opus_offset + 2] & 0xFF) : 0,
+                      frame_size > 3 ? (opus_data[opus_offset + 3] & 0xFF) : 0);
+    }
+
     if (opus_offset + frame_size > opus_size) {
       log_error("Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)",
                 atomic_load(&client->client_id), i + 1, opus_offset, frame_size, opus_size);
