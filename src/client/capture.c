@@ -220,9 +220,15 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
                                &resized_height);
   // Check if resizing is needed
   if (original_image->w == resized_width && original_image->h == resized_height) {
-    // No resizing needed - return original image as-is
-    // Caller retains ownership and must destroy when done
-    return original_image;
+    // No resizing needed - create a copy to preserve original
+    image_t *copy = image_new(original_image->w, original_image->h);
+    if (!copy) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate image copy");
+      return NULL;
+    }
+    // Copy pixel data
+    memcpy(copy->pixels, original_image->pixels, (size_t)original_image->w * original_image->h * sizeof(rgb_t));
+    return copy;
   }
   // Create new image for resized frame
   image_t *resized = image_new(resized_width, resized_height);
