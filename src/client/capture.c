@@ -307,9 +307,8 @@ static void *webcam_capture_thread_func(void *arg) {
     image_t *processed_image = process_frame_for_transmission(image, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT);
     if (!processed_image) {
       SET_ERRNO(ERROR_INVALID_STATE, "Failed to process frame for transmission");
-      if (image) {
-        image_destroy(image);
-      }
+      // Note: process_frame_for_transmission() already destroys image on failure,
+      // so we don't need to destroy it again here (avoid use-after-free)
       continue;
     }
     // Serialize image data for network transmission
