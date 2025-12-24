@@ -665,13 +665,22 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
     return;
   }
 
-  // Convert float to int16 for Speex
-  float_to_int16(samples, pipeline->echo_i16, num_samples);
-
-  // Write playback samples to echo reference ring buffer
+  // Convert float samples to int16 and write to echo reference ring buffer
+  // We do this in-place to avoid buffer overflow if num_samples > frame_size
   // This provides the capture thread with the speaker output history for AEC
   for (int i = 0; i < num_samples; i++) {
-    pipeline->echo_ref_buffer[pipeline->echo_ref_write_pos] = pipeline->echo_i16[i];
+    // Convert sample from float to int16
+    float sample = samples[i];
+    // Clamp to [-1.0, 1.0] and convert to [-32768, 32767]
+    int32_t sample_i32 = (int32_t)(sample * 32767.0f);
+    if (sample_i32 > 32767)
+      sample_i32 = 32767;
+    if (sample_i32 < -32768)
+      sample_i32 = -32768;
+    int16_t sample_i16 = (int16_t)sample_i32;
+
+    // Write to echo reference buffer
+    pipeline->echo_ref_buffer[pipeline->echo_ref_write_pos] = sample_i16;
     pipeline->echo_ref_write_pos = (pipeline->echo_ref_write_pos + 1) % pipeline->echo_ref_size;
 
     // Keep track of available samples (cap at buffer size)
