@@ -89,10 +89,6 @@ void image_destroy(image_t *p) {
     return;
   }
 
-  // Debug: log destruction attempt
-  log_debug_every(1000, "image_destroy: w=%d h=%d alloc_method=%d pixels=%p", p->w, p->h, p->alloc_method,
-                  (void *)p->pixels);
-
   // Check allocation method and deallocate appropriately
   if (p->alloc_method == IMAGE_ALLOC_POOL) {
     // Pool-allocated images: free entire contiguous buffer (image + pixels)
@@ -113,15 +109,12 @@ void image_destroy(image_t *p) {
     size_t pixels_size = pixel_count * sizeof(rgb_t);
     size_t total_size = sizeof(image_t) + pixels_size;
 
-    log_debug("image_destroy: freeing pool-allocated image (%zu bytes)", total_size);
     // Free the entire contiguous buffer back to pool
     buffer_pool_free(p, total_size);
   } else {
     // SIMD-allocated images: free pixels and structure separately
     // SAFE_MALLOC_SIMD allocates with aligned allocation (posix_memalign on macOS, aligned_alloc on Linux)
     // These can be freed with standard free() / SAFE_FREE()
-    log_debug("image_destroy: freeing SIMD-allocated image (pixels=%zu bytes)",
-              (size_t)p->w * (size_t)p->h * sizeof(rgb_t));
     SAFE_FREE(p->pixels);
     SAFE_FREE(p);
   }
