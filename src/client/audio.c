@@ -452,10 +452,6 @@ int audio_client_init() {
   client_audio_pipeline_config_t pipeline_config = client_audio_pipeline_default_config();
   pipeline_config.opus_bitrate = 128000; // 128 kbps AUDIO mode for music quality
 
-  // Use full processing with echo cancellation enabled
-  // (default config already has all flags enabled including VAD)
-  pipeline_config.flags.echo_cancel = true; // Ensure echo cancellation is enabled
-
   // Increase jitter buffer margin to prevent underruns
   pipeline_config.jitter_margin_ms = 200; // Increased from default 60ms for better buffering
 

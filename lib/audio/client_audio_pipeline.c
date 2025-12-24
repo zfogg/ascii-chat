@@ -198,12 +198,13 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
   // Create Opus encoder
   int opus_error;
-  p->encoder = opus_encoder_create(p->config.sample_rate, 1, OPUS_APPLICATION_VOIP, &opus_error);
+  p->encoder = opus_encoder_create(p->config.sample_rate, 1, OPUS_APPLICATION_AUDIO, &opus_error);
   if (opus_error != OPUS_OK) {
     log_error("Failed to create Opus encoder: %s", opus_strerror(opus_error));
     goto error;
   }
   opus_encoder_ctl(p->encoder, OPUS_SET_BITRATE(p->config.opus_bitrate));
+  opus_encoder_ctl(p->encoder, OPUS_SET_DTX(0)); // Disable DTX (discontinuous transmission)
 
   // Create Opus decoder
   p->decoder = opus_decoder_create(p->config.sample_rate, 1, &opus_error);
@@ -445,6 +446,24 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     speex_preprocess_run(pipeline->preprocess, pipeline->work_i16);
   }
 
+  // DEBUG: Log audio after Speex preprocessing
+  {
+    float peak = 0.0f, rms = 0.0f;
+    for (int i = 0; i < num_samples; i++) {
+      float val = (float)pipeline->work_i16[i] / 32767.0f;
+      float abs_val = fabsf(val);
+      if (abs_val > peak)
+        peak = abs_val;
+      rms += val * val;
+    }
+    rms = sqrtf(rms / num_samples);
+    static int post_speex_count = 0;
+    post_speex_count++;
+    if (post_speex_count <= 5 || post_speex_count % 20 == 0) {
+      log_info("Post-Speex audio #%d: Peak=%.6f, RMS=%.6f (all %d samples)", post_speex_count, peak, rms, num_samples);
+    }
+  }
+
   // Convert back to float for mixer components
   int16_to_float(pipeline->work_i16, pipeline->work_float, num_samples);
 
@@ -475,6 +494,23 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
   // Soft clipping to prevent harsh distortion
   soft_clip_buffer(pipeline->work_float, num_samples, 0.95f);
+
+  // DEBUG: Log audio amplitude before Opus encoding
+  {
+    float peak = 0.0f, rms = 0.0f;
+    for (int i = 0; i < num_samples && i < 100; i++) {
+      float abs_val = fabsf(pipeline->work_float[i]);
+      if (abs_val > peak)
+        peak = abs_val;
+      rms += pipeline->work_float[i] * pipeline->work_float[i];
+    }
+    rms = sqrtf(rms / (num_samples > 100 ? 100 : num_samples));
+    static int pre_opus_count = 0;
+    pre_opus_count++;
+    if (pre_opus_count <= 5 || pre_opus_count % 20 == 0) {
+      log_info("Pre-Opus audio #%d: Peak=%.6f, RMS=%.6f (first 100 samples)", pre_opus_count, peak, rms);
+    }
+  }
 
   // Opus encode
   int opus_bytes = opus_encode_float(pipeline->encoder, pipeline->work_float, num_samples, opus_out, opus_out_size);
