@@ -38,6 +38,10 @@ typedef CONDITION_VARIABLE cond_t;
 typedef pthread_cond_t cond_t;
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // ============================================================================
 // Condition Variable Functions
 // ============================================================================
@@ -121,5 +125,9 @@ int cond_signal(cond_t *cond);
  * @ingroup platform
  */
 int cond_broadcast(cond_t *cond);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */
