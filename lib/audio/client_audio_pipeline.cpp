@@ -150,27 +150,6 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     return NULL;
   }
 
-  if (cond_init(&p->render_analyzed_cond) != 0) {
-    log_error("Failed to initialize render analysis condition variable");
-    mutex_destroy(&p->mutex);
-    SAFE_FREE(p);
-    return NULL;
-  }
-
-  // Initialize echo reference buffer
-  p->echo_ref_size = CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE;
-  p->echo_ref_buffer = SAFE_MALLOC(p->echo_ref_size * sizeof(float), float *);
-  if (!p->echo_ref_buffer) {
-    log_error("Failed to allocate echo reference buffer");
-    cond_destroy(&p->render_analyzed_cond);
-    mutex_destroy(&p->mutex);
-    SAFE_FREE(p);
-    return NULL;
-  }
-  p->echo_ref_write_pos = 0;
-  p->echo_ref_read_pos = 0;
-  p->echo_ref_available = 0;
-  p->render_analyzed_for_capture = false;
 
   // Initialize Opus encoder/decoder first (no exceptions)
   int opus_error = 0;
@@ -248,6 +227,19 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     if (p->debug_wav_aec3_out) {
       log_info("Debug: Recording AEC3 output to /tmp/aec3_output.wav");
     }
+
+    // Allocate ring buffer for echo reference signal
+    // Size: 1 second @ 48kHz (48000 samples) - enough for many audio frames
+    p->echo_ref_buffer_size = 48000;
+    p->echo_ref_buffer = SAFE_MALLOC(p->echo_ref_buffer_size * sizeof(float), float *);
+    if (!p->echo_ref_buffer) {
+      log_error("Failed to allocate echo reference ring buffer");
+      goto error;
+    }
+    memset(p->echo_ref_buffer, 0, p->echo_ref_buffer_size * sizeof(float));
+    p->echo_ref_write_pos = 0;
+    p->echo_ref_read_pos = 0;
+    log_info("✓ Echo reference ring buffer allocated: %d samples (1 second)", p->echo_ref_buffer_size);
   }
 
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus",
@@ -277,6 +269,12 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
     pipeline->echo_canceller = NULL;
   }
 
+  // Clean up echo reference ring buffer
+  if (pipeline->echo_ref_buffer) {
+    SAFE_FREE(pipeline->echo_ref_buffer);
+    pipeline->echo_ref_buffer = NULL;
+  }
+
   // Clean up Opus
   if (pipeline->encoder) {
     opus_encoder_destroy(pipeline->encoder);
@@ -285,12 +283,6 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (pipeline->decoder) {
     opus_decoder_destroy(pipeline->decoder);
     pipeline->decoder = NULL;
-  }
-
-  // Clean up echo reference buffer
-  if (pipeline->echo_ref_buffer) {
-    SAFE_FREE(pipeline->echo_ref_buffer);
-    pipeline->echo_ref_buffer = NULL;
   }
 
   // Clean up debug WAV writers
@@ -306,9 +298,6 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   }
 
   mutex_unlock(&pipeline->mutex);
-
-  // Destroy condition variable and mutex
-  cond_destroy(&pipeline->render_analyzed_cond);
   mutex_destroy(&pipeline->mutex);
 
   SAFE_FREE(pipeline);
@@ -373,8 +362,8 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
       energy += processed[j] * processed[j];
     }
     energy = sqrtf(energy / (num_samples < 100 ? num_samples : 100));
-    log_info("DEBUG: Capture call #%d: num_samples=%d, RMS=%.6f, echo_ref_available=%d",
-             capture_call_count, num_samples, energy, pipeline->echo_ref_available);
+    log_info("DEBUG: Capture call #%d: num_samples=%d, RMS=%.6f",
+             capture_call_count, num_samples, energy);
   }
 
   // WebRTC AEC3 echo cancellation - Process microphone input to remove echo
@@ -418,86 +407,51 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           }
 
           // ===================================================================
-          // STEP 2: AnalyzeRender on buffered speaker output
+          // STEP 2: AnalyzeRender with buffered echo reference signal
           // ===================================================================
-          // Read corresponding render samples from echo reference buffer
-          // Process whatever render samples are available (may be less than chunk_size
-          // due to PortAudio buffer alignment - typically 256 samples vs AEC3's 480)
-          int render_samples_available = pipeline->echo_ref_available;
-          if (render_samples_available > 0) {
-            // Process available samples - may be less than chunk_size
-            int render_to_process = (render_samples_available < chunk_size) ? render_samples_available : chunk_size;
+          // Before ProcessCapture, we need to analyze any available render data
+          // from the ring buffer to provide AEC3 with echo reference signals
+          if (pipeline->echo_ref_buffer) {
+            // Calculate available samples in ring buffer
+            int available = (pipeline->echo_ref_write_pos - pipeline->echo_ref_read_pos + pipeline->echo_ref_buffer_size)
+                            % pipeline->echo_ref_buffer_size;
 
-            webrtc::AudioBuffer render_buf(
-                48000,  // input sample rate
-                1,      // input channels
-                48000,  // processing sample rate
-                1,      // processing channels
-                48000,  // output sample rate
-                1       // output channels
-            );
+            // Process render samples in 480-sample chunks if available
+            while (available >= webrtc_frame_size) {
+              webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
+              float* const* render_channels = render_buf.channels();
 
-            // Copy render samples from ring buffer
-            float* const* render_channels = render_buf.channels();
-            if (render_channels && render_channels[0]) {
-              int read_pos = pipeline->echo_ref_read_pos;
-              int remaining = pipeline->echo_ref_size - read_pos;
+              if (render_channels && render_channels[0]) {
+                // Copy 480 samples from ring buffer (handling wrap-around)
+                int read_pos = pipeline->echo_ref_read_pos;
+                float energy = 0.0f;
+                for (int j = 0; j < webrtc_frame_size; j++) {
+                  float sample = pipeline->echo_ref_buffer[read_pos];
+                  render_channels[0][j] = sample;
+                  energy += sample * sample;
+                  read_pos = (read_pos + 1) % pipeline->echo_ref_buffer_size;
+                }
 
-              if (render_to_process <= remaining) {
-                // Can copy in one chunk
-                memcpy(render_channels[0], &pipeline->echo_ref_buffer[read_pos], render_to_process * sizeof(float));
-              } else {
-                // Need to wrap around - copy in two chunks
-                memcpy(render_channels[0], &pipeline->echo_ref_buffer[read_pos], remaining * sizeof(float));
-                memcpy(&render_channels[0][remaining], &pipeline->echo_ref_buffer[0],
-                       (render_to_process - remaining) * sizeof(float));
-              }
+                // Update read position
+                pipeline->echo_ref_read_pos = read_pos;
+                available = (pipeline->echo_ref_write_pos - pipeline->echo_ref_read_pos + pipeline->echo_ref_buffer_size)
+                            % pipeline->echo_ref_buffer_size;
 
-              // Zero-pad if we got fewer than 480 samples (AEC3 requires 480)
-              if (render_to_process < 480) {
-                for (int j = render_to_process; j < 480; j++) {
-                  render_channels[0][j] = 0.0f;
+                // Only analyze if we have meaningful audio energy
+                // (threshold: avoid processing pure silence which can confuse AEC3)
+                energy = sqrtf(energy / webrtc_frame_size);
+                if (energy > 0.0001f || available < webrtc_frame_size) {
+                  // Analyze render signal
+                  render_buf.SplitIntoFrequencyBands();
+                  wrapper->aec3->AnalyzeRender(&render_buf);
+                  render_buf.MergeFrequencyBands();
+
+                  log_debug("AEC3: AnalyzeRender called with 480 buffered samples (RMS=%.6f, available now: %d)", energy, available);
+                } else {
+                  // Skip silence to avoid confusing AEC3's buffer management
+                  log_debug("AEC3: Skipped AnalyzeRender for silence chunk (RMS=%.6f)", energy);
                 }
               }
-
-              pipeline->echo_ref_read_pos = (read_pos + render_to_process) % pipeline->echo_ref_size;
-              pipeline->echo_ref_available -= render_to_process;
-
-              // CRITICAL: Split into frequency bands
-              render_buf.SplitIntoFrequencyBands();
-
-              // Analyze render signal so AEC3 can learn the echo path
-              wrapper->aec3->AnalyzeRender(&render_buf);
-
-              // Merge bands back
-              render_buf.MergeFrequencyBands();
-
-              log_debug("AEC3: AnalyzeRender processed %d available samples (padded to 480), %d remaining",
-                       render_to_process, pipeline->echo_ref_available);
-            }
-          } else {
-            // No render samples buffered yet - startup condition
-            // Create zero-filled buffer so AEC3 learns there's no echo initially
-            webrtc::AudioBuffer render_buf(
-                48000,  // input sample rate
-                1,      // input channels
-                48000,  // processing sample rate
-                1,      // processing channels
-                48000,  // output sample rate
-                1       // output channels
-            );
-
-            float* const* render_channels = render_buf.channels();
-            if (render_channels && render_channels[0]) {
-              // Zero-fill the buffer (no echo during startup)
-              memset(render_channels[0], 0, 480 * sizeof(float));
-
-              // Split and analyze zero buffer
-              render_buf.SplitIntoFrequencyBands();
-              wrapper->aec3->AnalyzeRender(&render_buf);
-              render_buf.MergeFrequencyBands();
-
-              log_debug("AEC3: AnalyzeRender processing zero-filled buffer (startup)");
             }
           }
 
@@ -617,62 +571,35 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 }
 
 /**
- * Process echo playback (buffer render signal for coordinated AEC3 processing)
+ * Process echo playback (analyze render signal for AEC3)
  *
- * This function buffers speaker/playback audio for use by the capture processing path.
- * The actual AnalyzeRender() call happens in client_audio_pipeline_capture() to ensure
- * proper call sequence: AnalyzeCapture → AnalyzeRender → ProcessCapture
+ * Called immediately from output_callback when audio is actually output to speakers.
+ * Accumulates samples and calls AnalyzeRender with proper 480-sample chunks for AEC3.
  *
- * Called from output_callback in audio.c when audio is actually output to speakers.
+ * This ensures AEC3 gets render signal with correct timing - exactly when it's output,
+ * not deferred to the capture thread.
  */
 void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeline, const float *samples,
                                                  int num_samples) {
   if (!pipeline || !samples || num_samples <= 0) return;
+  if (!pipeline->echo_ref_buffer) return;  // No ring buffer allocated
 
   mutex_lock(&pipeline->mutex);
 
-  // DEBUG: Log buffer status
-  static int render_call_count = 0;
-  render_call_count++;
-  if (render_call_count <= 5 || render_call_count % 100 == 0) {
-    float energy = 0.0f;
-    for (int j = 0; j < (num_samples < 100 ? num_samples : 100); j++) {
-      energy += samples[j] * samples[j];
-    }
-    energy = sqrtf(energy / (num_samples < 100 ? num_samples : 100));
-    log_info("DEBUG: Buffer render signal #%d: num_samples=%d, RMS=%.6f, echo_ref_available=%d",
-             render_call_count, num_samples, energy, pipeline->echo_ref_available);
+  // Write samples to ring buffer
+  for (int i = 0; i < num_samples; i++) {
+    pipeline->echo_ref_buffer[pipeline->echo_ref_write_pos] = samples[i];
+    pipeline->echo_ref_write_pos = (pipeline->echo_ref_write_pos + 1) % pipeline->echo_ref_buffer_size;
   }
 
-  // Buffer the render signal into the echo reference ring buffer
-  // This will be processed by the capture path during ProcessCapture
-  if (pipeline->echo_ref_buffer && pipeline->echo_ref_size > 0) {
-    int write_pos = pipeline->echo_ref_write_pos;
-    int available = pipeline->echo_ref_size - pipeline->echo_ref_available;
+  // Calculate available samples in ring buffer
+  int available = (pipeline->echo_ref_write_pos - pipeline->echo_ref_read_pos + pipeline->echo_ref_buffer_size)
+                  % pipeline->echo_ref_buffer_size;
 
-    // Only buffer what we have space for
-    int samples_to_buffer = (num_samples <= available) ? num_samples : available;
-
-    if (samples_to_buffer > 0) {
-      int remaining = pipeline->echo_ref_size - write_pos;
-
-      if (samples_to_buffer <= remaining) {
-        // Can copy in one chunk
-        memcpy(&pipeline->echo_ref_buffer[write_pos], samples, samples_to_buffer * sizeof(float));
-      } else {
-        // Need to wrap around - copy in two chunks
-        memcpy(&pipeline->echo_ref_buffer[write_pos], samples, remaining * sizeof(float));
-        memcpy(&pipeline->echo_ref_buffer[0], &samples[remaining],
-               (samples_to_buffer - remaining) * sizeof(float));
-      }
-
-      pipeline->echo_ref_write_pos = (write_pos + samples_to_buffer) % pipeline->echo_ref_size;
-      pipeline->echo_ref_available += samples_to_buffer;
-
-      // Signal that render samples are available for capture processing
-      pipeline->render_analyzed_for_capture = false;
-      cond_signal(&pipeline->render_analyzed_cond);
-    }
+  // Log periodically
+  static int echo_playback_calls = 0;
+  if (++echo_playback_calls % 20 == 0) {  // Log every ~100ms
+    log_debug("Echo playback: wrote %d samples, buffer has %d samples available", num_samples, available);
   }
 
   mutex_unlock(&pipeline->mutex);
@@ -694,16 +621,10 @@ void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
 
   mutex_lock(&pipeline->mutex);
 
-  // Reset echo reference buffer
-  pipeline->echo_ref_write_pos = 0;
-  pipeline->echo_ref_read_pos = 0;
-  pipeline->echo_ref_available = 0;
-  pipeline->render_analyzed_for_capture = false;
-
   // WebRTC AEC3 is adaptive and doesn't require explicit reset
   // It automatically adjusts to network conditions
 
-  log_info("Pipeline state reset: cleared echo reference buffer");
+  log_info("Pipeline state reset");
 
   mutex_unlock(&pipeline->mutex);
 }
