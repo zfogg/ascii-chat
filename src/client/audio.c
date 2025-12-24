@@ -228,11 +228,9 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     audio_buffer[i] = s;
   }
 
-  // Register speaker output with AEC for proper echo cancellation
-  // speex_echo_playback buffers this with internal delay compensation
-  if (g_audio_pipeline) {
-    client_audio_pipeline_process_echo_playback(g_audio_pipeline, audio_buffer, num_samples);
-  }
+  // NOTE: Echo reference (render signal) is now fed from the audio output callback
+  // in lib/audio/audio.c where samples actually go to the speaker. This ensures
+  // proper timing synchronization with AEC3 (not 50-100ms early from the decode path).
 
   // Submit to audio playback system
   audio_write_samples(&g_audio_context, audio_buffer, num_samples);
@@ -501,6 +499,11 @@ int audio_client_init() {
 
   log_info("Audio pipeline created: %d Hz sample rate, %d bps bitrate", pipeline_config.sample_rate,
            pipeline_config.opus_bitrate);
+
+  // Associate pipeline with audio context for echo cancellation
+  // The audio output callback will feed playback samples directly to AEC3 from the speaker output,
+  // ensuring proper timing synchronization (not from the decode path 50-100ms earlier)
+  audio_set_pipeline(&g_audio_context, (void *)g_audio_pipeline);
 
   // Start audio playback
   if (audio_start_playback(&g_audio_context) != 0) {
