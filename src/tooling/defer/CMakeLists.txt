@@ -101,14 +101,17 @@ if(APPLE)
     # Link against Homebrew LLVM's libc++ C++ standard library
     # Note: We use -stdlib=libc++ for linking but NOT -isysroot, because
     # -isysroot causes the linker to prefer SDK stub libraries over Homebrew's real libc++
+    # We explicitly add -lc++ to ensure the actual libc++ library is linked
     target_link_options(ascii-instr-defer PRIVATE
         -stdlib=libc++
         "-Wl,-rpath,${LLVM_LIBRARY_DIRS}"
+        "LINKER:-lc++"
     )
 
     # Link against Homebrew LLVM libraries with proper rpath
     target_link_directories(ascii-instr-defer PRIVATE
         ${LLVM_LIBRARY_DIRS}
+        /opt/homebrew/opt/llvm/lib
     )
 
     # Find all required Clang static libraries on macOS
