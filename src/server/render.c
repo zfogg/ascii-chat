@@ -888,6 +888,14 @@ void *client_audio_render_thread(void *arg) {
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
     // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
+    // DEBUG: Log samples mixed every iteration
+    static int mixer_debug_count = 0;
+    mixer_debug_count++;
+    if (mixer_debug_count <= 3 || mixer_debug_count % 50 == 0) {
+      log_info("Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
+               mixer_debug_count, client_id_snapshot, samples_mixed, opus_frame_accumulated, OPUS_FRAME_SAMPLES);
+    }
+
     // Accumulate all samples (including 0 or partial) until we have a full Opus frame
     // This maintains continuous stream without silence padding
     struct timespec accum_start = {0};
@@ -957,6 +965,24 @@ void *client_audio_render_thread(void *arg) {
       if (opus_time_us > 2000) { // Log if encoding takes > 2ms
         log_warn_every(5000000, "Slow Opus encode for client %u: took %lluus (%.2fms), size=%d", client_id_snapshot,
                        opus_time_us, (float)opus_time_us / 1000.0f, opus_size);
+      }
+
+      // DEBUG: Log mix buffer and encoding results to see audio levels being sent
+      {
+        float peak = 0.0f, rms = 0.0f;
+        for (int i = 0; i < OPUS_FRAME_SAMPLES; i++) {
+          float abs_val = fabsf(opus_frame_buffer[i]);
+          if (abs_val > peak)
+            peak = abs_val;
+          rms += opus_frame_buffer[i] * opus_frame_buffer[i];
+        }
+        rms = sqrtf(rms / OPUS_FRAME_SAMPLES);
+        static int server_audio_frame_count = 0;
+        server_audio_frame_count++;
+        if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
+          log_info("Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d",
+                   server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size);
+        }
       }
 
       // Always reset accumulation buffer after attempting to encode - we've consumed these samples
@@ -1297,15 +1323,13 @@ void stop_client_render_threads(client_info_t *client) {
     log_debug("Joining video render thread for client %u", client->client_id);
     int result;
     if (is_shutting_down) {
-      // During shutdown, give thread a brief chance to exit cleanly with timeout
-      log_debug("Shutdown mode: joining video render thread for client %u with 100ms timeout", client->client_id);
-      result = ascii_thread_join_timeout(&client->video_render_thread, NULL, 100);
-      if (result == -2) {
-        log_warn("Video render thread for client %u timed out during shutdown (continuing)", client->client_id);
-        // Don't call CloseHandle/cleanup on timeout - thread might still be running
-        // Use platform-safe thread initialization
-        ascii_thread_init(&client->video_render_thread);
-        // Continue with audio thread join and cleanup instead of returning early
+      // During shutdown, don't timeout - wait for thread to exit
+      // Timeouts mask the real problem: threads that are still running
+      log_debug("Shutdown mode: joining video render thread for client %u (no timeout)", client->client_id);
+      result = ascii_thread_join(&client->video_render_thread, NULL);
+      if (result != 0) {
+        log_warn("Video render thread for client %u failed to join during shutdown: %s", client->client_id,
+                 SAFE_STRERROR(result));
       }
     } else {
       log_debug("Calling ascii_thread_join for video thread of client %u", client->client_id);
@@ -1332,13 +1356,13 @@ void stop_client_render_threads(client_info_t *client) {
   if (ascii_thread_is_initialized(&client->audio_render_thread)) {
     int result;
     if (is_shutting_down) {
-      log_debug("Shutdown mode: joining audio render thread for client %u with 100ms timeout", client->client_id);
-      result = ascii_thread_join_timeout(&client->audio_render_thread, NULL, 100);
-      if (result == -2) {
-        log_warn("Audio render thread for client %u timed out during shutdown (continuing)", client->client_id);
-        // Use platform-safe thread initialization
-        ascii_thread_init(&client->audio_render_thread);
-        // Continue with cleanup even if thread timed out
+      // During shutdown, don't timeout - wait for thread to exit
+      // Timeouts mask the real problem: threads that are still running
+      log_debug("Shutdown mode: joining audio render thread for client %u (no timeout)", client->client_id);
+      result = ascii_thread_join(&client->audio_render_thread, NULL);
+      if (result != 0) {
+        log_warn("Audio render thread for client %u failed to join during shutdown: %s", client->client_id,
+                 SAFE_STRERROR(result));
       }
     } else {
       result = ascii_thread_join(&client->audio_render_thread, NULL);
