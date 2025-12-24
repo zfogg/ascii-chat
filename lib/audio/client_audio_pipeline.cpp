@@ -382,48 +382,16 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  // Register decoded audio with AEC3 as far-end (render/speaker) reference signal
-  // This is critical for AEC3 to learn the echo path and estimate network delay
-  if (pipeline->flags.echo_cancel && pipeline->echo_canceller && decoded_samples > 0) {
-    auto wrapper = static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
-    if (wrapper && wrapper->aec3) {
-      try {
-        // WebRTC AEC3's AudioBuffer expects 10ms frames (480 samples at 48kHz)
-        // but ascii-chat may have 20ms or other frame sizes, so we must process in 480-sample chunks
-        const int webrtc_frame_size = 480;  // 10ms at 48kHz
-
-        for (int i = 0; i < decoded_samples; i += webrtc_frame_size) {
-          int chunk_size = (i + webrtc_frame_size <= decoded_samples) ? webrtc_frame_size : (decoded_samples - i);
-
-          // Create AudioBuffer for render (speaker) signal - AEC3 needs this to learn echo characteristics
-          webrtc::AudioBuffer render_buf(
-              48000,  // input sample rate
-              1,      // input channels (mono)
-              48000,  // processing sample rate
-              1,      // processing channels
-              48000,  // output sample rate
-              1       // output channels
-          );
-
-          // Copy speaker/render audio chunk into buffer
-          float* const* channels = render_buf.channels();
-          if (channels && channels[0]) {
-            memcpy(channels[0], output + i, chunk_size * sizeof(float));
-
-            // Analyze render signal for AEC3
-            // This tells AEC3 what's being played to speakers so it can:
-            // - Estimate network delay (time between render and echo in capture)
-            // - Train adaptive filter to model the echo path
-            // - Separate echo from desired signal in capture path
-            wrapper->aec3->AnalyzeRender(&render_buf);
-          }
-        }
-      } catch (const std::exception &e) {
-        log_warn("AEC3 render analysis error: %s", e.what());
-        // Continue operation even if render analysis fails
-      }
-    }
-  }
+  // NOTE: Do NOT register render signal here!
+  // The render signal (speaker output) must be registered to AEC3 only at the point
+  // where audio actually goes to the speakers in output_callback(), NOT here when packets
+  // are decoded from the network (which happens 50-100ms earlier in the jitter buffer).
+  //
+  // Registering at the wrong time confuses AEC3's delay estimation and prevents proper
+  // echo cancellation. The output_callback correctly calls client_audio_pipeline_process_echo_playback()
+  // at the precise moment audio is output to speakers.
+  //
+  // See: output_callback() in audio.c lines 91-98
 
   mutex_unlock(&pipeline->mutex);
 
