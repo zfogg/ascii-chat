@@ -248,7 +248,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     goto error;
   }
   p->echo_ref_write_pos = 0;
-  p->echo_ref_available = 0;
+  // CRITICAL FIX: Pre-fill with silence (zeros from CALLOC) and mark as available
+  // This allows AEC to start working immediately when capture begins
+  // Without this, AEC is disabled for the first ~1.8 seconds (network latency)
+  // causing initial echo to pass through unfiltered
+  p->echo_ref_available = p->echo_ref_size; // Pre-filled with silence
 
   p->initialized = true;
 
@@ -400,40 +404,43 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   // We manually manage the echo reference buffer because capture and playback
   // are asynchronous (network-based) and need explicit synchronization
   if (pipeline->flags.echo_cancel && pipeline->echo_state) {
-    // Read echo reference from ring buffer (circular history buffer)
-    // We read the most recent N samples without consuming them
-    // (this is a history buffer, not a queue)
+    // CRITICAL: Speex AEC does correlation internally to find delay
+    // It needs actual audio data (not zeros) to correlate against
+    // Simply use the most recently buffered reference data
+    // Speex will automatically find the best delay match within filter_length
+
+    // Read the most recent frame of reference audio
+    // This is the audio that was most recently played to the speaker
     int read_pos = (pipeline->echo_ref_write_pos - num_samples + pipeline->echo_ref_size) % pipeline->echo_ref_size;
 
-    for (int i = 0; i < num_samples; i++) {
-      // Read from the history buffer with wraparound
-      if (pipeline->echo_ref_available >= num_samples) {
-        // We have full history available
+    // Only use reference if we have it (don't pad with zeros - breaks correlation)
+    if (pipeline->echo_ref_available >= num_samples) {
+      for (int i = 0; i < num_samples; i++) {
         pipeline->echo_i16[i] = pipeline->echo_ref_buffer[read_pos];
-      } else {
-        // Partial history - pad with zeros for earlier samples
-        int distance = (pipeline->echo_ref_write_pos - read_pos + pipeline->echo_ref_size) % pipeline->echo_ref_size;
-        if (distance < pipeline->echo_ref_available) {
-          pipeline->echo_i16[i] = pipeline->echo_ref_buffer[read_pos];
-        } else {
-          pipeline->echo_i16[i] = 0;
+        read_pos = (read_pos + 1) % pipeline->echo_ref_size;
+      }
+
+      // Apply AEC: Speex internally correlates to find the echo delay
+      int16_t *aec_output = SAFE_MALLOC((size_t)num_samples * sizeof(int16_t), int16_t *);
+      if (aec_output) {
+        speex_echo_cancellation(pipeline->echo_state, pipeline->work_i16, pipeline->echo_i16, aec_output);
+        memcpy(pipeline->work_i16, aec_output, (size_t)num_samples * sizeof(int16_t));
+        SAFE_FREE(aec_output);
+
+        static int aec_count = 0;
+        aec_count++;
+        if (aec_count <= 5 || aec_count % 100 == 0) {
+          log_debug("AEC processing: frame %d, samples %d, echo_ref_avail=%d/%d - ACTIVE", aec_count, num_samples,
+                    pipeline->echo_ref_available, pipeline->echo_ref_size);
         }
       }
-      read_pos = (read_pos + 1) % pipeline->echo_ref_size;
-    }
-
-    // Apply echo cancellation with the reference data
-    int16_t *aec_output = SAFE_MALLOC((size_t)num_samples * sizeof(int16_t), int16_t *);
-    if (aec_output) {
-      speex_echo_cancellation(pipeline->echo_state, pipeline->work_i16, pipeline->echo_i16, aec_output);
-      memcpy(pipeline->work_i16, aec_output, (size_t)num_samples * sizeof(int16_t));
-      SAFE_FREE(aec_output);
-
-      static int aec_count = 0;
-      aec_count++;
-      if (aec_count <= 5 || aec_count % 100 == 0) {
-        log_debug("AEC processing: frame %d, samples %d, echo_ref_avail=%d/%d", aec_count, num_samples,
-                  pipeline->echo_ref_available, pipeline->echo_ref_size);
+    } else {
+      // Reference buffer not filled yet - can't do AEC
+      static int aec_skip_count = 0;
+      aec_skip_count++;
+      if (aec_skip_count <= 5) {
+        log_debug("AEC SKIPPED: echo_ref_avail=%d/%d (waiting for playback data)", pipeline->echo_ref_available,
+                  pipeline->echo_ref_size);
       }
     }
   } else {

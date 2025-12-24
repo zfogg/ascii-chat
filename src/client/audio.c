@@ -330,6 +330,29 @@ static void *audio_capture_thread_func(void *arg) {
     }
 
     if (samples_read > 0) {
+      // Normalize input to prevent clipping: bring peak to ±0.99
+      // Calculate peak level first
+      float peak = 0.0f;
+      for (int i = 0; i < samples_read; i++) {
+        float abs_val = fabsf(audio_buffer[i]);
+        if (abs_val > peak)
+          peak = abs_val;
+      }
+
+      // Apply normalization if peak exceeds 1.0
+      // Use 0.99 to leave headroom for processing
+      if (peak > 1.0f) {
+        float gain = 0.99f / peak;
+        for (int i = 0; i < samples_read; i++) {
+          audio_buffer[i] *= gain;
+        }
+        static int norm_count = 0;
+        norm_count++;
+        if (norm_count <= 5 || norm_count % 100 == 0) {
+          log_info("Input normalization #%d: peak=%.4f, gain=%.4f", norm_count, peak, gain);
+        }
+      }
+
       // DUMP: Raw captured audio (before any processing)
       if (g_wav_capture_raw) {
         wav_writer_write(g_wav_capture_raw, audio_buffer, samples_read);
