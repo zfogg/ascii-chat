@@ -97,11 +97,13 @@ if(TARGET AudioProcess)
 
     if(APPLE)
         # macOS uses -force_load to embed all symbols from static libraries
+        # Also need to link C++ standard library for exception handling symbols
         target_link_libraries(webrtc_audio_processing INTERFACE
             -force_load $<TARGET_FILE:AudioProcess>
             -force_load $<TARGET_FILE:aec3>
             -force_load $<TARGET_FILE:api>
             -force_load $<TARGET_FILE:base>
+            c++
         )
     else()
         # Linux/Unix: Use WHOLE_ARCHIVE wrapper to embed all symbols
