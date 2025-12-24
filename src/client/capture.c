@@ -445,9 +445,12 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Update capture timing
     last_capture_time = current_time;
-    // Clean up resources
+    // Clean up resources - must always free both packet and image
     SAFE_FREE(packet_data);
-    image_destroy(processed_image);
+    if (processed_image) {
+      image_destroy(processed_image);
+      processed_image = NULL;
+    }
   }
 
 #ifdef DEBUG_THREADS
