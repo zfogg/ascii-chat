@@ -202,6 +202,13 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     return;
   }
 
+  // Calculate RMS energy of received samples
+  float sum_squares = 0.0f;
+  for (int i = 0; i < num_samples; i++) {
+    sum_squares += samples[i] * samples[i];
+  }
+  float received_rms = sqrtf(sum_squares / num_samples);
+
   // DUMP: Received audio from server (before playback processing)
   if (g_wav_playback_received) {
     wav_writer_write(g_wav_playback_received, samples, num_samples);
@@ -227,6 +234,10 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     }
     audio_buffer[i] = s;
   }
+
+  // DEBUG: Log what we're writing to playback buffer
+  log_info("AUDIO RECEIVED: %d samples, RMS=%.6f, peak=%.3f -> writing to playback_buffer", num_samples, received_rms,
+           samples[0]);
 
   // Submit to playback system (goes to jitter buffer and speakers)
   audio_write_samples(&g_audio_context, audio_buffer, num_samples);

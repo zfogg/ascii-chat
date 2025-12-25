@@ -123,17 +123,25 @@ typedef struct {
  */
 #define AUDIO_RING_BUFFER_SIZE 19200
 
-/** @brief Jitter buffer threshold (wait for ~60ms before starting playback = 2880 samples @ 48kHz)
+/** @brief Jitter buffer threshold (wait for ~200ms before starting playback = 9600 samples @ 48kHz)
  *
  * This threshold determines how much audio must be buffered before playback starts.
  * Too small = underruns and audio gaps when network packets arrive late
  * Too large = excessive latency in audio playback
  *
- * 2880 samples @ 48kHz = 60ms = 3 Opus frames (20ms each)
- * This provides enough buffer to absorb typical network jitter while keeping latency low.
- * Increased from 40ms to 60ms to better handle network variance.
+ * 9600 samples @ 48kHz = 200ms = 10 Opus frames (20ms each)
+ *
+ * CRITICAL: This must match the jitter_margin_ms in client_audio_pipeline_config!
+ * If this is too small:
+ * - Output callback reads every 10ms (256 samples per call = ~21ms of frames)
+ * - Network packets arrive every 20ms (960 samples = 1 Opus frame)
+ * - Read rate (256 samples/10ms = 25.6K/sec) > Write rate (960 samples/20ms = 48K total per sec)
+ * - Buffer fills up instantly and new packets get dropped, resulting in 98% silence playback!
+ *
+ * Increased from 60ms to 200ms to match the AEC3 jitter_margin_ms requirement and prevent
+ * buffer overflow and packet dropping when read rate exceeds packet arrival rate.
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 3)
+#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 10)
 
 /** @brief Low water mark - refill jitter buffer when available drops below this
  *

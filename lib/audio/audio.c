@@ -81,25 +81,24 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // - Pads with silence if not enough data
       size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
 
-      // Only fill with silence if read returned 0 (jitter buffer not yet filled)
-      bool is_startup_silence = false;
+      // Fill with silence if read returned 0 (jitter buffer not yet filled)
       if (samples_read == 0) {
         SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
                     framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
-        is_startup_silence = true;
-        log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to echo reference");
+        log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to speakers");
       }
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
 
-      // CRITICAL: Feed actual speaker output to AEC3's AnalyzeRender from this callback!
-      // This is the ONLY place where we know exactly when audio is going to speakers.
+      // CRITICAL: Write speaker output to echo_ref_buffer (but DON'T call AnalyzeRender here!)
       // output_callback is called at precise 10ms intervals by PortAudio.
-      // AEC3 needs the speaker output (render signal) synchronized with this timing
-      // to properly estimate the echo delay and adapt its filters.
-      if (ctx && ctx->audio_pipeline && !is_startup_silence) {
-        // Call the proper echo reference/render analysis function
-        // This feeds the actual speaker output to AEC3
+      // The echo_ref_buffer accumulates speaker samples.
+      // The capture thread will read from echo_ref_buffer and call AnalyzeRender in proper sync.
+      //
+      // WARNING: Calling AnalyzeRender from two places (here + capture thread) causes
+      // AEC3's render buffer to overflow. We only write here, capture thread does the processing.
+      if (ctx && ctx->audio_pipeline) {
+        // Always write to echo_ref_buffer, even when silence
         client_audio_pipeline_process_echo_playback(ctx->audio_pipeline, output, (int)framesPerBuffer);
       }
     } else {
@@ -184,8 +183,9 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     int samples_dropped = samples - available;
     samples_to_write = available;
     // Log overflow so we can diagnose audio quality issues (rate-limited to avoid spam)
-    log_warn_every(1000000, "Audio buffer overflow: dropping %d of %d incoming samples (available=%d)", samples_dropped,
-                   samples, available);
+    // CRITICAL: This is why playback_buffer is mostly silence - incoming samples are being dropped!
+    log_warn("Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d, available=%d)",
+             samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE, available);
     // NOTE: We do NOT reset jitter_buffer_filled here because:
     // 1. We're dropping NEW data, not corrupting existing buffered data
     // 2. Resetting jitter causes audible gaps when playback pauses for threshold refill
