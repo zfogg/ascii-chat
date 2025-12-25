@@ -185,16 +185,16 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Create AEC3 configuration tuned for network audio with jitter buffering
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Network delay tuning: Account for jitter buffer delay (~60ms) plus processing + network latency
+      // Network delay tuning: Account for jitter buffer delay (~200ms) plus processing + network latency
       // Set reasonable bounds for network-based echo delay (50-250ms is typical for internet audio)
       // CRITICAL: Initial delay estimate must account for:
-      // - Jitter buffer: 60ms
+      // - Jitter buffer: 200ms
       // - Opus codec: 20ms
       // - Network round-trip: 50-100ms
-      // - Total: ~150-200ms typical for network audio
-      aec3_config.delay.default_delay = 50;  // ~200ms initial guess (50 * 4ms blocks) for network audio
-      aec3_config.delay.delay_estimate_smoothing = 0.5f;  // Faster adaptation (was 0.6f)
-      aec3_config.delay.delay_headroom_samples = 128;  // Increased from 64 for large echo delays
+      // - Total: ~250-320ms typical for network audio with buffering
+      aec3_config.delay.default_delay = 100;  // ~400ms initial guess (100 * 4ms blocks) for buffered network audio
+      aec3_config.delay.delay_estimate_smoothing = 0.3f;  // Slower smoothing to adapt gradually
+      aec3_config.delay.delay_headroom_samples = 256;  // Increased for large network echo delays
 
       // Jitter handling: Tolerance for delayed or missing render data
       aec3_config.buffering.max_allowed_excess_render_blocks = 12;  // Increased from 8 for network jitter
@@ -482,13 +482,18 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             if (buffer_delay_ms < 50) buffer_delay_ms = 50;
             if (buffer_delay_ms > 300) buffer_delay_ms = 300;
 
-            // Tell AEC3 there's no external buffer delay (like in the WebRTC demo)
-            // AEC3 will estimate the echo delay automatically from the signals themselves
-            // Setting to 0 means we're not providing any external delay estimates
+            // CRITICAL FIX: Pass actual buffer delay to AEC3 for proper echo alignment
+            // Early silence frames prevent AEC3's delay estimator from working.
+            // By providing the measured buffer delay, AEC3 can initialize properly even
+            // when render signal is weak. This is MORE important than letting AEC3
+            // estimate delay from weak silence frames.
+            //
+            // Delay = jitter buffer (200ms) + render sample accumulation (~10ms) = ~210ms
+            int total_delay_ms = buffer_delay_ms + 10;  // +10ms for render frame accumulation
             try {
-              wrapper->aec3->SetAudioBufferDelay(0);
-              log_debug_every(10000000, "AEC3: SetAudioBufferDelay(0), buffer_fill_samples=%d",
-                             available);
+              wrapper->aec3->SetAudioBufferDelay(total_delay_ms);
+              log_debug_every(10000000, "AEC3: SetAudioBufferDelay(%d ms), buffer_fill_samples=%d",
+                             total_delay_ms, available);
             } catch (...) {
               // Ignore if SetAudioBufferDelay fails
             }
