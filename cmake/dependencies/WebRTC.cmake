@@ -113,6 +113,7 @@ if(TARGET AudioProcess)
         # This ensures all WebRTC symbols are available when the shared library is used
         # CRITICAL: Must also link C++ standard library for exception handling, RTTI, and C++ runtime
         # Use $<TARGET_FILE:> to get raw library paths without CMake's implicit link dependencies
+        # For musl builds, use libc++ (LLVM C++ library). For glibc builds, use libstdc++ (GCC C++ library).
         target_link_libraries(webrtc_audio_processing INTERFACE
             -Wl,--whole-archive
             $<TARGET_FILE:AudioProcess>
@@ -120,7 +121,7 @@ if(TARGET AudioProcess)
             $<TARGET_FILE:api>
             $<TARGET_FILE:base>
             -Wl,--no-whole-archive
-            c++
+            $<IF:$<BOOL:${USE_MUSL}>,c++,stdc++>
         )
     endif()
 
