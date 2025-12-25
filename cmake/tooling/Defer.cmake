@@ -92,15 +92,6 @@ function(ascii_defer_prepare)
     list(REMOVE_DUPLICATES defer_rel_paths)
     list(REMOVE_DUPLICATES defer_generated_paths)
 
-    # Check if any files actually use defer()
-    list(LENGTH defer_rel_paths _defer_file_count)
-    if(_defer_file_count EQUAL 0)
-        # No files use defer(), so defer transformation is not needed
-        message(STATUS "No source files use defer() - defer runtime will not be included")
-        set(ASCII_DEFER_ENABLED FALSE PARENT_SCOPE)
-        return()
-    endif()
-
     # Note: With direct code insertion, no runtime library is needed.
     # The defer transformer inserts cleanup code directly at each exit point.
 
@@ -225,7 +216,6 @@ function(ascii_defer_prepare)
     # Add compile definition so defer() macro knows transformation is enabled
     add_compile_definitions(ASCIICHAT_BUILD_WITH_DEFER)
 
-    set(ASCII_DEFER_ENABLED TRUE PARENT_SCOPE)
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)
 endfunction()
 
