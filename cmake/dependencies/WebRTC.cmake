@@ -112,13 +112,13 @@ if(TARGET AudioProcess)
         # Linux/Unix: Use WHOLE_ARCHIVE wrapper to embed all symbols
         # This ensures all WebRTC symbols are available when the shared library is used
         # CRITICAL: Must also link C++ standard library for exception handling, RTTI, and C++ runtime
-        # Use $<LINK_ONLY:> to prevent CMake from pulling implicit dependencies into whole-archive
+        # Use $<TARGET_FILE:> to get raw library paths without CMake's implicit link dependencies
         target_link_libraries(webrtc_audio_processing INTERFACE
             -Wl,--whole-archive
-            $<LINK_ONLY:AudioProcess>
-            $<LINK_ONLY:aec3>
-            $<LINK_ONLY:api>
-            $<LINK_ONLY:base>
+            $<TARGET_FILE:AudioProcess>
+            $<TARGET_FILE:aec3>
+            $<TARGET_FILE:api>
+            $<TARGET_FILE:base>
             -Wl,--no-whole-archive
             stdc++
         )
