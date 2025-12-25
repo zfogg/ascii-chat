@@ -120,7 +120,7 @@ if(TARGET AudioProcess)
             $<TARGET_FILE:api>
             $<TARGET_FILE:base>
             -Wl,--no-whole-archive
-            stdc++
+            c++
         )
     endif()
 

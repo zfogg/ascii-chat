@@ -196,10 +196,16 @@ function(configure_musl_post_project)
     # Configure clang to use musl with static-PIE
     # Based on: https://wiki.debian.org/musl
     # Note: -fPIE is added by CompilerFlags.cmake for all PIE builds (dynamic and static)
+    # Use LLVM runtime libraries instead of GCC for musl compatibility
+    # Disable FORTIFY_SOURCE: musl doesn't provide __*_chk wrapper functions (glibc-specific)
     add_compile_options(
         -target ${MUSL_TARGET}
         -DUSE_MUSL
+        -U_FORTIFY_SOURCE
+        -D_FORTIFY_SOURCE=0
     )
+    # Use libc++ for C++ code (musl-compatible, unlike libstdc++)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++" CACHE STRING "C++ flags for musl" FORCE)
 
     # Linker flags for static-PIE linking with musl
     # Use rcrt1.o for static-PIE (combines static linking with ASLR security)
@@ -219,9 +225,55 @@ function(configure_musl_post_project)
         CACHE STRING "Shared linker flags for musl builds (uses glibc for compatibility)" FORCE
     )
 
-    # Link with musl libc and libgcc at the end
-    link_libraries(c "${GCC_LIBDIR}/libgcc.a")
-    add_link_options("${MUSL_LIBDIR}/crtn.o")
+    # Detect LLVM runtime libraries location
+    # Check git-compiled LLVM first (all three libs together), then system packages
+    if(EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libc++.a" AND
+       EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libc++abi.a" AND
+       EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libunwind.a")
+        set(LIBCXX_PATH "/usr/local/lib/x86_64-unknown-linux-gnu/libc++.a")
+        set(LIBCXXABI_PATH "/usr/local/lib/x86_64-unknown-linux-gnu/libc++abi.a")
+        set(LIBUNWIND_PATH "/usr/local/lib/x86_64-unknown-linux-gnu/libunwind.a")
+        set(LLVM_RUNTIME_SOURCE "local LLVM installation")
+    elseif(EXISTS "/usr/lib/libc++.a" AND EXISTS "/usr/lib/libc++abi.a")
+        set(LIBCXX_PATH "/usr/lib/libc++.a")
+        set(LIBCXXABI_PATH "/usr/lib/libc++abi.a")
+        # System libunwind might not exist - not required for basic C++ support
+        if(EXISTS "/usr/lib/libunwind.a")
+            set(LIBUNWIND_PATH "/usr/lib/libunwind.a")
+        else()
+            # Try to find libunwind from packages
+            find_library(LIBUNWIND_PATH NAMES unwind)
+            if(NOT LIBUNWIND_PATH)
+                message(WARNING "libunwind.a not found - exception handling may not work")
+            endif()
+        endif()
+        set(LLVM_RUNTIME_SOURCE "system packages")
+    else()
+        message(FATAL_ERROR "LLVM runtime libraries not found. Install: sudo pacman -S libc++ libc++abi")
+    endif()
+    message(STATUS "Using LLVM runtime libraries (${LLVM_RUNTIME_SOURCE}):")
+    message(STATUS "  libc++: ${LIBCXX_PATH}")
+    message(STATUS "  libc++abi: ${LIBCXXABI_PATH}")
+    if(LIBUNWIND_PATH)
+        message(STATUS "  libunwind: ${LIBUNWIND_PATH}")
+    endif()
+
+    # Link with musl libc and LLVM runtime libraries
+    # Use compiler-rt instead of libgcc for clang compatibility
+    # Use libc++ instead of libstdc++ for musl compatibility
+    # libunwind provides C++ exception handling symbols (_Unwind_*)
+    # Must link libraries explicitly for static musl builds with full paths to avoid duplicates
+    link_libraries(
+        c
+        ${LIBCXX_PATH}
+        ${LIBCXXABI_PATH}
+    )
+    if(LIBUNWIND_PATH)
+        link_libraries(${LIBUNWIND_PATH})
+    endif()
+    add_link_options(
+        "${MUSL_LIBDIR}/crtn.o"
+    )
 
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)

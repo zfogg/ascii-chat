@@ -444,4 +444,34 @@ if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/demo/demo.cc")
     endif()
 endif()
 
+# =============================================================================
+# Patch 14: Disable demo executable - not needed and requires glibc 2.38+
+# =============================================================================
+# The demo executable links against libc++ which requires glibc 2.38+ symbols
+# (__isoc23_sscanf, etc.) that musl doesn't provide. We only need the libraries.
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" CMAKE_CONTENT_FINAL)
+
+# Comment out the demo executable and install targets
+string(REPLACE
+    "add_executable(\${PROJECT_NAME} demo/demo.cc demo/wavreader.c demo/wavwriter.c demo/print_tool.cc)
+target_link_libraries(\${PROJECT_NAME} \${EXTRA_LIBS})"
+    "# Demo executable disabled - requires glibc 2.38+ symbols
+# add_executable(\${PROJECT_NAME} demo/demo.cc demo/wavreader.c demo/wavwriter.c demo/print_tool.cc)
+# target_link_libraries(\${PROJECT_NAME} \${EXTRA_LIBS})"
+    CMAKE_CONTENT_FINAL
+    "${CMAKE_CONTENT_FINAL}"
+)
+
+string(REPLACE
+    "install (TARGETS \${PROJECT_NAME} DESTINATION \${PROJECT_SOURCE_DIR}/install)"
+    "# install (TARGETS \${PROJECT_NAME} DESTINATION \${PROJECT_SOURCE_DIR}/install)"
+    CMAKE_CONTENT_FINAL
+    "${CMAKE_CONTENT_FINAL}"
+)
+
+file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_FINAL}")
+
+message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - disabled demo executable (musl incompatible)")
+
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")
