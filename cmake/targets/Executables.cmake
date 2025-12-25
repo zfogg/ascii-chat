@@ -148,7 +148,7 @@ endif()
 # Add musl dependency if building with musl
 if(USE_MUSL)
     # Add dependencies on all musl libraries (they'll build automatically)
-    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
+    add_dependencies(ascii-chat portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl speexdsp-musl)
 
     # Link against musl-built static libraries from individual dependency directories
     target_link_directories(ascii-chat PRIVATE

@@ -95,7 +95,7 @@ function(ascii_build_tooling_runtime)
         endif()
         # Add musl dependency ordering for proper build sequencing
         if(USE_MUSL)
-            add_dependencies(ascii-panic-report portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
+            add_dependencies(ascii-panic-report portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl speexdsp-musl)
         endif()
     endif()
     set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
