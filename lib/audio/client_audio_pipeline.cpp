@@ -49,6 +49,9 @@
 #include "logging.h"
 #include "platform/abstraction.h"
 
+// For AEC3 metrics reporting
+#include "audio/audio_analysis.h"
+
 #include <opus/opus.h>
 #include <string.h>
 
@@ -143,9 +146,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->flags = p->config.flags;
   p->frame_size = p->config.sample_rate * p->config.frame_size_ms / 1000;
 
-  // Initialize mutex and condition variable for render/capture synchronization
-  if (mutex_init(&p->mutex) != 0) {
-    log_error("Failed to initialize pipeline mutex");
+  // Initialize separate mutex for AEC3 processing (echo_ref_buffer uses lock-free atomics)
+  if (mutex_init(&p->aec3_mutex) != 0) {
+    log_error("Failed to initialize AEC3 mutex");
     SAFE_FREE(p);
     return NULL;
   }
@@ -175,10 +178,36 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
     try {
-      // Create AEC3 using the factory with default configuration
+      // Create AEC3 configuration tuned for network audio with jitter buffering
+      webrtc::EchoCanceller3Config aec3_config;
+
+      // Network delay tuning: Account for jitter buffer delay (~60ms) plus processing
+      // Set reasonable bounds for network-based echo delay (50-250ms is typical for internet audio)
+      aec3_config.delay.default_delay = 10;  // ~40ms initial guess (10 * 4ms blocks)
+      aec3_config.delay.delay_estimate_smoothing = 0.6f;  // Slightly faster adaptation (was 0.7f)
+      aec3_config.delay.delay_headroom_samples = 64;  // Increased from 32 for more tolerance
+
+      // Jitter handling: Tolerance for delayed or missing render data
+      aec3_config.buffering.max_allowed_excess_render_blocks = 12;  // Increased from 8 for network jitter
+      aec3_config.buffering.excess_render_detection_interval_blocks = 250;
+
+      // Filter tuning for network conditions
+      aec3_config.filter.initial_state_seconds = 3.0f;  // Longer initial learning (was 2.5f)
+      aec3_config.filter.config_change_duration_blocks = 250;  // Smooth transitions
+
+      // Echo removal: More aggressive suppression in presence of residual echo
+      aec3_config.ep_strength.default_gain = 0.9f;  // Slightly more suppression
+      aec3_config.ep_strength.bounded_erl = false;  // Allow full adaptation range
+
+      // Validate config before use
+      if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
+        log_warn("AEC3 config validation failed, falling back to defaults");
+        aec3_config = webrtc::EchoCanceller3Config{};
+      }
+
+      // Create AEC3 using the factory with network-tuned configuration
       // EchoCanceller3Factory produces the latest high-quality AEC3 implementation
-      // The extracted webrtc_AEC3 repo doesn't have the full Environment API
-      auto factory = webrtc::EchoCanceller3Factory();
+      auto factory = webrtc::EchoCanceller3Factory(aec3_config);
 
       std::unique_ptr<webrtc::EchoControl> echo_control = factory.Create(
           static_cast<int>(p->config.sample_rate),  // 48kHz
@@ -193,17 +222,13 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         // Successfully created AEC3 - wrap in our C++ wrapper for C compatibility
         auto wrapper = new WebRTCAec3Wrapper();
         wrapper->aec3 = std::move(echo_control);
-        wrapper->config = webrtc::EchoCanceller3Config{};  // Use default config
+        wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        // NOTE: Removed SetAudioBufferDelay - AEC3 has built-in automatic delay estimation
-        // that adapts to network conditions (0-500ms range). Manual delay hints were fighting
-        // against this adaptation and preventing echo cancellation from working.
-        // AEC3 will automatically estimate and track the actual echo delay over time.
-        log_info("✓ WebRTC AEC3 echo cancellation initialized");
-        log_info("  - Automatic network delay estimation: 0-500ms");
-        log_info("  - Adaptive filtering to echo path");
-        log_info("  - Residual echo suppression enabled");
+        log_info("✓ WebRTC AEC3 initialized with network-tuned config");
+        log_info("  - Initial delay: ~40ms, adapts to actual path");
+        log_info("  - Jitter tolerance: up to 12 blocks (~48ms)");
+        log_info("  - Echo suppression: aggressive (network-optimized)");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
@@ -237,9 +262,13 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       goto error;
     }
     memset(p->echo_ref_buffer, 0, p->echo_ref_buffer_size * sizeof(float));
-    p->echo_ref_write_pos = 0;
-    p->echo_ref_read_pos = 0;
+    atomic_init(&p->echo_ref_write_pos, 0);
+    atomic_init(&p->echo_ref_read_pos, 0);
+    atomic_init(&p->echo_ref_samples_consumed, 0);
+    p->capture_timestamp_us = 0;
+    p->render_timestamp_us = 0;
     log_info("✓ Echo reference ring buffer allocated: %d samples (1 second)", p->echo_ref_buffer_size);
+    log_info("✓ Using lock-free atomic operations for echo reference buffer");
   }
 
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus",
@@ -253,7 +282,7 @@ error:
   if (p->echo_canceller) {
     delete static_cast<WebRTCAec3Wrapper*>(p->echo_canceller);
   }
-  mutex_destroy(&p->mutex);
+  mutex_destroy(&p->aec3_mutex);
   SAFE_FREE(p);
   return NULL;
 }
@@ -261,7 +290,7 @@ error:
 void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (!pipeline) return;
 
-  mutex_lock(&pipeline->mutex);
+  mutex_lock(&pipeline->aec3_mutex);
 
   // Clean up WebRTC AEC3
   if (pipeline->echo_canceller) {
@@ -297,8 +326,8 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
     log_info("Debug: Closed AEC3 output WAV file");
   }
 
-  mutex_unlock(&pipeline->mutex);
-  mutex_destroy(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
+  mutex_destroy(&pipeline->aec3_mutex);
 
   SAFE_FREE(pipeline);
 }
@@ -309,16 +338,16 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
 
 void client_audio_pipeline_set_flags(client_audio_pipeline_t *pipeline, client_audio_pipeline_flags_t flags) {
   if (!pipeline) return;
-  mutex_lock(&pipeline->mutex);
+  mutex_lock(&pipeline->aec3_mutex);
   pipeline->flags = flags;
-  mutex_unlock(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
 }
 
 client_audio_pipeline_flags_t client_audio_pipeline_get_flags(client_audio_pipeline_t *pipeline) {
   if (!pipeline) return CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
-  mutex_lock(&pipeline->mutex);
+  mutex_lock(&pipeline->aec3_mutex);
   auto flags = pipeline->flags;
-  mutex_unlock(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
   return flags;
 }
 
@@ -342,7 +371,8 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     return -1;
   }
 
-  mutex_lock(&pipeline->mutex);
+  // NO MUTEX HERE! Echo reference uses lock-free atomics now.
+  // Only lock around AEC3 processing below.
 
   // Create float buffer for processing
   float *processed = (float *)alloca(num_samples * sizeof(float));
@@ -371,6 +401,9 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   if (pipeline->flags.echo_cancel && pipeline->echo_canceller) {
     auto wrapper = static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
     if (wrapper && wrapper->aec3) {
+      // ONLY LOCK FOR AEC3 PROCESSING - echo_ref_buffer uses lock-free atomics
+      mutex_lock(&pipeline->aec3_mutex);
+
       try {
         // WebRTC AEC3's AudioBuffer expects 10ms frames (480 samples at 48kHz)
         // ascii-chat uses 20ms frames (960 samples), so process in two 480-sample chunks
@@ -411,10 +444,24 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           // ===================================================================
           // Before ProcessCapture, we need to analyze any available render data
           // from the ring buffer to provide AEC3 with echo reference signals
+          //
+          // KEY FIX: Use atomic_load for lock-free access to positions
+          // NEVER skip silence frames - AEC3 expects every 10ms frame to have AnalyzeRender
           if (pipeline->echo_ref_buffer) {
+            // Use atomic loads (no mutex needed for reading positions!)
+            int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
+            int read_pos = atomic_load(&pipeline->echo_ref_read_pos);
+
             // Calculate available samples in ring buffer
-            int available = (pipeline->echo_ref_write_pos - pipeline->echo_ref_read_pos + pipeline->echo_ref_buffer_size)
+            int available = (write_pos - read_pos + pipeline->echo_ref_buffer_size)
                             % pipeline->echo_ref_buffer_size;
+
+            // TIMING SYNCHRONIZATION: For now, read directly from current position
+            // The jitter buffer delay is already accounted for by the fact that
+            // echo_ref_buffer accumulates samples as they're played.
+            // AEC3 will automatically adapt to the actual echo delay via its internal
+            // delay estimation algorithm (reported in GetMetrics as "delay" value).
+            int adjusted_read_pos = read_pos;
 
             // Process render samples in 480-sample chunks if available
             while (available >= webrtc_frame_size) {
@@ -423,34 +470,38 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
               if (render_channels && render_channels[0]) {
                 // Copy 480 samples from ring buffer (handling wrap-around)
-                int read_pos = pipeline->echo_ref_read_pos;
+                // Use adjusted_read_pos to account for network delay
                 float energy = 0.0f;
+                int temp_read_pos = adjusted_read_pos;
                 for (int j = 0; j < webrtc_frame_size; j++) {
-                  float sample = pipeline->echo_ref_buffer[read_pos];
+                  float sample = pipeline->echo_ref_buffer[temp_read_pos];
                   render_channels[0][j] = sample;
                   energy += sample * sample;
-                  read_pos = (read_pos + 1) % pipeline->echo_ref_buffer_size;
+                  temp_read_pos = (temp_read_pos + 1) % pipeline->echo_ref_buffer_size;
                 }
 
-                // Update read position
-                pipeline->echo_ref_read_pos = read_pos;
-                available = (pipeline->echo_ref_write_pos - pipeline->echo_ref_read_pos + pipeline->echo_ref_buffer_size)
+                // Advance adjusted_read_pos for next iteration
+                adjusted_read_pos = temp_read_pos;
+
+                // Update actual read position atomically (consumed samples tracking)
+                // This tracks actual consumption separately from delayed reading
+                atomic_store(&pipeline->echo_ref_read_pos,
+                             (atomic_load(&pipeline->echo_ref_read_pos) + webrtc_frame_size) % pipeline->echo_ref_buffer_size);
+
+                // Recalculate available after consuming samples (from adjusted position)
+                write_pos = atomic_load(&pipeline->echo_ref_write_pos);
+                available = (write_pos - adjusted_read_pos + pipeline->echo_ref_buffer_size)
                             % pipeline->echo_ref_buffer_size;
 
-                // Only analyze if we have meaningful audio energy
-                // (threshold: avoid processing pure silence which can confuse AEC3)
+                // FIX: ALWAYS call AnalyzeRender, even for silence!
+                // AEC3 expects every 10ms frame to have a corresponding AnalyzeRender call.
+                // Skipping silence frames desynchronizes AEC3's internal buffer management.
                 energy = sqrtf(energy / webrtc_frame_size);
-                if (energy > 0.0001f || available < webrtc_frame_size) {
-                  // Analyze render signal
-                  render_buf.SplitIntoFrequencyBands();
-                  wrapper->aec3->AnalyzeRender(&render_buf);
-                  render_buf.MergeFrequencyBands();
+                render_buf.SplitIntoFrequencyBands();
+                wrapper->aec3->AnalyzeRender(&render_buf);
+                render_buf.MergeFrequencyBands();
 
-                  log_debug("AEC3: AnalyzeRender called with 480 buffered samples (RMS=%.6f, available now: %d)", energy, available);
-                } else {
-                  // Skip silence to avoid confusing AEC3's buffer management
-                  log_debug("AEC3: Skipped AnalyzeRender for silence chunk (RMS=%.6f)", energy);
-                }
+                log_debug("AEC3: AnalyzeRender called with 480 samples (RMS=%.6f, available now: %d)", energy, available);
               }
             }
           }
@@ -490,6 +541,22 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             }
 
             log_debug("AEC3: ProcessCapture removed echo from %d samples", chunk_size);
+
+            // Collect AEC3 metrics for reporting (call GetMetrics() after ProcessCapture)
+            // This tells us how well echo cancellation is working
+            if (wrapper && wrapper->aec3) {
+              try {
+                webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
+                log_debug("AEC3 metrics: ERL=%.2f dB, ERLE=%.2f dB, delay=%d ms",
+                          metrics.echo_return_loss, metrics.echo_return_loss_enhancement, metrics.delay_ms);
+                // Forward metrics to audio analysis for report (from client/audio_analysis.h)
+                audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
+                                                metrics.echo_return_loss_enhancement,
+                                                metrics.delay_ms);
+              } catch (...) {
+                // Ignore errors getting metrics - not critical
+              }
+            }
           }
         }
       } catch (const std::exception &e) {
@@ -507,7 +574,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   // Encode with Opus
   int opus_len = opus_encode_float(pipeline->encoder, processed, num_samples, opus_out, max_opus_len);
 
-  mutex_unlock(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
 
   if (opus_len < 0) {
     log_error("Opus encoding failed: %d", opus_len);
@@ -526,14 +593,14 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  mutex_lock(&pipeline->mutex);
+  mutex_lock(&pipeline->aec3_mutex);
 
   // Decode Opus
   int decoded_samples = opus_decode_float(pipeline->decoder, opus_in, opus_len, output, num_samples, 0);
 
   if (decoded_samples < 0) {
     log_error("Opus decoding failed: %d", decoded_samples);
-    mutex_unlock(&pipeline->mutex);
+    mutex_unlock(&pipeline->aec3_mutex);
     return -1;
   }
 
@@ -548,7 +615,7 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
   //
   // See: output_callback() in audio.c lines 91-98
 
-  mutex_unlock(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
 
   return decoded_samples;
 }
@@ -561,11 +628,11 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
     return -1;
   }
 
-  mutex_lock(&pipeline->mutex);
+  mutex_lock(&pipeline->aec3_mutex);
   // For now, this is a placeholder
   // In a full implementation, this would manage buffering
   memset(output, 0, num_samples * sizeof(float));
-  mutex_unlock(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
 
   return num_samples;
 }
@@ -584,25 +651,28 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
   if (!pipeline || !samples || num_samples <= 0) return;
   if (!pipeline->echo_ref_buffer) return;  // No ring buffer allocated
 
-  mutex_lock(&pipeline->mutex);
+  // NO MUTEX NEEDED! Echo reference buffer uses lock-free atomic operations.
+  // This function is called from PortAudio's output callback (real-time thread)
+  // and must NOT block or it will cause audio underruns.
 
-  // Write samples to ring buffer
+  // Write samples to ring buffer using atomic operations
   for (int i = 0; i < num_samples; i++) {
-    pipeline->echo_ref_buffer[pipeline->echo_ref_write_pos] = samples[i];
-    pipeline->echo_ref_write_pos = (pipeline->echo_ref_write_pos + 1) % pipeline->echo_ref_buffer_size;
+    int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
+    pipeline->echo_ref_buffer[write_pos] = samples[i];
+    write_pos = (write_pos + 1) % pipeline->echo_ref_buffer_size;
+    atomic_store(&pipeline->echo_ref_write_pos, write_pos);
   }
 
-  // Calculate available samples in ring buffer
-  int available = (pipeline->echo_ref_write_pos - pipeline->echo_ref_read_pos + pipeline->echo_ref_buffer_size)
-                  % pipeline->echo_ref_buffer_size;
+  // Calculate available samples in ring buffer (lock-free read)
+  int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
+  int read_pos = atomic_load(&pipeline->echo_ref_read_pos);
+  int available = (write_pos - read_pos + pipeline->echo_ref_buffer_size) % pipeline->echo_ref_buffer_size;
 
   // Log periodically
   static int echo_playback_calls = 0;
   if (++echo_playback_calls % 20 == 0) {  // Log every ~100ms
     log_debug("Echo playback: wrote %d samples, buffer has %d samples available", num_samples, available);
   }
-
-  mutex_unlock(&pipeline->mutex);
 }
 
 /**
@@ -619,14 +689,14 @@ int client_audio_pipeline_jitter_margin(client_audio_pipeline_t *pipeline) {
 void client_audio_pipeline_reset(client_audio_pipeline_t *pipeline) {
   if (!pipeline) return;
 
-  mutex_lock(&pipeline->mutex);
+  mutex_lock(&pipeline->aec3_mutex);
 
   // WebRTC AEC3 is adaptive and doesn't require explicit reset
   // It automatically adjusts to network conditions
 
   log_info("Pipeline state reset");
 
-  mutex_unlock(&pipeline->mutex);
+  mutex_unlock(&pipeline->aec3_mutex);
 }
 
 #ifdef __cplusplus

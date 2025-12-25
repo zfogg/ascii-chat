@@ -6,6 +6,7 @@
  */
 
 #include "audio/audio.h"
+#include "audio/client_audio_pipeline.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
@@ -81,35 +82,30 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
 
       // Only fill with silence if read returned 0 (jitter buffer not yet filled)
+      bool is_startup_silence = false;
       if (samples_read == 0) {
         SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
                     framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
+        is_startup_silence = true;
+        log_debug_every(5000000, "Output callback: jitter buffer underrun, not feeding silence to echo reference");
       }
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
 
-      // CRITICAL: Feed render (speaker output) signal to AEC3 for echo cancellation
-      // This must happen here in the output callback where audio actually goes to speakers,
-      // not when packets are decoded from network (which happens 50-100ms earlier in the jitter buffer)
-      // PortAudio is configured for MONO (AUDIO_CHANNELS=1), so output is mono, not stereo
-      if (ctx->audio_pipeline) {
-        // DEBUG: Check what's actually in the output buffer
-        static int output_callback_count = 0;
-        output_callback_count++;
-        if (output_callback_count <= 5 || output_callback_count % 100 == 0) {
-          float sum_sq = 0.0f;
-          for (unsigned long i = 0; i < framesPerBuffer && i < 100; i++) {
-            sum_sq += output[i] * output[i];
-          }
-          float rms = sqrtf(sum_sq / (framesPerBuffer < 100 ? framesPerBuffer : 100));
-          log_info("DEBUG output_callback #%d: framesPerBuffer=%lu, RMS=%.6f, first_3=[%.6f,%.6f,%.6f]",
-                   output_callback_count, framesPerBuffer, rms, output[0], output[1], output[2]);
-        }
-
-        // Forward declare to avoid including client_audio_pipeline.h in this low-level audio file
-        extern void client_audio_pipeline_process_echo_playback(void *pipeline, const float *samples, int num_samples);
-        client_audio_pipeline_process_echo_playback(ctx->audio_pipeline, output, (int)framesPerBuffer);
-      }
+      // NOTE: Echo reference is NOT fed from output_callback anymore!
+      // It's instead fed directly at the point where audio is DECODED (see src/client/audio.c:238).
+      // This is crucial because:
+      // 1. Decoded audio goes to BOTH playback buffer AND echo reference buffer
+      // 2. The playback buffer applies jitter buffering and fade-in/fade-out envelopes
+      // 3. But echo reference MUST have the raw decoded audio, not fade-modified samples
+      // 4. If we fed from output_callback, we'd be overwriting real audio with faded silence!
+      //
+      // The proper flow is:
+      // - Decoded packet → audio_write_samples() [goes to playback buffer]
+      // - Decoded packet → direct echo_ref_buffer write [raw audio, no jitter/fade]
+      // - output_callback reads from playback_buffer [gets jitter-buffered + faded audio]
+      // - output_callback plays to speakers [with proper fade-in/out]
+      // - AEC3 analyzes echo reference with raw decoded audio [proper echo detection]
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
@@ -504,6 +500,26 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to create playback buffer");
   }
 
+  // Create separate echo reference buffer for AEC3 (NO jitter buffering)
+  // This ensures AEC3 always sees the true decoded audio immediately, not jitter-buffered silence
+  // Use audio_ring_buffer_create_for_capture to disable jitter buffering so it returns data immediately
+  ctx->echo_ref_buffer = audio_ring_buffer_create_for_capture();
+  if (!ctx->echo_ref_buffer) {
+    audio_ring_buffer_destroy(ctx->capture_buffer);
+    audio_ring_buffer_destroy(ctx->playback_buffer);
+    // Decrement refcount and terminate if this was the only context
+    static_mutex_lock(&g_pa_refcount_mutex);
+    if (g_pa_init_refcount > 0) {
+      g_pa_init_refcount--;
+      if (g_pa_init_refcount == 0) {
+        Pa_Terminate();
+      }
+    }
+    static_mutex_unlock(&g_pa_refcount_mutex);
+    mutex_destroy(&ctx->state_mutex);
+    return SET_ERRNO(ERROR_MEMORY, "Failed to create echo reference buffer");
+  }
+
   ctx->initialized = true;
   log_info("Audio system initialized successfully");
   return ASCIICHAT_OK;
@@ -526,6 +542,7 @@ void audio_destroy(audio_context_t *ctx) {
 
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
+  audio_ring_buffer_destroy(ctx->echo_ref_buffer);
 
   // Terminate PortAudio only when last context is destroyed
   static_mutex_lock(&g_pa_refcount_mutex);

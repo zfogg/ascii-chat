@@ -48,6 +48,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdatomic.h>
 
 #include "audio/mixer.h"
 #include "platform/mutex.h"
@@ -261,11 +262,17 @@ typedef struct {
   /** Ring buffer for render samples (for AEC3 synchronization) */
   float *echo_ref_buffer;   // Ring buffer for echo reference signal
   int echo_ref_buffer_size; // Total buffer size in samples
-  int echo_ref_write_pos;   // Where to write next sample
-  int echo_ref_read_pos;    // Where to read next sample
+  // Use atomic int for lock-free access (no mutex needed)
+  _Atomic int echo_ref_write_pos; // Where to write next sample (atomic)
+  _Atomic int echo_ref_read_pos;  // Where to read next sample (atomic)
 
-  /** Pipeline mutex for thread safety */
-  mutex_t mutex;
+  /** Timing synchronization: track delays between capture and playback */
+  _Atomic int echo_ref_samples_consumed; // Track how many samples AEC3 has consumed
+  int64_t capture_timestamp_us;          // When was the last capture processed
+  int64_t render_timestamp_us;           // When was echo reference last updated
+
+  /** Pipeline mutex for thread safety (ONLY for AEC3 state, not echo_ref_buffer) */
+  mutex_t aec3_mutex; // Separate mutex for AEC3 processing only
 
   /** Initialization state */
   bool initialized;
