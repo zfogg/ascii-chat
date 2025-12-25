@@ -76,14 +76,9 @@ function(generate_compilation_database)
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
-    # Important: Always pass CMAKE_OSX_SYSROOT for macOS to ensure proper SDK detection
-    # This is especially important in Homebrew environments where SDK paths may not be obvious
-    if(CMAKE_OSX_SYSROOT)
-        list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
-    endif()
-
-    # On macOS, set CMAKE_OSX_SYSROOT to ensure SDK is properly configured
-    # CMAKE will automatically add -isysroot flags to the compiler
+    # On macOS, detect and pass SDK path for proper system header resolution
+    # The defer tool (ascii-instr-defer) uses libclang which needs the SDK path
+    # to find system headers like stdbool.h
     if(APPLE)
         # First, try to use the already-detected SDK from the main build
         set(_macos_sdk_for_db "${CMAKE_OSX_SYSROOT}")
@@ -104,15 +99,15 @@ function(generate_compilation_database)
             endif()
         endif()
 
-        # If we found a valid SDK path, pass it to the compilation database generation
-        # This ensures clang gets proper -isysroot flags for finding system headers (stdbool.h, etc.)
+        # Pass SDK path to the temp cmake build
+        # Note: LLVM.cmake will clear CMAKE_OSX_SYSROOT, but we need it for header detection
+        # We also need to pass CMAKE_OSX_ARCHITECTURES to avoid duplicate -isysroot flags
         if(_macos_sdk_for_db)
             list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_macos_sdk_for_db}")
+            # Also pass architectures to prevent cmake from adding bogus flags
+            list(APPEND _cmake_configure_args "-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}")
             message(STATUS "Using macOS SDK for compilation database: ${_macos_sdk_for_db}")
         else()
-            # Fallback: Let CMake use its default SDK detection
-            # This is less reliable but works in most cases, especially in Homebrew environment
-            # where SDK paths may not be in standard locations
             message(STATUS "Could not detect macOS SDK path, relying on CMake's default SDK detection for compilation database")
         endif()
     endif()
