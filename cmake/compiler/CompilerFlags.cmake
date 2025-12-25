@@ -602,7 +602,8 @@ function(configure_release_flags PLATFORM_DARWIN PLATFORM_LINUX IS_ROSETTA IS_AP
                 add_definitions(-D_FORTIFY_SOURCE=3)
             else()
                 # Musl doesn't provide __*_chk fortify wrappers
-                add_definitions(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+                # Use -Wp, prefix to pass directly to preprocessor, overriding makepkg's -Wp,-D_FORTIFY_SOURCE=3
+                add_compile_options("-Wp,-U_FORTIFY_SOURCE" "-Wp,-D_FORTIFY_SOURCE=0")
             endif()
         endif()
 
