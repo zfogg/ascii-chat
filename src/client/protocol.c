@@ -79,7 +79,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio_analysis.h"
+#include "audio/audio_analysis.h"
 #include "keepalive.h"
 
 #include "network/packet.h"

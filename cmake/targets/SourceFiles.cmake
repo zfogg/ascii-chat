@@ -198,6 +198,7 @@ set(AUDIO_SRCS
     lib/audio/mixer.c
     lib/audio/wav_writer.c
     lib/audio/opus_codec.c
+    lib/audio/audio_analysis.c
     lib/audio/client_audio_pipeline.cpp
 )
 
@@ -296,7 +297,6 @@ set(APP_SRCS
     src/client/display.c
     src/client/capture.c
     src/client/audio.c
-    src/client/audio_analysis.c
     src/client/keepalive.c
 )
 

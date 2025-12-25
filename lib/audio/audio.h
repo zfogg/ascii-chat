@@ -108,6 +108,7 @@ typedef struct {
   PaStream *output_stream;              ///< PortAudio output stream for playback
   audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for captured audio samples
   audio_ring_buffer_t *playback_buffer; ///< Ring buffer for audio samples to play
+  audio_ring_buffer_t *echo_ref_buffer; ///< Separate echo reference buffer for AEC3 (bypasses jitter buffering)
   bool initialized;                     ///< True if context has been initialized
   bool recording;                       ///< True if audio capture is active
   bool playing;                         ///< True if audio playback is active

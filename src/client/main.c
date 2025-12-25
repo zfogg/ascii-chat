@@ -70,7 +70,7 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio_analysis.h"
+#include "audio/audio_analysis.h"
 #include "os/webcam.h"
 
 #include "platform/abstraction.h"

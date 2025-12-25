@@ -72,7 +72,7 @@
  */
 
 #include "audio.h" // src/client/audio.h
-#include "audio_analysis.h"
+#include "audio/audio_analysis.h"
 #include "main.h"
 #include "server.h"
 
@@ -228,12 +228,15 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     audio_buffer[i] = s;
   }
 
-  // NOTE: Echo reference (render signal) is now fed from the audio output callback
-  // in lib/audio/audio.c where samples actually go to the speaker. This ensures
-  // proper timing synchronization with AEC3 (not 50-100ms early from the decode path).
-
-  // Submit to audio playback system
+  // Submit to playback system (goes to jitter buffer and speakers)
   audio_write_samples(&g_audio_context, audio_buffer, num_samples);
+
+  // ALSO write decoded audio to separate echo reference buffer for AEC3
+  // This bypasses the jitter buffer, so AEC3 always sees the true decoded audio
+  // (not jitter-buffered silence) for proper echo cancellation
+  if (g_audio_context.echo_ref_buffer) {
+    audio_ring_buffer_write(g_audio_context.echo_ref_buffer, audio_buffer, num_samples);
+  }
 
 #ifdef DEBUG_AUDIO
   log_debug("Processed %d received audio samples", num_samples);
