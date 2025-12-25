@@ -780,6 +780,11 @@ void *client_audio_render_thread(void *arg) {
   (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
   int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
 
+  // Per-thread counters (NOT static - each thread instance gets its own)
+  int mixer_debug_count = 0;
+  int backpressure_check_counter = 0;
+  int server_audio_frame_count = 0;
+
   bool should_continue = true;
   while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
     // Capture loop start time for precise timing
@@ -889,7 +894,7 @@ void *client_audio_render_thread(void *arg) {
     // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
 
     // DEBUG: Log samples mixed every iteration
-    static int mixer_debug_count = 0;
+    // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
     mixer_debug_count++;
     if (mixer_debug_count <= 3 || mixer_debug_count % 50 == 0) {
       log_info("Server mixer iteration #%d for client %u: samples_mixed=%d, opus_frame_accumulated=%d/%d",
@@ -925,7 +930,7 @@ void *client_audio_render_thread(void *arg) {
     if (opus_frame_accumulated >= OPUS_FRAME_SAMPLES) {
       // OPTIMIZATION: Don't check queue depth every iteration - it's expensive (requires lock)
       // Only check periodically every 100 iterations (~0.6s at 172 fps)
-      static int backpressure_check_counter = 0;
+      // NOTE: backpressure_check_counter is now per-thread (not static), so each client thread has its own counter
       bool apply_backpressure = false;
 
       if (++backpressure_check_counter >= 100) {
@@ -977,7 +982,7 @@ void *client_audio_render_thread(void *arg) {
           rms += opus_frame_buffer[i] * opus_frame_buffer[i];
         }
         rms = sqrtf(rms / OPUS_FRAME_SAMPLES);
-        static int server_audio_frame_count = 0;
+        // NOTE: server_audio_frame_count is now per-thread (not static), so each client thread has its own counter
         server_audio_frame_count++;
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
           log_info("Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d",

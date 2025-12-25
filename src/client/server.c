@@ -1113,9 +1113,9 @@ int threaded_send_client_join_packet(const char *display_name, uint32_t capabili
   // Build CLIENT_JOIN packet locally
   client_info_packet_t join_packet;
   SAFE_MEMSET(&join_packet, sizeof(join_packet), 0, sizeof(join_packet));
-  join_packet.client_id = 0; // Will be assigned by server
+  join_packet.client_id = htonl(0); // Will be assigned by server
   SAFE_SNPRINTF(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
-  join_packet.capabilities = capabilities;
+  join_packet.capabilities = htonl(capabilities);
 
   // Use threaded_send_packet() which handles encryption
   int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));

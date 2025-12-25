@@ -231,12 +231,9 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   // Submit to playback system (goes to jitter buffer and speakers)
   audio_write_samples(&g_audio_context, audio_buffer, num_samples);
 
-  // ALSO write decoded audio to separate echo reference buffer for AEC3
-  // This bypasses the jitter buffer, so AEC3 always sees the true decoded audio
-  // (not jitter-buffered silence) for proper echo cancellation
-  if (g_audio_context.echo_ref_buffer) {
-    audio_ring_buffer_write(g_audio_context.echo_ref_buffer, audio_buffer, num_samples);
-  }
+  // NOTE: Echo reference is now fed from output_callback() which calls process_echo_playback()
+  // This ensures AEC3 receives speaker output data synchronized with actual playback timing
+  // AnalyzeRender is called with samples that are actually being sent to speakers (10ms intervals)
 
 #ifdef DEBUG_AUDIO
   log_debug("Processed %d received audio samples", num_samples);

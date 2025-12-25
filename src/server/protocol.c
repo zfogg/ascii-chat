@@ -285,9 +285,10 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 
   SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
-  client->can_send_video = (join_info->capabilities & CLIENT_CAP_VIDEO) != 0;
-  client->can_send_audio = (join_info->capabilities & CLIENT_CAP_AUDIO) != 0;
-  client->wants_stretch = (join_info->capabilities & CLIENT_CAP_STRETCH) != 0;
+  uint32_t capabilities = ntohl(join_info->capabilities);
+  client->can_send_video = (capabilities & CLIENT_CAP_VIDEO) != 0;
+  client->can_send_audio = (capabilities & CLIENT_CAP_AUDIO) != 0;
+  client->wants_stretch = (capabilities & CLIENT_CAP_STRETCH) != 0;
 
   log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", atomic_load(&client->client_id),
            client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
