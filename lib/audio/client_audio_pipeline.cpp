@@ -181,11 +181,16 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Create AEC3 configuration tuned for network audio with jitter buffering
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Network delay tuning: Account for jitter buffer delay (~60ms) plus processing
+      // Network delay tuning: Account for jitter buffer delay (~60ms) plus processing + network latency
       // Set reasonable bounds for network-based echo delay (50-250ms is typical for internet audio)
-      aec3_config.delay.default_delay = 10;  // ~40ms initial guess (10 * 4ms blocks)
-      aec3_config.delay.delay_estimate_smoothing = 0.6f;  // Slightly faster adaptation (was 0.7f)
-      aec3_config.delay.delay_headroom_samples = 64;  // Increased from 32 for more tolerance
+      // CRITICAL: Initial delay estimate must account for:
+      // - Jitter buffer: 60ms
+      // - Opus codec: 20ms
+      // - Network round-trip: 50-100ms
+      // - Total: ~150-200ms typical for network audio
+      aec3_config.delay.default_delay = 50;  // ~200ms initial guess (50 * 4ms blocks) for network audio
+      aec3_config.delay.delay_estimate_smoothing = 0.5f;  // Faster adaptation (was 0.6f)
+      aec3_config.delay.delay_headroom_samples = 128;  // Increased from 64 for large echo delays
 
       // Jitter handling: Tolerance for delayed or missing render data
       aec3_config.buffering.max_allowed_excess_render_blocks = 12;  // Increased from 8 for network jitter
@@ -638,6 +643,79 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 }
 
 /**
+ * Analyze render signal for AEC3 (speaker output)
+ *
+ * This should be called from output_callback() with the actual samples being sent to speakers.
+ * CRITICAL: This ensures AEC3's AnalyzeRender is called with perfect timing synchronization.
+ * AEC3 needs to know exactly when audio is being sent to speakers (not buffered, not processed).
+ */
+void client_audio_pipeline_analyze_render_samples(client_audio_pipeline_t *pipeline, const float *samples,
+                                                  int num_samples) {
+  if (!pipeline || !samples || num_samples <= 0) return;
+
+  // Get the AEC3 wrapper
+  WebRTCAec3Wrapper *wrapper = (WebRTCAec3Wrapper *)pipeline->echo_canceller;
+  if (!wrapper || !wrapper->aec3) return;
+
+  // IMPORTANT: AEC3 requires exactly 480-sample frames (10ms at 48kHz).
+  // PortAudio gives us 256-sample frames from output_callback.
+  // We must accumulate samples until we have 480 samples to avoid
+  // confusing AEC3's internal render buffer state tracking.
+
+  // Use work buffer to accumulate render samples
+  static thread_local float render_accumulator[960];  // Buffer for up to 2 frames worth
+  static thread_local int render_accum_pos = 0;
+
+  try {
+    int input_offset = 0;
+
+    while (input_offset < num_samples) {
+      // How many samples can we add before reaching 480?
+      int space_in_buffer = 480 - render_accum_pos;
+      int samples_to_copy = (input_offset + space_in_buffer <= num_samples) ? space_in_buffer
+                                                                               : (num_samples - input_offset);
+
+      // Copy samples to accumulator
+      for (int i = 0; i < samples_to_copy; i++) {
+        render_accumulator[render_accum_pos++] = samples[input_offset++];
+      }
+
+      // When we have a full 480-sample frame, feed to AEC3
+      if (render_accum_pos == 480) {
+        // Create WebRTC AudioBuffer for render signal (10ms at 48kHz = 480 samples)
+        webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
+        float* const* render_channels = render_buf.channels();
+
+        if (render_channels && render_channels[0]) {
+          // Copy accumulated samples (exactly 480)
+          for (int i = 0; i < 480; i++) {
+            render_channels[0][i] = render_accumulator[i];
+          }
+
+          // Split into frequency bands
+          render_buf.SplitIntoFrequencyBands();
+
+          // CRITICAL: Call AnalyzeRender with accumulated speaker output
+          // This ensures AEC3 gets exactly 480 samples as required
+          wrapper->aec3->AnalyzeRender(&render_buf);
+
+          // Merge bands back
+          render_buf.MergeFrequencyBands();
+
+          log_debug_every(10000000, "AEC3: AnalyzeRender called with 480 accumulated speaker samples");
+
+          // Reset accumulator
+          render_accum_pos = 0;
+        }
+      }
+    }
+  } catch (...) {
+    // Ignore any errors - don't want to crash audio thread
+    log_warn_every(1000000, "Error in AnalyzeRender from output callback");
+  }
+}
+
+/**
  * Process echo playback (analyze render signal for AEC3)
  *
  * Called immediately from output_callback when audio is actually output to speakers.
@@ -655,7 +733,7 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
   // This function is called from PortAudio's output callback (real-time thread)
   // and must NOT block or it will cause audio underruns.
 
-  // Write samples to ring buffer using atomic operations
+  // Write samples to ring buffer using atomic operations (for debugging/logging only now)
   for (int i = 0; i < num_samples; i++) {
     int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
     pipeline->echo_ref_buffer[write_pos] = samples[i];
@@ -663,16 +741,9 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
     atomic_store(&pipeline->echo_ref_write_pos, write_pos);
   }
 
-  // Calculate available samples in ring buffer (lock-free read)
-  int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
-  int read_pos = atomic_load(&pipeline->echo_ref_read_pos);
-  int available = (write_pos - read_pos + pipeline->echo_ref_buffer_size) % pipeline->echo_ref_buffer_size;
-
-  // Log periodically
-  static int echo_playback_calls = 0;
-  if (++echo_playback_calls % 20 == 0) {  // Log every ~100ms
-    log_debug("Echo playback: wrote %d samples, buffer has %d samples available", num_samples, available);
-  }
+  // CRITICAL: Call AnalyzeRender directly with speaker samples
+  // This is the proper way to feed render signal to AEC3
+  client_audio_pipeline_analyze_render_samples(pipeline, samples, num_samples);
 }
 
 /**
