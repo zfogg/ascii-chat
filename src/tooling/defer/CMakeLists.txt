@@ -455,8 +455,14 @@ else()
         find_library(LLVM_SHARED_LIB NAMES LLVM LLVM-21 PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
         if(LLVM_SHARED_LIB)
             message(STATUS "Found LLVM shared library: ${LLVM_SHARED_LIB}")
-            # Wrap LLVM with --no-as-needed to ensure it's linked
-            set(_clang_libs ${CLANG_CPP_LIB} -Wl,--no-as-needed ${LLVM_SHARED_LIB} -Wl,--as-needed)
+            # Wrap LLVM with --no-as-needed to ensure it's linked (GNU ld only, not macOS ld64)
+            if(APPLE)
+                # macOS ld64 doesn't support --no-as-needed/--as-needed flags
+                set(_clang_libs ${CLANG_CPP_LIB} ${LLVM_SHARED_LIB})
+            else()
+                # Linux with GNU ld - use linker grouping flags
+                set(_clang_libs ${CLANG_CPP_LIB} -Wl,--no-as-needed ${LLVM_SHARED_LIB} -Wl,--as-needed)
+            endif()
         else()
             message(STATUS "LLVM shared library not found, using only bundled Clang library")
             set(_clang_libs ${CLANG_CPP_LIB})
