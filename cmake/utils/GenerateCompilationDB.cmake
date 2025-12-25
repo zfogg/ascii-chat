@@ -76,6 +76,12 @@ function(generate_compilation_database)
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
+    # Important: Always pass CMAKE_OSX_SYSROOT for macOS to ensure proper SDK detection
+    # This is especially important in Homebrew environments where SDK paths may not be obvious
+    if(CMAKE_OSX_SYSROOT)
+        list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${CMAKE_OSX_SYSROOT}")
+    endif()
+
     # On macOS, set CMAKE_OSX_SYSROOT to ensure SDK is properly configured
     # CMAKE will automatically add -isysroot flags to the compiler
     if(APPLE)
