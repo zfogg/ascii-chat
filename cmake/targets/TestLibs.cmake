@@ -45,7 +45,7 @@ if(NOT BUILDING_OBJECT_LIBS)
 
     # Add musl dependency ordering for proper build sequencing
     if(USE_MUSL)
-        add_dependencies(test-static-lib portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl)
+        add_dependencies(test-static-lib portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl speexdsp-musl)
     endif()
 
     # Include necessary headers
