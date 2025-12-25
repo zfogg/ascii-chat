@@ -134,7 +134,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       # libclang-common-$ver-dev provides Clang AST headers (clang/AST/*.h) needed for defer tool compilation
       # libclang1-$ver provides the libclang runtime library
       # libclang-rt-$ver-dev provides compiler runtime (sanitizers, builtins)
-      if sudo apt-get install -y clang-$ver clang-tools-$ver clang-tidy-$ver libclang-$ver-dev libclang-cpp$ver-dev libclang-common-$ver-dev libclang1-$ver libclang-rt-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver 2>/dev/null; then
+      # libc++-$ver-dev and libc++abi-$ver-dev provide LLVM C++ standard library (required for musl builds)
+      if sudo apt-get install -y clang-$ver clang-tools-$ver clang-tidy-$ver libclang-$ver-dev libclang-cpp$ver-dev libclang-common-$ver-dev libclang1-$ver libclang-rt-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver libc++-$ver-dev libc++abi-$ver-dev 2>/dev/null; then
         LLVM_VERSION=$ver
         echo "Successfully installed LLVM $ver"
         break
@@ -263,7 +264,8 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     echo "Installing dependencies..."
     sudo yum install -y \
       pkg-config make autoconf automake libtool \
-      clang llvm \
+      clang llvm lld \
+      libcxx-devel libcxxabi-devel \
       cmake ninja-build \
       musl-devel musl-gcc musl-libc-static \
       mimalloc-devel libzstd-devel zlib-devel libsodium-devel portaudio-devel opus-devel speexdsp-devel \
@@ -280,6 +282,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       pkg-config autoconf automake libtool \
       clang llvm lldb ccache \
       lld \
+      libc++ libc++abi \
       cmake ninja make \
       musl mimalloc \
       zstd zlib libsodium portaudio opus speexdsp \
