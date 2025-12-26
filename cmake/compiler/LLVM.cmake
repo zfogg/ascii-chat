@@ -370,7 +370,7 @@ function(configure_llvm_post_project)
     endif()
 
     message(STATUS "${BoldGreen}Applied${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} toolchain flags:")
-    message(STATUS "  Include: (using compiler's resource directory - NOT added globally)")
+    message(STATUS "  Include: -resource-dir ${CLANG_RESOURCE_DIR}")
     if(HOMEBREW_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
         message(STATUS "  Link: ${BoldCyan}${HOMEBREW_LLVM_LINK_FLAGS}${ColorReset}")
     else()
