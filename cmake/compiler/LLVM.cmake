@@ -267,6 +267,26 @@ function(configure_llvm_post_project)
     # macOS SDK handling:
     # - Self-contained LLVM (Homebrew, git-built): clang finds headers automatically, don't use -isysroot
     # - System clang: needs Apple's SDK path to find system headers
+    # IMPORTANT: Save SDK path BEFORE clearing CMAKE_OSX_SYSROOT, so compilation database generation can use it
+    if(CMAKE_OSX_SYSROOT)
+        set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${CMAKE_OSX_SYSROOT}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
+    else()
+        # If not set yet, try to detect via xcrun
+        find_program(_XCRUN_EXECUTABLE xcrun)
+        if(_XCRUN_EXECUTABLE)
+            execute_process(
+                COMMAND ${_XCRUN_EXECUTABLE} --show-sdk-path
+                OUTPUT_VARIABLE _detected_sdk_path
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET
+            )
+            if(_detected_sdk_path AND EXISTS "${_detected_sdk_path}")
+                set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_detected_sdk_path}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
+            endif()
+            unset(_XCRUN_EXECUTABLE)
+        endif()
+    endif()
+
     set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
     message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset}: disabling SDK root (-isysroot)")
 

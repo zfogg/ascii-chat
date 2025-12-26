@@ -80,11 +80,17 @@ function(generate_compilation_database)
     # The defer tool (ascii-instr-defer) uses libclang which needs the SDK path
     # to find system headers like stdbool.h
     if(APPLE)
-        # First, try to use the already-detected SDK from the main build
-        set(_macos_sdk_for_db "${CMAKE_OSX_SYSROOT}")
+        # First, try to use the SDK path saved by LLVM.cmake (before it was cleared)
+        set(_macos_sdk_for_db "")
 
-        # If not set in main build, try to detect using xcrun
-        if(NOT _macos_sdk_for_db)
+        if(ASCIICHAT_MACOS_SDK_FOR_TOOLS)
+            # This is the SDK path saved in configure_llvm_post_project() before clearing CMAKE_OSX_SYSROOT
+            set(_macos_sdk_for_db "${ASCIICHAT_MACOS_SDK_FOR_TOOLS}")
+        elseif(CMAKE_OSX_SYSROOT)
+            # Fallback: use current CMAKE_OSX_SYSROOT if set
+            set(_macos_sdk_for_db "${CMAKE_OSX_SYSROOT}")
+        else()
+            # Final fallback: detect using xcrun
             find_program(_XCRUN_EXECUTABLE xcrun)
             if(_XCRUN_EXECUTABLE)
                 execute_process(
@@ -104,11 +110,14 @@ function(generate_compilation_database)
         # We also need to pass CMAKE_OSX_ARCHITECTURES to avoid duplicate -isysroot flags
         if(_macos_sdk_for_db)
             list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_macos_sdk_for_db}")
-            # Also pass architectures to prevent cmake from adding bogus flags
-            list(APPEND _cmake_configure_args "-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}")
             message(STATUS "Using macOS SDK for compilation database: ${_macos_sdk_for_db}")
         else()
             message(STATUS "Could not detect macOS SDK path, relying on CMake's default SDK detection for compilation database")
+        endif()
+
+        # Also pass CMAKE_OSX_ARCHITECTURES to prevent cmake from adding conflicting flags
+        if(CMAKE_OSX_ARCHITECTURES)
+            list(APPEND _cmake_configure_args "-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}")
         endif()
     endif()
 
