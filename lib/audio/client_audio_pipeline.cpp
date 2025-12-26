@@ -244,22 +244,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       log_info("Debug: Recording AEC3 output to /tmp/aec3_output.wav");
     }
 
-    // Allocate ring buffer for echo reference signal
-    // Size: 1 second @ 48kHz (48000 samples) - enough for many audio frames
-    p->echo_ref_buffer_size = 48000;
-    p->echo_ref_buffer = SAFE_MALLOC(p->echo_ref_buffer_size * sizeof(float), float *);
-    if (!p->echo_ref_buffer) {
-      log_error("Failed to allocate echo reference ring buffer");
-      goto error;
-    }
-    memset(p->echo_ref_buffer, 0, p->echo_ref_buffer_size * sizeof(float));
-    atomic_init(&p->echo_ref_write_pos, 0);
-    atomic_init(&p->echo_ref_read_pos, 0);
-    atomic_init(&p->echo_ref_samples_consumed, 0);
     p->capture_timestamp_us = 0;
     p->render_timestamp_us = 0;
-    log_info("✓ Echo reference ring buffer allocated: %d samples (1 second)", p->echo_ref_buffer_size);
-    log_info("✓ Using lock-free atomic operations for echo reference buffer");
+    log_info("✓ AEC3 echo cancellation enabled - call analyze_render() with received audio");
   }
 
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus",
@@ -287,12 +274,6 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (pipeline->echo_canceller) {
     delete static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
     pipeline->echo_canceller = NULL;
-  }
-
-  // Clean up echo reference ring buffer
-  if (pipeline->echo_ref_buffer) {
-    SAFE_FREE(pipeline->echo_ref_buffer);
-    pipeline->echo_ref_buffer = NULL;
   }
 
   // Clean up Opus
@@ -388,12 +369,11 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   }
 
   // WebRTC AEC3 echo cancellation - Process microphone input to remove echo
-  // CRITICAL SEQUENCE: AnalyzeRender → AnalyzeCapture → ProcessCapture
-  // (Render MUST come first so AEC3 knows what's playing before analyzing capture)
+  // AnalyzeRender is called separately from client_audio_pipeline_analyze_render()
+  // when audio is received from the network. Here we just do AnalyzeCapture + ProcessCapture.
   if (pipeline->flags.echo_cancel && pipeline->echo_canceller) {
     auto wrapper = static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
     if (wrapper && wrapper->aec3) {
-      // ONLY LOCK FOR AEC3 PROCESSING - echo_ref_buffer uses lock-free atomics
       mutex_lock(&pipeline->aec3_mutex);
 
       try {
@@ -404,98 +384,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
         for (int i = 0; i < num_samples; i += webrtc_frame_size) {
           int chunk_size = (i + webrtc_frame_size <= num_samples) ? webrtc_frame_size : (num_samples - i);
 
-          // ===================================================================
-          // STEP 1: AnalyzeRender FIRST (speaker output / echo reference)
-          // ===================================================================
-          // CRITICAL: WebRTC AEC3 requires: AnalyzeRender → AnalyzeCapture → ProcessCapture
-          // The render signal (what's playing on speakers) must be analyzed BEFORE
-          // the capture signal so AEC3 can correlate them for echo estimation.
-          //
-          // KEY FIX: Read the MOST RECENT render samples, not the oldest!
-          // AEC3 needs to correlate current capture with what's currently playing,
-          // not with stale audio from 200ms ago.
-          if (pipeline->echo_ref_buffer && wrapper && wrapper->aec3) {
-            int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
-            int read_pos = atomic_load(&pipeline->echo_ref_read_pos);
-            int available = (write_pos - read_pos + pipeline->echo_ref_buffer_size)
-                            % pipeline->echo_ref_buffer_size;
-
-            try {
-              webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
-              float* const* render_channels = render_buf.channels();
-
-              if (render_channels && render_channels[0]) {
-                // KEY FIX: If buffer has accumulated too much data (>100ms = 4800 samples),
-                // skip ahead to read the most recent samples instead of stale ones.
-                // AEC3 needs CURRENT render signal, not old data from 200ms ago.
-                const int max_buffer_samples = 4800;  // 100ms at 48kHz - reasonable echo delay
-                if (available > max_buffer_samples) {
-                  int samples_to_skip = available - max_buffer_samples;
-                  read_pos = (read_pos + samples_to_skip) % pipeline->echo_ref_buffer_size;
-                  atomic_store(&pipeline->echo_ref_read_pos, read_pos);
-                  available = max_buffer_samples;
-                  log_debug_every(1000000, "AEC3: Skipped %d stale samples, keeping most recent %d",
-                                  samples_to_skip, available);
-                }
-
-                float render_energy = 0.0f;
-                for (int s = 0; s < webrtc_frame_size; s++) {
-                  float sample;
-                  if (s < available) {
-                    int sample_idx = (read_pos + s) % pipeline->echo_ref_buffer_size;
-                    sample = pipeline->echo_ref_buffer[sample_idx];
-                  } else {
-                    sample = 0.0f;
-                  }
-                  render_channels[0][s] = sample;
-                  render_energy += sample * sample;
-                }
-                render_energy = sqrtf(render_energy / webrtc_frame_size);
-
-                render_buf.SplitIntoFrequencyBands();
-                wrapper->aec3->AnalyzeRender(&render_buf);
-                render_buf.MergeFrequencyBands();
-
-                // Log render signal stats every second to debug ERL issues
-                static int render_count = 0;
-                render_count++;
-                if (render_count % 100 == 1) {  // Log every ~1 second (100 * 10ms chunks)
-                  log_info("AEC3 Render: available=%d samples, RMS=%.6f", available, render_energy);
-                }
-
-                // Consume samples we read
-                if (available >= webrtc_frame_size) {
-                  atomic_store(&pipeline->echo_ref_read_pos,
-                              (read_pos + webrtc_frame_size) % pipeline->echo_ref_buffer_size);
-                } else if (available > 0) {
-                  atomic_store(&pipeline->echo_ref_read_pos,
-                              (read_pos + available) % pipeline->echo_ref_buffer_size);
-                }
-              }
-            } catch (...) {
-              log_warn_every(1000000, "AEC3 AnalyzeRender error");
-            }
-
-            // Tell AEC3 the buffer delay in milliseconds
-            // This is the delay between when render is analyzed and when it reaches speakers
-            // With our 100ms max buffer, delay is at most 100ms
-            try {
-              int buffer_delay_ms = (available * 1000) / 48000;  // Convert samples to ms
-              wrapper->aec3->SetAudioBufferDelay(buffer_delay_ms);
-            } catch (...) {}
-          }
-
-          // ===================================================================
-          // STEP 2 & 3: AnalyzeCapture + ProcessCapture (following demo.cc pattern)
-          // ===================================================================
-          // From WebRTC demo.cc lines 134-142:
-          //   ref_audio->SplitIntoFrequencyBands();
-          //   echo_controler->AnalyzeRender(ref_audio.get());
-          //   ref_audio->MergeFrequencyBands();
-          //   echo_controler->AnalyzeCapture(aec_audio.get());  <-- NON-split!
-          //   aec_audio->SplitIntoFrequencyBands();             <-- Split AFTER AnalyzeCapture
-          //   echo_controler->ProcessCapture(aec_audio.get(), ...);
-          //   aec_audio->MergeFrequencyBands();
+          // AnalyzeCapture + ProcessCapture (following demo.cc pattern)
           webrtc::AudioBuffer capture_buf(
               48000,  // input sample rate
               1,      // input channels (mono)
@@ -510,14 +399,13 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Copy microphone input to capture buffer
             memcpy(capture_channels[0], processed + i, chunk_size * sizeof(float));
 
-            // STEP 2: AnalyzeCapture on NON-split buffer (per demo.cc line 137)
+            // AnalyzeCapture on NON-split buffer (per demo.cc line 137)
             wrapper->aec3->AnalyzeCapture(&capture_buf);
 
-            // NOW split into frequency bands for ProcessCapture (per demo.cc line 138)
+            // Split into frequency bands for ProcessCapture (per demo.cc line 138)
             capture_buf.SplitIntoFrequencyBands();
 
-            // STEP 3: ProcessCapture on SPLIT buffer (per demo.cc line 141)
-            // false = don't apply level adjustment
+            // ProcessCapture on SPLIT buffer (per demo.cc line 141)
             wrapper->aec3->ProcessCapture(&capture_buf, false);
 
             // Merge frequency bands back to time domain
@@ -526,7 +414,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Copy echo-cancelled result back to output
             memcpy(processed + i, capture_channels[0], chunk_size * sizeof(float));
 
-            // Log capture signal stats
+            // Log capture signal stats and metrics every second
             static int capture_count = 0;
             capture_count++;
             if (capture_count % 100 == 1) {
@@ -535,25 +423,24 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 capture_energy += (processed + i)[s] * (processed + i)[s];
               }
               capture_energy = sqrtf(capture_energy / chunk_size);
-              log_info("AEC3 Capture: RMS=%.6f (after AEC3 processing)", capture_energy);
-            }
 
-            // Get metrics after processing - log every second
-            try {
-              webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-              if (capture_count % 100 == 1) {
-                log_info("AEC3 Metrics: ERL=%.2f dB, ERLE=%.2f dB, delay=%d ms",
-                         metrics.echo_return_loss, metrics.echo_return_loss_enhancement, metrics.delay_ms);
-              }
-              audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
-                                              metrics.echo_return_loss_enhancement,
-                                              metrics.delay_ms);
-            } catch (...) {}
+              try {
+                webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
+                log_info("AEC3: Capture RMS=%.6f, ERL=%.2f dB, ERLE=%.2f dB, delay=%d ms",
+                         capture_energy, metrics.echo_return_loss,
+                         metrics.echo_return_loss_enhancement, metrics.delay_ms);
+                audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
+                                                metrics.echo_return_loss_enhancement,
+                                                metrics.delay_ms);
+              } catch (...) {}
+            }
           }
         }
       } catch (const std::exception &e) {
         log_warn("AEC3 processing error: %s", e.what());
       }
+
+      mutex_unlock(&pipeline->aec3_mutex);
     }
   }
 
@@ -564,8 +451,6 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
   // Encode with Opus
   int opus_len = opus_encode_float(pipeline->encoder, processed, num_samples, opus_out, max_opus_len);
-
-  mutex_unlock(&pipeline->aec3_mutex);
 
   if (opus_len < 0) {
     log_error("Opus encoding failed: %d", opus_len);
@@ -629,37 +514,70 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 }
 
 /**
- * Process echo playback - write speaker output to buffer for AEC3
+ * Feed render signal to AEC3 for echo cancellation
  *
- * Called immediately from output_callback when audio is actually output to speakers.
- * CRITICAL: Now only writes to echo_ref_buffer. AnalyzeRender is called from capture thread.
+ * Called when audio is received from the network and decoded.
+ * This is the "render" signal - what will be played to speakers.
+ * AEC3 uses this to estimate and subtract the echo from microphone input.
  *
- * ARCHITECTURE (implements WebRTC AEC3 demo pattern):
- * - output_callback: Writes speaker samples to echo_ref_buffer only
- * - capture_thread: Reads from echo_ref_buffer and calls AnalyzeRender → AnalyzeCapture → ProcessCapture
- *
- * This synchronous pattern ensures AEC3's state machine is properly initialized.
+ * Following WebRTC demo.cc pattern:
+ *   render_audio->SplitIntoFrequencyBands();
+ *   echo_controller->AnalyzeRender(render_audio);
+ *   render_audio->MergeFrequencyBands();
  */
-void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeline, const float *samples,
-                                                 int num_samples) {
+void client_audio_pipeline_analyze_render(client_audio_pipeline_t *pipeline, const float *samples,
+                                          int num_samples) {
   if (!pipeline || !samples || num_samples <= 0) return;
-  if (!pipeline->echo_ref_buffer) return;  // No ring buffer allocated
+  if (!pipeline->flags.echo_cancel || !pipeline->echo_canceller) return;
 
-  // NO MUTEX NEEDED! Echo reference buffer uses lock-free atomic operations.
-  // This function is called from PortAudio's output callback (real-time thread)
-  // and must NOT block or it will cause audio underruns.
+  auto wrapper = static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
+  if (!wrapper || !wrapper->aec3) return;
 
-  // Write samples to ring buffer using atomic operations
-  // The capture thread will read and process these via AnalyzeRender
-  // WebRTC AEC3 demo shows we must write EVERY frame, including silence
-  for (int i = 0; i < num_samples; i++) {
-    int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
-    pipeline->echo_ref_buffer[write_pos] = samples[i];
-    write_pos = (write_pos + 1) % pipeline->echo_ref_buffer_size;
-    atomic_store(&pipeline->echo_ref_write_pos, write_pos);
+  mutex_lock(&pipeline->aec3_mutex);
+
+  try {
+    // WebRTC AEC3 expects 10ms frames (480 samples at 48kHz)
+    const int webrtc_frame_size = 480;
+
+    for (int i = 0; i < num_samples; i += webrtc_frame_size) {
+      int chunk_size = (i + webrtc_frame_size <= num_samples) ? webrtc_frame_size : (num_samples - i);
+
+      webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
+      float* const* render_channels = render_buf.channels();
+
+      if (render_channels && render_channels[0]) {
+        // Copy render samples to buffer
+        memcpy(render_channels[0], samples + i, chunk_size * sizeof(float));
+
+        // Zero-pad if chunk is smaller than frame size
+        if (chunk_size < webrtc_frame_size) {
+          memset(render_channels[0] + chunk_size, 0, (webrtc_frame_size - chunk_size) * sizeof(float));
+        }
+
+        // Following demo.cc: SplitIntoFrequencyBands → AnalyzeRender → MergeFrequencyBands
+        render_buf.SplitIntoFrequencyBands();
+        wrapper->aec3->AnalyzeRender(&render_buf);
+        render_buf.MergeFrequencyBands();
+
+        // Log render signal stats every second
+        static int render_count = 0;
+        render_count++;
+        if (render_count % 100 == 1) {
+          float render_energy = 0.0f;
+          for (int s = 0; s < chunk_size; s++) {
+            render_energy += (samples + i)[s] * (samples + i)[s];
+          }
+          render_energy = sqrtf(render_energy / chunk_size);
+          log_info("AEC3 Render: %d samples, RMS=%.6f", chunk_size, render_energy);
+        }
+      }
+    }
+
+  } catch (const std::exception &e) {
+    log_warn("AEC3 AnalyzeRender error: %s", e.what());
   }
 
-  log_debug_every(10000000, "Echo reference buffer: wrote %d samples from output_callback", num_samples);
+  mutex_unlock(&pipeline->aec3_mutex);
 }
 
 /**
