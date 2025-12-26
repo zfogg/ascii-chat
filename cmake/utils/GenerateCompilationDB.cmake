@@ -183,6 +183,9 @@ function(generate_compilation_database)
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
             COMMAND sh -c "${CMAKE_COMMAND} -DINPUT_FILE='${_DB_OUTPUT}' -DSOURCE_DIR='${CMAKE_SOURCE_DIR}' -P '${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake'"
+            COMMAND ${CMAKE_COMMAND} -E copy
+                "${_DB_OUTPUT}"
+                "${_DB_TEMP_DIR}/compile_commands.json"
             COMMENT "${_DB_COMMENT}"
             VERBATIM
         )
