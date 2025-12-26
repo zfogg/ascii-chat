@@ -128,16 +128,18 @@ static int network_handle_recv_error(int error) {
     return 1; // Retry
   }
   if (error == WSAEINTR) {
-    SET_ERRNO_SYS(ERROR_SIGNAL_INTERRUPT, "Signal interrupt occurred");
-    return 0; // Fatal
+    // Signal interrupted the call - this is recoverable, just retry
+    log_debug("recv interrupted by signal, retrying");
+    return 1; // Retry
   }
 #else
   if (error == EAGAIN || error == EWOULDBLOCK) {
     return 1; // Retry
   }
   if (error == EINTR) {
-    SET_ERRNO_SYS(ERROR_SIGNAL_INTERRUPT, "Signal interrupt occurred");
-    return 0; // Fatal
+    // Signal interrupted the call - this is recoverable, just retry
+    log_debug("recv interrupted by signal, retrying");
+    return 1; // Retry
   }
   if (error == EBADF) {
     // Socket is not a socket (WSAENOTSOCK on Windows) - socket was closed
@@ -167,14 +169,16 @@ static int network_handle_select_error(int result) {
 #ifdef _WIN32
   int error = WSAGetLastError();
   if (error == WSAEINTR) {
-    SET_ERRNO_SYS(ERROR_SIGNAL_INTERRUPT, "Signal interrupt occurred");
-    return 0; // Fatal
+    // Signal interrupted the call - this is recoverable, just retry
+    log_debug("select interrupted by signal, retrying");
+    return 1; // Retry
   }
   SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(error));
 #else
   if (errno == EINTR) {
-    SET_ERRNO_SYS(ERROR_SIGNAL_INTERRUPT, "Signal interrupt occurred");
-    return 0; // Fatal
+    // Signal interrupted the call - this is recoverable, just retry
+    log_debug("select interrupted by signal, retrying");
+    return 1; // Retry
   }
   SET_ERRNO_SYS(ERROR_NETWORK, "select failed: %s", network_get_error_string(errno));
 #endif
