@@ -1055,10 +1055,11 @@ void *client_audio_render_thread(void *arg) {
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target loop time: 10ms (two iterations per Opus frame)
-    // Balances between fast ring buffer consumption and accumulation time
-    // Too fast (5.3ms) = frequent empty reads; too slow (20ms) = buffer accumulation issues
-    const uint64_t target_loop_us = 10000; // 10ms = reasonable compromise
+    // Target loop time: 10ms (two iterations per Opus frame = 960 samples)
+    // Must match real-time rate: 480 samples * 100 fps = 48,000 samples/sec
+    // Running faster would cause client playback buffers to overflow since
+    // playback is limited to real-time rate (48kHz).
+    const uint64_t target_loop_us = 10000; // 10ms for real-time rate
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {
