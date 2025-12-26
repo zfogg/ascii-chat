@@ -926,18 +926,14 @@ int main(int argc, const char **argv) {
   // We use -isystem for system headers so they're searched after -I but before default paths.
 
   // Add macOS SDK path for system headers (stdio.h, stdlib.h)
+  // We only use -isysroot to set the SDK root - this lets clang set up its internal
+  // include paths correctly without us explicitly adding SDK/usr/include (which would
+  // interfere with __has_include_next in clang's builtin headers).
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
-      std::string sdkInclude = std::string(sdkPath) + "/usr/include";
-      if (llvm::sys::fs::exists(sdkInclude)) {
-        // Add SDK include as -isystem
-        std::vector<std::string> sdkIncludeArgs = {"-isystem", sdkInclude};
-        tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      }
-      // Add -isysroot for SDK root
+      // Only add -isysroot, not explicit -isystem for SDK includes
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
