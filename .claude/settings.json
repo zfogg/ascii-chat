@@ -92,6 +92,9 @@
       "Bash(git mv:*)",
       "Bash(git tag:*)",
       "Bash(gh release:*)"
+    ],
+    "deny": [
+      "Bash(pkill:*)"
     ]
   }
 }
