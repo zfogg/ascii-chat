@@ -85,6 +85,9 @@ extern "C" {
 /** Echo reference ring buffer size (500ms at 48kHz) */
 #define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE / 2)
 
+/** Render ring buffer size for lock-free AEC3 feeding (100ms at 48kHz = 4800 samples) */
+#define CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE 4800
+
 /** Maximum Opus packet size */
 #define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000
 
@@ -265,6 +268,15 @@ typedef struct {
 
   /** Pipeline mutex for thread safety (ONLY for AEC3 state, not echo_ref_buffer) */
   mutex_t aec3_mutex; // Separate mutex for AEC3 processing only
+
+  /** Lock-free render ring buffer for AEC3 feeding
+   * The output callback writes render samples here without blocking.
+   * The capture thread drains this buffer before processing.
+   * This prevents priority inversion where the audio callback would block on aec3_mutex.
+   */
+  float *render_ring_buffer;
+  _Atomic int render_ring_write_idx;
+  _Atomic int render_ring_read_idx;
 
   /** Initialization state */
   bool initialized;

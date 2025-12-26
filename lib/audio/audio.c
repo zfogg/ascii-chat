@@ -157,6 +157,20 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
   buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
 }
 
+void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {
+  if (!rb)
+    return;
+
+  mutex_lock(&rb->mutex);
+  // Reset buffer to empty state (no audio to play = silence at shutdown)
+  rb->write_index = 0;
+  rb->read_index = 0;
+  rb->last_sample = 0.0f;
+  // Clear the actual data to zeros to prevent any stale audio
+  SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
+  mutex_unlock(&rb->mutex);
+}
+
 asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *data, int samples) {
   if (!rb || !data || samples <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: rb=%p, data=%p, samples=%d", rb, data, samples);
@@ -170,23 +184,10 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   mutex_lock(&rb->mutex);
 
   int available = audio_ring_buffer_available_write(rb);
-  int buffer_used = AUDIO_RING_BUFFER_SIZE - available - 1;
-
-  // When buffer is nearly full (>90%), discard OLD stale audio to make room for fresh audio.
-  // Fresh audio is more valuable than stale audio - better to skip ahead than fall behind.
-  // This prevents the buffer from staying perpetually full with stale data.
-  if (buffer_used > (int)(AUDIO_RING_BUFFER_SIZE * 0.9)) {
-    // Calculate how much to discard to get back to 50% capacity
-    int target_used = AUDIO_RING_BUFFER_SIZE / 2;
-    int samples_to_discard = buffer_used - target_used;
-    if (samples_to_discard > 0) {
-      // Advance read pointer to discard old audio
-      rb->read_index = (rb->read_index + samples_to_discard) % AUDIO_RING_BUFFER_SIZE;
-      available = audio_ring_buffer_available_write(rb);
-      log_warn_every(1000000, "Audio buffer near full: discarded %d stale samples to make room for fresh audio",
-                     samples_to_discard);
-    }
-  }
+  // Note: Removed aggressive buffer discard logic that was causing clicks.
+  // Instead, we let the normal overflow handling below drop incoming samples
+  // when the buffer is full. This causes less audible artifacts than discarding
+  // large chunks of buffered audio.
 
   // Now write the new samples
   int samples_to_write = samples;
@@ -724,8 +725,15 @@ asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
 
   mutex_lock(&ctx->state_mutex);
 
+  // Clear playback buffer first to prevent any stale audio from playing
+  if (ctx->playback_buffer) {
+    audio_ring_buffer_clear(ctx->playback_buffer);
+  }
+
   if (ctx->output_stream) {
-    Pa_StopStream(ctx->output_stream);
+    // Use Pa_AbortStream instead of Pa_StopStream to stop immediately
+    // without playing remaining buffer contents (prevents beep at end)
+    Pa_AbortStream(ctx->output_stream);
     Pa_CloseStream(ctx->output_stream);
     ctx->output_stream = NULL;
   }

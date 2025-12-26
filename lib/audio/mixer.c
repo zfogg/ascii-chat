@@ -568,11 +568,11 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Reduce gain to prevent clipping after Opus encode/decode
-      // Opus can add up to 5% overshoot, so limit to 0.9 max pre-Opus
-      // Apply 0.9x gain then soft clip at 0.7 for smooth limiting
-      mix *= 0.9f;
-      output[frame_start + s] = soft_clip(mix, 0.7f);
+      // Apply gain boost to make audio audible
+      // Microphone input is typically quiet (peaks ~0.05), so we need to boost
+      // Use soft_clip at 0.95 to prevent harsh clipping while allowing loud audio
+      mix *= 4.0f; // 4x boost for audible levels
+      output[frame_start + s] = soft_clip(mix, 0.95f);
     }
   }
 
@@ -744,10 +744,11 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Reduce gain to prevent clipping after Opus encode/decode
-      // Opus can add up to 5% overshoot, so limit to 0.9 max pre-Opus
-      mix *= 0.9f;
-      float clipped = soft_clip(mix, 0.7f);
+      // Apply gain boost to make audio audible
+      // Microphone input is typically quiet (peaks ~0.05), so we need to boost
+      // Use soft_clip at 0.95 to prevent harsh clipping while allowing loud audio
+      mix *= 4.0f; // 4x boost for audible levels
+      float clipped = soft_clip(mix, 0.95f);
       output[frame_start + s] = clipped;
 
       // DEBUG: Track output stats

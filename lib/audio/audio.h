@@ -473,6 +473,17 @@ audio_ring_buffer_t *audio_ring_buffer_create_for_capture(void);
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
 
 /**
+ * @brief Clear all audio samples from ring buffer
+ * @param rb Audio ring buffer (must not be NULL)
+ *
+ * Resets the ring buffer to empty state, clearing all samples.
+ * Used during shutdown to prevent stale audio from playing.
+ *
+ * @ingroup audio
+ */
+void audio_ring_buffer_clear(audio_ring_buffer_t *rb);
+
+/**
  * @brief Write audio samples to ring buffer
  * @param rb Audio ring buffer (must not be NULL)
  * @param data Audio samples to write (must not be NULL)
