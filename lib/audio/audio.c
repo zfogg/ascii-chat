@@ -173,23 +173,32 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   mutex_lock(&rb->mutex);
 
   int available = audio_ring_buffer_available_write(rb);
+  int buffer_used = AUDIO_RING_BUFFER_SIZE - available - 1;
 
-  // IMPORTANT: Never modify read_index from writer - this causes race conditions with reader.
-  // If buffer doesn't have enough space, drop the INCOMING (new) samples.
-  // This is the writer's responsibility - better to drop new data than corrupt existing playback.
+  // When buffer is nearly full (>90%), discard OLD stale audio to make room for fresh audio.
+  // Fresh audio is more valuable than stale audio - better to skip ahead than fall behind.
+  // This prevents the buffer from staying perpetually full with stale data.
+  if (buffer_used > (int)(AUDIO_RING_BUFFER_SIZE * 0.9)) {
+    // Calculate how much to discard to get back to 50% capacity
+    int target_used = AUDIO_RING_BUFFER_SIZE / 2;
+    int samples_to_discard = buffer_used - target_used;
+    if (samples_to_discard > 0) {
+      // Advance read pointer to discard old audio
+      rb->read_index = (rb->read_index + samples_to_discard) % AUDIO_RING_BUFFER_SIZE;
+      available = audio_ring_buffer_available_write(rb);
+      log_warn_every(1000000, "Audio buffer near full: discarded %d stale samples to make room for fresh audio",
+                     samples_to_discard);
+    }
+  }
+
+  // Now write the new samples
   int samples_to_write = samples;
   if (samples > available) {
-    // Only write what we can fit - drop the rest of the incoming samples
+    // Still not enough space after cleanup - drop some incoming samples
     int samples_dropped = samples - available;
     samples_to_write = available;
-    // Log overflow so we can diagnose audio quality issues (rate-limited to avoid spam)
-    // CRITICAL: This is why playback_buffer is mostly silence - incoming samples are being dropped!
-    log_warn("Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d, available=%d)",
-             samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE, available);
-    // NOTE: We do NOT reset jitter_buffer_filled here because:
-    // 1. We're dropping NEW data, not corrupting existing buffered data
-    // 2. Resetting jitter causes audible gaps when playback pauses for threshold refill
-    // 3. The reader's existing data is still valid and should continue playing
+    log_warn_every(1000000, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",
+                   samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
   }
 
   // Write only the samples that fit (preserves existing data integrity)
