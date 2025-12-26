@@ -439,7 +439,12 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 wrapper->aec3->AnalyzeRender(&render_buf);
                 render_buf.MergeFrequencyBands();
 
-                log_debug("AEC3 STEP1: AnalyzeRender (available=%d, RMS=%.6f)", available, render_energy);
+                // Log render signal stats every second to debug ERL issues
+                static int render_count = 0;
+                render_count++;
+                if (render_count % 100 == 1) {  // Log every ~1 second (100 * 10ms chunks)
+                  log_info("AEC3 Render: available=%d samples, RMS=%.6f", available, render_energy);
+                }
 
                 // Consume samples we read
                 if (available >= webrtc_frame_size) {
@@ -503,13 +508,25 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Copy echo-cancelled result back to output
             memcpy(processed + i, capture_channels[0], chunk_size * sizeof(float));
 
-            log_debug("AEC3 STEP2+3: AnalyzeCapture + ProcessCapture (%d samples)", chunk_size);
+            // Log capture signal stats
+            static int capture_count = 0;
+            capture_count++;
+            if (capture_count % 100 == 1) {
+              float capture_energy = 0.0f;
+              for (int s = 0; s < chunk_size; s++) {
+                capture_energy += (processed + i)[s] * (processed + i)[s];
+              }
+              capture_energy = sqrtf(capture_energy / chunk_size);
+              log_info("AEC3 Capture: RMS=%.6f (after AEC3 processing)", capture_energy);
+            }
 
-            // Get metrics after processing
+            // Get metrics after processing - log every second
             try {
               webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-              log_debug("AEC3 metrics: ERL=%.2f dB, ERLE=%.2f dB, delay=%d ms",
-                        metrics.echo_return_loss, metrics.echo_return_loss_enhancement, metrics.delay_ms);
+              if (capture_count % 100 == 1) {
+                log_info("AEC3 Metrics: ERL=%.2f dB, ERLE=%.2f dB, delay=%d ms",
+                         metrics.echo_return_loss, metrics.echo_return_loss_enhancement, metrics.delay_ms);
+              }
               audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
                                               metrics.echo_return_loss_enhancement,
                                               metrics.delay_ms);
