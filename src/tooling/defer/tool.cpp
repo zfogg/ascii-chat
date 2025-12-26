@@ -945,19 +945,14 @@ int main(int argc, const char **argv) {
 #endif
 
   // Add resource directory for clang's builtin headers (stdbool.h, stddef.h)
+  // We only use -resource-dir to let clang find its builtins internally.
+  // Don't explicitly add -isystem for the resource-dir/include - that would
+  // interfere with __has_include_next in clang's builtin headers.
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
     if (llvm::sys::fs::exists(resourceDir)) {
-      llvm::SmallString<256> builtinInclude(resourceDir);
-      llvm::sys::path::append(builtinInclude, "include");
-      if (llvm::sys::fs::exists(builtinInclude)) {
-        // Add clang builtins as -isystem (searched before -I for angle-bracket includes)
-        std::vector<std::string> builtinIncludeArgs = {"-isystem", std::string(builtinInclude)};
-        tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      }
-      // Add -resource-dir for other functionality
+      // Only add -resource-dir, not explicit -isystem for builtin includes
       std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
