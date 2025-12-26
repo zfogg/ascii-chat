@@ -901,6 +901,23 @@ int main(int argc, const char **argv) {
   }
 #endif
 
+  // Add macOS SDK path for system headers (stdio.h, stdlib.h)
+  // LibTooling tools need the SDK path to find system headers
+#ifdef MACOS_SDK_PATH
+  {
+    const char* sdkPath = MACOS_SDK_PATH;
+    if (llvm::sys::fs::exists(sdkPath)) {
+      // -isysroot requires the path as a separate argument, so we add both
+      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+    } else {
+      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
+    }
+  }
+#endif
+
   DeferActionFactory actionFactory(outputDir, inputRoot);
   const int executionResult = tool.run(&actionFactory);
   if (executionResult != 0) {

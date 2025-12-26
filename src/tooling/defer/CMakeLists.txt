@@ -51,6 +51,24 @@ if(CMAKE_CXX_COMPILER)
     endif()
 endif()
 
+# Detect macOS SDK path for system headers (stdio.h, stdlib.h, etc.)
+# LibTooling tools need the SDK path to find system headers
+if(APPLE)
+    find_program(_DEFER_XCRUN xcrun)
+    if(_DEFER_XCRUN)
+        execute_process(
+            COMMAND ${_DEFER_XCRUN} --show-sdk-path
+            OUTPUT_VARIABLE MACOS_SDK_DETECTED
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(MACOS_SDK_DETECTED AND EXISTS "${MACOS_SDK_DETECTED}")
+            message(STATUS "Detected macOS SDK for defer tool: ${MACOS_SDK_DETECTED}")
+            set(DEFER_TOOL_MACOS_SDK "${MACOS_SDK_DETECTED}")
+        endif()
+    endif()
+endif()
+
 # Get LLVM/Clang configuration using centralized detection module
 # This handles Windows (no llvm-config) vs Unix (uses llvm-config) automatically
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/utils/DetectLLVMPaths.cmake")
@@ -65,6 +83,15 @@ if(DEFER_TOOL_CLANG_RESOURCE_DIR)
         CLANG_RESOURCE_DIR="${DEFER_TOOL_CLANG_RESOURCE_DIR}"
     )
     message(STATUS "Embedding Clang resource directory in defer tool: ${DEFER_TOOL_CLANG_RESOURCE_DIR}")
+endif()
+
+# Pass the detected macOS SDK path as a compile definition
+# This allows the defer tool to find system headers at runtime
+if(DEFER_TOOL_MACOS_SDK)
+    target_compile_definitions(ascii-instr-defer PRIVATE
+        MACOS_SDK_PATH="${DEFER_TOOL_MACOS_SDK}"
+    )
+    message(STATUS "Embedding macOS SDK path in defer tool: ${DEFER_TOOL_MACOS_SDK}")
 endif()
 
 # Platform-specific include and compile setup
