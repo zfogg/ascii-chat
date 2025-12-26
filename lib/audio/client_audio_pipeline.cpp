@@ -182,31 +182,14 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
     try {
-      // Create AEC3 configuration tuned for network audio with jitter buffering
+      // Use mostly default AEC3 config and trust automatic delay estimation
+      // Previous custom config with -30dB ERL indicates over-tuning was causing instability
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Network delay tuning: Account for jitter buffer delay (~200ms) plus processing + network latency
-      // Set reasonable bounds for network-based echo delay (50-250ms is typical for internet audio)
-      // CRITICAL: Initial delay estimate must account for:
-      // - Jitter buffer: 200ms
-      // - Opus codec: 20ms
-      // - Network round-trip: 50-100ms
-      // - Total: ~250-320ms typical for network audio with buffering
-      aec3_config.delay.default_delay = 100;  // ~400ms initial guess (100 * 4ms blocks) for buffered network audio
-      aec3_config.delay.delay_estimate_smoothing = 0.3f;  // Slower smoothing to adapt gradually
-      aec3_config.delay.delay_headroom_samples = 256;  // Increased for large network echo delays
-
-      // Jitter handling: Tolerance for delayed or missing render data
-      aec3_config.buffering.max_allowed_excess_render_blocks = 12;  // Increased from 8 for network jitter
-      aec3_config.buffering.excess_render_detection_interval_blocks = 250;
-
-      // Filter tuning for network conditions
-      aec3_config.filter.initial_state_seconds = 3.0f;  // Longer initial learning (was 2.5f)
-      aec3_config.filter.config_change_duration_blocks = 250;  // Smooth transitions
-
-      // Echo removal: More aggressive suppression in presence of residual echo
-      aec3_config.ep_strength.default_gain = 0.9f;  // Slightly more suppression
-      aec3_config.ep_strength.bounded_erl = false;  // Allow full adaptation range
+      // Only minimal tuning for network audio:
+      // - Slightly longer initial learning period for network jitter
+      // - Trust AEC3's automatic delay estimation (SetAudioBufferDelay(0))
+      aec3_config.filter.initial_state_seconds = 2.5f;  // Default is 2.5s, keep it
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -234,10 +217,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with network-tuned config");
-        log_info("  - Initial delay: ~40ms, adapts to actual path");
-        log_info("  - Jitter tolerance: up to 12 blocks (~48ms)");
-        log_info("  - Echo suppression: aggressive (network-optimized)");
+        log_info("✓ WebRTC AEC3 initialized with default config");
+        log_info("  - Automatic delay estimation enabled (SetAudioBufferDelay=0)");
+        log_info("  - Using WebRTC's default echo suppression settings");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
@@ -472,13 +454,11 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
               log_warn_every(1000000, "AEC3 AnalyzeRender error");
             }
 
-            // Set buffer delay for AEC3 delay estimation
-            float available_ms = (float)available / 48.0f;
-            int buffer_delay_ms = (int)(available_ms + 0.5f);
-            if (buffer_delay_ms < 10) buffer_delay_ms = 10;
-            if (buffer_delay_ms > 300) buffer_delay_ms = 300;
+            // Set buffer delay to 0 for automatic delay estimation (per demo.cc line 140)
+            // AEC3 does cross-correlation to automatically find the echo path delay.
+            // Previously we were incorrectly calculating this from ring buffer availability.
             try {
-              wrapper->aec3->SetAudioBufferDelay(buffer_delay_ms);
+              wrapper->aec3->SetAudioBufferDelay(0);
             } catch (...) {}
           }
 
