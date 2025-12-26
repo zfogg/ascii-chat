@@ -172,10 +172,7 @@ function(generate_compilation_database)
             VERBATIM
         )
     else()
-        # Unix: use shell redirection
-        # Build sed command that will be executed after copy
-        set(_sed_cmd "sed -i '' 's|\"directory\": \"[^\"]*\"|\"directory\": \"${CMAKE_SOURCE_DIR}\"|g' '${_DB_OUTPUT}'")
-
+        # Unix: use shell redirection and CMake script to fix directory field
         add_custom_command(
             OUTPUT "${_DB_OUTPUT}"
             COMMAND ${CMAKE_COMMAND} -E rm -rf "${_DB_TEMP_DIR}"
@@ -185,7 +182,10 @@ function(generate_compilation_database)
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
-            COMMAND sh -c "${_sed_cmd}"
+            COMMAND ${CMAKE_COMMAND}
+                -DINPUT_FILE="${_DB_OUTPUT}"
+                -DSOURCE_DIR="${CMAKE_SOURCE_DIR}"
+                -P "${CMAKE_SOURCE_DIR}/cmake/utils/FixCompilationDBDirectory.cmake"
             COMMENT "${_DB_COMMENT}"
             VERBATIM
         )
