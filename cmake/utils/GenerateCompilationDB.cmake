@@ -113,6 +113,8 @@ function(generate_compilation_database)
         # Note: LLVM.cmake will clear CMAKE_OSX_SYSROOT in main build, but temp build needs it for header detection
         if(_macos_sdk_for_db)
             list(APPEND _cmake_configure_args "-DCMAKE_OSX_SYSROOT=${_macos_sdk_for_db}")
+            # Also pass it as ASCIICHAT_MACOS_SDK_FOR_TOOLS so LLVM.cmake can find it
+            list(APPEND _cmake_configure_args "-DASCIICHAT_MACOS_SDK_FOR_TOOLS=${_macos_sdk_for_db}")
             message(STATUS "Using macOS SDK for compilation database: ${_macos_sdk_for_db}")
         else()
             message(STATUS "Could not detect macOS SDK path, relying on CMake's default SDK detection for compilation database")
