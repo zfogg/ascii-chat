@@ -872,15 +872,24 @@ int main(int argc, const char **argv) {
         continue;
       if (arg == "-fno-inline")
         continue;
-      // Strip -resource-dir flags - we'll add our embedded path instead
-      if (arg.find("-resource-dir") != std::string::npos)
-        continue;
-      // Strip -isysroot flags and their arguments - we'll add our embedded SDK path instead
-      if (arg == "-isysroot") {
-        // Skip this flag and its argument
-        ++i;  // Skip the next argument (the path)
+      // Strip -resource-dir flags and their arguments - we'll add our embedded path instead
+      // Handle both "-resource-dir /path" (two args) and "-resource-dir=/path" (one arg)
+      if (arg == "-resource-dir") {
+        // Skip this flag and its argument (the path)
+        ++i;
         continue;
       }
+      if (arg.find("-resource-dir=") == 0)
+        continue;
+      // Strip -isysroot flags and their arguments - we'll add our embedded SDK path instead
+      // Handle both "-isysroot /path" (two args) and "-isysroot=/path" or "-isysroot/path" (one arg)
+      if (arg == "-isysroot") {
+        // Skip this flag and its argument (the path)
+        ++i;
+        continue;
+      }
+      if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
+        continue;
       result.push_back(arg);
     }
     return result;
