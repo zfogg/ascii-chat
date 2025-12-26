@@ -36,12 +36,36 @@ endif()
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Detect Clang resource directory for LibTooling builtin headers (stdbool.h, stddef.h, etc.)
+# LibTooling tools don't auto-detect this like the clang driver does
+if(CMAKE_CXX_COMPILER)
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -print-resource-dir
+        OUTPUT_VARIABLE CLANG_RESOURCE_DIR_DETECTED
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(CLANG_RESOURCE_DIR_DETECTED AND EXISTS "${CLANG_RESOURCE_DIR_DETECTED}/include")
+        message(STATUS "Detected Clang resource directory: ${CLANG_RESOURCE_DIR_DETECTED}")
+        set(DEFER_TOOL_CLANG_RESOURCE_DIR "${CLANG_RESOURCE_DIR_DETECTED}")
+    endif()
+endif()
+
 # Get LLVM/Clang configuration using centralized detection module
 # This handles Windows (no llvm-config) vs Unix (uses llvm-config) automatically
 include("${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/utils/DetectLLVMPaths.cmake")
 
 # Create the executable
 add_executable(ascii-instr-defer tool.cpp)
+
+# Pass the detected resource directory as a compile definition
+# This allows the defer tool to find clang's builtin headers at runtime
+if(DEFER_TOOL_CLANG_RESOURCE_DIR)
+    target_compile_definitions(ascii-instr-defer PRIVATE
+        CLANG_RESOURCE_DIR="${DEFER_TOOL_CLANG_RESOURCE_DIR}"
+    )
+    message(STATUS "Embedding Clang resource directory in defer tool: ${DEFER_TOOL_CLANG_RESOURCE_DIR}")
+endif()
 
 # Platform-specific include and compile setup
 if(APPLE)

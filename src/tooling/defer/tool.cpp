@@ -882,42 +882,24 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Detect and add resource directory based on this tool's executable location
+  // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
   // LibTooling tools don't auto-detect this like the clang driver does
+#ifdef CLANG_RESOURCE_DIR
   {
-    // Get the directory containing this executable
-    std::string executablePath = argv[0];
-    llvm::SmallString<256> realPath;
-    if (!llvm::sys::fs::real_path(executablePath, realPath)) {
-      llvm::SmallString<256> parentDir = realPath;
-      llvm::sys::path::remove_filename(parentDir);
-
-      // Try to find resource directory relative to executable
-      // Common layouts:
-      //   <prefix>/bin/ascii-instr-defer -> <prefix>/lib/clang/<version>
-      //   <prefix>/bin/ascii-instr-defer -> <prefix>/lib/clang/<version>/include
-      llvm::SmallString<256> resourceDir = parentDir;
-      llvm::sys::path::append(resourceDir, "..", "lib", "clang");
-
-      std::error_code ec;
-      if (llvm::sys::fs::exists(resourceDir)) {
-        // Find the version directory (e.g., "21.1.6" or "18.0.0")
-        for (llvm::sys::fs::directory_iterator it(resourceDir, ec), end; !ec && it != end; it.increment(ec)) {
-          std::string candidatePath = it->path();
-          llvm::SmallString<256> includeDir(candidatePath);
-          llvm::sys::path::append(includeDir, "include");
-          if (llvm::sys::fs::exists(includeDir)) {
-            // Found a valid resource directory with include/
-            std::string resourceFlag = "-resource-dir=" + candidatePath;
-            tool.appendArgumentsAdjuster(
-                tooling::getInsertArgumentAdjuster(resourceFlag.c_str(), tooling::ArgumentInsertPosition::BEGIN));
-            llvm::errs() << "Using resource directory: " << candidatePath << "\n";
-            break;
-          }
-        }
-      }
+    // Use the resource directory embedded at compile time
+    const char* resourceDir = CLANG_RESOURCE_DIR;
+    llvm::SmallString<256> includeDir(resourceDir);
+    llvm::sys::path::append(includeDir, "include");
+    if (llvm::sys::fs::exists(includeDir)) {
+      std::string resourceFlag = std::string("-resource-dir=") + resourceDir;
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(resourceFlag.c_str(), tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using embedded resource directory: " << resourceDir << "\n";
+    } else {
+      llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
     }
   }
+#endif
 
   DeferActionFactory actionFactory(outputDir, inputRoot);
   const int executionResult = tool.run(&actionFactory);
