@@ -855,7 +855,7 @@ int main(int argc, const char **argv) {
 
   tooling::ClangTool tool(*compilations, sourcePaths);
 
-  // Strip unnecessary flags for faster processing (flags not needed for AST parsing)
+  // Strip unnecessary flags and flags we'll override with embedded paths
   auto stripUnnecessaryFlags = [](const tooling::CommandLineArguments &args, StringRef) {
     tooling::CommandLineArguments result;
     for (size_t i = 0; i < args.size(); ++i) {
@@ -872,6 +872,15 @@ int main(int argc, const char **argv) {
         continue;
       if (arg == "-fno-inline")
         continue;
+      // Strip -resource-dir flags - we'll add our embedded path instead
+      if (arg.find("-resource-dir") != std::string::npos)
+        continue;
+      // Strip -isysroot flags and their arguments - we'll add our embedded SDK path instead
+      if (arg == "-isysroot") {
+        // Skip this flag and its argument
+        ++i;  // Skip the next argument (the path)
+        continue;
+      }
       result.push_back(arg);
     }
     return result;
