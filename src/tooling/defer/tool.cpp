@@ -16,12 +16,14 @@
 #include "clang/Lex/Lexer.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
+#include "clang/Driver/Driver.h"
 #include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
@@ -879,6 +881,43 @@ int main(int argc, const char **argv) {
   // Add ASCIICHAT_DEFER_TOOL_PARSING definition so defer() macro doesn't cause parse errors
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
+
+  // Detect and add resource directory based on this tool's executable location
+  // LibTooling tools don't auto-detect this like the clang driver does
+  {
+    // Get the directory containing this executable
+    std::string executablePath = argv[0];
+    llvm::SmallString<256> realPath;
+    if (!llvm::sys::fs::real_path(executablePath, realPath)) {
+      llvm::SmallString<256> parentDir = realPath;
+      llvm::sys::path::remove_filename(parentDir);
+
+      // Try to find resource directory relative to executable
+      // Common layouts:
+      //   <prefix>/bin/ascii-instr-defer -> <prefix>/lib/clang/<version>
+      //   <prefix>/bin/ascii-instr-defer -> <prefix>/lib/clang/<version>/include
+      llvm::SmallString<256> resourceDir = parentDir;
+      llvm::sys::path::append(resourceDir, "..", "lib", "clang");
+
+      std::error_code ec;
+      if (llvm::sys::fs::exists(resourceDir)) {
+        // Find the version directory (e.g., "21.1.6" or "18.0.0")
+        for (llvm::sys::fs::directory_iterator it(resourceDir, ec), end; !ec && it != end; it.increment(ec)) {
+          llvm::SmallString<256> candidateDir = it->path();
+          llvm::SmallString<256> includeDir = candidateDir;
+          llvm::sys::path::append(includeDir, "include");
+          if (llvm::sys::fs::exists(includeDir)) {
+            // Found a valid resource directory with include/
+            std::string resourceFlag = "-resource-dir=" + std::string(candidateDir);
+            tool.appendArgumentsAdjuster(
+                tooling::getInsertArgumentAdjuster(resourceFlag.c_str(), tooling::ArgumentInsertPosition::BEGIN));
+            llvm::errs() << "Using resource directory: " << candidateDir << "\n";
+            break;
+          }
+        }
+      }
+    }
+  }
 
   DeferActionFactory actionFactory(outputDir, inputRoot);
   const int executionResult = tool.run(&actionFactory);
