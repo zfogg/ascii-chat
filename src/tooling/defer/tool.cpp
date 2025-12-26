@@ -903,15 +903,15 @@ int main(int argc, const char **argv) {
       if (llvm::sys::fs::exists(resourceDir)) {
         // Find the version directory (e.g., "21.1.6" or "18.0.0")
         for (llvm::sys::fs::directory_iterator it(resourceDir, ec), end; !ec && it != end; it.increment(ec)) {
-          llvm::SmallString<256> candidateDir = it->path();
-          llvm::SmallString<256> includeDir = candidateDir;
+          std::string candidatePath = it->path();
+          llvm::SmallString<256> includeDir(candidatePath);
           llvm::sys::path::append(includeDir, "include");
           if (llvm::sys::fs::exists(includeDir)) {
             // Found a valid resource directory with include/
-            std::string resourceFlag = "-resource-dir=" + std::string(candidateDir);
+            std::string resourceFlag = "-resource-dir=" + candidatePath;
             tool.appendArgumentsAdjuster(
                 tooling::getInsertArgumentAdjuster(resourceFlag.c_str(), tooling::ArgumentInsertPosition::BEGIN));
-            llvm::errs() << "Using resource directory: " << candidateDir << "\n";
+            llvm::errs() << "Using resource directory: " << candidatePath << "\n";
             break;
           }
         }
