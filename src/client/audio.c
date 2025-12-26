@@ -221,19 +221,9 @@ void audio_process_received_samples(const float *samples, int num_samples) {
     }
   }
 
-  // Apply soft clipping and prepare for playback
+  // Copy samples to playback buffer (no processing needed - mixer already handled clipping)
   float audio_buffer[AUDIO_BATCH_SAMPLES];
-  for (int i = 0; i < num_samples; i++) {
-    float s = samples[i];
-    // Soft clipping to prevent distortion
-    if (s > 1.0F) {
-      s = 1.0F;
-    }
-    if (s < -1.0F) {
-      s = -1.0F;
-    }
-    audio_buffer[i] = s;
-  }
+  memcpy(audio_buffer, samples, (size_t)num_samples * sizeof(float));
 
   // DEBUG: Log what we're writing to playback buffer
   log_info("AUDIO RECEIVED: %d samples, RMS=%.6f, peak=%.3f -> writing to playback_buffer", num_samples, received_rms,
