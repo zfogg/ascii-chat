@@ -96,10 +96,10 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .agc_level = 8000,
       .agc_max_gain = 30,
 
-      // CRITICAL: Jitter margin was too small (60ms) causing frequent underruns.
-      // During underruns, we fed silence to echo_ref_buffer, which prevented AEC3
-      // from calculating/maintaining the echo delay (ERL = -30dB).
-      // Increased to 200ms to handle network packet arrival variability.
+      // Jitter margin: 80ms (4 frames) to prevent buffer overflow while handling network jitter.
+      // With 800ms total buffer size, 80ms threshold uses only 10% of buffer at startup.
+      // This prevents packet drops from burst arrivals while maintaining low latency.
+      // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in ringbuffer.h!
       .jitter_margin_ms = 200,
 
       .highpass_hz = 80.0f,
@@ -449,20 +449,18 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           }
 
           // ===================================================================
-          // STEP 2: Consume echo reference buffer and update delay tracking
+          // STEP 2: AnalyzeRender on accumulated echo reference samples + set AEC3 delay
           // ===================================================================
-          // NOTE: DO NOT call AnalyzeRender here!
-          // AnalyzeRender is called from output_callback at precise 10ms intervals.
-          // Calling it here from the capture thread would desynchronize AEC3's
-          // render buffer state machine.
+          // CRITICAL: Call AnalyzeRender BEFORE ProcessCapture in the SAME synchronous loop!
+          // This follows the WebRTC AEC3 demo pattern and ensures AEC3's render buffer
+          // state machine is properly synchronized with capture processing.
           //
-          // However, we still need to:
-          // 1. Consume samples from echo_ref_buffer (so it doesn't overflow)
-          // 2. Tell AEC3 about the buffer delay via SetAudioBufferDelay()
+          // CRITICAL: Call AnalyzeRender for EVERY frame, even if echo_ref_buffer is empty.
+          // WebRTC AEC3 requires consistent 10ms frame timing. Skipping frames breaks
+          // the render buffer state machine and prevents echo cancellation training.
           //
-          // The capture and render signals are synchronized via the echo_ref_buffer
-          // and the precise timing of output_callback's AnalyzeRender calls.
-          if (pipeline->echo_ref_buffer) {
+          // The demo shows: AnalyzeRender → AnalyzeCapture → ProcessCapture (all synchronous)
+          if (pipeline->echo_ref_buffer && wrapper && wrapper->aec3) {
             // Use atomic loads (no mutex needed for reading positions!)
             int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
             int read_pos = atomic_load(&pipeline->echo_ref_read_pos);
@@ -470,6 +468,51 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Calculate available samples in echo reference buffer
             int available = (write_pos - read_pos + pipeline->echo_ref_buffer_size)
                             % pipeline->echo_ref_buffer_size;
+
+            try {
+              webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
+              float* const* render_channels = render_buf.channels();
+
+              if (render_channels && render_channels[0]) {
+                // Copy up to 480 samples from echo_ref_buffer to render_buf
+                // If not enough data, fill remaining with zeros (silence)
+                float energy = 0.0f;
+                for (int s = 0; s < webrtc_frame_size; s++) {
+                  float sample;
+                  if (s < available) {
+                    // Read from echo_ref_buffer (account for wraparound)
+                    int sample_idx = (read_pos + s) % pipeline->echo_ref_buffer_size;
+                    sample = pipeline->echo_ref_buffer[sample_idx];
+                  } else {
+                    // Not enough data - fill with silence
+                    sample = 0.0f;
+                  }
+                  render_channels[0][s] = sample;
+                  energy += sample * sample;
+                }
+                energy = sqrtf(energy / webrtc_frame_size);
+
+                // ALWAYS call AnalyzeRender - WebRTC AEC3 requires consistent frame timing
+                // for proper state machine operation, even with silence
+                render_buf.SplitIntoFrequencyBands();
+                wrapper->aec3->AnalyzeRender(&render_buf);
+                render_buf.MergeFrequencyBands();
+
+                log_debug("AEC3: AnalyzeRender from capture thread (available=%d, RMS=%.6f)",
+                         available, energy);
+
+                // Consume only the frames we actually had available
+                if (available >= webrtc_frame_size) {
+                  int new_read_pos = (read_pos + webrtc_frame_size) % pipeline->echo_ref_buffer_size;
+                  atomic_store(&pipeline->echo_ref_read_pos, new_read_pos);
+                } else if (available > 0) {
+                  int new_read_pos = (read_pos + available) % pipeline->echo_ref_buffer_size;
+                  atomic_store(&pipeline->echo_ref_read_pos, new_read_pos);
+                }
+              }
+            } catch (...) {
+              log_warn_every(1000000, "Error calling AnalyzeRender from capture thread");
+            }
 
             // CRITICAL: Calculate the jitter buffer delay in milliseconds
             // This represents how far behind we are in playback due to network buffering
@@ -482,13 +525,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             if (buffer_delay_ms < 50) buffer_delay_ms = 50;
             if (buffer_delay_ms > 300) buffer_delay_ms = 300;
 
-            // CRITICAL FIX: Pass actual buffer delay to AEC3 for proper echo alignment
-            // Early silence frames prevent AEC3's delay estimator from working.
-            // By providing the measured buffer delay, AEC3 can initialize properly even
-            // when render signal is weak. This is MORE important than letting AEC3
-            // estimate delay from weak silence frames.
-            //
-            // Delay = jitter buffer (200ms) + render sample accumulation (~10ms) = ~210ms
+            // Pass actual buffer delay to AEC3 for proper echo alignment
             int total_delay_ms = buffer_delay_ms + 10;  // +10ms for render frame accumulation
             try {
               wrapper->aec3->SetAudioBufferDelay(total_delay_ms);
@@ -496,15 +533,6 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                              total_delay_ms, available);
             } catch (...) {
               // Ignore if SetAudioBufferDelay fails
-            }
-
-            // Consume echo reference samples to prevent buffer overflow
-            // We need to keep the buffer filled at a stable level (around 100-200ms worth)
-            if (available > 0) {
-              // Consume one frame worth (480 samples = 10ms at 48kHz)
-              int samples_to_consume = (available > webrtc_frame_size) ? webrtc_frame_size : available;
-              int new_read_pos = (read_pos + samples_to_consume) % pipeline->echo_ref_buffer_size;
-              atomic_store(&pipeline->echo_ref_read_pos, new_read_pos);
             }
           }
 
@@ -640,18 +668,16 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 }
 
 /**
- * Process echo playback (analyze render signal and write to buffer for AEC3)
+ * Process echo playback - write speaker output to buffer for AEC3
  *
  * Called immediately from output_callback when audio is actually output to speakers.
- * CRITICAL: output_callback provides precise 10ms timing, which AEC3 requires for proper
- * AnalyzeRender synchronization.
+ * CRITICAL: Now only writes to echo_ref_buffer. AnalyzeRender is called from capture thread.
  *
- * ARCHITECTURE:
- * - output_callback: Calls AnalyzeRender at precise 10ms intervals (PortAudio timing)
- * - capture_thread: Calls AnalyzeCapture and ProcessCapture (no AnalyzeRender!)
+ * ARCHITECTURE (implements WebRTC AEC3 demo pattern):
+ * - output_callback: Writes speaker samples to echo_ref_buffer only
+ * - capture_thread: Reads from echo_ref_buffer and calls AnalyzeRender → AnalyzeCapture → ProcessCapture
  *
- * This ensures AEC3's render buffer state machine stays synchronized with the
- * playback timing, not the capture thread timing.
+ * This synchronous pattern ensures AEC3's state machine is properly initialized.
  */
 void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeline, const float *samples,
                                                  int num_samples) {
@@ -662,8 +688,8 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
   // This function is called from PortAudio's output callback (real-time thread)
   // and must NOT block or it will cause audio underruns.
 
-  // STEP 1: Write samples to ring buffer using atomic operations
-  // The capture thread will read from this buffer when processing microphone data
+  // Write samples to ring buffer using atomic operations
+  // The capture thread will read and process these via AnalyzeRender
   // WebRTC AEC3 demo shows we must write EVERY frame, including silence
   for (int i = 0; i < num_samples; i++) {
     int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
@@ -672,65 +698,7 @@ void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeli
     atomic_store(&pipeline->echo_ref_write_pos, write_pos);
   }
 
-  // STEP 2: Call AnalyzeRender with the speaker samples being output
-  // This MUST happen at precise 10ms intervals from output_callback
-  // (not from capture thread, which doesn't have that timing precision)
-  WebRTCAec3Wrapper *wrapper = (WebRTCAec3Wrapper *)pipeline->echo_canceller;
-  if (!wrapper || !wrapper->aec3) return;
-
-  try {
-    // AEC3 requires exactly 480-sample frames (10ms at 48kHz)
-    // PortAudio calls us with 256 samples, so accumulate to 480
-    static thread_local float render_accumulator[960];
-    static thread_local int render_accum_pos = 0;
-    static thread_local int analyze_render_call_count = 0;
-
-    int input_offset = 0;
-    while (input_offset < num_samples) {
-      int space_in_buffer = 480 - render_accum_pos;
-      int samples_to_copy = (input_offset + space_in_buffer <= num_samples) ? space_in_buffer
-                                                                              : (num_samples - input_offset);
-
-      for (int i = 0; i < samples_to_copy; i++) {
-        render_accumulator[render_accum_pos++] = samples[input_offset++];
-      }
-
-      // When we have a full 480-sample frame, analyze it
-      if (render_accum_pos == 480) {
-        analyze_render_call_count++;
-
-        webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
-        float* const* render_channels = render_buf.channels();
-
-        if (render_channels && render_channels[0]) {
-          // Calculate RMS energy for diagnostics
-          float energy = 0.0f;
-          for (int i = 0; i < 480; i++) {
-            float sample = render_accumulator[i];
-            render_channels[0][i] = sample;
-            energy += sample * sample;
-          }
-          energy = sqrtf(energy / 480.0f);
-
-          // CRITICAL: ALWAYS call AnalyzeRender at precise 10ms intervals!
-          // Even if the frame is silence, AEC3 NEEDS the timing synchronization.
-          // The WebRTC AEC3 demo processes EVERY frame including silence.
-          // The render buffer state machine in AEC3 must stay synchronized with the
-          // actual audio output timing (from PortAudio).
-          render_buf.SplitIntoFrequencyBands();
-          wrapper->aec3->AnalyzeRender(&render_buf);
-          render_buf.MergeFrequencyBands();
-
-          log_debug("AEC3: AnalyzeRender from output_callback (call #%d, RMS=%.6f)",
-                    analyze_render_call_count, energy);
-
-          render_accum_pos = 0;
-        }
-      }
-    }
-  } catch (...) {
-    log_warn_every(1000000, "Error in AnalyzeRender from output callback");
-  }
+  log_debug_every(10000000, "Echo reference buffer: wrote %d samples from output_callback", num_samples);
 }
 
 /**

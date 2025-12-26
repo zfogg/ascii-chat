@@ -112,14 +112,12 @@ typedef struct {
  * @{
  */
 
-/** @brief Audio ring buffer size in samples (19200 samples = 400ms @ 48kHz) for low-latency audio
+/** @brief Audio ring buffer size in samples (38400 samples = 800ms @ 48kHz)
  *
- * Reduced from 81920 samples (1.7s) to improve latency for interactive two-way audio.
- * Previous size caused ~1.7 second end-to-end delay.
- * Increased from 9600 (200ms) to 19200 (400ms) to prevent buffer overflow on server-side
- * incoming audio when mixer thread can't keep up with network packet arrival rate.
- * Provides better buffering for bidirectional audio without excessive latency.
- * 19200 = 48000 Hz * 0.4 seconds
+ * Sized to handle jitter and prevent overflow when packets arrive in bursts.
+ * With network packets arriving every ~20ms (960 samples each) and output callback
+ * draining every ~5.3ms (256 samples), the buffer needs headroom to absorb jitter.
+ * 38400 = 48000 Hz * 0.8 seconds provides 2x the threshold for safety margin.
  */
 #define AUDIO_RING_BUFFER_SIZE 19200
 
@@ -127,19 +125,9 @@ typedef struct {
  *
  * This threshold determines how much audio must be buffered before playback starts.
  * Too small = underruns and audio gaps when network packets arrive late
- * Too large = excessive latency in audio playback
+ * Too large = excessive latency; fills buffer completely causing packet loss
  *
  * 9600 samples @ 48kHz = 200ms = 10 Opus frames (20ms each)
- *
- * CRITICAL: This must match the jitter_margin_ms in client_audio_pipeline_config!
- * If this is too small:
- * - Output callback reads every 10ms (256 samples per call = ~21ms of frames)
- * - Network packets arrive every 20ms (960 samples = 1 Opus frame)
- * - Read rate (256 samples/10ms = 25.6K/sec) > Write rate (960 samples/20ms = 48K total per sec)
- * - Buffer fills up instantly and new packets get dropped, resulting in 98% silence playback!
- *
- * Increased from 60ms to 200ms to match the AEC3 jitter_margin_ms requirement and prevent
- * buffer overflow and packet dropping when read rate exceeds packet arrival rate.
  */
 #define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 10)
 
