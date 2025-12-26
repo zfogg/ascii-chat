@@ -902,18 +902,16 @@ int main(int argc, const char **argv) {
 
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
   // LibTooling tools don't auto-detect this like the clang driver does
-  // We use -isystem to add the include path directly, which is more reliable than -resource-dir
+  // We must use -resource-dir for clang's builtin headers (not -isystem)
 #ifdef CLANG_RESOURCE_DIR
   {
     // Use the resource directory embedded at compile time
     const char* resourceDir = CLANG_RESOURCE_DIR;
-    llvm::SmallString<256> includeDir(resourceDir);
-    llvm::sys::path::append(includeDir, "include");
-    if (llvm::sys::fs::exists(includeDir)) {
-      // Add as system include path to ensure headers like stdbool.h are found
-      std::vector<std::string> isystemArgs = {"-isystem", std::string(includeDir)};
+    if (llvm::sys::fs::exists(resourceDir)) {
+      // Use -resource-dir to tell clang where its builtin headers are
+      std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(isystemArgs, tooling::ArgumentInsertPosition::END));
+          tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded resource directory: " << resourceDir << "\n";
     } else {
       llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
@@ -923,22 +921,15 @@ int main(int argc, const char **argv) {
 
   // Add macOS SDK path for system headers (stdio.h, stdlib.h)
   // LibTooling tools need the SDK path to find system headers
-  // We use both -isysroot and -isystem to ensure proper include path resolution
+  // We use -isysroot which sets both the SDK path and system include paths
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
-      // Add SDK include path as system include
-      std::string sdkIncludePath = std::string(sdkPath) + "/usr/include";
-      if (llvm::sys::fs::exists(sdkIncludePath)) {
-        std::vector<std::string> isystemArgs = {"-isystem", sdkIncludePath};
-        tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(isystemArgs, tooling::ArgumentInsertPosition::END));
-      }
-      // Also add -isysroot for proper framework resolution
+      // Add -isysroot for SDK path - this sets system header search paths
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::END));
+          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
     } else {
       llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
