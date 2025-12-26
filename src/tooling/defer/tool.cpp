@@ -888,31 +888,20 @@ int main(int argc, const char **argv) {
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
 
-      // Convert -I<path> (project directories) to -iquote<path>
-      // This prevents project directories from being searched for angle-bracket includes
-      // Only convert paths that look like project directories (contain /lib or /src or /deps)
+      // Convert ALL -I paths to -iquote
+      // This prevents ANY -I directory from being searched for angle-bracket includes like <stdbool.h>
+      // Our -isystem flags (added later) will provide the correct paths for system headers
       if (arg.rfind("-I", 0) == 0 && arg.length() > 2) {
         std::string path = arg.substr(2);
-        if (path.find("/lib") != std::string::npos ||
-            path.find("/src") != std::string::npos ||
-            path.find("/deps") != std::string::npos ||
-            path.find("/generated") != std::string::npos) {
-          result.push_back("-iquote" + path);
-          continue;
-        }
+        result.push_back("-iquote" + path);
+        continue;
       }
       // Also handle "-I path" (separate argument) form
       if (arg == "-I" && i + 1 < args.size()) {
-        const std::string &nextArg = args[i + 1];
-        if (nextArg.find("/lib") != std::string::npos ||
-            nextArg.find("/src") != std::string::npos ||
-            nextArg.find("/deps") != std::string::npos ||
-            nextArg.find("/generated") != std::string::npos) {
-          result.push_back("-iquote");
-          result.push_back(nextArg);
-          ++i;
-          continue;
-        }
+        result.push_back("-iquote");
+        result.push_back(args[i + 1]);
+        ++i;
+        continue;
       }
 
       result.push_back(arg);
