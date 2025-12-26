@@ -907,11 +907,13 @@ int main(int argc, const char **argv) {
   // These flags (added below) override the defaults without breaking LibTooling's
   // internal include path resolution.
 
+  // Add -nostdinc to disable ALL default include paths, then add back exactly what we need.
+  // This prevents clang from searching in the project's lib/ directory for system headers.
+  // We use -Xclang -internal-isystem to add clang builtins with highest priority.
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
+
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
-  // CRITICAL: The project's compile_commands.json has "-I lib" which adds the project's lib/
-  // directory to the include search path. Clang searches -I paths BEFORE -isystem paths.
-  // So we MUST use -I (not -isystem) for clang builtins, and add them at BEGIN so they're
-  // searched before the project's lib/ directory.
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -919,9 +921,8 @@ int main(int argc, const char **argv) {
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
-        // Add builtin include path with -I at BEGIN (before project's -I lib)
-        // This ensures stdbool.h is found in clang's builtin headers, not searched in lib/
-        std::vector<std::string> builtinIncludeArgs = {"-I", std::string(builtinInclude)};
+        // Use -Xclang -internal-isystem for highest priority (searched before -I and -isystem)
+        std::vector<std::string> builtinIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
             tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
@@ -937,19 +938,18 @@ int main(int argc, const char **argv) {
 #endif
 
   // Add macOS SDK path for system headers (stdio.h, stdlib.h)
-  // Same as above: use -I at BEGIN instead of -isystem at END
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
       std::string sdkInclude = std::string(sdkPath) + "/usr/include";
       if (llvm::sys::fs::exists(sdkInclude)) {
-        // Add SDK include path with -I at BEGIN (before project's -I lib)
-        std::vector<std::string> sdkIncludeArgs = {"-I", sdkInclude};
+        // Use -Xclang -internal-isystem for SDK headers too
+        std::vector<std::string> sdkIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", sdkInclude};
         tool.appendArgumentsAdjuster(
             tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
-      // Also add -isysroot for SDK root
+      // Also add -isysroot for SDK root (affects framework and other paths)
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
