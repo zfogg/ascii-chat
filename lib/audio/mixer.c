@@ -568,8 +568,11 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Soft clip to prevent harsh digital clipping artifacts (threshold 0.8)
-      output[frame_start + s] = soft_clip(mix, 0.8f);
+      // Reduce gain to prevent clipping after Opus encode/decode
+      // Opus can add up to 5% overshoot, so limit to 0.9 max pre-Opus
+      // Apply 0.9x gain then soft clip at 0.7 for smooth limiting
+      mix *= 0.9f;
+      output[frame_start + s] = soft_clip(mix, 0.7f);
     }
   }
 
@@ -726,8 +729,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Soft clip to prevent harsh digital clipping artifacts (threshold 0.8)
-      float clipped = soft_clip(mix, 0.8f);
+      // Reduce gain to prevent clipping after Opus encode/decode
+      // Opus can add up to 5% overshoot, so limit to 0.9 max pre-Opus
+      mix *= 0.9f;
+      float clipped = soft_clip(mix, 0.7f);
       output[frame_start + s] = clipped;
 
       // DEBUG: Track output stats
