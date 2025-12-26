@@ -420,10 +420,16 @@ static void *audio_capture_thread_func(void *arg) {
             log_debug_every(100000, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
                             opus_len, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
 
-            // Send Opus frame to server
+            // Send Opus frame to server IMMEDIATELY - don't batch
             if (threaded_send_audio_opus(opus_packet, (size_t)opus_len, 48000, 20) < 0) {
               log_error("Failed to send Opus audio frame to server");
             } else {
+              // Log every send to verify packets are flowing
+              static int send_count = 0;
+              send_count++;
+              if (send_count <= 10 || send_count % 50 == 0) {
+                log_info("CLIENT: Sent Opus packet #%d (%d bytes) immediately", send_count, opus_len);
+              }
               if (opt_audio_analysis_enabled) {
                 audio_analysis_track_sent_packet((size_t)opus_len);
               }
