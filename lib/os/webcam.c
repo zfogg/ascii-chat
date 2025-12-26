@@ -61,15 +61,11 @@ image_t *webcam_read(void) {
     static int frame_counter = 0;
     frame_counter++;
 
-    // Use static buffer to avoid memory leak - caller doesn't free test pattern frames
-    static image_t *test_frame = NULL;
+    // Create a new image for each call - caller owns and frees it (same as real webcam)
+    image_t *test_frame = image_new(1280, 720);
     if (!test_frame) {
-      // Create a new image with standard webcam dimensions (1280x720)
-      test_frame = image_new(1280, 720);
-      if (!test_frame) {
-        SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
-        return NULL;
-      }
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate test pattern frame");
+      return NULL;
     }
 
     // Generate a colorful test pattern with moving elements
