@@ -946,6 +946,15 @@ int main(int argc, const char **argv) {
   }
 #endif
 
+  // Debug: Print the final command line arguments
+  tool.appendArgumentsAdjuster([](const tooling::CommandLineArguments &args, StringRef filename) {
+    llvm::errs() << "Final command for " << filename << ":\n";
+    for (const auto &arg : args) {
+      llvm::errs() << "  " << arg << "\n";
+    }
+    return args;
+  });
+
   DeferActionFactory actionFactory(outputDir, inputRoot);
   const int executionResult = tool.run(&actionFactory);
   if (executionResult != 0) {
