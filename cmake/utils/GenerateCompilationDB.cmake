@@ -167,11 +167,15 @@ function(generate_compilation_database)
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
+            COMMAND cmd /c "python.exe \"${CMAKE_SOURCE_DIR}/cmake/utils/fix_compile_db.py\" \"${_DB_OUTPUT}\" \"${CMAKE_SOURCE_DIR}\""
             COMMENT "${_DB_COMMENT}"
             VERBATIM
         )
     else()
         # Unix: use shell redirection
+        # Build sed command that will be executed after copy
+        set(_sed_cmd "sed -i '' 's|\"directory\": \"[^\"]*\"|\"directory\": \"${CMAKE_SOURCE_DIR}\"|g' '${_DB_OUTPUT}'")
+
         add_custom_command(
             OUTPUT "${_DB_OUTPUT}"
             COMMAND ${CMAKE_COMMAND} -E rm -rf "${_DB_TEMP_DIR}"
@@ -181,6 +185,7 @@ function(generate_compilation_database)
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
+            COMMAND sh -c "${_sed_cmd}"
             COMMENT "${_DB_COMMENT}"
             VERBATIM
         )
