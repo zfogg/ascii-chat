@@ -601,16 +601,27 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // - exclude_index == 0xFF means "not found" (sentinel value from initialization)
   // - exclude_index >= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
   // - Also verify hash table lookup actually matched the client_id (collision detection)
-  if (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF &&
-      mixer->source_ids[exclude_index] == exclude_client_id) {
-    active_mask &= ~(1ULL << exclude_index);
+  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != 0xFF &&
+                        mixer->source_ids[exclude_index] == exclude_client_id);
+
+  if (valid_exclude) {
+    // Check if this is the ONLY active source - if so, drain it to prevent buffer overflow
+    // With N>1 clients, other threads drain this buffer. With N=1, no one does.
+    uint64_t mask_without_excluded = active_mask & ~(1ULL << exclude_index);
+    if (mask_without_excluded == 0 && mixer->source_buffers[exclude_index]) {
+      // Solo client: drain their buffer to prevent overflow (discard samples)
+      float discard_buffer[MIXER_FRAME_SIZE];
+      audio_ring_buffer_read(mixer->source_buffers[exclude_index], discard_buffer, num_samples);
+      log_debug_every(5000000, "Mixer: Draining solo client %u buffer to prevent overflow", exclude_client_id);
+    }
+    active_mask = mask_without_excluded;
   }
 
-  // Fast check: any sources to process?
+  // Fast check: any sources to mix?
   if (active_mask == 0) {
     rwlock_rdunlock(&mixer->source_lock);
     STOP_TIMER("mixer_total");
-    return 0; // No active sources (excluding the specified client), output silence
+    return 0; // No sources to mix (excluding the specified client), output silence
   }
 
   // Process in frames for efficiency
