@@ -209,6 +209,12 @@ function(configure_llvm_post_project)
         return()
     endif()
 
+    # Allow temp compilation database builds to keep CMAKE_OSX_SYSROOT for tool integration
+    set(_keep_osx_sysroot_for_tools FALSE)
+    if(ASCIICHAT_KEEP_SYSROOT_FOR_TOOLS)
+        set(_keep_osx_sysroot_for_tools TRUE)
+    endif()
+
     # Determine LLVM_ROOT_PREFIX from CMAKE_C_COMPILER or from LLVM_ROOT_PREFIX cache
     set(LLVM_ROOT_PREFIX "")
     if(CMAKE_C_COMPILER)
@@ -296,8 +302,14 @@ function(configure_llvm_post_project)
         set(ASCIICHAT_MACOS_SDK_FOR_TOOLS "${_macos_sdk_for_tools}" CACHE INTERNAL "Saved macOS SDK path for tools (defer, panic, etc.)")
     endif()
 
-    set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
-    message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset}: disabling SDK root (-isysroot)")
+    # Only clear CMAKE_OSX_SYSROOT for main build; temp builds for compilation database generation
+    # should keep it so that tool integration (defer, panic, query) can find system headers
+    if(NOT _keep_osx_sysroot_for_tools)
+        set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
+        message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset}: disabling SDK root (-isysroot)")
+    else()
+        message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for tool integration (defer, panic, etc.)")
+    endif()
 
     # Add library paths and linking for the detected LLVM installation
     # (determined via LLVM_ROOT_PREFIX from llvm-config)
