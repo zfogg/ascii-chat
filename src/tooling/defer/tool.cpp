@@ -855,7 +855,8 @@ int main(int argc, const char **argv) {
 
   tooling::ClangTool tool(*compilations, sourcePaths);
 
-  // Strip unnecessary flags and flags we'll override with embedded paths
+  // Strip unnecessary flags and convert -I to -iquote for project directories
+  // This prevents project directories from being searched for angle-bracket includes like <stdbool.h>
   auto stripUnnecessaryFlags = [](const tooling::CommandLineArguments &args, StringRef) {
     tooling::CommandLineArguments result;
     for (size_t i = 0; i < args.size(); ++i) {
@@ -873,23 +874,47 @@ int main(int argc, const char **argv) {
       if (arg == "-fno-inline")
         continue;
       // Strip -resource-dir flags and their arguments - we'll add our embedded path instead
-      // Handle both "-resource-dir /path" (two args) and "-resource-dir=/path" (one arg)
       if (arg == "-resource-dir") {
-        // Skip this flag and its argument (the path)
         ++i;
         continue;
       }
       if (arg.find("-resource-dir=") == 0)
         continue;
       // Strip -isysroot flags and their arguments - we'll add our embedded SDK path instead
-      // Handle both "-isysroot /path" (two args) and "-isysroot=/path" or "-isysroot/path" (one arg)
       if (arg == "-isysroot") {
-        // Skip this flag and its argument (the path)
         ++i;
         continue;
       }
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
+
+      // Convert -I<path> (project directories) to -iquote<path>
+      // This prevents project directories from being searched for angle-bracket includes
+      // Only convert paths that look like project directories (contain /lib or /src or /deps)
+      if (arg.rfind("-I", 0) == 0 && arg.length() > 2) {
+        std::string path = arg.substr(2);
+        if (path.find("/lib") != std::string::npos ||
+            path.find("/src") != std::string::npos ||
+            path.find("/deps") != std::string::npos ||
+            path.find("/generated") != std::string::npos) {
+          result.push_back("-iquote" + path);
+          continue;
+        }
+      }
+      // Also handle "-I path" (separate argument) form
+      if (arg == "-I" && i + 1 < args.size()) {
+        const std::string &nextArg = args[i + 1];
+        if (nextArg.find("/lib") != std::string::npos ||
+            nextArg.find("/src") != std::string::npos ||
+            nextArg.find("/deps") != std::string::npos ||
+            nextArg.find("/generated") != std::string::npos) {
+          result.push_back("-iquote");
+          result.push_back(nextArg);
+          ++i;
+          continue;
+        }
+      }
+
       result.push_back(arg);
     }
     return result;
@@ -907,27 +932,23 @@ int main(int argc, const char **argv) {
   // These flags (added below) override the defaults without breaking LibTooling's
   // internal include path resolution.
 
-  // LibTooling's ClangTool directly invokes cc1, not the driver.
-  // So we use cc1 flags directly (no -Xclang needed).
-  // We use -internal-isystem to add clang builtins with highest priority.
-  // The order of appendArgumentsAdjuster with BEGIN is reversed (last added = first in command line).
-  //
-  // Final command line order will be:
-  //   -nostdinc -internal-isystem clang/include -internal-isystem SDK/include [original flags]
+  // Add system include paths for clang builtins and SDK.
+  // With the -iquote conversion above, project directories won't be searched for <stdbool.h>.
+  // We use -isystem for system headers so they're searched after -I but before default paths.
 
-  // Add macOS SDK path for system headers (stdio.h, stdlib.h) - added FIRST so it ends up LAST
+  // Add macOS SDK path for system headers (stdio.h, stdlib.h)
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
       std::string sdkInclude = std::string(sdkPath) + "/usr/include";
       if (llvm::sys::fs::exists(sdkInclude)) {
-        // Use -internal-isystem for SDK headers (cc1 flag, no -Xclang needed in LibTooling)
-        std::vector<std::string> sdkIncludeArgs = {"-internal-isystem", sdkInclude};
+        // Add SDK include as -isystem
+        std::vector<std::string> sdkIncludeArgs = {"-isystem", sdkInclude};
         tool.appendArgumentsAdjuster(
             tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
-      // Also add -isysroot for SDK root (affects framework and other paths)
+      // Add -isysroot for SDK root
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
@@ -938,8 +959,7 @@ int main(int argc, const char **argv) {
   }
 #endif
 
-  // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
-  // Added SECOND so clang builtins are searched BEFORE SDK
+  // Add resource directory for clang's builtin headers (stdbool.h, stddef.h)
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -947,12 +967,12 @@ int main(int argc, const char **argv) {
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
-        // Use -internal-isystem for highest priority (searched before -I and -isystem)
-        std::vector<std::string> builtinIncludeArgs = {"-internal-isystem", std::string(builtinInclude)};
+        // Add clang builtins as -isystem (searched before -I for angle-bracket includes)
+        std::vector<std::string> builtinIncludeArgs = {"-isystem", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
             tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
-      // Also add -resource-dir for other resource-dir functionality
+      // Add -resource-dir for other functionality
       std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
@@ -962,11 +982,6 @@ int main(int argc, const char **argv) {
     }
   }
 #endif
-
-  // Add -nostdinc LAST so it appears FIRST in command line (before -internal-isystem flags)
-  // This disables ALL default include paths, then our -internal-isystem flags add back what we need
-  tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
 
   // Debug: Print the final command line arguments
   tool.appendArgumentsAdjuster([](const tooling::CommandLineArguments &args, StringRef filename) {
