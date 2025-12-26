@@ -900,9 +900,12 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
+  // Disable default include paths - we'll set them explicitly
+  // This prevents LibTooling from using incorrect system paths
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
+
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
-  // LibTooling tools don't auto-detect this like the clang driver does
-  // Use -Xclang -internal-isystem to bypass driver processing and directly configure the frontend
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -910,10 +913,10 @@ int main(int argc, const char **argv) {
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
-        // Use -Xclang -internal-isystem to set up clang's builtin include path
-        std::vector<std::string> internalIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", std::string(builtinInclude)};
+        // Add builtin include path as system include
+        std::vector<std::string> builtinIncludeArgs = {"-isystem", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(internalIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
+            tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::END));
       }
       // Also add -resource-dir for other resource-dir functionality
       std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
@@ -927,17 +930,16 @@ int main(int argc, const char **argv) {
 #endif
 
   // Add macOS SDK path for system headers (stdio.h, stdlib.h)
-  // Use -Xclang -internal-externc-isystem for C library headers from the SDK
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
       std::string sdkInclude = std::string(sdkPath) + "/usr/include";
       if (llvm::sys::fs::exists(sdkInclude)) {
-        // Use -Xclang -internal-externc-isystem for SDK system headers (C library)
-        std::vector<std::string> sdkIncludeArgs = {"-Xclang", "-internal-externc-isystem", "-Xclang", sdkInclude};
+        // Add SDK include path as system include
+        std::vector<std::string> sdkIncludeArgs = {"-isystem", sdkInclude};
         tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
+            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
       }
       // Also add -isysroot for SDK root
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
