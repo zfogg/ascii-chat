@@ -908,6 +908,10 @@ int main(int argc, const char **argv) {
   // internal include path resolution.
 
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
+  // CRITICAL: The project's compile_commands.json has "-I lib" which adds the project's lib/
+  // directory to the include search path. Clang searches -I paths BEFORE -isystem paths.
+  // So we MUST use -I (not -isystem) for clang builtins, and add them at BEGIN so they're
+  // searched before the project's lib/ directory.
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -915,10 +919,11 @@ int main(int argc, const char **argv) {
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
-        // Add builtin include path as system include
-        std::vector<std::string> builtinIncludeArgs = {"-isystem", std::string(builtinInclude)};
+        // Add builtin include path with -I at BEGIN (before project's -I lib)
+        // This ensures stdbool.h is found in clang's builtin headers, not searched in lib/
+        std::vector<std::string> builtinIncludeArgs = {"-I", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::END));
+            tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
       // Also add -resource-dir for other resource-dir functionality
       std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
@@ -932,16 +937,17 @@ int main(int argc, const char **argv) {
 #endif
 
   // Add macOS SDK path for system headers (stdio.h, stdlib.h)
+  // Same as above: use -I at BEGIN instead of -isystem at END
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
       std::string sdkInclude = std::string(sdkPath) + "/usr/include";
       if (llvm::sys::fs::exists(sdkInclude)) {
-        // Add SDK include path as system include
-        std::vector<std::string> sdkIncludeArgs = {"-isystem", sdkInclude};
+        // Add SDK include path with -I at BEGIN (before project's -I lib)
+        std::vector<std::string> sdkIncludeArgs = {"-I", sdkInclude};
         tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
+            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
       // Also add -isysroot for SDK root
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
