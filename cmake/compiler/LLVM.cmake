@@ -258,12 +258,14 @@ function(configure_llvm_post_project)
 
     if(EXISTS "${CLANG_RESOURCE_DIR}/include")
         message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
-        # Note: Do NOT add -resource-dir to CMAKE_*_FLAGS as it would hardcode absolute paths
-        # in the compilation database, breaking builds on systems with different LLVM installation paths.
-        # Clang finds its resource directory automatically without explicit flags.
-        # For LibTooling-based tools (defer, panic, query), we will pass the resource directory explicitly
-        # in their invocation, not in the compilation database itself.
-        message(STATUS "Include: (using compiler's resource directory - NOT added globally)")
+        # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
+        string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        # Export to parent scope
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
+        set(CMAKE_OBJC_FLAGS "${CMAKE_OBJC_FLAGS}" PARENT_SCOPE)
     else()
         message(WARNING "${BoldYellow}Could not find Clang resource directory${ColorReset} at: ${CLANG_RESOURCE_DIR}")
     endif()
