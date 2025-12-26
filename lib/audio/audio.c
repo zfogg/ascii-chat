@@ -90,17 +90,9 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
 
-      // CRITICAL: Write speaker output to echo_ref_buffer (but DON'T call AnalyzeRender here!)
-      // output_callback is called at precise 10ms intervals by PortAudio.
-      // The echo_ref_buffer accumulates speaker samples.
-      // The capture thread will read from echo_ref_buffer and call AnalyzeRender in proper sync.
-      //
-      // WARNING: Calling AnalyzeRender from two places (here + capture thread) causes
-      // AEC3's render buffer to overflow. We only write here, capture thread does the processing.
-      if (ctx && ctx->audio_pipeline) {
-        // Always write to echo_ref_buffer, even when silence
-        client_audio_pipeline_process_echo_playback(ctx->audio_pipeline, output, (int)framesPerBuffer);
-      }
+      // NOTE: AEC3's AnalyzeRender is now called when audio is received from network
+      // (in audio_process_received_samples), not here in the output callback.
+      // This is simpler and eliminates the need for a separate echo reference buffer.
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
@@ -505,11 +497,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to create playback buffer");
   }
 
-  // NOTE: Echo reference buffer is NOT created here!
-  // It will be set by audio_set_pipeline() to point to the client_audio_pipeline's echo_ref_buffer
-  // This ensures we have only ONE buffer, and decoded audio goes directly to AEC3
-  ctx->echo_ref_buffer = NULL;
-
   ctx->initialized = true;
   log_info("Audio system initialized successfully");
   return ASCIICHAT_OK;
@@ -532,8 +519,6 @@ void audio_destroy(audio_context_t *ctx) {
 
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
-  // NOTE: Don't destroy ctx->echo_ref_buffer - it's owned by the pipeline
-  ctx->echo_ref_buffer = NULL;
 
   // Terminate PortAudio only when last context is destroyed
   static_mutex_lock(&g_pa_refcount_mutex);
@@ -557,8 +542,6 @@ void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
   if (!ctx)
     return;
   ctx->audio_pipeline = pipeline;
-  // NOTE: Echo reference buffer is managed separately in the pipeline
-  // Decoded audio is written directly to pipeline->echo_ref_buffer (see audio_process_received_samples)
 }
 
 asciichat_error_t audio_start_capture(audio_context_t *ctx) {

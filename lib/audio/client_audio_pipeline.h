@@ -259,17 +259,9 @@ typedef struct {
   /** Work buffer for float processing */
   float *work_float;
 
-  /** Ring buffer for render samples (for AEC3 synchronization) */
-  float *echo_ref_buffer;   // Ring buffer for echo reference signal
-  int echo_ref_buffer_size; // Total buffer size in samples
-  // Use atomic int for lock-free access (no mutex needed)
-  _Atomic int echo_ref_write_pos; // Where to write next sample (atomic)
-  _Atomic int echo_ref_read_pos;  // Where to read next sample (atomic)
-
-  /** Timing synchronization: track delays between capture and playback */
-  _Atomic int echo_ref_samples_consumed; // Track how many samples AEC3 has consumed
-  int64_t capture_timestamp_us;          // When was the last capture processed
-  int64_t render_timestamp_us;           // When was echo reference last updated
+  /** Timing synchronization for AEC3 */
+  int64_t capture_timestamp_us; // When was the last capture processed
+  int64_t render_timestamp_us;  // When was render last analyzed
 
   /** Pipeline mutex for thread safety (ONLY for AEC3 state, not echo_ref_buffer) */
   mutex_t aec3_mutex; // Separate mutex for AEC3 processing only
@@ -407,19 +399,18 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
  */
 
 /**
- * @brief Register speaker output for echo cancellation
+ * @brief Feed render signal to AEC3 for echo cancellation
  * @param pipeline Pipeline instance
- * @param samples Audio samples being played to speakers (float32)
+ * @param samples Audio samples received from network (the render signal)
  * @param num_samples Number of samples
  *
- * Call this from the audio playback path to register what's being sent
- * to the speakers. The AEC internally buffers this with proper delay
- * compensation (2-frame delay) to match microphone latency.
+ * Call this when audio is received from the network and decoded.
+ * This is the "render" signal - what will be played to speakers.
+ * AEC3 uses this to estimate and subtract the echo from microphone input.
  *
- * Thread-safe. Can be called from audio callback thread.
+ * Thread-safe. Must be called before the corresponding capture is processed.
  */
-void client_audio_pipeline_process_echo_playback(client_audio_pipeline_t *pipeline, const float *samples,
-                                                 int num_samples);
+void client_audio_pipeline_analyze_render(client_audio_pipeline_t *pipeline, const float *samples, int num_samples);
 
 /** @} */
 

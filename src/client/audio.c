@@ -232,9 +232,12 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   // Submit to playback system (goes to jitter buffer and speakers)
   audio_write_samples(&g_audio_context, audio_buffer, num_samples);
 
-  // NOTE: Echo reference is now fed from output_callback() which calls process_echo_playback()
-  // This ensures AEC3 receives speaker output data synchronized with actual playback timing
-  // AnalyzeRender is called with samples that are actually being sent to speakers (10ms intervals)
+  // Feed render signal to AEC3 for echo cancellation
+  // This is the "render" signal - audio that will be played to speakers
+  // AEC3 uses this to estimate and subtract the echo from microphone input
+  if (g_audio_pipeline) {
+    client_audio_pipeline_analyze_render(g_audio_pipeline, samples, num_samples);
+  }
 
 #ifdef DEBUG_AUDIO
   log_debug("Processed %d received audio samples", num_samples);
