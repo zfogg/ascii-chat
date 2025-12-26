@@ -116,7 +116,7 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .gate_release_ms = 50.0f,
       .gate_hysteresis = 0.9f,
 
-      .flags = CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL,
+      .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };
 }
 
