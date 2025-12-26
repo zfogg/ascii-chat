@@ -907,13 +907,38 @@ int main(int argc, const char **argv) {
   // These flags (added below) override the defaults without breaking LibTooling's
   // internal include path resolution.
 
-  // Add -nostdinc to disable ALL default include paths, then add back exactly what we need.
-  // This prevents clang from searching in the project's lib/ directory for system headers.
   // We use -Xclang -internal-isystem to add clang builtins with highest priority.
-  tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
+  // The order of appendArgumentsAdjuster with BEGIN is reversed (last added = first in command line).
+  // So we add in reverse order: SDK, clang builtins, then -nostdinc.
+  //
+  // Final command line order will be:
+  //   -nostdinc ... -internal-isystem clang/include ... -internal-isystem SDK/include ... [original flags]
+
+  // Add macOS SDK path for system headers (stdio.h, stdlib.h) - added FIRST so it ends up LAST
+#ifdef MACOS_SDK_PATH
+  {
+    const char* sdkPath = MACOS_SDK_PATH;
+    if (llvm::sys::fs::exists(sdkPath)) {
+      std::string sdkInclude = std::string(sdkPath) + "/usr/include";
+      if (llvm::sys::fs::exists(sdkInclude)) {
+        // Use -Xclang -internal-isystem for SDK headers
+        std::vector<std::string> sdkIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", sdkInclude};
+        tool.appendArgumentsAdjuster(
+            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
+      }
+      // Also add -isysroot for SDK root (affects framework and other paths)
+      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+    } else {
+      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
+    }
+  }
+#endif
 
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
+  // Added SECOND so clang builtins are searched BEFORE SDK
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -937,28 +962,10 @@ int main(int argc, const char **argv) {
   }
 #endif
 
-  // Add macOS SDK path for system headers (stdio.h, stdlib.h)
-#ifdef MACOS_SDK_PATH
-  {
-    const char* sdkPath = MACOS_SDK_PATH;
-    if (llvm::sys::fs::exists(sdkPath)) {
-      std::string sdkInclude = std::string(sdkPath) + "/usr/include";
-      if (llvm::sys::fs::exists(sdkInclude)) {
-        // Use -Xclang -internal-isystem for SDK headers too
-        std::vector<std::string> sdkIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", sdkInclude};
-        tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      }
-      // Also add -isysroot for SDK root (affects framework and other paths)
-      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
-    } else {
-      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
-    }
-  }
-#endif
+  // Add -nostdinc LAST so it appears FIRST in command line (before -internal-isystem flags)
+  // This disables ALL default include paths, then our -internal-isystem flags add back what we need
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
 
   // Debug: Print the final command line arguments
   tool.appendArgumentsAdjuster([](const tooling::CommandLineArguments &args, StringRef filename) {
