@@ -900,10 +900,12 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Disable default include paths - we'll set them explicitly
-  // This prevents LibTooling from using incorrect system paths
+  // Use -nostdlibinc instead of -nostdinc:
+  // -nostdinc removes ALL include paths including clang's builtins (stdbool.h, stddef.h)
+  // -nostdlibinc keeps clang's builtin headers but removes system library paths
+  // This allows stdbool.h to be found from the resource directory while we add SDK paths
   tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
+      tooling::getInsertArgumentAdjuster("-nostdlibinc", tooling::ArgumentInsertPosition::BEGIN));
 
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
 #ifdef CLANG_RESOURCE_DIR
