@@ -900,12 +900,12 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Use -nostdlibinc instead of -nostdinc:
-  // -nostdinc removes ALL include paths including clang's builtins (stdbool.h, stddef.h)
-  // -nostdlibinc keeps clang's builtin headers but removes system library paths
-  // This allows stdbool.h to be found from the resource directory while we add SDK paths
-  tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdlibinc", tooling::ArgumentInsertPosition::BEGIN));
+  // Don't use -nostdinc or -nostdlibinc - they break LibTooling's header search.
+  // Instead, we rely on:
+  // 1. -resource-dir to set clang's builtin header location (stdbool.h, stddef.h)
+  // 2. -isysroot to set the macOS SDK for system headers (stdio.h, stdlib.h)
+  // These flags (added below) override the defaults without breaking LibTooling's
+  // internal include path resolution.
 
   // Add resource directory for LibTooling to find clang's builtin headers (stdbool.h, stddef.h)
 #ifdef CLANG_RESOURCE_DIR
