@@ -73,6 +73,7 @@ function(generate_compilation_database)
         "-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}"
         "-DCMAKE_BUILD_TYPE=Debug"
         "-DUSE_MUSL=OFF"
+        "-DASCIICHAT_KEEP_SYSROOT_FOR_TOOLS=ON"
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
     )
 
