@@ -90,9 +90,14 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
 
-      // NOTE: AEC3's AnalyzeRender is now called when audio is received from network
-      // (in audio_process_received_samples), not here in the output callback.
-      // This is simpler and eliminates the need for a separate echo reference buffer.
+      // Feed render signal to AEC3 for echo cancellation
+      // CRITICAL: This must be called HERE when audio actually plays to speakers,
+      // NOT when packets arrive from network (which is 50-100ms earlier due to jitter buffer).
+      // AEC3 uses the render signal timing to correlate with echo in microphone input.
+      if (ctx->audio_pipeline && samples_read > 0) {
+        client_audio_pipeline_analyze_render((client_audio_pipeline_t *)ctx->audio_pipeline, output,
+                                             (int)(framesPerBuffer * AUDIO_CHANNELS));
+      }
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
       SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
