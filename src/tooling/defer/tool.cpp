@@ -907,12 +907,13 @@ int main(int argc, const char **argv) {
   // These flags (added below) override the defaults without breaking LibTooling's
   // internal include path resolution.
 
-  // We use -Xclang -internal-isystem to add clang builtins with highest priority.
+  // LibTooling's ClangTool directly invokes cc1, not the driver.
+  // So we use cc1 flags directly (no -Xclang needed).
+  // We use -internal-isystem to add clang builtins with highest priority.
   // The order of appendArgumentsAdjuster with BEGIN is reversed (last added = first in command line).
-  // So we add in reverse order: SDK, clang builtins, then -nostdinc.
   //
   // Final command line order will be:
-  //   -nostdinc ... -internal-isystem clang/include ... -internal-isystem SDK/include ... [original flags]
+  //   -nostdinc -internal-isystem clang/include -internal-isystem SDK/include [original flags]
 
   // Add macOS SDK path for system headers (stdio.h, stdlib.h) - added FIRST so it ends up LAST
 #ifdef MACOS_SDK_PATH
@@ -921,8 +922,8 @@ int main(int argc, const char **argv) {
     if (llvm::sys::fs::exists(sdkPath)) {
       std::string sdkInclude = std::string(sdkPath) + "/usr/include";
       if (llvm::sys::fs::exists(sdkInclude)) {
-        // Use -Xclang -internal-isystem for SDK headers
-        std::vector<std::string> sdkIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", sdkInclude};
+        // Use -internal-isystem for SDK headers (cc1 flag, no -Xclang needed in LibTooling)
+        std::vector<std::string> sdkIncludeArgs = {"-internal-isystem", sdkInclude};
         tool.appendArgumentsAdjuster(
             tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
@@ -946,8 +947,8 @@ int main(int argc, const char **argv) {
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
-        // Use -Xclang -internal-isystem for highest priority (searched before -I and -isystem)
-        std::vector<std::string> builtinIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", std::string(builtinInclude)};
+        // Use -internal-isystem for highest priority (searched before -I and -isystem)
+        std::vector<std::string> builtinIncludeArgs = {"-internal-isystem", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
             tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
