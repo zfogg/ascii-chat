@@ -112,14 +112,15 @@ typedef struct {
  * @{
  */
 
-/** @brief Audio ring buffer size in samples (38400 samples = 800ms @ 48kHz)
+/** @brief Audio ring buffer size in samples (96000 samples = 2 seconds @ 48kHz)
  *
- * Sized to handle jitter and prevent overflow when packets arrive in bursts.
- * With network packets arriving every ~20ms (960 samples each) and output callback
- * draining every ~5.3ms (256 samples), the buffer needs headroom to absorb jitter.
- * 38400 = 48000 Hz * 0.8 seconds provides 2x the threshold for safety margin.
+ * Sized to handle the single-client period where audio accumulates before a second
+ * client joins to drain it. When only one client is connected, their audio fills
+ * the buffer since there's no one to mix it for. Once a second client joins,
+ * the mixer starts draining. 2 seconds provides ample headroom for typical
+ * connection scenarios while preventing overflow during the wait period.
  */
-#define AUDIO_RING_BUFFER_SIZE 19200
+#define AUDIO_RING_BUFFER_SIZE 96000
 
 /** @brief Jitter buffer threshold (wait for ~200ms before starting playback = 9600 samples @ 48kHz)
  *
