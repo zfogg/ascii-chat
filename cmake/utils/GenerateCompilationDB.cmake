@@ -145,7 +145,9 @@ function(generate_compilation_database)
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
         )
-        if(_detected_resource_dir AND EXISTS "${_detected_resource_dir}")
+        # Always pass the resource dir to the temp build, even if it doesn't exist on this machine
+        # The temp build's CMake will re-detect it using its own compiler
+        if(_detected_resource_dir)
             list(APPEND _cmake_configure_args "-DCLANG_RESOURCE_DIR=${_detected_resource_dir}")
         endif()
     endif()
