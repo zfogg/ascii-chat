@@ -410,6 +410,10 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           // CRITICAL: WebRTC AEC3 requires: AnalyzeRender → AnalyzeCapture → ProcessCapture
           // The render signal (what's playing on speakers) must be analyzed BEFORE
           // the capture signal so AEC3 can correlate them for echo estimation.
+          //
+          // KEY FIX: Read the MOST RECENT render samples, not the oldest!
+          // AEC3 needs to correlate current capture with what's currently playing,
+          // not with stale audio from 200ms ago.
           if (pipeline->echo_ref_buffer && wrapper && wrapper->aec3) {
             int write_pos = atomic_load(&pipeline->echo_ref_write_pos);
             int read_pos = atomic_load(&pipeline->echo_ref_read_pos);
@@ -421,6 +425,19 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
               float* const* render_channels = render_buf.channels();
 
               if (render_channels && render_channels[0]) {
+                // KEY FIX: If buffer has accumulated too much data (>100ms = 4800 samples),
+                // skip ahead to read the most recent samples instead of stale ones.
+                // AEC3 needs CURRENT render signal, not old data from 200ms ago.
+                const int max_buffer_samples = 4800;  // 100ms at 48kHz - reasonable echo delay
+                if (available > max_buffer_samples) {
+                  int samples_to_skip = available - max_buffer_samples;
+                  read_pos = (read_pos + samples_to_skip) % pipeline->echo_ref_buffer_size;
+                  atomic_store(&pipeline->echo_ref_read_pos, read_pos);
+                  available = max_buffer_samples;
+                  log_debug_every(1000000, "AEC3: Skipped %d stale samples, keeping most recent %d",
+                                  samples_to_skip, available);
+                }
+
                 float render_energy = 0.0f;
                 for (int s = 0; s < webrtc_frame_size; s++) {
                   float sample;
@@ -459,11 +476,12 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
               log_warn_every(1000000, "AEC3 AnalyzeRender error");
             }
 
-            // Set buffer delay to 0 for automatic delay estimation (per demo.cc line 140)
-            // AEC3 does cross-correlation to automatically find the echo path delay.
-            // Previously we were incorrectly calculating this from ring buffer availability.
+            // Tell AEC3 the buffer delay in milliseconds
+            // This is the delay between when render is analyzed and when it reaches speakers
+            // With our 100ms max buffer, delay is at most 100ms
             try {
-              wrapper->aec3->SetAudioBufferDelay(0);
+              int buffer_delay_ms = (available * 1000) / 48000;  // Convert samples to ms
+              wrapper->aec3->SetAudioBufferDelay(buffer_delay_ms);
             } catch (...) {}
           }
 
