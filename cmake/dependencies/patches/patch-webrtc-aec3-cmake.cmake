@@ -54,6 +54,17 @@ if(APPLE)
         CMAKE_CONTENT
         "${CMAKE_CONTENT}"
     )
+
+    # Remove -resource-dir flag that breaks libc++ header search order on macOS
+    # The flag changes where Clang looks for builtin headers, causing libc++ to find
+    # system headers before its own wrapper headers, leading to compilation errors
+    string(REGEX REPLACE
+        "-resource-dir [^[:space:]]+"
+        ""
+        CMAKE_CONTENT
+        "${CMAKE_CONTENT}"
+    )
+    message(STATUS "Patched WebRTC AEC3 - removed -resource-dir flag to fix macOS header search order")
 endif()
 
 # Write the patched main CMakeLists.txt back
