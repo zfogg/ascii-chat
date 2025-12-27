@@ -1068,15 +1068,19 @@ int main(int argc, const char **argv) {
     }
 
     // Fourth: add system include paths in the correct order
-    // Order matters for LibTooling on LLVM 21 - clang builtins MUST come first
-    // to shadow any phantom VFS entries that might be created for other paths
-    for (const auto &arg : appendArgs) {
-      result.push_back(arg);
-    }
-    // Then add the collected -isystem paths from the compilation database
+    // Order matters for LibTooling on LLVM 21 - clang builtins MUST come LAST.
+    // When __has_include_next(<stdbool.h>) is called from clang's stdbool.h,
+    // it searches directories AFTER the current position. If clang builtins
+    // are first, __has_include_next searches dependency paths (portaudio, opus)
+    // and creates phantom VFS entries. By putting clang builtins last, there
+    // are no directories after it for __has_include_next to search.
     for (const auto &path : collectedIsystemPaths) {
       result.push_back("-isystem");
       result.push_back(path);
+    }
+    // Clang builtins come last so __has_include_next has nowhere to search
+    for (const auto &arg : appendArgs) {
+      result.push_back(arg);
     }
 
     // Fifth: add the defer tool define and separator
