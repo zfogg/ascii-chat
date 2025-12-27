@@ -617,6 +617,12 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
         float* const* capture_channels = capture_buf->channels();
 
         if (render_channels && render_channels[0] && capture_channels && capture_channels[0]) {
+          // Verify render_samples is valid before accessing
+          if (!render_samples && render_count > 0) {
+            log_warn_every(1000000, "AEC3: render_samples is NULL but render_count=%d", render_count);
+            return;
+          }
+
           try {
             // Process in 10ms chunks (AEC3 requirement)
             int render_offset = 0;
@@ -625,7 +631,7 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
             while (capture_offset < capture_count || render_offset < render_count) {
               // STEP 1: Feed render signal (what's playing to speakers)
               // In full-duplex, this is THE EXACT audio being played RIGHT NOW
-              if (render_offset < render_count) {
+              if (render_samples && render_offset < render_count) {
                 int render_chunk = (render_offset + webrtc_frame_size <= render_count)
                                    ? webrtc_frame_size : (render_count - render_offset);
                 if (render_chunk == webrtc_frame_size) {
