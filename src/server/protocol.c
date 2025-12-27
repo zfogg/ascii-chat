@@ -1134,7 +1134,9 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
                   frame_count, total_decoded);
 
   // DEBUG: Log sample values to detect all-zero issue
-  if (total_decoded > 0) {
+  static int server_decode_count = 0;
+  server_decode_count++;
+  if (total_decoded > 0 && (server_decode_count <= 10 || server_decode_count % 100 == 0)) {
     float peak = 0.0f, rms = 0.0f;
     for (int i = 0; i < total_decoded && i < 100; i++) {
       float abs_val = fabsf(decoded_samples[i]);
@@ -1143,10 +1145,10 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
       rms += decoded_samples[i] * decoded_samples[i];
     }
     rms = sqrtf(rms / (total_decoded > 100 ? 100 : total_decoded));
-    log_info_every(1000000, "Client %u: Opus decoded - Peak=%.6f, RMS=%.6f, First5=[%.6f,%.6f,%.6f,%.6f,%.6f]",
-                   atomic_load(&client->client_id), peak, rms, total_decoded > 0 ? decoded_samples[0] : 0.0f,
-                   total_decoded > 1 ? decoded_samples[1] : 0.0f, total_decoded > 2 ? decoded_samples[2] : 0.0f,
-                   total_decoded > 3 ? decoded_samples[3] : 0.0f, total_decoded > 4 ? decoded_samples[4] : 0.0f);
+    // Log first 4 bytes of Opus data to compare with client encode
+    log_info("SERVER OPUS DECODE #%d from client %u: decoded_rms=%.6f, opus_first4=[0x%02x,0x%02x,0x%02x,0x%02x]",
+             server_decode_count, atomic_load(&client->client_id), rms, opus_size > 0 ? opus_data[0] : 0,
+             opus_size > 1 ? opus_data[1] : 0, opus_size > 2 ? opus_data[2] : 0, opus_size > 3 ? opus_data[3] : 0);
   }
 
   // Write decoded samples to client's incoming audio buffer
