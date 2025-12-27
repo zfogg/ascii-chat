@@ -382,7 +382,15 @@ void framebuffer_clear(framebuffer_t *fb) {
 
   // Zero out the entire buffer to prevent any dangling pointers
   if (fb->rb->buffer) {
-    SAFE_MEMSET(fb->rb->buffer, fb->rb->capacity * fb->rb->element_size, 0, fb->rb->capacity * fb->rb->element_size);
+    // Check for integer overflow before multiplication
+    if (fb->rb->capacity > SIZE_MAX / fb->rb->element_size) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size would overflow: capacity=%zu, element_size=%zu",
+                fb->rb->capacity, fb->rb->element_size);
+      mutex_unlock(&fb->mutex);
+      return;
+    }
+    size_t buffer_size = fb->rb->capacity * fb->rb->element_size;
+    SAFE_MEMSET(fb->rb->buffer, buffer_size, 0, buffer_size);
   }
 
   mutex_unlock(&fb->mutex);
@@ -497,9 +505,9 @@ bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t
 
     // IMPORTANT: We need to make a copy of the data since we're not consuming the frame
     // The original data pointer will remain valid in the ring buffer
-    // Caller is responsible for freeing this copy
+    // Caller is responsible for freeing this copy with buffer_pool_free()
     char *data_copy;
-    data_copy = SAFE_MALLOC(frame->size, char *);
+    data_copy = (char *)buffer_pool_alloc(frame->size);
     if (!data_copy) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for frame data copy in peek");
       mutex_unlock(&fb->mutex);
