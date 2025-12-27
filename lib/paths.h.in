@@ -17,10 +17,10 @@
  * The base installation directory where ascii-chat was installed.
  * The code uses this to construct platform-specific paths for system config and other resources.
  *
- * Platform examples:
- * - Linux: "/usr/local" or "/usr"
- * - macOS (Homebrew ARM): "/opt/homebrew"
- * - macOS (Homebrew Intel): "/usr/local"
+ * Default install prefixes:
+ * - Linux: "/usr/local" (standard default)
+ * - macOS Intel (Homebrew): "/usr/local"
+ * - macOS ARM (Homebrew): "/opt/homebrew"
  * - Windows: "C:\\Program Files\\ascii-chat"
  *
  * System config path is constructed as:
