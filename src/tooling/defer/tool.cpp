@@ -874,21 +874,20 @@ int main(int argc, const char **argv) {
   }
 #endif
 
-  // NOTE: We intentionally do NOT add -isysroot here.
-  // Homebrew's LLVM is self-contained with all headers in its resource directory.
-  // Setting -isysroot to CommandLineTools SDK causes #include_next failures
-  // because that SDK has incomplete /usr/include (missing stdbool.h, etc.).
+  // Set -isysroot to "/" to override clang's compiled-in default sysroot.
+  // Homebrew's LLVM is compiled with -isysroot pointing to CommandLineTools SDK,
+  // which has an incomplete /usr/include (missing stdbool.h, etc.).
+  // Setting sysroot to "/" disables SDK-specific header paths and allows clang
+  // to use only its resource directory and explicit -isystem paths.
+  prependArgs.push_back("-isysroot");
+  prependArgs.push_back("/");
 
   // Build list of system include paths to add as -isystem paths.
   // Now that project paths use -iquote (only for "..." includes), these -isystem paths
   // will be searched for <...> includes like <stdio.h>.
   //
-  // NOTE: We only add clang's builtin headers here. The SDK headers are handled by
-  // -isysroot which tells clang where the SDK root is. We do NOT add ${SDK}/usr/include
-  // explicitly because:
-  // 1. Modern macOS SDKs have sparse /usr/include (missing stdbool.h, etc.)
-  // 2. Adding it causes #include_next in clang headers to fail
-  // 3. -isysroot handles SDK header paths correctly
+  // We only add clang's builtin headers here (stdbool.h, stddef.h, etc.).
+  // With -isysroot set to "/", we don't use any SDK-specific paths.
   std::vector<std::string> appendArgs;
 #ifdef CLANG_RESOURCE_DIR
   {
