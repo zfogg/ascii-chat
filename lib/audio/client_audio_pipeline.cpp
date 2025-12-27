@@ -239,16 +239,22 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;   // Default 25 - trigger early
       aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.001f;  // Default 0.01 - prevent howling without being excessive
 
-      // Moderate echo suppression (slight increase over default for network audio)
-      aec3_config.ep_strength.default_gain = 1.2f;  // Default 1.0f - slight boost for network audio
+      // Keep default echo suppression gain (no boost to avoid feedback loops)
+      aec3_config.ep_strength.default_gain = 1.0f;  // Default 1.0f - no boost to prevent feedback
 
-      // Balanced masking thresholds (close to defaults)
-      // enr_transparent: below this, no suppression (lower = more aggressive)
-      // enr_suppress: above this, full suppression (lower = more aggressive)
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.25f;  // Default 0.3 - very slight adjustment
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.35f;     // Default 0.4 - very slight adjustment
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.065f; // Default 0.07 - minimal adjustment
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.095f;    // Default 0.1 - minimal adjustment
+      // LESS AGGRESSIVE suppression - higher values = less suppression
+      // enr_transparent: below this, no suppression (HIGHER = less aggressive)
+      // enr_suppress: above this, full suppression (HIGHER = less aggressive)
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.8f;  // Default 0.3 - much less aggressive
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 1.5f;     // Default 0.4 - much less aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.4f;  // Default 0.07 - much less aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.8f;     // Default 0.1 - much less aggressive
+
+      // Also reduce nearend tuning aggressiveness
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 0.8f;
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 1.5f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 0.4f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 0.8f;
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -451,14 +457,24 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
         for (int i = 0; i < num_samples; i += webrtc_frame_size) {
           int chunk_size = (i + webrtc_frame_size <= num_samples) ? webrtc_frame_size : (num_samples - i);
 
-          // ---- STEP 1: Process ONE render frame (if available) ----
-          // This matches demo.cc where render is processed before each capture frame
+          // ---- STEP 1: Drain ALL available render frames ----
+          // Process all render frames to keep buffer from overflowing
+          // This is critical: render frames must be processed to maintain sync with capture
           if (pipeline->render_ring_buffer) {
-            int write_idx = atomic_load(&pipeline->render_ring_write_idx);
-            int read_idx = atomic_load(&pipeline->render_ring_read_idx);
-            int available = (write_idx - read_idx + buffer_size) % buffer_size;
+            static int render_count = 0;
+            static float render_rms_sum = 0.0f;
+            static int render_rms_count = 0;
 
-            if (available >= webrtc_frame_size) {
+            int frames_processed = 0;
+            const int max_frames_per_chunk = 8;  // Limit to prevent blocking too long
+
+            while (frames_processed < max_frames_per_chunk) {
+              int write_idx = atomic_load(&pipeline->render_ring_write_idx);
+              int read_idx = atomic_load(&pipeline->render_ring_read_idx);
+              int available = (write_idx - read_idx + buffer_size) % buffer_size;
+
+              if (available < webrtc_frame_size) break;  // Not enough data
+
               // Read 480 samples from ring buffer
               float render_chunk[480];
               for (int j = 0; j < webrtc_frame_size; j++) {
@@ -469,7 +485,6 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
               // Feed to AEC3 AnalyzeRender
               // CRITICAL: WebRTC expects float samples in int16 range [-32768, 32767]
               // PortAudio provides float samples in range [-1.0, 1.0]
-              // Scale up by 32768 before feeding to AEC3
               webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
               float* const* render_channels = render_buf.channels();
               if (render_channels && render_channels[0]) {
@@ -483,14 +498,22 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
               // Update read index
               atomic_store(&pipeline->render_ring_read_idx, (read_idx + webrtc_frame_size) % buffer_size);
-
-              static int render_count = 0;
+              frames_processed++;
               render_count++;
+
+              // Accumulate RMS for logging
+              float rms = 0.0f;
+              for (int s = 0; s < webrtc_frame_size; s++) rms += render_chunk[s] * render_chunk[s];
+              rms = sqrtf(rms / webrtc_frame_size);
+              render_rms_sum += rms;
+              render_rms_count++;
+
               if (render_count % 200 == 1) {
-                float rms = 0.0f;
-                for (int s = 0; s < webrtc_frame_size; s++) rms += render_chunk[s] * render_chunk[s];
-                rms = sqrtf(rms / webrtc_frame_size);
-                log_info("AEC3: Interleaved render frame #%d, RMS=%.4f", render_count, rms);
+                float avg_rms = render_rms_count > 0 ? render_rms_sum / render_rms_count : 0.0f;
+                log_info("AEC3: Render frame #%d, avg_RMS=%.4f, frames_processed=%d",
+                         render_count, avg_rms, frames_processed);
+                render_rms_sum = 0.0f;
+                render_rms_count = 0;
               }
             }
           }
@@ -532,31 +555,13 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Merge frequency bands back to time domain
             capture_buf.MergeFrequencyBands();
 
-            // Scale back down to PortAudio float range [-1.0, 1.0]
-            // Apply feedback prevention: if output > input, reduce gain
-            static float feedback_gain = 1.0f;
-            float out_energy = 0.0f;
+            // Simple passthrough - just scale back to [-1.0, 1.0] range
+            // NO extra gain reduction - let AEC3 do its job, preserve audio quality
             for (int j = 0; j < chunk_size; j++) {
               float sample = capture_channels[0][j] / 32768.0f;
-              out_energy += sample * sample;
-            }
-            float out_rms_check = sqrtf(out_energy / chunk_size);
-
-            // Feedback detection: if output > input, reduce gain
-            if (out_rms_check > last_input_rms * 1.1f && last_input_rms > 0.01f) {
-              feedback_gain *= 0.8f;  // Reduce gain by 20%
-              if (feedback_gain < 0.1f) feedback_gain = 0.1f;
-            } else if (feedback_gain < 1.0f) {
-              feedback_gain *= 1.02f;  // Slowly recover
-              if (feedback_gain > 1.0f) feedback_gain = 1.0f;
-            }
-
-            // Apply gain and hard limiter
-            for (int j = 0; j < chunk_size; j++) {
-              float sample = (capture_channels[0][j] / 32768.0f) * feedback_gain;
-              // Hard limit to prevent clipping
-              if (sample > 0.4f) sample = 0.4f;
-              if (sample < -0.4f) sample = -0.4f;
+              // Simple hard clip at ±0.99 to prevent overflow, no other processing
+              if (sample > 0.99f) sample = 0.99f;
+              else if (sample < -0.99f) sample = -0.99f;
               (processed + i)[j] = sample;
             }
 
