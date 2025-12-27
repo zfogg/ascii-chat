@@ -213,24 +213,21 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.filter.main_initial.length_blocks = 50;  // Same length from the start
       aec3_config.filter.shadow_initial.length_blocks = 50;
 
-      // CRITICAL FIX: Set fixed delay to match our jitter buffer
-      // Our jitter buffer adds ~200ms delay, but AEC3's estimator was locking onto 48-56ms
-      // which caused it to correlate wrong samples and suppress all speech as "echo".
+      // Let AEC3 estimate delay adaptively - it's designed for this
+      // ACOUSTIC echo (speaker to microphone) is typically 5-30ms, not 200ms
+      // The 200ms jitter buffer delay is for NETWORK audio, not acoustic echo!
       //
-      // Use fixed delay instead of automatic estimation for network audio where
-      // the delay is known and stable (unlike acoustic echo which varies with distance).
-      //
-      // 200ms = 20 blocks at 10ms each. Use 20 blocks fixed delay.
-      aec3_config.delay.default_delay = 20;  // Start at 200ms (matches jitter buffer)
-      aec3_config.delay.fixed_capture_delay_samples = 9600;  // Fixed 200ms at 48kHz (48000 * 0.2)
+      // AEC3's adaptive delay estimator will find the correct acoustic delay.
+      // We just need to give it a reasonable starting point and allow adaptation.
+      aec3_config.delay.default_delay = 2;  // Start at 20ms (typical acoustic delay)
+      aec3_config.delay.fixed_capture_delay_samples = 0;  // DISABLE fixed delay - let AEC3 adapt
 
-      // Very slow delay estimation to prevent drifting to wrong values
-      // With fixed_capture_delay_samples set, this mainly affects fine-tuning
-      aec3_config.delay.delay_estimate_smoothing = 0.95f;  // Very slow adaptation
-      aec3_config.delay.delay_candidate_detection_threshold = 0.5f;  // Less sensitive to spurious peaks
+      // Allow delay estimation to adapt, but not too fast (avoid jitter)
+      aec3_config.delay.delay_estimate_smoothing = 0.7f;  // Moderate adaptation speed
+      aec3_config.delay.delay_candidate_detection_threshold = 0.25f;  // Default sensitivity
 
-      // Allow longer delay range for network audio
-      aec3_config.delay.hysteresis_limit_blocks = 5;  // More stable delay
+      // Standard hysteresis for acoustic echo
+      aec3_config.delay.hysteresis_limit_blocks = 1;  // Quick response to delay changes
 
       // Standard filter adaptation (conservative for stability)
       aec3_config.filter.main.leakage_converged = 0.00005f;  // Default 0.00005f - standard
@@ -254,23 +251,34 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Keep default echo suppression gain (no boost to avoid feedback loops)
       aec3_config.ep_strength.default_gain = 1.0f;  // Default 1.0f - no boost to prevent feedback
 
-      // VERY CONSERVATIVE suppression for network audio
-      // With fixed delay and no acoustic coupling, we need very high thresholds.
-      // Only suppress when there's CLEAR echo evidence, otherwise pass through.
+      // EXTREMELY CONSERVATIVE suppression for network audio
+      // With network delay and minimal acoustic coupling, we want almost NO suppression.
+      // Only suppress when there's OVERWHELMING echo evidence, otherwise pass through.
       //
       // enr_transparent: below this ENR (Echo-to-Nearend Ratio), no suppression
       // enr_suppress: above this ENR, full suppression
-      // Higher values = less suppression (more lenient)
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 2.0f;  // Default 0.3 - very lenient
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 4.0f;     // Default 0.4 - very lenient
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 1.0f;  // Default 0.07 - very lenient
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 2.0f;     // Default 0.1 - very lenient
+      // VERY HIGH values = almost no suppression (effectively passthrough)
+      //
+      // The key insight: for network audio between different machines, there's usually
+      // NO acoustic echo. We only want AEC3 for cases where speakers and mic are close.
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 10.0f;  // Default 0.3 - near passthrough
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 20.0f;     // Default 0.4 - very rare suppression
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 5.0f;   // Default 0.07 - near passthrough
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 10.0f;     // Default 0.1 - very rare suppression
 
-      // Nearend tuning: when local speech is detected, be even more lenient
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 3.0f;  // Very lenient for nearend
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 6.0f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 2.0f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 4.0f;
+      // Nearend tuning: when local speech is detected, be COMPLETELY lenient
+      // Nearend = the person speaking into THIS microphone - never suppress this
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 20.0f;  // Almost never suppress nearend
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 50.0f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 10.0f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 25.0f;
+
+      // Dominant nearend detection: make it VERY easy to detect local speech
+      // This prevents echo suppression during double-talk
+      aec3_config.suppressor.dominant_nearend_detection.enr_threshold = 0.5f;    // Low threshold
+      aec3_config.suppressor.dominant_nearend_detection.snr_threshold = 0.5f;    // Low threshold
+      aec3_config.suppressor.dominant_nearend_detection.hold_duration = 100;     // Hold for 1 second
+      aec3_config.suppressor.dominant_nearend_detection.trigger_threshold = 5;   // Easy to trigger
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -298,11 +306,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with fixed-delay network config");
-        log_info("  - Filter length: 50 blocks (500ms) for network jitter");
-        log_info("  - FIXED delay: 200ms (matches jitter buffer exactly)");
-        log_info("  - Very conservative suppression (high ENR thresholds)");
-        log_info("  - Slow delay adaptation (0.95 smoothing)");
+        log_info("✓ WebRTC AEC3 initialized with near-passthrough config");
+        log_info("  - Filter length: 50 blocks (500ms) for long echo paths");
+        log_info("  - ADAPTIVE delay: starts at 20ms, adapts to acoustic path");
+        log_info("  - Near-passthrough suppression (ENR thresholds 10-50x higher)");
+        log_info("  - Soft clipping to prevent distortion");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
@@ -595,13 +603,19 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
               // Merge frequency bands back to time domain
               capture_buf->MergeFrequencyBands();
 
-              // Simple passthrough - just scale back to [-1.0, 1.0] range
-              // NO extra gain reduction - let AEC3 do its job, preserve audio quality
+              // Scale back to [-1.0, 1.0] range with SOFT clipping
+              // Hard clipping causes audible distortion - use tanh-based soft clip instead
+              // This preserves audio quality while preventing overflow
               for (int j = 0; j < chunk_size; j++) {
                 float sample = capture_channels[0][j] / 32768.0f;
-                // Simple hard clip at ±0.99 to prevent overflow, no other processing
-                if (sample > 0.99f) sample = 0.99f;
-                else if (sample < -0.99f) sample = -0.99f;
+                // Soft clip using tanh approximation: limits to ~±0.99 smoothly
+                // For |sample| < 0.5: nearly linear passthrough
+                // For |sample| > 0.5: gradual compression toward ±1.0
+                if (sample > 0.5f) {
+                  sample = 0.5f + 0.5f * tanhf((sample - 0.5f) * 2.0f);
+                } else if (sample < -0.5f) {
+                  sample = -0.5f + 0.5f * tanhf((sample + 0.5f) * 2.0f);
+                }
                 (processed + i)[j] = sample;
               }
 
@@ -697,12 +711,18 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  // Hard clip after Opus decode to prevent overshoot
+  // Soft clip after Opus decode to prevent overshoot
   // Opus can reconstruct values slightly above ±1.0 due to its psychoacoustic model
-  // This prevents clipping distortion when playing to speakers
+  // Use soft clipping instead of hard clipping to preserve audio quality
   for (int i = 0; i < decoded_samples; i++) {
-    if (output[i] > 0.99f) output[i] = 0.99f;
-    else if (output[i] < -0.99f) output[i] = -0.99f;
+    float sample = output[i];
+    // Soft clip using tanh: limits smoothly to ~±0.99
+    if (sample > 0.5f) {
+      sample = 0.5f + 0.5f * tanhf((sample - 0.5f) * 2.0f);
+    } else if (sample < -0.5f) {
+      sample = -0.5f + 0.5f * tanhf((sample + 0.5f) * 2.0f);
+    }
+    output[i] = sample;
   }
 
   // NOTE: Do NOT register render signal here!
