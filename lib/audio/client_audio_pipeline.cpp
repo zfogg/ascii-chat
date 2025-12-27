@@ -229,24 +229,24 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Longer learning period for network audio (more time to converge)
       aec3_config.filter.initial_state_seconds = 10.0f;  // Default 2.5s, give much more time
 
-      // Increase ERLE limits for better echo removal
-      aec3_config.erle.max_l = 8.0f;   // Default 4.0 - allow more low-freq suppression
-      aec3_config.erle.max_h = 4.0f;   // Default 1.5 - allow more high-freq suppression
+      // Increase ERLE limits for better echo removal (but balance with audio quality)
+      aec3_config.erle.max_l = 6.0f;   // Default 4.0 - increased for low-freq clarity
+      aec3_config.erle.max_h = 2.0f;   // Default 1.5 - slightly increased to preserve high-freq
 
       // Enable anti-howling protection (critical for feedback prevention)
       aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;   // Default 25 - trigger early
-      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.0001f;  // Default 0.01 - kill howling hard
+      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.001f;  // Default 0.01 - prevent howling without being excessive
 
-      // More aggressive echo suppression
-      aec3_config.ep_strength.default_gain = 4.0f;  // Default 1.0f - much stronger echo removal
+      // Balanced echo suppression (more aggressive than default but not excessive)
+      aec3_config.ep_strength.default_gain = 1.5f;  // Default 1.0f - moderate increase for better echo removal
 
-      // Lower masking thresholds for more aggressive suppression
+      // Masking thresholds balanced between echo suppression and audio quality
       // enr_transparent: below this, no suppression (lower = more aggressive)
       // enr_suppress: above this, full suppression (lower = more aggressive)
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.1f;   // Default 0.3
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.2f;      // Default 0.4
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.03f;  // Default 0.07
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.05f;     // Default 0.1
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.2f;   // Default 0.3 - slightly more aggressive
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.3f;      // Default 0.4 - slightly more aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.06f;  // Default 0.07 - preserve clarity
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.09f;     // Default 0.1 - preserve clarity
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -274,11 +274,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with aggressive network config");
+        log_info("✓ WebRTC AEC3 initialized with balanced network config");
         log_info("  - Filter length: 50 blocks (500ms) for network jitter");
         log_info("  - Linear stable echo path mode: enabled");
-        log_info("  - ERLE limits: max_l=8.0, max_h=4.0 (increased)");
-        log_info("  - Initial learning period: 10 seconds");
+        log_info("  - ERLE limits: max_l=6.0, max_h=2.0 (balanced for clarity)");
+        log_info("  - Echo suppression: 1.5x gain (balanced for quality)");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
