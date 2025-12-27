@@ -56,7 +56,7 @@ echo ""
 # Helper functions
 run_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-    cd $REPO_ONE && eval "$1"
+    (cd $REPO_ONE && eval "$1")
   else
     ssh $HOST_ONE "cd $REPO_ONE && $1"
   fi
@@ -64,9 +64,26 @@ run_on_one() {
 
 run_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-    cd $REPO_TWO && eval "$1"
+    (cd $REPO_TWO && eval "$1")
   else
     ssh $HOST_TWO "cd $REPO_TWO && $1"
+  fi
+}
+
+# Background process helpers - use nohup to survive parent exit
+run_bg_on_one() {
+  if [[ $LOCAL_IS_ONE -eq 1 ]]; then
+    (cd $REPO_ONE && nohup bash -c "$1" > /dev/null 2>&1 &)
+  else
+    ssh -f $HOST_ONE "cd $REPO_ONE && nohup bash -c '$1' > /dev/null 2>&1 &"
+  fi
+}
+
+run_bg_on_two() {
+  if [[ $LOCAL_IS_ONE -eq 0 ]]; then
+    (cd $REPO_TWO && nohup bash -c "$1" > /dev/null 2>&1 &)
+  else
+    ssh -f $HOST_TWO "cd $REPO_TWO && nohup bash -c '$1' > /dev/null 2>&1 &"
   fi
 }
 
@@ -123,40 +140,33 @@ run_on_two "cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --targe
 
 # Start server on HOST_ONE
 echo "[5/8] Starting server on $HOST_ONE:$PORT..."
-SERVER_PID=$(run_on_one "
-  ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 5)) $BIN_ONE server --address 0.0.0.0 --port $PORT --log-file /tmp/server_debug.log &
-  echo \$!
-")
+run_bg_on_one "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 \
+  timeout $((DURATION + 10)) $BIN_ONE server \
+  --address 0.0.0.0 --port $PORT \
+  --log-file /tmp/server_debug.log"
+sleep 2  # Wait for server to start
 
 # Start client 1 on HOST_ONE
 echo "[6/8] Starting client 1 on $HOST_ONE with audio analysis..."
-CLIENT1_PID=$(run_on_one "
-  ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION+3)) $BIN_ONE client \
-    --address 127.0.0.1 \
-    --port $PORT \
-    --audio \
-    --audio-analysis \
-    --snapshot \
-    --snapshot-delay $DURATION \
-    --log-file /tmp/client1_debug.log 1>&2 2>/dev/null &
-  echo \$!
-")
+run_bg_on_one "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 \
+  COLUMNS=40 LINES=12 \
+  timeout $((DURATION + 5)) $BIN_ONE client \
+  --address 127.0.0.1 --port $PORT \
+  --audio --audio-analysis \
+  --snapshot --snapshot-delay $DURATION \
+  --log-file /tmp/client1_debug.log"
+sleep 1  # Give client 1 time to connect
 
 # Start client 2 on HOST_TWO
 echo "[7/8] Starting client 2 on $HOST_TWO..."
-CLIENT2_PID=$(run_on_two "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 \
-    timeout $((DURATION+3)) $BIN_TWO client \
-    --address $HOST_ONE_IP \
-    --port $PORT \
-    --webcam-index 2 \
-    --microphone-index 9 \
-    --audio \
-    --audio-analysis \
-    --snapshot \
-    --snapshot-delay $DURATION \
-    --log-file /tmp/client2_debug.log 1>&2 2>/dev/null &
-  echo \$!
-")
+run_bg_on_two "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 \
+  COLUMNS=40 LINES=12 \
+  timeout $((DURATION + 5)) $BIN_TWO client \
+  --address $HOST_ONE_IP --port $PORT \
+  --webcam-index 2 --microphone-index 9 \
+  --audio --audio-analysis \
+  --snapshot --snapshot-delay $DURATION \
+  --log-file /tmp/client2_debug.log"
 
 echo ""
 echo "Running test for $DURATION seconds..."
