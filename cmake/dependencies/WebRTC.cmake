@@ -70,24 +70,33 @@ if(NOT webrtc_aec3_POPULATED)
     set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
-    # On macOS with Homebrew LLVM, we need to explicitly provide libc++ include paths
-    # because -resource-dir points to symlink while libc++ is in Cellar
+    # On macOS with Homebrew LLVM, fix -resource-dir to point to actual Cellar path
+    # instead of symlink. The symlink /opt/homebrew/opt/llvm points to
+    # /opt/homebrew/Cellar/llvm/VERSION but -resource-dir with symlink causes
+    # header search issues because libc++ is in the Cellar, not at the symlink.
     if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
-        # Remove problematic -resource-dir flag
-        string(REGEX REPLACE "-resource-dir [^ ]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-        string(REGEX REPLACE "-resource-dir [^ ]+" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-
         # Detect actual Homebrew LLVM Cellar path from compiler binary
         get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
         get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
 
-        # Explicitly add libc++ include directory
-        set(LIBCXX_INCLUDE "${LLVM_ROOT}/include/c++/v1")
-        if(EXISTS "${LIBCXX_INCLUDE}")
-            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${LIBCXX_INCLUDE}")
-            message(STATUS "Added libc++ include path for WebRTC: ${LIBCXX_INCLUDE}")
+        # Find the clang resource directory
+        set(CLANG_RESOURCE_DIR "${LLVM_ROOT}/lib/clang")
+        if(EXISTS "${CLANG_RESOURCE_DIR}")
+            # Get the version subdirectory (e.g., "21" or "22")
+            file(GLOB CLANG_VERSION_DIRS "${CLANG_RESOURCE_DIR}/*")
+            list(LENGTH CLANG_VERSION_DIRS CLANG_VERSION_COUNT)
+            if(CLANG_VERSION_COUNT GREATER 0)
+                list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
+
+                # Replace -resource-dir with correct path
+                string(REGEX REPLACE "-resource-dir [^ ]+" "-resource-dir ${CLANG_VERSION_DIR}" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+                string(REGEX REPLACE "-resource-dir [^ ]+" "-resource-dir ${CLANG_VERSION_DIR}" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+                message(STATUS "Fixed -resource-dir for WebRTC: ${CLANG_VERSION_DIR}")
+            else()
+                message(WARNING "Could not find clang version directory in ${CLANG_RESOURCE_DIR}")
+            endif()
         else()
-            message(WARNING "Could not find libc++ headers at ${LIBCXX_INCLUDE}")
+            message(WARNING "Could not find clang resource directory at ${CLANG_RESOURCE_DIR}")
         endif()
     endif()
 
