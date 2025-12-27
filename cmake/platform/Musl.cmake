@@ -416,14 +416,16 @@ function(configure_musl_post_project)
 
     # Define helper function to link Alpine libc++ to static executables
     # Usage: link_alpine_libcxx(target_name)
+    # Note: Uses plain signature (no PRIVATE/PUBLIC) to be compatible with targets
+    # that were already linked using plain signature
     function(link_alpine_libcxx TARGET_NAME)
         if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
-            target_link_libraries(${TARGET_NAME} PRIVATE
+            target_link_libraries(${TARGET_NAME}
                 ${ALPINE_LIBCXX_STATIC}
                 ${ALPINE_LIBCXXABI_STATIC}
             )
             if(ALPINE_LIBUNWIND_STATIC)
-                target_link_libraries(${TARGET_NAME} PRIVATE ${ALPINE_LIBUNWIND_STATIC})
+                target_link_libraries(${TARGET_NAME} ${ALPINE_LIBUNWIND_STATIC})
             endif()
         endif()
     endfunction()
