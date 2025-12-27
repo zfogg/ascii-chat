@@ -574,8 +574,8 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                   }
                   render_buf->SplitIntoFrequencyBands();
                   wrapper->aec3->AnalyzeRender(render_buf);
+                  render_buf->MergeFrequencyBands();  // Per demo.cc - must merge after analyze
                   total_render_frames_fed++;  // Track render history for warmup
-                  // Note: don't call MergeFrequencyBands - not needed for render
                 }
               }
 
