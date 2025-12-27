@@ -207,8 +207,8 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // 50 blocks = 500ms, giving us headroom for jitter.
       aec3_config.filter.main.length_blocks = 50;          // 500ms (default: 13 = 43ms)
       aec3_config.filter.shadow.length_blocks = 50;        // Match main filter
-      aec3_config.filter.main_initial.length_blocks = 40;  // Initial phase slightly shorter
-      aec3_config.filter.shadow_initial.length_blocks = 40;
+      aec3_config.filter.main_initial.length_blocks = 50;  // Same length from the start
+      aec3_config.filter.shadow_initial.length_blocks = 50;
 
       // Increase delay estimation starting point for network audio
       // Default is 5 blocks (50ms), but we expect ~200ms delay from jitter buffer
@@ -219,8 +219,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.delay.delay_estimate_smoothing = 0.7f;             // Default 0.7 - standard smoothing
       aec3_config.delay.delay_candidate_detection_threshold = 0.2f;  // Default 0.2 - standard sensitivity
 
-      // Network audio has stable, predictable delay path
-      aec3_config.echo_removal_control.linear_and_stable_echo_path = true;
+      // Allow longer delay searches for network audio
+      aec3_config.delay.hysteresis_limit_blocks = 3;  // Default 1 - more stable delay
+      aec3_config.delay.fixed_capture_delay_samples = 0;  // No fixed delay - let AEC3 detect
 
       // Standard filter adaptation (conservative for stability)
       aec3_config.filter.main.leakage_converged = 0.00005f;  // Default 0.00005f - standard

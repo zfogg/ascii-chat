@@ -902,29 +902,39 @@ int main(int argc, const char **argv) {
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
   // Set up include paths for LibTooling to find system headers correctly.
-  //
-  // LibTooling's ClangTool uses a different mechanism than the clang driver.
-  // We need to explicitly add the builtin include directory using
-  // -Xclang -internal-isystem, which tells clang's frontend (not driver)
-  // where to find its internal headers.
+  // We use -resource-dir to tell clang where its builtin headers are located
+  // (stdbool.h, stddef.h, etc.) and -isysroot for macOS SDK headers (stdio.h, etc.).
 
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
     std::string builtinInclude = std::string(resourceDir) + "/include";
     if (llvm::sys::fs::exists(builtinInclude)) {
-      // Use -Xclang to pass flags directly to clang's frontend
-      // -internal-isystem adds to the internal system include search path
-      // which is searched for <...> includes before regular -isystem paths
-      std::vector<std::string> builtinIncludeArgs = {
-          "-Xclang", "-internal-isystem",
-          "-Xclang", builtinInclude
-      };
+      // Add clang's resource directory. This tells clang where to find its builtin headers
+      // (stdbool.h, stddef.h, etc.). We use -resource-dir which is a driver flag that
+      // ClangTool understands properly.
+      std::string resourceDirArg = std::string("-resource-dir=") + resourceDir;
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using clang builtin include directory: " << builtinInclude << "\n";
+          tooling::getInsertArgumentAdjuster(resourceDirArg.c_str(), tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using clang resource directory: " << resourceDir << "\n";
     } else {
-      llvm::errs() << "Warning: Clang builtin include directory does not exist: " << builtinInclude << "\n";
+      llvm::errs() << "Warning: Clang resource directory does not exist: " << resourceDir << "\n";
+    }
+  }
+#endif
+
+  // Add macOS SDK path for system headers (stdio.h, stdlib.h, etc.)
+  // We stripped -isysroot above, so add it back with the embedded path.
+#ifdef MACOS_SDK_PATH
+  {
+    const char* sdkPath = MACOS_SDK_PATH;
+    if (llvm::sys::fs::exists(sdkPath)) {
+      std::vector<std::string> sdkArgs = {"-isysroot", sdkPath};
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(sdkArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using macOS SDK: " << sdkPath << "\n";
+    } else {
+      llvm::errs() << "Warning: macOS SDK path does not exist: " << sdkPath << "\n";
     }
   }
 #endif
