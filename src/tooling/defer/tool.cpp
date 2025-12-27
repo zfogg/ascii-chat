@@ -930,32 +930,8 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
 
-  // Add -isysroot for the SDK (needed for framework resolution, even with -nostdinc)
-#ifdef MACOS_SDK_PATH
-  {
-    const char* sdkPath = MACOS_SDK_PATH;
-    if (llvm::sys::fs::exists(sdkPath)) {
-      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
-
-      // Add SDK system headers via -Xclang -internal-externc-isystem
-      // This makes <stdio.h> etc. work like with the clang driver
-      llvm::SmallString<256> sdkInclude(sdkPath);
-      llvm::sys::path::append(sdkInclude, "usr", "include");
-      std::vector<std::string> sdkIncludeArgs = {
-        "-Xclang", "-internal-externc-isystem", "-Xclang", std::string(sdkInclude)
-      };
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
-    } else {
-      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
-    }
-  }
-#endif
-
   // Add resource directory and clang builtins via -Xclang -internal-isystem
+  // IMPORTANT: Add these FIRST so clang builtins (stdbool.h) are searched before SDK headers
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -979,6 +955,32 @@ int main(int argc, const char **argv) {
       }
     } else {
       llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
+    }
+  }
+#endif
+
+  // Add -isysroot for the SDK (needed for framework resolution, even with -nostdinc)
+  // Add SDK system headers via -Xclang -internal-externc-isystem AFTER clang builtins
+#ifdef MACOS_SDK_PATH
+  {
+    const char* sdkPath = MACOS_SDK_PATH;
+    if (llvm::sys::fs::exists(sdkPath)) {
+      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+
+      // Add SDK system headers via -Xclang -internal-externc-isystem
+      // This makes <stdio.h> etc. work like with the clang driver
+      llvm::SmallString<256> sdkInclude(sdkPath);
+      llvm::sys::path::append(sdkInclude, "usr", "include");
+      std::vector<std::string> sdkIncludeArgs = {
+        "-Xclang", "-internal-externc-isystem", "-Xclang", std::string(sdkInclude)
+      };
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
+    } else {
+      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
     }
   }
 #endif
