@@ -9,8 +9,8 @@
 
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "image2ascii/image.h"
-#include "image2ascii/ascii.h"
+#include "video/image.h"
+#include "video/ascii.h"
 #include "../../lib/asciichat_errno.h"
 
 // Custom init function

@@ -95,7 +95,7 @@
  * - render.c: Calls frame generation functions at 60fps per client
  * - client.c: Provides client state and capabilities
  * - protocol.c: Stores incoming video frames in per-client buffers
- * - image2ascii/: Performs actual RGB-to-ASCII conversion
+ * - video/: Performs actual RGB-to-ASCII conversion
  * - palette.c: Manages client-specific character palettes
  *
  * WHY THIS MODULAR DESIGN:
@@ -124,7 +124,7 @@
  * @date September 2025
  * @version 2.0 (Post-Modularization)
  * @see render.c For frame generation scheduling
- * @see image2ascii/ For RGB-to-ASCII conversion implementation
+ * @see video/ For RGB-to-ASCII conversion implementation
  * @see palette.c For client palette management
  */
 
@@ -141,9 +141,9 @@
 #include "buffer_pool.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
-#include "video_frame.h"
-#include "image2ascii/image.h"
-#include "image2ascii/ascii.h"
+#include "video/video_frame.h"
+#include "video/image.h"
+#include "video/ascii.h"
 #include "util/aspect_ratio.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()

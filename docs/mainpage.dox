@@ -119,7 +119,7 @@
  * - **uthash library**: High-performance client ID lookup - <https://troydhanson.github.io/uthash/>
  *
  * **Media Processing:**
- * - **@ref topic_image2ascii "Image to ASCII Conversion"**: Video frame conversion with SIMD optimization
+ * - **@ref topic_video "Video to ASCII Conversion"**: Video frame conversion with SIMD optimization
  * - **@ref topic_grid_layout "Grid Layout System"**: Multi-frame layout for multi-user video
  * - **@ref topic_audio "Audio System"**: Audio capture and playback with PortAudio
  * - **@ref topic_mixer "Audio Mixer"**: Multi-client audio mixing with ducking
@@ -264,7 +264,7 @@
  * @subsection media_module Media Processing
  * - **@ref topic_audio "Audio System"** - Audio capture and playback
  * - **@ref topic_palette "Palette Management"** - ASCII palette configuration and UTF-8 support
- * - **@ref topic_image2ascii "Image to ASCII"** - Image conversion and ASCII rendering
+ * - **@ref topic_video "Video to ASCII"** - Image conversion and ASCII rendering
  * - **@ref topic_video_frame "Video Frames"** - Video frame buffer management
  *
  * @subsection util_module Utilities

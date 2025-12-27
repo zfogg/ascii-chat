@@ -268,7 +268,7 @@ ascii-chat/
 │   ├── crc32_hw.c/h                    # Hardware-accelerated CRC32 checksums
 │   ├── mixer.c/h                       # Audio mixing for multiple clients
 │   ├── audio.c/h                       # Audio capture/playback (PortAudio)
-│   ├── image2ascii/                    # Image processing and ASCII conversion
+│   ├── video/                          # Video processing and ASCII conversion
 │   │   ├── image.c/h                   # Image processing and manipulation
 │   │   └── ascii.c/h                   # ASCII art conversion and grid layout
 │   ├── aspect_ratio.c/h                # Aspect ratio calculations
@@ -775,7 +775,7 @@ Before committing any changes:
 
 ### Media Processing
 
-9. **lib/image2ascii/ascii.c**: ASCII conversion and grid layout
+9. **lib/video/ascii.c**: ASCII conversion and grid layout
 10. **mixer.c**: Multi-client audio mixing with ducking
 11. **ringbuffer.c**: Framebuffer for multi-frame storage
 12. **ansi_fast.c**: Optimized ANSI escape sequences

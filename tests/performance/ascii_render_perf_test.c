@@ -1,8 +1,8 @@
 #include <criterion/criterion.h>
 #include <string.h>
 #include "tests/common.h"
-#include "image2ascii/ascii.h"
-#include "image2ascii/image.h"
+#include "video/ascii.h"
+#include "video/image.h"
 #include "logging.h"
 
 static void ascii_perf_init(void) {

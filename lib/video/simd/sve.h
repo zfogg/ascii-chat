@@ -1,10 +1,10 @@
 #pragma once
 
 /**
- * @file image2ascii/simd/sve.h
+ * @file video/simd/sve.h
  * @brief SVE-optimized ASCII rendering functions
- * @ingroup image2ascii
- * @addtogroup image2ascii
+ * @ingroup video
+ * @addtogroup video
  * @{
  *
  * This header provides SVE (Scalable Vector Extension) optimized
@@ -15,7 +15,7 @@
  * @date August 2025
  */
 
-#include "image2ascii/image.h" // For image_t type
+#include "video/image.h" // For image_t type
 
 #if SIMD_SUPPORT_SVE
 #if (defined(__aarch64__) && !defined(__ARM_FEATURE_SVE))
@@ -29,7 +29,7 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_chars);
 
@@ -41,7 +41,7 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                          const char *ascii_chars);
@@ -49,7 +49,7 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
 /**
  * @brief Destroy SVE caches
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void sve_caches_destroy(void);
 

@@ -1,11 +1,11 @@
 /**
- * @file image2ascii/ansi_fast.c
- * @ingroup image2ascii
+ * @file video/ansi_fast.c
+ * @ingroup video
  * @brief ⚡ Fast ANSI color code generation with SIMD-accelerated terminal output
  */
 
 #include "common.h"
-#include "image2ascii/simd/ascii_simd.h"
+#include "video/simd/ascii_simd.h"
 #include "ansi_fast.h"
 #include <string.h>
 #include <time.h>

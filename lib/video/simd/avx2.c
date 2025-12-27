@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/simd/avx2.c
- * @ingroup image2ascii
+ * @file video/simd/avx2.c
+ * @ingroup video
  * @brief 🚀 AVX2-accelerated ASCII rendering with 256-bit vector operations for x86_64
  */
 

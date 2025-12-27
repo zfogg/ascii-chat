@@ -181,7 +181,7 @@
  * ./build/bin/ascii-panic-report --include network.c
  *
  * # Exclude files
- * ./build/bin/ascii-panic-report --exclude image2ascii
+ * ./build/bin/ascii-panic-report --exclude video
  *
  * # Show raw log lines
  * ./build/bin/ascii-panic-report --raw
@@ -253,7 +253,7 @@
  * export ASCII_INSTR_SOURCE_PRINT_INCLUDE=network.c
  *
  * # Skip video processing (too noisy)
- * export ASCII_INSTR_SOURCE_PRINT_EXCLUDE=image2ascii
+ * export ASCII_INSTR_SOURCE_PRINT_EXCLUDE=video
  *
  * # Only log specific threads
  * export ASCII_INSTR_SOURCE_PRINT_THREAD=1234,5678

@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/simd/ascii_simd_color.c
- * @ingroup image2ascii
+ * @file video/simd/ascii_simd_color.c
+ * @ingroup video
  * @brief 🎨 SIMD-accelerated color matching and palette lookup for ASCII rendering
  */
 
@@ -16,7 +16,7 @@
 
 #include "common.h"
 #include "../image.h"
-#include "palette.h"
+#include "video/palette.h"
 
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation
@@ -373,7 +373,7 @@ static inline int __attribute__((unused)) generate_ansi_bg(uint8_t r, uint8_t g,
 }
 
 /* ============================================================================
- * All platform-specific implementations moved to lib/image2ascii/simd/
+ * All platform-specific implementations moved to lib/video/simd/
  * ============================================================================
  */
 

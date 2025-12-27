@@ -81,7 +81,7 @@
 #include "common.h"
 #include "options.h"
 #include "buffer_pool.h"
-#include "palette.h"
+#include "video/palette.h"
 #include "network/network.h"
 #include "util/path.h"
 

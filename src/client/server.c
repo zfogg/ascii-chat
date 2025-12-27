@@ -70,7 +70,7 @@
 #include "common.h"
 #include "display.h"
 #include "options.h"
-#include "palette.h"
+#include "video/palette.h"
 #include "buffer_pool.h"
 
 #include <string.h>

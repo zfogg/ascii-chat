@@ -27,7 +27,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "image2ascii/ascii.h"
+#include "video/ascii.h"
 #include "options.h"
 #include "config.h"
 #include "common.h"

@@ -2,8 +2,8 @@
 #include <criterion/parameterized.h>
 #include <criterion/theories.h>
 #include "tests/common.h"
-#include "image2ascii/ascii.h"
-#include "image2ascii/image.h"
+#include "video/ascii.h"
+#include "video/image.h"
 #include "platform/terminal.h"
 #include "options.h"
 

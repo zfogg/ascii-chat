@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/rle.c
- * @ingroup image2ascii
+ * @file video/rle.c
+ * @ingroup video
  * @brief ANSI RLE (REP) sequence compression and expansion
  */
 

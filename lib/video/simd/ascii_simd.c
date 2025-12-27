@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/simd/ascii_simd.c
- * @ingroup image2ascii
+ * @file video/simd/ascii_simd.c
+ * @ingroup video
  * @brief ⚡ Main SIMD ASCII rendering dispatcher with architecture detection and fallback handling
  */
 
@@ -13,9 +13,9 @@
 #include "platform/abstraction.h"
 #include "common.h"
 #include "ascii_simd.h"
-#include "palette.h"
+#include "video/palette.h"
 #include "../ascii.h"
-#include "image2ascii/output_buffer.h"
+#include "video/output_buffer.h"
 #include "avx2.h"
 #include "util/math.h"
 

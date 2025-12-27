@@ -1,13 +1,13 @@
 /**
- * @file image2ascii/simd/common.c
- * @ingroup image2ascii
+ * @file video/simd/common.c
+ * @ingroup video
  * @brief 🔧 Shared SIMD utilities: initialization, cleanup, and architecture-specific resource management
  */
 
 #include "common.h"
-#include "image2ascii/simd/common.h"
+#include "video/simd/common.h"
 #include "uthash.h"
-#include "palette.h"
+#include "video/palette.h"
 #include "util/fnv1a.h"
 #include <time.h>
 #include <math.h>
@@ -569,4 +569,4 @@ __attribute__((no_sanitize("integer"))) void simd_caches_destroy_all(void) {
   log_debug("SIMD_CACHE: All SIMD caches destroyed");
 }
 
-// Output buffer functions moved to lib/image2ascii/output_buffer.c
+// Output buffer functions moved to lib/video/output_buffer.c

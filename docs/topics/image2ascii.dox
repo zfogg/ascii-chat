@@ -1,12 +1,12 @@
 /**
- * @defgroup image2ascii Image to ASCII Conversion
- * @ingroup module_image2ascii
+ * @defgroup video Video to ASCII Conversion
+ * @ingroup module_video
  * @brief 🖼️ Everything necessary to turn pixels into text art
  *
- * @page topic_image2ascii image2ascii README
- * @ingroup image2ascii
+ * @page topic_video video README
+ * @ingroup video
  *
- * The image2ascii module converts RGB image data into ASCII art suitable for terminal display,
+ * The video module converts RGB image data into ASCII art suitable for terminal display,
  * with SIMD-optimized processing for real-time video conversion at 60+ FPS.
  *
  * @section img2ascii_overview Overview
@@ -341,9 +341,9 @@
  * - Falls back to $COLUMNS and $LINES environment variables
  * - Default: 80x24 if detection fails
  *
- * @see image2ascii/ascii.h
- * @see image2ascii/ansi_fast.h
- * @see image2ascii/simd/ascii_simd.h
- * @see image2ascii/output_buffer.h
+ * @see video/ascii.h
+ * @see video/ansi_fast.h
+ * @see video/simd/ascii_simd.h
+ * @see video/output_buffer.h
  * @see palette.h
  */

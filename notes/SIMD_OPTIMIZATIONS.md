@@ -381,12 +381,12 @@ vst4q_u8(output_pos, {{byte0, byte1, byte2, byte3}}); // 64 bytes interleaved
 ## Code Organization
 
 ### Core Files:
-- `lib/image2ascii/simd/neon.c` - **Reference SIMD implementation**
-- `lib/image2ascii/simd/common.c` - **Shared cache system**
-- `lib/image2ascii/simd/avx2.c` - Intel AVX2 implementation (needs optimization)
-- `lib/image2ascii/simd/sse2.c` - Intel SSE2 baseline (needs optimization)
-- `lib/image2ascii/simd/ssse3.c` - Intel SSSE3 implementation (needs optimization)
-- `lib/image2ascii/simd/sve.c` - ARM SVE future implementation (needs optimization)
+- `lib/video/simd/neon.c` - **Reference SIMD implementation**
+- `lib/video/simd/common.c` - **Shared cache system**
+- `lib/video/simd/avx2.c` - Intel AVX2 implementation (needs optimization)
+- `lib/video/simd/sse2.c` - Intel SSE2 baseline (needs optimization)
+- `lib/video/simd/ssse3.c` - Intel SSSE3 implementation (needs optimization)
+- `lib/video/simd/sve.c` - ARM SVE future implementation (needs optimization)
 
 ### Integration Points:
 - `lib/ascii_simd.c` - **SIMD dispatch and benchmarking**

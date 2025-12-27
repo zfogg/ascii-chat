@@ -1,10 +1,10 @@
 #pragma once
 
 /**
- * @file image2ascii/output_buffer.h
+ * @file video/output_buffer.h
  * @brief Dynamic Output Buffer with ANSI Sequence Support
- * @ingroup image2ascii
- * @addtogroup image2ascii
+ * @ingroup video
+ * @addtogroup video
  * @{
  *
  * This header provides a dynamic output buffer system with automatic expansion
@@ -78,7 +78,7 @@
  * @note Buffer is null-terminated after each append operation.
  * @note Buffer grows automatically when space is needed.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 typedef struct {
   char *buf;  ///< Buffer pointer (allocated, owned by caller, must be freed)
@@ -104,7 +104,7 @@ typedef struct {
  * @note Buffer doubles in size when capacity is exceeded.
  * @note This function does not modify buffer length (only capacity).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ob_reserve(outbuf_t *ob, size_t need);
 
@@ -120,7 +120,7 @@ void ob_reserve(outbuf_t *ob, size_t need);
  * @note Length is incremented by 1 after append.
  * @note Null terminator is updated automatically.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ob_putc(outbuf_t *ob, char c);
 
@@ -138,7 +138,7 @@ void ob_putc(outbuf_t *ob, char c);
  * @note Null terminator is updated automatically.
  * @note This function copies n bytes (may include embedded nulls).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ob_write(outbuf_t *ob, const char *s, size_t n);
 
@@ -153,7 +153,7 @@ void ob_write(outbuf_t *ob, const char *s, size_t n);
  * @note This function ensures buffer[len] == '\0'.
  * @note Length counter is not modified (null terminator excluded from length).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ob_term(outbuf_t *ob);
 
@@ -176,7 +176,7 @@ void ob_term(outbuf_t *ob);
  * @note Buffer is automatically expanded if needed.
  * @note String representation is appended (1-3 characters for 0-255).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ob_u8(outbuf_t *ob, uint8_t v);
 
@@ -192,7 +192,7 @@ void ob_u8(outbuf_t *ob, uint8_t v);
  * @note Buffer is automatically expanded if needed.
  * @note String representation is appended (1-10 characters for 0-4294967295).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ob_u32(outbuf_t *ob, uint32_t v);
 
@@ -217,7 +217,7 @@ void ob_u32(outbuf_t *ob, uint32_t v);
  * @note Requires terminal truecolor support for proper display.
  * @note Sequence length: ~15 bytes (ESC[38;2;255;255;255m).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
 
@@ -235,7 +235,7 @@ void emit_set_truecolor_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  * @note Requires terminal truecolor support for proper display.
  * @note Sequence length: ~15 bytes (ESC[48;2;255;255;255m).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
 
@@ -253,7 +253,7 @@ void emit_set_truecolor_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  * @note Palette indices 0-15 are standard ANSI colors.
  * @note Palette indices 16-255 are extended palette.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx);
 
@@ -271,7 +271,7 @@ void emit_set_256_color_fg(outbuf_t *ob, uint8_t color_idx);
  * @note Palette indices 0-15 are standard ANSI colors.
  * @note Palette indices 16-255 are extended palette.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx);
 
@@ -287,7 +287,7 @@ void emit_set_256_color_bg(outbuf_t *ob, uint8_t color_idx);
  * @note Sequence length: 3 bytes (ESC[0m).
  * @note Useful for resetting terminal state between frames.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_reset(outbuf_t *ob);
 
@@ -316,7 +316,7 @@ void emit_reset(outbuf_t *ob);
  * @note Returns true if runlen exceeds RLE overhead threshold.
  * @note Threshold is tuned for typical ASCII art character runs.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 bool rep_is_profitable(uint32_t runlen);
 
@@ -341,7 +341,7 @@ bool rep_is_profitable(uint32_t runlen);
  * }
  * @endcode
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_rep(outbuf_t *ob, uint32_t extra);
 
@@ -369,7 +369,7 @@ void emit_rep(outbuf_t *ob, uint32_t extra);
  * @note This function uses the best available color mode for the terminal.
  * @note Color quantization is applied when truecolor is not available.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
 
@@ -390,7 +390,7 @@ void emit_set_fg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  * @note This function uses the best available color mode for the terminal.
  * @note Color quantization is applied when truecolor is not available.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
 
@@ -420,7 +420,7 @@ void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  * int digits = digits_u32(0);       // Returns 1
  * @endcode
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 static inline int digits_u32(uint32_t v) {
   if (v >= 1000000000u)

@@ -580,7 +580,7 @@
  *
  * - **Network I/O** (@ref topic_network "Network Module"): Socket operations, packet protocol
  * - **Cryptography** (@ref topic_crypto "Crypto Module"): Handshake, encryption, key management
- * - **Video Processing** (@ref topic_image2ascii "Image to ASCII"): RGB to ASCII conversion
+ * - **Video Processing** (@ref topic_video "Video to ASCII"): RGB to ASCII conversion
  * - **Audio Processing** (@ref topic_audio "Audio Module"): Audio mixing and playback
  * - **Buffer Management** (@ref topic_buffer_pool "Buffer Pool"): Efficient memory allocation
  * - **Packet Queues** (@ref topic_packet_queue "Packet Queue"): Thread-safe packet delivery

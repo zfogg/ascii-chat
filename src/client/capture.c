@@ -89,7 +89,7 @@
 #include "main.h"
 #include "server.h"
 #include "os/webcam.h"
-#include "image2ascii/image.h"
+#include "video/image.h"
 #include "common.h"
 #include "asciichat_errno.h"
 #include "options.h"

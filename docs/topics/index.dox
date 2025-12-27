@@ -27,7 +27,7 @@
  */
 
 /**
- * @defgroup module_image2ascii image2ascii
+ * @defgroup module_video video
  * @brief 📹 Video capture, ASCII conversion, and frame layout
  *
  * Video frame management, image-to-ASCII conversion with SIMD, grid layout, and palettes.
@@ -118,11 +118,11 @@
  * - @ref topic_handshake "Handshake Protocol" - Secure connection establishment
  * - @ref topic_keys "Keys Module" - SSH/GPG key parsing and validation
  *
- * @section topics_image2ascii 📹 Image to ASCII Conversion
+ * @section topics_video 📹 Video to ASCII Conversion
  *
- * @copybrief module_image2ascii
+ * @copybrief module_video
  *
- * - @ref topic_image2ascii "Image to ASCII Conversion" - The root image2ascii category containing all image2ascii code and modules.
+ * - @ref topic_video "Video to ASCII Conversion" - The root video category containing all video code and modules.
  * - @ref topic_video_frame "Video Frame Management" - RGB frame structures and lifecycle
  * - @ref topic_grid_layout "Grid Layout System" - Multi-frame layout for multi-user video
  * - @ref topic_palette "Palette Management" - ASCII character palettes with UTF-8 support

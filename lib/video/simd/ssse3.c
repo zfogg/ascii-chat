@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/simd/ssse3.c
- * @ingroup image2ascii
+ * @file video/simd/ssse3.c
+ * @ingroup video
  * @brief 🚀 SSSE3-accelerated ASCII rendering with advanced shuffle operations for x86
  */
 

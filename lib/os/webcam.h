@@ -54,7 +54,7 @@
  *       simple single-webcam access. Use context-based functions for
  *       advanced multi-webcam scenarios.
  * @note Webcam frames are returned as image_t structures compatible
- *       with the image2ascii conversion pipeline.
+ *       with the video conversion pipeline.
  * @note Error codes include specific diagnostics for webcam issues
  *       (permission denied, device in use, etc.).
  *
@@ -63,7 +63,7 @@
  */
 
 #include <stdint.h>
-#include "image2ascii/image.h"
+#include "video/image.h"
 
 /* ============================================================================
  * Device Information

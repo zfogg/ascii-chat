@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/ansi.c
- * @ingroup image2ascii
+ * @file video/ansi.c
+ * @ingroup video
  * @brief ANSI escape sequence utilities
  */
 
