@@ -767,7 +767,9 @@ void noise_gate_init(noise_gate_t *gate, float sample_rate) {
   gate->gate_open = false;
 
   // Default parameters
-  noise_gate_set_params(gate, 0.01f, 2.0f, 50.0f, 0.9f);
+  // Slower attack (10ms) prevents clicking artifacts during gate transitions
+  // threshold=0.01, attack=10ms, release=50ms, hysteresis=0.9
+  noise_gate_set_params(gate, 0.01f, 10.0f, 50.0f, 0.9f);
 }
 
 void noise_gate_set_params(noise_gate_t *gate, float threshold, float attack_ms, float release_ms, float hysteresis) {
