@@ -1400,8 +1400,8 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
         mutex_unlock(&client->send_mutex);
-        log_debug("Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id, sent_sources,
-                  rendered_sources);
+        log_debug_every(1000000, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id,
+                        sent_sources, rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
       }
