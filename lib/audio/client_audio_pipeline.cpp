@@ -426,6 +426,16 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   float *processed = (float *)alloca(num_samples * sizeof(float));
   memcpy(processed, input, num_samples * sizeof(float));
 
+  // Check for AEC3 bypass (for debugging static issues)
+  static int bypass_aec3 = -1;
+  if (bypass_aec3 == -1) {
+    const char *env = getenv("BYPASS_AEC3");
+    bypass_aec3 = (env && (strcmp(env, "1") == 0 || strcmp(env, "true") == 0)) ? 1 : 0;
+    if (bypass_aec3) {
+      log_warn("AEC3 BYPASSED - audio will go straight to Opus encoder without echo cancellation");
+    }
+  }
+
   // Debug: Write input before AEC3 processing
   if (pipeline->debug_wav_aec3_in) {
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_in, input, num_samples);
@@ -447,7 +457,8 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   // WebRTC AEC3 echo cancellation - Process microphone input to remove echo
   // Process render and capture in INTERLEAVED lock-step as per demo.cc pattern:
   // For each capture frame, process one render frame first, then capture.
-  if (pipeline->flags.echo_cancel && pipeline->echo_canceller) {
+  // BYPASS_AEC3=1 skips this for debugging static issues
+  if (!bypass_aec3 && pipeline->flags.echo_cancel && pipeline->echo_canceller) {
     auto wrapper = static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
     if (wrapper && wrapper->aec3) {
       mutex_lock(&pipeline->aec3_mutex);
