@@ -96,45 +96,9 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
                     framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
         log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to speakers");
       } else {
-        // Apply AGC boost for quiet signals to help AEC3 correlation
-        // macOS receives ~3-4x quieter audio than Linux, making echo detection unreliable.
-        // Boosting the OUTPUT here ensures both speakers AND AEC3 see the same boosted signal.
-        size_t total_samples = framesPerBuffer * AUDIO_CHANNELS;
-        float sum_squares = 0.0f;
-        float peak = 0.0f;
-        for (size_t i = 0; i < total_samples; i++) {
-          float s = fabsf(output[i]);
-          sum_squares += output[i] * output[i];
-          if (s > peak)
-            peak = s;
-        }
-        float rms = sqrtf(sum_squares / total_samples);
+        // No AGC on playback - just pass through the audio as-is
+        // AGC was causing quiet sounds to be amplified too loudly
 
-        // Boost quiet playback signals to help AEC3 correlation
-        // Need aggressive boost since Linux sends quiet audio (~0.02 RMS)
-        const float boost_threshold = 0.15f; // Boost signals below this
-        const float target_rms = 0.25f;      // Target RMS for reliable AEC3 correlation
-        const float min_rms = 0.001f;        // Lower threshold for quiet audio
-
-        if (rms > min_rms && rms < boost_threshold) {
-          float gain = target_rms / rms;
-          // Limit gain to prevent clipping (check against peak)
-          float max_gain = (peak > 0.01f) ? (0.9f / peak) : 20.0f; // Leave 10% headroom
-          if (gain > max_gain)
-            gain = max_gain;
-          if (gain > 20.0f)
-            gain = 20.0f; // Hard limit to 20x boost for quiet audio
-
-          // Apply gain with soft limiting
-          for (size_t i = 0; i < total_samples; i++) {
-            output[i] *= gain;
-            // Soft clip to prevent harsh distortion
-            if (output[i] > 0.95f)
-              output[i] = 0.95f;
-            else if (output[i] < -0.95f)
-              output[i] = -0.95f;
-          }
-        }
         // Periodically log sample statistics to help diagnose buzzing/clipping
         static _Atomic int output_callback_count = 0;
         int cb_count = atomic_fetch_add(&output_callback_count, 1) + 1;
