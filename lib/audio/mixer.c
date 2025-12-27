@@ -73,7 +73,8 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->gain_lin = 1.0f;
 
   // Set default parameters
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 3.0f);
+  // Increased makeup_dB from 3.0f to 6.0f to compensate for compression and improve loudness
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 6.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
@@ -307,8 +308,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   // Set crowd scaling parameters
-  mixer->crowd_alpha = 0.5f; // Square root scaling
-  mixer->base_gain = 1.0f;   // Unity gain - prevents clipping (soft_clip handles peaks)
+  mixer->crowd_alpha = 0.25f; // Reduced exponent: 1/n^0.25 instead of 1/n^0.5 for less aggressive scaling
+  mixer->base_gain = 1.5f;    // Increased from 1.0f to compensate for crowd scaling and improve perceived loudness
 
   // Initialize processing
   if (ducking_init(&mixer->ducking, max_sources, (float)sample_rate) != ASCIICHAT_OK) {
@@ -569,10 +570,10 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Compressor provides +3dB makeup gain which is sufficient for audibility
-      // No additional gain boost needed - decoded Opus audio already has good levels (~0.3-0.7 peak)
-      // The 2x gain was causing clipping/distortion when input peaks hit 0.65+
-      output[frame_start + s] = soft_clip(mix, 0.95f);
+      // Compressor provides +6dB makeup gain for better audibility
+      // Soft clip threshold 1.0f allows full range without premature clipping
+      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f);
     }
   }
 
@@ -727,10 +728,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Compressor provides +3dB makeup gain which is sufficient for audibility
-      // No additional gain boost needed - decoded Opus audio already has good levels (~0.3-0.7 peak)
-      // The 2x gain was causing clipping/distortion when input peaks hit 0.65+
-      output[frame_start + s] = soft_clip(mix, 0.95f);
+      // Compressor provides +6dB makeup gain for better audibility
+      // Soft clip threshold 1.0f allows full range without premature clipping
+      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f);
     }
   }
 
@@ -934,12 +935,12 @@ void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int 
 
 float soft_clip(float sample, float threshold) {
   if (sample > threshold) {
-    // Soft clip positive values
-    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 10.0f);
+    // Soft clip positive values with gentler curve (reduced from 10.0f to 3.0f for less distortion)
+    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 3.0f);
   }
   if (sample < -threshold) {
-    // Soft clip negative values
-    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 10.0f);
+    // Soft clip negative values with gentler curve (reduced from 10.0f to 3.0f for less distortion)
+    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 3.0f);
   }
   return sample;
 }
