@@ -325,6 +325,18 @@ function(configure_musl_post_project)
         "${MUSL_LIBDIR}/crtn.o"
     )
 
+    # Disable fortify source for musl
+    # Musl doesn't support glibc's fortify functions (__memcpy_chk, etc.)
+    add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
+
+    # Ubuntu's libc++.a was compiled with fortify enabled, so it references
+    # __*_chk symbols that musl doesn't provide. Alias them to regular functions.
+    add_link_options(
+        -Wl,--defsym=__memcpy_chk=memcpy
+        -Wl,--defsym=__fprintf_chk=fprintf
+        -Wl,--defsym=__vfprintf_chk=vfprintf
+    )
+
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
 
