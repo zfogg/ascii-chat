@@ -406,12 +406,13 @@ jobs:
           os: macos
           extra-packages: ""
 
-      - name: Clear WebRTC cache to force re-fetch with -resource-dir patch
+      - name: Clear WebRTC cache to force re-fetch with libc++ header fix
         if: runner.os == 'macOS'
         run: |
           # Remove cached WebRTC source AFTER install-deps restores it
-          # This forces FetchContent to download fresh source and apply the -resource-dir removal patch
-          # The patch in cmake/dependencies/patches/patch-webrtc-aec3-cmake.cmake fixes macOS header search order
+          # This forces FetchContent to download fresh source and apply patches
+          # The fix in cmake/dependencies/WebRTC.cmake clears CMAKE_CXX_FLAGS before add_subdirectory()
+          # to allow WebRTC's project() command to properly configure libc++ implicit include paths
           echo "Removing cached WebRTC source..."
           rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
           echo "WebRTC cache cleared - will re-fetch with patches applied"

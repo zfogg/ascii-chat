@@ -61,24 +61,20 @@ if(NOT webrtc_aec3_POPULATED)
 
     # Now add the WebRTC AEC3 as a subdirectory with explicit generator
     # CRITICAL: WebRTC requires C++17 for Abseil compatibility.
-    # CMAKE_CXX_STANDARD cache variables don't override parent settings.
-    # Instead, inject C++17 directly into CMAKE_CXX_FLAGS which takes precedence.
-    string(REPLACE "-std=c++26" "-std=c++17" WEBRTC_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-    string(REPLACE "-std=gnu++26" "-std=c++17" WEBRTC_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
+    # We must let WebRTC's project() command configure the compiler first (to get implicit include paths),
+    # then only modify the minimal necessary flags via target_compile_options() after targets are created.
 
-    # No special handling needed - WebRTC works with inherited flags
-    set(WEBRTC_C_FLAGS "${CMAKE_C_FLAGS}")
-
-    # Suppress all warnings for third-party WebRTC code (not our code to fix)
-    string(APPEND WEBRTC_CXX_FLAGS " -w")
-    string(APPEND WEBRTC_C_FLAGS " -w")
-
+    # Save parent flags to restore later
     set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-    set(CMAKE_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
-    set(CMAKE_C_FLAGS "${WEBRTC_C_FLAGS}")
 
-    # Build WebRTC subdirectory with C++17 and warnings suppressed
+    # Clear CMAKE_CXX_FLAGS and CMAKE_C_FLAGS before add_subdirectory()
+    # This allows WebRTC's project() command to properly configure the C++ compiler
+    # with implicit include paths (like libc++'s headers)
+    set(CMAKE_CXX_FLAGS "")
+    set(CMAKE_C_FLAGS "")
+
+    # Build WebRTC subdirectory - it will configure its own compiler settings
     add_subdirectory(${webrtc_aec3_SOURCE_DIR} ${CMAKE_BINARY_DIR}/webrtc_aec3-build)
 
     # Restore the original C++ and C flags for ascii-chat
@@ -94,6 +90,25 @@ message(STATUS "  Source dir: ${webrtc_aec3_SOURCE_DIR}")
 # For shared library builds to work correctly, we must link all transitive dependencies
 if(TARGET AudioProcess)
     message(STATUS "  Library target: AudioProcess")
+
+    # Suppress all warnings on WebRTC targets using target_compile_options
+    # This must be done BEFORE creating webrtc_audio_processing interface library
+    # to ensure warnings are suppressed regardless of how CMAKE_CXX_FLAGS are modified
+    foreach(target AudioProcess base api aec3)
+        if(TARGET ${target})
+            target_compile_options(${target} PRIVATE -w)
+        endif()
+    endforeach()
+
+    # Suppress warnings on all Abseil targets too
+    # Abseil has many targets, so we suppress warnings on all of them
+    get_property(_all_targets DIRECTORY ${webrtc_aec3_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(_target IN LISTS _all_targets)
+        if(_target MATCHES "^absl_")
+            target_compile_options(${_target} PRIVATE -w)
+        endif()
+    endforeach()
+
     add_library(webrtc_audio_processing INTERFACE)
 
     # Link all WebRTC libraries that AudioProcess depends on
@@ -139,14 +154,6 @@ if(TARGET AudioProcess)
         "${webrtc_aec3_SOURCE_DIR}/base"
         "${webrtc_aec3_SOURCE_DIR}/base/abseil"
     )
-
-    # Suppress all warnings on WebRTC targets using target_compile_options
-    # This ensures warnings are suppressed regardless of how CMAKE_CXX_FLAGS are modified
-    foreach(target AudioProcess base api aec3)
-        if(TARGET ${target})
-            target_compile_options(${target} PRIVATE -w)
-        endif()
-    endforeach()
 else()
     message(FATAL_ERROR "AEC3 build failed - Missing targets: AudioProcess=${TARGET AudioProcess} api=${TARGET api}")
 endif()
