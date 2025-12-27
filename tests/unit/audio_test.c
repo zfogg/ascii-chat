@@ -447,7 +447,7 @@ Test(audio, audio_sample_buffer_operations) {
 // Audio Capture and Playback Tests
 // =============================================================================
 
-Test(audio, audio_capture_operations) {
+Test(audio, audio_duplex_operations) {
   audio_context_t ctx;
   memset(&ctx, 0, sizeof(ctx));
 
@@ -455,39 +455,16 @@ Test(audio, audio_capture_operations) {
     return; // Skip if no audio available
   }
 
-  // Test starting and stopping capture
-  int result = audio_start_capture(&ctx);
-  // May fail if no input device - that's OK
+  // Test starting and stopping full-duplex audio
+  int result = audio_start_duplex(&ctx);
+  // May fail if no audio devices - that's OK
 
   if (result == 0) {
-    cr_assert(ctx.recording, "Should be marked as recording");
+    cr_assert(ctx.running, "Should be marked as running");
 
-    result = audio_stop_capture(&ctx);
-    cr_assert_eq(result, 0, "Should stop capture successfully");
-    cr_assert(ctx.recording == false, "Should not be marked as recording");
-  }
-
-  audio_destroy(&ctx);
-}
-
-Test(audio, audio_playback_operations) {
-  audio_context_t ctx;
-  memset(&ctx, 0, sizeof(ctx));
-
-  if (audio_init(&ctx) != 0) {
-    return; // Skip if no audio available
-  }
-
-  // Test starting and stopping playback
-  int result = audio_start_playback(&ctx);
-  // May fail if no output device - that's OK
-
-  if (result == 0) {
-    cr_assert(ctx.playing, "Should be marked as playing");
-
-    result = audio_stop_playback(&ctx);
-    cr_assert_eq(result, 0, "Should stop playback successfully");
-    cr_assert(ctx.playing == false, "Should not be marked as playing");
+    result = audio_stop_duplex(&ctx);
+    cr_assert_eq(result, 0, "Should stop duplex successfully");
+    cr_assert(ctx.running == false, "Should not be marked as running");
   }
 
   audio_destroy(&ctx);
@@ -606,21 +583,17 @@ Test(audio, audio_context_integration) {
     return; // Skip if no audio available
   }
 
-  // Test that both capture and playback can be started together
-  int capture_result = audio_start_capture(&ctx);
-  int playback_result = audio_start_playback(&ctx);
+  // Test that full-duplex audio can be started
+  int result = audio_start_duplex(&ctx);
 
-  // Both may fail if no devices available - that's OK
-  if (capture_result == 0 && playback_result == 0) {
-    cr_assert(ctx.recording, "Should be recording");
-    cr_assert(ctx.playing, "Should be playing");
+  // May fail if no devices available - that's OK
+  if (result == 0) {
+    cr_assert(ctx.running, "Should be running");
 
-    // Test stopping both
-    audio_stop_capture(&ctx);
-    audio_stop_playback(&ctx);
+    // Test stopping
+    audio_stop_duplex(&ctx);
 
-    cr_assert(ctx.recording == false, "Should not be recording");
-    cr_assert(ctx.playing == false, "Should not be playing");
+    cr_assert(ctx.running == false, "Should not be running");
   }
 
   audio_destroy(&ctx);

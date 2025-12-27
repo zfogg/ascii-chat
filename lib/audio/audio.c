@@ -27,134 +27,73 @@
 static unsigned int g_pa_init_refcount = 0;
 static static_mutex_t g_pa_refcount_mutex = STATIC_MUTEX_INIT;
 
-static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                          const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
-  (void)outputBuffer;
+/**
+ * Full-duplex callback - handles BOTH input and output in one callback.
+ *
+ * This is the PROFESSIONAL approach for AEC3:
+ * - Render and capture happen at the EXACT same instant
+ * - No ring buffers for AEC3, no timing mismatch
+ * - AEC3 processing done inline with perfect synchronization
+ */
+static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
+                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
+                           void *userData) {
   (void)timeInfo;
-  (void)statusFlags;
 
   audio_context_t *ctx = (audio_context_t *)userData;
   const float *input = (const float *)inputBuffer;
-
-  // Use atomic for thread-safe callback counting (PortAudio callbacks can come from multiple threads)
-  static _Atomic int callback_count = 0;
-  int current_count = atomic_fetch_add(&callback_count, 1) + 1;
-
-  // DEBUG: Log EVERY callback to see what we're getting
-  if (current_count <= 10 || current_count % 100 == 0) {
-    if (input == NULL) {
-      log_warn("Audio input callback #%d: inputBuffer is NULL!", current_count);
-    } else {
-      float sum_squares = 0.0f;
-      size_t total_samples = framesPerBuffer * AUDIO_CHANNELS;
-      for (size_t i = 0; i < total_samples; i++) {
-        sum_squares += input[i] * input[i];
-      }
-      float rms = sqrtf(sum_squares / total_samples);
-      log_info("Audio input callback #%d: frames=%lu, channels=%d, first=[%.6f,%.6f,%.6f], RMS=%.6f, total_samples=%zu",
-               current_count, framesPerBuffer, AUDIO_CHANNELS, input[0], input[1], input[2], rms, total_samples);
-    }
-  }
-
-  if (input != NULL && ctx->capture_buffer != NULL) {
-    audio_ring_buffer_write(ctx->capture_buffer, input, framesPerBuffer * AUDIO_CHANNELS);
-  }
-
-  return paContinue;
-}
-
-static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
-                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
-                           void *userData) {
-  (void)inputBuffer;
-  (void)timeInfo;
-
-  audio_context_t *ctx = (audio_context_t *)userData;
   float *output = (float *)outputBuffer;
+  size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
 
-  // If shutting down, output silence immediately to prevent beeps
+  // Silence on shutdown
   if (atomic_load(&ctx->shutting_down)) {
-    if (output != NULL) {
-      SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
-                  framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
+    if (output) {
+      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
     }
     return paContinue;
   }
 
-  // Log PortAudio status flags that might indicate issues
+  // Log status flags
   if (statusFlags != 0) {
     if (statusFlags & paOutputUnderflow) {
-      log_warn_every(1000000, "PortAudio output underflow detected - audio callback too slow");
+      log_warn_every(1000000, "PortAudio output underflow");
     }
-    if (statusFlags & paOutputOverflow) {
-      log_warn_every(1000000, "PortAudio output overflow detected");
+    if (statusFlags & paInputOverflow) {
+      log_warn_every(1000000, "PortAudio input overflow");
     }
   }
 
-  if (output != NULL) {
-    if (ctx->playback_buffer != NULL) {
-      // audio_ring_buffer_read now handles all underrun cases internally:
-      // - Returns 0 if jitter buffer not yet filled (caller should fill with silence)
-      // - Returns full samples with fade-out if underrunning
-      // - Returns full samples with fade-in when recovering
-      // - Pads with silence if not enough data
-      size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, framesPerBuffer * AUDIO_CHANNELS);
-
-      // Fill with silence if read returned 0 (jitter buffer not yet filled)
-      if (samples_read == 0) {
-        SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
-                    framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
-        log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to speakers");
-      } else {
-        // Periodically log sample statistics to help diagnose buzzing/clipping
-        static _Atomic int output_callback_count = 0;
-        int cb_count = atomic_fetch_add(&output_callback_count, 1) + 1;
-        if (cb_count % 500 == 0) { // Every ~500 callbacks (~2.7 seconds at 256 frames/callback)
-          float min_val = 1.0f, max_val = -1.0f, sum_squares = 0.0f;
-          int clip_count = 0;
-          size_t total_samples = framesPerBuffer * AUDIO_CHANNELS;
-          for (size_t i = 0; i < total_samples; i++) {
-            float s = output[i];
-            if (s < min_val)
-              min_val = s;
-            if (s > max_val)
-              max_val = s;
-            sum_squares += s * s;
-            if (s >= 1.0f || s <= -1.0f)
-              clip_count++;
-          }
-          float rms = sqrtf(sum_squares / total_samples);
-          log_debug("Audio output stats: min=%.4f max=%.4f RMS=%.4f clips=%d samples=%zu", min_val, max_val, rms,
-                    clip_count, total_samples);
-          if (clip_count > 0) {
-            log_warn("Audio output CLIPPING detected: %d samples at full scale! This causes distortion.", clip_count);
-          }
-        }
-      }
-      // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
-      // silence padding, so no need to fill remaining samples here
-
-      // Feed render signal to AEC3 for echo cancellation
-      // CRITICAL: This must be called HERE when audio actually plays to speakers,
-      // NOT when packets arrive from network (which is 50-100ms earlier due to jitter buffer).
-      // AEC3 uses the render signal timing to correlate with echo in microphone input.
-      if (ctx->audio_pipeline && samples_read > 0) {
-        client_audio_pipeline_analyze_render((client_audio_pipeline_t *)ctx->audio_pipeline, output,
-                                             (int)(framesPerBuffer * AUDIO_CHANNELS));
-      } else {
-        // Diagnostic: Log why render wasn't fed
-        static _Atomic int no_render_log_count = 0;
-        int log_count = atomic_fetch_add(&no_render_log_count, 1) + 1;
-        if (log_count <= 10 || log_count % 500 == 0) {
-          log_debug("No render fed to AEC3: pipeline=%p, samples_read=%zu (log #%d)", ctx->audio_pipeline, samples_read,
-                    log_count);
-        }
-      }
-    } else {
-      log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
-      SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
-                  framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
+  // STEP 1: Read from jitter buffer → output (speaker)
+  size_t samples_read = 0;
+  if (output && ctx->playback_buffer) {
+    samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+    if (samples_read == 0) {
+      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
     }
+  } else if (output) {
+    SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+  }
+
+  // STEP 2: Process AEC3 inline - render and capture at EXACT same time
+  if (ctx->audio_pipeline && input && output) {
+    // Allocate processed buffer on stack
+    float *processed = (float *)alloca(num_samples * sizeof(float));
+
+    // This does: AnalyzeRender(output) + ProcessCapture(input) + filters + compressor
+    // All in one call, perfect synchronization, no ring buffer
+    client_audio_pipeline_process_duplex((client_audio_pipeline_t *)ctx->audio_pipeline, output,
+                                         (int)num_samples,        // render = what's playing to speakers
+                                         input, (int)num_samples, // capture = microphone input
+                                         processed                // output = processed capture
+    );
+
+    // Write processed capture to ring buffer for encoding thread
+    if (ctx->capture_buffer) {
+      audio_ring_buffer_write(ctx->capture_buffer, processed, (int)num_samples);
+    }
+  } else if (input && ctx->capture_buffer) {
+    // No pipeline - write raw capture
+    audio_ring_buffer_write(ctx->capture_buffer, input, (int)num_samples);
   }
 
   return paContinue;
@@ -556,15 +495,12 @@ void audio_destroy(audio_context_t *ctx) {
     return;
   }
 
+  // Stop duplex stream if running
+  if (ctx->running) {
+    audio_stop_duplex(ctx);
+  }
+
   mutex_lock(&ctx->state_mutex);
-
-  if (ctx->recording) {
-    audio_stop_capture(ctx);
-  }
-
-  if (ctx->playing) {
-    audio_stop_playback(ctx);
-  }
 
   audio_ring_buffer_destroy(ctx->capture_buffer);
   audio_ring_buffer_destroy(ctx->playback_buffer);
@@ -593,237 +529,123 @@ void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
   ctx->audio_pipeline = pipeline;
 }
 
-asciichat_error_t audio_start_capture(audio_context_t *ctx) {
+asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx, ctx ? ctx->initialized : 0);
+    return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }
 
   mutex_lock(&ctx->state_mutex);
 
-  if (ctx->recording) {
+  // Already running?
+  if (ctx->duplex_stream) {
     mutex_unlock(&ctx->state_mutex);
     return ASCIICHAT_OK;
   }
 
-  PaStreamParameters inputParameters;
-
-  // Determine which microphone device to use
+  // Setup input parameters
+  PaStreamParameters inputParams;
   if (opt_microphone_index >= 0) {
-    // User specified a device index
-    inputParameters.device = opt_microphone_index;
-    if (inputParameters.device >= Pa_GetDeviceCount()) {
-      mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Microphone index %d out of range (max %d)", opt_microphone_index,
-                       Pa_GetDeviceCount() - 1);
-    }
+    inputParams.device = opt_microphone_index;
   } else {
-    // Use default device
-    inputParameters.device = Pa_GetDefaultInputDevice();
+    inputParams.device = Pa_GetDefaultInputDevice();
   }
 
-  if (inputParameters.device == paNoDevice) {
+  if (inputParams.device == paNoDevice) {
     mutex_unlock(&ctx->state_mutex);
     return SET_ERRNO(ERROR_AUDIO, "No input device available");
   }
 
-  const PaDeviceInfo *deviceInfo = Pa_GetDeviceInfo(inputParameters.device);
-  // BUGFIX: Pa_GetDeviceInfo can return NULL if device is invalid or disconnected
-  if (!deviceInfo) {
+  const PaDeviceInfo *inputInfo = Pa_GetDeviceInfo(inputParams.device);
+  if (!inputInfo) {
     mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Device info not found for input device %d", inputParameters.device);
-  }
-  log_info("Opening audio input device %d: %s (%d channels, %.0f Hz)%s", inputParameters.device, deviceInfo->name,
-           deviceInfo->maxInputChannels, deviceInfo->defaultSampleRate, (opt_microphone_index < 0) ? " [DEFAULT]" : "");
-
-  inputParameters.channelCount = AUDIO_CHANNELS;
-  inputParameters.sampleFormat = paFloat32;
-  inputParameters.suggestedLatency = deviceInfo->defaultLowInputLatency; // Low latency for real-time
-  inputParameters.hostApiSpecificStreamInfo = NULL;
-
-  PaError err = Pa_OpenStream(&ctx->input_stream, &inputParameters, NULL, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
-                              paClipOff, input_callback, ctx); // Disable clipping for raw samples
-
-  if (err != paNoError) {
-    SET_ERRNO(ERROR_AUDIO, "Failed to open input stream: %s", Pa_GetErrorText(err));
-    mutex_unlock(&ctx->state_mutex);
-    return ERROR_AUDIO;
+    return SET_ERRNO(ERROR_AUDIO, "Input device info not found");
   }
 
-  err = Pa_StartStream(ctx->input_stream);
-  if (err != paNoError) {
-    Pa_CloseStream(ctx->input_stream);
-    ctx->input_stream = NULL;
-    mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Failed to start input stream: %s", Pa_GetErrorText(err));
-  }
+  inputParams.channelCount = AUDIO_CHANNELS;
+  inputParams.sampleFormat = paFloat32;
+  inputParams.suggestedLatency = inputInfo->defaultLowInputLatency;
+  inputParams.hostApiSpecificStreamInfo = NULL;
 
-  // Set real-time priority for better audio performance
-  audio_set_realtime_priority();
-
-  ctx->recording = true;
-  mutex_unlock(&ctx->state_mutex);
-
-  log_info("Audio capture started");
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t audio_stop_capture(audio_context_t *ctx) {
-  if (!ctx || !ctx->initialized || !ctx->recording) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, recording=%d", ctx,
-                     ctx ? ctx->initialized : 0, ctx ? ctx->recording : 0);
-  }
-
-  mutex_lock(&ctx->state_mutex);
-
-  if (ctx->input_stream) {
-    Pa_StopStream(ctx->input_stream);
-    Pa_CloseStream(ctx->input_stream);
-    ctx->input_stream = NULL;
-  }
-
-  ctx->recording = false;
-  mutex_unlock(&ctx->state_mutex);
-
-  log_info("Audio capture stopped");
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t audio_start_playback(audio_context_t *ctx) {
-  if (!ctx || !ctx->initialized) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d", ctx, ctx ? ctx->initialized : 0);
-  }
-
-  mutex_lock(&ctx->state_mutex);
-
-  if (ctx->playing) {
-    mutex_unlock(&ctx->state_mutex);
-    return ASCIICHAT_OK;
-  }
-
-  PaStreamParameters outputParameters;
-
-  // Determine which speaker device to use
+  // Setup output parameters
+  PaStreamParameters outputParams;
   if (opt_speakers_index >= 0) {
-    outputParameters.device = opt_speakers_index;
-    if (outputParameters.device >= Pa_GetDeviceCount()) {
-      mutex_unlock(&ctx->state_mutex);
-      return SET_ERRNO(ERROR_AUDIO, "Speakers index %d out of range (max %d)", opt_speakers_index,
-                       Pa_GetDeviceCount() - 1);
-    }
+    outputParams.device = opt_speakers_index;
   } else {
-    outputParameters.device = Pa_GetDefaultOutputDevice();
+    outputParams.device = Pa_GetDefaultOutputDevice();
   }
 
-  if (outputParameters.device == paNoDevice) {
+  if (outputParams.device == paNoDevice) {
     mutex_unlock(&ctx->state_mutex);
     return SET_ERRNO(ERROR_AUDIO, "No output device available");
   }
 
-  const PaDeviceInfo *outputDeviceInfo = Pa_GetDeviceInfo(outputParameters.device);
-  // BUGFIX: Pa_GetDeviceInfo can return NULL if device is invalid or disconnected
-  if (!outputDeviceInfo) {
+  const PaDeviceInfo *outputInfo = Pa_GetDeviceInfo(outputParams.device);
+  if (!outputInfo) {
     mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Device info not found for output device %d", outputParameters.device);
-  }
-  log_info("Opening audio output device %d: %s (%d channels, %.0f Hz native)%s", outputParameters.device,
-           outputDeviceInfo->name, outputDeviceInfo->maxOutputChannels, outputDeviceInfo->defaultSampleRate,
-           (opt_speakers_index < 0) ? " [DEFAULT]" : "");
-
-  outputParameters.channelCount = AUDIO_CHANNELS;
-  outputParameters.sampleFormat = paFloat32;
-  outputParameters.suggestedLatency = outputDeviceInfo->defaultLowOutputLatency; // Low latency for real-time
-  outputParameters.hostApiSpecificStreamInfo = NULL;
-
-  // Check if the device supports our requested sample rate
-  // Note: Pa_IsFormatSupported may report unsupported even when PortAudio can handle
-  // the conversion via PulseAudio or ALSA resampling. We try 48000 Hz first anyway.
-  PaError format_check = Pa_IsFormatSupported(NULL, &outputParameters, AUDIO_SAMPLE_RATE);
-  if (format_check != paFormatIsSupported) {
-    log_warn("Pa_IsFormatSupported reports %d Hz unsupported (error: %s), but trying anyway - "
-             "PulseAudio/ALSA should resample internally",
-             AUDIO_SAMPLE_RATE, Pa_GetErrorText(format_check));
-    if (outputDeviceInfo->defaultSampleRate != AUDIO_SAMPLE_RATE) {
-      log_warn("Device's native rate is %.0f Hz, audio pipeline runs at %d Hz - resampling will be used",
-               outputDeviceInfo->defaultSampleRate, AUDIO_SAMPLE_RATE);
-    }
+    return SET_ERRNO(ERROR_AUDIO, "Output device info not found");
   }
 
-  // Always request 48000 Hz - let PortAudio/backend handle resampling if needed
-  // This ensures our ring buffer samples (at 48000 Hz) are played at correct speed
-  ctx->output_sample_rate = AUDIO_SAMPLE_RATE;
+  outputParams.channelCount = AUDIO_CHANNELS;
+  outputParams.sampleFormat = paFloat32;
+  outputParams.suggestedLatency = outputInfo->defaultLowOutputLatency;
+  outputParams.hostApiSpecificStreamInfo = NULL;
 
-  PaError err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParameters, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
-                              paClipOff, output_callback, ctx); // Disable clipping for raw samples
+  log_info("Opening full-duplex audio:");
+  log_info("  Input:  %s (%.0f Hz)", inputInfo->name, inputInfo->defaultSampleRate);
+  log_info("  Output: %s (%.0f Hz)", outputInfo->name, outputInfo->defaultSampleRate);
+
+  // Open full-duplex stream with BOTH input and output
+  PaError err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE,
+                              AUDIO_FRAMES_PER_BUFFER, paClipOff, duplex_callback, ctx);
 
   if (err != paNoError) {
     mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Failed to open output stream: %s", Pa_GetErrorText(err));
+    return SET_ERRNO(ERROR_AUDIO, "Failed to open duplex stream: %s", Pa_GetErrorText(err));
   }
 
-  err = Pa_StartStream(ctx->output_stream);
+  err = Pa_StartStream(ctx->duplex_stream);
   if (err != paNoError) {
-    Pa_CloseStream(ctx->output_stream);
-    ctx->output_stream = NULL;
+    Pa_CloseStream(ctx->duplex_stream);
+    ctx->duplex_stream = NULL;
     mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
+    return SET_ERRNO(ERROR_AUDIO, "Failed to start duplex stream: %s", Pa_GetErrorText(err));
   }
 
-  // Log actual stream info for debugging sample rate issues
-  const PaStreamInfo *stream_info = Pa_GetStreamInfo(ctx->output_stream);
-  if (stream_info) {
-    log_info("Output stream opened: actual sample rate = %.0f Hz, output latency = %.3f ms", stream_info->sampleRate,
-             stream_info->outputLatency * 1000.0);
-    if (stream_info->sampleRate != AUDIO_SAMPLE_RATE) {
-      log_warn("CRITICAL: Stream sample rate (%.0f Hz) differs from requested (%d Hz)! Audio may sound wrong.",
-               stream_info->sampleRate, AUDIO_SAMPLE_RATE);
-    }
-  }
-
-  // Set real-time priority for better audio performance
   audio_set_realtime_priority();
 
-  ctx->playing = true;
+  ctx->running = true;
+  ctx->sample_rate = AUDIO_SAMPLE_RATE;
   mutex_unlock(&ctx->state_mutex);
 
-  log_info("Audio playback started at %d Hz", AUDIO_SAMPLE_RATE);
+  log_info("Full-duplex audio started (single callback, perfect AEC3 timing)");
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
-  if (!ctx || !ctx->initialized || !ctx->playing) {
-    return SET_ERRNO(ERROR_INVALID_STATE, "Invalid state: ctx=%p, initialized=%d, playing=%d", ctx,
-                     ctx ? ctx->initialized : 0, ctx ? ctx->playing : 0);
+asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
+  if (!ctx || !ctx->initialized) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }
 
-  // STEP 1: Signal shutdown to stop accepting new writes to playback buffer
-  // This must happen FIRST to prevent any new data from being queued
   atomic_store(&ctx->shutting_down, true);
 
-  // STEP 2: Clear playback buffer IMMEDIATELY to remove any queued data
-  // This prevents any garbage/old audio from being played during shutdown
   if (ctx->playback_buffer) {
     audio_ring_buffer_clear(ctx->playback_buffer);
   }
 
-  // STEP 3: Wait for audio callbacks to drain and output silence
-  // At 48kHz with 256 sample buffers, each callback is ~5.3ms
-  // Wait long enough for the audio driver's internal buffers to drain too
-  Pa_Sleep(50); // Wait ~10 callback cycles + driver buffer drain
+  Pa_Sleep(50); // Let callbacks drain
 
   mutex_lock(&ctx->state_mutex);
 
-  // STEP 4: Stop the stream - use Pa_StopStream for graceful shutdown
-  // Pa_StopStream waits for buffers to finish playing (should be silence now)
-  if (ctx->output_stream) {
-    Pa_StopStream(ctx->output_stream);
-    Pa_CloseStream(ctx->output_stream);
-    ctx->output_stream = NULL;
+  if (ctx->duplex_stream) {
+    Pa_StopStream(ctx->duplex_stream);
+    Pa_CloseStream(ctx->duplex_stream);
+    ctx->duplex_stream = NULL;
   }
 
-  ctx->playing = false;
+  ctx->running = false;
   mutex_unlock(&ctx->state_mutex);
 
-  log_info("Audio playback stopped");
+  log_info("Full-duplex audio stopped");
   return ASCIICHAT_OK;
 }
 
