@@ -131,6 +131,14 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
       if (ctx->audio_pipeline && samples_read > 0) {
         client_audio_pipeline_analyze_render((client_audio_pipeline_t *)ctx->audio_pipeline, output,
                                              (int)(framesPerBuffer * AUDIO_CHANNELS));
+      } else {
+        // Diagnostic: Log why render wasn't fed
+        static _Atomic int no_render_log_count = 0;
+        int log_count = atomic_fetch_add(&no_render_log_count, 1) + 1;
+        if (log_count <= 10 || log_count % 500 == 0) {
+          log_debug("No render fed to AEC3: pipeline=%p, samples_read=%zu (log #%d)", ctx->audio_pipeline, samples_read,
+                    log_count);
+        }
       }
     } else {
       log_warn_every(10000000, "Audio output callback: playback_buffer is NULL!");
