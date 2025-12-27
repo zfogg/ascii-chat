@@ -22,9 +22,10 @@
  * AUDIO ARCHITECTURE:
  * ===================
  * The audio system uses PortAudio for cross-platform audio I/O:
- * - Separate input and output streams for full-duplex audio
- * - Ring buffers for efficient producer-consumer audio data transfer
- * - Lock-free or mutex-protected buffers depending on platform
+ * - Single full-duplex stream for simultaneous capture and playback
+ * - Single callback receives both render and capture at EXACT same instant
+ * - Perfect timing for WebRTC AEC3 echo cancellation (no ring buffer delay)
+ * - Ring buffers only for network I/O (playback from jitter buffer, capture to encoder)
  * - Automatic device enumeration and selection
  *
  * AUDIO PARAMETERS:
@@ -92,30 +93,29 @@
  */
 
 /**
- * @brief Audio context for capture and playback
+ * @brief Audio context for full-duplex capture and playback
  *
- * Manages PortAudio streams and ring buffers for audio capture and playback.
- * Provides thread-safe audio I/O with separate input and output streams
- * for full-duplex operation.
+ * Manages a single PortAudio full-duplex stream for simultaneous audio
+ * capture and playback. Uses a single callback that receives both render
+ * (speaker output) and capture (microphone input) at the EXACT same instant,
+ * enabling perfect timing for WebRTC AEC3 echo cancellation.
  *
  * @note The audio context must be initialized with audio_init() before use.
- * @note Capture and playback can be started/stopped independently.
+ * @note Use audio_start_duplex()/audio_stop_duplex() to control the stream.
  * @note State is protected by state_mutex for thread-safe operations.
  *
  * @ingroup audio
  */
 typedef struct {
-  PaStream *input_stream;               ///< PortAudio input stream for capture
-  PaStream *output_stream;              ///< PortAudio output stream for playback
-  audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for captured audio samples
-  audio_ring_buffer_t *playback_buffer; ///< Ring buffer for audio samples to play
+  PaStream *duplex_stream;              ///< PortAudio full-duplex stream (simultaneous input+output)
+  audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for processed capture (after AEC3) for encoder thread
+  audio_ring_buffer_t *playback_buffer; ///< Ring buffer for decoded audio from network
   bool initialized;                     ///< True if context has been initialized
-  bool recording;                       ///< True if audio capture is active
-  bool playing;                         ///< True if audio playback is active
+  bool running;                         ///< True if duplex stream is active
   _Atomic bool shutting_down;           ///< True when shutdown started - callback outputs silence
   mutex_t state_mutex;                  ///< Mutex protecting context state
-  void *audio_pipeline;                 ///< Client audio pipeline for echo cancellation (opaque pointer)
-  double output_sample_rate;            ///< Actual sample rate of output stream (may differ from AUDIO_SAMPLE_RATE)
+  void *audio_pipeline;                 ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
+  double sample_rate;                   ///< Actual sample rate of duplex stream
 } audio_context_t;
 
 /* ============================================================================
@@ -134,7 +134,7 @@ typedef struct {
  *
  * @note PortAudio initialization is idempotent and thread-safe.
  * @note Ring buffers are created but empty after initialization.
- * @note Use audio_start_capture() and audio_start_playback() to begin I/O.
+ * @note Use audio_start_duplex() to begin full-duplex audio I/O.
  *
  * @warning Must call audio_destroy() to clean up resources when done.
  *
@@ -176,86 +176,51 @@ void audio_set_pipeline(audio_context_t *ctx, void *pipeline);
 /** @} */
 
 /* ============================================================================
- * Audio Capture Control
+ * Full-Duplex Audio Control
  * @{
  */
 
 /**
- * @brief Start audio capture from input device
+ * @brief Start full-duplex audio (simultaneous capture and playback)
  * @param ctx Audio context (must not be NULL, must be initialized)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Starts audio capture from the default input device (microphone). Audio
- * samples are captured in a background thread and written to the capture
- * ring buffer. Use audio_read_samples() to read captured samples.
+ * Opens a single PortAudio stream that handles BOTH input (microphone) and
+ * output (speakers) simultaneously. This is CRITICAL for proper AEC3 echo
+ * cancellation because:
  *
- * @note Capture can be started independently of playback.
- * @note If capture is already active, this function has no effect.
- * @note Real-time priority is automatically requested for capture thread.
+ * - Single callback receives both render and capture samples at the EXACT same instant
+ * - No timing mismatch between input/output callbacks
+ * - No ring buffer delay for AEC3 reference signal
+ * - Perfect synchronization for echo cancellation
  *
- * @warning Input device must be available and not in use by another application.
+ * The duplex callback:
+ * 1. Reads from playback_buffer → outputs to speakers
+ * 2. Processes capture through AEC3 (using render as reference)
+ * 3. Writes processed capture to capture_buffer for encoder thread
+ *
+ * @note Real-time priority is automatically requested for callback thread.
+ * @note If already running, this function has no effect.
+ *
+ * @warning Both input and output devices must be available.
  *
  * @ingroup audio
  */
-asciichat_error_t audio_start_capture(audio_context_t *ctx);
+asciichat_error_t audio_start_duplex(audio_context_t *ctx);
 
 /**
- * @brief Stop audio capture
+ * @brief Stop full-duplex audio
  * @param ctx Audio context (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Stops audio capture and closes the input stream. Captured samples remain
- * in the capture buffer until read. Use audio_read_samples() to read any
- * remaining samples before stopping.
+ * Stops the full-duplex audio stream and closes the stream.
  *
- * @note If capture is not active, this function has no effect.
- * @note Capture buffer is not cleared by this function.
+ * @note If not running, this function has no effect.
+ * @note Buffers are not cleared by this function.
  *
  * @ingroup audio
  */
-asciichat_error_t audio_stop_capture(audio_context_t *ctx);
-
-/** @} */
-
-/* ============================================================================
- * Audio Playback Control
- * @{
- */
-
-/**
- * @brief Start audio playback to output device
- * @param ctx Audio context (must not be NULL, must be initialized)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Starts audio playback to the default output device (speakers). Audio
- * samples are read from the playback ring buffer and played in a background
- * thread. Use audio_write_samples() to write samples for playback.
- *
- * @note Playback can be started independently of capture.
- * @note If playback is already active, this function has no effect.
- * @note Real-time priority is automatically requested for playback thread.
- *
- * @warning Output device must be available and not in use by another application.
- *
- * @ingroup audio
- */
-asciichat_error_t audio_start_playback(audio_context_t *ctx);
-
-/**
- * @brief Stop audio playback
- * @param ctx Audio context (must not be NULL)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Stops audio playback and closes the output stream. Samples remaining in
- * the playback buffer are not played. Use audio_write_samples() to queue
- * more samples before stopping.
- *
- * @note If playback is not active, this function has no effect.
- * @note Playback buffer is not cleared by this function.
- *
- * @ingroup audio
- */
-asciichat_error_t audio_stop_playback(audio_context_t *ctx);
+asciichat_error_t audio_stop_duplex(audio_context_t *ctx);
 
 /** @} */
 
@@ -334,7 +299,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
  *
  * @warning LIMITATION: This function only affects the calling thread. When used
  *          with PortAudio, the audio callbacks run in PortAudio's internal threads,
- *          not the thread that calls audio_start_capture/playback. Some PortAudio
+ *          not the thread that calls audio_start_duplex. Some PortAudio
  *          backends (WASAPI, CoreAudio) automatically use real-time priority for
  *          their callback threads. For other backends, this function has limited
  *          effect when called from the main thread.

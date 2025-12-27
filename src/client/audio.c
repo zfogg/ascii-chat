@@ -726,26 +726,11 @@ int audio_client_init() {
   // ensuring proper timing synchronization (not from the decode path 50-100ms earlier)
   audio_set_pipeline(&g_audio_context, (void *)g_audio_pipeline);
 
-  // Start audio playback
-  if (audio_start_playback(&g_audio_context) != 0) {
-    log_error("Failed to start audio playback");
+  // Start full-duplex audio (simultaneous capture + playback for perfect AEC3 timing)
+  if (audio_start_duplex(&g_audio_context) != ASCIICHAT_OK) {
+    log_error("Failed to start full-duplex audio");
     client_audio_pipeline_destroy(g_audio_pipeline);
     g_audio_pipeline = NULL;
-    audio_destroy(&g_audio_context);
-    // Clean up WAV writer if it was opened
-    if (g_wav_playback_received) {
-      wav_writer_close(g_wav_playback_received);
-      g_wav_playback_received = NULL;
-    }
-    return -1;
-  }
-
-  // Start audio capture
-  if (audio_start_capture(&g_audio_context) != ASCIICHAT_OK) {
-    log_error("Failed to start audio capture");
-    client_audio_pipeline_destroy(g_audio_pipeline);
-    g_audio_pipeline = NULL;
-    audio_stop_playback(&g_audio_context);
     audio_destroy(&g_audio_context);
     // Clean up WAV writer if it was opened
     if (g_wav_playback_received) {
@@ -880,13 +865,11 @@ void audio_cleanup() {
   // Stop async sender thread (drains queue and exits)
   audio_sender_cleanup();
 
-  // CRITICAL: Stop audio streams BEFORE destroying pipeline to prevent race condition
-  // The PortAudio output_callback is still executing after audio_stop_playback() returns
-  // because PortAudio may invoke the callback one more time. We need to clear the
-  // pipeline pointer first so the callback can't access freed memory.
+  // CRITICAL: Stop audio stream BEFORE destroying pipeline to prevent race condition
+  // PortAudio may invoke the callback one more time after we request stop.
+  // We need to clear the pipeline pointer first so the callback can't access freed memory.
   if (g_audio_context.initialized) {
-    audio_stop_playback(&g_audio_context);
-    audio_stop_capture(&g_audio_context);
+    audio_stop_duplex(&g_audio_context);
   }
 
   // Clear the pipeline pointer from audio context BEFORE destroying pipeline
@@ -895,7 +878,7 @@ void audio_cleanup() {
 
   // CRITICAL: Sleep to allow CoreAudio threads to finish executing callbacks
   // On macOS, CoreAudio's internal threads may continue running after Pa_StopStream() returns.
-  // The output_callback may still be in-flight on other threads. Even after we set the pipeline
+  // The duplex_callback may still be in-flight on other threads. Even after we set the pipeline
   // pointer to NULL, a CoreAudio thread may have already cached the pointer before the assignment.
   // This sleep ensures all in-flight callbacks have fully completed before we destroy the pipeline.
   // 500ms is sufficient on macOS for CoreAudio's internal thread pool to completely wind down.

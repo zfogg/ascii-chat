@@ -85,10 +85,6 @@ extern "C" {
 /** Echo reference ring buffer size (500ms at 48kHz) */
 #define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE / 2)
 
-/** Render ring buffer size for lock-free AEC3 feeding (500ms at 48kHz = 24000 samples)
- *  Increased from 100ms to handle jitter buffer delays (200ms) and give AEC3 more history */
-#define CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE 24000
-
 /** Maximum Opus packet size */
 #define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000
 
@@ -265,24 +261,7 @@ typedef struct {
   /** Work buffer for float processing */
   float *work_float;
 
-  /** Timing synchronization for AEC3 */
-  int64_t capture_timestamp_us; // When was the last capture processed
-  int64_t render_timestamp_us;  // When was render last analyzed
-
-  /** Pipeline mutex for thread safety (ONLY for AEC3 state, not echo_ref_buffer) */
-  mutex_t aec3_mutex; // Separate mutex for AEC3 processing only
-
-  /** Render accumulation buffer for AEC3
-   * Accumulates 480 samples (10ms at 48kHz) from PortAudio callbacks (256 samples each)
-   * When full, immediately calls AnalyzeRender for correct timing.
-   */
-  float render_accum_buffer[480];
-  int render_accum_idx;
-
-  /** Legacy ring buffer - kept for fallback but prefer direct AnalyzeRender calls */
-  float *render_ring_buffer;
-  _Atomic int render_ring_write_idx;
-  _Atomic int render_ring_read_idx;
+  // No mutex needed - full-duplex means single callback thread handles all AEC3
 
   /** Initialization state */
   bool initialized;
@@ -422,23 +401,32 @@ int client_audio_pipeline_get_playback_frame(client_audio_pipeline_t *pipeline, 
 /** @} */
 
 /**
- * @name Echo Playback (for Buffered AEC)
+ * @name Full-Duplex AEC3 Processing
  * @{
  */
 
 /**
- * @brief Feed render signal to AEC3 for echo cancellation
+ * @brief Process AEC3 inline in full-duplex callback
  * @param pipeline Pipeline instance
- * @param samples Audio samples received from network (the render signal)
- * @param num_samples Number of samples
+ * @param render_samples Audio samples being played to speakers RIGHT NOW
+ * @param render_count Number of render samples
+ * @param capture_samples Audio samples from microphone RIGHT NOW
+ * @param capture_count Number of capture samples
+ * @param processed_output Output buffer for processed capture (must be capture_count size)
  *
- * Call this when audio is received from the network and decoded.
- * This is the "render" signal - what will be played to speakers.
- * AEC3 uses this to estimate and subtract the echo from microphone input.
+ * Called from PortAudio's single full-duplex callback where render and capture
+ * happen at the EXACT same instant. No ring buffers, no timing mismatch.
  *
- * Thread-safe. Must be called before the corresponding capture is processed.
+ * Processing:
+ * 1. AEC3 AnalyzeRender on render_samples
+ * 2. AEC3 AnalyzeCapture + ProcessCapture on capture_samples
+ * 3. Apply highpass, lowpass, noise gate, compressor
+ *
+ * REAL-TIME SAFE: No mutexes, no allocations, no blocking.
  */
-void client_audio_pipeline_analyze_render(client_audio_pipeline_t *pipeline, const float *samples, int num_samples);
+void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline, const float *render_samples,
+                                          int render_count, const float *capture_samples, int capture_count,
+                                          float *processed_output);
 
 /** @} */
 
