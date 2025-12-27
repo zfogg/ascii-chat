@@ -364,8 +364,22 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // Fill any remaining samples with silence if we couldn't read enough
+  // Apply a short fade-out to prevent clicks/pops from sudden transitions
   if (to_read < samples) {
-    SAFE_MEMSET(data + to_read, (samples - to_read) * sizeof(float), 0, (samples - to_read) * sizeof(float));
+    size_t silence_samples = samples - to_read;
+    float last = (to_read > 0) ? data[to_read - 1] : rb->last_sample;
+
+    // Apply a quick 48-sample fade-out (1ms at 48kHz) to smooth the transition
+    size_t fade_len = (silence_samples < 48) ? silence_samples : 48;
+    for (size_t i = 0; i < fade_len; i++) {
+      float fade_factor = 1.0f - ((float)(i + 1) / (float)fade_len);
+      data[to_read + i] = last * fade_factor;
+    }
+    // Fill rest with silence
+    if (silence_samples > fade_len) {
+      SAFE_MEMSET(data + to_read + fade_len, (silence_samples - fade_len) * sizeof(float), 0,
+                  (silence_samples - fade_len) * sizeof(float));
+    }
   }
 
   mutex_unlock(&rb->mutex);
