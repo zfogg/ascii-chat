@@ -73,7 +73,9 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->gain_lin = 1.0f;
 
   // Set default parameters
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 3.0f);
+  // Increased makeup gain from 3dB to 6dB for better audibility
+  // Reduced ratio from 4:1 to 3:1 to reduce aggressive compression artifacts
+  compressor_set_params(comp, -10.0f, 3.0f, 10.0f, 100.0f, 6.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
@@ -308,7 +310,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Set crowd scaling parameters
   mixer->crowd_alpha = 0.5f; // Square root scaling
-  mixer->base_gain = 1.0f;   // Unity gain - prevents clipping (soft_clip handles peaks)
+  mixer->base_gain = 1.5f;   // Increased from 1.0f for better audibility with soft clipping handling
 
   // Initialize processing
   if (ducking_init(&mixer->ducking, max_sources, (float)sample_rate) != ASCIICHAT_OK) {
@@ -569,10 +571,10 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Compressor provides +3dB makeup gain which is sufficient for audibility
-      // No additional gain boost needed - decoded Opus audio already has good levels (~0.3-0.7 peak)
-      // The 2x gain was causing clipping/distortion when input peaks hit 0.65+
-      output[frame_start + s] = soft_clip(mix, 0.95f);
+      // Compressor provides +6dB makeup gain for better audibility
+      // Soft clipping at 0.98f threshold provides headroom while maintaining clean sound
+      // Reduced aggressiveness compared to hard clipping
+      output[frame_start + s] = soft_clip(mix, 0.98f);
     }
   }
 
@@ -727,10 +729,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Compressor provides +3dB makeup gain which is sufficient for audibility
-      // No additional gain boost needed - decoded Opus audio already has good levels (~0.3-0.7 peak)
-      // The 2x gain was causing clipping/distortion when input peaks hit 0.65+
-      output[frame_start + s] = soft_clip(mix, 0.95f);
+      // Compressor provides +6dB makeup gain for better audibility
+      // Soft clipping at 0.98f threshold provides headroom while maintaining clean sound
+      // Reduced aggressiveness compared to hard clipping
+      output[frame_start + s] = soft_clip(mix, 0.98f);
     }
   }
 
