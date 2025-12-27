@@ -921,18 +921,18 @@ int main(int argc, const char **argv) {
     }
   }
 #endif
-  // NOTE: We intentionally do NOT add SDK's usr/include to the -isystem path.
-  // LibTooling on LLVM 21 has a bug where __has_include_next() evaluates even
-  // in non-taken preprocessor branches and creates VFS entries that can't be opened.
-  // The clang builtin stdbool.h has:
-  //   #if defined(__MVS__) && __has_include_next(<stdbool.h>)
-  // Even though __MVS__ is not defined on macOS, LLVM 21's LibTooling still tries
-  // to resolve __has_include_next(<stdbool.h>), looks in SDK/usr/include, and fails
-  // because stdbool.h doesn't exist there (it's a builtin header).
-  //
-  // By not adding SDK/usr/include, the __has_include_next won't find any entry
-  // and will return false without trying to open a non-existent file.
-  // The -isysroot flag still provides access to SDK headers through framework paths.
+#ifdef __APPLE__
+  // Add SDK's usr/include for system headers (stdio.h, etc.)
+  // This is needed because LibTooling's cc1 mode doesn't add these automatically
+  if (!selectedSDK.empty()) {
+    std::string sdkInclude = selectedSDK + "/usr/include";
+    if (llvm::sys::fs::exists(sdkInclude)) {
+      appendArgs.push_back("-isystem");
+      appendArgs.push_back(sdkInclude);
+      llvm::errs() << "Added SDK -isystem: " << sdkInclude << "\n";
+    }
+  }
+#endif
 
   // Single consolidated argument adjuster that:
   // 1. Preserves compiler path (first arg)
@@ -980,11 +980,6 @@ int main(int argc, const char **argv) {
     //
     // The fix: Convert project -I to -iquote. Then <stdio.h> skips project paths entirely
     // and finds system headers in -isystem paths instead.
-    //
-    // ALSO: Collect all -isystem paths and reorder them so clang builtins come FIRST.
-    // LibTooling on LLVM 21 has a VFS bug where it creates phantom entries for headers
-    // in -isystem directories even when the header doesn't exist there.
-    std::vector<std::string> collectedIsystemPaths;
     bool foundSeparator = false;
     size_t separatorIndex = 0;
     for (size_t i = 1; i < args.size(); ++i) {
@@ -1024,31 +1019,18 @@ int main(int argc, const char **argv) {
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
 
-      // Collect -isystem paths instead of passing them through
-      // We'll add them at the end in the correct order (clang builtins first)
-      if (arg == "-isystem" && i + 1 < args.size()) {
-        collectedIsystemPaths.push_back(args[++i]);
-        continue;
-      }
-      if (arg.find("-isystem") == 0 && arg.length() > 8) {
-        collectedIsystemPaths.push_back(arg.substr(8));
-        continue;
-      }
-
-      // Convert -I to -iquote for project include paths
-      // Convert -I to -isystem for dependency paths (so they come after our clang builtins)
-      // This prevents <stdbool.h> from being searched in dependency directories
-      // before our clang builtin path
+      // Convert -I to -iquote ONLY for project include paths
+      // This prevents <stdio.h> from being searched in project directories
+      // But keep -I for system/dependency paths (like /opt/homebrew/) so <sodium.h> works
       if (arg == "-I" && i + 1 < args.size()) {
         // -I /path/to/dir (separate argument)
         const std::string &includePath = args[++i];
         if (isProjectPath(includePath)) {
           result.push_back("-iquote");
-          result.push_back(includePath);
         } else {
-          // Collect dependency -I paths to add as -isystem after our builtins
-          collectedIsystemPaths.push_back(includePath);
+          result.push_back("-I");
         }
+        result.push_back(includePath);
         continue;
       }
       if (arg.find("-I") == 0 && arg.length() > 2) {
@@ -1056,27 +1038,20 @@ int main(int argc, const char **argv) {
         std::string includePath = arg.substr(2);
         if (isProjectPath(includePath)) {
           result.push_back("-iquote");
-          result.push_back(includePath);
         } else {
-          // Collect dependency -I paths to add as -isystem after our builtins
-          collectedIsystemPaths.push_back(includePath);
+          result.push_back("-I");
         }
+        result.push_back(includePath);
         continue;
       }
 
       result.push_back(arg);
     }
 
-    // Fourth: add system include paths in the correct order
-    // Order matters for LibTooling on LLVM 21 - clang builtins MUST come first
-    // to shadow any phantom VFS entries that might be created for other paths
+    // Fourth: add system include paths at the end (after all project -I paths)
+    // Using -isystem so they're searched after -I paths
     for (const auto &arg : appendArgs) {
       result.push_back(arg);
-    }
-    // Then add the collected -isystem paths from the compilation database
-    for (const auto &path : collectedIsystemPaths) {
-      result.push_back("-isystem");
-      result.push_back(path);
     }
 
     // Fifth: add the defer tool define and separator
