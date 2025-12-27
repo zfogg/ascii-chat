@@ -280,7 +280,10 @@ jobs:
           echo "All packaging tools verified!"
 
       - name: Configure with CMake
-        run: cmake --preset release
+        run: |
+          # Use /usr prefix for Linux (FHS compliance, matches DEB/RPM packages)
+          # This ensures paths.h has the correct prefix baked in for system config
+          cmake --preset release -DCMAKE_INSTALL_PREFIX=/usr
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
