@@ -81,13 +81,13 @@ function(ascii_build_tooling_runtime)
     # Debug/Dev builds use shared library; Release/RelWithDebInfo uses static
     # USE_MUSL always needs static because musl requires static linking
     if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev") AND NOT USE_MUSL)
-        target_link_libraries(ascii-panic-report ascii-chat-shared)
+        target_link_libraries(ascii-panic-report PRIVATE ascii-chat-shared)
         # Link mimalloc explicitly - shared library links it PRIVATE so symbols don't propagate
         if(USE_MIMALLOC AND MIMALLOC_LIBRARIES)
-            target_link_libraries(ascii-panic-report ${MIMALLOC_LIBRARIES})
+            target_link_libraries(ascii-panic-report PRIVATE ${MIMALLOC_LIBRARIES})
         endif()
     else()
-        target_link_libraries(ascii-panic-report ascii-chat-static)
+        target_link_libraries(ascii-panic-report PRIVATE ascii-chat-static)
         # ascii-chat-static is an INTERFACE library - add explicit build dependency
         # ASCII_CHAT_UNIFIED_BUILD_TARGET is set in Libraries.cmake to the actual build target
         if(TARGET ascii-chat-static-build)
