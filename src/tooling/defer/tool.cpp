@@ -907,7 +907,22 @@ int main(int argc, const char **argv) {
   // 3. Strips unnecessary flags from remaining args
   // 4. Adds system include paths as -isystem at the end (after project -I paths)
   // 5. Adds defer tool parsing define BEFORE the "--" separator
-  auto consolidatedAdjuster = [prependArgs, appendArgs](const tooling::CommandLineArguments &args, StringRef) {
+  std::string inputRootStr = inputRoot.string();
+  auto consolidatedAdjuster = [prependArgs, appendArgs, inputRootStr](const tooling::CommandLineArguments &args, StringRef) {
+    // Helper to check if a path is under the project root
+    auto isProjectPath = [&inputRootStr](const std::string &path) -> bool {
+      if (inputRootStr.empty()) return false;
+      // Normalize both paths for comparison
+      std::error_code ec;
+      auto normalizedPath = fs::canonical(path, ec);
+      if (ec) return false; // Path doesn't exist or can't be resolved
+      auto normalizedRoot = fs::canonical(inputRootStr, ec);
+      if (ec) return false;
+      // Check if the path starts with the root
+      std::string pathStr = normalizedPath.string();
+      std::string rootStr = normalizedRoot.string();
+      return pathStr.find(rootStr) == 0;
+    };
     tooling::CommandLineArguments result;
 
     if (args.empty()) {
@@ -971,18 +986,29 @@ int main(int argc, const char **argv) {
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
 
-      // Convert -I to -iquote for project include paths
+      // Convert -I to -iquote ONLY for project include paths
       // This prevents <stdio.h> from being searched in project directories
+      // But keep -I for system/dependency paths (like /opt/homebrew/) so <sodium.h> works
       if (arg == "-I" && i + 1 < args.size()) {
         // -I /path/to/dir (separate argument)
-        result.push_back("-iquote");
-        result.push_back(args[++i]);
+        const std::string &includePath = args[++i];
+        if (isProjectPath(includePath)) {
+          result.push_back("-iquote");
+        } else {
+          result.push_back("-I");
+        }
+        result.push_back(includePath);
         continue;
       }
       if (arg.find("-I") == 0 && arg.length() > 2) {
         // -I/path/to/dir (combined form)
-        result.push_back("-iquote");
-        result.push_back(arg.substr(2));
+        std::string includePath = arg.substr(2);
+        if (isProjectPath(includePath)) {
+          result.push_back("-iquote");
+        } else {
+          result.push_back("-I");
+        }
+        result.push_back(includePath);
         continue;
       }
 
