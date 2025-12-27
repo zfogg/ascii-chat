@@ -387,37 +387,37 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   }
 
   // WebRTC AEC3 echo cancellation - Process microphone input to remove echo
-  // First drain the lock-free render ring buffer and feed to AEC3's AnalyzeRender,
-  // then do AnalyzeCapture + ProcessCapture.
+  // Process render and capture in INTERLEAVED lock-step as per demo.cc pattern:
+  // For each capture frame, process one render frame first, then capture.
   if (pipeline->flags.echo_cancel && pipeline->echo_canceller) {
     auto wrapper = static_cast<WebRTCAec3Wrapper*>(pipeline->echo_canceller);
     if (wrapper && wrapper->aec3) {
       mutex_lock(&pipeline->aec3_mutex);
 
-      // ---- DRAIN RENDER RING BUFFER AND FEED TO AEC3 ----
-      // The output callback writes render samples to the lock-free ring buffer.
-      // We drain it here and feed all samples to AEC3's AnalyzeRender before
-      // processing capture, so AEC3 knows what's playing through speakers.
-      if (pipeline->render_ring_buffer) {
-        int write_idx = atomic_load(&pipeline->render_ring_write_idx);
-        int read_idx = atomic_load(&pipeline->render_ring_read_idx);
-        int buffer_size = CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE;
-        int available = (write_idx - read_idx + buffer_size) % buffer_size;
+      const int webrtc_frame_size = 480;  // 10ms at 48kHz
+      const int buffer_size = CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE;
 
-        if (available > 0) {
-          const int webrtc_frame_size = 480;  // 10ms at 48kHz
+      try {
+        // Process capture in 480-sample chunks, with interleaved render processing
+        for (int i = 0; i < num_samples; i += webrtc_frame_size) {
+          int chunk_size = (i + webrtc_frame_size <= num_samples) ? webrtc_frame_size : (num_samples - i);
 
-          // Process render samples in 480-sample chunks
-          while (available >= webrtc_frame_size) {
-            // Read 480 samples from ring buffer
-            float render_chunk[480];
-            for (int j = 0; j < webrtc_frame_size; j++) {
-              int idx = (read_idx + j) % buffer_size;
-              render_chunk[j] = pipeline->render_ring_buffer[idx];
-            }
+          // ---- STEP 1: Process ONE render frame (if available) ----
+          // This matches demo.cc where render is processed before each capture frame
+          if (pipeline->render_ring_buffer) {
+            int write_idx = atomic_load(&pipeline->render_ring_write_idx);
+            int read_idx = atomic_load(&pipeline->render_ring_read_idx);
+            int available = (write_idx - read_idx + buffer_size) % buffer_size;
 
-            // Feed to AEC3 AnalyzeRender (following demo.cc pattern)
-            try {
+            if (available >= webrtc_frame_size) {
+              // Read 480 samples from ring buffer
+              float render_chunk[480];
+              for (int j = 0; j < webrtc_frame_size; j++) {
+                int idx = (read_idx + j) % buffer_size;
+                render_chunk[j] = pipeline->render_ring_buffer[idx];
+              }
+
+              // Feed to AEC3 AnalyzeRender (per demo.cc lines 134-136)
               webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
               float* const* render_channels = render_buf.channels();
               if (render_channels && render_channels[0]) {
@@ -426,42 +426,23 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 wrapper->aec3->AnalyzeRender(&render_buf);
                 render_buf.MergeFrequencyBands();
               }
-            } catch (...) {}
 
-            read_idx = (read_idx + webrtc_frame_size) % buffer_size;
-            available -= webrtc_frame_size;
+              // Update read index
+              atomic_store(&pipeline->render_ring_read_idx, (read_idx + webrtc_frame_size) % buffer_size);
+
+              static int render_count = 0;
+              render_count++;
+              if (render_count % 200 == 1) {
+                float rms = 0.0f;
+                for (int s = 0; s < webrtc_frame_size; s++) rms += render_chunk[s] * render_chunk[s];
+                rms = sqrtf(rms / webrtc_frame_size);
+                log_info("AEC3: Interleaved render frame #%d, RMS=%.4f", render_count, rms);
+              }
+            }
           }
 
-          // Update read index atomically after draining
-          atomic_store(&pipeline->render_ring_read_idx, read_idx);
-
-          static int drain_count = 0;
-          drain_count++;
-          if (drain_count % 100 == 1) {
-            int remaining = (write_idx - read_idx + buffer_size) % buffer_size;
-            log_info("AEC3: Drained render buffer, %d samples remaining", remaining);
-          }
-        }
-      }
-
-      try {
-        // WebRTC AEC3's AudioBuffer expects 10ms frames (480 samples at 48kHz)
-        // ascii-chat uses 20ms frames (960 samples), so process in two 480-sample chunks
-        const int webrtc_frame_size = 480;  // 10ms at 48kHz
-
-        for (int i = 0; i < num_samples; i += webrtc_frame_size) {
-          int chunk_size = (i + webrtc_frame_size <= num_samples) ? webrtc_frame_size : (num_samples - i);
-
-          // AnalyzeCapture + ProcessCapture (following demo.cc pattern)
-          webrtc::AudioBuffer capture_buf(
-              48000,  // input sample rate
-              1,      // input channels (mono)
-              48000,  // processing sample rate
-              1,      // processing channels
-              48000,  // output sample rate
-              1       // output channels
-          );
-
+          // ---- STEP 2: Process capture frame ----
+          webrtc::AudioBuffer capture_buf(48000, 1, 48000, 1, 48000, 1);
           float* const* capture_channels = capture_buf.channels();
           if (capture_channels && capture_channels[0]) {
             // Copy microphone input to capture buffer
@@ -472,6 +453,9 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
             // Split into frequency bands for ProcessCapture (per demo.cc line 138)
             capture_buf.SplitIntoFrequencyBands();
+
+            // Set audio buffer delay to 0 before ProcessCapture (per demo.cc line 140)
+            wrapper->aec3->SetAudioBufferDelay(0);
 
             // ProcessCapture on SPLIT buffer (per demo.cc line 141)
             wrapper->aec3->ProcessCapture(&capture_buf, false);

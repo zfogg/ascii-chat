@@ -568,10 +568,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Apply gain boost to make audio audible
-      // Microphone input is typically quiet (peaks ~0.05), so we need to boost
-      // Use soft_clip at 0.95 to prevent harsh clipping while allowing loud audio
-      mix *= 4.0f; // 4x boost for audible levels
+      // Compressor provides +3dB makeup gain which is sufficient for audibility
+      // No additional gain boost needed - decoded Opus audio already has good levels (~0.3-0.7 peak)
+      // The 2x gain was causing clipping/distortion when input peaks hit 0.65+
       output[frame_start + s] = soft_clip(mix, 0.95f);
     }
   }
@@ -584,7 +583,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   if (!mixer || !output || num_samples <= 0)
     return -1;
 
+  // Only use timing in debug builds - snprintf + hashtable ops are expensive in hot path
+#ifndef NDEBUG
   START_TIMER("mixer_total");
+#endif
 
   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
   // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
@@ -624,7 +626,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // Fast check: any sources to mix?
   if (active_mask == 0) {
     rwlock_rdunlock(&mixer->source_lock);
+#ifndef NDEBUG
     STOP_TIMER("mixer_total");
+#endif
     return 0; // No sources to mix (excluding the specified client), output silence
   }
 
@@ -640,7 +644,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     int source_count = 0;
     int source_map[MIXER_MAX_SOURCES]; // Maps source index to slot
 
-    START_TIMER("mixer_read_sources");
     // OPTIMIZATION 1: Iterate only over active sources using bitset
     uint64_t current_mask = active_mask;
     while (current_mask && source_count < MIXER_MAX_SOURCES) {
@@ -653,23 +656,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         size_t samples_read_size =
             audio_ring_buffer_read(mixer->source_buffers[i], source_samples[source_count], frame_size);
         int samples_read = (int)samples_read_size;
-
-        // DEBUG: Log what we read from ring buffer
-        if (samples_read > 0) {
-          float peak = 0.0f, rms = 0.0f;
-          for (int s = 0; s < samples_read && s < 10; s++) {
-            float abs_val = fabsf(source_samples[source_count][s]);
-            if (abs_val > peak)
-              peak = abs_val;
-            rms += source_samples[source_count][s] * source_samples[source_count][s];
-          }
-          rms = sqrtf(rms / (samples_read > 10 ? 10 : samples_read));
-          log_debug_every(1000000, "Mixer: Source %u read %d samples - Peak=%.6f, RMS=%.6f, First3=[%.6f,%.6f,%.6f]",
-                          mixer->source_ids[i], samples_read, peak, rms,
-                          samples_read > 0 ? source_samples[source_count][0] : 0.0f,
-                          samples_read > 1 ? source_samples[source_count][1] : 0.0f,
-                          samples_read > 2 ? source_samples[source_count][2] : 0.0f);
-        }
 
         // Accept partial frames - pad with silence if needed
         // This prevents audio dropouts when ring buffers are temporarily under-filled
@@ -685,9 +671,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         }
       }
     }
-    STOP_TIMER("mixer_read_sources");
-
-    START_TIMER("mixer_per_sample_loop");
 
     // OPTIMIZATION: Batch envelope calculation per-frame instead of per-sample
     // Calculate peak amplitude for each source over the entire frame
@@ -733,7 +716,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
     }
 
     // Fast mixing loop - simple multiply-add with pre-calculated gains
-    float output_peak = 0.0f, output_rms = 0.0f;
     for (int s = 0; s < frame_size; s++) {
       float mix = 0.0f;
       for (int i = 0; i < source_count; i++) {
@@ -744,35 +726,23 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Apply gain boost to make audio audible
-      // Microphone input is typically quiet (peaks ~0.05), so we need to boost
-      // Use soft_clip at 0.95 to prevent harsh clipping while allowing loud audio
-      mix *= 4.0f; // 4x boost for audible levels
-      float clipped = soft_clip(mix, 0.95f);
-      output[frame_start + s] = clipped;
-
-      // DEBUG: Track output stats
-      float abs_val = fabsf(clipped);
-      if (abs_val > output_peak)
-        output_peak = abs_val;
-      output_rms += clipped * clipped;
+      // Compressor provides +3dB makeup gain which is sufficient for audibility
+      // No additional gain boost needed - decoded Opus audio already has good levels (~0.3-0.7 peak)
+      // The 2x gain was causing clipping/distortion when input peaks hit 0.65+
+      output[frame_start + s] = soft_clip(mix, 0.95f);
     }
-    output_rms = sqrtf(output_rms / frame_size);
-
-    log_debug_every(1000000, "Mixer output frame (size=%d): Peak=%.6f, RMS=%.6f, sources=%d, speaking=%d", frame_size,
-                    output_peak, output_rms, source_count, speaking_count);
-
-    STOP_TIMER("mixer_per_sample_loop");
   }
 
   rwlock_rdunlock(&mixer->source_lock);
 
+#ifndef NDEBUG
   double total_ns = STOP_TIMER("mixer_total");
   if (total_ns > 2000000) { // > 2ms
     char duration_str[32];
     format_duration_ns(total_ns, duration_str, sizeof(duration_str));
     log_warn("Slow mixer: total=%s, num_samples=%d", duration_str, num_samples);
   }
+#endif
 
   return num_samples;
 }
