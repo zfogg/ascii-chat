@@ -213,18 +213,24 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.filter.main_initial.length_blocks = 50;  // Same length from the start
       aec3_config.filter.shadow_initial.length_blocks = 50;
 
-      // Increase delay estimation starting point for network audio
-      // Default is 5 blocks (50ms), but we expect ~200ms delay from jitter buffer
-      // Use 15 blocks (150ms) as a more conservative starting point
-      aec3_config.delay.default_delay = 15;  // Start at 150ms (more conservative)
+      // CRITICAL FIX: Set fixed delay to match our jitter buffer
+      // Our jitter buffer adds ~200ms delay, but AEC3's estimator was locking onto 48-56ms
+      // which caused it to correlate wrong samples and suppress all speech as "echo".
+      //
+      // Use fixed delay instead of automatic estimation for network audio where
+      // the delay is known and stable (unlike acoustic echo which varies with distance).
+      //
+      // 200ms = 20 blocks at 10ms each. Use 20 blocks fixed delay.
+      aec3_config.delay.default_delay = 20;  // Start at 200ms (matches jitter buffer)
+      aec3_config.delay.fixed_capture_delay_samples = 9600;  // Fixed 200ms at 48kHz (48000 * 0.2)
 
-      // More conservative delay estimation for stability
-      aec3_config.delay.delay_estimate_smoothing = 0.7f;             // Default 0.7 - standard smoothing
-      aec3_config.delay.delay_candidate_detection_threshold = 0.2f;  // Default 0.2 - standard sensitivity
+      // Very slow delay estimation to prevent drifting to wrong values
+      // With fixed_capture_delay_samples set, this mainly affects fine-tuning
+      aec3_config.delay.delay_estimate_smoothing = 0.95f;  // Very slow adaptation
+      aec3_config.delay.delay_candidate_detection_threshold = 0.5f;  // Less sensitive to spurious peaks
 
-      // Allow longer delay searches for network audio
-      aec3_config.delay.hysteresis_limit_blocks = 3;  // Default 1 - more stable delay
-      aec3_config.delay.fixed_capture_delay_samples = 0;  // No fixed delay - let AEC3 detect
+      // Allow longer delay range for network audio
+      aec3_config.delay.hysteresis_limit_blocks = 5;  // More stable delay
 
       // Standard filter adaptation (conservative for stability)
       aec3_config.filter.main.leakage_converged = 0.00005f;  // Default 0.00005f - standard
@@ -248,19 +254,23 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Keep default echo suppression gain (no boost to avoid feedback loops)
       aec3_config.ep_strength.default_gain = 1.0f;  // Default 1.0f - no boost to prevent feedback
 
-      // LESS AGGRESSIVE suppression - higher values = less suppression
-      // enr_transparent: below this, no suppression (HIGHER = less aggressive)
-      // enr_suppress: above this, full suppression (HIGHER = less aggressive)
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.8f;  // Default 0.3 - much less aggressive
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 1.5f;     // Default 0.4 - much less aggressive
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.4f;  // Default 0.07 - much less aggressive
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.8f;     // Default 0.1 - much less aggressive
+      // VERY CONSERVATIVE suppression for network audio
+      // With fixed delay and no acoustic coupling, we need very high thresholds.
+      // Only suppress when there's CLEAR echo evidence, otherwise pass through.
+      //
+      // enr_transparent: below this ENR (Echo-to-Nearend Ratio), no suppression
+      // enr_suppress: above this ENR, full suppression
+      // Higher values = less suppression (more lenient)
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 2.0f;  // Default 0.3 - very lenient
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 4.0f;     // Default 0.4 - very lenient
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 1.0f;  // Default 0.07 - very lenient
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 2.0f;     // Default 0.1 - very lenient
 
-      // Also reduce nearend tuning aggressiveness
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 0.8f;
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 1.5f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 0.4f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 0.8f;
+      // Nearend tuning: when local speech is detected, be even more lenient
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 3.0f;  // Very lenient for nearend
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 6.0f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 2.0f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 4.0f;
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -288,11 +298,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with conservative network config");
+        log_info("✓ WebRTC AEC3 initialized with fixed-delay network config");
         log_info("  - Filter length: 50 blocks (500ms) for network jitter");
-        log_info("  - Initial delay: 150ms (conservative starting point)");
-        log_info("  - Learning period: 5 seconds (extended for convergence)");
-        log_info("  - ERLE limits: max_l=4.5, max_h=1.8 (conservative)");
+        log_info("  - FIXED delay: 200ms (matches jitter buffer exactly)");
+        log_info("  - Very conservative suppression (high ENR thresholds)");
+        log_info("  - Slow delay adaptation (0.95 smoothing)");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
