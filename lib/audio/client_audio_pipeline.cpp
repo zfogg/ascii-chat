@@ -555,33 +555,13 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Merge frequency bands back to time domain
             capture_buf.MergeFrequencyBands();
 
-            // Scale back down to PortAudio float range [-1.0, 1.0]
-            // Apply feedback prevention: if output > input, reduce gain
-            static float feedback_gain = 1.0f;
-            float out_energy = 0.0f;
+            // Simple passthrough - just scale back to [-1.0, 1.0] range
+            // NO extra gain reduction - let AEC3 do its job, preserve audio quality
             for (int j = 0; j < chunk_size; j++) {
               float sample = capture_channels[0][j] / 32768.0f;
-              out_energy += sample * sample;
-            }
-            float out_rms_check = sqrtf(out_energy / chunk_size);
-
-            // Feedback detection: if output > input, reduce gain (but not too aggressively)
-            // Only reduce gain if output is significantly higher AND input is audible
-            if (out_rms_check > last_input_rms * 1.5f && last_input_rms > 0.02f) {
-              feedback_gain *= 0.95f;  // Reduce gain by 5% (was 20% - too aggressive)
-              if (feedback_gain < 0.5f) feedback_gain = 0.5f;  // Minimum 50% (was 10%)
-            } else if (feedback_gain < 1.0f) {
-              feedback_gain *= 1.05f;  // Recover faster (was 1.02)
-              if (feedback_gain > 1.0f) feedback_gain = 1.0f;
-            }
-
-            // Apply gain (with headroom to prevent clipping) and soft clip
-            for (int j = 0; j < chunk_size; j++) {
-              // Apply 0.85 headroom gain plus feedback_gain to prevent clipping
-              float sample = (capture_channels[0][j] / 32768.0f) * feedback_gain * 0.85f;
-              // Soft clip at 0.95 to preserve dynamics (was hard limit at 0.4!)
-              if (sample > 0.95f) sample = 0.95f + 0.05f * tanhf((sample - 0.95f) * 10.0f);
-              else if (sample < -0.95f) sample = -0.95f + 0.05f * tanhf((sample + 0.95f) * 10.0f);
+              // Simple hard clip at ±0.99 to prevent overflow, no other processing
+              if (sample > 0.99f) sample = 0.99f;
+              else if (sample < -0.99f) sample = -0.99f;
               (processed + i)[j] = sample;
             }
 
