@@ -226,11 +226,105 @@ function(configure_musl_post_project)
     )
 
     # Detect LLVM runtime libraries location
-    # Check multiple possible installation paths in priority order:
-    # 1. Git-compiled LLVM in /usr/local (all three libs together)
-    # 2. System packages in /usr/lib (unversioned)
-    # 3. LLVM-versioned packages in /usr/lib/llvm-*/lib
-    # 4. Debian/Ubuntu multiarch in /usr/lib/x86_64-linux-gnu
+    # For musl builds, we need libc++ compiled WITHOUT glibc fortify functions.
+    # Ubuntu's libc++ is compiled with -D_FORTIFY_SOURCE=2, causing runtime issues.
+    #
+    # Solution: Download pre-built libc++ from Alpine Linux (uses musl natively)
+    set(ALPINE_LIBCXX_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/alpine-libcxx")
+    set(ALPINE_VERSION "3.21")  # Alpine Linux version
+    set(ALPINE_MIRROR "https://dl-cdn.alpinelinux.org/alpine")
+
+    # Map CMake architecture to Alpine package architecture
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64|AMD64)$")
+        set(ALPINE_ARCH "x86_64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64)$")
+        set(ALPINE_ARCH "aarch64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(armv7|armhf)$")
+        set(ALPINE_ARCH "armv7")
+    else()
+        message(FATAL_ERROR "Unsupported architecture for Alpine libc++: ${CMAKE_SYSTEM_PROCESSOR}")
+    endif()
+
+    if(NOT EXISTS "${ALPINE_LIBCXX_DIR}/libc++.a")
+        message(STATUS "Downloading musl-compatible libc++ from Alpine Linux...")
+        file(MAKE_DIRECTORY "${ALPINE_LIBCXX_DIR}")
+
+        # Download libc++ static package from Alpine
+        set(LIBCXX_STATIC_PKG "libc++-static-19.1.4-r1.apk")
+        set(LIBCXX_STATIC_URL "${ALPINE_MIRROR}/v${ALPINE_VERSION}/main/${ALPINE_ARCH}/${LIBCXX_STATIC_PKG}")
+
+        message(STATUS "  Downloading ${LIBCXX_STATIC_URL}")
+        file(DOWNLOAD "${LIBCXX_STATIC_URL}"
+             "${ALPINE_LIBCXX_DIR}/${LIBCXX_STATIC_PKG}"
+             STATUS DOWNLOAD_STATUS
+             SHOW_PROGRESS)
+
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+            message(FATAL_ERROR "Failed to download Alpine libc++: ${ERROR_MSG}")
+        endif()
+
+        # Download llvm-libunwind-static package from Alpine (required for exception handling)
+        set(LIBUNWIND_STATIC_PKG "llvm-libunwind-static-19.1.4-r1.apk")
+        set(LIBUNWIND_STATIC_URL "${ALPINE_MIRROR}/v${ALPINE_VERSION}/main/${ALPINE_ARCH}/${LIBUNWIND_STATIC_PKG}")
+
+        message(STATUS "  Downloading ${LIBUNWIND_STATIC_URL}")
+        file(DOWNLOAD "${LIBUNWIND_STATIC_URL}"
+             "${ALPINE_LIBCXX_DIR}/${LIBUNWIND_STATIC_PKG}"
+             STATUS DOWNLOAD_STATUS
+             SHOW_PROGRESS)
+
+        list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+        if(NOT STATUS_CODE EQUAL 0)
+            list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+            message(FATAL_ERROR "Failed to download Alpine libunwind: ${ERROR_MSG}")
+        endif()
+
+        # Extract .apk files (they're tar.gz archives)
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${LIBCXX_STATIC_PKG}"
+            WORKING_DIRECTORY "${ALPINE_LIBCXX_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract Alpine libc++ package")
+        endif()
+
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf "${LIBUNWIND_STATIC_PKG}"
+            WORKING_DIRECTORY "${ALPINE_LIBCXX_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract Alpine libunwind package")
+        endif()
+
+        message(STATUS "  Extracted Alpine libc++ and libunwind to ${ALPINE_LIBCXX_DIR}")
+    endif()
+
+    # Check if Alpine libs were successfully extracted
+    if(EXISTS "${ALPINE_LIBCXX_DIR}/usr/lib/libc++.a" AND
+       EXISTS "${ALPINE_LIBCXX_DIR}/usr/lib/libc++abi.a")
+        set(LIBCXX_PATH "${ALPINE_LIBCXX_DIR}/usr/lib/libc++.a")
+        set(LIBCXXABI_PATH "${ALPINE_LIBCXX_DIR}/usr/lib/libc++abi.a")
+        if(EXISTS "${ALPINE_LIBCXX_DIR}/usr/lib/libunwind.a")
+            set(LIBUNWIND_PATH "${ALPINE_LIBCXX_DIR}/usr/lib/libunwind.a")
+        endif()
+        set(LLVM_RUNTIME_SOURCE "Alpine Linux (musl-native)")
+        set(LIBCXX_FOUND TRUE)
+    else()
+        set(LIBCXX_FOUND FALSE)
+    endif()
+
+    # Fallback: Search for system libc++ (may have fortify issues)
+    if(NOT LIBCXX_FOUND)
+        message(WARNING "Alpine libc++ download failed, falling back to system libraries")
+        # Check multiple possible installation paths in priority order:
+        # 1. Git-compiled LLVM in /usr/local (all three libs together)
+        # 2. System packages in /usr/lib (unversioned)
+        # 3. LLVM-versioned packages in /usr/lib/llvm-*/lib
+        # 4. Debian/Ubuntu multiarch in /usr/lib/x86_64-linux-gnu
     if(EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libc++.a" AND
        EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libc++abi.a" AND
        EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libunwind.a")
@@ -300,7 +394,8 @@ function(configure_musl_post_project)
                     "  Arch Linux: sudo pacman -S libc++ libc++abi\n"
                     "  Fedora: sudo dnf install libcxx-devel libcxxabi-devel")
         endif()
-    endif()
+    endif()  # if(EXISTS "/usr/local/lib/...)
+    endif()  # if(NOT LIBCXX_FOUND) - Alpine fallback
     message(STATUS "Using LLVM runtime libraries (${LLVM_RUNTIME_SOURCE}):")
     message(STATUS "  libc++: ${LIBCXX_PATH}")
     message(STATUS "  libc++abi: ${LIBCXXABI_PATH}")
@@ -325,17 +420,9 @@ function(configure_musl_post_project)
         "${MUSL_LIBDIR}/crtn.o"
     )
 
-    # Disable fortify source for musl
-    # Musl doesn't support glibc's fortify functions (__memcpy_chk, etc.)
+    # Disable fortify source for our code (musl doesn't support it)
+    # Note: We now use Alpine's musl-native libc++ which doesn't have fortify calls
     add_compile_options(-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0)
-
-    # Ubuntu's libc++.a was compiled with fortify enabled, so it references
-    # __*_chk symbols that musl doesn't provide. Alias them to regular functions.
-    add_link_options(
-        -Wl,--defsym=__memcpy_chk=memcpy
-        -Wl,--defsym=__fprintf_chk=fprintf
-        -Wl,--defsym=__vfprintf_chk=vfprintf
-    )
 
     # Disable precompiled headers
     set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON CACHE BOOL "Disable PCH for musl" FORCE)
