@@ -56,29 +56,7 @@ string(REPLACE
     "${CMAKE_CONTENT}"
 )
 
-# Fix: Add macOS SDK path configuration
-# Homebrew LLVM needs explicit SDK path for libc++ to find C standard library headers
-# This is required because we remove -resource-dir flag to fix header search order
-if(APPLE)
-    # Inject SDK path detection and configuration right after project() declaration
-    string(REPLACE
-        "project (WebRTC-AEC3)"
-        "project (WebRTC-AEC3)\n\n# macOS: Configure SDK path for libc++ header resolution\n# CRITICAL: Required when -resource-dir is removed to fix header search order\nif(APPLE)\n  find_program(_xcrun_cmd xcrun)\n  if(_xcrun_cmd)\n    execute_process(\n      COMMAND \${_xcrun_cmd} --show-sdk-path\n      OUTPUT_VARIABLE _macos_sdk\n      OUTPUT_STRIP_TRAILING_WHITESPACE\n      ERROR_QUIET\n    )\n    if(_macos_sdk AND EXISTS \"\${_macos_sdk}\")\n      set(CMAKE_OSX_SYSROOT \"\${_macos_sdk}\" CACHE PATH \"macOS SDK\" FORCE)\n      message(STATUS \"WebRTC AEC3: Using macOS SDK: \${_macos_sdk}\")\n    else()\n      message(WARNING \"WebRTC AEC3: Could not detect macOS SDK path - header resolution may fail\")\n    endif()\n  else()\n    message(WARNING \"WebRTC AEC3: xcrun not found - cannot detect macOS SDK path\")\n  endif()\nendif()"
-        CMAKE_CONTENT
-        "${CMAKE_CONTENT}"
-    )
-
-    # Remove -resource-dir flag that breaks libc++ header search order on macOS
-    # The flag changes where Clang looks for builtin headers, causing libc++ to find
-    # system headers before its own wrapper headers, leading to compilation errors
-    string(REGEX REPLACE
-        "-resource-dir [^[:space:]]+"
-        ""
-        CMAKE_CONTENT
-        "${CMAKE_CONTENT}"
-    )
-    message(STATUS "Patched WebRTC AEC3 - removed -resource-dir flag to fix macOS header search order")
-endif()
+# No special macOS-specific patches needed - WebRTC builds correctly with standard flags
 
 # Write the patched main CMakeLists.txt back
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT}")

@@ -66,15 +66,8 @@ if(NOT webrtc_aec3_POPULATED)
     string(REPLACE "-std=c++26" "-std=c++17" WEBRTC_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     string(REPLACE "-std=gnu++26" "-std=c++17" WEBRTC_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
 
-    # CRITICAL macOS fix: Remove -resource-dir from flags before building WebRTC
-    # The flag breaks libc++ header search order on macOS with Homebrew LLVM
-    # It causes libc++ to find system C headers before its own wrapper headers
-    if(APPLE)
-        string(REGEX REPLACE "-resource-dir [^ ]+" "" WEBRTC_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
-        string(REGEX REPLACE "-resource-dir [^ ]+" "" WEBRTC_C_FLAGS "${CMAKE_C_FLAGS}")
-    else()
-        set(WEBRTC_C_FLAGS "${CMAKE_C_FLAGS}")
-    endif()
+    # No special handling needed - WebRTC works with inherited flags
+    set(WEBRTC_C_FLAGS "${CMAKE_C_FLAGS}")
 
     # Suppress all warnings for third-party WebRTC code (not our code to fix)
     string(APPEND WEBRTC_CXX_FLAGS " -w")
