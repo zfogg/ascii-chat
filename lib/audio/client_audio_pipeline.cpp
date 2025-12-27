@@ -214,8 +214,28 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Default is 5 blocks (50ms), but we expect ~200ms delay from jitter buffer
       aec3_config.delay.default_delay = 20;  // Start at 200ms (reasonable for network audio)
 
-      // Slower adaptation for network audio (more stable)
-      aec3_config.filter.initial_state_seconds = 3.0f;  // Slightly longer learning period
+      // Faster filter adaptation for quicker convergence
+      aec3_config.filter.main.leakage_converged = 0.0001f;   // Default 0.00005f - more aggressive
+      aec3_config.filter.main.leakage_diverged = 0.01f;      // Default 0.05f - faster recovery
+      aec3_config.filter.shadow.rate = 0.5f;                 // Default 0.7f - faster shadow filter
+
+      // Longer learning period for network audio (more time to converge)
+      aec3_config.filter.initial_state_seconds = 5.0f;  // Default 2.5s, give more time
+
+      // Enable anti-howling protection (critical for feedback prevention)
+      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;   // Default 25 - trigger early
+      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.0001f;  // Default 0.01 - kill howling hard
+
+      // More aggressive echo suppression
+      aec3_config.ep_strength.default_gain = 4.0f;  // Default 1.0f - much stronger echo removal
+
+      // Lower masking thresholds for more aggressive suppression
+      // enr_transparent: below this, no suppression (lower = more aggressive)
+      // enr_suppress: above this, full suppression (lower = more aggressive)
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.1f;   // Default 0.3
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.2f;      // Default 0.4
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.03f;  // Default 0.07
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.05f;     // Default 0.1
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -243,10 +263,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with network-optimized config");
+        log_info("✓ WebRTC AEC3 initialized with aggressive network config");
         log_info("  - Filter length: 50 blocks (500ms) for network jitter");
-        log_info("  - Default delay estimate: 200ms");
-        log_info("  - Automatic delay estimation enabled");
+        log_info("  - Anti-howling: enabled (threshold=5, gain=0.001)");
+        log_info("  - Echo suppression gain: 2.0x");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
@@ -468,6 +488,14 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           webrtc::AudioBuffer capture_buf(48000, 1, 48000, 1, 48000, 1);
           float* const* capture_channels = capture_buf.channels();
           if (capture_channels && capture_channels[0]) {
+            // Calculate input RMS BEFORE AEC3 processing
+            static float last_input_rms = 0.0f;
+            float input_energy = 0.0f;
+            for (int j = 0; j < chunk_size; j++) {
+              input_energy += (processed + i)[j] * (processed + i)[j];
+            }
+            last_input_rms = sqrtf(input_energy / chunk_size);
+
             // Scale up microphone input to int16 range for WebRTC
             for (int j = 0; j < chunk_size; j++) {
               capture_channels[0][j] = (processed + i)[j] * 32768.0f;
@@ -499,17 +527,25 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             static int capture_count = 0;
             capture_count++;
             if (capture_count % 100 == 1) {
-              float capture_energy = 0.0f;
+              // Calculate RMS AFTER AEC3 processing
+              float out_energy = 0.0f;
               for (int s = 0; s < chunk_size; s++) {
-                capture_energy += (processed + i)[s] * (processed + i)[s];
+                out_energy += (processed + i)[s] * (processed + i)[s];
               }
-              capture_energy = sqrtf(capture_energy / chunk_size);
+              float out_rms = sqrtf(out_energy / chunk_size);
+
+              // Calculate actual reduction
+              float reduction_db = 0.0f;
+              if (last_input_rms > 0.0001f && out_rms > 0.0001f) {
+                reduction_db = 20.0f * log10f(out_rms / last_input_rms);
+              }
 
               try {
                 webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-                log_info("AEC3: Capture RMS=%.6f, ERL=%.2f dB, ERLE=%.2f dB, delay=%d ms",
-                         capture_energy, metrics.echo_return_loss,
-                         metrics.echo_return_loss_enhancement, metrics.delay_ms);
+                log_info("AEC3: IN=%.4f OUT=%.4f (%.1fdB) ERL=%.1f ERLE=%.1f delay=%dms",
+                         last_input_rms, out_rms, reduction_db,
+                         metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
+                         metrics.delay_ms);
                 audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
                                                 metrics.echo_return_loss_enhancement,
                                                 metrics.delay_ms);
