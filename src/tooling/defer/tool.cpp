@@ -874,19 +874,10 @@ int main(int argc, const char **argv) {
   }
 #endif
 
-#ifdef MACOS_SDK_PATH
-  {
-    const char* sdkPath = MACOS_SDK_PATH;
-    if (llvm::sys::fs::exists(sdkPath)) {
-      // Set sysroot for framework resolution
-      prependArgs.push_back("-isysroot");
-      prependArgs.push_back(sdkPath);
-      llvm::errs() << "Using macOS SDK: " << sdkPath << "\n";
-    } else {
-      llvm::errs() << "Warning: macOS SDK path does not exist: " << sdkPath << "\n";
-    }
-  }
-#endif
+  // NOTE: We intentionally do NOT add -isysroot here.
+  // Homebrew's LLVM is self-contained with all headers in its resource directory.
+  // Setting -isysroot to CommandLineTools SDK causes #include_next failures
+  // because that SDK has incomplete /usr/include (missing stdbool.h, etc.).
 
   // Build list of system include paths to add as -isystem paths.
   // Now that project paths use -iquote (only for "..." includes), these -isystem paths
