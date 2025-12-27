@@ -76,7 +76,7 @@ else()
     # Release builds OR USE_MUSL builds: use static library
     # USE_MUSL needs static library because musl requires static linking
     add_dependencies(ascii-chat ascii-chat-static-build generate_version)
-    target_link_libraries(ascii-chat ascii-chat-static)
+    target_link_libraries(ascii-chat PRIVATE ascii-chat-static)
     # Define BUILDING_STATIC_LIB for executable when using static library (Windows)
     # This prevents LNK4217 warnings about dllimport on locally defined symbols
     if(WIN32)
