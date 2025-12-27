@@ -99,6 +99,105 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   return paContinue;
 }
 
+/**
+ * Separate output callback - handles playback only.
+ * Used when full-duplex mode is unavailable (e.g., different sample rates).
+ * Copies render samples to render_buffer for AEC3 reference.
+ */
+static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
+                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags,
+                           void *userData) {
+  (void)inputBuffer;
+  (void)timeInfo;
+
+  audio_context_t *ctx = (audio_context_t *)userData;
+  float *output = (float *)outputBuffer;
+  size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
+
+  // Silence on shutdown
+  if (atomic_load(&ctx->shutting_down)) {
+    if (output) {
+      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+    }
+    return paContinue;
+  }
+
+  if (statusFlags & paOutputUnderflow) {
+    log_warn_every(1000000, "PortAudio output underflow (separate stream)");
+  }
+
+  // Read from playback buffer → output (speaker)
+  if (output && ctx->playback_buffer) {
+    size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
+    if (samples_read == 0) {
+      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+    }
+
+    // Copy to render buffer for AEC3 reference (input callback will use this)
+    if (ctx->render_buffer) {
+      audio_ring_buffer_write(ctx->render_buffer, output, (int)num_samples);
+    }
+  } else if (output) {
+    SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+  }
+
+  return paContinue;
+}
+
+/**
+ * Separate input callback - handles capture only.
+ * Used when full-duplex mode is unavailable (e.g., different sample rates).
+ * Gets render reference from render_buffer for AEC3 processing.
+ */
+static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
+                          const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
+  (void)outputBuffer;
+  (void)timeInfo;
+
+  audio_context_t *ctx = (audio_context_t *)userData;
+  const float *input = (const float *)inputBuffer;
+  size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
+
+  // Silence on shutdown
+  if (atomic_load(&ctx->shutting_down)) {
+    return paContinue;
+  }
+
+  if (statusFlags & paInputOverflow) {
+    log_warn_every(1000000, "PortAudio input overflow (separate stream)");
+  }
+
+  // Process AEC3 with render reference from render_buffer
+  if (ctx->audio_pipeline && input && ctx->render_buffer) {
+    // Get render samples from render buffer (what was just played to speakers)
+    float *render = (float *)alloca(num_samples * sizeof(float));
+    size_t render_samples = audio_ring_buffer_read(ctx->render_buffer, render, num_samples);
+    if (render_samples < num_samples) {
+      // Not enough render samples - zero-pad
+      SAFE_MEMSET(render + render_samples, (num_samples - render_samples) * sizeof(float), 0,
+                  (num_samples - render_samples) * sizeof(float));
+    }
+
+    // Process through AEC3
+    float *processed = (float *)alloca(num_samples * sizeof(float));
+    client_audio_pipeline_process_duplex((client_audio_pipeline_t *)ctx->audio_pipeline, render,
+                                         (int)num_samples,        // render = what's playing to speakers
+                                         input, (int)num_samples, // capture = microphone input
+                                         processed                // output = processed capture
+    );
+
+    // Write processed capture to ring buffer for encoding thread
+    if (ctx->capture_buffer) {
+      audio_ring_buffer_write(ctx->capture_buffer, processed, (int)num_samples);
+    }
+  } else if (input && ctx->capture_buffer) {
+    // No pipeline - write raw capture
+    audio_ring_buffer_write(ctx->capture_buffer, input, (int)num_samples);
+  }
+
+  return paContinue;
+}
+
 // Forward declaration for internal helper function
 static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer_enabled);
 
@@ -537,7 +636,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   mutex_lock(&ctx->state_mutex);
 
   // Already running?
-  if (ctx->duplex_stream) {
+  if (ctx->duplex_stream || ctx->input_stream || ctx->output_stream) {
     mutex_unlock(&ctx->state_mutex);
     return ASCIICHAT_OK;
   }
@@ -590,26 +689,103 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   outputParams.suggestedLatency = outputInfo->defaultLowOutputLatency;
   outputParams.hostApiSpecificStreamInfo = NULL;
 
-  log_info("Opening full-duplex audio:");
+  // Store device rates for diagnostics
+  ctx->input_device_rate = inputInfo->defaultSampleRate;
+  ctx->output_device_rate = outputInfo->defaultSampleRate;
+
+  log_info("Opening audio:");
   log_info("  Input:  %s (%.0f Hz)", inputInfo->name, inputInfo->defaultSampleRate);
   log_info("  Output: %s (%.0f Hz)", outputInfo->name, outputInfo->defaultSampleRate);
 
-  // Open full-duplex stream at 48kHz (Opus/AEC3 native rate)
-  // PortAudio resamples if device runs at different rate
-  PaError err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE,
-                              AUDIO_FRAMES_PER_BUFFER, paClipOff, duplex_callback, ctx);
+  // Check if sample rates differ - ALSA full-duplex doesn't handle this well
+  bool rates_differ = (inputInfo->defaultSampleRate != outputInfo->defaultSampleRate);
+  bool try_separate = rates_differ;
+  PaError err = paNoError;
 
-  if (err != paNoError) {
-    mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Failed to open duplex stream: %s", Pa_GetErrorText(err));
+  if (!try_separate) {
+    // Try full-duplex first (preferred - perfect AEC3 timing)
+    err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
+                        paClipOff, duplex_callback, ctx);
+
+    if (err == paNoError) {
+      err = Pa_StartStream(ctx->duplex_stream);
+      if (err != paNoError) {
+        Pa_CloseStream(ctx->duplex_stream);
+        ctx->duplex_stream = NULL;
+        log_warn("Full-duplex stream failed to start: %s", Pa_GetErrorText(err));
+        try_separate = true;
+      }
+    } else {
+      log_warn("Full-duplex stream failed to open: %s", Pa_GetErrorText(err));
+      try_separate = true;
+    }
   }
 
-  err = Pa_StartStream(ctx->duplex_stream);
-  if (err != paNoError) {
-    Pa_CloseStream(ctx->duplex_stream);
-    ctx->duplex_stream = NULL;
-    mutex_unlock(&ctx->state_mutex);
-    return SET_ERRNO(ERROR_AUDIO, "Failed to start duplex stream: %s", Pa_GetErrorText(err));
+  if (try_separate) {
+    // Fall back to separate streams (needed when sample rates differ)
+    log_info("Using separate input/output streams (sample rates differ: %.0f vs %.0f Hz)", inputInfo->defaultSampleRate,
+             outputInfo->defaultSampleRate);
+
+    // Create render buffer for AEC3 reference synchronization
+    ctx->render_buffer = audio_ring_buffer_create_for_capture();
+    if (!ctx->render_buffer) {
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_MEMORY, "Failed to create render buffer");
+    }
+
+    // Open output stream first
+    err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                        output_callback, ctx);
+    if (err != paNoError) {
+      audio_ring_buffer_destroy(ctx->render_buffer);
+      ctx->render_buffer = NULL;
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to open output stream: %s", Pa_GetErrorText(err));
+    }
+
+    // Open input stream
+    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                        input_callback, ctx);
+    if (err != paNoError) {
+      Pa_CloseStream(ctx->output_stream);
+      ctx->output_stream = NULL;
+      audio_ring_buffer_destroy(ctx->render_buffer);
+      ctx->render_buffer = NULL;
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to open input stream: %s", Pa_GetErrorText(err));
+    }
+
+    // Start both streams
+    err = Pa_StartStream(ctx->output_stream);
+    if (err != paNoError) {
+      Pa_CloseStream(ctx->input_stream);
+      Pa_CloseStream(ctx->output_stream);
+      ctx->input_stream = NULL;
+      ctx->output_stream = NULL;
+      audio_ring_buffer_destroy(ctx->render_buffer);
+      ctx->render_buffer = NULL;
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
+    }
+
+    err = Pa_StartStream(ctx->input_stream);
+    if (err != paNoError) {
+      Pa_StopStream(ctx->output_stream);
+      Pa_CloseStream(ctx->input_stream);
+      Pa_CloseStream(ctx->output_stream);
+      ctx->input_stream = NULL;
+      ctx->output_stream = NULL;
+      audio_ring_buffer_destroy(ctx->render_buffer);
+      ctx->render_buffer = NULL;
+      mutex_unlock(&ctx->state_mutex);
+      return SET_ERRNO(ERROR_AUDIO, "Failed to start input stream: %s", Pa_GetErrorText(err));
+    }
+
+    ctx->separate_streams = true;
+    log_info("Separate streams started successfully");
+  } else {
+    ctx->separate_streams = false;
+    log_info("Full-duplex stream started (single callback, perfect AEC3 timing)");
   }
 
   audio_set_realtime_priority();
@@ -618,7 +794,6 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   ctx->sample_rate = AUDIO_SAMPLE_RATE;
   mutex_unlock(&ctx->state_mutex);
 
-  log_info("Full-duplex audio started (single callback, perfect AEC3 timing)");
   return ASCIICHAT_OK;
 }
 
@@ -643,10 +818,30 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
     ctx->duplex_stream = NULL;
   }
 
+  // Stop separate streams if used
+  if (ctx->input_stream) {
+    Pa_StopStream(ctx->input_stream);
+    Pa_CloseStream(ctx->input_stream);
+    ctx->input_stream = NULL;
+  }
+
+  if (ctx->output_stream) {
+    Pa_StopStream(ctx->output_stream);
+    Pa_CloseStream(ctx->output_stream);
+    ctx->output_stream = NULL;
+  }
+
+  // Cleanup render buffer
+  if (ctx->render_buffer) {
+    audio_ring_buffer_destroy(ctx->render_buffer);
+    ctx->render_buffer = NULL;
+  }
+
   ctx->running = false;
+  ctx->separate_streams = false;
   mutex_unlock(&ctx->state_mutex);
 
-  log_info("Full-duplex audio stopped");
+  log_info("Audio stopped");
   return ASCIICHAT_OK;
 }
 

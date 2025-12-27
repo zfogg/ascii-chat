@@ -108,14 +108,20 @@
  */
 typedef struct {
   PaStream *duplex_stream;              ///< PortAudio full-duplex stream (simultaneous input+output)
+  PaStream *input_stream;               ///< Separate input stream (when full-duplex unavailable)
+  PaStream *output_stream;              ///< Separate output stream (when full-duplex unavailable)
   audio_ring_buffer_t *capture_buffer;  ///< Ring buffer for processed capture (after AEC3) for encoder thread
   audio_ring_buffer_t *playback_buffer; ///< Ring buffer for decoded audio from network
+  audio_ring_buffer_t *render_buffer;   ///< Ring buffer for render reference (separate streams mode)
   bool initialized;                     ///< True if context has been initialized
   bool running;                         ///< True if duplex stream is active
+  bool separate_streams;                ///< True if using separate input/output streams
   _Atomic bool shutting_down;           ///< True when shutdown started - callback outputs silence
   mutex_t state_mutex;                  ///< Mutex protecting context state
   void *audio_pipeline;                 ///< Client audio pipeline for AEC3 echo cancellation (opaque pointer)
-  double sample_rate;                   ///< Actual sample rate of duplex stream
+  double sample_rate;                   ///< Actual sample rate of streams (48kHz)
+  double input_device_rate;             ///< Native sample rate of input device
+  double output_device_rate;            ///< Native sample rate of output device
 } audio_context_t;
 
 /* ============================================================================
