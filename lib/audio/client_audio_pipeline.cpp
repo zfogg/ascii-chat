@@ -213,21 +213,22 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.filter.main_initial.length_blocks = 50;  // Same length from the start
       aec3_config.filter.shadow_initial.length_blocks = 50;
 
-      // Let AEC3 estimate delay adaptively - it's designed for this
-      // ACOUSTIC echo (speaker to microphone) is typically 5-30ms, not 200ms
-      // The 200ms jitter buffer delay is for NETWORK audio, not acoustic echo!
+      // Configure delay for NETWORK echo path
+      // Network echo = your voice → network → their speakers → their mic → network → back
+      // This is ~200-300ms round-trip, not 5-30ms local acoustic delay
       //
-      // AEC3's adaptive delay estimator will find the correct acoustic delay.
-      // We just need to give it a reasonable starting point and allow adaptation.
-      aec3_config.delay.default_delay = 2;  // Start at 20ms (typical acoustic delay)
-      aec3_config.delay.fixed_capture_delay_samples = 0;  // DISABLE fixed delay - let AEC3 adapt
+      // The render signal is what we play to speakers (received from network).
+      // The echo in capture is that audio picked up by our mic after acoustic path.
+      // For network echo through the other device, delay = network_rtt + their_acoustic_path
+      aec3_config.delay.default_delay = 25;  // Start at 250ms (network round-trip estimate)
+      aec3_config.delay.delay_headroom_samples = 4800;    // 100ms headroom for jitter
 
-      // Allow delay estimation to adapt, but not too fast (avoid jitter)
-      aec3_config.delay.delay_estimate_smoothing = 0.7f;  // Moderate adaptation speed
-      aec3_config.delay.delay_candidate_detection_threshold = 0.25f;  // Default sensitivity
+      // Allow delay estimation to search full range for network delay
+      aec3_config.delay.delay_estimate_smoothing = 0.9f;  // Slow adaptation for stable network
+      aec3_config.delay.delay_candidate_detection_threshold = 0.15f;  // More sensitive detection
 
-      // Standard hysteresis for acoustic echo
-      aec3_config.delay.hysteresis_limit_blocks = 1;  // Quick response to delay changes
+      // Large hysteresis for network delay (more stable than acoustic)
+      aec3_config.delay.hysteresis_limit_blocks = 3;  // Don't jump around
 
       // Standard filter adaptation (conservative for stability)
       aec3_config.filter.main.leakage_converged = 0.00005f;  // Default 0.00005f - standard
@@ -306,10 +307,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with near-passthrough config");
-        log_info("  - Filter length: 50 blocks (500ms) for long echo paths");
-        log_info("  - ADAPTIVE delay: starts at 20ms, adapts to acoustic path");
-        log_info("  - Near-passthrough suppression (ENR thresholds 10-50x higher)");
+        log_info("✓ WebRTC AEC3 initialized for network echo cancellation");
+        log_info("  - Filter length: 50 blocks (500ms) for network delay");
+        log_info("  - Default delay: 250ms (network round-trip), min 100ms");
+        log_info("  - Near-passthrough suppression (high ENR thresholds)");
         log_info("  - Soft clipping to prevent distortion");
 
         // Create persistent AudioBuffer instances for AEC3
