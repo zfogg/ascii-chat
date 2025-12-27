@@ -224,11 +224,13 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.filter.main_initial.length_blocks = 50;
       aec3_config.filter.shadow_initial.length_blocks = 50;
 
-      // Use external delay estimator like demo.cc - we'll call SetAudioBufferDelay(0)
-      // to indicate buffers are aligned, letting AEC3 focus on echo path delay
-      aec3_config.delay.use_external_delay_estimator = true;
-      aec3_config.delay.default_delay = 5;  // 50ms initial hint for echo path
-      aec3_config.delay.delay_headroom_samples = 4800;  // 100ms headroom
+      // Let AEC3 estimate delay internally (external estimator crashed on macOS)
+      // The internal estimator searches for echo correlation automatically
+      aec3_config.delay.use_external_delay_estimator = false;
+      aec3_config.delay.default_delay = 10;  // 100ms initial hint (was 50ms)
+      aec3_config.delay.delay_headroom_samples = 9600;  // 200ms headroom (was 100ms)
+      aec3_config.delay.hysteresis_limit_blocks = 1;  // More responsive to delay changes
+      aec3_config.delay.fixed_capture_delay_samples = 0;  // No fixed delay assumption
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
