@@ -214,13 +214,24 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Default is 5 blocks (50ms), but we expect ~200ms delay from jitter buffer
       aec3_config.delay.default_delay = 20;  // Start at 200ms (reasonable for network audio)
 
+      // Improve delay estimation for stable network path
+      aec3_config.delay.delay_estimate_smoothing = 0.9f;             // Default 0.7 - smoother estimate
+      aec3_config.delay.delay_candidate_detection_threshold = 0.1f;  // Default 0.2 - more sensitive
+
+      // Network audio has stable, predictable delay path
+      aec3_config.echo_removal_control.linear_and_stable_echo_path = true;
+
       // Faster filter adaptation for quicker convergence
-      aec3_config.filter.main.leakage_converged = 0.0001f;   // Default 0.00005f - more aggressive
-      aec3_config.filter.main.leakage_diverged = 0.01f;      // Default 0.05f - faster recovery
-      aec3_config.filter.shadow.rate = 0.5f;                 // Default 0.7f - faster shadow filter
+      aec3_config.filter.main.leakage_converged = 0.00001f;  // Default 0.00005f - very aggressive
+      aec3_config.filter.main.leakage_diverged = 0.005f;     // Default 0.05f - faster recovery
+      aec3_config.filter.shadow.rate = 0.4f;                 // Default 0.7f - faster shadow filter
 
       // Longer learning period for network audio (more time to converge)
-      aec3_config.filter.initial_state_seconds = 5.0f;  // Default 2.5s, give more time
+      aec3_config.filter.initial_state_seconds = 10.0f;  // Default 2.5s, give much more time
+
+      // Increase ERLE limits for better echo removal
+      aec3_config.erle.max_l = 8.0f;   // Default 4.0 - allow more low-freq suppression
+      aec3_config.erle.max_h = 4.0f;   // Default 1.5 - allow more high-freq suppression
 
       // Enable anti-howling protection (critical for feedback prevention)
       aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;   // Default 25 - trigger early
@@ -265,8 +276,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
         log_info("✓ WebRTC AEC3 initialized with aggressive network config");
         log_info("  - Filter length: 50 blocks (500ms) for network jitter");
-        log_info("  - Anti-howling: enabled (threshold=5, gain=0.001)");
-        log_info("  - Echo suppression gain: 2.0x");
+        log_info("  - Linear stable echo path mode: enabled");
+        log_info("  - ERLE limits: max_l=8.0, max_h=4.0 (increased)");
+        log_info("  - Initial learning period: 10 seconds");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
