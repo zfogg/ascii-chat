@@ -384,8 +384,8 @@ void framebuffer_clear(framebuffer_t *fb) {
   if (fb->rb->buffer) {
     // Check for integer overflow before multiplication
     if (fb->rb->capacity > SIZE_MAX / fb->rb->element_size) {
-      SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size would overflow: capacity=%zu, element_size=%zu",
-                fb->rb->capacity, fb->rb->element_size);
+      SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size would overflow: capacity=%zu, element_size=%zu", fb->rb->capacity,
+                fb->rb->element_size);
       mutex_unlock(&fb->mutex);
       return;
     }
