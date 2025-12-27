@@ -242,13 +242,19 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // Keep default echo suppression gain (no boost to avoid feedback loops)
       aec3_config.ep_strength.default_gain = 1.0f;  // Default 1.0f - no boost to prevent feedback
 
-      // Balanced masking thresholds (close to defaults)
-      // enr_transparent: below this, no suppression (lower = more aggressive)
-      // enr_suppress: above this, full suppression (lower = more aggressive)
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.25f;  // Default 0.3 - very slight adjustment
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.35f;     // Default 0.4 - very slight adjustment
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.065f; // Default 0.07 - minimal adjustment
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.095f;    // Default 0.1 - minimal adjustment
+      // LESS AGGRESSIVE suppression - higher values = less suppression
+      // enr_transparent: below this, no suppression (HIGHER = less aggressive)
+      // enr_suppress: above this, full suppression (HIGHER = less aggressive)
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.8f;  // Default 0.3 - much less aggressive
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 1.5f;     // Default 0.4 - much less aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.4f;  // Default 0.07 - much less aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.8f;     // Default 0.1 - much less aggressive
+
+      // Also reduce nearend tuning aggressiveness
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 0.8f;
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 1.5f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 0.4f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 0.8f;
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
