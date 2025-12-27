@@ -944,6 +944,11 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
+  // Explicitly undefine __MVS__ to prevent clang's stdbool.h from triggering __has_include_next
+  // check for a system stdbool.h (which doesn't exist in modern macOS SDKs)
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-U__MVS__", tooling::ArgumentInsertPosition::END));
+
   // Set up include paths for LibTooling to find system headers correctly.
   //
   // The challenge is that:
