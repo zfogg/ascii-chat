@@ -39,6 +39,9 @@ typedef struct {
   uint64_t discontinuity_count; // Packet arrival gaps (sparse delivery)
   float avg_packet_spacing_ms;  // Average time between packets (ms)
   uint32_t max_gap_ms;          // Largest gap between consecutive packets (ms)
+  // Beep/tone artifact detection
+  uint64_t beep_events;   // Short tonal bursts (codec artifacts, system beeps)
+  uint64_t tonal_samples; // Samples in tonal/beep-like patterns
 } audio_analysis_stats_t;
 
 /**

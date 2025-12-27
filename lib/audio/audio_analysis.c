@@ -97,6 +97,19 @@ static double g_aec3_echo_return_loss_enhancement = 0.0; // dB - additional echo
 static int g_aec3_delay_ms = 0;                          // Estimated echo delay in ms
 static bool g_aec3_metrics_available = false;            // Whether we have AEC3 metrics
 
+// Beep/tone artifact detection
+// A "beep" is characterized by:
+// 1. Consistent amplitude within a short window (not random noise)
+// 2. High zero-crossing rate (tonal/sine-wave like)
+// 3. Short duration (< 500ms typically)
+#define BEEP_WINDOW_SIZE 480 // 10ms at 48kHz - check for tonal patterns in 10ms chunks
+static float g_received_beep_window[BEEP_WINDOW_SIZE];
+static int g_received_beep_window_idx = 0;
+static uint64_t g_received_beep_events = 0;
+static uint64_t g_received_tonal_samples = 0;
+static bool g_in_beep_burst = false;
+static int g_beep_burst_samples = 0;
+
 int audio_analysis_init(void) {
   SAFE_MEMSET(&g_sent_stats, sizeof(g_sent_stats), 0, sizeof(g_sent_stats));
   SAFE_MEMSET(&g_received_stats, sizeof(g_received_stats), 0, sizeof(g_received_stats));
@@ -120,6 +133,14 @@ int audio_analysis_init(void) {
     g_echo_match_count[i] = 0;
   }
   g_detected_echo_delay_ms = 0;
+
+  // Reset beep detection
+  SAFE_MEMSET(g_received_beep_window, sizeof(g_received_beep_window), 0, sizeof(g_received_beep_window));
+  g_received_beep_window_idx = 0;
+  g_received_beep_events = 0;
+  g_received_tonal_samples = 0;
+  g_in_beep_burst = false;
+  g_beep_burst_samples = 0;
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -367,6 +388,75 @@ void audio_analysis_track_received_sample(float sample) {
     g_echo_correlation_sample_count++;
   }
 
+  // Beep/tone artifact detection
+  // Store sample in sliding window for frequency analysis
+  g_received_beep_window[g_received_beep_window_idx] = sample;
+  g_received_beep_window_idx = (g_received_beep_window_idx + 1) % BEEP_WINDOW_SIZE;
+
+  // Analyze window every 10ms (480 samples at 48kHz)
+  if (g_received_beep_window_idx == 0 && g_received_stats.total_samples > BEEP_WINDOW_SIZE) {
+    // Calculate zero-crossing rate in this window
+    int zero_crossings = 0;
+    float min_amp = 1.0f, max_amp = 0.0f;
+    float sum_amp = 0.0f;
+    float prev = g_received_beep_window[0];
+
+    for (int i = 1; i < BEEP_WINDOW_SIZE; i++) {
+      float curr = g_received_beep_window[i];
+      float abs_curr = fabsf(curr);
+
+      // Track amplitude range
+      if (abs_curr > max_amp)
+        max_amp = abs_curr;
+      if (abs_curr < min_amp)
+        min_amp = abs_curr;
+      sum_amp += abs_curr;
+
+      // Count zero crossings
+      if ((prev > 0 && curr < 0) || (prev < 0 && curr > 0)) {
+        zero_crossings++;
+      }
+      prev = curr;
+    }
+
+    float avg_amp = sum_amp / BEEP_WINDOW_SIZE;
+    float amp_range = max_amp - min_amp;
+
+    // A beep/tone has:
+    // 1. High zero-crossing rate (>20 per 10ms = >2000Hz equivalent, or 5-20 = 500-2000Hz)
+    // 2. Consistent amplitude (range/avg < 0.5 means sine-wave like)
+    // 3. Non-trivial amplitude (avg > 0.02)
+    bool is_tonal = (zero_crossings >= 5 && zero_crossings <= 100) && // 500Hz-10kHz range
+                    (avg_amp > 0.02f) &&                              // Not silence
+                    (amp_range < avg_amp * 1.5f);                     // Relatively consistent amplitude
+
+    if (is_tonal) {
+      g_received_tonal_samples += BEEP_WINDOW_SIZE;
+
+      if (!g_in_beep_burst) {
+        // Starting a new beep burst
+        g_in_beep_burst = true;
+        g_beep_burst_samples = BEEP_WINDOW_SIZE;
+      } else {
+        g_beep_burst_samples += BEEP_WINDOW_SIZE;
+      }
+    } else {
+      if (g_in_beep_burst) {
+        // Beep burst ended
+        // Only count as beep event if it was short (< 500ms = 24000 samples)
+        // Long tonal sounds are likely music, not artifacts
+        if (g_beep_burst_samples > 0 && g_beep_burst_samples < 24000) {
+          g_received_beep_events++;
+          g_received_stats.beep_events = g_received_beep_events;
+        }
+        g_in_beep_burst = false;
+        g_beep_burst_samples = 0;
+      }
+    }
+
+    g_received_stats.tonal_samples = g_received_tonal_samples;
+  }
+
   // Write to WAV file if enabled
   if (g_received_wav) {
     wav_writer_write(g_received_wav, &sample, 1);
@@ -503,6 +593,29 @@ void audio_analysis_print_report(void) {
   log_plain("  Discontinuities:         %llu (packet arrival gaps > 100ms)",
             (unsigned long long)g_received_stats.discontinuity_count);
   log_plain("  Max Gap Between Packets: %u ms (expected ~20ms per frame)", g_received_stats.max_gap_ms);
+
+  // Beep/tone artifact detection
+  if (g_received_beep_events > 0 || g_received_tonal_samples > 0) {
+    double tonal_pct =
+        g_received_stats.total_samples > 0 ? (100.0 * g_received_tonal_samples / g_received_stats.total_samples) : 0;
+    log_plain("BEEP/TONE ARTIFACTS:");
+    log_plain("  Beep Events:             %llu (short tonal bursts < 500ms)",
+              (unsigned long long)g_received_beep_events);
+    log_plain("  Tonal Samples:           %llu samples (%.1f%%) [consistent frequency content]",
+              (unsigned long long)g_received_tonal_samples, tonal_pct);
+
+    if (g_received_beep_events > 10) {
+      log_plain("  🔴 BEEPING DETECTED: %llu short tonal bursts - likely codec artifacts or system sounds!",
+                (unsigned long long)g_received_beep_events);
+      log_plain("     Possible causes:");
+      log_plain("       - Opus codec producing tonal artifacts during silence/transitions");
+      log_plain("       - Buffer underruns creating synthetic tones");
+      log_plain("       - AEC3 suppressor resonance");
+      log_plain("       - System notification sounds bleeding through");
+    } else if (g_received_beep_events > 3) {
+      log_plain("  ⚠️  Some beep artifacts detected (%llu events)", (unsigned long long)g_received_beep_events);
+    }
+  }
 
   log_plain("DIAGNOSTICS:");
   if (g_sent_stats.peak_level == 0) {
