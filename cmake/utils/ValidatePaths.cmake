@@ -60,6 +60,13 @@ if(EXTRA_PATTERNS)
     list(APPEND PATH_PATTERNS ${EXTRA_PATTERNS})
 endif()
 
+# Whitelist patterns - paths we allow (e.g., from official package repositories)
+# These are deterministic, reproducible build paths that don't leak developer info
+set(WHITELIST_PATTERNS
+    # Alpine Linux official package builder (always uses this path)
+    "/home/buildozer/aports/"
+)
+
 # Track found paths (as a newline-separated string to avoid semicolon issues)
 set(FOUND_PATHS_TEXT "")
 set(NUM_FOUND 0)
@@ -94,6 +101,21 @@ while(POS LESS OUTPUT_LEN AND NUM_FOUND LESS 20)
 
     # Skip empty lines
     if(NOT LINE OR LINE STREQUAL "")
+        continue()
+    endif()
+
+    # Check if this line matches any whitelist pattern
+    set(IS_WHITELISTED FALSE)
+    foreach(WHITELIST_PATTERN IN LISTS WHITELIST_PATTERNS)
+        string(FIND "${LINE}" "${WHITELIST_PATTERN}" WHITELIST_MATCH_POS)
+        if(NOT WHITELIST_MATCH_POS EQUAL -1)
+            set(IS_WHITELISTED TRUE)
+            break()
+        endif()
+    endforeach()
+
+    # Skip whitelisted lines
+    if(IS_WHITELISTED)
         continue()
     endif()
 
