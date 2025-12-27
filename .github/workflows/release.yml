@@ -50,59 +50,40 @@ jobs:
             VERSION="${{ github.event.inputs.version }}"
             echo "Using manual version: $VERSION"
           else
-            # Find highest semantic version tag (not most recent by date)
-            # Filter to only vX.Y.Z tags and sort by version number descending
-            LAST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
-            if [[ -z "$LAST_TAG" ]]; then
-              LAST_TAG="v0.0.0"
-            fi
-            echo "Last tag (highest version): $LAST_TAG"
+            # Use version.sh script to calculate next version
+            chmod +x scripts/version.sh
 
-            if [[ $LAST_TAG =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              MAJOR="${BASH_REMATCH[1]}"
-              MINOR="${BASH_REMATCH[2]}"
-              PATCH="${BASH_REMATCH[3]}"
-            else
-              MAJOR=0
-              MINOR=0
-              PATCH=0
-            fi
+            LAST_TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' 2>/dev/null || echo "v0.0.0")
+            echo "Current version: $LAST_TAG"
 
+            # Determine bump type from commits
             COMMITS=$(git log --format=%s $LAST_TAG..HEAD)
-            BREAKING_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature)\!|^breaking' || true)
-            BREAKING_BODY_COUNT=$(git log --format=%B $LAST_TAG..HEAD | grep -ic 'BREAKING CHANGE' || true)
-            TOTAL_BREAKING=$((BREAKING_COUNT + BREAKING_BODY_COUNT))
             FEAT_COUNT=$(echo "$COMMITS" | grep -icE '^(feat|feature):' || true)
             FIX_COUNT=$(echo "$COMMITS" | grep -icE '^(fix|bugfix):' || true)
             TOTAL_COMMITS=$(echo "$COMMITS" | wc -l)
-            OTHER_COUNT=$((TOTAL_COMMITS - TOTAL_BREAKING - FEAT_COUNT - FIX_COUNT))
+            OTHER_COUNT=$((TOTAL_COMMITS - FEAT_COUNT - FIX_COUNT))
 
             echo "Commit analysis:"
-            echo "  Breaking changes: $TOTAL_BREAKING"
             echo "  Features: $FEAT_COUNT"
             echo "  Fixes: $FIX_COUNT"
             echo "  Other: $OTHER_COUNT"
             echo "  Total: $TOTAL_COMMITS"
 
+            # Calculate next version using version.sh
             if [[ "${{ github.event.inputs.major_bump }}" == "true" ]]; then
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
+              VERSION_NUM=$(./scripts/version.sh --next-major)
               BUMP_TYPE="major (manual override)"
             elif [[ $FEAT_COUNT -gt 0 ]]; then
-              MINOR=$((MINOR + FEAT_COUNT))
-              PATCH=0
+              VERSION_NUM=$(./scripts/version.sh --next-minor)
               BUMP_TYPE="minor (${FEAT_COUNT} features)"
-            elif [[ $FIX_COUNT -gt 0 || $OTHER_COUNT -gt 0 ]]; then
-              PATCH=$((PATCH + FIX_COUNT + OTHER_COUNT))
-              BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
             else
-              PATCH=$((PATCH + 1))
-              BUMP_TYPE="patch (default)"
+              VERSION_NUM=$(./scripts/version.sh --next-patch)
+              BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
             fi
 
+            VERSION="v${VERSION_NUM}"
             echo "Bump type: $BUMP_TYPE"
-            VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+            echo "Next version: $VERSION"
           fi
 
           echo "version=$VERSION" >> $GITHUB_OUTPUT
