@@ -632,8 +632,8 @@ static void calculate_optimal_grid_layout(image_source_t *sources, int source_co
     float utilization = total_area_used / total_available_area;
 
     float test_cell_visual_aspect = (float)cell_width / ((float)cell_height * CHAR_ASPECT);
-    log_debug("  Testing %dx%d: cell=%dx%d (visual aspect %.2f), utilization=%.1f%%", cols, rows, cell_width,
-              cell_height, test_cell_visual_aspect, utilization * 100.0f);
+    log_debug_every(3000000, "  Testing %dx%d: cell=%dx%d (visual aspect %.2f), utilization=%.1f%%", cols, rows,
+                    cell_width, cell_height, test_cell_visual_aspect, utilization * 100.0f);
 
     // Prefer configurations with better utilization
     if (utilization > best_utilization) {
