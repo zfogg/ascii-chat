@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <stdatomic.h>
 
 #ifndef _WIN32
 #include <unistd.h> // For dup, dup2, close, STDERR_FILENO
@@ -70,6 +71,15 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   audio_context_t *ctx = (audio_context_t *)userData;
   float *output = (float *)outputBuffer;
+
+  // If shutting down, output silence immediately to prevent beeps
+  if (atomic_load(&ctx->shutting_down)) {
+    if (output != NULL) {
+      SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
+                  framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
+    }
+    return paContinue;
+  }
 
   // Log PortAudio status flags that might indicate issues
   if (statusFlags != 0) {
@@ -539,6 +549,7 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
   }
 
   ctx->initialized = true;
+  atomic_store(&ctx->shutting_down, false);
   log_info("Audio system initialized successfully");
   return ASCIICHAT_OK;
 }
@@ -787,16 +798,23 @@ asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
                      ctx ? ctx->initialized : 0, ctx ? ctx->playing : 0);
   }
 
+  // Signal shutdown FIRST so callback outputs silence instead of buffer data
+  // This prevents beeps/clicks from partially-read buffer data during shutdown
+  atomic_store(&ctx->shutting_down, true);
+
+  // Give the audio callback a few cycles to see the flag and output silence
+  // At 48kHz with 256 sample buffers, each callback is ~5.3ms
+  Pa_Sleep(20); // Wait ~4 callback cycles to ensure silence is playing
+
   mutex_lock(&ctx->state_mutex);
 
-  // Clear playback buffer first to prevent any stale audio from playing
+  // Clear playback buffer
   if (ctx->playback_buffer) {
     audio_ring_buffer_clear(ctx->playback_buffer);
   }
 
   if (ctx->output_stream) {
     // Use Pa_AbortStream instead of Pa_StopStream to stop immediately
-    // without playing remaining buffer contents (prevents beep at end)
     Pa_AbortStream(ctx->output_stream);
     Pa_CloseStream(ctx->output_stream);
     ctx->output_stream = NULL;

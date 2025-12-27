@@ -57,6 +57,7 @@
  */
 
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <portaudio.h>
 #ifdef __linux__
 #include <sched.h>
@@ -111,6 +112,7 @@ typedef struct {
   bool initialized;                     ///< True if context has been initialized
   bool recording;                       ///< True if audio capture is active
   bool playing;                         ///< True if audio playback is active
+  _Atomic bool shutting_down;           ///< True when shutdown started - callback outputs silence
   mutex_t state_mutex;                  ///< Mutex protecting context state
   void *audio_pipeline;                 ///< Client audio pipeline for echo cancellation (opaque pointer)
   double output_sample_rate;            ///< Actual sample rate of output stream (may differ from AUDIO_SAMPLE_RATE)
