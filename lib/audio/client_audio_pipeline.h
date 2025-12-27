@@ -270,11 +270,14 @@ typedef struct {
   /** Pipeline mutex for thread safety (ONLY for AEC3 state, not echo_ref_buffer) */
   mutex_t aec3_mutex; // Separate mutex for AEC3 processing only
 
-  /** Lock-free render ring buffer for AEC3 feeding
-   * The output callback writes render samples here without blocking.
-   * The capture thread drains this buffer before processing.
-   * This prevents priority inversion where the audio callback would block on aec3_mutex.
+  /** Render accumulation buffer for AEC3
+   * Accumulates 480 samples (10ms at 48kHz) from PortAudio callbacks (256 samples each)
+   * When full, immediately calls AnalyzeRender for correct timing.
    */
+  float render_accum_buffer[480];
+  int render_accum_idx;
+
+  /** Legacy ring buffer - kept for fallback but prefer direct AnalyzeRender calls */
   float *render_ring_buffer;
   _Atomic int render_ring_write_idx;
   _Atomic int render_ring_read_idx;
