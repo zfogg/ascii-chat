@@ -903,32 +903,26 @@ int main(int argc, const char **argv) {
 
   // Set up include paths for LibTooling to find system headers correctly.
   //
-  // The challenge is that:
-  // 1. LibTooling doesn't set up internal include paths like the clang driver does
-  // 2. -isystem directories from dependencies (zstd, libsodium, portaudio) are in
-  //    the compilation database and get searched for angle-bracket includes
-  // 3. Clang's builtin stdbool.h has `__has_include_next(<stdbool.h>)` which looks
-  //    for stdbool.h in the NEXT -isystem directory
-  // 4. If that next directory is a dependency (not SDK), it fails
+  // LibTooling's ClangTool doesn't auto-detect the resource directory like
+  // the clang driver does. We need to explicitly tell it where to find
+  // clang's builtin headers (stdbool.h, stddef.h, stdarg.h, etc.).
   //
-  // Solution: Add clang's builtin include directory as -isystem at the very
-  // beginning of the command line, so it's searched FIRST for angle-bracket
-  // includes like <stdbool.h>. This ensures the builtin headers are found
-  // before any dependency directories.
+  // We use -resource-dir to tell clang where its resource directory is,
+  // which makes it automatically add the include subdirectory to the search
+  // path for builtin headers.
 
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
-    std::string builtinInclude = std::string(resourceDir) + "/include";
-    if (llvm::sys::fs::exists(builtinInclude)) {
-      // Add clang's builtin include directory as -isystem (highest priority)
-      // This is where stdbool.h, stddef.h, stdarg.h etc. live
-      std::vector<std::string> builtinIncludeArgs = {"-isystem", builtinInclude};
+    if (llvm::sys::fs::exists(resourceDir)) {
+      // Tell clang where to find its resource directory
+      // This automatically adds resourceDir/include to the builtin include path
+      std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using clang builtin include directory: " << builtinInclude << "\n";
+          tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using resource directory: " << resourceDir << "\n";
     } else {
-      llvm::errs() << "Warning: Clang builtin include directory does not exist: " << builtinInclude << "\n";
+      llvm::errs() << "Warning: Resource directory does not exist: " << resourceDir << "\n";
     }
   }
 #endif
