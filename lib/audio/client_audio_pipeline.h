@@ -243,8 +243,10 @@ typedef struct {
 
   /** Dynamic range compressor */
   compressor_t compressor;
-  /** Noise gate */
+  /** Noise gate for capture */
   noise_gate_t noise_gate;
+  /** Noise gate for playback - cuts quiet received audio */
+  noise_gate_t playback_noise_gate;
   /** High-pass filter */
   highpass_filter_t highpass;
   /** Low-pass filter */

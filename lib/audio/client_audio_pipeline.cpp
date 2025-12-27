@@ -119,12 +119,12 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .comp_release_ms = 150.0f,    // Slower release (was 100ms)
       .comp_makeup_db = 6.0f,       // More makeup gain (was 3dB)
 
-      // Noise gate: more aggressive to break feedback loops
-      // Feedback builds up from low-level signals, need to cut them early
-      .gate_threshold = 0.02f,      // -34dB threshold (more aggressive to break feedback)
-      .gate_attack_ms = 0.5f,       // Very fast attack to catch feedback quickly
-      .gate_release_ms = 50.0f,     // Faster release (was 100ms)
-      .gate_hysteresis = 0.5f,      // Less hysteresis for faster response
+      // Noise gate: VERY aggressive to cut quiet background audio completely
+      // User feedback: "don't amplify or play quiet background audio at all"
+      .gate_threshold = 0.08f,      // -22dB threshold (was 0.02/-34dB) - cuts quiet audio hard
+      .gate_attack_ms = 0.5f,       // Very fast attack
+      .gate_release_ms = 30.0f,     // Fast release (was 50ms)
+      .gate_hysteresis = 0.3f,      // Tighter hysteresis = stays closed longer
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };
@@ -318,6 +318,16 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
                         p->config.gate_hysteresis);
   log_info("✓ Capture noise gate: threshold=%.4f (%.1fdB)",
            p->config.gate_threshold, 20.0f * log10f(p->config.gate_threshold + 1e-10f));
+
+  // Initialize PLAYBACK noise gate - cuts quiet received audio before speakers
+  // More aggressive than capture gate to prevent amplified background noise
+  noise_gate_init(&p->playback_noise_gate, sample_rate);
+  noise_gate_set_params(&p->playback_noise_gate,
+                        0.05f,    // -26dB threshold - cut quiet audio
+                        1.0f,     // 1ms attack - fast open
+                        50.0f,    // 50ms release - smooth close
+                        0.4f);    // Hysteresis
+  log_info("✓ Playback noise gate: threshold=0.05 (-26dB)");
 
   // Initialize highpass filter (removes low-frequency rumble)
   highpass_filter_init(&p->highpass, p->config.highpass_hz, sample_rate);
@@ -820,9 +830,11 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  // No gain boost on playback - pass through as-is
-  // AGC was amplifying quiet sounds too much
-  (void)decoded_samples;  // Silence unused warning if no processing needed
+  // Apply playback noise gate - cut quiet background audio before it reaches speakers
+  // This prevents amplified background noise from being played loudly
+  if (decoded_samples > 0) {
+    noise_gate_process_buffer(&pipeline->playback_noise_gate, output, decoded_samples);
+  }
 
   // NOTE: Do NOT register render signal here!
   // The render signal (speaker output) must be registered to AEC3 only at the point
