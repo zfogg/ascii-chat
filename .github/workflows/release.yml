@@ -365,7 +365,7 @@ jobs:
           cd dist
           for file in *; do
             echo "Signing $file..."
-            gpg --detach-sign --armor --batch --pinentry-mode loopback --local-user F315D1B948F33B2102FBD7B6B95124621822044A "$file"
+            gpg --detach-sign --armor --batch --pinentry-mode loopback --passphrase "${{ secrets.GPG_KEY_PASSWORD }}" --local-user F315D1B948F33B2102FBD7B6B95124621822044A "$file"
           done
 
           # List signatures
@@ -489,7 +489,7 @@ jobs:
           cd dist
           for file in *; do
             echo "Signing $file..."
-            gpg --detach-sign --armor --batch --pinentry-mode loopback --local-user F315D1B948F33B2102FBD7B6B95124621822044A "$file"
+            gpg --detach-sign --armor --batch --pinentry-mode loopback --passphrase "${{ secrets.GPG_KEY_PASSWORD }}" --local-user F315D1B948F33B2102FBD7B6B95124621822044A "$file"
           done
 
           # List signatures
