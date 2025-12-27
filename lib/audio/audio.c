@@ -798,24 +798,27 @@ asciichat_error_t audio_stop_playback(audio_context_t *ctx) {
                      ctx ? ctx->initialized : 0, ctx ? ctx->playing : 0);
   }
 
-  // Signal shutdown FIRST so callback outputs silence instead of buffer data
-  // This prevents beeps/clicks from partially-read buffer data during shutdown
+  // STEP 1: Signal shutdown to stop accepting new writes to playback buffer
+  // This must happen FIRST to prevent any new data from being queued
   atomic_store(&ctx->shutting_down, true);
 
-  // Give the audio callback a few cycles to see the flag and output silence
-  // At 48kHz with 256 sample buffers, each callback is ~5.3ms
-  Pa_Sleep(20); // Wait ~4 callback cycles to ensure silence is playing
-
-  mutex_lock(&ctx->state_mutex);
-
-  // Clear playback buffer
+  // STEP 2: Clear playback buffer IMMEDIATELY to remove any queued data
+  // This prevents any garbage/old audio from being played during shutdown
   if (ctx->playback_buffer) {
     audio_ring_buffer_clear(ctx->playback_buffer);
   }
 
+  // STEP 3: Wait for audio callbacks to drain and output silence
+  // At 48kHz with 256 sample buffers, each callback is ~5.3ms
+  // Wait long enough for the audio driver's internal buffers to drain too
+  Pa_Sleep(50); // Wait ~10 callback cycles + driver buffer drain
+
+  mutex_lock(&ctx->state_mutex);
+
+  // STEP 4: Stop the stream - use Pa_StopStream for graceful shutdown
+  // Pa_StopStream waits for buffers to finish playing (should be silence now)
   if (ctx->output_stream) {
-    // Use Pa_AbortStream instead of Pa_StopStream to stop immediately
-    Pa_AbortStream(ctx->output_stream);
+    Pa_StopStream(ctx->output_stream);
     Pa_CloseStream(ctx->output_stream);
     ctx->output_stream = NULL;
   }
@@ -842,6 +845,11 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
   if (!ctx || !ctx->initialized || !buffer || num_samples <= 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: ctx=%p, buffer=%p, num_samples=%d", ctx, buffer,
                      num_samples);
+  }
+
+  // Don't accept new audio data during shutdown - this prevents garbage/beeps
+  if (atomic_load(&ctx->shutting_down)) {
+    return ASCIICHAT_OK; // Silently discard
   }
 
   asciichat_error_t result = audio_ring_buffer_write(ctx->playback_buffer, buffer, num_samples);
