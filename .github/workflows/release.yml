@@ -406,9 +406,6 @@ jobs:
           os: macos
           extra-packages: ""
 
-      - name: Configure with CMake
-        run: cmake --preset release
-
       - name: Patch cached WebRTC for macOS header search order
         if: runner.os == 'macOS'
         run: |
@@ -421,6 +418,9 @@ jobs:
           else
             echo "No cached WebRTC source found, patch will be applied during fetch"
           fi
+
+      - name: Configure with CMake
+        run: cmake --preset release
 
       - name: Save CMake dependency cache
         if: always() && steps.install-deps.outputs.cmake-cache-hit != 'true'
