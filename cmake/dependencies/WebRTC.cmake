@@ -66,13 +66,24 @@ if(NOT webrtc_aec3_POPULATED)
     string(REPLACE "-std=c++26" "-std=c++17" WEBRTC_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     string(REPLACE "-std=gnu++26" "-std=c++17" WEBRTC_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
 
+    # CRITICAL macOS fix: Remove -resource-dir from flags before building WebRTC
+    # The flag breaks libc++ header search order on macOS with Homebrew LLVM
+    # It causes libc++ to find system C headers before its own wrapper headers
+    if(APPLE)
+        string(REGEX REPLACE "-resource-dir [^ ]+" "" WEBRTC_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
+        string(REGEX REPLACE "-resource-dir [^ ]+" "" WEBRTC_C_FLAGS "${CMAKE_C_FLAGS}")
+    else()
+        set(WEBRTC_C_FLAGS "${CMAKE_C_FLAGS}")
+    endif()
+
     # Suppress all warnings for third-party WebRTC code (not our code to fix)
     string(APPEND WEBRTC_CXX_FLAGS " -w")
+    string(APPEND WEBRTC_C_FLAGS " -w")
 
     set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "${WEBRTC_CXX_FLAGS}")
-    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w")
+    set(CMAKE_C_FLAGS "${WEBRTC_C_FLAGS}")
 
     # Build WebRTC subdirectory with C++17 and warnings suppressed
     add_subdirectory(${webrtc_aec3_SOURCE_DIR} ${CMAKE_BINARY_DIR}/webrtc_aec3-build)
