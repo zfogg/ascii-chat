@@ -43,7 +43,7 @@ node_pool_t *node_pool_create(size_t pool_size) {
   pool->used_count = 0;
 
   if (mutex_init(&pool->pool_mutex) != 0) {
-    SET_ERRNO(ERROR_SYSTEM, "Failed to initialize mutex for node pool");
+    SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize mutex for node pool");
     node_pool_destroy(pool);
     return NULL;
   }
