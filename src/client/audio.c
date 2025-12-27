@@ -270,7 +270,16 @@ static void *audio_capture_thread_func(void *arg) {
 
   log_info("Audio capture thread started");
 
-  float audio_buffer[AUDIO_SAMPLES_PER_PACKET];
+// Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
+#define OPUS_FRAME_SAMPLES 960
+#define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
+
+  // Read enough samples per iteration to drain faster than we fill
+  // Buffer holds multiple Opus frames worth to prevent overflow
+  // 4 frames = 3840 samples = 80ms, but we'll read what's available up to this
+#define CAPTURE_READ_SIZE (OPUS_FRAME_SAMPLES * 4)
+
+  float audio_buffer[CAPTURE_READ_SIZE];
   static bool wav_dumpers_initialized = false;
 
   // Initialize WAV dumpers only once (file handles persist)
@@ -280,10 +289,6 @@ static void *audio_capture_thread_func(void *arg) {
     log_info("Audio debugging enabled: dumping to /tmp/audio_capture_*.wav");
     wav_dumpers_initialized = true;
   }
-
-// Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
-#define OPUS_FRAME_SAMPLES 960
-#define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
 
   // Accumulator for building complete Opus frames
   float opus_frame_buffer[OPUS_FRAME_SAMPLES];
@@ -308,8 +313,9 @@ static void *audio_capture_thread_func(void *arg) {
       continue;
     }
 
-    // Read samples from the ring buffer (up to AUDIO_SAMPLES_PER_PACKET)
-    int to_read = (available < AUDIO_SAMPLES_PER_PACKET) ? available : AUDIO_SAMPLES_PER_PACKET;
+    // Read as many samples as possible (up to CAPTURE_READ_SIZE) to drain faster
+    // This prevents buffer overflow when processing is slower than capture
+    int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;
     asciichat_error_t read_result = audio_read_samples(&g_audio_context, audio_buffer, to_read);
 
     if (read_result != ASCIICHAT_OK) {
