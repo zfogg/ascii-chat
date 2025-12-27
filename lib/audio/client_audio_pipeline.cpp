@@ -519,8 +519,31 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             capture_buf.MergeFrequencyBands();
 
             // Scale back down to PortAudio float range [-1.0, 1.0]
+            // Apply feedback prevention: if output > input, reduce gain
+            static float feedback_gain = 1.0f;
+            float out_energy = 0.0f;
             for (int j = 0; j < chunk_size; j++) {
-              (processed + i)[j] = capture_channels[0][j] / 32768.0f;
+              float sample = capture_channels[0][j] / 32768.0f;
+              out_energy += sample * sample;
+            }
+            float out_rms_check = sqrtf(out_energy / chunk_size);
+
+            // Feedback detection: if output > input, reduce gain
+            if (out_rms_check > last_input_rms * 1.1f && last_input_rms > 0.01f) {
+              feedback_gain *= 0.8f;  // Reduce gain by 20%
+              if (feedback_gain < 0.1f) feedback_gain = 0.1f;
+            } else if (feedback_gain < 1.0f) {
+              feedback_gain *= 1.02f;  // Slowly recover
+              if (feedback_gain > 1.0f) feedback_gain = 1.0f;
+            }
+
+            // Apply gain and hard limiter
+            for (int j = 0; j < chunk_size; j++) {
+              float sample = (capture_channels[0][j] / 32768.0f) * feedback_gain;
+              // Hard limit to prevent clipping
+              if (sample > 0.4f) sample = 0.4f;
+              if (sample < -0.4f) sample = -0.4f;
+              (processed + i)[j] = sample;
             }
 
             // Log capture signal stats and metrics every second
