@@ -285,6 +285,9 @@ typedef struct {
   /** Initialization state */
   bool initialized;
 
+  /** Startup fade-in to prevent initial click (samples remaining) */
+  int capture_fadein_remaining;
+
   /** Debug WAV writers for AEC3 analysis */
   void *debug_wav_aec3_in;  // Microphone input before AEC3
   void *debug_wav_aec3_out; // Microphone output after AEC3
