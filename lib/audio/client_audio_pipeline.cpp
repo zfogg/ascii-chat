@@ -392,6 +392,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
 
   p->initialized = true;
 
+  // Initialize startup fade-in to prevent initial microphone click
+  // 50ms at 48kHz = 2400 samples - gradual ramp from silence to full volume
+  p->capture_fadein_remaining = (p->config.sample_rate * 50) / 1000;  // 50ms worth of samples
+  log_info("✓ Capture fade-in: %d samples (50ms)", p->capture_fadein_remaining);
+
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus",
            p->config.sample_rate, p->config.frame_size_ms, p->config.opus_bitrate / 1000);
 
@@ -508,6 +513,29 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   // Create float buffer for processing
   float *processed = (float *)alloca(num_samples * sizeof(float));
   memcpy(processed, input, num_samples * sizeof(float));
+
+  // Apply startup fade-in to prevent initial click when microphone connects
+  // This gradually ramps volume from 0 to 1 over the first 50ms (2400 samples at 48kHz)
+  if (pipeline->capture_fadein_remaining > 0) {
+    // Calculate the total fade-in duration for computing gain ramp
+    const int total_fadein_samples = (pipeline->config.sample_rate * 50) / 1000;
+
+    for (int i = 0; i < num_samples && pipeline->capture_fadein_remaining > 0; i++) {
+      // Calculate fade-in gain: starts at 0.0, ends at 1.0
+      // fadein_remaining counts down from total_fadein_samples to 0
+      float progress = 1.0f - ((float)pipeline->capture_fadein_remaining / (float)total_fadein_samples);
+      // Use smooth S-curve (smoothstep) for less abrupt transition
+      float gain = progress * progress * (3.0f - 2.0f * progress);
+      processed[i] *= gain;
+      pipeline->capture_fadein_remaining--;
+    }
+
+    static int logged_fadein = 0;
+    if (!logged_fadein) {
+      log_info("Capture fade-in active: ramping microphone volume over 50ms");
+      logged_fadein = 1;
+    }
+  }
 
   // Check for AEC3 bypass (for debugging)
   static int bypass_aec3 = -1;
