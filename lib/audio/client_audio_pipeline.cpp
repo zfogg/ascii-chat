@@ -104,7 +104,8 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in audio.c!
       .jitter_margin_ms = 100,  // 100ms (was 200ms)
 
-      .highpass_hz = 80.0f,
+      // Higher cutoff to cut low-frequency rumble and feedback
+      .highpass_hz = 150.0f,   // Was 80Hz, increased to break rumble feedback loop
       .lowpass_hz = 8000.0f,
 
       // Compressor: only compress loud peaks, boost overall output
@@ -115,12 +116,12 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .comp_release_ms = 150.0f,    // Slower release (was 100ms)
       .comp_makeup_db = 6.0f,       // More makeup gain (was 3dB)
 
-      // Noise gate: only cut true silence, not quiet speech
-      // Was: threshold 0.01 (-40dB) cutting too much
-      .gate_threshold = 0.003f,     // -50dB threshold (was 0.01 = -40dB)
-      .gate_attack_ms = 1.0f,       // Fast attack (was 2ms)
-      .gate_release_ms = 100.0f,    // Slower release (was 50ms)
-      .gate_hysteresis = 0.7f,      // Less hysteresis (was 0.9)
+      // Noise gate: more aggressive to break feedback loops
+      // Feedback builds up from low-level signals, need to cut them early
+      .gate_threshold = 0.02f,      // -34dB threshold (more aggressive to break feedback)
+      .gate_attack_ms = 0.5f,       // Very fast attack to catch feedback quickly
+      .gate_release_ms = 50.0f,     // Faster release (was 100ms)
+      .gate_hysteresis = 0.5f,      // Less hysteresis for faster response
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };
@@ -220,13 +221,12 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.filter.shadow.length_blocks = 20;   // Shadow filter same length
       aec3_config.filter.main_initial.length_blocks = 20;  // Initial filter same
 
-      // Match the 200ms echo delay detected by audio analysis
-      aec3_config.delay.default_delay = 20;  // 200ms initial delay estimate
-      aec3_config.delay.delay_headroom_samples = 1920;  // 40ms headroom for jitter
-
-      // Help delay estimator converge faster
-      aec3_config.delay.delay_estimate_smoothing = 0.7f;  // Faster adaptation
-      aec3_config.delay.delay_candidate_detection_threshold = 0.2f;  // More sensitive
+      // FORCE 200ms delay - bypass broken delay estimator
+      // The delay estimator was showing 0ms or 68ms instead of actual 200ms
+      // 200ms at 48kHz = 9600 samples
+      aec3_config.delay.fixed_capture_delay_samples = 9600;  // Force 200ms delay
+      aec3_config.delay.delay_headroom_samples = 2400;  // 50ms headroom for jitter
+      aec3_config.delay.log_warning_on_delay_changes = true;  // Debug logging
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -254,7 +254,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized (200ms filter + 200ms delay)");
+        // Set external delay hint to 200ms for network audio
+        // This tells AEC3 where to look for the echo in the render buffer
+        wrapper->aec3->SetAudioBufferDelay(200);  // 200ms delay
+        log_info("✓ WebRTC AEC3 initialized (200ms filter, 200ms external delay set)");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
