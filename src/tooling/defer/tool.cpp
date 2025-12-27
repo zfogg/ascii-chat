@@ -891,6 +891,13 @@ int main(int argc, const char **argv) {
   // Build list of system include paths to add as -isystem paths.
   // Now that project paths use -iquote (only for "..." includes), these -isystem paths
   // will be searched for <...> includes like <stdio.h>.
+  //
+  // NOTE: We only add clang's builtin headers here. The SDK headers are handled by
+  // -isysroot which tells clang where the SDK root is. We do NOT add ${SDK}/usr/include
+  // explicitly because:
+  // 1. Modern macOS SDKs have sparse /usr/include (missing stdbool.h, etc.)
+  // 2. Adding it causes #include_next in clang headers to fail
+  // 3. -isysroot handles SDK header paths correctly
   std::vector<std::string> appendArgs;
 #ifdef CLANG_RESOURCE_DIR
   {
@@ -899,16 +906,6 @@ int main(int argc, const char **argv) {
       appendArgs.push_back("-isystem");
       appendArgs.push_back(builtinInclude);
       llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
-    }
-  }
-#endif
-#ifdef MACOS_SDK_PATH
-  {
-    std::string sdkInclude = std::string(MACOS_SDK_PATH) + "/usr/include";
-    if (llvm::sys::fs::exists(sdkInclude)) {
-      appendArgs.push_back("-isystem");
-      appendArgs.push_back(sdkInclude);
-      llvm::errs() << "Added SDK -isystem: " << sdkInclude << "\n";
     }
   }
 #endif
