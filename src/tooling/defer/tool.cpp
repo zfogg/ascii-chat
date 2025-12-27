@@ -877,6 +877,7 @@ int main(int argc, const char **argv) {
   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
   // to CommandLineTools SDK, but we strip that from compile_commands.json and
   // set our own explicitly to ensure consistent behavior.
+  std::string selectedSDK;
 #ifdef __APPLE__
   {
     const char* sdkPaths[] = {
@@ -886,7 +887,6 @@ int main(int argc, const char **argv) {
         // CommandLineTools SDK (fallback for users without Xcode)
         "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
     };
-    const char* selectedSDK = nullptr;
 
     for (const char* sdk : sdkPaths) {
       if (llvm::sys::fs::exists(sdk)) {
@@ -895,7 +895,7 @@ int main(int argc, const char **argv) {
       }
     }
 
-    if (selectedSDK) {
+    if (!selectedSDK.empty()) {
       prependArgs.push_back("-isysroot");
       prependArgs.push_back(selectedSDK);
       llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
@@ -906,11 +906,10 @@ int main(int argc, const char **argv) {
 #endif
 
   // Build list of system include paths to add as -isystem paths.
-  // Now that project paths use -iquote (only for "..." includes), these -isystem paths
-  // will be searched for <...> includes like <stdio.h>.
-  //
-  // We add clang's builtin headers (stdbool.h, stddef.h, etc.) as -isystem paths
-  // to ensure they're found before SDK headers.
+  // LibTooling (cc1 mode) doesn't automatically add system include paths like
+  // the clang driver does, so we add them explicitly:
+  // 1. Clang's builtin headers (stdbool.h, stddef.h, etc.) - FIRST so they shadow SDK builtins
+  // 2. SDK's usr/include (stdio.h, stdlib.h, etc.) - for system headers
   std::vector<std::string> appendArgs;
 #ifdef CLANG_RESOURCE_DIR
   {
@@ -919,6 +918,18 @@ int main(int argc, const char **argv) {
       appendArgs.push_back("-isystem");
       appendArgs.push_back(builtinInclude);
       llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
+    }
+  }
+#endif
+#ifdef __APPLE__
+  // Add SDK's usr/include for system headers (stdio.h, etc.)
+  // This is needed because LibTooling's cc1 mode doesn't add these automatically
+  if (!selectedSDK.empty()) {
+    std::string sdkInclude = selectedSDK + "/usr/include";
+    if (llvm::sys::fs::exists(sdkInclude)) {
+      appendArgs.push_back("-isystem");
+      appendArgs.push_back(sdkInclude);
+      llvm::errs() << "Added SDK -isystem: " << sdkInclude << "\n";
     }
   }
 #endif
