@@ -944,10 +944,11 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Explicitly undefine __MVS__ to prevent clang's stdbool.h from triggering __has_include_next
-  // check for a system stdbool.h (which doesn't exist in modern macOS SDKs)
+  // Use -nostdlibinc to tell clang there are no standard C library include directories.
+  // This makes __has_include_next(<stdbool.h>) in clang's stdbool.h return false instead
+  // of erroring when it can't find a system stdbool.h.
   tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-U__MVS__", tooling::ArgumentInsertPosition::END));
+      tooling::getInsertArgumentAdjuster("-nostdlibinc", tooling::ArgumentInsertPosition::BEGIN));
 
   // Set up include paths for LibTooling to find system headers correctly.
   //
@@ -962,6 +963,7 @@ int main(int argc, const char **argv) {
   // is automatically added by clang when we use -isysroot.
 
   // Add -isysroot for the SDK (enables framework and system header resolution)
+  // Also add SDK usr/include explicitly since -nostdlibinc disables automatic SDK includes
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
@@ -970,6 +972,16 @@ int main(int argc, const char **argv) {
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+
+      // Add SDK usr/include via -isystem at END (after clang builtins, after dependencies)
+      // This provides <stdio.h> etc. since -nostdlibinc disables automatic SDK includes
+      llvm::SmallString<256> sdkInclude(sdkPath);
+      llvm::sys::path::append(sdkInclude, "usr", "include");
+      if (llvm::sys::fs::exists(sdkInclude)) {
+        std::vector<std::string> sdkIncludeArgs = {"-isystem", std::string(sdkInclude)};
+        tool.appendArgumentsAdjuster(
+            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
+      }
     } else {
       llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
     }
