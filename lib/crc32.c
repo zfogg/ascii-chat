@@ -8,7 +8,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdatomic.h>
+// unistd.h is POSIX-only (not available on Windows)
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)

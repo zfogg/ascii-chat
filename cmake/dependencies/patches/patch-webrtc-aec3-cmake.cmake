@@ -35,6 +35,17 @@ string(REPLACE
     "${CMAKE_CONTENT}"
 )
 
+# Fix: Make platform macros conditional based on target OS
+# WEBRTC_POSIX enables POSIX headers (pthread.h, sys/time.h, strings.h) - Unix/macOS only
+# WEBRTC_WIN enables Windows headers and APIs - Windows only
+# WebRTC requires exactly one platform macro to be defined
+string(REPLACE
+    "add_definitions(-DWEBRTC_POSIX)"
+    "# Platform-specific macros for WebRTC (must define exactly one)\nif(WIN32)\n    add_definitions(-DWEBRTC_WIN)\nelseif(UNIX)\n    add_definitions(-DWEBRTC_POSIX)\nendif()"
+    CMAKE_CONTENT
+    "${CMAKE_CONTENT}"
+)
+
 # Fix: Add C++17 requirement (Abseil requires C++17 for std::result_of)
 # Make platform-aware: -fPIC and -pthread are Unix-only flags
 string(REPLACE
