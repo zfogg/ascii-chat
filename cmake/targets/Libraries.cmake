@@ -920,12 +920,9 @@ if(APPLE)
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
     )
-elseif(UNIX AND NOT USE_MUSL)
-    # Link JACK if it was found earlier
-    if(JACK_LIBRARY)
-        target_link_libraries(ascii-chat-static-lib INTERFACE ${JACK_LIBRARY})
-    endif()
 endif()
+# Note: PORTAUDIO_LIBRARIES from pkg-config already includes all dependencies.
+# If PortAudio was built with JACK support, -ljack is already included.
 
 # Memory allocator (mimalloc)
 if(MIMALLOC_LIBRARIES)
