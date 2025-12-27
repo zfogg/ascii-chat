@@ -406,17 +406,31 @@ function(configure_musl_post_project)
     # Store Alpine libc++ paths for static executable linking
     # NOTE: Do NOT use link_libraries() here - it applies globally to ALL targets
     # including shared libraries. Alpine libc++ lacks -fPIC and cannot be used in
-    # shared libraries. Instead, we store paths in cache variables and link them
-    # only to the static executable target later.
-    set(ALPINE_LIBCXX_STATIC "${LIBCXX_PATH}" CACHE FILEPATH "Alpine libc++ for static executable" FORCE)
-    set(ALPINE_LIBCXXABI_STATIC "${LIBCXXABI_PATH}" CACHE FILEPATH "Alpine libc++abi for static executable" FORCE)
+    # shared libraries. Instead, we store paths in cache variables and provide a
+    # helper function to link them to static executables.
+    set(ALPINE_LIBCXX_STATIC "${LIBCXX_PATH}" CACHE FILEPATH "Alpine libc++ for static executables" FORCE)
+    set(ALPINE_LIBCXXABI_STATIC "${LIBCXXABI_PATH}" CACHE FILEPATH "Alpine libc++abi for static executables" FORCE)
     if(LIBUNWIND_PATH)
-        set(ALPINE_LIBUNWIND_STATIC "${LIBUNWIND_PATH}" CACHE FILEPATH "Alpine libunwind for static executable" FORCE)
+        set(ALPINE_LIBUNWIND_STATIC "${LIBUNWIND_PATH}" CACHE FILEPATH "Alpine libunwind for static executables" FORCE)
     endif()
+
+    # Define helper function to link Alpine libc++ to static executables
+    # Usage: link_alpine_libcxx(target_name)
+    function(link_alpine_libcxx TARGET_NAME)
+        if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
+            target_link_libraries(${TARGET_NAME} PRIVATE
+                ${ALPINE_LIBCXX_STATIC}
+                ${ALPINE_LIBCXXABI_STATIC}
+            )
+            if(ALPINE_LIBUNWIND_STATIC)
+                target_link_libraries(${TARGET_NAME} PRIVATE ${ALPINE_LIBUNWIND_STATIC})
+            endif()
+        endif()
+    endfunction()
 
     # Link musl libc globally (applies to all targets)
     # For shared libraries: -stdlib=libc++ will find system libc++ with -fPIC
-    # For static executable: Alpine libc++ will be linked via target_link_libraries()
+    # For static executables: Alpine libc++ will be linked via link_alpine_libcxx()
     link_libraries(c)
 
     add_link_options(
