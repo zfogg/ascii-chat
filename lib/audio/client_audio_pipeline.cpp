@@ -207,13 +207,20 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
     try {
-      // Configure AEC3 for acoustic echo cancellation
-      // IMPORTANT: Use WebRTC defaults - they're well-tuned for real echo cancellation!
-      // Previous crash was from setting default_delay too high (25 blocks).
-      // Now using ALL DEFAULTS which are safe and effective.
+      // Configure AEC3 for network audio echo cancellation
+      // Network audio has longer delays than local acoustic echo:
+      // - Network latency: 20-50ms each way
+      // - Jitter buffer: 100ms
+      // - Audio processing: 20-40ms
+      // Total round-trip: 150-250ms
+      //
+      // Block size = 10ms at 48kHz, so 12 blocks = 120ms default delay
+      // (25 blocks caused crash in ReverbFrequencyResponse, so stay below that)
       webrtc::EchoCanceller3Config aec3_config;
-      // Use ALL WebRTC defaults - no customization needed
-      // The defaults are tuned for real-world echo cancellation scenarios
+
+      // Set delay for network audio path (not local acoustic)
+      aec3_config.delay.default_delay = 12;  // 120ms initial estimate (safe, below crash threshold)
+      aec3_config.delay.delay_headroom_samples = 960;  // 20ms headroom for jitter
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -241,7 +248,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized (full defaults for echo cancellation)");
+        log_info("✓ WebRTC AEC3 initialized (120ms delay for network audio)");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
