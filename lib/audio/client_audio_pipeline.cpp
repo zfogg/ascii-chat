@@ -194,14 +194,28 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
     try {
-      // Use mostly default AEC3 config and trust automatic delay estimation
-      // Previous custom config with -30dB ERL indicates over-tuning was causing instability
+      // Configure AEC3 for network audio with significant jitter buffer delay
+      // Our system has ~200-300ms delay from jitter buffers, so we need a MUCH
+      // longer filter than the default 13 blocks (~43ms).
+      //
+      // Block size at 48kHz = 480 samples = 10ms
+      // 300ms delay = 30 blocks minimum, use 50 blocks for safety margin
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Only minimal tuning for network audio:
-      // - Slightly longer initial learning period for network jitter
-      // - Trust AEC3's automatic delay estimation (SetAudioBufferDelay(0))
-      aec3_config.filter.initial_state_seconds = 2.5f;  // Default is 2.5s, keep it
+      // CRITICAL: Increase filter length to handle network delay
+      // Default is 13 blocks (43ms) which is FAR too short for our 200-300ms delay.
+      // 50 blocks = 500ms, giving us headroom for jitter.
+      aec3_config.filter.main.length_blocks = 50;          // 500ms (default: 13 = 43ms)
+      aec3_config.filter.shadow.length_blocks = 50;        // Match main filter
+      aec3_config.filter.main_initial.length_blocks = 40;  // Initial phase slightly shorter
+      aec3_config.filter.shadow_initial.length_blocks = 40;
+
+      // Increase delay estimation starting point for network audio
+      // Default is 5 blocks (50ms), but we expect ~200ms delay from jitter buffer
+      aec3_config.delay.default_delay = 20;  // Start at 200ms (reasonable for network audio)
+
+      // Slower adaptation for network audio (more stable)
+      aec3_config.filter.initial_state_seconds = 3.0f;  // Slightly longer learning period
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -229,9 +243,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with default config");
-        log_info("  - Automatic delay estimation enabled (SetAudioBufferDelay=0)");
-        log_info("  - Using WebRTC's default echo suppression settings");
+        log_info("✓ WebRTC AEC3 initialized with network-optimized config");
+        log_info("  - Filter length: 50 blocks (500ms) for network jitter");
+        log_info("  - Default delay estimate: 200ms");
+        log_info("  - Automatic delay estimation enabled");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
@@ -417,11 +432,16 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 render_chunk[j] = pipeline->render_ring_buffer[idx];
               }
 
-              // Feed to AEC3 AnalyzeRender (per demo.cc lines 134-136)
+              // Feed to AEC3 AnalyzeRender
+              // CRITICAL: WebRTC expects float samples in int16 range [-32768, 32767]
+              // PortAudio provides float samples in range [-1.0, 1.0]
+              // Scale up by 32768 before feeding to AEC3
               webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
               float* const* render_channels = render_buf.channels();
               if (render_channels && render_channels[0]) {
-                memcpy(render_channels[0], render_chunk, webrtc_frame_size * sizeof(float));
+                for (int j = 0; j < webrtc_frame_size; j++) {
+                  render_channels[0][j] = render_chunk[j] * 32768.0f;
+                }
                 render_buf.SplitIntoFrequencyBands();
                 wrapper->aec3->AnalyzeRender(&render_buf);
                 render_buf.MergeFrequencyBands();
@@ -442,11 +462,16 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           }
 
           // ---- STEP 2: Process capture frame ----
+          // CRITICAL: WebRTC expects float samples in int16 range [-32768, 32767]
+          // PortAudio provides float samples in range [-1.0, 1.0]
+          // Scale up before processing, scale back down after
           webrtc::AudioBuffer capture_buf(48000, 1, 48000, 1, 48000, 1);
           float* const* capture_channels = capture_buf.channels();
           if (capture_channels && capture_channels[0]) {
-            // Copy microphone input to capture buffer
-            memcpy(capture_channels[0], processed + i, chunk_size * sizeof(float));
+            // Scale up microphone input to int16 range for WebRTC
+            for (int j = 0; j < chunk_size; j++) {
+              capture_channels[0][j] = (processed + i)[j] * 32768.0f;
+            }
 
             // AnalyzeCapture on NON-split buffer (per demo.cc line 137)
             wrapper->aec3->AnalyzeCapture(&capture_buf);
@@ -454,8 +479,10 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Split into frequency bands for ProcessCapture (per demo.cc line 138)
             capture_buf.SplitIntoFrequencyBands();
 
-            // Set audio buffer delay to 0 before ProcessCapture (per demo.cc line 140)
-            wrapper->aec3->SetAudioBufferDelay(0);
+            // NOTE: Do NOT call SetAudioBufferDelay(0) here!
+            // demo.cc uses external delay estimation with pre-recorded synchronized WAV files.
+            // Our real-time system has variable network/jitter buffer delay (~200-300ms).
+            // Let AEC3 use its internal delay estimation instead.
 
             // ProcessCapture on SPLIT buffer (per demo.cc line 141)
             wrapper->aec3->ProcessCapture(&capture_buf, false);
@@ -463,8 +490,10 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             // Merge frequency bands back to time domain
             capture_buf.MergeFrequencyBands();
 
-            // Copy echo-cancelled result back to output
-            memcpy(processed + i, capture_channels[0], chunk_size * sizeof(float));
+            // Scale back down to PortAudio float range [-1.0, 1.0]
+            for (int j = 0; j < chunk_size; j++) {
+              (processed + i)[j] = capture_channels[0][j] / 32768.0f;
+            }
 
             // Log capture signal stats and metrics every second
             static int capture_count = 0;
