@@ -208,19 +208,18 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   if (p->flags.echo_cancel) {
     try {
       // Configure AEC3 for network audio echo cancellation
-      // Network audio has longer delays than local acoustic echo:
-      // - Network latency: 20-50ms each way
-      // - Jitter buffer: 100ms
-      // - Audio processing: 20-40ms
-      // Total round-trip: 150-250ms
-      //
-      // Block size = 10ms at 48kHz, so 12 blocks = 120ms default delay
-      // (25 blocks caused crash in ReverbFrequencyResponse, so stay below that)
+      // Audio analysis shows echo detected at 200ms delay, so set default there.
+      // Block size = 10ms at 48kHz, so 20 blocks = 200ms
+      // (25 blocks caused crash, so 20 should be safe)
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Set delay for network audio path (not local acoustic)
-      aec3_config.delay.default_delay = 12;  // 120ms initial estimate (safe, below crash threshold)
-      aec3_config.delay.delay_headroom_samples = 960;  // 20ms headroom for jitter
+      // Match the 200ms echo delay detected by audio analysis
+      aec3_config.delay.default_delay = 20;  // 200ms - matches detected echo delay
+      aec3_config.delay.delay_headroom_samples = 1920;  // 40ms headroom for jitter
+
+      // Help delay estimator converge faster to the correct delay
+      aec3_config.delay.delay_estimate_smoothing = 0.7f;  // Faster adaptation (default 0.9)
+      aec3_config.delay.delay_candidate_detection_threshold = 0.2f;  // More sensitive (default 0.1)
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -248,7 +247,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized (120ms delay for network audio)");
+        log_info("✓ WebRTC AEC3 initialized (200ms delay for network audio)");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
