@@ -218,18 +218,15 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // (50 blocks crashed, 25 may crash, try 20 blocks = 200ms)
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Increase filter length to handle 200ms echo (default is 13 blocks = 130ms)
-      // 20 blocks = 200ms filter, matching the detected echo delay
-      aec3_config.filter.main.length_blocks = 20;     // 200ms filter (was 13 = 130ms)
-      aec3_config.filter.shadow.length_blocks = 20;   // Shadow filter same length
-      aec3_config.filter.main_initial.length_blocks = 20;  // Initial filter same
+      // 50 blocks = 500ms filter (matches erl-works)
+      aec3_config.filter.main.length_blocks = 50;
+      aec3_config.filter.shadow.length_blocks = 50;
+      aec3_config.filter.main_initial.length_blocks = 50;
+      aec3_config.filter.shadow_initial.length_blocks = 50;
 
-      // FORCE 200ms delay - bypass broken delay estimator
-      // The delay estimator was showing 0ms or 68ms instead of actual 200ms
-      // 200ms at 48kHz = 9600 samples
-      aec3_config.delay.fixed_capture_delay_samples = 9600;  // Force 200ms delay
-      aec3_config.delay.delay_headroom_samples = 2400;  // 50ms headroom for jitter
-      aec3_config.delay.log_warning_on_delay_changes = true;  // Debug logging
+      // Let AEC3 estimate delay adaptively (matches erl-works)
+      aec3_config.delay.default_delay = 25;  // 250ms initial hint
+      aec3_config.delay.delay_headroom_samples = 4800;  // 100ms headroom
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -257,10 +254,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        // Set external delay hint to 200ms for network audio
-        // This tells AEC3 where to look for the echo in the render buffer
-        wrapper->aec3->SetAudioBufferDelay(200);  // 200ms delay
-        log_info("✓ WebRTC AEC3 initialized (200ms filter, 200ms external delay set)");
+        log_info("✓ WebRTC AEC3 initialized (500ms filter, adaptive delay)");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
