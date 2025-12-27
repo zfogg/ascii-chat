@@ -111,19 +111,19 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
         float rms = sqrtf(sum_squares / total_samples);
 
         // Boost quiet playback signals to help AEC3 correlation
-        // Now that capture has AGC, we just need a moderate boost for playback
-        const float boost_threshold = 0.12f; // Boost signals with RMS below this
-        const float target_rms = 0.18f;      // Target RMS for reliable AEC3 correlation
-        const float min_rms = 0.003f;        // Don't boost near-silence
+        // Need aggressive boost since Linux sends quiet audio (~0.02 RMS)
+        const float boost_threshold = 0.15f; // Boost signals below this
+        const float target_rms = 0.25f;      // Target RMS for reliable AEC3 correlation
+        const float min_rms = 0.001f;        // Lower threshold for quiet audio
 
         if (rms > min_rms && rms < boost_threshold) {
           float gain = target_rms / rms;
           // Limit gain to prevent clipping (check against peak)
-          float max_gain = (peak > 0.01f) ? (0.9f / peak) : 8.0f; // Leave 10% headroom
+          float max_gain = (peak > 0.01f) ? (0.9f / peak) : 20.0f; // Leave 10% headroom
           if (gain > max_gain)
             gain = max_gain;
-          if (gain > 8.0f)
-            gain = 8.0f; // Hard limit to 8x boost
+          if (gain > 20.0f)
+            gain = 20.0f; // Hard limit to 20x boost for quiet audio
 
           // Apply gain with soft limiting
           for (size_t i = 0; i < total_samples; i++) {
