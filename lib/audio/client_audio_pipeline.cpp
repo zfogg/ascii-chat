@@ -207,41 +207,13 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
     try {
-      // Configure AEC3 for network audio
-      // IMPORTANT: Use mostly default configuration to avoid crashes!
-      // Previous crash was in ReverbFrequencyResponse::Update due to vector bounds check
-      // when default_delay (25 blocks) exceeded internal filter length limits.
-      //
-      // Now using CONSERVATIVE defaults that are known to work:
+      // Configure AEC3 for acoustic echo cancellation
+      // IMPORTANT: Use WebRTC defaults - they're well-tuned for real echo cancellation!
+      // Previous crash was from setting default_delay too high (25 blocks).
+      // Now using ALL DEFAULTS which are safe and effective.
       webrtc::EchoCanceller3Config aec3_config;
-
-      // Use ALL DEFAULTS for filter, delay, and ERLE to avoid crashes
-      // WebRTC's defaults are well-tested and internally consistent
-
-      // Only modify suppression to be more lenient for network audio
-      // (network audio has less acoustic echo than typical phone/desktop scenarios)
-      //
-      // CONSERVATIVE suppression for network audio
-      // With network delay and minimal acoustic coupling, we want less aggressive suppression.
-      // Only suppress when there's clear echo evidence, otherwise pass through.
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 1.0f;   // Default 0.3 - slightly less aggressive
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 2.0f;      // Default 0.4 - slightly less aggressive
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.5f;   // Default 0.07 - slightly less aggressive
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 1.0f;      // Default 0.1 - slightly less aggressive
-
-      // Nearend tuning: when local speech is detected, be lenient
-      // Nearend = the person speaking into THIS microphone - minimize suppression
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 2.0f;   // Less aggressive than default
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 5.0f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 1.0f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 2.5f;
-
-      // Dominant nearend detection: easier to detect local speech
-      // This prevents echo suppression during double-talk
-      aec3_config.suppressor.dominant_nearend_detection.enr_threshold = 0.8f;    // Slightly lower threshold
-      aec3_config.suppressor.dominant_nearend_detection.snr_threshold = 0.8f;    // Slightly lower threshold
-      aec3_config.suppressor.dominant_nearend_detection.hold_duration = 50;      // Default
-      aec3_config.suppressor.dominant_nearend_detection.trigger_threshold = 10;  // Default
+      // Use ALL WebRTC defaults - no customization needed
+      // The defaults are tuned for real-world echo cancellation scenarios
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -269,9 +241,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized (conservative defaults)");
-        log_info("  - Using default filter/delay settings for stability");
-        log_info("  - Lenient suppression tuning for network audio");
+        log_info("✓ WebRTC AEC3 initialized (full defaults for echo cancellation)");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
