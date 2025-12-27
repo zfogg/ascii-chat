@@ -162,7 +162,7 @@ if(USE_MUSL)
     target_link_options(ascii-chat PRIVATE -static -fuse-ld=lld)
 
     # Link all libraries (LTO + dead code elimination removes unused code)
-    target_link_libraries(ascii-chat
+    target_link_libraries(ascii-chat PRIVATE
         ${PORTAUDIO_PREFIX}/lib/libportaudio.a
         ${ALSA_PREFIX}/lib/libasound.a
         ${LIBSODIUM_PREFIX}/lib/libsodium.a
