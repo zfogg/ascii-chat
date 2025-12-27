@@ -106,9 +106,6 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
                     framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
         log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to speakers");
       } else {
-        // No AGC on playback - just pass through the audio as-is
-        // AGC was causing quiet sounds to be amplified too loudly
-
         // Periodically log sample statistics to help diagnose buzzing/clipping
         static _Atomic int output_callback_count = 0;
         int cb_count = atomic_fetch_add(&output_callback_count, 1) + 1;
