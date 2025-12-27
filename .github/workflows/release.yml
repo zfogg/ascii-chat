@@ -377,6 +377,21 @@ jobs:
           fi
           echo "All required packages found (runtime + development)"
 
+      - name: Sign release packages with GPG
+        run: |
+          # Import GPG key from secrets
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch --yes
+
+          # Sign all release artifacts
+          cd dist
+          for file in *; do
+            echo "Signing $file..."
+            gpg --detach-sign --armor --local-user F315D1B948F33B2102FBD7B6B95124621822044A "$file"
+          done
+
+          # List signatures
+          ls -lh *.asc
+
       - name: Upload Linux packages to release
         uses: softprops/action-gh-release@v1
         with:
@@ -485,6 +500,21 @@ jobs:
             exit 1
           fi
           echo "All required packages found (runtime + development)"
+
+      - name: Sign release packages with GPG
+        run: |
+          # Import GPG key from secrets
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --import --batch --yes
+
+          # Sign all release artifacts
+          cd dist
+          for file in *; do
+            echo "Signing $file..."
+            gpg --detach-sign --armor --local-user F315D1B948F33B2102FBD7B6B95124621822044A "$file"
+          done
+
+          # List signatures
+          ls -lh *.asc
 
       - name: Upload macOS packages to release
         uses: softprops/action-gh-release@v1
