@@ -121,10 +121,13 @@ safe_git_pull() {
   }"
 }
 
-# Pull latest code on both machines
-echo "[2/6] Pulling latest code on both machines..."
-run_on_one "$(safe_git_pull $REPO_ONE)"
-run_on_two "$(safe_git_pull $REPO_TWO)"
+# Pull latest code on remote machine only (local already has latest)
+echo "[2/6] Pulling latest code on remote machine..."
+if [[ $LOCAL_IS_ONE -eq 1 ]]; then
+  run_on_two "$(safe_git_pull $REPO_TWO)"
+else
+  run_on_one "$(safe_git_pull $REPO_ONE)"
+fi
 
 # Rebuild on HOST_ONE
 echo "[3/6] Rebuilding on $HOST_ONE..."
