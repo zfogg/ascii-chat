@@ -903,26 +903,28 @@ int main(int argc, const char **argv) {
 
   // Set up include paths for LibTooling to find system headers correctly.
   //
-  // LibTooling's ClangTool doesn't auto-detect the resource directory like
-  // the clang driver does. We need to explicitly tell it where to find
-  // clang's builtin headers (stdbool.h, stddef.h, stdarg.h, etc.).
-  //
-  // We use -resource-dir to tell clang where its resource directory is,
-  // which makes it automatically add the include subdirectory to the search
-  // path for builtin headers.
+  // LibTooling's ClangTool uses a different mechanism than the clang driver.
+  // We need to explicitly add the builtin include directory using
+  // -Xclang -internal-isystem, which tells clang's frontend (not driver)
+  // where to find its internal headers.
 
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
-    if (llvm::sys::fs::exists(resourceDir)) {
-      // Tell clang where to find its resource directory
-      // This automatically adds resourceDir/include to the builtin include path
-      std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
+    std::string builtinInclude = std::string(resourceDir) + "/include";
+    if (llvm::sys::fs::exists(builtinInclude)) {
+      // Use -Xclang to pass flags directly to clang's frontend
+      // -internal-isystem adds to the internal system include search path
+      // which is searched for <...> includes before regular -isystem paths
+      std::vector<std::string> builtinIncludeArgs = {
+          "-Xclang", "-internal-isystem",
+          "-Xclang", builtinInclude
+      };
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using resource directory: " << resourceDir << "\n";
+          tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using clang builtin include directory: " << builtinInclude << "\n";
     } else {
-      llvm::errs() << "Warning: Resource directory does not exist: " << resourceDir << "\n";
+      llvm::errs() << "Warning: Clang builtin include directory does not exist: " << builtinInclude << "\n";
     }
   }
 #endif
