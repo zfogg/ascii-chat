@@ -393,9 +393,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   p->initialized = true;
 
   // Initialize startup fade-in to prevent initial microphone click
-  // 50ms at 48kHz = 2400 samples - gradual ramp from silence to full volume
-  p->capture_fadein_remaining = (p->config.sample_rate * 50) / 1000;  // 50ms worth of samples
-  log_info("✓ Capture fade-in: %d samples (50ms)", p->capture_fadein_remaining);
+  // 200ms at 48kHz = 9600 samples - gradual ramp from silence to full volume
+  // Longer fade-in (200ms vs 50ms) gives much smoother transition without audible pop
+  p->capture_fadein_remaining = (p->config.sample_rate * 200) / 1000;  // 200ms worth of samples
+  log_info("✓ Capture fade-in: %d samples (200ms)", p->capture_fadein_remaining);
 
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus",
            p->config.sample_rate, p->config.frame_size_ms, p->config.opus_bitrate / 1000);
@@ -515,10 +516,10 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   memcpy(processed, input, num_samples * sizeof(float));
 
   // Apply startup fade-in to prevent initial click when microphone connects
-  // This gradually ramps volume from 0 to 1 over the first 50ms (2400 samples at 48kHz)
+  // This gradually ramps volume from 0 to 1 over the first 200ms (9600 samples at 48kHz)
   if (pipeline->capture_fadein_remaining > 0) {
     // Calculate the total fade-in duration for computing gain ramp
-    const int total_fadein_samples = (pipeline->config.sample_rate * 50) / 1000;
+    const int total_fadein_samples = (pipeline->config.sample_rate * 200) / 1000;
 
     for (int i = 0; i < num_samples && pipeline->capture_fadein_remaining > 0; i++) {
       // Calculate fade-in gain: starts at 0.0, ends at 1.0
@@ -532,7 +533,7 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
 
     static int logged_fadein = 0;
     if (!logged_fadein) {
-      log_info("Capture fade-in active: ramping microphone volume over 50ms");
+      log_info("Capture fade-in active: ramping microphone volume over 200ms");
       logged_fadein = 1;
     }
   }
