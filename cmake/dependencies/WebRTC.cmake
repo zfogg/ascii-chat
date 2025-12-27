@@ -61,20 +61,32 @@ if(NOT webrtc_aec3_POPULATED)
 
     # Now add the WebRTC AEC3 as a subdirectory with explicit generator
     # CRITICAL: WebRTC requires C++17 for Abseil compatibility.
-    # We must let WebRTC's project() command configure the compiler first (to get implicit include paths),
-    # then only modify the minimal necessary flags via target_compile_options() after targets are created.
+    # On macOS with Homebrew LLVM, we must explicitly add libc++ include directories
+    # because CMake's automatic detection doesn't work when we inherit CMAKE_CXX_FLAGS.
 
     # Save parent flags to restore later
     set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
-    # Clear CMAKE_CXX_FLAGS and CMAKE_C_FLAGS before add_subdirectory()
-    # This allows WebRTC's project() command to properly configure the C++ compiler
-    # with implicit include paths (like libc++'s headers)
-    set(CMAKE_CXX_FLAGS "")
-    set(CMAKE_C_FLAGS "")
+    # Detect libc++ include directory on macOS
+    # Homebrew LLVM uses /opt/homebrew/Cellar/llvm/VERSION/include/c++/v1
+    if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
+        # Get the directory where clang++ is located
+        get_filename_component(_clang_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        get_filename_component(_clang_prefix "${_clang_bin_dir}" DIRECTORY)
 
-    # Build WebRTC subdirectory - it will configure its own compiler settings
+        # Check for libc++ include directory
+        set(_libcxx_include_dir "${_clang_prefix}/include/c++/v1")
+        if(EXISTS "${_libcxx_include_dir}")
+            message(STATUS "Found libc++ include directory: ${_libcxx_include_dir}")
+            # Add libc++ include directory to CMAKE_CXX_FLAGS so all WebRTC targets use it
+            set(CMAKE_CXX_FLAGS "-isystem ${_libcxx_include_dir} ${CMAKE_CXX_FLAGS}")
+        else()
+            message(WARNING "Could not find libc++ include directory at ${_libcxx_include_dir}")
+        endif()
+    endif()
+
+    # Build WebRTC subdirectory with libc++ include path
     add_subdirectory(${webrtc_aec3_SOURCE_DIR} ${CMAKE_BINARY_DIR}/webrtc_aec3-build)
 
     # Restore the original C++ and C flags for ascii-chat
