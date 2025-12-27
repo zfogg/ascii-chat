@@ -888,18 +888,42 @@ int main(int argc, const char **argv) {
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
 
-      // Convert ALL -I paths to -iquote
-      // This prevents ANY -I directory from being searched for angle-bracket includes like <stdbool.h>
-      // Our -isystem flags (added later) will provide the correct paths for system headers
+      // Convert project -I paths to -iquote, but keep system/package paths as -I
+      // -iquote only affects quoted includes (#include "..."), not angle-bracket includes (#include <...>)
+      // This prevents project directories from being searched for <stdbool.h> while
+      // allowing <sodium.h> etc. to be found in system/package directories
+      auto isSystemPath = [](const std::string& path) -> bool {
+        // Common system/package path prefixes - keep these as -I for angle-bracket includes
+        return path.find("/opt/homebrew/") == 0 ||
+               path.find("/usr/local/") == 0 ||
+               path.find("/usr/include") == 0 ||
+               path.find("/Library/") == 0 ||
+               path.find("/System/") == 0 ||
+               path.find("/nix/store/") == 0 ||
+               path.find("/Applications/Xcode") == 0;
+      };
+
       if (arg.rfind("-I", 0) == 0 && arg.length() > 2) {
         std::string path = arg.substr(2);
-        result.push_back("-iquote" + path);
+        if (isSystemPath(path)) {
+          // Keep system/package paths as -I for angle-bracket includes like <sodium.h>
+          result.push_back(arg);
+        } else {
+          // Convert project paths to -iquote to avoid searching them for <stdbool.h>
+          result.push_back("-iquote" + path);
+        }
         continue;
       }
       // Also handle "-I path" (separate argument) form
       if (arg == "-I" && i + 1 < args.size()) {
-        result.push_back("-iquote");
-        result.push_back(args[i + 1]);
+        const std::string& path = args[i + 1];
+        if (isSystemPath(path)) {
+          result.push_back("-I");
+          result.push_back(path);
+        } else {
+          result.push_back("-iquote");
+          result.push_back(path);
+        }
         ++i;
         continue;
       }
@@ -914,24 +938,35 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Use -nostdinc to disable automatic include path setup, then explicitly add
-  // the correct include paths using -Xclang -internal-isystem. This replicates
-  // what the clang driver does internally, giving us precise control over the
-  // include search order without interference from LibTooling's defaults.
+  // Set up include paths for LibTooling to find system headers correctly.
   //
-  // Include search order (same as clang driver):
-  // 1. -iquote directories (for #include "..." only) - project/dependency headers
-  // 2. -I directories (none - we converted all to -iquote)
-  // 3. -isystem directories (dependency system headers like zstd, libsodium)
-  // 4. -internal-isystem (clang builtins: stdbool.h, stddef.h)
-  // 5. -internal-externc-isystem (SDK system headers: stdio.h, stdlib.h)
+  // The challenge is that:
+  // 1. LibTooling doesn't set up internal include paths like the clang driver does
+  // 2. -isystem directories from dependencies (zstd, libsodium) are searched for
+  //    angle-bracket includes
+  // 3. We need clang's builtin headers (stdbool.h) to be found
+  //
+  // Solution: Add clang's builtin include directory via -isystem at BEGIN,
+  // so it's searched FIRST among all -isystem paths. The SDK's usr/include
+  // is automatically added by clang when we use -isysroot.
 
-  // First, add -nostdinc to disable automatic include paths
-  tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
+  // Add -isysroot for the SDK (enables framework and system header resolution)
+#ifdef MACOS_SDK_PATH
+  {
+    const char* sdkPath = MACOS_SDK_PATH;
+    if (llvm::sys::fs::exists(sdkPath)) {
+      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+    } else {
+      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
+    }
+  }
+#endif
 
-  // Add resource directory and clang builtins via -Xclang -internal-isystem
-  // IMPORTANT: Add these FIRST so clang builtins (stdbool.h) are searched before SDK headers
+  // Add resource directory and clang builtins include
+  // Add -isystem for builtins at BEGIN so it's searched FIRST (before other -isystem paths)
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -942,45 +977,17 @@ int main(int argc, const char **argv) {
           tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded resource directory: " << resourceDir << "\n";
 
-      // Add clang builtins include via -Xclang -internal-isystem
-      // This is where stdbool.h, stddef.h, etc. live
+      // Add clang builtins include via -isystem at BEGIN
+      // This ensures stdbool.h is found from clang's builtins before anything else
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
-        std::vector<std::string> builtinArgs = {
-          "-Xclang", "-internal-isystem", "-Xclang", std::string(builtinInclude)
-        };
+        std::vector<std::string> builtinArgs = {"-isystem", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(builtinArgs, tooling::ArgumentInsertPosition::END));
+            tooling::getInsertArgumentAdjuster(builtinArgs, tooling::ArgumentInsertPosition::BEGIN));
       }
     } else {
       llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
-    }
-  }
-#endif
-
-  // Add -isysroot for the SDK (needed for framework resolution, even with -nostdinc)
-  // Add SDK system headers via -Xclang -internal-externc-isystem AFTER clang builtins
-#ifdef MACOS_SDK_PATH
-  {
-    const char* sdkPath = MACOS_SDK_PATH;
-    if (llvm::sys::fs::exists(sdkPath)) {
-      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
-
-      // Add SDK system headers via -Xclang -internal-externc-isystem
-      // This makes <stdio.h> etc. work like with the clang driver
-      llvm::SmallString<256> sdkInclude(sdkPath);
-      llvm::sys::path::append(sdkInclude, "usr", "include");
-      std::vector<std::string> sdkIncludeArgs = {
-        "-Xclang", "-internal-externc-isystem", "-Xclang", std::string(sdkInclude)
-      };
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
-    } else {
-      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
     }
   }
 #endif
