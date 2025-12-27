@@ -1001,8 +1001,11 @@ void *client_audio_render_thread(void *arg) {
         // NOTE: server_audio_frame_count is now per-thread (not static), so each client thread has its own counter
         server_audio_frame_count++;
         if (server_audio_frame_count <= 5 || server_audio_frame_count % 20 == 0) {
-          log_info("Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d",
-                   server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size);
+          // Log first 4 samples to verify they look like valid audio (not NaN/Inf/garbage)
+          log_info("Server audio frame #%d for client %u: samples_mixed=%d, Peak=%.6f, RMS=%.6f, opus_size=%d, "
+                   "first4=[%.4f,%.4f,%.4f,%.4f]",
+                   server_audio_frame_count, client_id_snapshot, samples_mixed, peak, rms, opus_size,
+                   opus_frame_buffer[0], opus_frame_buffer[1], opus_frame_buffer[2], opus_frame_buffer[3]);
         }
       }
 

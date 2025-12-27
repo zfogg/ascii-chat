@@ -391,9 +391,20 @@ void audio_process_received_samples(const float *samples, int num_samples) {
   float audio_buffer[AUDIO_BATCH_SAMPLES];
   memcpy(audio_buffer, samples, (size_t)num_samples * sizeof(float));
 
-  // DEBUG: Log what we're writing to playback buffer
-  log_info("AUDIO RECEIVED: %d samples, RMS=%.6f, peak=%.3f -> writing to playback_buffer", num_samples, received_rms,
-           samples[0]);
+  // DEBUG: Log what we're writing to playback buffer (with first 4 samples to verify audio integrity)
+  static int recv_count = 0;
+  recv_count++;
+  if (recv_count <= 10 || recv_count % 50 == 0) {
+    float peak = 0.0f;
+    for (int i = 0; i < num_samples; i++) {
+      float abs_val = fabsf(samples[i]);
+      if (abs_val > peak)
+        peak = abs_val;
+    }
+    log_info("CLIENT AUDIO RECV #%d: %d samples, RMS=%.6f, Peak=%.6f, first4=[%.4f,%.4f,%.4f,%.4f]", recv_count,
+             num_samples, received_rms, peak, num_samples > 0 ? samples[0] : 0.0f, num_samples > 1 ? samples[1] : 0.0f,
+             num_samples > 2 ? samples[2] : 0.0f, num_samples > 3 ? samples[3] : 0.0f);
+  }
 
   // Submit to playback system (goes to jitter buffer and speakers)
   // NOTE: AEC3's AnalyzeRender is called in output_callback() when audio actually plays,
