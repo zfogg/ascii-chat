@@ -49,6 +49,9 @@
 #include "logging.h"
 #include "platform/abstraction.h"
 
+// Include mixer.h for compressor, noise gate, and filter functions
+#include "audio/mixer.h"
+
 // For AEC3 metrics reporting
 #include "audio/audio_analysis.h"
 
@@ -350,6 +353,43 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
     p->render_timestamp_us = 0;
     log_info("✓ AEC3 echo cancellation enabled - call analyze_render() with received audio");
   }
+
+  // Initialize audio processing components (compressor, noise gate, filters)
+  // These are applied in the capture path after AEC3 and before Opus encoding
+  {
+    float sample_rate = (float)p->config.sample_rate;
+
+  // Initialize compressor with config values
+  compressor_init(&p->compressor, sample_rate);
+  compressor_set_params(&p->compressor,
+                        p->config.comp_threshold_db,
+                        p->config.comp_ratio,
+                        p->config.comp_attack_ms,
+                        p->config.comp_release_ms,
+                        p->config.comp_makeup_db);
+  log_info("✓ Capture compressor: threshold=%.1fdB, ratio=%.1f:1, makeup=+%.1fdB",
+           p->config.comp_threshold_db, p->config.comp_ratio, p->config.comp_makeup_db);
+
+  // Initialize noise gate with config values
+  noise_gate_init(&p->noise_gate, sample_rate);
+  noise_gate_set_params(&p->noise_gate,
+                        p->config.gate_threshold,
+                        p->config.gate_attack_ms,
+                        p->config.gate_release_ms,
+                        p->config.gate_hysteresis);
+  log_info("✓ Capture noise gate: threshold=%.4f (%.1fdB)",
+           p->config.gate_threshold, 20.0f * log10f(p->config.gate_threshold + 1e-10f));
+
+  // Initialize highpass filter (removes low-frequency rumble)
+  highpass_filter_init(&p->highpass, p->config.highpass_hz, sample_rate);
+  log_info("✓ Capture highpass filter: %.1f Hz", p->config.highpass_hz);
+
+  // Initialize lowpass filter (removes high-frequency hiss)
+  lowpass_filter_init(&p->lowpass, p->config.lowpass_hz, sample_rate);
+  log_info("✓ Capture lowpass filter: %.1f Hz", p->config.lowpass_hz);
+  }
+
+  p->initialized = true;
 
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus",
            p->config.sample_rate, p->config.frame_size_ms, p->config.opus_bitrate / 1000);
@@ -667,6 +707,43 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_out, processed, num_samples);
   }
 
+  // ============================================================================
+  // CAPTURE PROCESSING CHAIN: Apply filters, noise gate, and compressor
+  // This adds the missing gain staging that was causing 82-90% "very quiet" samples
+  // ============================================================================
+
+  // 1. High-pass filter (remove low-frequency rumble < 80Hz)
+  if (pipeline->flags.highpass) {
+    highpass_filter_process_buffer(&pipeline->highpass, processed, num_samples);
+  }
+
+  // 2. Low-pass filter (remove high-frequency hiss > 8000Hz)
+  if (pipeline->flags.lowpass) {
+    lowpass_filter_process_buffer(&pipeline->lowpass, processed, num_samples);
+  }
+
+  // 3. Noise gate (cut silence/background noise)
+  if (pipeline->flags.noise_gate) {
+    noise_gate_process_buffer(&pipeline->noise_gate, processed, num_samples);
+  }
+
+  // 4. Compressor with makeup gain (+6dB configured)
+  // This is the KEY gain stage that was missing!
+  if (pipeline->flags.compressor) {
+    for (int i = 0; i < num_samples; i++) {
+      // Compressor returns a gain multiplier including makeup gain
+      float gain = compressor_process_sample(&pipeline->compressor, processed[i]);
+      processed[i] *= gain;
+
+      // Soft clip to prevent clipping from makeup gain
+      if (processed[i] > 0.95f) {
+        processed[i] = 0.95f + 0.05f * tanhf((processed[i] - 0.95f) * 10.0f);
+      } else if (processed[i] < -0.95f) {
+        processed[i] = -0.95f + 0.05f * tanhf((processed[i] + 0.95f) * 10.0f);
+      }
+    }
+  }
+
   // Encode with Opus
   int opus_len = opus_encode_float(pipeline->encoder, processed, num_samples, opus_out, max_opus_len);
 
@@ -715,9 +792,19 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  // Soft clip after Opus decode to prevent overshoot
-  // Opus can reconstruct values slightly above ±1.0 due to its psychoacoustic model
-  // Use soft clipping instead of hard clipping to preserve audio quality
+  // ============================================================================
+  // PLAYBACK GAIN STAGE: Compensate for server ducking/crowd scaling losses
+  // Server applies: ducking (-6dB) + crowd scaling (-3dB) + compressor (+3dB) = -6dB net
+  // We add +6dB here to restore proper output level
+  // ============================================================================
+  const float playback_gain = 2.0f;  // +6dB linear gain
+
+  for (int i = 0; i < decoded_samples; i++) {
+    output[i] *= playback_gain;
+  }
+
+  // Soft clip after gain to prevent clipping
+  // Use smooth tanh-based soft clipping to preserve audio quality
   for (int i = 0; i < decoded_samples; i++) {
     float sample = output[i];
     // Soft clip using tanh: limits smoothly to ~±0.99

@@ -83,6 +83,10 @@
 #include "platform/rwlock.h"
 #include "asciichat_errno.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @name Audio Mixing Configuration
  * @{
@@ -890,3 +894,7 @@ float soft_clip(float sample, float threshold);
 void soft_clip_buffer(float *buffer, int num_samples, float threshold);
 
 /** @} */
+
+#ifdef __cplusplus
+}
+#endif

@@ -72,10 +72,10 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->envelope = 0.0f;
   comp->gain_lin = 1.0f;
 
-  // Set default parameters - conservative makeup gain to avoid clipping
-  // Previous +6dB makeup combined with base_gain caused +12dB total boost -> clipping
-  // Use +3dB makeup for gentler limiting without distortion
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 3.0f);
+  // Set default parameters with +6dB makeup gain
+  // The client playback path now has proper soft clipping to handle any peaks
+  // Server ducking (-6dB) + crowd scaling (-3dB) needs compensation
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 6.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
