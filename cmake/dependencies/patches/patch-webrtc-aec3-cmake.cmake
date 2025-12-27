@@ -39,9 +39,10 @@ string(REPLACE
 # WEBRTC_POSIX enables POSIX headers (pthread.h, sys/time.h, strings.h) - Unix/macOS only
 # WEBRTC_WIN enables Windows headers and APIs - Windows only
 # WebRTC requires exactly one platform macro to be defined
+# NOMINMAX prevents Windows SDK from defining min/max macros that conflict with std::min/max
 string(REPLACE
     "add_definitions(-DWEBRTC_POSIX)"
-    "# Platform-specific macros for WebRTC (must define exactly one)\nif(WIN32)\n    add_definitions(-DWEBRTC_WIN)\nelseif(UNIX)\n    add_definitions(-DWEBRTC_POSIX)\nendif()"
+    "# Platform-specific macros for WebRTC (must define exactly one)\nif(WIN32)\n    add_definitions(-DWEBRTC_WIN)\n    add_definitions(-DNOMINMAX)\nelseif(UNIX)\n    add_definitions(-DWEBRTC_POSIX)\nendif()"
     CMAKE_CONTENT
     "${CMAKE_CONTENT}"
 )
