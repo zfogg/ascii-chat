@@ -1251,6 +1251,8 @@ asciichat_error_t config_load_system_and_user(bool is_client, const char *user_c
     CONFIG_DEBUG("System config loaded successfully");
   } else {
     CONFIG_DEBUG("System config not loaded (this is normal if file doesn't exist)");
+    // Clear the error context since this failure is expected/non-fatal
+    CLEAR_ERRNO();
   }
 
   // Load user config second (with user-specified strictness)

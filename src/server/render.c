@@ -1,10 +1,10 @@
 /**
  * @file server/render.c
  * @ingroup server_render
- * @brief 🎨 Per-client rendering threads: 60fps video and 172fps audio processing with rate limiting
+ * @brief 🎨 Per-client rendering threads: 60fps video and 100fps audio processing with rate limiting
  * ======================
  * 1. Manage per-client video rendering threads (60fps per client)
- * 2. Manage per-client audio rendering threads (172fps per client)
+ * 2. Manage per-client audio rendering threads (100fps per client, 480 samples @ 48kHz)
  * 3. Coordinate frame generation timing and rate limiting
  * 4. Ensure thread-safe access to client state and media buffers
  * 5. Provide graceful thread lifecycle management
@@ -24,7 +24,7 @@
  *
  * 2. AUDIO RENDER THREAD:
  *    - Mixes audio streams excluding client's own audio
- *    - Processes audio at 172fps (5.8ms intervals)
+ *    - Processes audio at 100fps (10ms intervals, 480 samples @ 48kHz)
  *    - Queues audio packets in client's audio packet queue
  *    - Provides low-latency audio delivery
  *
@@ -39,7 +39,7 @@
  *
  * TIMING PRECISION:
  * - Video: 16.67ms intervals (60fps)
- * - Audio: 5.8ms intervals (172fps)
+ * - Audio: 10ms intervals (100fps, 480 samples @ 48kHz)
  * - Platform-specific high-resolution timers
  * - Interruptible sleep for responsive shutdown
  *
@@ -53,8 +53,8 @@
  * - Prevents CPU spinning under light load
  *
  * AUDIO RATE LIMITING:
- * - Fixed 5.8ms intervals to match buffer size
- * - Matches PortAudio callback frequency
+ * - Fixed 10ms intervals to match 48kHz sample rate (480 samples/iteration)
+ * - Accumulates to 960 samples (20ms) for Opus encoding
  * - Ensures smooth audio delivery
  * - Balances latency vs CPU usage
  *
@@ -630,9 +630,9 @@ void *client_video_render_thread(void *arg) {
  * @brief Main audio rendering thread function for individual clients
  *
  * This is the audio processing thread that generates personalized audio mixes
- * for a specific client at 172fps (5.8ms intervals). Each client receives
- * audio from all other clients while excluding their own audio to prevent
- * echo and feedback.
+ * for a specific client at 100fps (10ms intervals, 480 samples @ 48kHz). Each
+ * client receives audio from all other clients while excluding their own audio
+ * to prevent echo and feedback.
  *
  * THREAD EXECUTION FLOW:
  * ======================
@@ -647,7 +647,7 @@ void *client_video_render_thread(void *arg) {
  *    - Take atomic snapshot of client state
  *    - Generate audio mix excluding this client's audio
  *    - Queue mixed audio for delivery to client
- *    - Sleep for precise timing (5.8ms intervals)
+ *    - Sleep for precise timing (10ms intervals)
  *
  * 3. CLEANUP AND EXIT:
  *    - Log thread termination
@@ -666,8 +666,8 @@ void *client_video_render_thread(void *arg) {
  * ============================
  *
  * TIMING PRECISION:
- * - Target: 172fps (5.8ms intervals)
- * - Matches PortAudio callback frequency
+ * - Target: 100fps (10ms intervals, 480 samples @ 48kHz)
+ * - Accumulates to 960 samples (20ms) for Opus encoding
  * - Fixed timing (no dynamic rate adjustment)
  * - Low-latency audio delivery
  *
@@ -778,7 +778,7 @@ void *client_audio_render_thread(void *arg) {
   struct timespec last_packet_send_time; // For time-based packet transmission (every 20ms)
   (void)clock_gettime(CLOCK_MONOTONIC, &last_audio_packet_time);
   (void)clock_gettime(CLOCK_MONOTONIC, &last_packet_send_time);
-  int expected_audio_fps = AUDIO_RENDER_FPS; // Based on AUDIO_FRAMES_PER_BUFFER / AUDIO_SAMPLE_RATE
+  int expected_audio_fps = AUDIO_RENDER_FPS; // 100fps = 10ms intervals (480 samples @ 48kHz)
 
   // Per-thread counters (NOT static - each thread instance gets its own)
   int mixer_debug_count = 0;
@@ -1047,7 +1047,7 @@ void *client_audio_render_thread(void *arg) {
       // NOTE: opus_frame_accumulated is already reset at line 928 after encode attempt
     }
 
-    // Audio mixing rate - 5.8ms to match buffer size
+    // Audio mixing rate - 10ms to match 48kHz sample rate (480 samples per iteration)
     // Calculate elapsed time and sleep for remainder to maintain constant FPS
     struct timespec loop_end_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &loop_end_time);
@@ -1055,11 +1055,12 @@ void *client_audio_render_thread(void *arg) {
     uint64_t loop_elapsed_us = ((uint64_t)loop_end_time.tv_sec * 1000000 + (uint64_t)loop_end_time.tv_nsec / 1000) -
                                ((uint64_t)loop_start_time.tv_sec * 1000000 + (uint64_t)loop_start_time.tv_nsec / 1000);
 
-    // Target loop time: 9.5ms to achieve ~100 fps (48k samples/sec)
-    // The loop timing includes: processing (~0.5ms) + sleep (9ms) = 9.5ms = ~105 fps
-    // Slightly over 100 fps ensures we can drain any accumulated backlog
-    // while not overflowing the client's playback buffer significantly
-    const uint64_t target_loop_us = 9500; // 9.5ms for ~105 fps
+    // Target loop time: 10ms to match the audio sample rate
+    // We read 480 samples per iteration at 48kHz: 480 / 48000 = 0.01s = 10ms
+    // Previous 9.5ms timing caused 5% rate mismatch (50.5kHz vs 48kHz) which
+    // drained client ring buffers faster than they were filled, causing
+    // periodic silence gaps that manifested as buzzing/static audio.
+    const uint64_t target_loop_us = 10000; // 10ms for exactly 48kHz rate
     long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {

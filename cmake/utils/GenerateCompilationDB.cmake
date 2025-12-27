@@ -11,7 +11,7 @@
 #       LOG_FILE <log_file>                 # e.g., "${CMAKE_BINARY_DIR}/defer_compile_db.log"
 #       COMMENT <comment>                   # Comment for the custom command
 #       [CLANG_RESOURCE_DIR <dir>]          # Optional: Clang resource directory for -resource-dir flag
-#       [DISABLE_OPTIONS <opt1> <opt2>...]  # Options to disable (e.g., "ASCIICHAT_BUILD_WITH_DEFER")
+#       [DISABLE_OPTIONS <opt1> <opt2>...]  # Options to disable (e.g., "ASCIICHAT_USE_PCH")
 #   )
 #
 # The function creates a custom command that:
@@ -30,7 +30,7 @@
 #       TEMP_DIR "${CMAKE_BINARY_DIR}/compile_db_temp_defer"
 #       LOG_FILE "${CMAKE_BINARY_DIR}/defer_compile_db.log"
 #       COMMENT "Generating compilation database for defer transformation tool"
-#       DISABLE_OPTIONS ASCIICHAT_BUILD_WITH_DEFER ASCIICHAT_USE_PCH ASCIICHAT_ENABLE_ANALYZERS
+#       DISABLE_OPTIONS ASCIICHAT_USE_PCH ASCIICHAT_ENABLE_ANALYZERS
 #   )
 # =============================================================================
 

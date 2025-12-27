@@ -639,6 +639,14 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
+  // Hard clip after Opus decode to prevent overshoot
+  // Opus can reconstruct values slightly above ±1.0 due to its psychoacoustic model
+  // This prevents clipping distortion when playing to speakers
+  for (int i = 0; i < decoded_samples; i++) {
+    if (output[i] > 0.99f) output[i] = 0.99f;
+    else if (output[i] < -0.99f) output[i] = -0.99f;
+  }
+
   // NOTE: Do NOT register render signal here!
   // The render signal (speaker output) must be registered to AEC3 only at the point
   // where audio actually goes to the speakers in output_callback(), NOT here when packets

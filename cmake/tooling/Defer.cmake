@@ -3,6 +3,10 @@ include_guard(GLOBAL)
 # defer() is MANDATORY - the code requires it to function correctly
 # Build the defer tool as an external project to avoid inheriting musl/static flags
 
+# This option controls whether defer transformation runs. It's always ON for normal builds.
+# The temp cmake build for generating compile_commands.json sets this to OFF to prevent recursion.
+option(ASCIICHAT_ENABLE_DEFER_TRANSFORM "Enable defer() source transformation" ON)
+
 set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
@@ -10,6 +14,12 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 function(ascii_defer_prepare)
+    # Skip if defer transformation is disabled (used by temp cmake build to prevent recursion)
+    if(NOT ASCIICHAT_ENABLE_DEFER_TRANSFORM)
+        message(STATUS "Defer transformation disabled - skipping ascii_defer_prepare()")
+        return()
+    endif()
+
     # Build/find the defer tool using the common utility
     build_llvm_tool(
         NAME defer
@@ -110,7 +120,7 @@ function(ascii_defer_prepare)
         COMMENT "Generating compilation database for defer transformation tool"
         CLANG_RESOURCE_DIR "${_clang_resource_dir_db}"
         DISABLE_OPTIONS
-            ASCIICHAT_BUILD_WITH_DEFER
+            ASCIICHAT_ENABLE_DEFER_TRANSFORM
             ASCIICHAT_USE_PCH
             ASCIICHAT_ENABLE_ANALYZERS
             ASCIICHAT_BUILD_WITH_PANIC
@@ -212,9 +222,6 @@ function(ascii_defer_prepare)
         endforeach()
         set(${var} "${updated_list}" PARENT_SCOPE)
     endforeach()
-
-    # Add compile definition so defer() macro knows transformation is enabled
-    add_compile_definitions(ASCIICHAT_BUILD_WITH_DEFER)
 
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)
 endfunction()
