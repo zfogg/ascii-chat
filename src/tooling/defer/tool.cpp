@@ -888,12 +888,17 @@ int main(int argc, const char **argv) {
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
 
-      // Convert project -I paths to -iquote, but keep system/package paths as -I
-      // -iquote only affects quoted includes (#include "..."), not angle-bracket includes (#include <...>)
-      // This prevents project directories from being searched for <stdbool.h> while
-      // allowing <sodium.h> etc. to be found in system/package directories
+      // Convert -I paths to prevent them from being searched for system headers like <stdbool.h>.
+      // Include search order is: -iquote, -I, -isystem. We want clang builtins (added as
+      // -isystem at BEGIN) to be found first for system headers.
+      //
+      // Strategy:
+      // - Project directories -> -iquote (only searched for #include "...")
+      // - System/package directories -> -isystem (searched after our clang builtins -isystem)
+      //
+      // This ensures <stdbool.h> finds clang builtins first, while <sodium.h> still works.
       auto isSystemPath = [](const std::string& path) -> bool {
-        // Common system/package path prefixes - keep these as -I for angle-bracket includes
+        // Common system/package path prefixes
         return path.find("/opt/homebrew/") == 0 ||
                path.find("/usr/local/") == 0 ||
                path.find("/usr/include") == 0 ||
@@ -906,8 +911,9 @@ int main(int argc, const char **argv) {
       if (arg.rfind("-I", 0) == 0 && arg.length() > 2) {
         std::string path = arg.substr(2);
         if (isSystemPath(path)) {
-          // Keep system/package paths as -I for angle-bracket includes like <sodium.h>
-          result.push_back(arg);
+          // Convert system/package paths to -isystem so clang builtins are searched first
+          result.push_back("-isystem");
+          result.push_back(path);
         } else {
           // Convert project paths to -iquote to avoid searching them for <stdbool.h>
           result.push_back("-iquote" + path);
@@ -918,7 +924,7 @@ int main(int argc, const char **argv) {
       if (arg == "-I" && i + 1 < args.size()) {
         const std::string& path = args[i + 1];
         if (isSystemPath(path)) {
-          result.push_back("-I");
+          result.push_back("-isystem");
           result.push_back(path);
         } else {
           result.push_back("-iquote");
