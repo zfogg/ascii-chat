@@ -106,6 +106,27 @@
 asciichat_error_t config_load_and_apply(bool is_client, const char *config_path, bool strict);
 
 /**
+ * @brief Load system config first, then user config (user config overrides system)
+ * @param is_client `true` if loading client configuration, `false` for server configuration
+ * @param user_config_path Optional path to user config file (NULL uses default location)
+ * @param strict If true, user config errors are fatal; system config is always non-strict
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Loads configuration from two locations in order:
+ * 1. System config: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml (non-strict, optional)
+ * 2. User config: custom path or default location (strictness as specified)
+ *
+ * User config values override system config values. Both override defaults.
+ * This function should be called before options_init() parses command-line arguments.
+ *
+ * @note System config is always loaded non-strict (missing file is not an error)
+ * @note User config strictness follows the strict parameter
+ *
+ * @ingroup config
+ */
+asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict);
+
+/**
  * @brief Create default configuration file with all default values
  * @param config_path Path to config file to create (NULL uses default location)
  * @return ASCIICHAT_OK on success, error code on failure

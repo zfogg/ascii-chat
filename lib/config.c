@@ -1226,3 +1226,38 @@ asciichat_error_t config_create_default(const char *config_path) {
 
   return ASCIICHAT_OK;
 }
+
+asciichat_error_t config_load_system_and_user(bool is_client, const char *user_config_path, bool strict) {
+  // Fallback for ASCIICHAT_INSTALL_PREFIX if paths.h hasn't been generated yet
+  // (prevents defer tool compilation errors during initial builds)
+#ifndef ASCIICHAT_INSTALL_PREFIX
+#define ASCIICHAT_INSTALL_PREFIX "/usr"
+#endif
+
+  // Build system config path: ${INSTALL_PREFIX}/etc/ascii-chat/config.toml
+  char system_config_path[1024];
+#ifdef _WIN32
+  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path), "%s\\etc\\ascii-chat\\config.toml",
+                ASCIICHAT_INSTALL_PREFIX);
+#else
+  SAFE_SNPRINTF(system_config_path, sizeof(system_config_path), "%s/etc/ascii-chat/config.toml",
+                ASCIICHAT_INSTALL_PREFIX);
+#endif
+
+  // Load system config first (non-strict - it's optional)
+  CONFIG_DEBUG("Attempting to load system config from: %s", system_config_path);
+  asciichat_error_t system_result = config_load_and_apply(is_client, system_config_path, false);
+  if (system_result == ASCIICHAT_OK) {
+    CONFIG_DEBUG("System config loaded successfully");
+  } else {
+    CONFIG_DEBUG("System config not loaded (this is normal if file doesn't exist)");
+  }
+
+  // Load user config second (with user-specified strictness)
+  // User config values will override system config values
+  CONFIG_DEBUG("Loading user config (strict=%s)", strict ? "true" : "false");
+  asciichat_error_t user_result = config_load_and_apply(is_client, user_config_path, strict);
+
+  // Return user config result - errors in user config should be reported
+  return user_result;
+}

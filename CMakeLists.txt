@@ -98,6 +98,25 @@ project(${PROJECT_NAME_FULL}
 include(${CMAKE_SOURCE_DIR}/cmake/init/PlatformDetection.cmake)
 version_setup_targets()
 
+# =============================================================================
+# Install Prefix Configuration (must come after project() call)
+# =============================================================================
+# Unix/Linux: Default to /usr instead of CMake's default /usr/local
+if(UNIX AND NOT APPLE AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Installation directory" FORCE)
+    message(STATUS "Install prefix: ${BoldCyan}/usr${ColorReset} (Linux default)")
+endif()
+
+# =============================================================================
+# Generate paths.h with baked-in install prefix
+# =============================================================================
+configure_file(
+    "${CMAKE_SOURCE_DIR}/lib/paths.h.in"
+    "${CMAKE_BINARY_DIR}/generated/paths.h"
+    @ONLY
+)
+message(STATUS "Generated paths.h with ASCIICHAT_INSTALL_PREFIX=${BoldYellow}${CMAKE_INSTALL_PREFIX}${ColorReset}")
+
 # Only Ninja generator is supported - enforce this requirement
 #if(NOT CMAKE_GENERATOR MATCHES "Ninja")
 #    message(FATAL_ERROR
@@ -222,6 +241,7 @@ check_static_linking(ascii-chat)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/install/Documentation.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/install/Install.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/install/SystemConfig.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/targets/CustomTargets.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/StatusMessages.cmake)
 
