@@ -303,6 +303,13 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         log_info("  - FIXED delay: 200ms (matches jitter buffer exactly)");
         log_info("  - Very conservative suppression (high ENR thresholds)");
         log_info("  - Slow delay adaptation (0.95 smoothing)");
+
+        // Create persistent AudioBuffer instances for AEC3
+        // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
+        // Creating new buffers each frame resets the filterbank and causes discontinuities!
+        p->aec3_render_buffer = new webrtc::AudioBuffer(48000, 1, 48000, 1, 48000, 1);
+        p->aec3_capture_buffer = new webrtc::AudioBuffer(48000, 1, 48000, 1, 48000, 1);
+        log_info("  - Persistent AudioBuffer instances created");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
@@ -352,6 +359,16 @@ void client_audio_pipeline_destroy(client_audio_pipeline_t *pipeline) {
   if (!pipeline) return;
 
   mutex_lock(&pipeline->aec3_mutex);
+
+  // Clean up WebRTC AEC3 AudioBuffer instances
+  if (pipeline->aec3_render_buffer) {
+    delete static_cast<webrtc::AudioBuffer*>(pipeline->aec3_render_buffer);
+    pipeline->aec3_render_buffer = NULL;
+  }
+  if (pipeline->aec3_capture_buffer) {
+    delete static_cast<webrtc::AudioBuffer*>(pipeline->aec3_capture_buffer);
+    pipeline->aec3_capture_buffer = NULL;
+  }
 
   // Clean up WebRTC AEC3
   if (pipeline->echo_canceller) {
@@ -439,13 +456,13 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   float *processed = (float *)alloca(num_samples * sizeof(float));
   memcpy(processed, input, num_samples * sizeof(float));
 
-  // Check for AEC3 bypass (for debugging static issues)
+  // Check for AEC3 bypass (for debugging)
   static int bypass_aec3 = -1;
   if (bypass_aec3 == -1) {
     const char *env = getenv("BYPASS_AEC3");
     bypass_aec3 = (env && (strcmp(env, "1") == 0 || strcmp(env, "true") == 0)) ? 1 : 0;
     if (bypass_aec3) {
-      log_warn("AEC3 BYPASSED - audio will go straight to Opus encoder without echo cancellation");
+      log_warn("AEC3 BYPASSED via BYPASS_AEC3=1");
     }
   }
 
@@ -508,16 +525,19 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 render_chunk[j] = pipeline->render_ring_buffer[idx];
               }
 
-              // Feed to AEC3 AnalyzeRender
-              webrtc::AudioBuffer render_buf(48000, 1, 48000, 1, 48000, 1);
-              float* const* render_channels = render_buf.channels();
-              if (render_channels && render_channels[0]) {
-                for (int j = 0; j < webrtc_frame_size; j++) {
-                  render_channels[0][j] = render_chunk[j] * 32768.0f;
+              // Feed to AEC3 AnalyzeRender using PERSISTENT buffer
+              // CRITICAL: Reusing the same AudioBuffer preserves filterbank state!
+              auto* render_buf = static_cast<webrtc::AudioBuffer*>(pipeline->aec3_render_buffer);
+              if (render_buf) {
+                float* const* render_channels = render_buf->channels();
+                if (render_channels && render_channels[0]) {
+                  for (int j = 0; j < webrtc_frame_size; j++) {
+                    render_channels[0][j] = render_chunk[j] * 32768.0f;
+                  }
+                  render_buf->SplitIntoFrequencyBands();
+                  wrapper->aec3->AnalyzeRender(render_buf);
+                  // Note: don't call MergeFrequencyBands - not needed for render
                 }
-                render_buf.SplitIntoFrequencyBands();
-                wrapper->aec3->AnalyzeRender(&render_buf);
-                render_buf.MergeFrequencyBands();
               }
 
               // Update read index
@@ -542,80 +562,77 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
             }
           }
 
-          // ---- STEP 2: Process capture frame ----
+          // ---- STEP 2: Process capture frame using PERSISTENT buffer ----
           // CRITICAL: WebRTC expects float samples in int16 range [-32768, 32767]
           // PortAudio provides float samples in range [-1.0, 1.0]
           // Scale up before processing, scale back down after
-          webrtc::AudioBuffer capture_buf(48000, 1, 48000, 1, 48000, 1);
-          float* const* capture_channels = capture_buf.channels();
-          if (capture_channels && capture_channels[0]) {
-            // Calculate input RMS BEFORE AEC3 processing
-            static float last_input_rms = 0.0f;
-            float input_energy = 0.0f;
-            for (int j = 0; j < chunk_size; j++) {
-              input_energy += (processed + i)[j] * (processed + i)[j];
-            }
-            last_input_rms = sqrtf(input_energy / chunk_size);
-
-            // Scale up microphone input to int16 range for WebRTC
-            for (int j = 0; j < chunk_size; j++) {
-              capture_channels[0][j] = (processed + i)[j] * 32768.0f;
-            }
-
-            // AnalyzeCapture on NON-split buffer (per demo.cc line 137)
-            wrapper->aec3->AnalyzeCapture(&capture_buf);
-
-            // Split into frequency bands for ProcessCapture (per demo.cc line 138)
-            capture_buf.SplitIntoFrequencyBands();
-
-            // NOTE: Do NOT call SetAudioBufferDelay(0) here!
-            // demo.cc uses external delay estimation with pre-recorded synchronized WAV files.
-            // Our real-time system has variable network/jitter buffer delay (~200-300ms).
-            // Let AEC3 use its internal delay estimation instead.
-
-            // ProcessCapture on SPLIT buffer (per demo.cc line 141)
-            wrapper->aec3->ProcessCapture(&capture_buf, false);
-
-            // Merge frequency bands back to time domain
-            capture_buf.MergeFrequencyBands();
-
-            // Simple passthrough - just scale back to [-1.0, 1.0] range
-            // NO extra gain reduction - let AEC3 do its job, preserve audio quality
-            for (int j = 0; j < chunk_size; j++) {
-              float sample = capture_channels[0][j] / 32768.0f;
-              // Simple hard clip at ±0.99 to prevent overflow, no other processing
-              if (sample > 0.99f) sample = 0.99f;
-              else if (sample < -0.99f) sample = -0.99f;
-              (processed + i)[j] = sample;
-            }
-
-            // Log capture signal stats and metrics every second
-            static int capture_count = 0;
-            capture_count++;
-            if (capture_count % 100 == 1) {
-              // Calculate RMS AFTER AEC3 processing
-              float out_energy = 0.0f;
-              for (int s = 0; s < chunk_size; s++) {
-                out_energy += (processed + i)[s] * (processed + i)[s];
+          auto* capture_buf = static_cast<webrtc::AudioBuffer*>(pipeline->aec3_capture_buffer);
+          if (capture_buf) {
+            float* const* capture_channels = capture_buf->channels();
+            if (capture_channels && capture_channels[0]) {
+              // Calculate input RMS BEFORE AEC3 processing
+              static float last_input_rms = 0.0f;
+              float input_energy = 0.0f;
+              for (int j = 0; j < chunk_size; j++) {
+                input_energy += (processed + i)[j] * (processed + i)[j];
               }
-              float out_rms = sqrtf(out_energy / chunk_size);
+              last_input_rms = sqrtf(input_energy / chunk_size);
 
-              // Calculate actual reduction
-              float reduction_db = 0.0f;
-              if (last_input_rms > 0.0001f && out_rms > 0.0001f) {
-                reduction_db = 20.0f * log10f(out_rms / last_input_rms);
+              // Scale up microphone input to int16 range for WebRTC
+              for (int j = 0; j < chunk_size; j++) {
+                capture_channels[0][j] = (processed + i)[j] * 32768.0f;
               }
 
-              try {
-                webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
-                log_info("AEC3: IN=%.4f OUT=%.4f (%.1fdB) ERL=%.1f ERLE=%.1f delay=%dms",
-                         last_input_rms, out_rms, reduction_db,
-                         metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
-                         metrics.delay_ms);
-                audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
-                                                metrics.echo_return_loss_enhancement,
-                                                metrics.delay_ms);
-              } catch (...) {}
+              // AnalyzeCapture on NON-split buffer (per demo.cc line 137)
+              wrapper->aec3->AnalyzeCapture(capture_buf);
+
+              // Split into frequency bands for ProcessCapture (per demo.cc line 138)
+              capture_buf->SplitIntoFrequencyBands();
+
+              // ProcessCapture on SPLIT buffer (per demo.cc line 141)
+              wrapper->aec3->ProcessCapture(capture_buf, false);
+
+              // Merge frequency bands back to time domain
+              capture_buf->MergeFrequencyBands();
+
+              // Simple passthrough - just scale back to [-1.0, 1.0] range
+              // NO extra gain reduction - let AEC3 do its job, preserve audio quality
+              for (int j = 0; j < chunk_size; j++) {
+                float sample = capture_channels[0][j] / 32768.0f;
+                // Simple hard clip at ±0.99 to prevent overflow, no other processing
+                if (sample > 0.99f) sample = 0.99f;
+                else if (sample < -0.99f) sample = -0.99f;
+                (processed + i)[j] = sample;
+              }
+
+              // Log capture signal stats and metrics every second
+              static int capture_count = 0;
+              capture_count++;
+              if (capture_count % 100 == 1) {
+                // Calculate RMS AFTER AEC3 processing
+                float out_energy = 0.0f;
+                for (int s = 0; s < chunk_size; s++) {
+                  out_energy += (processed + i)[s] * (processed + i)[s];
+                }
+                float out_rms = sqrtf(out_energy / chunk_size);
+
+                // Calculate actual reduction
+                float reduction_db = 0.0f;
+                if (last_input_rms > 0.0001f && out_rms > 0.0001f) {
+                  reduction_db = 20.0f * log10f(out_rms / last_input_rms);
+                }
+
+                try {
+                  webrtc::EchoControl::Metrics metrics = wrapper->aec3->GetMetrics();
+                  log_info("AEC3: IN=%.4f OUT=%.4f (%.1fdB) ERL=%.1f ERLE=%.1f delay=%dms",
+                           last_input_rms, out_rms, reduction_db,
+                           metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
+                           metrics.delay_ms);
+                  audio_analysis_set_aec3_metrics(metrics.echo_return_loss,
+                                                  metrics.echo_return_loss_enhancement,
+                                                  metrics.delay_ms);
+                } catch (...) {}
+              }
             }
           }
         }

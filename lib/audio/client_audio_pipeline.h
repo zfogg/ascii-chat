@@ -288,6 +288,13 @@ typedef struct {
   /** Debug WAV writers for AEC3 analysis */
   void *debug_wav_aec3_in;  // Microphone input before AEC3
   void *debug_wav_aec3_out; // Microphone output after AEC3
+
+  /** Persistent AudioBuffer instances for AEC3 (opaque C++ objects)
+   * CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
+   * Creating new buffers each frame causes discontinuities (static/buzzing).
+   */
+  void *aec3_render_buffer;  // Persistent render AudioBuffer
+  void *aec3_capture_buffer; // Persistent capture AudioBuffer
 } client_audio_pipeline_t;
 
 /**
