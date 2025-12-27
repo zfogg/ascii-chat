@@ -241,25 +241,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.erle.max_l = 15.0f;  // Default 4.0 - allow much more low-freq suppression
       aec3_config.erle.max_h = 8.0f;   // Default 1.5 - allow much more high-freq suppression
 
-      // Enable anti-howling protection (critical for feedback prevention)
-      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;
-      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.0001f;
-
-      // Moderate echo suppression - too high causes digital artifacts
-      aec3_config.ep_strength.default_gain = 2.0f;   // Default 1.0f - moderate increase
-      aec3_config.ep_strength.echo_can_saturate = false;  // Don't limit suppression
-
-      // Conservative masking - avoid artifacts
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.1f;   // Default 0.3
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.2f;      // Default 0.4
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.03f;  // Default 0.07
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.05f;     // Default 0.1
-
-      // Nearend tuning - match normal tuning
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 0.1f;
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 0.2f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 0.03f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 0.05f;
+      // Use default suppression settings - let audio through
+      // Only override what's needed for network audio delays
+      // ep_strength, masking thresholds all stay at defaults
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
