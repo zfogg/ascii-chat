@@ -745,11 +745,11 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     float target_rms = 0.15f;
 
     // Apply gain if signal is above noise floor
-    const float min_rms = 0.002f;  // Don't boost pure silence/noise
+    const float min_rms = 0.001f;  // Lower threshold for quiet mics
     if (rms > min_rms) {
       float gain = target_rms / rms;
-      // Limit gain to prevent extreme amplification of noise
-      float max_gain = 10.0f;  // Max 10x boost
+      // Limit gain - need up to 50x for very quiet Linux mics (0.001 -> 0.05 RMS)
+      float max_gain = 50.0f;
       if (gain > max_gain) gain = max_gain;
       if (gain < 1.0f) gain = 1.0f;  // Don't attenuate, only boost
 
