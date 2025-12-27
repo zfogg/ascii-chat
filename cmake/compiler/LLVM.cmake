@@ -304,11 +304,18 @@ function(configure_llvm_post_project)
 
     # Only clear CMAKE_OSX_SYSROOT for main build; temp builds for compilation database generation
     # should keep it so that tool integration (defer, panic, query) can find system headers
-    if(NOT _keep_osx_sysroot_for_tools)
+    # EXCEPTION: In CI environments (GitHub Actions), keep CMAKE_OSX_SYSROOT even for main build
+    # to ensure libc++ can find C standard library headers when clang configs aren't picked up
+    set(_is_ci_environment "$ENV{CI}")
+    if(NOT _keep_osx_sysroot_for_tools AND NOT _is_ci_environment)
         set(CMAKE_OSX_SYSROOT "" CACHE STRING "macOS SDK root" FORCE)
         message(STATUS "${BoldGreen}Using${ColorReset} self-contained ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset}: disabling SDK root (-isysroot)")
     else()
-        message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for tool integration (defer, panic, etc.)")
+        if(_is_ci_environment)
+            message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for CI environment (GitHub Actions)")
+        else()
+            message(STATUS "${BoldGreen}Keeping${ColorReset} ${BoldBlue}CMAKE_OSX_SYSROOT${ColorReset} for tool integration (defer, panic, etc.)")
+        endif()
     endif()
 
     # Add library paths and linking for the detected LLVM installation
