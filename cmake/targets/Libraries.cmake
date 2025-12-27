@@ -266,9 +266,9 @@ endif()
 
 # Link platform-specific audio libraries
 # macOS: CoreAudio, AudioUnit, AudioToolbox (required for static portaudio)
-# Linux: JACK (if PortAudio is built with JACK support)
+# Linux: ALSA only (JACK support explicitly disabled to avoid Berkeley DB dependency)
 # Windows: WASAPI/DirectSound (handled by platform module)
-# Note: musl builds use PortAudio with ALSA only (no JACK) to avoid static lib dependency
+# Note: All PortAudio builds now use --without-jack flag to eliminate ~1.6MB Berkeley DB dependency
 if(APPLE)
     target_link_libraries(ascii-chat-audio
         ${COREAUDIO_FRAMEWORK}
@@ -276,31 +276,11 @@ if(APPLE)
         ${AUDIOTOOLBOX_FRAMEWORK}
         ${CORESERVICES_FRAMEWORK}
     )
-elseif(UNIX AND NOT USE_MUSL)
-    # Check if JACK is available (PortAudio may or may not be built with JACK support)
-    # Try pkg-config first (more reliable on Linux), then fall back to find_library
-    # Ensure JACK variables are defined even if detection fails (avoids undefined-variable checks)
-    set(JACK_FOUND FALSE)
-    set(JACK_LIBRARY JACK_LIBRARY-NOTFOUND)
-    find_package(PkgConfig QUIET)
-    if(PKG_CONFIG_FOUND)
-        pkg_check_modules(JACK QUIET jack)
-        if(JACK_FOUND)
-            set(JACK_LIBRARY ${JACK_LIBRARIES})
-            target_link_libraries(ascii-chat-audio ${JACK_LIBRARIES})
-            message(STATUS "Found ${BoldBlue}JACK${ColorReset} via pkg-config: ${BoldGreen}${JACK_LIBRARIES}${ColorReset}")
-        endif()
-    endif()
+endif()
 
-    if(NOT JACK_FOUND)
-        find_library(JACK_LIBRARY NAMES jack)
-        if(JACK_LIBRARY)
-            target_link_libraries(ascii-chat-audio ${JACK_LIBRARY})
-            message(STATUS "Found ${BoldBlue}JACK${ColorReset}: ${BoldGreen}${JACK_LIBRARY}${ColorReset}")
-        else()
-            message(STATUS "${BoldYellow}JACK not found${ColorReset} - PortAudio will use ALSA/OSS only")
-        endif()
-    endif()
+# Add build dependency for PortAudio from-source builds (non-musl Linux/macOS)
+if(DEFINED PORTAUDIO_BUILD_TARGET AND TARGET ${PORTAUDIO_BUILD_TARGET})
+    add_dependencies(ascii-chat-audio ${PORTAUDIO_BUILD_TARGET})
 endif()
 
 # -----------------------------------------------------------------------------
@@ -620,6 +600,11 @@ else()
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
 
+    # Add dependency on PortAudio build target if building from source
+    if(DEFINED PORTAUDIO_BUILD_TARGET AND TARGET ${PORTAUDIO_BUILD_TARGET})
+        add_dependencies(ascii-chat-shared ${PORTAUDIO_BUILD_TARGET})
+    endif()
+
     # Platform-specific linker flags
     if(APPLE)
         # macOS: Symbols are exported by default when using -fvisibility=default
@@ -783,10 +768,6 @@ else()
             )
         elseif(PLATFORM_LINUX)
             target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-            # Link JACK if it was found earlier (PortAudio may be built with JACK support)
-            if(JACK_LIBRARY AND NOT USE_MUSL)
-                target_link_libraries(ascii-chat-shared PRIVATE ${JACK_LIBRARY})
-            endif()
         endif()
     endif()
 endif()

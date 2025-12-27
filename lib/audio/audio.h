@@ -43,7 +43,7 @@
  * PLATFORM SUPPORT:
  * ==================
  * - Windows: DirectSound, WASAPI, or ASIO backends
- * - Linux: ALSA or JACK backends
+ * - Linux: ALSA backend only (JACK explicitly disabled)
  * - macOS: CoreAudio backend
  *
  * @note Audio capture and playback can be started/stopped independently.
