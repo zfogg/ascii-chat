@@ -85,8 +85,9 @@ extern "C" {
 /** Echo reference ring buffer size (500ms at 48kHz) */
 #define CLIENT_AUDIO_PIPELINE_ECHO_REF_SIZE (CLIENT_AUDIO_PIPELINE_SAMPLE_RATE / 2)
 
-/** Render ring buffer size for lock-free AEC3 feeding (100ms at 48kHz = 4800 samples) */
-#define CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE 4800
+/** Render ring buffer size for lock-free AEC3 feeding (500ms at 48kHz = 24000 samples)
+ *  Increased from 100ms to handle jitter buffer delays (200ms) and give AEC3 more history */
+#define CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE 24000
 
 /** Maximum Opus packet size */
 #define CLIENT_AUDIO_PIPELINE_MAX_OPUS_PACKET 4000
