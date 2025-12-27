@@ -167,6 +167,172 @@ static bool g_audio_capture_thread_created = false;
 static atomic_bool g_audio_capture_thread_exited = false;
 
 /* ============================================================================
+ * Async Audio Packet Queue (decouples capture from network I/O)
+ * ============================================================================ */
+
+/**
+ * @brief Audio packet for async sending
+ *
+ * Represents a batch of Opus frames ready to be sent to the server.
+ * The sender thread pulls these from the queue and handles network I/O.
+ */
+typedef struct {
+  uint8_t data[8 * 4000]; // Max 8 frames * ~500 bytes each (with safety margin)
+  size_t size;
+  uint16_t frame_sizes[8];
+  int frame_count;
+} audio_send_packet_t;
+
+/** Ring buffer queue for async audio packets */
+#define AUDIO_SEND_QUEUE_SIZE 32
+static audio_send_packet_t g_audio_send_queue[AUDIO_SEND_QUEUE_SIZE];
+static int g_audio_send_queue_head = 0; // Write position
+static int g_audio_send_queue_tail = 0; // Read position
+static mutex_t g_audio_send_queue_mutex;
+static cond_t g_audio_send_queue_cond;
+static bool g_audio_send_queue_initialized = false;
+
+/** Audio sender thread */
+static asciithread_t g_audio_sender_thread;
+static bool g_audio_sender_thread_created = false;
+static atomic_bool g_audio_sender_should_exit = false;
+
+/**
+ * @brief Queue an audio packet for async sending (non-blocking)
+ *
+ * Called by capture thread. Returns immediately without blocking on network.
+ *
+ * @param opus_data Encoded Opus data
+ * @param opus_size Size of Opus data
+ * @param frame_sizes Array of frame sizes
+ * @param frame_count Number of frames
+ * @return 0 on success, -1 if queue is full
+ */
+static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const uint16_t *frame_sizes,
+                              int frame_count) {
+  if (!g_audio_send_queue_initialized || !opus_data || opus_size == 0) {
+    return -1;
+  }
+
+  mutex_lock(&g_audio_send_queue_mutex);
+
+  // Check if queue is full
+  int next_head = (g_audio_send_queue_head + 1) % AUDIO_SEND_QUEUE_SIZE;
+  if (next_head == g_audio_send_queue_tail) {
+    mutex_unlock(&g_audio_send_queue_mutex);
+    log_warn_every(1000000, "Audio send queue full, dropping packet");
+    return -1;
+  }
+
+  // Copy packet to queue
+  audio_send_packet_t *packet = &g_audio_send_queue[g_audio_send_queue_head];
+  if (opus_size <= sizeof(packet->data)) {
+    memcpy(packet->data, opus_data, opus_size);
+    packet->size = opus_size;
+    packet->frame_count = frame_count;
+    for (int i = 0; i < frame_count && i < 8; i++) {
+      packet->frame_sizes[i] = frame_sizes[i];
+    }
+    g_audio_send_queue_head = next_head;
+  }
+
+  // Signal sender thread
+  cond_signal(&g_audio_send_queue_cond);
+  mutex_unlock(&g_audio_send_queue_mutex);
+
+  return 0;
+}
+
+/**
+ * @brief Audio sender thread function
+ *
+ * Pulls packets from the queue and sends them to the server.
+ * Network I/O blocking happens here, not in the capture thread.
+ */
+static void *audio_sender_thread_func(void *arg) {
+  (void)arg;
+  log_info("Audio sender thread started");
+
+  while (!atomic_load(&g_audio_sender_should_exit)) {
+    mutex_lock(&g_audio_send_queue_mutex);
+
+    // Wait for packet or exit signal
+    while (g_audio_send_queue_head == g_audio_send_queue_tail && !atomic_load(&g_audio_sender_should_exit)) {
+      cond_wait(&g_audio_send_queue_cond, &g_audio_send_queue_mutex);
+    }
+
+    if (atomic_load(&g_audio_sender_should_exit)) {
+      mutex_unlock(&g_audio_send_queue_mutex);
+      break;
+    }
+
+    // Dequeue packet
+    audio_send_packet_t packet = g_audio_send_queue[g_audio_send_queue_tail];
+    g_audio_send_queue_tail = (g_audio_send_queue_tail + 1) % AUDIO_SEND_QUEUE_SIZE;
+
+    mutex_unlock(&g_audio_send_queue_mutex);
+
+    // Send packet (may block on network I/O - that's OK, we're not in capture thread)
+    if (threaded_send_audio_opus_batch(packet.data, packet.size, packet.frame_sizes, packet.frame_count) < 0) {
+      log_debug_every(100000, "Failed to send audio packet");
+    }
+  }
+
+  log_info("Audio sender thread exiting");
+  return NULL;
+}
+
+/**
+ * @brief Initialize async audio sender queue and thread
+ */
+static void audio_sender_init(void) {
+  if (g_audio_send_queue_initialized) {
+    return;
+  }
+
+  mutex_init(&g_audio_send_queue_mutex);
+  cond_init(&g_audio_send_queue_cond);
+  g_audio_send_queue_head = 0;
+  g_audio_send_queue_tail = 0;
+  g_audio_send_queue_initialized = true;
+  atomic_store(&g_audio_sender_should_exit, false);
+
+  // Start sender thread
+  if (ascii_thread_create(&g_audio_sender_thread, audio_sender_thread_func, NULL) == 0) {
+    g_audio_sender_thread_created = true;
+    log_info("Audio sender thread created");
+  } else {
+    log_error("Failed to create audio sender thread");
+  }
+}
+
+/**
+ * @brief Cleanup async audio sender
+ */
+static void audio_sender_cleanup(void) {
+  if (!g_audio_send_queue_initialized) {
+    return;
+  }
+
+  // Signal thread to exit
+  atomic_store(&g_audio_sender_should_exit, true);
+  mutex_lock(&g_audio_send_queue_mutex);
+  cond_signal(&g_audio_send_queue_cond);
+  mutex_unlock(&g_audio_send_queue_mutex);
+
+  // Join thread
+  if (g_audio_sender_thread_created) {
+    ascii_thread_join(&g_audio_sender_thread, NULL);
+    g_audio_sender_thread_created = false;
+    log_info("Audio sender thread joined");
+  }
+
+  mutex_destroy(&g_audio_send_queue_mutex);
+  cond_destroy(&g_audio_send_queue_cond);
+  g_audio_send_queue_initialized = false;
+}
+
+/* ============================================================================
  * Audio Processing Constants
  * ============================================================================ */
 
@@ -440,16 +606,16 @@ static void *audio_capture_thread_func(void *arg) {
         }
       }
 
-      // Send batch if we have frames (send after processing all available samples)
+      // Queue batch for async sending (non-blocking - sender thread handles network I/O)
       if (batch_frame_count > 0) {
         static int batch_send_count = 0;
         batch_send_count++;
 
-        if (threaded_send_audio_opus_batch(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count) < 0) {
-          log_error("Failed to send Opus audio batch to server");
+        if (audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count) < 0) {
+          log_debug_every(100000, "Failed to queue audio batch (queue full)");
         } else {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
-            log_info("CLIENT: Sent Opus batch #%d (%d frames, %zu bytes)", batch_send_count, batch_frame_count,
+            log_info("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes)", batch_send_count, batch_frame_count,
                      batch_total_size);
           }
         }
@@ -578,6 +744,9 @@ int audio_client_init() {
     return -1;
   }
 
+  // Initialize async audio sender (decouples capture from network I/O)
+  audio_sender_init();
+
   return 0;
 }
 
@@ -694,8 +863,11 @@ void audio_cleanup() {
     return;
   }
 
-  // Stop capture thread
+  // Stop capture thread first (stops producing packets)
   audio_stop_thread();
+
+  // Stop async sender thread (drains queue and exits)
+  audio_sender_cleanup();
 
   // CRITICAL: Stop audio streams BEFORE destroying pipeline to prevent race condition
   // The PortAudio output_callback is still executing after audio_stop_playback() returns
