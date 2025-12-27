@@ -18,7 +18,10 @@
 // Define required WebRTC macros before including headers
 #define WEBRTC_APM_DEBUG_DUMP 0
 #define WEBRTC_MODULE_AUDIO_PROCESSING 1
+// WEBRTC_POSIX should only be defined on POSIX systems (Unix/macOS), not Windows
+#if defined(__unix__) || defined(__APPLE__)
 #define WEBRTC_POSIX 1
+#endif
 
 // Suppress WebRTC/Abseil warnings about deprecated builtins and unused parameters
 // These are third-party code issues, not our code
