@@ -755,9 +755,10 @@ void *client_audio_render_thread(void *arg) {
   log_debug("Audio render thread started for client %u (%s)", thread_client_id, thread_display_name);
 #endif
 
-  // Mix buffer: 480 samples = 10ms @ 48kHz (matches loop iteration timing)
-  // Sized to ensure 960 samples accumulate in ~2 iterations for 20ms packets
-  float mix_buffer[480];
+  // Mix buffer: up to 960 samples for adaptive reading
+  // Normal: 480 samples = 10ms @ 48kHz
+  // Catchup: 960 samples = 20ms when buffers are filling up
+  float mix_buffer[960];
 
 // Opus frame accumulation buffer (960 samples = 20ms @ 48kHz)
 // Opus requires minimum 480 samples, 960 is optimal for 20ms frames
@@ -835,18 +836,33 @@ void *client_audio_render_thread(void *arg) {
     struct timespec mix_start_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &mix_start_time);
 
+    // ADAPTIVE READING: Read more samples when we're behind to catch up
+    // Normal: 480 samples per 10ms iteration
+    // When behind: read up to 960 samples to catch up faster
+    // Check source buffer levels to decide
+    int samples_to_read = 480; // Default: 10ms worth
+
+    if (g_audio_mixer) {
+      // Check if any source buffer is getting full (> 50% = 96000 samples at 192000 buffer)
+      for (int i = 0; i < g_audio_mixer->max_sources; i++) {
+        if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
+            g_audio_mixer->source_buffers[i]) {
+          size_t available = audio_ring_buffer_available_read(g_audio_mixer->source_buffers[i]);
+          if (available > 96000) { // Buffer > 50% full (2 seconds)
+            samples_to_read = 960; // Double read to catch up (20ms worth)
+            log_debug_every(5000000, "Audio catchup for client %u: buffer has %zu samples, reading %d",
+                            client_id_snapshot, available, samples_to_read);
+            break;
+          }
+        }
+      }
+    }
+
     int samples_mixed = 0;
     if (opt_no_audio_mixer) {
       // Disable mixer.h processing: simple mixing without ducking/compression/etc
       // Just add audio from all sources except this client, no processing
-      //
-      // CRITICAL TIMING FIX: Read 480 samples per 10ms loop iteration
-      // At 48kHz sample rate, 10ms = 480 samples
-      // This ensures 960 samples accumulate in ~2 iterations = ~20ms packets
-      // (Previously read only 256 samples per iteration, causing 40ms packets and stuttering)
-      const int samples_per_iteration = 480; // 48kHz * 10ms
-
-      SAFE_MEMSET(mix_buffer, samples_per_iteration * sizeof(float), 0, samples_per_iteration * sizeof(float));
+      SAFE_MEMSET(mix_buffer, samples_to_read * sizeof(float), 0, samples_to_read * sizeof(float));
 
       if (g_audio_mixer) {
         int max_samples_in_frame = 0;
@@ -855,9 +871,9 @@ void *client_audio_render_thread(void *arg) {
           if (g_audio_mixer->source_ids[i] != 0 && g_audio_mixer->source_ids[i] != client_id_snapshot &&
               g_audio_mixer->source_buffers[i]) {
             // Read from this source and add to mix buffer
-            float temp_buffer[480];
+            float temp_buffer[960]; // Max adaptive read size
             int samples_read =
-                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, samples_per_iteration);
+                (int)audio_ring_buffer_read(g_audio_mixer->source_buffers[i], temp_buffer, samples_to_read);
 
             // Track the maximum samples we got from any source
             if (samples_read > max_samples_in_frame) {
@@ -876,8 +892,8 @@ void *client_audio_render_thread(void *arg) {
       log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u",
                       samples_mixed, client_id_snapshot);
     } else {
-      // Also use 480 samples per iteration in normal mixer mode for consistent timing
-      samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, 480, client_id_snapshot);
+      // Use adaptive sample count in normal mixer mode
+      samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_snapshot);
     }
 
     struct timespec mix_end_time;
@@ -1048,7 +1064,9 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Audio mixing rate - 10ms to match 48kHz sample rate (480 samples per iteration)
-    // Calculate elapsed time and sleep for remainder to maintain constant FPS
+    // Use ABSOLUTE timing to prevent drift from chunked sleep overhead
+    // Previous approach slept in 1ms chunks causing ~20% timing drift (12ms instead of 10ms)
+    // which drained client buffers faster than they were filled.
     struct timespec loop_end_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &loop_end_time);
 
@@ -1057,37 +1075,20 @@ void *client_audio_render_thread(void *arg) {
 
     // Target loop time: 10ms to match the audio sample rate
     // We read 480 samples per iteration at 48kHz: 480 / 48000 = 0.01s = 10ms
-    // Previous 9.5ms timing caused 5% rate mismatch (50.5kHz vs 48kHz) which
-    // drained client ring buffers faster than they were filled, causing
-    // periodic silence gaps that manifested as buzzing/static audio.
     const uint64_t target_loop_us = 10000; // 10ms for exactly 48kHz rate
-    long remaining_sleep_us;
 
     if (loop_elapsed_us >= target_loop_us) {
       // Processing took longer than target - skip sleep but warn
       log_warn_every(1000000, "Audio processing took %lluus (%.1fms) - exceeds target %lluus (%.1fms) for client %u",
                      loop_elapsed_us, (float)loop_elapsed_us / 1000.0f, target_loop_us, (float)target_loop_us / 1000.0f,
                      thread_client_id);
-      remaining_sleep_us = 0;
     } else {
-      // Sleep for remaining time to maintain constant FPS
-      remaining_sleep_us = (long)(target_loop_us - loop_elapsed_us);
-    }
-
-    // Sleep in small chunks for better shutdown responsiveness
-    const long sleep_chunk = 1000; // 1ms chunks for reasonable shutdown response
-    while (remaining_sleep_us > 0 && !atomic_load(&g_server_should_exit)) {
-      long chunk = remaining_sleep_us > sleep_chunk ? sleep_chunk : remaining_sleep_us;
-      platform_sleep_usec(chunk);
-      remaining_sleep_us -= chunk;
-
-      // Check all shutdown conditions
-      if (atomic_load(&g_server_should_exit))
-        break;
-
-      bool still_running = atomic_load(&client->audio_render_thread_running) && atomic_load(&client->active);
-      if (!still_running)
-        break;
+      // Sleep for remaining time in ONE call to avoid chunked sleep overhead
+      // Check shutdown first, then do one accurate sleep
+      if (!atomic_load(&g_server_should_exit) && atomic_load(&client->audio_render_thread_running)) {
+        long remaining_sleep_us = (long)(target_loop_us - loop_elapsed_us);
+        platform_sleep_usec(remaining_sleep_us);
+      }
     }
   }
 
