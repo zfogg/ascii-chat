@@ -6,6 +6,15 @@ if(WIN32)
     set(CMAKE_C_COMPILER_WORKS TRUE CACHE BOOL "Skip compiler test" FORCE)
 endif()
 
+# Copy the wrapper stdbool.h to the output directory so the defer tool can use it
+# This avoids the __has_include_next issue in clang's builtin stdbool.h
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/include")
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/stdbool.h"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/stdbool.h"
+    COPYONLY
+)
+
 # Note: On macOS, the parent build (BuildLLVMTool.cmake) sets CMAKE_CXX_COMPILER
 # to Homebrew LLVM's clang++ BEFORE invoking this ExternalProject.
 # This ensures consistency between the compiler and the libraries we're linking against,
@@ -84,6 +93,13 @@ if(DEFER_TOOL_CLANG_RESOURCE_DIR)
     )
     message(STATUS "Embedding Clang resource directory in defer tool: ${DEFER_TOOL_CLANG_RESOURCE_DIR}")
 endif()
+
+# Pass the wrapper include directory (where our custom stdbool.h lives)
+# This directory is searched BEFORE clang's builtins to avoid __has_include_next issues
+target_compile_definitions(ascii-instr-defer PRIVATE
+    STDBOOL_WRAPPER_DIR="${CMAKE_CURRENT_BINARY_DIR}/include"
+)
+message(STATUS "Embedding stdbool wrapper directory in defer tool: ${CMAKE_CURRENT_BINARY_DIR}/include")
 
 # Pass the detected macOS SDK path as a compile definition
 # This allows the defer tool to find system headers at runtime
