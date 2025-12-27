@@ -67,10 +67,19 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
                            void *userData) {
   (void)inputBuffer;
   (void)timeInfo;
-  (void)statusFlags;
 
   audio_context_t *ctx = (audio_context_t *)userData;
   float *output = (float *)outputBuffer;
+
+  // Log PortAudio status flags that might indicate issues
+  if (statusFlags != 0) {
+    if (statusFlags & paOutputUnderflow) {
+      log_warn_every(1000000, "PortAudio output underflow detected - audio callback too slow");
+    }
+    if (statusFlags & paOutputOverflow) {
+      log_warn_every(1000000, "PortAudio output overflow detected");
+    }
+  }
 
   if (output != NULL) {
     if (ctx->playback_buffer != NULL) {
@@ -86,6 +95,31 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
         SAFE_MEMSET(output, framesPerBuffer * AUDIO_CHANNELS * sizeof(float), 0,
                     framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
         log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to speakers");
+      } else {
+        // Periodically log sample statistics to help diagnose buzzing/clipping
+        static _Atomic int output_callback_count = 0;
+        int cb_count = atomic_fetch_add(&output_callback_count, 1) + 1;
+        if (cb_count % 500 == 0) { // Every ~500 callbacks (~2.7 seconds at 256 frames/callback)
+          float min_val = 1.0f, max_val = -1.0f, sum_squares = 0.0f;
+          int clip_count = 0;
+          size_t total_samples = framesPerBuffer * AUDIO_CHANNELS;
+          for (size_t i = 0; i < total_samples; i++) {
+            float s = output[i];
+            if (s < min_val)
+              min_val = s;
+            if (s > max_val)
+              max_val = s;
+            sum_squares += s * s;
+            if (s >= 1.0f || s <= -1.0f)
+              clip_count++;
+          }
+          float rms = sqrtf(sum_squares / total_samples);
+          log_debug("Audio output stats: min=%.4f max=%.4f RMS=%.4f clips=%d samples=%zu", min_val, max_val, rms,
+                    clip_count, total_samples);
+          if (clip_count > 0) {
+            log_warn("Audio output CLIPPING detected: %d samples at full scale! This causes distortion.", clip_count);
+          }
+        }
       }
       // Note: audio_ring_buffer_read now returns full buffer (samples) with internal
       // silence padding, so no need to fill remaining samples here
@@ -658,7 +692,7 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
     mutex_unlock(&ctx->state_mutex);
     return SET_ERRNO(ERROR_AUDIO, "Device info not found for output device %d", outputParameters.device);
   }
-  log_info("Opening audio output device %d: %s (%d channels, %.0f Hz)%s", outputParameters.device,
+  log_info("Opening audio output device %d: %s (%d channels, %.0f Hz native)%s", outputParameters.device,
            outputDeviceInfo->name, outputDeviceInfo->maxOutputChannels, outputDeviceInfo->defaultSampleRate,
            (opt_speakers_index < 0) ? " [DEFAULT]" : "");
 
@@ -666,6 +700,24 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
   outputParameters.sampleFormat = paFloat32;
   outputParameters.suggestedLatency = outputDeviceInfo->defaultLowOutputLatency; // Low latency for real-time
   outputParameters.hostApiSpecificStreamInfo = NULL;
+
+  // Check if the device supports our requested sample rate
+  // Note: Pa_IsFormatSupported may report unsupported even when PortAudio can handle
+  // the conversion via PulseAudio or ALSA resampling. We try 48000 Hz first anyway.
+  PaError format_check = Pa_IsFormatSupported(NULL, &outputParameters, AUDIO_SAMPLE_RATE);
+  if (format_check != paFormatIsSupported) {
+    log_warn("Pa_IsFormatSupported reports %d Hz unsupported (error: %s), but trying anyway - "
+             "PulseAudio/ALSA should resample internally",
+             AUDIO_SAMPLE_RATE, Pa_GetErrorText(format_check));
+    if (outputDeviceInfo->defaultSampleRate != AUDIO_SAMPLE_RATE) {
+      log_warn("Device's native rate is %.0f Hz, audio pipeline runs at %d Hz - resampling will be used",
+               outputDeviceInfo->defaultSampleRate, AUDIO_SAMPLE_RATE);
+    }
+  }
+
+  // Always request 48000 Hz - let PortAudio/backend handle resampling if needed
+  // This ensures our ring buffer samples (at 48000 Hz) are played at correct speed
+  ctx->output_sample_rate = AUDIO_SAMPLE_RATE;
 
   PaError err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParameters, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
                               paClipOff, output_callback, ctx); // Disable clipping for raw samples
@@ -683,13 +735,24 @@ asciichat_error_t audio_start_playback(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_AUDIO, "Failed to start output stream: %s", Pa_GetErrorText(err));
   }
 
+  // Log actual stream info for debugging sample rate issues
+  const PaStreamInfo *stream_info = Pa_GetStreamInfo(ctx->output_stream);
+  if (stream_info) {
+    log_info("Output stream opened: actual sample rate = %.0f Hz, output latency = %.3f ms", stream_info->sampleRate,
+             stream_info->outputLatency * 1000.0);
+    if (stream_info->sampleRate != AUDIO_SAMPLE_RATE) {
+      log_warn("CRITICAL: Stream sample rate (%.0f Hz) differs from requested (%d Hz)! Audio may sound wrong.",
+               stream_info->sampleRate, AUDIO_SAMPLE_RATE);
+    }
+  }
+
   // Set real-time priority for better audio performance
   audio_set_realtime_priority();
 
   ctx->playing = true;
   mutex_unlock(&ctx->state_mutex);
 
-  log_info("Audio playback started");
+  log_info("Audio playback started at %d Hz", AUDIO_SAMPLE_RATE);
   return ASCIICHAT_OK;
 }
 
