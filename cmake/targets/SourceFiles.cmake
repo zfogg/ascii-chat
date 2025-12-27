@@ -132,15 +132,6 @@ elseif(PLATFORM_POSIX)
         list(APPEND PLATFORM_SRCS
             lib/os/linux/webcam_v4l2.c
         )
-
-        # Add fortify stubs for musl builds
-        # Ubuntu's LLVM libc++.a uses glibc fortify functions (__memcpy_chk, etc.)
-        # that musl doesn't provide. These stubs bridge the gap.
-        if(USE_MUSL)
-            list(APPEND PLATFORM_SRCS
-                lib/platform/linux/fortify_stubs.c
-            )
-        endif()
     else()
         message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}. We don't have webcam code for this platform.")
     endif()
