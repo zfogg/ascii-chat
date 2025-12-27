@@ -874,20 +874,43 @@ int main(int argc, const char **argv) {
   }
 #endif
 
-  // Set -isysroot to "/" to override clang's compiled-in default sysroot.
-  // Homebrew's LLVM is compiled with -isysroot pointing to CommandLineTools SDK,
-  // which has an incomplete /usr/include (missing stdbool.h, etc.).
-  // Setting sysroot to "/" disables SDK-specific header paths and allows clang
-  // to use only its resource directory and explicit -isystem paths.
-  prependArgs.push_back("-isysroot");
-  prependArgs.push_back("/");
+  // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
+  // to CommandLineTools SDK, but we strip that from compile_commands.json and
+  // set our own explicitly to ensure consistent behavior.
+#ifdef __APPLE__
+  {
+    const char* sdkPaths[] = {
+        // Xcode SDK (preferred - most complete headers and frameworks)
+        "/Applications/Xcode.app/Contents/Developer/Platforms/"
+        "MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+        // CommandLineTools SDK (fallback for users without Xcode)
+        "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+    };
+    const char* selectedSDK = nullptr;
+
+    for (const char* sdk : sdkPaths) {
+      if (llvm::sys::fs::exists(sdk)) {
+        selectedSDK = sdk;
+        break;
+      }
+    }
+
+    if (selectedSDK) {
+      prependArgs.push_back("-isysroot");
+      prependArgs.push_back(selectedSDK);
+      llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
+    } else {
+      llvm::errs() << "Warning: No macOS SDK found, system headers may not be available\n";
+    }
+  }
+#endif
 
   // Build list of system include paths to add as -isystem paths.
   // Now that project paths use -iquote (only for "..." includes), these -isystem paths
   // will be searched for <...> includes like <stdio.h>.
   //
-  // We only add clang's builtin headers here (stdbool.h, stddef.h, etc.).
-  // With -isysroot set to "/", we don't use any SDK-specific paths.
+  // We add clang's builtin headers (stdbool.h, stddef.h, etc.) as -isystem paths
+  // to ensure they're found before SDK headers.
   std::vector<std::string> appendArgs;
 #ifdef CLANG_RESOURCE_DIR
   {
