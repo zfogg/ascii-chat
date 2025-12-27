@@ -44,6 +44,18 @@ string(REPLACE
     "${CMAKE_CONTENT}"
 )
 
+# Fix: Add macOS SDK path configuration for CI environments
+# In GitHub Actions, Homebrew LLVM needs explicit SDK path for libc++ to find C standard library headers
+if(APPLE)
+    # Inject SDK path detection and configuration right after project() declaration
+    string(REPLACE
+        "project (WebRTC-AEC3)"
+        "project (WebRTC-AEC3)\n\n# macOS: Configure SDK path for libc++ header resolution in CI\nif(APPLE AND DEFINED ENV{CI})\n  find_program(_xcrun_cmd xcrun)\n  if(_xcrun_cmd)\n    execute_process(\n      COMMAND \${_xcrun_cmd} --show-sdk-path\n      OUTPUT_VARIABLE _macos_sdk\n      OUTPUT_STRIP_TRAILING_WHITESPACE\n      ERROR_QUIET\n    )\n    if(_macos_sdk AND EXISTS \"\${_macos_sdk}\")\n      set(CMAKE_OSX_SYSROOT \"\${_macos_sdk}\" CACHE PATH \"macOS SDK\" FORCE)\n      message(STATUS \"WebRTC AEC3: Using macOS SDK for CI: \${_macos_sdk}\")\n    endif()\n  endif()\nendif()"
+        CMAKE_CONTENT
+        "${CMAKE_CONTENT}"
+    )
+endif()
+
 # Write the patched main CMakeLists.txt back
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT}")
 

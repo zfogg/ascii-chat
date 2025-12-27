@@ -297,6 +297,11 @@ else()
             -fno-rtti
             -fexceptions
         )
+
+        # Add LLVM include directories for header resolution
+        target_include_directories(ascii-instr-defer SYSTEM PRIVATE
+            ${LLVM_INCLUDE_DIRS}
+        )
     endif()
 
     # Linux: Set rpath to ensure we use the LLVM libs we built against
