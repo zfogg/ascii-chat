@@ -73,9 +73,8 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->gain_lin = 1.0f;
 
   // Set default parameters
-  // Increased makeup gain from 3dB to 6dB for better audibility
-  // Reduced ratio from 4:1 to 3:1 to reduce aggressive compression artifacts
-  compressor_set_params(comp, -10.0f, 3.0f, 10.0f, 100.0f, 6.0f);
+  // Increased makeup_dB from 3.0f to 6.0f to compensate for compression and improve loudness
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 6.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
@@ -309,8 +308,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   // Set crowd scaling parameters
-  mixer->crowd_alpha = 0.5f; // Square root scaling
-  mixer->base_gain = 1.5f;   // Increased from 1.0f for better audibility with soft clipping handling
+  mixer->crowd_alpha = 0.25f; // Reduced exponent: 1/n^0.25 instead of 1/n^0.5 for less aggressive scaling
+  mixer->base_gain = 1.5f;    // Increased from 1.0f to compensate for crowd scaling and improve perceived loudness
 
   // Initialize processing
   if (ducking_init(&mixer->ducking, max_sources, (float)sample_rate) != ASCIICHAT_OK) {
@@ -572,9 +571,9 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       mix *= comp_gain;
 
       // Compressor provides +6dB makeup gain for better audibility
-      // Soft clipping at 0.98f threshold provides headroom while maintaining clean sound
-      // Reduced aggressiveness compared to hard clipping
-      output[frame_start + s] = soft_clip(mix, 0.98f);
+      // Soft clip threshold 1.0f allows full range without premature clipping
+      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f);
     }
   }
 
@@ -730,9 +729,9 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       mix *= comp_gain;
 
       // Compressor provides +6dB makeup gain for better audibility
-      // Soft clipping at 0.98f threshold provides headroom while maintaining clean sound
-      // Reduced aggressiveness compared to hard clipping
-      output[frame_start + s] = soft_clip(mix, 0.98f);
+      // Soft clip threshold 1.0f allows full range without premature clipping
+      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f);
     }
   }
 
@@ -936,12 +935,12 @@ void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int 
 
 float soft_clip(float sample, float threshold) {
   if (sample > threshold) {
-    // Soft clip positive values
-    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 10.0f);
+    // Soft clip positive values with gentler curve (reduced from 10.0f to 3.0f for less distortion)
+    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 3.0f);
   }
   if (sample < -threshold) {
-    // Soft clip negative values
-    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 10.0f);
+    // Soft clip negative values with gentler curve (reduced from 10.0f to 3.0f for less distortion)
+    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 3.0f);
   }
   return sample;
 }
