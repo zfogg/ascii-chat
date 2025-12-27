@@ -133,7 +133,7 @@ typedef struct {
  *
  * 14400 samples @ 48kHz = 300ms = 15 Opus frames (20ms each)
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 15)
+#define AUDIO_JITTER_BUFFER_THRESHOLD (960 * 5)
 
 /** @brief Low water mark - refill jitter buffer when available drops below this
  *
@@ -146,7 +146,7 @@ typedef struct {
  *
  * 7680 samples = 160ms = 8 Opus frames - gives 30-60ms margin above network gaps
  */
-#define AUDIO_JITTER_LOW_WATER_MARK (960 * 8)
+#define AUDIO_JITTER_LOW_WATER_MARK (960 * 3)
 
 /** @brief Crossfade duration in samples for smooth underrun recovery
  *
