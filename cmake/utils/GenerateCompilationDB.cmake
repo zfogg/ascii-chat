@@ -159,13 +159,14 @@ function(generate_compilation_database)
     set(_cmake_build_cmd "${CMAKE_COMMAND} --build ${_DB_TEMP_DIR} --target generate_version")
 
     if(WIN32)
-        # Windows: use cmd to redirect stdout and stderr to log file
+        # Windows: use PowerShell for proper stdout/stderr redirection
+        # cmd /c has quoting issues with -D arguments containing paths
         add_custom_command(
             OUTPUT "${_DB_OUTPUT}"
             COMMAND ${CMAKE_COMMAND} -E rm -rf "${_DB_TEMP_DIR}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_DB_TEMP_DIR}"
-            COMMAND cmd /c "${CMAKE_COMMAND} ${_cmake_args_str} > ${_DB_LOG_FILE} 2>&1"
-            COMMAND cmd /c "${_cmake_build_cmd} >> ${_DB_LOG_FILE} 2>&1"
+            COMMAND powershell -Command "${CMAKE_COMMAND} ${_cmake_args_str} *> ${_DB_LOG_FILE}"
+            COMMAND powershell -Command "${_cmake_build_cmd} *>> ${_DB_LOG_FILE}"
             COMMAND ${CMAKE_COMMAND} -E copy
                 "${_DB_TEMP_DIR}/compile_commands.json"
                 "${_DB_OUTPUT}"
