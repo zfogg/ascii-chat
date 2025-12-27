@@ -70,15 +70,13 @@ jobs:
             echo "  Total: $TOTAL_COMMITS"
 
             # Calculate next version using version.sh
+            # Default to patch bumps for conservative versioning
             if [[ "${{ github.event.inputs.major_bump }}" == "true" ]]; then
               VERSION_NUM=$(./scripts/version.sh --next-major)
               BUMP_TYPE="major (manual override)"
-            elif [[ $FEAT_COUNT -gt 0 ]]; then
-              VERSION_NUM=$(./scripts/version.sh --next-minor)
-              BUMP_TYPE="minor (${FEAT_COUNT} features)"
             else
               VERSION_NUM=$(./scripts/version.sh --next-patch)
-              BUMP_TYPE="patch (${FIX_COUNT} fixes, ${OTHER_COUNT} other)"
+              BUMP_TYPE="patch (${FIX_COUNT} fixes, ${FEAT_COUNT} features, ${OTHER_COUNT} other)"
             fi
 
             VERSION="v${VERSION_NUM}"
