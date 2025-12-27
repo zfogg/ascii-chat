@@ -902,25 +902,23 @@ int main(int argc, const char **argv) {
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
   // Set up include paths for LibTooling to find system headers correctly.
-  //
-  // ClangTool uses the clang driver, so we need -Xclang to pass cc1 flags.
-  // Use -Xclang -internal-isystem to add the clang builtin include directory
-  // at the highest priority for system headers.
+  // We use -resource-dir to tell clang where its builtin headers are located
+  // (stdbool.h, stddef.h, etc.) and -isysroot for macOS SDK headers (stdio.h, etc.).
 
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
     std::string builtinInclude = std::string(resourceDir) + "/include";
     if (llvm::sys::fs::exists(builtinInclude)) {
-      // Add clang's builtin include directory using -Xclang -internal-isystem
-      // -internal-isystem is a cc1 flag, so we need -Xclang to pass it through the driver
-      // This ensures stdbool.h and other clang builtins are found first
-      std::vector<std::string> builtinIncludeArgs = {"-Xclang", "-internal-isystem", "-Xclang", builtinInclude};
+      // Add clang's resource directory. This tells clang where to find its builtin headers
+      // (stdbool.h, stddef.h, etc.). We use -resource-dir which is a driver flag that
+      // ClangTool understands properly.
+      std::string resourceDirArg = std::string("-resource-dir=") + resourceDir;
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using clang builtin include directory: " << builtinInclude << "\n";
+          tooling::getInsertArgumentAdjuster(resourceDirArg.c_str(), tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using clang resource directory: " << resourceDir << "\n";
     } else {
-      llvm::errs() << "Warning: Clang builtin include directory does not exist: " << builtinInclude << "\n";
+      llvm::errs() << "Warning: Clang resource directory does not exist: " << resourceDir << "\n";
     }
   }
 #endif
