@@ -585,7 +585,7 @@ Test(grid_layout, scoring_algorithm) {
 
 ### Current Code Location
 - Grid calculation: `src/server/stream.c:619-695`
-- ASCII grid generation: `lib/image2ascii/ascii.c:384-622`
+- ASCII grid generation: `lib/video/ascii.c:384-622`
 
 ### Migration Steps
 1. Create `lib/grid_layout.c/h` with new functions

@@ -75,7 +75,7 @@
 #include "platform/abstraction.h"
 #include "platform/internal.h"
 #include "options.h"
-#include "image2ascii/ascii.h"
+#include "video/ascii.h"
 
 #include <fcntl.h>
 #include <string.h>

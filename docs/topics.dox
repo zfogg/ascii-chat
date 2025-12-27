@@ -38,11 +38,11 @@
  * - @subpage topic_handshake
  * - @subpage topic_keys
  *
- * @section topics_image2ascii 📹 Image2ASCII
+ * @section topics_video 📹 Video
  *
- * @copybrief module_image2ascii
+ * @copybrief module_video
  *
- * - @subpage topic_image2ascii
+ * - @subpage topic_video
  * - @subpage topic_video_frame
  * - @subpage topic_grid_layout
  * - @subpage topic_palette

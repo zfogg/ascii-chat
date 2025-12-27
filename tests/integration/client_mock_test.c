@@ -13,7 +13,7 @@
 #include "tests/common.h"
 #include "os/webcam.h"
 #include "options.h"
-#include "image2ascii/image.h"
+#include "video/image.h"
 #include "tests/logging.h"
 
 // Suite setup: enable test pattern mode

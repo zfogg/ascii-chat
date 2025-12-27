@@ -14,9 +14,9 @@
 #include "logging.h"
 #include "packet_queue.h"
 #include "ringbuffer.h"
-#include "video_frame.h"
+#include "video/video_frame.h"
 #include "platform/terminal.h"
-#include "palette.h"
+#include "video/palette.h"
 #include "util/uthash.h"
 #include "crypto/handshake.h"
 

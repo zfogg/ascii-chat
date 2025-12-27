@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/simd/sse2.c
- * @ingroup image2ascii
+ * @file video/simd/sse2.c
+ * @ingroup video
  * @brief ⚡ SSE2-accelerated ASCII rendering with 128-bit vector operations (x86 baseline)
  */
 

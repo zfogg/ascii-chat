@@ -1,6 +1,6 @@
 /**
  * @defgroup video_frame Video Frame Buffers
- * @ingroup image2ascii
+ * @ingroup video
  *
  * @page topic_video_frame Video Frame README
  * @ingroup video_frame
@@ -325,6 +325,6 @@
  * @endcode
  *
  * @see video_frame.h
- * @see image2ascii/image.h
+ * @see video/image.h
  * @see os/webcam.h
  */

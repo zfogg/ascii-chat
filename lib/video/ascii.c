@@ -1,7 +1,7 @@
 
 /**
- * @file image2ascii/ascii.c
- * @ingroup image2ascii
+ * @file video/ascii.c
+ * @ingroup video
  * @brief 🖼️ Image-to-ASCII conversion with SIMD acceleration, color matching, and terminal optimization
  */
 

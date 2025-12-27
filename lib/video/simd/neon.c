@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/simd/neon.c
- * @ingroup image2ascii
+ * @file video/simd/neon.c
+ * @ingroup video
  * @brief ⚡ ARM NEON-accelerated ASCII rendering with 128-bit vector operations for ARM64
  */
 
@@ -21,9 +21,9 @@
 #include "neon.h"
 #include "ascii_simd.h"
 #include "../image.h"
-#include "image2ascii/simd/common.h"
-#include "image2ascii/output_buffer.h"
-#include "image2ascii/ansi_fast.h"
+#include "video/simd/common.h"
+#include "video/output_buffer.h"
+#include "video/ansi_fast.h"
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance

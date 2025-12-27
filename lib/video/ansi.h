@@ -1,8 +1,8 @@
 #pragma once
 
 /**
- * @file image2ascii/ansi.h
- * @ingroup image2ascii
+ * @file video/ansi.h
+ * @ingroup video
  * @brief ANSI escape sequence utilities
  *
  * Functions for manipulating ANSI escape sequences in strings,

@@ -1,6 +1,6 @@
 /**
  * @defgroup palette Character Palettes
- * @ingroup module_image2ascii
+ * @ingroup module_video
  * @brief 🎨 Character palettes for video-to-ASCII conversion
  *
  * @page topic_palette Palette README
@@ -748,7 +748,7 @@
  *
  * @section palette_integration Integration with Video-to-ASCII
  *
- * The palette module integrates with the image2ascii conversion pipeline:
+ * The palette module integrates with the video conversion pipeline:
  *
  * **Conversion Pipeline**:
  * 1. Video frame captured (RGB pixels)
@@ -785,7 +785,7 @@
  * @endcode
  *
  * @see palette.h
- * @see image2ascii
+ * @see video
  * @see video_frame
  */
 

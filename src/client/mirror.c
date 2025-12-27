@@ -26,17 +26,17 @@
 
 #include "mirror.h"
 #include "os/webcam.h"
-#include "image2ascii/ascii.h"
-#include "image2ascii/image.h"
-#include "image2ascii/ansi_fast.h"
-#include "image2ascii/ansi.h"
-#include "image2ascii/rle.h"
+#include "video/ascii.h"
+#include "video/image.h"
+#include "video/ansi_fast.h"
+#include "video/ansi.h"
+#include "video/rle.h"
 
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
 #include "common.h"
 #include "options.h"
-#include "palette.h"
+#include "video/palette.h"
 
 #include <signal.h>
 #include <stdlib.h>

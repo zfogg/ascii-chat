@@ -1,8 +1,8 @@
 #pragma once
 
 /**
- * @file image2ascii/simd/avx2.h
- * @ingroup image2ascii
+ * @file video/simd/avx2.h
+ * @ingroup video
  * @brief AVX2-optimized ASCII rendering functions
  * @addtogroup util
  * @{
@@ -24,7 +24,7 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars);
 
@@ -36,7 +36,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
  * @param ascii_chars Character palette
  * @return Allocated ASCII string with ANSI codes (caller must free), or NULL on error
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
@@ -44,7 +44,7 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 /**
  * @brief Destroy AVX2 caches
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void avx2_caches_destroy(void);
 

@@ -279,10 +279,10 @@
  * - Frame generation uses stored video data
  * - Client capabilities set by protocol handlers
  *
- * @subsection server_stream_image2ascii Integration with image2ascii/
+ * @subsection server_stream_video Integration with video/
  *
  * **Used By**:
- * - ASCII conversion implementation (image2ascii/)
+ * - ASCII conversion implementation (video/)
  * - SIMD-optimized conversion routines
  * - Palette management (palette.c)
  *
@@ -401,7 +401,7 @@
  * @see src/server/stream.h
  * @see @ref topic_server "Server Overview"
  * @see @ref topic_server_render "Render Threads"
- * @see topic_image2ascii
+ * @see topic_video
  * @see topic_palette
  */
 

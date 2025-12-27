@@ -1,10 +1,10 @@
 #pragma once
 
 /**
- * @file image2ascii/ascii.h
+ * @file video/ascii.h
  * @brief 🖼️ ASCII Art Conversion and Output Interface
- * @ingroup image2ascii
- * @addtogroup image2ascii
+ * @ingroup video
+ * @addtogroup video
  * @{
  *
  * This header provides comprehensive functions for converting images to ASCII art
@@ -77,7 +77,7 @@
  * @note External variable (defined in ascii.c).
  * @note Default palette: " .:-=+*#%@$" (common ASCII art palette).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 extern char ascii_palette[];
 
@@ -87,7 +87,7 @@ extern char ascii_palette[];
  * Forward declaration for image_t structure used in conversion functions.
  * Full definition is in image.h.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 typedef struct image_t image_t;
 
@@ -111,7 +111,7 @@ typedef struct image_t image_t;
  *
  * @warning On failure, use webcam_print_init_error_help() for diagnostics.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 asciichat_error_t ascii_read_init(unsigned short int webcam_index);
 
@@ -135,7 +135,7 @@ asciichat_error_t ascii_read_init(unsigned short int webcam_index);
  * @note Reset terminal clears screen and hides cursor for clean display.
  * @note File descriptor is used for terminal output (stdout, stderr, etc.).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 asciichat_error_t ascii_write_init(int fd, bool reset_terminal);
 
@@ -173,7 +173,7 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal);
  * @note Aspect ratio preservation uses terminal character correction.
  * @note Color output requires terminal color support for proper display.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height, const bool color,
                     const bool aspect_ratio, const bool stretch, const char *palette_chars,
@@ -214,7 +214,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  * @note Color mode is selected automatically based on terminal capabilities.
  * @note This is the recommended function for capability-aware ASCII conversion.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, const ssize_t height,
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
@@ -241,7 +241,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
  * @note ANSI escape sequences in frame string are processed by terminal.
  * @note Output is written immediately (no buffering).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 asciichat_error_t ascii_write(const char *frame);
 
@@ -262,7 +262,7 @@ asciichat_error_t ascii_write(const char *frame);
  * @note Safe to call multiple times (no-op after first call).
  * @note After cleanup, webcam capture will fail until re-initialized.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ascii_read_destroy(void);
 
@@ -285,7 +285,7 @@ void ascii_read_destroy(void);
  * @note Reset terminal restores terminal to default state.
  * @note After cleanup, terminal output functions may fail until re-initialized.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 void ascii_write_destroy(int fd, bool reset_terminal);
 
@@ -311,7 +311,7 @@ void ascii_write_destroy(int fd, bool reset_terminal);
  * @note Frame height is preserved (number of lines unchanged).
  * @note Frame width is increased by 'pad' characters.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ascii_pad_frame_width(const char *frame, size_t pad);
 
@@ -330,7 +330,7 @@ char *ascii_pad_frame_width(const char *frame, size_t pad);
  * @note Frame width is preserved (characters per line unchanged).
  * @note Frame height is increased by 'pad_top' lines.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ascii_pad_frame_height(const char *frame, size_t pad_top);
 
@@ -344,7 +344,7 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top);
  * @note frame_size is the size of frame_data in bytes.
  * @note Frame data must remain valid during grid creation.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 typedef struct {
   const char *frame_data; ///< Frame data pointer (ASCII frame string, not owned)
@@ -386,7 +386,7 @@ typedef struct {
  * }
  * @endcode
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int width, int height, size_t *out_size);
 
@@ -409,7 +409,7 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
  * @note Palette has 256 elements (one for each luminance level).
  * @note Palette is used for monochrome ASCII conversion.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *get_lum_palette(void);
 
@@ -429,7 +429,7 @@ char *get_lum_palette(void);
  * @note 256 levels correspond to 8-bit pixel brightness values.
  * @note Luminance palette must have 256 elements.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ASCII_LUMINANCE_LEVELS 256
 
@@ -442,7 +442,7 @@ char *get_lum_palette(void);
  * @note 50000 nanoseconds = 50 microseconds = 0.05 milliseconds
  * @note Used for frame rate limiting in video playback.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ASCII_SLEEP_NS 50000L
 
@@ -460,7 +460,7 @@ char *get_lum_palette(void);
  * @note Use with ANSI_COLOR_SUFFIX to form complete escape sequence.
  * @note Example: ANSI_FG_PREFIX "255;0;0" ANSI_COLOR_SUFFIX (red foreground).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ANSI_FG_PREFIX "\033[38;2;"
 
@@ -473,7 +473,7 @@ char *get_lum_palette(void);
  * @note Use with ANSI_COLOR_SUFFIX to form complete escape sequence.
  * @note Example: ANSI_BG_PREFIX "255;0;0" ANSI_COLOR_SUFFIX (red background).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ANSI_BG_PREFIX "\033[48;2;"
 
@@ -487,7 +487,7 @@ char *get_lum_palette(void);
  * @note Format: prefix + RGB + suffix = complete ANSI sequence.
  * @note Example: "\033[38;2;255;0;0m" (red foreground).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ANSI_COLOR_SUFFIX "m"
 
@@ -507,7 +507,7 @@ char *get_lum_palette(void);
  * @note Only works with string literals (compile-time known size).
  * @note Use fputs() or printf() for runtime strings.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define print(s) fwrite(s, 1, sizeof(s) / sizeof((s)[0]), stdout)
 
@@ -526,7 +526,7 @@ char *get_lum_palette(void);
  * Clears terminal screen and moves cursor to home position (top-left).
  * Equivalent to terminal_clear_screen() followed by terminal_cursor_home().
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define console_clear(fd) (terminal_clear_screen(), terminal_cursor_home(fd))
 
@@ -537,7 +537,7 @@ char *get_lum_palette(void);
  * Moves cursor to home position (top-left, row 1, column 1).
  * Equivalent to terminal_cursor_home().
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define cursor_reset(fd) terminal_cursor_home(fd)
 
@@ -548,7 +548,7 @@ char *get_lum_palette(void);
  * Clears terminal screen without moving cursor.
  * Equivalent to terminal_clear_screen().
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ascii_clear_screen(fd) terminal_clear_screen()
 
@@ -559,7 +559,7 @@ char *get_lum_palette(void);
  * Hides terminal cursor for clean ASCII art display.
  * Equivalent to terminal_hide_cursor(fd, true).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define cursor_hide(fd) terminal_hide_cursor(fd, true)
 
@@ -570,7 +570,7 @@ char *get_lum_palette(void);
  * Shows terminal cursor.
  * Equivalent to terminal_hide_cursor(fd, false).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define cursor_show(fd) terminal_hide_cursor(fd, false)
 
@@ -588,7 +588,7 @@ char *get_lum_palette(void);
  * @note Sleep duration: 500 nanoseconds (0.5 microseconds)
  * @note Used to prevent excessive terminal I/O.
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
                              ASCII_SLEEP_STOP = {.tv_sec = 0, .tv_nsec = 0};
@@ -604,7 +604,7 @@ static const struct timespec ASCII_SLEEP_START = {.tv_sec = 0, .tv_nsec = 500},
  * @note Used between frame outputs for rate limiting.
  * @note May not be needed on all systems (depends on terminal I/O speed).
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 #define ascii_zzz() nanosleep((struct timespec *)&ASCII_SLEEP_START, (struct timespec *)&ASCII_SLEEP_STOP)
 

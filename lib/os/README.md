@@ -116,7 +116,7 @@ int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 ### Basic Webcam Capture
 ```c
 #include "os/webcam.h"
-#include "image2ascii/image.h"
+#include "video/image.h"
 
 int main() {
     webcam_context_t *ctx = NULL;

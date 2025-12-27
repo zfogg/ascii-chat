@@ -4,7 +4,7 @@
 #include <criterion/theories.h>
 #include <string.h>
 #include <locale.h>
-#include "palette.h"
+#include "video/palette.h"
 #include "tests/common.h"
 #include "tests/logging.h"
 

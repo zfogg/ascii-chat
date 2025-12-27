@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "image2ascii/ansi_fast.h"
+#include "video/ansi_fast.h"
 #include "tests/logging.h"
 
 // Custom init function - must initialize ansi_fast before any tests use append_truecolor_fg/bg

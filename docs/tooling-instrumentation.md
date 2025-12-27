@@ -128,7 +128,7 @@ The final `seq=` value indicates the last statement that thread executed before 
 - Common flags:
   - `--log-dir /path/to/logs` – override the directory
   - `--thread 1234` – focus on one or more thread IDs (repeat flag to add more)
-  - `--include network.c` / `--exclude image2ascii` – apply the same substring filters as the runtime
+  - `--include network.c` / `--exclude video` – apply the same substring filters as the runtime
   - `--raw` – emit the original log line instead of the formatted summary
 - Example:
 

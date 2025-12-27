@@ -10,7 +10,7 @@
 #include "webcam.h"
 #include "common.h"
 #include "options.h"
-#include "image2ascii/image.h"
+#include "video/image.h"
 #include "platform/string.h"
 
 static webcam_context_t *global_webcam_ctx = NULL;

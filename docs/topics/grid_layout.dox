@@ -1,6 +1,6 @@
 /**
  * @defgroup grid Grid Layout System
- * @ingroup module_image2ascii
+ * @ingroup module_video
  * @brief ⏹️ Arranging the clients nicely
  *
  * @page topic_grid_layout Square Packing

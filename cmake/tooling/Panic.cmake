@@ -96,14 +96,14 @@ function(ascii_panic_prepare)
         "lib/platform/windows/thread.c"
         "lib/debug/lock.c"
         # SIMD files use intrinsics that confuse the panic instrumentation tool
-        "lib/image2ascii/simd/ascii_simd.c"
-        "lib/image2ascii/simd/ascii_simd_color.c"
-        "lib/image2ascii/simd/common.c"
-        "lib/image2ascii/simd/avx2.c"
-        "lib/image2ascii/simd/sse2.c"
-        "lib/image2ascii/simd/ssse3.c"
-        "lib/image2ascii/simd/neon.c"
-        "lib/image2ascii/simd/sve.c"
+        "lib/video/simd/ascii_simd.c"
+        "lib/video/simd/ascii_simd_color.c"
+        "lib/video/simd/common.c"
+        "lib/video/simd/avx2.c"
+        "lib/video/simd/sse2.c"
+        "lib/video/simd/ssse3.c"
+        "lib/video/simd/neon.c"
+        "lib/video/simd/sve.c"
     )
 
     set(candidate_vars

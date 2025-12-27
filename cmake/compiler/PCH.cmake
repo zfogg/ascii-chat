@@ -40,7 +40,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             lib/buffer_pool.h
             lib/asciichat_errno.h
             lib/ringbuffer.h
-            lib/palette.h
+            lib/video/palette.h
 
             lib/util/path.h
             lib/util/format.h

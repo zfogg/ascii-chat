@@ -127,7 +127,7 @@
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
-#include "video_frame.h"
+#include "video/video_frame.h"
 #include "util/uthash.h"
 #include "platform/abstraction.h"
 #include "platform/string.h"

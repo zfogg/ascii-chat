@@ -144,45 +144,46 @@ set(SIMD_SRCS)
 
 # Always include common SIMD files
 list(APPEND SIMD_SRCS
-    lib/image2ascii/simd/ascii_simd.c
-    lib/image2ascii/simd/ascii_simd_color.c
-    lib/image2ascii/simd/common.c
-    lib/image2ascii/output_buffer.c
-    lib/image2ascii/rle.c
+    lib/video/simd/ascii_simd.c
+    lib/video/simd/ascii_simd_color.c
+    lib/video/simd/common.c
+    lib/video/output_buffer.c
+    lib/video/rle.c
 )
 
 # Architecture-specific SIMD sources based on detection
 if(ENABLE_SIMD_SSE2)
-    list(APPEND SIMD_SRCS lib/image2ascii/simd/sse2.c)
+    list(APPEND SIMD_SRCS lib/video/simd/sse2.c)
 endif()
 
 if(ENABLE_SIMD_SSSE3)
-    list(APPEND SIMD_SRCS lib/image2ascii/simd/ssse3.c)
+    list(APPEND SIMD_SRCS lib/video/simd/ssse3.c)
 endif()
 
 if(ENABLE_SIMD_AVX2)
-    list(APPEND SIMD_SRCS lib/image2ascii/simd/avx2.c)
-    set_source_files_properties(lib/image2ascii/simd/avx2.c PROPERTIES COMPILE_FLAGS "-mavx2")
+    list(APPEND SIMD_SRCS lib/video/simd/avx2.c)
+    set_source_files_properties(lib/video/simd/avx2.c PROPERTIES COMPILE_FLAGS "-mavx2")
 endif()
 
 if(ENABLE_SIMD_NEON)
-    list(APPEND SIMD_SRCS lib/image2ascii/simd/neon.c)
+    list(APPEND SIMD_SRCS lib/video/simd/neon.c)
 endif()
 
 if(ENABLE_SIMD_SVE)
-    list(APPEND SIMD_SRCS lib/image2ascii/simd/sve.c)
-    set_source_files_properties(lib/image2ascii/simd/sve.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve")
+    list(APPEND SIMD_SRCS lib/video/simd/sve.c)
+    set_source_files_properties(lib/video/simd/sve.c PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve")
 endif()
 
 # =============================================================================
 # Module 5: Video Processing (changes weekly)
 # =============================================================================
 set(VIDEO_SRCS
-    lib/video_frame.c
-    lib/image2ascii/image.c
-    lib/image2ascii/ascii.c
-    lib/image2ascii/ansi_fast.c
-    lib/image2ascii/ansi.c
+    lib/video/video_frame.c
+    lib/video/image.c
+    lib/video/ascii.c
+    lib/video/ansi_fast.c
+    lib/video/ansi.c
+    lib/video/palette.c
     lib/util/utf8.c
     lib/os/webcam.c
 )
@@ -233,7 +234,6 @@ set(CORE_SRCS
     lib/options.c
     lib/config.c
     lib/version.c
-    lib/palette.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )

@@ -144,7 +144,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "platform/terminal.h"
-#include "palette.h"
+#include "video/palette.h"
 
 /**
  * @name Configuration Constants

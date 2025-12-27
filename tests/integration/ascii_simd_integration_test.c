@@ -7,10 +7,10 @@
 #include <stdio.h>
 
 #include "tests/common.h"
-#include "image2ascii/simd/ascii_simd.h"
-#include "image2ascii/simd/common.h"
-#include "image2ascii/image.h"
-#include "palette.h"
+#include "video/simd/ascii_simd.h"
+#include "video/simd/common.h"
+#include "video/image.h"
+#include "video/palette.h"
 
 // Use quiet logging for normal test runs
 TEST_SUITE_WITH_QUIET_LOGGING(ascii_simd_integration);

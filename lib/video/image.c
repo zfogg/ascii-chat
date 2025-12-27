@@ -1,6 +1,6 @@
 /**
- * @file image2ascii/image.c
- * @ingroup image2ascii
+ * @file video/image.c
+ * @ingroup video
  * @brief 🖨️ Image processing: format detection, decoding, scaling, and pixel format conversion
  */
 
@@ -21,7 +21,7 @@
 #include "image.h"
 #include "ascii.h"
 #include "simd/ascii_simd.h"
-#include "image2ascii/simd/common.h"
+#include "video/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
 #include "buffer_pool.h" // For buffer pool allocation functions

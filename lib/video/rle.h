@@ -1,10 +1,10 @@
 #pragma once
 
 /**
- * @file image2ascii/rle.h
+ * @file video/rle.h
  * @brief ANSI RLE (REP) sequence compression and expansion
- * @ingroup image2ascii
- * @addtogroup image2ascii
+ * @ingroup video
+ * @addtogroup video
  * @{
  *
  * This module provides functions for working with ANSI RLE (Run-Length Encoding)
@@ -56,7 +56,7 @@
  * free(expanded);
  * @endcode
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ansi_expand_rle(const char *input, size_t input_len);
 
@@ -82,7 +82,7 @@ char *ansi_expand_rle(const char *input, size_t input_len);
  * free(compressed);
  * @endcode
  *
- * @ingroup image2ascii
+ * @ingroup video
  */
 char *ansi_compress_rle(const char *input, size_t input_len);
 

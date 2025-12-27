@@ -1064,7 +1064,7 @@ target_link_libraries(ascii-chat-lib INTERFACE
 # Set Custom Object File Names (to avoid conflicts in static library)
 # =============================================================================
 # Use CMake's RULE_LAUNCH_COMPILE to rename object files after compilation
-# Example: lib/common.c → lib_common.c.o, lib/image2ascii/simd/common.c → lib_image2ascii_simd_common.c.o
+# Example: lib/common.c → lib_common.c.o, lib/video/simd/common.c → lib_video_simd_common.c.o
 
 # Note: Archiver wrapper configuration moved to cmake/init/ArchiverWrapper.cmake
 # and is now included BEFORE Libraries.cmake in CMakeLists.txt to ensure

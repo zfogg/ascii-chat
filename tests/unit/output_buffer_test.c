@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include "image2ascii/output_buffer.h"
+#include "video/output_buffer.h"
 #include "tests/common.h"
 #include "tests/logging.h"
 
