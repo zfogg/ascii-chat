@@ -94,8 +94,8 @@ run_on_two "rm -f /tmp/client2_debug.log /tmp/audio_*.wav /tmp/aec3_*.wav" 2>/de
 
 # Kill any existing processes on both hosts
 echo "[1/6] Killing existing ascii-chat processes..."
-run_on_one "pkill -f './build/bin/ascii-chat'" 2>/dev/null || true
-run_on_two "pkill -f './build/bin/ascii-chat'" 2>/dev/null || true
+run_on_one "pkill -x ascii-chat" 2>/dev/null || true
+run_on_two "pkill -x ascii-chat" 2>/dev/null || true
 sleep 1
 
 # Function to safely pull with stash handling
@@ -181,8 +181,8 @@ sleep $((DURATION + 5))
 
 # Clean up any remaining processes on both hosts
 echo "[8/8] Cleaning up processes..."
-run_on_one "pkill -9 -f 'ascii-chat'" 2>/dev/null || true
-run_on_two "pkill -9 -f 'ascii-chat'" 2>/dev/null || true
+run_on_one "pkill -9 -x ascii-chat" 2>/dev/null || true
+run_on_two "pkill -9 -x ascii-chat" 2>/dev/null || true
 sleep 1
 
 echo ""
