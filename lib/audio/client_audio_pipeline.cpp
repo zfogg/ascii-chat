@@ -208,18 +208,25 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   if (p->flags.echo_cancel) {
     try {
       // Configure AEC3 for network audio echo cancellation
-      // Audio analysis shows echo detected at 200ms delay, so set default there.
-      // Block size = 10ms at 48kHz, so 20 blocks = 200ms
-      // (25 blocks caused crash, so 20 should be safe)
+      // Audio analysis shows echo at 200ms. Default filter is 13 blocks (130ms)
+      // which is too short. Need filter length >= delay to cancel echo.
+      // Block size = 10ms at 48kHz
+      // (50 blocks crashed, 25 may crash, try 20 blocks = 200ms)
       webrtc::EchoCanceller3Config aec3_config;
 
+      // Increase filter length to handle 200ms echo (default is 13 blocks = 130ms)
+      // 20 blocks = 200ms filter, matching the detected echo delay
+      aec3_config.filter.main.length_blocks = 20;     // 200ms filter (was 13 = 130ms)
+      aec3_config.filter.shadow.length_blocks = 20;   // Shadow filter same length
+      aec3_config.filter.main_initial.length_blocks = 20;  // Initial filter same
+
       // Match the 200ms echo delay detected by audio analysis
-      aec3_config.delay.default_delay = 20;  // 200ms - matches detected echo delay
+      aec3_config.delay.default_delay = 20;  // 200ms initial delay estimate
       aec3_config.delay.delay_headroom_samples = 1920;  // 40ms headroom for jitter
 
-      // Help delay estimator converge faster to the correct delay
-      aec3_config.delay.delay_estimate_smoothing = 0.7f;  // Faster adaptation (default 0.9)
-      aec3_config.delay.delay_candidate_detection_threshold = 0.2f;  // More sensitive (default 0.1)
+      // Help delay estimator converge faster
+      aec3_config.delay.delay_estimate_smoothing = 0.7f;  // Faster adaptation
+      aec3_config.delay.delay_candidate_detection_threshold = 0.2f;  // More sensitive
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -247,7 +254,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized (200ms delay for network audio)");
+        log_info("✓ WebRTC AEC3 initialized (200ms filter + 200ms delay)");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
