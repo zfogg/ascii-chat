@@ -1067,6 +1067,7 @@ asciichat_error_t config_create_default(const char *config_path) {
   asciichat_error_t validate_result =
       path_validate_user_path(config_path_expanded, PATH_ROLE_CONFIG_FILE, &validated_config_path);
   if (validate_result != ASCIICHAT_OK) {
+    SAFE_FREE(config_path_expanded);
     return validate_result;
   }
   SAFE_FREE(config_path_expanded);
