@@ -888,51 +888,8 @@ int main(int argc, const char **argv) {
       if (arg.find("-isysroot=") == 0 || (arg.find("-isysroot") == 0 && arg.length() > 9))
         continue;
 
-      // Convert -I paths to prevent them from being searched for system headers like <stdbool.h>.
-      // Include search order is: -iquote, -I, -isystem. We want clang builtins (added as
-      // -isystem at BEGIN) to be found first for system headers.
-      //
-      // Strategy:
-      // - Project directories -> -iquote (only searched for #include "...")
-      // - System/package directories -> -isystem (searched after our clang builtins -isystem)
-      //
-      // This ensures <stdbool.h> finds clang builtins first, while <sodium.h> still works.
-      auto isSystemPath = [](const std::string& path) -> bool {
-        // Common system/package path prefixes
-        return path.find("/opt/homebrew/") == 0 ||
-               path.find("/usr/local/") == 0 ||
-               path.find("/usr/include") == 0 ||
-               path.find("/Library/") == 0 ||
-               path.find("/System/") == 0 ||
-               path.find("/nix/store/") == 0 ||
-               path.find("/Applications/Xcode") == 0;
-      };
-
-      if (arg.rfind("-I", 0) == 0 && arg.length() > 2) {
-        std::string path = arg.substr(2);
-        if (isSystemPath(path)) {
-          // Convert system/package paths to -isystem so clang builtins are searched first
-          result.push_back("-isystem");
-          result.push_back(path);
-        } else {
-          // Convert project paths to -iquote to avoid searching them for <stdbool.h>
-          result.push_back("-iquote" + path);
-        }
-        continue;
-      }
-      // Also handle "-I path" (separate argument) form
-      if (arg == "-I" && i + 1 < args.size()) {
-        const std::string& path = args[i + 1];
-        if (isSystemPath(path)) {
-          result.push_back("-isystem");
-          result.push_back(path);
-        } else {
-          result.push_back("-iquote");
-          result.push_back(path);
-        }
-        ++i;
-        continue;
-      }
+      // Keep -I paths as-is. Clang's internal includes (stdbool.h etc.) are handled
+      // separately via -resource-dir, not via -I/-isystem.
 
       result.push_back(arg);
     }
@@ -948,65 +905,56 @@ int main(int argc, const char **argv) {
   //
   // The challenge is that:
   // 1. LibTooling doesn't set up internal include paths like the clang driver does
-  // 2. -isystem directories from dependencies (zstd, libsodium) are searched for
-  //    angle-bracket includes
-  // 3. We need clang's builtin headers (stdbool.h) to be found
+  // 2. -isystem directories from dependencies (zstd, libsodium, portaudio) are in
+  //    the compilation database and get searched for angle-bracket includes
+  // 3. Clang's builtin stdbool.h has `__has_include_next(<stdbool.h>)` which looks
+  //    for stdbool.h in the NEXT -isystem directory
+  // 4. If that next directory is a dependency (not SDK), it fails
   //
-  // Solution: Add clang's builtin include directory via -isystem at BEGIN,
-  // so it's searched FIRST among all -isystem paths. The SDK's usr/include
-  // is automatically added by clang when we use -isysroot.
+  // Solution: Use -nostdinc to disable default includes, then explicitly add:
+  // 1. Clang's builtin include directory (for stdbool.h, stddef.h, etc.)
+  // 2. SDK's usr/include (for stdio.h, stdlib.h, etc. AND the system stdbool.h
+  //    that __has_include_next needs to find)
+  //
+  // These are added at BEGIN so they come BEFORE dependency includes from the
+  // compilation database. This ensures __has_include_next finds the SDK's
+  // stdbool.h rather than failing when it hits a dependency directory.
 
-  // Add -isysroot for the SDK (enables framework and system header resolution)
+  // First, add -nostdinc to disable default system include paths
+  // This gives us full control over the include search order
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
+
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
-    if (llvm::sys::fs::exists(sdkPath)) {
-      std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
+    std::string sdkInclude = std::string(sdkPath) + "/usr/include";
+    if (llvm::sys::fs::exists(sdkInclude)) {
+      // Add SDK include as -isystem (second priority, after clang builtins)
+      // This provides the system stdbool.h that __has_include_next needs
+      std::vector<std::string> sdkIncludeArgs = {"-isystem", sdkInclude};
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+          tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using SDK include directory: " << sdkInclude << "\n";
     } else {
-      llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
+      llvm::errs() << "Warning: SDK include directory does not exist: " << sdkInclude << "\n";
     }
   }
 #endif
 
-  // Add wrapper stdbool.h directory BEFORE clang builtins
-  // This provides a stdbool.h without __has_include_next issues
-#ifdef STDBOOL_WRAPPER_DIR
-  {
-    const char* wrapperDir = STDBOOL_WRAPPER_DIR;
-    if (llvm::sys::fs::exists(wrapperDir)) {
-      std::vector<std::string> wrapperArgs = {"-isystem", wrapperDir};
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(wrapperArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using stdbool wrapper directory: " << wrapperDir << "\n";
-    }
-  }
-#endif
-
-  // Add resource directory and clang builtins include (but NOT stdbool.h since we have our wrapper)
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
-    if (llvm::sys::fs::exists(resourceDir)) {
-      // Add -resource-dir for clang's internal use
-      std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
+    std::string builtinInclude = std::string(resourceDir) + "/include";
+    if (llvm::sys::fs::exists(builtinInclude)) {
+      // Add clang's builtin include directory as -isystem (highest priority)
+      // This is where stdbool.h, stddef.h, stdarg.h etc. live
+      std::vector<std::string> builtinIncludeArgs = {"-isystem", builtinInclude};
       tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using embedded resource directory: " << resourceDir << "\n";
-
-      // Add clang builtins include via -isystem AFTER wrapper directory
-      // Wrapper stdbool.h will be found first, avoiding __has_include_next issues
-      llvm::SmallString<256> builtinInclude(resourceDir);
-      llvm::sys::path::append(builtinInclude, "include");
-      if (llvm::sys::fs::exists(builtinInclude)) {
-        std::vector<std::string> builtinArgs = {"-isystem", std::string(builtinInclude)};
-        tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(builtinArgs, tooling::ArgumentInsertPosition::END));
-      }
+          tooling::getInsertArgumentAdjuster(builtinIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using clang builtin include directory: " << builtinInclude << "\n";
     } else {
-      llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
+      llvm::errs() << "Warning: Clang builtin include directory does not exist: " << builtinInclude << "\n";
     }
   }
 #endif
