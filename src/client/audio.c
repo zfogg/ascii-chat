@@ -472,6 +472,11 @@ int audio_client_init() {
   // Initialize PortAudio context using library function
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
+    // Clean up WAV writer if it was opened
+    if (g_wav_playback_received) {
+      wav_writer_close(g_wav_playback_received);
+      g_wav_playback_received = NULL;
+    }
     return -1;
   }
 
@@ -502,6 +507,11 @@ int audio_client_init() {
   if (!g_audio_pipeline) {
     log_error("Failed to create audio pipeline");
     audio_destroy(&g_audio_context);
+    // Clean up WAV writer if it was opened
+    if (g_wav_playback_received) {
+      wav_writer_close(g_wav_playback_received);
+      g_wav_playback_received = NULL;
+    }
     return -1;
   }
 
@@ -519,6 +529,11 @@ int audio_client_init() {
     client_audio_pipeline_destroy(g_audio_pipeline);
     g_audio_pipeline = NULL;
     audio_destroy(&g_audio_context);
+    // Clean up WAV writer if it was opened
+    if (g_wav_playback_received) {
+      wav_writer_close(g_wav_playback_received);
+      g_wav_playback_received = NULL;
+    }
     return -1;
   }
 
@@ -529,6 +544,11 @@ int audio_client_init() {
     g_audio_pipeline = NULL;
     audio_stop_playback(&g_audio_context);
     audio_destroy(&g_audio_context);
+    // Clean up WAV writer if it was opened
+    if (g_wav_playback_received) {
+      wav_writer_close(g_wav_playback_received);
+      g_wav_playback_received = NULL;
+    }
     return -1;
   }
 
@@ -565,8 +585,10 @@ int audio_start_thread() {
     // THREAD SAFETY FIX: Use timeout to prevent indefinite blocking
     int join_result = ascii_thread_join_timeout(&g_audio_capture_thread, NULL, 5000);
     if (join_result != 0) {
-      log_warn("Audio capture thread join timed out after 5s, forcing thread handle reset");
+      log_warn("Audio capture thread join timed out after 5s - thread may be deadlocked, "
+               "forcing thread handle reset (stuck thread resources will not be cleaned up)");
       // Thread is stuck - we can't safely reuse the handle, but we can reset our tracking
+      // This is a resource leak of the stuck thread but continuing is safer than hanging
     }
     g_audio_capture_thread_created = false;
   }
