@@ -273,42 +273,18 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     }
   }
 
-  // Check low water mark - if buffer is running too low, pause and refill
-  // (only for playback buffers - capture buffers disable jitter buffering entirely)
-  if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK && available < samples) {
-    // Buffer critically low - trigger fade-out and pause playback
+  // Low buffer handling: DON'T pause playback - continue reading what's available
+  // and fill the rest with silence. Pausing causes a feedback loop where:
+  // 1. Underrun -> pause reading -> buffer overflows from incoming samples
+  // 2. Threshold reached -> resume reading -> drains too fast -> underrun again
+  //
+  // Instead: always consume samples to prevent overflow, use silence for missing data
+  if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK) {
     rb->underrun_count++;
-    rb->jitter_buffer_filled = false;
     log_warn_every(1000000,
-                   "Audio buffer underrun #%u: only %zu samples available (low water mark: %d), pausing for refill",
+                   "Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence",
                    rb->underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
-
-    // Fade out smoothly from last sample to silence
-    // Always reset crossfade state when starting a new fade-out, even if
-    // interrupting an in-progress fade-in
-    rb->crossfade_samples_remaining = AUDIO_CROSSFADE_SAMPLES;
-    rb->crossfade_fade_in = false;
-
-    // Generate fade-out samples (first batch - may continue in subsequent reads)
-    size_t fade_samples =
-        (samples < (size_t)rb->crossfade_samples_remaining) ? samples : (size_t)rb->crossfade_samples_remaining;
-    float last = rb->last_sample;
-    for (size_t i = 0; i < fade_samples; i++) {
-      // fade_start is 0 for first batch since we just reset crossfade_samples_remaining
-      float fade_factor = 1.0f - ((float)i / (float)AUDIO_CROSSFADE_SAMPLES);
-      data[i] = last * fade_factor;
-    }
-    // Fill rest with silence
-    for (size_t i = fade_samples; i < samples; i++) {
-      data[i] = 0.0f;
-    }
-    rb->crossfade_samples_remaining -= (int)fade_samples;
-    if (rb->crossfade_samples_remaining <= 0) {
-      rb->last_sample = 0.0f;
-    }
-
-    mutex_unlock(&rb->mutex);
-    return samples; // Return full buffer (with fade-out to silence)
+    // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
   }
 
   size_t to_read = (samples > available) ? available : samples;
