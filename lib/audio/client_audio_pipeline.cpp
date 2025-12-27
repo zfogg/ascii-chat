@@ -207,86 +207,41 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   // - Jitter buffer handling via side information
   if (p->flags.echo_cancel) {
     try {
-      // Configure AEC3 for network audio with significant jitter buffer delay
-      // Our system has ~200-300ms delay from jitter buffers, so we need a MUCH
-      // longer filter than the default 13 blocks (~43ms).
+      // Configure AEC3 for network audio
+      // IMPORTANT: Use mostly default configuration to avoid crashes!
+      // Previous crash was in ReverbFrequencyResponse::Update due to vector bounds check
+      // when default_delay (25 blocks) exceeded internal filter length limits.
       //
-      // Block size at 48kHz = 480 samples = 10ms
-      // 300ms delay = 30 blocks minimum, use 50 blocks for safety margin
+      // Now using CONSERVATIVE defaults that are known to work:
       webrtc::EchoCanceller3Config aec3_config;
 
-      // Use default filter lengths - 50 blocks was causing crashes in ReverbFrequencyResponse
-      // due to vector out-of-bounds access. Default 13 blocks (130ms) should work for
-      // most acoustic echo, and AEC3's delay estimator handles network delay separately.
-      // aec3_config.filter.main.length_blocks = 13;  // Default
+      // Use ALL DEFAULTS for filter, delay, and ERLE to avoid crashes
+      // WebRTC's defaults are well-tested and internally consistent
 
-      // Configure delay for NETWORK echo path
-      // Network echo = your voice → network → their speakers → their mic → network → back
-      // This is ~200-300ms round-trip, not 5-30ms local acoustic delay
+      // Only modify suppression to be more lenient for network audio
+      // (network audio has less acoustic echo than typical phone/desktop scenarios)
       //
-      // The render signal is what we play to speakers (received from network).
-      // The echo in capture is that audio picked up by our mic after acoustic path.
-      // For network echo through the other device, delay = network_rtt + their_acoustic_path
-      aec3_config.delay.default_delay = 25;  // Start at 250ms (network round-trip estimate)
-      aec3_config.delay.delay_headroom_samples = 4800;    // 100ms headroom for jitter
+      // CONSERVATIVE suppression for network audio
+      // With network delay and minimal acoustic coupling, we want less aggressive suppression.
+      // Only suppress when there's clear echo evidence, otherwise pass through.
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 1.0f;   // Default 0.3 - slightly less aggressive
+      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 2.0f;      // Default 0.4 - slightly less aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.5f;   // Default 0.07 - slightly less aggressive
+      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 1.0f;      // Default 0.1 - slightly less aggressive
 
-      // Allow delay estimation to search full range for network delay
-      aec3_config.delay.delay_estimate_smoothing = 0.9f;  // Slow adaptation for stable network
-      aec3_config.delay.delay_candidate_detection_threshold = 0.15f;  // More sensitive detection
+      // Nearend tuning: when local speech is detected, be lenient
+      // Nearend = the person speaking into THIS microphone - minimize suppression
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 2.0f;   // Less aggressive than default
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 5.0f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 1.0f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 2.5f;
 
-      // Large hysteresis for network delay (more stable than acoustic)
-      aec3_config.delay.hysteresis_limit_blocks = 3;  // Don't jump around
-
-      // Standard filter adaptation (conservative for stability)
-      aec3_config.filter.main.leakage_converged = 0.00005f;  // Default 0.00005f - standard
-      aec3_config.filter.main.leakage_diverged = 0.05f;      // Default 0.05f - standard
-      aec3_config.filter.shadow.rate = 0.7f;                 // Default 0.7f - standard
-
-      // Extended learning period for network audio (more time to converge)
-      aec3_config.filter.initial_state_seconds = 5.0f;  // Default 2.5s, give more time but not excessive
-
-      // Moderate ERLE limits (close to defaults)
-      aec3_config.erle.max_l = 4.5f;   // Default 4.0 - slight increase for network stability
-      aec3_config.erle.max_h = 1.8f;   // Default 1.5 - slight increase for network stability
-
-      // Anti-howling protection - use WebRTC defaults
-      // Previous settings (threshold=1, gain=0.001) were WAY too aggressive and silenced all audio
-      // Default threshold=25 means only activate when actual howling detected
-      // Default gain=0.01 means reduce howling by 99%, not 99.9%
-      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 25.f;  // WebRTC default
-      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.01f;  // WebRTC default
-
-      // Keep default echo suppression gain (no boost to avoid feedback loops)
-      aec3_config.ep_strength.default_gain = 1.0f;  // Default 1.0f - no boost to prevent feedback
-
-      // EXTREMELY CONSERVATIVE suppression for network audio
-      // With network delay and minimal acoustic coupling, we want almost NO suppression.
-      // Only suppress when there's OVERWHELMING echo evidence, otherwise pass through.
-      //
-      // enr_transparent: below this ENR (Echo-to-Nearend Ratio), no suppression
-      // enr_suppress: above this ENR, full suppression
-      // VERY HIGH values = almost no suppression (effectively passthrough)
-      //
-      // The key insight: for network audio between different machines, there's usually
-      // NO acoustic echo. We only want AEC3 for cases where speakers and mic are close.
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 10.0f;  // Default 0.3 - near passthrough
-      aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 20.0f;     // Default 0.4 - very rare suppression
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 5.0f;   // Default 0.07 - near passthrough
-      aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 10.0f;     // Default 0.1 - very rare suppression
-
-      // Nearend tuning: when local speech is detected, be COMPLETELY lenient
-      // Nearend = the person speaking into THIS microphone - never suppress this
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 20.0f;  // Almost never suppress nearend
-      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 50.0f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 10.0f;
-      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 25.0f;
-
-      // Dominant nearend detection: make it VERY easy to detect local speech
+      // Dominant nearend detection: easier to detect local speech
       // This prevents echo suppression during double-talk
-      aec3_config.suppressor.dominant_nearend_detection.enr_threshold = 0.5f;    // Low threshold
-      aec3_config.suppressor.dominant_nearend_detection.snr_threshold = 0.5f;    // Low threshold
-      aec3_config.suppressor.dominant_nearend_detection.hold_duration = 100;     // Hold for 1 second
-      aec3_config.suppressor.dominant_nearend_detection.trigger_threshold = 5;   // Easy to trigger
+      aec3_config.suppressor.dominant_nearend_detection.enr_threshold = 0.8f;    // Slightly lower threshold
+      aec3_config.suppressor.dominant_nearend_detection.snr_threshold = 0.8f;    // Slightly lower threshold
+      aec3_config.suppressor.dominant_nearend_detection.hold_duration = 50;      // Default
+      aec3_config.suppressor.dominant_nearend_detection.trigger_threshold = 10;  // Default
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -314,11 +269,9 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized for network echo cancellation");
-        log_info("  - Filter length: 50 blocks (500ms) for network delay");
-        log_info("  - Default delay: 250ms (network round-trip), min 100ms");
-        log_info("  - Near-passthrough suppression (high ENR thresholds)");
-        log_info("  - Soft clipping to prevent distortion");
+        log_info("✓ WebRTC AEC3 initialized (conservative defaults)");
+        log_info("  - Using default filter/delay settings for stability");
+        log_info("  - Lenient suppression tuning for network audio");
 
         // Create persistent AudioBuffer instances for AEC3
         // CRITICAL: AudioBuffer has internal filterbank state that must persist across frames.
