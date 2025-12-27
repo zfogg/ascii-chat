@@ -570,10 +570,10 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Soft clip at 1.2 threshold for better headroom (allows peaks up to 1.2 before clipping)
-      // Combined with +6dB makeup gain from compressor, this provides sufficient audibility
-      // without excessive clipping artifacts that cause buzzing
-      output[frame_start + s] = soft_clip(mix, 1.2f);
+      // Compressor provides +6dB makeup gain for better audibility
+      // Soft clip threshold 1.0f allows full range without premature clipping
+      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f);
     }
   }
 
@@ -728,10 +728,10 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
       float comp_gain = compressor_process_sample(&mixer->compressor, mix);
       mix *= comp_gain;
 
-      // Soft clip at 1.2 threshold for better headroom (allows peaks up to 1.2 before clipping)
-      // Combined with +6dB makeup gain from compressor, this provides sufficient audibility
-      // without excessive clipping artifacts that cause buzzing
-      output[frame_start + s] = soft_clip(mix, 1.2f);
+      // Compressor provides +6dB makeup gain for better audibility
+      // Soft clip threshold 1.0f allows full range without premature clipping
+      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f);
     }
   }
 
