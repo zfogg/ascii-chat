@@ -235,9 +235,12 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.erle.max_l = 4.5f;   // Default 4.0 - slight increase for network stability
       aec3_config.erle.max_h = 1.8f;   // Default 1.5 - slight increase for network stability
 
-      // Enable anti-howling protection (critical for feedback prevention)
-      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;   // Default 25 - trigger early
-      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.001f;  // Default 0.01 - prevent howling without being excessive
+      // Anti-howling protection - use WebRTC defaults
+      // Previous settings (threshold=1, gain=0.001) were WAY too aggressive and silenced all audio
+      // Default threshold=25 means only activate when actual howling detected
+      // Default gain=0.01 means reduce howling by 99%, not 99.9%
+      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 25.f;  // WebRTC default
+      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.01f;  // WebRTC default
 
       // Keep default echo suppression gain (no boost to avoid feedback loops)
       aec3_config.ep_strength.default_gain = 1.0f;  // Default 1.0f - no boost to prevent feedback
@@ -614,6 +617,23 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
   if (opus_len < 0) {
     log_error("Opus encoding failed: %d", opus_len);
     return -1;
+  }
+
+  // DEBUG: Log encoded packet info for debugging transmission issues
+  static int encode_count = 0;
+  encode_count++;
+  if (encode_count <= 10 || encode_count % 100 == 0) {
+    float rms = 0.0f;
+    for (int i = 0; i < num_samples; i++) {
+      rms += processed[i] * processed[i];
+    }
+    rms = sqrtf(rms / num_samples);
+    log_info("CLIENT OPUS ENCODE #%d: input_rms=%.6f, opus_len=%d, first4=[0x%02x,0x%02x,0x%02x,0x%02x]",
+             encode_count, rms, opus_len,
+             opus_len > 0 ? opus_out[0] : 0,
+             opus_len > 1 ? opus_out[1] : 0,
+             opus_len > 2 ? opus_out[2] : 0,
+             opus_len > 3 ? opus_out[3] : 0);
   }
 
   return opus_len;
