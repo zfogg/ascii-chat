@@ -387,6 +387,13 @@ static void *audio_capture_thread_func(void *arg) {
       int samples_to_process = samples_read;
       int sample_offset = 0;
 
+// Batch buffer for multiple Opus frames - send all at once to reduce blocking
+#define MAX_BATCH_FRAMES 8
+      static uint8_t batch_buffer[MAX_BATCH_FRAMES * OPUS_MAX_PACKET_SIZE];
+      static uint16_t batch_frame_sizes[MAX_BATCH_FRAMES];
+      static int batch_frame_count = 0;
+      static size_t batch_total_size = 0;
+
       while (samples_to_process > 0) {
         // How many samples can we add to current frame?
         int space_in_frame = OPUS_FRAME_SAMPLES - opus_frame_samples_collected;
@@ -408,23 +415,17 @@ static void *audio_capture_thread_func(void *arg) {
           int opus_len = client_audio_pipeline_capture(g_audio_pipeline, opus_frame_buffer, OPUS_FRAME_SAMPLES,
                                                        opus_packet, OPUS_MAX_PACKET_SIZE);
 
-          // DUMP: Processed audio (would need to decode to dump, skip for now)
-          // The pipeline processes and encodes in one step
-
           if (opus_len > 0) {
             log_debug_every(100000, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
                             opus_len, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
 
-            // Send Opus frame to server IMMEDIATELY - don't batch
-            if (threaded_send_audio_opus(opus_packet, (size_t)opus_len, 48000, 20) < 0) {
-              log_error("Failed to send Opus audio frame to server");
-            } else {
-              // Log every send to verify packets are flowing
-              static int send_count = 0;
-              send_count++;
-              if (send_count <= 10 || send_count % 50 == 0) {
-                log_info("CLIENT: Sent Opus packet #%d (%d bytes) immediately", send_count, opus_len);
-              }
+            // Add to batch buffer
+            if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
+              memcpy(batch_buffer + batch_total_size, opus_packet, (size_t)opus_len);
+              batch_frame_sizes[batch_frame_count] = (uint16_t)opus_len;
+              batch_total_size += (size_t)opus_len;
+              batch_frame_count++;
+
               if (opt_audio_analysis_enabled) {
                 audio_analysis_track_sent_packet((size_t)opus_len);
               }
@@ -437,6 +438,25 @@ static void *audio_capture_thread_func(void *arg) {
           // Reset frame buffer
           opus_frame_samples_collected = 0;
         }
+      }
+
+      // Send batch if we have frames (send after processing all available samples)
+      if (batch_frame_count > 0) {
+        static int batch_send_count = 0;
+        batch_send_count++;
+
+        if (threaded_send_audio_opus_batch(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count) < 0) {
+          log_error("Failed to send Opus audio batch to server");
+        } else {
+          if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
+            log_info("CLIENT: Sent Opus batch #%d (%d frames, %zu bytes)", batch_send_count, batch_frame_count,
+                     batch_total_size);
+          }
+        }
+
+        // Reset batch
+        batch_frame_count = 0;
+        batch_total_size = 0;
       }
     } else {
       platform_sleep_usec(5 * 1000); // 5ms
