@@ -944,12 +944,6 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Use -nostdlibinc to tell clang there are no standard C library include directories.
-  // This makes __has_include_next(<stdbool.h>) in clang's stdbool.h return false instead
-  // of erroring when it can't find a system stdbool.h.
-  tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdlibinc", tooling::ArgumentInsertPosition::BEGIN));
-
   // Set up include paths for LibTooling to find system headers correctly.
   //
   // The challenge is that:
@@ -963,7 +957,6 @@ int main(int argc, const char **argv) {
   // is automatically added by clang when we use -isysroot.
 
   // Add -isysroot for the SDK (enables framework and system header resolution)
-  // Also add SDK usr/include explicitly since -nostdlibinc disables automatic SDK includes
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
@@ -972,24 +965,27 @@ int main(int argc, const char **argv) {
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
-
-      // Add SDK usr/include via -isystem at END (after clang builtins, after dependencies)
-      // This provides <stdio.h> etc. since -nostdlibinc disables automatic SDK includes
-      llvm::SmallString<256> sdkInclude(sdkPath);
-      llvm::sys::path::append(sdkInclude, "usr", "include");
-      if (llvm::sys::fs::exists(sdkInclude)) {
-        std::vector<std::string> sdkIncludeArgs = {"-isystem", std::string(sdkInclude)};
-        tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
-      }
     } else {
       llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
     }
   }
 #endif
 
-  // Add resource directory and clang builtins include
-  // Add -isystem for builtins at BEGIN so it's searched FIRST (before other -isystem paths)
+  // Add wrapper stdbool.h directory BEFORE clang builtins
+  // This provides a stdbool.h without __has_include_next issues
+#ifdef STDBOOL_WRAPPER_DIR
+  {
+    const char* wrapperDir = STDBOOL_WRAPPER_DIR;
+    if (llvm::sys::fs::exists(wrapperDir)) {
+      std::vector<std::string> wrapperArgs = {"-isystem", wrapperDir};
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(wrapperArgs, tooling::ArgumentInsertPosition::BEGIN));
+      llvm::errs() << "Using stdbool wrapper directory: " << wrapperDir << "\n";
+    }
+  }
+#endif
+
+  // Add resource directory and clang builtins include (but NOT stdbool.h since we have our wrapper)
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
@@ -1000,14 +996,14 @@ int main(int argc, const char **argv) {
           tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded resource directory: " << resourceDir << "\n";
 
-      // Add clang builtins include via -isystem at BEGIN
-      // This ensures stdbool.h is found from clang's builtins before anything else
+      // Add clang builtins include via -isystem AFTER wrapper directory
+      // Wrapper stdbool.h will be found first, avoiding __has_include_next issues
       llvm::SmallString<256> builtinInclude(resourceDir);
       llvm::sys::path::append(builtinInclude, "include");
       if (llvm::sys::fs::exists(builtinInclude)) {
         std::vector<std::string> builtinArgs = {"-isystem", std::string(builtinInclude)};
         tool.appendArgumentsAdjuster(
-            tooling::getInsertArgumentAdjuster(builtinArgs, tooling::ArgumentInsertPosition::BEGIN));
+            tooling::getInsertArgumentAdjuster(builtinArgs, tooling::ArgumentInsertPosition::END));
       }
     } else {
       llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
