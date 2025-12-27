@@ -594,7 +594,8 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
   log_info("  Input:  %s (%.0f Hz)", inputInfo->name, inputInfo->defaultSampleRate);
   log_info("  Output: %s (%.0f Hz)", outputInfo->name, outputInfo->defaultSampleRate);
 
-  // Open full-duplex stream with BOTH input and output
+  // Open full-duplex stream at 48kHz (Opus/AEC3 native rate)
+  // PortAudio resamples if device runs at different rate
   PaError err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE,
                               AUDIO_FRAMES_PER_BUFFER, paClipOff, duplex_callback, ctx);
 

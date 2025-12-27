@@ -8,7 +8,7 @@ set -e
 
 PORT=27228
 HOST_ONE="workbook-pro"
-HOST_ONE_IP="100.121.182.110"  # Tailscale IP for cross-machine connectivity
+HOST_ONE_IP="100.113.140.51"  # Tailscale IP for cross-machine connectivity
 HOST_TWO="manjaro-twopal"
 DURATION=30
 
