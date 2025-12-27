@@ -911,36 +911,10 @@ int main(int argc, const char **argv) {
   //    for stdbool.h in the NEXT -isystem directory
   // 4. If that next directory is a dependency (not SDK), it fails
   //
-  // Solution: Use -nostdinc to disable default includes, then explicitly add:
-  // 1. Clang's builtin include directory (for stdbool.h, stddef.h, etc.)
-  // 2. SDK's usr/include (for stdio.h, stdlib.h, etc. AND the system stdbool.h
-  //    that __has_include_next needs to find)
-  //
-  // These are added at BEGIN so they come BEFORE dependency includes from the
-  // compilation database. This ensures __has_include_next finds the SDK's
-  // stdbool.h rather than failing when it hits a dependency directory.
-
-  // First, add -nostdinc to disable default system include paths
-  // This gives us full control over the include search order
-  tool.appendArgumentsAdjuster(
-      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
-
-#ifdef MACOS_SDK_PATH
-  {
-    const char* sdkPath = MACOS_SDK_PATH;
-    std::string sdkInclude = std::string(sdkPath) + "/usr/include";
-    if (llvm::sys::fs::exists(sdkInclude)) {
-      // Add SDK include as -isystem (second priority, after clang builtins)
-      // This provides the system stdbool.h that __has_include_next needs
-      std::vector<std::string> sdkIncludeArgs = {"-isystem", sdkInclude};
-      tool.appendArgumentsAdjuster(
-          tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::BEGIN));
-      llvm::errs() << "Using SDK include directory: " << sdkInclude << "\n";
-    } else {
-      llvm::errs() << "Warning: SDK include directory does not exist: " << sdkInclude << "\n";
-    }
-  }
-#endif
+  // Solution: Add clang's builtin include directory as -isystem at the very
+  // beginning of the command line, so it's searched FIRST for angle-bracket
+  // includes like <stdbool.h>. This ensures the builtin headers are found
+  // before any dependency directories.
 
 #ifdef CLANG_RESOURCE_DIR
   {
