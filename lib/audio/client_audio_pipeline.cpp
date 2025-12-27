@@ -514,6 +514,13 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
       const int webrtc_frame_size = 480;  // 10ms at 48kHz
       const int buffer_size = CLIENT_AUDIO_PIPELINE_RENDER_BUFFER_SIZE;
 
+      // AEC3 warmup: Track total render frames fed to AEC3
+      // Don't process capture through AEC3 until we have enough render history
+      // for AEC3 to find echo correlation (need ~100 frames = 1 second)
+      static int total_render_frames_fed = 0;
+      static const int AEC3_WARMUP_FRAMES = 100; // 1 second of render history
+      static bool aec3_warmup_complete = false;
+
       try {
         // Process capture in 480-sample chunks, with interleaved render processing
         for (int i = 0; i < num_samples; i += webrtc_frame_size) {
@@ -543,6 +550,18 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 render_chunk[j] = pipeline->render_ring_buffer[idx];
               }
 
+              // Calculate render RMS and apply automatic gain if too quiet
+              // AEC3 needs sufficient render signal level to correlate with echo
+              float render_energy = 0.0f;
+              for (int j = 0; j < webrtc_frame_size; j++) {
+                render_energy += render_chunk[j] * render_chunk[j];
+              }
+              float render_rms = sqrtf(render_energy / webrtc_frame_size);
+
+              // Note: No AGC applied here - the render signal is already boosted in output_callback()
+              // (audio.c) which boosts both speaker output AND what gets fed to the render ring buffer.
+              // This ensures AEC3 sees the same signal level that the mic picks up as echo.
+
               // Feed to AEC3 AnalyzeRender using PERSISTENT buffer
               // CRITICAL: Reusing the same AudioBuffer preserves filterbank state!
               auto* render_buf = static_cast<webrtc::AudioBuffer*>(pipeline->aec3_render_buffer);
@@ -550,10 +569,12 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
                 float* const* render_channels = render_buf->channels();
                 if (render_channels && render_channels[0]) {
                   for (int j = 0; j < webrtc_frame_size; j++) {
+                    // Scale float [-1,1] to int16 range for WebRTC
                     render_channels[0][j] = render_chunk[j] * 32768.0f;
                   }
                   render_buf->SplitIntoFrequencyBands();
                   wrapper->aec3->AnalyzeRender(render_buf);
+                  total_render_frames_fed++;  // Track render history for warmup
                   // Note: don't call MergeFrequencyBands - not needed for render
                 }
               }
@@ -584,6 +605,27 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
           // CRITICAL: WebRTC expects float samples in int16 range [-32768, 32767]
           // PortAudio provides float samples in range [-1.0, 1.0]
           // Scale up before processing, scale back down after
+
+          // Check warmup: AEC3 needs render history to correlate echoes
+          // Skip AEC3 capture processing until we have enough render frames
+          if (!aec3_warmup_complete) {
+            if (total_render_frames_fed >= AEC3_WARMUP_FRAMES) {
+              aec3_warmup_complete = true;
+              log_info("AEC3 warmup complete: %d render frames fed, echo cancellation active",
+                       total_render_frames_fed);
+            } else {
+              // During warmup, skip AEC3 but continue feeding render frames
+              // Log warmup progress occasionally
+              static int warmup_log_count = 0;
+              if (++warmup_log_count % 50 == 1) {
+                log_info("AEC3 warmup: %d/%d render frames (%.0f%%)",
+                         total_render_frames_fed, AEC3_WARMUP_FRAMES,
+                         100.0f * total_render_frames_fed / AEC3_WARMUP_FRAMES);
+              }
+              continue;  // Skip capture processing, go to next chunk
+            }
+          }
+
           auto* capture_buf = static_cast<webrtc::AudioBuffer*>(pipeline->aec3_capture_buffer);
           if (capture_buf) {
             float* const* capture_channels = capture_buf->channels();
@@ -688,12 +730,45 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     lowpass_filter_process_buffer(&pipeline->lowpass, processed, num_samples);
   }
 
-  // 3. Noise gate (cut silence/background noise)
+  // 3. AGC (Automatic Gain Control) - normalize audio to target level BEFORE noise gate
+  // This ensures all clients send audio at similar levels regardless of mic sensitivity.
+  // Must come before noise gate so we boost the signal, then gate cuts what's still quiet.
+  {
+    // Calculate current RMS
+    float sum_squares = 0.0f;
+    for (int i = 0; i < num_samples; i++) {
+      sum_squares += processed[i] * processed[i];
+    }
+    float rms = sqrtf(sum_squares / num_samples);
+
+    // Target RMS: aim for ~0.15 which is a good level for voice
+    float target_rms = 0.15f;
+
+    // Apply gain if signal is above noise floor
+    const float min_rms = 0.002f;  // Don't boost pure silence/noise
+    if (rms > min_rms) {
+      float gain = target_rms / rms;
+      // Limit gain to prevent extreme amplification of noise
+      float max_gain = 10.0f;  // Max 10x boost
+      if (gain > max_gain) gain = max_gain;
+      if (gain < 1.0f) gain = 1.0f;  // Don't attenuate, only boost
+
+      // Apply gain with soft limiting
+      for (int i = 0; i < num_samples; i++) {
+        processed[i] *= gain;
+        // Soft clip to prevent clipping
+        if (processed[i] > 0.95f) processed[i] = 0.95f;
+        else if (processed[i] < -0.95f) processed[i] = -0.95f;
+      }
+    }
+  }
+
+  // 4. Noise gate (cut silence/background noise) - AFTER AGC
   if (pipeline->flags.noise_gate) {
     noise_gate_process_buffer(&pipeline->noise_gate, processed, num_samples);
   }
 
-  // 4. Compressor with makeup gain (+6dB configured)
+  // 5. Compressor with makeup gain (+6dB configured)
   // This is the KEY gain stage that was missing!
   if (pipeline->flags.compressor) {
     for (int i = 0; i < num_samples; i++) {

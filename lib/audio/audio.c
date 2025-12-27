@@ -96,6 +96,45 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
                     framesPerBuffer * AUDIO_CHANNELS * sizeof(float));
         log_debug_every(5000000, "Output callback: jitter buffer underrun, feeding silence to speakers");
       } else {
+        // Apply AGC boost for quiet signals to help AEC3 correlation
+        // macOS receives ~3-4x quieter audio than Linux, making echo detection unreliable.
+        // Boosting the OUTPUT here ensures both speakers AND AEC3 see the same boosted signal.
+        size_t total_samples = framesPerBuffer * AUDIO_CHANNELS;
+        float sum_squares = 0.0f;
+        float peak = 0.0f;
+        for (size_t i = 0; i < total_samples; i++) {
+          float s = fabsf(output[i]);
+          sum_squares += output[i] * output[i];
+          if (s > peak)
+            peak = s;
+        }
+        float rms = sqrtf(sum_squares / total_samples);
+
+        // Boost quiet playback signals to help AEC3 correlation
+        // Now that capture has AGC, we just need a moderate boost for playback
+        const float boost_threshold = 0.12f; // Boost signals with RMS below this
+        const float target_rms = 0.18f;      // Target RMS for reliable AEC3 correlation
+        const float min_rms = 0.003f;        // Don't boost near-silence
+
+        if (rms > min_rms && rms < boost_threshold) {
+          float gain = target_rms / rms;
+          // Limit gain to prevent clipping (check against peak)
+          float max_gain = (peak > 0.01f) ? (0.9f / peak) : 8.0f; // Leave 10% headroom
+          if (gain > max_gain)
+            gain = max_gain;
+          if (gain > 8.0f)
+            gain = 8.0f; // Hard limit to 8x boost
+
+          // Apply gain with soft limiting
+          for (size_t i = 0; i < total_samples; i++) {
+            output[i] *= gain;
+            // Soft clip to prevent harsh distortion
+            if (output[i] > 0.95f)
+              output[i] = 0.95f;
+            else if (output[i] < -0.95f)
+              output[i] = -0.95f;
+          }
+        }
         // Periodically log sample statistics to help diagnose buzzing/clipping
         static _Atomic int output_callback_count = 0;
         int cb_count = atomic_fetch_add(&output_callback_count, 1) + 1;
