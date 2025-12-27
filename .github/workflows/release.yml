@@ -399,25 +399,22 @@ jobs:
           submodules: true
           ref: ${{ needs.create-release.outputs.version }}
 
+      - name: Clear WebRTC cache to force re-fetch with -resource-dir patch
+        if: runner.os == 'macOS'
+        run: |
+          # Remove cached WebRTC source BEFORE install-deps restores it
+          # This forces FetchContent to download fresh source and apply the -resource-dir removal patch
+          # The patch in cmake/dependencies/patches/patch-webrtc-aec3-cmake.cmake fixes macOS header search order
+          echo "Removing cached WebRTC source..."
+          rm -rf .deps-cache/Release/webrtc_aec3-src .deps-cache/Release/webrtc_aec3-build .deps-cache/Release/webrtc_aec3-subbuild
+          echo "WebRTC cache cleared - will re-fetch with patches applied"
+
       - name: Install build dependencies
         id: install-deps
         uses: ./.github/actions/install-deps
         with:
           os: macos
           extra-packages: ""
-
-      - name: Patch cached WebRTC for macOS header search order
-        if: runner.os == 'macOS'
-        run: |
-          # Remove -resource-dir flag from cached WebRTC CMakeLists.txt if it exists
-          # This flag breaks libc++ header search order on macOS with Homebrew LLVM
-          if [ -f ".deps-cache/Release/webrtc_aec3-src/CMakeLists.txt" ]; then
-            echo "Patching cached WebRTC source to remove -resource-dir flag..."
-            sed -i '' 's/-resource-dir [^ ]*//g' .deps-cache/Release/webrtc_aec3-src/CMakeLists.txt
-            echo "Patch applied successfully"
-          else
-            echo "No cached WebRTC source found, patch will be applied during fetch"
-          fi
 
       - name: Configure with CMake
         run: cmake --preset release
