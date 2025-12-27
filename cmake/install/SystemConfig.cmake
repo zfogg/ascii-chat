@@ -10,9 +10,11 @@
 # =============================================================================
 
 # System config is installed to: ${CMAKE_INSTALL_PREFIX}/etc/ascii-chat/config.toml
-# Example: /usr/local/etc/ascii-chat/config.toml (Linux/macOS)
-#          /opt/homebrew/etc/ascii-chat/config.toml (Homebrew)
-#          C:\Program Files\ascii-chat\etc\ascii-chat\config.toml (Windows)
+# Examples:
+#   - Linux: /usr/etc/ascii-chat/config.toml
+#   - macOS Intel (Homebrew): /usr/local/etc/ascii-chat/config.toml
+#   - macOS ARM (Homebrew): /opt/homebrew/etc/ascii-chat/config.toml
+#   - Windows: C:\Program Files\ascii-chat\etc\ascii-chat\config.toml
 
 # Full path to system config file (for documentation)
 set(ASCIICHAT_SYSTEM_CONFIG_PATH "${CMAKE_INSTALL_PREFIX}/etc/ascii-chat/config.toml")

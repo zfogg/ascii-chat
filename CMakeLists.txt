@@ -101,10 +101,11 @@ version_setup_targets()
 # =============================================================================
 # Install Prefix Configuration (must come after project() call)
 # =============================================================================
-# Unix/Linux: Default to /usr instead of CMake's default /usr/local
-if(UNIX AND NOT APPLE AND CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    set(CMAKE_INSTALL_PREFIX "/usr" CACHE PATH "Installation directory" FORCE)
-    message(STATUS "Install prefix: ${BoldCyan}/usr${ColorReset} (Linux default)")
+# Default install prefix is /usr/local (CMake default)
+# Homebrew formulas will override this with their own prefix during installation
+# (e.g., /opt/homebrew for ARM Mac, /usr/local for Intel Mac)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    message(STATUS "Install prefix: ${BoldCyan}${CMAKE_INSTALL_PREFIX}${ColorReset} (default)")
 endif()
 
 # =============================================================================
