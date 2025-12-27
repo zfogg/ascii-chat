@@ -8,30 +8,20 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/ascii-chat server --quiet
+ExecStart=/usr/bin/ascii-chat server
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=5
 
-# Security hardening
+# Security hardening (user service compatible)
 NoNewPrivileges=yes
-ProtectSystem=strict
 ProtectHome=read-only
 PrivateTmp=yes
-PrivateDevices=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=yes
-RestrictRealtime=yes
 RestrictSUIDSGID=yes
 MemoryDenyWriteExecute=yes
 LockPersonality=yes
-
-# Run as dedicated user (create with: useradd -r -s /usr/sbin/nologin ascii-chat)
-User=ascii-chat
-Group=ascii-chat
 
 # Logging
 StandardOutput=journal
@@ -43,4 +33,4 @@ LimitNOFILE=4096
 LimitNPROC=64
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
