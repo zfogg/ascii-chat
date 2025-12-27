@@ -96,25 +96,28 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .agc_level = 8000,
       .agc_max_gain = 30,
 
-      // Jitter margin: 80ms (4 frames) to prevent buffer overflow while handling network jitter.
-      // With 800ms total buffer size, 80ms threshold uses only 10% of buffer at startup.
-      // This prevents packet drops from burst arrivals while maintaining low latency.
-      // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in ringbuffer.h!
-      .jitter_margin_ms = 200,
+      // Jitter margin: wait this long before starting playback
+      // Lower = less latency but more risk of underruns
+      // CRITICAL: Must match AUDIO_JITTER_BUFFER_THRESHOLD in audio.c!
+      .jitter_margin_ms = 100,  // 100ms (was 200ms)
 
       .highpass_hz = 80.0f,
       .lowpass_hz = 8000.0f,
 
-      .comp_threshold_db = -10.0f,
-      .comp_ratio = 4.0f,
-      .comp_attack_ms = 10.0f,
-      .comp_release_ms = 100.0f,
-      .comp_makeup_db = 3.0f,
+      // Compressor: only compress loud peaks, boost overall output
+      // Was: threshold -10dB (too aggressive), makeup +3dB (too quiet)
+      .comp_threshold_db = -6.0f,   // Only compress peaks above -6dB (was -10dB)
+      .comp_ratio = 3.0f,           // Gentler 3:1 ratio (was 4:1)
+      .comp_attack_ms = 5.0f,       // Faster attack for peaks (was 10ms)
+      .comp_release_ms = 150.0f,    // Slower release (was 100ms)
+      .comp_makeup_db = 6.0f,       // More makeup gain (was 3dB)
 
-      .gate_threshold = 0.01f,
-      .gate_attack_ms = 2.0f,
-      .gate_release_ms = 50.0f,
-      .gate_hysteresis = 0.9f,
+      // Noise gate: only cut true silence, not quiet speech
+      // Was: threshold 0.01 (-40dB) cutting too much
+      .gate_threshold = 0.003f,     // -50dB threshold (was 0.01 = -40dB)
+      .gate_attack_ms = 1.0f,       // Fast attack (was 2ms)
+      .gate_release_ms = 100.0f,    // Slower release (was 50ms)
+      .gate_hysteresis = 0.7f,      // Less hysteresis (was 0.9)
 
       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
   };

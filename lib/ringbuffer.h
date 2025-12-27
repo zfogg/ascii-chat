@@ -124,33 +124,26 @@ typedef struct {
  */
 #define AUDIO_RING_BUFFER_SIZE 192000
 
-/** @brief Jitter buffer threshold (wait for ~200ms before starting playback = 9600 samples @ 48kHz)
+/** @brief Jitter buffer threshold (wait for ~100ms before starting playback = 4800 samples @ 48kHz)
  *
  * This threshold determines how much audio must be buffered before playback starts.
  * Too small = underruns and audio gaps when network packets arrive late
- * Too large = excessive latency; fills buffer completely causing packet loss
+ * Too large = excessive latency
  *
- * For Tailscale/VPN connections, network packets can arrive in bursts with gaps
- * of 100-130ms between bursts. We need enough initial buffer to absorb this jitter.
- *
- * Reduced from 300ms to 200ms for lower latency and less buzzing artifacts
- * 9600 samples @ 48kHz = 200ms = 10 Opus frames (20ms each)
+ * Reduced from 200ms to 100ms for lower latency.
+ * 4800 samples @ 48kHz = 100ms = 5 Opus frames (20ms each)
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD 9600
+#define AUDIO_JITTER_BUFFER_THRESHOLD 4800
 
 /** @brief Low water mark - refill jitter buffer when available drops below this
  *
  * When playback buffer drops below this threshold, we reset jitter_buffer_filled
  * to pause playback and let the buffer refill. This prevents continuous underruns.
  *
- * For Tailscale/VPN connections with bursty packet delivery (gaps of 100-130ms),
- * the low water mark must be LARGER than expected network jitter to avoid
- * constant underrun/refill cycles.
- *
- * Reduced from 160ms to 100ms (proportional reduction with threshold)
- * 4800 samples = 100ms = 5 Opus frames - gives margin above network gaps
+ * Set to 50% of threshold (50ms when threshold is 100ms).
+ * 2400 samples @ 48kHz = 50ms = 2.5 Opus frames
  */
-#define AUDIO_JITTER_LOW_WATER_MARK 4800
+#define AUDIO_JITTER_LOW_WATER_MARK 2400
 
 /** @brief Crossfade duration in samples for smooth underrun recovery
  *

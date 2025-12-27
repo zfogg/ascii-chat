@@ -142,11 +142,14 @@ int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   }
 
   // Set default parameters
-  duck->threshold_dB = -40.0f;
-  duck->leader_margin_dB = 3.0f;
-  duck->atten_dB = -12.0f;
-  duck->attack_ms = 5.0f;
-  duck->release_ms = 100.0f;
+  // threshold_dB: sources below this aren't considered "speaking"
+  // leader_margin_dB: sources within this margin of loudest are all "leaders"
+  // atten_dB: how much to attenuate non-leaders (was -12dB, too aggressive)
+  duck->threshold_dB = -45.0f;   // More lenient threshold
+  duck->leader_margin_dB = 6.0f; // Wider margin = more sources treated as leaders
+  duck->atten_dB = -6.0f;        // Only -6dB attenuation (was -12dB)
+  duck->attack_ms = 10.0f;       // Slower attack (was 5ms)
+  duck->release_ms = 200.0f;     // Slower release (was 100ms)
   duck->envelope = NULL;
   duck->gain = NULL;
 
