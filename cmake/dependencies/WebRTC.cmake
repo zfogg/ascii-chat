@@ -70,13 +70,25 @@ if(NOT webrtc_aec3_POPULATED)
     set(SAVED_CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(SAVED_CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
 
-    # On macOS, remove -resource-dir flag from CMAKE_CXX_FLAGS before building WebRTC
-    # This allows clang to use its default resource directory detection,
-    # which correctly finds libc++ headers relative to the clang++ binary location.
+    # On macOS with Homebrew LLVM, we need to explicitly provide libc++ include paths
+    # because -resource-dir points to symlink while libc++ is in Cellar
     if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
+        # Remove problematic -resource-dir flag
         string(REGEX REPLACE "-resource-dir [^ ]+" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
         string(REGEX REPLACE "-resource-dir [^ ]+" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
-        message(STATUS "Removed -resource-dir flag from WebRTC build (allows clang to auto-detect libc++ headers)")
+
+        # Detect actual Homebrew LLVM Cellar path from compiler binary
+        get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
+        get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
+
+        # Explicitly add libc++ include directory
+        set(LIBCXX_INCLUDE "${LLVM_ROOT}/include/c++/v1")
+        if(EXISTS "${LIBCXX_INCLUDE}")
+            set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${LIBCXX_INCLUDE}")
+            message(STATUS "Added libc++ include path for WebRTC: ${LIBCXX_INCLUDE}")
+        else()
+            message(WARNING "Could not find libc++ headers at ${LIBCXX_INCLUDE}")
+        endif()
     endif()
 
     # Build WebRTC subdirectory with clean compiler flags
