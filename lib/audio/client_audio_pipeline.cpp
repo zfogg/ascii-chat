@@ -215,13 +215,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // 300ms delay = 30 blocks minimum, use 50 blocks for safety margin
       webrtc::EchoCanceller3Config aec3_config;
 
-      // CRITICAL: Increase filter length to handle network delay
-      // Default is 13 blocks (43ms) which is FAR too short for our 200-300ms delay.
-      // 50 blocks = 500ms, giving us headroom for jitter.
-      aec3_config.filter.main.length_blocks = 50;          // 500ms (default: 13 = 43ms)
-      aec3_config.filter.shadow.length_blocks = 50;        // Match main filter
-      aec3_config.filter.main_initial.length_blocks = 50;  // Same length from the start
-      aec3_config.filter.shadow_initial.length_blocks = 50;
+      // Use default filter lengths - 50 blocks was causing crashes in ReverbFrequencyResponse
+      // due to vector out-of-bounds access. Default 13 blocks (130ms) should work for
+      // most acoustic echo, and AEC3's delay estimator handles network delay separately.
+      // aec3_config.filter.main.length_blocks = 13;  // Default
 
       // Configure delay for NETWORK echo path
       // Network echo = your voice → network → their speakers → their mic → network → back
