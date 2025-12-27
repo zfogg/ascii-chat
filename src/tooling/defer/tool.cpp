@@ -914,49 +914,69 @@ int main(int argc, const char **argv) {
   tool.appendArgumentsAdjuster(
       tooling::getInsertArgumentAdjuster("-DASCIICHAT_DEFER_TOOL_PARSING", tooling::ArgumentInsertPosition::END));
 
-  // Don't use -nostdinc or -nostdlibinc - they break LibTooling's header search.
-  // Instead, we rely on:
-  // 1. -resource-dir to set clang's builtin header location (stdbool.h, stddef.h)
-  // 2. -isysroot to set the macOS SDK for system headers (stdio.h, stdlib.h)
-  // These flags (added below) override the defaults without breaking LibTooling's
-  // internal include path resolution.
+  // Use -nostdinc to disable automatic include path setup, then explicitly add
+  // the correct include paths using -Xclang -internal-isystem. This replicates
+  // what the clang driver does internally, giving us precise control over the
+  // include search order without interference from LibTooling's defaults.
+  //
+  // Include search order (same as clang driver):
+  // 1. -iquote directories (for #include "..." only) - project/dependency headers
+  // 2. -I directories (none - we converted all to -iquote)
+  // 3. -isystem directories (dependency system headers like zstd, libsodium)
+  // 4. -internal-isystem (clang builtins: stdbool.h, stddef.h)
+  // 5. -internal-externc-isystem (SDK system headers: stdio.h, stdlib.h)
 
-  // Add system include paths for clang builtins and SDK.
-  // With the -iquote conversion above, project directories won't be searched for <stdbool.h>.
-  // We use -isystem for system headers so they're searched after -I but before default paths.
+  // First, add -nostdinc to disable automatic include paths
+  tool.appendArgumentsAdjuster(
+      tooling::getInsertArgumentAdjuster("-nostdinc", tooling::ArgumentInsertPosition::BEGIN));
 
-  // Add macOS SDK path for system headers (stdio.h, stdlib.h)
-  // We only use -isysroot to set the SDK root - this lets clang set up its internal
-  // include paths correctly without us explicitly adding SDK/usr/include (which would
-  // interfere with __has_include_next in clang's builtin headers).
+  // Add -isysroot for the SDK (needed for framework resolution, even with -nostdinc)
 #ifdef MACOS_SDK_PATH
   {
     const char* sdkPath = MACOS_SDK_PATH;
     if (llvm::sys::fs::exists(sdkPath)) {
-      // Only add -isysroot, not explicit -isystem for SDK includes
       std::vector<std::string> isysrootArgs = {"-isysroot", sdkPath};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(isysrootArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded macOS SDK: " << sdkPath << "\n";
+
+      // Add SDK system headers via -Xclang -internal-externc-isystem
+      // This makes <stdio.h> etc. work like with the clang driver
+      llvm::SmallString<256> sdkInclude(sdkPath);
+      llvm::sys::path::append(sdkInclude, "usr", "include");
+      std::vector<std::string> sdkIncludeArgs = {
+        "-Xclang", "-internal-externc-isystem", "-Xclang", std::string(sdkInclude)
+      };
+      tool.appendArgumentsAdjuster(
+          tooling::getInsertArgumentAdjuster(sdkIncludeArgs, tooling::ArgumentInsertPosition::END));
     } else {
       llvm::errs() << "Warning: Embedded macOS SDK does not exist: " << sdkPath << "\n";
     }
   }
 #endif
 
-  // Add resource directory for clang's builtin headers (stdbool.h, stddef.h)
-  // We only use -resource-dir to let clang find its builtins internally.
-  // Don't explicitly add -isystem for the resource-dir/include - that would
-  // interfere with __has_include_next in clang's builtin headers.
+  // Add resource directory and clang builtins via -Xclang -internal-isystem
 #ifdef CLANG_RESOURCE_DIR
   {
     const char* resourceDir = CLANG_RESOURCE_DIR;
     if (llvm::sys::fs::exists(resourceDir)) {
-      // Only add -resource-dir, not explicit -isystem for builtin includes
+      // Add -resource-dir for clang's internal use
       std::vector<std::string> resourceDirArgs = {"-resource-dir", resourceDir};
       tool.appendArgumentsAdjuster(
           tooling::getInsertArgumentAdjuster(resourceDirArgs, tooling::ArgumentInsertPosition::BEGIN));
       llvm::errs() << "Using embedded resource directory: " << resourceDir << "\n";
+
+      // Add clang builtins include via -Xclang -internal-isystem
+      // This is where stdbool.h, stddef.h, etc. live
+      llvm::SmallString<256> builtinInclude(resourceDir);
+      llvm::sys::path::append(builtinInclude, "include");
+      if (llvm::sys::fs::exists(builtinInclude)) {
+        std::vector<std::string> builtinArgs = {
+          "-Xclang", "-internal-isystem", "-Xclang", std::string(builtinInclude)
+        };
+        tool.appendArgumentsAdjuster(
+            tooling::getInsertArgumentAdjuster(builtinArgs, tooling::ArgumentInsertPosition::END));
+      }
     } else {
       llvm::errs() << "Warning: Embedded resource directory does not exist: " << resourceDir << "\n";
     }
