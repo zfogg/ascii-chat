@@ -207,46 +207,59 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       // 50 blocks = 500ms, giving us headroom for jitter.
       aec3_config.filter.main.length_blocks = 50;          // 500ms (default: 13 = 43ms)
       aec3_config.filter.shadow.length_blocks = 50;        // Match main filter
-      aec3_config.filter.main_initial.length_blocks = 40;  // Initial phase slightly shorter
-      aec3_config.filter.shadow_initial.length_blocks = 40;
+      aec3_config.filter.main_initial.length_blocks = 50;  // Same length from the start
+      aec3_config.filter.shadow_initial.length_blocks = 50;
 
       // Increase delay estimation starting point for network audio
-      // Default is 5 blocks (50ms), but we expect ~200ms delay from jitter buffer
-      aec3_config.delay.default_delay = 20;  // Start at 200ms (reasonable for network audio)
+      // Default is 5 blocks (50ms), but we expect ~70-200ms delay
+      aec3_config.delay.default_delay = 10;  // Start at 100ms (closer to expected)
 
-      // Improve delay estimation for stable network path
-      aec3_config.delay.delay_estimate_smoothing = 0.9f;             // Default 0.7 - smoother estimate
-      aec3_config.delay.delay_candidate_detection_threshold = 0.1f;  // Default 0.2 - more sensitive
+      // Aggressive delay estimation for faster lock-on
+      aec3_config.delay.delay_estimate_smoothing = 0.3f;              // Default 0.7 - much faster tracking
+      aec3_config.delay.delay_candidate_detection_threshold = 0.02f;  // Default 0.2 - very sensitive
+      aec3_config.delay.num_filters = 8;  // Default 5 - more filter candidates
+
+      // Allow longer delay searches for network audio
+      aec3_config.delay.hysteresis_limit_blocks = 3;  // Default 1 - more stable delay
+      aec3_config.delay.fixed_capture_delay_samples = 0;  // No fixed delay - let AEC3 detect
+
+      // Log delay changes for debugging
+      aec3_config.delay.log_warning_on_delay_changes = true;
 
       // Network audio has stable, predictable delay path
       aec3_config.echo_removal_control.linear_and_stable_echo_path = true;
 
-      // Faster filter adaptation for quicker convergence
-      aec3_config.filter.main.leakage_converged = 0.00001f;  // Default 0.00005f - very aggressive
-      aec3_config.filter.main.leakage_diverged = 0.005f;     // Default 0.05f - faster recovery
-      aec3_config.filter.shadow.rate = 0.4f;                 // Default 0.7f - faster shadow filter
+      // MAXIMUM filter adaptation speed
+      aec3_config.filter.main.leakage_converged = 0.000001f;  // Default 0.00005f - ultra aggressive
+      aec3_config.filter.main.leakage_diverged = 0.001f;      // Default 0.05f - faster recovery
+      aec3_config.filter.shadow.rate = 0.2f;                  // Default 0.7f - much faster shadow
 
-      // Longer learning period for network audio (more time to converge)
-      aec3_config.filter.initial_state_seconds = 10.0f;  // Default 2.5s, give much more time
+      // Short initial phase - get to full power quickly
+      aec3_config.filter.initial_state_seconds = 2.0f;  // Default 2.5s, faster startup
 
-      // Increase ERLE limits for better echo removal
-      aec3_config.erle.max_l = 8.0f;   // Default 4.0 - allow more low-freq suppression
-      aec3_config.erle.max_h = 4.0f;   // Default 1.5 - allow more high-freq suppression
+      // Maximize ERLE limits for aggressive echo removal
+      aec3_config.erle.max_l = 15.0f;  // Default 4.0 - allow much more low-freq suppression
+      aec3_config.erle.max_h = 8.0f;   // Default 1.5 - allow much more high-freq suppression
 
       // Enable anti-howling protection (critical for feedback prevention)
-      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;   // Default 25 - trigger early
-      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.0001f;  // Default 0.01 - kill howling hard
+      aec3_config.suppressor.high_bands_suppression.anti_howling_activation_threshold = 1.f;
+      aec3_config.suppressor.high_bands_suppression.anti_howling_gain = 0.0001f;
 
-      // More aggressive echo suppression
-      aec3_config.ep_strength.default_gain = 4.0f;  // Default 1.0f - much stronger echo removal
+      // Moderate echo suppression - too high causes digital artifacts
+      aec3_config.ep_strength.default_gain = 2.0f;   // Default 1.0f - moderate increase
+      aec3_config.ep_strength.echo_can_saturate = false;  // Don't limit suppression
 
-      // Lower masking thresholds for more aggressive suppression
-      // enr_transparent: below this, no suppression (lower = more aggressive)
-      // enr_suppress: above this, full suppression (lower = more aggressive)
+      // Conservative masking - avoid artifacts
       aec3_config.suppressor.normal_tuning.mask_lf.enr_transparent = 0.1f;   // Default 0.3
       aec3_config.suppressor.normal_tuning.mask_lf.enr_suppress = 0.2f;      // Default 0.4
       aec3_config.suppressor.normal_tuning.mask_hf.enr_transparent = 0.03f;  // Default 0.07
       aec3_config.suppressor.normal_tuning.mask_hf.enr_suppress = 0.05f;     // Default 0.1
+
+      // Nearend tuning - match normal tuning
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_transparent = 0.1f;
+      aec3_config.suppressor.nearend_tuning.mask_lf.enr_suppress = 0.2f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_transparent = 0.03f;
+      aec3_config.suppressor.nearend_tuning.mask_hf.enr_suppress = 0.05f;
 
       // Validate config before use
       if (!webrtc::EchoCanceller3Config::Validate(&aec3_config)) {
@@ -274,11 +287,11 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
         wrapper->config = aec3_config;  // Store config for reference
         p->echo_canceller = wrapper;
 
-        log_info("✓ WebRTC AEC3 initialized with aggressive network config");
+        log_info("✓ WebRTC AEC3 initialized with network-optimized config");
         log_info("  - Filter length: 50 blocks (500ms) for network jitter");
-        log_info("  - Linear stable echo path mode: enabled");
-        log_info("  - ERLE limits: max_l=8.0, max_h=4.0 (increased)");
-        log_info("  - Initial learning period: 10 seconds");
+        log_info("  - Default delay: 100ms, fast tracking");
+        log_info("  - ERLE limits: max_l=15.0, max_h=8.0");
+        log_info("  - Initial learning period: 2 seconds");
       }
     } catch (const std::exception &e) {
       log_error("Exception creating WebRTC AEC3: %s", e.what());
