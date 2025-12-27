@@ -113,6 +113,7 @@ typedef struct {
   bool playing;                         ///< True if audio playback is active
   mutex_t state_mutex;                  ///< Mutex protecting context state
   void *audio_pipeline;                 ///< Client audio pipeline for echo cancellation (opaque pointer)
+  double output_sample_rate;            ///< Actual sample rate of output stream (may differ from AUDIO_SAMPLE_RATE)
 } audio_context_t;
 
 /* ============================================================================
