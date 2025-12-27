@@ -835,11 +835,13 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
     }
   }
 
-  // Load configuration from TOML file (if it exists)
-  // This happens BEFORE CLI parsing so CLI arguments can override config values
+  // Load configuration from TOML files (if they exist)
+  // This loads system config first (${INSTALL_PREFIX}/etc/ascii-chat/config.toml),
+  // then user config (custom path or default). User config overrides system config.
+  // This happens BEFORE CLI parsing so CLI arguments can override config values.
   // Use strict=true if custom path provided (errors are fatal), strict=false for default (non-fatal)
   bool strict_config = (custom_config_path != NULL);
-  asciichat_error_t config_result = config_load_and_apply(is_client, custom_config_path, strict_config);
+  asciichat_error_t config_result = config_load_system_and_user(is_client, custom_config_path, strict_config);
   if (config_result != ASCIICHAT_OK) {
     if (strict_config) {
       // Custom config file errors are fatal - show detailed error message
