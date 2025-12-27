@@ -36,9 +36,10 @@ string(REPLACE
 )
 
 # Fix: Add C++17 requirement (Abseil requires C++17 for std::result_of)
+# Make platform-aware: -fPIC and -pthread are Unix-only flags
 string(REPLACE
     "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread\")"
-    "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden -fPIC -pthread -std=c++17\")\nset(CMAKE_CXX_STANDARD 17)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)"
+    "set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fvisibility=hidden\")\nif(UNIX)\n  set(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -fPIC -pthread\")\nendif()\nset(CMAKE_CXX_FLAGS \"\${CMAKE_CXX_FLAGS} -std=c++17\")\nset(CMAKE_CXX_STANDARD 17)\nset(CMAKE_CXX_STANDARD_REQUIRED ON)"
     CMAKE_CONTENT
     "${CMAKE_CONTENT}"
 )

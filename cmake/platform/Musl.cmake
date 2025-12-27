@@ -226,7 +226,11 @@ function(configure_musl_post_project)
     )
 
     # Detect LLVM runtime libraries location
-    # Check git-compiled LLVM first (all three libs together), then system packages
+    # Check multiple possible installation paths in priority order:
+    # 1. Git-compiled LLVM in /usr/local (all three libs together)
+    # 2. System packages in /usr/lib (unversioned)
+    # 3. LLVM-versioned packages in /usr/lib/llvm-*/lib
+    # 4. Debian/Ubuntu multiarch in /usr/lib/x86_64-linux-gnu
     if(EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libc++.a" AND
        EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libc++abi.a" AND
        EXISTS "/usr/local/lib/x86_64-unknown-linux-gnu/libunwind.a")
@@ -249,7 +253,53 @@ function(configure_musl_post_project)
         endif()
         set(LLVM_RUNTIME_SOURCE "system packages")
     else()
-        message(FATAL_ERROR "LLVM runtime libraries not found. Install: sudo pacman -S libc++ libc++abi")
+        # Try to find versioned LLVM packages (e.g., libc++-21-dev on Ubuntu)
+        # Check /usr/lib/llvm-*/lib for LLVM package installations
+        file(GLOB LLVM_LIB_DIRS "/usr/lib/llvm-*/lib")
+        list(SORT LLVM_LIB_DIRS)
+        list(REVERSE LLVM_LIB_DIRS)  # Prefer higher versions
+
+        set(LIBCXX_FOUND FALSE)
+        foreach(LLVM_DIR ${LLVM_LIB_DIRS})
+            if(EXISTS "${LLVM_DIR}/libc++.a" AND EXISTS "${LLVM_DIR}/libc++abi.a")
+                set(LIBCXX_PATH "${LLVM_DIR}/libc++.a")
+                set(LIBCXXABI_PATH "${LLVM_DIR}/libc++abi.a")
+                if(EXISTS "${LLVM_DIR}/libunwind.a")
+                    set(LIBUNWIND_PATH "${LLVM_DIR}/libunwind.a")
+                endif()
+                set(LLVM_RUNTIME_SOURCE "LLVM versioned packages (${LLVM_DIR})")
+                set(LIBCXX_FOUND TRUE)
+                break()
+            endif()
+        endforeach()
+
+        # If not found in LLVM dirs, try multiarch paths (Debian/Ubuntu)
+        if(NOT LIBCXX_FOUND)
+            file(GLOB MULTIARCH_LIBCXX "/usr/lib/x86_64-linux-gnu/libc++*.a")
+            file(GLOB MULTIARCH_LIBCXXABI "/usr/lib/x86_64-linux-gnu/libc++abi*.a")
+            list(SORT MULTIARCH_LIBCXX)
+            list(SORT MULTIARCH_LIBCXXABI)
+            list(REVERSE MULTIARCH_LIBCXX)  # Prefer higher versions
+            list(REVERSE MULTIARCH_LIBCXXABI)
+
+            if(MULTIARCH_LIBCXX AND MULTIARCH_LIBCXXABI)
+                list(GET MULTIARCH_LIBCXX 0 LIBCXX_PATH)
+                list(GET MULTIARCH_LIBCXXABI 0 LIBCXXABI_PATH)
+                find_library(LIBUNWIND_PATH NAMES unwind)
+                if(NOT LIBUNWIND_PATH)
+                    message(WARNING "libunwind.a not found - exception handling may not work")
+                endif()
+                set(LLVM_RUNTIME_SOURCE "multiarch packages (${LIBCXX_PATH})")
+                set(LIBCXX_FOUND TRUE)
+            endif()
+        endif()
+
+        if(NOT LIBCXX_FOUND)
+            message(FATAL_ERROR "LLVM runtime libraries not found. Install:\n"
+                    "  Ubuntu/Debian: sudo apt-get install libc++-dev libc++abi-dev\n"
+                    "  Arch Linux: sudo pacman -S libc++ libc++abi\n"
+                    "  Fedora: sudo dnf install libcxx-devel libcxxabi-devel")
+        endif()
     endif()
     message(STATUS "Using LLVM runtime libraries (${LLVM_RUNTIME_SOURCE}):")
     message(STATUS "  libc++: ${LIBCXX_PATH}")
