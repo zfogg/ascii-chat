@@ -316,6 +316,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
     SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer->mix_buffer);
     SAFE_FREE(mixer);
     return NULL;
   }

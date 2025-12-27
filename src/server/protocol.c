@@ -1019,7 +1019,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   }
 
   if (!client->opus_decoder) {
-    log_error("Client %u: Opus decoder not initialized", atomic_load(&client->client_id));
+    disconnect_client_for_bad_data(client, "Opus decoder not initialized");
     return;
   }
 
@@ -1202,7 +1202,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
   }
 
   if (!client->opus_decoder) {
-    log_error("Client %u: Opus decoder not initialized", atomic_load(&client->client_id));
+    disconnect_client_for_bad_data(client, "Opus decoder not initialized");
     return;
   }
 
