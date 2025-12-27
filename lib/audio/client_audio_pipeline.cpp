@@ -224,8 +224,10 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
       aec3_config.filter.main_initial.length_blocks = 50;
       aec3_config.filter.shadow_initial.length_blocks = 50;
 
-      // Let AEC3 estimate delay adaptively (matches erl-works)
-      aec3_config.delay.default_delay = 25;  // 250ms initial hint
+      // Use external delay estimator like demo.cc - we'll call SetAudioBufferDelay(0)
+      // to indicate buffers are aligned, letting AEC3 focus on echo path delay
+      aec3_config.delay.use_external_delay_estimator = true;
+      aec3_config.delay.default_delay = 5;  // 50ms initial hint for echo path
       aec3_config.delay.delay_headroom_samples = 4800;  // 100ms headroom
 
       // Validate config before use
@@ -650,6 +652,8 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
               capture_buf->SplitIntoFrequencyBands();
 
               // ProcessCapture on SPLIT buffer (per demo.cc line 141)
+              // Note: SetAudioBufferDelay(0) commented out - causes crash on macOS
+              // TODO: Investigate why demo.cc calls this but we crash
               wrapper->aec3->ProcessCapture(capture_buf, false);
 
               // Merge frequency bands back to time domain
@@ -741,26 +745,9 @@ int client_audio_pipeline_capture(client_audio_pipeline_t *pipeline, const float
     }
     float rms = sqrtf(sum_squares / num_samples);
 
-    // Target RMS: aim for ~0.15 which is a good level for voice
-    float target_rms = 0.15f;
-
-    // Apply gain if signal is above noise floor
-    const float min_rms = 0.001f;  // Lower threshold for quiet mics
-    if (rms > min_rms) {
-      float gain = target_rms / rms;
-      // Limit gain - need up to 50x for very quiet Linux mics (0.001 -> 0.05 RMS)
-      float max_gain = 50.0f;
-      if (gain > max_gain) gain = max_gain;
-      if (gain < 1.0f) gain = 1.0f;  // Don't attenuate, only boost
-
-      // Apply gain with soft limiting
-      for (int i = 0; i < num_samples; i++) {
-        processed[i] *= gain;
-        // Soft clip to prevent clipping
-        if (processed[i] > 0.95f) processed[i] = 0.95f;
-        else if (processed[i] < -0.95f) processed[i] = -0.95f;
-      }
-    }
+    // AGC disabled - was amplifying quiet sounds too much
+    // Just pass through audio without gain adjustment
+    (void)rms;  // Suppress unused variable warning
   }
 
   // 4. Noise gate (cut silence/background noise) - AFTER AGC
@@ -833,29 +820,9 @@ int client_audio_pipeline_playback(client_audio_pipeline_t *pipeline, const uint
     return -1;
   }
 
-  // ============================================================================
-  // PLAYBACK GAIN STAGE: Compensate for server ducking/crowd scaling losses
-  // Server applies: ducking (-6dB) + crowd scaling (-3dB) + compressor (+3dB) = -6dB net
-  // We add +6dB here to restore proper output level
-  // ============================================================================
-  const float playback_gain = 2.0f;  // +6dB linear gain
-
-  for (int i = 0; i < decoded_samples; i++) {
-    output[i] *= playback_gain;
-  }
-
-  // Soft clip after gain to prevent clipping
-  // Use smooth tanh-based soft clipping to preserve audio quality
-  for (int i = 0; i < decoded_samples; i++) {
-    float sample = output[i];
-    // Soft clip using tanh: limits smoothly to ~±0.99
-    if (sample > 0.5f) {
-      sample = 0.5f + 0.5f * tanhf((sample - 0.5f) * 2.0f);
-    } else if (sample < -0.5f) {
-      sample = -0.5f + 0.5f * tanhf((sample + 0.5f) * 2.0f);
-    }
-    output[i] = sample;
-  }
+  // No gain boost on playback - pass through as-is
+  // AGC was amplifying quiet sounds too much
+  (void)decoded_samples;  // Silence unused warning if no processing needed
 
   // NOTE: Do NOT register render signal here!
   // The render signal (speaker output) must be registered to AEC3 only at the point
