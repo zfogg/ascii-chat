@@ -10,10 +10,6 @@ PORT=27228
 HOST_ONE="workbook-pro"
 HOST_ONE_IP="100.121.182.110"  # Tailscale IP for cross-machine connectivity
 HOST_TWO="manjaro-twopal"
-REPO_ONE="/Users/zfogg/src/github.com/zfogg/ascii-chat"
-REPO_TWO="/home/zfogg/src/github.com/zfogg/ascii-chat"
-BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
-BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
 DURATION=30
 
 # Detect which host we're on
@@ -21,7 +17,11 @@ CURRENT_HOST=$(hostname)
 shopt -s nocasematch
 if [[ "$CURRENT_HOST" == "WorkBook-Pro" ]] || [[ "$CURRENT_HOST" == "$HOST_ONE" ]]; then
   LOCAL_IS_ONE=1
+  REPO_ONE="/Users/zfogg/src/github.com/zfogg/ascii-chat"
+  REPO_TWO="/home/zfogg/src/github.com/zfogg/ascii-chat"
   LOCAL_REPO="$REPO_ONE"
+  BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
+  BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
   LOCAL_BIN="$BIN_ONE"
   REMOTE_HOST="$HOST_TWO"
   REMOTE_REPO="$REPO_TWO"
@@ -29,7 +29,11 @@ if [[ "$CURRENT_HOST" == "WorkBook-Pro" ]] || [[ "$CURRENT_HOST" == "$HOST_ONE" 
   echo "Running on HOST_ONE ($CURRENT_HOST) - local commands here, SSH to $HOST_TWO"
 elif [[ "$CURRENT_HOST" == "manjaro-twopal" ]] || [[ "$CURRENT_HOST" == "$HOST_TWO" ]]; then
   LOCAL_IS_ONE=0
+  REPO_ONE="/home/zfogg/src/github.com/zfogg/ascii-chat"
+  REPO_TWO="/Users/zfogg/src/github.com/zfogg/ascii-chat"
   LOCAL_REPO="$REPO_TWO"
+  BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
+  BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
   LOCAL_BIN="$BIN_TWO"
   REMOTE_HOST="$HOST_ONE"
   REMOTE_REPO="$REPO_ONE"
@@ -39,6 +43,7 @@ else
   echo "Unknown host: $CURRENT_HOST - defaulting to SSH for both"
   LOCAL_IS_ONE=-1
 fi
+
 
 echo ""
 echo "Cross-machine audio analysis test"
@@ -51,17 +56,17 @@ echo ""
 # Helper functions
 run_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-    eval "$1"
+    cd $REPO_ONE && eval "$1"
   else
-    ssh $HOST_ONE "$1"
+    ssh $HOST_ONE "cd $REPO_ONE && $1"
   fi
 }
 
 run_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
-    eval "$1"
+    cd $REPO_TWO && eval "$1"
   else
-    ssh $HOST_TWO "$1"
+    ssh $HOST_TWO "cd $REPO_TWO && $1"
   fi
 }
 
@@ -106,32 +111,27 @@ run_on_two "$(safe_git_pull $REPO_TWO)"
 
 # Rebuild on HOST_ONE
 echo "[3/6] Rebuilding on $HOST_ONE..."
-run_on_one "cd $REPO_ONE && cmake --build build --target ascii-chat 2>&1 | tail -5" || {
+run_on_one "cmake --build build --target ascii-chat 2>&1 | tail -5" || {
   echo "WARNING: Build failed on $HOST_ONE, continuing with existing binary"
 }
 
 # Rebuild on HOST_TWO
 echo "[4/6] Rebuilding on $HOST_TWO (Dev build)..."
-run_on_two "cd $REPO_TWO && cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --target ascii-chat 2>&1 | tail -10" || {
+run_on_two "cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --target ascii-chat 2>&1 | tail -10" || {
   echo "WARNING: Build failed on $HOST_TWO, continuing with existing binary"
 }
-sleep 1
 
 # Start server on HOST_ONE
 echo "[5/8] Starting server on $HOST_ONE:$PORT..."
-if [[ $LOCAL_IS_ONE -eq 1 ]]; then
-  ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 15)) $BIN_ONE server --address 0.0.0.0 --port $PORT --log-file /tmp/server_debug.log &
-  SERVER_PID=$!
-else
-  ssh $HOST_ONE "cd $REPO_ONE && ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 15)) $BIN_ONE server --address 0.0.0.0 --port $PORT --log-file /tmp/server_debug.log" &
-  SERVER_PID=$!
-fi
-sleep 2
+SERVER_PID=$(run_on_one "
+  ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 5)) $BIN_ONE server --address 0.0.0.0 --port $PORT --log-file /tmp/server_debug.log &
+  echo \$!
+")
 
 # Start client 1 on HOST_ONE
 echo "[6/8] Starting client 1 on $HOST_ONE with audio analysis..."
 CLIENT1_PID=$(run_on_one "
-  ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION+5)) $BIN_ONE client \
+  ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION+3)) $BIN_ONE client \
     --address 127.0.0.1 \
     --port $PORT \
     --audio \
@@ -139,13 +139,13 @@ CLIENT1_PID=$(run_on_one "
     --snapshot \
     --snapshot-delay $DURATION \
     --log-file /tmp/client1_debug.log 1>&2 2>/dev/null &
-  echo \$?
-  ")
+  echo \$!
+")
 
 # Start client 2 on HOST_TWO
 echo "[7/8] Starting client 2 on $HOST_TWO..."
 CLIENT2_PID=$(run_on_two "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 \
-    timeout $((DURATION+5)) $BIN_TWO client \
+    timeout $((DURATION+3)) $BIN_TWO client \
     --address $HOST_ONE_IP \
     --port $PORT \
     --webcam-index 2 \
@@ -155,7 +155,7 @@ CLIENT2_PID=$(run_on_two "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDE
     --snapshot \
     --snapshot-delay $DURATION \
     --log-file /tmp/client2_debug.log 1>&2 2>/dev/null &
-  echo \$?
+  echo \$!
 ")
 
 echo ""
@@ -164,9 +164,16 @@ echo "Play music or speak on BOTH machines!"
 echo "========================================"
 echo ""
 
-wait $CLIENT1_PID 2>/dev/null || true
-wait $CLIENT2_PID 2>/dev/null || true
-wait $SERVER_PID 2>/dev/null || true
+# Wait for the test duration
+# Note: We can't use 'wait' on PIDs from SSH/subshells - they're remote PIDs
+# The processes will self-terminate via 'timeout' command
+sleep $((DURATION + 5))
+
+# Clean up any remaining processes on both hosts
+echo "[8/8] Cleaning up processes..."
+run_on_one "pkill -9 -f 'ascii-chat'" 2>/dev/null || true
+run_on_two "pkill -9 -f 'ascii-chat'" 2>/dev/null || true
+sleep 1
 
 echo ""
 echo "=========================================================================="
