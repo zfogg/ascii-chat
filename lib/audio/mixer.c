@@ -72,9 +72,10 @@ void compressor_init(compressor_t *comp, float sample_rate) {
   comp->envelope = 0.0f;
   comp->gain_lin = 1.0f;
 
-  // Set default parameters - increased makeup gain from 3.0f to 6.0f for better audibility
-  // Opus decoded audio is naturally compressed, needs 6dB boost to reach comfortable levels
-  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 6.0f);
+  // Set default parameters - conservative makeup gain to avoid clipping
+  // Previous +6dB makeup combined with base_gain caused +12dB total boost -> clipping
+  // Use +3dB makeup for gentler limiting without distortion
+  compressor_set_params(comp, -10.0f, 4.0f, 10.0f, 100.0f, 3.0f);
 }
 
 void compressor_set_params(compressor_t *comp, float threshold_dB, float ratio, float attack_ms, float release_ms,
@@ -309,7 +310,7 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   // Set crowd scaling parameters
   mixer->crowd_alpha = 0.5f; // Square root scaling
-  mixer->base_gain = 2.0f;   // +6dB boost for Opus audio audibility (Opus is naturally compressed)
+  mixer->base_gain = 1.0f;   // Unity gain - let compressor handle loudness, avoid clipping
 
   // Initialize processing
   if (ducking_init(&mixer->ducking, max_sources, (float)sample_rate) != ASCIICHAT_OK) {
