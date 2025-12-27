@@ -362,6 +362,8 @@ if(BUILD_CRITERION_TESTS AND CRITERION_FOUND)
                 -Wl,--allow-shlib-undefined
                 -Wl,--unresolved-symbols=ignore-all
             )
+            # Link Alpine libc++ for musl builds (function defined in Musl.cmake)
+            link_alpine_libcxx(${test_exe_name})
         endif()
 
         # Use release objects for performance tests

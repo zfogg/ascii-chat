@@ -96,6 +96,8 @@ function(ascii_build_tooling_runtime)
         # Add musl dependency ordering for proper build sequencing
         if(USE_MUSL)
             add_dependencies(ascii-panic-report portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl speexdsp-musl)
+            # Link Alpine libc++ for musl builds (function defined in Musl.cmake)
+            link_alpine_libcxx(ascii-panic-report)
         endif()
     endif()
     set_target_properties(ascii-panic-report PROPERTIES OUTPUT_NAME "ascii-panic-report")
