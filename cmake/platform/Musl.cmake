@@ -403,19 +403,22 @@ function(configure_musl_post_project)
         message(STATUS "  libunwind: ${LIBUNWIND_PATH}")
     endif()
 
-    # Link with musl libc and LLVM runtime libraries
-    # Use compiler-rt instead of libgcc for clang compatibility
-    # Use libc++ instead of libstdc++ for musl compatibility
-    # libunwind provides C++ exception handling symbols (_Unwind_*)
-    # Must link libraries explicitly for static musl builds with full paths to avoid duplicates
-    link_libraries(
-        c
-        ${LIBCXX_PATH}
-        ${LIBCXXABI_PATH}
-    )
+    # Store Alpine libc++ paths for static executable linking
+    # NOTE: Do NOT use link_libraries() here - it applies globally to ALL targets
+    # including shared libraries. Alpine libc++ lacks -fPIC and cannot be used in
+    # shared libraries. Instead, we store paths in cache variables and link them
+    # only to the static executable target later.
+    set(ALPINE_LIBCXX_STATIC "${LIBCXX_PATH}" CACHE FILEPATH "Alpine libc++ for static executable" FORCE)
+    set(ALPINE_LIBCXXABI_STATIC "${LIBCXXABI_PATH}" CACHE FILEPATH "Alpine libc++abi for static executable" FORCE)
     if(LIBUNWIND_PATH)
-        link_libraries(${LIBUNWIND_PATH})
+        set(ALPINE_LIBUNWIND_STATIC "${LIBUNWIND_PATH}" CACHE FILEPATH "Alpine libunwind for static executable" FORCE)
     endif()
+
+    # Link musl libc globally (applies to all targets)
+    # For shared libraries: -stdlib=libc++ will find system libc++ with -fPIC
+    # For static executable: Alpine libc++ will be linked via target_link_libraries()
+    link_libraries(c)
+
     add_link_options(
         "${MUSL_LIBDIR}/crtn.o"
     )

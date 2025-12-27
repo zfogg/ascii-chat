@@ -170,6 +170,18 @@ if(USE_MUSL)
         -lm -lpthread
     )
 
+    # Link Alpine libc++ for static executable (no -fPIC needed for static)
+    # These paths are set in Musl.cmake and contain musl-compatible libc++
+    if(ALPINE_LIBCXX_STATIC AND ALPINE_LIBCXXABI_STATIC)
+        target_link_libraries(ascii-chat
+            ${ALPINE_LIBCXX_STATIC}
+            ${ALPINE_LIBCXXABI_STATIC}
+        )
+        if(ALPINE_LIBUNWIND_STATIC)
+            target_link_libraries(ascii-chat ${ALPINE_LIBUNWIND_STATIC})
+        endif()
+    endif()
+
     # Disable RPATH changes for static musl binaries
     # CPack fails when trying to modify RPATH on static-PIE binaries
     set_target_properties(ascii-chat PROPERTIES
