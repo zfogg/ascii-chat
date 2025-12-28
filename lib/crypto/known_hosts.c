@@ -615,6 +615,9 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   }
 
   // Interactive mode - prompt user
+  // Disable terminal logging so other threads don't interfere with prompt
+  bool previous_terminal_state = log_lock_terminal();
+
   char message[BUFFER_SIZE_LARGE]; // Accommodates full message + IPv6 address + fingerprint
   safe_snprintf(message, sizeof(message),
                 "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
@@ -632,8 +635,12 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
   char response[10];
   if (fgets(response, sizeof(response), stdin) == NULL) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to read user response from stdin");
+    log_unlock_terminal(previous_terminal_state);
     return false;
   }
+
+  // Re-enable terminal logging before returning
+  log_unlock_terminal(previous_terminal_state);
 
   // Accept "yes" or "y" (case insensitive)
   if (strncasecmp(response, "yes", 3) == 0 || strncasecmp(response, "y", 1) == 0) {
@@ -745,14 +752,21 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
   }
 
   // Interactive mode - prompt user
+  // Disable terminal logging so other threads don't interfere with prompt
+  bool previous_terminal_state = log_lock_terminal();
+
   safe_fprintf(stderr, "Are you sure you want to continue connecting (yes/no)? ");
   (void)fflush(stderr);
 
   char response[10];
   if (fgets(response, sizeof(response), stdin) == NULL) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to read user response from stdin (no identity host)");
+    log_unlock_terminal(previous_terminal_state);
     return false;
   }
+
+  // Re-enable terminal logging before returning
+  log_unlock_terminal(previous_terminal_state);
 
   // Accept "yes" or "y" (case insensitive)
   if (strncasecmp(response, "yes", 3) == 0 || strncasecmp(response, "y", 1) == 0) {

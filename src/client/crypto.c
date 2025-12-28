@@ -522,6 +522,9 @@ int client_crypto_handshake(socket_t socket) {
 #endif
     if (!skip_interactive && platform_isatty(STDIN_FILENO)) {
       // Interactive mode - prompt user for confirmation
+      // Disable terminal logging so other threads don't interfere with prompt
+      bool previous_terminal_state = log_lock_terminal();
+
       safe_fprintf(stderr, "\n");
       safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
       safe_fprintf(stderr, "@  WARNING: CLIENT AUTHENTICATION REQUIRED                                    @\n");
@@ -541,10 +544,14 @@ int client_crypto_handshake(socket_t socket) {
 
       char response[10];
       if (fgets(response, sizeof(response), stdin) == NULL) {
+        log_unlock_terminal(previous_terminal_state);
         log_error("Failed to read user response");
         STOP_TIMER("client_crypto_handshake");
         return CONNECTION_ERROR_AUTH_FAILED;
       }
+
+      // Re-enable terminal logging before handling response
+      log_unlock_terminal(previous_terminal_state);
 
       // Accept "yes" or "y" (case insensitive)
       if (strncasecmp(response, "yes", 3) != 0 && strncasecmp(response, "y", 1) != 0) {

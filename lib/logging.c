@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "platform/abstraction.h"
+#include "platform/system.h"
 #include "util/path.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -334,6 +335,18 @@ void log_destroy(void) {
   }
   g_log.file = -1;
   g_log.initialized = false;
+
+  // Free buffered log entries
+  if (g_log.buffer_entries) {
+    for (size_t i = 0; i < g_log.buffer_entry_count; i++) {
+      free(g_log.buffer_entries[i].message);
+    }
+    free(g_log.buffer_entries);
+    g_log.buffer_entries = NULL;
+    g_log.buffer_entry_count = 0;
+    g_log.buffer_total_size = 0;
+  }
+
   mutex_unlock(&g_log.mutex);
 }
 
@@ -375,6 +388,58 @@ bool log_get_force_stderr(void) {
   bool enabled = g_log.force_stderr;
   mutex_unlock(&g_log.mutex);
   return enabled;
+}
+
+bool log_lock_terminal(void) {
+  mutex_lock(&g_log.mutex);
+  bool previous_state = g_log.terminal_output_enabled;
+  g_log.terminal_output_enabled = false;
+  mutex_unlock(&g_log.mutex);
+  return previous_state;
+}
+
+void log_unlock_terminal(bool previous_state) {
+  mutex_lock(&g_log.mutex);
+
+  // Copy buffer state locally so we can release mutex during flush animation
+  size_t entry_count = g_log.buffer_entry_count;
+  log_buffer_entry_t *entries = g_log.buffer_entries;
+  unsigned int delay_ms = g_log.flush_delay_ms;
+
+  // Clear global buffer state (entries memory is now owned by local pointer)
+  g_log.buffer_entries = NULL;
+  g_log.buffer_entry_count = 0;
+  g_log.buffer_total_size = 0;
+
+  // Restore terminal output before flushing so logs can resume normally
+  g_log.terminal_output_enabled = previous_state;
+
+  mutex_unlock(&g_log.mutex);
+
+  // Flush buffered entries in order, each to its correct stream
+  if (entries && entry_count > 0) {
+    for (size_t i = 0; i < entry_count; i++) {
+      FILE *stream = entries[i].use_stderr ? stderr : stdout;
+      if (entries[i].message) {
+        (void)fputs(entries[i].message, stream);
+        (void)fflush(stream);
+        free(entries[i].message);
+        entries[i].message = NULL;
+
+        // Add delay between entries for animation effect (skip after last entry)
+        if (delay_ms > 0 && i < entry_count - 1) {
+          platform_sleep_ms(delay_ms);
+        }
+      }
+    }
+    free(entries);
+  }
+}
+
+void log_set_flush_delay(unsigned int delay_ms) {
+  mutex_lock(&g_log.mutex);
+  g_log.flush_delay_ms = delay_ms;
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_truncate_if_large(void) {
@@ -484,15 +549,65 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   return result;
 }
 
+/* Helper: Append formatted log to terminal buffer (assumes mutex held)
+ * use_stderr: true for stderr, false for stdout
+ */
+static void buffer_terminal_output_unlocked(bool use_stderr, const char *header, const char *reset_color,
+                                            const char *fmt, va_list args) {
+  // Check entry count limit
+  if (g_log.buffer_entry_count >= MAX_TERMINAL_BUFFER_ENTRIES) {
+    return; // Too many entries
+  }
+
+  // Format the message part
+  char msg_buffer[2048];
+  int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+  if (msg_len < 0)
+    msg_len = 0;
+  if (msg_len >= (int)sizeof(msg_buffer))
+    msg_len = sizeof(msg_buffer) - 1;
+
+  // Calculate total size needed: header + reset + message + reset + newline + null
+  size_t reset_len = reset_color ? strlen(reset_color) : 0;
+  size_t total_len = strlen(header) + reset_len + (size_t)msg_len + reset_len + 2; // +2 for \n and \0
+
+  // Check total buffer size limit
+  if (g_log.buffer_total_size + total_len > MAX_TERMINAL_BUFFER_SIZE) {
+    return; // Would exceed size limit
+  }
+
+  // Allocate entry array if needed
+  if (!g_log.buffer_entries) {
+    g_log.buffer_entries = malloc(MAX_TERMINAL_BUFFER_ENTRIES * sizeof(log_buffer_entry_t));
+    if (!g_log.buffer_entries) {
+      return; // Allocation failed
+    }
+  }
+
+  // Format the complete message
+  char *message = malloc(total_len);
+  if (!message) {
+    return; // Allocation failed
+  }
+
+  if (reset_color) {
+    snprintf(message, total_len, "%s%s%s%s\n", header, reset_color, msg_buffer, reset_color);
+  } else {
+    snprintf(message, total_len, "%s%s\n", header, msg_buffer);
+  }
+
+  // Add entry
+  g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = use_stderr;
+  g_log.buffer_entries[g_log.buffer_entry_count].message = message;
+  g_log.buffer_entry_count++;
+  g_log.buffer_total_size += total_len;
+}
+
 /* Helper: Write colored log entry to terminal (assumes mutex held)
- * Only writes if terminal output is enabled
+ * If terminal output is disabled, buffers the output for later
  */
 static void write_to_terminal_unlocked(log_level_t level, const char *timestamp, const char *file, int line,
                                        const char *func, const char *fmt, va_list args) {
-  if (!g_log.terminal_output_enabled) {
-    return;
-  }
-
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
   // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
   FILE *output_stream;
@@ -511,6 +626,19 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
       format_log_header(header_buffer, sizeof(header_buffer), level, timestamp, file, line, func, use_colors, false);
   if (header_len <= 0 || header_len >= (int)sizeof(header_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
+    return;
+  }
+
+  // If terminal output is disabled, buffer the message for later
+  if (!g_log.terminal_output_enabled) {
+    const char *reset_color = NULL;
+    if (use_colors) {
+      const char **colors = log_get_color_array();
+      if (colors)
+        reset_color = colors[LOGGING_COLOR_RESET];
+    }
+    bool use_stderr = (output_stream == stderr);
+    buffer_terminal_output_unlocked(use_stderr, header_buffer, reset_color, fmt, args);
     return;
   }
 
