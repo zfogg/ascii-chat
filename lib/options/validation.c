@@ -19,25 +19,8 @@
 #include "video/palette.h"
 #include "options/options.h"
 
-// Safely parse string to integer with validation
-int strtoint_safe(const char *str) {
-  if (!str || *str == '\0') {
-    return INT_MIN; // Error: NULL or empty string
-  }
-
-  char *endptr;
-  long result = strtol(str, &endptr, 10);
-
-  // Check for various error conditions:
-  // 1. No conversion performed (endptr == str)
-  // 2. Partial conversion (still characters left)
-  // 3. Out of int range
-  if (endptr == str || *endptr != '\0' || result > INT_MAX || result < INT_MIN) {
-    return INT_MIN; // Error: invalid input
-  }
-
-  return (int)result;
-}
+// Note: strtoint_safe is now defined in options.c and uses parse_int32 for better error handling
+// See lib/options/options.c for the implementation that should be used by all validation code
 
 /**
  * Validate port number (1-65535)

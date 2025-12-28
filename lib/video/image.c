@@ -27,6 +27,7 @@
 #include "buffer_pool.h" // For buffer pool allocation functions
 #include "util/overflow.h"
 #include "util/image.h"
+#include "util/math.h"
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 
@@ -99,13 +100,16 @@ void image_destroy(image_t *p) {
     // Calculate original allocation size for proper buffer pool free
     size_t w = (size_t)p->w;
     size_t h = (size_t)p->h;
-    if (w > SIZE_MAX / h) {
+    size_t pixels_size;
+    if (checked_size_mul3(w, h, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_INVALID_STATE, "image_destroy: dimensions would overflow: %dx%d", p->w, p->h);
       return;
     }
-    size_t pixel_count = w * h;
-    size_t pixels_size = pixel_count * sizeof(rgb_t);
-    size_t total_size = sizeof(image_t) + pixels_size;
+    size_t total_size;
+    if (checked_size_add(sizeof(image_t), pixels_size, &total_size) != ASCIICHAT_OK) {
+      SET_ERRNO(ERROR_INVALID_STATE, "image_destroy: total size would overflow: %dx%d", p->w, p->h);
+      return;
+    }
 
     // Free the entire contiguous buffer back to pool
     buffer_pool_free(p, total_size);
@@ -133,23 +137,17 @@ image_t *image_new_from_pool(size_t width, size_t height) {
 
   // Calculate total allocation size (structure + pixel data in single buffer)
   // Check for integer overflow before multiplication
-  if (width > SIZE_MAX / height) {
+  size_t pixels_size;
+  if (checked_size_mul3(width, height, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions would overflow: %zux%zu", width, height);
     return NULL;
   }
-  size_t pixel_count = width * height;
 
-  if (pixel_count > SIZE_MAX / sizeof(rgb_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: pixel count would overflow: %zu", pixel_count);
-    return NULL;
-  }
-  size_t pixels_size = pixel_count * sizeof(rgb_t);
-
-  if (pixels_size > SIZE_MAX - sizeof(image_t)) {
+  size_t total_size;
+  if (checked_size_add(sizeof(image_t), pixels_size, &total_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: total size would overflow");
     return NULL;
   }
-  size_t total_size = sizeof(image_t) + pixels_size;
 
   // Allocate from buffer pool as single contiguous block
   void *buffer = buffer_pool_alloc(total_size);
@@ -186,13 +184,16 @@ void image_destroy_to_pool(image_t *image) {
   // Check for overflow (defensive - should match original allocation)
   size_t w = (size_t)image->w;
   size_t h = (size_t)image->h;
-  if (w > SIZE_MAX / h) {
+  size_t pixels_size;
+  if (checked_size_mul3(w, h, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_INVALID_STATE, "image_destroy_to_pool: dimensions would overflow: %dx%d", image->w, image->h);
     return;
   }
-  size_t pixel_count = w * h;
-  size_t pixels_size = pixel_count * sizeof(rgb_t);
-  size_t total_size = sizeof(image_t) + pixels_size;
+  size_t total_size;
+  if (checked_size_add(sizeof(image_t), pixels_size, &total_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_STATE, "image_destroy_to_pool: total size would overflow: %dx%d", image->w, image->h);
+    return;
+  }
 
   // Free the entire contiguous buffer back to pool
   buffer_pool_free(image, total_size);
@@ -383,18 +384,18 @@ char *image_print(const image_t *p, const char *palette) {
   // Calculate buffer size with overflow checking
   size_t w_times_bytes;
   if (checked_size_mul((size_t)w, max_char_bytes, &w_times_bytes) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_OVERFLOW, "Buffer size overflow: width too large for UTF-8 encoding");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size overflow: width too large for UTF-8 encoding");
     return NULL;
   }
 
   size_t w_times_bytes_plus_one;
   if (checked_size_add(w_times_bytes, 1, &w_times_bytes_plus_one) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_OVERFLOW, "Buffer size overflow: width * bytes + 1 overflow");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size overflow: width * bytes + 1 overflow");
     return NULL;
   }
 
   if (checked_size_mul((size_t)h, w_times_bytes_plus_one, &ob.cap) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_OVERFLOW, "Buffer size overflow: height * (width * bytes + 1) overflow");
+    SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size overflow: height * (width * bytes + 1) overflow");
     return NULL;
   }
 
@@ -414,7 +415,7 @@ char *image_print(const image_t *p, const char *palette) {
       const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) >> 8;
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
@@ -426,7 +427,7 @@ char *image_print(const image_t *p, const char *palette) {
       while (j < w) {
         const rgb_t next_pixel = pix[row_offset + j];
         const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) >> 8;
-        int next_safe_luminance = (next_luminance > 255) ? 255 : next_luminance;
+        uint8_t next_safe_luminance = clamp_rgb(next_luminance);
         uint8_t next_luma_idx = (uint8_t)(next_safe_luminance >> 2);        // 0-63 index (same as SIMD)
         uint8_t next_char_idx = utf8_cache->char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
         if (next_char_idx != char_idx)
@@ -591,7 +592,7 @@ char *image_print_color(const image_t *p, const char *palette) {
       const int luminance = (77 * r + 150 * g + 29 * b + 128) >> 8;
 
       // Use UTF-8 character cache for proper character selection
-      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t safe_luminance = clamp_rgb(luminance);
       const utf8_char_t *char_info = &utf8_cache->cache[safe_luminance];
 
       // For RLE, we need to pass the first byte of the UTF-8 character
@@ -795,7 +796,7 @@ char *image_print_16color(const image_t *image, const char *palette) {
       }
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
@@ -897,7 +898,7 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
       }
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 
@@ -997,7 +998,7 @@ char *image_print_16color_dithered_with_background(const image_t *image, bool us
       }
 
       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
-      int safe_luminance = (luminance > 255) ? 255 : luminance;
+      uint8_t safe_luminance = clamp_rgb(luminance);
       uint8_t luma_idx = (uint8_t)(safe_luminance >> 2);        // 0-63 index (same as SIMD)
       uint8_t char_idx = utf8_cache->char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
 

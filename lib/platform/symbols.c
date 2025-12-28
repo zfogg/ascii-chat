@@ -48,9 +48,8 @@
 
 typedef enum {
   SYMBOLIZER_NONE = 0,      // No symbolizer available, use raw addresses
-  SYMBOLIZER_LLVM = 1,      // llvm-symbolizer (preferred on Linux/Windows)
+  SYMBOLIZER_LLVM = 1,      // llvm-symbolizer (preferred on all platforms)
   SYMBOLIZER_ADDR2LINE = 2, // addr2line (fallback)
-  SYMBOLIZER_ATOS = 3       // atos (macOS only, handles ASLR automatically)
 } symbolizer_type_t;
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
@@ -61,10 +60,6 @@ static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
 static atomic_bool g_addr2line_checked = false;
 static atomic_bool g_addr2line_available = false;
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
-#ifdef __APPLE__
-static atomic_bool g_atos_checked = false;
-static atomic_bool g_atos_available = false;
-#endif
 static static_mutex_t g_symbolizer_detection_mutex = STATIC_MUTEX_INIT;
 
 // ============================================================================
@@ -244,43 +239,77 @@ static const char *get_addr2line_command(void) {
 }
 
 #ifdef __APPLE__
+#include <mach-o/dyld.h>
+
 /**
- * @brief Check if atos is available (macOS only)
- * @return true if atos is available, false otherwise
+ * @brief Get ASLR slide and binary path for a given address (macOS only)
+ * @param addr Runtime address to look up
+ * @param out_path Buffer to store the binary path
+ * @param path_size Size of the path buffer
+ * @param out_file_offset Output for the file offset (addr - slide)
+ * @return true if the address was found in a loaded image, false otherwise
  *
- * atos is the macOS native symbolizer that handles ASLR automatically.
- * It's always available on macOS at /usr/bin/atos.
+ * On macOS, ASLR adds a random "slide" to addresses at runtime.
+ * llvm-symbolizer needs file offsets, not runtime addresses.
+ * This function finds which binary an address belongs to and calculates
+ * the file offset by subtracting the slide.
  */
-static bool is_atos_available(void) {
-  if (!atomic_load(&g_atos_checked)) {
-    static_mutex_lock(&g_symbolizer_detection_mutex);
-    if (!atomic_load(&g_atos_checked)) {
-      // atos is always at /usr/bin/atos on macOS
-      bool available = (access("/usr/bin/atos", X_OK) == 0);
-      atomic_store(&g_atos_available, available);
-      atomic_store(&g_atos_checked, true);
-      if (available) {
-        log_debug("Found atos at /usr/bin/atos (macOS native symbolizer)");
+static bool get_macos_file_offset(const void *addr, char *out_path, size_t path_size, uintptr_t *out_file_offset) {
+  if (!addr || !out_path || !out_file_offset) {
+    return false;
+  }
+
+  uintptr_t target_addr = (uintptr_t)addr;
+  uint32_t image_count = _dyld_image_count();
+
+  for (uint32_t i = 0; i < image_count; i++) {
+    const struct mach_header *header = _dyld_get_image_header(i);
+    if (!header) {
+      continue;
+    }
+
+    intptr_t slide = _dyld_get_image_vmaddr_slide(i);
+    const char *image_name = _dyld_get_image_name(i);
+    if (!image_name) {
+      continue;
+    }
+
+    // For 64-bit binaries, iterate through load commands to find the segment
+    if (header->magic == MH_MAGIC_64) {
+      const struct mach_header_64 *header64 = (const struct mach_header_64 *)header;
+      const uint8_t *ptr = (const uint8_t *)(header64 + 1);
+
+      for (uint32_t j = 0; j < header64->ncmds; j++) {
+        const struct load_command *cmd = (const struct load_command *)ptr;
+
+        if (cmd->cmd == LC_SEGMENT_64) {
+          const struct segment_command_64 *seg = (const struct segment_command_64 *)ptr;
+          uintptr_t seg_start = seg->vmaddr + (uintptr_t)slide;
+          uintptr_t seg_end = seg_start + seg->vmsize;
+
+          if (target_addr >= seg_start && target_addr < seg_end) {
+            // Found the segment containing our address
+            SAFE_STRNCPY(out_path, image_name, path_size);
+            *out_file_offset = target_addr - (uintptr_t)slide;
+            return true;
+          }
+        }
+
+        ptr += cmd->cmdsize;
       }
     }
-    static_mutex_unlock(&g_symbolizer_detection_mutex);
   }
-  return atomic_load(&g_atos_available);
+
+  return false;
 }
 #endif
 
 static symbolizer_type_t detect_symbolizer(void) {
-#ifdef __APPLE__
-  // On macOS, prefer atos because it handles ASLR automatically
-  // llvm-symbolizer and addr2line require address adjustment on macOS
-  if (is_atos_available()) {
-    log_debug("Using atos for symbol resolution (handles ASLR automatically)");
-    return SYMBOLIZER_ATOS;
-  }
-#endif
-
+  // Prefer llvm-symbolizer on all platforms (including macOS)
+  // We handle ASLR ourselves using dyld APIs on macOS
   const char *llvm_symbolizer = get_llvm_symbolizer_command();
   if (llvm_symbolizer) {
+    log_debug("Using llvm-symbolizer for symbol resolution");
     return SYMBOLIZER_LLVM;
   }
 
@@ -510,32 +539,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Conditionally escape exe_path only if it needs quoting (has spaces or special chars)
-  // llvm-symbolizer handles unquoted paths correctly, so only quote when necessary
-  const char *escaped_exe_path = exe_path;
+  // Escape exe_path for shell command (auto-detects platform and quoting needs)
   char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool needs_quoting = false;
-  for (size_t i = 0; exe_path[i] != '\0'; i++) {
-    if (exe_path[i] == ' ' || exe_path[i] == '\t' || exe_path[i] == '"' || exe_path[i] == '\'') {
-      needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+    log_error("Failed to escape executable path for shell command");
+    return NULL;
   }
-
-  if (needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_exe_path = escaped_exe_path_buf;
-  }
+  const char *escaped_exe_path = escaped_exe_path_buf;
 
   // Validate and escape llvm-symbolizer path if needed
   if (!validate_shell_safe(symbolizer_cmd, ".-/\\:_")) {
@@ -543,31 +553,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  const char *escaped_symbolizer_cmd = symbolizer_cmd;
+  // Escape symbolizer command for shell (auto-detects platform and quoting needs)
   char escaped_symbolizer_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool symbolizer_needs_quoting = false;
-  for (size_t i = 0; symbolizer_cmd[i] != '\0'; i++) {
-    if (symbolizer_cmd[i] == ' ' || symbolizer_cmd[i] == '\t' || symbolizer_cmd[i] == '"' ||
-        symbolizer_cmd[i] == '\'') {
-      symbolizer_needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
+    log_error("Failed to escape llvm-symbolizer path for shell command");
+    return NULL;
   }
-
-  if (symbolizer_needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-      log_error("Failed to escape llvm-symbolizer path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-      log_error("Failed to escape llvm-symbolizer path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_symbolizer_cmd = escaped_symbolizer_buf;
-  }
+  const char *escaped_symbolizer_cmd = escaped_symbolizer_buf;
 
   // Build llvm-symbolizer command with --demangle, --output-style=LLVM, --relativenames, --inlining,
   // and --debug-file-directory
@@ -581,31 +573,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Conditionally escape BUILD_DIR only if it needs quoting (has spaces or special chars)
-  const char *escaped_build_dir = BUILD_DIR;
+  // Escape BUILD_DIR for shell (auto-detects platform and quoting needs)
   char escaped_build_dir_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool build_dir_needs_quoting = false;
-  for (size_t i = 0; BUILD_DIR[i] != '\0'; i++) {
-    if (BUILD_DIR[i] == ' ' || BUILD_DIR[i] == '\t' || BUILD_DIR[i] == '"' || BUILD_DIR[i] == '\'') {
-      build_dir_needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
+    log_error("Failed to escape BUILD_DIR for shell command");
+    return NULL;
   }
-
-  if (build_dir_needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      log_error("Failed to escape BUILD_DIR for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      log_error("Failed to escape BUILD_DIR for shell command");
-      return NULL;
-    }
-#endif
-    escaped_build_dir = escaped_build_dir_buf;
-  }
+  const char *escaped_build_dir = escaped_build_dir_buf;
 
   offset = snprintf(cmd, sizeof(cmd),
                     "%s --demangle --output-style=LLVM --relativenames --inlining "
@@ -760,62 +734,26 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Conditionally escape exe_path only if it needs quoting (has spaces or special chars)
-  // addr2line handles unquoted paths correctly, so only quote when necessary
-  const char *escaped_exe_path = exe_path;
+  // Escape exe_path for shell (auto-detects platform and quoting needs)
   char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool needs_quoting = false;
-  for (size_t i = 0; exe_path[i] != '\0'; i++) {
-    if (exe_path[i] == ' ' || exe_path[i] == '\t' || exe_path[i] == '"' || exe_path[i] == '\'') {
-      needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+    log_error("Failed to escape executable path for shell command");
+    return NULL;
   }
-
-  if (needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_exe_path = escaped_exe_path_buf;
-  }
+  const char *escaped_exe_path = escaped_exe_path_buf;
 
   if (!validate_shell_safe(addr2line_cmd, ".-/\\:_")) {
     log_warn("addr2line path contains unsafe characters: %s", addr2line_cmd);
     return NULL;
   }
 
-  const char *escaped_addr2line_cmd = addr2line_cmd;
+  // Escape addr2line command for shell (auto-detects platform and quoting needs)
   char escaped_addr2line_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool addr2line_needs_quoting = false;
-  for (size_t i = 0; addr2line_cmd[i] != '\0'; i++) {
-    if (addr2line_cmd[i] == ' ' || addr2line_cmd[i] == '\t' || addr2line_cmd[i] == '"' || addr2line_cmd[i] == '\'') {
-      addr2line_needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
+    log_error("Failed to escape addr2line path for shell command");
+    return NULL;
   }
-
-  if (addr2line_needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
-      log_error("Failed to escape addr2line path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
-      log_error("Failed to escape addr2line path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_addr2line_cmd = escaped_addr2line_buf;
-  }
+  const char *escaped_addr2line_cmd = escaped_addr2line_buf;
 
   // Build addr2line command
   char cmd[4096];
@@ -900,173 +838,126 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
 #ifdef __APPLE__
 /**
- * @brief Run atos on a batch of addresses and parse results (macOS only)
- * @param buffer Array of addresses
+ * @brief Run llvm-symbolizer on macOS with ASLR address translation
+ * @param buffer Array of runtime addresses
  * @param size Number of addresses
  * @return Array of symbol strings (must be freed by caller)
  *
- * atos is the macOS native symbolizer that handles ASLR automatically.
- * It uses the -p option with the current process ID to symbolize addresses.
+ * On macOS, runtime addresses include ASLR slide. This function:
+ * 1. Groups addresses by which binary they belong to
+ * 2. Calculates file offsets by subtracting the ASLR slide
+ * 3. Runs llvm-symbolizer with the correct binary and file offset
  */
-static char **run_atos_batch(void *const *buffer, int size) {
+static char **run_llvm_symbolizer_macos_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
     return NULL;
   }
 
-  // Get executable path
-  char exe_path[PLATFORM_MAX_PATH_LENGTH];
-  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
-    log_debug("atos: Failed to get executable path");
-    return NULL;
-  }
-
-  // Check for dSYM bundles (provides line numbers)
-  // dSYM path is <binary>.dSYM for executable
-  char exe_dsym_path[PLATFORM_MAX_PATH_LENGTH];
-  SAFE_SNPRINTF(exe_dsym_path, sizeof(exe_dsym_path), "%s.dSYM", exe_path);
-
-  const char *exe_symbol_path = exe_path;
-  if (access(exe_dsym_path, R_OK) == 0) {
-    exe_symbol_path = exe_dsym_path;
-    log_debug("atos: Using dSYM bundle for symbol resolution: %s", exe_dsym_path);
-  }
-
-  // Also check for shared library dSYM (for library code like crypto, network)
-  // Shared library is in ../lib/libasciichat.*.dylib relative to executable
-  char lib_dsym_path[PLATFORM_MAX_PATH_LENGTH] = "";
-  char *last_slash = strrchr(exe_path, '/');
-  if (last_slash) {
-    size_t dir_len = (size_t)(last_slash - exe_path);
-    char exe_dir[PLATFORM_MAX_PATH_LENGTH];
-    strncpy(exe_dir, exe_path, dir_len);
-    exe_dir[dir_len] = '\0';
-
-    // Try common shared library locations
-    const char *lib_names[] = {"%s/../lib/libasciichat.dylib.dSYM", "%s/../lib/libasciichat.0.dylib.dSYM",
-                               "%s/../lib/libasciichat.0.1.0.dylib.dSYM", NULL};
-
-    for (int i = 0; lib_names[i] != NULL; i++) {
-      char candidate[PLATFORM_MAX_PATH_LENGTH];
-      SAFE_SNPRINTF(candidate, sizeof(candidate), lib_names[i], exe_dir);
-      if (access(candidate, R_OK) == 0) {
-        SAFE_STRNCPY(lib_dsym_path, candidate, sizeof(lib_dsym_path));
-        log_debug("atos: Also using shared library dSYM: %s", lib_dsym_path);
-        break;
-      }
-    }
-  }
-
-  // Build atos command
-  // atos -o <executable|dSYM> [-o <lib.dSYM>] -p <pid> <addresses>
-  // Using -p <pid> allows atos to handle ASLR automatically
-  // dSYM provides file:line info when available
-  // Multiple -o flags can be used to symbolize from multiple binaries
-  char cmd[8192];
-  int offset;
-  if (lib_dsym_path[0] != '\0') {
-    offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -o '%s' -p %d ", exe_symbol_path, lib_dsym_path,
-                      platform_get_pid());
-  } else {
-    offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -p %d ", exe_symbol_path, platform_get_pid());
-  }
-
-  if (offset <= 0 || offset >= (int)sizeof(cmd)) {
-    log_error("atos: Failed to build command");
-    return NULL;
-  }
-
-  // Add all addresses to the command
-  for (int i = 0; i < size; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "%p ", buffer[i]);
-    if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
-      break;
-    }
-    offset += n;
-  }
-
-  // Execute atos
-  FILE *fp = popen(cmd, "r");
-  if (!fp) {
-    log_debug("atos: Failed to execute command");
+  const char *symbolizer_cmd = get_llvm_symbolizer_command();
+  if (!symbolizer_cmd) {
+    log_debug("llvm-symbolizer not available on macOS");
     return NULL;
   }
 
   // Allocate result array
   char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
   if (!result) {
-    pclose(fp);
     return NULL;
   }
 
-  // Parse output - atos produces one line per address in format:
-  // function_name (in binary) (file:line)
-  // OR just raw address if unknown
+  // Process each address individually since they may belong to different binaries
   for (int i = 0; i < size; i++) {
-    char line[1024];
-    if (fgets(line, sizeof(line), fp) == NULL) {
-      break;
-    }
+    char binary_path[PLATFORM_MAX_PATH_LENGTH];
+    uintptr_t file_offset = 0;
 
-    // Remove newline
-    line[strcspn(line, "\n")] = '\0';
-
-    // atos output can be:
-    // 1. "function_name (in binary) (file.c:123)"
-    // 2. "function_name (in binary) + offset"
-    // 3. "0x123456" (if no debug info)
-
-    // Check if it's just a hex address (no symbol found)
-    if (line[0] == '0' && line[1] == 'x') {
-      result[i] = platform_strdup(line);
+    if (!get_macos_file_offset(buffer[i], binary_path, sizeof(binary_path), &file_offset)) {
+      // Could not find which binary this address belongs to
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+      }
       continue;
     }
 
-    // Try to parse atos output
-    // Format: "func_name (in binary) (file.c:123)" or "func_name (in binary) + 123"
-    char func_name[512] = "";
-    char file_info[512] = "";
+    // Build llvm-symbolizer command for this single address
+    // Use file offset (not runtime address) with the correct binary
+    char cmd[2048];
+    SAFE_SNPRINTF(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e '%s' 0x%lx 2>/dev/null",
+                  symbolizer_cmd, binary_path, (unsigned long)file_offset);
 
-    // Find function name (everything before " (in ")
-    char *in_marker = strstr(line, " (in ");
-    if (in_marker) {
-      size_t func_len = (size_t)(in_marker - line);
-      if (func_len < sizeof(func_name)) {
-        strncpy(func_name, line, func_len);
-        func_name[func_len] = '\0';
+    FILE *fp = popen(cmd, "r");
+    if (!fp) {
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
       }
-
-      // Find file:line info (after the last '(' before the closing ')')
-      char *file_start = strrchr(in_marker, '(');
-      char *file_end = strrchr(line, ')');
-      if (file_start && file_end && file_start < file_end && file_start != in_marker + 1) {
-        size_t file_len = (size_t)(file_end - file_start - 1);
-        if (file_len < sizeof(file_info)) {
-          strncpy(file_info, file_start + 1, file_len);
-          file_info[file_len] = '\0';
-        }
-      }
+      continue;
     }
 
-    // Build result string
+    char func_name[512] = "??";
+    char file_location[512] = "??:0";
+    char blank_line[8];
+
+    // Read function name line
+    if (fgets(func_name, sizeof(func_name), fp)) {
+      func_name[strcspn(func_name, "\n")] = '\0';
+    }
+
+    // Read file location line
+    if (fgets(file_location, sizeof(file_location), fp)) {
+      file_location[strcspn(file_location, "\n")] = '\0';
+    }
+
+    // Read blank separator line
+    if (fgets(blank_line, sizeof(blank_line), fp) == NULL) {
+      // End of output - not an error
+    }
+
+    pclose(fp);
+
+    // Remove column number (last :N) from file_location
+    char *last_colon = strrchr(file_location, ':');
+    if (last_colon) {
+      *last_colon = '\0';
+    }
+
+    // Extract relative path
+    const char *rel_path = extract_project_relative_path(file_location);
+
+    // Allocate result buffer
     result[i] = SAFE_MALLOC(1024, char *);
     if (!result[i]) {
       continue;
     }
 
-    if (func_name[0] && file_info[0] && strstr(file_info, ":") != NULL) {
-      // Best case: function + file:line
-      const char *rel_path = extract_project_relative_path(file_info);
-      SAFE_SNPRINTF(result[i], 1024, "%s() (%s)", func_name, rel_path);
-    } else if (func_name[0]) {
-      // Function only (no debug info for this frame)
-      SAFE_SNPRINTF(result[i], 1024, "%s()", func_name);
+    // Format symbol
+    bool has_func = (strcmp(func_name, "??") != 0 && strlen(func_name) > 0);
+    bool has_file =
+        (strcmp(file_location, "??:0") != 0 && strcmp(file_location, "??:?") != 0 && strcmp(file_location, "??") != 0);
+
+    // Remove () from function name if present
+    char clean_func[512];
+    SAFE_STRNCPY(clean_func, func_name, sizeof(clean_func));
+    char *paren = strstr(clean_func, "()");
+    if (paren) {
+      *paren = '\0';
+    }
+
+    if (!has_func && !has_file) {
+      // Complete unknown - show raw address
+      SAFE_SNPRINTF(result[i], 1024, "%p", buffer[i]);
+    } else if (has_func && has_file) {
+      // Best case - both function and file:line known
+      SAFE_SNPRINTF(result[i], 1024, "%s() (%s)", clean_func, rel_path);
+    } else if (has_func) {
+      // Function known but file unknown
+      SAFE_SNPRINTF(result[i], 1024, "%s()", clean_func);
     } else {
-      // Use original line
-      SAFE_STRNCPY(result[i], line, 1024);
+      // File known but function unknown (rare)
+      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)", rel_path);
     }
   }
 
-  pclose(fp);
   return result;
 }
 #endif // __APPLE__
@@ -1083,11 +974,8 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
     // Cache not initialized - fall back to uncached resolution
     // This happens during early initialization before platform_init() completes
 #ifdef __APPLE__
-    // On macOS, try atos first (handles ASLR)
-    char **result = run_atos_batch(buffer, size);
-    if (!result) {
-      result = run_llvm_symbolizer_batch(buffer, size);
-    }
+    // On macOS, use llvm-symbolizer with ASLR translation
+    char **result = run_llvm_symbolizer_macos_batch(buffer, size);
 #else
     // Try llvm-symbolizer first, then addr2line
     char **result = run_llvm_symbolizer_batch(buffer, size);
@@ -1136,13 +1024,13 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
     // Use the detected symbolizer type
     switch (g_symbolizer_type) {
-#ifdef __APPLE__
-    case SYMBOLIZER_ATOS:
-      resolved = run_atos_batch(uncached_addrs, uncached_count);
-      break;
-#endif
     case SYMBOLIZER_LLVM:
+#ifdef __APPLE__
+      // On macOS, use the ASLR-aware llvm-symbolizer wrapper
+      resolved = run_llvm_symbolizer_macos_batch(uncached_addrs, uncached_count);
+#else
       resolved = run_llvm_symbolizer_batch(uncached_addrs, uncached_count);
+#endif
       break;
     case SYMBOLIZER_ADDR2LINE:
       resolved = run_addr2line_batch(uncached_addrs, uncached_count);
