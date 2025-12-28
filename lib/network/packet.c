@@ -14,7 +14,7 @@
 #include "crypto/crypto.h"
 #include "network/compression.h"
 #include "util/endian.h"
-#include "options.h" // For opt_compression_level
+#include "options/options.h" // For opt_compression_level
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

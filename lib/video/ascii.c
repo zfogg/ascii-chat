@@ -22,7 +22,7 @@
 #include "image.h"
 #include "util/aspect_ratio.h"
 #include "video/webcam/webcam.h"
-#include "options.h"
+#include "options/options.h"
 #include "simd/ascii_simd.h"
 
 /* ============================================================================

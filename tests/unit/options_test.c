@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#include "options.h"
+#include "options/options.h"
 #include "tests/common.h"
 #include "platform/terminal.h"
 #include "tests/logging.h"
