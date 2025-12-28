@@ -177,29 +177,25 @@ static bool validate_webcam_index(const char *value_str, unsigned short int *out
 
 // Detect default SSH key path for the current user
 static asciichat_error_t detect_default_ssh_key(char *key_path, size_t path_size) {
-  const char *home_dir = platform_getenv("HOME");
-  if (!home_dir) {
-    // Fallback for Windows
-    home_dir = platform_getenv("USERPROFILE");
+  // Use expand_path utility to resolve ~/.ssh/id_ed25519
+  char *full_path = expand_path("~/.ssh/id_ed25519");
+  if (!full_path) {
+    return SET_ERRNO(ERROR_CONFIG, "Could not expand SSH key path");
   }
-
-  if (!home_dir) {
-    return SET_ERRNO(ERROR_CONFIG, "Could not determine user home directory");
-  }
-
-  // Only support Ed25519 keys (modern, secure, fast)
-  char full_path[PLATFORM_MAX_PATH_LENGTH];
-  SAFE_SNPRINTF(full_path, sizeof(full_path), "%s/.ssh/id_ed25519", home_dir);
 
   // Check if the Ed25519 private key file exists
   struct stat st;
-  if (stat(full_path, &st) == 0 && S_ISREG(st.st_mode)) {
+  bool found = (stat(full_path, &st) == 0 && S_ISREG(st.st_mode));
+
+  if (found) {
     SAFE_SNPRINTF(key_path, path_size, "%s", full_path);
     log_debug("Found default SSH key: %s", full_path);
+    SAFE_FREE(full_path);
     return ASCIICHAT_OK;
   }
 
   (void)fprintf(stderr, "No Ed25519 SSH key found at %s\n", full_path);
+  SAFE_FREE(full_path);
   return SET_ERRNO(
       ERROR_CRYPTO_KEY,
       "Only Ed25519 keys are supported (modern, secure, fast). Generate a new key with: ssh-keygen -t ed25519");
