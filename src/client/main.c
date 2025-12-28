@@ -138,8 +138,8 @@ void signal_exit() {
  * @return true if the event was handled
  */
 static bool console_ctrl_handler(console_ctrl_event_t event) {
-  // Only handle Ctrl+C and Ctrl+Break events
-  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK) {
+  // Handle Ctrl+C, Ctrl+Break, and SIGTERM (CONSOLE_CLOSE)
+  if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
     return false;
   }
 
