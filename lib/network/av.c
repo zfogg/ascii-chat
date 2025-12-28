@@ -27,6 +27,7 @@
 #include "packet.h"
 #include "util/endian.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "audio/opus_codec.h"

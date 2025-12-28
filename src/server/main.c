@@ -74,6 +74,7 @@
 
 #include "main.h"
 #include "common.h"
+#include "util/endian.h"
 #include "util/uthash.h"
 #include "util/endian.h"
 #include "platform/abstraction.h"
@@ -82,6 +83,7 @@
 #include "video/image.h"
 #include "video/simd/ascii_simd.h"
 #include "video/simd/common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "options/options.h"

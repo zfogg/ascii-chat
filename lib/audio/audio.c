@@ -9,6 +9,7 @@
 #include "audio/client_audio_pipeline.h"
 #include "util/endian.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "options/options.h"

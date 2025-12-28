@@ -69,6 +69,7 @@
 #include "network/av.h"
 #include "util/endian.h"
 #include "common.h"
+#include "util/endian.h"
 #include "display.h"
 #include "options/options.h"
 #include "video/palette.h"

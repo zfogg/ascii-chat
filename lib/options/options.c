@@ -73,6 +73,20 @@ static const char *find_similar_option(const char *unknown_opt, const struct opt
   return NULL;
 }
 
+// Safely parse string to integer with validation
+int strtoint_safe(const char *str) {
+  if (!str || *str == '\0') {
+    return INT_MIN; // Error: NULL or empty string
+  }
+
+  int32_t result = 0;
+  // Use safe parsing utility with full int32 range validation
+  if (parse_int32(str, &result, INT_MIN, INT_MAX) != ASCIICHAT_OK) {
+    return INT_MIN; // Error: invalid input or out of range
+  }
+
+  return (int)result;
+}
 // Forward declaration for get_required_argument (defined later in file)
 static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
                                    bool is_client);

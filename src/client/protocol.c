@@ -87,6 +87,7 @@
 #include "network/av.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"
 #include "options/options.h"
