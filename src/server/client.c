@@ -117,6 +117,7 @@
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "buffer_pool.h"

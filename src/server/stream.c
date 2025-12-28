@@ -138,6 +138,7 @@
 #include "stream.h"
 #include "client.h"
 #include "common.h"
+#include "util/endian.h"
 #include "buffer_pool.h"
 #include "network/packet_queue.h"
 #include "ringbuffer.h"

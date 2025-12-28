@@ -91,6 +91,7 @@
 #include "video/webcam/webcam.h"
 #include "video/image.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "util/time.h"
