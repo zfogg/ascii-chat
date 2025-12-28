@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include "common.h"  // For error handling
+#include "../common.h"  // For error handling
 
 /* Forward declarations to avoid circular dependencies */
 typedef struct client_info client_info_t;
@@ -158,6 +158,35 @@ typedef struct client_info client_info_t;
     if (!(resource)) { \
       extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
       disconnect_client_for_bad_data((client), "%s not initialized", (resource_name)); \
+      return; \
+    } \
+  } while (0)
+
+/**
+ * Validate packet payload size and presence.
+ * Helper macro to standardize packet validation. Checks if data pointer is
+ * non-NULL and payload matches expected size. Disconnects client on failure.
+ *
+ * @param client Client being validated (must not be NULL)
+ * @param data Payload pointer
+ * @param len Payload size
+ * @param expected_size Expected payload size
+ * @param packet_name Human-readable packet name for error messages
+ *
+ * @note This macro uses 'return;' statement - only use inside void functions
+ * @note Automatically calls disconnect_client_for_bad_data() on failure
+ */
+#define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name) \
+  do { \
+    if (!(data)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), packet_name " payload missing"); \
+      return; \
+    } \
+    if ((len) != (expected_size)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), packet_name " payload size %zu (expected %zu)", (len), \
+                                     (expected_size)); \
       return; \
     } \
   } while (0)

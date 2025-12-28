@@ -7,9 +7,9 @@
 #include <limits.h>
 #include <stddef.h>
 #include "validation.h"
-#include "video/image.h"
-#include "common.h"
-#include "asciichat_errno.h"
+#include "../video/image.h"
+#include "../common.h"
+#include "../asciichat_errno.h"
 
 asciichat_error_t image_validate_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size) {
   if (!out_rgb_size) {
