@@ -18,7 +18,9 @@
  * 2. Network byte order conversions and validation
  * 3. Audio batch header parsing and validation
  * 4. Frame dimension validation with overflow checking
- * 5. Generic packet payload validation helpers
+ * 5. Stream type flag validation
+ * 6. Capability flag validation
+ * 7. Generic packet payload validation helpers
  *
  * DESIGN PRINCIPLES:
  * ==================
@@ -40,6 +42,9 @@
  *   // Validate audio batch header
  *   audio_batch_info_t batch;
  *   result = packet_parse_audio_batch_header(data, len, &batch);
+ *
+ *   // Validate stream type flags
+ *   result = packet_validate_stream_types(stream_type_bits);
  * @endcode
  *
  * Client handlers use these for incoming server packets:
@@ -241,6 +246,54 @@ asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, 
 
 /** @} */
 
+/** @name Stream Type and Capability Validation
+ * @{
+ * @ingroup packet_parsing
+ * @brief Helpers for validating stream types and capability flags
+ */
+
+/**
+ * @brief Validate stream type flags (STREAM_TYPE_VIDEO, STREAM_TYPE_AUDIO)
+ *
+ * Ensures stream type value contains at least one valid flag and no unknown flags.
+ *
+ * VALID FLAGS:
+ * - STREAM_TYPE_VIDEO (0x01)
+ * - STREAM_TYPE_AUDIO (0x02)
+ *
+ * @param stream_type Bitmask of stream type flags
+ *
+ * @return ASCIICHAT_OK if valid, ERROR_INVALID_STATE if invalid
+ *         Sets asciichat_errno on failure
+ *
+ * @note Used by STREAM_START and STREAM_STOP packet handlers
+ * @ingroup packet_parsing
+ */
+asciichat_error_t packet_validate_stream_types(uint32_t stream_type);
+
+/**
+ * @brief Validate client capability flags
+ *
+ * Ensures capability flags contain at least one valid flag and no unknown flags.
+ *
+ * VALID FLAGS:
+ * - CLIENT_CAP_VIDEO (0x01)
+ * - CLIENT_CAP_AUDIO (0x02)
+ * - CLIENT_CAP_COLOR (0x04)
+ * - CLIENT_CAP_STRETCH (0x08)
+ *
+ * @param capabilities Bitmask of client capability flags
+ *
+ * @return ASCIICHAT_OK if valid, ERROR_INVALID_STATE if invalid
+ *         Sets asciichat_errno on failure
+ *
+ * @note Used by CLIENT_JOIN packet handlers
+ * @ingroup packet_parsing
+ */
+asciichat_error_t packet_validate_client_capabilities(uint32_t capabilities);
+
+/** @} */
+
 /** @name Generic Payload Validation
  * @{
  * @ingroup packet_parsing
@@ -286,3 +339,4 @@ static inline void packet_read_u16_net(const void *src, uint16_t *out_value) {
 /** @} */
 
 /** @} */
+

@@ -213,3 +213,47 @@ asciichat_error_t packet_parse_audio_batch_header(const void *data, size_t len, 
 
   return ASCIICHAT_OK;
 }
+
+asciichat_error_t packet_validate_stream_types(uint32_t stream_type) {
+  // Define stream type flags (from network.h)
+  const uint32_t STREAM_TYPE_VIDEO = 0x01;
+  const uint32_t STREAM_TYPE_AUDIO = 0x02;
+  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
+
+  // Validate at least one stream type flag is set
+  if ((stream_type & VALID_STREAM_MASK) == 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stream type has no valid flags set (value=0x%x, valid=0x%x)", stream_type,
+                     VALID_STREAM_MASK);
+  }
+
+  // Validate no unknown flags are set
+  if ((stream_type & ~VALID_STREAM_MASK) != 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Stream type has unknown flags set (value=0x%x, valid=0x%x)", stream_type,
+                     VALID_STREAM_MASK);
+  }
+
+  return ASCIICHAT_OK;
+}
+
+asciichat_error_t packet_validate_client_capabilities(uint32_t capabilities) {
+  // Define capability flags (from network.h)
+  const uint32_t CLIENT_CAP_VIDEO = 0x01;
+  const uint32_t CLIENT_CAP_AUDIO = 0x02;
+  const uint32_t CLIENT_CAP_COLOR = 0x04;
+  const uint32_t CLIENT_CAP_STRETCH = 0x08;
+  const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH;
+
+  // Validate at least one capability flag is set
+  if ((capabilities & VALID_CAP_MASK) == 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client capabilities has no valid flags set (value=0x%x, valid=0x%x)",
+                     capabilities, VALID_CAP_MASK);
+  }
+
+  // Validate no unknown flags are set
+  if ((capabilities & ~VALID_CAP_MASK) != 0) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "Client capabilities has unknown flags set (value=0x%x, valid=0x%x)",
+                     capabilities, VALID_CAP_MASK);
+  }
+
+  return ASCIICHAT_OK;
+}

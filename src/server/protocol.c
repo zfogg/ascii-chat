@@ -291,12 +291,12 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 
   uint32_t capabilities = NET_TO_HOST_U32(join_info->capabilities);
 
-  // Validate at least one capability flag is set
-  const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH;
-  VALIDATE_CAPABILITY_FLAGS(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
-
-  // Validate no unknown capability bits are set
-  VALIDATE_FLAGS_MASK(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
+  // Use shared validation function for client capabilities
+  asciichat_error_t result = packet_validate_client_capabilities(capabilities);
+  if (result != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "CLIENT_JOIN invalid capabilities: 0x%x", capabilities);
+    return;
+  }
 
   SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
 
@@ -512,12 +512,12 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = NET_TO_HOST_U32(stream_type_net);
 
-  // Validate at least one stream type flag is set
-  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
-  VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
-
-  // Validate no unknown stream type bits are set
-  VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
+  // Use shared validation function for stream types
+  asciichat_error_t result = packet_validate_stream_types(stream_type);
+  if (result != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "STREAM_START invalid stream type: 0x%x", stream_type);
+    return;
+  }
 
   if (stream_type & STREAM_TYPE_VIDEO) {
     // Wait for first IMAGE_FRAME before marking sending_video true (avoids race)
@@ -592,12 +592,12 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = NET_TO_HOST_U32(stream_type_net);
 
-  // Validate at least one stream type flag is set
-  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
-  VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
-
-  // Validate no unknown stream type bits are set
-  VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
+  // Use shared validation function for stream types
+  asciichat_error_t result = packet_validate_stream_types(stream_type);
+  if (result != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "STREAM_STOP invalid stream type: 0x%x", stream_type);
+    return;
+  }
 
   if (stream_type & STREAM_TYPE_VIDEO) {
     atomic_store(&client->is_sending_video, false);
