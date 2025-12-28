@@ -272,7 +272,6 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(client_info_packet_t), "CLIENT_JOIN");
-  VALIDATE_PACKET(data, len, client_info_packet_t, "CLIENT_JOIN", disconnect_client_for_bad_data);
 
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
@@ -363,7 +362,8 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
               version->compression_algorithms);
   }
   if (version->feature_flags != 0) {
-    log_debug("Client %u supports features: 0x%04x", atomic_load(&client->client_id), version->feature_flags);
+    uint16_t feature_flags = ntohs(version->feature_flags);
+    log_debug("Client %u supports features: 0x%04x", atomic_load(&client->client_id), feature_flags);
   }
 }
 
@@ -406,6 +406,11 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
     log_info("Client %u sent leave notification (no reason)", client_id);
   } else if (len <= 256) {
     // Reason provided - extract and log it
+    if (!data) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %u sent leave notification with non-zero length but NULL data", client_id);
+      return;
+    }
+
     char reason[257] = {0};
     memcpy(reason, data, len);
     reason[len] = '\0';
@@ -429,6 +434,10 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
     // Oversized reason - shouldn't happen with validation.h checks
     log_warn("Client %u sent oversized leave reason (%zu bytes, max 256)", client_id, len);
   }
+
+  // Deactivate client to stop processing packets
+  // Sets client->active = false immediately - triggers client cleanup procedures
+  atomic_store(&client->active, false);
 
   // Note: We don't disconnect the client here - that happens when socket closes
   // This is just a clean notification before disconnect
@@ -472,7 +481,6 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_START");
-  VALIDATE_PACKET(data, len, uint32_t, "STREAM_START", disconnect_client_for_bad_data);
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -545,7 +553,6 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_STOP");
-  VALIDATE_PACKET(data, len, uint32_t, "STREAM_STOP", disconnect_client_for_bad_data);
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -1407,7 +1414,6 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
-  VALIDATE_PACKET(data, len, terminal_capabilities_packet_t, "CLIENT_CAPABILITIES", disconnect_client_for_bad_data);
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
@@ -1504,7 +1510,6 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(size_packet_t), "SIZE");
-  VALIDATE_PACKET(data, len, size_packet_t, "SIZE", disconnect_client_for_bad_data);
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
@@ -1558,7 +1563,6 @@ void handle_ping_packet(client_info_t *client) {
   // For now, just log the ping
   (void)client;
 }
-
 
 /* ============================================================================
  * Protocol Utility Functions
