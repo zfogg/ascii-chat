@@ -350,7 +350,7 @@ void get_16color_rgb(uint8_t color_index, uint8_t *r, uint8_t *g, uint8_t *b) {
 uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, int height, rgb_error_t *error_buffer) {
   // Add accumulated error from previous pixels
   if (error_buffer) {
-    // BUGFIX: Use size_t for index calculation to prevent integer overflow on large images
+    // Use size_t for index calculation to prevent integer overflow on large images
     size_t error_idx = (size_t)y * (size_t)width + (size_t)x;
     r += error_buffer[error_idx].r;
     g += error_buffer[error_idx].g;
@@ -396,7 +396,7 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
     // 3/16 5/16 1/16
 
     // Error to right pixel (x+1, y)
-    // BUGFIX: Use size_t for all index calculations to prevent integer overflow
+    // Use size_t for all index calculations to prevent integer overflow
     if (x + 1 < width) {
       size_t right_idx = (size_t)y * (size_t)width + (size_t)(x + 1);
       error_buffer[right_idx].r += (error_r * 7) / 16;

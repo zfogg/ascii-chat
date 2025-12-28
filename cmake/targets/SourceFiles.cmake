@@ -88,6 +88,7 @@ set_source_files_properties(
 # =============================================================================
 set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
+    lib/platform/socket.c
     # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
 )
 

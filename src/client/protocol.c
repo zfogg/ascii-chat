@@ -896,7 +896,7 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     // Use unified secure packet reception with auto-decryption
-    // FIX: Use per-client crypto ready state instead of global opt_no_encrypt
+    // Use per-client crypto ready state instead of global opt_no_encrypt
     // Encryption is enforced only AFTER this client completes the handshake
     bool crypto_ready = crypto_client_is_ready();
     const crypto_context_t *crypto_ctx = crypto_ready ? crypto_client_get_context() : NULL;

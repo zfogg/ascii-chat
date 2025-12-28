@@ -251,7 +251,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     return false;
   }
 
-  // BUGFIX: Thread-safe access to framebuffer (was missing, causing race conditions)
+  // Thread-safe access to framebuffer (was missing, causing race conditions)
   mutex_lock(&fb->mutex);
 
   // Check if buffer is full - if so, we need to drop the oldest frame
@@ -261,7 +261,7 @@ bool framebuffer_write_frame(framebuffer_t *fb, const char *frame_data, size_t f
     if (ringbuffer_read(fb->rb, &old_frame)) {
       if (old_frame.magic == FRAME_MAGIC && old_frame.data) {
         old_frame.magic = FRAME_FREED;
-        // BUG FIX: Use buffer_pool_free since data was allocated with buffer_pool_alloc
+        // Use buffer_pool_free since data was allocated with buffer_pool_alloc
         buffer_pool_free(old_frame.data, old_frame.size);
       } else if (old_frame.magic != FRAME_MAGIC) {
         SET_ERRNO(ERROR_INVALID_STATE, "CORRUPTION: Invalid old frame magic 0x%x when dropping", old_frame.magic);
@@ -346,7 +346,7 @@ void framebuffer_clear(framebuffer_t *fb) {
   if (!fb || !fb->rb)
     return;
 
-  // BUGFIX: Thread-safe access to framebuffer (was missing, causing race conditions)
+  // Thread-safe access to framebuffer (was missing, causing race conditions)
   mutex_lock(&fb->mutex);
 
   // Check the element size to determine frame type
