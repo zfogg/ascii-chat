@@ -293,6 +293,37 @@ client_info_t *find_client_by_socket(socket_t socket) {
  * ============================================================================
  */
 
+/**
+ * Configure socket options for optimal network performance
+ *
+ * @param socket Socket to configure
+ * @param client_id Client ID for logging purposes
+ */
+static void configure_client_socket(socket_t socket, uint32_t client_id) {
+  // Enable TCP keepalive to detect dead connections
+  if (set_socket_keepalive(socket) < 0) {
+    log_warn("Failed to set socket keepalive for client %u: %s", client_id, network_error_string());
+  }
+
+  // Set socket buffer sizes for large data transmission
+  const int SOCKET_SEND_BUFFER_SIZE = 1024 * 1024; // 1MB send buffer
+  const int SOCKET_RECV_BUFFER_SIZE = 1024 * 1024; // 1MB receive buffer
+
+  if (socket_setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &SOCKET_SEND_BUFFER_SIZE, sizeof(SOCKET_SEND_BUFFER_SIZE)) < 0) {
+    log_warn("Failed to set send buffer size for client %u: %s", client_id, network_error_string());
+  }
+
+  if (socket_setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &SOCKET_RECV_BUFFER_SIZE, sizeof(SOCKET_RECV_BUFFER_SIZE)) < 0) {
+    log_warn("Failed to set receive buffer size for client %u: %s", client_id, network_error_string());
+  }
+
+  // Enable TCP_NODELAY to reduce latency for large packets (disables Nagle algorithm)
+  const int TCP_NODELAY_VALUE = 1;
+  if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &TCP_NODELAY_VALUE, sizeof(TCP_NODELAY_VALUE)) < 0) {
+    log_warn("Failed to set TCP_NODELAY for client %u: %s", client_id, network_error_string());
+  }
+}
+
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
 __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const char *client_ip, int port) {
   rwlock_wrlock(&g_client_manager_rwlock);
@@ -370,30 +401,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   client->crypto_initialized = false;
 
   // Configure socket options for optimal performance
-  if (set_socket_keepalive(socket) < 0) {
-    log_warn("Failed to set socket keepalive for client %u: %s", atomic_load(&client->client_id),
-             network_error_string());
-  }
-
-  // Set socket buffer sizes for large data transmission
-  int send_buffer_size = 1024 * 1024; // 1MB send buffer
-  int recv_buffer_size = 1024 * 1024; // 1MB receive buffer
-
-  if (socket_setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
-    log_warn("Failed to set send buffer size for client %u: %s", atomic_load(&client->client_id),
-             network_error_string());
-  }
-
-  if (socket_setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
-    log_warn("Failed to set receive buffer size for client %u: %s", atomic_load(&client->client_id),
-             network_error_string());
-  }
-
-  // Enable TCP_NODELAY to reduce latency for large packets
-  int nodelay = 1;
-  if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
-    log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id), network_error_string());
-  }
+  configure_client_socket(socket, atomic_load(&client->client_id));
 
   safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id));
 
@@ -402,8 +410,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   if (!client->incoming_video_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %u", atomic_load(&client->client_id));
     log_error("Failed to create video buffer for client %u", atomic_load(&client->client_id));
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   // Create individual audio buffer for this client
@@ -414,10 +421,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   if (!client->incoming_audio_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %u", atomic_load(&client->client_id));
     log_error("Failed to create audio buffer for client %u", atomic_load(&client->client_id));
-    video_frame_buffer_destroy(client->incoming_video_buffer);
-    client->incoming_video_buffer = NULL;
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   // Create packet queues for outgoing data
@@ -428,26 +432,14 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
       packet_queue_create_with_pools(500, 1000, false); // Max 500 audio packets, 1000 nodes, NO local buffer pool
   if (!client->audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
-    video_frame_buffer_destroy(client->incoming_video_buffer);
-    audio_ring_buffer_destroy(client->incoming_audio_buffer);
-    client->incoming_video_buffer = NULL;
-    client->incoming_audio_buffer = NULL;
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   // Create outgoing video buffer for ASCII frames (double buffered, no dropping)
   client->outgoing_video_buffer = video_frame_buffer_create(atomic_load(&client->client_id));
   if (!client->outgoing_video_buffer) {
     LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
-    video_frame_buffer_destroy(client->incoming_video_buffer);
-    audio_ring_buffer_destroy(client->incoming_audio_buffer);
-    packet_queue_destroy(client->audio_queue);
-    client->incoming_video_buffer = NULL;
-    client->incoming_audio_buffer = NULL;
-    client->audio_queue = NULL;
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   // Pre-allocate send buffer to avoid malloc/free in send thread (prevents deadlocks)
@@ -456,16 +448,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   client->send_buffer = SAFE_MALLOC_ALIGNED(client->send_buffer_size, 64, void *);
   if (!client->send_buffer) {
     log_error("Failed to allocate send buffer for client %u", atomic_load(&client->client_id));
-    video_frame_buffer_destroy(client->incoming_video_buffer);
-    video_frame_buffer_destroy(client->outgoing_video_buffer);
-    audio_ring_buffer_destroy(client->incoming_audio_buffer);
-    packet_queue_destroy(client->audio_queue);
-    client->incoming_video_buffer = NULL;
-    client->outgoing_video_buffer = NULL;
-    client->incoming_audio_buffer = NULL;
-    client->audio_queue = NULL;
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   g_client_manager.client_count = existing_count + 1; // We just added a client
@@ -493,27 +476,13 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   // These mutexes might be accessed by receive thread which starts before render threads
   if (mutex_init(&client->client_state_mutex) != 0) {
     log_error("Failed to initialize client state mutex for client %u", atomic_load(&client->client_id));
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   // Initialize send mutex to protect concurrent socket writes
   if (mutex_init(&client->send_mutex) != 0) {
     log_error("Failed to initialize send mutex for client %u", atomic_load(&client->client_id));
-    // Clean up all allocated resources
-    video_frame_buffer_destroy(client->incoming_video_buffer);
-    video_frame_buffer_destroy(client->outgoing_video_buffer);
-    audio_ring_buffer_destroy(client->incoming_audio_buffer);
-    packet_queue_destroy(client->audio_queue);
-    SAFE_FREE(client->send_buffer);
-    mutex_destroy(&client->client_state_mutex);
-    client->incoming_video_buffer = NULL;
-    client->outgoing_video_buffer = NULL;
-    client->incoming_audio_buffer = NULL;
-    client->audio_queue = NULL;
-    client->send_buffer = NULL;
-    rwlock_wrunlock(&g_client_manager_rwlock);
-    return -1;
+    goto error_cleanup;
   }
 
   rwlock_wrunlock(&g_client_manager_rwlock);
@@ -598,16 +567,18 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Start threads for this client (AFTER crypto handshake AND initial capabilities)
-  if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
-    LOG_ERRNO_IF_SET("Client receive thread creation failed");
+  asciichat_error_t recv_result = thread_create_or_fail(&client->receive_thread, client_receive_thread, client,
+                                                         "receive", atomic_load(&client->client_id));
+  if (recv_result != ASCIICHAT_OK) {
     // Don't destroy mutexes here - remove_client() will handle it
     (void)remove_client(atomic_load(&client->client_id));
     return -1;
   }
 
   // Start send thread for this client
-  if (ascii_thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
-    LOG_ERRNO_IF_SET("Client send thread creation failed");
+  asciichat_error_t send_result = thread_create_or_fail(&client->send_thread, client_send_thread_func, client,
+                                                        "send", atomic_load(&client->client_id));
+  if (send_result != ASCIICHAT_OK) {
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
@@ -672,6 +643,35 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   broadcast_server_state_to_all_clients();
 
   return (int)client_id_snapshot;
+
+error_cleanup:
+  // Clean up all partially allocated resources
+  // NOTE: This label is reached when allocation or initialization fails
+  // Resources are cleaned up in reverse order of allocation
+  if (client->send_buffer) {
+    SAFE_FREE(client->send_buffer);
+    client->send_buffer = NULL;
+  }
+  if (client->outgoing_video_buffer) {
+    video_frame_buffer_destroy(client->outgoing_video_buffer);
+    client->outgoing_video_buffer = NULL;
+  }
+  if (client->audio_queue) {
+    packet_queue_destroy(client->audio_queue);
+    client->audio_queue = NULL;
+  }
+  if (client->incoming_audio_buffer) {
+    audio_ring_buffer_destroy(client->incoming_audio_buffer);
+    client->incoming_audio_buffer = NULL;
+  }
+  if (client->incoming_video_buffer) {
+    video_frame_buffer_destroy(client->incoming_video_buffer);
+    client->incoming_video_buffer = NULL;
+  }
+  mutex_destroy(&client->client_state_mutex);
+  mutex_destroy(&client->send_mutex);
+  rwlock_wrunlock(&g_client_manager_rwlock);
+  return -1;
 }
 
 // NOLINTNEXTLINE: uthash intentionally uses unsigned overflow for hash operations
@@ -1459,7 +1459,7 @@ void *client_send_thread_func(void *arg) {
       // DEBUG: Verify CRC32 after header copy
       uint32_t verify_crc = asciichat_crc32(payload + sizeof(ascii_frame_packet_t), frame_size);
       if (verify_crc != frame_checksum) {
-        log_error("SERVER BUG: CRC mismatch after header copy! calculated=0x%x, verify=0x%x", frame_checksum,
+        log_error("CRC mismatch after header copy! calculated=0x%x, verify=0x%x", frame_checksum,
                   verify_crc);
       } else {
         static bool logged_once = false;
@@ -1722,6 +1722,20 @@ void cleanup_client_packet_queues(client_info_t *client) {
   }
 
   // Video now uses double buffer, cleaned up in cleanup_client_media_buffers
+}
+
+/**
+ * @brief Clean up all client media buffers and packet queues
+ *
+ * This is a comprehensive cleanup that frees both media buffers (video/audio)
+ * and packet queues. Used in error paths during client initialization to ensure
+ * no resource leaks if setup fails partway through.
+ *
+ * @param client Client to clean up
+ */
+static inline void cleanup_client_all_buffers(client_info_t *client) {
+  cleanup_client_media_buffers(client);
+  cleanup_client_packet_queues(client);
 }
 
 /**

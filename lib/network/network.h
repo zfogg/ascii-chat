@@ -331,6 +331,29 @@ int set_socket_keepalive(socket_t sockfd);
  */
 int set_socket_nonblocking(socket_t sockfd);
 
+/**
+ * @brief Configure socket buffers and TCP_NODELAY for optimal performance
+ * @param sockfd Socket file descriptor
+ * @return ASCIICHAT_OK on success, ERROR_NETWORK_CONFIG on failure
+ *
+ * Configures socket with large send/receive buffers (1MB each) and enables
+ * TCP_NODELAY for low-latency real-time video streaming.
+ *
+ * CONFIGURATION:
+ * - Send buffer: 1MB (SO_SNDBUF)
+ * - Receive buffer: 1MB (SO_RCVBUF)
+ * - TCP_NODELAY: enabled (disables Nagle's algorithm)
+ *
+ * On failure, uses SET_ERRNO_SYS() for error context logging.
+ *
+ * @note Large buffers prevent packet loss during frame bursts
+ * @note TCP_NODELAY ensures frames are sent immediately without buffering
+ * @note Call this immediately after socket creation/connection
+ *
+ * @ingroup network
+ */
+asciichat_error_t socket_configure_buffers(socket_t sockfd);
+
 /** @} */
 
 /**

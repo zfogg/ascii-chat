@@ -314,7 +314,7 @@ static void sigint_handler(int sigint) {
   atomic_store(&g_server_should_exit, true);
 
   // STEP 2: Use write() for output (async-signal-safe)
-  // NOTE: printf() and fflush() are NOT async-signal-safe and can cause deadlocks
+  // printf() and fflush() are NOT async-signal-safe and can cause deadlocks
   // Use write() which is guaranteed to be safe in signal handlers
   const char *msg = "SIGINT received - shutting down server...\n";
   ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));

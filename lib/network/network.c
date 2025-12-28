@@ -477,6 +477,37 @@ int set_socket_nonblocking(socket_t sockfd) {
 }
 
 /**
+ * @brief Configure socket buffers and TCP_NODELAY for optimal performance
+ * @param sockfd Socket file descriptor
+ * @return ASCIICHAT_OK on success, ERROR_NETWORK_CONFIG on failure
+ */
+asciichat_error_t socket_configure_buffers(socket_t sockfd) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Invalid socket file descriptor");
+  }
+
+  // Configure 1MB send buffer for optimal frame transmission
+  int send_buffer_size = 1024 * 1024;
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set send buffer size");
+  }
+
+  // Configure 1MB receive buffer for optimal frame reception
+  int recv_buffer_size = 1024 * 1024;
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set receive buffer size");
+  }
+
+  // Enable TCP_NODELAY to disable Nagle's algorithm for low-latency transmission
+  int tcp_nodelay = 1;
+  if (socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &tcp_nodelay, sizeof(tcp_nodelay)) < 0) {
+    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set TCP_NODELAY");
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Get human-readable error string for network errors
  * @param error_code Error code
  * @return Error string

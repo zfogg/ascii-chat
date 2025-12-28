@@ -571,8 +571,8 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
   utf8_palette_destroy(coverage_pal);
 
   // Debug: Print output lengths
-  log_debug("DEBUG: Raw lengths - scalar=%zu, simd=%zu", strlen(scalar_result), strlen(simd_result));
-  log_debug("DEBUG: After RLE expansion - scalar_expanded=%zu, simd=%zu", strlen(scalar_expanded), strlen(simd_result));
+  log_debug("Raw lengths - scalar=%zu, simd=%zu", strlen(scalar_result), strlen(simd_result));
+  log_debug("After RLE expansion - scalar_expanded=%zu, simd=%zu", strlen(scalar_expanded), strlen(simd_result));
 
   // Debug: Show first differences
   if (strcmp(scalar_expanded, simd_result) != 0) {
@@ -580,7 +580,7 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
     int diff_count = 0;
     for (size_t i = 0; i < min_len && diff_count < 5; i++) {
       if (scalar_expanded[i] != simd_result[i]) {
-        log_debug("DEBUG: Diff at pos %zu: scalar='%c'(0x%02x) vs simd='%c'(0x%02x)", i, scalar_expanded[i],
+        log_debug("Diff at pos %zu: scalar='%c'(0x%02x) vs simd='%c'(0x%02x)", i, scalar_expanded[i],
                   (unsigned char)scalar_expanded[i], simd_result[i], (unsigned char)simd_result[i]);
         diff_count++;
       }

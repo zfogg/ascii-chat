@@ -119,7 +119,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "common.h"
-#include "validation.h"
+#include "util/validation.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
 #include "video/palette.h"
@@ -271,8 +271,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  */
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
-  VALIDATE_NOTNULL_DATA(client, data, "CLIENT_JOIN");
-  VALIDATE_EXACT_SIZE(client, len, sizeof(client_info_packet_t), "CLIENT_JOIN");
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(client_info_packet_t), "CLIENT_JOIN");
 
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
@@ -338,9 +337,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
-  VALIDATE_NOTNULL_DATA(client, data, "STREAM_START");
-  VALIDATE_EXACT_SIZE(client, len, sizeof(uint32_t), "STREAM_START");
-
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_START");
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
@@ -413,8 +410,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  * @see handle_stream_start_packet() For starting media transmission
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
-  VALIDATE_NOTNULL_DATA(client, data, "STREAM_STOP");
-  VALIDATE_EXACT_SIZE(client, len, sizeof(uint32_t), "STREAM_STOP");
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_STOP");
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -505,8 +501,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   // Handle incoming image data from client
   // New format: [width:4][height:4][compressed_flag:4][data_size:4][rgb_data:data_size]
   // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
-  // Use atomic compare-and-swap to avoid race condition
-  // This ensures thread-safe auto-enabling of video stream
+  // Use atomic compare-and-swap to avoid race condition - ensures thread-safe auto-enabling of video stream
   if (!data || len < sizeof(uint32_t) * 2) {
     disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
     return;
@@ -900,12 +895,11 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     return;
   }
 
-  for (uint32_t i = 0; i < total_samples; i++) {
-    uint32_t network_sample;
-    // Use memcpy to safely handle potential misalignment from packet header
-    memcpy(&network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
-    int32_t scaled = (int32_t)ntohl(network_sample);
-    samples[i] = (float)scaled / 2147483647.0f;
+  // Use helper function to dequantize samples
+  asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
+  if (dq_result != ASCIICHAT_OK) {
+    SAFE_FREE(samples);
+    return;
   }
 
 #ifndef NDEBUG
@@ -1138,8 +1132,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len) {
   log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id), len);
 
-  if (!data) {
-    disconnect_client_for_bad_data(client, "AUDIO_OPUS payload missing");
+  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
     return;
   }
 
@@ -1278,8 +1271,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  VALIDATE_NOTNULL_DATA(client, data, "CLIENT_CAPABILITIES");
-  VALIDATE_EXACT_SIZE(client, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
@@ -1399,8 +1391,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  * @note No validation of reasonable dimension ranges
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
-  VALIDATE_NOTNULL_DATA(client, data, "SIZE");
-  VALIDATE_EXACT_SIZE(client, len, sizeof(size_packet_t), "SIZE");
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(size_packet_t), "SIZE");
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
