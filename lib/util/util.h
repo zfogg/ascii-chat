@@ -20,6 +20,10 @@
  * - string.h: String manipulation and shell escaping
  * - utf8.h: UTF-8 encoding and decoding utilities
  * - fnv1a.h: FNV-1a hash function implementation
+ * - thread_lifecycle.h: Thread management helper macros
+ * - atomic.h: Atomic operations convenience macros
+ * - endian_helpers.h: Network byte order conversion helpers
+ * - audio.h: Audio packet parsing utilities
  *
  * USAGE:
  * ======
@@ -54,6 +58,6 @@
 #include "util/string.h"
 #include "util/utf8.h"
 #include "util/thread_lifecycle.h"
-#include "util/atomic_helpers.h"
+#include "util/atomic.h"
 #include "util/endian_helpers.h"
-#include "util/audio_helpers.h"
+#include "util/audio.h"

@@ -1,10 +1,10 @@
 /**
- * @file util/audio_helpers.c
+ * @file util/audio.c
  * @ingroup util
- * @brief 🔊 Audio packet parsing helpers implementation
+ * @brief 🔊 Audio packet parsing implementation
  */
 
-#include "audio_helpers.h"
+#include "audio.h"
 #include <arpa/inet.h>  // For ntohl, htons
 #include <string.h>
 #include "../network/packet.h"  // For audio_batch_packet_t
