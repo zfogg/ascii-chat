@@ -10,6 +10,7 @@
 #include "../internal.h"
 #include "../../common.h" // For log_error()
 #include "../../asciichat_errno.h"
+#include "../../util/ip.h"
 #include "../symbols.h" // For symbol cache
 #include <unistd.h>
 #include <fcntl.h>
@@ -812,13 +813,13 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   }
 
   // Extract IPv4 address from first result
-  struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)result->ai_addr;
-  if (inet_ntop(AF_INET, &(ipv4_addr->sin_addr), ipv4_out, (socklen_t)ipv4_out_size) == NULL) {
-    freeaddrinfo(result);
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to convert network address to string");
+  asciichat_error_t format_result = format_ip_address(result->ai_family, result->ai_addr, ipv4_out, ipv4_out_size);
+  freeaddrinfo(result);
+
+  if (format_result != ASCIICHAT_OK) {
+    return format_result;
   }
 
-  freeaddrinfo(result);
   return ASCIICHAT_OK;
 }
 

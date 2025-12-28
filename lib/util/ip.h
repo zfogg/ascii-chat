@@ -175,6 +175,40 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
  */
 
 /**
+ * @brief Format IP address from socket address structure
+ * @param family Address family (AF_INET for IPv4 or AF_INET6 for IPv6)
+ * @param addr Socket address pointer (must not be NULL)
+ * @param output Output buffer for formatted IP address (must not be NULL)
+ * @param output_size Size of output buffer (must be > 0)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Formats an IP address from a socket address structure. Automatically handles
+ * both IPv4 and IPv6 addresses by extracting the address from the appropriate
+ * socket structure fields.
+ *
+ * OUTPUT FORMATS:
+ * - IPv4: "192.0.2.1"
+ * - IPv6: "2001:db8::1"
+ *
+ * @note Output buffer should be at least 64 bytes to accommodate any IPv6 address.
+ * @note For IPv4: addr should point to sockaddr_in, for IPv6: should point to sockaddr_in6.
+ * @note Returns error code on failure (invalid family, buffer too small, etc.).
+ *
+ * @par Example
+ * @code
+ * char ip_str[64];
+ * struct sockaddr_in addr;
+ * // ... initialize addr ...
+ * if (format_ip_address(AF_INET, &addr, ip_str, sizeof(ip_str)) == ASCIICHAT_OK) {
+ *     // ip_str contains the formatted IP address
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size);
+
+/**
  * @brief Format IP address with port number
  * @param ip IP address (without brackets, must not be NULL)
  * @param port Port number (0-65535)
