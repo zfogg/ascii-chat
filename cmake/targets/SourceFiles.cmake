@@ -32,7 +32,6 @@ set(UTIL_SRCS
     lib/util/aspect_ratio.c
     lib/util/time.c
     lib/util/levenshtein.c
-    lib/util/fps_tracker.c
     lib/fps.c
 )
 
@@ -229,7 +228,6 @@ set(NETWORK_SRCS
     lib/network/packet_queue.c
     lib/network/http_client.c
     lib/network/packet_utils.c
-    lib/network/client_state.c
 )
 
 # =============================================================================
