@@ -7,6 +7,7 @@
 #include "tooling/panic/instrument_log.h"
 
 #include "util/uthash.h"
+#include "util/parsing.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -208,10 +209,9 @@ static bool extract_uint64(const char *line, const char *key, uint64_t *out_valu
     return false;
   }
   position += strlen(key);
-  errno = 0;
-  char *endptr = NULL;
-  unsigned long long value = strtoull(position, &endptr, 10);
-  if (errno != 0 || endptr == position) {
+  unsigned long long value = 0;
+  asciichat_error_t result = parse_ulonglong(position, &value, 0, ULLONG_MAX);
+  if (result != ASCIICHAT_OK) {
     return false;
   }
   *out_value = (uint64_t)value;
@@ -427,9 +427,9 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
       config->log_dir = optarg;
       break;
     case 't': {
-      errno = 0;
-      unsigned long long tid_value = strtoull(optarg, NULL, 10);
-      if (errno != 0) {
+      unsigned long long tid_value = 0;
+      asciichat_error_t result = parse_ulonglong(optarg, &tid_value, 0, ULLONG_MAX);
+      if (result != ASCIICHAT_OK) {
         log_error("Invalid thread id: %s", optarg);
         return false;
       }
