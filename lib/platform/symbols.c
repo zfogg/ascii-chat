@@ -920,11 +920,55 @@ static char **run_atos_batch(void *const *buffer, int size) {
     return NULL;
   }
 
+  // Check for dSYM bundles (provides line numbers)
+  // dSYM path is <binary>.dSYM for executable
+  char exe_dsym_path[PLATFORM_MAX_PATH_LENGTH];
+  SAFE_SNPRINTF(exe_dsym_path, sizeof(exe_dsym_path), "%s.dSYM", exe_path);
+
+  const char *exe_symbol_path = exe_path;
+  if (access(exe_dsym_path, R_OK) == 0) {
+    exe_symbol_path = exe_dsym_path;
+    log_debug("atos: Using dSYM bundle for symbol resolution: %s", exe_dsym_path);
+  }
+
+  // Also check for shared library dSYM (for library code like crypto, network)
+  // Shared library is in ../lib/libasciichat.*.dylib relative to executable
+  char lib_dsym_path[PLATFORM_MAX_PATH_LENGTH] = "";
+  char *last_slash = strrchr(exe_path, '/');
+  if (last_slash) {
+    size_t dir_len = (size_t)(last_slash - exe_path);
+    char exe_dir[PLATFORM_MAX_PATH_LENGTH];
+    strncpy(exe_dir, exe_path, dir_len);
+    exe_dir[dir_len] = '\0';
+
+    // Try common shared library locations
+    const char *lib_names[] = {"%s/../lib/libasciichat.dylib.dSYM", "%s/../lib/libasciichat.0.dylib.dSYM",
+                               "%s/../lib/libasciichat.0.1.0.dylib.dSYM", NULL};
+
+    for (int i = 0; lib_names[i] != NULL; i++) {
+      char candidate[PLATFORM_MAX_PATH_LENGTH];
+      SAFE_SNPRINTF(candidate, sizeof(candidate), lib_names[i], exe_dir);
+      if (access(candidate, R_OK) == 0) {
+        SAFE_STRNCPY(lib_dsym_path, candidate, sizeof(lib_dsym_path));
+        log_debug("atos: Also using shared library dSYM: %s", lib_dsym_path);
+        break;
+      }
+    }
+  }
+
   // Build atos command
-  // atos -o <executable> -p <pid> <addresses>
+  // atos -o <executable|dSYM> [-o <lib.dSYM>] -p <pid> <addresses>
   // Using -p <pid> allows atos to handle ASLR automatically
+  // dSYM provides file:line info when available
+  // Multiple -o flags can be used to symbolize from multiple binaries
   char cmd[8192];
-  int offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -p %d ", exe_path, platform_get_pid());
+  int offset;
+  if (lib_dsym_path[0] != '\0') {
+    offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -o '%s' -p %d ", exe_symbol_path, lib_dsym_path,
+                      platform_get_pid());
+  } else {
+    offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -p %d ", exe_symbol_path, platform_get_pid());
+  }
 
   if (offset <= 0 || offset >= (int)sizeof(cmd)) {
     log_error("atos: Failed to build command");
@@ -1012,9 +1056,9 @@ static char **run_atos_batch(void *const *buffer, int size) {
     if (func_name[0] && file_info[0] && strstr(file_info, ":") != NULL) {
       // Best case: function + file:line
       const char *rel_path = extract_project_relative_path(file_info);
-      SAFE_SNPRINTF(result[i], 1024, "%s in %s()", rel_path, func_name);
+      SAFE_SNPRINTF(result[i], 1024, "%s() (%s)", func_name, rel_path);
     } else if (func_name[0]) {
-      // Function only
+      // Function only (no debug info for this frame)
       SAFE_SNPRINTF(result[i], 1024, "%s()", func_name);
     } else {
       // Use original line
