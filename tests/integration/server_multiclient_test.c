@@ -14,7 +14,8 @@
 #include "tests/common.h"
 #include "network/av.h"
 #include "network/packet.h"
-#include "video/simd/common.h">
+#include "video/simd/common.h"
+#include "util/overflow.h"
 
 void setup_server_quiet_logging(void);
 void restore_server_logging(void);
@@ -167,8 +168,22 @@ static int send_test_frame(int socket, int frame_id) {
 static int send_image_frame(int socket, int width, int height, int client_id) {
   (void)client_id; // Unused parameter
   // Create test RGB image
+
+  // Calculate buffer size with overflow checking
+  size_t width_times_height;
+  if (checked_size_mul((size_t)width, (size_t)height, &width_times_height) != ASCIICHAT_OK) {
+    cr_fail("Buffer size overflow: width * height overflow");
+    return -1;
+  }
+
+  size_t buffer_size;
+  if (checked_size_mul(width_times_height, sizeof(rgb_pixel_t), &buffer_size) != ASCIICHAT_OK) {
+    cr_fail("Buffer size overflow: (width * height) * sizeof(rgb_pixel_t) overflow");
+    return -1;
+  }
+
   rgb_pixel_t *image_data;
-  image_data = SAFE_MALLOC(width * height * sizeof(rgb_pixel_t), rgb_pixel_t *);
+  image_data = SAFE_MALLOC(buffer_size, rgb_pixel_t *);
 
   // Fill with test pattern
   for (int y = 0; y < height; y++) {
