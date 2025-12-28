@@ -325,14 +325,14 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
 
     // Every 10th access: Update heap position (requires write lock)
     if (new_access_count % 10 == 0) {
-      // TOCTOU FIX: Save the key before releasing read lock
+      // Save the key before releasing read lock
       uint32_t saved_key = cache->key;
 
       // Release read lock and upgrade to write lock
       rwlock_rdunlock(&g_utf8_cache_rwlock);
       rwlock_wrlock(&g_utf8_cache_rwlock);
 
-      // TOCTOU FIX: Re-lookup cache entry after lock upgrade
+      // Re-lookup cache entry after lock upgrade
       // Another thread could have evicted this entry while we were upgrading locks
       utf8_palette_cache_t *cache_relookup = NULL;
       HASH_FIND_INT(g_utf8_cache_table, &saved_key, cache_relookup);

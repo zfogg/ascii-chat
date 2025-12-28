@@ -213,7 +213,7 @@ static bool g_encryption_enabled = false;
  * @ingroup client_connection
  */
 static unsigned int get_reconnect_delay(unsigned int reconnect_attempt) {
-  // ARITHMETIC FIX: Use integer arithmetic for microsecond calculations
+  // Use integer arithmetic for microsecond calculations
   // Initial delay: 100,000 us (0.1 seconds)
   // Additional delay per attempt: 200,000 us (0.2 seconds)
   unsigned int delay_us = 100000 + (reconnect_attempt - 1) * 200000;

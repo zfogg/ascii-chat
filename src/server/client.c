@@ -318,7 +318,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_error("Maximum client limit reached (%d/%d active clients)", existing_count, opt_max_clients);
 
     // Send a rejection message to the client before closing
-    // FIX: Use platform-abstracted socket_send() instead of raw send() for Windows portability
+    // Use platform-abstracted socket_send() instead of raw send() for Windows portability
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
@@ -334,7 +334,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
-    // FIX: Use platform-abstracted socket_send() instead of raw send() for Windows portability
+    // Use platform-abstracted socket_send() instead of raw send() for Windows portability
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
@@ -521,7 +521,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
     log_debug("Crypto handshake completed successfully for client %u", atomic_load(&client->client_id));
 
-    // CRITICAL FIX: After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
+    // After handshake completes, the client immediately sends PACKET_TYPE_CLIENT_CAPABILITIES
     // We must read and process this packet BEFORE starting the receive thread to avoid a race condition
     // where the packet arrives but no thread is listening for it.
     log_debug("Waiting for initial capabilities packet from client %u", atomic_load(&client->client_id));
@@ -530,7 +530,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     mutex_lock(&client->client_state_mutex);
     const crypto_context_t *crypto_ctx = crypto_server_get_context(atomic_load(&client->client_id));
 
-    // FIX: Use per-client crypto state to determine enforcement
+    // Use per-client crypto state to determine enforcement
     // At this point, handshake is complete, so crypto_initialized=true and handshake is ready
     bool enforce_encryption =
         !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
@@ -897,7 +897,7 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // THREAD SAFETY FIX: Protect crypto field access with mutex to prevent race conditions
+    // Protect crypto field access with mutex to prevent race conditions
     mutex_lock(&client->client_state_mutex);
     bool crypto_ready =
         !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
@@ -932,7 +932,7 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // FIX: Use per-client crypto_ready state instead of global opt_no_encrypt
+    // Use per-client crypto_ready state instead of global opt_no_encrypt
     // This ensures encryption is only enforced AFTER this specific client completes the handshake
     packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, crypto_ready, &envelope);
 
@@ -1186,7 +1186,7 @@ void *client_send_thread_func(void *arg) {
     // Send batched audio if we have packets
     if (audio_packet_count > 0) {
       // Get crypto context for this client
-      // THREAD SAFETY FIX: Protect crypto field access with mutex
+      // Protect crypto field access with mutex
       const crypto_context_t *crypto_ctx = NULL;
       mutex_lock(&client->client_state_mutex);
       bool crypto_ready =
@@ -1366,7 +1366,7 @@ void *client_send_thread_func(void *arg) {
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame
-        // THREAD SAFETY FIX: Protect crypto context access with mutex during rekeying
+        // Protect crypto context access with mutex during rekeying
         mutex_lock(&client->client_state_mutex);
         const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
         mutex_unlock(&client->client_state_mutex);
@@ -1446,7 +1446,7 @@ void *client_send_thread_func(void *arg) {
       }
 
       // Now perform network I/O without holding video buffer lock
-      // THREAD SAFETY FIX: Protect crypto context access with mutex during rekeying
+      // Protect crypto context access with mutex during rekeying
       mutex_lock(&client->client_state_mutex);
       const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
       mutex_unlock(&client->client_state_mutex);
@@ -1572,7 +1572,7 @@ void broadcast_server_state_to_all_clients(void) {
   net_state.active_client_count = htonl(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
-  // CRITICAL FIX: Release lock BEFORE sending (snapshot pattern)
+  // Release lock BEFORE sending (snapshot pattern)
   // Sending while holding lock blocks all client operations
   (void)clock_gettime(CLOCK_MONOTONIC, &lock_end);
   uint64_t lock_held_us = ((uint64_t)lock_end.tv_sec * 1000000 + (uint64_t)lock_end.tv_nsec / 1000) -
@@ -1731,7 +1731,7 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
     return -1;
   }
 
-  // BUGFIX: Store original allocation size before it gets modified
+  // Store original allocation size before it gets modified
   size_t original_alloc_size = *len;
   void *decrypted_data = buffer_pool_alloc(original_alloc_size);
   size_t decrypted_len;
@@ -1748,7 +1748,7 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   }
 
   // Replace encrypted data with decrypted data
-  // BUGFIX: Use original allocation size for freeing the encrypted buffer
+  // Use original allocation size for freeing the encrypted buffer
   buffer_pool_free(*data, original_alloc_size);
 
   *data = decrypted_data;
@@ -1859,7 +1859,7 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_PING: {
     // Respond with PONG
-    // THREAD SAFETY FIX: Protect crypto context access with mutex during rekeying
+    // Protect crypto context access with mutex during rekeying
     mutex_lock(&client->client_state_mutex);
     const crypto_context_t *ping_crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
     mutex_unlock(&client->client_state_mutex);
