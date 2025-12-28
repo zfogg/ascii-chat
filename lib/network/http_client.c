@@ -8,7 +8,7 @@
 #include "../common.h"
 #include "../crypto/pem_utils.h"
 #include "version.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/socket.h"
 
 #include <bearssl.h>

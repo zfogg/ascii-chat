@@ -138,7 +138,7 @@
 #include "client.h"
 #include "render.h"
 #include "common.h"
-#include "buffer_pool.h"
+#include "util/pool.h"
 #include "network/packet_queue.h"
 #include "debug/lock.h"
 

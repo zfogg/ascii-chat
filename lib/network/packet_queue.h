@@ -94,7 +94,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdatomic.h>
-#include "buffer_pool.h"
+#include "util/pool.h"
 #include "network/packet.h"
 
 /**

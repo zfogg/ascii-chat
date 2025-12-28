@@ -838,7 +838,7 @@ bool shutdown_is_requested(void);
 /* Safe string copy */
 #define SAFE_STRNCPY(dst, src, size) platform_strlcpy((dst), (src), (size))
 
-#include "asciichat_errno.h"
+#include "util/errno.h"
 /* Safe string duplication with memory tracking */
 #define SAFE_STRDUP(dst, src)                                                                                          \
   do {                                                                                                                 \

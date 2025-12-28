@@ -17,7 +17,7 @@
 #include "network/packet_queue.h"
 #include "network/logging.h"
 #include "crypto/handshake.h" // For crypto_handshake_context_t (complete type needed for field)
-#include "ringbuffer.h"
+#include "util/ringbuf.h"
 #include "video/video_frame.h"
 #include "platform/terminal.h"
 #include "video/palette.h"

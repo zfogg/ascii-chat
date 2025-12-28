@@ -81,14 +81,14 @@
 // Common headers for version info and initialization
 #include "common.h"
 #include "version.h"
-#include "options.h"
+#include "util/opts.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/levenshtein.h"
 #include "util/path.h"
 
 #ifndef NDEBUG
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "debug/lock.h"
 #endif
 

@@ -6,7 +6,7 @@
 
 #include "crypto.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "tests/test_env.h"
 
 #include <string.h>

@@ -4,8 +4,8 @@
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
-#include "config.h"
-#include "options.h"
+#include "util/config.h"
+#include "util/opts.h"
 #include "util/path.h"
 #include "common.h"
 #include "platform/terminal.h"

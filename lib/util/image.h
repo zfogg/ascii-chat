@@ -11,7 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "asciichat_errno.h"
+#include "util/errno.h"
 
 /**
  * @brief Calculate pixel count with overflow checking

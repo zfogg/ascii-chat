@@ -7,14 +7,14 @@
 #include "packet.h"
 #include "network.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/socket.h"
-#include "buffer_pool.h"
+#include "util/pool.h"
 #include "network/crc32.h"
 #include "crypto/crypto.h"
 #include "network/compression.h"
 #include "util/endian.h"
-#include "options.h" // For opt_compression_level
+#include "util/opts.h" // For opt_compression_level
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>

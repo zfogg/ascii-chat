@@ -35,7 +35,7 @@
 #include "platform/abstraction.h"
 #include "platform/terminal.h"
 #include "common.h"
-#include "options.h"
+#include "util/opts.h"
 #include "video/palette.h"
 
 #include <signal.h>

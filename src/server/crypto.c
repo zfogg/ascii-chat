@@ -133,7 +133,7 @@
 #include "client.h"
 #include "crypto.h"
 
-#include "options.h"
+#include "util/opts.h"
 #include "common.h"
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"

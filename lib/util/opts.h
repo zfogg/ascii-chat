@@ -67,7 +67,7 @@
  * **Usage Example**:
  *
  * @code{.c}
- * #include "options.h"
+ * #include "util/opts.h"
  *
  * int main(int argc, char **argv) {
  *     // Parse command-line options

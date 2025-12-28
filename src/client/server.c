@@ -69,9 +69,9 @@
 #include "network/av.h"
 #include "common.h"
 #include "display.h"
-#include "options.h"
+#include "util/opts.h"
 #include "video/palette.h"
-#include "buffer_pool.h"
+#include "util/pool.h"
 
 #include <string.h>
 #include <stdarg.h>

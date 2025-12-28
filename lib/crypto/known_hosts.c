@@ -30,12 +30,12 @@
 #include "crypto/known_hosts.h"
 #include "crypto/crypto.h"   // Includes <sodium.h>, CRYPTO_* constants
 #include "common.h"          // For BUFFER_SIZE_* constants
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "util/errno.h" // For asciichat_errno system
 #include "crypto/keys/keys.h"
 #include "util/ip.h"
 #include "platform/util.h"
 #include "platform/system.h" // For platform_isatty() and FILE_PERM_* constants
-#include "options.h"         // For opt_snapshot_mode
+#include "util/opts.h"         // For opt_snapshot_mode
 #include "util/path.h"
 #include "util/string.h"
 #include "tooling/defer/defer.h"

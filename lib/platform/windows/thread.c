@@ -8,7 +8,7 @@
 
 #include <windows.h>
 #include "../../common.h"
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "util/errno.h" // For asciichat_errno system
 #include "platform/thread.h"
 #include "util/path.h"
 #include <process.h>

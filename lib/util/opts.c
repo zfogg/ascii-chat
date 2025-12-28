@@ -6,7 +6,7 @@
  */
 
 #include "platform/system.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #ifdef _WIN32
 #include "platform/windows/getopt.h"
 #include <winsock2.h>
@@ -28,8 +28,8 @@
 #include <sys/stat.h>
 
 #include "video/ascii.h"
-#include "options.h"
-#include "config.h"
+#include "util/opts.h"
+#include "util/config.h"
 #include "common.h"
 #include "log/logging.h"
 #include "video/webcam/webcam.h"

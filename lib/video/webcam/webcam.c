@@ -9,7 +9,7 @@
 
 #include "webcam.h"
 #include "common.h"
-#include "options.h"
+#include "util/opts.h"
 #include "video/image.h"
 #include "platform/string.h"
 

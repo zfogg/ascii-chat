@@ -34,12 +34,12 @@ set(UTIL_SRCS
     lib/util/levenshtein.c
     lib/util/image.c
     lib/util/audio.c
-    lib/fps.c
+    lib/util/fps.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
 if(USE_MUSL)
-    list(APPEND UTIL_SRCS lib/musl_c23_compat.c)
+    list(APPEND UTIL_SRCS lib/util/compat.c)
 endif()
 
 # =============================================================================
@@ -236,12 +236,12 @@ set(NETWORK_SRCS
 # =============================================================================
 set(CORE_SRCS
     lib/common.c
-    lib/asciichat_errno.c
+    lib/util/errno.c
     lib/log/logging.c
     lib/log/mmap.c
-    lib/options.c
-    lib/config.c
-    lib/version.c
+    lib/util/opts.c
+    lib/util/config.c
+    lib/util/version.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
@@ -266,8 +266,8 @@ set_source_files_properties(
 # Data Structures Module
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
-    lib/ringbuffer.c
-    lib/buffer_pool.c
+    lib/util/ringbuf.c
+    lib/util/pool.c
 )
 
 # =============================================================================

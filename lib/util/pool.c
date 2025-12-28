@@ -4,9 +4,9 @@
  * @brief 💾 High-performance memory pool allocator for zero-allocation packet handling
  */
 
-#include "buffer_pool.h"
+#include "util/pool.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/system.h"
 #include "platform/init.h"
 #include "util/format.h"

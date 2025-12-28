@@ -5,9 +5,9 @@
  */
 
 #include "packet_queue.h"
-#include "buffer_pool.h"
+#include "util/pool.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "network/crc32.h"
 #include <stdatomic.h>
 #include <stdlib.h>

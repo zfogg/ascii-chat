@@ -8,7 +8,7 @@
 
 #include "../abstraction.h"
 #include <pthread.h>
-#include "asciichat_errno.h"
+#include "util/errno.h"
 
 /**
  * @brief Initialize a mutex

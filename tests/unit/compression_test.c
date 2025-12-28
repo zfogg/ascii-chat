@@ -16,7 +16,7 @@
 #include "tests/logging.h"
 #include "network/compression.h"
 #include "network/packet.h"
-#include "options.h"
+#include "util/opts.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(compression);

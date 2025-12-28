@@ -13,7 +13,7 @@
 
 #include "debug/memory.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
 #include "util/format.h"

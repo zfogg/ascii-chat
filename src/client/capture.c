@@ -91,11 +91,11 @@
 #include "video/webcam/webcam.h"
 #include "video/image.h"
 #include "common.h"
-#include "asciichat_errno.h"
-#include "options.h"
+#include "util/errno.h"
+#include "util/opts.h"
 #include "util/time.h"
 #include "util/thread.h"
-#include "fps.h"
+#include "util/fps.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>

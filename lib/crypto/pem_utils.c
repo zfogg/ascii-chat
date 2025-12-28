@@ -29,7 +29,7 @@
 
 #include "../common.h"
 #include "pem_utils.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 
 #include <bearssl.h>
 #include <stdio.h>

@@ -13,7 +13,7 @@
 #include <errno.h>
 #endif
 
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "util/path.h"
 #include "platform/system.h"
 #include "common.h"

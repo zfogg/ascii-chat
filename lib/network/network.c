@@ -7,7 +7,7 @@
 
 #include "network.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/socket.h"
 #include <stdint.h>
 #include <errno.h>

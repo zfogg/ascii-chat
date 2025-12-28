@@ -71,7 +71,7 @@
 
 #include "common.h"
 #include "platform/mutex.h"
-#include "ringbuffer.h"
+#include "util/ringbuf.h"
 
 /* ============================================================================
  * Audio Configuration Constants

@@ -6,7 +6,7 @@
 
 #include "audio/opus_codec.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include <opus/opus.h>
 #include <stdlib.h>
 #include <string.h>

@@ -23,8 +23,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "config.h"
-#include "options.h"
+#include "util/config.h"
+#include "util/opts.h"
 #include "common.h"
 #include "tests/common.h"
 #include "tests/logging.h"

@@ -26,11 +26,11 @@
 #include "network.h"
 #include "packet.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/socket.h"
 #include "audio/opus_codec.h"
 #include "platform/string.h"
-#include "buffer_pool.h"
+#include "util/pool.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>

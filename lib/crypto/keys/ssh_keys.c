@@ -7,7 +7,7 @@
 #include "crypto/crypto.h" // Includes <sodium.h>
 #include "ssh_keys.h"
 #include "common.h"
-#include "asciichat_errno.h"
+#include "util/errno.h"
 #include "platform/password.h"
 #include "platform/util.h"
 #include "util/string.h"

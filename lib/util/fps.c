@@ -4,7 +4,7 @@
  * @ingroup common
  */
 
-#include "fps.h"
+#include "util/fps.h"
 #include "common.h"
 #include "util/time.h"
 #include "log/logging.h"

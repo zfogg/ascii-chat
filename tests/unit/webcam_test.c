@@ -6,7 +6,7 @@
 
 #include "video/webcam/webcam.h"
 #include "tests/common.h"
-#include "options.h"
+#include "util/opts.h"
 #include "video/image.h"
 #include "tests/logging.h"
 

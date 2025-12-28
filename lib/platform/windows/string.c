@@ -14,7 +14,7 @@
 
 #include "common.h" // Must be first - defines errno constants for Windows
 #include "platform/string.h"
-#include "asciichat_errno.h" // For asciichat_errno system
+#include "util/errno.h" // For asciichat_errno system
 #include <corecrt.h>
 #include <stdarg.h>
 #include <stdio.h> // For vsscanf
