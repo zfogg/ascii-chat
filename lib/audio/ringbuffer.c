@@ -8,34 +8,11 @@
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
+#include "util/math.h"      // For power-of-two utilities
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
-/* ============================================================================
- * Helper Functions
- * ============================================================================
- */
-
-static inline bool __attribute__((unused)) is_power_of_two(size_t n) {
-  return n && !(n & (n - 1));
-}
-
-static inline size_t next_power_of_two(size_t n) {
-  if (n == 0)
-    return 1;
-  n--;
-  n |= n >> 1;
-  n |= n >> 2;
-  n |= n >> 4;
-  n |= n >> 8;
-  n |= n >> 16;
-  if (sizeof(size_t) > 4) {
-    n |= n >> 32;
-  }
-  return n + 1;
-}
 
 /* ============================================================================
  * Ring Buffer Implementation
@@ -58,7 +35,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   rb = SAFE_CALLOC(1, sizeof(ringbuffer_t), ringbuffer_t *);
 
   /* Round capacity up to power of 2 for optimization */
-  size_t actual_capacity = next_power_of_two(capacity);
+  size_t actual_capacity = math_next_power_of_two(capacity);
 
   rb->buffer = SAFE_CALLOC(actual_capacity, element_size, char *);
 
