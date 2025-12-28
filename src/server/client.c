@@ -129,12 +129,13 @@
 #include "audio/opus_codec.h"
 #include "video/video_frame.h"
 #include "util/uthash.h"
+#include "util/format.h"
+#include "util/time.h"
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
 #include "network/crc32.h"
 #include "network/logging.h"
-#include "util/time.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -1436,8 +1437,11 @@ void *client_send_thread_func(void *arg) {
       // Validate buffer size after releasing lock (fast check)
       size_t payload_size = sizeof(ascii_frame_packet_t) + frame_size;
       if (payload_size > client->send_buffer_size) {
-        SET_ERRNO(ERROR_NETWORK_SIZE, "Video frame too large for send buffer: %zu > %zu", payload_size,
-                  client->send_buffer_size);
+        char payload_str[64] = {0};
+        char buffer_str[64] = {0};
+        format_bytes_pretty(payload_size, payload_str, sizeof(payload_str));
+        format_bytes_pretty(client->send_buffer_size, buffer_str, sizeof(buffer_str));
+        SET_ERRNO(ERROR_NETWORK_SIZE, "Video frame too large for send buffer: %s > %s", payload_str, buffer_str);
         break;
       }
 
