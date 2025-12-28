@@ -12,6 +12,7 @@
 #include "platform/util.h"
 #include "util/string.h"
 #include "util/path.h"
+#include "util/bytes.h"
 #include "../ssh_agent.h"
 #include <bearssl.h>
 #include <sodium_bcrypt_pbkdf.h>
@@ -29,11 +30,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #endif
-
-// Helper macro to read 32-bit big-endian values safely (avoids UB from shifting signed ints)
-#define READ_BE32(buf, offset)                                                                                         \
-  (((uint32_t)(buf)[(offset)] << 24) | ((uint32_t)(buf)[(offset) + 1] << 16) | ((uint32_t)(buf)[(offset) + 2] << 8) |  \
-   (uint32_t)(buf)[(offset) + 3])
 
 // =============================================================================
 // Helper Functions
@@ -372,7 +368,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at ciphername: %s", key_path);
   }
 
-  uint32_t ciphername_len = READ_BE32(key_blob, offset);
+  uint32_t ciphername_len = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   if (offset + ciphername_len > key_blob_len) {
@@ -396,7 +392,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at kdfname: %s", key_path);
   }
 
-  uint32_t kdfname_len = READ_BE32(key_blob, offset);
+  uint32_t kdfname_len = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   // Store the position of kdfname for later use
@@ -410,7 +406,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at kdfoptions: %s", key_path);
   }
 
-  uint32_t kdfoptions_len = READ_BE32(key_blob, offset);
+  uint32_t kdfoptions_len = read_u32_be(&key_blob[offset]);
   offset += 4 + kdfoptions_len;
 
   // Handle encrypted keys
@@ -464,7 +460,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at salt length: %s", key_path);
     }
-    uint32_t salt_len = READ_BE32(key_blob, kdf_opt_offset);
+    uint32_t salt_len = read_u32_be(&key_blob[kdf_opt_offset]);
     kdf_opt_offset += 4;
 
     // Read salt
@@ -488,7 +484,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "KDF options truncated at rounds: %s", key_path);
     }
-    uint32_t bcrypt_rounds = READ_BE32(key_blob, kdf_opt_offset);
+    uint32_t bcrypt_rounds = read_u32_be(&key_blob[kdf_opt_offset]);
 
     // Check for password in environment variable first
     const char *env_password = platform_getenv("ASCII_CHAT_SSH_PASSWORD");
@@ -529,7 +525,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at num_keys: %s", key_path);
     }
-    uint32_t num_keys = READ_BE32(key_blob, offset);
+    uint32_t num_keys = read_u32_be(&key_blob[offset]);
     offset += 4;
     log_debug("num_keys=%u", num_keys);
 
@@ -542,7 +538,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
         SAFE_FREE(file_content);
         return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at pubkey %u length: %s", i, key_path);
       }
-      uint32_t pubkey_len = READ_BE32(key_blob, offset);
+      uint32_t pubkey_len = read_u32_be(&key_blob[offset]);
       offset += 4;
       log_debug("Skipping public key %u: %u bytes", i, pubkey_len);
 
@@ -564,7 +560,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Encrypted key truncated at encrypted_len: %s", key_path);
     }
-    uint32_t encrypted_len = READ_BE32(key_blob, offset);
+    uint32_t encrypted_len = read_u32_be(&key_blob[offset]);
     offset += 4;
 
     // Now offset points to the actual encrypted data
@@ -613,8 +609,8 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
 
     // Verify checkints (first 8 bytes should be two identical 32-bit values)
-    uint32_t checkint1 = READ_BE32(decrypted_blob, 0);
-    uint32_t checkint2 = READ_BE32(decrypted_blob, 4);
+    uint32_t checkint1 = read_u32_be(&decrypted_blob[0]);
+    uint32_t checkint2 = read_u32_be(&decrypted_blob[4]);
     if (checkint1 != checkint2) {
       SAFE_FREE(decrypted_blob);
       SAFE_FREE(key_blob);
@@ -636,7 +632,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at keytype length: %s", key_path);
     }
-    uint32_t keytype_len = READ_BE32(decrypted_blob, dec_offset);
+    uint32_t keytype_len = read_u32_be(&decrypted_blob[dec_offset]);
     dec_offset += 4;
 
     // Read keytype
@@ -667,7 +663,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at pubkey length: %s", key_path);
     }
-    uint32_t pubkey_data_len = READ_BE32(decrypted_blob, dec_offset);
+    uint32_t pubkey_data_len = read_u32_be(&decrypted_blob[dec_offset]);
     dec_offset += 4;
 
     // Read public key (32 bytes for Ed25519)
@@ -694,7 +690,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       SAFE_FREE(file_content);
       return SET_ERRNO(ERROR_CRYPTO_KEY, "Decrypted key truncated at privkey length: %s", key_path);
     }
-    uint32_t privkey_data_len = READ_BE32(decrypted_blob, dec_offset);
+    uint32_t privkey_data_len = read_u32_be(&decrypted_blob[dec_offset]);
     dec_offset += 4;
 
     // Read private key (64 bytes for Ed25519: 32-byte seed + 32-byte public key)
@@ -748,7 +744,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at num keys: %s", key_path);
   }
 
-  uint32_t num_keys = READ_BE32(key_blob, offset);
+  uint32_t num_keys = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   log_debug("num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, offset, key_blob_len);
@@ -772,7 +768,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   log_debug("About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", offset, key_blob[offset],
             key_blob[offset + 1], key_blob[offset + 2], key_blob[offset + 3]);
 
-  uint32_t pubkey_len = READ_BE32(key_blob, offset);
+  uint32_t pubkey_len = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   log_debug("pubkey_len=%u, offset=%zu", pubkey_len, offset);
@@ -790,7 +786,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH public key too small: %s", key_path);
   }
 
-  uint32_t key_type_len = READ_BE32(key_blob, offset);
+  uint32_t key_type_len = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   // Check if it's an Ed25519 key
@@ -810,7 +806,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at public key length: %s", key_path);
   }
 
-  uint32_t pubkey_data_len = READ_BE32(key_blob, offset);
+  uint32_t pubkey_data_len = read_u32_be(&key_blob[offset]);
   offset += 4;
   log_debug("Public key data length: %u, offset=%zu", pubkey_data_len, offset);
 
@@ -853,7 +849,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey length: %s", key_path);
   }
 
-  uint32_t privkey_len = READ_BE32(key_blob, offset);
+  uint32_t privkey_len = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   if (offset + privkey_len > key_blob_len) {
@@ -874,9 +870,8 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   // Verify checkints (should be equal)
-  uint32_t checkint1 = READ_BE32(key_blob, offset);
-  uint32_t checkint2 =
-      (key_blob[offset + 4] << 24) | (key_blob[offset + 5] << 16) | (key_blob[offset + 6] << 8) | key_blob[offset + 7];
+  uint32_t checkint1 = read_u32_be(&key_blob[offset]);
+  uint32_t checkint2 = read_u32_be(&key_blob[offset + 4]);
   offset += 8;
 
   if (checkint1 != checkint2) {
@@ -892,7 +887,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at key type length: %s", key_path);
   }
 
-  uint32_t key_type_len_priv = READ_BE32(key_blob, offset);
+  uint32_t key_type_len_priv = read_u32_be(&key_blob[offset]);
   // Check for integer overflow before adding to offset
   if (key_type_len_priv > key_blob_len || offset + 4 + key_type_len_priv > key_blob_len) {
     SAFE_FREE(key_blob);
@@ -908,7 +903,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at pubkey length: %s", key_path);
   }
 
-  uint32_t pubkey_len_priv = READ_BE32(key_blob, offset);
+  uint32_t pubkey_len_priv = read_u32_be(&key_blob[offset]);
   // Check for integer overflow before adding to offset
   if (pubkey_len_priv > key_blob_len || offset + 4 + pubkey_len_priv > key_blob_len) {
     SAFE_FREE(key_blob);
@@ -924,7 +919,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at privkey length: %s", key_path);
   }
 
-  uint32_t privkey_data_len = READ_BE32(key_blob, offset);
+  uint32_t privkey_data_len = read_u32_be(&key_blob[offset]);
   offset += 4;
 
   if (offset + privkey_data_len > key_blob_len) {
