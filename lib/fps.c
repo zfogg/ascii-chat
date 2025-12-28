@@ -19,19 +19,18 @@ static uint64_t timespec_to_us(const struct timespec *ts) {
 /**
  * @brief Format and log FPS report in a single line
  */
-static void log_fps_report(const char *tracker_name, double actual_fps, uint64_t frame_count, 
-                           double elapsed_seconds) {
-  log_info_every(1, "[%s] %.1f fps (%llu frames in %.1fs)", tracker_name, actual_fps, 
-                 (unsigned long long)frame_count, elapsed_seconds);
+static void log_fps_report(const char *tracker_name, double actual_fps, uint64_t frame_count, double elapsed_seconds) {
+  log_info_every(1, "[%s] %.1f fps (%llu frames in %.1fs)", tracker_name, actual_fps, (unsigned long long)frame_count,
+                 elapsed_seconds);
 }
 
 /**
  * @brief Format and log a single lag event
  */
-static void log_lag_event(const char *tracker_name, const char *context, double late_ms, 
-                          double expected_ms, double actual_ms, double actual_fps) {
-  log_error("[%s] LAG: %s late by %.1fms (expected %.1fms, got %.1fms, %.2f fps)", 
-            tracker_name, context, late_ms, expected_ms, actual_ms, actual_fps);
+static void log_lag_event(const char *tracker_name, const char *context, double late_ms, double expected_ms,
+                          double actual_ms, double actual_fps) {
+  log_error("[%s] LAG: %s late by %.1fms (expected %.1fms, got %.1fms, %.2f fps)", tracker_name, context, late_ms,
+            expected_ms, actual_ms, actual_fps);
 }
 
 void fps_init(fps_t *tracker, int expected_fps, const char *name) {
