@@ -88,6 +88,7 @@
 #include "common.h"
 #include "options.h"
 #include "crc32.h"
+#include "fps_tracker.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -321,72 +322,23 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     return;
   }
 
-  // FPS tracking for received ASCII frames
-  static uint64_t frame_count = 0;
-  static struct timespec last_fps_report_time = {0};
-  static struct timespec last_frame_time = {0};
-  static int expected_fps = 0; // Will be set based on client's requested FPS
+  // FPS tracking for received ASCII frames using reusable tracker utility
+  static fps_tracker_t fps_tracker = {0};
+  static bool fps_tracker_initialized = false;
+
+  // Initialize FPS tracker on first frame
+  if (!fps_tracker_initialized) {
+    extern int g_max_fps;  // From common.c
+    int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
+    fps_tracker_init(&fps_tracker, expected_fps, "CLIENT");
+    fps_tracker_initialized = true;
+  }
 
   struct timespec current_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-  // Initialize expected FPS from client's requested FPS (only once)
-  if (expected_fps == 0) {
-    extern int g_max_fps; // From common.c
-    if (g_max_fps > 0) {
-      expected_fps = (g_max_fps > 144) ? 144 : g_max_fps;
-    } else {
-// Use platform default (60 for Unix, 30 for Windows)
-#ifdef DEFAULT_MAX_FPS
-      expected_fps = DEFAULT_MAX_FPS;
-#else
-      expected_fps = 60; // Fallback
-#endif
-    }
-    log_debug("CLIENT FPS TRACKING: Expecting %d fps (client's requested rate)", expected_fps);
-  }
-
-  // Initialize on first frame
-  if (last_fps_report_time.tv_sec == 0) {
-    last_fps_report_time = current_time;
-    last_frame_time = current_time;
-  }
-
-  frame_count++;
-
-  // Calculate time since last frame
-  uint64_t frame_interval_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                               ((uint64_t)last_frame_time.tv_sec * 1000000 + (uint64_t)last_frame_time.tv_nsec / 1000);
-  last_frame_time = current_time;
-
-  // Expected frame interval in microseconds (for 60fps = 16666us)
-  uint64_t expected_interval_us = 1000000ULL / (uint64_t)expected_fps;
-  uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
-
-  // Log error if frame arrived too late
-  if (frame_count > 1 && frame_interval_us > lag_threshold_us) {
-    log_error("CLIENT FPS LAG: Frame received %.2lfs late (expected %.2lfs, got %.2lfs, actual fps: %.2lf)",
-              (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
-              (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
-  }
-
-  // Report FPS every 5 seconds
-  uint64_t elapsed_us =
-      ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-      ((uint64_t)last_fps_report_time.tv_sec * 1000000 + (uint64_t)last_fps_report_time.tv_nsec / 1000);
-
-  if (elapsed_us >= 5000000) { // 5 seconds
-    double elapsed_seconds = (double)elapsed_us / 1000000.0;
-    double actual_fps = (double)frame_count / elapsed_seconds;
-
-    char duration_str[32];
-    format_duration_s(elapsed_seconds, duration_str, sizeof(duration_str));
-    log_debug("CLIENT FPS: %.1f fps (%llu frames in %s)", actual_fps, frame_count, duration_str);
-
-    // Reset counters for next interval
-    frame_count = 0;
-    last_fps_report_time = current_time;
-  }
+  // Track this frame and detect lag
+  fps_tracker_frame(&fps_tracker, &current_time, "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;
