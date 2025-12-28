@@ -26,6 +26,7 @@
 #include "network.h"
 #include "packet.h"
 #include "util/endian.h"
+#include "util/parsing.h"
 #include "common.h"
 #include "util/endian.h"
 #include "asciichat_errno.h"
@@ -387,15 +388,17 @@ int av_receive_audio_message(socket_t sockfd, const char *header, float *samples
     return -1;
   }
 
-  if (strncmp(header, AUDIO_MESSAGE_PREFIX, strlen(AUDIO_MESSAGE_PREFIX)) != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio message header");
+  // Use safe_parse_audio_message utility for parsing and validation
+  unsigned int num_samples;
+  asciichat_error_t result = safe_parse_audio_message(header, &num_samples);
+  if (result != ASCIICHAT_OK) {
     return -1;
   }
 
-  unsigned int num_samples;
-  if (safe_sscanf(header + strlen(AUDIO_MESSAGE_PREFIX), "%u", &num_samples) != 1 ||
-      num_samples > (unsigned int)max_samples || num_samples > AUDIO_SAMPLES_PER_PACKET) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid audio sample count: %u", num_samples);
+  // Validate sample count is within acceptable bounds for this implementation
+  if (num_samples > (unsigned int)max_samples || num_samples > AUDIO_SAMPLES_PER_PACKET) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Audio sample count out of range: %u (max %u)", num_samples,
+              (unsigned int)max_samples);
     return -1;
   }
 
@@ -423,17 +426,10 @@ int av_parse_size_message(const char *message, unsigned short *width, unsigned s
     return -1;
   }
 
-  // Check if message starts with SIZE_MESSAGE_PREFIX
-  if (strncmp(message, SIZE_MESSAGE_PREFIX, strlen(SIZE_MESSAGE_PREFIX)) != 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid size message format");
-    return -1;
-  }
-
-  // Parse the width,height values
-  unsigned int w;
-  unsigned int h;
-  if (safe_sscanf(message + strlen(SIZE_MESSAGE_PREFIX), "%u,%u", &w, &h) != 2) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse size message: %s", message);
+  // Use safe_parse_size_message utility for parsing and validation
+  unsigned int w, h;
+  asciichat_error_t result = safe_parse_size_message(message, &w, &h);
+  if (result != ASCIICHAT_OK) {
     return -1;
   }
 

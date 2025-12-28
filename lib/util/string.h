@@ -153,4 +153,64 @@ bool escape_shell_single_quotes(const char *str, char *out_buffer, size_t out_bu
  */
 bool escape_shell_double_quotes(const char *str, char *out_buffer, size_t out_buffer_size);
 
+/**
+ * @brief Check if a string needs shell quoting (contains spaces or special chars)
+ * @param str String to check (must not be NULL)
+ * @return true if string contains characters that require shell quoting, false otherwise
+ *
+ * Detects if a string contains whitespace or special characters that require
+ * shell quoting when used in command-line arguments. Useful for determining
+ * whether to apply shell escaping functions.
+ *
+ * CHARACTERS REQUIRING QUOTING:
+ * - Whitespace: space, tab
+ * - Special shell characters: " ' $ ` \ < > & ; | ( ) [ ] { } * ? ! ~ # @
+ * - Control characters: newline, carriage return, etc.
+ *
+ * @note Empty strings return false (no quoting needed).
+ * @note Alphanumeric and some safe punctuation (- . _) return false.
+ *
+ * @par Example
+ * @code
+ * if (string_needs_shell_quoting("/path/to file.txt")) {
+ *     // Path contains a space, needs quoting
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool string_needs_shell_quoting(const char *str);
+
+/**
+ * @brief Escape a path for safe use in shell commands (auto-platform)
+ * @param path Path string to escape (must not be NULL)
+ * @param out_buffer Output buffer for escaped path (must not be NULL)
+ * @param out_buffer_size Size of output buffer (must be > 0)
+ * @return true on success, false on failure
+ *
+ * Automatically escapes a path for safe use in shell commands. If the path
+ * contains special characters or whitespace, it applies the appropriate
+ * platform-specific escaping (single quotes on Unix, double quotes on Windows).
+ * If no escaping is needed, the path is copied as-is.
+ *
+ * PLATFORM BEHAVIOR:
+ * - Unix/Linux/macOS: Uses single quote escaping (escape_shell_single_quotes)
+ * - Windows: Uses double quote escaping (escape_shell_double_quotes)
+ *
+ * @note Output buffer must be large enough (worst case: 4x input size for Unix).
+ * @note Returns false if buffer is too small or escaping fails.
+ * @note Automatically detects if quoting is needed (no unnecessary escaping).
+ *
+ * @par Example
+ * @code
+ * char escaped[1024];
+ * if (escape_path_for_shell("/usr/local/bin/tool", escaped, sizeof(escaped))) {
+ *     // escaped contains the path, properly escaped if needed
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer_size);
+
 /** @} */
