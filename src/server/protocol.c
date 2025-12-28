@@ -119,7 +119,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "common.h"
-#include "validation.h"
+#include "util/validation.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
 #include "video/palette.h"
@@ -227,38 +227,6 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   }
   mutex_unlock(&client->client_state_mutex);
 }
-
-/* ============================================================================
- * Packet Validation Macro
- * ============================================================================ */
-
-/**
- * @brief Validate packet payload size and presence
- *
- * Helper macro to standardize packet validation. Checks if data pointer is
- * non-NULL and payload matches expected size. Disconnects client on failure.
- *
- * @param client Client being validated (must not be NULL)
- * @param data Payload pointer
- * @param len Payload size
- * @param expected_size Expected payload size
- * @param packet_name Human-readable packet name for error messages
- *
- * @note This macro uses 'return;' statement - only use inside void functions
- * @note Automatically calls disconnect_client_for_bad_data() on failure
- */
-#define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name)                             \
-  do {                                                                                                   \
-    if (!(data)) {                                                                                       \
-      disconnect_client_for_bad_data(client, packet_name " payload missing");                           \
-      return;                                                                                            \
-    }                                                                                                    \
-    if ((len) != (expected_size)) {                                                                     \
-      disconnect_client_for_bad_data(client, packet_name " payload size %zu (expected %zu)", (len),    \
-                                     (expected_size));                                                  \
-      return;                                                                                            \
-    }                                                                                                    \
-  } while (0)
 
 /* ============================================================================
  * Client Lifecycle Packet Handlers
