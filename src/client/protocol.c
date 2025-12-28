@@ -595,16 +595,11 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Dequantize: int32_t -> float (scale from [-2147483647, 2147483647] to [-1.0, 1.0])
-  for (uint32_t i = 0; i < total_samples; i++) {
-    uint32_t network_sample;
-    SAFE_MEMCPY(&network_sample, sizeof(network_sample), samples_ptr + (i * sizeof(uint32_t)), sizeof(uint32_t));
-
-    // Convert from network byte order and treat as signed int32_t
-    int32_t scaled = (int32_t)ntohl(network_sample);
-
-    // Scale signed int32_t to float range [-1.0, 1.0]
-    samples[i] = (float)scaled / 2147483647.0f;
+  // Use helper function to dequantize samples
+  asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
+  if (dq_result != ASCIICHAT_OK) {
+    SAFE_FREE(samples);
+    return;
   }
 
   // Track received packet for analysis
