@@ -19,7 +19,7 @@
 #include "video/webcam/webcam.h"
 #include "common.h"
 #include "platform/file.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8

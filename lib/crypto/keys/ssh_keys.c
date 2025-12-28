@@ -9,7 +9,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/password.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "util/string.h"
 #include "util/path.h"
 #include "../ssh_agent.h"

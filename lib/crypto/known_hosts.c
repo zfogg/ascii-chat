@@ -33,7 +33,7 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "crypto/keys/keys.h"
 #include "util/ip.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "platform/system.h" // For platform_isatty() and FILE_PERM_* constants
 #include "options.h"         // For opt_snapshot_mode
 #include "util/path.h"
