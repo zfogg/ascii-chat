@@ -53,3 +53,7 @@
 #include "util/path.h"
 #include "util/string.h"
 #include "util/utf8.h"
+#include "util/thread_lifecycle.h"
+#include "util/atomic_helpers.h"
+#include "util/endian_helpers.h"
+#include "util/audio_helpers.h"
