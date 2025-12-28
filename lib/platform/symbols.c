@@ -514,7 +514,10 @@ void symbol_cache_print_stats(void) {
  * @param buffer Array of addresses
  * @param size Number of addresses
  * @return Array of symbol strings (must be freed by caller)
+ *
+ * @note On macOS, use run_llvm_symbolizer_macos_batch() instead, which handles ASLR.
  */
+#ifndef __APPLE__
 static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
     return NULL;
@@ -702,6 +705,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   pclose(fp);
   return result;
 }
+#endif // !__APPLE__
 
 /**
  * @brief Run addr2line on a batch of addresses and parse results
