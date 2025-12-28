@@ -131,19 +131,19 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
   // Use overflow-checked multiplication
   size_t width_times_height;
   if (checked_size_mul((size_t)width, (size_t)height, &width_times_height) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_OVERFLOW, "Image dimensions too large: %d x %d", width, height);
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Image dimensions too large: %d x %d", width, height);
     return -1;
   }
 
   size_t frame_size;
   if (checked_size_mul(width_times_height, 3u, &frame_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_OVERFLOW, "Frame size overflow for RGB format");
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Frame size overflow for RGB format");
     return -1;
   }
 
   size_t total_size;
   if (checked_size_add(sizeof(image_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_OVERFLOW, "Total packet size overflow");
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Total packet size overflow");
     return -1;
   }
 

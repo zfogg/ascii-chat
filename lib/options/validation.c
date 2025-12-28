@@ -19,9 +19,6 @@
 #include "video/palette.h"
 #include "options/options.h"
 
-// Note: strtoint_safe is now defined in options.c and uses parse_int32 for better error handling
-// See lib/options/options.c for the implementation that should be used by all validation code
-
 /**
  * Validate port number (1-65535)
  * Returns 0 on success, non-zero on error

@@ -223,13 +223,4 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  * @{
  */
 
-/**
- * @brief Validate and compute RGB image buffer size safely
- * @param width Image width in pixels (must be > 0)
- * @param height Image height in pixels (must be > 0)
- * @param out_rgb_size Pointer to store computed RGB buffer size (must not be NULL)
- * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on overflow or invalid dimensions
- */
-asciichat_error_t image_validate_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size);
-
 /** @} */
