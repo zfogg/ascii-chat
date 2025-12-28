@@ -1,13 +1,15 @@
 /**
- * @file logging_mmap.c
- * @brief High-performance memory-mapped logging implementation
+ * @file mmap.c
+ * @brief Lock-free memory-mapped text logging implementation
  * @ingroup logging
+ *
+ * Writes human-readable log text directly to a memory-mapped file.
+ * On crash, the log file is immediately readable with cat/tail.
  */
 
 #include "log/mmap.h"
 #include "log/logging.h"
 #include "platform/mmap.h"
-#include "platform/thread.h"
 #include "platform/system.h"
 
 #include <stdarg.h>
@@ -15,7 +17,6 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
-#include <fcntl.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -26,26 +27,16 @@
  * ============================================================================ */
 
 static struct {
-  platform_mmap_t mmap;          /* Memory-mapped file handle */
-  log_mmap_buffer_t *buffer;     /* Pointer to mmap'd buffer */
-  int text_log_fd;               /* File descriptor for text log */
-  asciithread_t flusher_thread;  /* Background flusher thread */
-  volatile bool flusher_running; /* Flusher thread control flag */
-  uint64_t read_tail;            /* Next entry to flush (flusher only) */
-  uint32_t flush_interval_ms;    /* Flusher sleep interval */
-  bool immediate_error_flush;    /* Flush ERROR/FATAL immediately */
-  bool initialized;              /* Initialization flag */
+  platform_mmap_t mmap;      /* Memory-mapped file handle */
+  log_mmap_header_t *header; /* Pointer to header in mmap'd region */
+  char *text_region;         /* Pointer to text area (after header) */
+  size_t text_capacity;      /* Usable text area size */
+  bool initialized;          /* Initialization flag */
 
   /* Statistics */
-  _Atomic uint64_t total_entries;
-  _Atomic uint64_t flushed_entries;
-  _Atomic uint64_t dropped_entries;
+  _Atomic uint64_t bytes_written;
+  _Atomic uint64_t wrap_count;
 } g_mmap_log = {
-    .text_log_fd = -1,
-    .flusher_running = false,
-    .read_tail = 0,
-    .flush_interval_ms = 100,
-    .immediate_error_flush = true,
     .initialized = false,
 };
 
@@ -53,16 +44,7 @@ static struct {
  * Time Utilities
  * ============================================================================ */
 
-static uint64_t get_timestamp_ns(void) {
-  struct timespec ts;
-  if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {
-    return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
-  }
-  return 0;
-}
-
-static void format_timestamp(uint64_t timestamp_ns, char *buf, size_t buf_size) {
-  /* Get wall clock time for human-readable output */
+static void format_timestamp(char *buf, size_t buf_size) {
   struct timespec ts;
   clock_gettime(CLOCK_REALTIME, &ts);
 
@@ -73,64 +55,6 @@ static void format_timestamp(uint64_t timestamp_ns, char *buf, size_t buf_size) 
   if (len > 0 && len < buf_size - 10) {
     snprintf(buf + len, buf_size - len, ".%06ld", ts.tv_nsec / 1000);
   }
-
-  (void)timestamp_ns; /* Use monotonic timestamp for ordering, wall clock for display */
-}
-
-/* ============================================================================
- * Flusher Thread
- * ============================================================================ */
-
-static void flush_entries_to_text_log(void) {
-  if (!g_mmap_log.buffer || g_mmap_log.text_log_fd < 0) {
-    return;
-  }
-
-  static const char *level_names[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
-  uint32_t entry_count = g_mmap_log.buffer->header.entry_count;
-  uint64_t write_head = atomic_load(&g_mmap_log.buffer->header.write_head);
-
-  while (g_mmap_log.read_tail < write_head) {
-    uint32_t idx = (uint32_t)(g_mmap_log.read_tail % entry_count);
-    log_mmap_entry_t *entry = &g_mmap_log.buffer->entries[idx];
-
-    /* Wait for entry to be written (sequence != 0) */
-    uint64_t seq = atomic_load(&entry->sequence);
-    if (seq == 0) {
-      /* Entry not yet written, flusher is ahead of writer */
-      break;
-    }
-
-    /* Format and write to text log */
-    char time_buf[32];
-    format_timestamp(entry->timestamp_ns, time_buf, sizeof(time_buf));
-
-    const char *level_name = (entry->level < 6) ? level_names[entry->level] : "???";
-
-    char line[LOG_MMAP_MAX_MESSAGE + 64];
-    int len = snprintf(line, sizeof(line), "[%s] [%s] %s\n", time_buf, level_name, entry->message);
-
-    if (len > 0) {
-      (void)write(g_mmap_log.text_log_fd, line, (size_t)len);
-    }
-
-    /* Mark entry as flushed (optional: could clear sequence) */
-    atomic_fetch_add(&g_mmap_log.flushed_entries, 1);
-    g_mmap_log.read_tail++;
-  }
-}
-
-static void *flusher_thread_func(void *arg) {
-  (void)arg;
-
-  while (g_mmap_log.flusher_running) {
-    flush_entries_to_text_log();
-    platform_sleep_ms(g_mmap_log.flush_interval_ms);
-  }
-
-  /* Final flush on shutdown */
-  flush_entries_to_text_log();
-  return NULL;
 }
 
 /* ============================================================================
@@ -146,23 +70,23 @@ static void crash_signal_handler(int sig) {
   }
   g_crash_in_progress = 1;
 
-  /* Write crash marker */
-  if (g_mmap_log.text_log_fd >= 0) {
-    const char *msg = "\n=== CRASH DETECTED - FLUSHING MMAP LOG ===\n";
-    (void)write(g_mmap_log.text_log_fd, msg, strlen(msg));
+  /* Write crash marker directly to mmap'd log */
+  if (g_mmap_log.initialized && g_mmap_log.header && g_mmap_log.text_region) {
+    const char *crash_msg = "\n=== CRASH DETECTED (signal %d) ===\n";
+    char msg_buf[64];
+    int len = snprintf(msg_buf, sizeof(msg_buf), crash_msg, sig);
+    if (len > 0) {
+      uint64_t pos = atomic_fetch_add(&g_mmap_log.header->write_pos, (uint64_t)len);
+      if (pos + (uint64_t)len <= g_mmap_log.text_capacity) {
+        memcpy(g_mmap_log.text_region + pos, msg_buf, (size_t)len);
+      }
+    }
   }
 
-  /* Flush remaining entries */
-  flush_entries_to_text_log();
-
-  if (g_mmap_log.text_log_fd >= 0) {
-    const char *msg = "=== CRASH FLUSH COMPLETE ===\n";
-    (void)write(g_mmap_log.text_log_fd, msg, strlen(msg));
-    fsync(g_mmap_log.text_log_fd);
+  /* Sync mmap to disk */
+  if (g_mmap_log.initialized) {
+    platform_mmap_sync(&g_mmap_log.mmap, true); /* sync = true for immediate flush */
   }
-
-  /* Sync mmap */
-  platform_mmap_sync(&g_mmap_log.mmap, false);
 
   /* Re-raise with default handler for core dump */
   signal(sig, SIG_DFL);
@@ -174,7 +98,7 @@ void log_mmap_install_crash_handlers(void) {
   struct sigaction sa = {0};
   sa.sa_handler = crash_signal_handler;
   sigemptyset(&sa.sa_mask);
-  sa.sa_flags = (int)SA_RESETHAND; /* One-shot (cast silences UBSan implicit conversion warning) */
+  sa.sa_flags = (int)SA_RESETHAND; /* One-shot */
 
   sigaction(SIGSEGV, &sa, NULL);
   sigaction(SIGABRT, &sa, NULL);
@@ -182,8 +106,7 @@ void log_mmap_install_crash_handlers(void) {
   sigaction(SIGFPE, &sa, NULL);
   sigaction(SIGILL, &sa, NULL);
 #else
-  /* Windows: Use SetUnhandledExceptionFilter or similar */
-  /* TODO: Implement Windows crash handler */
+  /* TODO: Implement Windows crash handler with SetUnhandledExceptionFilter */
 #endif
 }
 
@@ -192,8 +115,8 @@ void log_mmap_install_crash_handlers(void) {
  * ============================================================================ */
 
 asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
-  if (!config || !config->mmap_path) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "mmap log: config or mmap_path is NULL");
+  if (!config || !config->log_path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "mmap log: config or log_path is NULL");
   }
 
   if (g_mmap_log.initialized) {
@@ -201,93 +124,63 @@ asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
     log_mmap_destroy();
   }
 
-  /* Calculate sizes */
-  uint32_t entry_count = config->entry_count > 0 ? config->entry_count : LOG_MMAP_DEFAULT_ENTRIES;
-  size_t mmap_size = sizeof(log_mmap_header_t) + (size_t)entry_count * sizeof(log_mmap_entry_t);
+  /* Determine file size */
+  size_t file_size = config->max_size > 0 ? config->max_size : LOG_MMAP_DEFAULT_SIZE;
+  if (file_size < LOG_MMAP_HEADER_SIZE + 1024) {
+    file_size = LOG_MMAP_HEADER_SIZE + 1024; /* Minimum reasonable size */
+  }
 
   /* Open mmap file */
   platform_mmap_init(&g_mmap_log.mmap);
-  asciichat_error_t result = platform_mmap_open(config->mmap_path, mmap_size, &g_mmap_log.mmap);
+  asciichat_error_t result = platform_mmap_open(config->log_path, file_size, &g_mmap_log.mmap);
   if (result != ASCIICHAT_OK) {
     return result;
   }
 
-  g_mmap_log.buffer = (log_mmap_buffer_t *)g_mmap_log.mmap.addr;
+  g_mmap_log.header = (log_mmap_header_t *)g_mmap_log.mmap.addr;
+  g_mmap_log.text_region = (char *)g_mmap_log.mmap.addr + LOG_MMAP_HEADER_SIZE;
+  g_mmap_log.text_capacity = file_size - LOG_MMAP_HEADER_SIZE;
 
   /* Initialize or validate header */
-  if (g_mmap_log.buffer->header.magic != LOG_MMAP_MAGIC) {
-    /* New file - initialize */
-    memset(g_mmap_log.buffer, 0, mmap_size);
-    g_mmap_log.buffer->header.magic = LOG_MMAP_MAGIC;
-    g_mmap_log.buffer->header.version = LOG_MMAP_VERSION;
-    g_mmap_log.buffer->header.entry_count = entry_count;
-    g_mmap_log.buffer->header.entry_size = sizeof(log_mmap_entry_t);
-    g_mmap_log.buffer->header.start_timestamp_ns = get_timestamp_ns();
-    atomic_store(&g_mmap_log.buffer->header.write_head, 0);
-    log_info("mmap log: created new log file with %u entries", entry_count);
+  if (g_mmap_log.header->magic != LOG_MMAP_MAGIC || g_mmap_log.header->version != LOG_MMAP_VERSION) {
+    /* New file or incompatible version - initialize */
+    memset(g_mmap_log.header, 0, LOG_MMAP_HEADER_SIZE);
+    g_mmap_log.header->magic = LOG_MMAP_MAGIC;
+    g_mmap_log.header->version = LOG_MMAP_VERSION;
+    g_mmap_log.header->max_size = file_size;
+    g_mmap_log.header->text_start = LOG_MMAP_HEADER_SIZE;
+    g_mmap_log.header->wrapped = 0;
+    atomic_store(&g_mmap_log.header->write_pos, 0);
+
+    /* Clear text region */
+    memset(g_mmap_log.text_region, 0, g_mmap_log.text_capacity);
+
+    log_info("mmap log: created new log file %s (%zu bytes)", config->log_path, file_size);
   } else {
-    /* Existing file - recover */
-    if (g_mmap_log.buffer->header.version != LOG_MMAP_VERSION) {
-      log_warn("mmap log: version mismatch (file=%u, expected=%u), reinitializing", g_mmap_log.buffer->header.version,
-               LOG_MMAP_VERSION);
-      memset(g_mmap_log.buffer, 0, mmap_size);
-      g_mmap_log.buffer->header.magic = LOG_MMAP_MAGIC;
-      g_mmap_log.buffer->header.version = LOG_MMAP_VERSION;
-      g_mmap_log.buffer->header.entry_count = entry_count;
-      g_mmap_log.buffer->header.entry_size = sizeof(log_mmap_entry_t);
-      g_mmap_log.buffer->header.start_timestamp_ns = get_timestamp_ns();
-      atomic_store(&g_mmap_log.buffer->header.write_head, 0);
-    } else {
-      uint64_t existing_entries = atomic_load(&g_mmap_log.buffer->header.write_head);
-      log_info("mmap log: recovered existing log with %lu entries", existing_entries);
-    }
+    /* Existing file - continue from current position */
+    uint64_t existing_pos = atomic_load(&g_mmap_log.header->write_pos);
+    log_info("mmap log: resumed existing log at position %lu", existing_pos);
   }
-
-  /* Open text log file if requested */
-  if (config->text_log_path) {
-    g_mmap_log.text_log_fd = open(config->text_log_path, O_WRONLY | O_CREAT | O_APPEND, 0600);
-    if (g_mmap_log.text_log_fd < 0) {
-      log_warn("mmap log: failed to open text log %s, flusher disabled", config->text_log_path);
-    }
-  }
-
-  /* Configure options */
-  g_mmap_log.flush_interval_ms = config->flush_interval_ms > 0 ? config->flush_interval_ms : 100;
-  g_mmap_log.immediate_error_flush = config->immediate_error_flush;
-  g_mmap_log.read_tail = 0; /* Start from beginning on fresh init */
 
   /* Reset statistics */
-  atomic_store(&g_mmap_log.total_entries, 0);
-  atomic_store(&g_mmap_log.flushed_entries, 0);
-  atomic_store(&g_mmap_log.dropped_entries, 0);
-
-  /* Start flusher thread if text log is configured */
-  if (g_mmap_log.text_log_fd >= 0) {
-    g_mmap_log.flusher_running = true;
-    if (ascii_thread_create(&g_mmap_log.flusher_thread, flusher_thread_func, NULL) != 0) {
-      log_warn("mmap log: failed to start flusher thread");
-      g_mmap_log.flusher_running = false;
-    } else {
-      log_debug("mmap log: flusher thread started (interval=%ums)", g_mmap_log.flush_interval_ms);
-    }
-  }
+  atomic_store(&g_mmap_log.bytes_written, 0);
+  atomic_store(&g_mmap_log.wrap_count, 0);
 
   /* Install crash handlers */
   log_mmap_install_crash_handlers();
 
   g_mmap_log.initialized = true;
-  log_info("mmap log: initialized at %s (%zu bytes)", config->mmap_path, mmap_size);
+
+  /* Write startup marker */
+  log_mmap_write(1 /* LOG_INFO */, NULL, 0, NULL, "=== Log started (mmap text mode, %zu bytes) ===", file_size);
 
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t log_mmap_init_simple(const char *mmap_path, const char *text_log_path) {
+asciichat_error_t log_mmap_init_simple(const char *log_path, size_t max_size) {
   log_mmap_config_t config = {
-      .mmap_path = mmap_path,
-      .text_log_path = text_log_path,
-      .entry_count = 0,       /* Use default */
-      .flush_interval_ms = 0, /* Use default */
-      .immediate_error_flush = true,
+      .log_path = log_path,
+      .max_size = max_size,
   };
   return log_mmap_init(&config);
 }
@@ -297,81 +190,84 @@ void log_mmap_destroy(void) {
     return;
   }
 
-  /* Stop flusher thread */
-  if (g_mmap_log.flusher_running) {
-    g_mmap_log.flusher_running = false;
-    ascii_thread_join(&g_mmap_log.flusher_thread, NULL);
-  }
+  /* Write shutdown marker */
+  log_mmap_write(1 /* LOG_INFO */, NULL, 0, NULL, "=== Log ended ===");
 
-  /* Final flush */
-  flush_entries_to_text_log();
+  /* Sync to disk */
+  platform_mmap_sync(&g_mmap_log.mmap, true);
 
-  /* Close text log */
-  if (g_mmap_log.text_log_fd >= 0) {
-    fsync(g_mmap_log.text_log_fd);
-    close(g_mmap_log.text_log_fd);
-    g_mmap_log.text_log_fd = -1;
-  }
-
-  /* Sync and close mmap */
-  platform_mmap_sync(&g_mmap_log.mmap, false);
+  /* Close mmap */
   platform_mmap_close(&g_mmap_log.mmap);
-  g_mmap_log.buffer = NULL;
+  g_mmap_log.header = NULL;
+  g_mmap_log.text_region = NULL;
 
   g_mmap_log.initialized = false;
   log_info("mmap log: destroyed");
 }
 
 void log_mmap_write(int level, const char *file, int line, const char *func, const char *fmt, ...) {
-  if (!g_mmap_log.initialized || !g_mmap_log.buffer) {
+  if (!g_mmap_log.initialized || !g_mmap_log.header || !g_mmap_log.text_region) {
     return;
   }
 
-  /* Claim a slot atomically - this is the fast path, no mutex! */
-  uint64_t slot = atomic_fetch_add(&g_mmap_log.buffer->header.write_head, 1);
-  uint32_t idx = (uint32_t)(slot % g_mmap_log.buffer->header.entry_count);
+  static const char *level_names[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+  const char *level_name = (level >= 0 && level < 6) ? level_names[level] : "???";
 
-  log_mmap_entry_t *entry = &g_mmap_log.buffer->entries[idx];
+  /* Format the complete log line into a local buffer first */
+  char line_buf[1024];
+  char time_buf[32];
+  format_timestamp(time_buf, sizeof(time_buf));
 
-  /* Check for overwrite (ring buffer full) */
-  uint64_t old_seq = atomic_load(&entry->sequence);
-  /* Only check for overwrite if slot >= old_seq to avoid underflow.
-   * If old_seq > slot, it's from a previous session and can be overwritten. */
-  if (old_seq != 0 && slot >= old_seq && (slot - old_seq) < g_mmap_log.buffer->header.entry_count) {
-    /* Would overwrite unflushed entry - count as dropped */
-    atomic_fetch_add(&g_mmap_log.dropped_entries, 1);
+  int prefix_len;
+  if (file && func) {
+    prefix_len =
+        snprintf(line_buf, sizeof(line_buf), "[%s] [%s] %s:%d in %s(): ", time_buf, level_name, file, line, func);
+  } else {
+    prefix_len = snprintf(line_buf, sizeof(line_buf), "[%s] [%s] ", time_buf, level_name);
   }
 
-  /* Fill entry */
-  entry->timestamp_ns = get_timestamp_ns();
-  entry->level = (uint8_t)level;
+  if (prefix_len < 0) {
+    return;
+  }
 
-  /* Format message */
+  /* Format the message */
   va_list args;
   va_start(args, fmt);
-  if (file && func) {
-    /* Debug format with location */
-    int prefix_len = snprintf(entry->message, sizeof(entry->message), "%s:%d %s(): ", file, line, func);
-    if (prefix_len > 0 && prefix_len < (int)sizeof(entry->message)) {
-      vsnprintf(entry->message + prefix_len, sizeof(entry->message) - (size_t)prefix_len, fmt, args);
-    }
-  } else {
-    /* Simple format */
-    vsnprintf(entry->message, sizeof(entry->message), fmt, args);
-  }
+  int msg_len = vsnprintf(line_buf + prefix_len, sizeof(line_buf) - (size_t)prefix_len - 1, fmt, args);
   va_end(args);
 
-  /* Mark entry as written by setting sequence - this is the "ready" signal */
-  atomic_store(&entry->sequence, slot + 1);
+  if (msg_len < 0) {
+    return;
+  }
 
-  atomic_fetch_add(&g_mmap_log.total_entries, 1);
+  /* Add newline */
+  size_t total_len = (size_t)prefix_len + (size_t)msg_len;
+  if (total_len >= sizeof(line_buf) - 1) {
+    total_len = sizeof(line_buf) - 2; /* Truncate if too long */
+  }
+  line_buf[total_len] = '\n';
+  total_len++;
+  line_buf[total_len] = '\0';
 
-  /* Immediate flush for errors if configured */
-  if (g_mmap_log.immediate_error_flush && level >= 4 /* LOG_ERROR */) {
-    flush_entries_to_text_log();
-    if (g_mmap_log.text_log_fd >= 0) {
-      fsync(g_mmap_log.text_log_fd);
-    }
+  /* Atomically claim space in the mmap'd region */
+  uint64_t pos = atomic_fetch_add(&g_mmap_log.header->write_pos, total_len);
+
+  /* Check if we exceeded capacity - drop this message if so */
+  /* Rotation is handled by maybe_rotate_log() called from logging.c */
+  if (pos + total_len > g_mmap_log.text_capacity) {
+    /* Undo our claim - we can't fit */
+    atomic_fetch_sub(&g_mmap_log.header->write_pos, total_len);
+    return;
+  }
+
+  /* Copy formatted text to mmap'd region */
+  memcpy(g_mmap_log.text_region + pos, line_buf, total_len);
+
+  atomic_fetch_add(&g_mmap_log.bytes_written, total_len);
+
+  /* Sync for ERROR/FATAL to ensure visibility on crash */
+  if (level >= 4 /* LOG_ERROR */) {
+    platform_mmap_sync(&g_mmap_log.mmap, false);
   }
 }
 
@@ -379,21 +275,93 @@ bool log_mmap_is_active(void) {
   return g_mmap_log.initialized;
 }
 
-void log_mmap_flush(void) {
-  flush_entries_to_text_log();
-  if (g_mmap_log.text_log_fd >= 0) {
-    fsync(g_mmap_log.text_log_fd);
+void log_mmap_sync(void) {
+  if (g_mmap_log.initialized) {
+    platform_mmap_sync(&g_mmap_log.mmap, true);
   }
 }
 
-void log_mmap_get_stats(uint64_t *total_entries, uint64_t *flushed_entries, uint64_t *dropped_entries) {
-  if (total_entries) {
-    *total_entries = atomic_load(&g_mmap_log.total_entries);
+void log_mmap_get_stats(uint64_t *bytes_written, uint64_t *wrap_count) {
+  if (bytes_written) {
+    *bytes_written = atomic_load(&g_mmap_log.bytes_written);
   }
-  if (flushed_entries) {
-    *flushed_entries = atomic_load(&g_mmap_log.flushed_entries);
+  if (wrap_count) {
+    *wrap_count = atomic_load(&g_mmap_log.wrap_count);
   }
-  if (dropped_entries) {
-    *dropped_entries = atomic_load(&g_mmap_log.dropped_entries);
+}
+
+bool log_mmap_get_usage(size_t *used, size_t *capacity) {
+  if (!g_mmap_log.initialized || !g_mmap_log.header) {
+    return false;
   }
+
+  if (used) {
+    *used = (size_t)atomic_load(&g_mmap_log.header->write_pos);
+  }
+  if (capacity) {
+    *capacity = g_mmap_log.text_capacity;
+  }
+  return true;
+}
+
+void log_mmap_rotate(void) {
+  if (!g_mmap_log.initialized || !g_mmap_log.header || !g_mmap_log.text_region) {
+    return;
+  }
+
+  /* NOTE: Caller must hold the rotation mutex from logging.c */
+
+  uint64_t current_pos = atomic_load(&g_mmap_log.header->write_pos);
+  size_t capacity = g_mmap_log.text_capacity;
+
+  /* Keep last 2/3 of the log (same ratio as file rotation) */
+  size_t keep_size = capacity * 2 / 3;
+  if (current_pos <= keep_size) {
+    return;
+  }
+
+  /* Find where to start keeping (skip to beginning of current_pos - keep_size) */
+  size_t skip_bytes = (size_t)current_pos - keep_size;
+  char *keep_start = g_mmap_log.text_region + skip_bytes;
+
+  /* Skip to next line boundary to avoid partial lines */
+  size_t skipped = 0;
+  while (skipped < keep_size && *keep_start != '\n') {
+    keep_start++;
+    skipped++;
+  }
+  if (skipped < keep_size && *keep_start == '\n') {
+    keep_start++;
+    skipped++;
+  }
+
+  size_t actual_keep = keep_size - skipped;
+  if (actual_keep == 0) {
+    /* Nothing to keep - just reset */
+    atomic_store(&g_mmap_log.header->write_pos, 0);
+    memset(g_mmap_log.text_region, 0, capacity);
+    return;
+  }
+
+  /* Move the tail to the beginning using memmove (handles overlap) */
+  memmove(g_mmap_log.text_region, keep_start, actual_keep);
+
+  /* Clear the rest */
+  memset(g_mmap_log.text_region + actual_keep, 0, capacity - actual_keep);
+
+  /* Update write position */
+  atomic_store(&g_mmap_log.header->write_pos, actual_keep);
+
+  /* Write rotation marker */
+  const char *rotate_msg = "\n=== LOG ROTATED ===\n";
+  size_t rotate_len = strlen(rotate_msg);
+  if (actual_keep + rotate_len < capacity) {
+    memcpy(g_mmap_log.text_region + actual_keep, rotate_msg, rotate_len);
+    atomic_store(&g_mmap_log.header->write_pos, actual_keep + rotate_len);
+  }
+
+  atomic_fetch_add(&g_mmap_log.wrap_count, 1);
+
+  /* Sync after rotation */
+  platform_mmap_sync(&g_mmap_log.mmap, true);
 }
