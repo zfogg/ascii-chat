@@ -510,14 +510,83 @@ void symbol_cache_print_stats(void) {
 // ============================================================================
 
 /**
+ * @brief Parse llvm-symbolizer output and format a single result
+ * @param fp File pointer to read from
+ * @param addr Original address (for fallback display)
+ * @return Formatted symbol string (caller must free), or NULL on error
+ */
+static char *parse_llvm_symbolizer_result(FILE *fp, void *addr) {
+  char func_name[512] = "??";
+  char file_location[512] = "??:0";
+  char blank_line[8];
+
+  // Read function name line
+  if (fgets(func_name, sizeof(func_name), fp) == NULL) {
+    return NULL;
+  }
+  func_name[strcspn(func_name, "\n")] = '\0';
+
+  // Read file location line
+  if (fgets(file_location, sizeof(file_location), fp) == NULL) {
+    return NULL;
+  }
+  file_location[strcspn(file_location, "\n")] = '\0';
+
+  // Read blank separator line (and discard it)
+  if (fgets(blank_line, sizeof(blank_line), fp) == NULL) {
+    // End of output - not an error
+  }
+
+  // Remove column number (last :N) from file_location
+  char *last_colon = strrchr(file_location, ':');
+  if (last_colon) {
+    *last_colon = '\0';
+  }
+
+  // Extract relative path
+  const char *rel_path = extract_project_relative_path(file_location);
+
+  // Allocate result buffer
+  char *result = SAFE_MALLOC(1024, char *);
+  if (!result) {
+    return NULL;
+  }
+
+  // Format symbol
+  bool has_func = (strcmp(func_name, "??") != 0 && strlen(func_name) > 0);
+  bool has_file =
+      (strcmp(file_location, "??:0") != 0 && strcmp(file_location, "??:?") != 0 && strcmp(file_location, "??") != 0);
+
+  // Remove () from function name if present (llvm-symbolizer includes them)
+  char clean_func[512];
+  SAFE_STRNCPY(clean_func, func_name, sizeof(clean_func));
+  char *paren = strstr(clean_func, "()");
+  if (paren) {
+    *paren = '\0';
+  }
+
+  if (!has_func && !has_file) {
+    SAFE_SNPRINTF(result, 1024, "%p", addr);
+  } else if (has_func && has_file) {
+    SAFE_SNPRINTF(result, 1024, "%s() (%s)", clean_func, rel_path);
+  } else if (has_func) {
+    SAFE_SNPRINTF(result, 1024, "%s()", clean_func);
+  } else {
+    SAFE_SNPRINTF(result, 1024, "%s (unknown function)", rel_path);
+  }
+
+  return result;
+}
+
+/**
  * @brief Run llvm-symbolizer on a batch of addresses and parse results
  * @param buffer Array of addresses
  * @param size Number of addresses
  * @return Array of symbol strings (must be freed by caller)
  *
- * @note On macOS, use run_llvm_symbolizer_macos_batch() instead, which handles ASLR.
+ * On macOS, handles ASLR by calculating file offsets and grouping addresses by binary.
+ * On other platforms, uses runtime addresses directly with the main executable.
  */
-#ifndef __APPLE__
 static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
     return NULL;
@@ -529,183 +598,157 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Get executable path
-  char exe_path[PLATFORM_MAX_PATH_LENGTH];
-  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
-    return NULL;
-  }
-
-  // SECURITY: Validate executable path to prevent command injection
-  // Paths from system APIs should be safe, but validate to be thorough
-  if (!validate_shell_safe(exe_path, ".-/\\:")) {
-    log_error("Invalid executable path - contains unsafe characters: %s", exe_path);
-    return NULL;
-  }
-
-  // Escape exe_path for shell command (auto-detects platform and quoting needs)
-  char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  if (!escape_path_for_shell(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-    log_error("Failed to escape executable path for shell command");
-    return NULL;
-  }
-  const char *escaped_exe_path = escaped_exe_path_buf;
-
-  // Validate and escape llvm-symbolizer path if needed
-  if (!validate_shell_safe(symbolizer_cmd, ".-/\\:_")) {
-    log_warn("llvm-symbolizer path contains unsafe characters: %s", symbolizer_cmd);
-    return NULL;
-  }
-
-  // Escape symbolizer command for shell (auto-detects platform and quoting needs)
-  char escaped_symbolizer_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  if (!escape_path_for_shell(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-    log_error("Failed to escape llvm-symbolizer path for shell command");
-    return NULL;
-  }
-  const char *escaped_symbolizer_cmd = escaped_symbolizer_buf;
-
-  // Build llvm-symbolizer command with --demangle, --output-style=LLVM, --relativenames, --inlining,
-  // and --debug-file-directory
-  char cmd[8192];
-  int offset;
-
-#ifdef BUILD_DIR
-  // SECURITY: Validate BUILD_DIR (compile-time constant, but validate to be thorough)
-  if (!validate_shell_safe(BUILD_DIR, ".-/\\:")) {
-    log_error("Invalid BUILD_DIR - contains unsafe characters: %s", BUILD_DIR);
-    return NULL;
-  }
-
-  // Escape BUILD_DIR for shell (auto-detects platform and quoting needs)
-  char escaped_build_dir_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  if (!escape_path_for_shell(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-    log_error("Failed to escape BUILD_DIR for shell command");
-    return NULL;
-  }
-  const char *escaped_build_dir = escaped_build_dir_buf;
-
-  offset = snprintf(cmd, sizeof(cmd),
-                    "%s --demangle --output-style=LLVM --relativenames --inlining "
-                    "--debug-file-directory=%s -e %s ",
-                    escaped_symbolizer_cmd, escaped_build_dir, escaped_exe_path);
-#else
-  // Note: Use platform-appropriate quotes (already escaped)
-  offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames --inlining -e %s ",
-                    escaped_symbolizer_cmd, escaped_exe_path);
-#endif
-
-  if (offset <= 0 || offset >= (int)sizeof(cmd)) {
-    log_error("Failed to build llvm-symbolizer command");
-    return NULL;
-  }
-
-  // Add all addresses to the command
-  // Use explicit hex format with 0x prefix since Windows %p doesn't include it
-  for (int i = 0; i < size; i++) {
-    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
-    if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
-      break;
-    }
-    offset += n;
-  }
-
-  // Execute llvm-symbolizer
-  FILE *fp = popen(cmd, "r");
-  if (!fp) {
-    log_error("Failed to execute llvm-symbolizer command");
-    return NULL;
-  }
-
   // Allocate result array
   char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
   if (!result) {
-    pclose(fp);
     return NULL;
   }
 
-  // Parse output - llvm-symbolizer produces THREE lines per address:
-  // Line 1: function_name (or "??")
-  // Line 2: /path/to/file:line:column (or "??:0")
-  // Line 3: blank line (separator)
+#ifdef __APPLE__
+  // macOS: Group addresses by binary, calculate file offsets, batch per binary
+  // We'll collect addresses for each unique binary path
+
+  // First pass: determine binary for each address and calculate file offsets
+  typedef struct {
+    char binary_path[PLATFORM_MAX_PATH_LENGTH];
+    uintptr_t file_offsets[64]; // Max addresses per binary
+    int original_indices[64];
+    int count;
+  } binary_group_t;
+
+  binary_group_t groups[8]; // Support up to 8 different binaries
+  int num_groups = 0;
+
   for (int i = 0; i < size; i++) {
-    char func_name[512] = "??";
-    char file_location[512] = "??:0";
-    char blank_line[8];
+    char binary_path[PLATFORM_MAX_PATH_LENGTH];
+    uintptr_t file_offset = 0;
 
-    // Read function name line
-    if (fgets(func_name, sizeof(func_name), fp) == NULL) {
-      break;
-    }
-    func_name[strcspn(func_name, "\n")] = '\0';
-
-    // Read file location line
-    if (fgets(file_location, sizeof(file_location), fp) == NULL) {
-      break;
-    }
-    file_location[strcspn(file_location, "\n")] = '\0';
-
-    // Read blank separator line (and discard it)
-    if (fgets(blank_line, sizeof(blank_line), fp) == NULL) {
-      // End of output - not an error, just means this was the last address
+    if (!get_macos_file_offset(buffer[i], binary_path, sizeof(binary_path), &file_offset)) {
+      // Could not find binary - use raw address
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+      }
+      continue;
     }
 
-    // Remove column number (last :N) from file_location
-    char *last_colon = strrchr(file_location, ':');
-    if (last_colon) {
-      *last_colon = '\0';
+    // Find or create group for this binary
+    int group_idx = -1;
+    for (int g = 0; g < num_groups; g++) {
+      if (strcmp(groups[g].binary_path, binary_path) == 0) {
+        group_idx = g;
+        break;
+      }
     }
 
-    // Extract relative path
-    const char *rel_path = extract_project_relative_path(file_location);
+    if (group_idx < 0 && num_groups < 8) {
+      group_idx = num_groups++;
+      SAFE_STRNCPY(groups[group_idx].binary_path, binary_path, sizeof(groups[group_idx].binary_path));
+      groups[group_idx].count = 0;
+    }
 
-    // Allocate result buffer
-    result[i] = SAFE_MALLOC(1024, char *);
+    if (group_idx >= 0 && groups[group_idx].count < 64) {
+      int idx = groups[group_idx].count++;
+      groups[group_idx].file_offsets[idx] = file_offset;
+      groups[group_idx].original_indices[idx] = i;
+    }
+  }
+
+  // Second pass: batch symbolize each group
+  for (int g = 0; g < num_groups; g++) {
+    if (groups[g].count == 0) {
+      continue;
+    }
+
+    // Build command with all addresses for this binary
+    char cmd[8192];
+    int offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e '%s' ",
+                          symbolizer_cmd, groups[g].binary_path);
+
+    for (int j = 0; j < groups[g].count && offset < (int)sizeof(cmd) - 32; j++) {
+      int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%lx ", (unsigned long)groups[g].file_offsets[j]);
+      if (n > 0) {
+        offset += n;
+      }
+    }
+
+    // Suppress stderr
+    strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
+
+    FILE *fp = popen(cmd, "r");
+    if (!fp) {
+      continue;
+    }
+
+    // Parse results in order
+    for (int j = 0; j < groups[g].count; j++) {
+      int orig_idx = groups[g].original_indices[j];
+      result[orig_idx] = parse_llvm_symbolizer_result(fp, buffer[orig_idx]);
+      if (!result[orig_idx]) {
+        result[orig_idx] = SAFE_MALLOC(32, char *);
+        if (result[orig_idx]) {
+          SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+        }
+      }
+    }
+
+    pclose(fp);
+  }
+
+#else
+  // Linux/Windows: Use runtime addresses directly with main executable
+  char exe_path[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
+    SAFE_FREE(result);
+    return NULL;
+  }
+
+  // Escape paths for shell
+  char escaped_exe_path[PLATFORM_MAX_PATH_LENGTH * 2];
+  if (!escape_path_for_shell(exe_path, escaped_exe_path, sizeof(escaped_exe_path))) {
+    SAFE_FREE(result);
+    return NULL;
+  }
+
+  char escaped_symbolizer[PLATFORM_MAX_PATH_LENGTH * 2];
+  if (!escape_path_for_shell(symbolizer_cmd, escaped_symbolizer, sizeof(escaped_symbolizer))) {
+    SAFE_FREE(result);
+    return NULL;
+  }
+
+  // Build command
+  char cmd[8192];
+  int offset = snprintf(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e %s ",
+                        escaped_symbolizer, escaped_exe_path);
+
+  for (int i = 0; i < size && offset < (int)sizeof(cmd) - 32; i++) {
+    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "0x%llx ", (unsigned long long)buffer[i]);
+    if (n > 0) {
+      offset += n;
+    }
+  }
+
+  FILE *fp = popen(cmd, "r");
+  if (!fp) {
+    SAFE_FREE(result);
+    return NULL;
+  }
+
+  for (int i = 0; i < size; i++) {
+    result[i] = parse_llvm_symbolizer_result(fp, buffer[i]);
     if (!result[i]) {
-      break;
-    }
-
-    // Format symbol
-    bool has_func = (strcmp(func_name, "??") != 0 && strlen(func_name) > 0);
-    bool has_file =
-        (strcmp(file_location, "??:0") != 0 && strcmp(file_location, "??:?") != 0 && strcmp(file_location, "??") != 0);
-
-    if (!has_func && !has_file) {
-      // Complete unknown - show raw address
-      SAFE_SNPRINTF(result[i], 1024, "%p", buffer[i]);
-    } else if (has_func && has_file) {
-      // Best case - both function and file:line known
-      // Remove () from function name if present (llvm-symbolizer includes them)
-      char clean_func[512];
-      SAFE_STRNCPY(clean_func, func_name, sizeof(clean_func));
-      char *paren = strstr(clean_func, "()");
-      if (paren) {
-        *paren = '\0';
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
       }
-
-      if (strstr(rel_path, ":") != NULL) {
-        SAFE_SNPRINTF(result[i], 1024, "%s in %s()", rel_path, clean_func);
-      } else {
-        SAFE_SNPRINTF(result[i], 1024, "%s() at %s", clean_func, rel_path);
-      }
-    } else if (has_func) {
-      // Function known but file unknown (common for library functions)
-      char clean_func[512];
-      SAFE_STRNCPY(clean_func, func_name, sizeof(clean_func));
-      char *paren = strstr(clean_func, "()");
-      if (paren) {
-        *paren = '\0';
-      }
-      SAFE_SNPRINTF(result[i], 1024, "%s() at %p", clean_func, buffer[i]);
-    } else {
-      // File known but function unknown (rare)
-      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)", rel_path);
     }
   }
 
   pclose(fp);
+#endif
+
   return result;
 }
-#endif // !__APPLE__
 
 /**
  * @brief Run addr2line on a batch of addresses and parse results
@@ -840,132 +883,6 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   return result;
 }
 
-#ifdef __APPLE__
-/**
- * @brief Run llvm-symbolizer on macOS with ASLR address translation
- * @param buffer Array of runtime addresses
- * @param size Number of addresses
- * @return Array of symbol strings (must be freed by caller)
- *
- * On macOS, runtime addresses include ASLR slide. This function:
- * 1. Groups addresses by which binary they belong to
- * 2. Calculates file offsets by subtracting the ASLR slide
- * 3. Runs llvm-symbolizer with the correct binary and file offset
- */
-static char **run_llvm_symbolizer_macos_batch(void *const *buffer, int size) {
-  if (size <= 0 || !buffer) {
-    return NULL;
-  }
-
-  const char *symbolizer_cmd = get_llvm_symbolizer_command();
-  if (!symbolizer_cmd) {
-    log_debug("llvm-symbolizer not available on macOS");
-    return NULL;
-  }
-
-  // Allocate result array
-  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
-  if (!result) {
-    return NULL;
-  }
-
-  // Process each address individually since they may belong to different binaries
-  for (int i = 0; i < size; i++) {
-    char binary_path[PLATFORM_MAX_PATH_LENGTH];
-    uintptr_t file_offset = 0;
-
-    if (!get_macos_file_offset(buffer[i], binary_path, sizeof(binary_path), &file_offset)) {
-      // Could not find which binary this address belongs to
-      result[i] = SAFE_MALLOC(32, char *);
-      if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
-      }
-      continue;
-    }
-
-    // Build llvm-symbolizer command for this single address
-    // Use file offset (not runtime address) with the correct binary
-    char cmd[2048];
-    SAFE_SNPRINTF(cmd, sizeof(cmd), "%s --demangle --output-style=LLVM --relativenames -e '%s' 0x%lx 2>/dev/null",
-                  symbolizer_cmd, binary_path, (unsigned long)file_offset);
-
-    FILE *fp = popen(cmd, "r");
-    if (!fp) {
-      result[i] = SAFE_MALLOC(32, char *);
-      if (result[i]) {
-        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
-      }
-      continue;
-    }
-
-    char func_name[512] = "??";
-    char file_location[512] = "??:0";
-    char blank_line[8];
-
-    // Read function name line
-    if (fgets(func_name, sizeof(func_name), fp)) {
-      func_name[strcspn(func_name, "\n")] = '\0';
-    }
-
-    // Read file location line
-    if (fgets(file_location, sizeof(file_location), fp)) {
-      file_location[strcspn(file_location, "\n")] = '\0';
-    }
-
-    // Read blank separator line
-    if (fgets(blank_line, sizeof(blank_line), fp) == NULL) {
-      // End of output - not an error
-    }
-
-    pclose(fp);
-
-    // Remove column number (last :N) from file_location
-    char *last_colon = strrchr(file_location, ':');
-    if (last_colon) {
-      *last_colon = '\0';
-    }
-
-    // Extract relative path
-    const char *rel_path = extract_project_relative_path(file_location);
-
-    // Allocate result buffer
-    result[i] = SAFE_MALLOC(1024, char *);
-    if (!result[i]) {
-      continue;
-    }
-
-    // Format symbol
-    bool has_func = (strcmp(func_name, "??") != 0 && strlen(func_name) > 0);
-    bool has_file =
-        (strcmp(file_location, "??:0") != 0 && strcmp(file_location, "??:?") != 0 && strcmp(file_location, "??") != 0);
-
-    // Remove () from function name if present
-    char clean_func[512];
-    SAFE_STRNCPY(clean_func, func_name, sizeof(clean_func));
-    char *paren = strstr(clean_func, "()");
-    if (paren) {
-      *paren = '\0';
-    }
-
-    if (!has_func && !has_file) {
-      // Complete unknown - show raw address
-      SAFE_SNPRINTF(result[i], 1024, "%p", buffer[i]);
-    } else if (has_func && has_file) {
-      // Best case - both function and file:line known
-      SAFE_SNPRINTF(result[i], 1024, "%s() (%s)", clean_func, rel_path);
-    } else if (has_func) {
-      // Function known but file unknown
-      SAFE_SNPRINTF(result[i], 1024, "%s()", clean_func);
-    } else {
-      // File known but function unknown (rare)
-      SAFE_SNPRINTF(result[i], 1024, "%s (unknown function)", rel_path);
-    }
-  }
-
-  return result;
-}
-#endif // __APPLE__
-
 char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
     log_error("Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
@@ -977,13 +894,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (!atomic_load(&g_symbol_cache_initialized)) {
     // Cache not initialized - fall back to uncached resolution
     // This happens during early initialization before platform_init() completes
-#ifdef __APPLE__
-    // On macOS, use llvm-symbolizer with ASLR translation
-    char **result = run_llvm_symbolizer_macos_batch(buffer, size);
-#else
-    // Try llvm-symbolizer first, then addr2line
     char **result = run_llvm_symbolizer_batch(buffer, size);
-#endif
     if (!result) {
       result = run_addr2line_batch(buffer, size);
     }
@@ -1029,12 +940,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
     // Use the detected symbolizer type
     switch (g_symbolizer_type) {
     case SYMBOLIZER_LLVM:
-#ifdef __APPLE__
-      // On macOS, use the ASLR-aware llvm-symbolizer wrapper
-      resolved = run_llvm_symbolizer_macos_batch(uncached_addrs, uncached_count);
-#else
       resolved = run_llvm_symbolizer_batch(uncached_addrs, uncached_count);
-#endif
       break;
     case SYMBOLIZER_ADDR2LINE:
       resolved = run_addr2line_batch(uncached_addrs, uncached_count);

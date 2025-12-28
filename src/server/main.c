@@ -1204,7 +1204,7 @@ main_loop:
   // Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
   // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
   // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
-  data_buffer_pool_cleanup_global();
+  buffer_pool_cleanup_global();
 
   // Clean up binary path cache explicitly
   // Note: This is also called by platform_cleanup() via atexit(), but it's idempotent

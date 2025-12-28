@@ -245,7 +245,7 @@ static void shutdown_client() {
   display_cleanup();
 
   // Cleanup core systems
-  data_buffer_pool_cleanup_global();
+  buffer_pool_cleanup_global();
 
   // Clean up symbol cache (before log_destroy)
   // This must be called BEFORE log_destroy() as symbol_cache_cleanup() uses log_debug()
@@ -320,8 +320,8 @@ static int initialize_client_systems(bool shared_init_completed) {
 #endif
 
     // Initialize global shared buffer pool
-    data_buffer_pool_init_global();
-    (void)atexit(data_buffer_pool_cleanup_global);
+    buffer_pool_init_global();
+    (void)atexit(buffer_pool_cleanup_global);
   }
 
   // Ensure logging output is available for connection attempts

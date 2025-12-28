@@ -292,7 +292,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 
 static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer_enabled) {
   size_t rb_size = sizeof(audio_ring_buffer_t);
-  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_pool_alloc(rb_size);
+  audio_ring_buffer_t *rb = (audio_ring_buffer_t *)buffer_pool_alloc(NULL, rb_size);
 
   if (!rb) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio ring buffer from buffer pool");
@@ -313,7 +313,7 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
 
   if (mutex_init(&rb->mutex) != 0) {
     SET_ERRNO(ERROR_THREAD, "Failed to initialize audio ring buffer mutex");
-    buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
+    buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
     return NULL;
   }
 
@@ -333,7 +333,7 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
     return;
 
   mutex_destroy(&rb->mutex);
-  buffer_pool_free(rb, sizeof(audio_ring_buffer_t));
+  buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
 }
 
 void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {

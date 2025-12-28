@@ -545,7 +545,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
       log_error("Failed to receive initial capabilities packet from client %u: result=%d",
                 atomic_load(&client->client_id), result);
       if (envelope.allocated_buffer) {
-        buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+        buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
       }
       (void)remove_client(atomic_load(&client->client_id));
       return -1;
@@ -555,7 +555,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
       log_error("Expected PACKET_TYPE_CLIENT_CAPABILITIES but got packet type %d from client %u", envelope.type,
                 atomic_load(&client->client_id));
       if (envelope.allocated_buffer) {
-        buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+        buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
       }
       (void)remove_client(atomic_load(&client->client_id));
       return -1;
@@ -567,7 +567,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
     // Free the packet data
     if (envelope.allocated_buffer) {
-      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
     }
     log_debug("Successfully received and processed initial capabilities for client %u",
               atomic_load(&client->client_id));
@@ -994,7 +994,7 @@ void *client_receive_thread(void *arg) {
     if (atomic_load(&g_server_should_exit)) {
       // Free any data that might have been allocated
       if (envelope.allocated_buffer) {
-        buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+        buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
       }
       break;
     }
@@ -1140,7 +1140,7 @@ void *client_receive_thread(void *arg) {
 
     // Free the allocated buffer (not the data pointer which may be offset into it)
     if (envelope.allocated_buffer) {
-      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
     }
   }
 
@@ -1765,14 +1765,14 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
                              uint32_t *sender_id) {
   if (!crypto_server_is_ready(client->client_id)) {
     log_error("Received encrypted packet but crypto not ready for client %u", client->client_id);
-    buffer_pool_free(*data, *len);
+    buffer_pool_free(NULL, *data, *len);
     *data = NULL;
     return -1;
   }
 
   // Store original allocation size before it gets modified
   size_t original_alloc_size = *len;
-  void *decrypted_data = buffer_pool_alloc(original_alloc_size);
+  void *decrypted_data = buffer_pool_alloc(NULL, original_alloc_size);
   size_t decrypted_len;
   int decrypt_result = crypto_server_decrypt_packet(client->client_id, (const uint8_t *)*data, *len,
                                                     (uint8_t *)decrypted_data, original_alloc_size, &decrypted_len);
@@ -1780,15 +1780,15 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   if (decrypt_result != 0) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to process encrypted packet from client %u (result=%d)", client->client_id,
               decrypt_result);
-    buffer_pool_free(*data, original_alloc_size);
-    buffer_pool_free(decrypted_data, original_alloc_size);
+    buffer_pool_free(NULL, *data, original_alloc_size);
+    buffer_pool_free(NULL, decrypted_data, original_alloc_size);
     *data = NULL;
     return -1;
   }
 
   // Replace encrypted data with decrypted data
   // Use original allocation size for freeing the encrypted buffer
-  buffer_pool_free(*data, original_alloc_size);
+  buffer_pool_free(NULL, *data, original_alloc_size);
 
   *data = decrypted_data;
   *len = decrypted_len;
@@ -1796,7 +1796,7 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   // Now process the decrypted packet by parsing its header
   if (*len < sizeof(packet_header_t)) {
     SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small for header from client %u", client->client_id);
-    buffer_pool_free(*data, *len);
+    buffer_pool_free(NULL, *data, *len);
     *data = NULL;
     return -1;
   }

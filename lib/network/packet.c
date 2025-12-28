@@ -358,23 +358,23 @@ asciichat_error_t packet_receive(socket_t sockfd, packet_type_t *type, void **da
   // Allocate buffer for payload
   void *payload = NULL;
   if (pkt_len > 0) {
-    payload = buffer_pool_alloc(pkt_len);
+    payload = buffer_pool_alloc(NULL, pkt_len);
 
     // Use adaptive timeout for large packets
     int recv_timeout = network_is_test_environment() ? 1 : calculate_packet_timeout(pkt_len);
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received < 0) {
-      buffer_pool_free(payload, pkt_len);
+      buffer_pool_free(NULL, payload, pkt_len);
       return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to receive packet payload");
     }
     if (received != (ssize_t)pkt_len) {
-      buffer_pool_free(payload, pkt_len);
+      buffer_pool_free(NULL, payload, pkt_len);
       return SET_ERRNO(ERROR_NETWORK, "Partial packet payload received: %zd/%u bytes", received, pkt_len);
     }
 
     // Validate CRC32
     if (packet_validate_crc32(payload, pkt_len, expected_crc) != ASCIICHAT_OK) {
-      buffer_pool_free(payload, pkt_len);
+      buffer_pool_free(NULL, payload, pkt_len);
       // Error context is already set by packet_validate_crc32
       return ERROR_NETWORK_PROTOCOL;
     }
@@ -472,7 +472,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
     return -1;
   }
   size_t plaintext_len = sizeof(header) + final_len;
-  uint8_t *plaintext = buffer_pool_alloc(plaintext_len);
+  uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_len);
   if (!plaintext) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext packet");
     if (compressed_data) {
@@ -490,17 +490,17 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // Check for integer overflow before calculating ciphertext size
   if (plaintext_len > SIZE_MAX - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
     SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
-    buffer_pool_free(plaintext, plaintext_len);
+    buffer_pool_free(NULL, plaintext, plaintext_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
     return -1;
   }
   size_t ciphertext_size = plaintext_len + CRYPTO_NONCE_SIZE + CRYPTO_MAC_SIZE;
-  uint8_t *ciphertext = buffer_pool_alloc(ciphertext_size);
+  uint8_t *ciphertext = buffer_pool_alloc(NULL, ciphertext_size);
   if (!ciphertext) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
-    buffer_pool_free(plaintext, plaintext_len);
+    buffer_pool_free(NULL, plaintext, plaintext_len);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
@@ -510,11 +510,11 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   size_t ciphertext_len;
   crypto_result_t result =
       crypto_encrypt(crypto_ctx, plaintext, plaintext_len, ciphertext, ciphertext_size, &ciphertext_len);
-  buffer_pool_free(plaintext, plaintext_len);
+  buffer_pool_free(NULL, plaintext, plaintext_len);
 
   if (result != CRYPTO_OK) {
     SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt packet: %s", crypto_result_to_string(result));
-    buffer_pool_free(ciphertext, ciphertext_size);
+    buffer_pool_free(NULL, ciphertext, ciphertext_size);
     if (compressed_data) {
       SAFE_FREE(compressed_data);
     }
@@ -525,7 +525,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   log_debug_every(LOG_RATE_SLOW, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)",
                   type);
   int send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
-  buffer_pool_free(ciphertext, ciphertext_size);
+  buffer_pool_free(NULL, ciphertext, ciphertext_size);
 
   if (compressed_data) {
     SAFE_FREE(compressed_data);
@@ -599,7 +599,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     }
 
     // Read encrypted payload
-    uint8_t *ciphertext = buffer_pool_alloc(pkt_len);
+    uint8_t *ciphertext = buffer_pool_alloc(NULL, pkt_len);
     if (!ciphertext) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ciphertext");
       return PACKET_RECV_ERROR;
@@ -609,33 +609,33 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     received = recv_with_timeout(sockfd, ciphertext, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive encrypted payload: %zd/%u bytes", received, pkt_len);
-      buffer_pool_free(ciphertext, pkt_len);
+      buffer_pool_free(NULL, ciphertext, pkt_len);
       return PACKET_RECV_ERROR;
     }
 
     // Decrypt - allocate plaintext buffer with extra space
     // pkt_len is already validated to be <= MAX_PACKET_SIZE, so adding 1024 cannot overflow
     size_t plaintext_size = (size_t)pkt_len + 1024;
-    uint8_t *plaintext = buffer_pool_alloc(plaintext_size);
+    uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
     if (!plaintext) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for plaintext");
-      buffer_pool_free(ciphertext, pkt_len);
+      buffer_pool_free(NULL, ciphertext, pkt_len);
       return PACKET_RECV_ERROR;
     }
 
     size_t plaintext_len;
     crypto_result_t result = crypto_decrypt(crypto_ctx, ciphertext, pkt_len, plaintext, plaintext_size, &plaintext_len);
-    buffer_pool_free(ciphertext, pkt_len);
+    buffer_pool_free(NULL, ciphertext, pkt_len);
 
     if (result != CRYPTO_OK) {
       SET_ERRNO(ERROR_CRYPTO, "Failed to decrypt packet: %s", crypto_result_to_string(result));
-      buffer_pool_free(plaintext, plaintext_size);
+      buffer_pool_free(NULL, plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }
 
     if (plaintext_len < sizeof(packet_header_t)) {
       SET_ERRNO(ERROR_CRYPTO, "Decrypted packet too small: %zu < %zu", plaintext_len, sizeof(packet_header_t));
-      buffer_pool_free(plaintext, plaintext_size);
+      buffer_pool_free(NULL, plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }
 
@@ -649,7 +649,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     size_t payload_len = plaintext_len - sizeof(packet_header_t);
     if (payload_len != pkt_len) {
       SET_ERRNO(ERROR_CRYPTO, "Decrypted payload size mismatch: %zu != %u", payload_len, pkt_len);
-      buffer_pool_free(plaintext, plaintext_size);
+      buffer_pool_free(NULL, plaintext, plaintext_size);
       return PACKET_RECV_ERROR;
     }
 
@@ -658,7 +658,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
       uint32_t actual_crc = asciichat_crc32(plaintext + sizeof(packet_header_t), pkt_len);
       if (actual_crc != expected_crc) {
         SET_ERRNO(ERROR_CRYPTO, "Decrypted packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-        buffer_pool_free(plaintext, plaintext_size);
+        buffer_pool_free(NULL, plaintext, plaintext_size);
         return PACKET_RECV_ERROR;
       }
     }
@@ -681,7 +681,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // Read payload
   if (pkt_len > 0) {
-    uint8_t *payload = buffer_pool_alloc(pkt_len);
+    uint8_t *payload = buffer_pool_alloc(NULL, pkt_len);
     if (!payload) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for payload");
       return PACKET_RECV_ERROR;
@@ -691,7 +691,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     received = recv_with_timeout(sockfd, payload, pkt_len, recv_timeout);
     if (received != (ssize_t)pkt_len) {
       SET_ERRNO(ERROR_NETWORK, "Failed to receive payload: %zd/%u bytes", received, pkt_len);
-      buffer_pool_free(payload, pkt_len);
+      buffer_pool_free(NULL, payload, pkt_len);
       return PACKET_RECV_ERROR;
     }
 
@@ -699,7 +699,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
     uint32_t actual_crc = asciichat_crc32(payload, pkt_len);
     if (actual_crc != expected_crc) {
       SET_ERRNO(ERROR_NETWORK, "Packet CRC mismatch: 0x%x != 0x%x", actual_crc, expected_crc);
-      buffer_pool_free(payload, pkt_len);
+      buffer_pool_free(NULL, payload, pkt_len);
       return PACKET_RECV_ERROR;
     }
 
