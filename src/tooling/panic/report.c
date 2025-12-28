@@ -7,6 +7,7 @@
 #include "tooling/panic/instrument_log.h"
 
 #include "util/uthash.h"
+#include "util/parsing.h"
 
 #include <errno.h>
 #include <inttypes.h>
@@ -427,9 +428,9 @@ static bool parse_arguments(int argc, char **argv, report_config_t *config) {
       config->log_dir = optarg;
       break;
     case 't': {
-      errno = 0;
-      unsigned long long tid_value = strtoull(optarg, NULL, 10);
-      if (errno != 0) {
+      unsigned long long tid_value;
+      asciichat_error_t parse_result = parse_ulonglong(optarg, &tid_value, 0, ULLONG_MAX);
+      if (parse_result != ASCIICHAT_OK) {
         log_error("Invalid thread id: %s", optarg);
         return false;
       }
