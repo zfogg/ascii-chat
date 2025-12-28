@@ -146,6 +146,8 @@ if(TARGET AudioProcess)
     if(APPLE)
         # macOS uses -force_load to embed all symbols from static libraries
         # Also need to link C++ standard library for exception handling symbols
+        # Note: Linking both c++ and other libraries that also depend on c++/m/opus
+        # may cause duplicate library warnings from the linker (harmless)
         target_link_libraries(webrtc_audio_processing INTERFACE
             -force_load $<TARGET_FILE:AudioProcess>
             -force_load $<TARGET_FILE:aec3>
