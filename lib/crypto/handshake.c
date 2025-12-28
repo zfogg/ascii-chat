@@ -6,7 +6,7 @@
 
 #include "handshake.h"
 #include "asciichat_errno.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "common.h"
 #include "crypto.h"
 #include "crypto/crypto.h"

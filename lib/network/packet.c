@@ -9,10 +9,10 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
-#include "buffer_pool.h"
-#include "network/crc32.h"
+#include "util/buffer_pool.h"
+#include "util/crc32.h"
 #include "crypto/crypto.h"
-#include "network/compression.h"
+#include "util/compression.h"
 #include "util/endian.h"
 #include "options.h" // For opt_compression_level
 #include <stdint.h>

@@ -14,7 +14,7 @@
 
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "network/compression.h"
+#include "util/compression.h"
 #include "network/packet.h"
 #include "options.h"
 

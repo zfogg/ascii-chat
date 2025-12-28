@@ -24,7 +24,7 @@
 #include "video/simd/common.h"
 #include "ansi_fast.h"
 #include "options.h"
-#include "buffer_pool.h" // For buffer pool allocation functions
+#include "util/buffer_pool.h" // For buffer pool allocation functions
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 

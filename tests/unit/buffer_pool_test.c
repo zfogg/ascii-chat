@@ -1,7 +1,7 @@
 #include <criterion/theories.h>
 
 #include "tests/common.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(buffer_pool);

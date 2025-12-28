@@ -5,10 +5,10 @@
  */
 
 #include "packet_queue.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "common.h"
 #include "asciichat_errno.h"
-#include "network/crc32.h"
+#include "util/crc32.h"
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>

@@ -80,7 +80,7 @@
 #include "platform/system.h"
 #include "common.h"
 #include "options.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "video/palette.h"
 #include "network/network.h"
 #include "util/path.h"

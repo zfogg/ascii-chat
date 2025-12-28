@@ -34,7 +34,7 @@ set(UTIL_SRCS
     lib/util/levenshtein.c
     lib/util/image.c
     lib/util/audio.c
-    lib/fps.c
+    lib/util/fps.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -225,8 +225,6 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/av.c
-    lib/network/compression.c
-    lib/network/crc32.c
     lib/network/packet_queue.c
     lib/network/http_client.c
 )
@@ -266,8 +264,8 @@ set_source_files_properties(
 # Data Structures Module
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
-    lib/ringbuffer.c
-    lib/buffer_pool.c
+    lib/util/ringbuffer.c
+    lib/util/buffer_pool.c
 )
 
 # =============================================================================

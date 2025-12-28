@@ -9,7 +9,7 @@
 #include "audio/client_audio_pipeline.h"
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "options.h"
 #include "platform/init.h" // For static_mutex_t
 #include <stdlib.h>

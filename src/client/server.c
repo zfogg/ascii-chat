@@ -71,7 +71,7 @@
 #include "display.h"
 #include "options.h"
 #include "video/palette.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 
 #include <string.h>
 #include <stdarg.h>

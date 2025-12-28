@@ -85,12 +85,12 @@
 
 #include "network/packet.h"
 #include "network/av.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "common.h"
 #include "util/validation.h"
 #include "options.h"
-#include "network/crc32.h"
-#include "fps.h"
+#include "util/crc32.h"
+#include "util/fps.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -110,7 +110,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include "platform/windows_compat.h"
 #endif
 
-#include "network/compression.h"
+#include "util/compression.h"
 #include "network/av.h"
 
 #include <errno.h>

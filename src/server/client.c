@@ -119,7 +119,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "options.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "network/network.h"
 #include "network/packet.h"
 #include "network/av.h"
@@ -132,7 +132,7 @@
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
-#include "network/crc32.h"
+#include "util/crc32.h"
 #include "network/logging.h"
 #include "util/time.h"
 

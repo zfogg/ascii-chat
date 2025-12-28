@@ -21,7 +21,7 @@
 #include "crypto/keys/keys.h"
 #include "crypto/known_hosts.h"
 #include "network/packet.h"
-#include "buffer_pool.h"
+#include "util/buffer_pool.h"
 #include "tests/logging.h"
 
 // Use verbose logging to debug test failures
