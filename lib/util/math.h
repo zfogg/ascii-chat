@@ -85,3 +85,74 @@ static inline uint8_t clamp_rgb(int value) {
     return 255;
   return (uint8_t)value;
 }
+
+/* ============================================================================
+ * Power-of-Two Utilities
+ * ============================================================================
+ */
+
+/**
+ * @brief Check if a value is a power of two
+ * @param n Value to check
+ * @return true if n is a power of two (1, 2, 4, 8, 16, ...), false otherwise
+ *
+ * Efficiently checks whether a value is a power of two using a bitwise trick.
+ * Zero returns false (0 is not a power of two).
+ *
+ * Uses the mathematical property: if n is a power of two, then n & (n-1) == 0.
+ * For example:
+ * - 8 (binary 1000) & 7 (binary 0111) = 0 ✓ (power of two)
+ * - 7 (binary 0111) & 6 (binary 0110) = 6 ✗ (not power of two)
+ *
+ * @par Example
+ * @code
+ * bool b1 = math_is_power_of_two(16);  // Returns true
+ * bool b2 = math_is_power_of_two(17);  // Returns false
+ * bool b3 = math_is_power_of_two(0);   // Returns false
+ * bool b4 = math_is_power_of_two(1);   // Returns true (2^0)
+ * @endcode
+ *
+ * @ingroup util
+ */
+static inline bool math_is_power_of_two(size_t n) {
+  return n && !(n & (n - 1));
+}
+
+/**
+ * @brief Round up to the next power of two
+ * @param n Input value
+ * @return Smallest power of two greater than or equal to n
+ *
+ * Rounds up to the nearest power of two. Returns 1 for n=0.
+ * Uses bit-spreading technique to efficiently compute the result.
+ *
+ * Algorithm: Spread the highest set bit to all lower positions, then add 1.
+ * Example: 1001 (9) → 1111 (15) → 10000 (16) = 2^4
+ *
+ * @note This function is commonly used to size circular buffers and hash tables.
+ * @note For large values near SIZE_MAX, result may wrap/overflow. Check before using.
+ *
+ * @par Example
+ * @code
+ * size_t p1 = math_next_power_of_two(9);    // Returns 16 (2^4)
+ * size_t p2 = math_next_power_of_two(16);   // Returns 16 (already power of two)
+ * size_t p3 = math_next_power_of_two(1000); // Returns 1024 (2^10)
+ * size_t p4 = math_next_power_of_two(0);    // Returns 1 (2^0)
+ * @endcode
+ *
+ * @ingroup util
+ */
+static inline size_t math_next_power_of_two(size_t n) {
+  if (n == 0)
+    return 1;
+  n--;
+  n |= n >> 1;
+  n |= n >> 2;
+  n |= n >> 4;
+  n |= n >> 8;
+  n |= n >> 16;
+  if (sizeof(size_t) > 4) {
+    n |= n >> 32;
+  }
+  return n + 1;
+}
