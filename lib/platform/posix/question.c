@@ -70,11 +70,12 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
       }
     }
 
-    // Read input character by character
-    size_t pos = 0;
+    // Read input character by character with cursor support
+    size_t len = 0;    // Total length of input
+    size_t cursor = 0; // Cursor position within input
     int c;
 
-    while (pos < max_len - 1) {
+    while (len < max_len - 1) {
       c = getchar();
 
       if (c == EOF) {
@@ -87,22 +88,85 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         break;
       }
 
-      // Handle backspace (BS = 8) - delete character before cursor
-      if (c == 8) {
-        if (pos > 0) {
-          pos--;
-          if (opts.mask_char) {
-            // Erase the mask character: backspace, space, backspace
-            fprintf(stderr, "\b \b");
+      // Handle escape sequences (arrow keys, delete, etc.)
+      if (c == 27) { // ESC
+        int next = getchar();
+        if (next == '[') {
+          int code = getchar();
+          switch (code) {
+          case 'D': // Left arrow
+            if (cursor > 0) {
+              cursor--;
+              fprintf(stderr, "\033[D");
+              fflush(stderr);
+            }
+            break;
+          case 'C': // Right arrow
+            if (cursor < len) {
+              cursor++;
+              fprintf(stderr, "\033[C");
+              fflush(stderr);
+            }
+            break;
+          case '3': // Delete key (sends ESC[3~)
+            if (getchar() == '~' && cursor < len) {
+              // Shift characters left
+              memmove(&buffer[cursor], &buffer[cursor + 1], len - cursor - 1);
+              len--;
+              // Redraw from cursor to end
+              if (opts.mask_char) {
+                for (size_t i = cursor; i < len; i++) {
+                  fprintf(stderr, "%c", opts.mask_char);
+                }
+                fprintf(stderr, " "); // Clear last char
+                // Move cursor back
+                for (size_t i = cursor; i <= len; i++) {
+                  fprintf(stderr, "\033[D");
+                }
+              }
+              fflush(stderr);
+            }
+            break;
+          case 'H': // Home
+            while (cursor > 0) {
+              cursor--;
+              fprintf(stderr, "\033[D");
+            }
             fflush(stderr);
+            break;
+          case 'F': // End
+            while (cursor < len) {
+              cursor++;
+              fprintf(stderr, "\033[C");
+            }
+            fflush(stderr);
+            break;
           }
         }
         continue;
       }
 
-      // Handle delete (DEL = 127) - delete character at cursor position
-      // At end of input line, there's nothing forward to delete
-      if (c == 127) {
+      // Handle backspace (BS = 8 or DEL = 127) - delete character before cursor
+      if (c == 8 || c == 127) {
+        if (cursor > 0) {
+          // Shift characters left
+          memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
+          cursor--;
+          len--;
+          // Redraw: move back, print rest of line, clear last char, reposition
+          if (opts.mask_char) {
+            fprintf(stderr, "\033[D"); // Move cursor back
+            for (size_t i = cursor; i < len; i++) {
+              fprintf(stderr, "%c", opts.mask_char);
+            }
+            fprintf(stderr, " "); // Clear the old last char
+            // Move cursor back to position
+            for (size_t i = cursor; i <= len; i++) {
+              fprintf(stderr, "\033[D");
+            }
+          }
+          fflush(stderr);
+        }
         continue;
       }
 
@@ -118,15 +182,30 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         continue;
       }
 
-      // Add character to buffer
-      buffer[pos++] = (char)c;
+      // Insert character at cursor position
+      if (len < max_len - 1) {
+        // Shift characters right to make room
+        memmove(&buffer[cursor + 1], &buffer[cursor], len - cursor);
+        buffer[cursor] = (char)c;
+        len++;
+        cursor++;
 
-      // Display mask character if specified
-      if (opts.mask_char) {
-        fprintf(stderr, "%c", opts.mask_char);
-        fflush(stderr);
+        // Display: print from cursor-1 to end, then reposition
+        if (opts.mask_char) {
+          for (size_t i = cursor - 1; i < len; i++) {
+            fprintf(stderr, "%c", opts.mask_char);
+          }
+          // Move cursor back to correct position
+          for (size_t i = cursor; i < len; i++) {
+            fprintf(stderr, "\033[D");
+          }
+          fflush(stderr);
+        }
       }
     }
+
+    // Update pos to final length for null termination
+    size_t pos = len;
 
     // Null-terminate the buffer
     buffer[pos] = '\0';
