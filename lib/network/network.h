@@ -334,7 +334,7 @@ int set_socket_nonblocking(socket_t sockfd);
 /**
  * @brief Configure socket buffers and TCP_NODELAY for optimal performance
  * @param sockfd Socket file descriptor
- * @return ASCIICHAT_OK on success, ERROR_NETWORK_CONFIG on failure
+ * @return ASCIICHAT_OK on success, or ERROR_NETWORK if all options fail
  *
  * Configures socket with large send/receive buffers (1MB each) and enables
  * TCP_NODELAY for low-latency real-time video streaming.
@@ -344,7 +344,11 @@ int set_socket_nonblocking(socket_t sockfd);
  * - Receive buffer: 1MB (SO_RCVBUF)
  * - TCP_NODELAY: enabled (disables Nagle's algorithm)
  *
- * On failure, uses SET_ERRNO_SYS() for error context logging.
+ * BEHAVIOR:
+ * Attempts to set all three socket options independently. Individual failures are
+ * logged as warnings but do not prevent attempting other options. This ensures
+ * TCP_NODELAY is always set even if buffer size configuration fails (common on
+ * systems with strict limits). Only returns error if ALL options fail.
  *
  * @note Large buffers prevent packet loss during frame bursts
  * @note TCP_NODELAY ensures frames are sent immediately without buffering
