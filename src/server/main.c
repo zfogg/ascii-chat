@@ -75,6 +75,7 @@
 #include "main.h"
 #include "common.h"
 #include "util/uthash.h"
+#include "util/endian.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
@@ -1034,13 +1035,13 @@ main_loop:
       // IPv4 address
       struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
       inet_ntop(AF_INET, &addr_in->sin_addr, client_ip, sizeof(client_ip));
-      client_port = ntohs(addr_in->sin_port);
+      client_port = NET_TO_HOST_U16(addr_in->sin_port);
       log_debug("New client connected from %s:%d (IPv4)", client_ip, client_port);
     } else if (((struct sockaddr *)&client_addr)->sa_family == AF_INET6) {
       // IPv6 address
       struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
       inet_ntop(AF_INET6, &addr_in6->sin6_addr, client_ip, sizeof(client_ip));
-      client_port = ntohs(addr_in6->sin6_port);
+      client_port = NET_TO_HOST_U16(addr_in6->sin6_port);
 
       // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
       if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
