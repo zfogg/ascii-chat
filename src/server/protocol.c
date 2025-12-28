@@ -289,6 +289,153 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 }
 
 /**
+ * @brief Process PROTOCOL_VERSION packet - validate protocol compatibility
+ *
+ * Clients send this packet to announce their protocol version and capabilities.
+ * The server validates that the major version matches and logs any version
+ * mismatches for debugging purposes.
+ *
+ * PACKET STRUCTURE EXPECTED:
+ * - protocol_version_packet_t containing:
+ *   - protocol_version: Major version number (must match PROTOCOL_VERSION_MAJOR)
+ *   - protocol_revision: Minor version number
+ *   - supports_encryption: Encryption capability flag
+ *   - compression_algorithms: Supported compression bitmask
+ *   - feature_flags: Optional feature flags
+ *
+ * VALIDATION PERFORMED:
+ * - Packet size matches sizeof(protocol_version_packet_t)
+ * - Major protocol version matches (PROTOCOL_VERSION_MAJOR)
+ * - Reserved bytes are zero (future-proofing)
+ *
+ * ERROR HANDLING:
+ * - Version mismatch is logged but NOT fatal (backward compatibility)
+ * - Invalid packet size triggers disconnect
+ *
+ * @param client Client that sent the packet
+ * @param data Packet payload (protocol_version_packet_t)
+ * @param len Size of packet payload in bytes
+ *
+ * @note This is typically the first packet in the handshake
+ * @note Protocol version validation ensures compatibility
+ */
+void handle_protocol_version_packet(client_info_t *client, const void *data, size_t len) {
+  if (!data) {
+    disconnect_client_for_bad_data(client, "PROTOCOL_VERSION payload missing");
+    return;
+  }
+
+  if (len != sizeof(protocol_version_packet_t)) {
+    disconnect_client_for_bad_data(client, "PROTOCOL_VERSION invalid size: %zu (expected %zu)", len,
+                                   sizeof(protocol_version_packet_t));
+    return;
+  }
+
+  const protocol_version_packet_t *version = (const protocol_version_packet_t *)data;
+  uint16_t client_major = ntohs(version->protocol_version);
+  uint16_t client_minor = ntohs(version->protocol_revision);
+
+  // Validate major version match (minor version can differ for backward compat)
+  if (client_major != PROTOCOL_VERSION_MAJOR) {
+    log_warn("Client %u protocol version mismatch: client=%u.%u, server=%u.%u", atomic_load(&client->client_id),
+             client_major, client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+    // Note: We don't disconnect on version mismatch for backward compatibility
+    // Clients may be older or newer than server
+  } else if (client_minor != PROTOCOL_VERSION_MINOR) {
+    log_info("Client %u has different protocol revision: client=%u.%u, server=%u.%u", atomic_load(&client->client_id),
+             client_major, client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+  }
+
+  // Validate reserved bytes are zero
+  for (size_t i = 0; i < sizeof(version->reserved); i++) {
+    if (version->reserved[i] != 0) {
+      log_warn("Client %u sent non-zero reserved bytes in PROTOCOL_VERSION packet", atomic_load(&client->client_id));
+      // Don't disconnect - reserved bytes may be used in future versions
+      break;
+    }
+  }
+
+  // Log supported features
+  if (version->supports_encryption) {
+    log_debug("Client %u supports encryption", atomic_load(&client->client_id));
+  }
+  if (version->compression_algorithms != 0) {
+    log_debug("Client %u supports compression: 0x%02x", atomic_load(&client->client_id),
+              version->compression_algorithms);
+  }
+  if (version->feature_flags != 0) {
+    log_debug("Client %u supports features: 0x%04x", atomic_load(&client->client_id), version->feature_flags);
+  }
+}
+
+/**
+ * @brief Process CLIENT_LEAVE packet - handle clean client disconnect
+ *
+ * Clients may send this packet before disconnecting to allow the server to
+ * log the disconnect reason and perform clean state management. This is
+ * optional but preferred over abrupt disconnects.
+ *
+ * PACKET STRUCTURE EXPECTED:
+ * - Optional string containing disconnect reason (0-256 bytes)
+ *
+ * PROTOCOL BEHAVIOR:
+ * - Client logs the disconnect reason if provided
+ * - Server continues normal disconnect sequence after receiving packet
+ * - Client remains responsible for closing socket
+ *
+ * ERROR HANDLING:
+ * - Empty payload is handled gracefully
+ * - Oversized payloads are rejected
+ * - Invalid UTF-8 in reason is handled gracefully (logged as-is)
+ *
+ * @param client Client that sent the leave packet
+ * @param data Packet payload (optional reason string)
+ * @param len Size of packet payload in bytes (0-256)
+ *
+ * @note This handler doesn't trigger immediate disconnect
+ * @note Actual disconnect occurs when socket closes
+ */
+void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
+  if (!client) {
+    return;
+  }
+
+  uint32_t client_id = atomic_load(&client->client_id);
+
+  if (len == 0) {
+    // Empty reason - client disconnecting without explanation
+    log_info("Client %u sent leave notification (no reason)", client_id);
+  } else if (len <= 256) {
+    // Reason provided - extract and log it
+    char reason[257] = {0};
+    memcpy(reason, data, len);
+    reason[len] = '\0';
+
+    // Validate reason is printable (handle potential non-UTF8 gracefully)
+    bool all_printable = true;
+    for (size_t i = 0; i < len; i++) {
+      uint8_t c = (uint8_t)reason[i];
+      if (c < 32 && c != '\t' && c != '\n') {
+        all_printable = false;
+        break;
+      }
+    }
+
+    if (all_printable) {
+      log_info("Client %u sent leave notification: %s", client_id, reason);
+    } else {
+      log_info("Client %u sent leave notification (reason contains non-printable characters)", client_id);
+    }
+  } else {
+    // Oversized reason - shouldn't happen with validation.h checks
+    log_warn("Client %u sent oversized leave reason (%zu bytes, max 256)", client_id, len);
+  }
+
+  // Note: We don't disconnect the client here - that happens when socket closes
+  // This is just a clean notification before disconnect
+}
+
+/**
  * @brief Process STREAM_START packet - client requests to begin media transmission
  *
  * Clients send this packet to indicate they're ready to start sending video
@@ -1411,49 +1558,6 @@ void handle_ping_packet(client_info_t *client) {
   (void)client;
 }
 
-/**
- * @brief Process CLIENT_LEAVE packet - handle graceful client disconnect
- *
- * Clients send this packet to notify the server of an intentional disconnect,
- * as opposed to a network failure or crash. This allows the server to perform
- * clean shutdown procedures without waiting for socket timeouts.
- *
- * PACKET STRUCTURE:
- * - LEAVE packets have no payload (header only)
- *
- * STATE CHANGES PERFORMED:
- * - Sets client->active = false immediately
- * - Triggers client cleanup procedures
- * - Prevents new packets from being processed
- *
- * PROTOCOL BEHAVIOR:
- * - Client should not send additional packets after LEAVE
- * - Server will begin client removal process
- * - Socket will be closed by cleanup procedures
- *
- * CLEANUP COORDINATION:
- * - Receive thread will exit after processing this packet
- * - Send thread will stop when active flag becomes false
- * - Render threads will detect inactive state and stop processing
- * - remove_client() will be called to complete cleanup
- *
- * ERROR HANDLING:
- * - Safe to call multiple times
- * - No validation required (simple state change)
- * - Cleanup is idempotent
- *
- * @param client Source client requesting graceful disconnect
- *
- * @note This provides clean shutdown versus network timeout
- * @note Actual client removal happens in main thread
- * @see remove_client() For complete cleanup implementation
- */
-void handle_client_leave_packet(client_info_t *client) {
-  // Handle clean disconnect notification from client
-  log_info("Client %u sent LEAVE packet - clean disconnect", atomic_load(&client->client_id));
-  // OPTIMIZED: Use atomic operation for thread control flag (lock-free)
-  atomic_store(&client->active, false);
-}
 
 /* ============================================================================
  * Protocol Utility Functions
