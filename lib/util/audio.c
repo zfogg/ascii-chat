@@ -5,11 +5,11 @@
  */
 
 #include "audio.h"
-#include <arpa/inet.h>  // For ntohl, htons
+#include <arpa/inet.h> // For ntohl, htons
 #include <string.h>
-#include "../network/packet.h"  // For audio_batch_packet_t
-#include "../network/av.h"  // For audio packet structures
-#include "../logging.h"
+#include "../network/packet.h" // For audio_batch_packet_t
+#include "../network/av.h"     // For audio packet structures
+#include "log/logging.h"
 #include "../common.h"
 
 asciichat_error_t audio_parse_batch_header(const void *data, size_t len, audio_batch_info_t *info) {
@@ -22,8 +22,7 @@ asciichat_error_t audio_parse_batch_header(const void *data, size_t len, audio_b
   }
 
   if (len < sizeof(audio_batch_packet_t)) {
-    return SET_ERRNO(ERROR_INVALID_SIZE,
-                     "Audio batch header too small (len=%zu, expected=%zu)", len,
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch header too small (len=%zu, expected=%zu)", len,
                      sizeof(audio_batch_packet_t));
   }
 
@@ -50,22 +49,17 @@ asciichat_error_t audio_validate_batch_params(const audio_batch_info_t *batch) {
 
   // Check for reasonable max (256 frames per batch is very generous)
   if (batch->batch_count > 256) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Audio batch count too large (batch_count=%u, max=256)",
-                     batch->batch_count);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch count too large (batch_count=%u, max=256)", batch->batch_count);
   }
 
   // Validate channels (1=mono, 2=stereo, max 8 for multi-channel)
   if (batch->channels == 0 || batch->channels > 8) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Invalid channel count (channels=%u, valid=1-8)",
-                     batch->channels);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid channel count (channels=%u, valid=1-8)", batch->channels);
   }
 
   // Validate sample rate
   if (!audio_is_supported_sample_rate(batch->sample_rate)) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Unsupported sample rate (sample_rate=%u)", batch->sample_rate);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported sample rate (sample_rate=%u)", batch->sample_rate);
   }
 
   // Check for reasonable sample counts
@@ -77,8 +71,7 @@ asciichat_error_t audio_validate_batch_params(const audio_batch_info_t *batch) {
   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
   // With max 256 frames, that's up to ~245k samples per batch
   if (batch->total_samples > 1000000) {
-    return SET_ERRNO(ERROR_INVALID_PARAM,
-                     "Audio batch sample count suspiciously large (total_samples=%u)",
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Audio batch sample count suspiciously large (total_samples=%u)",
                      batch->total_samples);
   }
 

@@ -1,3 +1,4 @@
+#pragma once
 /**
  * @file util/audio.h
  * @brief 🔊 Audio packet parsing utilities
@@ -73,10 +74,10 @@
  * Contains unpacked and validated audio batch metadata.
  */
 typedef struct {
-  uint32_t batch_count;  ///< Number of audio frames in this batch
-  uint32_t total_samples;  ///< Total number of samples across all frames
-  uint32_t sample_rate;  ///< Sample rate in Hz (e.g., 48000)
-  uint32_t channels;  ///< Number of channels (1=mono, 2=stereo)
+  uint32_t batch_count;   ///< Number of audio frames in this batch
+  uint32_t total_samples; ///< Total number of samples across all frames
+  uint32_t sample_rate;   ///< Sample rate in Hz (e.g., 48000)
+  uint32_t channels;      ///< Number of channels (1=mono, 2=stereo)
 } audio_batch_info_t;
 
 /**
@@ -94,7 +95,7 @@ typedef struct {
  *
  * @return ASCIICHAT_OK if parsing succeeded
  * @return ERROR_INVALID_PARAM if data is NULL or info is NULL
- * @return ERROR_INVALID_SIZE if len is too small for the header
+ * @return ERROR_INVALID_PARAM if len is too small for the header
  *
  * Usage:
  * @code
@@ -157,5 +158,3 @@ asciichat_error_t audio_validate_batch_params(const audio_batch_info_t *batch);
  * @endcode
  */
 bool audio_is_supported_sample_rate(uint32_t sample_rate);
-
-#endif // UTIL_AUDIO_HELPERS_H

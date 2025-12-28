@@ -61,8 +61,8 @@ asciichat_error_t image_calc_rgb_size(size_t width, size_t height, size_t *out_s
  * Used for pool allocations where struct and pixels are contiguous.
  * Safe calculation of: struct_size + (width * height * bytes_per_pixel)
  */
-asciichat_error_t image_calc_total_allocation(size_t width, size_t height, size_t struct_size,
-                                               size_t bytes_per_pixel, size_t *out_size);
+asciichat_error_t image_calc_total_allocation(size_t width, size_t height, size_t struct_size, size_t bytes_per_pixel,
+                                              size_t *out_size);
 
 /**
  * @brief Validate image dimensions (non-zero, within limits)
