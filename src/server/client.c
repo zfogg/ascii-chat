@@ -375,24 +375,10 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
              network_error_string());
   }
 
-  // Set socket buffer sizes for large data transmission
-  int send_buffer_size = 1024 * 1024; // 1MB send buffer
-  int recv_buffer_size = 1024 * 1024; // 1MB receive buffer
-
-  if (socket_setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
-    log_warn("Failed to set send buffer size for client %u: %s", atomic_load(&client->client_id),
-             network_error_string());
-  }
-
-  if (socket_setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
-    log_warn("Failed to set receive buffer size for client %u: %s", atomic_load(&client->client_id),
-             network_error_string());
-  }
-
-  // Enable TCP_NODELAY to reduce latency for large packets
-  int nodelay = 1;
-  if (socket_setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
-    log_warn("Failed to set TCP_NODELAY for client %u: %s", atomic_load(&client->client_id), network_error_string());
+  // Configure socket buffers and TCP_NODELAY for optimal performance
+  asciichat_error_t sock_config_result = socket_configure_buffers(socket);
+  if (sock_config_result != ASCIICHAT_OK) {
+    log_warn("Failed to configure socket for client %u: %s", atomic_load(&client->client_id), network_error_string());
   }
 
   safe_snprintf(client->display_name, sizeof(client->display_name), "Client%u", atomic_load(&client->client_id));
@@ -572,16 +558,18 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Start threads for this client (AFTER crypto handshake AND initial capabilities)
-  if (ascii_thread_create(&client->receive_thread, client_receive_thread, client) != 0) {
-    LOG_ERRNO_IF_SET("Client receive thread creation failed");
+  asciichat_error_t recv_result = thread_create_or_fail(&client->receive_thread, client_receive_thread, client,
+                                                         "receive", atomic_load(&client->client_id));
+  if (recv_result != ASCIICHAT_OK) {
     // Don't destroy mutexes here - remove_client() will handle it
     (void)remove_client(atomic_load(&client->client_id));
     return -1;
   }
 
   // Start send thread for this client
-  if (ascii_thread_create(&client->send_thread, client_send_thread_func, client) != 0) {
-    LOG_ERRNO_IF_SET("Client send thread creation failed");
+  asciichat_error_t send_result = thread_create_or_fail(&client->send_thread, client_send_thread_func, client,
+                                                        "send", atomic_load(&client->client_id));
+  if (send_result != ASCIICHAT_OK) {
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
     // Now safe to remove client (won't double-free since first thread creation succeeded)
