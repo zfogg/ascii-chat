@@ -13,6 +13,7 @@
 #include "common.h"
 #include "../output_buffer.h"
 #include "../ansi_fast.h"
+#include "util/overflow.h"
 
 #if SIMD_SUPPORT_AVX2
 #include <immintrin.h>
@@ -392,7 +393,37 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 
   // Use malloc for output buffer (will be freed by caller)
   size_t bytes_per_pixel = use_256color ? 10u : 25u; // Conservative estimates
-  size_t output_size = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 1024u;
+
+  // Calculate buffer size with overflow checking
+  size_t height_times_width;
+  if (checked_size_mul((size_t)height, (size_t)width, &height_times_width) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * width overflow");
+    return NULL;
+  }
+
+  size_t pixel_data_size;
+  if (checked_size_mul(height_times_width, bytes_per_pixel, &pixel_data_size) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: (height * width) * bytes_per_pixel overflow");
+    return NULL;
+  }
+
+  size_t height_times_16;
+  if (checked_size_mul((size_t)height, 16u, &height_times_16) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * 16 overflow");
+    return NULL;
+  }
+
+  size_t temp;
+  if (checked_size_add(pixel_data_size, height_times_16, &temp) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: pixel_data + height*16 overflow");
+    return NULL;
+  }
+
+  size_t output_size;
+  if (checked_size_add(temp, 1024u, &output_size) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: total output size overflow");
+    return NULL;
+  }
 
   char *output = SAFE_MALLOC(output_size, char *);
   if (!output) {
