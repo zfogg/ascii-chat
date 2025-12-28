@@ -84,6 +84,7 @@
 #include "keepalive.h"
 
 #include "network/packet.h"
+#include "network/packet_parsing.h"
 #include "network/av.h"
 #include "buffer_pool.h"
 #include "common.h"
@@ -268,6 +269,7 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
 /**
  * @brief Decode frame data, handling both compressed and uncompressed formats
  *
+ * Wrapper around shared packet_decode_frame_data_malloc() utility function.
  * Consolidates decompression/copy logic with unified size validation and error handling.
  * Allocates buffer and returns decoded frame data, or NULL on error.
  *
@@ -278,57 +280,12 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
  * @param compressed_size Expected compressed size (used for validation when compressed)
  * @return Allocated frame buffer (caller must SAFE_FREE) or NULL on error
  *
+ * @see packet_decode_frame_data_malloc() For shared implementation
  * @ingroup client_protocol
  */
 static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
                                uint32_t original_size, uint32_t compressed_size) {
-  // Validate size before allocation to prevent excessive memory usage
-  if (original_size > 100 * 1024 * 1024) {
-    char size_str[32];
-    format_bytes_pretty(original_size, size_str, sizeof(size_str));
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s", size_str);
-    return NULL;
-  }
-
-  char *frame_data = SAFE_MALLOC(original_size + 1, char *);
-
-  if (is_compressed) {
-    // Validate compressed frame size
-    if (frame_data_len != compressed_size) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
-                frame_data_len);
-      SAFE_FREE(frame_data);
-      return NULL;
-    }
-
-    // Decompress using compression API
-    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
-
-    if (result != 0) {
-      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", original_size);
-      SAFE_FREE(frame_data);
-      return NULL;
-    }
-
-#ifdef COMPRESSION_DEBUG
-    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, original_size);
-#endif
-  } else {
-    // Uncompressed frame - validate size
-    if (frame_data_len != original_size) {
-      log_error("Uncompressed frame size mismatch: expected %u, got %zu", original_size, frame_data_len);
-      SAFE_FREE(frame_data);
-      return NULL;
-    }
-
-    // Only copy the actual amount of data we received
-    size_t copy_size = (frame_data_len > original_size) ? original_size : frame_data_len;
-    memcpy(frame_data, frame_data_ptr, copy_size);
-  }
-
-  // Null-terminate the frame data
-  frame_data[original_size] = '\0';
-  return frame_data;
+  return packet_decode_frame_data_malloc(frame_data_ptr, frame_data_len, is_compressed, original_size, compressed_size);
 }
 
 /**

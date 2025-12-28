@@ -224,6 +224,7 @@ set_source_files_properties(
 set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
+    lib/network/packet_parsing.c
     lib/network/av.c
     lib/network/compression.c
     lib/network/crc32.c
