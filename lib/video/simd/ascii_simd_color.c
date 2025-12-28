@@ -17,6 +17,7 @@
 #include "common.h"
 #include "../image.h"
 #include "video/palette.h"
+#include "util/number.h" // For write_u8
 
 /* ============================================================================
  * SIMD-Optimized Colored ASCII Generation
@@ -42,20 +43,7 @@
  * which is negligible compared to terminal I/O (microseconds).
  */
 
-// Helper: write uint8 to string (1-3 digits)
-static inline char *write_u8(char *p, uint8_t n) {
-  if (n < 10) {
-    *p++ = '0' + n;
-  } else if (n < 100) {
-    *p++ = '0' + (n / 10);
-    *p++ = '0' + (n % 10);
-  } else {
-    *p++ = '0' + (n / 100);
-    *p++ = '0' + ((n / 10) % 10);
-    *p++ = '0' + (n % 10);
-  }
-  return p;
-}
+/* write_u8() is now in util/number.h */
 
 // Generate "\e[38;5;NNNm" (foreground only)
 static inline char *build_sgr256_fg(char *buf, uint8_t fg, uint8_t *len_out) {
