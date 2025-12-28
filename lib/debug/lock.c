@@ -459,7 +459,7 @@ static void check_long_held_locks(void) {
       format_duration_ns(held_ns, duration_str, sizeof(duration_str));
 
       // Log warning with formatted duration
-      log_warn_every(1000000,
+      log_warn_every(LOG_RATE_FAST,
                      "Lock held for %s (threshold: 100ms) - %s at %p\n"
                      "  Acquired: %s:%d in %s()\n"
                      "  Thread ID: %llu",
