@@ -14,7 +14,7 @@
 #define LEVENSHTEIN_H
 
 #include <stddef.h>
-#include "../common.h" /* Up one level to lib/ */
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {

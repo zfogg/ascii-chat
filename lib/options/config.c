@@ -4,7 +4,7 @@
  * @brief 📋 TOML configuration file parser with schema validation and CLI override support
  */
 
-#include "config.h"
+#include "options/config.h"
 #include "options/options.h"
 #include "options/validation.h"
 #include "util/path.h"
@@ -544,19 +544,13 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
     }
   } else if (microphone_index.type == TOML_STRING && !config_microphone_index_set) {
     const char *mic_str = microphone_index.u.s;
-    // Special case: "-1" means use default device
-    if (strcmp(mic_str, "-1") == 0) {
-      opt_microphone_index = -1;
+    char error_msg[256];
+    int mic_idx = validate_opt_device_index(mic_str, error_msg, sizeof(error_msg));
+    if (mic_idx != INT_MIN) {
+      opt_microphone_index = mic_idx;
       config_microphone_index_set = true;
     } else {
-      char error_msg[256];
-      int mic_idx = validate_opt_non_negative_int(mic_str, error_msg, sizeof(error_msg));
-      if (mic_idx >= 0) {
-        opt_microphone_index = mic_idx;
-        config_microphone_index_set = true;
-      } else {
-        CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
-      }
+      CONFIG_WARN("%s (skipping audio.microphone_index)", error_msg);
     }
   }
 
@@ -570,19 +564,13 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
     }
   } else if (speakers_index.type == TOML_STRING && !config_speakers_index_set) {
     const char *spk_str = speakers_index.u.s;
-    // Special case: "-1" means use default device
-    if (strcmp(spk_str, "-1") == 0) {
-      opt_speakers_index = -1;
+    char error_msg[256];
+    int spk_idx = validate_opt_device_index(spk_str, error_msg, sizeof(error_msg));
+    if (spk_idx != INT_MIN) {
+      opt_speakers_index = spk_idx;
       config_speakers_index_set = true;
     } else {
-      char error_msg[256];
-      int spk_idx = validate_opt_non_negative_int(spk_str, error_msg, sizeof(error_msg));
-      if (spk_idx >= 0) {
-        opt_speakers_index = spk_idx;
-        config_speakers_index_set = true;
-      } else {
-        CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
-      }
+      CONFIG_WARN("%s (skipping audio.speakers_index)", error_msg);
     }
   }
 }
@@ -696,15 +684,14 @@ static asciichat_error_t apply_crypto_config(toml_datum_t toptab, bool is_client
   toml_datum_t password = toml_seek(toptab, "crypto.password");
   const char *password_str = get_toml_string(password);
   if (password_str && strlen(password_str) > 0 && !config_password_set) {
-    size_t password_len = strlen(password_str);
-    if (password_len >= MIN_PASSWORD_LENGTH && password_len <= MAX_PASSWORD_LENGTH) {
+    char error_msg[256];
+    if (validate_opt_password(password_str, error_msg, sizeof(error_msg)) == 0) {
       CONFIG_WARN("Password stored in config file is insecure! Use CLI --password instead.");
       SAFE_SNPRINTF(opt_password, OPTIONS_BUFF_SIZE, "%s", password_str);
       opt_encrypt_enabled = 1; // Auto-enable encryption when password provided
       config_password_set = true;
     } else {
-      CONFIG_WARN("Invalid password length (must be %d-%d, skipping crypto.password)", MIN_PASSWORD_LENGTH,
-                  MAX_PASSWORD_LENGTH);
+      CONFIG_WARN("%s (skipping crypto.password)", error_msg);
     }
   }
 

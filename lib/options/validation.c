@@ -4,20 +4,20 @@
  * @brief Implementation of options validation functions
  */
 
-#include "validation.h"
+#include "options/validation.h"
 
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "../common.h"
-#include "../log/logging.h"
-#include "../platform/terminal.h"
-#include "../platform/util.h"
-#include "../util/ip.h"
-#include "../util/parsing.h"
-#include "../video/palette.h"
-#include "options.h"
+#include "common.h"
+#include "log/logging.h"
+#include "platform/terminal.h"
+#include "platform/util.h"
+#include "util/ip.h"
+#include "util/parsing.h"
+#include "video/palette.h"
+#include "options/options.h"
 
 // Safely parse string to integer with validation
 int strtoint_safe(const char *str) {
@@ -319,6 +319,50 @@ float validate_opt_float_non_negative(const char *value_str, char *error_msg, si
 }
 
 /**
+ * Validate max clients (1-32)
+ * Returns parsed value on success, -1 on error
+ */
+int validate_opt_max_clients(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Max clients value is required");
+    }
+    return -1;
+  }
+
+  int max = strtoint_safe(value_str);
+  if (max == INT_MIN || max < 1 || max > 32) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid max clients '%s'. Must be between 1 and 32.", value_str);
+    }
+    return -1;
+  }
+  return max;
+}
+
+/**
+ * Validate compression level (1-9)
+ * Returns parsed value on success, -1 on error
+ */
+int validate_opt_compression_level(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Compression level value is required");
+    }
+    return -1;
+  }
+
+  int level = strtoint_safe(value_str);
+  if (level == INT_MIN || level < 1 || level > 9) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid compression level '%s'. Must be between 1 and 9.", value_str);
+    }
+    return -1;
+  }
+  return level;
+}
+
+/**
  * Validate FPS value (1-144)
  * Returns parsed value on success, -1 on error
  */
@@ -338,4 +382,124 @@ int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_si
     return -1;
   }
   return fps_val;
+}
+
+/**
+ * Validate reconnect value (off, auto, 0, -1, or 1-999)
+ * Returns:
+ *   0 for "off" (no retries)
+ *  -1 for "auto" (unlimited retries)
+ *   1-999 for specific retry count
+ *  INT_MIN on parse error
+ */
+int validate_opt_reconnect(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Reconnect value is required");
+    }
+    return INT_MIN;
+  }
+
+  // Check for string values first
+  if (platform_strcasecmp(value_str, "off") == 0) {
+    return 0; // No retries
+  }
+  if (platform_strcasecmp(value_str, "auto") == 0) {
+    return -1; // Unlimited retries
+  }
+
+  // Parse as integer
+  int val = strtoint_safe(value_str);
+  if (val == INT_MIN) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect value '%s'. Use 'off', 'auto', or a number 0-999.",
+                    value_str);
+    }
+    return INT_MIN;
+  }
+
+  // 0 means off, -1 means auto, 1-999 is valid range
+  if (val == 0) {
+    return 0; // No retries
+  }
+  if (val == -1) {
+    return -1; // Unlimited retries
+  }
+  if (val < 1 || val > 999) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid reconnect count '%s'. Must be 'off', 'auto', or 1-999.",
+                    value_str);
+    }
+    return INT_MIN;
+  }
+  return val;
+}
+
+/**
+ * Validate device index (-1 for default, or 0+ for specific device)
+ * Returns parsed value on success, INT_MIN on error
+ */
+int validate_opt_device_index(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str || strlen(value_str) == 0) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Device index value is required");
+    }
+    return INT_MIN;
+  }
+
+  int index = strtoint_safe(value_str);
+  if (index == INT_MIN) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size,
+                    "Invalid device index '%s'. Must be -1 (default) or a non-negative integer.", value_str);
+    }
+    return INT_MIN;
+  }
+
+  // -1 is valid (system default), otherwise must be >= 0
+  if (index < -1) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size,
+                    "Invalid device index '%d'. Must be -1 (default) or a non-negative integer.", index);
+    }
+    return INT_MIN;
+  }
+  return index;
+}
+
+/**
+ * Validate password (8-256 characters, no null bytes)
+ * Returns 0 on success, -1 on error
+ */
+int validate_opt_password(const char *value_str, char *error_msg, size_t error_msg_size) {
+  if (!value_str) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Password value is required");
+    }
+    return -1;
+  }
+
+  size_t len = strlen(value_str);
+  if (len < 8) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Password too short (%zu chars). Must be at least 8 characters.", len);
+    }
+    return -1;
+  }
+  if (len > 256) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Password too long (%zu chars). Must be at most 256 characters.", len);
+    }
+    return -1;
+  }
+
+  // Check for null bytes (would truncate password)
+  if (memchr(value_str, '\0', len) != NULL) {
+    if (error_msg) {
+      SAFE_SNPRINTF(error_msg, error_msg_size, "Password cannot contain null bytes.");
+    }
+    return -1;
+  }
+
+  return 0;
 }
