@@ -117,6 +117,7 @@
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "buffer_pool.h"
@@ -613,8 +614,8 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
   // Convert to network byte order
   server_state_packet_t net_state;
-  net_state.connected_client_count = htonl(state.connected_client_count);
-  net_state.active_client_count = htonl(state.active_client_count);
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Send initial server state directly to the new client
@@ -1233,7 +1234,7 @@ void *client_send_thread_func(void *arg) {
 
       if (audio_packet_count == 1) {
         // Single packet - send directly for low latency
-        packet_type_t pkt_type = (packet_type_t)ntohs(audio_packets[0]->header.type);
+        packet_type_t pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
 
         mutex_lock(&client->send_mutex);
         result = send_packet_secure(client->socket, pkt_type, audio_packets[0]->data, audio_packets[0]->data_len,
@@ -1242,7 +1243,7 @@ void *client_send_thread_func(void *arg) {
       } else {
         // Multiple packets - batch them together
         // Check if these are Opus-encoded packets or raw float audio
-        packet_type_t first_pkt_type = (packet_type_t)ntohs(audio_packets[0]->header.type);
+        packet_type_t first_pkt_type = (packet_type_t)NET_TO_HOST_U16(audio_packets[0]->header.type);
 
         if (first_pkt_type == PACKET_TYPE_AUDIO_OPUS) {
           // Opus packets - batch using proper Opus batching format
@@ -1457,12 +1458,12 @@ void *client_send_thread_func(void *arg) {
 
       // Build ASCII frame packet header (after lock released, with computed CRC)
       ascii_frame_packet_t frame_header = {
-          .width = htonl(atomic_load(&client->width)),
-          .height = htonl(atomic_load(&client->height)),
-          .original_size = htonl((uint32_t)frame_size),
-          .compressed_size = htonl(0), // No compression
-          .checksum = htonl(frame_checksum),
-          .flags = htonl((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
+          .width = HOST_TO_NET_U32(atomic_load(&client->width)),
+          .height = HOST_TO_NET_U32(atomic_load(&client->height)),
+          .original_size = HOST_TO_NET_U32((uint32_t)frame_size),
+          .compressed_size = HOST_TO_NET_U32(0), // No compression
+          .checksum = HOST_TO_NET_U32(frame_checksum),
+          .flags = HOST_TO_NET_U32((client->terminal_caps.color_level > TERM_COLOR_NONE) ? FRAME_FLAG_HAS_COLOR : 0)};
 
       // Copy header into payload buffer
       memcpy(payload, &frame_header, sizeof(ascii_frame_packet_t));
@@ -1605,8 +1606,8 @@ void broadcast_server_state_to_all_clients(void) {
 
   // Convert to network byte order
   server_state_packet_t net_state;
-  net_state.connected_client_count = htonl(state.connected_client_count);
-  net_state.active_client_count = htonl(state.active_client_count);
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Release lock BEFORE sending (snapshot pattern)
@@ -1800,8 +1801,8 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
   }
 
   packet_header_t *header = (packet_header_t *)*data;
-  *type = (packet_type_t)ntohs(header->type);
-  *sender_id = ntohl(header->client_id);
+  *type = (packet_type_t)NET_TO_HOST_U16(header->type);
+  *sender_id = NET_TO_HOST_U32(header->client_id);
 
   // Adjust data pointer to skip header
   *data = (uint8_t *)*data + sizeof(packet_header_t);
@@ -1842,8 +1843,8 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     if (len >= 16) {
       const uint8_t *payload = (const uint8_t *)data;
       // Use unaligned read helpers - network data may not be aligned
-      int sample_rate = (int)ntohl(read_u32_unaligned(payload));
-      int frame_duration = (int)ntohl(read_u32_unaligned(payload + 4));
+      int sample_rate = (int)NET_TO_HOST_U32(read_u32_unaligned(payload));
+      int frame_duration = (int)NET_TO_HOST_U32(read_u32_unaligned(payload + 4));
       // Reserved bytes at offset 8-15
       size_t opus_size = len - 16;
 
@@ -1854,17 +1855,17 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
         uint8_t *batch_ptr = batch_buffer;
 
         // Write batch header (batch_buffer is stack-aligned, writes are safe)
-        write_u32_unaligned(batch_ptr, htonl((uint32_t)sample_rate));
+        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)sample_rate));
         batch_ptr += 4;
-        write_u32_unaligned(batch_ptr, htonl((uint32_t)frame_duration));
+        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)frame_duration));
         batch_ptr += 4;
-        write_u32_unaligned(batch_ptr, htonl(1)); // frame_count = 1
+        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32(1)); // frame_count = 1
         batch_ptr += 4;
         memset(batch_ptr, 0, 4); // reserved
         batch_ptr += 4;
 
         // Write frame size
-        write_u16_unaligned(batch_ptr, htons((uint16_t)opus_size));
+        write_u16_unaligned(batch_ptr, HOST_TO_NET_U16((uint16_t)opus_size));
         batch_ptr += 2;
 
         // Write Opus data

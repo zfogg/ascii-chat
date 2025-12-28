@@ -135,6 +135,7 @@
 
 #include "options/options.h"
 #include "common.h"
+#include "util/endian.h"
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"
 #include "crypto/keys/keys.h"
@@ -301,8 +302,8 @@ int server_crypto_handshake(client_info_t *client) {
   log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %u", atomic_load(&client->client_id));
 
   // Convert from network byte order
-  uint16_t client_proto_version = ntohs(client_version.protocol_version);
-  uint16_t client_proto_revision = ntohs(client_version.protocol_revision);
+  uint16_t client_proto_version = NET_TO_HOST_U16(client_version.protocol_version);
+  uint16_t client_proto_revision = NET_TO_HOST_U16(client_version.protocol_revision);
 
   log_info("Client %u protocol version: %u.%u (encryption: %s)", atomic_load(&client->client_id), client_proto_version,
            client_proto_revision, client_version.supports_encryption ? "yes" : "no");
@@ -324,8 +325,8 @@ int server_crypto_handshake(client_info_t *client) {
   protocol_version_packet_t server_version = {0};
   log_debug("SERVER_CRYPTO_HANDSHAKE: Initialized server_version struct for client %u",
             atomic_load(&client->client_id));
-  server_version.protocol_version = htons(1);  // Protocol version 1
-  server_version.protocol_revision = htons(0); // Revision 0
+  server_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
+  server_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
   server_version.supports_encryption = 1;      // We support encryption
   server_version.compression_algorithms = 0;   // No compression for now
   server_version.compression_threshold = 0;
@@ -404,9 +405,9 @@ int server_crypto_handshake(client_info_t *client) {
   buffer_pool_free(payload, payload_len);
 
   // Convert from network byte order
-  uint16_t supported_kex = ntohs(client_caps.supported_kex_algorithms);
-  uint16_t supported_auth = ntohs(client_caps.supported_auth_algorithms);
-  uint16_t supported_cipher = ntohs(client_caps.supported_cipher_algorithms);
+  uint16_t supported_kex = NET_TO_HOST_U16(client_caps.supported_kex_algorithms);
+  uint16_t supported_auth = NET_TO_HOST_U16(client_caps.supported_auth_algorithms);
+  uint16_t supported_cipher = NET_TO_HOST_U16(client_caps.supported_cipher_algorithms);
 
   log_info("Client %u crypto capabilities: KEX=0x%04x, Auth=0x%04x, Cipher=0x%04x", atomic_load(&client->client_id),
            supported_kex, supported_auth, supported_cipher);
