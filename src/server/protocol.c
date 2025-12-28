@@ -121,6 +121,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"
+#include "util/endian.h"
 #include "util/image.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"

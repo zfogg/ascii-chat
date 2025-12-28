@@ -157,6 +157,7 @@
 #include "buffer_pool.h"
 #include "network/packet.h"
 #include "util/time.h"
+#include "util/endian.h"
 #include "capture.h"
 
 #include <string.h>

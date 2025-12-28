@@ -146,6 +146,7 @@
 #include "video/image.h"
 #include "video/ascii.h"
 #include "util/aspect_ratio.h"
+#include "util/endian.h"
 #include "util/image.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()

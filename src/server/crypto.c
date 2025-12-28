@@ -140,6 +140,7 @@
 #include "crypto/crypto.h"
 #include "crypto/keys/keys.h"
 #include "util/time.h"
+#include "util/endian.h"
 
 #include <string.h>
 #include <stdio.h>

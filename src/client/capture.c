@@ -95,7 +95,9 @@
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "util/time.h"
+#include "util/endian.h"
 #include "util/thread.h"
+#include "util/endian.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
