@@ -50,7 +50,7 @@ int cond_wait(cond_t *cond, mutex_t *mutex) {
  * @param timeout_ms Timeout in milliseconds
  * @return 0 on success, ETIMEDOUT on timeout, -1 on other failure
  * @note The mutex is automatically released while waiting and reacquired before returning
- * @note CROSS-PLATFORM FIX: Returns ETIMEDOUT on timeout for POSIX compatibility
+ * @note Returns ETIMEDOUT on timeout for POSIX compatibility
  */
 int cond_timedwait(cond_t *cond, mutex_t *mutex, int timeout_ms) {
   if (!SleepConditionVariableCS(cond, mutex, (DWORD)timeout_ms)) {
