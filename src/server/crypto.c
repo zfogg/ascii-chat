@@ -532,8 +532,7 @@ int server_crypto_handshake(client_info_t *client) {
                      "Crypto handshake completed successfully for client %u", cid);
 
   // Send success notification to client (encrypted channel now established)
-  log_info_all(client->socket, (const struct crypto_context_t *)&client->crypto_handshake_ctx.crypto_ctx,
-               REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Encryption established - secure channel ready");
+  log_info_client(client, "Encryption established - secure channel ready");
   return 0;
 }
 

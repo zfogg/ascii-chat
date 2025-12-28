@@ -1121,7 +1121,7 @@ asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_conte
   return result;
 }
 
-asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
                                   remote_log_direction_t direction, const char *file, int line, const char *func,
                                   const char *fmt, ...) {
   va_list args;

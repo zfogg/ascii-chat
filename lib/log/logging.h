@@ -28,12 +28,14 @@
 #include <stdint.h>
 #include <time.h>
 #include "platform/socket.h"
-#include "network/logging.h"
 struct crypto_context_t;
 
 /**
  * @brief Logging levels enumeration
  * @ingroup logging
+ *
+ * @note This typedef MUST be defined before #include "network/logging.h"
+ *       to avoid circular dependency issues with packet.h
  */
 typedef enum {
   LOG_DEV = 0, /**< Development messages (most verbose) */
@@ -43,6 +45,8 @@ typedef enum {
   LOG_ERROR,   /**< Error messages */
   LOG_FATAL    /**< Fatal error messages (most severe) */
 } log_level_t;
+
+#include "network/logging.h"
 
 #ifdef NDEBUG
 /** @brief Default log level for release builds (INFO and above) */
@@ -324,7 +328,7 @@ asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_conte
  * @param ... Format arguments
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
                                   remote_log_direction_t direction, const char *file, int line, const char *func,
                                   const char *fmt, ...);
 
@@ -491,62 +495,11 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
 
 /** @} */
 
-/**
- * @brief Log a DEBUG message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_debug_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_DEBUG, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_debug_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_DEBUG, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log an INFO message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_info_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_INFO, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_info_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_INFO, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log a WARN message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_warn_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_WARN, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_warn_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_WARN, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log an ERROR message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_error_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_ERROR, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_error_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_ERROR, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log a FATAL message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_fatal_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_fatal_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
 /* LOGGING_INTERNAL_ERROR macro is defined in logging.c (internal use only) */
+
+/* Network logging convenience macros (log_*_net) are defined in src/server/client.h
+ * since they require access to client_info_t. The base function log_net_message()
+ * is available here for generic use. */
 
 #ifdef __cplusplus
 }
