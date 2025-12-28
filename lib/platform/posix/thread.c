@@ -32,7 +32,13 @@ int ascii_thread_create(asciithread_t *thread, void *(*func)(void *), void *arg)
  * @return 0 on success, error code on failure
  */
 int ascii_thread_join(asciithread_t *thread, void **retval) {
-  return pthread_join(*thread, retval);
+  int result = pthread_join(*thread, retval);
+  if (result == 0) {
+    // Clear the handle after successful join to match Windows behavior
+    // This allows ascii_thread_is_initialized() to correctly return false
+    memset(thread, 0, sizeof(asciithread_t));
+  }
+  return result;
 }
 
 /**
@@ -62,6 +68,10 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
   if (result == ETIMEDOUT) {
     return -2;
   }
+  if (result == 0) {
+    // Clear the handle after successful join to match Windows behavior
+    memset(thread, 0, sizeof(asciithread_t));
+  }
   return result == 0 ? 0 : -1;
 #else
   // For macOS and other systems without pthread_timedjoin_np or pthread_tryjoin_np
@@ -71,6 +81,10 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
   // Note: This is a limitation on macOS - we don't have non-blocking thread join
   // In practice, threads should exit quickly in our use case
   int result = pthread_join(*thread, retval);
+  if (result == 0) {
+    // Clear the handle after successful join to match Windows behavior
+    memset(thread, 0, sizeof(asciithread_t));
+  }
   return result == 0 ? 0 : -1;
 #endif
 }
