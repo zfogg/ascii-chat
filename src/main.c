@@ -81,10 +81,10 @@
 // Common headers for version info and initialization
 #include "common.h"
 #include "version.h"
-#include "options.h"
+#include "options/options.h"
 #include "log/logging.h"
 #include "platform/terminal.h"
-#include "util/levenshtein.h"
+#include "options/levenshtein.h"
 #include "util/path.h"
 
 #ifndef NDEBUG

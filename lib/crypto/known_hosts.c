@@ -35,7 +35,7 @@
 #include "util/ip.h"
 #include "platform/util.h"
 #include "platform/system.h" // For platform_isatty() and FILE_PERM_* constants
-#include "options.h"         // For opt_snapshot_mode
+#include "options/options.h" // For opt_snapshot_mode
 #include "util/path.h"
 #include "util/string.h"
 #include "tooling/defer/defer.h"

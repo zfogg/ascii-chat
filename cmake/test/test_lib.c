@@ -14,7 +14,7 @@ int main(void) {
 
   // Initialize logging
   printf("1. Calling log_init()...\n");
-  log_init(NULL, LOG_INFO, false);
+  log_init(NULL, LOG_INFO, false, false);
 
   // Log a message
   printf("2. Calling log_info()...\n");

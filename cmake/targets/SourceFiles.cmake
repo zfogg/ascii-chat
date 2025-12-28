@@ -31,7 +31,6 @@ set(UTIL_SRCS
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c
-    lib/util/levenshtein.c
     lib/util/image.c
     lib/util/audio.c
     lib/fps.c
@@ -239,7 +238,9 @@ set(CORE_SRCS
     lib/asciichat_errno.c
     lib/log/logging.c
     lib/log/mmap.c
-    lib/options.c
+    lib/options/options.c
+    lib/options/validation.c
+    lib/options/levenshtein.c
     lib/config.c
     lib/version.c
     # Add tomlc17 parser source

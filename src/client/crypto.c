@@ -148,7 +148,7 @@
 
 #include "crypto.h"
 #include "server.h"
-#include "options.h"
+#include "options/options.h"
 #include "common.h"
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"

@@ -82,7 +82,7 @@
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
 #include "audio/wav_writer.h"            // WAV file dumping for debugging
 #include "common.h"
-#include "options.h"
+#include "options/options.h"
 #include "platform/system.h" // For platform_memcpy
 
 #include <stdatomic.h>
