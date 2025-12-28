@@ -91,10 +91,15 @@
 #include "video/webcam/webcam.h"
 #include "video/image.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "util/time.h"
+#include "util/format.h"
+#include "util/image.h"
+#include "util/endian.h"
 #include "util/thread.h"
+#include "util/endian.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
@@ -343,16 +348,8 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Create image frame packet in new format: [width:4][height:4][compressed_flag:4][data_size:4][pixel_data]
     // This matches what the server expects in handle_image_frame_packet()
-    if (processed_image->w <= 0 || processed_image->h <= 0) {
-      SET_ERRNO(ERROR_INVALID_FRAME, "Processed image has invalid dimensions: %dx%d", processed_image->w,
-                processed_image->h);
-      image_destroy(processed_image);
-      continue;
-    }
-
-    if (processed_image->w > IMAGE_MAX_WIDTH || processed_image->h > IMAGE_MAX_HEIGHT) {
-      SET_ERRNO(ERROR_INVALID_FRAME, "Processed image dimensions exceed maximum: %dx%d (max %ux%u)", processed_image->w,
-                processed_image->h, IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
+    // Validate image dimensions using utility function
+    if (image_validate_dimensions((size_t)processed_image->w, (size_t)processed_image->h) != ASCIICHAT_OK) {
       image_destroy(processed_image);
       continue;
     }
@@ -373,14 +370,18 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     if (pixel_size > IMAGE_MAX_PIXELS_SIZE) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds maximum size: %zu bytes (max %zu)", pixel_size,
-                (size_t)IMAGE_MAX_PIXELS_SIZE);
+      char pixel_str[32], max_str[32];
+      format_bytes_pretty(pixel_size, pixel_str, sizeof(pixel_str));
+      format_bytes_pretty(IMAGE_MAX_PIXELS_SIZE, max_str, sizeof(max_str));
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds maximum size: %s (max %s)", pixel_str, max_str);
       image_destroy(processed_image);
       continue;
     }
 
     if (pixel_size > UINT32_MAX) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds protocol limit: %zu bytes (> UINT32_MAX)", pixel_size);
+      char pixel_str[32];
+      format_bytes_pretty(pixel_size, pixel_str, sizeof(pixel_str));
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Pixel data exceeds protocol limit: %s (> 4 GB)", pixel_str);
       image_destroy(processed_image);
       continue;
     }
@@ -395,7 +396,10 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Check packet size limits
     if (packet_size > MAX_PACKET_SIZE) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu bytes (max %d)", packet_size, MAX_PACKET_SIZE);
+      char packet_str[32], max_str[32];
+      format_bytes_pretty(packet_size, packet_str, sizeof(packet_str));
+      format_bytes_pretty(MAX_PACKET_SIZE, max_str, sizeof(max_str));
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %s (max %s)", packet_str, max_str);
       image_destroy(processed_image);
       continue;
     }
@@ -410,10 +414,10 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Build packet in new format
     uint32_t *header = (uint32_t *)packet_data;
-    header[0] = htonl(processed_image->w);   // width
-    header[1] = htonl(processed_image->h);   // height
-    header[2] = htonl(0);                    // compressed_flag = 0 (uncompressed)
-    header[3] = htonl((uint32_t)pixel_size); // data_size = pixel data length
+    header[0] = HOST_TO_NET_U32(processed_image->w);   // width
+    header[1] = HOST_TO_NET_U32(processed_image->h);   // height
+    header[2] = HOST_TO_NET_U32(0);                    // compressed_flag = 0 (uncompressed)
+    header[3] = HOST_TO_NET_U32((uint32_t)pixel_size); // data_size = pixel data length
 
     // Copy pixel data after header
     memcpy(packet_data + header_size, processed_image->pixels, pixel_size);

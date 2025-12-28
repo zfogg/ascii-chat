@@ -121,7 +121,9 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"
-#include "util/overflow.h"
+#include "util/endian.h"
+#include "util/audio.h"
+#include "util/bytes.h"
 #include "util/image.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
@@ -737,7 +739,9 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
   const size_t legacy_header_size = sizeof(uint32_t) * 2;
   if (rgb_size > SIZE_MAX - legacy_header_size) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %zu", rgb_size);
+    char size_str[32];
+    format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %s", size_str);
     return;
   }
   size_t old_format_size = legacy_header_size + rgb_size;
@@ -765,7 +769,9 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     const size_t new_header_size = sizeof(uint32_t) * 4;
     size_t data_size_sz = (size_t)data_size;
     if (data_size_sz > IMAGE_MAX_PIXELS_SIZE) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME compressed data too large: %zu bytes", data_size_sz);
+      char size_str[32];
+      format_bytes_pretty(data_size_sz, size_str, sizeof(size_str));
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME compressed data too large: %s", size_str);
       return;
     }
     if (data_size_sz > SIZE_MAX - new_header_size) {
@@ -827,8 +833,10 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         if (needs_free && rgb_data) {
           SAFE_FREE(rgb_data);
         }
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%zu",
-                                       rgb_data_size);
+        char size_str[32];
+        format_bytes_pretty(rgb_data_size, size_str, sizeof(size_str));
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%s",
+                                       size_str);
         return;
       }
       size_t old_packet_size = legacy_header_size + rgb_data_size;
@@ -1018,12 +1026,17 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   VALIDATE_MIN_SIZE(client, len, sizeof(audio_batch_packet_t), "AUDIO_BATCH");
   VALIDATE_AUDIO_STREAM_ENABLED(client, "AUDIO_BATCH");
 
-  // Parse batch header
-  const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t packet_batch_count = NET_TO_HOST_U32(batch_header->batch_count);
-  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
-  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
-  // uint32_t channels = NET_TO_HOST_U32(batch_header->channels); // For future stereo support
+  // Parse batch header using utility function
+  audio_batch_info_t batch_info;
+  asciichat_error_t parse_result = audio_parse_batch_header(data, len, &batch_info);
+  if (parse_result != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "Failed to parse audio batch header");
+    return;
+  }
+
+  uint32_t packet_batch_count = batch_info.batch_count;
+  uint32_t total_samples = batch_info.total_samples;
+  uint32_t sample_rate = batch_info.sample_rate;
 
   (void)packet_batch_count;
   (void)sample_rate;
@@ -1055,12 +1068,8 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 
   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
 
-  // Safe allocation with overflow checking (total_samples is also validated above)
-  size_t alloc_size = 0;
-  if (checked_size_mul((size_t)total_samples, sizeof(float), &alloc_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Audio sample buffer size overflow: %u samples", total_samples);
-    return;
-  }
+  // Safe allocation: total_samples is bounded above, so multiplication won't overflow
+  size_t alloc_size = (size_t)total_samples * sizeof(float);
   float *samples = SAFE_MALLOC(alloc_size, float *);
   if (!samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio sample conversion");
@@ -1078,10 +1087,9 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   static int recv_count = 0;
   recv_count++;
   if (recv_count % 100 == 0) {
-    uint32_t raw0, raw1, raw2;
-    memcpy(&raw0, samples_ptr + 0 * sizeof(uint32_t), sizeof(uint32_t));
-    memcpy(&raw1, samples_ptr + 1 * sizeof(uint32_t), sizeof(uint32_t));
-    memcpy(&raw2, samples_ptr + 2 * sizeof(uint32_t), sizeof(uint32_t));
+    uint32_t raw0 = bytes_read_u32_unaligned(samples_ptr + 0 * sizeof(uint32_t));
+    uint32_t raw1 = bytes_read_u32_unaligned(samples_ptr + 1 * sizeof(uint32_t));
+    uint32_t raw2 = bytes_read_u32_unaligned(samples_ptr + 2 * sizeof(uint32_t));
     int32_t scaled0 = (int32_t)NET_TO_HOST_U32(raw0);
     int32_t scaled1 = (int32_t)NET_TO_HOST_U32(raw1);
     int32_t scaled2 = (int32_t)NET_TO_HOST_U32(raw2);
@@ -1170,13 +1178,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
 
-  // Calculate total samples with overflow checking
-  size_t total_samples = 0;
-  if (checked_size_mul((size_t)samples_per_frame, (size_t)frame_count, &total_samples) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Audio batch size overflow: %u frames * %u samples/frame", frame_count,
-              samples_per_frame);
-    return;
-  }
+  size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
   float *decoded_samples;
   bool used_malloc = false;
 
@@ -1186,12 +1188,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     // Unusual large batch - fall back to malloc
     log_warn("Client %u: Large audio batch requires malloc (%zu samples)", atomic_load(&client->client_id),
              total_samples);
-    size_t alloc_size = 0;
-    if (checked_size_mul(total_samples, sizeof(float), &alloc_size) != ASCIICHAT_OK) {
-      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded samples buffer size overflow: %zu samples", total_samples);
-      return;
-    }
-    decoded_samples = SAFE_MALLOC(alloc_size, float *);
+    decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
     if (!decoded_samples) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus decoded samples");
       return;
