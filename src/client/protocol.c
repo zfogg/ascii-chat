@@ -227,6 +227,70 @@ static bool g_should_clear_before_next_frame = false;
  * ============================================================================ */
 
 /**
+ * @brief Decode frame data, handling both compressed and uncompressed formats
+ *
+ * Consolidates decompression/copy logic with unified size validation and error handling.
+ * Allocates buffer and returns decoded frame data, or NULL on error.
+ *
+ * @param frame_data_ptr Pointer to compressed or uncompressed frame data
+ * @param frame_data_len Size of frame_data_ptr in bytes
+ * @param is_compressed True if data is zstd-compressed
+ * @param original_size Expected decompressed size
+ * @param compressed_size Expected compressed size (used for validation when compressed)
+ * @return Allocated frame buffer (caller must SAFE_FREE) or NULL on error
+ *
+ * @ingroup client_protocol
+ */
+static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
+                                uint32_t original_size, uint32_t compressed_size) {
+  // Validate size before allocation to prevent excessive memory usage
+  if (original_size > 100 * 1024 * 1024) {
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", original_size);
+    return NULL;
+  }
+
+  char *frame_data = SAFE_MALLOC(original_size + 1, char *);
+
+  if (is_compressed) {
+    // Validate compressed frame size
+    if (frame_data_len != compressed_size) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
+                frame_data_len);
+      SAFE_FREE(frame_data);
+      return NULL;
+    }
+
+    // Decompress using compression API
+    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
+
+    if (result != 0) {
+      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", original_size);
+      SAFE_FREE(frame_data);
+      return NULL;
+    }
+
+#ifdef COMPRESSION_DEBUG
+    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, original_size);
+#endif
+  } else {
+    // Uncompressed frame - validate size
+    if (frame_data_len != original_size) {
+      log_error("Uncompressed frame size mismatch: expected %u, got %zu", original_size, frame_data_len);
+      SAFE_FREE(frame_data);
+      return NULL;
+    }
+
+    // Only copy the actual amount of data we received
+    size_t copy_size = (frame_data_len > original_size) ? original_size : frame_data_len;
+    memcpy(frame_data, frame_data_ptr, copy_size);
+  }
+
+  // Null-terminate the frame data
+  frame_data[original_size] = '\0';
+  return frame_data;
+}
+
+/**
  * @brief Handle incoming ASCII frame packet from server
  *
  * Processes unified ASCII frame packets that contain both header information
@@ -340,59 +404,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   const char *frame_data_ptr = (const char *)data + sizeof(ascii_frame_packet_t);
   size_t frame_data_len = len - sizeof(ascii_frame_packet_t);
 
-  char *frame_data = NULL;
-
-  // Handle compression if needed
-  if (header.flags & FRAME_FLAG_IS_COMPRESSED && header.compressed_size > 0) {
-    // Compressed frame - decompress it
-    if (frame_data_len != header.compressed_size) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", header.compressed_size,
-                frame_data_len);
-      return;
-    }
-
-    // BUGFIX: Validate size before allocation to prevent excessive memory usage
-    if (header.original_size > 100 * 1024 * 1024) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
-      return;
-    }
-
-    frame_data = SAFE_MALLOC(header.original_size + 1, char *);
-
-    // Decompress using compression API
-    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, header.original_size);
-
-    if (result != 0) {
-      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", header.original_size);
-      SAFE_FREE(frame_data);
-      return;
-    }
-
-    frame_data[header.original_size] = '\0';
-#ifdef COMPRESSION_DEBUG
-    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, header.original_size);
-#endif
-  } else {
-    // Uncompressed frame
-    if (frame_data_len != header.original_size) {
-      log_error("Uncompressed frame size mismatch: expected %u, got %zu", header.original_size, frame_data_len);
-      return;
-    }
-
-    // BUGFIX: Validate size before allocation to prevent excessive memory usage
-    if (header.original_size > 100 * 1024 * 1024) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
-      return;
-    }
-
-    // Ensure we don't have buffer overflow - use the actual header size for allocation
-    size_t alloc_size = header.original_size + 1;
-    frame_data = SAFE_MALLOC(alloc_size, char *);
-
-    // Only copy the actual amount of data we received
-    size_t copy_size = (frame_data_len > header.original_size) ? header.original_size : frame_data_len;
-    memcpy(frame_data, frame_data_ptr, copy_size);
-    frame_data[header.original_size] = '\0';
+  // Decode frame data (handles both compressed and uncompressed)
+  bool is_compressed = (header.flags & FRAME_FLAG_IS_COMPRESSED) && header.compressed_size > 0;
+  char *frame_data = decode_frame_data(frame_data_ptr, frame_data_len, is_compressed, header.original_size,
+                                        header.compressed_size);
+  if (!frame_data) {
+    return;  // Error already logged by decode_frame_data
   }
 
   // Verify checksum
