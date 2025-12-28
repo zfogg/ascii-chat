@@ -130,7 +130,6 @@
 #include "audio/opus_codec.h"
 #include "video/video_frame.h"
 #include "util/uthash.h"
-#include "util/endian.h"
 #include "util/format.h"
 #include "util/time.h"
 #include "platform/abstraction.h"
@@ -1821,114 +1820,19 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
  * @param len Packet length
  */
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
-  switch (type) {
-  case PACKET_TYPE_PROTOCOL_VERSION:
-    handle_protocol_version_packet(client, data, len);
-    break;
+  // Use dispatch table to find handler for this packet type
+  packet_handler_func_t handler = get_packet_handler(type);
 
-  case PACKET_TYPE_IMAGE_FRAME:
-    handle_image_frame_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_AUDIO:
-    handle_audio_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_AUDIO_BATCH:
-    handle_audio_batch_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_AUDIO_OPUS:
-    // Single-frame Opus packet: 16-byte header (sample_rate + frame_duration + reserved) + Opus data
-    // Extract metadata and forward to mixer
-    if (len >= 16) {
-      const uint8_t *payload = (const uint8_t *)data;
-      // Use unaligned read helpers - network data may not be aligned
-      int sample_rate = (int)NET_TO_HOST_U32(read_u32_unaligned(payload));
-      int frame_duration = (int)NET_TO_HOST_U32(read_u32_unaligned(payload + 4));
-      // Reserved bytes at offset 8-15
-      size_t opus_size = len - 16;
-
-      if (opus_size > 0 && opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
-        // Create a synthetic Opus batch packet (frame_count=1) and process it
-        // This reuses the batch handler logic
-        uint8_t batch_buffer[1024 + 20]; // Max Opus + header
-        uint8_t *batch_ptr = batch_buffer;
-
-        // Write batch header (batch_buffer is stack-aligned, writes are safe)
-        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)sample_rate));
-        batch_ptr += 4;
-        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)frame_duration));
-        batch_ptr += 4;
-        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32(1)); // frame_count = 1
-        batch_ptr += 4;
-        memset(batch_ptr, 0, 4); // reserved
-        batch_ptr += 4;
-
-        // Write frame size
-        write_u16_unaligned(batch_ptr, HOST_TO_NET_U16((uint16_t)opus_size));
-        batch_ptr += 2;
-
-        // Write Opus data
-        memcpy(batch_ptr, payload + 16, opus_size);
-        batch_ptr += opus_size;
-
-        // Process as batch packet
-        size_t batch_size = (size_t)(batch_ptr - batch_buffer);
-        handle_audio_opus_batch_packet(client, batch_buffer, batch_size);
-      }
+  if (handler == NULL) {
+    // Either unknown packet type or packet type with no handler (PONG)
+    if (type == PACKET_TYPE_PONG) {
+      // Client acknowledged our PING - no action needed
+      return;
     }
-    break;
-
-  case PACKET_TYPE_AUDIO_OPUS_BATCH:
-    handle_audio_opus_batch_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_CLIENT_JOIN:
-    handle_client_join_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_CLIENT_LEAVE:
-    handle_client_leave_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_STREAM_START:
-    handle_stream_start_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_STREAM_STOP:
-    handle_stream_stop_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_CLIENT_CAPABILITIES:
-    handle_client_capabilities_packet(client, data, len);
-    break;
-
-  case PACKET_TYPE_PING: {
-    // Respond with PONG
-    // Protect crypto context access with mutex during rekeying
-    mutex_lock(&client->client_state_mutex);
-    const crypto_context_t *ping_crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-    mutex_unlock(&client->client_state_mutex);
-    // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
-    mutex_lock(&client->send_mutex);
-    if (send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx) < 0) {
-      SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u", client->client_id);
-    }
-    mutex_unlock(&client->send_mutex);
-    break;
-  }
-
-  case PACKET_TYPE_PONG:
-    // Client acknowledged our PING - no action needed
-    break;
-
-  case PACKET_TYPE_REMOTE_LOG:
-    handle_remote_log_packet_from_client(client, data, len);
-    break;
-
-  default:
     disconnect_client_for_bad_data(client, "Unknown packet type: %d (len=%zu)", type, len);
-    break;
+    return;
   }
+
+  // Call the handler for this packet type
+  handler(client, data, len);
 }

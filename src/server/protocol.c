@@ -121,7 +121,6 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"
-#include "util/endian.h"
 #include "util/audio.h"
 #include "util/bytes.h"
 #include "util/image.h"
@@ -678,44 +677,232 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
  * @see framebuffer_write_multi_frame() For buffer storage implementation
  * @see create_mixed_ascii_frame_for_client() For frame consumption
  */
-void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
-  // Handle incoming image data from client
-  // New format: [width:4][height:4][compressed_flag:4][data_size:4][rgb_data:data_size]
-  // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
-  // Use atomic compare-and-swap to avoid race condition - ensures thread-safe auto-enabling of video stream
-  if (!data || len < sizeof(uint32_t) * 2) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
-    return;
-  }
+/* ============================================================================
+ * Image Frame Packet Processing Helpers
+ * ============================================================================
+ */
+
+/**
+ * @brief Auto-enable video stream on first frame reception
+ *
+ * Uses atomic compare-and-swap to safely enable video streaming without locks.
+ * Also logs periodic status for frame reception tracking.
+ */
+static void auto_enable_video_stream(client_info_t *client, size_t frame_len) {
   bool was_sending_video = atomic_load(&client->is_sending_video);
   if (!was_sending_video) {
     // Try to atomically enable video sending
-    // Use atomic_compare_exchange_strong to avoid spurious failures
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", atomic_load(&client->client_id));
-      // Notify client that their first video frame was received
       log_info_client(client, "First video frame received - streaming active");
     }
   } else {
     // Log periodically to confirm we're receiving frames
-    // Use per-client counter protected by client_state_mutex to avoid race conditions
     mutex_lock(&client->client_state_mutex);
     client->frames_received_logged++;
     if (client->frames_received_logged % 25000 == 0) {
       char pretty[64];
-      format_bytes_pretty(len, pretty, sizeof(pretty));
+      format_bytes_pretty(frame_len, pretty, sizeof(pretty));
       log_debug("Client %u has sent %u IMAGE_FRAME packets (%s)", atomic_load(&client->client_id),
                 client->frames_received_logged, pretty);
     }
     mutex_unlock(&client->client_state_mutex);
   }
+}
 
-  // Parse image dimensions (use memcpy to avoid unaligned access)
-  uint32_t img_width_net, img_height_net;
-  memcpy(&img_width_net, data, sizeof(uint32_t));
-  memcpy(&img_height_net, (char *)data + sizeof(uint32_t), sizeof(uint32_t));
-  uint32_t img_width = NET_TO_HOST_U32(img_width_net);
-  uint32_t img_height = NET_TO_HOST_U32(img_height_net);
+/**
+ * @brief Parse image dimensions from packet header
+ *
+ * Extracts width and height from first 8 bytes of packet data.
+ * Returns dimensions in host byte order.
+ */
+static void parse_image_dimensions(const void *data, uint32_t *out_width, uint32_t *out_height) {
+  uint32_t width_net, height_net;
+  memcpy(&width_net, data, sizeof(uint32_t));
+  memcpy(&height_net, (const char *)data + sizeof(uint32_t), sizeof(uint32_t));
+  *out_width = NET_TO_HOST_U32(width_net);
+  *out_height = NET_TO_HOST_U32(height_net);
+}
+
+/**
+ * @brief Detect and parse image format (new compressed or old uncompressed)
+ *
+ * Determines whether packet is in new format (with optional compression) or
+ * old format (raw RGB). Returns RGB data pointer and size, with needs_free
+ * flag indicating if allocated memory must be freed.
+ *
+ * @return true if format detection and parsing succeeded, false otherwise
+ */
+static bool detect_and_parse_image_format(
+    client_info_t *client, const void *data, size_t len, uint32_t img_width, uint32_t img_height,
+    size_t rgb_size, void **out_rgb_data, size_t *out_rgb_data_size, bool *out_needs_free) {
+  const size_t legacy_header_size = sizeof(uint32_t) * 2;
+
+  // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
+  if (rgb_size > SIZE_MAX - legacy_header_size) {
+    char size_str[32];
+    format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %s", size_str);
+    return false;
+  }
+
+  size_t old_format_size = legacy_header_size + rgb_size;
+  bool is_new_format = (len != old_format_size) && (len > sizeof(uint32_t) * 4);
+
+  if (is_new_format) {
+    // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
+    if (len < sizeof(uint32_t) * 4) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format header too small (%zu bytes)", len);
+      return false;
+    }
+
+    uint32_t compressed_flag_net, data_size_net;
+    memcpy(&compressed_flag_net, (const char *)data + sizeof(uint32_t) * 2, sizeof(uint32_t));
+    memcpy(&data_size_net, (const char *)data + sizeof(uint32_t) * 3, sizeof(uint32_t));
+    uint32_t compressed_flag = NET_TO_HOST_U32(compressed_flag_net);
+    uint32_t data_size = NET_TO_HOST_U32(data_size_net);
+    const void *frame_data = (const char *)data + sizeof(uint32_t) * 4;
+
+    const size_t new_header_size = sizeof(uint32_t) * 4;
+    size_t data_size_sz = (size_t)data_size;
+    if (data_size_sz > IMAGE_MAX_PIXELS_SIZE) {
+      char size_str[32];
+      format_bytes_pretty(data_size_sz, size_str, sizeof(size_str));
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME compressed data too large: %s", size_str);
+      return false;
+    }
+    if (data_size_sz > SIZE_MAX - new_header_size) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format packet size overflow");
+      return false;
+    }
+
+    size_t expected_total = new_header_size + data_size_sz;
+    if (len != expected_total) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format length mismatch: expected %zu got %zu",
+                                     expected_total, len);
+      return false;
+    }
+
+    if (compressed_flag) {
+      // Decompress the data
+      void *decompressed = SAFE_MALLOC(rgb_size, void *);
+      if (!decompressed) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate decompression buffer for client %u",
+                  atomic_load(&client->client_id));
+        return false;
+      }
+
+      if (decompress_data(frame_data, data_size, decompressed, rgb_size) != 0) {
+        SAFE_FREE(decompressed);
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes", data_size_sz);
+        return false;
+      }
+
+      *out_rgb_data = decompressed;
+      *out_rgb_data_size = rgb_size;
+      *out_needs_free = true;
+    } else {
+      // Uncompressed data
+      if (data_size != rgb_size) {
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME uncompressed size mismatch: expected %zu got %zu", rgb_size,
+                                       data_size);
+        return false;
+      }
+      *out_rgb_data = (void *)frame_data;
+      *out_rgb_data_size = data_size;
+      *out_needs_free = false;
+    }
+  } else {
+    // Old format: [width:4][height:4][rgb_data:w*h*3]
+    if (len != old_format_size) {
+      disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy length mismatch: expected %zu got %zu", old_format_size,
+                                     len);
+      return false;
+    }
+    *out_rgb_data = (char *)data + sizeof(uint32_t) * 2;
+    *out_rgb_data_size = rgb_size;
+    *out_needs_free = false;
+  }
+
+  return true;
+}
+
+/**
+ * @brief Store RGB frame data in client's video buffer
+ *
+ * Writes frame data to the video ring buffer, converting to internal format
+ * and setting metadata (dimensions, timestamp, sequence number).
+ *
+ * @return true if storage succeeded, false otherwise
+ */
+static bool store_frame_in_buffer(
+    client_info_t *client, const void *rgb_data, size_t rgb_data_size, uint32_t img_width, uint32_t img_height,
+    bool needs_free) {
+  const size_t legacy_header_size = sizeof(uint32_t) * 2;
+
+  if (!client->incoming_video_buffer) {
+    // During shutdown, this is expected - don't spam error logs
+    if (!atomic_load(&g_server_should_exit)) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no incoming video buffer!", atomic_load(&client->client_id));
+    } else {
+      log_debug("Client %u: ignoring video packet during shutdown", atomic_load(&client->client_id));
+    }
+    return false;
+  }
+
+  // Get the write buffer
+  video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
+  if (!frame || !frame->data) {
+    log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)", atomic_load(&client->client_id),
+             (void *)frame, frame ? frame->data : NULL);
+    return false;
+  }
+
+  // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
+  if (rgb_data_size > SIZE_MAX - legacy_header_size) {
+    char size_str[32];
+    format_bytes_pretty(rgb_data_size, size_str, sizeof(size_str));
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%s", size_str);
+    return false;
+  }
+
+  size_t old_packet_size = legacy_header_size + rgb_data_size;
+  if (old_packet_size > 2 * 1024 * 1024) {  // Max 2MB frame size
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME repacked frame too large (%zu bytes)", old_packet_size);
+    return false;
+  }
+
+  uint32_t width_net = HOST_TO_NET_U32(img_width);
+  uint32_t height_net = HOST_TO_NET_U32(img_height);
+
+  // Pack in old format for internal consistency
+  memcpy(frame->data, &width_net, sizeof(uint32_t));
+  memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+  memcpy((char *)frame->data + sizeof(uint32_t) * 2, rgb_data, rgb_data_size);
+
+  frame->size = old_packet_size;
+  frame->width = img_width;
+  frame->height = img_height;
+  frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
+  frame->sequence_number = ++client->frames_received;
+  video_frame_commit(client->incoming_video_buffer);
+
+  return true;
+}
+
+void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
+  // Validate basic packet structure
+  if (!data || len < sizeof(uint32_t) * 2) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
+    return;
+  }
+
+  // Auto-enable video stream on first frame or log periodic status
+  auto_enable_video_stream(client, len);
+
+  // Parse image dimensions
+  uint32_t img_width, img_height;
+  parse_image_dimensions(data, &img_width, &img_height);
 
   // Validate dimensions using image utility functions
   if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
@@ -736,147 +923,18 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     return;
   }
 
-  // Check if this is the new compressed format (has 4 fields) or old format (has 2 fields)
-  const size_t legacy_header_size = sizeof(uint32_t) * 2;
-  if (rgb_size > SIZE_MAX - legacy_header_size) {
-    char size_str[32];
-    format_bytes_pretty(rgb_size, size_str, sizeof(size_str));
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy packet size overflow: %s", size_str);
-    return;
-  }
-  size_t old_format_size = legacy_header_size + rgb_size;
-  bool is_new_format = (len != old_format_size) && (len > sizeof(uint32_t) * 4);
-
+  // Detect and parse image format (new compressed or old uncompressed)
   void *rgb_data = NULL;
   size_t rgb_data_size = 0;
   bool needs_free = false;
 
-  if (is_new_format) {
-    // New format: [width:4][height:4][compressed_flag:4][data_size:4][data:data_size]
-    if (len < sizeof(uint32_t) * 4) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format header too small (%zu bytes)", len);
-      return;
-    }
-
-    // Use memcpy to avoid unaligned access for compressed_flag and data_size
-    uint32_t compressed_flag_net, data_size_net;
-    memcpy(&compressed_flag_net, (char *)data + sizeof(uint32_t) * 2, sizeof(uint32_t));
-    memcpy(&data_size_net, (char *)data + sizeof(uint32_t) * 3, sizeof(uint32_t));
-    uint32_t compressed_flag = NET_TO_HOST_U32(compressed_flag_net);
-    uint32_t data_size = NET_TO_HOST_U32(data_size_net);
-    void *frame_data = (char *)data + sizeof(uint32_t) * 4;
-
-    const size_t new_header_size = sizeof(uint32_t) * 4;
-    size_t data_size_sz = (size_t)data_size;
-    if (data_size_sz > IMAGE_MAX_PIXELS_SIZE) {
-      char size_str[32];
-      format_bytes_pretty(data_size_sz, size_str, sizeof(size_str));
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME compressed data too large: %s", size_str);
-      return;
-    }
-    if (data_size_sz > SIZE_MAX - new_header_size) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format packet size overflow");
-      return;
-    }
-    size_t expected_total = new_header_size + data_size_sz;
-    if (len != expected_total) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME new-format length mismatch: expected %zu got %zu",
-                                     expected_total, len);
-      return;
-    }
-
-    if (compressed_flag) {
-      // Decompress the data
-      rgb_data = SAFE_MALLOC(rgb_size, void *);
-      if (!rgb_data) {
-        SET_ERRNO(ERROR_MEMORY, "Failed to allocate decompression buffer for client %u",
-                  atomic_load(&client->client_id));
-        return;
-      }
-
-      if (decompress_data(frame_data, data_size, rgb_data, rgb_size) != 0) {
-        SAFE_FREE(rgb_data);
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME decompression failure for %zu bytes", data_size_sz);
-        return;
-      }
-
-      rgb_data_size = rgb_size;
-      needs_free = true;
-    } else {
-      // Uncompressed data
-      rgb_data = frame_data;
-      rgb_data_size = data_size;
-      if (rgb_data_size != rgb_size) {
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME uncompressed size mismatch: expected %zu got %zu", rgb_size,
-                                       rgb_data_size);
-        return;
-      }
-    }
-  } else {
-    // Old format: [width:4][height:4][rgb_data:w*h*3]
-    if (len != old_format_size) {
-      disconnect_client_for_bad_data(client, "IMAGE_FRAME legacy length mismatch: expected %zu got %zu",
-                                     old_format_size, len);
-      return;
-    }
-    rgb_data = (char *)data + sizeof(uint32_t) * 2;
-    rgb_data_size = rgb_size;
+  if (!detect_and_parse_image_format(client, data, len, img_width, img_height, rgb_size, &rgb_data, &rgb_data_size,
+                                     &needs_free)) {
+    return;
   }
 
-  if (client->incoming_video_buffer) {
-    // Get the write buffer
-    video_frame_t *frame = video_frame_begin_write(client->incoming_video_buffer);
-
-    if (frame && frame->data) {
-      // Build the packet in the old format for internal storage: [width:4][height:4][rgb_data:w*h*3]
-      if (rgb_data_size > SIZE_MAX - legacy_header_size) {
-        if (needs_free && rgb_data) {
-          SAFE_FREE(rgb_data);
-        }
-        char size_str[32];
-        format_bytes_pretty(rgb_data_size, size_str, sizeof(size_str));
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%s",
-                                       size_str);
-        return;
-      }
-      size_t old_packet_size = legacy_header_size + rgb_data_size;
-
-      if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
-        uint32_t width_net = HOST_TO_NET_U32(img_width);
-        uint32_t height_net = HOST_TO_NET_U32(img_height);
-
-        // Pack in old format for internal consistency
-        memcpy(frame->data, &width_net, sizeof(uint32_t));
-        memcpy((char *)frame->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
-        memcpy((char *)frame->data + sizeof(uint32_t) * 2, rgb_data, rgb_data_size);
-
-        frame->size = old_packet_size;
-        frame->width = img_width;
-        frame->height = img_height;
-        frame->capture_timestamp_us = (uint64_t)time(NULL) * 1000000;
-        frame->sequence_number = ++client->frames_received;
-        video_frame_commit(client->incoming_video_buffer);
-      } else {
-        if (needs_free && rgb_data) {
-          SAFE_FREE(rgb_data);
-        }
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME repacked frame too large (%zu bytes)", old_packet_size);
-        return;
-      }
-    } else {
-      log_warn("Failed to get write buffer for client %u (frame=%p, frame->data=%p)", atomic_load(&client->client_id),
-               (void *)frame, frame ? frame->data : NULL);
-    }
-  } else {
-    // During shutdown, this is expected - don't spam error logs
-    if (!atomic_load(&g_server_should_exit)) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no incoming video buffer!", atomic_load(&client->client_id));
-    } else {
-      log_debug("Client %u: ignoring video packet during shutdown", atomic_load(&client->client_id));
-    }
-  }
-
-  // Clean up decompressed data if allocated
+  // Store frame in buffer and clean up if needed
+  bool success = store_frame_in_buffer(client, rgb_data, rgb_data_size, img_width, img_height, needs_free);
   if (needs_free && rgb_data) {
     SAFE_FREE(rgb_data);
   }
@@ -1733,6 +1791,144 @@ int send_server_state_to_client(client_info_t *client) {
   return 0;
 }
 
+/* ============================================================================
+ * Packet Handler Dispatch Mechanism
+ * ============================================================================
+ * Handler function type definition for protocol dispatch table
+ */
+
+/**
+ * @brief Packet handler function type
+ * @param client The client that sent the packet
+ * @param data Packet payload data (may be NULL)
+ * @param len Packet payload length (may be 0)
+ *
+ * All handler functions must have this signature for use in dispatch table.
+ */
+typedef void (*packet_handler_func_t)(client_info_t *client, const void *data, size_t len);
+
+/**
+ * @brief Handler for PING packets with Opus format conversion support
+ *
+ * This is a special handler that:
+ * 1. Responds with PONG packet
+ * 2. Protects crypto context access during rekeying
+ * 3. Protects socket writes with send_mutex
+ */
+static void handle_ping_packet_impl(client_info_t *client, const void *data, size_t len) {
+  (void)data;  // PING packets have no payload
+  (void)len;
+
+  // Respond with PONG
+  // Protect crypto context access with mutex during rekeying
+  mutex_lock(&client->client_state_mutex);
+  const crypto_context_t *ping_crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+  mutex_unlock(&client->client_state_mutex);
+
+  // CRITICAL: Protect socket write with send_mutex to prevent concurrent writes
+  mutex_lock(&client->send_mutex);
+  if (send_packet_secure(client->socket, PACKET_TYPE_PONG, NULL, 0, (crypto_context_t *)ping_crypto_ctx) < 0) {
+    SET_ERRNO(ERROR_NETWORK, "Failed to send PONG response to client %u", client->client_id);
+  }
+  mutex_unlock(&client->send_mutex);
+}
+
+/**
+ * @brief Handler for single-frame Opus packets with format conversion
+ *
+ * Single-frame Opus packet format has 16-byte header followed by Opus data.
+ * This handler converts to batch format (frame_count=1) for reuse of batch handler.
+ *
+ * @param client The client that sent the packet
+ * @param data Pointer to 16-byte header + Opus-encoded audio
+ * @param len Total packet size (header + Opus data)
+ */
+static void handle_audio_opus_packet_impl(client_info_t *client, const void *data, size_t len) {
+  if (!data || len < 16) {
+    return;
+  }
+
+  const uint8_t *payload = (const uint8_t *)data;
+  // Use bytes_read_u32_unaligned - network data may not be aligned
+  int sample_rate = (int)NET_TO_HOST_U32(bytes_read_u32_unaligned(payload));
+  int frame_duration = (int)NET_TO_HOST_U32(bytes_read_u32_unaligned(payload + 4));
+  // Reserved bytes at offset 8-15
+  size_t opus_size = len - 16;
+
+  if (opus_size > 0 && opus_size <= 1024 && sample_rate == 48000 && frame_duration == 20) {
+    // Create a synthetic Opus batch packet (frame_count=1) and process it
+    // This reuses the batch handler logic
+    uint8_t batch_buffer[1024 + 20]; // Max Opus + header
+    uint8_t *batch_ptr = batch_buffer;
+
+    // Write batch header (batch_buffer is stack-aligned, writes are safe)
+    bytes_write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)sample_rate));
+    batch_ptr += 4;
+    bytes_write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)frame_duration));
+    batch_ptr += 4;
+    bytes_write_u32_unaligned(batch_ptr, HOST_TO_NET_U32(1)); // frame_count = 1
+    batch_ptr += 4;
+    memset(batch_ptr, 0, 4); // reserved
+    batch_ptr += 4;
+
+    // Write frame size
+    bytes_write_u16_unaligned(batch_ptr, HOST_TO_NET_U16((uint16_t)opus_size));
+    batch_ptr += 2;
+
+    // Write Opus data
+    memcpy(batch_ptr, payload + 16, opus_size);
+    batch_ptr += opus_size;
+
+    // Process as batch packet
+    size_t batch_size = (size_t)(batch_ptr - batch_buffer);
+    handle_audio_opus_batch_packet(client, batch_buffer, batch_size);
+  }
+}
+
+/**
+ * @brief Packet handler dispatch table
+ *
+ * Maps packet type to handler function for O(1) lookup.
+ * Handler functions are called with (client, data, len).
+ * NULL entries indicate unhandled packet types.
+ */
+static const struct {
+  packet_type_t type;
+  packet_handler_func_t handler;
+  const char *name;
+} packet_handlers[] = {
+    {PACKET_TYPE_PROTOCOL_VERSION, handle_protocol_version_packet, "PROTOCOL_VERSION"},
+    {PACKET_TYPE_IMAGE_FRAME, handle_image_frame_packet, "IMAGE_FRAME"},
+    {PACKET_TYPE_AUDIO, handle_audio_packet, "AUDIO"},
+    {PACKET_TYPE_AUDIO_BATCH, handle_audio_batch_packet, "AUDIO_BATCH"},
+    {PACKET_TYPE_AUDIO_OPUS, handle_audio_opus_packet_impl, "AUDIO_OPUS"},
+    {PACKET_TYPE_AUDIO_OPUS_BATCH, handle_audio_opus_batch_packet, "AUDIO_OPUS_BATCH"},
+    {PACKET_TYPE_CLIENT_JOIN, handle_client_join_packet, "CLIENT_JOIN"},
+    {PACKET_TYPE_CLIENT_LEAVE, handle_client_leave_packet, "CLIENT_LEAVE"},
+    {PACKET_TYPE_STREAM_START, handle_stream_start_packet, "STREAM_START"},
+    {PACKET_TYPE_STREAM_STOP, handle_stream_stop_packet, "STREAM_STOP"},
+    {PACKET_TYPE_CLIENT_CAPABILITIES, handle_client_capabilities_packet, "CLIENT_CAPABILITIES"},
+    {PACKET_TYPE_PING, handle_ping_packet_impl, "PING"},
+    {PACKET_TYPE_PONG, NULL, "PONG"},  // No action needed for PONG
+    {PACKET_TYPE_REMOTE_LOG, handle_remote_log_packet_from_client, "REMOTE_LOG"},
+};
+
+#define PACKET_HANDLER_COUNT (sizeof(packet_handlers) / sizeof(packet_handlers[0]))
+
+/**
+ * @brief Lookup handler function for a packet type
+ * @param type Packet type to look up
+ * @return Handler function pointer, or NULL if packet type not found or has no handler
+ */
+packet_handler_func_t get_packet_handler(packet_type_t type) {
+  for (size_t i = 0; i < PACKET_HANDLER_COUNT; i++) {
+    if (packet_handlers[i].type == type) {
+      return packet_handlers[i].handler;
+    }
+  }
+  return NULL;
+}
+
 /**
  * @brief Signal all active clients to clear their displays before next video frame
  *
@@ -1758,10 +1954,3 @@ int send_server_state_to_client(client_info_t *client) {
  * @note This function iterates all clients but only flags active ones
  * @note Non-blocking - just sets atomic flags
  */
-// NOTE: This function is no longer used - CLEAR_CONSOLE is now sent directly
-// from each client's render thread when it detects a grid layout change.
-// Keeping this for reference but it should not be called.
-void broadcast_clear_console_to_all_clients(void) {
-  SET_ERRNO(ERROR_INVALID_STATE, "broadcast_clear_console_to_all_clients() called - unexpected usage");
-  log_warn("CLEAR_CONSOLE is now sent from render threads, not broadcast");
-}
