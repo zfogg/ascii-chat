@@ -87,8 +87,8 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         break;
       }
 
-      // Handle backspace (127 = DEL, 8 = BS)
-      if (c == 127 || c == 8) {
+      // Handle backspace (BS = 8) - delete character before cursor
+      if (c == 8) {
         if (pos > 0) {
           pos--;
           if (opts.mask_char) {
@@ -97,6 +97,12 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
             fflush(stderr);
           }
         }
+        continue;
+      }
+
+      // Handle delete (DEL = 127) - delete character at cursor position
+      // At end of input line, there's nothing forward to delete
+      if (c == 127) {
         continue;
       }
 

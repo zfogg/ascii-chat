@@ -72,14 +72,28 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         break;
       }
 
-      // Handle backspace
-      if (ch == '\b' && pos > 0) {
-        pos--;
-        if (opts.mask_char) {
-          // Erase mask character: backspace, space, backspace
-          (void)fprintf(stderr, "\b \b");
+      // Handle backspace (BS) - delete character before cursor
+      if (ch == '\b') {
+        if (pos > 0) {
+          pos--;
+          if (opts.mask_char) {
+            // Erase mask character: backspace, space, backspace
+            (void)fprintf(stderr, "\b \b");
+          }
         }
-      } else if (ch >= 32 && ch <= 126) {
+        continue;
+      }
+
+      // Handle delete key (extended key: 0xE0 followed by 0x53)
+      if (ch == 0xE0 || ch == 0x00) {
+        int ext = _getch(); // Get extended key code
+        // DEL key is 0x53 - delete forward (nothing at end of line)
+        // Other extended keys (arrows, etc.) are ignored
+        (void)ext;
+        continue;
+      }
+
+      if (ch >= 32 && ch <= 126) {
         // Printable character: add to buffer
         buffer[pos++] = (char)ch;
         if (opts.mask_char) {
