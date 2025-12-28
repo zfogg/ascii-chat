@@ -76,6 +76,7 @@
 #include "main.h"
 #include "server.h"
 #include "fps.h"
+#include "util/thread_lifecycle.h"
 
 #include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
@@ -299,7 +300,7 @@ static void audio_sender_init(void) {
   atomic_store(&g_audio_sender_should_exit, false);
 
   // Start sender thread
-  if (ascii_thread_create(&g_audio_sender_thread, audio_sender_thread_func, NULL) == 0) {
+  if (THREAD_CREATE_SAFE(g_audio_sender_thread, audio_sender_thread_func, NULL) == 0) {
     g_audio_sender_thread_created = true;
     log_info("Audio sender thread created");
   } else {
@@ -322,8 +323,8 @@ static void audio_sender_cleanup(void) {
   mutex_unlock(&g_audio_send_queue_mutex);
 
   // Join thread
-  if (g_audio_sender_thread_created) {
-    ascii_thread_join(&g_audio_sender_thread, NULL);
+  if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
+    THREAD_JOIN(g_audio_sender_thread);
     g_audio_sender_thread_created = false;
     log_info("Audio sender thread joined");
   }
@@ -799,7 +800,7 @@ int audio_start_thread() {
 
   // Start audio capture thread
   atomic_store(&g_audio_capture_thread_exited, false);
-  if (ascii_thread_create(&g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
+  if (THREAD_CREATE_SAFE(g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
     log_error("Failed to create audio capture thread");
     return -1;
   }
@@ -823,7 +824,7 @@ int audio_start_thread() {
  * @ingroup client_audio
  */
 void audio_stop_thread() {
-  if (!g_audio_capture_thread_created) {
+  if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
     return;
   }
 
@@ -842,7 +843,7 @@ void audio_stop_thread() {
   }
 
   // Join the thread
-  ascii_thread_join(&g_audio_capture_thread, NULL);
+  THREAD_JOIN(g_audio_capture_thread);
   g_audio_capture_thread_created = false;
 
   log_info("Audio capture thread stopped and joined");
