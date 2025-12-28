@@ -20,6 +20,7 @@
 #include "common.h"
 #include "platform/file.h"
 #include "platform/util.h"
+#include "util/image.h"
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8
@@ -402,8 +403,13 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     // Convert YUYV to RGB24
     yuyv_to_rgb24(ctx->buffers[buf.index].start, (uint8_t *)img->pixels, ctx->width, ctx->height);
   } else {
-    // RGB24 - direct copy
-    const size_t frame_size = (size_t)ctx->width * ctx->height * 3;
+    // RGB24 - direct copy with overflow checking
+    size_t frame_size;
+    if (image_calc_rgb_size((size_t)ctx->width, (size_t)ctx->height, &frame_size) != ASCIICHAT_OK) {
+      log_error("Failed to calculate frame size: width=%d, height=%d (would overflow)", ctx->width, ctx->height);
+      image_destroy(img);
+      return -1;
+    }
     memcpy(img->pixels, ctx->buffers[buf.index].start, frame_size);
   }
 
