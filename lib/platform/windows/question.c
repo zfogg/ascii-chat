@@ -53,11 +53,12 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
       }
     }
   } else {
-    // Echo disabled - use _getch for character-by-character input
-    size_t pos = 0;
+    // Echo disabled - use _getch for character-by-character input with cursor support
+    size_t len = 0;    // Total length of input
+    size_t cursor = 0; // Cursor position within input
     int ch;
 
-    while (pos < max_len - 1) {
+    while (len < max_len - 1) {
       ch = _getch();
 
       // Handle newline/carriage return (Enter key)
@@ -72,38 +73,105 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
         break;
       }
 
+      // Handle extended keys (0xE0 or 0x00 prefix)
+      if (ch == 0xE0 || ch == 0x00) {
+        int ext = _getch();
+        switch (ext) {
+        case 0x4B: // Left arrow
+          if (cursor > 0) {
+            cursor--;
+            (void)fprintf(stderr, "\033[D");
+          }
+          break;
+        case 0x4D: // Right arrow
+          if (cursor < len) {
+            cursor++;
+            (void)fprintf(stderr, "\033[C");
+          }
+          break;
+        case 0x53: // Delete key
+          if (cursor < len) {
+            // Shift characters left
+            memmove(&buffer[cursor], &buffer[cursor + 1], len - cursor - 1);
+            len--;
+            // Redraw from cursor to end
+            if (opts.mask_char) {
+              for (size_t i = cursor; i < len; i++) {
+                (void)fprintf(stderr, "%c", opts.mask_char);
+              }
+              (void)fprintf(stderr, " "); // Clear last char
+              // Move cursor back
+              for (size_t i = cursor; i <= len; i++) {
+                (void)fprintf(stderr, "\033[D");
+              }
+            }
+          }
+          break;
+        case 0x47: // Home
+          while (cursor > 0) {
+            cursor--;
+            (void)fprintf(stderr, "\033[D");
+          }
+          break;
+        case 0x4F: // End
+          while (cursor < len) {
+            cursor++;
+            (void)fprintf(stderr, "\033[C");
+          }
+          break;
+        }
+        continue;
+      }
+
       // Handle backspace (BS) - delete character before cursor
       if (ch == '\b') {
-        if (pos > 0) {
-          pos--;
+        if (cursor > 0) {
+          // Shift characters left
+          memmove(&buffer[cursor - 1], &buffer[cursor], len - cursor);
+          cursor--;
+          len--;
+          // Redraw: move back, print rest of line, clear last char, reposition
           if (opts.mask_char) {
-            // Erase mask character: backspace, space, backspace
-            (void)fprintf(stderr, "\b \b");
+            (void)fprintf(stderr, "\033[D"); // Move cursor back
+            for (size_t i = cursor; i < len; i++) {
+              (void)fprintf(stderr, "%c", opts.mask_char);
+            }
+            (void)fprintf(stderr, " "); // Clear the old last char
+            // Move cursor back to position
+            for (size_t i = cursor; i <= len; i++) {
+              (void)fprintf(stderr, "\033[D");
+            }
           }
         }
         continue;
       }
 
-      // Handle delete key (extended key: 0xE0 followed by 0x53)
-      if (ch == 0xE0 || ch == 0x00) {
-        int ext = _getch(); // Get extended key code
-        // DEL key is 0x53 - delete forward (nothing at end of line)
-        // Other extended keys (arrows, etc.) are ignored
-        (void)ext;
-        continue;
-      }
-
+      // Printable characters
       if (ch >= 32 && ch <= 126) {
-        // Printable character: add to buffer
-        buffer[pos++] = (char)ch;
-        if (opts.mask_char) {
-          (void)fprintf(stderr, "%c", opts.mask_char);
+        // Insert character at cursor position
+        if (len < max_len - 1) {
+          // Shift characters right to make room
+          memmove(&buffer[cursor + 1], &buffer[cursor], len - cursor);
+          buffer[cursor] = (char)ch;
+          len++;
+          cursor++;
+
+          // Display: print from cursor-1 to end, then reposition
+          if (opts.mask_char) {
+            for (size_t i = cursor - 1; i < len; i++) {
+              (void)fprintf(stderr, "%c", opts.mask_char);
+            }
+            // Move cursor back to correct position
+            for (size_t i = cursor; i < len; i++) {
+              (void)fprintf(stderr, "\033[D");
+            }
+          }
         }
       }
     }
 
     // Null-terminate the buffer
-    buffer[pos] = '\0';
+    buffer[len] = '\0';
 
     // Print newline after hidden input
     (void)fprintf(stderr, "\n");
