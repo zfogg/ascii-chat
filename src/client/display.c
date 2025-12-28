@@ -73,7 +73,7 @@
 #include "main.h"
 
 #include "platform/abstraction.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "options.h"
 #include "video/ascii.h"
 

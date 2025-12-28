@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include "../common.h"  // For error handling
+#include "../common.h" // For error handling
 
 /* Forward declarations to avoid circular dependencies */
 typedef struct client_info client_info_t;
@@ -44,13 +44,13 @@ typedef struct client_info client_info_t;
  * @param data Payload data pointer to validate
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_NOTNULL_DATA(client, data, packet_name) \
-  do { \
-    if (!(data)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s payload missing", (packet_name)); \
-      return; \
-    } \
+#define VALIDATE_NOTNULL_DATA(client, data, packet_name)                                                               \
+  do {                                                                                                                 \
+    if (!(data)) {                                                                                                     \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s payload missing", (packet_name));                                   \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -62,14 +62,14 @@ typedef struct client_info client_info_t;
  * @param min_size Minimum required length
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_MIN_SIZE(client, len, min_size, packet_name) \
-  do { \
-    if ((len) < (min_size)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s payload too small (len=%zu, min=%zu)", (packet_name), \
-                                     (len), (min_size)); \
-      return; \
-    } \
+#define VALIDATE_MIN_SIZE(client, len, min_size, packet_name)                                                          \
+  do {                                                                                                                 \
+    if ((len) < (min_size)) {                                                                                          \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s payload too small (len=%zu, min=%zu)", (packet_name), (len),        \
+                                     (min_size));                                                                      \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -81,14 +81,14 @@ typedef struct client_info client_info_t;
  * @param expected_size Expected exact length
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_EXACT_SIZE(client, len, expected_size, packet_name) \
-  do { \
-    if ((len) != (expected_size)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s payload size mismatch (len=%zu, expected=%zu)", \
-                                     (packet_name), (len), (expected_size)); \
-      return; \
-    } \
+#define VALIDATE_EXACT_SIZE(client, len, expected_size, packet_name)                                                   \
+  do {                                                                                                                 \
+    if ((len) != (expected_size)) {                                                                                    \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s payload size mismatch (len=%zu, expected=%zu)", (packet_name),      \
+                                     (len), (expected_size));                                                          \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -98,13 +98,13 @@ typedef struct client_info client_info_t;
  * @param client Client info pointer
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_AUDIO_STREAM_ENABLED(client, packet_name) \
-  do { \
-    if (!atomic_load(&(client)->is_sending_audio)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s received before audio stream enabled", (packet_name)); \
-      return; \
-    } \
+#define VALIDATE_AUDIO_STREAM_ENABLED(client, packet_name)                                                             \
+  do {                                                                                                                 \
+    if (!atomic_load(&(client)->is_sending_audio)) {                                                                   \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s received before audio stream enabled", (packet_name));              \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -116,14 +116,14 @@ typedef struct client_info client_info_t;
  * @param max_samples Maximum allowed samples
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_AUDIO_SAMPLE_COUNT(client, num_samples, max_samples, packet_name) \
-  do { \
-    if ((num_samples) <= 0 || (num_samples) > (max_samples)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s invalid sample count: %d (max %d)", (packet_name), \
-                                     (num_samples), (max_samples)); \
-      return; \
-    } \
+#define VALIDATE_AUDIO_SAMPLE_COUNT(client, num_samples, max_samples, packet_name)                                     \
+  do {                                                                                                                 \
+    if ((num_samples) <= 0 || (num_samples) > (max_samples)) {                                                         \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s invalid sample count: %d (max %d)", (packet_name), (num_samples),   \
+                                     (max_samples));                                                                   \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -135,14 +135,14 @@ typedef struct client_info client_info_t;
  * @param sample_size Size of each sample (typically sizeof(float))
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_AUDIO_ALIGNMENT(client, len, sample_size, packet_name) \
-  do { \
-    if ((len) % (sample_size) != 0) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s payload not aligned (len=%zu, sample_size=%zu)", \
-                                     (packet_name), (len), (sample_size)); \
-      return; \
-    } \
+#define VALIDATE_AUDIO_ALIGNMENT(client, len, sample_size, packet_name)                                                \
+  do {                                                                                                                 \
+    if ((len) % (sample_size) != 0) {                                                                                  \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s payload not aligned (len=%zu, sample_size=%zu)", (packet_name),     \
+                                     (len), (sample_size));                                                            \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -153,13 +153,13 @@ typedef struct client_info client_info_t;
  * @param resource Pointer to resource to validate
  * @param resource_name Name of resource for error message
  */
-#define VALIDATE_RESOURCE_INITIALIZED(client, resource, resource_name) \
-  do { \
-    if (!(resource)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s not initialized", (resource_name)); \
-      return; \
-    } \
+#define VALIDATE_RESOURCE_INITIALIZED(client, resource, resource_name)                                                 \
+  do {                                                                                                                 \
+    if (!(resource)) {                                                                                                 \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s not initialized", (resource_name));                                 \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -176,19 +176,19 @@ typedef struct client_info client_info_t;
  * @note This macro uses 'return;' statement - only use inside void functions
  * @note Automatically calls disconnect_client_for_bad_data() on failure
  */
-#define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name) \
-  do { \
-    if (!(data)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), packet_name " payload missing"); \
-      return; \
-    } \
-    if ((len) != (expected_size)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), packet_name " payload size %zu (expected %zu)", (len), \
-                                     (expected_size)); \
-      return; \
-    } \
+#define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name)                                            \
+  do {                                                                                                                 \
+    if (!(data)) {                                                                                                     \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), packet_name " payload missing");                                        \
+      return;                                                                                                          \
+    }                                                                                                                  \
+    if ((len) != (expected_size)) {                                                                                    \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), packet_name " payload size %zu (expected %zu)", (len),                  \
+                                     (expected_size));                                                                 \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -267,6 +267,37 @@ typedef struct client_info client_info_t;
       return; \
     } \
   } while (0)
+
+ * Validate packet payload pointer is not NULL.
+ * Used as a conditional to check packet data validity before further processing.
+ * Calls the disconnect handler and returns true if validation fails.
+ *
+ * @param client Client info pointer (required for error handler)
+ * @param data Payload pointer to validate
+ * @param packet_name Human-readable packet name for error messages
+ * @param disconnect_handler Error handler function to call on failure
+ * @return Non-zero (true) if validation failed (data is NULL), 0 (false) if valid (data is not NULL)
+ *
+ * Usage:
+ * @code
+ * void handle_audio(client_info_t *client, const void *data, size_t len) {
+ *   if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+ *     return;  // Handler already called with error message
+ *   }
+ *   // ... process packet ...
+ * }
+ * @endcode
+ */
+#define VALIDATE_PACKET_NOT_NULL(client, data, packet_name, disconnect_handler)                                        \
+  ({                                                                                                                   \
+    int _validation_failed = 0;                                                                                        \
+    if (!(data)) {                                                                                                     \
+      extern void disconnect_handler(client_info_t * client, const char *format, ...);                                 \
+      disconnect_handler((client), packet_name " payload missing");                                                    \
+      _validation_failed = 1;                                                                                          \
+    }                                                                                                                  \
+    _validation_failed;                                                                                                \
+  })
 
 /** @} */
 

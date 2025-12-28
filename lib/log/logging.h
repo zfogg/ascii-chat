@@ -24,30 +24,18 @@
 #pragma once
 
 #include <stdarg.h>
-#include "platform/mutex.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
 #include "platform/socket.h"
-#include "network/logging.h"
 struct crypto_context_t;
-
-/* PLATFORM_MAX_PATH_LENGTH is defined in common.h but we can't include it here
- * to avoid circular dependencies. Define it here to match the definition pattern.
- * This matches the definition in common.h (see common.h comments for details).
- */
-#ifndef PLATFORM_MAX_PATH_LENGTH
-#ifdef _WIN32
-#define PLATFORM_MAX_PATH_LENGTH 32767
-#elif defined(__linux__)
-#define PLATFORM_MAX_PATH_LENGTH 4096
-#elif defined(__APPLE__)
-#define PLATFORM_MAX_PATH_LENGTH 1024
-#else
-#define PLATFORM_MAX_PATH_LENGTH 4096
-#endif
-#endif
 
 /**
  * @brief Logging levels enumeration
  * @ingroup logging
+ *
+ * @note This typedef MUST be defined before #include "network/logging.h"
+ *       to avoid circular dependency issues with packet.h
  */
 typedef enum {
   LOG_DEV = 0, /**< Development messages (most verbose) */
@@ -57,6 +45,8 @@ typedef enum {
   LOG_ERROR,   /**< Error messages */
   LOG_FATAL    /**< Fatal error messages (most severe) */
 } log_level_t;
+
+#include "network/logging.h"
 
 #ifdef NDEBUG
 /** @brief Default log level for release builds (INFO and above) */
@@ -69,95 +59,36 @@ typedef enum {
 /** @brief Maximum log file size in bytes (3MB) before rotation */
 #define MAX_LOG_SIZE (3 * 1024 * 1024)
 
-/* Suppress missing field initializers for mutex_t which has opaque internal fields */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+/** @brief Maximum size of terminal output buffer (64KB) */
+#define MAX_TERMINAL_BUFFER_SIZE (64 * 1024)
 
-static struct log_context_t {
-  int file;
-  log_level_t level;
-  mutex_t mutex;
-  bool initialized;
-  char filename[PLATFORM_MAX_PATH_LENGTH]; /* Store filename for rotation */
-  size_t current_size;                     /* Track current file size */
-  bool terminal_output_enabled;            /* Control stderr output to terminal */
-  bool level_manually_set;                 /* Track if level was set manually */
-  bool force_stderr;                       /* Force all terminal logs to stderr (client mode) */
-} g_log = {
-    .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
-    .level = DEFAULT_LOG_LEVEL,
-    .initialized = false,
-    .filename = {0},
-    .current_size = 0,
-    .terminal_output_enabled = true,
-    .level_manually_set = false,
-    .force_stderr = false,
-};
+/** @brief Maximum number of buffered log entries */
+#define MAX_TERMINAL_BUFFER_ENTRIES 256
 
-#pragma GCC diagnostic pop
+/** @brief A single buffered log entry */
+typedef struct {
+  bool use_stderr; /* true for stderr, false for stdout */
+  char *message;   /* Formatted message (heap allocated) */
+} log_buffer_entry_t;
 
-static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
-
-// 16-color colors
-static const char *level_colors_16[] = {
-    "\x1b[34m", /* DEV: Blue */
-    "\x1b[36m", /* DEBUG: Cyan */
-    "\x1b[32m", /* INFO: Green */
-    "\x1b[33m", /* WARN: Yellow */
-    "\x1b[31m", /* ERROR: Red */
-    "\x1b[35m", /* FATAL: Magenta */
-    "\x1b[0m",  /* Reset */
-};
-
-// 256-color colors
-static const char *level_colors_256[] = {
-    "\x1b[94m", /* DEV: Bright Blue */
-    "\x1b[96m", /* DEBUG: Bright Cyan */
-    "\x1b[92m", /* INFO: Bright Green */
-    "\x1b[33m", /* WARN: Yellow */
-    "\x1b[31m", /* ERROR: Red */
-    "\x1b[35m", /* FATAL: Magenta */
-    "\x1b[0m",  /* Reset */
-};
-
-// Truecolor RGB colors
-static const char *level_colors_truecolor[] = {
-    "\x1b[38;2;150;100;205m", /* DEV: Blue */
-    "\x1b[38;2;30;205;255m",  /* DEBUG: Cyan */
-    "\x1b[38;2;50;205;100m",  /* INFO: Green */
-    "\x1b[38;2;205;185;40m",  /* WARN: Yellow */
-    "\x1b[38;2;205;30;100m",  /* ERROR: Red */
-    "\x1b[38;2;205;80;205m",  /* FATAL: Magenta */
-    "\x1b[0m",                /* Reset */
-};
+/* Implementation details (g_log struct, color arrays) are in logging.c */
 
 /**
- * @brief Color names enum for terminal output
+ * @brief Color enum for logging - indexes into color arrays
  * @ingroup logging
+ *
+ * These values directly index into level_colors arrays.
+ * Order matches DEV, DEBUG, INFO, WARN, ERROR, FATAL, RESET.
  */
 typedef enum {
-  COLOR_BLUE = 0, /**< Blue color */
-  COLOR_CYAN,     /**< Cyan color */
-  COLOR_GREEN,    /**< Green color */
-  COLOR_YELLOW,   /**< Yellow color */
-  COLOR_RED,      /**< Red color */
-  COLOR_MAGENTA,  /**< Magenta color */
-  COLOR_RESET,    /**< Reset color to default */
-} color_t;
-
-/**
- * @brief Logging-specific color enum that maps to log levels
- * @ingroup logging
- */
-typedef enum {
-  LOGGING_COLOR_DEBUG = COLOR_CYAN,    /**< Color for DEBUG messages */
-  LOGGING_COLOR_INFO = COLOR_GREEN,    /**< Color for INFO messages */
-  LOGGING_COLOR_WARN = COLOR_YELLOW,   /**< Color for WARN messages */
-  LOGGING_COLOR_ERROR = COLOR_RED,     /**< Color for ERROR messages */
-  LOGGING_COLOR_FATAL = COLOR_MAGENTA, /**< Color for FATAL messages */
-  LOGGING_COLOR_DEV = COLOR_BLUE,      /**< Color for DEV messages */
-  LOGGING_COLOR_RESET = COLOR_RESET    /**< Reset color */
-} logging_color_t;
+  LOG_COLOR_DEV = 0,   /**< Blue - DEV messages */
+  LOG_COLOR_DEBUG = 1, /**< Cyan - DEBUG messages */
+  LOG_COLOR_INFO = 2,  /**< Green - INFO messages */
+  LOG_COLOR_WARN = 3,  /**< Yellow - WARN messages */
+  LOG_COLOR_ERROR = 4, /**< Red - ERROR messages */
+  LOG_COLOR_FATAL = 5, /**< Magenta - FATAL messages */
+  LOG_COLOR_RESET = 6  /**< Reset to default */
+} log_color_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -257,6 +188,27 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 void log_plain_msg(const char *fmt, ...);
 
 /**
+ * @brief Plain logging to stderr with newline
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * Writes to both log file and stderr without timestamps or log levels, with trailing newline.
+ * @ingroup logging
+ */
+void log_plain_stderr_msg(const char *fmt, ...);
+
+/**
+ * @brief Plain logging to stderr without trailing newline
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * Writes to both log file and stderr without timestamps, log levels, or trailing newline.
+ * Useful for interactive prompts where the user's response should be on the same line.
+ * @ingroup logging
+ */
+void log_plain_stderr_nonewline_msg(const char *fmt, ...);
+
+/**
  * @brief Log to file only, no stderr output
  * @param fmt Format string (printf-style)
  * @param ... Format arguments
@@ -272,7 +224,7 @@ void log_file_msg(const char *fmt, ...);
  * @return ANSI color code string
  * @ingroup logging
  */
-const char *log_level_color(logging_color_t color);
+const char *log_level_color(log_color_t color);
 
 /**
  * @brief Get the appropriate color array based on terminal capabilities
@@ -290,6 +242,48 @@ const char **log_get_color_array(void);
  * @ingroup logging
  */
 void log_redetect_terminal_capabilities(void);
+
+/**
+ * @brief Lock terminal output for exclusive access by the calling thread
+ *
+ * Call this before interactive prompts (like password entry, yes/no questions)
+ * to ensure only the calling thread can output to the terminal. Other threads'
+ * log messages will be buffered and flushed when the terminal is unlocked.
+ *
+ * While locked:
+ * - The locking thread can use log_plain() to write to terminal
+ * - Other threads' log messages go to log file and are buffered
+ * - Buffered messages are flushed to terminal on unlock
+ *
+ * Must be paired with log_unlock_terminal().
+ *
+ * @return The previous terminal lock state (for nested calls)
+ * @ingroup logging
+ */
+bool log_lock_terminal(void);
+
+/**
+ * @brief Release terminal lock and flush buffered messages
+ *
+ * Call this after interactive prompts complete to release the terminal lock.
+ * Buffered log messages from other threads will be flushed to terminal.
+ *
+ * @param previous_state The value returned by log_lock_terminal()
+ * @ingroup logging
+ */
+void log_unlock_terminal(bool previous_state);
+
+/**
+ * @brief Set the delay between flushing buffered log entries
+ *
+ * When terminal output is re-enabled after an interactive prompt, buffered
+ * log entries are flushed to the terminal. This setting adds a delay between
+ * each entry for a visual animation effect.
+ *
+ * @param delay_ms Delay in milliseconds between each log entry (0 = no delay)
+ * @ingroup logging
+ */
+void log_set_flush_delay(unsigned int delay_ms);
 
 /**
  * @brief Format a message using va_list
@@ -334,7 +328,7 @@ asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_conte
  * @param ... Format arguments
  * @return ASCIICHAT_OK on success, error code otherwise
  */
-asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
                                   remote_log_direction_t direction, const char *file, int line, const char *func,
                                   const char *fmt, ...);
 
@@ -406,6 +400,20 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #define log_plain(...) log_plain_msg(__VA_ARGS__)
+
+/**
+ * @brief Plain logging to stderr with newline
+ * @param ... Format string and arguments (printf-style)
+ * @ingroup logging
+ */
+#define log_plain_stderr(...) log_plain_stderr_msg(__VA_ARGS__)
+
+/**
+ * @brief Plain logging to stderr without newline - for interactive prompts
+ * @param ... Format string and arguments (printf-style)
+ * @ingroup logging
+ */
+#define log_plain_stderr_nonewline(...) log_plain_stderr_nonewline_msg(__VA_ARGS__)
 
 /**
  * @brief File-only logging - writes to log file only, no stderr output
@@ -487,87 +495,11 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
 
 /** @} */
 
-/**
- * @brief Log a DEBUG message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_debug_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_DEBUG, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_debug_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_DEBUG, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
+/* LOGGING_INTERNAL_ERROR macro is defined in logging.c (internal use only) */
 
-/**
- * @brief Log an INFO message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_info_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_INFO, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_info_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_INFO, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log a WARN message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_warn_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_WARN, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_warn_all(sockfd, crypto_ctx, direction, fmt, ...)                                                          \
-  log_all_message(sockfd, crypto_ctx, LOG_WARN, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log an ERROR message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_error_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_ERROR, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_error_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_ERROR, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-/**
- * @brief Log a FATAL message to all destinations (network, file, and terminal)
- */
-#ifdef NDEBUG
-#define log_fatal_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, NULL, 0, NULL, fmt, ##__VA_ARGS__)
-#else
-#define log_fatal_all(sockfd, crypto_ctx, direction, fmt, ...)                                                         \
-  log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
-#endif
-
-// Don't use the logging functions to log errors about the logging system itself to avoid recursion.
-#ifdef NDEBUG
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
-  do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
-                 log_level_color(LOGGING_COLOR_RESET), message);                                                       \
-    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
-    platform_write(g_log.file, message, strlen(message));                                                              \
-    platform_write(g_log.file, "\n", 1);                                                                               \
-    platform_print_backtrace(0);                                                                                       \
-  } while (0)
-#else
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
-  do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
-                 log_level_color(LOGGING_COLOR_RESET), message);                                                       \
-    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
-    platform_write(g_log.file, message, strlen(message));                                                              \
-    platform_write(g_log.file, "\n", 1);                                                                               \
-    platform_print_backtrace(0);                                                                                       \
-  } while (0)
-#endif
+/* Network logging convenience macros (log_*_net) are defined in src/server/client.h
+ * since they require access to client_info_t. The base function log_net_message()
+ * is available here for generic use. */
 
 #ifdef __cplusplus
 }

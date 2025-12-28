@@ -8,7 +8,7 @@
 #include "buffer_pool.h"
 #include "common.h"
 #include "asciichat_errno.h"
-#include "crc32.h"
+#include "network/crc32.h"
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
@@ -227,7 +227,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
         }
         node_pool_put(queue->node_pool, head);
 
-        log_debug_every(1000000, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
+        log_debug_every(LOG_RATE_FAST, "Dropped packet from queue (full): type=%d, client=%u", type, client_id);
       }
       // If CAS failed, another thread already dequeued - continue to enqueue
     }

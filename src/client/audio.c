@@ -72,9 +72,11 @@
  */
 
 #include "audio.h" // src/client/audio.h
-#include "audio/audio_analysis.h"
+#include "audio/analysis.h"
 #include "main.h"
 #include "server.h"
+#include "fps.h"
+#include "util/thread.h"
 
 #include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
@@ -220,7 +222,7 @@ static int audio_queue_packet(const uint8_t *opus_data, size_t opus_size, const 
   int next_head = (g_audio_send_queue_head + 1) % AUDIO_SEND_QUEUE_SIZE;
   if (next_head == g_audio_send_queue_tail) {
     mutex_unlock(&g_audio_send_queue_mutex);
-    log_warn_every(1000000, "Audio send queue full, dropping packet");
+    log_warn_every(LOG_RATE_FAST, "Audio send queue full, dropping packet");
     return -1;
   }
 
@@ -274,7 +276,7 @@ static void *audio_sender_thread_func(void *arg) {
 
     // Send packet (may block on network I/O - that's OK, we're not in capture thread)
     if (threaded_send_audio_opus_batch(packet.data, packet.size, packet.frame_sizes, packet.frame_count) < 0) {
-      log_debug_every(100000, "Failed to send audio packet");
+      log_debug_every(LOG_RATE_VERY_FAST, "Failed to send audio packet");
     }
   }
 
@@ -298,7 +300,7 @@ static void audio_sender_init(void) {
   atomic_store(&g_audio_sender_should_exit, false);
 
   // Start sender thread
-  if (ascii_thread_create(&g_audio_sender_thread, audio_sender_thread_func, NULL) == 0) {
+  if (THREAD_CREATE_SAFE(g_audio_sender_thread, audio_sender_thread_func, NULL) == 0) {
     g_audio_sender_thread_created = true;
     log_info("Audio sender thread created");
   } else {
@@ -321,8 +323,8 @@ static void audio_sender_cleanup(void) {
   mutex_unlock(&g_audio_send_queue_mutex);
 
   // Join thread
-  if (g_audio_sender_thread_created) {
-    ascii_thread_join(&g_audio_sender_thread, NULL);
+  if (THREAD_IS_CREATED(g_audio_sender_thread_created)) {
+    THREAD_JOIN(g_audio_sender_thread);
     g_audio_sender_thread_created = false;
     log_info("Audio sender thread joined");
   }
@@ -446,6 +448,14 @@ static void *audio_capture_thread_func(void *arg) {
   (void)arg;
 
   log_info("Audio capture thread started");
+
+  // FPS tracking for audio capture thread (tracking Opus frames, ~50 FPS at 20ms per frame)
+  static fps_t fps_tracker = {0};
+  static bool fps_tracker_initialized = false;
+  if (!fps_tracker_initialized) {
+    fps_init(&fps_tracker, 50, "AUDIO_TX");
+    fps_tracker_initialized = true;
+  }
 
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_FRAME_SAMPLES 960
@@ -593,8 +603,9 @@ static void *audio_capture_thread_func(void *arg) {
                                                        opus_packet, OPUS_MAX_PACKET_SIZE);
 
           if (opus_len > 0) {
-            log_debug_every(100000, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)", OPUS_FRAME_SAMPLES,
-                            opus_len, (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
+            log_debug_every(LOG_RATE_VERY_FAST, "Pipeline encoded: %d samples -> %d bytes (compression: %.1fx)",
+                            OPUS_FRAME_SAMPLES, opus_len,
+                            (float)(OPUS_FRAME_SAMPLES * sizeof(float)) / (float)opus_len);
 
             // Add to batch buffer
             if (batch_frame_count < MAX_BATCH_FRAMES && batch_total_size + (size_t)opus_len <= sizeof(batch_buffer)) {
@@ -609,7 +620,7 @@ static void *audio_capture_thread_func(void *arg) {
             }
           } else if (opus_len == 0) {
             // DTX frame (silence) - no data to send
-            log_debug_every(100000, "Pipeline DTX frame (silence detected)");
+            log_debug_every(LOG_RATE_VERY_FAST, "Pipeline DTX frame (silence detected)");
           }
 
           // Reset frame buffer
@@ -623,12 +634,16 @@ static void *audio_capture_thread_func(void *arg) {
         batch_send_count++;
 
         if (audio_queue_packet(batch_buffer, batch_total_size, batch_frame_sizes, batch_frame_count) < 0) {
-          log_debug_every(100000, "Failed to queue audio batch (queue full)");
+          log_debug_every(LOG_RATE_VERY_FAST, "Failed to queue audio batch (queue full)");
         } else {
           if (batch_send_count <= 10 || batch_send_count % 50 == 0) {
             log_info("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes)", batch_send_count, batch_frame_count,
                      batch_total_size);
           }
+          // Track audio frame for FPS reporting
+          struct timespec current_time;
+          (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+          fps_frame(&fps_tracker, &current_time, "audio batch queued");
         }
 
         // Reset batch
@@ -786,7 +801,7 @@ int audio_start_thread() {
 
   // Start audio capture thread
   atomic_store(&g_audio_capture_thread_exited, false);
-  if (ascii_thread_create(&g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
+  if (THREAD_CREATE_SAFE(g_audio_capture_thread, audio_capture_thread_func, NULL) != 0) {
     log_error("Failed to create audio capture thread");
     return -1;
   }
@@ -810,7 +825,7 @@ int audio_start_thread() {
  * @ingroup client_audio
  */
 void audio_stop_thread() {
-  if (!g_audio_capture_thread_created) {
+  if (!THREAD_IS_CREATED(g_audio_capture_thread_created)) {
     return;
   }
 
@@ -829,7 +844,7 @@ void audio_stop_thread() {
   }
 
   // Join the thread
-  ascii_thread_join(&g_audio_capture_thread, NULL);
+  THREAD_JOIN(g_audio_capture_thread);
   g_audio_capture_thread_created = false;
 
   log_info("Audio capture thread stopped and joined");

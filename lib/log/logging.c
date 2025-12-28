@@ -6,6 +6,7 @@
 
 #include "common.h"
 #include "platform/abstraction.h"
+#include "platform/system.h"
 #include "util/path.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -17,7 +18,97 @@
 
 #include "logging.h"
 #include "platform/terminal.h"
+#include "platform/thread.h"
+#include "platform/mutex.h"
 #include "network/packet.h"
+
+/* ============================================================================
+ * Logging System Internal State
+ * ============================================================================ */
+
+/* Log context struct - internal implementation detail */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+static struct log_context_t {
+  int file;
+  log_level_t level;
+  mutex_t mutex;
+  bool initialized;
+  char filename[4096];                /* Store filename for rotation */
+  size_t current_size;                /* Track current file size */
+  bool terminal_output_enabled;       /* Control stderr output to terminal */
+  bool level_manually_set;            /* Track if level was set manually */
+  bool force_stderr;                  /* Force all terminal logs to stderr (client mode) */
+  log_buffer_entry_t *buffer_entries; /* Array of buffered log entries */
+  size_t buffer_entry_count;          /* Number of entries in buffer */
+  size_t buffer_total_size;           /* Total bytes used by all messages */
+  unsigned int flush_delay_ms;        /* Delay between each buffered log flush (0 = disabled) */
+  bool terminal_locked;               /* True when a thread has exclusive terminal access */
+  thread_id_t terminal_owner_thread;  /* Thread that owns terminal output (when locked) */
+} g_log = {
+    .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
+    .level = DEFAULT_LOG_LEVEL,
+    .initialized = false,
+    .filename = {0},
+    .current_size = 0,
+    .terminal_output_enabled = true,
+    .level_manually_set = false,
+    .force_stderr = false,
+    .buffer_entries = NULL,
+    .buffer_entry_count = 0,
+    .buffer_total_size = 0,
+    .flush_delay_ms = 0,
+    .terminal_locked = false,
+    .terminal_owner_thread = 0,
+};
+#pragma GCC diagnostic pop
+
+/* Level strings for log output */
+static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+
+/* Internal color mode enum for indexing into 2D color array */
+/* NOTE: Uses LOG_CMODE_ prefix to avoid conflict with public color_mode_t in options.h */
+typedef enum { LOG_CMODE_16 = 0, LOG_CMODE_256 = 1, LOG_CMODE_TRUECOLOR = 2, LOG_CMODE_COUNT = 3 } log_color_mode_t;
+
+#define LOG_COLOR_COUNT 7 /* DEV, DEBUG, INFO, WARN, ERROR, FATAL, RESET */
+
+/* 2D color array: [color_mode][log_color] */
+static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
+    /* LOG_CMODE_16 */
+    {"\x1b[34m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
+    /* LOG_CMODE_256 */
+    {"\x1b[94m", "\x1b[96m", "\x1b[92m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
+    /* LOG_CMODE_TRUECOLOR */
+    {"\x1b[38;2;150;100;205m", "\x1b[38;2;30;205;255m", "\x1b[38;2;50;205;100m", "\x1b[38;2;205;185;40m",
+     "\x1b[38;2;205;30;100m", "\x1b[38;2;205;80;205m", "\x1b[0m"},
+};
+
+/* Internal error macro - uses g_log directly, only used in this file */
+#ifdef NDEBUG
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
+  do {                                                                                                                 \
+    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
+                 message);                                                                                             \
+    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
+    platform_write(g_log.file, message, strlen(message));                                                              \
+    platform_write(g_log.file, "\n", 1);                                                                               \
+    platform_print_backtrace(0);                                                                                       \
+  } while (0)
+#else
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
+  do {                                                                                                                 \
+    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
+                 message);                                                                                             \
+    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
+    platform_write(g_log.file, message, strlen(message));                                                              \
+    platform_write(g_log.file, "\n", 1);                                                                               \
+    platform_print_backtrace(0);                                                                                       \
+  } while (0)
+#endif
 
 /* Terminal capabilities cache */
 static terminal_capabilities_t g_terminal_caps = {0};
@@ -334,6 +425,18 @@ void log_destroy(void) {
   }
   g_log.file = -1;
   g_log.initialized = false;
+
+  // Free buffered log entries
+  if (g_log.buffer_entries) {
+    for (size_t i = 0; i < g_log.buffer_entry_count; i++) {
+      free(g_log.buffer_entries[i].message);
+    }
+    free(g_log.buffer_entries);
+    g_log.buffer_entries = NULL;
+    g_log.buffer_entry_count = 0;
+    g_log.buffer_total_size = 0;
+  }
+
   mutex_unlock(&g_log.mutex);
 }
 
@@ -375,6 +478,62 @@ bool log_get_force_stderr(void) {
   bool enabled = g_log.force_stderr;
   mutex_unlock(&g_log.mutex);
   return enabled;
+}
+
+bool log_lock_terminal(void) {
+  mutex_lock(&g_log.mutex);
+  bool previous_state = g_log.terminal_locked;
+  g_log.terminal_locked = true;
+  g_log.terminal_owner_thread = ascii_thread_self();
+  mutex_unlock(&g_log.mutex);
+  return previous_state;
+}
+
+void log_unlock_terminal(bool previous_state) {
+  mutex_lock(&g_log.mutex);
+
+  // Copy buffer state locally so we can release mutex during flush animation
+  size_t entry_count = g_log.buffer_entry_count;
+  log_buffer_entry_t *entries = g_log.buffer_entries;
+  unsigned int delay_ms = g_log.flush_delay_ms;
+
+  // Clear global buffer state (entries memory is now owned by local pointer)
+  g_log.buffer_entries = NULL;
+  g_log.buffer_entry_count = 0;
+  g_log.buffer_total_size = 0;
+
+  // Restore terminal lock state
+  g_log.terminal_locked = previous_state;
+  if (!previous_state) {
+    g_log.terminal_owner_thread = 0;
+  }
+
+  mutex_unlock(&g_log.mutex);
+
+  // Flush buffered entries in order, each to its correct stream
+  if (entries && entry_count > 0) {
+    for (size_t i = 0; i < entry_count; i++) {
+      FILE *stream = entries[i].use_stderr ? stderr : stdout;
+      if (entries[i].message) {
+        (void)fputs(entries[i].message, stream);
+        (void)fflush(stream);
+        free(entries[i].message);
+        entries[i].message = NULL;
+
+        // Add delay between entries for animation effect (skip after last entry)
+        if (delay_ms > 0 && i < entry_count - 1) {
+          platform_sleep_ms(delay_ms);
+        }
+      }
+    }
+    free(entries);
+  }
+}
+
+void log_set_flush_delay(unsigned int delay_ms) {
+  mutex_lock(&g_log.mutex);
+  g_log.flush_delay_ms = delay_ms;
+  mutex_unlock(&g_log.mutex);
 }
 
 void log_truncate_if_large(void) {
@@ -431,7 +590,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     use_colors = false;
   }
   const char *color = use_colors ? colors[level] : "";
-  const char *reset = use_colors ? colors[LOGGING_COLOR_RESET] : "";
+  const char *reset = use_colors ? colors[LOG_COLOR_RESET] : "";
 
   const char *level_string = level_strings[level];
   if (level_string == level_strings[LOG_INFO]) {
@@ -484,15 +643,65 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   return result;
 }
 
+/* Helper: Append formatted log to terminal buffer (assumes mutex held)
+ * use_stderr: true for stderr, false for stdout
+ */
+static void buffer_terminal_output_unlocked(bool use_stderr, const char *header, const char *reset_color,
+                                            const char *fmt, va_list args) {
+  // Check entry count limit
+  if (g_log.buffer_entry_count >= MAX_TERMINAL_BUFFER_ENTRIES) {
+    return; // Too many entries
+  }
+
+  // Format the message part
+  char msg_buffer[2048];
+  int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+  if (msg_len < 0)
+    msg_len = 0;
+  if (msg_len >= (int)sizeof(msg_buffer))
+    msg_len = sizeof(msg_buffer) - 1;
+
+  // Calculate total size needed: header + reset + message + reset + newline + null
+  size_t reset_len = reset_color ? strlen(reset_color) : 0;
+  size_t total_len = strlen(header) + reset_len + (size_t)msg_len + reset_len + 2; // +2 for \n and \0
+
+  // Check total buffer size limit
+  if (g_log.buffer_total_size + total_len > MAX_TERMINAL_BUFFER_SIZE) {
+    return; // Would exceed size limit
+  }
+
+  // Allocate entry array if needed
+  if (!g_log.buffer_entries) {
+    g_log.buffer_entries = malloc(MAX_TERMINAL_BUFFER_ENTRIES * sizeof(log_buffer_entry_t));
+    if (!g_log.buffer_entries) {
+      return; // Allocation failed
+    }
+  }
+
+  // Format the complete message
+  char *message = malloc(total_len);
+  if (!message) {
+    return; // Allocation failed
+  }
+
+  if (reset_color) {
+    snprintf(message, total_len, "%s%s%s%s\n", header, reset_color, msg_buffer, reset_color);
+  } else {
+    snprintf(message, total_len, "%s%s\n", header, msg_buffer);
+  }
+
+  // Add entry
+  g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = use_stderr;
+  g_log.buffer_entries[g_log.buffer_entry_count].message = message;
+  g_log.buffer_entry_count++;
+  g_log.buffer_total_size += total_len;
+}
+
 /* Helper: Write colored log entry to terminal (assumes mutex held)
- * Only writes if terminal output is enabled
+ * If terminal output is disabled, buffers the output for later
  */
 static void write_to_terminal_unlocked(log_level_t level, const char *timestamp, const char *file, int line,
                                        const char *func, const char *fmt, va_list args) {
-  if (!g_log.terminal_output_enabled) {
-    return;
-  }
-
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
   // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
   FILE *output_stream;
@@ -514,6 +723,30 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
     return;
   }
 
+  // Check if we should buffer instead of output to terminal:
+  // 1. Terminal output globally disabled, OR
+  // 2. Terminal locked by another thread (not us)
+  bool should_buffer = !g_log.terminal_output_enabled;
+  if (!should_buffer && g_log.terminal_locked) {
+    // Terminal is locked - only the owner thread can output
+    thread_id_t current_thread = ascii_thread_self();
+    if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
+      should_buffer = true;
+    }
+  }
+
+  if (should_buffer) {
+    const char *reset_color = NULL;
+    if (use_colors) {
+      const char **colors = log_get_color_array();
+      if (colors)
+        reset_color = colors[LOG_COLOR_RESET];
+    }
+    bool use_stderr = (output_stream == stderr);
+    buffer_terminal_output_unlocked(use_stderr, header_buffer, reset_color, fmt, args);
+    return;
+  }
+
   if (use_colors) {
     const char **colors = log_get_color_array();
     // Safety check: if colors is NULL, disable colors to prevent crashes
@@ -526,11 +759,11 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
       // Write header with colors
       safe_fprintf(output_stream, "%s", header_buffer);
       // Reset color before message content
-      safe_fprintf(output_stream, "%s", colors[LOGGING_COLOR_RESET]);
+      safe_fprintf(output_stream, "%s", colors[LOG_COLOR_RESET]);
       // Write message content
       (void)vfprintf(output_stream, fmt, args);
       // Ensure color is reset at the end
-      safe_fprintf(output_stream, "%s\n", colors[LOGGING_COLOR_RESET]);
+      safe_fprintf(output_stream, "%s\n", colors[LOG_COLOR_RESET]);
     }
   } else {
     // No color requested.
@@ -648,11 +881,154 @@ void log_plain_msg(const char *fmt, ...) {
       write_to_log_file_unlocked("\n", 1);
     }
 
-    /* Always write to stderr for log_plain_msg */
-    safe_fprintf(stderr, "%s\n", log_buffer);
-    (void)fflush(stderr);
+    // Check if we should buffer instead of output to terminal:
+    // 1. Terminal output globally disabled, OR
+    // 2. Terminal locked by another thread (not us)
+    bool should_buffer = !g_log.terminal_output_enabled;
+    if (!should_buffer && g_log.terminal_locked) {
+      // Terminal is locked - only the owner thread can output
+      thread_id_t current_thread = ascii_thread_self();
+      if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
+        should_buffer = true;
+      }
+    }
+
+    if (should_buffer) {
+      // Buffer for later - allocate message with newline
+      size_t full_msg_len = (size_t)msg_len + 2; // +1 for newline, +1 for null
+      char *buffered_msg = malloc(full_msg_len);
+      if (buffered_msg) {
+        memcpy(buffered_msg, log_buffer, (size_t)msg_len);
+        buffered_msg[msg_len] = '\n';
+        buffered_msg[msg_len + 1] = '\0';
+
+        // Add to buffer entries
+        if (g_log.buffer_entry_count < MAX_TERMINAL_BUFFER_ENTRIES &&
+            g_log.buffer_total_size + full_msg_len <= MAX_TERMINAL_BUFFER_SIZE) {
+          log_buffer_entry_t *new_entries =
+              realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
+          if (new_entries) {
+            g_log.buffer_entries = new_entries;
+            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = false; // stdout for log_plain
+            g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
+            g_log.buffer_entry_count++;
+            g_log.buffer_total_size += full_msg_len;
+          } else {
+            free(buffered_msg);
+          }
+        } else {
+          free(buffered_msg);
+        }
+      }
+    } else {
+      /* Output to stdout (log_plain is INFO-level semantics) */
+      safe_fprintf(stdout, "%s\n", log_buffer);
+      (void)fflush(stdout);
+    }
   }
 
+  mutex_unlock(&g_log.mutex);
+}
+
+// Helper for log_plain_stderr variants
+static void log_plain_stderr_internal(const char *fmt, va_list args, bool add_newline) {
+  // Format the message without timestamps or log levels
+  char log_buffer[4096];
+  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+
+  if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
+    /* Write to log file if configured (not STDERR) */
+    if (g_log.file != STDERR_FILENO) {
+      write_to_log_file_unlocked(log_buffer, msg_len);
+      if (add_newline) {
+        write_to_log_file_unlocked("\n", 1);
+      }
+    }
+
+    // Check if we should buffer instead of output to terminal:
+    // 1. Terminal output globally disabled, OR
+    // 2. Terminal locked by another thread (not us)
+    bool should_buffer = !g_log.terminal_output_enabled;
+    if (!should_buffer && g_log.terminal_locked) {
+      // Terminal is locked - only the owner thread can output
+      thread_id_t current_thread = ascii_thread_self();
+      if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
+        should_buffer = true;
+      }
+    }
+
+    if (should_buffer) {
+      // Buffer for later
+      size_t full_msg_len = (size_t)msg_len + (add_newline ? 2 : 1); // +1 or +2 for newline + null
+      char *buffered_msg = malloc(full_msg_len);
+      if (buffered_msg) {
+        memcpy(buffered_msg, log_buffer, (size_t)msg_len);
+        if (add_newline) {
+          buffered_msg[msg_len] = '\n';
+          buffered_msg[msg_len + 1] = '\0';
+        } else {
+          buffered_msg[msg_len] = '\0';
+        }
+
+        // Add to buffer entries
+        if (g_log.buffer_entry_count < MAX_TERMINAL_BUFFER_ENTRIES &&
+            g_log.buffer_total_size + full_msg_len <= MAX_TERMINAL_BUFFER_SIZE) {
+          log_buffer_entry_t *new_entries =
+              realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
+          if (new_entries) {
+            g_log.buffer_entries = new_entries;
+            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = true;
+            g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
+            g_log.buffer_entry_count++;
+            g_log.buffer_total_size += full_msg_len;
+          } else {
+            free(buffered_msg);
+          }
+        } else {
+          free(buffered_msg);
+        }
+      }
+    } else {
+      /* Output to stderr */
+      if (add_newline) {
+        safe_fprintf(stderr, "%s\n", log_buffer);
+      } else {
+        safe_fprintf(stderr, "%s", log_buffer);
+      }
+      (void)fflush(stderr);
+    }
+  }
+}
+
+void log_plain_stderr_msg(const char *fmt, ...) {
+  if (!g_log.initialized) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  mutex_lock(&g_log.mutex);
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stderr_internal(fmt, args, true); // WITH newline
+  va_end(args);
+  mutex_unlock(&g_log.mutex);
+}
+
+void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
+  if (!g_log.initialized) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  mutex_lock(&g_log.mutex);
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stderr_internal(fmt, args, false); // WITHOUT newline
+  va_end(args);
   mutex_unlock(&g_log.mutex);
 }
 
@@ -745,7 +1121,7 @@ asciichat_error_t log_network_message(socket_t sockfd, const struct crypto_conte
   return result;
 }
 
-asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
+asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t *crypto_ctx, log_level_t level,
                                   remote_log_direction_t direction, const char *file, int line, const char *func,
                                   const char *fmt, ...) {
   va_list args;
@@ -805,30 +1181,26 @@ void log_redetect_terminal_capabilities(void) {
 const char **log_get_color_array(void) {
   init_terminal_capabilities();
 
-  const char **colors;
+  log_color_mode_t mode;
   if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
-    colors = level_colors_truecolor;
+    mode = LOG_CMODE_TRUECOLOR;
   } else if (g_terminal_caps.color_level >= TERM_COLOR_256) {
-    colors = level_colors_256;
+    mode = LOG_CMODE_256;
   } else {
-    colors = level_colors_16;
+    mode = LOG_CMODE_16;
   }
 
-  if (!colors) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Colors are not set");
-    return NULL;
-  }
-
-  return colors;
+  /* Cast away const for the pointer-to-pointer return - the array is still const */
+  return (const char **)level_colors[mode];
 }
 
-const char *log_level_color(logging_color_t color) {
+const char *log_level_color(log_color_t color) {
   const char **colors = log_get_color_array();
   if (colors == NULL) {
     return ""; /* Return empty string if colors not available */
   }
-  if (color >= 0 && color <= LOGGING_COLOR_RESET) {
+  if (color >= 0 && color <= LOG_COLOR_RESET) {
     return colors[color];
   }
-  return colors[LOGGING_COLOR_RESET]; /* Return reset color if invalid */
+  return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
 }

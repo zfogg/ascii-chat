@@ -17,7 +17,7 @@
 #include "util/path.h"
 #include "platform/system.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 
 /* ============================================================================
  * Thread-Local Storage
@@ -95,13 +95,13 @@ static bool skip_backtrace_frame(const char *frame) {
           strstr(frame, "asciichat_print_error_context") != NULL);
 }
 
-void log_labeled(const char *label, logging_color_t color, const char *message, ...) {
+void log_labeled(const char *label, log_color_t color, const char *message, ...) {
   va_list args;
   va_start(args, message);
   char *formatted_message = format_message(message, args);
   va_end(args);
 
-  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOGGING_COLOR_RESET),
+  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOG_COLOR_RESET),
                formatted_message);
 
   log_file("%s: %s", label, formatted_message);
@@ -279,14 +279,14 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   // Print library error context if available
   asciichat_error_context_t err_ctx;
   if (HAS_ERRNO(&err_ctx)) {
-    log_labeled("\nasciichat_errno: libary code error context", LOGGING_COLOR_ERROR, "");
+    log_labeled("\nasciichat_errno: libary code error context", LOG_COLOR_ERROR, "");
     asciichat_print_error_context(&err_ctx);
   } else {
     log_plain("WARNING: No error context found (asciichat_errno_context.code=%d)", asciichat_errno_context.code);
   }
 
   safe_fprintf(stderr, "\n");
-  log_labeled("FATAL ERROR", LOGGING_COLOR_FATAL, "exit code %d (%s)", (int)code, asciichat_error_string(code));
+  log_labeled("FATAL ERROR", LOG_COLOR_FATAL, "exit code %d (%s)", (int)code, asciichat_error_string(code));
 #ifndef NDEBUG
   const char *relative_file = extract_project_relative_path(file);
   log_plain("  Location: %s:%d in %s()", relative_file, line, function);
@@ -305,13 +305,12 @@ void asciichat_fatal_with_context(asciichat_error_t code, const char *file, int 
   void *buffer[32];
   int size = platform_backtrace(buffer, 32);
   if (size > 0) {
-    log_labeled("\nFATAL BACKTRACE", LOGGING_COLOR_FATAL, "");
+    log_labeled("\nFATAL BACKTRACE", LOG_COLOR_FATAL, "");
     char **symbols = platform_backtrace_symbols(buffer, size);
     if (symbols) {
       for (int i = 0; i < size; i++) {
         if (symbols[i] && !skip_backtrace_frame(symbols[i])) {
-          log_plain("  [%s%d%s] %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
-                    symbols[i]);
+          log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i, log_level_color(LOG_COLOR_RESET), symbols[i]);
         }
       }
       platform_backtrace_symbols_free(symbols);
@@ -340,8 +339,8 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   if (context->context_message) {
-    safe_fprintf(stderr, "%s  Context:%s %s\n", log_level_color(LOGGING_COLOR_WARN),
-                 log_level_color(LOGGING_COLOR_RESET), context->context_message);
+    safe_fprintf(stderr, "%s  Context:%s %s\n", log_level_color(LOG_COLOR_WARN), log_level_color(LOG_COLOR_RESET),
+                 context->context_message);
     log_file("  Context: %s", context->context_message);
   }
 
@@ -364,12 +363,12 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
 
   // Print stack trace from library error
   if (context->stack_depth > 0) {
-    log_labeled("\nBacktrace from library error", LOGGING_COLOR_ERROR, "");
+    log_labeled("\nBacktrace from library error", LOG_COLOR_ERROR, "");
     // Print stack trace starting from the first non-internal frame
     for (int i = 0; i < context->stack_depth; i++) {
       if (context->backtrace_symbols && context->backtrace_symbols[i] &&
           !skip_backtrace_frame(context->backtrace_symbols[i])) {
-        log_plain("  [%s%d%s] %s", log_level_color(LOGGING_COLOR_FATAL), i, log_level_color(LOGGING_COLOR_RESET),
+        log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i, log_level_color(LOG_COLOR_RESET),
                   context->backtrace_symbols[i]);
       }
     }

@@ -14,7 +14,6 @@
 #include "tests/logging.h"
 #include "network/network.h"
 #include "network/packet.h"
-#include "network/packet_types.h"
 #include "network/av.h"
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled

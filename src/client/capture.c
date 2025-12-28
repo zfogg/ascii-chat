@@ -94,7 +94,8 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "util/time.h"
-#include "util/time.h"
+#include "util/thread.h"
+#include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
@@ -281,10 +282,15 @@ static void *webcam_capture_thread_func(void *arg) {
   struct timespec last_capture_time = {0, 0};
 
   // FPS tracking for webcam capture thread
-  uint64_t capture_frame_count = 0;
-  struct timespec last_capture_frame_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &last_capture_frame_time);
-  int expected_capture_fps = 144; // 144 fps target
+  static fps_t fps_tracker = {0};
+  static bool fps_tracker_initialized = false;
+  static uint64_t capture_frame_count = 0;
+  static struct timespec last_capture_frame_time = {0, 0};
+  static const uint32_t expected_capture_fps = 144;
+  if (!fps_tracker_initialized) {
+    fps_init(&fps_tracker, 144, "WEBCAM_TX");
+    fps_tracker_initialized = true;
+  }
 
   while (!should_exit() && !server_connection_is_lost()) {
     // Check connection status
@@ -312,6 +318,10 @@ static void *webcam_capture_thread_func(void *arg) {
       platform_sleep_usec(10000); // 10ms delay before retry
       continue;
     }
+
+    // Track frame for FPS reporting
+    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+    fps_frame(&fps_tracker, &current_time, "webcam frame captured");
 
     // Process frame for network transmission
     // process_frame_for_transmission() always returns a new image that we own
@@ -441,7 +451,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Log warning if frame took too long to capture
     if (capture_frame_count > 1 && frame_interval_us > lag_threshold_us) {
-      log_warn_every(1000000,
+      log_warn_every(LOG_RATE_FAST,
                      "CLIENT CAPTURE LAG: Frame captured %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)",
                      (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
                      (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
@@ -499,30 +509,25 @@ int capture_init() {
  * @ingroup client_capture
  */
 int capture_start_thread() {
-  if (g_capture_thread_created) {
+  if (THREAD_IS_CREATED(g_capture_thread_created)) {
     log_warn("Capture thread already created");
     return 0;
   }
 
   // Start webcam capture thread
   atomic_store(&g_capture_thread_exited, false);
-  log_warn("THREAD_CREATE: About to create webcam capture thread");
-  int result = ascii_thread_create(&g_capture_thread, webcam_capture_thread_func, NULL);
-  log_warn("THREAD_CREATE: ascii_thread_create() returned %d, thread handle = %p", result, g_capture_thread);
-
-  if (result != 0) {
-    SET_ERRNO(ERROR_THREAD, "THREAD_CREATE: Webcam capture thread creation FAILED with result=%d", result);
+  if (THREAD_CREATE_SAFE(g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
+    SET_ERRNO(ERROR_THREAD, "Webcam capture thread creation failed");
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;
   }
 
   g_capture_thread_created = true;
-  log_warn("THREAD_CREATE: Webcam capture thread created successfully, handle = %p", g_capture_thread);
+  log_info("Webcam capture thread created successfully");
 
   // Notify server we're starting to send video
   if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {
     LOG_ERRNO_IF_SET("Failed to send stream start packet");
-  } else {
   }
 
   return 0;
@@ -536,7 +541,7 @@ int capture_start_thread() {
  * @ingroup client_capture
  */
 void capture_stop_thread() {
-  if (!g_capture_thread_created) {
+  if (!THREAD_IS_CREATED(g_capture_thread_created)) {
     return;
   }
 

@@ -123,7 +123,7 @@
 #include "network/network.h"
 #include "network/packet.h"
 #include "network/av.h"
-#include "packet_queue.h"
+#include "network/packet_queue.h"
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
@@ -132,13 +132,17 @@
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
-#include "crc32.h"
+#include "network/crc32.h"
+#include "network/logging.h"
 #include "util/time.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
 #define DEBUG_THREADS 1
 #define DEBUG_MEMORY 1
+
+// Forward declarations for static helper functions
+static inline void cleanup_client_all_buffers(client_info_t *client);
 
 static void handle_client_error_packet(client_info_t *client, const void *data, size_t len) {
   asciichat_error_t reported_error = ASCIICHAT_OK;
@@ -568,7 +572,7 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
 
   // Start threads for this client (AFTER crypto handshake AND initial capabilities)
   asciichat_error_t recv_result = thread_create_or_fail(&client->receive_thread, client_receive_thread, client,
-                                                         "receive", atomic_load(&client->client_id));
+                                                        "receive", atomic_load(&client->client_id));
   if (recv_result != ASCIICHAT_OK) {
     // Don't destroy mutexes here - remove_client() will handle it
     (void)remove_client(atomic_load(&client->client_id));
@@ -576,8 +580,8 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   }
 
   // Start send thread for this client
-  asciichat_error_t send_result = thread_create_or_fail(&client->send_thread, client_send_thread_func, client,
-                                                        "send", atomic_load(&client->client_id));
+  asciichat_error_t send_result = thread_create_or_fail(&client->send_thread, client_send_thread_func, client, "send",
+                                                        atomic_load(&client->client_id));
   if (send_result != ASCIICHAT_OK) {
     // Join the receive thread before cleaning up to prevent race conditions
     ascii_thread_join(&client->receive_thread, NULL);
@@ -618,9 +622,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
   }
 
-  int send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                       (crypto_context_t *)crypto_ctx);
-  if (send_result != 0) {
+  int packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                              (crypto_context_t *)crypto_ctx);
+  if (packet_send_result != 0) {
     log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
   } else {
     log_debug("Sent initial server state to client %u: %u connected clients", atomic_load(&client->client_id),
@@ -752,9 +756,8 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
 
-  // Use the dedicated cleanup functions to ensure all resources are freed
-  cleanup_client_media_buffers(target_client);
-  cleanup_client_packet_queues(target_client);
+  // Use the dedicated cleanup function to ensure all resources are freed
+  cleanup_client_all_buffers(target_client);
 
   // Remove from audio mixer
   if (g_audio_mixer) {
@@ -1011,7 +1014,8 @@ void *client_receive_thread(void *arg) {
     }
 
     if (result == PACKET_RECV_SECURITY_VIOLATION) {
-      log_error("SECURITY: Client %u violated encryption policy - terminating server", client->client_id);
+      log_error_client(
+          client, "SECURITY VIOLATION: Unencrypted packet received when encryption required - terminating connection");
       // Exit the server as a security measure
       atomic_store(&g_server_should_exit, true);
       break;
@@ -1120,6 +1124,8 @@ void *client_receive_thread(void *arg) {
         log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, crypto_result);
       } else {
         log_debug("Session rekeying completed successfully with client %u", client->client_id);
+        // Notify client that rekeying is complete (new keys now active on both sides)
+        log_info_client(client, "Session rekey complete - new encryption keys active");
       }
       break;
     }
@@ -1265,7 +1271,7 @@ void *client_send_thread_func(void *arg) {
                                          20, audio_packet_count, (crypto_context_t *)crypto_ctx);
             mutex_unlock(&client->send_mutex);
 
-            log_debug_every(1000000, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
+            log_debug_every(LOG_RATE_FAST, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
                             total_opus_size, client->client_id);
           } else {
             log_error("Failed to allocate buffer for Opus batch");
@@ -1302,8 +1308,8 @@ void *client_send_thread_func(void *arg) {
 
             SAFE_FREE(batched_audio);
 
-            log_debug_every(1000000, "Sent audio batch: %d packets (%zu samples) to client %u", audio_packet_count,
-                            total_samples, client->client_id);
+            log_debug_every(LOG_RATE_FAST, "Sent audio batch: %d packets (%zu samples) to client %u",
+                            audio_packet_count, total_samples, client->client_id);
           } else {
             log_error("Failed to allocate buffer for audio batch");
             result = -1;
@@ -1353,6 +1359,8 @@ void *client_send_thread_func(void *arg) {
           log_error("Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
         } else {
           log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
+          // Notify client that session rekeying has been initiated (old keys still active)
+          log_info_client(client, "Session rekey initiated - rotating encryption keys");
         }
       }
     }
@@ -1400,8 +1408,8 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
         mutex_unlock(&client->send_mutex);
-        log_debug_every(1000000, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id,
-                        sent_sources, rendered_sources);
+        log_debug_every(LOG_RATE_FAST, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)",
+                        client->client_id, sent_sources, rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
       }
@@ -1415,7 +1423,7 @@ void *client_send_thread_func(void *arg) {
       if (frame->data && frame->size == 0) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
-        log_warn_every(1000000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
+        log_warn_every(LOG_RATE_FAST, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
         platform_sleep_usec(1000); // 1ms sleep
         continue;
       }
@@ -1459,8 +1467,7 @@ void *client_send_thread_func(void *arg) {
       // DEBUG: Verify CRC32 after header copy
       uint32_t verify_crc = asciichat_crc32(payload + sizeof(ascii_frame_packet_t), frame_size);
       if (verify_crc != frame_checksum) {
-        log_error("CRC mismatch after header copy! calculated=0x%x, verify=0x%x", frame_checksum,
-                  verify_crc);
+        log_error("CRC mismatch after header copy! calculated=0x%x, verify=0x%x", frame_checksum, verify_crc);
       } else {
         static bool logged_once = false;
         if (!logged_once) {
@@ -1510,7 +1517,7 @@ void *client_send_thread_func(void *arg) {
         uint64_t step5_us = ((uint64_t)step5.tv_sec * 1000000 + (uint64_t)step5.tv_nsec / 1000) -
                             ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000);
         log_warn_every(
-            5000000,
+            LOG_RATE_DEFAULT,
             "SEND_THREAD: Frame send took %.2fms for client %u | Snapshot: %.2fms | Memcpy: %.2fms | CRC32: %.2fms | "
             "Header: %.2fms | send_packet_secure: %.2fms",
             frame_time_us / 1000.0, client->client_id, step1_us / 1000.0, step2_us / 1000.0, step3_us / 1000.0,
@@ -1809,6 +1816,10 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
  */
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
   switch (type) {
+  case PACKET_TYPE_PROTOCOL_VERSION:
+    handle_protocol_version_packet(client, data, len);
+    break;
+
   case PACKET_TYPE_IMAGE_FRAME:
     handle_image_frame_packet(client, data, len);
     break;
@@ -1869,6 +1880,10 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_CLIENT_JOIN:
     handle_client_join_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_CLIENT_LEAVE:
+    handle_client_leave_packet(client, data, len);
     break;
 
   case PACKET_TYPE_STREAM_START:

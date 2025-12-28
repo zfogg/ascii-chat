@@ -18,7 +18,6 @@
  *
  * @see av.h
  * @see network/packet.h
- * @see network/packet_types.h
  * @see buffer_pool.h
  */
 
@@ -32,7 +31,6 @@
 #include "audio/opus_codec.h"
 #include "platform/string.h"
 #include "buffer_pool.h"
-#include "packet_types.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>

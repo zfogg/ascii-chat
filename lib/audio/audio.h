@@ -562,3 +562,39 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb);
 size_t audio_ring_buffer_available_write(audio_ring_buffer_t *rb);
 
 /** @} */
+
+/* ============================================================================
+ * Audio Resampling Utilities
+ * @{
+ */
+
+/**
+ * @brief Resample audio using linear interpolation
+ * @param src Source samples at src_rate
+ * @param src_samples Number of source samples
+ * @param dst Destination buffer at dst_rate
+ * @param dst_samples Number of destination samples to produce
+ * @param src_rate Source sample rate (e.g., 48000)
+ * @param dst_rate Destination sample rate (e.g., 44100)
+ *
+ * Performs simple linear interpolation resampling from one sample rate to another.
+ * Suitable for real-time audio where computational efficiency is more important
+ * than perfect audio quality. For higher quality, consider a polyphase resampler.
+ *
+ * Example usage:
+ * @code
+ * // Resample from 48kHz buffer to 44.1kHz output
+ * size_t in_samples = 960;  // 20ms at 48kHz
+ * size_t out_samples = 882; // 20ms at 44.1kHz
+ * resample_linear(input, in_samples, output, out_samples, 48000, 44100);
+ * @endcode
+ *
+ * @note If src_samples or dst_samples is 0, dst is filled with silence.
+ * @note Thread-safe: No shared state.
+ *
+ * @ingroup audio
+ */
+void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
+                     double dst_rate);
+
+/** @} */

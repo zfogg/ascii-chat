@@ -1,12 +1,12 @@
 /**
- * @file crypto/http_client.c
- * @ingroup crypto
+ * @file network/http_client.c
+ * @ingroup network
  * @brief 🌐 HTTPS client with BearSSL for fetching public keys from GitHub/GitLab with CA validation
  */
 
 #include "http_client.h"
-#include "common.h"
-#include "pem_utils.h"
+#include "../common.h"
+#include "../crypto/pem_utils.h"
 #include "version.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
