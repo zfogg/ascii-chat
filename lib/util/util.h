@@ -12,9 +12,10 @@
  * =================
  * This header includes:
  * - aspect_ratio.h: Aspect ratio calculation functions
+ * - bytes.h: Byte-level access and safe arithmetic utilities
  * - format.h: String formatting utilities
  * - ip.h: IP address parsing and formatting
- * - math.h: Mathematical utilities (rounding, clamping)
+ * - math.h: Mathematical utilities (rounding, clamping, power-of-two)
  * - parsing.h: Protocol message parsing utilities
  * - path.h: Path manipulation utilities
  * - string.h: String manipulation and shell escaping
@@ -45,6 +46,7 @@
  */
 
 #include "util/aspect_ratio.h"
+#include "util/bytes.h"
 #include "util/fnv1a.h"
 #include "util/format.h"
 #include "util/ip.h"

@@ -2,279 +2,188 @@
 
 /**
  * @file util/bytes.h
- * @brief 🔄 Byte Serialization and Deserialization Utilities
+ * @brief 🔢 Byte-Level Access and Arithmetic Utilities
  * @ingroup util
  * @addtogroup util
  * @{
  *
- * Portable utilities for reading and writing multi-byte integers with
- * specified endianness. Eliminates manual bit-shifting and makes code
- * clearer and less error-prone.
+ * This header provides low-level utilities for safely reading and writing
+ * multi-byte values from/to unaligned memory addresses, with overflow detection
+ * for size calculations.
  *
  * CORE FEATURES:
  * ==============
- * - Big-endian and little-endian serialization
- * - Type-safe integer reading/writing
- * - Support for 16-bit, 32-bit, and 64-bit integers
+ * - Safe unaligned memory access (16-bit and 32-bit values)
+ * - Safe size_t multiplication with overflow detection
+ * - Platform-safe byte manipulation (uses memcpy for portability)
  *
- * USAGE:
- * ======
- * // Writing data to buffer
- * uint8_t buf[4];
- * write_u32_be(buf, 0x12345678);  // Buffer now contains: 12 34 56 78
+ * UNALIGNED ACCESS:
+ * =================
+ * Direct pointer casts like *(uint32_t*)ptr cause undefined behavior on
+ * architectures requiring aligned access (ARM, SPARC, etc.). These functions
+ * use memcpy which compilers optimize to single instructions when possible
+ * while remaining safe on all platforms.
  *
- * // Reading data from buffer
- * uint32_t value = read_u32_be(buf);  // Returns 0x12345678
+ * @note These functions are used extensively in network and crypto modules
+ *       for parsing and generating packets.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date December 2025
  */
 
 #include <stdint.h>
-#include <string.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <limits.h>
 
 /* ============================================================================
- * Big-Endian (Network Byte Order) Operations
+ * Unaligned Memory Access Helpers
+ * ============================================================================
+ * These functions safely read/write multi-byte values from/to potentially
+ * unaligned memory addresses.
+ */
+
+/**
+ * @brief Read a 16-bit value from potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @return 16-bit value in host byte order
+ *
+ * Safely reads a 16-bit unsigned integer from any memory location,
+ * even if the address is not aligned on a 2-byte boundary. Uses memcpy
+ * which compilers optimize to single instructions when possible while
+ * maintaining safety on all platforms.
+ *
+ * @par Example
+ * @code
+ * const uint8_t buffer[4] = {0x12, 0x34, 0x56, 0x78};
+ * uint16_t value = bytes_read_u16_unaligned(&buffer[1]);
+ * // Returns: 0x3412 (little-endian) or 0x3456 (big-endian, platform-dependent)
+ * @endcode
+ */
+static inline uint16_t bytes_read_u16_unaligned(const void *ptr) {
+  uint16_t value;
+  __builtin_memcpy(&value, ptr, sizeof(value));
+  return value;
+}
+
+/**
+ * @brief Read a 32-bit value from potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @return 32-bit value in host byte order
+ *
+ * Safely reads a 32-bit unsigned integer from any memory location,
+ * even if the address is not aligned on a 4-byte boundary. Uses memcpy
+ * which compilers optimize to single instructions when possible while
+ * maintaining safety on all platforms.
+ *
+ * @par Example
+ * @code
+ * const uint8_t buffer[6] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+ * uint32_t value = bytes_read_u32_unaligned(&buffer[1]);
+ * // Returns: 0x04030201 (little-endian) or similar, platform-dependent
+ * @endcode
+ */
+static inline uint32_t bytes_read_u32_unaligned(const void *ptr) {
+  uint32_t value;
+  __builtin_memcpy(&value, ptr, sizeof(value));
+  return value;
+}
+
+/**
+ * @brief Write a 16-bit value to potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @param value 16-bit value in host byte order
+ *
+ * Safely writes a 16-bit unsigned integer to any memory location,
+ * even if the address is not aligned on a 2-byte boundary. Uses memcpy
+ * which compilers optimize to single instructions when possible while
+ * maintaining safety on all platforms.
+ *
+ * @par Example
+ * @code
+ * uint8_t buffer[4];
+ * bytes_write_u16_unaligned(&buffer[1], 0x3412);
+ * // buffer now contains: [??, 0x12, 0x34, ??]
+ * @endcode
+ */
+static inline void bytes_write_u16_unaligned(void *ptr, uint16_t value) {
+  __builtin_memcpy(ptr, &value, sizeof(value));
+}
+
+/**
+ * @brief Write a 32-bit value to potentially unaligned memory
+ * @param ptr Pointer to memory (may be unaligned)
+ * @param value 32-bit value in host byte order
+ *
+ * Safely writes a 32-bit unsigned integer to any memory location,
+ * even if the address is not aligned on a 4-byte boundary. Uses memcpy
+ * which compilers optimize to single instructions when possible while
+ * maintaining safety on all platforms.
+ *
+ * @par Example
+ * @code
+ * uint8_t buffer[6];
+ * bytes_write_u32_unaligned(&buffer[1], 0x04030201);
+ * // buffer[1..4] now contains: 0x01, 0x02, 0x03, 0x04 (little-endian)
+ * @endcode
+ */
+static inline void bytes_write_u32_unaligned(void *ptr, uint32_t value) {
+  __builtin_memcpy(ptr, &value, sizeof(value));
+}
+
+/* ============================================================================
+ * Safe Arithmetic Functions
  * ============================================================================
  */
 
 /**
- * @brief Write 16-bit unsigned integer as big-endian
- * @param buf Output buffer (must have at least 2 bytes)
- * @param value Value to write
+ * @brief Safe size_t multiplication with overflow detection
+ * @param a First operand
+ * @param b Second operand
+ * @param result Pointer to output variable for the product
+ * @return true if overflow occurred or result is NULL, false on success
  *
- * Writes a 16-bit unsigned integer to the buffer in big-endian byte order
- * (most significant byte first).
+ * Safely multiplies two size_t values and detects overflow. Returns true
+ * if overflow is detected (product set to 0) or if result pointer is NULL.
+ * Returns false on successful multiplication.
  *
- * @par Example
- * @code
- * uint8_t buf[2];
- * write_u16_be(buf, 0x1234);
- * // buf[0] = 0x12, buf[1] = 0x34
- * @endcode
+ * **IMPORTANT: Return value semantics are counter-intuitive!**
+ * - Returns TRUE if overflow occurred OR result pointer is NULL (ERROR case)
+ * - Returns FALSE on successful multiplication (SUCCESS case)
  *
- * @ingroup util
- */
-static inline void write_u16_be(uint8_t *buf, uint16_t value) {
-  buf[0] = (uint8_t)((value >> 8) & 0xFF);
-  buf[1] = (uint8_t)(value & 0xFF);
-}
-
-/**
- * @brief Read 16-bit unsigned integer as big-endian
- * @param buf Input buffer (must have at least 2 bytes)
- * @return The read value in host byte order
- *
- * Reads a 16-bit unsigned integer from the buffer assuming big-endian
- * byte order (most significant byte first).
+ * This unusual semantics allows the common pattern:
+ *   if (safe_size_mul(width, height, &product)) { ... } // handle error
  *
  * @par Example
  * @code
- * uint8_t buf[2] = {0x12, 0x34};
- * uint16_t value = read_u16_be(buf);  // Returns 0x1234
+ * // Successful case
+ * size_t product;
+ * if (!safe_size_mul(100, 200, &product)) {
+ *   // product == 20000, all good
+ * } else {
+ *   // overflow or NULL pointer
+ * }
+ *
+ * // Overflow case
+ * size_t large1 = SIZE_MAX;
+ * size_t large2 = 2;
+ * if (safe_size_mul(large1, large2, &product)) {
+ *   // Overflow detected! product was set to 0
+ * }
  * @endcode
- *
- * @ingroup util
  */
-static inline uint16_t read_u16_be(const uint8_t *buf) {
-  return ((uint16_t)buf[0] << 8) | buf[1];
-}
+static inline bool bytes_safe_size_mul(size_t a, size_t b, size_t *result) {
+  if (result == NULL) {
+    return true; // ERROR: NULL pointer
+  }
 
-/**
- * @brief Write 32-bit unsigned integer as big-endian
- * @param buf Output buffer (must have at least 4 bytes)
- * @param value Value to write
- *
- * Writes a 32-bit unsigned integer to the buffer in big-endian byte order.
- * This is the most commonly used function for network protocols.
- *
- * @par Example
- * @code
- * uint8_t buf[4];
- * write_u32_be(buf, 0x12345678);
- * // buf[0] = 0x12, buf[1] = 0x34, buf[2] = 0x56, buf[3] = 0x78
- * @endcode
- *
- * @ingroup util
- */
-static inline void write_u32_be(uint8_t *buf, uint32_t value) {
-  buf[0] = (uint8_t)((value >> 24) & 0xFF);
-  buf[1] = (uint8_t)((value >> 16) & 0xFF);
-  buf[2] = (uint8_t)((value >> 8) & 0xFF);
-  buf[3] = (uint8_t)(value & 0xFF);
-}
+  if (a != 0 && b > SIZE_MAX / a) {
+    *result = 0;
+    return true; // ERROR: Overflow detected
+  }
 
-/**
- * @brief Read 32-bit unsigned integer as big-endian
- * @param buf Input buffer (must have at least 4 bytes)
- * @return The read value in host byte order
- *
- * Reads a 32-bit unsigned integer from the buffer assuming big-endian
- * byte order. This is the most commonly used function for network protocols.
- *
- * @par Example
- * @code
- * uint8_t buf[4] = {0x12, 0x34, 0x56, 0x78};
- * uint32_t value = read_u32_be(buf);  // Returns 0x12345678
- * @endcode
- *
- * @ingroup util
- */
-static inline uint32_t read_u32_be(const uint8_t *buf) {
-  return ((uint32_t)buf[0] << 24) | ((uint32_t)buf[1] << 16) |
-         ((uint32_t)buf[2] << 8) | buf[3];
-}
-
-/**
- * @brief Write 64-bit unsigned integer as big-endian
- * @param buf Output buffer (must have at least 8 bytes)
- * @param value Value to write
- *
- * Writes a 64-bit unsigned integer to the buffer in big-endian byte order.
- *
- * @par Example
- * @code
- * uint8_t buf[8];
- * write_u64_be(buf, 0x0102030405060708LL);
- * // buf[0..7] = 01 02 03 04 05 06 07 08
- * @endcode
- *
- * @ingroup util
- */
-static inline void write_u64_be(uint8_t *buf, uint64_t value) {
-  buf[0] = (uint8_t)((value >> 56) & 0xFF);
-  buf[1] = (uint8_t)((value >> 48) & 0xFF);
-  buf[2] = (uint8_t)((value >> 40) & 0xFF);
-  buf[3] = (uint8_t)((value >> 32) & 0xFF);
-  buf[4] = (uint8_t)((value >> 24) & 0xFF);
-  buf[5] = (uint8_t)((value >> 16) & 0xFF);
-  buf[6] = (uint8_t)((value >> 8) & 0xFF);
-  buf[7] = (uint8_t)(value & 0xFF);
-}
-
-/**
- * @brief Read 64-bit unsigned integer as big-endian
- * @param buf Input buffer (must have at least 8 bytes)
- * @return The read value in host byte order
- *
- * Reads a 64-bit unsigned integer from the buffer assuming big-endian
- * byte order.
- *
- * @par Example
- * @code
- * uint8_t buf[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
- * uint64_t value = read_u64_be(buf);  // Returns 0x0102030405060708LL
- * @endcode
- *
- * @ingroup util
- */
-static inline uint64_t read_u64_be(const uint8_t *buf) {
-  return ((uint64_t)buf[0] << 56) | ((uint64_t)buf[1] << 48) |
-         ((uint64_t)buf[2] << 40) | ((uint64_t)buf[3] << 32) |
-         ((uint64_t)buf[4] << 24) | ((uint64_t)buf[5] << 16) |
-         ((uint64_t)buf[6] << 8) | buf[7];
-}
-
-/* ============================================================================
- * Little-Endian Operations
- * ============================================================================
- */
-
-/**
- * @brief Write 16-bit unsigned integer as little-endian
- * @param buf Output buffer (must have at least 2 bytes)
- * @param value Value to write
- *
- * Writes a 16-bit unsigned integer to the buffer in little-endian byte order
- * (least significant byte first).
- *
- * @ingroup util
- */
-static inline void write_u16_le(uint8_t *buf, uint16_t value) {
-  buf[0] = (uint8_t)(value & 0xFF);
-  buf[1] = (uint8_t)((value >> 8) & 0xFF);
-}
-
-/**
- * @brief Read 16-bit unsigned integer as little-endian
- * @param buf Input buffer (must have at least 2 bytes)
- * @return The read value in host byte order
- *
- * Reads a 16-bit unsigned integer from the buffer assuming little-endian
- * byte order.
- *
- * @ingroup util
- */
-static inline uint16_t read_u16_le(const uint8_t *buf) {
-  return buf[0] | ((uint16_t)buf[1] << 8);
-}
-
-/**
- * @brief Write 32-bit unsigned integer as little-endian
- * @param buf Output buffer (must have at least 4 bytes)
- * @param value Value to write
- *
- * Writes a 32-bit unsigned integer to the buffer in little-endian byte order.
- *
- * @ingroup util
- */
-static inline void write_u32_le(uint8_t *buf, uint32_t value) {
-  buf[0] = (uint8_t)(value & 0xFF);
-  buf[1] = (uint8_t)((value >> 8) & 0xFF);
-  buf[2] = (uint8_t)((value >> 16) & 0xFF);
-  buf[3] = (uint8_t)((value >> 24) & 0xFF);
-}
-
-/**
- * @brief Read 32-bit unsigned integer as little-endian
- * @param buf Input buffer (must have at least 4 bytes)
- * @return The read value in host byte order
- *
- * Reads a 32-bit unsigned integer from the buffer assuming little-endian
- * byte order.
- *
- * @ingroup util
- */
-static inline uint32_t read_u32_le(const uint8_t *buf) {
-  return buf[0] | ((uint32_t)buf[1] << 8) | ((uint32_t)buf[2] << 16) |
-         ((uint32_t)buf[3] << 24);
-}
-
-/**
- * @brief Write 64-bit unsigned integer as little-endian
- * @param buf Output buffer (must have at least 8 bytes)
- * @param value Value to write
- *
- * Writes a 64-bit unsigned integer to the buffer in little-endian byte order.
- *
- * @ingroup util
- */
-static inline void write_u64_le(uint8_t *buf, uint64_t value) {
-  buf[0] = (uint8_t)(value & 0xFF);
-  buf[1] = (uint8_t)((value >> 8) & 0xFF);
-  buf[2] = (uint8_t)((value >> 16) & 0xFF);
-  buf[3] = (uint8_t)((value >> 24) & 0xFF);
-  buf[4] = (uint8_t)((value >> 32) & 0xFF);
-  buf[5] = (uint8_t)((value >> 40) & 0xFF);
-  buf[6] = (uint8_t)((value >> 48) & 0xFF);
-  buf[7] = (uint8_t)((value >> 56) & 0xFF);
-}
-
-/**
- * @brief Read 64-bit unsigned integer as little-endian
- * @param buf Input buffer (must have at least 8 bytes)
- * @return The read value in host byte order
- *
- * Reads a 64-bit unsigned integer from the buffer assuming little-endian
- * byte order.
- *
- * @ingroup util
- */
-static inline uint64_t read_u64_le(const uint8_t *buf) {
-  return buf[0] | ((uint64_t)buf[1] << 8) | ((uint64_t)buf[2] << 16) |
-         ((uint64_t)buf[3] << 24) | ((uint64_t)buf[4] << 32) |
-         ((uint64_t)buf[5] << 40) | ((uint64_t)buf[6] << 48) |
-         ((uint64_t)buf[7] << 56);
+  *result = a * b;
+  return false; // SUCCESS
 }
 
 /** @} */
