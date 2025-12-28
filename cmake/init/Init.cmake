@@ -158,10 +158,15 @@ set(FETCHCONTENT_BASE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}" CACHE PATH "FetchContent
 # Use Ninja generator by default on all platforms for faster builds
 # Only set Ninja if no generator was explicitly specified via -G flag
 # This MUST be set before vcpkg toolchain to prevent vcpkg from forcing Visual Studio generator
-if(NOT CMAKE_GENERATOR AND NOT DEFINED CMAKE_GENERATOR_INTERNAL)
-    # Use centralized ASCIICHAT_NINJA_EXECUTABLE from FindPrograms.cmake
-    if(ASCIICHAT_NINJA_EXECUTABLE)
+
+if(ASCIICHAT_NINJA_EXECUTABLE AND NOT DEFINED ENV{CMAKE_GENERATOR})
+    # Ninja is available and user hasn't set CMAKE_GENERATOR env var
+    # CMAKE_GENERATOR gets set to the default (Unix Makefiles) on first run
+    # Check if we should override it
+    if(NOT CMAKE_GENERATOR OR CMAKE_GENERATOR STREQUAL "Unix Makefiles")
         set(CMAKE_GENERATOR "Ninja" CACHE STRING "Build system generator" FORCE)
+        # Set CMAKE_MAKE_PROGRAM to the correct Ninja executable to prevent auto-detection issues
+        set(CMAKE_MAKE_PROGRAM "${ASCIICHAT_NINJA_EXECUTABLE}" CACHE FILEPATH "Ninja executable" FORCE)
         message(STATUS "Using ${BoldGreen}Ninja${ColorReset} generator for faster builds")
     endif()
 endif()
