@@ -31,7 +31,7 @@
 #include "options.h"
 #include "config.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "video/webcam/webcam.h"
 #include "audio/audio.h"
 #include "util/ip.h"

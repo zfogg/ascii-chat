@@ -76,7 +76,7 @@
 #include "platform/socket.h"
 #include "packet_types.h"
 #include "crypto/crypto.h"
-#include "logging.h"
+#include "log/logging.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

@@ -940,7 +940,7 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
   ((offset) < 0 || (size_t)(offset) >= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))
 
 /* Include logging.h to provide logging macros to all files that include common.h */
-#include "logging.h" // IWYU pragma: keep
+#include "log/logging.h" // IWYU pragma: keep
 
 /** @} */
 

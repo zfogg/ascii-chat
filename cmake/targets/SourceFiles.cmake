@@ -102,6 +102,7 @@ if(WIN32)
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
         lib/platform/windows/password.c
+        lib/platform/windows/mmap.c
         lib/platform/windows/symbols.c
         lib/platform/windows/getopt.c
         lib/platform/windows/pipe.c
@@ -120,6 +121,7 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
         lib/platform/posix/password.c
+        lib/platform/posix/mmap.c
         lib/platform/posix/symbols.c
         lib/platform/posix/pipe.c
     )
@@ -230,7 +232,8 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
-    lib/logging.c
+    lib/log/logging.c
+    lib/log/mmap.c
     lib/options.c
     lib/config.c
     lib/version.c

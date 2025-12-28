@@ -35,7 +35,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             lib/platform/socket.h
             lib/platform/terminal.h
 
-            lib/logging.h
+            lib/log/logging.h
             lib/options.h
             lib/buffer_pool.h
             lib/asciichat_errno.h
