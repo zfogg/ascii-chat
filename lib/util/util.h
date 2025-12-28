@@ -23,7 +23,7 @@
  * - fnv1a.h: FNV-1a hash function implementation
  * - thread.h: Thread management helper macros
  * - atomic.h: Atomic operations convenience macros
- * - endian_helpers.h: Network byte order conversion helpers
+ * - endian.h: Network byte order conversion helpers
  * - audio.h: Audio packet parsing utilities
  *
  * USAGE:
@@ -61,5 +61,5 @@
 #include "util/utf8.h"
 #include "util/thread.h"
 #include "util/atomic.h"
-#include "util/endian_helpers.h"
+#include "util/endian.h"
 #include "util/audio.h"
