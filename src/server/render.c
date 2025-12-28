@@ -160,7 +160,7 @@
 #include "stream.h"
 #include "protocol.h"
 #include "common.h"
-#include "options.h"
+#include "options/options.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
 #include "network/packet_queue.h"

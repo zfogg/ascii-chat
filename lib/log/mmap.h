@@ -1,22 +1,23 @@
 #pragma once
 
 /**
- * @file logging_mmap.h
- * @brief High-performance memory-mapped logging with crash safety
+ * @file mmap.h
+ * @brief Lock-free memory-mapped text logging with crash safety
  * @ingroup logging
  *
- * This module provides an alternative logging backend using memory-mapped files
- * and atomic operations for minimal contention. Key features:
+ * This module provides crash-safe logging by writing human-readable text
+ * directly to a memory-mapped log file. Key features:
  *
- * - Lock-free logging: Uses atomic fetch_add for slot claiming, no mutex
- * - Crash-safe: Logs are in mmap'd file, kernel flushes on crash
- * - Optional flusher: Background thread writes human-readable log file
- * - Level-based flush: ERROR/FATAL flush immediately for crash visibility
+ * - Lock-free logging: Uses atomic fetch_add for position claiming
+ * - Crash-safe: Text is written directly to mmap'd file, readable after crash
+ * - No flusher needed: Logs are human-readable in the file immediately
+ * - Pure text: No binary header, works with grep/rg/cat without special flags
+ * - Simple design: Just mmap the .log file and write text to it
  *
  * Usage:
  * @code
  * // Initialize mmap logging (call once at startup)
- * log_mmap_init("/tmp/myapp.mmap", "/tmp/myapp.log");
+ * log_mmap_init("/tmp/myapp.log", 4 * 1024 * 1024);  // 4MB log file
  *
  * // Use normal log_* macros - they automatically use mmap backend
  * log_debug("This uses atomic operations, no mutex!");
@@ -36,68 +37,22 @@
 extern "C" {
 #endif
 
-/** @brief Maximum message length in a single log entry */
-#define LOG_MMAP_MAX_MESSAGE 512
-
-/** @brief Default number of log entries in the ring buffer */
-#define LOG_MMAP_DEFAULT_ENTRIES 8192
-
-/** @brief Magic number to validate mmap file */
-#define LOG_MMAP_MAGIC 0x4C4F474D /* "LOGM" in little-endian */
-
-/** @brief Version of the mmap log format */
-#define LOG_MMAP_VERSION 1
-
-/**
- * @brief A single log entry in the mmap ring buffer
- */
-typedef struct {
-  _Atomic uint64_t sequence;          /**< Entry sequence number (0 = unwritten) */
-  uint64_t timestamp_ns;              /**< Nanosecond timestamp (CLOCK_MONOTONIC) */
-  uint8_t level;                      /**< Log level (log_level_t) */
-  uint8_t reserved[7];                /**< Padding for alignment */
-  char message[LOG_MMAP_MAX_MESSAGE]; /**< Null-terminated message */
-} log_mmap_entry_t;
-
-/**
- * @brief Header of the mmap log file
- */
-typedef struct {
-  uint32_t magic;              /**< LOG_MMAP_MAGIC for validation */
-  uint32_t version;            /**< LOG_MMAP_VERSION for compatibility */
-  uint32_t entry_count;        /**< Number of entries in ring buffer */
-  uint32_t entry_size;         /**< Size of each entry in bytes */
-  _Atomic uint64_t write_head; /**< Next slot to write (wraps around) */
-  uint64_t start_timestamp_ns; /**< Timestamp when logging started */
-  char reserved[48];           /**< Reserved for future use */
-} log_mmap_header_t;
-
-/**
- * @brief Complete mmap log structure (header + entries)
- *
- * This structure is overlaid on the mmap'd file.
- */
-typedef struct {
-  log_mmap_header_t header;
-  log_mmap_entry_t entries[]; /**< Flexible array of entries */
-} log_mmap_buffer_t;
+/** @brief Default mmap log file size (4MB) */
+#define LOG_MMAP_DEFAULT_SIZE (4 * 1024 * 1024)
 
 /**
  * @brief Configuration for mmap logging
  */
-typedef struct {
-  const char *mmap_path;      /**< Path to mmap file (required) */
-  const char *text_log_path;  /**< Path to human-readable log (NULL to disable) */
-  uint32_t entry_count;       /**< Number of entries (0 = default 8192) */
-  uint32_t flush_interval_ms; /**< Flusher interval (0 = default 100ms) */
-  bool immediate_error_flush; /**< Flush ERROR/FATAL immediately (default true) */
+typedef struct log_mmap_config {
+  const char *log_path; /**< Path to log file (required) */
+  size_t max_size;      /**< Maximum file size (0 = default 4MB) */
 } log_mmap_config_t;
 
 /**
- * @brief Initialize mmap-based logging
+ * @brief Initialize mmap-based text logging
  *
- * Sets up the memory-mapped log buffer and optionally starts a background
- * flusher thread for human-readable output.
+ * Creates or opens a memory-mapped log file. Text is written directly
+ * to the file, so it's readable even after a crash.
  *
  * @param config Configuration options
  * @return ASCIICHAT_OK on success, error code on failure
@@ -105,27 +60,28 @@ typedef struct {
 asciichat_error_t log_mmap_init(const log_mmap_config_t *config);
 
 /**
- * @brief Initialize mmap logging with simple paths
+ * @brief Initialize mmap logging with simple parameters
  *
- * Convenience wrapper around log_mmap_init() with default settings.
+ * Convenience wrapper around log_mmap_init().
  *
- * @param mmap_path Path to mmap file
- * @param text_log_path Path to human-readable log (NULL to disable flusher)
+ * @param log_path Path to log file
+ * @param max_size Maximum file size (0 = default 4MB)
  * @return ASCIICHAT_OK on success, error code on failure
  */
-asciichat_error_t log_mmap_init_simple(const char *mmap_path, const char *text_log_path);
+asciichat_error_t log_mmap_init_simple(const char *log_path, size_t max_size);
 
 /**
  * @brief Shutdown mmap logging
  *
- * Stops the flusher thread, flushes remaining entries, and unmaps the file.
+ * Syncs and unmaps the log file.
  */
 void log_mmap_destroy(void);
 
 /**
- * @brief Write a log entry (lock-free)
+ * @brief Write a log entry directly to the mmap'd file (lock-free)
  *
- * This is the fast path for logging. Uses atomic operations only, no mutex.
+ * Formats the log message and writes it directly as human-readable text.
+ * Uses atomic operations only, no mutex.
  *
  * @param level Log level
  * @param file Source file (can be NULL)
@@ -144,32 +100,50 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
 bool log_mmap_is_active(void);
 
 /**
- * @brief Force flush all pending log entries
+ * @brief Force sync the mmap'd file to disk
  *
- * Writes all unwritten entries to the text log file. Blocks until complete.
- * Called automatically on shutdown and for ERROR/FATAL levels.
+ * Ensures all written data is flushed to the underlying file.
+ * Called automatically for ERROR/FATAL levels and on shutdown.
  */
-void log_mmap_flush(void);
+void log_mmap_sync(void);
 
 /**
  * @brief Install signal handlers for crash safety
  *
- * Registers handlers for SIGSEGV, SIGABRT, SIGBUS, SIGFPE, SIGILL that
- * will flush the log buffer before the process terminates.
+ * Registers handlers for SIGSEGV, SIGABRT, etc. that sync the mmap
+ * before the process terminates.
  *
  * @note Signal handlers are automatically installed by log_mmap_init().
- *       Call this only if you need to reinstall after custom handler setup.
  */
 void log_mmap_install_crash_handlers(void);
 
 /**
  * @brief Get statistics about the mmap log
  *
- * @param[out] total_entries Total entries written since init
- * @param[out] flushed_entries Entries flushed to text log
- * @param[out] dropped_entries Entries dropped due to ring overflow
+ * @param[out] bytes_written Total bytes written since init
+ * @param[out] wrap_count Number of times log has wrapped
  */
-void log_mmap_get_stats(uint64_t *total_entries, uint64_t *flushed_entries, uint64_t *dropped_entries);
+void log_mmap_get_stats(uint64_t *bytes_written, uint64_t *wrap_count);
+
+/**
+ * @brief Get current mmap log usage
+ *
+ * @param[out] used Current bytes used in the log
+ * @param[out] capacity Total capacity of the log
+ * @return true if mmap is active and values are valid
+ */
+bool log_mmap_get_usage(size_t *used, size_t *capacity);
+
+/**
+ * @brief Rotate the mmap log (tail-keeping rotation)
+ *
+ * Keeps the most recent log entries (tail) and discards old ones.
+ * This is the mmap equivalent of file-based log rotation.
+ *
+ * @note Caller must hold the rotation mutex from logging.c.
+ *       This is called by maybe_rotate_log() which handles locking.
+ */
+void log_mmap_rotate(void);
 
 #ifdef __cplusplus
 }

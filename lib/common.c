@@ -32,7 +32,7 @@ extern size_t malloc_usable_size(void *ptr);
 #include "video/palette.h"
 #include "asciichat_errno.h"
 #include "crypto/known_hosts.h"
-#include "options.h"
+#include "options/options.h"
 #include <string.h>
 #include <stdatomic.h>
 #include <limits.h>
@@ -92,7 +92,8 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   //   Debug/Dev builds: LOG_DEBUG
   //   Release/RelWithDebInfo builds: LOG_INFO
   // Precedence: LOG_LEVEL env var > --log-level CLI arg > build type default
-  log_init(log_filename, opt_log_level, is_client);
+  // use_mmap=true: Lock-free mmap logging for performance and crash safety
+  log_init(log_filename, opt_log_level, is_client, true /* use_mmap */);
 
   // Initialize palette based on command line options
   const char *custom_chars = opt_palette_custom_set ? opt_palette_custom : NULL;

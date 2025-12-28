@@ -287,7 +287,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
   uint32_t capabilities = NET_TO_HOST_U32(join_info->capabilities);
 
   // Validate at least one capability flag is set
-  const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH;
+  const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_COLOR | CLIENT_CAP_STRETCH;
   VALIDATE_CAPABILITY_FLAGS(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
 
   // Validate no unknown capability bits are set

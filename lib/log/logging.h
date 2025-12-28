@@ -99,9 +99,16 @@ extern "C" {
  * @param filename Log file path (or NULL for no file logging)
  * @param level Minimum log level to output
  * @param force_stderr If true, route ALL logs to stderr (for client mode to keep stdout clean)
+ * @param use_mmap If true, use fully lock-free mmap logging (recommended). If mmap fails, uses stderr only (no mutex
+ * fallback).
  * @ingroup logging
+ *
+ * @note When use_mmap=true, the entire logging path is lock-free:
+ *       - File output uses atomic operations on mmap'd memory
+ *       - Terminal output uses atomic fprintf/fwrite to fd
+ *       - No mutex is ever acquired in the hot path
  */
-void log_init(const char *filename, log_level_t level, bool force_stderr);
+void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap);
 
 /**
  * @brief Destroy the logging system and close log file
@@ -500,6 +507,53 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 /* Network logging convenience macros (log_*_net) are defined in src/server/client.h
  * since they require access to client_info_t. The base function log_net_message()
  * is available here for generic use. */
+
+/* ============================================================================
+ * Lock-Free MMAP Logging
+ * ============================================================================ */
+
+/* Forward declaration - full definition in log/mmap.h */
+struct log_mmap_config;
+typedef struct log_mmap_config log_mmap_config_t;
+
+/**
+ * @brief Enable lock-free mmap-based logging
+ *
+ * When enabled, log messages bypass the mutex and use atomic operations
+ * to write directly to a memory-mapped log file as human-readable text.
+ *
+ * Benefits:
+ * - No mutex contention between logging threads
+ * - Crash-safe: text is written directly to mmap'd file, readable after crash
+ * - Fast path uses atomic fetch_add, no locks
+ * - ERROR/FATAL messages sync immediately for visibility
+ * - Simple: log file IS the mmap file (no separate binary format)
+ *
+ * @param log_path Path to the log file (will be memory-mapped)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Call log_init() first, then log_enable_mmap() to upgrade to lock-free
+ * @ingroup logging
+ */
+asciichat_error_t log_enable_mmap(const char *log_path);
+
+/**
+ * @brief Enable lock-free mmap logging with custom file size
+ *
+ * @param log_path Path to the log file
+ * @param max_size Maximum file size in bytes (0 = default 4MB)
+ * @return ASCIICHAT_OK on success, error code on failure
+ * @ingroup logging
+ */
+asciichat_error_t log_enable_mmap_sized(const char *log_path, size_t max_size);
+
+/**
+ * @brief Disable mmap logging and return to mutex-based logging
+ *
+ * Flushes remaining entries and closes the mmap file.
+ * @ingroup logging
+ */
+void log_disable_mmap(void);
 
 #ifdef __cplusplus
 }

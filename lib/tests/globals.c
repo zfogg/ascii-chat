@@ -7,7 +7,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include "options.h"
+#include "options/options.h"
 #include "platform/system.h"
 
 /**

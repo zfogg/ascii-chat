@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 
 #include "logging.h"
+#include "log/mmap.h"
 #include "platform/terminal.h"
 #include "platform/thread.h"
 #include "platform/mutex.h"
@@ -26,25 +27,28 @@
  * Logging System Internal State
  * ============================================================================ */
 
-/* Log context struct - internal implementation detail */
+/* Log context struct - Lock-free logging with mutex-protected rotation
+ *
+ * Design: Logging itself is lock-free using atomic operations and atomic write() syscalls.
+ * Only log rotation uses a mutex, since it involves multiple file operations that must
+ * be atomic as a group (close, read tail, write temp, rename, reopen).
+ */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 static struct log_context_t {
-  int file;
-  log_level_t level;
-  mutex_t mutex;
-  bool initialized;
-  char filename[4096];                /* Store filename for rotation */
-  size_t current_size;                /* Track current file size */
-  bool terminal_output_enabled;       /* Control stderr output to terminal */
-  bool level_manually_set;            /* Track if level was set manually */
-  bool force_stderr;                  /* Force all terminal logs to stderr (client mode) */
-  log_buffer_entry_t *buffer_entries; /* Array of buffered log entries */
-  size_t buffer_entry_count;          /* Number of entries in buffer */
-  size_t buffer_total_size;           /* Total bytes used by all messages */
-  unsigned int flush_delay_ms;        /* Delay between each buffered log flush (0 = disabled) */
-  bool terminal_locked;               /* True when a thread has exclusive terminal access */
-  thread_id_t terminal_owner_thread;  /* Thread that owns terminal output (when locked) */
+  _Atomic int file;                        /* File descriptor (atomic for safe access) */
+  _Atomic int level;                       /* Log level as int for atomic ops */
+  _Atomic bool initialized;                /* Initialization flag */
+  char filename[4096];                     /* Store filename (set once at init) */
+  _Atomic size_t current_size;             /* Track current file size */
+  _Atomic bool terminal_output_enabled;    /* Control stderr output to terminal */
+  _Atomic bool level_manually_set;         /* Track if level was set manually */
+  _Atomic bool force_stderr;               /* Force all terminal logs to stderr (client mode) */
+  _Atomic bool terminal_locked;            /* True when a thread has exclusive terminal access */
+  _Atomic uint64_t terminal_owner_thread;  /* Thread that owns terminal output (stored as uint64) */
+  _Atomic unsigned int flush_delay_ms;     /* Delay between each buffered log flush (0 = disabled) */
+  mutex_t rotation_mutex;                  /* Mutex for log rotation only (not for logging!) */
+  _Atomic bool rotation_mutex_initialized; /* Track if rotation mutex is ready */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .level = DEFAULT_LOG_LEVEL,
@@ -54,12 +58,10 @@ static struct log_context_t {
     .terminal_output_enabled = true,
     .level_manually_set = false,
     .force_stderr = false,
-    .buffer_entries = NULL,
-    .buffer_entry_count = 0,
-    .buffer_total_size = 0,
-    .flush_delay_ms = 0,
     .terminal_locked = false,
     .terminal_owner_thread = 0,
+    .flush_delay_ms = 0,
+    .rotation_mutex_initialized = false,
 };
 #pragma GCC diagnostic pop
 
@@ -211,372 +213,341 @@ static log_level_t parse_log_level_from_env(void) {
   return DEFAULT_LOG_LEVEL;
 }
 
-/* Log rotation function - keeps the tail (recent entries) (assumes mutex held) */
-static void rotate_log_if_needed_unlocked(void) {
-  if (g_log.file < 0 || g_log.file == STDERR_FILENO || strlen(g_log.filename) == 0) {
+/* Log rotation function - keeps the tail (recent entries)
+ * REQUIRES: rotation_mutex must be held by caller
+ * This is the only operation that uses a mutex - regular logging is lock-free.
+ */
+static void rotate_log_locked(void) {
+  int file = atomic_load(&g_log.file);
+  size_t current_size = atomic_load(&g_log.current_size);
+
+  if (file < 0 || file == STDERR_FILENO || strlen(g_log.filename) == 0) {
     return;
   }
 
-  if (g_log.current_size >= MAX_LOG_SIZE) {
-    platform_close(g_log.file);
+  if (current_size < MAX_LOG_SIZE) {
+    return;
+  }
 
-    /* Open file for reading to get the tail */
-    int read_file = platform_open(g_log.filename, O_RDONLY, 0);
-    if (read_file < 0) {
-      safe_fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
-      /* Fall back to regular truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      g_log.file = fd;
-      g_log.current_size = 0;
-      return;
-    }
+  platform_close(file);
+  atomic_store(&g_log.file, -1);
 
-    /* Seek to position where we want to start keeping data (keep last 2MB) */
-    size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
-    // Check for underflow before subtraction (size_t is unsigned)
-    if (g_log.current_size < keep_size) {
-      platform_close(read_file);
-      /* Fall back to truncation since we don't have enough data to rotate */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      g_log.file = fd;
-      g_log.current_size = 0;
-      return;
-    }
-    if (lseek(read_file, (off_t)(g_log.current_size - keep_size), SEEK_SET) == (off_t)-1) {
-      platform_close(read_file);
-      /* Fall back to truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      g_log.file = fd;
-      g_log.current_size = 0;
-      return;
-    }
+  /* Open file for reading to get the tail */
+  int read_file = platform_open(g_log.filename, O_RDONLY, 0);
+  if (read_file < 0) {
+    safe_fprintf(stderr, "Failed to open log file for tail rotation: %s\n", g_log.filename);
+    /* Fall back to regular truncation */
+    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    atomic_store(&g_log.file, fd);
+    atomic_store(&g_log.current_size, 0);
+    return;
+  }
 
-    /* Skip to next line boundary to avoid partial lines */
-    char c;
-    while (platform_read(read_file, &c, 1) > 0 && c != '\n') {
-      /* Skip characters until newline */
-    }
-
-    /* Read the tail into a temporary file */
-    char temp_filename[PLATFORM_MAX_PATH_LENGTH];
-    int result = snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
-    if (result <= 0 || result >= (int)sizeof(temp_filename)) {
-      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
-      platform_close(read_file);
-      return;
-    }
-
-    int temp_file = platform_open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, FILE_PERM_PRIVATE);
-    if (temp_file < 0) {
-      platform_close(read_file);
-      /* Fall back to truncation */
-      int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      g_log.file = fd;
-      g_log.current_size = 0;
-      return;
-    }
-
-    /* Copy tail to temp file */
-    char buffer[8192];
-    ssize_t bytes_read;
-    size_t new_size = 0;
-    while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
-      ssize_t written = platform_write(temp_file, buffer, (size_t)bytes_read);
-      if (written != bytes_read) {
-        platform_close(read_file);
-        platform_close(temp_file);
-        unlink(temp_filename);
-        /* Fall back to truncation */
-        int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-        g_log.file = fd;
-        g_log.current_size = 0;
-        return;
-      }
-      new_size += (size_t)bytes_read;
-    }
-
+  /* Seek to position where we want to start keeping data (keep last 2MB) */
+  size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
+  if (current_size < keep_size) {
     platform_close(read_file);
-    platform_close(temp_file);
+    /* Fall back to truncation since we don't have enough data to rotate */
+    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    atomic_store(&g_log.file, fd);
+    atomic_store(&g_log.current_size, 0);
+    return;
+  }
+  if (lseek(read_file, (off_t)(current_size - keep_size), SEEK_SET) == (off_t)-1) {
+    platform_close(read_file);
+    /* Fall back to truncation */
+    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    atomic_store(&g_log.file, fd);
+    atomic_store(&g_log.current_size, 0);
+    return;
+  }
 
-    /* Replace original with temp file */
-    if (rename(temp_filename, g_log.filename) != 0) {
-      unlink(temp_filename); /* Clean up temp file */
+  /* Skip to next line boundary to avoid partial lines */
+  char c;
+  while (platform_read(read_file, &c, 1) > 0 && c != '\n') {
+    /* Skip characters until newline */
+  }
+
+  /* Read the tail into a temporary file */
+  char temp_filename[PLATFORM_MAX_PATH_LENGTH];
+  int result = snprintf(temp_filename, sizeof(temp_filename), "%s.tmp", g_log.filename);
+  if (result <= 0 || result >= (int)sizeof(temp_filename)) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
+    platform_close(read_file);
+    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
+    atomic_store(&g_log.file, fd);
+    return;
+  }
+
+  int temp_file = platform_open(temp_filename, O_CREAT | O_WRONLY | O_TRUNC, FILE_PERM_PRIVATE);
+  if (temp_file < 0) {
+    platform_close(read_file);
+    /* Fall back to truncation */
+    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    atomic_store(&g_log.file, fd);
+    atomic_store(&g_log.current_size, 0);
+    return;
+  }
+
+  /* Copy tail to temp file */
+  char buffer[8192];
+  ssize_t bytes_read;
+  size_t new_size = 0;
+  while ((bytes_read = platform_read(read_file, buffer, sizeof(buffer))) > 0) {
+    ssize_t written = platform_write(temp_file, buffer, (size_t)bytes_read);
+    if (written != bytes_read) {
+      platform_close(read_file);
+      platform_close(temp_file);
+      unlink(temp_filename);
       /* Fall back to truncation */
       int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      g_log.file = fd;
-      g_log.current_size = 0;
+      atomic_store(&g_log.file, fd);
+      atomic_store(&g_log.current_size, 0);
       return;
     }
+    new_size += (size_t)bytes_read;
+  }
 
-    /* Reopen for appending */
-    g_log.file = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
-    if (g_log.file < 0) {
-      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to reopen rotated log file: %s", g_log.filename);
-      g_log.file = STDERR_FILENO;
-      g_log.filename[0] = '\0';
-    }
-    g_log.current_size = new_size;
+  platform_close(read_file);
+  platform_close(temp_file);
 
-    char time_buf[32];
-    get_current_time_formatted(time_buf);
+  /* Replace original with temp file */
+  if (rename(temp_filename, g_log.filename) != 0) {
+    unlink(temp_filename); /* Clean up temp file */
+    /* Fall back to truncation */
+    int fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+    atomic_store(&g_log.file, fd);
+    atomic_store(&g_log.current_size, 0);
+    return;
+  }
 
-    char log_msg[256];
-    int log_msg_len =
-        safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
-    if (log_msg_len <= 0 || log_msg_len >= (int)sizeof(log_msg)) {
-      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
-      return;
-    }
+  /* Reopen for appending */
+  int new_fd = platform_open(g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
+  if (new_fd < 0) {
+    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to reopen rotated log file: %s", g_log.filename);
+    atomic_store(&g_log.file, STDERR_FILENO);
+    g_log.filename[0] = '\0';
+    atomic_store(&g_log.current_size, 0);
+    return;
+  }
+  atomic_store(&g_log.file, new_fd);
+  atomic_store(&g_log.current_size, new_size);
 
-    if (platform_write(g_log.file, log_msg, (size_t)log_msg_len) != log_msg_len) {
-      LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write log message");
-      return;
-    }
+  char time_buf[32];
+  get_current_time_formatted(time_buf);
+
+  char log_msg[256];
+  int log_msg_len =
+      safe_snprintf(log_msg, sizeof(log_msg), "[%s] [INFO] Log tail-rotated (kept %zu bytes)\n", time_buf, new_size);
+  if (log_msg_len > 0 && log_msg_len < (int)sizeof(log_msg)) {
+    (void)platform_write(new_fd, log_msg, (size_t)log_msg_len);
   }
 }
 
-void log_init(const char *filename, log_level_t level, bool force_stderr) {
-  // Initialize mutex if this is the first time
-  static bool mutex_initialized = false;
-  if (!mutex_initialized) {
-    if (mutex_init(&g_log.mutex) != 0) {
-      // Cannot log the error since logging isn't initialized yet
-      // This is a critical failure that should terminate the program
-      fprintf(stderr, "FATAL: Failed to initialize logging mutex\n");
-      exit(1);
+/* Check if rotation is needed and perform it (acquires mutex only if needed) */
+static void maybe_rotate_log(void) {
+  /* Rotation mutex not initialized - skip rotation */
+  if (!atomic_load(&g_log.rotation_mutex_initialized)) {
+    return;
+  }
+
+  /* Check mmap path first */
+  if (log_mmap_is_active()) {
+    size_t used = 0, capacity = 0;
+    if (log_mmap_get_usage(&used, &capacity) && capacity > 0) {
+      /* Rotate when 90% full to leave room for writes */
+      if (used > capacity * 9 / 10) {
+        mutex_lock(&g_log.rotation_mutex);
+        log_mmap_rotate();
+        mutex_unlock(&g_log.rotation_mutex);
+      }
     }
-    mutex_initialized = true;
+    return;
   }
 
-  mutex_lock(&g_log.mutex);
-
-  // Set force_stderr EARLY before any logging happens
-  // This ensures all logs (including terminal capability detection) go to stderr
-  g_log.force_stderr = force_stderr;
-
-  // Preserve the terminal output setting
-  bool preserve_terminal_output = g_log.terminal_output_enabled;
-
-  if (g_log.initialized && g_log.file >= 0 && g_log.file != STDERR_FILENO) {
-    platform_close(g_log.file);
+  /* File path: quick atomic check - avoid mutex if not needed */
+  size_t current_size = atomic_load(&g_log.current_size);
+  if (current_size < MAX_LOG_SIZE) {
+    return;
   }
 
-  // Check LOG_LEVEL environment variable on first initialization
-  // log_init() is an explicit call, so it overrides manual level setting
+  /* Size exceeded - acquire mutex and rotate */
+  mutex_lock(&g_log.rotation_mutex);
+  rotate_log_locked();
+  mutex_unlock(&g_log.rotation_mutex);
+}
 
+void log_init(const char *filename, log_level_t level, bool force_stderr, bool use_mmap) {
+  // Initialize rotation mutex (only operation that uses a mutex)
+  if (!atomic_load(&g_log.rotation_mutex_initialized)) {
+    mutex_init(&g_log.rotation_mutex);
+    atomic_store(&g_log.rotation_mutex_initialized, true);
+  }
+
+  // Set basic config using atomic stores
+  atomic_store(&g_log.force_stderr, force_stderr);
+  bool preserve_terminal_output = atomic_load(&g_log.terminal_output_enabled);
+
+  // Close any existing file (atomic load/store)
+  int old_file = atomic_load(&g_log.file);
+  if (atomic_load(&g_log.initialized) && old_file >= 0 && old_file != STDERR_FILENO) {
+    platform_close(old_file);
+    atomic_store(&g_log.file, -1);
+  }
+
+  // Check LOG_LEVEL environment variable
   const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
   if (env_level_str) {
-    // Environment variable takes precedence
-    log_level_t env_level = parse_log_level_from_env();
-    g_log.level = env_level;
+    atomic_store(&g_log.level, (int)parse_log_level_from_env());
   } else {
-    // No env var - use the provided level parameter
-    g_log.level = level;
+    atomic_store(&g_log.level, (int)level);
   }
 
-  // Reset the manual flag since log_init() is an explicit call
-  g_log.level_manually_set = false;
-  g_log.current_size = 0;
+  atomic_store(&g_log.level_manually_set, false);
+  atomic_store(&g_log.current_size, 0);
 
   if (filename) {
-    /* Store filename for rotation */
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
-    int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-    g_log.file = fd;
-    if (g_log.file < 0) { /* Check for error: fd < 0, not fd == 0 (STDIN is valid!) */
-      if (preserve_terminal_output) {
-        safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
+
+    if (use_mmap) {
+      // Lock-free mmap path - writes go to mmap'd file
+      asciichat_error_t mmap_result = log_mmap_init_simple(filename, 0);
+      if (mmap_result == ASCIICHAT_OK) {
+        atomic_store(&g_log.file, -1); // No regular fd - using mmap for file output
+      } else {
+        // Mmap failed - use stderr only (atomic writes, lock-free)
+        if (preserve_terminal_output) {
+          safe_fprintf(stderr, "Mmap logging failed for %s, using stderr only (lock-free)\n", filename);
+        }
+        atomic_store(&g_log.file, STDERR_FILENO);
+        g_log.filename[0] = '\0';
       }
-      g_log.file = STDERR_FILENO;
-      g_log.filename[0] = '\0'; /* Clear filename on failure */
     } else {
-      /* File was truncated, so size starts at 0 */
-      g_log.current_size = 0;
+      // Lock-free file I/O path - uses atomic write() syscalls
+      int fd = platform_open(filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+      atomic_store(&g_log.file, (fd >= 0) ? fd : STDERR_FILENO);
+      if (fd < 0) {
+        if (preserve_terminal_output) {
+          safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
+        }
+        g_log.filename[0] = '\0';
+      }
     }
   } else {
-    g_log.file = STDERR_FILENO;
+    atomic_store(&g_log.file, STDERR_FILENO);
     g_log.filename[0] = '\0';
   }
 
-  g_log.initialized = true;
+  atomic_store(&g_log.initialized, true);
+  atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
 
-  // Restore the terminal output setting
-  g_log.terminal_output_enabled = preserve_terminal_output;
-
-  // Reset initialization state if we're using defaults (not reliably detected)
-  // This ensures we'll re-detect with proper colors after unlocking
+  // Reset terminal detection if needed
   if (g_terminal_caps_initialized && !g_terminal_caps.detection_reliable) {
-    // Reset to allow re-detection with proper colors
     g_terminal_caps_initialized = false;
   }
 
-  mutex_unlock(&g_log.mutex);
-
-  // Now that logging is initialized and mutex is released, we can safely detect terminal capabilities
-  // This MUST be after mutex_unlock() because detect_terminal_capabilities() uses log_debug()
-  // Detect capabilities ONCE here so all subsequent logs use consistent colors
+  // Detect terminal capabilities
   log_redetect_terminal_capabilities();
 }
 
 void log_destroy(void) {
-  mutex_lock(&g_log.mutex);
-  if (g_log.file >= 0 && g_log.file != STDERR_FILENO) {
-    platform_close(g_log.file);
-  }
-  g_log.file = -1;
-  g_log.initialized = false;
-
-  // Free buffered log entries
-  if (g_log.buffer_entries) {
-    for (size_t i = 0; i < g_log.buffer_entry_count; i++) {
-      free(g_log.buffer_entries[i].message);
-    }
-    free(g_log.buffer_entries);
-    g_log.buffer_entries = NULL;
-    g_log.buffer_entry_count = 0;
-    g_log.buffer_total_size = 0;
+  // Destroy mmap logging first (if active)
+  if (log_mmap_is_active()) {
+    log_mmap_destroy();
   }
 
-  mutex_unlock(&g_log.mutex);
+  // Lock-free cleanup using atomic operations
+  int old_file = atomic_load(&g_log.file);
+  if (old_file >= 0 && old_file != STDERR_FILENO) {
+    platform_close(old_file);
+  }
+  atomic_store(&g_log.file, -1);
+  atomic_store(&g_log.initialized, false);
+
+  // Destroy rotation mutex
+  if (atomic_load(&g_log.rotation_mutex_initialized)) {
+    mutex_destroy(&g_log.rotation_mutex);
+    atomic_store(&g_log.rotation_mutex_initialized, false);
+  }
 }
 
 void log_set_level(log_level_t level) {
-  mutex_lock(&g_log.mutex);
-  g_log.level = level;
-  g_log.level_manually_set = true;
-  mutex_unlock(&g_log.mutex);
+  atomic_store(&g_log.level, (int)level);
+  atomic_store(&g_log.level_manually_set, true);
 }
 
 log_level_t log_get_level(void) {
-  mutex_lock(&g_log.mutex);
-  log_level_t level = g_log.level;
-  mutex_unlock(&g_log.mutex);
-  return level;
+  return (log_level_t)atomic_load(&g_log.level);
 }
 
 void log_set_terminal_output(bool enabled) {
-  mutex_lock(&g_log.mutex);
-  g_log.terminal_output_enabled = enabled;
-  mutex_unlock(&g_log.mutex);
+  atomic_store(&g_log.terminal_output_enabled, enabled);
 }
 
 bool log_get_terminal_output(void) {
-  mutex_lock(&g_log.mutex);
-  bool enabled = g_log.terminal_output_enabled;
-  mutex_unlock(&g_log.mutex);
-  return enabled;
+  return atomic_load(&g_log.terminal_output_enabled);
 }
 
 void log_set_force_stderr(bool enabled) {
-  mutex_lock(&g_log.mutex);
-  g_log.force_stderr = enabled;
-  mutex_unlock(&g_log.mutex);
+  atomic_store(&g_log.force_stderr, enabled);
 }
 
 bool log_get_force_stderr(void) {
-  mutex_lock(&g_log.mutex);
-  bool enabled = g_log.force_stderr;
-  mutex_unlock(&g_log.mutex);
-  return enabled;
+  return atomic_load(&g_log.force_stderr);
 }
 
 bool log_lock_terminal(void) {
-  mutex_lock(&g_log.mutex);
-  bool previous_state = g_log.terminal_locked;
-  g_log.terminal_locked = true;
-  g_log.terminal_owner_thread = ascii_thread_self();
-  mutex_unlock(&g_log.mutex);
+  bool previous_state = atomic_exchange(&g_log.terminal_locked, true);
+  atomic_store(&g_log.terminal_owner_thread, (uint64_t)ascii_thread_self());
   return previous_state;
 }
 
 void log_unlock_terminal(bool previous_state) {
-  mutex_lock(&g_log.mutex);
-
-  // Copy buffer state locally so we can release mutex during flush animation
-  size_t entry_count = g_log.buffer_entry_count;
-  log_buffer_entry_t *entries = g_log.buffer_entries;
-  unsigned int delay_ms = g_log.flush_delay_ms;
-
-  // Clear global buffer state (entries memory is now owned by local pointer)
-  g_log.buffer_entries = NULL;
-  g_log.buffer_entry_count = 0;
-  g_log.buffer_total_size = 0;
-
-  // Restore terminal lock state
-  g_log.terminal_locked = previous_state;
+  atomic_store(&g_log.terminal_locked, previous_state);
   if (!previous_state) {
-    g_log.terminal_owner_thread = 0;
-  }
-
-  mutex_unlock(&g_log.mutex);
-
-  // Flush buffered entries in order, each to its correct stream
-  if (entries && entry_count > 0) {
-    for (size_t i = 0; i < entry_count; i++) {
-      FILE *stream = entries[i].use_stderr ? stderr : stdout;
-      if (entries[i].message) {
-        (void)fputs(entries[i].message, stream);
-        (void)fflush(stream);
-        free(entries[i].message);
-        entries[i].message = NULL;
-
-        // Add delay between entries for animation effect (skip after last entry)
-        if (delay_ms > 0 && i < entry_count - 1) {
-          platform_sleep_ms(delay_ms);
-        }
-      }
-    }
-    free(entries);
+    atomic_store(&g_log.terminal_owner_thread, 0);
   }
 }
 
 void log_set_flush_delay(unsigned int delay_ms) {
-  mutex_lock(&g_log.mutex);
-  g_log.flush_delay_ms = delay_ms;
-  mutex_unlock(&g_log.mutex);
+  atomic_store(&g_log.flush_delay_ms, delay_ms);
 }
 
 void log_truncate_if_large(void) {
-  mutex_lock(&g_log.mutex);
-  if (g_log.file >= 0 && g_log.file != STDERR_FILENO && strlen(g_log.filename) > 0) {
-    /* Check if current log is too large */
+  // Log rotation is inherently racy without locks - best-effort only
+  // For reliable rotation, use mmap mode or external logrotate
+  int file = atomic_load(&g_log.file);
+  if (file >= 0 && file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     struct stat st;
-    if (fstat(g_log.file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
-      /* Save the current size and trigger rotation logic */
-      g_log.current_size = (size_t)st.st_size;
-      /* Use the same tail-keeping rotation logic */
-      rotate_log_if_needed_unlocked();
+    if (fstat(file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
+      atomic_store(&g_log.current_size, (size_t)st.st_size);
     }
   }
-  mutex_unlock(&g_log.mutex);
 }
 
-/* Helper: Write formatted log entry to actual log file (assumes mutex held)
- * Only writes to real file descriptors, not stderr
+/* Helper: Write formatted log entry to file using atomic write() syscall
+ * POSIX guarantees write() is atomic for sizes <= PIPE_BUF (typically 4096 bytes)
  */
-static void write_to_log_file_unlocked(const char *buffer, int length) {
-  if (length == 0 || buffer == NULL) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_PARAM, "No log message to write or buffer is NULL");
+static void write_to_log_file_atomic(const char *buffer, int length) {
+  if (length <= 0 || buffer == NULL) {
     return;
   }
 
   if (length > MAX_LOG_SIZE) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_PARAM, "Log message is too long");
     return;
   }
 
-  if (g_log.file < 0 || g_log.file == STDERR_FILENO) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
+  int file = atomic_load(&g_log.file);
+  if (file < 0 || file == STDERR_FILENO) {
     return;
   }
 
-  ssize_t written = platform_write(g_log.file, buffer, (size_t)length);
-  if (written <= 0 && length > 0) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to write to log file: %s", g_log.filename);
-    return;
+  // Single atomic write() call - no locking needed
+  ssize_t written = platform_write(file, buffer, (size_t)length);
+  if (written > 0) {
+    atomic_fetch_add(&g_log.current_size, (size_t)written);
+    maybe_rotate_log();
   }
-
-  g_log.current_size += (size_t)written;
 }
 
 /* Helper: Format log message header (timestamp, level, location info)
@@ -643,69 +614,19 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   return result;
 }
 
-/* Helper: Append formatted log to terminal buffer (assumes mutex held)
- * use_stderr: true for stderr, false for stdout
+/* Note: Terminal buffering removed for lock-free design.
+ * When terminal is locked, other threads' output goes to file only.
  */
-static void buffer_terminal_output_unlocked(bool use_stderr, const char *header, const char *reset_color,
-                                            const char *fmt, va_list args) {
-  // Check entry count limit
-  if (g_log.buffer_entry_count >= MAX_TERMINAL_BUFFER_ENTRIES) {
-    return; // Too many entries
-  }
 
-  // Format the message part
-  char msg_buffer[2048];
-  int msg_len = vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
-  if (msg_len < 0)
-    msg_len = 0;
-  if (msg_len >= (int)sizeof(msg_buffer))
-    msg_len = sizeof(msg_buffer) - 1;
-
-  // Calculate total size needed: header + reset + message + reset + newline + null
-  size_t reset_len = reset_color ? strlen(reset_color) : 0;
-  size_t total_len = strlen(header) + reset_len + (size_t)msg_len + reset_len + 2; // +2 for \n and \0
-
-  // Check total buffer size limit
-  if (g_log.buffer_total_size + total_len > MAX_TERMINAL_BUFFER_SIZE) {
-    return; // Would exceed size limit
-  }
-
-  // Allocate entry array if needed
-  if (!g_log.buffer_entries) {
-    g_log.buffer_entries = malloc(MAX_TERMINAL_BUFFER_ENTRIES * sizeof(log_buffer_entry_t));
-    if (!g_log.buffer_entries) {
-      return; // Allocation failed
-    }
-  }
-
-  // Format the complete message
-  char *message = malloc(total_len);
-  if (!message) {
-    return; // Allocation failed
-  }
-
-  if (reset_color) {
-    snprintf(message, total_len, "%s%s%s%s\n", header, reset_color, msg_buffer, reset_color);
-  } else {
-    snprintf(message, total_len, "%s%s\n", header, msg_buffer);
-  }
-
-  // Add entry
-  g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = use_stderr;
-  g_log.buffer_entries[g_log.buffer_entry_count].message = message;
-  g_log.buffer_entry_count++;
-  g_log.buffer_total_size += total_len;
-}
-
-/* Helper: Write colored log entry to terminal (assumes mutex held)
- * If terminal output is disabled, buffers the output for later
+/* Helper: Write colored log entry to terminal (lock-free)
+ * Uses atomic loads for state checks, skips output if terminal is locked by another thread
  */
-static void write_to_terminal_unlocked(log_level_t level, const char *timestamp, const char *file, int line,
-                                       const char *func, const char *fmt, va_list args) {
+static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
+                                     const char *func, const char *fmt, va_list args) {
   // Choose output stream: errors/warnings to stderr, info/debug to stdout
   // When force_stderr is enabled (client mode), ALL logs go to stderr to keep stdout clean
   FILE *output_stream;
-  if (g_log.force_stderr) {
+  if (atomic_load(&g_log.force_stderr)) {
     output_stream = stderr;
   } else {
     output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
@@ -723,50 +644,32 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
     return;
   }
 
-  // Check if we should buffer instead of output to terminal:
-  // 1. Terminal output globally disabled, OR
-  // 2. Terminal locked by another thread (not us)
-  bool should_buffer = !g_log.terminal_output_enabled;
-  if (!should_buffer && g_log.terminal_locked) {
-    // Terminal is locked - only the owner thread can output
-    thread_id_t current_thread = ascii_thread_self();
-    if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
-      should_buffer = true;
-    }
+  // Check if terminal output is enabled (atomic load)
+  if (!atomic_load(&g_log.terminal_output_enabled)) {
+    return; // Terminal output disabled - skip (no buffering in lock-free mode)
   }
 
-  if (should_buffer) {
-    const char *reset_color = NULL;
-    if (use_colors) {
-      const char **colors = log_get_color_array();
-      if (colors)
-        reset_color = colors[LOG_COLOR_RESET];
+  // Check if terminal is locked by another thread
+  if (atomic_load(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)ascii_thread_self()) {
+      return; // Terminal locked by another thread - skip
     }
-    bool use_stderr = (output_stream == stderr);
-    buffer_terminal_output_unlocked(use_stderr, header_buffer, reset_color, fmt, args);
-    return;
   }
 
   if (use_colors) {
     const char **colors = log_get_color_array();
-    // Safety check: if colors is NULL, disable colors to prevent crashes
     if (colors == NULL) {
-      // Write header without colors
       safe_fprintf(output_stream, "%s", header_buffer);
       (void)vfprintf(output_stream, fmt, args);
       safe_fprintf(output_stream, "\n");
     } else {
-      // Write header with colors
       safe_fprintf(output_stream, "%s", header_buffer);
-      // Reset color before message content
       safe_fprintf(output_stream, "%s", colors[LOG_COLOR_RESET]);
-      // Write message content
       (void)vfprintf(output_stream, fmt, args);
-      // Ensure color is reset at the end
       safe_fprintf(output_stream, "%s\n", colors[LOG_COLOR_RESET]);
     }
   } else {
-    // No color requested.
     safe_fprintf(output_stream, "%s", header_buffer);
     (void)vfprintf(output_stream, fmt, args);
     safe_fprintf(output_stream, "\n");
@@ -775,64 +678,97 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
 }
 
 void log_msg(log_level_t level, const char *file, int line, const char *func, const char *fmt, ...) {
-  // Simple approach: just check if initialized
-  // If not initialized, just don't log (main() should have initialized it)
-  if (!g_log.initialized) {
-    return; // Don't log if not initialized - this prevents the deadlock
-  }
-
-  if (level < g_log.level) {
+  // All state access uses atomic operations - fully lock-free
+  if (!atomic_load(&g_log.initialized)) {
     return;
   }
 
-  mutex_lock(&g_log.mutex);
+  if (level < (log_level_t)atomic_load(&g_log.level)) {
+    return;
+  }
 
-  /* Get current time in local timezone */
-  struct timespec ts;
-  (void)clock_gettime(CLOCK_REALTIME, &ts);
+  /* =========================================================================
+   * MMAP PATH: When mmap logging is active, writes go to mmap'd file
+   * ========================================================================= */
+  if (log_mmap_is_active()) {
+    maybe_rotate_log();
 
-  struct tm tm_info;
-  platform_localtime(&ts.tv_sec, &tm_info);
+    va_list args;
+    va_start(args, fmt);
+    char msg_buffer[1024];
+    vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+    va_end(args);
 
+    log_mmap_write(level, file, line, func, "%s", msg_buffer);
+
+    // Terminal output (check with atomic loads)
+    if (atomic_load(&g_log.terminal_output_enabled) && !atomic_load(&g_log.terminal_locked)) {
+      char time_buf[32];
+      get_current_time_formatted(time_buf);
+
+      FILE *output_stream;
+      if (atomic_load(&g_log.force_stderr)) {
+        output_stream = stderr;
+      } else {
+        output_stream = (level == LOG_ERROR || level == LOG_WARN || level == LOG_FATAL) ? stderr : stdout;
+      }
+      int fd = output_stream == stderr ? STDERR_FILENO : STDOUT_FILENO;
+      bool use_colors = isatty(fd);
+
+      char header_buffer[512];
+      int header_len =
+          format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func, use_colors, false);
+
+      if (header_len > 0 && header_len < (int)sizeof(header_buffer)) {
+        if (use_colors) {
+          const char **colors = log_get_color_array();
+          if (colors) {
+            safe_fprintf(output_stream, "%s%s%s%s\n", header_buffer, colors[LOG_COLOR_RESET], msg_buffer,
+                         colors[LOG_COLOR_RESET]);
+          } else {
+            safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+          }
+        } else {
+          safe_fprintf(output_stream, "%s%s\n", header_buffer, msg_buffer);
+        }
+        (void)fflush(output_stream);
+      }
+    }
+    return;
+  }
+
+  /* =========================================================================
+   * FILE I/O PATH: Lock-free using atomic write() syscalls
+   * ========================================================================= */
   char time_buf[32];
   get_current_time_formatted(time_buf);
 
-  /* Check if log rotation is needed */
-  rotate_log_if_needed_unlocked();
-
-  /* Format the message once for file output */
+  // Format message for file output
   char log_buffer[4096];
   va_list args;
   va_start(args, fmt);
 
-  // Format header without colors for file output
   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, false);
   if (header_len <= 0 || header_len >= (int)sizeof(log_buffer)) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
     va_end(args);
-    mutex_unlock(&g_log.mutex);
     return;
   }
 
-  // Add the actual message
   int msg_len = header_len;
   int formatted_len = vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
   if (formatted_len < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
     va_end(args);
-    mutex_unlock(&g_log.mutex);
     return;
   }
-  // vsnprintf returns the number of characters that would be written (excluding null terminator)
-  // If the result is >= buffer size, it means the message was truncated
+
   msg_len += formatted_len;
   if (msg_len >= (int)sizeof(log_buffer)) {
-    // Message was too long - truncate it safely
     msg_len = sizeof(log_buffer) - 1;
     log_buffer[msg_len] = '\0';
   }
 
-  // Add newline
   if (msg_len > 0 && msg_len < (int)sizeof(log_buffer) - 1) {
     log_buffer[msg_len++] = '\n';
     log_buffer[msg_len] = '\0';
@@ -840,206 +776,28 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
   va_end(args);
 
-  /* Write to log file if configured (not STDERR) */
-  if (g_log.file != STDERR_FILENO) {
-    write_to_log_file_unlocked(log_buffer, msg_len);
+  // Write to file (atomic write syscall)
+  int file_fd = atomic_load(&g_log.file);
+  if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+    write_to_log_file_atomic(log_buffer, msg_len);
   }
 
-  /* Write to terminal with colors if terminal output enabled */
-  /* Note: This handles both stderr (when no file configured) and terminal output */
+  // Write to terminal (atomic state checks)
   va_list args_terminal;
   va_start(args_terminal, fmt);
-  write_to_terminal_unlocked(level, time_buf, file, line, func, fmt, args_terminal);
+  write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal);
   va_end(args_terminal);
-
-  mutex_unlock(&g_log.mutex);
 }
 
 void log_plain_msg(const char *fmt, ...) {
-  if (!g_log.initialized) {
-    return; // Don't log if not initialized
-  }
-
-  // Skip logging entirely if we're shutting down to avoid mutex issues
-  if (shutdown_is_requested()) {
-    return; // Don't try to log during shutdown - avoids deadlocks
-  }
-
-  mutex_lock(&g_log.mutex);
-
-  // Format the message without timestamps or log levels
-  char log_buffer[4096];
-  va_list args;
-  va_start(args, fmt);
-  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
-  va_end(args);
-
-  if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
-    /* Write to log file if configured (not STDERR) */
-    if (g_log.file != STDERR_FILENO) {
-      write_to_log_file_unlocked(log_buffer, msg_len);
-      write_to_log_file_unlocked("\n", 1);
-    }
-
-    // Check if we should buffer instead of output to terminal:
-    // 1. Terminal output globally disabled, OR
-    // 2. Terminal locked by another thread (not us)
-    bool should_buffer = !g_log.terminal_output_enabled;
-    if (!should_buffer && g_log.terminal_locked) {
-      // Terminal is locked - only the owner thread can output
-      thread_id_t current_thread = ascii_thread_self();
-      if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
-        should_buffer = true;
-      }
-    }
-
-    if (should_buffer) {
-      // Buffer for later - allocate message with newline
-      size_t full_msg_len = (size_t)msg_len + 2; // +1 for newline, +1 for null
-      char *buffered_msg = malloc(full_msg_len);
-      if (buffered_msg) {
-        memcpy(buffered_msg, log_buffer, (size_t)msg_len);
-        buffered_msg[msg_len] = '\n';
-        buffered_msg[msg_len + 1] = '\0';
-
-        // Add to buffer entries
-        if (g_log.buffer_entry_count < MAX_TERMINAL_BUFFER_ENTRIES &&
-            g_log.buffer_total_size + full_msg_len <= MAX_TERMINAL_BUFFER_SIZE) {
-          log_buffer_entry_t *new_entries =
-              realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
-          if (new_entries) {
-            g_log.buffer_entries = new_entries;
-            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = false; // stdout for log_plain
-            g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
-            g_log.buffer_entry_count++;
-            g_log.buffer_total_size += full_msg_len;
-          } else {
-            free(buffered_msg);
-          }
-        } else {
-          free(buffered_msg);
-        }
-      }
-    } else {
-      /* Output to stdout (log_plain is INFO-level semantics) */
-      safe_fprintf(stdout, "%s\n", log_buffer);
-      (void)fflush(stdout);
-    }
-  }
-
-  mutex_unlock(&g_log.mutex);
-}
-
-// Helper for log_plain_stderr variants
-static void log_plain_stderr_internal(const char *fmt, va_list args, bool add_newline) {
-  // Format the message without timestamps or log levels
-  char log_buffer[4096];
-  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
-
-  if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
-    /* Write to log file if configured (not STDERR) */
-    if (g_log.file != STDERR_FILENO) {
-      write_to_log_file_unlocked(log_buffer, msg_len);
-      if (add_newline) {
-        write_to_log_file_unlocked("\n", 1);
-      }
-    }
-
-    // Check if we should buffer instead of output to terminal:
-    // 1. Terminal output globally disabled, OR
-    // 2. Terminal locked by another thread (not us)
-    bool should_buffer = !g_log.terminal_output_enabled;
-    if (!should_buffer && g_log.terminal_locked) {
-      // Terminal is locked - only the owner thread can output
-      thread_id_t current_thread = ascii_thread_self();
-      if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
-        should_buffer = true;
-      }
-    }
-
-    if (should_buffer) {
-      // Buffer for later
-      size_t full_msg_len = (size_t)msg_len + (add_newline ? 2 : 1); // +1 or +2 for newline + null
-      char *buffered_msg = malloc(full_msg_len);
-      if (buffered_msg) {
-        memcpy(buffered_msg, log_buffer, (size_t)msg_len);
-        if (add_newline) {
-          buffered_msg[msg_len] = '\n';
-          buffered_msg[msg_len + 1] = '\0';
-        } else {
-          buffered_msg[msg_len] = '\0';
-        }
-
-        // Add to buffer entries
-        if (g_log.buffer_entry_count < MAX_TERMINAL_BUFFER_ENTRIES &&
-            g_log.buffer_total_size + full_msg_len <= MAX_TERMINAL_BUFFER_SIZE) {
-          log_buffer_entry_t *new_entries =
-              realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
-          if (new_entries) {
-            g_log.buffer_entries = new_entries;
-            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = true;
-            g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
-            g_log.buffer_entry_count++;
-            g_log.buffer_total_size += full_msg_len;
-          } else {
-            free(buffered_msg);
-          }
-        } else {
-          free(buffered_msg);
-        }
-      }
-    } else {
-      /* Output to stderr */
-      if (add_newline) {
-        safe_fprintf(stderr, "%s\n", log_buffer);
-      } else {
-        safe_fprintf(stderr, "%s", log_buffer);
-      }
-      (void)fflush(stderr);
-    }
-  }
-}
-
-void log_plain_stderr_msg(const char *fmt, ...) {
-  if (!g_log.initialized) {
+  if (!atomic_load(&g_log.initialized)) {
     return;
   }
+
   if (shutdown_is_requested()) {
     return;
   }
 
-  mutex_lock(&g_log.mutex);
-  va_list args;
-  va_start(args, fmt);
-  log_plain_stderr_internal(fmt, args, true); // WITH newline
-  va_end(args);
-  mutex_unlock(&g_log.mutex);
-}
-
-void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
-  if (!g_log.initialized) {
-    return;
-  }
-  if (shutdown_is_requested()) {
-    return;
-  }
-
-  mutex_lock(&g_log.mutex);
-  va_list args;
-  va_start(args, fmt);
-  log_plain_stderr_internal(fmt, args, false); // WITHOUT newline
-  va_end(args);
-  mutex_unlock(&g_log.mutex);
-}
-
-void log_file_msg(const char *fmt, ...) {
-  if (!g_log.initialized) {
-    return; // Don't log if not initialized
-  }
-
-  mutex_lock(&g_log.mutex);
-
-  // Format the message without timestamps or log levels
   char log_buffer[4096];
   va_list args;
   va_start(args, fmt);
@@ -1047,18 +805,131 @@ void log_file_msg(const char *fmt, ...) {
   va_end(args);
 
   if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log message");
     return;
   }
 
-  /* Write to log file only - no stderr output */
-  /* Only write if a log file is actually configured (not STDERR) */
-  if (g_log.file != STDERR_FILENO) {
-    write_to_log_file_unlocked(log_buffer, msg_len);
-    write_to_log_file_unlocked("\n", 1);
+  // Write to mmap if active
+  if (log_mmap_is_active()) {
+    log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
+  } else {
+    // Write to file (atomic write syscall)
+    int file_fd = atomic_load(&g_log.file);
+    if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      write_to_log_file_atomic(log_buffer, msg_len);
+      write_to_log_file_atomic("\n", 1);
+    }
   }
 
-  mutex_unlock(&g_log.mutex);
+  // Terminal output (atomic state checks)
+  if (!atomic_load(&g_log.terminal_output_enabled)) {
+    return;
+  }
+  if (atomic_load(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)ascii_thread_self()) {
+      return;
+    }
+  }
+
+  safe_fprintf(stdout, "%s\n", log_buffer);
+  (void)fflush(stdout);
+}
+
+// Helper for log_plain_stderr variants (lock-free)
+static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool add_newline) {
+  char log_buffer[4096];
+  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+
+  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+    return;
+  }
+
+  // Write to mmap if active
+  if (log_mmap_is_active()) {
+    log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
+  } else {
+    // Write to file (atomic write syscall)
+    int file_fd = atomic_load(&g_log.file);
+    if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      write_to_log_file_atomic(log_buffer, msg_len);
+      if (add_newline) {
+        write_to_log_file_atomic("\n", 1);
+      }
+    }
+  }
+
+  // Terminal output (atomic state checks)
+  if (!atomic_load(&g_log.terminal_output_enabled)) {
+    return;
+  }
+  if (atomic_load(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)ascii_thread_self()) {
+      return;
+    }
+  }
+
+  if (add_newline) {
+    safe_fprintf(stderr, "%s\n", log_buffer);
+  } else {
+    safe_fprintf(stderr, "%s", log_buffer);
+  }
+  (void)fflush(stderr);
+}
+
+void log_plain_stderr_msg(const char *fmt, ...) {
+  if (!atomic_load(&g_log.initialized)) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stderr_internal_atomic(fmt, args, true);
+  va_end(args);
+}
+
+void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
+  if (!atomic_load(&g_log.initialized)) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stderr_internal_atomic(fmt, args, false);
+  va_end(args);
+}
+
+void log_file_msg(const char *fmt, ...) {
+  if (!atomic_load(&g_log.initialized)) {
+    return;
+  }
+
+  char log_buffer[4096];
+  va_list args;
+  va_start(args, fmt);
+  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+  va_end(args);
+
+  if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
+    return;
+  }
+
+  // Write to mmap if active, else to file
+  if (log_mmap_is_active()) {
+    log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
+  } else {
+    int file_fd = atomic_load(&g_log.file);
+    if (file_fd >= 0 && file_fd != STDERR_FILENO) {
+      write_to_log_file_atomic(log_buffer, msg_len);
+      write_to_log_file_atomic("\n", 1);
+    }
+  }
 }
 
 static const char *log_network_direction_label(remote_log_direction_t direction) {
@@ -1203,4 +1074,34 @@ const char *log_level_color(log_color_t color) {
     return colors[color];
   }
   return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
+}
+
+/* ============================================================================
+ * Lock-Free MMAP Logging Integration
+ * ============================================================================ */
+
+asciichat_error_t log_enable_mmap(const char *log_path) {
+  return log_enable_mmap_sized(log_path, 0); /* Use default size */
+}
+
+asciichat_error_t log_enable_mmap_sized(const char *log_path, size_t max_size) {
+  if (!log_path) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "log_path is required");
+  }
+
+  // Initialize mmap logging - text is written directly to the mmap'd file
+  asciichat_error_t result = log_mmap_init_simple(log_path, max_size);
+  if (result != ASCIICHAT_OK) {
+    return result;
+  }
+
+  log_info("Lock-free mmap logging enabled: %s", log_path);
+  return ASCIICHAT_OK;
+}
+
+void log_disable_mmap(void) {
+  if (log_mmap_is_active()) {
+    log_mmap_destroy();
+    log_info("Lock-free mmap logging disabled");
+  }
 }
