@@ -79,7 +79,7 @@
 #include "platform/symbols.h"
 #include "platform/system.h"
 #include "common.h"
-#include "options.h"
+#include "options/options.h"
 #include "buffer_pool.h"
 #include "video/palette.h"
 #include "network/network.h"
@@ -302,13 +302,13 @@ static int initialize_client_systems(bool shared_init_completed) {
       if (log_path_result != ASCIICHAT_OK || !validated_log_file || strlen(validated_log_file) == 0) {
         // Invalid log file path, fall back to default and warn
         (void)fprintf(stderr, "WARNING: Invalid log file path specified, using default 'client.log'\n");
-        log_init("client.log", opt_log_level, true);
+        log_init("client.log", opt_log_level, true, true /* use_mmap */);
       } else {
-        log_init(validated_log_file, opt_log_level, true);
+        log_init(validated_log_file, opt_log_level, true, true /* use_mmap */);
       }
       SAFE_FREE(validated_log_file);
     } else {
-      log_init("client.log", opt_log_level, true);
+      log_init("client.log", opt_log_level, true, true /* use_mmap */);
     }
 
     // Initialize memory debugging if enabled

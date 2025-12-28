@@ -5,7 +5,8 @@
  */
 
 #include "config.h"
-#include "options.h"
+#include "options/options.h"
+#include "options/validation.h"
 #include "util/path.h"
 #include "common.h"
 #include "platform/terminal.h"
@@ -129,26 +130,7 @@ static bool config_client_keys_set = false;
 
 /** @} */
 
-/**
- * @name External Validation Functions
- * @{
- *
- * Forward declarations of validation helper functions from options.c.
- * These functions are used to validate config file values using the same
- * logic as CLI argument validation.
- */
-extern int validate_port(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_positive_int(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_non_negative_int(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_render_mode(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_palette(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_ip_address(const char *value_str, char *parsed_address, size_t address_size, bool is_client,
-                               char *error_msg, size_t error_msg_size);
-extern float validate_float_non_negative(const char *value_str, char *error_msg, size_t error_msg_size);
-extern int validate_fps(const char *value_str, char *error_msg, size_t error_msg_size);
-
-/** @} */
+/* Validation functions are now provided by options/validation.h */
 
 /**
  * @name TOML Value Extraction Helpers
@@ -217,8 +199,8 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
     if (address_str && strlen(address_str) > 0 && !config_address_set) {
       char parsed_addr[OPTIONS_BUFF_SIZE];
       char error_msg[256];
-      if (validate_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg, sizeof(error_msg)) ==
-          0) {
+      if (validate_opt_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
+                                  sizeof(error_msg)) == 0) {
         SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
         config_address_set = true;
       } else {
@@ -235,8 +217,8 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
       if (ipv4_str && strlen(ipv4_str) > 0 && !config_address_set) {
         char parsed_addr[OPTIONS_BUFF_SIZE];
         char error_msg[256];
-        if (validate_ip_address(ipv4_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg, sizeof(error_msg)) ==
-            0) {
+        if (validate_opt_ip_address(ipv4_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
+                                    sizeof(error_msg)) == 0) {
           SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
           config_address_set = true;
         } else {
@@ -251,8 +233,8 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
       if (ipv6_str && strlen(ipv6_str) > 0 && !config_address6_set) {
         char parsed_addr[OPTIONS_BUFF_SIZE];
         char error_msg[256];
-        if (validate_ip_address(ipv6_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg, sizeof(error_msg)) ==
-            0) {
+        if (validate_opt_ip_address(ipv6_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
+                                    sizeof(error_msg)) == 0) {
           SAFE_SNPRINTF(opt_address6, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
           config_address6_set = true;
         } else {
@@ -271,8 +253,8 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
         if (address_str && strlen(address_str) > 0) {
           char parsed_addr[OPTIONS_BUFF_SIZE];
           char error_msg[256];
-          if (validate_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
-                                  sizeof(error_msg)) == 0) {
+          if (validate_opt_ip_address(address_str, parsed_addr, sizeof(parsed_addr), is_client, error_msg,
+                                      sizeof(error_msg)) == 0) {
             SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", parsed_addr);
             config_address_set = true;
           } else {
@@ -294,7 +276,7 @@ static void apply_network_config(toml_datum_t toptab, bool is_client) {
   if (port.type == TOML_STRING && !config_port_set) {
     const char *port_str = port.u.s;
     char error_msg[256];
-    if (validate_port(port_str, error_msg, sizeof(error_msg)) == 0) {
+    if (validate_opt_port(port_str, error_msg, sizeof(error_msg)) == 0) {
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", port_str);
       config_port_set = true;
     } else {
@@ -359,7 +341,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   } else if (width.type == TOML_STRING && !config_width_set) {
     const char *width_str = width.u.s;
     char error_msg[256];
-    int width_val = validate_positive_int(width_str, error_msg, sizeof(error_msg));
+    int width_val = validate_opt_positive_int(width_str, error_msg, sizeof(error_msg));
     if (width_val > 0) {
       opt_width = (unsigned short int)width_val;
       auto_width = false;
@@ -381,7 +363,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   } else if (height.type == TOML_STRING && !config_height_set) {
     const char *height_str = height.u.s;
     char error_msg[256];
-    int height_val = validate_positive_int(height_str, error_msg, sizeof(error_msg));
+    int height_val = validate_opt_positive_int(height_str, error_msg, sizeof(error_msg));
     if (height_val > 0) {
       opt_height = (unsigned short int)height_val;
       auto_height = false;
@@ -402,7 +384,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   } else if (webcam_index.type == TOML_STRING && !config_webcam_index_set) {
     const char *idx_str = webcam_index.u.s;
     char error_msg[256];
-    int idx = validate_non_negative_int(idx_str, error_msg, sizeof(error_msg));
+    int idx = validate_opt_non_negative_int(idx_str, error_msg, sizeof(error_msg));
     if (idx >= 0) {
       opt_webcam_index = (unsigned short int)idx;
       config_webcam_index_set = true;
@@ -423,7 +405,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   const char *color_mode_str = get_toml_string(color_mode);
   if (color_mode_str && !config_color_mode_set) {
     char error_msg[256];
-    int mode = validate_color_mode(color_mode_str, error_msg, sizeof(error_msg));
+    int mode = validate_opt_color_mode(color_mode_str, error_msg, sizeof(error_msg));
     if (mode >= 0) {
       opt_color_mode = (terminal_color_mode_t)mode;
       config_color_mode_set = true;
@@ -437,7 +419,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   const char *render_mode_str = get_toml_string(render_mode);
   if (render_mode_str && !config_render_mode_set) {
     char error_msg[256];
-    int mode = validate_render_mode(render_mode_str, error_msg, sizeof(error_msg));
+    int mode = validate_opt_render_mode(render_mode_str, error_msg, sizeof(error_msg));
     if (mode >= 0) {
       opt_render_mode = (render_mode_t)mode;
       config_render_mode_set = true;
@@ -459,7 +441,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   } else if (fps.type == TOML_STRING) {
     const char *fps_str = fps.u.s;
     char error_msg[256];
-    int fps_val = validate_fps(fps_str, error_msg, sizeof(error_msg));
+    int fps_val = validate_opt_fps(fps_str, error_msg, sizeof(error_msg));
     if (fps_val > 0) {
       g_max_fps = fps_val;
     } else {
@@ -508,7 +490,7 @@ static void apply_client_config(toml_datum_t toptab, bool is_client) {
   } else if (snapshot_delay.type == TOML_STRING && !config_snapshot_delay_set) {
     const char *delay_str = snapshot_delay.u.s;
     char error_msg[256];
-    float delay = validate_float_non_negative(delay_str, error_msg, sizeof(error_msg));
+    float delay = validate_opt_float_non_negative(delay_str, error_msg, sizeof(error_msg));
     if (delay >= 0.0f) {
       opt_snapshot_delay = delay;
       config_snapshot_delay_set = true;
@@ -568,7 +550,7 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
       config_microphone_index_set = true;
     } else {
       char error_msg[256];
-      int mic_idx = validate_non_negative_int(mic_str, error_msg, sizeof(error_msg));
+      int mic_idx = validate_opt_non_negative_int(mic_str, error_msg, sizeof(error_msg));
       if (mic_idx >= 0) {
         opt_microphone_index = mic_idx;
         config_microphone_index_set = true;
@@ -594,7 +576,7 @@ static void apply_audio_config(toml_datum_t toptab, bool is_client) {
       config_speakers_index_set = true;
     } else {
       char error_msg[256];
-      int spk_idx = validate_non_negative_int(spk_str, error_msg, sizeof(error_msg));
+      int spk_idx = validate_opt_non_negative_int(spk_str, error_msg, sizeof(error_msg));
       if (spk_idx >= 0) {
         opt_speakers_index = spk_idx;
         config_speakers_index_set = true;
@@ -629,7 +611,7 @@ static void apply_palette_config_from_toml(toml_datum_t toptab) {
   const char *palette_type_str = get_toml_string(palette_type);
   if (palette_type_str && !config_palette_set) {
     char error_msg[256];
-    int type = validate_palette(palette_type_str, error_msg, sizeof(error_msg));
+    int type = validate_opt_palette(palette_type_str, error_msg, sizeof(error_msg));
     if (type >= 0) {
       opt_palette_type = (palette_type_t)type;
       config_palette_set = true;

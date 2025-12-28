@@ -1,8 +1,8 @@
 /**
- * @file util/levenshtein.h
+ * @file options/levenshtein.h
  * @brief Levenshtein distance algorithm for fuzzy string matching
- * @ingroup util
- * @addtogroup util
+ * @ingroup options
+ * @addtogroup options
  * @{
  *
  * MIT licensed.
@@ -14,7 +14,7 @@
 #define LEVENSHTEIN_H
 
 #include <stddef.h>
-#include "../common.h"
+#include "../common.h" /* Up one level to lib/ */
 
 #ifdef __cplusplus
 extern "C" {

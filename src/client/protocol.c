@@ -88,7 +88,7 @@
 #include "buffer_pool.h"
 #include "common.h"
 #include "util/validation.h"
-#include "options.h"
+#include "options/options.h"
 #include "network/crc32.h"
 #include "fps.h"
 #include "crypto/crypto.h"
