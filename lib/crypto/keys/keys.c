@@ -69,14 +69,9 @@ asciichat_error_t parse_public_key(const char *input, public_key_t *key_out) {
     if (is_valid_hex) {
       // Assume it's a raw X25519 public key in hex (default for raw hex)
       key_out->type = KEY_TYPE_X25519;
-      for (int i = 0; i < 32; i++) {
-        char hex_byte[3] = {input[i * 2], input[i * 2 + 1], 0};
-        char *endptr;
-        unsigned long val = strtoul(hex_byte, &endptr, 16);
-        if (endptr != hex_byte + 2 || val > 255) {
-          return SET_ERRNO(ERROR_CRYPTO_KEY, "Invalid hex character in key");
-        }
-        key_out->key[i] = (uint8_t)val;
+      // Use hex_decode utility to safely decode hex string to binary
+      if (hex_decode(input, key_out->key, 32) != ASCIICHAT_OK) {
+        return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to decode hex key");
       }
       platform_strncpy(key_out->comment, sizeof(key_out->comment), "raw-hex", sizeof(key_out->comment) - 1);
       return ASCIICHAT_OK;
