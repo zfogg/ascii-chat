@@ -8,6 +8,7 @@
 #include "asciichat_errno.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "util/endian.h"
 #include "crypto.h"
 #include "crypto/crypto.h"
 #include "known_hosts.h"
@@ -73,10 +74,10 @@ asciichat_error_t crypto_handshake_set_parameters(crypto_handshake_context_t *ct
   } else {
     // Client: convert from network byte order
     // Update crypto context with negotiated parameters directly
-    ctx->crypto_ctx.public_key_size = ntohs(params->kex_public_key_size);
-    ctx->crypto_ctx.auth_public_key_size = ntohs(params->auth_public_key_size);
-    ctx->crypto_ctx.shared_key_size = ntohs(params->shared_secret_size);
-    ctx->crypto_ctx.signature_size = ntohs(params->signature_size);
+    ctx->crypto_ctx.public_key_size = NET_TO_HOST_U16(params->kex_public_key_size);
+    ctx->crypto_ctx.auth_public_key_size = NET_TO_HOST_U16(params->auth_public_key_size);
+    ctx->crypto_ctx.shared_key_size = NET_TO_HOST_U16(params->shared_secret_size);
+    ctx->crypto_ctx.signature_size = NET_TO_HOST_U16(params->signature_size);
   }
   // Update crypto context with negotiated parameters directly
   ctx->crypto_ctx.nonce_size = params->nonce_size;
@@ -521,13 +522,13 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
           struct sockaddr_in *addr_in = (struct sockaddr_in *)&server_addr;
           if (inet_ntop(AF_INET, &addr_in->sin_addr, ip_str, sizeof(ip_str))) {
             SAFE_STRNCPY(ctx->server_ip, ip_str, sizeof(ctx->server_ip) - 1);
-            ctx->server_port = ntohs(addr_in->sin_port);
+            ctx->server_port = NET_TO_HOST_U16(addr_in->sin_port);
           }
         } else if (server_addr.ss_family == AF_INET6) {
           struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&server_addr;
           if (inet_ntop(AF_INET6, &addr_in6->sin6_addr, ip_str, sizeof(ip_str))) {
             SAFE_STRNCPY(ctx->server_ip, ip_str, sizeof(ctx->server_ip) - 1);
-            ctx->server_port = ntohs(addr_in6->sin6_port);
+            ctx->server_port = NET_TO_HOST_U16(addr_in6->sin6_port);
           }
         }
       } else {

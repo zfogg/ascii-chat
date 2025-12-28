@@ -7,6 +7,7 @@
 #include "packet_queue.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "network/crc32.h"
 #include <stdatomic.h>
@@ -241,12 +242,12 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   }
 
   // Build packet header
-  node->packet.header.magic = htonl(PACKET_MAGIC);
-  node->packet.header.type = htons((uint16_t)type);
-  node->packet.header.length = htonl((uint32_t)data_len);
-  node->packet.header.client_id = htonl(client_id);
+  node->packet.header.magic = HOST_TO_NET_U32(PACKET_MAGIC);
+  node->packet.header.type = HOST_TO_NET_U16((uint16_t)type);
+  node->packet.header.length = HOST_TO_NET_U32((uint32_t)data_len);
+  node->packet.header.client_id = HOST_TO_NET_U32(client_id);
   // Calculate CRC32 for the data (0 for empty packets)
-  node->packet.header.crc32 = htonl(data_len > 0 ? asciichat_crc32(data, data_len) : 0);
+  node->packet.header.crc32 = HOST_TO_NET_U32(data_len > 0 ? asciichat_crc32(data, data_len) : 0);
 
   // Handle data
   if (data_len > 0 && data) {
@@ -506,10 +507,10 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     atomic_fetch_add(&queue->packets_dequeued, (uint64_t)1);
 
     // Verify packet magic number for corruption detection
-    uint32_t magic = ntohl(head->packet.header.magic);
+    uint32_t magic = NET_TO_HOST_U32(head->packet.header.magic);
     if (magic != PACKET_MAGIC) {
       SET_ERRNO(ERROR_BUFFER, "CORRUPTION: Invalid magic in try_dequeued packet: 0x%x (expected 0x%x), type=%u", magic,
-                PACKET_MAGIC, ntohs(head->packet.header.type));
+                PACKET_MAGIC, NET_TO_HOST_U16(head->packet.header.type));
       // Still return node to pool but don't return corrupted packet
       node_pool_put(queue->node_pool, head);
       return NULL;
@@ -517,12 +518,12 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
 
     // Validate CRC if there's data
     if (head->packet.data_len > 0 && head->packet.data) {
-      uint32_t expected_crc = ntohl(head->packet.header.crc32);
+      uint32_t expected_crc = NET_TO_HOST_U32(head->packet.header.crc32);
       uint32_t actual_crc = asciichat_crc32(head->packet.data, head->packet.data_len);
       if (actual_crc != expected_crc) {
         SET_ERRNO(ERROR_BUFFER,
                   "CORRUPTION: CRC mismatch in try_dequeued packet: got 0x%x, expected 0x%x, type=%u, len=%zu",
-                  actual_crc, expected_crc, ntohs(head->packet.header.type), head->packet.data_len);
+                  actual_crc, expected_crc, NET_TO_HOST_U16(head->packet.header.type), head->packet.data_len);
         // Free data if packet owns it
         if (head->packet.owns_data && head->packet.data) {
           // Use buffer_pool_free for global pool allocations, data_buffer_pool_free for local pools
@@ -558,8 +559,8 @@ void packet_queue_free_packet(queued_packet_t *packet) {
     return;
 
   // Check if packet was already freed (detect double-free)
-  if (packet->header.magic != htonl(PACKET_MAGIC)) {
-    log_warn("Attempted double-free of packet (magic=0x%x, expected=0x%x)", ntohl(packet->header.magic), PACKET_MAGIC);
+  if (packet->header.magic != HOST_TO_NET_U32(PACKET_MAGIC)) {
+    log_warn("Attempted double-free of packet (magic=0x%x, expected=0x%x)", NET_TO_HOST_U32(packet->header.magic), PACKET_MAGIC);
     return;
   }
 
@@ -575,7 +576,7 @@ void packet_queue_free_packet(queued_packet_t *packet) {
 
   // Mark as freed to detect future double-free attempts
   // Use network byte order for consistency on big-endian systems
-  packet->header.magic = htonl(0xBEEFDEAD); // Different magic in network byte order
+  packet->header.magic = HOST_TO_NET_U32(0xBEEFDEAD); // Different magic in network byte order
   SAFE_FREE(packet);
 }
 
@@ -640,21 +641,21 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
   }
 
   // Check magic number
-  uint32_t magic = ntohl(packet->header.magic);
+  uint32_t magic = NET_TO_HOST_U32(packet->header.magic);
   if (magic != PACKET_MAGIC) {
     SET_ERRNO(ERROR_BUFFER, "Invalid packet magic: 0x%x (expected 0x%x)", magic, PACKET_MAGIC);
     return false;
   }
 
   // Check packet type is valid
-  uint16_t type = ntohs(packet->header.type);
+  uint16_t type = NET_TO_HOST_U16(packet->header.type);
   if (type < PACKET_TYPE_ASCII_FRAME || type > PACKET_TYPE_AUDIO_BATCH) {
     SET_ERRNO(ERROR_BUFFER, "Invalid packet type: %u", type);
     return false;
   }
 
   // Check length matches data_len
-  uint32_t length = ntohl(packet->header.length);
+  uint32_t length = NET_TO_HOST_U32(packet->header.length);
   if (length != packet->data_len) {
     SET_ERRNO(ERROR_BUFFER, "Packet length mismatch: header says %u, data_len is %zu", length, packet->data_len);
     return false;
@@ -662,7 +663,7 @@ bool packet_queue_validate_packet(const queued_packet_t *packet) {
 
   // Check CRC if there's data
   if (packet->data_len > 0 && packet->data) {
-    uint32_t expected_crc = ntohl(packet->header.crc32);
+    uint32_t expected_crc = NET_TO_HOST_U32(packet->header.crc32);
     uint32_t actual_crc = asciichat_crc32(packet->data, packet->data_len);
     if (actual_crc != expected_crc) {
       SET_ERRNO(ERROR_BUFFER, "Packet CRC mismatch: got 0x%x, expected 0x%x", actual_crc, expected_crc);

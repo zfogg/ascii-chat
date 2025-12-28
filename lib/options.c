@@ -78,15 +78,10 @@ int strtoint_safe(const char *str) {
     return INT_MIN; // Error: NULL or empty string
   }
 
-  char *endptr;
-  long result = strtol(str, &endptr, 10);
-
-  // Check for various error conditions:
-  // 1. No conversion performed (endptr == str)
-  // 2. Partial conversion (still characters left)
-  // 3. Out of int range
-  if (endptr == str || *endptr != '\0' || result > INT_MAX || result < INT_MIN) {
-    return INT_MIN; // Error: invalid input
+  int32_t result = 0;
+  // Use safe parsing utility with full int32 range validation
+  if (parse_int32(str, &result, INT_MIN, INT_MAX) != ASCIICHAT_OK) {
+    return INT_MIN; // Error: invalid input or out of range
   }
 
   return (int)result;

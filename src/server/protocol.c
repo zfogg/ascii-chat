@@ -119,6 +119,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "common.h"
+#include "util/endian.h"
 #include "util/validation.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
@@ -283,7 +284,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
     return;
   }
 
-  uint32_t capabilities = ntohl(join_info->capabilities);
+  uint32_t capabilities = NET_TO_HOST_U32(join_info->capabilities);
 
   // Validate at least one capability flag is set
   const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH;
@@ -350,8 +351,8 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
   }
 
   const protocol_version_packet_t *version = (const protocol_version_packet_t *)data;
-  uint16_t client_major = ntohs(version->protocol_version);
-  uint16_t client_minor = ntohs(version->protocol_revision);
+  uint16_t client_major = NET_TO_HOST_U16(version->protocol_version);
+  uint16_t client_minor = NET_TO_HOST_U16(version->protocol_revision);
 
   // Validate major version match (minor version can differ for backward compat)
   if (client_major != PROTOCOL_VERSION_MAJOR) {
@@ -382,7 +383,7 @@ void handle_protocol_version_packet(client_info_t *client, const void *data, siz
               version->compression_algorithms);
   }
   if (version->feature_flags != 0) {
-    uint16_t feature_flags = ntohs(version->feature_flags);
+    uint16_t feature_flags = NET_TO_HOST_U16(version->feature_flags);
     log_debug("Client %u supports features: 0x%04x", atomic_load(&client->client_id), feature_flags);
   }
 }
@@ -504,7 +505,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
-  uint32_t stream_type = ntohl(stream_type_net);
+  uint32_t stream_type = NET_TO_HOST_U32(stream_type_net);
 
   // Validate at least one stream type flag is set
   const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
@@ -584,7 +585,7 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
-  uint32_t stream_type = ntohl(stream_type_net);
+  uint32_t stream_type = NET_TO_HOST_U32(stream_type_net);
 
   // Validate at least one stream type flag is set
   const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
@@ -709,8 +710,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width_net, img_height_net;
   memcpy(&img_width_net, data, sizeof(uint32_t));
   memcpy(&img_height_net, (char *)data + sizeof(uint32_t), sizeof(uint32_t));
-  uint32_t img_width = ntohl(img_width_net);
-  uint32_t img_height = ntohl(img_height_net);
+  uint32_t img_width = NET_TO_HOST_U32(img_width_net);
+  uint32_t img_height = NET_TO_HOST_U32(img_height_net);
 
   if (img_width == 0 || img_height == 0) {
     disconnect_client_for_bad_data(client, "IMAGE_FRAME invalid dimensions %ux%u", img_width, img_height);
@@ -765,8 +766,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     uint32_t compressed_flag_net, data_size_net;
     memcpy(&compressed_flag_net, (char *)data + sizeof(uint32_t) * 2, sizeof(uint32_t));
     memcpy(&data_size_net, (char *)data + sizeof(uint32_t) * 3, sizeof(uint32_t));
-    uint32_t compressed_flag = ntohl(compressed_flag_net);
-    uint32_t data_size = ntohl(data_size_net);
+    uint32_t compressed_flag = NET_TO_HOST_U32(compressed_flag_net);
+    uint32_t data_size = NET_TO_HOST_U32(data_size_net);
     void *frame_data = (char *)data + sizeof(uint32_t) * 4;
 
     const size_t new_header_size = sizeof(uint32_t) * 4;
@@ -841,8 +842,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
       size_t old_packet_size = legacy_header_size + rgb_data_size;
 
       if (old_packet_size <= 2 * 1024 * 1024) { // Max 2MB frame size
-        uint32_t width_net = htonl(img_width);
-        uint32_t height_net = htonl(img_height);
+        uint32_t width_net = HOST_TO_NET_U32(img_width);
+        uint32_t height_net = HOST_TO_NET_U32(img_height);
 
         // Pack in old format for internal consistency
         memcpy(frame->data, &width_net, sizeof(uint32_t));
@@ -1027,10 +1028,10 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 
   // Parse batch header
   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t packet_batch_count = ntohl(batch_header->batch_count);
-  uint32_t total_samples = ntohl(batch_header->total_samples);
-  uint32_t sample_rate = ntohl(batch_header->sample_rate);
-  // uint32_t channels = ntohl(batch_header->channels); // For future stereo support
+  uint32_t packet_batch_count = NET_TO_HOST_U32(batch_header->batch_count);
+  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
+  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
+  // uint32_t channels = NET_TO_HOST_U32(batch_header->channels); // For future stereo support
 
   (void)packet_batch_count;
   (void)sample_rate;
@@ -1088,9 +1089,9 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     memcpy(&raw0, samples_ptr + 0 * sizeof(uint32_t), sizeof(uint32_t));
     memcpy(&raw1, samples_ptr + 1 * sizeof(uint32_t), sizeof(uint32_t));
     memcpy(&raw2, samples_ptr + 2 * sizeof(uint32_t), sizeof(uint32_t));
-    int32_t scaled0 = (int32_t)ntohl(raw0);
-    int32_t scaled1 = (int32_t)ntohl(raw1);
-    int32_t scaled2 = (int32_t)ntohl(raw2);
+    int32_t scaled0 = (int32_t)NET_TO_HOST_U32(raw0);
+    int32_t scaled1 = (int32_t)NET_TO_HOST_U32(raw1);
+    int32_t scaled2 = (int32_t)NET_TO_HOST_U32(raw2);
     log_info("RECV: network[0]=0x%08x, network[1]=0x%08x, network[2]=0x%08x", raw0, raw1, raw2);
     log_info("RECV: scaled[0]=%d, scaled[1]=%d, scaled[2]=%d", scaled0, scaled1, scaled2);
     log_info("RECV: samples[0]=%.6f, samples[1]=%.6f, samples[2]=%.6f", samples[0], samples[1], samples[2]);
@@ -1207,7 +1208,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 
   for (int i = 0; i < frame_count; i++) {
     // Get exact frame size from frame_sizes array (convert from network byte order)
-    size_t frame_size = (size_t)ntohs(frame_sizes[i]);
+    size_t frame_size = (size_t)NET_TO_HOST_U16(frame_sizes[i]);
 
     // DEBUG: Log the actual bytes of each Opus frame
     if (frame_size > 0) {
@@ -1337,8 +1338,8 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
   uint32_t sample_rate_net, frame_duration_net;
   memcpy(&sample_rate_net, buf, 4);
   memcpy(&frame_duration_net, buf + 4, 4);
-  uint32_t sample_rate = ntohl(sample_rate_net);
-  uint32_t frame_duration = ntohl(frame_duration_net);
+  uint32_t sample_rate = NET_TO_HOST_U32(sample_rate_net);
+  uint32_t frame_duration = NET_TO_HOST_U32(frame_duration_net);
 
   // Extract Opus data (after 16-byte header)
   const uint8_t *opus_data = buf + 16;
@@ -1456,8 +1457,8 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
   // Extract and validate dimensions
-  uint16_t width = ntohs(caps->width);
-  uint16_t height = ntohs(caps->height);
+  uint16_t width = NET_TO_HOST_U16(caps->width);
+  uint16_t height = NET_TO_HOST_U16(caps->height);
 
   VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
   VALIDATE_NONZERO(client, height, "height", "CLIENT_CAPABILITIES");
@@ -1465,15 +1466,15 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   VALIDATE_RANGE(client, height, 1, 4096, "height", "CLIENT_CAPABILITIES");
 
   // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
-  uint32_t color_level = ntohl(caps->color_level);
+  uint32_t color_level = NET_TO_HOST_U32(caps->color_level);
   VALIDATE_RANGE(client, color_level, 0, 3, "color_level", "CLIENT_CAPABILITIES");
 
   // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
-  uint32_t render_mode = ntohl(caps->render_mode);
+  uint32_t render_mode = NET_TO_HOST_U32(caps->render_mode);
   VALIDATE_RANGE(client, render_mode, 0, 2, "render_mode", "CLIENT_CAPABILITIES");
 
   // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
-  uint32_t palette_type = ntohl(caps->palette_type);
+  uint32_t palette_type = NET_TO_HOST_U32(caps->palette_type);
   VALIDATE_RANGE(client, palette_type, 0, 5, "palette_type", "CLIENT_CAPABILITIES");
 
   // Validate desired FPS (1-144)
@@ -1487,9 +1488,9 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
             client->height, caps->desired_fps);
 
-  client->terminal_caps.capabilities = ntohl(caps->capabilities);
+  client->terminal_caps.capabilities = NET_TO_HOST_U32(caps->capabilities);
   client->terminal_caps.color_level = color_level;
-  client->terminal_caps.color_count = ntohl(caps->color_count);
+  client->terminal_caps.color_count = NET_TO_HOST_U32(caps->color_count);
   client->terminal_caps.render_mode = render_mode;
   client->terminal_caps.detection_reliable = caps->detection_reliable;
   client->terminal_caps.wants_background = (render_mode == RENDER_MODE_BACKGROUND);
@@ -1497,7 +1498,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
   SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
   SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
 
-  client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
+  client->terminal_caps.utf8_support = NET_TO_HOST_U32(caps->utf8_support);
   client->terminal_caps.palette_type = palette_type;
   SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
                sizeof(client->terminal_caps.palette_custom));
@@ -1584,8 +1585,8 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
   // Extract and validate new dimensions
-  uint16_t width = ntohs(size_pkt->width);
-  uint16_t height = ntohs(size_pkt->height);
+  uint16_t width = NET_TO_HOST_U16(size_pkt->width);
+  uint16_t height = NET_TO_HOST_U16(size_pkt->height);
 
   VALIDATE_NONZERO(client, width, "width", "SIZE");
   VALIDATE_NONZERO(client, height, "height", "SIZE");
@@ -1711,8 +1712,8 @@ int send_server_state_to_client(client_info_t *client) {
 
   // Convert to network byte order
   server_state_packet_t net_state;
-  net_state.connected_client_count = htonl(state.connected_client_count);
-  net_state.active_client_count = htonl(state.active_client_count);
+  net_state.connected_client_count = HOST_TO_NET_U32(state.connected_client_count);
+  net_state.active_client_count = HOST_TO_NET_U32(state.active_client_count);
   memset(net_state.reserved, 0, sizeof(net_state.reserved));
 
   // Send server state directly via socket
