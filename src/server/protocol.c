@@ -1173,8 +1173,8 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
   // Calculate total samples with overflow checking
   size_t total_samples = 0;
   if (checked_size_mul((size_t)samples_per_frame, (size_t)frame_count, &total_samples) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Audio batch size overflow: %u frames * %u samples/frame",
-              frame_count, samples_per_frame);
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Audio batch size overflow: %u frames * %u samples/frame", frame_count,
+              samples_per_frame);
     return;
   }
   float *decoded_samples;

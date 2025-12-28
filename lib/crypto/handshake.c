@@ -519,7 +519,8 @@ asciichat_error_t crypto_handshake_client_key_exchange(crypto_handshake_context_
       socklen_t addr_len = sizeof(server_addr);
       if (getpeername(client_socket, (struct sockaddr *)&server_addr, &addr_len) == 0) {
         char ip_str[INET6_ADDRSTRLEN];
-        if (format_ip_address(server_addr.ss_family, (struct sockaddr *)&server_addr, ip_str, sizeof(ip_str)) == ASCIICHAT_OK) {
+        if (format_ip_address(server_addr.ss_family, (struct sockaddr *)&server_addr, ip_str, sizeof(ip_str)) ==
+            ASCIICHAT_OK) {
           SAFE_STRNCPY(ctx->server_ip, ip_str, sizeof(ctx->server_ip) - 1);
           if (server_addr.ss_family == AF_INET) {
             struct sockaddr_in *addr_in = (struct sockaddr_in *)&server_addr;

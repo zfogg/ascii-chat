@@ -463,7 +463,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
                                                                                        : "unknown protocol");
 
         // Extract server IP address for known_hosts
-        if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, g_server_ip, sizeof(g_server_ip)) == ASCIICHAT_OK) {
+        if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, g_server_ip, sizeof(g_server_ip)) ==
+            ASCIICHAT_OK) {
           log_debug("Resolved server IP: %s", g_server_ip);
         } else {
           log_warn("Failed to format server IP address");
