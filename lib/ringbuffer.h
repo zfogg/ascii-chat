@@ -130,17 +130,18 @@ typedef struct {
  * Too small = underruns and audio gaps when network packets arrive late
  * Too large = excessive latency
  *
- * Reduced from 200ms to 100ms for lower latency.
- * 4800 samples @ 48kHz = 100ms = 5 Opus frames (20ms each)
+ * Increased to 200ms for cross-machine audio stability.
+ * 9600 samples @ 48kHz = 200ms = 10 Opus frames (20ms each)
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD 4800
+#define AUDIO_JITTER_BUFFER_THRESHOLD 9600
 
-/** @brief Low water mark - refill jitter buffer when available drops below this
+/** @brief Low water mark - warn when available drops below this
  *
- * When playback buffer drops below this threshold, we reset jitter_buffer_filled
- * to pause playback and let the buffer refill. This prevents continuous underruns.
+ * When playback buffer drops below this threshold, we log a warning but
+ * keep playing to avoid choppy audio. The jitter buffer should absorb
+ * network jitter without constantly pausing/resuming.
  *
- * Set to 50% of threshold (50ms when threshold is 100ms).
+ * Set to 25% of threshold (50ms when threshold is 200ms).
  * 2400 samples @ 48kHz = 50ms = 2.5 Opus frames
  */
 #define AUDIO_JITTER_LOW_WATER_MARK 2400
