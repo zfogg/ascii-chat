@@ -353,8 +353,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   if (!data || len < sizeof(ascii_frame_packet_t)) {
-    disconnect_server_for_bad_data("ASCII_FRAME payload too small: %zu (min %zu)", len,
-                                   sizeof(ascii_frame_packet_t));
+    disconnect_server_for_bad_data("ASCII_FRAME payload too small: %zu (min %zu)", len, sizeof(ascii_frame_packet_t));
     return;
   }
 
