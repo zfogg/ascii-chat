@@ -360,6 +360,27 @@ int socket_get_peer_address(socket_t sock, struct sockaddr *addr, socklen_t *add
 int socket_get_error(socket_t sock);
 
 /**
+ * @brief Optimize socket for high-throughput video streaming
+ * @param sock Socket to optimize
+ *
+ * Applies multiple socket optimizations for video streaming:
+ * - Disables Nagle's algorithm (TCP_NODELAY)
+ * - Sets large send/receive buffers (2MB with fallbacks to 512KB and 128KB)
+ * - Enables keepalive
+ * - Sets timeouts to prevent blocking indefinitely
+ *
+ * This function consolidates socket configuration that is needed for real-time
+ * video streaming. It gracefully handles buffer size negotiation by falling back
+ * to smaller sizes if the OS doesn't support large buffers.
+ *
+ * @note Warnings are logged if individual options fail, but the function
+ *       continues to apply the remaining options.
+ *
+ * @ingroup platform
+ */
+void socket_optimize_for_streaming(socket_t sock);
+
+/**
  * @brief Get last socket error code
  * @return Error code (platform-specific)
  *
