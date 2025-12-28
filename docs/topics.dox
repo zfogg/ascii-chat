@@ -28,7 +28,7 @@
  * @copybrief module_abstractions
  *
  * - @subpage topic_platform
- * - @subpage topic_os
+ * - @subpage topic_webcam
  *
  * @section topics_crypto 🔐 Cryptography
  *

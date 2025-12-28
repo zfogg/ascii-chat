@@ -65,8 +65,8 @@ coverage:
         threshold: 2%
         paths:
           - "lib/image2ascii/image.*"
-          - "lib/os/webcam*"
-          - "lib/os/**/webcam*"
+          - "lib/video/webcam/*"
+          - "lib/video/webcam/**/*"
 
       # Audio system
       audio_system:
@@ -350,8 +350,8 @@ component_management:
       name: "Video Processing"
       paths:
         - "lib/image2ascii/image.*"
-        - "lib/os/webcam*"
-        - "lib/os/**/webcam*"
+        - "lib/video/webcam/*"
+        - "lib/video/webcam/**/*"
       statuses:
         - type: project
           target: 50%
@@ -529,7 +529,7 @@ component_management:
     - component_id: platform_specific
       name: "Platform-Specific Code"
       paths:
-        - "lib/os/**/webcam*"
+        - "lib/video/webcam/**/*"
         - "lib/platform/posix/**/*"
         - "lib/platform/windows/**/*"
         - "lib/image2ascii/simd/neon.*"

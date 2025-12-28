@@ -1,10 +1,10 @@
-# OS Abstraction Layer - Webcam Support
+# Video Webcam Module
 
 ## Overview
 
-The OS abstraction layer provides unified, cross-platform APIs for webcam capture across Windows, Linux, and macOS. This layer abstracts platform-specific webcam APIs into a common interface, enabling ascii-chat to seamlessly capture video across all supported platforms.
+The webcam module provides unified, cross-platform APIs for webcam capture across Windows, Linux, and macOS. This layer abstracts platform-specific webcam APIs into a common interface, enabling ascii-chat to seamlessly capture video across all supported platforms.
 
-Unlike the platform abstraction layer which handles system primitives (threads, sockets, etc.), this OS layer focuses specifically on webcam hardware interaction and video capture.
+This module is part of the video subsystem (lib/video/) and focuses specifically on webcam hardware interaction and video capture.
 
 **Note**: Audio I/O is handled directly by PortAudio throughout the codebase since PortAudio already provides excellent cross-platform support without requiring additional abstraction.
 
@@ -13,7 +13,7 @@ Unlike the platform abstraction layer which handles system primitives (threads, 
 ### File Structure
 
 ```
-lib/os/
+lib/video/webcam/
 ├── README.md              # This file
 ├── webcam.h               # Webcam capture interface
 ├── webcam.c               # Common webcam abstraction layer
@@ -115,7 +115,7 @@ int webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height);
 
 ### Basic Webcam Capture
 ```c
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "video/image.h"
 
 int main() {
@@ -155,14 +155,14 @@ The OS abstraction layer is integrated into the CMake build system:
 ```cmake
 # Platform-specific webcam sources are automatically selected
 if(APPLE)
-    set(WEBCAM_SOURCES lib/os/macos/webcam_avfoundation.m)
+    set(WEBCAM_SOURCES lib/video/webcam/macos/webcam_avfoundation.m)
 elseif(UNIX)
-    set(WEBCAM_SOURCES lib/os/linux/webcam_v4l2.c)
+    set(WEBCAM_SOURCES lib/video/webcam/linux/webcam_v4l2.c)
 elseif(WIN32)
-    set(WEBCAM_SOURCES lib/os/windows/webcam_mediafoundation.c)
+    set(WEBCAM_SOURCES lib/video/webcam/windows/webcam_mediafoundation.c)
 endif()
 
-# Audio is handled directly by PortAudio without OS abstraction
+# Audio is handled directly by PortAudio without additional abstraction
 ```
 
 ### Dependencies
@@ -170,7 +170,7 @@ endif()
 - **macOS**: AVFoundation framework (built-in)
 - **Windows**: Media Foundation (built-in)
 
-**Note**: Audio dependencies (PortAudio) are managed at the main project level, not in this OS abstraction layer.
+**Note**: Audio dependencies (PortAudio) are managed at the main project level, not in this webcam module.
 
 ## Error Handling
 
@@ -258,7 +258,7 @@ When migrating code to use the OS abstraction:
 
 ## Contributing
 
-When adding new OS abstractions:
+When adding new webcam platform implementations:
 
 1. Define the interface in the appropriate header file
 2. Implement platform-specific versions in `linux/`, `macos/`, `windows/`
@@ -279,5 +279,5 @@ When adding new OS abstractions:
 
 ## Author
 
-OS abstraction layer developed by Zachary Fogg <me@zfo.gg>
+Webcam module developed by Zachary Fogg <me@zfo.gg>
 September 2025

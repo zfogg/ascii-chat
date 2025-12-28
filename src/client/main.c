@@ -71,7 +71,7 @@
 #include "capture.h"
 #include "audio.h"
 #include "audio/audio_analysis.h"
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 
 #include "platform/abstraction.h"
 #include "platform/init.h"

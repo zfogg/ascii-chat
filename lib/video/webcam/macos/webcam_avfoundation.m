@@ -1,5 +1,5 @@
 /**
- * @file os/macos/webcam_avfoundation.m
+ * @file video/webcam/macos/webcam_avfoundation.m
  * @ingroup webcam
  * @brief 📷 macOS AVFoundation webcam capture implementation with hardware acceleration
  */
@@ -11,7 +11,7 @@
 #import <CoreVideo/CoreVideo.h>
 #include <dispatch/dispatch.h>
 
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "common.h"
 
 // AVFoundation timeout configuration

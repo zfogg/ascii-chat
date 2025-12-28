@@ -244,7 +244,7 @@
  * - **@ref topic_platform "Platform Abstraction Layer README"** - **Comprehensive guide** to cross-platform abstractions
  *   for threads, mutexes, sockets, terminal I/O, crash handling, and OS portability (Windows/Linux/macOS)
  * - **@ref topic_platform "Platform Layer"** - API reference for platform abstractions
- * - **@ref topic_os "OS Abstractions"** - Operating system specific functionality (webcam, etc.)
+ * - **@ref topic_webcam "Webcam Capture"** - Cross-platform webcam capture functionality
  *
  * @subsection core_libs_module Core Libraries
  * - **@ref topic_buffer_pool "Buffer Pool"** - Memory management with pre-allocated buffers

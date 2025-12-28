@@ -108,7 +108,7 @@
  * - @ref topic_platform "Platform Abstraction Layer README" - **Comprehensive guide** covering cross-platform
  *   threading, mutexes, sockets, terminal I/O, crash handling, static initialization, and OS portability
  *   (Windows/Linux/macOS)
- * - @ref topic_os "OS Abstractions" - Platform-specific functionality (webcam, etc.)
+ * - @ref topic_webcam "Webcam Capture" - Cross-platform webcam capture functionality
  *
  * @section topics_crypto 🔐 Cryptography
  *

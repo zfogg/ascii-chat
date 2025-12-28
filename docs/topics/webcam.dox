@@ -1,28 +1,23 @@
 /**
- * @page topic_os Operating System README
- * @ingroup os
+ * @page topic_webcam Webcam Capture
+ * @ingroup webcam
  *
- * Operating system specific functionality including webcam capture, platform detection,
- * and OS-specific optimizations for Windows, Linux, and macOS.
+ * Cross-platform webcam capture functionality for Windows, Linux, and macOS.
  *
- * @section os_overview Overview
+ * @section webcam_overview Overview
  *
- * While the platform abstraction layer (lib/platform/) provides generic cross-platform APIs,
- * the OS abstraction layer (lib/os/) handles truly platform-specific functionality that
- * doesn't have a common API across operating systems:
+ * The webcam module (lib/video/webcam/) provides cross-platform webcam capture
+ * with platform-specific implementations:
  *
  * - **Webcam capture**: Different APIs per platform (AVFoundation, V4L2, Media Foundation)
- * - **Hardware detection**: CPU capabilities, SIMD instruction sets
- * - **Performance optimization**: Platform-specific tuning
- * - **System integration**: Native clipboard, notifications, etc.
  *
- * @section os_webcam Webcam Capture
+ * @section webcam_platforms Platform Implementations
  *
  * Each platform has its own webcam API with different capabilities and performance:
  *
- * @subsection os_webcam_macos macOS - AVFoundation
+ * @subsection webcam_macos macOS - AVFoundation
  *
- * **Implementation**: lib/os/macos/webcam_avfoundation.m (Objective-C)
+ * **Implementation**: lib/video/webcam/macos/webcam_avfoundation.m (Objective-C)
  *
  * **API**: AVFoundation framework (modern, recommended by Apple)
  * - AVCaptureDevice: Represents physical camera
@@ -78,9 +73,9 @@
  * [session startRunning];
  * @endcode
  *
- * @subsection os_webcam_linux Linux - Video4Linux2 (V4L2)
+ * @subsection webcam_linux Linux - Video4Linux2 (V4L2)
  *
- * **Implementation**: lib/os/linux/webcam_v4l2.c (C)
+ * **Implementation**: lib/video/webcam/linux/webcam_v4l2.c (C)
  *
  * **API**: Video4Linux2 kernel interface (standard Linux video API)
  * - Device nodes: /dev/video0, /dev/video1, etc.
@@ -171,9 +166,9 @@
  * - Zero-copy via memory mapping
  * - ~10% CPU if YUYV→RGB conversion needed
  *
- * @subsection os_webcam_windows Windows - Media Foundation
+ * @subsection webcam_windows Windows - Media Foundation
  *
- * **Implementation**: lib/os/windows/webcam_mediafoundation.c (C++)
+ * **Implementation**: lib/video/webcam/windows/webcam_mediafoundation.c (C++)
  *
  * **API**: Media Foundation (modern Windows multimedia API, Vista+)
  * - IMFMediaSource: Represents camera device
@@ -263,7 +258,7 @@
  * - ~4% CPU for 1920x1080 @ 30 FPS capture (RGB)
  * - Hardware-accelerated decoding for MJPEG/H.264
  *
- * @subsection os_webcam_api Unified Webcam API
+ * @subsection webcam_api Unified Webcam API
  *
  * ascii-chat provides a unified C API across all platforms:
  *
@@ -320,7 +315,7 @@
  * webcam_destroy(webcam);
  * @endcode
  *
- * @section os_hardware Hardware Detection
+ * @section webcam_hardware Hardware Detection
  *
  * CPU capability detection for SIMD optimization:
  *
@@ -381,7 +376,7 @@
  * #endif
  * @endcode
  *
- * @section os_performance Platform-Specific Optimizations
+ * @section webcam_performance Platform-Specific Optimizations
  *
  * **Windows**:
  * - SetThreadPriority for realtime video/audio threads
@@ -401,8 +396,8 @@
  * - memfd_create for anonymous shared memory
  * - ALSA period size tuning for low-latency audio
  *
- * @see os/webcam.h
- * @see os/macos/webcam_avfoundation.m
- * @see os/linux/webcam_v4l2.c
- * @see os/windows/webcam_mediafoundation.c
+ * @see video/webcam/webcam.h
+ * @see video/webcam/macos/webcam_avfoundation.m
+ * @see video/webcam/linux/webcam_v4l2.c
+ * @see video/webcam/windows/webcam_mediafoundation.c
  */

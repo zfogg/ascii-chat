@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "tests/common.h"
 #include "options.h"
 #include "video/image.h"

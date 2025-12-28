@@ -21,7 +21,7 @@
 #include "common.h"
 #include "image.h"
 #include "util/aspect_ratio.h"
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "options.h"
 #include "simd/ascii_simd.h"
 

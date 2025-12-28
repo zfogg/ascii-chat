@@ -105,7 +105,7 @@ if(WIN32)
         lib/platform/windows/symbols.c
         lib/platform/windows/getopt.c
         lib/platform/windows/pipe.c
-        lib/os/windows/webcam_mediafoundation.c
+        lib/video/webcam/windows/webcam_mediafoundation.c
     )
 elseif(PLATFORM_POSIX)
     # POSIX platforms (Linux/macOS)
@@ -126,11 +126,11 @@ elseif(PLATFORM_POSIX)
 
     if(PLATFORM_DARWIN)
         list(APPEND PLATFORM_SRCS
-            lib/os/macos/webcam_avfoundation.m
+            lib/video/webcam/macos/webcam_avfoundation.m
         )
     elseif(PLATFORM_LINUX)
         list(APPEND PLATFORM_SRCS
-            lib/os/linux/webcam_v4l2.c
+            lib/video/webcam/linux/webcam_v4l2.c
         )
     else()
         message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}. We don't have webcam code for this platform.")
@@ -185,7 +185,7 @@ set(VIDEO_SRCS
     lib/video/ansi.c
     lib/video/palette.c
     lib/util/utf8.c
-    lib/os/webcam.c
+    lib/video/webcam/webcam.c
 )
 
 # Platform-specific webcam sources already added to PLATFORM_SRCS

@@ -1,5 +1,5 @@
 /**
- * @file os/linux/webcam_v4l2.c
+ * @file video/webcam/linux/webcam_v4l2.c
  * @ingroup webcam
  * @brief 📷 Linux V4L2 webcam capture implementation with MJPEG/YUY2 format support
  */
@@ -16,7 +16,7 @@
 #include <sys/ioctl.h>
 #include <linux/videodev2.h>
 
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "common.h"
 #include "platform/file.h"
 #include "platform/internal.h"
