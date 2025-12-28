@@ -32,6 +32,7 @@ size_t get_current_time_formatted(char *time_buf) {
   platform_localtime(&ts.tv_sec, &tm_info);
 
   // Format the time part first
+  // strftime returns 0 on error, not negative (and len is size_t/unsigned)
   size_t len = strftime(time_buf, 32, "%H:%M:%S", &tm_info);
   if (len == 0 || len >= 32) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format time");

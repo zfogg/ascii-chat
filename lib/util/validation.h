@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include "common.h"  // For error handling
+#include "../common.h"  // For error handling
 
 /* Forward declarations to avoid circular dependencies */
 typedef struct client_info client_info_t;
@@ -163,6 +163,35 @@ typedef struct client_info client_info_t;
   } while (0)
 
 /**
+ * Validate packet payload size and presence.
+ * Helper macro to standardize packet validation. Checks if data pointer is
+ * non-NULL and payload matches expected size. Disconnects client on failure.
+ *
+ * @param client Client being validated (must not be NULL)
+ * @param data Payload pointer
+ * @param len Payload size
+ * @param expected_size Expected payload size
+ * @param packet_name Human-readable packet name for error messages
+ *
+ * @note This macro uses 'return;' statement - only use inside void functions
+ * @note Automatically calls disconnect_client_for_bad_data() on failure
+ */
+#define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name) \
+  do { \
+    if (!(data)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), packet_name " payload missing"); \
+      return; \
+    } \
+    if ((len) != (expected_size)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), packet_name " payload size %zu (expected %zu)", (len), \
+                                     (expected_size)); \
+      return; \
+    } \
+  } while (0)
+
+/**
  * Validate that a numeric value is non-zero (for dimensions, counts, etc).
  * Disconnects client and returns if value is zero.
  *
@@ -238,5 +267,43 @@ typedef struct client_info client_info_t;
       return; \
     } \
   } while (0)
+
+/** @} */
+
+/* ============================================================================
+ * Image Dimension Validation (Function Implementation)
+ * ============================================================================ */
+
+#include <stdint.h>
+#include <stddef.h>
+
+/**
+ * @defgroup image_validation Image Validation Functions
+ * @ingroup validation
+ * @{
+ */
+
+/**
+ * @brief Validate and compute RGB image buffer size safely
+ * @param width Image width in pixels (must be > 0)
+ * @param height Image height in pixels (must be > 0)
+ * @param out_rgb_size Pointer to store computed RGB buffer size (must not be NULL)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on overflow or invalid dimensions
+ *
+ * Safely validates image dimensions and computes the total RGB buffer size needed.
+ * Prevents integer overflow attacks by checking multiplication at each step.
+ *
+ * VALIDATION STEPS:
+ * 1. Check width > 0 and height > 0
+ * 2. Check pixel_count = width * height won't overflow (max 4K = 3840x2160)
+ * 3. Check rgb_size = pixel_count * sizeof(rgb_t) won't overflow
+ *
+ * @note Maximum supported resolution is 4K (3840x2160) = 8,294,400 pixels
+ * @note This function prevents DoS attacks via integer overflow in dimension checks
+ * @note Returns error code via asciichat_errno, not just return value
+ *
+ * @ingroup image_validation
+ */
+asciichat_error_t image_validate_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size);
 
 /** @} */

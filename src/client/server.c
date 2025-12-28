@@ -557,22 +557,10 @@ connection_success:
     log_warn("Failed to set socket keepalive: %s", network_error_string());
   }
 
-  // Set socket buffer sizes for large data transmission
-  int send_buffer_size = 1024 * 1024; // 1MB send buffer
-  int recv_buffer_size = 1024 * 1024; // 1MB receive buffer
-
-  if (socket_setsockopt(g_sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
-    log_warn("Failed to set send buffer size: %s", network_error_string());
-  }
-
-  if (socket_setsockopt(g_sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
-    log_warn("Failed to set receive buffer size: %s", network_error_string());
-  }
-
-  // Enable TCP_NODELAY to reduce latency for large packets
-  int nodelay = 1;
-  if (socket_setsockopt(g_sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
-    log_warn("Failed to set TCP_NODELAY: %s", network_error_string());
+  // Configure socket buffers and TCP_NODELAY for optimal performance
+  asciichat_error_t sock_config_result = socket_configure_buffers(g_sockfd);
+  if (sock_config_result != ASCIICHAT_OK) {
+    log_warn("Failed to configure socket: %s", network_error_string());
   }
 
   // Send initial terminal capabilities to server (this may generate debug logs)
@@ -592,9 +580,9 @@ connection_success:
 
   // Send client join packet for multi-user support
   uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
-  log_info("DEBUG: opt_audio_enabled = %d (sending CLIENT_JOIN)", opt_audio_enabled);
+  log_info("opt_audio_enabled = %d (sending CLIENT_JOIN)", opt_audio_enabled);
   if (opt_audio_enabled) {
-    log_info("DEBUG: Adding CLIENT_CAP_AUDIO to capabilities");
+    log_info("Adding CLIENT_CAP_AUDIO to capabilities");
     my_capabilities |= CLIENT_CAP_AUDIO;
   }
   if (opt_color_mode != COLOR_MODE_NONE) {

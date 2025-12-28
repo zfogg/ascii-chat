@@ -1143,6 +1143,22 @@ void audio_free_device_list(audio_device_info_t *devices) {
   SAFE_FREE(devices);
 }
 
+asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t total_samples, float *out_samples) {
+  if (!samples_ptr || !out_samples || total_samples == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for audio dequantization");
+  }
+
+  for (uint32_t i = 0; i < total_samples; i++) {
+    uint32_t network_sample;
+    // Use memcpy to safely handle potential misalignment from packet header
+    memcpy(&network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
+    int32_t scaled = (int32_t)ntohl(network_sample);
+    out_samples[i] = (float)scaled / 2147483647.0f;
+  }
+
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t audio_set_realtime_priority(void) {
 #if defined(__linux__)
   struct sched_param param;
