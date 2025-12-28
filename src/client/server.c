@@ -213,7 +213,7 @@ static bool g_encryption_enabled = false;
  * @ingroup client_connection
  */
 static unsigned int get_reconnect_delay(unsigned int reconnect_attempt) {
-  // ARITHMETIC FIX: Use integer arithmetic for microsecond calculations
+  // Use integer arithmetic for microsecond calculations
   // Initial delay: 100,000 us (0.1 seconds)
   // Additional delay per attempt: 200,000 us (0.2 seconds)
   unsigned int delay_us = 100000 + (reconnect_attempt - 1) * 200000;
@@ -592,9 +592,9 @@ connection_success:
 
   // Send client join packet for multi-user support
   uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
-  log_info("DEBUG: opt_audio_enabled = %d (sending CLIENT_JOIN)", opt_audio_enabled);
+  log_info("opt_audio_enabled = %d (sending CLIENT_JOIN)", opt_audio_enabled);
   if (opt_audio_enabled) {
-    log_info("DEBUG: Adding CLIENT_CAP_AUDIO to capabilities");
+    log_info("Adding CLIENT_CAP_AUDIO to capabilities");
     my_capabilities |= CLIENT_CAP_AUDIO;
   }
   if (opt_color_mode != COLOR_MODE_NONE) {
