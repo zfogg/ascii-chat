@@ -90,6 +90,7 @@
 #include "util/endian.h"
 #include "util/validation.h"
 #include "util/endian.h"
+#include "util/format.h"
 #include "options/options.h"
 #include "network/crc32.h"
 #include "fps.h"
@@ -283,7 +284,9 @@ static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len
                                uint32_t original_size, uint32_t compressed_size) {
   // Validate size before allocation to prevent excessive memory usage
   if (original_size > 100 * 1024 * 1024) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", original_size);
+    char size_str[32];
+    format_bytes_pretty(original_size, size_str, sizeof(size_str));
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s", size_str);
     return NULL;
   }
 

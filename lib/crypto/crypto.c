@@ -8,6 +8,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "tests/test_env.h"
+#include "util/time.h"
 
 #include <string.h>
 #include <time.h>
@@ -134,14 +135,18 @@ crypto_result_t crypto_init(crypto_context_t *ctx) {
   if (is_test_environment()) {
     ctx->rekey_packet_threshold = REKEY_TEST_PACKET_THRESHOLD; // 1,000 packets
     ctx->rekey_time_threshold = REKEY_TEST_TIME_THRESHOLD;     // 30 seconds
+    char duration_str[32];
+    format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
     log_info(
-        "Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %ld seconds)",
-        (unsigned long long)ctx->rekey_packet_threshold, (long)ctx->rekey_time_threshold);
+        "Crypto context initialized with X25519 key exchange (TEST MODE rekey thresholds: %llu packets, %s)",
+        (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   } else {
     ctx->rekey_packet_threshold = REKEY_DEFAULT_PACKET_THRESHOLD; // 1 million packets
     ctx->rekey_time_threshold = REKEY_DEFAULT_TIME_THRESHOLD;     // 3600 seconds (1 hour)
-    log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %ld seconds)",
-             (unsigned long long)ctx->rekey_packet_threshold, (long)ctx->rekey_time_threshold);
+    char duration_str[32];
+    format_duration_s((double)ctx->rekey_time_threshold, duration_str, sizeof(duration_str));
+    log_info("Crypto context initialized with X25519 key exchange (rekey thresholds: %llu packets, %s)",
+             (unsigned long long)ctx->rekey_packet_threshold, duration_str);
   }
   return CRYPTO_OK;
 }
@@ -1185,8 +1190,10 @@ crypto_result_t crypto_rekey_init(crypto_context_t *ctx) {
   time_t now = time(NULL);
   time_t since_last_rekey = now - ctx->rekey_last_time;
   if (since_last_rekey < REKEY_MIN_INTERVAL) {
-    log_warn("Rekey rate limited: %ld seconds since last rekey (minimum: %d)", (long)since_last_rekey,
-             REKEY_MIN_INTERVAL);
+    char elapsed_str[32], min_str[32];
+    format_duration_s((double)since_last_rekey, elapsed_str, sizeof(elapsed_str));
+    format_duration_s((double)REKEY_MIN_INTERVAL, min_str, sizeof(min_str));
+    log_warn("Rekey rate limited: %s since last rekey (minimum: %s)", elapsed_str, min_str);
     return CRYPTO_ERROR_REKEY_RATE_LIMITED;
   }
 
