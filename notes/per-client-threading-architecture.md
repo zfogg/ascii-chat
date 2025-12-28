@@ -114,7 +114,7 @@ while (client->video_render_thread_running && client->active) {
 // AFTER (THREAD-SAFE):
 bool should_continue = true;
 while (should_continue && !g_should_exit) {
-  // CRITICAL FIX: Take mutex-protected snapshot
+  // Take mutex-protected snapshot
   pthread_mutex_lock(&client->client_state_mutex);
   should_continue = client->video_render_thread_running && client->active;
   uint32_t client_id_snapshot = client->client_id;
