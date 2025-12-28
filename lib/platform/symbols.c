@@ -539,32 +539,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Conditionally escape exe_path only if it needs quoting (has spaces or special chars)
-  // llvm-symbolizer handles unquoted paths correctly, so only quote when necessary
-  const char *escaped_exe_path = exe_path;
+  // Escape exe_path for shell command (auto-detects platform and quoting needs)
   char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool needs_quoting = false;
-  for (size_t i = 0; exe_path[i] != '\0'; i++) {
-    if (exe_path[i] == ' ' || exe_path[i] == '\t' || exe_path[i] == '"' || exe_path[i] == '\'') {
-      needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+    log_error("Failed to escape executable path for shell command");
+    return NULL;
   }
-
-  if (needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_exe_path = escaped_exe_path_buf;
-  }
+  const char *escaped_exe_path = escaped_exe_path_buf;
 
   // Validate and escape llvm-symbolizer path if needed
   if (!validate_shell_safe(symbolizer_cmd, ".-/\\:_")) {
@@ -572,31 +553,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  const char *escaped_symbolizer_cmd = symbolizer_cmd;
+  // Escape symbolizer command for shell (auto-detects platform and quoting needs)
   char escaped_symbolizer_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool symbolizer_needs_quoting = false;
-  for (size_t i = 0; symbolizer_cmd[i] != '\0'; i++) {
-    if (symbolizer_cmd[i] == ' ' || symbolizer_cmd[i] == '\t' || symbolizer_cmd[i] == '"' ||
-        symbolizer_cmd[i] == '\'') {
-      symbolizer_needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
+    log_error("Failed to escape llvm-symbolizer path for shell command");
+    return NULL;
   }
-
-  if (symbolizer_needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-      log_error("Failed to escape llvm-symbolizer path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(symbolizer_cmd, escaped_symbolizer_buf, sizeof(escaped_symbolizer_buf))) {
-      log_error("Failed to escape llvm-symbolizer path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_symbolizer_cmd = escaped_symbolizer_buf;
-  }
+  const char *escaped_symbolizer_cmd = escaped_symbolizer_buf;
 
   // Build llvm-symbolizer command with --demangle, --output-style=LLVM, --relativenames, --inlining,
   // and --debug-file-directory
@@ -610,31 +573,13 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Conditionally escape BUILD_DIR only if it needs quoting (has spaces or special chars)
-  const char *escaped_build_dir = BUILD_DIR;
+  // Escape BUILD_DIR for shell (auto-detects platform and quoting needs)
   char escaped_build_dir_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool build_dir_needs_quoting = false;
-  for (size_t i = 0; BUILD_DIR[i] != '\0'; i++) {
-    if (BUILD_DIR[i] == ' ' || BUILD_DIR[i] == '\t' || BUILD_DIR[i] == '"' || BUILD_DIR[i] == '\'') {
-      build_dir_needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
+    log_error("Failed to escape BUILD_DIR for shell command");
+    return NULL;
   }
-
-  if (build_dir_needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      log_error("Failed to escape BUILD_DIR for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(BUILD_DIR, escaped_build_dir_buf, sizeof(escaped_build_dir_buf))) {
-      log_error("Failed to escape BUILD_DIR for shell command");
-      return NULL;
-    }
-#endif
-    escaped_build_dir = escaped_build_dir_buf;
-  }
+  const char *escaped_build_dir = escaped_build_dir_buf;
 
   offset = snprintf(cmd, sizeof(cmd),
                     "%s --demangle --output-style=LLVM --relativenames --inlining "
@@ -789,62 +734,26 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     return NULL;
   }
 
-  // Conditionally escape exe_path only if it needs quoting (has spaces or special chars)
-  // addr2line handles unquoted paths correctly, so only quote when necessary
-  const char *escaped_exe_path = exe_path;
+  // Escape exe_path for shell (auto-detects platform and quoting needs)
   char escaped_exe_path_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool needs_quoting = false;
-  for (size_t i = 0; exe_path[i] != '\0'; i++) {
-    if (exe_path[i] == ' ' || exe_path[i] == '\t' || exe_path[i] == '"' || exe_path[i] == '\'') {
-      needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
+    log_error("Failed to escape executable path for shell command");
+    return NULL;
   }
-
-  if (needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(exe_path, escaped_exe_path_buf, sizeof(escaped_exe_path_buf))) {
-      log_error("Failed to escape executable path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_exe_path = escaped_exe_path_buf;
-  }
+  const char *escaped_exe_path = escaped_exe_path_buf;
 
   if (!validate_shell_safe(addr2line_cmd, ".-/\\:_")) {
     log_warn("addr2line path contains unsafe characters: %s", addr2line_cmd);
     return NULL;
   }
 
-  const char *escaped_addr2line_cmd = addr2line_cmd;
+  // Escape addr2line command for shell (auto-detects platform and quoting needs)
   char escaped_addr2line_buf[PLATFORM_MAX_PATH_LENGTH * 2];
-  bool addr2line_needs_quoting = false;
-  for (size_t i = 0; addr2line_cmd[i] != '\0'; i++) {
-    if (addr2line_cmd[i] == ' ' || addr2line_cmd[i] == '\t' || addr2line_cmd[i] == '"' || addr2line_cmd[i] == '\'') {
-      addr2line_needs_quoting = true;
-      break;
-    }
+  if (!escape_path_for_shell(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
+    log_error("Failed to escape addr2line path for shell command");
+    return NULL;
   }
-
-  if (addr2line_needs_quoting) {
-#ifdef _WIN32
-    if (!escape_shell_double_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
-      log_error("Failed to escape addr2line path for shell command");
-      return NULL;
-    }
-#else
-    if (!escape_shell_single_quotes(addr2line_cmd, escaped_addr2line_buf, sizeof(escaped_addr2line_buf))) {
-      log_error("Failed to escape addr2line path for shell command");
-      return NULL;
-    }
-#endif
-    escaped_addr2line_cmd = escaped_addr2line_buf;
-  }
+  const char *escaped_addr2line_cmd = escaped_addr2line_buf;
 
   // Build addr2line command
   char cmd[4096];

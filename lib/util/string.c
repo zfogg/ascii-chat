@@ -184,3 +184,55 @@ bool escape_shell_double_quotes(const char *str, char *out_buffer, size_t out_bu
 
   return true;
 }
+
+bool string_needs_shell_quoting(const char *str) {
+  if (!str || str[0] == '\0') {
+    return false; // Empty strings don't need quoting
+  }
+
+  // Check for characters that need shell quoting
+  for (size_t i = 0; str[i] != '\0'; i++) {
+    char c = str[i];
+
+    // Whitespace characters always need quoting
+    if (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
+      return true;
+    }
+
+    // Shell special characters
+    if (c == '"' || c == '\'' || c == '$' || c == '`' || c == '\\' ||
+        c == '<' || c == '>' || c == '&' || c == ';' || c == '|' ||
+        c == '(' || c == ')' || c == '[' || c == ']' || c == '{' || c == '}' ||
+        c == '*' || c == '?' || c == '!' || c == '~' || c == '#' || c == '@') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool escape_path_for_shell(const char *path, char *out_buffer, size_t out_buffer_size) {
+  if (!path || !out_buffer || out_buffer_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid path or output buffer");
+    return false;
+  }
+
+  // Check if quoting is needed
+  if (!string_needs_shell_quoting(path)) {
+    // No quoting needed, just copy the path
+    size_t path_len = strlen(path);
+    if (out_buffer_size <= path_len) {
+      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Output buffer too small for path");
+      return false;
+    }
+    SAFE_STRNCPY(out_buffer, path, out_buffer_size);
+    return true;
+  }
+
+  // Quoting is needed, use platform-specific escaping
+#ifdef _WIN32
+  return escape_shell_double_quotes(path, out_buffer, out_buffer_size);
+#else
+  return escape_shell_single_quotes(path, out_buffer, out_buffer_size);
+#endif
+}
