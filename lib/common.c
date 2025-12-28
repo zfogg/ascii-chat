@@ -5,28 +5,11 @@
  * @brief 🔧 Core utilities: memory management, safe macros, and cross-platform helpers
  */
 
-// Platform-specific malloc size headers - MUST come before common.h
-// to avoid conflicts with debug memory macros
-#ifdef _WIN32
-#if defined(_MSC_VER)
-#include <excpt.h>
-#endif
-#include <malloc.h> // For _msize
-#elif defined(__APPLE__)
-#include <malloc/malloc.h> // For malloc_size on macOS
-#elif defined(__linux__)
-// For Linux systems - need GNU extensions for malloc_usable_size
-#include <features.h>
-#include <malloc.h>
-// If _GNU_SOURCE is not defined or we don't have glibc, declare it ourselves
-#if !defined(_GNU_SOURCE) || !defined(__GLIBC__)
-extern size_t malloc_usable_size(void *ptr);
-#endif
-#endif
-
+// Platform abstraction includes memory sizing functions
 #include "common.h"
 #include "platform/system.h"
 #include "platform/init.h"
+#include "platform/memory.h"
 #include "log/logging.h"
 #include "buffer_pool.h"
 #include "video/palette.h"

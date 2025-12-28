@@ -299,6 +299,9 @@
 #include "platform/socket.h"
 #include "platform/terminal.h"
 #include "platform/system.h"
+#include "platform/memory.h"
+#include "platform/process.h"
+#include "platform/fs.h"
 #include "util/uthash.h" // Wrapper ensures common.h is included first
 #include "platform/file.h"
 #include "platform/pipe.h"
