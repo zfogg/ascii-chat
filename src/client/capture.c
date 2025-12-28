@@ -92,12 +92,11 @@
 #include "video/image.h"
 #include "common.h"
 #include "util/endian.h"
+#include "util/aspect_ratio.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "util/time.h"
-#include "util/endian.h"
 #include "util/thread.h"
-#include "util/endian.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
@@ -152,51 +151,6 @@ static atomic_bool g_capture_thread_exited = false;
  * Frame Processing Functions
  * ============================================================================ */
 /**
- * Calculate optimal frame dimensions for network transmission
- *
- * Implements fit-to-bounds scaling algorithm that maintains original
- * aspect ratio while ensuring frame fits within network size limits.
- * Uses floating-point arithmetic for precise aspect ratio calculations.
- *
- * Scaling Algorithm:
- * 1. Calculate original image aspect ratio (width/height)
- * 2. Compare with maximum bounds aspect ratio
- * 3. Scale by width if max bounds are wider than image
- * 4. Scale by height if max bounds are taller than image
- * 5. Return dimensions that fit within bounds
- *
- * @param original_width Original frame width from webcam
- * @param original_height Original frame height from webcam
- * @param max_width Maximum allowed width for transmission
- * @param max_height Maximum allowed height for transmission
- * @param result_width Output parameter for calculated width
- * @param result_height Output parameter for calculated height
- *
- * @ingroup client_capture
- */
-static void calculate_optimal_dimensions(ssize_t original_width, ssize_t original_height, ssize_t max_width,
-                                         ssize_t max_height, ssize_t *result_width, ssize_t *result_height) {
-  // Calculate original aspect ratio
-  float img_aspect = (float)original_width / (float)original_height;
-  // Check if image needs resizing
-  if (original_width <= max_width && original_height <= max_height) {
-    // Image is already within bounds - use as-is
-    *result_width = original_width;
-    *result_height = original_height;
-    return;
-  }
-  // Determine scaling factor based on which dimension is the limiting factor
-  if ((float)max_width / (float)max_height > img_aspect) {
-    // Max box is wider than image aspect - scale by height
-    *result_height = max_height;
-    *result_width = (ssize_t)(max_height * img_aspect);
-  } else {
-    // Max box is taller than image aspect - scale by width
-    *result_width = max_width;
-    *result_height = (ssize_t)(max_width / img_aspect);
-  }
-}
-/**
  * Process and resize webcam frame for transmission
  *
  * Handles frame resizing with memory management and error handling.
@@ -218,10 +172,9 @@ static image_t *process_frame_for_transmission(image_t *original_image, ssize_t 
   if (!original_image) {
     return NULL;
   }
-  // Calculate optimal dimensions
+  // Calculate optimal dimensions using aspect_ratio utility
   ssize_t resized_width, resized_height;
-  calculate_optimal_dimensions(original_image->w, original_image->h, max_width, max_height, &resized_width,
-                               &resized_height);
+  aspect_ratio2(original_image->w, original_image->h, max_width, max_height, &resized_width, &resized_height);
   // Check if resizing is needed
   if (original_image->w == resized_width && original_image->h == resized_height) {
     // No resizing needed - create a copy to preserve original

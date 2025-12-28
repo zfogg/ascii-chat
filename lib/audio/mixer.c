@@ -10,6 +10,7 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "util/time.h"       // For timing instrumentation
 #include "util/bits.h"       // For find_first_set_bit
+#include "util/overflow.h"   // For overflow checking
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
@@ -130,13 +131,23 @@ int ducking_init(ducking_t *duck, int num_sources, float sample_rate) {
   duck->attack_coeff = expf(-1.0f / (attack_tau * sample_rate + 1e-12f));
   duck->release_coeff = expf(-1.0f / (release_tau * sample_rate + 1e-12f));
 
-  // Allocate arrays
-  duck->envelope = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
+  // Allocate arrays with overflow checking
+  size_t envelope_size = 0;
+  if (checked_size_mul((size_t)num_sources, sizeof(float), &envelope_size) != ASCIICHAT_OK) {
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Ducking envelope array size overflow: %d sources", num_sources);
+  }
+  duck->envelope = SAFE_MALLOC(envelope_size, float *);
   if (!duck->envelope) {
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate ducking envelope array");
   }
 
-  duck->gain = SAFE_MALLOC((size_t)num_sources * sizeof(float), float *);
+  size_t gain_size = 0;
+  if (checked_size_mul((size_t)num_sources, sizeof(float), &gain_size) != ASCIICHAT_OK) {
+    SAFE_FREE(duck->envelope);
+    duck->envelope = NULL;
+    return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Ducking gain array size overflow: %d sources", num_sources);
+  }
+  duck->gain = SAFE_MALLOC(gain_size, float *);
   if (!duck->gain) {
     SAFE_FREE(duck->envelope);
     duck->envelope = NULL;
@@ -227,21 +238,42 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   mixer->max_sources = max_sources;
   mixer->sample_rate = sample_rate;
 
-  // Allocate source management arrays
-  mixer->source_buffers = SAFE_MALLOC((size_t)max_sources * sizeof(audio_ring_buffer_t *), audio_ring_buffer_t **);
+  // Allocate source management arrays with overflow checking
+  size_t buffers_size = 0;
+  if (checked_size_mul((size_t)max_sources, sizeof(audio_ring_buffer_t *), &buffers_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Mixer source buffers array overflow: %d sources", max_sources);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+  mixer->source_buffers = SAFE_MALLOC(buffers_size, audio_ring_buffer_t **);
   if (!mixer->source_buffers) {
     SAFE_FREE(mixer);
     return NULL;
   }
 
-  mixer->source_ids = SAFE_MALLOC((size_t)max_sources * sizeof(uint32_t), uint32_t *);
+  size_t ids_size = 0;
+  if (checked_size_mul((size_t)max_sources, sizeof(uint32_t), &ids_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Mixer source IDs array overflow: %d sources", max_sources);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+  mixer->source_ids = SAFE_MALLOC(ids_size, uint32_t *);
   if (!mixer->source_ids) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer);
     return NULL;
   }
 
-  mixer->source_active = SAFE_MALLOC((size_t)max_sources * sizeof(bool), bool *);
+  size_t active_size = 0;
+  if (checked_size_mul((size_t)max_sources, sizeof(bool), &active_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Mixer source active array overflow: %d sources", max_sources);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+  mixer->source_active = SAFE_MALLOC(active_size, bool *);
   if (!mixer->source_active) {
     SAFE_FREE(mixer->source_buffers);
     SAFE_FREE(mixer->source_ids);
@@ -250,10 +282,9 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
   }
 
   // Initialize arrays
-  SAFE_MEMSET((void *)mixer->source_buffers, (size_t)max_sources * sizeof(audio_ring_buffer_t *), 0,
-              (size_t)max_sources * sizeof(audio_ring_buffer_t *));
-  SAFE_MEMSET(mixer->source_ids, (size_t)max_sources * sizeof(uint32_t), 0, (size_t)max_sources * sizeof(uint32_t));
-  SAFE_MEMSET(mixer->source_active, (size_t)max_sources * sizeof(bool), 0, (size_t)max_sources * sizeof(bool));
+  SAFE_MEMSET((void *)mixer->source_buffers, buffers_size, 0, buffers_size);
+  SAFE_MEMSET(mixer->source_ids, ids_size, 0, ids_size);
+  SAFE_MEMSET(mixer->source_active, active_size, 0, active_size);
 
   // OPTIMIZATION 1: Initialize bitset optimization structures
   mixer->active_sources_mask = 0ULL; // No sources active initially
@@ -261,7 +292,16 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
               sizeof(mixer->source_id_to_index)); // 0xFF = invalid index
 
   // Allocate mix buffer BEFORE rwlock_init so cleanup path is correct
-  mixer->mix_buffer = SAFE_MALLOC(MIXER_FRAME_SIZE * sizeof(float), float *);
+  size_t mix_buffer_size = 0;
+  if (checked_size_mul(MIXER_FRAME_SIZE, sizeof(float), &mix_buffer_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Mixer mix buffer size overflow: %zu samples", (size_t)MIXER_FRAME_SIZE);
+    SAFE_FREE(mixer->source_buffers);
+    SAFE_FREE(mixer->source_ids);
+    SAFE_FREE(mixer->source_active);
+    SAFE_FREE(mixer);
+    return NULL;
+  }
+  mixer->mix_buffer = SAFE_MALLOC(mix_buffer_size, float *);
   if (!mixer->mix_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate mix buffer");
     SAFE_FREE(mixer->source_buffers);
