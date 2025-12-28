@@ -129,7 +129,7 @@ char *https_get(const char *hostname, const char *path) {
 
   if (num_anchors == 0) {
     log_error("No trust anchors loaded");
-    // MEMORY FIX: Free anchors before returning to prevent leak
+    // Free anchors before returning to prevent leak
     goto cleanup_anchors;
   }
   log_info("Loaded %zu trust anchors", num_anchors);
