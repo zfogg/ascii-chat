@@ -15,12 +15,14 @@
 #include "http_server.h"
 #include "json.h"
 #include "lldb_controller.h"
+#include "util/parsing.h"
 
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <climits>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -400,13 +402,23 @@ int main(int argc, char *argv[]) {
             printUsage(argv[0]);
             return 0;
         } else if (strcmp(argv[i], "--attach") == 0 && i + 1 < argc) {
-            attach_pid = static_cast<pid_t>(atoi(argv[++i]));
+            // Parse PID using safe parsing utility
+            unsigned long pid_val = 0;
+            if (parse_ulong(argv[++i], &pid_val, 1, ULONG_MAX) != ASCIICHAT_OK) {
+                fprintf(stderr, "Error: Invalid PID value\n");
+                return 1;
+            }
+            attach_pid = static_cast<pid_t>(pid_val);
         } else if (strcmp(argv[i], "--attach-name") == 0 && i + 1 < argc) {
             attach_name = argv[++i];
         } else if (strcmp(argv[i], "--wait") == 0) {
             wait_for = true;
         } else if (strcmp(argv[i], "--port") == 0 && i + 1 < argc) {
-            port = static_cast<uint16_t>(atoi(argv[++i]));
+            // Parse port using safe parsing utility with proper range validation
+            if (parse_port(argv[++i], &port) != ASCIICHAT_OK) {
+                fprintf(stderr, "Error: Invalid port number (must be 1-65535)\n");
+                return 1;
+            }
         } else {
             fprintf(stderr, "Unknown option: %s\n", argv[i]);
             printUsage(argv[0]);
