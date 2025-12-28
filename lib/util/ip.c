@@ -265,7 +265,7 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
     // Check for port after closing bracket
     if (bracket_end[1] == ':') {
       // Parse port using safe integer parsing
-      if (int_parse_port(bracket_end + 2, port_output) != ASCIICHAT_OK) {
+      if (parse_port(bracket_end + 2, port_output) != ASCIICHAT_OK) {
         return -1; // Invalid port
       }
     } else {
@@ -292,7 +292,7 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
       return -1; // IPv6 address without brackets - invalid format
 
     // Parse port using safe integer parsing
-    if (int_parse_port(colon + 1, port_output) != ASCIICHAT_OK) {
+    if (parse_port(colon + 1, port_output) != ASCIICHAT_OK) {
       return -1; // Invalid port
     }
   }

@@ -170,7 +170,7 @@
  * }
  * @endcode
  */
-#define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                        \
+#define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                      \
   atomic_compare_exchange_strong((atomic_bool *)(ptr), &(expected), (new_value))
 
 /**
@@ -189,7 +189,7 @@
  * }
  * @endcode
  */
-#define ATOMIC_CAS_UINT32(ptr, expected, new_value)                                                                      \
+#define ATOMIC_CAS_UINT32(ptr, expected, new_value)                                                                    \
   atomic_compare_exchange_strong((atomic_uint32_t *)(ptr), (expected), (new_value))
 
 /**

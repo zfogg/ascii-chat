@@ -132,8 +132,7 @@ static inline bool size_add_would_overflow(size_t a, size_t b) {
  *
  * @ingroup util
  */
-static inline asciichat_error_t checked_size_mul(size_t a, size_t b,
-                                                  size_t *result) {
+static inline asciichat_error_t checked_size_mul(size_t a, size_t b, size_t *result) {
   if (size_mul_would_overflow(a, b)) {
     return 1; // ERROR_OVERFLOW - see asciichat_errno.h for exact value
   }
@@ -162,8 +161,7 @@ static inline asciichat_error_t checked_size_mul(size_t a, size_t b,
  *
  * @ingroup util
  */
-static inline asciichat_error_t checked_size_add(size_t a, size_t b,
-                                                  size_t *result) {
+static inline asciichat_error_t checked_size_add(size_t a, size_t b, size_t *result) {
   if (size_add_would_overflow(a, b)) {
     return 1; // ERROR_OVERFLOW
   }
@@ -195,8 +193,7 @@ static inline asciichat_error_t checked_size_add(size_t a, size_t b,
  *
  * @ingroup util
  */
-static inline asciichat_error_t checked_size_mul3(size_t width, size_t height,
-                                                   size_t depth, size_t *result) {
+static inline asciichat_error_t checked_size_mul3(size_t width, size_t height, size_t depth, size_t *result) {
   // First multiply width * height
   if (size_mul_would_overflow(width, height)) {
     return 1; // ERROR_OVERFLOW
@@ -230,8 +227,7 @@ static inline asciichat_error_t checked_size_mul3(size_t width, size_t height,
  *
  * @ingroup util
  */
-#define SIZE_MUL_SAFE(a, b)                                                    \
-  (size_mul_would_overflow(a, b) ? SIZE_MAX : (a) * (b))
+#define SIZE_MUL_SAFE(a, b) (size_mul_would_overflow(a, b) ? SIZE_MAX : (a) * (b))
 
 /**
  * @brief Add with overflow check inline (macro form for tight loops)
@@ -246,7 +242,6 @@ static inline asciichat_error_t checked_size_mul3(size_t width, size_t height,
  *
  * @ingroup util
  */
-#define SIZE_ADD_SAFE(a, b)                                                    \
-  (size_add_would_overflow(a, b) ? SIZE_MAX : (a) + (b))
+#define SIZE_ADD_SAFE(a, b) (size_add_would_overflow(a, b) ? SIZE_MAX : (a) + (b))
 
 /** @} */

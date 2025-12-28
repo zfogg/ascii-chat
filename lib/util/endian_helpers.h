@@ -129,11 +129,11 @@
  * // Now all values in 'data' are in network byte order
  * @endcode
  */
-#define CONVERT_ARRAY_HOST_TO_NET_U32(arr, count)                                                                        \
-  do {                                                                                                                    \
-    for (size_t i = 0; i < (count); i++) {                                                                               \
-      (arr)[i] = htonl((arr)[i]);                                                                                         \
-    }                                                                                                                    \
+#define CONVERT_ARRAY_HOST_TO_NET_U32(arr, count)                                                                      \
+  do {                                                                                                                 \
+    for (size_t i = 0; i < (count); i++) {                                                                             \
+      (arr)[i] = htonl((arr)[i]);                                                                                      \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -151,11 +151,11 @@
  * // Now all values in 'data' are in host byte order
  * @endcode
  */
-#define CONVERT_ARRAY_NET_TO_HOST_U32(arr, count)                                                                        \
-  do {                                                                                                                    \
-    for (size_t i = 0; i < (count); i++) {                                                                               \
-      (arr)[i] = ntohl((arr)[i]);                                                                                         \
-    }                                                                                                                    \
+#define CONVERT_ARRAY_NET_TO_HOST_U32(arr, count)                                                                      \
+  do {                                                                                                                 \
+    for (size_t i = 0; i < (count); i++) {                                                                             \
+      (arr)[i] = ntohl((arr)[i]);                                                                                      \
+    }                                                                                                                  \
   } while (0)
 
 #endif

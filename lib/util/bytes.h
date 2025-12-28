@@ -132,6 +132,53 @@ static inline void bytes_write_u32_unaligned(void *ptr, uint32_t value) {
 }
 
 /* ============================================================================
+ * Big-Endian (Network Byte Order) Access
+ * ============================================================================
+ * These functions read/write values in big-endian byte order, commonly used
+ * for network protocols and SSH agent communication.
+ */
+
+/**
+ * @brief Read a 32-bit big-endian value from memory
+ * @param ptr Pointer to 4 bytes of data in big-endian order
+ * @return 32-bit value in host byte order
+ *
+ * Reads a big-endian (network byte order) 32-bit integer from memory.
+ * Used for parsing SSH agent protocol and other network protocols.
+ *
+ * @par Example
+ * @code
+ * const uint8_t buffer[4] = {0x00, 0x00, 0x00, 0x2A};
+ * uint32_t value = read_u32_be(buffer);  // Returns 42
+ * @endcode
+ */
+static inline uint32_t read_u32_be(const uint8_t *ptr) {
+  return ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) | ((uint32_t)ptr[2] << 8) | (uint32_t)ptr[3];
+}
+
+/**
+ * @brief Write a 32-bit value in big-endian byte order to memory
+ * @param ptr Pointer to 4 bytes of output memory
+ * @param value 32-bit value in host byte order
+ *
+ * Writes a 32-bit integer to memory in big-endian (network byte order).
+ * Used for constructing SSH agent protocol messages and other network protocols.
+ *
+ * @par Example
+ * @code
+ * uint8_t buffer[4];
+ * write_u32_be(buffer, 42);
+ * // buffer now contains: {0x00, 0x00, 0x00, 0x2A}
+ * @endcode
+ */
+static inline void write_u32_be(uint8_t *ptr, uint32_t value) {
+  ptr[0] = (uint8_t)(value >> 24);
+  ptr[1] = (uint8_t)(value >> 16);
+  ptr[2] = (uint8_t)(value >> 8);
+  ptr[3] = (uint8_t)(value);
+}
+
+/* ============================================================================
  * Safe Arithmetic Functions
  * ============================================================================
  */
