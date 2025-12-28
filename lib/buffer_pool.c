@@ -1,7 +1,7 @@
 /**
  * @file buffer_pool.c
  * @ingroup buffer_pool
- * @brief 💾 High-performance memory pool allocator for zero-allocation packet handling
+ * @brief 💾 Lock-free memory pool with atomic operations
  */
 
 #include "buffer_pool.h"
@@ -10,561 +10,393 @@
 #include "platform/system.h"
 #include "platform/init.h"
 #include "util/format.h"
-#include "util/overflow.h"
 #include <stdlib.h>
 #include <string.h>
 
 /* ============================================================================
- * Internal Buffer Pool Functions
+ * Internal Helpers
  * ============================================================================
  */
 
-static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_size) {
-  if (buffer_size == 0 || pool_size == 0) {
-    return NULL;
+static inline uint64_t get_time_ms(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return 0;
   }
-
-  buffer_pool_t *pool;
-  pool = SAFE_MALLOC(sizeof(buffer_pool_t), buffer_pool_t *);
-  if (!pool) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer pool structure");
-    return NULL;
-  }
-
-  // Allocate array of buffer nodes with overflow checking
-  size_t nodes_size = 0;
-  if (checked_size_mul(sizeof(buffer_node_t), pool_size, &nodes_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Buffer nodes array size overflow: %zu nodes", pool_size);
-    SAFE_FREE(pool);
-    return NULL;
-  }
-  pool->nodes = SAFE_MALLOC(nodes_size, buffer_node_t *);
-  if (!pool->nodes) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer nodes array");
-    SAFE_FREE(pool);
-    return NULL;
-  }
-
-  // Allocate single memory block for all buffers with cache-line alignment
-  // 64-byte alignment improves cache performance and reduces false sharing
-  size_t total_buffer_size = 0;
-  if (checked_size_mul(buffer_size, pool_size, &total_buffer_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Buffer pool memory size overflow: %zu bytes * %zu buffers", buffer_size,
-              pool_size);
-    SAFE_FREE(pool->nodes);
-    SAFE_FREE(pool);
-    return NULL;
-  }
-  pool->memory_block = SAFE_MALLOC_ALIGNED(total_buffer_size, 64, void *);
-  if (!pool->memory_block) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer memory block");
-    SAFE_FREE(pool->nodes);
-    SAFE_FREE(pool);
-    return NULL;
-  }
-
-  // Initialize each buffer node
-  uint8_t *current_buffer = (uint8_t *)pool->memory_block;
-  for (size_t i = 0; i < pool_size; i++) {
-    pool->nodes[i].data = current_buffer;
-    pool->nodes[i].size = buffer_size;
-    pool->nodes[i].in_use = false;
-    pool->nodes[i].next = (i < pool_size - 1) ? &pool->nodes[i + 1] : NULL;
-    current_buffer += buffer_size;
-  }
-
-  pool->free_list = &pool->nodes[0];
-  pool->buffer_size = buffer_size;
-  pool->pool_size = pool_size;
-  pool->used_count = 0;
-  pool->hits = 0;
-  pool->misses = 0;
-  pool->returns = 0;
-  pool->peak_used = 0;
-  pool->total_bytes_allocated = 0;
-
-  return pool;
+  return (uint64_t)ts.tv_sec * 1000 + (uint64_t)ts.tv_nsec / 1000000;
 }
 
-static void buffer_pool_destroy_single(buffer_pool_t *pool) {
-  if (!pool) {
-    return;
-  }
-
-  SAFE_FREE(pool->memory_block);
-  SAFE_FREE(pool->nodes);
-  SAFE_FREE(pool);
+/** @brief Get node header from user data pointer */
+static inline buffer_node_t *node_from_data(void *data) {
+  return (buffer_node_t *)((char *)data - sizeof(buffer_node_t));
 }
 
-static void *buffer_pool_alloc_single(buffer_pool_t *pool, size_t size) {
-  if (!pool || size > pool->buffer_size) {
-    return NULL;
-  }
+/** @brief Get user data pointer from node header */
+static inline void *data_from_node(buffer_node_t *node) {
+  return (void *)((char *)node + sizeof(buffer_node_t));
+}
 
-  buffer_node_t *node = pool->free_list;
-  if (node) {
-    pool->free_list = node->next;
-    node->next = NULL;
-    node->in_use = true;
-    pool->used_count++;
-    pool->hits++;
-    pool->total_bytes_allocated += size;
-    if (pool->used_count > pool->peak_used) {
-      pool->peak_used = pool->used_count;
+/** @brief Check if a buffer is from a pool (has valid magic) */
+static inline bool is_pooled_buffer(void *data) {
+  if (!data)
+    return false;
+  buffer_node_t *node = node_from_data(data);
+  return node->magic == BUFFER_POOL_MAGIC;
+}
+
+/** @brief Atomically update peak if new value is higher */
+static inline void update_peak(atomic_size_t *peak, size_t value) {
+  size_t old = atomic_load_explicit(peak, memory_order_relaxed);
+  while (value > old) {
+    if (atomic_compare_exchange_weak_explicit(peak, &old, value, memory_order_relaxed, memory_order_relaxed)) {
+      break;
     }
-    return node->data;
   }
-
-  pool->misses++;
-  return NULL;
-}
-
-static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
-  if (!pool || !data) {
-    return false;
-  }
-
-  // Check if this buffer belongs to our pool
-  uint8_t *pool_start = (uint8_t *)pool->memory_block;
-  uint8_t *pool_end = pool_start + (pool->buffer_size * pool->pool_size);
-  uint8_t *buffer = (uint8_t *)data;
-
-  if (buffer < pool_start || buffer >= pool_end) {
-    return false; // Not from this pool
-  }
-
-  // Find the corresponding node - verify pointer is aligned to buffer boundary before calculating index
-  ptrdiff_t offset = buffer - pool_start;
-  if (offset < 0 || (size_t)offset % pool->buffer_size != 0) {
-    log_error("Misaligned buffer pointer: offset=%td, buffer_size=%zu", offset, pool->buffer_size);
-    return false; // Pointer is not aligned to a buffer boundary (corrupted?)
-  }
-  size_t index = (size_t)offset / pool->buffer_size;
-  if (index >= pool->pool_size) {
-    return false;
-  }
-
-  buffer_node_t *node = &pool->nodes[index];
-  if (!node->in_use) {
-    // Enhanced debugging for double free detection
-    log_error("DOUBLE FREE DETECTED in buffer pool!\n"
-              "  Pool: %p, Buffer: %p, Index: %zu\n"
-              "  Pool start: %p, Pool end: %p\n"
-              "  Buffer size: %zu, Pool size: %zu\n"
-              "  Node in_use: %d, Node next: %p",
-              pool, data, index, pool_start, pool_end, pool->buffer_size, pool->pool_size, node->in_use, node->next);
-
-    // Print backtrace to help identify the source
-    platform_print_backtrace(0);
-
-    SET_ERRNO(ERROR_INVALID_STATE, "Double free detected in buffer pool!");
-    return false;
-  }
-
-  // Return to free list
-  node->in_use = false;
-  node->next = pool->free_list;
-  pool->free_list = node;
-  pool->used_count--;
-  pool->returns++;
-
-  return true;
 }
 
 /* ============================================================================
- * Public Buffer Pool API
+ * Buffer Pool Implementation
  * ============================================================================
  */
 
-data_buffer_pool_t *data_buffer_pool_create(void) {
-  data_buffer_pool_t *pool;
-  pool = SAFE_MALLOC(sizeof(data_buffer_pool_t), data_buffer_pool_t *);
+buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ms) {
+  buffer_pool_t *pool = SAFE_MALLOC(sizeof(buffer_pool_t), buffer_pool_t *);
   if (!pool) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate data buffer pool");
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer pool");
     return NULL;
   }
 
-  // Create pools for different size classes - check each sub-pool creation and clean up on failure
-  pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
-  if (!pool->small_pool) {
+  if (mutex_init(&pool->shrink_mutex) != 0) {
+    SET_ERRNO(ERROR_THREAD, "Failed to initialize shrink mutex");
     SAFE_FREE(pool);
     return NULL;
   }
 
-  pool->medium_pool = buffer_pool_create_single(BUFFER_POOL_MEDIUM_SIZE, BUFFER_POOL_MEDIUM_COUNT);
-  if (!pool->medium_pool) {
-    buffer_pool_destroy_single(pool->small_pool);
-    SAFE_FREE(pool);
-    return NULL;
-  }
+  atomic_init(&pool->free_list, NULL);
+  pool->max_bytes = max_bytes > 0 ? max_bytes : BUFFER_POOL_MAX_BYTES;
+  pool->shrink_delay_ms = shrink_delay_ms > 0 ? shrink_delay_ms : BUFFER_POOL_SHRINK_DELAY_MS;
 
-  pool->large_pool = buffer_pool_create_single(BUFFER_POOL_LARGE_SIZE, BUFFER_POOL_LARGE_COUNT);
-  if (!pool->large_pool) {
-    buffer_pool_destroy_single(pool->medium_pool);
-    buffer_pool_destroy_single(pool->small_pool);
-    SAFE_FREE(pool);
-    return NULL;
-  }
+  atomic_init(&pool->current_bytes, 0);
+  atomic_init(&pool->used_bytes, 0);
+  atomic_init(&pool->peak_bytes, 0);
+  atomic_init(&pool->peak_pool_bytes, 0);
+  atomic_init(&pool->hits, 0);
+  atomic_init(&pool->allocs, 0);
+  atomic_init(&pool->returns, 0);
+  atomic_init(&pool->shrink_freed, 0);
+  atomic_init(&pool->malloc_fallbacks, 0);
 
-  pool->xlarge_pool = buffer_pool_create_single(BUFFER_POOL_XLARGE_SIZE, BUFFER_POOL_XLARGE_COUNT);
-  if (!pool->xlarge_pool) {
-    buffer_pool_destroy_single(pool->large_pool);
-    buffer_pool_destroy_single(pool->medium_pool);
-    buffer_pool_destroy_single(pool->small_pool);
-    SAFE_FREE(pool);
-    return NULL;
-  }
-
-  if (mutex_init(&pool->pool_mutex) != 0) {
-    SET_ERRNO(ERROR_THREAD, "Failed to initialize pool mutex");
-    buffer_pool_destroy_single(pool->xlarge_pool);
-    buffer_pool_destroy_single(pool->large_pool);
-    buffer_pool_destroy_single(pool->medium_pool);
-    buffer_pool_destroy_single(pool->small_pool);
-    SAFE_FREE(pool);
-    return NULL;
-  }
-
-  pool->total_allocs = 0;
-  pool->pool_hits = 0;
-  pool->malloc_fallbacks = 0;
-
-  char pretty_small[64];
-  char pretty_medium[64];
-  char pretty_large[64];
-  char pretty_xlarge[64];
-  format_bytes_pretty(BUFFER_POOL_SMALL_SIZE * BUFFER_POOL_SMALL_COUNT, pretty_small, sizeof(pretty_small));
-  format_bytes_pretty(BUFFER_POOL_MEDIUM_SIZE * BUFFER_POOL_MEDIUM_COUNT, pretty_medium, sizeof(pretty_medium));
-  format_bytes_pretty(BUFFER_POOL_LARGE_SIZE * BUFFER_POOL_LARGE_COUNT, pretty_large, sizeof(pretty_large));
-  format_bytes_pretty(BUFFER_POOL_XLARGE_SIZE * BUFFER_POOL_XLARGE_COUNT, pretty_xlarge, sizeof(pretty_xlarge));
-  log_info("Created data buffer pool: %s small, %s medium, %s large, %s xlarge", pretty_small, pretty_medium,
-           pretty_large, pretty_xlarge);
+  char pretty_max[64];
+  format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
+  log_info("Created buffer pool (max: %s, shrink: %llu ms, lock-free)", pretty_max,
+           (unsigned long long)pool->shrink_delay_ms);
 
   return pool;
 }
 
-void data_buffer_pool_destroy(data_buffer_pool_t *pool) {
-  if (!pool) {
+void buffer_pool_destroy(buffer_pool_t *pool) {
+  if (!pool)
     return;
+
+  // Drain the free list
+  buffer_node_t *node = atomic_load(&pool->free_list);
+  while (node) {
+    buffer_node_t *next = atomic_load(&node->next);
+    SAFE_FREE(node); // Node and data are one allocation
+    node = next;
   }
 
-  buffer_pool_destroy_single(pool->small_pool);
-  buffer_pool_destroy_single(pool->medium_pool);
-  buffer_pool_destroy_single(pool->large_pool);
-  buffer_pool_destroy_single(pool->xlarge_pool);
-
-  mutex_destroy(&pool->pool_mutex);
+  mutex_destroy(&pool->shrink_mutex);
   SAFE_FREE(pool);
 }
 
-void *data_buffer_pool_alloc(data_buffer_pool_t *pool, size_t size) {
+void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
+  // Use global pool if none specified
   if (!pool) {
-    // No pool, fallback to malloc
-    // In release builds, log_warn macro already strips file/line info to avoid embedding paths
-    // In debug builds, file/line info is handled by the logging system (which uses extract_project_relative_path)
-    log_warn("MALLOC FALLBACK (no pool): size=%zu", size);
-    void *data;
-    data = SAFE_MALLOC(size, void *);
+    pool = buffer_pool_get_global();
+  }
+
+  // Size out of range - use malloc directly
+  if (!pool || size < BUFFER_POOL_MIN_SIZE || size > BUFFER_POOL_MAX_SINGLE_SIZE) {
+    void *data = SAFE_MALLOC(size, void *);
+    if (pool) {
+      atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
+    }
     return data;
   }
 
-  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
-  // Lock debugging would call platform_backtrace_symbols() which uses symbol cache
-  // which uses hashtable which uses rwlocks which triggers lock debugging which
-  // calls buffer_pool_alloc() → DEADLOCK!
-  mutex_lock_impl(&pool->pool_mutex);
-  pool->total_allocs++;
-
-  void *buffer = NULL;
-
-  // Try to allocate from appropriate pool based on size
-  if (size <= BUFFER_POOL_SMALL_SIZE) {
-    buffer = buffer_pool_alloc_single(pool->small_pool, size);
-    if (!buffer)
-      log_warn("SMALL POOL EXHAUSTED for size=%zu", size);
-  } else if (size <= BUFFER_POOL_MEDIUM_SIZE) {
-    buffer = buffer_pool_alloc_single(pool->medium_pool, size);
-    if (!buffer)
-      log_warn("MEDIUM POOL EXHAUSTED for size=%zu", size);
-  } else if (size <= BUFFER_POOL_LARGE_SIZE) {
-    buffer = buffer_pool_alloc_single(pool->large_pool, size);
-    if (!buffer)
-      log_warn("LARGE POOL EXHAUSTED for size=%zu", size);
-  } else if (size <= BUFFER_POOL_XLARGE_SIZE) {
-    buffer = buffer_pool_alloc_single(pool->xlarge_pool, size);
-    if (!buffer)
-      log_warn("XLARGE POOL EXHAUSTED for size=%zu", size);
-  } else {
-    log_warn("ALLOCATION TOO LARGE: size=%zu exceeds max pool size", size);
+  // Try to pop from lock-free stack (LIFO)
+  buffer_node_t *node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
+  while (node) {
+    buffer_node_t *next = atomic_load_explicit(&node->next, memory_order_relaxed);
+    if (atomic_compare_exchange_weak_explicit(&pool->free_list, &node, next, memory_order_release,
+                                              memory_order_acquire)) {
+      // Successfully popped - check if it's big enough
+      if (node->size >= size) {
+        // Reuse this buffer
+        atomic_store_explicit(&node->next, NULL, memory_order_relaxed);
+        size_t node_size = node->size;
+        atomic_fetch_add_explicit(&pool->used_bytes, node_size, memory_order_relaxed);
+        atomic_fetch_add_explicit(&pool->hits, 1, memory_order_relaxed);
+        update_peak(&pool->peak_bytes, atomic_load(&pool->used_bytes));
+        return data_from_node(node);
+      } else {
+        // Too small - push it back and allocate new
+        // (This is rare with LIFO - usually we get similar sizes)
+        buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+        do {
+          atomic_store_explicit(&node->next, head, memory_order_relaxed);
+        } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
+                                                        memory_order_relaxed));
+        break; // Fall through to allocate new
+      }
+    }
+    // CAS failed - reload and retry
+    node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
   }
 
-  if (buffer) {
-    pool->pool_hits++;
-  } else {
-    // Fallback to malloc for sizes not in pool or pool exhausted
-    pool->malloc_fallbacks++;
+  // Check if we can allocate more
+  size_t total_size = sizeof(buffer_node_t) + size;
+  size_t current = atomic_load_explicit(&pool->current_bytes, memory_order_relaxed);
+
+  // Atomically try to reserve space
+  while (current + total_size <= pool->max_bytes) {
+    if (atomic_compare_exchange_weak_explicit(&pool->current_bytes, &current, current + total_size,
+                                              memory_order_relaxed, memory_order_relaxed)) {
+      // Reserved space - now allocate
+      // Allocate node + data in one chunk for cache efficiency
+      node = SAFE_MALLOC_ALIGNED(total_size, 64, buffer_node_t *);
+      if (!node) {
+        // Undo reservation
+        atomic_fetch_sub_explicit(&pool->current_bytes, total_size, memory_order_relaxed);
+        atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
+        return SAFE_MALLOC(size, void *);
+      }
+
+      node->magic = BUFFER_POOL_MAGIC;
+      node->_pad = 0;
+      node->size = size;
+      atomic_init(&node->next, NULL);
+      atomic_init(&node->returned_at_ms, 0);
+      node->pool = pool;
+
+      atomic_fetch_add_explicit(&pool->used_bytes, size, memory_order_relaxed);
+      atomic_fetch_add_explicit(&pool->allocs, 1, memory_order_relaxed);
+      update_peak(&pool->peak_bytes, atomic_load(&pool->used_bytes));
+      update_peak(&pool->peak_pool_bytes, atomic_load(&pool->current_bytes));
+
+      return data_from_node(node);
+    }
+    // CAS failed - someone else allocated, reload and check again
   }
 
-  mutex_unlock_impl(&pool->pool_mutex);
-
-  // If no buffer from pool, use malloc
-  // IMPORTANT: Backtrace must be done AFTER mutex_unlock to avoid deadlock!
-  // platform_backtrace_symbols() can trigger symbol cache operations which may
-  // call back into buffer_pool_alloc(), causing deadlock if we hold the mutex.
-  if (!buffer) {
-    buffer = SAFE_MALLOC(size, void *);
-  }
-
-  return buffer;
+  // Pool at capacity - fall back to malloc
+  atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
+  return SAFE_MALLOC(size, void *);
 }
 
-void data_buffer_pool_free(data_buffer_pool_t *pool, void *data, size_t size) {
-  if (!data) {
+void buffer_pool_free(buffer_pool_t *pool, void *data, size_t size) {
+  if (!data)
     return;
-  }
 
-  if (!pool) {
-    // No pool, must have been malloc'd directly
-    // In release builds, log_warn macro already strips file/line info to avoid embedding paths
-    // In debug builds, file/line info is handled by the logging system (which uses extract_project_relative_path)
-    log_warn("MALLOC FALLBACK FREE (no pool): size=%zu", size);
+  // If size is out of range, it's definitely not from pool
+  if (size != 0 && (size < BUFFER_POOL_MIN_SIZE || size > BUFFER_POOL_MAX_SINGLE_SIZE)) {
     SAFE_FREE(data);
     return;
   }
 
-  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
-  mutex_lock_impl(&pool->pool_mutex);
-
-  bool freed = false;
-
-  // Try to return to appropriate pool
-  if (size <= BUFFER_POOL_SMALL_SIZE) {
-    freed = buffer_pool_free_single(pool->small_pool, data);
-  } else if (size <= BUFFER_POOL_MEDIUM_SIZE) {
-    freed = buffer_pool_free_single(pool->medium_pool, data);
-  } else if (size <= BUFFER_POOL_LARGE_SIZE) {
-    freed = buffer_pool_free_single(pool->large_pool, data);
-  } else if (size <= BUFFER_POOL_XLARGE_SIZE) {
-    freed = buffer_pool_free_single(pool->xlarge_pool, data);
-  }
-
-  mutex_unlock_impl(&pool->pool_mutex);
-
-  // If not from any pool, it was malloc'd
-  if (!freed) {
+  // Only check magic if size suggests it might be pooled
+  // This avoids reading before non-pooled allocations
+  if (!is_pooled_buffer(data)) {
+    // Not from pool - use regular free
     SAFE_FREE(data);
-  }
-}
-
-void data_buffer_pool_get_stats(data_buffer_pool_t *pool, uint64_t *hits, uint64_t *misses) {
-  if (!pool) {
-    if (hits)
-      *hits = 0;
-    if (misses)
-      *misses = 0;
     return;
   }
 
-  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
-  mutex_lock_impl(&pool->pool_mutex);
-  if (hits)
-    *hits = pool->pool_hits;
-  if (misses)
-    *misses = pool->malloc_fallbacks;
-  mutex_unlock_impl(&pool->pool_mutex);
+  buffer_node_t *node = node_from_data(data);
+
+  // Use the pool stored in the node if none provided
+  if (!pool) {
+    pool = node->pool;
+  }
+
+  if (!pool) {
+    // Shouldn't happen, but safety
+    log_error("Pooled buffer has no pool reference!");
+    return;
+  }
+
+  // Update stats
+  atomic_fetch_sub_explicit(&pool->used_bytes, node->size, memory_order_relaxed);
+  atomic_fetch_add_explicit(&pool->returns, 1, memory_order_relaxed);
+
+  // Set return timestamp
+  atomic_store_explicit(&node->returned_at_ms, get_time_ms(), memory_order_relaxed);
+
+  // Push to lock-free stack
+  buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+  do {
+    atomic_store_explicit(&node->next, head, memory_order_relaxed);
+  } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
+                                                  memory_order_relaxed));
+
+  // Periodically trigger shrink (every 100 returns)
+  uint64_t returns = atomic_load_explicit(&pool->returns, memory_order_relaxed);
+  if (returns % 100 == 0) {
+    buffer_pool_shrink(pool);
+  }
+}
+
+void buffer_pool_shrink(buffer_pool_t *pool) {
+  if (!pool || pool->shrink_delay_ms == 0)
+    return;
+
+  // Only one thread can shrink at a time
+  if (mutex_trylock(&pool->shrink_mutex) != 0) {
+    return; // Another thread is shrinking
+  }
+
+  uint64_t now = get_time_ms();
+  uint64_t cutoff = (now > pool->shrink_delay_ms) ? (now - pool->shrink_delay_ms) : 0;
+
+  // Atomically swap out the entire free list
+  buffer_node_t *list = atomic_exchange_explicit(&pool->free_list, NULL, memory_order_acquire);
+
+  // Partition into keep and free lists
+  buffer_node_t *keep_list = NULL;
+  buffer_node_t *free_list = NULL;
+
+  while (list) {
+    buffer_node_t *next = atomic_load_explicit(&list->next, memory_order_relaxed);
+    uint64_t returned_at = atomic_load_explicit(&list->returned_at_ms, memory_order_relaxed);
+
+    if (returned_at < cutoff) {
+      // Old buffer - add to free list
+      atomic_store_explicit(&list->next, free_list, memory_order_relaxed);
+      free_list = list;
+    } else {
+      // Recent buffer - keep it
+      atomic_store_explicit(&list->next, keep_list, memory_order_relaxed);
+      keep_list = list;
+    }
+    list = next;
+  }
+
+  // Push kept buffers back to free list
+  if (keep_list) {
+    // Find tail
+    buffer_node_t *tail = keep_list;
+    while (atomic_load(&tail->next)) {
+      tail = atomic_load(&tail->next);
+    }
+
+    // Atomically prepend to current free list
+    buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+    do {
+      atomic_store_explicit(&tail->next, head, memory_order_relaxed);
+    } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, keep_list, memory_order_release,
+                                                    memory_order_relaxed));
+  }
+
+  // Free old buffers
+  while (free_list) {
+    buffer_node_t *next = atomic_load_explicit(&free_list->next, memory_order_relaxed);
+    size_t total_size = sizeof(buffer_node_t) + free_list->size;
+    atomic_fetch_sub_explicit(&pool->current_bytes, total_size, memory_order_relaxed);
+    atomic_fetch_add_explicit(&pool->shrink_freed, 1, memory_order_relaxed);
+    SAFE_FREE(free_list);
+    free_list = next;
+  }
+
+  mutex_unlock(&pool->shrink_mutex);
+}
+
+void buffer_pool_get_stats(buffer_pool_t *pool, size_t *current_bytes, size_t *used_bytes, size_t *free_bytes) {
+  if (!pool) {
+    if (current_bytes)
+      *current_bytes = 0;
+    if (used_bytes)
+      *used_bytes = 0;
+    if (free_bytes)
+      *free_bytes = 0;
+    return;
+  }
+
+  size_t current = atomic_load_explicit(&pool->current_bytes, memory_order_relaxed);
+  size_t used = atomic_load_explicit(&pool->used_bytes, memory_order_relaxed);
+
+  if (current_bytes)
+    *current_bytes = current;
+  if (used_bytes)
+    *used_bytes = used;
+  if (free_bytes)
+    *free_bytes = (current > used) ? (current - used) : 0;
+}
+
+void buffer_pool_log_stats(buffer_pool_t *pool, const char *name) {
+  if (!pool)
+    return;
+
+  size_t current = atomic_load(&pool->current_bytes);
+  size_t used = atomic_load(&pool->used_bytes);
+  size_t peak = atomic_load(&pool->peak_bytes);
+  size_t peak_pool = atomic_load(&pool->peak_pool_bytes);
+  uint64_t hits = atomic_load(&pool->hits);
+  uint64_t allocs = atomic_load(&pool->allocs);
+  uint64_t returns = atomic_load(&pool->returns);
+  uint64_t shrink_freed = atomic_load(&pool->shrink_freed);
+  uint64_t fallbacks = atomic_load(&pool->malloc_fallbacks);
+
+  char pretty_current[64], pretty_used[64], pretty_free[64];
+  char pretty_peak[64], pretty_peak_pool[64], pretty_max[64];
+
+  format_bytes_pretty(current, pretty_current, sizeof(pretty_current));
+  format_bytes_pretty(used, pretty_used, sizeof(pretty_used));
+  format_bytes_pretty(current > used ? current - used : 0, pretty_free, sizeof(pretty_free));
+  format_bytes_pretty(peak, pretty_peak, sizeof(pretty_peak));
+  format_bytes_pretty(peak_pool, pretty_peak_pool, sizeof(pretty_peak_pool));
+  format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
+
+  uint64_t total_requests = hits + allocs + fallbacks;
+  double hit_rate = total_requests > 0 ? (double)hits * 100.0 / (double)total_requests : 0;
+
+  log_info("=== Buffer Pool: %s ===", name ? name : "unnamed");
+  log_info("  Pool: %s / %s (peak: %s)", pretty_current, pretty_max, pretty_peak_pool);
+  log_info("  Used: %s, Free: %s (peak used: %s)", pretty_used, pretty_free, pretty_peak);
+  log_info("  Hits: %llu (%.1f%%), Allocs: %llu, Fallbacks: %llu", (unsigned long long)hits, hit_rate,
+           (unsigned long long)allocs, (unsigned long long)fallbacks);
+  log_info("  Returns: %llu, Shrink freed: %llu", (unsigned long long)returns, (unsigned long long)shrink_freed);
 }
 
 /* ============================================================================
- * Global Shared Buffer Pool
+ * Global Buffer Pool
  * ============================================================================
  */
 
-static data_buffer_pool_t *g_global_buffer_pool = NULL;
+static buffer_pool_t *g_global_pool = NULL;
 static static_mutex_t g_global_pool_mutex = STATIC_MUTEX_INIT;
 
-void data_buffer_pool_init_global(void) {
-  // Use static_mutex for thread-safe lazy initialization
+void buffer_pool_init_global(void) {
   static_mutex_lock(&g_global_pool_mutex);
-  if (!g_global_buffer_pool) {
-    g_global_buffer_pool = data_buffer_pool_create();
-    if (g_global_buffer_pool) {
-      log_info("Initialized global shared buffer pool");
+  if (!g_global_pool) {
+    g_global_pool = buffer_pool_create(0, 0);
+    if (g_global_pool) {
+      log_info("Initialized global buffer pool");
     }
   }
   static_mutex_unlock(&g_global_pool_mutex);
 }
 
-void data_buffer_pool_cleanup_global(void) {
+void buffer_pool_cleanup_global(void) {
   static_mutex_lock(&g_global_pool_mutex);
-  if (g_global_buffer_pool) {
-    // Log final statistics
-    uint64_t hits, misses;
-    data_buffer_pool_get_stats(g_global_buffer_pool, &hits, &misses);
-    if (hits + misses > 0) {
-      log_debug("Global buffer pool final stats: %llu hits (%.1f%%), %llu misses", (unsigned long long)hits,
-                (double)hits * 100.0 / (double)(hits + misses), (unsigned long long)misses);
-    }
-
-    data_buffer_pool_destroy(g_global_buffer_pool);
-    g_global_buffer_pool = NULL;
+  if (g_global_pool) {
+    buffer_pool_log_stats(g_global_pool, "Global (final)");
+    buffer_pool_destroy(g_global_pool);
+    g_global_pool = NULL;
   }
   static_mutex_unlock(&g_global_pool_mutex);
 }
 
-data_buffer_pool_t *data_buffer_pool_get_global(void) {
-  return g_global_buffer_pool;
-}
-
-// Convenience functions that use the global pool
-void *buffer_pool_alloc(size_t size) {
-  if (!g_global_buffer_pool) {
-    // If global pool not initialized, fall back to regular malloc
-    // log_warn("MALLOC FALLBACK (global pool not init): size=%zu at %s:%d", size, __FILE__, __LINE__);
-    void *data;
-    data = SAFE_MALLOC(size, void *);
-    return data;
-  }
-  return data_buffer_pool_alloc(g_global_buffer_pool, size);
-}
-
-void buffer_pool_free(void *data, size_t size) {
-  if (!data) {
-    platform_print_backtrace(0);
-    log_warn("BUFFER POOL FREE but no data: size=%zu", size);
-    return;
-  }
-
-  // If we have a global pool, try to free through it
-  if (g_global_buffer_pool) {
-    data_buffer_pool_free(g_global_buffer_pool, data, size);
-    return;
-  }
-
-  // No global pool - this memory must have been malloc'd
-  // (unless it's from a pool that was already destroyed, in which case we leak)
-  SAFE_FREE(data);
-}
-
-/* ============================================================================
- * Enhanced Statistics Functions
- * ============================================================================ */
-
-void data_buffer_pool_get_detailed_stats(data_buffer_pool_t *pool, buffer_pool_detailed_stats_t *stats) {
-  if (!pool || !stats) {
-    return;
-  }
-
-  SAFE_MEMSET(stats, sizeof(*stats), 0, sizeof(*stats));
-
-  // Use mutex_lock_impl to bypass lock debugging - prevents circular dependency!
-  mutex_lock_impl(&pool->pool_mutex);
-
-  // Small pool stats
-  if (pool->small_pool) {
-    stats->small_hits = pool->small_pool->hits;
-    stats->small_misses = pool->small_pool->misses;
-    stats->small_returns = pool->small_pool->returns;
-    stats->small_peak_used = pool->small_pool->peak_used;
-    stats->small_bytes = pool->small_pool->total_bytes_allocated;
-  }
-
-  // Medium pool stats
-  if (pool->medium_pool) {
-    stats->medium_hits = pool->medium_pool->hits;
-    stats->medium_misses = pool->medium_pool->misses;
-    stats->medium_returns = pool->medium_pool->returns;
-    stats->medium_peak_used = pool->medium_pool->peak_used;
-    stats->medium_bytes = pool->medium_pool->total_bytes_allocated;
-  }
-
-  // Large pool stats
-  if (pool->large_pool) {
-    stats->large_hits = pool->large_pool->hits;
-    stats->large_misses = pool->large_pool->misses;
-    stats->large_returns = pool->large_pool->returns;
-    stats->large_peak_used = pool->large_pool->peak_used;
-    stats->large_bytes = pool->large_pool->total_bytes_allocated;
-  }
-
-  // Extra large pool stats
-  if (pool->xlarge_pool) {
-    stats->xlarge_hits = pool->xlarge_pool->hits;
-    stats->xlarge_misses = pool->xlarge_pool->misses;
-    stats->xlarge_returns = pool->xlarge_pool->returns;
-    stats->xlarge_peak_used = pool->xlarge_pool->peak_used;
-    stats->xlarge_bytes = pool->xlarge_pool->total_bytes_allocated;
-  }
-
-  // Calculate totals
-  stats->total_allocations = stats->small_hits + stats->medium_hits + stats->large_hits + stats->xlarge_hits +
-                             stats->small_misses + stats->medium_misses + stats->large_misses + stats->xlarge_misses;
-  stats->total_bytes = stats->small_bytes + stats->medium_bytes + stats->large_bytes + stats->xlarge_bytes;
-
-  // Calculate pool usage efficiency
-  uint64_t total_hits = stats->small_hits + stats->medium_hits + stats->large_hits + stats->xlarge_hits;
-  if (stats->total_allocations > 0) {
-    stats->total_pool_usage_percent = (total_hits * 100) / stats->total_allocations;
-  }
-
-  mutex_unlock_impl(&pool->pool_mutex);
-}
-
-void data_buffer_pool_log_stats(data_buffer_pool_t *pool, const char *pool_name) {
-  if (!pool) {
-    return;
-  }
-
-  buffer_pool_detailed_stats_t stats;
-  data_buffer_pool_get_detailed_stats(pool, &stats);
-
-  log_info("=== Buffer Pool Stats: %s ===", pool_name ? pool_name : "Unknown");
-  char pretty_total[64];
-  format_bytes_pretty(stats.total_bytes, pretty_total, sizeof(pretty_total));
-  log_info("Total allocations: %llu, Pool hit rate: %llu%%, Total bytes: %s",
-           (unsigned long long)stats.total_allocations, (unsigned long long)stats.total_pool_usage_percent,
-           pretty_total);
-
-  if (stats.small_hits + stats.small_misses > 0) {
-    char pretty_small[64];
-    format_bytes_pretty(stats.small_bytes, pretty_small, sizeof(pretty_small));
-    log_info("  Small (1KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s", (unsigned long long)stats.small_hits,
-             (unsigned long long)stats.small_misses,
-             (double)stats.small_hits * 100.0 / (double)(stats.small_hits + stats.small_misses),
-             (unsigned long long)stats.small_peak_used, BUFFER_POOL_SMALL_COUNT, pretty_small);
-  }
-
-  if (stats.medium_hits + stats.medium_misses > 0) {
-    char pretty_medium[64];
-    format_bytes_pretty(stats.medium_bytes, pretty_medium, sizeof(pretty_medium));
-    log_info("  Medium (64KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
-             (unsigned long long)stats.medium_hits, (unsigned long long)stats.medium_misses,
-             (double)stats.medium_hits * 100.0 / (double)(stats.medium_hits + stats.medium_misses),
-             (unsigned long long)stats.medium_peak_used, BUFFER_POOL_MEDIUM_COUNT, pretty_medium);
-  }
-
-  if (stats.large_hits + stats.large_misses > 0) {
-    char pretty_large[64];
-    format_bytes_pretty(stats.large_bytes, pretty_large, sizeof(pretty_large));
-    log_info("  Large (256KB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
-             (unsigned long long)stats.large_hits, (unsigned long long)stats.large_misses,
-             (double)stats.large_hits * 100.0 / (double)(stats.large_hits + stats.large_misses),
-             (unsigned long long)stats.large_peak_used, BUFFER_POOL_LARGE_COUNT, pretty_large);
-  }
-
-  if (stats.xlarge_hits + stats.xlarge_misses > 0) {
-    char pretty_xlarge[64];
-    format_bytes_pretty(stats.xlarge_bytes, pretty_xlarge, sizeof(pretty_xlarge));
-    log_info("  XLarge (1.25MB): %llu hits, %llu misses (%.1f%%), peak: %llu/%d, %s",
-             (unsigned long long)stats.xlarge_hits, (unsigned long long)stats.xlarge_misses,
-             (double)stats.xlarge_hits * 100.0 / (double)(stats.xlarge_hits + stats.xlarge_misses),
-             (unsigned long long)stats.xlarge_peak_used, BUFFER_POOL_XLARGE_COUNT, pretty_xlarge);
-  }
-}
-
-void buffer_pool_log_global_stats(void) {
-  if (g_global_buffer_pool) {
-    data_buffer_pool_log_stats(g_global_buffer_pool, "Global");
-  } else {
-    log_info("Global buffer pool not initialized");
-  }
+buffer_pool_t *buffer_pool_get_global(void) {
+  return g_global_pool;
 }
