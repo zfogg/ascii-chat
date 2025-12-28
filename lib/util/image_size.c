@@ -67,15 +67,22 @@ asciichat_error_t image_calc_rgb_size(size_t width, size_t height, size_t *out_s
   return image_calc_pixel_buffer_size(pixel_count, 3, out_size);
 }
 
-asciichat_error_t image_calc_total_allocation(size_t width, size_t height, size_t struct_size,
-                                               size_t bytes_per_pixel, size_t *out_size) {
+asciichat_error_t image_calc_total_allocation(size_t width, size_t height, size_t struct_size, size_t bytes_per_pixel,
+                                              size_t *out_size) {
   if (!out_size) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "out_size is NULL");
   }
 
-  // Calculate pixel buffer size first
+  // Calculate pixel count first with overflow checking
+  size_t pixel_count;
+  asciichat_error_t err = image_calc_pixel_count(width, height, &pixel_count);
+  if (err != ASCIICHAT_OK) {
+    return err;
+  }
+
+  // Calculate pixel buffer size
   size_t pixel_buffer_size;
-  asciichat_error_t err = image_calc_pixel_buffer_size(width * height, bytes_per_pixel, &pixel_buffer_size);
+  err = image_calc_pixel_buffer_size(pixel_count, bytes_per_pixel, &pixel_buffer_size);
   if (err != ASCIICHAT_OK) {
     return err;
   }
