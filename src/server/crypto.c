@@ -328,8 +328,8 @@ int server_crypto_handshake(client_info_t *client) {
             atomic_load(&client->client_id));
   server_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
   server_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-  server_version.supports_encryption = 1;      // We support encryption
-  server_version.compression_algorithms = 0;   // No compression for now
+  server_version.supports_encryption = 1;                // We support encryption
+  server_version.compression_algorithms = 0;             // No compression for now
   server_version.compression_threshold = 0;
   server_version.feature_flags = 0;
 
