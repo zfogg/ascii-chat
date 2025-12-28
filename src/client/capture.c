@@ -95,6 +95,7 @@
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "util/time.h"
+#include "util/overflow.h"
 #include "util/endian.h"
 #include "util/thread.h"
 #include "util/endian.h"
@@ -389,12 +390,12 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     size_t header_size = sizeof(uint32_t) * 4; // width, height, compressed_flag, data_size
-    if (pixel_size > SIZE_MAX - header_size) {
+    size_t packet_size;
+    if (checked_size_add(header_size, pixel_size, &packet_size) != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Packet size overflow while preparing frame");
       image_destroy(processed_image);
       continue;
     }
-    size_t packet_size = header_size + pixel_size;
 
     // Check packet size limits
     if (packet_size > MAX_PACKET_SIZE) {
