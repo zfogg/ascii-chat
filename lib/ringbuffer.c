@@ -382,7 +382,6 @@ void framebuffer_clear(framebuffer_t *fb) {
 
   // Zero out the entire buffer to prevent any dangling pointers
   if (fb->rb->buffer) {
-    // Check for integer overflow before multiplication
     if (fb->rb->capacity > SIZE_MAX / fb->rb->element_size) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Buffer size would overflow: capacity=%zu, element_size=%zu", fb->rb->capacity,
                 fb->rb->element_size);

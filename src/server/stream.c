@@ -738,7 +738,6 @@ static image_t *create_multi_source_composite(image_source_t *sources, int sourc
     int x_padding_px, y_padding_px;
 
     // Center images within their cells for all layouts
-    // This prevents gaps/stripes between clients
     x_padding_px = (cell_width_px - target_width_px) / 2;
     y_padding_px = (cell_height_px - target_height_px) / 2;
 

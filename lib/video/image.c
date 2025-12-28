@@ -92,7 +92,6 @@ void image_destroy(image_t *p) {
   // Check allocation method and deallocate appropriately
   if (p->alloc_method == IMAGE_ALLOC_POOL) {
     // Pool-allocated images: free entire contiguous buffer (image + pixels)
-    // Validate dimensions before calculating size (guard against corruption)
     if (p->w <= 0 || p->h <= 0) {
       SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy: invalid dimensions %dx%d (pool-allocated)", p->w, p->h);
       return;
@@ -134,7 +133,6 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   }
 
   // Calculate total allocation size (structure + pixel data in single buffer)
-  // Check for integer overflow before multiplication
   if (width > SIZE_MAX / height) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_new_from_pool: dimensions would overflow: %zux%zu", width, height);
     return NULL;
@@ -178,14 +176,12 @@ void image_destroy_to_pool(image_t *image) {
     return;
   }
 
-  // Validate dimensions before calculating size (guard against corruption)
   if (image->w <= 0 || image->h <= 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "image_destroy_to_pool: invalid dimensions %dx%d", image->w, image->h);
     return;
   }
 
   // Calculate original allocation size for proper buffer pool free
-  // Check for overflow (defensive - should match original allocation)
   size_t w = (size_t)image->w;
   size_t h = (size_t)image->h;
   if (w > SIZE_MAX / h) {

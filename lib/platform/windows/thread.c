@@ -141,7 +141,6 @@ static void build_stack_trace_message(char *buffer, size_t buffer_size, PCONTEXT
   // any access violations when reading stack memory from the exception thread
   offset += snprintf(buffer + offset, buffer_size - offset, "\nMANUAL STACK TRACE - Walking from RSP\n");
 
-  // Validate stack pointer before attempting to read from it
   // Check if the pointer is valid and in a reasonable address range
   BOOL canReadStack = FALSE;
   if (ctx->Rsp != 0 && ctx->Rsp > 0x10000 && ctx->Rsp < 0x7FFFFFFFFFFF) {

@@ -86,7 +86,6 @@ uint64_t get_current_time_ns(void) {
 
 double calculate_cache_eviction_score(uint64_t last_access_time, uint32_t access_count, uint64_t creation_time,
                                       uint64_t current_time) {
-  // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
   uint64_t age_ns = (current_time >= last_access_time) ? (current_time - last_access_time) : 0;
   uint64_t total_age_ns = (current_time >= creation_time) ? (current_time - creation_time) : 0;
 
@@ -300,14 +299,12 @@ __attribute__((no_sanitize("integer"))) utf8_palette_cache_t *get_utf8_palette_c
   if (!ascii_chars)
     return NULL;
 
-  // Check for empty string
   if (ascii_chars[0] == '\0')
     return NULL;
 
   // Create hash of palette for cache key
   uint32_t palette_hash = hash_palette_string(ascii_chars);
 
-  // Ensure the cache system is initialized
   init_utf8_cache_system();
 
   // First try: read lock for cache lookup (allows multiple concurrent readers)

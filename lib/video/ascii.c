@@ -37,7 +37,6 @@ asciichat_error_t ascii_read_init(unsigned short int webcam_index) {
 }
 
 asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
-  // Validate file descriptor
   if (fd < 0) {
     log_error("Invalid file descriptor %d", fd);
     return ERROR_INVALID_PARAM;
@@ -49,12 +48,10 @@ asciichat_error_t ascii_write_init(int fd, bool reset_terminal) {
     console_clear(fd);
     cursor_reset(fd);
 
-    // Disable echo using platform abstraction
     if (terminal_set_echo(false) != 0) {
       log_error("Failed to disable echo for fd %d", fd);
       return ERROR_TERMINAL;
     }
-    // Hide cursor using platform abstraction
     if (terminal_hide_cursor(fd, true) != 0) {
       log_warn("Failed to hide cursor");
     }
@@ -71,7 +68,6 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     return NULL;
   }
 
-  // Check for empty strings
   if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
     log_error("ascii_convert: empty palette strings");
     return NULL;
@@ -110,7 +106,6 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     return NULL;
   }
 
-  // Validate dimensions fit in image_t's int fields before casting
   if (resized_width > INT_MAX || resized_height > INT_MAX) {
     log_error("Dimensions exceed INT_MAX: width=%zd, height=%zd", resized_width, resized_height);
     return NULL;
@@ -128,7 +123,6 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 
   char *ascii;
   if (color) {
-    // Check for half-block mode first (requires NEON)
     if (opt_render_mode == RENDER_MODE_HALF_BLOCK) {
 #if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer
@@ -225,7 +219,6 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
-  // Validate dimensions fit in image_t's int fields before casting
   if (resized_width > INT_MAX || resized_height > INT_MAX) {
     log_error("Dimensions exceed INT_MAX: width=%zd, height=%zd", resized_width, resized_height);
     return NULL;
@@ -456,7 +449,6 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   // If only one source, center it properly to maintain aspect ratio and look good
   if (source_count == 1) {
     // Create a frame of the target size filled with spaces
-    // Check for integer overflow before multiplication
     size_t w = (size_t)width;
     size_t h = (size_t)height;
     if (w > SIZE_MAX / h) {
@@ -622,7 +614,6 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
   }
 
   // Allocate mixed frame buffer
-  // Check for integer overflow before multiplication
   size_t w_sz = (size_t)width;
   size_t h_sz = (size_t)height;
   if (w_sz > SIZE_MAX / h_sz) {

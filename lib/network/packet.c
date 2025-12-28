@@ -76,7 +76,6 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
   }
 
   // First validate packet length BEFORE converting from network byte order
-  // This prevents potential integer overflow issues
   uint32_t pkt_len_network = header->length;
   if (pkt_len_network == 0xFFFFFFFF) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet length in network byte order: 0xFFFFFFFF");
@@ -462,7 +461,6 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
                             .client_id = htonl(0)}; // Always 0 - client_id is not used in practice
 
   // Combine header + payload for encryption
-  // Check for integer overflow before addition
   if (final_len > SIZE_MAX - sizeof(header)) {
     SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow plaintext buffer size");
     if (compressed_data) {
@@ -486,7 +484,6 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Encrypt
-  // Check for integer overflow before calculating ciphertext size
   if (plaintext_len > SIZE_MAX - CRYPTO_NONCE_SIZE - CRYPTO_MAC_SIZE) {
     SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: would overflow ciphertext buffer size");
     buffer_pool_free(plaintext, plaintext_len);

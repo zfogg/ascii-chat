@@ -217,7 +217,6 @@ static void shutdown_client() {
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
   // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
   // then waits for the data reception thread and capture thread to exit.
-  // This prevents race conditions where threads access freed resources.
   protocol_stop_connection();
 
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
@@ -536,7 +535,6 @@ int client_main(void) {
 
     // Terminal logging is now disabled - ASCII display can begin cleanly
     // Don't clear terminal here - let the first frame handler clear it
-    // This prevents clearing the terminal before we're ready to display content
 
     /* ====================================================================
      * Connection Monitoring Loop

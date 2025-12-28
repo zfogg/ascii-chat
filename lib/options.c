@@ -878,7 +878,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
   }
 
   // Pre-pass: Check for --help or --version first (they have priority over everything)
-  // This ensures help/version are shown without triggering password prompts or other side effects
   for (int i = 1; i < argc; i++) {
     if (argv[i] == NULL) {
       break; // Stop if we hit a NULL element (safety check for tests with malformed argv)
@@ -932,7 +931,6 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         SAFE_SNPRINTF(opt_address, OPTIONS_BUFF_SIZE, "%s", value_str);
       }
       // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
-      // This prevents trying to resolve malformed IPs like "192.168.1" as hostnames
       else if (strchr(value_str, '.') != NULL) {
         // Has dots but not valid IPv4 - reject immediately
         (void)fprintf(stderr, "Invalid IP address format '%s'.\n", value_str);

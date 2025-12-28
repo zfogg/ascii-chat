@@ -26,7 +26,6 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
 
   size_t i = 0;
   while (i < input_len) {
-    // Check for ESC character (start of ANSI sequence)
     if (input[i] == '\x1b' && i + 1 < input_len && input[i + 1] == '[') {
       size_t seq_start = i;
       i += 2; // Skip ESC[
@@ -42,7 +41,6 @@ char *ansi_expand_rle(const char *input, size_t input_len) {
         i++;
       }
 
-      // Check for final byte
       if (i < input_len) {
         char final_byte = input[i];
         i++;
@@ -105,7 +103,6 @@ char *ansi_compress_rle(const char *input, size_t input_len) {
 
   size_t i = 0;
   while (i < input_len) {
-    // Check for ESC character (start of ANSI sequence)
     if (input[i] == '\x1b' && i + 1 < input_len && input[i + 1] == '[') {
       size_t seq_start = i;
       i += 2; // Skip ESC[

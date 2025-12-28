@@ -885,7 +885,6 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 
   // Bounds check to prevent integer overflow on allocation
   // Maximum allowed samples: AUDIO_BATCH_SAMPLES * 2 (2048 samples)
-  // This prevents total_samples * sizeof(float) from exceeding 8KB
   const uint32_t MAX_AUDIO_SAMPLES = AUDIO_BATCH_SAMPLES * 2;
   if (total_samples > MAX_AUDIO_SAMPLES) {
     disconnect_client_for_bad_data(client, "AUDIO_BATCH too many samples: %u (max: %u)", total_samples,

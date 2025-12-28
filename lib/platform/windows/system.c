@@ -659,7 +659,6 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
       // Check for buffer_size >= 35 to safely subtract 32 and then 3 more
       if (buffer_size >= 35) {
         size_t max_symbol_len = buffer_size - 32;
-        // Check for underflow before subtraction
         if (address >= symbol_info->Address) {
           safe_snprintf(buffer, buffer_size, "%.*s...+0x%llx", (int)(max_symbol_len - 3), symbol_name,
                         address - symbol_info->Address);
@@ -671,7 +670,6 @@ static void resolve_windows_symbol(void *addr, char *buffer, size_t buffer_size)
         safe_snprintf(buffer, buffer_size, "0x%llx", address);
       }
     } else {
-      // Check for underflow before subtraction
       if (address >= symbol_info->Address) {
         safe_snprintf(buffer, buffer_size, "%s+0x%llx", symbol_name, address - symbol_info->Address);
       } else {
@@ -745,7 +743,6 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
 
         if (dollar_pos && !has_file_info) {
           // CRT mangled symbol without file info - likely a failed resolution, skip it
-          // This prevents all stack frames from showing the same mangled symbol
           // Fall through to try Windows DbgHelp or show raw address
           cache_success = false;
         } else {

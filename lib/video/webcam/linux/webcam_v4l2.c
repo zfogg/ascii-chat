@@ -150,7 +150,6 @@ static int webcam_v4l2_init_buffers(webcam_context_t *ctx) {
     return -1;
   }
 
-  // Ensure we don't exceed our maximum buffer count
   if (req.count > WEBCAM_BUFFER_COUNT_MAX) {
     log_warn("Driver requested %d buffers, limiting to %d", req.count, WEBCAM_BUFFER_COUNT_MAX);
     req.count = WEBCAM_BUFFER_COUNT_MAX;
@@ -224,7 +223,6 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
 
   memset(context, 0, sizeof(webcam_context_t));
 
-  // Validate device index
   if (device_index > WEBCAM_DEVICE_INDEX_MAX) {
     SAFE_FREE(context);
     return SET_ERRNO(ERROR_WEBCAM, "Invalid device index: %d (max: %d)", device_index, WEBCAM_DEVICE_INDEX_MAX);
@@ -373,13 +371,11 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     usleep(1000); // 1ms
   }
 
-  // Validate buffer index to prevent crashes
   if (buf.index >= (unsigned int)ctx->buffer_count) {
     log_error("V4L2 returned invalid buffer index %u (max: %d)", buf.index, ctx->buffer_count - 1);
     return NULL;
   }
 
-  // Validate buffer pointer
   if (!ctx->buffers || !ctx->buffers[buf.index].start) {
     log_error("V4L2 buffer %u not initialized (start=%p, buffers=%p)", buf.index,
               ctx->buffers ? ctx->buffers[buf.index].start : NULL, ctx->buffers);

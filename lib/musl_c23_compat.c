@@ -62,7 +62,6 @@ long __isoc23_strtol(const char *str, char **endptr, int base) {
   while (*p >= '0' && *p <= '9') {
     has_digits = 1;
     int digit = *p - '0';
-    // Check for overflow
     if (result > (__LONG_MAX__ - digit) / 10) {
       if (endptr)
         *endptr = (char *)p;

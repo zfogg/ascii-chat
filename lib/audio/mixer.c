@@ -463,7 +463,6 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
     return -1;
 
   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
-  // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
   rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
@@ -503,7 +502,6 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
         int samples_read = (int)samples_read_size;
 
         // Accept partial frames - pad with silence if needed
-        // This prevents audio dropouts when ring buffers are temporarily under-filled
         if (samples_read > 0) {
           // Pad remaining samples with silence if we got a partial frame
           if (samples_read < frame_size) {
@@ -595,7 +593,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 #endif
 
   // THREAD SAFETY: Acquire read lock to protect against concurrent source add/remove
-  // This prevents race conditions where source_buffers[i] could be set to NULL while we read it
   rwlock_rdlock(&mixer->source_lock);
 
   // Clear output buffer
@@ -605,7 +602,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   uint8_t exclude_index = mixer->source_id_to_index[exclude_client_id & 0xFF];
   uint64_t active_mask = mixer->active_sources_mask;
 
-  // Validate exclude_index before using in bitshift
   // - exclude_index == 0xFF means "not found" (sentinel value from initialization)
   // - exclude_index >= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
   // - Also verify hash table lookup actually matched the client_id (collision detection)
@@ -664,7 +660,6 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         int samples_read = (int)samples_read_size;
 
         // Accept partial frames - pad with silence if needed
-        // This prevents audio dropouts when ring buffers are temporarily under-filled
         if (samples_read > 0) {
           // Pad remaining samples with silence if we got a partial frame
           if (samples_read < frame_size) {

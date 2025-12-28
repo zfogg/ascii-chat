@@ -351,7 +351,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    // Validate size before allocation to prevent excessive memory usage
     if (header.original_size > 100 * 1024 * 1024) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
       return;
@@ -379,7 +378,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
       return;
     }
 
-    // Validate size before allocation to prevent excessive memory usage
     if (header.original_size > 100 * 1024 * 1024) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
       return;
@@ -454,7 +452,6 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   if (!first_frame_rendered) {
     // Always clear display and disable logging before rendering the first frame
-    // This ensures clean ASCII display regardless of packet arrival order
     log_info("First frame - clearing display and disabling terminal logging");
     log_set_terminal_output(false);
     display_full_reset();

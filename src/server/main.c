@@ -816,7 +816,6 @@ main_loop:
     }
 
     // Rate-limited logging: Only show status when client count actually changes
-    // This prevents log spam while maintaining visibility into server state
     // THREAD SAFETY: Protect read of client_count with rwlock
     static int last_logged_count = -1;
     rwlock_rdlock(&g_client_manager_rwlock);
@@ -860,7 +859,6 @@ main_loop:
         }
 
         // Use snapshot pattern to avoid holding both locks simultaneously
-        // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
         uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
         bool is_active = atomic_load(&client->active);                 // Use atomic read to avoid deadlock
 
@@ -1134,7 +1132,6 @@ main_loop:
     }
 
     // Use snapshot pattern to avoid holding both locks simultaneously
-    // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
     uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
 
     // Clean up ANY client that was allocated, whether active or not

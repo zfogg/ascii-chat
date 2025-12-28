@@ -50,7 +50,6 @@ int g_max_fps = 0; // 0 means use default
  * ============================================================================
  */
 
-// Use atomic for thread-safe access to shutdown callback
 #include <stdatomic.h>
 static _Atomic(shutdown_check_fn) g_shutdown_callback = NULL;
 

@@ -490,7 +490,6 @@ void *client_video_render_thread(void *arg) {
 
     if (!has_video_sources) {
       // No video sources - skip frame generation but DON'T update last_render_time
-      // This ensures the next iteration still maintains proper frame timing
       // DON'T continue here - let the loop update last_render_time at the bottom
       // Fall through to update last_render_time at bottom of loop
       goto skip_frame_generation;
@@ -609,7 +608,6 @@ void *client_video_render_thread(void *arg) {
   skip_frame_generation:
     // Update last_render_time to maintain consistent frame timing
     // CRITICAL: Use the current_time captured at the START of this iteration for rate limiting.
-    // This ensures we maintain the target frame rate based on when we STARTED processing,
     // not when we FINISHED. This prevents timing drift from frame generation overhead.
     last_render_time = current_time;
   }
@@ -1193,7 +1191,6 @@ int create_client_render_threads(client_info_t *client) {
 #endif
 
   // NOTE: Mutexes are already initialized in add_client() before any threads start
-  // This prevents race conditions where receive thread tries to use uninitialized mutexes
 
   // Initialize render thread control flags
   // IMPORTANT: Set to true BEFORE creating thread to avoid race condition

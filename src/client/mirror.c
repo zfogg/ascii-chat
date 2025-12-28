@@ -118,7 +118,6 @@ static int mirror_display_init(void) {
   g_mirror_tty_info = get_current_tty();
 
   // Only use TTY output if stdout is also a TTY (respects shell redirection)
-  // This ensures `cmd > file` works by detecting stdout redirection
   bool stdout_is_tty = platform_isatty(STDOUT_FILENO) != 0;
   if (g_mirror_tty_info.fd >= 0 && stdout_is_tty) {
     g_mirror_has_tty = platform_isatty(g_mirror_tty_info.fd) != 0;

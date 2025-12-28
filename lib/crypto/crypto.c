@@ -54,7 +54,6 @@ static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
   // - Bytes 0-15: Session ID (constant per connection, random across connections)
   // - Bytes 16+: Counter (increments per packet, prevents reuse within session)
   //
-  // This prevents replay attacks both within and across sessions:
   // - Different session_id prevents cross-session replay
   // - Counter prevents within-session replay
 
@@ -305,7 +304,6 @@ crypto_result_t crypto_derive_password_key(crypto_context_t *ctx, const char *pa
   }
 
   // Use deterministic salt for consistent key derivation across client/server
-  // This ensures the same password produces the same key on both sides
   // Salt must be exactly ARGON2ID_SALT_SIZE (32) bytes
   const char *deterministic_salt = "ascii-chat-password-salt-v1";
   size_t salt_str_len = strlen(deterministic_salt);
@@ -694,14 +692,12 @@ crypto_result_t crypto_create_encrypted_packet(crypto_context_t *ctx, const uint
     return CRYPTO_ERROR_INVALID_PARAMS;
   }
 
-  // Check for integer overflow: data_len + nonce_size + mac_size
   if (data_len > SIZE_MAX - ctx->nonce_size - ctx->mac_size) {
     SET_ERRNO(ERROR_BUFFER, "crypto_create_encrypted_packet: encrypted_size overflow");
     return CRYPTO_ERROR_BUFFER_TOO_SMALL;
   }
   size_t encrypted_size = data_len + ctx->nonce_size + ctx->mac_size;
 
-  // Check for integer overflow: header + encrypted_size
   size_t header_size = sizeof(uint32_t) + sizeof(uint32_t);
   if (encrypted_size > SIZE_MAX - header_size) {
     SET_ERRNO(ERROR_BUFFER, "crypto_create_encrypted_packet: required_size overflow");

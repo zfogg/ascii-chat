@@ -35,7 +35,6 @@
   } while (0)
 
 // Redefine HASH_JEN_MIX to use safe arithmetic that doesn't trigger UBSan
-// This prevents undefined behavior from left shifts that exceed uint32_t range
 // The original uthash uses shifts that can overflow, but we fix it by using
 // 64-bit arithmetic for intermediate calculations, then casting back to 32-bit
 // Must be defined AFTER including uthash.h since uthash.h unconditionally defines it

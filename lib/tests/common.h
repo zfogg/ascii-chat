@@ -98,17 +98,14 @@
  * @endcode
  */
 static inline bool test_is_in_headless_environment(void) {
-  // Check for CI environment
   if (getenv("CI") != NULL) {
     return true;
   }
 
-  // Check for Docker
   if (access("/.dockerenv", F_OK) == 0) {
     return true;
   }
 
-  // Check for WSL (look for "microsoft" or "WSL" in /proc/version)
   FILE *version_file = fopen("/proc/version", "r");
   if (version_file) {
     char version_buf[256];

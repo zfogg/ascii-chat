@@ -73,7 +73,6 @@ static void check_crc32_hw_support(void) {
 #endif
   // log_debug("ARM CRC32 hardware acceleration: %s", crc32_hw_available ? "enabled" : "disabled");
 #elif defined(ARCH_X86_64)
-  // Check for SSE4.2 support (includes CRC32 instruction)
 #ifdef _WIN32
   int cpu_info[4];
   __cpuid(cpu_info, 1);

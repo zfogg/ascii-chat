@@ -55,7 +55,6 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   }
 
   // When buffers are allocated from the pool, they may contain leftover data from previous clients
-  // This ensures frames with size=0 are truly empty, preventing ghost frames during reconnection
   if (vfb->frames[0].data) {
     memset(vfb->frames[0].data, 0, frame_size);
   }
@@ -168,7 +167,6 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
   atomic_exchange(&vfb->new_frame_available, false);
 
   // Always return the front buffer (last valid frame)
-  // This prevents flickering - we keep showing the last frame
   // until a new one arrives
   return vfb->front_buffer;
 }

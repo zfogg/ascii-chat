@@ -491,7 +491,6 @@ static void *audio_capture_thread_func(void *arg) {
     }
 
     // Read as many samples as possible (up to CAPTURE_READ_SIZE) to drain faster
-    // This prevents buffer overflow when processing is slower than capture
     int to_read = (available < CAPTURE_READ_SIZE) ? available : CAPTURE_READ_SIZE;
     asciichat_error_t read_result = audio_read_samples(&g_audio_context, audio_buffer, to_read);
 
@@ -873,7 +872,6 @@ void audio_cleanup() {
   }
 
   // Clear the pipeline pointer from audio context BEFORE destroying pipeline
-  // This prevents any lingering PortAudio callbacks from trying to access freed memory
   audio_set_pipeline(&g_audio_context, NULL);
 
   // CRITICAL: Sleep to allow CoreAudio threads to finish executing callbacks

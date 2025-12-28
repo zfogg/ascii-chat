@@ -142,7 +142,6 @@ static void rotate_log_if_needed_unlocked(void) {
 
     /* Seek to position where we want to start keeping data (keep last 2MB) */
     size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
-    // Check for underflow before subtraction (size_t is unsigned)
     if (g_log.current_size < keep_size) {
       platform_close(read_file);
       /* Fall back to truncation since we don't have enough data to rotate */
@@ -260,7 +259,6 @@ void log_init(const char *filename, log_level_t level, bool force_stderr) {
   mutex_lock(&g_log.mutex);
 
   // Set force_stderr EARLY before any logging happens
-  // This ensures all logs (including terminal capability detection) go to stderr
   g_log.force_stderr = force_stderr;
 
   // Preserve the terminal output setting
@@ -313,7 +311,6 @@ void log_init(const char *filename, log_level_t level, bool force_stderr) {
   g_log.terminal_output_enabled = preserve_terminal_output;
 
   // Reset initialization state if we're using defaults (not reliably detected)
-  // This ensures we'll re-detect with proper colors after unlocking
   if (g_terminal_caps_initialized && !g_terminal_caps.detection_reliable) {
     // Reset to allow re-detection with proper colors
     g_terminal_caps_initialized = false;
@@ -784,7 +781,6 @@ void log_redetect_terminal_capabilities(void) {
   }
 
   // Detect if not initialized, or if we're using defaults (not reliably detected)
-  // This ensures we get proper detection after logging is ready, replacing any defaults
   // Once we have reliable detection, never re-detect to keep colors consistent
   if (!g_terminal_caps_initialized || !g_terminal_caps.detection_reliable) {
     g_terminal_caps_detecting = true;

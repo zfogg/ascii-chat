@@ -318,7 +318,6 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_error("Maximum client limit reached (%d/%d active clients)", existing_count, opt_max_clients);
 
     // Send a rejection message to the client before closing
-    // Use platform-abstracted socket_send() instead of raw send() for Windows portability
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
@@ -334,7 +333,6 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     log_error("No available client slots (all %d array slots are in use)", MAX_CLIENTS);
 
     // Send a rejection message to the client before closing
-    // Use platform-abstracted socket_send() instead of raw send() for Windows portability
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
     if (send_result < 0) {
@@ -519,10 +517,8 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
   rwlock_wrunlock(&g_client_manager_rwlock);
 
   // CRITICAL: Perform crypto handshake BEFORE starting threads
-  // This ensures the handshake uses the socket directly without interference from receive thread
   if (server_crypto_init() == 0) {
     // Set timeout for crypto handshake to prevent indefinite blocking
-    // This prevents clients from connecting but never completing the handshake
     const int HANDSHAKE_TIMEOUT_SECONDS = 30;
     if (set_socket_timeout(socket, HANDSHAKE_TIMEOUT_SECONDS) < 0) {
       log_warn("Failed to set handshake timeout for client %u: %s", atomic_load(&client->client_id),
@@ -728,7 +724,6 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   }
 
   // CRITICAL: Release write lock before joining threads
-  // This prevents deadlock with render threads that need read locks
   rwlock_wrunlock(&g_client_manager_rwlock);
 
   // Phase 2: Join threads without holding any locks
@@ -803,9 +798,7 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   }
 
   // Only reset client_id to 0 AFTER confirming threads are joined
-  // This prevents threads that are starting from accessing a zeroed client struct
   // CRITICAL: Reset client_id to 0 BEFORE destroying mutexes to prevent race conditions
-  // This ensures worker threads can detect shutdown and exit BEFORE the mutex is destroyed
   // If we destroy the mutex first, threads might try to access a destroyed mutex
   atomic_store(&target_client->client_id, 0);
 
@@ -853,7 +846,6 @@ void *client_receive_thread(void *arg) {
   client_info_t *client = (client_info_t *)arg;
 
   // CRITICAL: Validate client pointer immediately before any access
-  // This prevents crashes if remove_client() has zeroed the client struct
   // while the thread was still starting at RtlUserThreadStart
   if (!client) {
     log_error("Invalid client info in receive thread (NULL pointer)");
@@ -897,7 +889,6 @@ void *client_receive_thread(void *arg) {
 
     // Use unified secure packet reception with auto-decryption
     // CRITICAL: Check client_id is still valid before accessing client fields
-    // This prevents accessing freed memory if remove_client() has zeroed the client struct
     if (atomic_load(&client->client_id) == 0) {
       log_debug("Client client_id reset, exiting receive thread");
       break;
@@ -923,7 +914,6 @@ void *client_receive_thread(void *arg) {
       break;
     }
 
-    // Protect crypto field access with mutex to prevent race conditions
     mutex_lock(&client->client_state_mutex);
     bool crypto_ready =
         !opt_no_encrypt && client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx);
@@ -959,7 +949,6 @@ void *client_receive_thread(void *arg) {
     }
 
     // Use per-client crypto_ready state instead of global opt_no_encrypt
-    // This ensures encryption is only enforced AFTER this specific client completes the handshake
     packet_recv_result_t result = receive_packet_secure(socket, (void *)crypto_ctx, crypto_ready, &envelope);
 
     // Check if socket became invalid during the receive operation
@@ -1156,7 +1145,6 @@ void *client_send_thread_func(void *arg) {
   client_info_t *client = (client_info_t *)arg;
 
   // CRITICAL: Validate client pointer immediately before any access
-  // This prevents crashes if remove_client() has zeroed the client struct
   // while the thread was still starting at RtlUserThreadStart
   if (!client) {
     log_error("Invalid client info in send thread (NULL pointer)");
@@ -1212,7 +1200,6 @@ void *client_send_thread_func(void *arg) {
     // Send batched audio if we have packets
     if (audio_packet_count > 0) {
       // Get crypto context for this client
-      // Protect crypto field access with mutex
       const crypto_context_t *crypto_ctx = NULL;
       mutex_lock(&client->client_state_mutex);
       bool crypto_ready =
@@ -1606,7 +1593,6 @@ void broadcast_server_state_to_all_clients(void) {
   rwlock_rdunlock(&g_client_manager_rwlock);
 
   // Send to all clients AFTER releasing the lock
-  // This prevents blocking other threads during network I/O
   for (int i = 0; i < snapshot_count; i++) {
     log_debug("BROADCAST_DEBUG: Sending SERVER_STATE to client %u (socket %d) with crypto_ctx=%p",
               client_snapshots[i].client_id, client_snapshots[i].socket, (void *)client_snapshots[i].crypto_ctx);

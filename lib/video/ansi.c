@@ -21,7 +21,6 @@ char *ansi_strip_escapes(const char *input, size_t input_len) {
 
   size_t i = 0;
   while (i < input_len) {
-    // Check for ESC character (start of ANSI sequence)
     if (input[i] == '\x1b' && i + 1 < input_len && input[i + 1] == '[') {
       // Skip ESC[
       i += 2;

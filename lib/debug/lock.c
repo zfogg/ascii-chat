@@ -485,7 +485,6 @@ static void *debug_thread_func(void *arg) {
   UNUSED(arg);
 
 #ifndef _WIN32
-  // Set terminal to raw mode for immediate key detection
   struct termios raw;
   if (tcgetattr(STDIN_FILENO, &g_original_termios) == 0) {
     g_termios_saved = true;
@@ -505,7 +504,6 @@ static void *debug_thread_func(void *arg) {
   log_debug("Lock debug thread started - press '?' to print lock state");
 
   while (atomic_load(&g_lock_debug_manager.debug_thread_running)) {
-    // Check for locks held > 100ms and log warnings
     check_long_held_locks();
 
     // Allow external trigger via flag (non-blocking)
@@ -513,7 +511,6 @@ static void *debug_thread_func(void *arg) {
       lock_debug_print_state();
     }
 
-    // Check for keyboard input first
 #ifdef _WIN32
     if (_kbhit()) {
       int ch = _getch();
@@ -522,7 +519,6 @@ static void *debug_thread_func(void *arg) {
       }
     }
 
-    // Small sleep to prevent CPU spinning
     platform_sleep_ms(10);
 #else
     // POSIX: use select() for non-blocking input (now in raw mode)
@@ -549,7 +545,6 @@ static void *debug_thread_func(void *arg) {
   }
 
 #ifndef _WIN32
-  // Restore terminal to original mode
   if (g_termios_saved) {
     tcsetattr(STDIN_FILENO, TCSANOW, &g_original_termios);
     g_termios_saved = false;
@@ -572,15 +567,12 @@ int lock_debug_init(void) {
     return 0; // Already initialized
   }
 
-  // Set initialization flag to prevent tracking during init
   atomic_store(&g_initializing, true);
 
-  // Initialize uthash hash tables to NULL (required)
   g_lock_debug_manager.lock_records = NULL;
   g_lock_debug_manager.usage_stats = NULL;
   g_lock_debug_manager.orphaned_releases = NULL;
 
-  // Initialize rwlocks for thread safety (uthash requires external locking)
   if (rwlock_init(&g_lock_debug_manager.lock_records_lock) != 0) {
     atomic_store(&g_initializing, false);
     SET_ERRNO(ERROR_THREAD, "Failed to initialize lock_records rwlock");
@@ -602,7 +594,6 @@ int lock_debug_init(void) {
     return -1;
   }
 
-  // Initialize atomic variables
   atomic_store(&g_lock_debug_manager.total_locks_acquired, 0);
   atomic_store(&g_lock_debug_manager.total_locks_released, 0);
   atomic_store(&g_lock_debug_manager.current_locks_held, 0);
@@ -610,7 +601,6 @@ int lock_debug_init(void) {
   atomic_store(&g_lock_debug_manager.debug_thread_created, false);
   atomic_store(&g_lock_debug_manager.should_print_locks, false);
 
-  // Initialize thread handle to invalid value
 #ifdef _WIN32
   g_lock_debug_manager.debug_thread = NULL;
 #else
@@ -619,7 +609,6 @@ int lock_debug_init(void) {
 #endif
 
   // Clear initialization flag FIRST, then mark as initialized
-  // This prevents race condition where initialized=true but initializing=true
   atomic_store(&g_initializing, false);
   atomic_store(&g_lock_debug_manager.initialized, true);
 
@@ -662,8 +651,6 @@ void lock_debug_trigger_print(void) {
 }
 
 void lock_debug_cleanup(void) {
-  // Use atomic exchange to ensure cleanup only runs once
-  // This prevents double-cleanup from both atexit() and manual calls
   bool was_initialized = atomic_exchange(&g_lock_debug_manager.initialized, false);
   if (!was_initialized) {
     return;
@@ -1212,7 +1199,6 @@ void lock_debug_print_state(void) {
   offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  Currently held: %u\n",
                      currently_held);
 
-  // Check for underflow before subtraction to avoid UB
   if (total_acquired >= total_released) {
     offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
                        "  Net locks (acquired - released): %lld\n", (long long)(total_acquired - total_released));
@@ -1232,7 +1218,6 @@ void lock_debug_print_state(void) {
   if (active_locks == 0) {
     offset +=
         snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  No locks currently held.\n");
-    // Check for consistency issues
     if (currently_held > 0) {
       offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
                          "  *** CONSISTENCY WARNING: Counter shows %u held locks but no records found! ***\n",

@@ -34,7 +34,6 @@
 // and defines SIMD_SUPPORT_* to 1 (enabled) or 0 (disabled).
 //
 // Only auto-detect from compiler macros if CMake hasn't already defined them.
-// This ensures CMake's explicit choices (e.g., AVX2-only, no SSE2/SSSE3) are respected.
 //
 // Disable SIMD on Windows with Clang due to intrinsics compatibility issues
 #if defined(_WIN32) && defined(__clang__) && __clang_major__ >= 20

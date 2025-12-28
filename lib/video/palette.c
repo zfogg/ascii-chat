@@ -90,7 +90,6 @@ bool palette_requires_utf8_encoding(const char *chars, size_t len) {
   return false;
 }
 
-// Validate UTF-8 character sequences and terminal width
 bool validate_palette_chars(const char *chars, size_t len) {
   if (!chars || len == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: empty or NULL palette");
@@ -145,7 +144,6 @@ bool validate_palette_chars(const char *chars, size_t len) {
       return false;
     }
 
-    // Check for control characters (except tab)
     if (wc < 32 && wc != '\t') {
       SET_ERRNO(ERROR_INVALID_PARAM, "Palette validation failed: control character at position %zu", char_count);
       // Restore old locale
@@ -221,7 +219,6 @@ bool detect_client_utf8_support(utf8_capabilities_t *caps) {
     }
   }
 
-  // Check for known UTF-8 supporting terminals
   if (term) {
     const char *utf8_terminals[] = {
         "xterm-256color", "screen-256color", "tmux-256color", "alacritty",   "kitty", "iterm",
@@ -345,7 +342,6 @@ int initialize_client_palette(palette_type_t palette_type, const char *custom_ch
       return -1;
     }
 
-    // Validate custom palette
     if (!validate_palette_chars(custom_chars, len_to_use)) {
       SET_ERRNO(ERROR_INVALID_PARAM, "Client custom palette validation failed");
       return -1;
@@ -426,7 +422,6 @@ utf8_palette_t *utf8_palette_create(const char *palette_string) {
     char_count++;
   }
 
-  // Validate we got at least one character
   if (char_count == 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Palette string contains no valid UTF-8 characters");
     SAFE_FREE(palette);

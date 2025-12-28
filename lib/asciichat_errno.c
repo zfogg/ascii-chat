@@ -508,6 +508,5 @@ void asciichat_errno_cleanup(void) {
   asciichat_errno_context.code = ASCIICHAT_OK;
 
   // Suppress any further error context allocation to prevent cleanup-phase leaks
-  // This prevents other atexit() functions from allocating new contexts after we've cleaned up
   g_suppress_error_context = true;
 }

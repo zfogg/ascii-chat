@@ -335,7 +335,6 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     return -1;
   }
 
-  // Validate packet before enqueueing
   if (!packet_queue_validate_packet(packet)) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Refusing to enqueue invalid packet");
     return -1;

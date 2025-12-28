@@ -325,7 +325,6 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
     base_iterations = 5; // 1280×720 = 921,600 pixels -> 5 iterations
   }
 
-  // Ensure we have at least the minimum for reliable timing
   const int minimum_iterations = 10;
   return (base_iterations > minimum_iterations) ? base_iterations : minimum_iterations;
 }

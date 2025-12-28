@@ -209,7 +209,6 @@ extern atomic_bool g_initializing;
  */
 static inline uint32_t lock_record_key(void *lock_address, lock_type_t lock_type) {
   // Combine lock address, type, and thread ID into a unique key using FNV-1a
-  // This prevents key collisions when the same lock is used by different threads
   // Hash all components together using FNV-1a for consistent hashing
   struct {
     uintptr_t addr;

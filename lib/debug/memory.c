@@ -377,7 +377,6 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
  * @ingroup debug_util
  */
 void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
-  // Prevent recursion if we're already in debug memory logic
   if (g_in_debug_memory) {
     return realloc(ptr, size);
   }
