@@ -39,8 +39,32 @@ fps_tracker_t *fps_tracker_create(int expected_fps, const char *label) {
         tracker->label[0] = '\0';
     }
 
-    // Initialize fps tracker
+    // Initialize fps tracker with default interval
     fps_init(&tracker->fps, expected_fps, tracker->label);
+    tracker->initialized = true;
+
+    return tracker;
+}
+
+fps_tracker_t *fps_tracker_create_with_interval(int expected_fps, const char *label, unsigned long report_interval_us) {
+    fps_tracker_t *tracker = SAFE_MALLOC(sizeof(fps_tracker_t), fps_tracker_t *);
+    if (!tracker) {
+        return NULL;
+    }
+
+    // Initialize fields
+    tracker->fps = (fps_t){0};
+    tracker->initialized = false;
+
+    // Store label safely
+    if (label) {
+        SAFE_STRNCPY(tracker->label, label, sizeof(tracker->label));
+    } else {
+        tracker->label[0] = '\0';
+    }
+
+    // Initialize fps tracker with custom interval
+    fps_init_with_interval(&tracker->fps, expected_fps, tracker->label, report_interval_us);
     tracker->initialized = true;
 
     return tracker;

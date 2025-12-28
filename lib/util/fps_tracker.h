@@ -62,6 +62,22 @@ typedef struct fps_tracker_state fps_tracker_t;
 fps_tracker_t *fps_tracker_create(int expected_fps, const char *label);
 
 /**
+ * @brief Create and initialize an FPS tracker with custom reporting interval
+ *
+ * Like fps_tracker_create() but with a custom interval for FPS statistics reporting.
+ * The interval controls how often the fps_frame() function logs statistics.
+ *
+ * @param expected_fps Expected frames per second (e.g., 30, 60, 144)
+ * @param label Human-readable label for logging (e.g., "AUDIO_TX", "WEBCAM_RX")
+ * @param report_interval_us Reporting interval in microseconds (e.g., 10000000 for 10 seconds)
+ *
+ * @return Pointer to tracker instance, or NULL on allocation failure
+ *
+ * @ingroup util
+ */
+fps_tracker_t *fps_tracker_create_with_interval(int expected_fps, const char *label, unsigned long report_interval_us);
+
+/**
  * @brief Record a frame with automatic timestamp
  *
  * Records the current frame with the current monotonic clock time.
