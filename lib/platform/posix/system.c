@@ -103,6 +103,21 @@ void platform_sleep_ms(unsigned int ms) {
 }
 
 /**
+ * @brief Get monotonic time in microseconds
+ * @return Current monotonic time in microseconds
+ *
+ * Uses CLOCK_MONOTONIC for a monotonically increasing time value
+ * that is not affected by system clock changes.
+ */
+uint64_t platform_get_monotonic_time_us(void) {
+  struct timespec ts;
+  if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
+    return 0; // Fallback on error (shouldn't happen)
+  }
+  return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+}
+
+/**
  * @brief Cross-platform high-precision sleep function
  * @param usec Number of microseconds to sleep
  *

@@ -121,6 +121,30 @@ void platform_sleep_ms(unsigned int ms) {
 }
 
 /**
+ * @brief Get monotonic time in microseconds
+ * @return Current monotonic time in microseconds
+ *
+ * Uses QueryPerformanceCounter for a monotonically increasing time value
+ * with high precision on Windows.
+ */
+uint64_t platform_get_monotonic_time_us(void) {
+  static LARGE_INTEGER freq = {0};
+  static bool freq_initialized = false;
+
+  // Initialize frequency once (thread-safe via Windows guarantee)
+  if (!freq_initialized) {
+    QueryPerformanceFrequency(&freq);
+    freq_initialized = true;
+  }
+
+  LARGE_INTEGER counter;
+  QueryPerformanceCounter(&counter);
+
+  // Convert to microseconds: (counter * 1,000,000) / freq
+  return (uint64_t)((counter.QuadPart * 1000000ULL) / freq.QuadPart);
+}
+
+/**
  * @brief Cross-platform high-precision sleep function with shutdown support
  * @param usec Number of microseconds to sleep
  *

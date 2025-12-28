@@ -31,6 +31,10 @@
 #include <time.h>
 #include "../common.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Signal handler function type
  * @param sig Signal number
@@ -73,6 +77,25 @@ void platform_cleanup(void);
  * @ingroup platform
  */
 void platform_sleep_ms(unsigned int ms);
+
+/**
+ * @brief Get monotonic time in microseconds
+ * @return Current monotonic time in microseconds
+ *
+ * Returns a monotonically increasing time value in microseconds.
+ * Useful for measuring elapsed time without being affected by
+ * system clock changes. Thread-safe and lock-free.
+ *
+ * Platform-specific implementations:
+ *   - Unix/POSIX: Uses CLOCK_MONOTONIC via clock_gettime()
+ *   - Windows: Uses QueryPerformanceCounter()
+ *
+ * @note The absolute value is arbitrary; only differences are meaningful.
+ * @note Wraps after approximately 584,942 years (uint64_t).
+ *
+ * @ingroup platform
+ */
+uint64_t platform_get_monotonic_time_us(void);
 
 #ifdef _WIN32
 // usleep macro - only define if not already declared (GCC's unistd.h declares it as a function)
@@ -706,5 +729,9 @@ bool platform_get_temp_dir(char *temp_dir, size_t path_size);
  * @return true on success, false on failure (buffer too small or API error)
  */
 bool platform_get_cwd(char *cwd, size_t path_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 /** @} */

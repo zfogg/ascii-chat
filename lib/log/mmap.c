@@ -276,8 +276,8 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
   const char *level_name = (level >= 0 && level < 6) ? level_names[level] : "???";
 
   /* Format the complete log line into a local buffer first */
-  char line_buf[1024];
-  char time_buf[32];
+  char line_buf[LOG_MMAP_MSG_BUFFER_SIZE];
+  char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   format_timestamp(time_buf, sizeof(time_buf));
 
   int prefix_len;
