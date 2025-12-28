@@ -81,10 +81,13 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
     // This does: AnalyzeRender(output) + ProcessCapture(input) + filters + compressor
     // All in one call, perfect synchronization, no ring buffer
-    client_audio_pipeline_process_duplex((client_audio_pipeline_t *)ctx->audio_pipeline, output,
-                                         (int)num_samples,        // render = what's playing to speakers
-                                         input, (int)num_samples, // capture = microphone input
-                                         processed                // output = processed capture
+    client_audio_pipeline_process_duplex(
+        (client_audio_pipeline_t *)ctx->audio_pipeline, // NOLINT(readability-suspicious-call-argument)
+        output,                                         // render_samples (what's playing to speakers)
+        (int)num_samples,                               // render_count
+        input,                                          // capture_samples (microphone input)
+        (int)num_samples,                               // capture_count
+        processed                                       // processed_output (processed capture)
     );
 
     // Write processed capture to ring buffer for encoding thread
