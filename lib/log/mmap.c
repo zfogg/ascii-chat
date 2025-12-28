@@ -18,7 +18,9 @@
 #include <time.h>
 #include <signal.h>
 
-#ifndef _WIN32
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <unistd.h>
 #endif
 
@@ -63,6 +65,7 @@ static void format_timestamp(char *buf, size_t buf_size) {
 
 static volatile sig_atomic_t g_crash_in_progress = 0;
 
+#ifndef _WIN32
 static void crash_signal_handler(int sig) {
   /* Prevent recursive crashes */
   if (g_crash_in_progress) {
@@ -92,6 +95,46 @@ static void crash_signal_handler(int sig) {
   signal(sig, SIG_DFL);
   raise(sig);
 }
+#endif /* !_WIN32 */
+
+#ifdef _WIN32
+/**
+ * @brief Windows unhandled exception filter for crash safety
+ *
+ * Writes crash marker and syncs mmap to disk before Windows terminates the process.
+ */
+static LONG WINAPI windows_crash_handler(EXCEPTION_POINTERS *exception_info) {
+  (void)exception_info; /* Unused for now, could log exception code */
+
+  /* Prevent recursive crashes */
+  if (g_crash_in_progress) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+  g_crash_in_progress = 1;
+
+  /* Write crash marker directly to mmap'd log */
+  if (g_mmap_log.initialized && g_mmap_log.text_region) {
+    DWORD exception_code = exception_info ? exception_info->ExceptionRecord->ExceptionCode : 0;
+    const char *crash_msg = "\n=== CRASH DETECTED (exception 0x%08lX) ===\n";
+    char msg_buf[64];
+    int len = snprintf(msg_buf, sizeof(msg_buf), crash_msg, (unsigned long)exception_code);
+    if (len > 0) {
+      uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, (uint64_t)len);
+      if (pos + (uint64_t)len <= g_mmap_log.text_capacity) {
+        memcpy(g_mmap_log.text_region + pos, msg_buf, (size_t)len);
+      }
+    }
+  }
+
+  /* Sync mmap to disk */
+  if (g_mmap_log.initialized) {
+    platform_mmap_sync(&g_mmap_log.mmap, true);
+  }
+
+  /* Let Windows continue with default crash handling (creates minidump if configured) */
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif /* _WIN32 */
 
 void log_mmap_install_crash_handlers(void) {
 #ifndef _WIN32
@@ -106,7 +149,7 @@ void log_mmap_install_crash_handlers(void) {
   sigaction(SIGFPE, &sa, NULL);
   sigaction(SIGILL, &sa, NULL);
 #else
-  /* TODO: Implement Windows crash handler with SetUnhandledExceptionFilter */
+  SetUnhandledExceptionFilter(windows_crash_handler);
 #endif
 }
 
