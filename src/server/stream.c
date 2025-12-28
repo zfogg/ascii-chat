@@ -145,6 +145,7 @@
 #include "video/image.h"
 #include "video/ascii.h"
 #include "util/aspect_ratio.h"
+#include "util/image.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()
 extern rwlock_t g_client_manager_rwlock;
@@ -351,8 +352,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
                   bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]);
       }
 
-      // Validate dimensions are reasonable (max 4K resolution)
-      if (img_width == 0 || img_width > 4096 || img_height == 0 || img_height > 4096) {
+      // Validate dimensions using image utility function
+      if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
         SET_ERRNO(ERROR_INVALID_STATE,
                   "Per-client: Invalid image dimensions from client %u: %ux%u (data may be corrupted)", snap->client_id,
                   img_width, img_height);
@@ -364,8 +365,22 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
         continue;
       }
 
-      // Validate that the frame size matches expected size
-      size_t expected_size = sizeof(uint32_t) * 2 + (size_t)img_width * (size_t)img_height * sizeof(rgb_t);
+      // Calculate expected frame size with overflow checking
+      size_t expected_size = sizeof(uint32_t) * 2;
+      {
+        size_t rgb_size = 0;
+        if (image_calc_rgb_size((size_t)img_width, (size_t)img_height, &rgb_size) != ASCIICHAT_OK) {
+          SET_ERRNO(ERROR_INVALID_STATE,
+                    "Per-client: RGB size calculation failed for client %u: %ux%u", snap->client_id, img_width,
+                    img_height);
+          if (got_new_frame) {
+            cleanup_current_frame_data(&current_frame);
+          }
+          source_count++;
+          continue;
+        }
+        expected_size += rgb_size;
+      }
       if (frame_to_use->size != expected_size) {
         SET_ERRNO(ERROR_INVALID_STATE,
                   "Per-client: Frame size mismatch from client %u: got %zu, expected %zu for %ux%u image",
