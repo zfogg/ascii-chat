@@ -48,7 +48,6 @@ set(CRYPTO_SRCS
     lib/crypto/keys/keys.c
     lib/crypto/known_hosts.c
     lib/crypto/handshake.c
-    lib/crypto/http_client.c
     lib/crypto/pem_utils.c
     # lib/crypto/gpg.c  # Temporarily excluded
     lib/crypto/ssh_agent.c
@@ -227,6 +226,7 @@ set(NETWORK_SRCS
     lib/network/compression.c
     lib/network/crc32.c
     lib/network/packet_queue.c
+    lib/network/http_client.c
 )
 
 # =============================================================================
