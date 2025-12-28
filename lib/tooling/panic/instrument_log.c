@@ -3,7 +3,7 @@
 
 #include "tooling/panic/instrument_log.h"
 #include "common.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "platform/mutex.h"
 #include "platform/system.h"
 #include "platform/thread.h"

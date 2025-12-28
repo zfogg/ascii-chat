@@ -21,7 +21,6 @@
 #include "crypto/keys/keys.h"
 #include "crypto/known_hosts.h"
 #include "network/packet.h"
-#include "network/packet_types.h"
 #include "buffer_pool.h"
 #include "tests/logging.h"
 

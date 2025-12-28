@@ -17,6 +17,10 @@
 #include <string.h>
 #include <stdatomic.h>
 
+#ifndef _WIN32
+#include <netinet/tcp.h>
+#endif
+
 /* ============================================================================
  * Core Network I/O Operations
  * ============================================================================
@@ -483,25 +487,36 @@ int set_socket_nonblocking(socket_t sockfd) {
  */
 asciichat_error_t socket_configure_buffers(socket_t sockfd) {
   if (sockfd == INVALID_SOCKET_VALUE) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Invalid socket file descriptor");
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Invalid socket file descriptor");
   }
 
-  // Configure 1MB send buffer for optimal frame transmission
+  int failed_options = 0;
+
+  // Attempt to configure 1MB send buffer for optimal frame transmission
   int send_buffer_size = 1024 * 1024;
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set send buffer size");
+    log_warn("Failed to set send buffer size to 1MB: %s", network_error_string());
+    failed_options++;
   }
 
-  // Configure 1MB receive buffer for optimal frame reception
+  // Attempt to configure 1MB receive buffer for optimal frame reception
   int recv_buffer_size = 1024 * 1024;
   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set receive buffer size");
+    log_warn("Failed to set receive buffer size to 1MB: %s", network_error_string());
+    failed_options++;
   }
 
-  // Enable TCP_NODELAY to disable Nagle's algorithm for low-latency transmission
+  // Attempt to enable TCP_NODELAY to disable Nagle's algorithm for low-latency transmission
+  // CRITICAL: This must be set even if buffer configuration fails, as it's essential for real-time video
   int tcp_nodelay = 1;
   if (socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &tcp_nodelay, sizeof(tcp_nodelay)) < 0) {
-    return SET_ERRNO_SYS(ERROR_NETWORK_CONFIG, "Failed to set TCP_NODELAY");
+    log_warn("Failed to set TCP_NODELAY: %s", network_error_string());
+    failed_options++;
+  }
+
+  // Return error only if ALL options failed
+  if (failed_options >= 3) {
+    return SET_ERRNO_SYS(ERROR_NETWORK, "Failed to configure all socket options");
   }
 
   return ASCIICHAT_OK;

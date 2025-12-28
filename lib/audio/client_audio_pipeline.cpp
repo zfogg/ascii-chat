@@ -50,14 +50,14 @@
 #include "audio/client_audio_pipeline.h"
 #include "audio/wav_writer.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "platform/abstraction.h"
 
 // Include mixer.h for compressor, noise gate, and filter functions
 #include "audio/mixer.h"
 
 // For AEC3 metrics reporting
-#include "audio/audio_analysis.h"
+#include "audio/analysis.h"
 
 #include <opus/opus.h>
 #include <string.h>
@@ -118,13 +118,13 @@ client_audio_pipeline_config_t client_audio_pipeline_default_config(void) {
       .highpass_hz = 150.0f,   // Was 80Hz, increased to break rumble feedback loop
       .lowpass_hz = 8000.0f,
 
-      // Compressor: only compress loud peaks, boost overall output
-      // Was: threshold -10dB (too aggressive), makeup +3dB (too quiet)
-      .comp_threshold_db = -6.0f,   // Only compress peaks above -6dB (was -10dB)
-      .comp_ratio = 3.0f,           // Gentler 3:1 ratio (was 4:1)
-      .comp_attack_ms = 5.0f,       // Faster attack for peaks (was 10ms)
-      .comp_release_ms = 150.0f,    // Slower release (was 100ms)
-      .comp_makeup_db = 6.0f,       // More makeup gain (was 3dB)
+      // Compressor: only compress loud peaks, minimal makeup to avoid clipping
+      // User reported clipping with +6dB makeup gain
+      .comp_threshold_db = -6.0f,   // Only compress peaks above -6dB
+      .comp_ratio = 3.0f,           // Gentler 3:1 ratio
+      .comp_attack_ms = 5.0f,       // Fast attack for peaks
+      .comp_release_ms = 150.0f,    // Slower release
+      .comp_makeup_db = 2.0f,       // Reduced from 6dB to prevent clipping
 
       // Noise gate: VERY aggressive to cut quiet background audio completely
       // User feedback: "don't amplify or play quiet background audio at all"
@@ -526,12 +526,12 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
     wav_writer_write((wav_writer_t *)pipeline->debug_wav_aec3_in, capture_samples, capture_count);
   }
 
-  // Apply startup fade-in
+  // Apply startup fade-in using smoothstep curve
   if (pipeline->capture_fadein_remaining > 0) {
     const int total_fadein_samples = (pipeline->config.sample_rate * 200) / 1000;
     for (int i = 0; i < capture_count && pipeline->capture_fadein_remaining > 0; i++) {
       float progress = 1.0f - ((float)pipeline->capture_fadein_remaining / (float)total_fadein_samples);
-      float gain = progress * progress * (3.0f - 2.0f * progress);
+      float gain = smoothstep(progress);
       processed_output[i] *= gain;
       pipeline->capture_fadein_remaining--;
     }
@@ -568,9 +568,9 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
               int render_chunk = (render_offset + webrtc_frame_size <= render_count)
                                  ? webrtc_frame_size : (render_count - render_offset);
               if (render_chunk == webrtc_frame_size) {
-                for (int j = 0; j < webrtc_frame_size; j++) {
-                  render_channels[0][j] = render_samples[render_offset + j] * 32768.0f;
-                }
+                // Scale float [-1,1] to WebRTC int16-range [-32768, 32767]
+                copy_buffer_with_gain(&render_samples[render_offset], render_channels[0],
+                                      webrtc_frame_size, 32768.0f);
                 render_buf->SplitIntoFrequencyBands();
                 wrapper->aec3->AnalyzeRender(render_buf);
                 render_buf->MergeFrequencyBands();
@@ -584,10 +584,9 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
               int capture_chunk = (capture_offset + webrtc_frame_size <= capture_count)
                                   ? webrtc_frame_size : (capture_count - capture_offset);
               if (capture_chunk == webrtc_frame_size) {
-                // Scale up to int16 range for WebRTC
-                for (int j = 0; j < webrtc_frame_size; j++) {
-                  capture_channels[0][j] = processed_output[capture_offset + j] * 32768.0f;
-                }
+                // Scale float [-1,1] to WebRTC int16-range [-32768, 32767]
+                copy_buffer_with_gain(&processed_output[capture_offset], capture_channels[0],
+                                      webrtc_frame_size, 32768.0f);
 
                 // AEC3 sequence: AnalyzeCapture, split, ProcessCapture, merge
                 wrapper->aec3->AnalyzeCapture(capture_buf);
@@ -600,15 +599,11 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
                 wrapper->aec3->ProcessCapture(capture_buf, false);
                 capture_buf->MergeFrequencyBands();
 
-                // Scale back and soft clip
+                // Scale back to float range and apply soft clip to prevent distortion
+                // Use gentle soft_clip (threshold=0.6, steepness=2.5) to leave headroom for compressor
                 for (int j = 0; j < webrtc_frame_size; j++) {
                   float sample = capture_channels[0][j] / 32768.0f;
-                  if (sample > 0.5f) {
-                    sample = 0.5f + 0.5f * tanhf((sample - 0.5f) * 2.0f);
-                  } else if (sample < -0.5f) {
-                    sample = -0.5f + 0.5f * tanhf((sample + 0.5f) * 2.0f);
-                  }
-                  processed_output[capture_offset + j] = sample;
+                  processed_output[capture_offset + j] = soft_clip(sample, 0.6f, 2.5f);
                 }
 
                 // Log AEC3 metrics periodically
@@ -650,12 +645,9 @@ void client_audio_pipeline_process_duplex(client_audio_pipeline_t *pipeline,
     for (int i = 0; i < capture_count; i++) {
       float gain = compressor_process_sample(&pipeline->compressor, processed_output[i]);
       processed_output[i] *= gain;
-      if (processed_output[i] > 0.95f) {
-        processed_output[i] = 0.95f + 0.05f * tanhf((processed_output[i] - 0.95f) * 10.0f);
-      } else if (processed_output[i] < -0.95f) {
-        processed_output[i] = -0.95f + 0.05f * tanhf((processed_output[i] + 0.95f) * 10.0f);
-      }
     }
+    // Apply soft clipping after compressor - threshold=0.7 gives 3dB headroom
+    soft_clip_buffer(processed_output, capture_count, 0.7f, 3.0f);
   }
 }
 

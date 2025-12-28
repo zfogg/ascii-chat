@@ -25,8 +25,9 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "common.h"  // For asciichat_error_t
 
+// Type definitions MUST come before including common.h to avoid circular dependencies.
+// common.h → abstraction.h → debug/lock.h → thread.h, and lock.h needs asciithread_t.
 #ifdef _WIN32
 #include "windows_compat.h"
 /** @brief Thread handle type (Windows: HANDLE) */
@@ -44,6 +45,8 @@ typedef pthread_t thread_id_t;
 /** @brief Thread-local storage key type (POSIX: pthread_key_t) */
 typedef pthread_key_t tls_key_t;
 #endif
+
+#include "common.h" // For asciichat_error_t (must come AFTER type definitions)
 
 // ============================================================================
 // Thread Functions

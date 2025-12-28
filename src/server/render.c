@@ -163,7 +163,7 @@
 #include "options.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
-#include "packet_queue.h"
+#include "network/packet_queue.h"
 #include "util/time.h"
 #include "audio/mixer.h"
 #include "audio/audio.h"
@@ -561,7 +561,7 @@ void *client_video_render_thread(void *arg) {
             lag_counter++;
             if (lag_counter % 10 == 0) {
               log_warn_every(
-                  1000000,
+                  LOG_RATE_FAST,
                   "SERVER VIDEO LAG: Client %u frame rendered %.1fms late (expected %.1fms, got %.1fms, actual "
                   "fps: %.1f)",
                   thread_client_id, (float)(frame_interval_us - expected_interval_us) / 1000.0f,
@@ -603,7 +603,8 @@ void *client_video_render_thread(void *arg) {
       (void)write_time_us;
     } else {
       // No frame generated (probably no video sources) - this is normal, no error logging needed
-      log_debug_every(3000000, "Per-client render: No video sources available for client %u", client_id_snapshot);
+      log_debug_every(LOG_RATE_NORMAL, "Per-client render: No video sources available for client %u",
+                      client_id_snapshot);
     }
 
   skip_frame_generation:
@@ -792,7 +793,7 @@ void *client_audio_render_thread(void *arg) {
     struct timespec loop_start_time;
     (void)clock_gettime(CLOCK_MONOTONIC, &loop_start_time);
 
-    log_debug_every(10000000, "Audio render loop iteration for client %u", thread_client_id);
+    log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
     if (atomic_load(&g_server_should_exit)) {
@@ -811,7 +812,7 @@ void *client_audio_render_thread(void *arg) {
     }
 
     if (!g_audio_mixer) {
-      log_info_every(1000000, "Audio render waiting for mixer (client %u)", thread_client_id);
+      log_info_every(LOG_RATE_FAST, "Audio render waiting for mixer (client %u)", thread_client_id);
       // Check shutdown flag while waiting
       if (atomic_load(&g_server_should_exit))
         break;
@@ -850,7 +851,7 @@ void *client_audio_render_thread(void *arg) {
           size_t available = audio_ring_buffer_available_read(g_audio_mixer->source_buffers[i]);
           if (available > 96000) { // Buffer > 50% full (2 seconds)
             samples_to_read = 960; // Double read to catch up (20ms worth)
-            log_debug_every(5000000, "Audio catchup for client %u: buffer has %zu samples, reading %d",
+            log_debug_every(LOG_RATE_DEFAULT, "Audio catchup for client %u: buffer has %zu samples, reading %d",
                             client_id_snapshot, available, samples_to_read);
             break;
           }
@@ -889,8 +890,9 @@ void *client_audio_render_thread(void *arg) {
         samples_mixed = max_samples_in_frame; // Only count samples we actually read
       }
 
-      log_debug_every(5000000, "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u",
-                      samples_mixed, client_id_snapshot);
+      log_debug_every(LOG_RATE_DEFAULT,
+                      "Audio mixer DISABLED (--no-audio-mixer): simple mixing, samples=%d for client %u", samples_mixed,
+                      client_id_snapshot);
     } else {
       // Use adaptive sample count in normal mixer mode
       samples_mixed = mixer_process_excluding_source(g_audio_mixer, mix_buffer, samples_to_read, client_id_snapshot);
@@ -902,12 +904,13 @@ void *client_audio_render_thread(void *arg) {
                            ((uint64_t)mix_start_time.tv_sec * 1000000 + (uint64_t)mix_start_time.tv_nsec / 1000);
 
     if (mix_time_us > 2000) { // Log if mixing takes > 2ms
-      log_warn_every(5000000, "Slow mixer for client %u: took %lluus (%.2fms)", client_id_snapshot, mix_time_us,
-                     (float)mix_time_us / 1000.0f);
+      log_warn_every(LOG_RATE_DEFAULT, "Slow mixer for client %u: took %lluus (%.2fms)", client_id_snapshot,
+                     mix_time_us, (float)mix_time_us / 1000.0f);
     }
 
     // Debug logging every 100 iterations (disabled - can slow down audio rendering)
-    // log_debug_every(10000000, "Audio render for client %u: samples_mixed=%d", client_id_snapshot, samples_mixed);
+    // log_debug_every(LOG_RATE_SLOW, "Audio render for client %u: samples_mixed=%d", client_id_snapshot,
+    // samples_mixed);
 
     // DEBUG: Log samples mixed every iteration
     // NOTE: mixer_debug_count is now per-thread (not static), so each client thread has its own counter
@@ -939,7 +942,7 @@ void *client_audio_render_thread(void *arg) {
                              ((uint64_t)accum_start.tv_sec * 1000000 + (uint64_t)accum_start.tv_nsec / 1000);
 
     if (accum_time_us > 500) {
-      log_warn_every(5000000, "Slow accumulate for client %u: took %lluus", client_id_snapshot, accum_time_us);
+      log_warn_every(LOG_RATE_DEFAULT, "Slow accumulate for client %u: took %lluus", client_id_snapshot, accum_time_us);
     }
 
     // Only encode and send when we have accumulated a full Opus frame
@@ -984,8 +987,8 @@ void *client_audio_render_thread(void *arg) {
                               ((uint64_t)opus_start_time.tv_sec * 1000000 + (uint64_t)opus_start_time.tv_nsec / 1000);
 
       if (opus_time_us > 2000) { // Log if encoding takes > 2ms
-        log_warn_every(5000000, "Slow Opus encode for client %u: took %lluus (%.2fms), size=%d", client_id_snapshot,
-                       opus_time_us, (float)opus_time_us / 1000.0f, opus_size);
+        log_warn_every(LOG_RATE_DEFAULT, "Slow Opus encode for client %u: took %lluus (%.2fms), size=%d",
+                       client_id_snapshot, opus_time_us, (float)opus_time_us / 1000.0f, opus_size);
       }
 
       // DEBUG: Log mix buffer and encoding results to see audio levels being sent
@@ -1029,7 +1032,7 @@ void *client_audio_render_thread(void *arg) {
                                  ((uint64_t)queue_start.tv_sec * 1000000 + (uint64_t)queue_start.tv_nsec / 1000);
 
         if (queue_time_us > 500) {
-          log_warn_every(5000000, "Slow queue for client %u: took %lluus", client_id_snapshot, queue_time_us);
+          log_warn_every(LOG_RATE_DEFAULT, "Slow queue for client %u: took %lluus", client_id_snapshot, queue_time_us);
         }
 
         if (result < 0) {
@@ -1054,7 +1057,7 @@ void *client_audio_render_thread(void *arg) {
           // Log warning if packet took too long to process
           if (audio_packet_count > 1 && packet_interval_us > lag_threshold_us) {
             log_warn_every(
-                1000000,
+                LOG_RATE_FAST,
                 "SERVER AUDIO LAG: Client %u packet processed %.1fms late (expected %.1fms, got %.1fms, actual "
                 "fps: %.1f)",
                 thread_client_id, (float)(packet_interval_us - expected_interval_us) / 1000.0f,
@@ -1082,7 +1085,8 @@ void *client_audio_render_thread(void *arg) {
 
     if (loop_elapsed_us >= target_loop_us) {
       // Processing took longer than target - skip sleep but warn
-      log_warn_every(1000000, "Audio processing took %lluus (%.1fms) - exceeds target %lluus (%.1fms) for client %u",
+      log_warn_every(LOG_RATE_FAST,
+                     "Audio processing took %lluus (%.1fms) - exceeds target %lluus (%.1fms) for client %u",
                      loop_elapsed_us, (float)loop_elapsed_us / 1000.0f, target_loop_us, (float)target_loop_us / 1000.0f,
                      thread_client_id);
     } else {
@@ -1202,8 +1206,8 @@ int create_client_render_threads(client_info_t *client) {
   atomic_store(&client->audio_render_thread_running, true);
 
   // Create video rendering thread
-  asciichat_error_t video_result = thread_create_or_fail(&client->video_render_thread, client_video_render_thread, client,
-                                                          "video_render", client->client_id);
+  asciichat_error_t video_result = thread_create_or_fail(&client->video_render_thread, client_video_render_thread,
+                                                         client, "video_render", client->client_id);
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
     atomic_store(&client->video_render_thread_running, false);
@@ -1212,8 +1216,8 @@ int create_client_render_threads(client_info_t *client) {
   }
 
   // Create audio rendering thread
-  asciichat_error_t audio_result = thread_create_or_fail(&client->audio_render_thread, client_audio_render_thread, client,
-                                                          "audio_render", client->client_id);
+  asciichat_error_t audio_result = thread_create_or_fail(&client->audio_render_thread, client_audio_render_thread,
+                                                         client, "audio_render", client->client_id);
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store(&client->video_render_thread_running, false);

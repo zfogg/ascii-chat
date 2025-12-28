@@ -79,7 +79,8 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio/audio_analysis.h"
+#include "audio/audio.h"
+#include "audio/analysis.h"
 #include "keepalive.h"
 
 #include "network/packet.h"
@@ -88,8 +89,8 @@
 #include "common.h"
 #include "util/validation.h"
 #include "options.h"
-#include "crc32.h"
-#include "fps_tracker.h"
+#include "network/crc32.h"
+#include "fps.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -111,7 +112,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include "platform/windows_compat.h"
 #endif
 
-#include "compression.h"
+#include "network/compression.h"
 #include "network/av.h"
 
 #include <errno.h>
@@ -277,7 +278,7 @@ static void disconnect_server_for_bad_data(const char *format, ...) {
  * @ingroup client_protocol
  */
 static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                uint32_t original_size, uint32_t compressed_size) {
+                               uint32_t original_size, uint32_t compressed_size) {
   // Validate size before allocation to prevent excessive memory usage
   if (original_size > 100 * 1024 * 1024) {
     SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", original_size);
@@ -358,14 +359,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // FPS tracking for received ASCII frames using reusable tracker utility
-  static fps_tracker_t fps_tracker = {0};
+  static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
 
   // Initialize FPS tracker on first frame
   if (!fps_tracker_initialized) {
-    extern int g_max_fps;  // From common.c
+    extern int g_max_fps; // From common.c
     int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
-    fps_tracker_init(&fps_tracker, expected_fps, "CLIENT");
+    fps_init(&fps_tracker, expected_fps, "ASCII_RX");
     fps_tracker_initialized = true;
   }
 
@@ -373,7 +374,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
   // Track this frame and detect lag
-  fps_tracker_frame(&fps_tracker, &current_time, "ASCII frame");
+  fps_frame(&fps_tracker, &current_time, "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;
@@ -393,10 +394,10 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // Decode frame data (handles both compressed and uncompressed)
   bool is_compressed = (header.flags & FRAME_FLAG_IS_COMPRESSED) && header.compressed_size > 0;
-  char *frame_data = decode_frame_data(frame_data_ptr, frame_data_len, is_compressed, header.original_size,
-                                        header.compressed_size);
+  char *frame_data =
+      decode_frame_data(frame_data_ptr, frame_data_len, is_compressed, header.original_size, header.compressed_size);
   if (!frame_data) {
-    return;  // Error already logged by decode_frame_data
+    return; // Error already logged by decode_frame_data
   }
 
   // Verify checksum
@@ -648,7 +649,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   // Clean up
   SAFE_FREE(samples);
 
-  log_debug_every(5000000, "Processed audio batch: %u samples from server", total_samples);
+  log_debug_every(LOG_RATE_DEFAULT, "Processed audio batch: %u samples from server", total_samples);
 }
 
 /**
@@ -687,7 +688,8 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   // Process decoded audio through audio subsystem
   audio_process_received_samples(samples, decoded_samples);
 
-  log_debug_every(5000000, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, len);
+  log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples,
+                  len);
 }
 
 /**
@@ -787,7 +789,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     // Process decoded audio through audio subsystem
     audio_process_received_samples(all_samples, total_decoded_samples);
 
-    log_debug_every(5000000, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
+    log_debug_every(LOG_RATE_DEFAULT, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
                     frame_count);
   }
 

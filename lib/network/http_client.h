@@ -1,10 +1,10 @@
 #pragma once
 
 /**
- * @file crypto/http_client.h
+ * @file network/http_client.h
  * @brief Simple HTTPS client for fetching public keys from GitHub/GitLab
- * @ingroup crypto
- * @addtogroup crypto
+ * @ingroup network
+ * @addtogroup network
  * @{
  *
  * This module provides basic HTTPS GET functionality using BearSSL for TLS.
@@ -23,7 +23,7 @@
  *       - GitLab GPG keys: `https://gitlab.com/username.gpg`
  *
  * @note Key fetching functions: fetch_github_ssh_keys, fetch_gitlab_ssh_keys,
- *       fetch_github_gpg_keys, and fetch_gitlab_gpg_keys have been moved to
+ *       fetch_github_gpg_keys, and fetch_gitlab_gpg_keys are in
  *       crypto/keys/https_keys.h. They properly belong in the keys module.
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -73,7 +73,7 @@
  * @warning Certificate validation: Uses system CA certificates for validation.
  *          May fail if system CA certificates are missing or outdated.
  *
- * @ingroup crypto
+ * @ingroup network
  */
 char *https_get(const char *hostname, const char *path);
 

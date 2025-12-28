@@ -12,14 +12,19 @@
  * =================
  * This header includes:
  * - aspect_ratio.h: Aspect ratio calculation functions
+ * - bytes.h: Byte-level access and safe arithmetic utilities
  * - format.h: String formatting utilities
  * - ip.h: IP address parsing and formatting
- * - math.h: Mathematical utilities (rounding, clamping)
+ * - math.h: Mathematical utilities (rounding, clamping, power-of-two)
  * - parsing.h: Protocol message parsing utilities
  * - path.h: Path manipulation utilities
  * - string.h: String manipulation and shell escaping
  * - utf8.h: UTF-8 encoding and decoding utilities
  * - fnv1a.h: FNV-1a hash function implementation
+ * - thread.h: Thread management helper macros
+ * - atomic.h: Atomic operations convenience macros
+ * - endian.h: Network byte order conversion helpers
+ * - audio.h: Audio packet parsing utilities
  *
  * USAGE:
  * ======
@@ -45,6 +50,7 @@
  */
 
 #include "util/aspect_ratio.h"
+#include "util/bytes.h"
 #include "util/fnv1a.h"
 #include "util/format.h"
 #include "util/ip.h"
@@ -53,3 +59,7 @@
 #include "util/path.h"
 #include "util/string.h"
 #include "util/utf8.h"
+#include "util/thread.h"
+#include "util/atomic.h"
+#include "util/endian.h"
+#include "util/audio.h"

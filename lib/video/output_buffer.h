@@ -56,6 +56,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "util/number.h" // For digits_u32()
 
 /* ============================================================================
  * Data Structures
@@ -401,45 +402,4 @@ void emit_set_bg(outbuf_t *ob, uint8_t r, uint8_t g, uint8_t b);
  * ============================================================================
  */
 
-/**
- * @brief Calculate number of decimal digits for a 32-bit unsigned integer
- * @param v Value to calculate digits for (0 to 4294967295)
- * @return Number of decimal digits (1-10)
- *
- * Calculates the number of decimal digits required to represent a 32-bit
- * unsigned integer as a string. Optimized for REP (repeat) count formatting
- * where digit count is needed for buffer reservation.
- *
- * @note This is an inline function for performance (inlined at compile time).
- * @note Returns 1 for values 0-9, 10 for value 4294967295.
- * @note Used internally for efficient RLE sequence formatting.
- *
- * @par Example
- * @code
- * int digits = digits_u32(12345);  // Returns 5
- * int digits = digits_u32(0);       // Returns 1
- * @endcode
- *
- * @ingroup video
- */
-static inline int digits_u32(uint32_t v) {
-  if (v >= 1000000000u)
-    return 10;
-  if (v >= 100000000u)
-    return 9;
-  if (v >= 10000000u)
-    return 8;
-  if (v >= 1000000u)
-    return 7;
-  if (v >= 100000u)
-    return 6;
-  if (v >= 10000u)
-    return 5;
-  if (v >= 1000u)
-    return 4;
-  if (v >= 100u)
-    return 3;
-  if (v >= 10u)
-    return 2;
-  return 1;
-}
+/* digits_u32() is now in util/number.h - include above for access */

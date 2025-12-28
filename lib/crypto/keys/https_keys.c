@@ -8,7 +8,7 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../platform/string.h"
-#include "../http_client.h"
+#include "../../network/http_client.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

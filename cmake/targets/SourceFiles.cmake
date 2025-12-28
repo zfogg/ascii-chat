@@ -28,12 +28,13 @@ set(UTIL_SRCS
     lib/util/parsing.c
     lib/util/path.c
     lib/util/string.c
-    lib/util/math.c
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c
     lib/util/levenshtein.c
-    lib/fps_tracker.c
+    lib/util/image.c
+    lib/util/audio.c
+    lib/fps.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -49,7 +50,6 @@ set(CRYPTO_SRCS
     lib/crypto/keys/keys.c
     lib/crypto/known_hosts.c
     lib/crypto/handshake.c
-    lib/crypto/http_client.c
     lib/crypto/pem_utils.c
     # lib/crypto/gpg.c  # Temporarily excluded
     lib/crypto/ssh_agent.c
@@ -89,6 +89,7 @@ set_source_files_properties(
 set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
     lib/platform/socket.c
+    lib/platform/thread.c
     # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
 )
 
@@ -104,6 +105,7 @@ if(WIN32)
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
         lib/platform/windows/password.c
+        lib/platform/windows/mmap.c
         lib/platform/windows/symbols.c
         lib/platform/windows/getopt.c
         lib/platform/windows/pipe.c
@@ -122,6 +124,7 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
         lib/platform/posix/password.c
+        lib/platform/posix/mmap.c
         lib/platform/posix/symbols.c
         lib/platform/posix/pipe.c
     )
@@ -201,7 +204,7 @@ set(AUDIO_SRCS
     lib/audio/mixer.c
     lib/audio/wav_writer.c
     lib/audio/opus_codec.c
-    lib/audio/audio_analysis.c
+    lib/audio/analysis.c
     lib/audio/client_audio_pipeline.cpp
 )
 
@@ -222,8 +225,10 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/av.c
-    lib/compression.c
-    lib/crc32.c
+    lib/network/compression.c
+    lib/network/crc32.c
+    lib/network/packet_queue.c
+    lib/network/http_client.c
 )
 
 # =============================================================================
@@ -232,7 +237,8 @@ set(NETWORK_SRCS
 set(CORE_SRCS
     lib/common.c
     lib/asciichat_errno.c
-    lib/logging.c
+    lib/log/logging.c
+    lib/log/mmap.c
     lib/options.c
     lib/config.c
     lib/version.c
@@ -261,7 +267,6 @@ set_source_files_properties(
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
     lib/ringbuffer.c
-    lib/packet_queue.c
     lib/buffer_pool.c
 )
 

@@ -5,16 +5,17 @@
  */
 
 #include "platform/password.h"
+#include "log/logging.h"
 #include <stdio.h>
 #include <conio.h>
 
 int platform_prompt_password(const char *prompt, char *password, size_t max_len) {
-  fprintf(stderr, "\n");
-  fprintf(stderr, "========================================\n");
-  fprintf(stderr, "%s\n", prompt);
-  fprintf(stderr, "========================================\n");
-  fprintf(stderr, "> ");
-  fflush(stderr);
+  // Lock terminal so only this thread can output to terminal
+  // Other threads' logs are buffered until we unlock
+  bool previous_terminal_state = log_lock_terminal();
+
+  log_plain("\n========================================\n%s\n========================================", prompt);
+  log_plain_stderr_nonewline("> ");
 
   // Use _getch for secure password input (no echo)
   int i = 0;
@@ -30,6 +31,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
     // Handle Ctrl+C (interrupt)
     if (ch == 3) {
       (void)fprintf(stderr, "\n");
+      log_unlock_terminal(previous_terminal_state);
       return -1;
     }
 
@@ -46,7 +48,9 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
   }
   password[i] = '\0';
 
-  (void)fprintf(stderr, "\n========================================\n\n");
-  (void)fflush(stderr);
+  log_plain("\n========================================\n");
+
+  // Unlock terminal - buffered logs from other threads will be flushed
+  log_unlock_terminal(previous_terminal_state);
   return 0;
 }

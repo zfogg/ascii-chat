@@ -31,15 +31,16 @@
 #include "options.h"
 #include "config.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "video/webcam/webcam.h"
 #include "audio/audio.h"
 #include "util/ip.h"
 #include "util/path.h"
+#include "util/parsing.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/password.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "version.h"
 #include "crypto/crypto.h"
 #include "util/levenshtein.h"
@@ -91,14 +92,18 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
+// Forward declaration for get_required_argument (defined later in file)
+static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
+                                   bool is_client);
+
 // Standard option parsing error return
 static inline asciichat_error_t option_error_invalid(void) {
-  return option_error_invalid();
+  return ERROR_INVALID_PARAM;
 }
 
 // Validate and retrieve required argument for an option
-static char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size,
-                                       const char *option_name, bool is_client) {
+static char *validate_required_argument(const char *optarg, char *argbuf, size_t argbuf_size, const char *option_name,
+                                        bool is_client) {
   char *value = get_required_argument(optarg, argbuf, argbuf_size, option_name, is_client);
   if (!value) {
     (void)option_error_invalid();
@@ -106,16 +111,15 @@ static char *validate_required_argument(const char *optarg, char *argbuf, size_t
   return value;
 }
 
-// Validate a positive integer value
-static bool validate_positive_int(const char *value_str, int *out_value, const char *param_name) {
+// Validate a positive integer value (internal option parsing helper)
+static bool validate_positive_int_opt(const char *value_str, int *out_value, const char *param_name) {
   if (!value_str || !out_value) {
     return false;
   }
 
   int val = strtoint_safe(value_str);
   if (val == INT_MIN || val <= 0) {
-    (void)fprintf(stderr, "Invalid %s value '%s'. %s must be a positive integer.\n", param_name,
-                  value_str, param_name);
+    (void)fprintf(stderr, "Invalid %s value '%s'. %s must be a positive integer.\n", param_name, value_str, param_name);
     return false;
   }
 
@@ -123,26 +127,23 @@ static bool validate_positive_int(const char *value_str, int *out_value, const c
   return true;
 }
 
-// Validate port number (1-65535)
-static bool validate_port(const char *value_str, uint16_t *out_port) {
+// Validate port number (1-65535) (internal option parsing helper)
+static bool validate_port_opt(const char *value_str, uint16_t *out_port) {
   if (!value_str || !out_port) {
     return false;
   }
 
-  char *endptr;
-  long port_num = strtol(value_str, &endptr, 10);
-  if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
-    (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n",
-                  value_str);
+  // Use safe integer parsing with range validation
+  if (parse_port(value_str, out_port) != ASCIICHAT_OK) {
+    (void)fprintf(stderr, "Invalid port value '%s'. Port must be a number between 1 and 65535.\n", value_str);
     return false;
   }
 
-  *out_port = (uint16_t)port_num;
   return true;
 }
 
-// Validate FPS value (1-144)
-static bool validate_fps(const char *value_str, int *out_fps) {
+// Validate FPS value (1-144) (internal option parsing helper)
+static bool validate_fps_opt(const char *value_str, int *out_fps) {
   if (!value_str || !out_fps) {
     return false;
   }
@@ -165,8 +166,7 @@ static bool validate_webcam_index(const char *value_str, unsigned short int *out
 
   int parsed_index = strtoint_safe(value_str);
   if (parsed_index == INT_MIN || parsed_index < 0) {
-    (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n",
-                  value_str);
+    (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n", value_str);
     return false;
   }
 
@@ -449,9 +449,9 @@ int validate_port(const char *value_str, char *error_msg, size_t error_msg_size)
     return -1;
   }
 
-  char *endptr;
-  long port_num = strtol(value_str, &endptr, 10);
-  if (*endptr != '\0' || value_str == endptr || port_num < 1 || port_num > 65535) {
+  // Use safe integer parsing with range validation
+  uint16_t port_num;
+  if (parse_port(value_str, &port_num) != ASCIICHAT_OK) {
     if (error_msg) {
       SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid port value '%s'. Port must be a number between 1 and 65535.",
                     value_str);
@@ -1089,7 +1089,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       uint16_t port_num;
-      if (!validate_port(value_str, &port_num))
+      if (!validate_port_opt(value_str, &port_num))
         return option_error_invalid();
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
@@ -1100,7 +1100,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       int width_val;
-      if (!validate_positive_int(value_str, &width_val, "width"))
+      if (!validate_positive_int_opt(value_str, &width_val, "width"))
         return option_error_invalid();
       opt_width = (unsigned short int)width_val;
       auto_width = false; // Mark as manually set
@@ -1112,7 +1112,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       int height_val;
-      if (!validate_positive_int(value_str, &height_val, "height"))
+      if (!validate_positive_int_opt(value_str, &height_val, "height"))
         return option_error_invalid();
       opt_height = (unsigned short int)height_val;
       auto_height = false; // Mark as manually set
@@ -1175,7 +1175,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       int fps_val;
-      if (!validate_fps(value_str, &fps_val))
+      if (!validate_fps_opt(value_str, &fps_val))
         return option_error_invalid();
       g_max_fps = fps_val;
       break;
@@ -1445,17 +1445,9 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      char *endptr;
-      long level = strtol(value_str, &endptr, 10);
-
-      // Validate number parsing
-      if (*endptr != '\0' || endptr == value_str) {
-        (void)fprintf(stderr, "Invalid compression level '%s': must be a number\n", value_str);
-        return option_error_invalid();
-      }
-
-      // Validate range (zstd levels 1-9 for real-time streaming)
-      if (level < 1 || level > 9) {
+      // Use safe integer parsing with range validation (zstd levels 1-9 for real-time streaming)
+      long level;
+      if (parse_long(value_str, &level, 1, 9) != ASCIICHAT_OK) {
         (void)fprintf(stderr, "Invalid compression level '%s': must be between 1 and 9\n", value_str);
         (void)fprintf(stderr, "  Level 1: Fastest compression (best for real-time)\n");
         (void)fprintf(stderr, "  Level 3: Balanced speed/ratio\n");
@@ -1483,18 +1475,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       } else if (strcmp(value_str, "auto") == 0) {
         opt_reconnect_attempts = -1; // Unlimited reconnection
       } else {
-        // Parse as number
-        char *endptr;
-        long attempts = strtol(value_str, &endptr, 10);
-
-        // Validate number parsing
-        if (*endptr != '\0' || endptr == value_str) {
+        // Parse as number using safe integer parsing
+        long attempts;
+        if (parse_long(value_str, &attempts, 0, 999) != ASCIICHAT_OK) {
           (void)fprintf(stderr, "Invalid reconnect value '%s': must be 'off', 'auto', or a number\n", value_str);
-          return option_error_invalid();
-        }
-
-        // Validate range (0-999 attempts)
-        if (attempts < 0 || attempts > 999) {
           (void)fprintf(stderr, "Invalid reconnect attempts '%s': must be between 0 and 999\n", value_str);
           (void)fprintf(stderr, "  Use 'off' for no reconnection\n");
           (void)fprintf(stderr, "  Use 'auto' for unlimited reconnection\n");
@@ -1516,17 +1500,9 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      char *endptr;
-      long max_clients = strtol(value_str, &endptr, 10);
-
-      // Validate number parsing
-      if (*endptr != '\0' || endptr == value_str) {
-        (void)fprintf(stderr, "Invalid max-clients '%s': must be a number\n", value_str);
-        return option_error_invalid();
-      }
-
-      // Validate range (1-32 clients)
-      if (max_clients < 1 || max_clients > 32) {
+      // Use safe integer parsing with range validation (1-32 clients)
+      long max_clients;
+      if (parse_long(value_str, &max_clients, 1, 32) != ASCIICHAT_OK) {
         (void)fprintf(stderr, "Invalid max-clients '%s': must be between 1 and 32\n", value_str);
         return option_error_invalid();
       }

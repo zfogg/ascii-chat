@@ -113,3 +113,74 @@ asciichat_error_t safe_parse_size_message(const char *message, unsigned int *wid
 asciichat_error_t safe_parse_audio_message(const char *message, unsigned int *num_samples);
 
 /** @} */
+
+/* ============================================================================
+ * Integer Parsing Functions
+ * @{
+ */
+
+/**
+ * @brief Parse signed long integer with range validation
+ * @param str String to parse (must be null-terminated)
+ * @param out_value Output: parsed integer value
+ * @param min_value Minimum allowed value (inclusive)
+ * @param max_value Maximum allowed value (inclusive)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
+ *
+ * Safe wrapper for strtol() with overflow detection and range validation.
+ */
+asciichat_error_t parse_long(const char *str, long *out_value, long min_value, long max_value);
+
+/**
+ * @brief Parse unsigned long integer with range validation
+ * @param str String to parse (must be null-terminated)
+ * @param out_value Output: parsed integer value
+ * @param min_value Minimum allowed value (inclusive)
+ * @param max_value Maximum allowed value (inclusive)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
+ */
+asciichat_error_t parse_ulong(const char *str, unsigned long *out_value, unsigned long min_value,
+                              unsigned long max_value);
+
+/**
+ * @brief Parse unsigned long long integer with range validation
+ * @param str String to parse (must be null-terminated)
+ * @param out_value Output: parsed integer value
+ * @param min_value Minimum allowed value (inclusive)
+ * @param max_value Maximum allowed value (inclusive)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
+ */
+asciichat_error_t parse_ulonglong(const char *str, unsigned long long *out_value, unsigned long long min_value,
+                                  unsigned long long max_value);
+
+/**
+ * @brief Parse port number (1-65535) from string
+ * @param str String to parse (must be null-terminated)
+ * @param out_port Output: parsed port number
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
+ *
+ * Convenience function for parsing TCP/UDP port numbers.
+ */
+asciichat_error_t parse_port(const char *str, uint16_t *out_port);
+
+/**
+ * @brief Parse signed 32-bit integer with range validation
+ * @param str String to parse (must be null-terminated)
+ * @param out_value Output: parsed integer value
+ * @param min_value Minimum allowed value (inclusive)
+ * @param max_value Maximum allowed value (inclusive)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
+ */
+asciichat_error_t parse_int32(const char *str, int32_t *out_value, int32_t min_value, int32_t max_value);
+
+/**
+ * @brief Parse unsigned 32-bit integer with range validation
+ * @param str String to parse (must be null-terminated)
+ * @param out_value Output: parsed integer value
+ * @param min_value Minimum allowed value (inclusive)
+ * @param max_value Maximum allowed value (inclusive)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on invalid input or out of range
+ */
+asciichat_error_t parse_uint32(const char *str, uint32_t *out_value, uint32_t min_value, uint32_t max_value);
+
+/** @} */

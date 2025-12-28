@@ -45,7 +45,7 @@
 #include "platform/socket.h"
 #include "crypto.h"
 #include "keys/keys.h"
-#include "network/packet_types.h" // For crypto_parameters_packet_t
+#include "network/packet.h" // For crypto_parameters_packet_t
 
 /**
  * @name Authentication Requirement Flags

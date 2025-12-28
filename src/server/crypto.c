@@ -530,6 +530,9 @@ int server_crypto_handshake(client_info_t *client) {
   uint32_t cid = atomic_load(&client->client_id);
   STOP_TIMER_AND_LOG("server_crypto_handshake_client_%u", log_info,
                      "Crypto handshake completed successfully for client %u", cid);
+
+  // Send success notification to client (encrypted channel now established)
+  log_info_client(client, "Encryption established - secure channel ready");
   return 0;
 }
 

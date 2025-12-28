@@ -9,39 +9,10 @@
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "util/time.h"       // For timing instrumentation
+#include "util/bits.h"       // For find_first_set_bit
 #include <math.h>
 #include <string.h>
 #include <stdint.h>
-
-#if defined(_MSC_VER) && !defined(__clang__)
-#include <intrin.h>
-#endif
-
-// Portable bit manipulation: Count trailing zeros (find first set bit)
-static inline int find_first_set_bit(uint64_t mask) {
-#if defined(__GNUC__) || defined(__clang__)
-  // GCC/Clang builtin (fast hardware instruction)
-  return __builtin_ctzll(mask);
-#elif defined(_MSC_VER) && defined(_M_X64)
-  // Microsoft Visual C++ x64 intrinsic
-  unsigned long index;
-  _BitScanForward64(&index, mask);
-  return (int)index;
-#else
-  // Portable fallback using De Bruijn multiplication (production-tested)
-  // This is O(1) with ~4-5 CPU cycles - very fast and reliable
-  static const int debruijn_table[64] = {0,  1,  2,  53, 3,  7,  54, 27, 4,  38, 41, 8,  34, 55, 48, 28,
-                                         62, 5,  39, 46, 44, 42, 22, 9,  24, 35, 59, 56, 49, 18, 29, 11,
-                                         63, 52, 6,  26, 37, 40, 33, 47, 61, 45, 43, 21, 23, 58, 17, 10,
-                                         51, 25, 36, 32, 60, 20, 57, 16, 50, 31, 19, 15, 30, 14, 13, 12};
-
-  if (mask == 0)
-    return 64; // No bits set
-
-  // De Bruijn sequence method: isolate rightmost bit and hash
-  return debruijn_table[((mask & -mask) * 0x022fdd63cc95386dULL) >> 58];
-#endif
-}
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -576,8 +547,8 @@ int mixer_process(mixer_t *mixer, float *output, int num_samples) {
 
       // Compressor provides +6dB makeup gain for better audibility
       // Soft clip threshold 1.0f allows full range without premature clipping
-      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
-      output[frame_start + s] = soft_clip(mix, 1.0f);
+      // Steepness 3.0 for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f, 3.0f);
     }
   }
 
@@ -624,7 +595,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         int chunk = (i + MIXER_FRAME_SIZE > num_samples) ? (num_samples - i) : MIXER_FRAME_SIZE;
         audio_ring_buffer_read(mixer->source_buffers[exclude_index], discard_buffer, chunk);
       }
-      log_debug_every(5000000, "Mixer: Draining solo client %u buffer to prevent overflow", exclude_client_id);
+      log_debug_every(LOG_RATE_DEFAULT, "Mixer: Draining solo client %u buffer to prevent overflow", exclude_client_id);
     }
     active_mask = mask_without_excluded;
   }
@@ -734,8 +705,8 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
 
       // Compressor provides +6dB makeup gain for better audibility
       // Soft clip threshold 1.0f allows full range without premature clipping
-      // Tanh curve reduced from 10.0f to 3.0f for smoother clipping behavior
-      output[frame_start + s] = soft_clip(mix, 1.0f);
+      // Steepness 3.0 for smoother clipping behavior
+      output[frame_start + s] = soft_clip(mix, 1.0f, 3.0f);
     }
   }
 
@@ -939,23 +910,120 @@ void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int 
  * ============================================================================
  */
 
-float soft_clip(float sample, float threshold) {
+float soft_clip(float sample, float threshold, float steepness) {
   if (sample > threshold) {
-    // Soft clip positive values - use gentler tanh curve (6.0 instead of 10.0) to reduce aliasing
-    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * 6.0f);
+    // Soft clip positive values using tanh curve
+    // Maps samples above threshold asymptotically toward 1.0
+    return threshold + (1.0f - threshold) * tanhf((sample - threshold) * steepness);
   }
   if (sample < -threshold) {
-    // Soft clip negative values - use gentler tanh curve to reduce aliasing
-    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * 6.0f);
+    // Soft clip negative values symmetrically
+    return -threshold + (-1.0f + threshold) * tanhf((sample + threshold) * steepness);
   }
   return sample;
 }
 
-void soft_clip_buffer(float *buffer, int num_samples, float threshold) {
+void soft_clip_buffer(float *buffer, int num_samples, float threshold, float steepness) {
   if (!buffer || num_samples <= 0)
     return;
 
   for (int i = 0; i < num_samples; i++) {
-    buffer[i] = soft_clip(buffer[i], threshold);
+    buffer[i] = soft_clip(buffer[i], threshold, steepness);
+  }
+}
+
+/* ============================================================================
+ * Buffer Utility Functions
+ * ============================================================================
+ */
+
+float smoothstep(float t) {
+  if (t <= 0.0f)
+    return 0.0f;
+  if (t >= 1.0f)
+    return 1.0f;
+  return t * t * (3.0f - 2.0f * t);
+}
+
+int16_t float_to_int16(float sample) {
+  // Clamp to [-1, 1] then scale to int16 range
+  if (sample > 1.0f)
+    sample = 1.0f;
+  if (sample < -1.0f)
+    sample = -1.0f;
+  return (int16_t)(sample * 32767.0f);
+}
+
+float int16_to_float(int16_t sample) {
+  return (float)sample / 32768.0f;
+}
+
+void buffer_float_to_int16(const float *src, int16_t *dst, int count) {
+  if (!src || !dst || count <= 0)
+    return;
+  for (int i = 0; i < count; i++) {
+    dst[i] = float_to_int16(src[i]);
+  }
+}
+
+void buffer_int16_to_float(const int16_t *src, float *dst, int count) {
+  if (!src || !dst || count <= 0)
+    return;
+  for (int i = 0; i < count; i++) {
+    dst[i] = int16_to_float(src[i]);
+  }
+}
+
+float buffer_peak(const float *buffer, int count) {
+  if (!buffer || count <= 0)
+    return 0.0f;
+
+  float peak = 0.0f;
+  for (int i = 0; i < count; i++) {
+    float abs_sample = fabsf(buffer[i]);
+    if (abs_sample > peak)
+      peak = abs_sample;
+  }
+  return peak;
+}
+
+void apply_gain_buffer(float *buffer, int count, float gain) {
+  if (!buffer || count <= 0)
+    return;
+
+  for (int i = 0; i < count; i++) {
+    buffer[i] *= gain;
+  }
+}
+
+void fade_buffer(float *buffer, int count, float start_gain, float end_gain) {
+  if (!buffer || count <= 0)
+    return;
+
+  float step = (end_gain - start_gain) / (float)count;
+  float gain = start_gain;
+  for (int i = 0; i < count; i++) {
+    buffer[i] *= gain;
+    gain += step;
+  }
+}
+
+void fade_buffer_smooth(float *buffer, int count, bool fade_in) {
+  if (!buffer || count <= 0)
+    return;
+
+  for (int i = 0; i < count; i++) {
+    float t = (float)i / (float)(count - 1);
+    float gain = smoothstep(fade_in ? t : (1.0f - t));
+    buffer[i] *= gain;
+  }
+}
+
+void copy_buffer_with_gain(const float *src, float *dst, int count, float gain) {
+  if (!src || !dst || count <= 0)
+    return;
+
+  for (int i = 0; i < count; i++) {
+    dst[i] = src[i] * gain;
   }
 }

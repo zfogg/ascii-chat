@@ -28,7 +28,7 @@
 #include <stdbool.h>
 #include <string.h> // For memcpy used in common.h
 #include <sys/types.h>
-#include "internal.h" // For ssize_t definition on Windows
+#include "platform/util.h" // For ssize_t definition on Windows
 
 #ifdef _WIN32
 #include <winsock2.h>

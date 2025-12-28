@@ -27,7 +27,7 @@ extern size_t malloc_usable_size(void *ptr);
 #include "common.h"
 #include "platform/system.h"
 #include "platform/init.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "buffer_pool.h"
 #include "video/palette.h"
 #include "asciichat_errno.h"

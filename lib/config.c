@@ -11,7 +11,7 @@
 #include "platform/terminal.h"
 #include "platform/system.h"
 #include "crypto/crypto.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "version.h"
 #include "tooling/defer/defer.h"
 

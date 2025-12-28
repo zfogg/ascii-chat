@@ -82,7 +82,7 @@
 #include "common.h"
 #include "version.h"
 #include "options.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "platform/terminal.h"
 #include "util/levenshtein.h"
 #include "util/path.h"

@@ -124,11 +124,13 @@
 #include "audio/audio.h"
 #include "video/palette.h"
 #include "video/image.h"
-#include "compression.h"
+#include "network/compression.h"
 #include "util/format.h"
 #include "platform/system.h"
 #include "audio/opus_codec.h"
 #include "network/av.h"
+#include "network/logging.h"
+#include "crypto/handshake.h"
 
 /**
  * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown
@@ -298,6 +300,167 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 
   log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", atomic_load(&client->client_id),
            client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
+
+  // Notify client of successful join (encrypted channel)
+  log_info_client(client, "Joined as '%s' (video=%s, audio=%s)", client->display_name,
+                  client->can_send_video ? "yes" : "no", client->can_send_audio ? "yes" : "no");
+}
+
+/**
+ * @brief Process PROTOCOL_VERSION packet - validate protocol compatibility
+ *
+ * Clients send this packet to announce their protocol version and capabilities.
+ * The server validates that the major version matches and logs any version
+ * mismatches for debugging purposes.
+ *
+ * PACKET STRUCTURE EXPECTED:
+ * - protocol_version_packet_t containing:
+ *   - protocol_version: Major version number (must match PROTOCOL_VERSION_MAJOR)
+ *   - protocol_revision: Minor version number
+ *   - supports_encryption: Encryption capability flag
+ *   - compression_algorithms: Supported compression bitmask
+ *   - feature_flags: Optional feature flags
+ *
+ * VALIDATION PERFORMED:
+ * - Packet size matches sizeof(protocol_version_packet_t)
+ * - Major protocol version matches (PROTOCOL_VERSION_MAJOR)
+ * - Reserved bytes are zero (future-proofing)
+ *
+ * ERROR HANDLING:
+ * - Version mismatch is logged but NOT fatal (backward compatibility)
+ * - Invalid packet size triggers disconnect
+ *
+ * @param client Client that sent the packet
+ * @param data Packet payload (protocol_version_packet_t)
+ * @param len Size of packet payload in bytes
+ *
+ * @note This is typically the first packet in the handshake
+ * @note Protocol version validation ensures compatibility
+ */
+void handle_protocol_version_packet(client_info_t *client, const void *data, size_t len) {
+  if (!data) {
+    disconnect_client_for_bad_data(client, "PROTOCOL_VERSION payload missing");
+    return;
+  }
+
+  if (len != sizeof(protocol_version_packet_t)) {
+    disconnect_client_for_bad_data(client, "PROTOCOL_VERSION invalid size: %zu (expected %zu)", len,
+                                   sizeof(protocol_version_packet_t));
+    return;
+  }
+
+  const protocol_version_packet_t *version = (const protocol_version_packet_t *)data;
+  uint16_t client_major = ntohs(version->protocol_version);
+  uint16_t client_minor = ntohs(version->protocol_revision);
+
+  // Validate major version match (minor version can differ for backward compat)
+  if (client_major != PROTOCOL_VERSION_MAJOR) {
+    log_warn("Client %u protocol version mismatch: client=%u.%u, server=%u.%u", atomic_load(&client->client_id),
+             client_major, client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+    // Note: We don't disconnect on version mismatch for backward compatibility
+    // Clients may be older or newer than server
+  } else if (client_minor != PROTOCOL_VERSION_MINOR) {
+    log_info("Client %u has different protocol revision: client=%u.%u, server=%u.%u", atomic_load(&client->client_id),
+             client_major, client_minor, PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR);
+  }
+
+  // Validate reserved bytes are zero
+  for (size_t i = 0; i < sizeof(version->reserved); i++) {
+    if (version->reserved[i] != 0) {
+      log_warn("Client %u sent non-zero reserved bytes in PROTOCOL_VERSION packet", atomic_load(&client->client_id));
+      // Don't disconnect - reserved bytes may be used in future versions
+      break;
+    }
+  }
+
+  // Log supported features
+  if (version->supports_encryption) {
+    log_debug("Client %u supports encryption", atomic_load(&client->client_id));
+  }
+  if (version->compression_algorithms != 0) {
+    log_debug("Client %u supports compression: 0x%02x", atomic_load(&client->client_id),
+              version->compression_algorithms);
+  }
+  if (version->feature_flags != 0) {
+    uint16_t feature_flags = ntohs(version->feature_flags);
+    log_debug("Client %u supports features: 0x%04x", atomic_load(&client->client_id), feature_flags);
+  }
+}
+
+/**
+ * @brief Process CLIENT_LEAVE packet - handle clean client disconnect
+ *
+ * Clients may send this packet before disconnecting to allow the server to
+ * log the disconnect reason and perform clean state management. This is
+ * optional but preferred over abrupt disconnects.
+ *
+ * PACKET STRUCTURE EXPECTED:
+ * - Optional string containing disconnect reason (0-256 bytes)
+ *
+ * PROTOCOL BEHAVIOR:
+ * - Client logs the disconnect reason if provided
+ * - Server continues normal disconnect sequence after receiving packet
+ * - Client remains responsible for closing socket
+ *
+ * ERROR HANDLING:
+ * - Empty payload is handled gracefully
+ * - Oversized payloads are rejected
+ * - Invalid UTF-8 in reason is handled gracefully (logged as-is)
+ *
+ * @param client Client that sent the leave packet
+ * @param data Packet payload (optional reason string)
+ * @param len Size of packet payload in bytes (0-256)
+ *
+ * @note This handler doesn't trigger immediate disconnect
+ * @note Actual disconnect occurs when socket closes
+ */
+void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
+  if (!client) {
+    return;
+  }
+
+  uint32_t client_id = atomic_load(&client->client_id);
+
+  if (len == 0) {
+    // Empty reason - client disconnecting without explanation
+    log_info("Client %u sent leave notification (no reason)", client_id);
+  } else if (len <= 256) {
+    // Reason provided - extract and log it
+    if (!data) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Client %u sent leave notification with non-zero length but NULL data", client_id);
+      return;
+    }
+
+    char reason[257] = {0};
+    memcpy(reason, data, len);
+    reason[len] = '\0';
+
+    // Validate reason is printable (handle potential non-UTF8 gracefully)
+    bool all_printable = true;
+    for (size_t i = 0; i < len; i++) {
+      uint8_t c = (uint8_t)reason[i];
+      if (c < 32 && c != '\t' && c != '\n') {
+        all_printable = false;
+        break;
+      }
+    }
+
+    if (all_printable) {
+      log_info("Client %u sent leave notification: %s", client_id, reason);
+    } else {
+      log_info("Client %u sent leave notification (reason contains non-printable characters)", client_id);
+    }
+  } else {
+    // Oversized reason - shouldn't happen with validation.h checks
+    log_warn("Client %u sent oversized leave reason (%zu bytes, max 256)", client_id, len);
+  }
+
+  // Deactivate client to stop processing packets
+  // Sets client->active = false immediately - triggers client cleanup procedures
+  atomic_store(&client->active, false);
+
+  // Note: We don't disconnect the client here - that happens when socket closes
+  // This is just a clean notification before disconnect
 }
 
 /**
@@ -338,6 +501,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_START");
+
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
@@ -372,6 +536,12 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   if (stream_type & STREAM_TYPE_AUDIO) {
     log_info("Client %u started audio stream", atomic_load(&client->client_id));
   }
+
+  // Notify client of stream start acknowledgment
+  const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
+                            ? "video+audio"
+                            : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
+  log_info_client(client, "Stream started: %s", streams);
 }
 
 /**
@@ -436,6 +606,12 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   if (stream_type & STREAM_TYPE_AUDIO) {
     log_info("Client %u stopped audio stream", atomic_load(&client->client_id));
   }
+
+  // Notify client of stream stop acknowledgment
+  const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
+                            ? "video+audio"
+                            : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
+  log_info_client(client, "Stream stopped: %s", streams);
 }
 
 /* ============================================================================
@@ -512,6 +688,8 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     // Use atomic_compare_exchange_strong to avoid spurious failures
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", atomic_load(&client->client_id));
+      // Notify client that their first video frame was received
+      log_info_client(client, "First video frame received - streaming active");
     }
   } else {
     // Log periodically to confirm we're receiving frames
@@ -962,7 +1140,8 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
  * @ingroup server_protocol
  */
 void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len) {
-  log_debug_every(LOG_RATE_SLOW, "Received Opus audio batch from client %u (len=%zu)", atomic_load(&client->client_id), len);
+  log_debug_every(LOG_RATE_SLOW, "Received Opus audio batch from client %u (len=%zu)", atomic_load(&client->client_id),
+                  len);
 
   VALIDATE_NOTNULL_DATA(client, data, "AUDIO_OPUS_BATCH");
   VALIDATE_AUDIO_STREAM_ENABLED(client, "AUDIO_OPUS_BATCH");
@@ -1130,9 +1309,10 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
  * @ingroup server_protocol
  */
 void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len) {
-  log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id), len);
+  log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id),
+                  len);
 
-  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+  if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
     return;
   }
 
@@ -1192,7 +1372,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
     return;
   }
 
-  log_debug_every(100000, "Client %u: Decoded Opus frame -> %d samples", atomic_load(&client->client_id),
+  log_debug_every(LOG_RATE_VERY_FAST, "Client %u: Decoded Opus frame -> %d samples", atomic_load(&client->client_id),
                   decoded_count);
 
   // Write decoded samples to client's incoming audio buffer
@@ -1352,6 +1532,14 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
                 ? "half-block"
                 : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
            client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
+
+  // Send capabilities acknowledgment to client
+  log_info_client(client, "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,
+                  terminal_color_level_name(client->terminal_caps.color_level),
+                  (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+                       ? "half-block"
+                       : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
+                  client->terminal_caps.desired_fps);
 
   mutex_unlock(&client->client_state_mutex);
 }

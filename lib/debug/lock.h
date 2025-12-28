@@ -45,6 +45,9 @@
 #include "platform/mutex.h"
 #include "platform/rwlock.h"
 
+// Forward declarations for functions used in inline functions below
+uint64_t ascii_thread_current_id(void);
+
 #ifdef DEBUG_LOCKS
 // Lock debugging is enabled when DEBUG_LOCKS is defined
 #include "util/uthash.h"

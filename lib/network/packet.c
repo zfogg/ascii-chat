@@ -10,9 +10,10 @@
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "buffer_pool.h"
-#include "crc32.h"
+#include "network/crc32.h"
 #include "crypto/crypto.h"
-#include "compression.h"
+#include "network/compression.h"
+#include "util/endian.h"
 #include "options.h" // For opt_compression_level
 #include <stdint.h>
 #include <errno.h>
@@ -82,11 +83,11 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet length in network byte order: 0xFFFFFFFF");
   }
 
-  // Convert from network byte order
-  uint32_t magic = ntohl(header->magic);
-  uint16_t type = ntohs(header->type);
-  uint32_t len = ntohl(pkt_len_network);
-  uint32_t crc = ntohl(header->crc32);
+  // Convert from network byte order using safe helpers
+  uint32_t magic = endian_unpack_u32(header->magic);
+  uint16_t type = endian_unpack_u16(header->type);
+  uint32_t len = endian_unpack_u32(pkt_len_network);
+  uint32_t crc = endian_unpack_u32(header->crc32);
 
   // Validate magic
   if (magic != PACKET_MAGIC) {
@@ -442,7 +443,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready) {
-    log_warn_every(1000000, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
+    log_warn_every(LOG_RATE_FAST, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
                    (void *)crypto_ctx, ready);
     int result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
@@ -521,7 +522,8 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Send as PACKET_TYPE_ENCRYPTED
-  log_debug_every(10000000, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", type);
+  log_debug_every(LOG_RATE_SLOW, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)",
+                  type);
   int send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
   buffer_pool_free(ciphertext, ciphertext_size);
 
