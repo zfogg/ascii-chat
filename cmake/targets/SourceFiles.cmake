@@ -89,6 +89,7 @@ set_source_files_properties(
 set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
     lib/platform/socket.c
+    lib/platform/thread.c
     # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
 )
 
@@ -203,7 +204,7 @@ set(AUDIO_SRCS
     lib/audio/mixer.c
     lib/audio/wav_writer.c
     lib/audio/opus_codec.c
-    lib/audio/audio_analysis.c
+    lib/audio/analysis.c
     lib/audio/client_audio_pipeline.cpp
 )
 

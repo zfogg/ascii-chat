@@ -91,9 +91,13 @@ int strtoint_safe(const char *str) {
   return (int)result;
 }
 
+// Forward declaration for get_required_argument (defined later in file)
+static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
+                                   bool is_client);
+
 // Standard option parsing error return
 static inline asciichat_error_t option_error_invalid(void) {
-  return option_error_invalid();
+  return ERROR_INVALID_PARAM;
 }
 
 // Validate and retrieve required argument for an option
@@ -106,8 +110,8 @@ static char *validate_required_argument(const char *optarg, char *argbuf, size_t
   return value;
 }
 
-// Validate a positive integer value
-static bool validate_positive_int(const char *value_str, int *out_value, const char *param_name) {
+// Validate a positive integer value (internal option parsing helper)
+static bool validate_positive_int_opt(const char *value_str, int *out_value, const char *param_name) {
   if (!value_str || !out_value) {
     return false;
   }
@@ -122,8 +126,8 @@ static bool validate_positive_int(const char *value_str, int *out_value, const c
   return true;
 }
 
-// Validate port number (1-65535)
-static bool validate_port(const char *value_str, uint16_t *out_port) {
+// Validate port number (1-65535) (internal option parsing helper)
+static bool validate_port_opt(const char *value_str, uint16_t *out_port) {
   if (!value_str || !out_port) {
     return false;
   }
@@ -139,8 +143,8 @@ static bool validate_port(const char *value_str, uint16_t *out_port) {
   return true;
 }
 
-// Validate FPS value (1-144)
-static bool validate_fps(const char *value_str, int *out_fps) {
+// Validate FPS value (1-144) (internal option parsing helper)
+static bool validate_fps_opt(const char *value_str, int *out_fps) {
   if (!value_str || !out_fps) {
     return false;
   }
@@ -1086,7 +1090,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       uint16_t port_num;
-      if (!validate_port(value_str, &port_num))
+      if (!validate_port_opt(value_str, &port_num))
         return option_error_invalid();
       SAFE_SNPRINTF(opt_port, OPTIONS_BUFF_SIZE, "%s", value_str);
       break;
@@ -1097,7 +1101,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       int width_val;
-      if (!validate_positive_int(value_str, &width_val, "width"))
+      if (!validate_positive_int_opt(value_str, &width_val, "width"))
         return option_error_invalid();
       opt_width = (unsigned short int)width_val;
       auto_width = false; // Mark as manually set
@@ -1109,7 +1113,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       int height_val;
-      if (!validate_positive_int(value_str, &height_val, "height"))
+      if (!validate_positive_int_opt(value_str, &height_val, "height"))
         return option_error_invalid();
       opt_height = (unsigned short int)height_val;
       auto_height = false; // Mark as manually set
@@ -1172,7 +1176,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
       int fps_val;
-      if (!validate_fps(value_str, &fps_val))
+      if (!validate_fps_opt(value_str, &fps_val))
         return option_error_invalid();
       g_max_fps = fps_val;
       break;

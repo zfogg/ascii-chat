@@ -1,5 +1,5 @@
 /**
- * @file audio/audio_analysis.h
+ * @file audio/analysis.h
  * @ingroup audio
  * @brief Audio Analysis and Debugging Interface
  *

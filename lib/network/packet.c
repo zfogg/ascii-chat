@@ -10,7 +10,7 @@
 #include "asciichat_errno.h"
 #include "platform/socket.h"
 #include "buffer_pool.h"
-#include "crc32.h"
+#include "network/crc32.h"
 #include "crypto/crypto.h"
 #include "network/compression.h"
 #include "options.h" // For opt_compression_level

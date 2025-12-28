@@ -308,8 +308,8 @@ bool platform_is_binary_in_path(const char *bin_name) {
 
   if (entry) {
     // Cache hit
-    log_debug("Binary '%s' %sfound%s in PATH (%scached%s)", bin_name, colors[LOGGING_COLOR_INFO],
-              colors[LOGGING_COLOR_RESET], colors[LOGGING_COLOR_WARN], colors[LOGGING_COLOR_RESET]);
+    log_debug("Binary '%s' %sfound%s in PATH (%scached%s)", bin_name, colors[LOG_COLOR_INFO], colors[LOG_COLOR_RESET],
+              colors[LOG_COLOR_WARN], colors[LOG_COLOR_RESET]);
     return entry->in_path;
   }
 
@@ -337,8 +337,8 @@ bool platform_is_binary_in_path(const char *bin_name) {
   HASH_ADD_KEYPTR(hh, g_bin_path_cache, entry->bin_name, strlen(entry->bin_name), entry);
   rwlock_wrunlock(&g_cache_rwlock);
 
-  log_debug("Binary '%s' %s%s%s in PATH", bin_name, colors[found ? LOGGING_COLOR_INFO : LOGGING_COLOR_ERROR],
-            found ? "found" : "NOT found", colors[LOGGING_COLOR_RESET]);
+  log_debug("Binary '%s' %s%s%s in PATH", bin_name, colors[found ? LOG_COLOR_INFO : LOG_COLOR_ERROR],
+            found ? "found" : "NOT found", colors[LOG_COLOR_RESET]);
   return found;
 }
 

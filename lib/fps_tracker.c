@@ -5,8 +5,9 @@
  */
 
 #include "fps_tracker.h"
-#include "logging.h"
 #include "common.h"
+#include "util/time.h"
+#include "log/logging.h"
 
 /**
  * @brief Convert timespec to microseconds

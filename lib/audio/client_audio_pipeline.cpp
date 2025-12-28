@@ -57,7 +57,7 @@
 #include "audio/mixer.h"
 
 // For AEC3 metrics reporting
-#include "audio/audio_analysis.h"
+#include "audio/analysis.h"
 
 #include <opus/opus.h>
 #include <string.h>

@@ -618,9 +618,9 @@ __attribute__((no_sanitize("integer"))) int add_client(socket_t socket, const ch
     crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
   }
 
-  int send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
-                                       (crypto_context_t *)crypto_ctx);
-  if (send_result != 0) {
+  int packet_send_result = send_packet_secure(client->socket, PACKET_TYPE_SERVER_STATE, &net_state, sizeof(net_state),
+                                              (crypto_context_t *)crypto_ctx);
+  if (packet_send_result != 0) {
     log_warn("Failed to send initial server state to client %u", atomic_load(&client->client_id));
   } else {
     log_debug("Sent initial server state to client %u: %u connected clients", atomic_load(&client->client_id),
