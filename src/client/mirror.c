@@ -25,7 +25,7 @@
  */
 
 #include "mirror.h"
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "video/ascii.h"
 #include "video/image.h"
 #include "video/ansi_fast.h"

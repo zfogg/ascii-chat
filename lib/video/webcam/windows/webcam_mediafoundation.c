@@ -1,5 +1,5 @@
 /**
- * @file os/windows/webcam_mediafoundation.c
+ * @file video/webcam/windows/webcam_mediafoundation.c
  * @ingroup webcam
  * @brief 📷 Windows Media Foundation webcam capture with hardware acceleration support
  */
@@ -7,7 +7,7 @@
 #ifdef _WIN32
 
 #define COBJMACROS
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "common.h"
 #include "util/time.h"
 #include <mfapi.h>

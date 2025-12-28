@@ -19,9 +19,9 @@
  * @section client_capture_platforms Platform Support
  *
  * **Webcam Backends**:
- * - **macOS**: AVFoundation (lib/os/webcam_avfoundation.m)
- * - **Linux**: Video4Linux2 (lib/os/webcam_v4l2.c)
- * - **Windows**: Test pattern only (lib/os/webcam_windows.c) - real capture TODO
+ * - **macOS**: AVFoundation (lib/video/webcam/macos/webcam_avfoundation.m)
+ * - **Linux**: Video4Linux2 (lib/video/webcam/linux/webcam_v4l2.c)
+ * - **Windows**: Media Foundation (lib/video/webcam/windows/webcam_mediafoundation.c)
  *
  * @section client_capture_thread Capture Thread
  *
@@ -109,6 +109,6 @@
  *
  * @see src/client/capture.c
  * @see src/client/capture.h
- * @see lib/os/webcam.h
+ * @see lib/video/webcam/webcam.h
  * @see @ref topic_client "Client Overview"
  */

@@ -32,7 +32,7 @@
 #include "config.h"
 #include "common.h"
 #include "logging.h"
-#include "os/webcam.h"
+#include "video/webcam/webcam.h"
 #include "audio/audio.h"
 #include "util/ip.h"
 #include "util/path.h"

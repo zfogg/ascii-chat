@@ -270,16 +270,19 @@ ascii-chat/
 │   ├── audio.c/h                       # Audio capture/playback (PortAudio)
 │   ├── video/                          # Video processing and ASCII conversion
 │   │   ├── image.c/h                   # Image processing and manipulation
-│   │   └── ascii.c/h                   # ASCII art conversion and grid layout
+│   │   ├── ascii.c/h                   # ASCII art conversion and grid layout
+│   │   └── webcam/                     # Cross-platform webcam capture
+│   │       ├── webcam.c/h              # Webcam capture abstraction layer
+│   │       ├── macos/                  # macOS implementation
+│   │       │   └── webcam_avfoundation.m  # AVFoundation webcam capture
+│   │       ├── linux/                  # Linux implementation
+│   │       │   └── webcam_v4l2.c       # Video4Linux2 webcam capture
+│   │       └── windows/                # Windows implementation
+│   │           └── webcam_mediafoundation.c  # Media Foundation webcam capture
 │   ├── aspect_ratio.c/h                # Aspect ratio calculations
 │   ├── ansi_fast.c/h                   # Optimized ANSI escape sequence generation
 │   ├── terminal_detect.c/h             # Terminal capability detection
 │   ├── palette.c/h                     # ASCII palette management
-│   ├── webcam.c/h                      # Webcam capture abstraction layer
-│   ├── webcam_platform.c/h             # Platform-specific webcam detection
-│   ├── webcam_avfoundation.m           # macOS webcam implementation (AVFoundation)
-│   ├── webcam_v4l2.c                   # Linux webcam implementation (Video4Linux2)
-│   ├── webcam_windows.c                # Windows webcam implementation stub (NEW)
 │   └── round.h                         # Rounding utilities
 ├── CMakeLists.txt                      # CMake build configuration (all platforms)
 ├── Info.plist                          # macOS application metadata
