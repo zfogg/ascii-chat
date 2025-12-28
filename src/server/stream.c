@@ -140,7 +140,7 @@
 #include "common.h"
 #include "buffer_pool.h"
 #include "network/packet_queue.h"
-#include "audio/ringbuffer.h"
+#include "ringbuffer.h"
 #include "video/video_frame.h"
 #include "video/image.h"
 #include "video/ascii.h"

@@ -9,7 +9,7 @@
 
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "audio/ringbuffer.h"
+#include "ringbuffer.h"
 #include "audio/audio.h"
 #include "buffer_pool.h"
 

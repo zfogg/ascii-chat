@@ -266,7 +266,7 @@ set_source_files_properties(
 # Data Structures Module
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
-    lib/audio/ringbuffer.c
+    lib/ringbuffer.c
     lib/buffer_pool.c
 )
 
