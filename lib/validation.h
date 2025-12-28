@@ -162,4 +162,74 @@ typedef struct client_info client_info_t;
     } \
   } while (0)
 
+/**
+ * Validate that an unsigned integer value is within acceptable range.
+ * Disconnects client and returns if value is outside [min_val, max_val].
+ *
+ * @param client Client info pointer
+ * @param value Value to validate
+ * @param min_val Minimum acceptable value (inclusive)
+ * @param max_val Maximum acceptable value (inclusive)
+ * @param value_name Name of value for error message
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_RANGE_UNSIGNED(client, value, min_val, max_val, value_name, packet_name) \
+  do { \
+    if ((value) < (min_val) || (value) > (max_val)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), \
+                                     "%s invalid %s: %u (valid range: %u-%u)", (packet_name), \
+                                     (value_name), (value), (min_val), (max_val)); \
+      return; \
+    } \
+  } while (0)
+
+/**
+ * Validate terminal dimensions are within acceptable bounds.
+ * Disconnects client and returns if width or height is invalid.
+ * Prevents DoS attacks and rendering issues from extreme dimensions.
+ *
+ * @param client Client info pointer
+ * @param width Terminal width in characters
+ * @param height Terminal height in characters
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_TERMINAL_DIMENSIONS(client, width, height, packet_name) \
+  do { \
+    if ((width) < 8 || (width) > 512 || (height) < 4 || (height) > 256) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), \
+                                     "%s invalid terminal dimensions: %ux%u (valid: 8-512 x 4-256)", \
+                                     (packet_name), (width), (height)); \
+      return; \
+    } \
+  } while (0)
+
+/**
+ * Validate that an integer enum value is one of the expected values.
+ * Disconnects client and returns if value doesn't match any expected value.
+ * Used for color_level, render_mode, palette_type, etc.
+ *
+ * @param client Client info pointer
+ * @param value Enum value to validate
+ * @param expected1 First valid enum value
+ * @param expected2 Second valid enum value
+ * @param expected3 Third valid enum value (or -1 if not needed)
+ * @param field_name Name of enum field for error message
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_ENUM_VALUE(client, value, expected1, expected2, expected3, field_name, packet_name) \
+  do { \
+    int v = (int)(value); \
+    int e1 = (int)(expected1); \
+    int e2 = (int)(expected2); \
+    int e3 = (int)(expected3); \
+    if (v != e1 && v != e2 && (e3 < 0 || v != e3)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), \
+                                     "%s invalid %s enum value: %d", (packet_name), (field_name), v); \
+      return; \
+    } \
+  } while (0)
+
 /** @} */

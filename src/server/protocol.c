@@ -1282,39 +1282,67 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES payload missing");
-    return;
-  }
-
-  if (len != sizeof(terminal_capabilities_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid size: %zu (expected %zu)", len,
-                                   sizeof(terminal_capabilities_packet_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "CLIENT_CAPABILITIES");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
+  // Extract and validate dimensions first
+  uint16_t width = ntohs(caps->width);
+  uint16_t height = ntohs(caps->height);
+  VALIDATE_TERMINAL_DIMENSIONS(client, width, height, "CLIENT_CAPABILITIES");
+
+  // Extract enum values for validation
+  uint32_t color_level = ntohl(caps->color_level);
+  uint32_t render_mode = ntohl(caps->render_mode);
+  uint32_t palette_type = ntohl(caps->palette_type);
+
+  // Validate color level: must be 0 (NONE), 1 (16), 2 (256), or 3 (TRUECOLOR)
+  if (color_level > 3) {
+    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid color_level: %u (valid: 0-3)", color_level);
+    return;
+  }
+
+  // Validate render mode: must be 0 (FOREGROUND), 1 (BACKGROUND), or 2 (HALF_BLOCK)
+  if (render_mode > 2) {
+    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid render_mode: %u (valid: 0-2)", render_mode);
+    return;
+  }
+
+  // Validate palette type: must be 0-5 (STANDARD through COOL), or 6 (CUSTOM)
+  if (palette_type > PALETTE_COUNT) {
+    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid palette_type: %u (valid: 0-%d)",
+                                   palette_type, PALETTE_COUNT);
+    return;
+  }
+
+  // Validate desired FPS is reasonable (1-120 fps)
+  if (caps->desired_fps < 1 || caps->desired_fps > 120) {
+    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid desired_fps: %u (valid: 1-120)",
+                                   caps->desired_fps);
+    return;
+  }
+
   mutex_lock(&client->client_state_mutex);
 
-  atomic_store(&client->width, ntohs(caps->width));
-  atomic_store(&client->height, ntohs(caps->height));
+  atomic_store(&client->width, width);
+  atomic_store(&client->height, height);
 
   log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
             client->height, caps->desired_fps);
 
   client->terminal_caps.capabilities = ntohl(caps->capabilities);
-  client->terminal_caps.color_level = ntohl(caps->color_level);
+  client->terminal_caps.color_level = color_level;
   client->terminal_caps.color_count = ntohl(caps->color_count);
-  client->terminal_caps.render_mode = ntohl(caps->render_mode);
+  client->terminal_caps.render_mode = render_mode;
   client->terminal_caps.detection_reliable = caps->detection_reliable;
-  client->terminal_caps.wants_background = (ntohl(caps->render_mode) == RENDER_MODE_BACKGROUND);
+  client->terminal_caps.wants_background = (render_mode == RENDER_MODE_BACKGROUND);
 
   SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
   SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
 
   client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
-  client->terminal_caps.palette_type = ntohl(caps->palette_type);
+  client->terminal_caps.palette_type = palette_type;
   SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
                sizeof(client->terminal_caps.palette_custom));
 
@@ -1387,21 +1415,20 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  * @note No validation of reasonable dimension ranges
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "SIZE payload missing");
-    return;
-  }
-
-  if (len != sizeof(size_packet_t)) {
-    disconnect_client_for_bad_data(client, "SIZE payload size %zu (expected %zu)", len, sizeof(size_packet_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "SIZE");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(size_packet_t), "SIZE");
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
+  uint16_t width = ntohs(size_pkt->width);
+  uint16_t height = ntohs(size_pkt->height);
+
+  // Validate dimensions are within acceptable bounds (8-512 width, 4-256 height)
+  // Prevents DoS attacks and rendering issues from extreme dimensions
+  VALIDATE_TERMINAL_DIMENSIONS(client, width, height, "SIZE");
 
   mutex_lock(&client->client_state_mutex);
-  client->width = ntohs(size_pkt->width);
-  client->height = ntohs(size_pkt->height);
+  client->width = width;
+  client->height = height;
   mutex_unlock(&client->client_state_mutex);
 
   log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), client->width, client->height);
