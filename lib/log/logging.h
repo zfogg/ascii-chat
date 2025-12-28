@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include "platform/mutex.h"
 #include "platform/socket.h"
+#include "platform/thread.h"
 #include "network/logging.h"
 struct crypto_context_t;
 
@@ -99,6 +100,8 @@ static struct log_context_t {
   size_t buffer_entry_count;               /* Number of entries in buffer */
   size_t buffer_total_size;                /* Total bytes used by all messages */
   unsigned int flush_delay_ms;             /* Delay between each buffered log flush (0 = disabled) */
+  bool terminal_locked;                    /* True when a thread has exclusive terminal access */
+  thread_id_t terminal_owner_thread;       /* Thread that owns terminal output (when locked) */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .level = DEFAULT_LOG_LEVEL,
@@ -112,6 +115,8 @@ static struct log_context_t {
     .buffer_entry_count = 0,
     .buffer_total_size = 0,
     .flush_delay_ms = 0,
+    .terminal_locked = false,
+    .terminal_owner_thread = 0,
 };
 
 #pragma GCC diagnostic pop
@@ -277,6 +282,27 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 void log_plain_msg(const char *fmt, ...);
 
 /**
+ * @brief Plain logging to stderr with newline
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * Writes to both log file and stderr without timestamps or log levels, with trailing newline.
+ * @ingroup logging
+ */
+void log_plain_stderr_msg(const char *fmt, ...);
+
+/**
+ * @brief Plain logging to stderr without trailing newline
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * Writes to both log file and stderr without timestamps, log levels, or trailing newline.
+ * Useful for interactive prompts where the user's response should be on the same line.
+ * @ingroup logging
+ */
+void log_plain_stderr_nonewline_msg(const char *fmt, ...);
+
+/**
  * @brief Log to file only, no stderr output
  * @param fmt Format string (printf-style)
  * @param ... Format arguments
@@ -312,23 +338,29 @@ const char **log_get_color_array(void);
 void log_redetect_terminal_capabilities(void);
 
 /**
- * @brief Disable terminal output for interactive prompts
+ * @brief Lock terminal output for exclusive access by the calling thread
  *
  * Call this before interactive prompts (like password entry, yes/no questions)
- * to prevent log messages from appearing on the terminal while the user is
- * interacting. Log messages will still be written to the log file.
+ * to ensure only the calling thread can output to the terminal. Other threads'
+ * log messages will be buffered and flushed when the terminal is unlocked.
+ *
+ * While locked:
+ * - The locking thread can use log_plain() to write to terminal
+ * - Other threads' log messages go to log file and are buffered
+ * - Buffered messages are flushed to terminal on unlock
  *
  * Must be paired with log_unlock_terminal().
  *
- * @return The previous terminal output state (for nested calls)
+ * @return The previous terminal lock state (for nested calls)
  * @ingroup logging
  */
 bool log_lock_terminal(void);
 
 /**
- * @brief Re-enable terminal output after interactive prompts
+ * @brief Release terminal lock and flush buffered messages
  *
- * Call this after interactive prompts complete to restore terminal logging.
+ * Call this after interactive prompts complete to release the terminal lock.
+ * Buffered log messages from other threads will be flushed to terminal.
  *
  * @param previous_state The value returned by log_lock_terminal()
  * @ingroup logging
@@ -462,6 +494,20 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #define log_plain(...) log_plain_msg(__VA_ARGS__)
+
+/**
+ * @brief Plain logging to stderr with newline
+ * @param ... Format string and arguments (printf-style)
+ * @ingroup logging
+ */
+#define log_plain_stderr(...) log_plain_stderr_msg(__VA_ARGS__)
+
+/**
+ * @brief Plain logging to stderr without newline - for interactive prompts
+ * @param ... Format string and arguments (printf-style)
+ * @ingroup logging
+ */
+#define log_plain_stderr_nonewline(...) log_plain_stderr_nonewline_msg(__VA_ARGS__)
 
 /**
  * @brief File-only logging - writes to log file only, no stderr output

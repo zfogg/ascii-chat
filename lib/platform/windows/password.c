@@ -15,9 +15,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
   bool previous_terminal_state = log_lock_terminal();
 
   log_plain("\n========================================\n%s\n========================================", prompt);
-  // Use fprintf for "> " since log_plain adds newline and we want cursor on same line
-  fprintf(stderr, "> ");
-  fflush(stderr);
+  log_plain_stderr_nonewline("> ");
 
   // Use _getch for secure password input (no echo)
   int i = 0;

@@ -522,25 +522,23 @@ int client_crypto_handshake(socket_t socket) {
 #endif
     if (!skip_interactive && platform_isatty(STDIN_FILENO)) {
       // Interactive mode - prompt user for confirmation
-      // Disable terminal logging so other threads don't interfere with prompt
+      // Lock terminal so only this thread can output to terminal
+      // Other threads' logs are buffered until we unlock
       bool previous_terminal_state = log_lock_terminal();
 
-      safe_fprintf(stderr, "\n");
-      safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-      safe_fprintf(stderr, "@  WARNING: CLIENT AUTHENTICATION REQUIRED                                    @\n");
-      safe_fprintf(stderr, "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n");
-      safe_fprintf(stderr, "\n");
-
-      safe_fprintf(stderr, "The server requires client authentication (--client-keys enabled),\n");
-      safe_fprintf(stderr, "but you have not provided a client identity key with --key.\n");
-      safe_fprintf(stderr, "\n");
-      safe_fprintf(stderr, "To connect to this server, you need to:\n");
-      safe_fprintf(stderr, "  1. Generate an Ed25519 key: ssh-keygen -t ed25519\n");
-      safe_fprintf(stderr, "  2. Add the public key to the server's --client-keys list\n");
-      safe_fprintf(stderr, "  3. Connect with: ascii-chat client --key /path/to/private/key\n");
-      safe_fprintf(stderr, "\n");
-      safe_fprintf(stderr, "Do you want to continue anyway (this will likely fail)? (yes/no): ");
-      (void)fflush(stderr);
+      log_plain("\n"
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+                "@  WARNING: CLIENT AUTHENTICATION REQUIRED                                    @\n"
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+                "\n"
+                "The server requires client authentication (--client-keys enabled),\n"
+                "but you have not provided a client identity key with --key.\n"
+                "\n"
+                "To connect to this server, you need to:\n"
+                "  1. Generate an Ed25519 key: ssh-keygen -t ed25519\n"
+                "  2. Add the public key to the server's --client-keys list\n"
+                "  3. Connect with: ascii-chat client --key /path/to/private/key");
+      log_plain_stderr_nonewline("\nDo you want to continue anyway (this will likely fail)? (yes/no): ");
 
       char response[10];
       if (fgets(response, sizeof(response), stdin) == NULL) {
@@ -550,17 +548,16 @@ int client_crypto_handshake(socket_t socket) {
         return CONNECTION_ERROR_AUTH_FAILED;
       }
 
-      // Re-enable terminal logging before handling response
+      // Unlock terminal - buffered logs from other threads will be flushed
       log_unlock_terminal(previous_terminal_state);
 
       // Accept "yes" or "y" (case insensitive)
       if (strncasecmp(response, "yes", 3) != 0 && strncasecmp(response, "y", 1) != 0) {
-        safe_fprintf(stderr, "Connection aborted by user.\n");
+        log_plain("Connection aborted by user.");
         exit(0); // User declined - exit cleanly
       }
 
-      safe_fprintf(stderr, "Warning: Continuing without client identity key (connection may fail).\n");
-      safe_fprintf(stderr, "\n");
+      log_plain("Warning: Continuing without client identity key (connection may fail).\n");
     } else {
       // Non-interactive mode (background/script) - just log warning and continue
       log_warn("Non-interactive mode: Continuing without client identity key (connection may fail)");
