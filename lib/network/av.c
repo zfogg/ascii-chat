@@ -120,7 +120,7 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
   packet.timestamp = 0; // Will be set by receiver
 
   // Calculate total packet size
-  // Cast both width and height to size_t before multiplication
+  // Cast to size_t before multiplication to prevent integer overflow
   size_t frame_size = (size_t)width * (size_t)height * 3; // Assume RGB format
   size_t total_size = sizeof(image_frame_packet_t) + frame_size;
 

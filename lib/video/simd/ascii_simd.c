@@ -80,7 +80,6 @@ void init_dec3(void) {
   g_dec3_cache.dec3_initialized = true;
 }
 
-// **HIGH-IMPACT FIX 2**: Remove init guards from hot path - use constructor
 // NOTE: Constructor disabled for musl static builds - causes hangs
 // __attribute__((constructor)) static void ascii_ctor(void) {
 //   init_dec3();
@@ -334,7 +333,7 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
   simd_benchmark_t result = {0};
 
-  // Cast to size_t before multiplication
+  // Cast to size_t before multiplication to prevent integer overflow
   size_t pixel_count = (size_t)width * (size_t)height;
 
   // Generate test data and test image
@@ -496,7 +495,7 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode) {
   simd_benchmark_t result = {0};
 
-  // Cast to size_t before multiplication
+  // Cast to size_t before multiplication to prevent integer overflow
   size_t pixel_count = (size_t)width * (size_t)height;
 
   // Estimate output buffer size for colored ASCII (much larger than monochrome)
@@ -651,7 +650,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   (void)background_mode; // Suppress unused parameter warning
   (void)use_256color;    // Suppress unused parameter warning
 
-  // Cast to size_t before multiplication
+  // Cast to size_t before multiplication to prevent integer overflow
   size_t pixel_count = (size_t)width * (size_t)height;
 
   // Generate test data
@@ -678,7 +677,7 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
         for (int x = 0; x < width; x++) {
           int src_x = (x * source_image->w) / width;
           int src_y = (y * source_image->h) / height;
-          // Use size_t for index calculations
+          // Use size_t for index calculations to prevent integer overflow
           size_t src_idx = (size_t)src_y * (size_t)source_image->w + (size_t)src_x;
           size_t dst_idx = (size_t)y * (size_t)width + (size_t)x;
 
@@ -853,7 +852,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   simd_benchmark_t result = {0};
   (void)use_256color; // Suppress unused parameter warning
 
-  // Cast to size_t before multiplication
+  // Cast to size_t before multiplication to prevent integer overflow
   size_t pixel_count = (size_t)width * (size_t)height;
   size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;
 
@@ -898,7 +897,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
           if (src_y >= source_image->h)
             src_y = source_image->h - 1;
 
-          // Use size_t for index calculations
+          // Use size_t for index calculations to prevent integer overflow
           size_t src_idx = (size_t)src_y * (size_t)source_image->w + (size_t)src_x;
           size_t dst_idx = (size_t)y * (size_t)width + (size_t)x;
 
