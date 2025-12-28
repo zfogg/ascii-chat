@@ -27,11 +27,11 @@
  * ============================================================================ */
 
 static struct {
-  platform_mmap_t mmap;      /* Memory-mapped file handle */
-  log_mmap_header_t *header; /* Pointer to header in mmap'd region */
-  char *text_region;         /* Pointer to text area (after header) */
-  size_t text_capacity;      /* Usable text area size */
-  bool initialized;          /* Initialization flag */
+  platform_mmap_t mmap;       /* Memory-mapped file handle */
+  char *text_region;          /* Pointer to text area (entire file is text) */
+  size_t text_capacity;       /* Total file size */
+  _Atomic uint64_t write_pos; /* Current write position (in memory only) */
+  bool initialized;           /* Initialization flag */
 
   /* Statistics */
   _Atomic uint64_t bytes_written;
@@ -71,12 +71,12 @@ static void crash_signal_handler(int sig) {
   g_crash_in_progress = 1;
 
   /* Write crash marker directly to mmap'd log */
-  if (g_mmap_log.initialized && g_mmap_log.header && g_mmap_log.text_region) {
+  if (g_mmap_log.initialized && g_mmap_log.text_region) {
     const char *crash_msg = "\n=== CRASH DETECTED (signal %d) ===\n";
     char msg_buf[64];
     int len = snprintf(msg_buf, sizeof(msg_buf), crash_msg, sig);
     if (len > 0) {
-      uint64_t pos = atomic_fetch_add(&g_mmap_log.header->write_pos, (uint64_t)len);
+      uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, (uint64_t)len);
       if (pos + (uint64_t)len <= g_mmap_log.text_capacity) {
         memcpy(g_mmap_log.text_region + pos, msg_buf, (size_t)len);
       }
@@ -114,6 +114,32 @@ void log_mmap_install_crash_handlers(void) {
  * Public API
  * ============================================================================ */
 
+/**
+ * @brief Find the end of existing log content by scanning for last newline
+ *
+ * Scans backwards from the end to find where actual content ends.
+ * Content ends at the last newline before trailing spaces/nulls.
+ */
+static size_t find_content_end(const char *text, size_t capacity) {
+  /* Scan backwards to find last non-space/non-null byte */
+  size_t pos = capacity;
+  while (pos > 0 && (text[pos - 1] == ' ' || text[pos - 1] == '\0' || text[pos - 1] == '\n')) {
+    pos--;
+  }
+
+  /* Now find the newline after the last content */
+  while (pos < capacity && text[pos] != '\n' && text[pos] != ' ' && text[pos] != '\0') {
+    pos++;
+  }
+
+  /* Include the newline if present */
+  if (pos < capacity && text[pos] == '\n') {
+    pos++;
+  }
+
+  return pos;
+}
+
 asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
   if (!config || !config->log_path) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "mmap log: config or log_path is NULL");
@@ -126,8 +152,8 @@ asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
 
   /* Determine file size */
   size_t file_size = config->max_size > 0 ? config->max_size : LOG_MMAP_DEFAULT_SIZE;
-  if (file_size < LOG_MMAP_HEADER_SIZE + 1024) {
-    file_size = LOG_MMAP_HEADER_SIZE + 1024; /* Minimum reasonable size */
+  if (file_size < 1024) {
+    file_size = 1024; /* Minimum reasonable size */
   }
 
   /* Open mmap file */
@@ -137,29 +163,23 @@ asciichat_error_t log_mmap_init(const log_mmap_config_t *config) {
     return result;
   }
 
-  g_mmap_log.header = (log_mmap_header_t *)g_mmap_log.mmap.addr;
-  g_mmap_log.text_region = (char *)g_mmap_log.mmap.addr + LOG_MMAP_HEADER_SIZE;
-  g_mmap_log.text_capacity = file_size - LOG_MMAP_HEADER_SIZE;
+  /* Entire file is text - no header */
+  g_mmap_log.text_region = (char *)g_mmap_log.mmap.addr;
+  g_mmap_log.text_capacity = file_size;
 
-  /* Initialize or validate header */
-  if (g_mmap_log.header->magic != LOG_MMAP_MAGIC || g_mmap_log.header->version != LOG_MMAP_VERSION) {
-    /* New file or incompatible version - initialize */
-    memset(g_mmap_log.header, 0, LOG_MMAP_HEADER_SIZE);
-    g_mmap_log.header->magic = LOG_MMAP_MAGIC;
-    g_mmap_log.header->version = LOG_MMAP_VERSION;
-    g_mmap_log.header->max_size = file_size;
-    g_mmap_log.header->text_start = LOG_MMAP_HEADER_SIZE;
-    g_mmap_log.header->wrapped = 0;
-    atomic_store(&g_mmap_log.header->write_pos, 0);
+  /* Find where existing content ends (scan for last newline before spaces/nulls) */
+  size_t existing_pos = find_content_end(g_mmap_log.text_region, file_size);
+  atomic_store(&g_mmap_log.write_pos, existing_pos);
 
-    /* Clear text region */
-    memset(g_mmap_log.text_region, 0, g_mmap_log.text_capacity);
+  /* Clear unused portion with newlines (grep-friendly, visually clean) */
+  if (existing_pos < file_size) {
+    memset(g_mmap_log.text_region + existing_pos, '\n', file_size - existing_pos);
+  }
 
-    log_info("mmap log: created new log file %s (%zu bytes)", config->log_path, file_size);
+  if (existing_pos > 0) {
+    log_info("mmap log: resumed existing log at position %zu", existing_pos);
   } else {
-    /* Existing file - continue from current position */
-    uint64_t existing_pos = atomic_load(&g_mmap_log.header->write_pos);
-    log_info("mmap log: resumed existing log at position %lu", existing_pos);
+    log_info("mmap log: created new log file %s (%zu bytes)", config->log_path, file_size);
   }
 
   /* Reset statistics */
@@ -198,7 +218,6 @@ void log_mmap_destroy(void) {
 
   /* Close mmap */
   platform_mmap_close(&g_mmap_log.mmap);
-  g_mmap_log.header = NULL;
   g_mmap_log.text_region = NULL;
 
   g_mmap_log.initialized = false;
@@ -206,7 +225,7 @@ void log_mmap_destroy(void) {
 }
 
 void log_mmap_write(int level, const char *file, int line, const char *func, const char *fmt, ...) {
-  if (!g_mmap_log.initialized || !g_mmap_log.header || !g_mmap_log.text_region) {
+  if (!g_mmap_log.initialized || !g_mmap_log.text_region) {
     return;
   }
 
@@ -250,13 +269,13 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
   line_buf[total_len] = '\0';
 
   /* Atomically claim space in the mmap'd region */
-  uint64_t pos = atomic_fetch_add(&g_mmap_log.header->write_pos, total_len);
+  uint64_t pos = atomic_fetch_add(&g_mmap_log.write_pos, total_len);
 
   /* Check if we exceeded capacity - drop this message if so */
   /* Rotation is handled by maybe_rotate_log() called from logging.c */
   if (pos + total_len > g_mmap_log.text_capacity) {
     /* Undo our claim - we can't fit */
-    atomic_fetch_sub(&g_mmap_log.header->write_pos, total_len);
+    atomic_fetch_sub(&g_mmap_log.write_pos, total_len);
     return;
   }
 
@@ -291,12 +310,12 @@ void log_mmap_get_stats(uint64_t *bytes_written, uint64_t *wrap_count) {
 }
 
 bool log_mmap_get_usage(size_t *used, size_t *capacity) {
-  if (!g_mmap_log.initialized || !g_mmap_log.header) {
+  if (!g_mmap_log.initialized) {
     return false;
   }
 
   if (used) {
-    *used = (size_t)atomic_load(&g_mmap_log.header->write_pos);
+    *used = (size_t)atomic_load(&g_mmap_log.write_pos);
   }
   if (capacity) {
     *capacity = g_mmap_log.text_capacity;
@@ -305,13 +324,13 @@ bool log_mmap_get_usage(size_t *used, size_t *capacity) {
 }
 
 void log_mmap_rotate(void) {
-  if (!g_mmap_log.initialized || !g_mmap_log.header || !g_mmap_log.text_region) {
+  if (!g_mmap_log.initialized || !g_mmap_log.text_region) {
     return;
   }
 
   /* NOTE: Caller must hold the rotation mutex from logging.c */
 
-  uint64_t current_pos = atomic_load(&g_mmap_log.header->write_pos);
+  uint64_t current_pos = atomic_load(&g_mmap_log.write_pos);
   size_t capacity = g_mmap_log.text_capacity;
 
   /* Keep last 2/3 of the log (same ratio as file rotation) */
@@ -338,26 +357,26 @@ void log_mmap_rotate(void) {
   size_t actual_keep = keep_size - skipped;
   if (actual_keep == 0) {
     /* Nothing to keep - just reset */
-    atomic_store(&g_mmap_log.header->write_pos, 0);
-    memset(g_mmap_log.text_region, 0, capacity);
+    atomic_store(&g_mmap_log.write_pos, 0);
+    memset(g_mmap_log.text_region, '\n', capacity);
     return;
   }
 
   /* Move the tail to the beginning using memmove (handles overlap) */
   memmove(g_mmap_log.text_region, keep_start, actual_keep);
 
-  /* Clear the rest */
-  memset(g_mmap_log.text_region + actual_keep, 0, capacity - actual_keep);
+  /* Clear the rest with newlines (grep-friendly) */
+  memset(g_mmap_log.text_region + actual_keep, '\n', capacity - actual_keep);
 
   /* Update write position */
-  atomic_store(&g_mmap_log.header->write_pos, actual_keep);
+  atomic_store(&g_mmap_log.write_pos, actual_keep);
 
   /* Write rotation marker */
   const char *rotate_msg = "\n=== LOG ROTATED ===\n";
   size_t rotate_len = strlen(rotate_msg);
   if (actual_keep + rotate_len < capacity) {
     memcpy(g_mmap_log.text_region + actual_keep, rotate_msg, rotate_len);
-    atomic_store(&g_mmap_log.header->write_pos, actual_keep + rotate_len);
+    atomic_store(&g_mmap_log.write_pos, actual_keep + rotate_len);
   }
 
   atomic_fetch_add(&g_mmap_log.wrap_count, 1);

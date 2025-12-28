@@ -11,6 +11,7 @@
  * - Lock-free logging: Uses atomic fetch_add for position claiming
  * - Crash-safe: Text is written directly to mmap'd file, readable after crash
  * - No flusher needed: Logs are human-readable in the file immediately
+ * - Pure text: No binary header, works with grep/rg/cat without special flags
  * - Simple design: Just mmap the .log file and write text to it
  *
  * Usage:
@@ -36,37 +37,8 @@
 extern "C" {
 #endif
 
-/** @brief Magic number to validate mmap file header */
-#define LOG_MMAP_MAGIC 0x474F4C54 /* "TLOG" in little-endian (Text LOG) */
-
-/** @brief Version of the mmap log format */
-#define LOG_MMAP_VERSION 2
-
 /** @brief Default mmap log file size (4MB) */
 #define LOG_MMAP_DEFAULT_SIZE (4 * 1024 * 1024)
-
-/** @brief Size of the header region in the mmap file */
-#define LOG_MMAP_HEADER_SIZE 64
-
-/**
- * @brief Header at the start of the mmap'd log file
- *
- * This is a small fixed-size header followed by raw text.
- * The file looks like:
- *   [64-byte header][human-readable log text...]
- */
-typedef struct {
-  uint32_t magic;             /**< LOG_MMAP_MAGIC for validation */
-  uint32_t version;           /**< LOG_MMAP_VERSION for compatibility */
-  _Atomic uint64_t write_pos; /**< Current write position (bytes after header) */
-  uint64_t max_size;          /**< Maximum file size (including header) */
-  uint64_t text_start;        /**< Offset where text begins (= header size) */
-  uint8_t wrapped;            /**< 1 if log has wrapped around */
-  uint8_t reserved[64 - 33];  /**< Padding to 64 bytes */
-} log_mmap_header_t;
-
-_Static_assert(sizeof(log_mmap_header_t) == LOG_MMAP_HEADER_SIZE,
-               "log_mmap_header_t must be exactly LOG_MMAP_HEADER_SIZE bytes");
 
 /**
  * @brief Configuration for mmap logging
