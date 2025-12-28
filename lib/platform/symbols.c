@@ -47,9 +47,10 @@
 // ============================================================================
 
 typedef enum {
-  SYMBOLIZER_NONE = 0,     // No symbolizer available, use raw addresses
-  SYMBOLIZER_LLVM = 1,     // llvm-symbolizer (preferred)
-  SYMBOLIZER_ADDR2LINE = 2 // addr2line (fallback)
+  SYMBOLIZER_NONE = 0,      // No symbolizer available, use raw addresses
+  SYMBOLIZER_LLVM = 1,      // llvm-symbolizer (preferred on Linux/Windows)
+  SYMBOLIZER_ADDR2LINE = 2, // addr2line (fallback)
+  SYMBOLIZER_ATOS = 3       // atos (macOS only, handles ASLR automatically)
 } symbolizer_type_t;
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
@@ -60,6 +61,10 @@ static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
 static atomic_bool g_addr2line_checked = false;
 static atomic_bool g_addr2line_available = false;
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
+#ifdef __APPLE__
+static atomic_bool g_atos_checked = false;
+static atomic_bool g_atos_available = false;
+#endif
 static static_mutex_t g_symbolizer_detection_mutex = STATIC_MUTEX_INIT;
 
 // ============================================================================
@@ -238,7 +243,42 @@ static const char *get_addr2line_command(void) {
   return ADDR2LINE_BIN;
 }
 
+#ifdef __APPLE__
+/**
+ * @brief Check if atos is available (macOS only)
+ * @return true if atos is available, false otherwise
+ *
+ * atos is the macOS native symbolizer that handles ASLR automatically.
+ * It's always available on macOS at /usr/bin/atos.
+ */
+static bool is_atos_available(void) {
+  if (!atomic_load(&g_atos_checked)) {
+    static_mutex_lock(&g_symbolizer_detection_mutex);
+    if (!atomic_load(&g_atos_checked)) {
+      // atos is always at /usr/bin/atos on macOS
+      bool available = (access("/usr/bin/atos", X_OK) == 0);
+      atomic_store(&g_atos_available, available);
+      atomic_store(&g_atos_checked, true);
+      if (available) {
+        log_debug("Found atos at /usr/bin/atos (macOS native symbolizer)");
+      }
+    }
+    static_mutex_unlock(&g_symbolizer_detection_mutex);
+  }
+  return atomic_load(&g_atos_available);
+}
+#endif
+
 static symbolizer_type_t detect_symbolizer(void) {
+#ifdef __APPLE__
+  // On macOS, prefer atos because it handles ASLR automatically
+  // llvm-symbolizer and addr2line require address adjustment on macOS
+  if (is_atos_available()) {
+    log_debug("Using atos for symbol resolution (handles ASLR automatically)");
+    return SYMBOLIZER_ATOS;
+  }
+#endif
+
   const char *llvm_symbolizer = get_llvm_symbolizer_command();
   if (llvm_symbolizer) {
     return SYMBOLIZER_LLVM;
@@ -858,6 +898,179 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   return result;
 }
 
+#ifdef __APPLE__
+/**
+ * @brief Run atos on a batch of addresses and parse results (macOS only)
+ * @param buffer Array of addresses
+ * @param size Number of addresses
+ * @return Array of symbol strings (must be freed by caller)
+ *
+ * atos is the macOS native symbolizer that handles ASLR automatically.
+ * It uses the -p option with the current process ID to symbolize addresses.
+ */
+static char **run_atos_batch(void *const *buffer, int size) {
+  if (size <= 0 || !buffer) {
+    return NULL;
+  }
+
+  // Get executable path
+  char exe_path[PLATFORM_MAX_PATH_LENGTH];
+  if (!platform_get_executable_path(exe_path, sizeof(exe_path))) {
+    log_debug("atos: Failed to get executable path");
+    return NULL;
+  }
+
+  // Check for dSYM bundles (provides line numbers)
+  // dSYM path is <binary>.dSYM for executable
+  char exe_dsym_path[PLATFORM_MAX_PATH_LENGTH];
+  SAFE_SNPRINTF(exe_dsym_path, sizeof(exe_dsym_path), "%s.dSYM", exe_path);
+
+  const char *exe_symbol_path = exe_path;
+  if (access(exe_dsym_path, R_OK) == 0) {
+    exe_symbol_path = exe_dsym_path;
+    log_debug("atos: Using dSYM bundle for symbol resolution: %s", exe_dsym_path);
+  }
+
+  // Also check for shared library dSYM (for library code like crypto, network)
+  // Shared library is in ../lib/libasciichat.*.dylib relative to executable
+  char lib_dsym_path[PLATFORM_MAX_PATH_LENGTH] = "";
+  char *last_slash = strrchr(exe_path, '/');
+  if (last_slash) {
+    size_t dir_len = (size_t)(last_slash - exe_path);
+    char exe_dir[PLATFORM_MAX_PATH_LENGTH];
+    strncpy(exe_dir, exe_path, dir_len);
+    exe_dir[dir_len] = '\0';
+
+    // Try common shared library locations
+    const char *lib_names[] = {"%s/../lib/libasciichat.dylib.dSYM", "%s/../lib/libasciichat.0.dylib.dSYM",
+                               "%s/../lib/libasciichat.0.1.0.dylib.dSYM", NULL};
+
+    for (int i = 0; lib_names[i] != NULL; i++) {
+      char candidate[PLATFORM_MAX_PATH_LENGTH];
+      SAFE_SNPRINTF(candidate, sizeof(candidate), lib_names[i], exe_dir);
+      if (access(candidate, R_OK) == 0) {
+        SAFE_STRNCPY(lib_dsym_path, candidate, sizeof(lib_dsym_path));
+        log_debug("atos: Also using shared library dSYM: %s", lib_dsym_path);
+        break;
+      }
+    }
+  }
+
+  // Build atos command
+  // atos -o <executable|dSYM> [-o <lib.dSYM>] -p <pid> <addresses>
+  // Using -p <pid> allows atos to handle ASLR automatically
+  // dSYM provides file:line info when available
+  // Multiple -o flags can be used to symbolize from multiple binaries
+  char cmd[8192];
+  int offset;
+  if (lib_dsym_path[0] != '\0') {
+    offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -o '%s' -p %d ", exe_symbol_path, lib_dsym_path,
+                      platform_get_pid());
+  } else {
+    offset = snprintf(cmd, sizeof(cmd), "/usr/bin/atos -o '%s' -p %d ", exe_symbol_path, platform_get_pid());
+  }
+
+  if (offset <= 0 || offset >= (int)sizeof(cmd)) {
+    log_error("atos: Failed to build command");
+    return NULL;
+  }
+
+  // Add all addresses to the command
+  for (int i = 0; i < size; i++) {
+    int n = snprintf(cmd + offset, sizeof(cmd) - (size_t)offset, "%p ", buffer[i]);
+    if (n <= 0 || offset + n >= (int)sizeof(cmd)) {
+      break;
+    }
+    offset += n;
+  }
+
+  // Execute atos
+  FILE *fp = popen(cmd, "r");
+  if (!fp) {
+    log_debug("atos: Failed to execute command");
+    return NULL;
+  }
+
+  // Allocate result array
+  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
+  if (!result) {
+    pclose(fp);
+    return NULL;
+  }
+
+  // Parse output - atos produces one line per address in format:
+  // function_name (in binary) (file:line)
+  // OR just raw address if unknown
+  for (int i = 0; i < size; i++) {
+    char line[1024];
+    if (fgets(line, sizeof(line), fp) == NULL) {
+      break;
+    }
+
+    // Remove newline
+    line[strcspn(line, "\n")] = '\0';
+
+    // atos output can be:
+    // 1. "function_name (in binary) (file.c:123)"
+    // 2. "function_name (in binary) + offset"
+    // 3. "0x123456" (if no debug info)
+
+    // Check if it's just a hex address (no symbol found)
+    if (line[0] == '0' && line[1] == 'x') {
+      result[i] = platform_strdup(line);
+      continue;
+    }
+
+    // Try to parse atos output
+    // Format: "func_name (in binary) (file.c:123)" or "func_name (in binary) + 123"
+    char func_name[512] = "";
+    char file_info[512] = "";
+
+    // Find function name (everything before " (in ")
+    char *in_marker = strstr(line, " (in ");
+    if (in_marker) {
+      size_t func_len = (size_t)(in_marker - line);
+      if (func_len < sizeof(func_name)) {
+        strncpy(func_name, line, func_len);
+        func_name[func_len] = '\0';
+      }
+
+      // Find file:line info (after the last '(' before the closing ')')
+      char *file_start = strrchr(in_marker, '(');
+      char *file_end = strrchr(line, ')');
+      if (file_start && file_end && file_start < file_end && file_start != in_marker + 1) {
+        size_t file_len = (size_t)(file_end - file_start - 1);
+        if (file_len < sizeof(file_info)) {
+          strncpy(file_info, file_start + 1, file_len);
+          file_info[file_len] = '\0';
+        }
+      }
+    }
+
+    // Build result string
+    result[i] = SAFE_MALLOC(1024, char *);
+    if (!result[i]) {
+      continue;
+    }
+
+    if (func_name[0] && file_info[0] && strstr(file_info, ":") != NULL) {
+      // Best case: function + file:line
+      const char *rel_path = extract_project_relative_path(file_info);
+      SAFE_SNPRINTF(result[i], 1024, "%s() (%s)", func_name, rel_path);
+    } else if (func_name[0]) {
+      // Function only (no debug info for this frame)
+      SAFE_SNPRINTF(result[i], 1024, "%s()", func_name);
+    } else {
+      // Use original line
+      SAFE_STRNCPY(result[i], line, 1024);
+    }
+  }
+
+  pclose(fp);
+  return result;
+}
+#endif // __APPLE__
+
 char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (size <= 0 || !buffer) {
     log_error("Invalid parameters: buffer=%p, size=%d", (void *)buffer, size);
@@ -869,8 +1082,16 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
   if (!atomic_load(&g_symbol_cache_initialized)) {
     // Cache not initialized - fall back to uncached resolution
     // This happens during early initialization before platform_init() completes
+#ifdef __APPLE__
+    // On macOS, try atos first (handles ASLR)
+    char **result = run_atos_batch(buffer, size);
+    if (!result) {
+      result = run_llvm_symbolizer_batch(buffer, size);
+    }
+#else
     // Try llvm-symbolizer first, then addr2line
     char **result = run_llvm_symbolizer_batch(buffer, size);
+#endif
     if (!result) {
       result = run_addr2line_batch(buffer, size);
     }
@@ -915,6 +1136,11 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
     // Use the detected symbolizer type
     switch (g_symbolizer_type) {
+#ifdef __APPLE__
+    case SYMBOLIZER_ATOS:
+      resolved = run_atos_batch(uncached_addrs, uncached_count);
+      break;
+#endif
     case SYMBOLIZER_LLVM:
       resolved = run_llvm_symbolizer_batch(uncached_addrs, uncached_count);
       break;

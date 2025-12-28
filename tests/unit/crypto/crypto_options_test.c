@@ -13,7 +13,7 @@
 #include <getopt.h>
 
 #include "tests/common.h"
-#include "options.h"
+#include "options/options.h"
 #include "tests/logging.h"
 
 // External getopt variable that needs resetting between tests

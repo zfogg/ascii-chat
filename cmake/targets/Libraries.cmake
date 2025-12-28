@@ -790,6 +790,22 @@ add_custom_command(TARGET ascii-chat-shared POST_BUILD
 )
 
 # =============================================================================
+# macOS dSYM Generation for Shared Library (Debug/Dev builds only)
+# =============================================================================
+# Generate dSYM bundle for the shared library to enable backtraces with line numbers
+# for library code (crypto, network, etc.)
+if(APPLE AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+    find_program(DSYMUTIL_EXECUTABLE dsymutil)
+    if(DSYMUTIL_EXECUTABLE)
+        add_custom_command(TARGET ascii-chat-shared POST_BUILD
+            COMMAND ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat-shared> -o $<TARGET_FILE:ascii-chat-shared>.dSYM
+            COMMENT "Generating dSYM for ascii-chat-shared (enables atos backtraces with line numbers)"
+            VERBATIM
+        )
+    endif()
+endif()
+
+# =============================================================================
 # Required Symbol Definitions (used by both shared and static library validation)
 # =============================================================================
 # Note: log_debug/log_info/log_error are macros that call log_msg

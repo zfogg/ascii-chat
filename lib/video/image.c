@@ -23,8 +23,10 @@
 #include "simd/ascii_simd.h"
 #include "video/simd/common.h"
 #include "ansi_fast.h"
-#include "options.h"
+#include "options/options.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
+#include "util/overflow.h"
+#include "util/image.h"
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 
@@ -35,35 +37,31 @@ image_t *image_new(size_t width, size_t height) {
 
   p = SAFE_MALLOC(sizeof(image_t), image_t *);
 
-  const unsigned long w_ul = (unsigned long)width;
-  const unsigned long h_ul = (unsigned long)height;
-
-  // Validate dimensions are non-zero
-  if (w_ul == 0 || h_ul == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions must be non-zero: %zu x %zu", width, height);
+  // Validate dimensions are non-zero and within bounds
+  if (image_validate_dimensions(width, height) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions invalid or too large: %zu x %zu", width, height);
     SAFE_FREE(p);
     return NULL;
   }
 
-  // Check if multiplication would overflow
-  if (h_ul > ULONG_MAX / w_ul) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large (would overflow): %zu x %zu", width, height);
+  // Calculate pixel count with overflow checking
+  size_t total_pixels;
+  if (checked_size_mul(width, height, &total_pixels) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions would cause overflow: %zu x %zu", width, height);
     SAFE_FREE(p);
     return NULL;
   }
 
-  const unsigned long total_pixels = w_ul * h_ul;
-
-  // Check if final size calculation would overflow
-  if (total_pixels > ULONG_MAX / sizeof(rgb_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel count too large: %lu pixels", total_pixels);
+  // Calculate total pixel buffer size with overflow checking
+  size_t pixels_size;
+  if (checked_size_mul(total_pixels, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel buffer size would cause overflow");
     SAFE_FREE(p);
     return NULL;
   }
 
-  const size_t pixels_size = total_pixels * sizeof(rgb_t);
   if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height,
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %zu x %zu (%zu bytes)", width, height,
               pixels_size);
     SAFE_FREE(p);
     return NULL;
@@ -381,7 +379,25 @@ char *image_print(const image_t *p, const char *palette) {
 
   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
   outbuf_t ob = {0};
-  ob.cap = (size_t)h * ((size_t)w * max_char_bytes + 1);
+
+  // Calculate buffer size with overflow checking
+  size_t w_times_bytes;
+  if (checked_size_mul((size_t)w, max_char_bytes, &w_times_bytes) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Buffer size overflow: width too large for UTF-8 encoding");
+    return NULL;
+  }
+
+  size_t w_times_bytes_plus_one;
+  if (checked_size_add(w_times_bytes, 1, &w_times_bytes_plus_one) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Buffer size overflow: width * bytes + 1 overflow");
+    return NULL;
+  }
+
+  if (checked_size_mul((size_t)h, w_times_bytes_plus_one, &ob.cap) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Buffer size overflow: height * (width * bytes + 1) overflow");
+    return NULL;
+  }
+
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate output buffer for scalar rendering");
@@ -737,7 +753,23 @@ char *image_print_16color(const image_t *image, const char *palette) {
   ansi_fast_init_16color();
 
   // Calculate buffer size (smaller than 256-color due to shorter ANSI sequences)
-  size_t buffer_size = (size_t)h * (size_t)w * 12 + (size_t)h; // Space for ANSI codes + newlines
+  // Space for ANSI codes + newlines
+  // Calculate with overflow checking
+  size_t h_times_w;
+  if (checked_size_mul((size_t)h, (size_t)w, &h_times_w) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
+  size_t h_times_w_times_12;
+  if (checked_size_mul(h_times_w, 12u, &h_times_w_times_12) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
+  size_t buffer_size;
+  if (checked_size_add(h_times_w_times_12, (size_t)h, &buffer_size) != ASCIICHAT_OK) {
+    return NULL;
+  }
+
   char *buffer;
   buffer = SAFE_MALLOC(buffer_size, char *);
 
@@ -820,7 +852,26 @@ char *image_print_16color_dithered(const image_t *image, const char *palette) {
   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
 
   // Calculate buffer size (same as non-dithered version)
-  size_t buffer_size = (size_t)h * (size_t)w * 12 + (size_t)h; // Space for ANSI codes + newlines
+  // Space for ANSI codes + newlines
+  // Calculate with overflow checking
+  size_t h_times_w2;
+  if (checked_size_mul((size_t)h, (size_t)w, &h_times_w2) != ASCIICHAT_OK) {
+    SAFE_FREE(error_buffer);
+    return NULL;
+  }
+
+  size_t h_times_w2_times_12;
+  if (checked_size_mul(h_times_w2, 12u, &h_times_w2_times_12) != ASCIICHAT_OK) {
+    SAFE_FREE(error_buffer);
+    return NULL;
+  }
+
+  size_t buffer_size;
+  if (checked_size_add(h_times_w2_times_12, (size_t)h, &buffer_size) != ASCIICHAT_OK) {
+    SAFE_FREE(error_buffer);
+    return NULL;
+  }
+
   char *buffer;
   buffer = SAFE_MALLOC(buffer_size, char *);
 

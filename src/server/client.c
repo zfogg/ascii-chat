@@ -117,8 +117,9 @@
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
-#include "options.h"
+#include "options/options.h"
 #include "buffer_pool.h"
 #include "network/network.h"
 #include "network/packet.h"
@@ -129,14 +130,14 @@
 #include "audio/opus_codec.h"
 #include "video/video_frame.h"
 #include "util/uthash.h"
+#include "util/endian.h"
+#include "util/format.h"
+#include "util/time.h"
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
 #include "network/crc32.h"
 #include "network/logging.h"
-#include "util/time.h"
-#include "util/endian.h"
-#include "util/bytes.h"
 
 // Debug flags
 #define DEBUG_NETWORK 1
@@ -1438,8 +1439,11 @@ void *client_send_thread_func(void *arg) {
       // Validate buffer size after releasing lock (fast check)
       size_t payload_size = sizeof(ascii_frame_packet_t) + frame_size;
       if (payload_size > client->send_buffer_size) {
-        SET_ERRNO(ERROR_NETWORK_SIZE, "Video frame too large for send buffer: %zu > %zu", payload_size,
-                  client->send_buffer_size);
+        char payload_str[64] = {0};
+        char buffer_str[64] = {0};
+        format_bytes_pretty(payload_size, payload_str, sizeof(payload_str));
+        format_bytes_pretty(client->send_buffer_size, buffer_str, sizeof(buffer_str));
+        SET_ERRNO(ERROR_NETWORK_SIZE, "Video frame too large for send buffer: %s > %s", payload_str, buffer_str);
         break;
       }
 
@@ -1840,8 +1844,8 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
     if (len >= 16) {
       const uint8_t *payload = (const uint8_t *)data;
       // Use unaligned read helpers - network data may not be aligned
-      int sample_rate = (int)bytes_read_u32_unaligned(payload);
-      int frame_duration = (int)bytes_read_u32_unaligned(payload + 4);
+      int sample_rate = (int)NET_TO_HOST_U32(read_u32_unaligned(payload));
+      int frame_duration = (int)NET_TO_HOST_U32(read_u32_unaligned(payload + 4));
       // Reserved bytes at offset 8-15
       size_t opus_size = len - 16;
 
@@ -1852,17 +1856,17 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
         uint8_t *batch_ptr = batch_buffer;
 
         // Write batch header (batch_buffer is stack-aligned, writes are safe)
-        bytes_write_u32_unaligned(batch_ptr, (uint32_t)sample_rate);
+        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)sample_rate));
         batch_ptr += 4;
-        bytes_write_u32_unaligned(batch_ptr, (uint32_t)frame_duration);
+        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32((uint32_t)frame_duration));
         batch_ptr += 4;
-        bytes_write_u32_unaligned(batch_ptr, 1); // frame_count = 1
+        write_u32_unaligned(batch_ptr, HOST_TO_NET_U32(1)); // frame_count = 1
         batch_ptr += 4;
         memset(batch_ptr, 0, 4); // reserved
         batch_ptr += 4;
 
         // Write frame size
-        bytes_write_u16_unaligned(batch_ptr, (uint16_t)opus_size);
+        write_u16_unaligned(batch_ptr, HOST_TO_NET_U16((uint16_t)opus_size));
         batch_ptr += 2;
 
         // Write Opus data

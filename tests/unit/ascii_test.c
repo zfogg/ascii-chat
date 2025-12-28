@@ -5,7 +5,7 @@
 #include "video/ascii.h"
 #include "video/image.h"
 #include "platform/terminal.h"
-#include "options.h"
+#include "options/options.h"
 
 // Custom test suite setup function to initialize globals
 void ascii_custom_init(void) {

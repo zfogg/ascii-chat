@@ -14,7 +14,7 @@
 #include "crypto/crypto.h"
 #include "network/compression.h"
 #include "util/endian.h"
-#include "options.h" // For opt_compression_level
+#include "options/options.h" // For opt_compression_level
 #include <stdint.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -270,11 +270,11 @@ asciichat_error_t packet_send(socket_t sockfd, packet_type_t type, const void *d
     return SET_ERRNO(ERROR_NETWORK_SIZE, "Packet too large: %zu > %d", len, MAX_PACKET_SIZE);
   }
 
-  packet_header_t header = {.magic = htonl(PACKET_MAGIC),
-                            .type = htons((uint16_t)type),
-                            .length = htonl((uint32_t)len),
-                            .crc32 = htonl(len > 0 ? asciichat_crc32(data, len) : 0),
-                            .client_id = htonl(0)}; // Always initialize client_id to 0 in network byte order
+  packet_header_t header = {.magic = HOST_TO_NET_U32(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16((uint16_t)type),
+                            .length = HOST_TO_NET_U32((uint32_t)len),
+                            .crc32 = HOST_TO_NET_U32(len > 0 ? asciichat_crc32(data, len) : 0),
+                            .client_id = HOST_TO_NET_U32(0)}; // Always initialize client_id to 0 in network byte order
 
   // Calculate timeout based on packet size
   int timeout = calculate_packet_timeout(len);
@@ -456,11 +456,11 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Encrypt the packet: create header + payload, encrypt everything, wrap in PACKET_TYPE_ENCRYPTED
-  packet_header_t header = {.magic = htonl(PACKET_MAGIC),
-                            .type = htons((uint16_t)type),
-                            .length = htonl((uint32_t)final_len),
-                            .crc32 = htonl(final_len > 0 ? asciichat_crc32(final_data, final_len) : 0),
-                            .client_id = htonl(0)}; // Always 0 - client_id is not used in practice
+  packet_header_t header = {.magic = HOST_TO_NET_U32(PACKET_MAGIC),
+                            .type = HOST_TO_NET_U16((uint16_t)type),
+                            .length = HOST_TO_NET_U32((uint32_t)final_len),
+                            .crc32 = HOST_TO_NET_U32(final_len > 0 ? asciichat_crc32(final_data, final_len) : 0),
+                            .client_id = HOST_TO_NET_U32(0)}; // Always 0 - client_id is not used in practice
 
   // Combine header + payload for encryption
   // Check for integer overflow before addition
@@ -574,10 +574,10 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
   }
 
   // Convert from network byte order
-  uint32_t magic = ntohl(header.magic);
-  uint16_t pkt_type = ntohs(header.type);
-  uint32_t pkt_len = ntohl(header.length);
-  uint32_t expected_crc = ntohl(header.crc32);
+  uint32_t magic = NET_TO_HOST_U32(header.magic);
+  uint16_t pkt_type = NET_TO_HOST_U16(header.type);
+  uint32_t pkt_len = NET_TO_HOST_U32(header.length);
+  uint32_t expected_crc = NET_TO_HOST_U32(header.crc32);
 
   // Validate magic number
   if (magic != PACKET_MAGIC) {
@@ -641,9 +641,9 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
     // Parse decrypted header
     packet_header_t *decrypted_header = (packet_header_t *)plaintext;
-    pkt_type = ntohs(decrypted_header->type);
-    pkt_len = ntohl(decrypted_header->length);
-    expected_crc = ntohl(decrypted_header->crc32);
+    pkt_type = NET_TO_HOST_U16(decrypted_header->type);
+    pkt_len = NET_TO_HOST_U32(decrypted_header->length);
+    expected_crc = NET_TO_HOST_U32(decrypted_header->crc32);
 
     // Extract payload
     size_t payload_len = plaintext_len - sizeof(packet_header_t);
@@ -803,8 +803,8 @@ asciichat_error_t packet_send_error(socket_t sockfd, const crypto_context_t *cry
   }
 
   error_packet_t *packet = (error_packet_t *)payload;
-  packet->error_code = htonl((uint32_t)error_code);
-  packet->message_length = htonl((uint32_t)message_len);
+  packet->error_code = HOST_TO_NET_U32((uint32_t)error_code);
+  packet->message_length = HOST_TO_NET_U32((uint32_t)message_len);
 
   if (message_len > 0) {
     memcpy(payload + sizeof(error_packet_t), message, message_len);
@@ -839,8 +839,8 @@ asciichat_error_t packet_parse_error_message(const void *data, size_t len, ascii
   }
 
   const error_packet_t *packet = (const error_packet_t *)data;
-  uint32_t raw_error_code = ntohl(packet->error_code);
-  uint32_t raw_message_length = ntohl(packet->message_length);
+  uint32_t raw_error_code = NET_TO_HOST_U32(packet->error_code);
+  uint32_t raw_message_length = NET_TO_HOST_U32(packet->message_length);
 
   if (raw_message_length > MAX_ERROR_MESSAGE_LENGTH) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Error message length too large: %u", raw_message_length);
@@ -901,8 +901,8 @@ asciichat_error_t packet_send_remote_log(socket_t sockfd, const crypto_context_t
   if (truncated) {
     final_flags |= REMOTE_LOG_FLAG_TRUNCATED;
   }
-  packet->flags = htons(final_flags);
-  packet->message_length = htonl((uint32_t)message_len);
+  packet->flags = HOST_TO_NET_U16(final_flags);
+  packet->message_length = HOST_TO_NET_U32((uint32_t)message_len);
 
   if (message_len > 0) {
     memcpy(payload + sizeof(remote_log_packet_t), safe_message, message_len);
@@ -953,10 +953,10 @@ asciichat_error_t packet_parse_remote_log(const void *data, size_t len, log_leve
   }
   *out_direction = (remote_log_direction_t)raw_direction;
 
-  uint16_t raw_flags = ntohs(packet->flags);
+  uint16_t raw_flags = NET_TO_HOST_U16(packet->flags);
   *out_flags = raw_flags;
 
-  uint32_t raw_message_length = ntohl(packet->message_length);
+  uint32_t raw_message_length = NET_TO_HOST_U32(packet->message_length);
   if (raw_message_length > MAX_REMOTE_LOG_MESSAGE_LENGTH) {
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Remote log message length too large: %u", raw_message_length);
   }
@@ -1029,10 +1029,10 @@ int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packe
   crypto_parameters_packet_t net_params = *params;
   log_debug("NETWORK_DEBUG: Before htons: kex=%u, auth=%u, sig=%u, secret=%u", params->kex_public_key_size,
             params->auth_public_key_size, params->signature_size, params->shared_secret_size);
-  net_params.kex_public_key_size = htons(params->kex_public_key_size);
-  net_params.auth_public_key_size = htons(params->auth_public_key_size);
-  net_params.signature_size = htons(params->signature_size);
-  net_params.shared_secret_size = htons(params->shared_secret_size);
+  net_params.kex_public_key_size = HOST_TO_NET_U16(params->kex_public_key_size);
+  net_params.auth_public_key_size = HOST_TO_NET_U16(params->auth_public_key_size);
+  net_params.signature_size = HOST_TO_NET_U16(params->signature_size);
+  net_params.shared_secret_size = HOST_TO_NET_U16(params->shared_secret_size);
   log_debug("NETWORK_DEBUG: After htons: kex=%u, auth=%u, sig=%u, secret=%u", net_params.kex_public_key_size,
             net_params.auth_public_key_size, net_params.signature_size, net_params.shared_secret_size);
 

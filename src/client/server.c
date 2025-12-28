@@ -67,9 +67,11 @@
 #include "network/packet.h"
 #include "network/network.h"
 #include "network/av.h"
+#include "util/endian.h"
 #include "common.h"
+#include "util/endian.h"
 #include "display.h"
-#include "options.h"
+#include "options/options.h"
 #include "video/palette.h"
 #include "buffer_pool.h"
 
@@ -509,9 +511,9 @@ connection_success:
   // Extract port from either IPv4 or IPv6 address
   int local_port = 0;
   if (((struct sockaddr *)&local_addr)->sa_family == AF_INET) {
-    local_port = ntohs(((struct sockaddr_in *)&local_addr)->sin_port);
+    local_port = NET_TO_HOST_U16(((struct sockaddr_in *)&local_addr)->sin_port);
   } else if (((struct sockaddr *)&local_addr)->sa_family == AF_INET6) {
-    local_port = ntohs(((struct sockaddr_in6 *)&local_addr)->sin6_port);
+    local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&local_addr)->sin6_port);
   }
   g_my_client_id = (uint32_t)local_port;
 
@@ -882,8 +884,8 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
 
   // Write header in network byte order
   uint8_t *buf = (uint8_t *)packet_data;
-  uint32_t sr = htonl((uint32_t)sample_rate);
-  uint32_t fd = htonl((uint32_t)frame_duration);
+  uint32_t sr = HOST_TO_NET_U32((uint32_t)sample_rate);
+  uint32_t fd = HOST_TO_NET_U32((uint32_t)frame_duration);
   memcpy(buf, &sr, 4);
   memcpy(buf + 4, &fd, 4);
   memset(buf + 8, 0, 8); // Reserved
@@ -993,7 +995,7 @@ int threaded_send_stream_start_packet(uint32_t stream_type) {
   }
 
   // Build STREAM_START packet locally
-  uint32_t type_data = htonl(stream_type);
+  uint32_t type_data = HOST_TO_NET_U32(stream_type);
 
   // Use threaded_send_packet() which handles encryption
   return threaded_send_packet(PACKET_TYPE_STREAM_START, &type_data, sizeof(type_data));
@@ -1039,14 +1041,14 @@ int threaded_send_terminal_size_with_auto_detect(unsigned short width, unsigned 
 
   // Convert to network packet format with proper byte order
   terminal_capabilities_packet_t net_packet;
-  net_packet.capabilities = htonl(caps.capabilities);
-  net_packet.color_level = htonl(caps.color_level);
-  net_packet.color_count = htonl(caps.color_count);
-  net_packet.render_mode = htonl(caps.render_mode);
-  net_packet.width = htons(width);
-  net_packet.height = htons(height);
-  net_packet.palette_type = htonl(opt_palette_type);
-  net_packet.utf8_support = htonl(caps.utf8_support ? 1 : 0);
+  net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
+  net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
+  net_packet.color_count = HOST_TO_NET_U32(caps.color_count);
+  net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
+  net_packet.width = HOST_TO_NET_U16(width);
+  net_packet.height = HOST_TO_NET_U16(height);
+  net_packet.palette_type = HOST_TO_NET_U32(opt_palette_type);
+  net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
 
   if (opt_palette_type == PALETTE_CUSTOM && opt_palette_custom_set) {
     SAFE_STRNCPY(net_packet.palette_custom, opt_palette_custom, sizeof(net_packet.palette_custom));
@@ -1101,9 +1103,9 @@ int threaded_send_client_join_packet(const char *display_name, uint32_t capabili
   // Build CLIENT_JOIN packet locally
   client_info_packet_t join_packet;
   SAFE_MEMSET(&join_packet, sizeof(join_packet), 0, sizeof(join_packet));
-  join_packet.client_id = htonl(0); // Will be assigned by server
+  join_packet.client_id = HOST_TO_NET_U32(0); // Will be assigned by server
   SAFE_SNPRINTF(join_packet.display_name, MAX_DISPLAY_NAME_LEN, "%s", display_name ? display_name : "Unknown");
-  join_packet.capabilities = htonl(capabilities);
+  join_packet.capabilities = HOST_TO_NET_U32(capabilities);
 
   // Use threaded_send_packet() which handles encryption
   int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));

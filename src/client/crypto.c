@@ -148,25 +148,24 @@
 
 #include "crypto.h"
 #include "server.h"
-#include "options.h"
+#include "options/options.h"
 #include "common.h"
+#include "util/endian.h"
 #include "crypto/handshake.h"
 #include "crypto/crypto.h"
 #include "crypto/keys/keys.h"
 #include "buffer_pool.h"
 #include "network/packet.h"
 #include "util/time.h"
+#include "util/endian.h"
 #include "capture.h"
 
 #include <string.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sodium.h>
-#ifdef _WIN32
-#define strncasecmp _strnicmp
-#else
-#include <strings.h>
-#endif
+
+#include "platform/question.h"
 
 // Global crypto handshake context for this client connection
 // NOTE: We use the crypto context from server.c to match the handshake
@@ -346,8 +345,8 @@ int client_crypto_handshake(socket_t socket) {
 
   // Step 0a: Send protocol version to server
   protocol_version_packet_t client_version = {0};
-  client_version.protocol_version = htons(1);  // Protocol version 1
-  client_version.protocol_revision = htons(0); // Revision 0
+  client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
+  client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
   client_version.supports_encryption = 1;      // We support encryption
   client_version.compression_algorithms = 0;   // No compression for now
   client_version.compression_threshold = 0;
@@ -394,8 +393,8 @@ int client_crypto_handshake(socket_t socket) {
   buffer_pool_free(payload, payload_len);
 
   // Convert from network byte order
-  uint16_t server_proto_version = ntohs(server_version.protocol_version);
-  uint16_t server_proto_revision = ntohs(server_version.protocol_revision);
+  uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
+  uint16_t server_proto_revision = NET_TO_HOST_U16(server_version.protocol_revision);
 
   log_info("Server protocol version: %u.%u (encryption: %s)", server_proto_version, server_proto_revision,
            server_version.supports_encryption ? "yes" : "no");
@@ -409,9 +408,9 @@ int client_crypto_handshake(socket_t socket) {
   // Step 0c: Send crypto capabilities to server
   log_debug("CLIENT_CRYPTO_HANDSHAKE: Sending crypto capabilities");
   crypto_capabilities_packet_t client_caps = {0};
-  client_caps.supported_kex_algorithms = htons(KEX_ALGO_X25519);
-  client_caps.supported_auth_algorithms = htons(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
-  client_caps.supported_cipher_algorithms = htons(CIPHER_ALGO_XSALSA20_POLY1305);
+  client_caps.supported_kex_algorithms = HOST_TO_NET_U16(KEX_ALGO_X25519);
+  client_caps.supported_auth_algorithms = HOST_TO_NET_U16(AUTH_ALGO_ED25519 | AUTH_ALGO_NONE);
+  client_caps.supported_cipher_algorithms = HOST_TO_NET_U16(CIPHER_ALGO_XSALSA20_POLY1305);
   client_caps.requires_verification = 0; // Client doesn't require server verification (uses known_hosts)
   client_caps.preferred_kex = KEX_ALGO_X25519;
   client_caps.preferred_auth = AUTH_ALGO_ED25519;
@@ -453,10 +452,10 @@ int client_crypto_handshake(socket_t socket) {
   buffer_pool_free(payload, payload_len);
 
   // Convert from network byte order
-  uint16_t kex_pubkey_size = ntohs(server_params.kex_public_key_size);
-  uint16_t auth_pubkey_size = ntohs(server_params.auth_public_key_size);
-  uint16_t signature_size = ntohs(server_params.signature_size);
-  uint16_t shared_secret_size = ntohs(server_params.shared_secret_size);
+  uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);
+  uint16_t auth_pubkey_size = NET_TO_HOST_U16(server_params.auth_public_key_size);
+  uint16_t signature_size = NET_TO_HOST_U16(server_params.signature_size);
+  uint16_t shared_secret_size = NET_TO_HOST_U16(server_params.shared_secret_size);
 
   log_info("Server crypto parameters: KEX=%u, Auth=%u, Cipher=%u (key_size=%u, auth_size=%u, sig_size=%u, "
            "secret_size=%u, verification=%u)",
@@ -520,10 +519,9 @@ int client_crypto_handshake(socket_t socket) {
 #else
     bool skip_interactive = false;
 #endif
-    if (!skip_interactive && platform_isatty(STDIN_FILENO)) {
+    if (!skip_interactive && platform_is_interactive()) {
       // Interactive mode - prompt user for confirmation
-      // Lock terminal so only this thread can output to terminal
-      // Other threads' logs are buffered until we unlock
+      // Lock terminal for the warning message
       bool previous_terminal_state = log_lock_terminal();
 
       log_plain("\n"
@@ -537,22 +535,13 @@ int client_crypto_handshake(socket_t socket) {
                 "To connect to this server, you need to:\n"
                 "  1. Generate an Ed25519 key: ssh-keygen -t ed25519\n"
                 "  2. Add the public key to the server's --client-keys list\n"
-                "  3. Connect with: ascii-chat client --key /path/to/private/key");
-      log_plain_stderr_nonewline("\nDo you want to continue anyway (this will likely fail)? (yes/no): ");
+                "  3. Connect with: ascii-chat client --key /path/to/private/key\n");
 
-      char response[10];
-      if (fgets(response, sizeof(response), stdin) == NULL) {
-        log_unlock_terminal(previous_terminal_state);
-        log_error("Failed to read user response");
-        STOP_TIMER("client_crypto_handshake");
-        return CONNECTION_ERROR_AUTH_FAILED;
-      }
-
-      // Unlock terminal - buffered logs from other threads will be flushed
+      // Unlock before prompt (prompt_yes_no handles its own terminal locking)
       log_unlock_terminal(previous_terminal_state);
 
-      // Accept "yes" or "y" (case insensitive)
-      if (strncasecmp(response, "yes", 3) != 0 && strncasecmp(response, "y", 1) != 0) {
+      // Prompt user - default is No since this will likely fail
+      if (!platform_prompt_yes_no("Do you want to continue anyway (this will likely fail)", false)) {
         log_plain("Connection aborted by user.");
         exit(0); // User declined - exit cleanly
       }

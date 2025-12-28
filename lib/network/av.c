@@ -25,12 +25,16 @@
 #include "audio/audio.h"
 #include "network.h"
 #include "packet.h"
+#include "util/endian.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
+#include "util/overflow.h"
 #include "audio/opus_codec.h"
 #include "platform/string.h"
 #include "buffer_pool.h"
+#include "util/overflow.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -62,8 +66,12 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
   packet.checksum = 0;
   packet.flags = 0;
 
-  // Calculate total packet size
-  size_t total_size = sizeof(ascii_frame_packet_t) + frame_size;
+  // Calculate total packet size with overflow checking
+  size_t total_size;
+  if (checked_size_add(sizeof(ascii_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Packet size calculation would overflow");
+    return -1;
+  }
 
   // Allocate buffer for complete packet
   void *packet_data = buffer_pool_alloc(total_size);
@@ -119,8 +127,24 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
 
   // Calculate total packet size
   // Cast to size_t before multiplication to prevent integer overflow
-  size_t frame_size = (size_t)width * (size_t)height * 3; // Assume RGB format
-  size_t total_size = sizeof(image_frame_packet_t) + frame_size;
+  // Use overflow-checked multiplication
+  size_t width_times_height;
+  if (checked_size_mul((size_t)width, (size_t)height, &width_times_height) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Image dimensions too large: %d x %d", width, height);
+    return -1;
+  }
+
+  size_t frame_size;
+  if (checked_size_mul(width_times_height, 3u, &frame_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Frame size overflow for RGB format");
+    return -1;
+  }
+
+  size_t total_size;
+  if (checked_size_add(sizeof(image_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Total packet size overflow");
+    return -1;
+  }
 
   // Allocate buffer for complete packet
   void *packet_data = buffer_pool_alloc(total_size);
@@ -257,9 +281,9 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
 
   // Write header (network byte order for cross-platform compatibility)
   uint8_t *buf = (uint8_t *)packet_data;
-  uint32_t sr = htonl((uint32_t)sample_rate);
-  uint32_t fd = htonl((uint32_t)frame_duration);
-  uint32_t fc = htonl((uint32_t)frame_count);
+  uint32_t sr = HOST_TO_NET_U32((uint32_t)sample_rate);
+  uint32_t fd = HOST_TO_NET_U32((uint32_t)frame_duration);
+  uint32_t fc = HOST_TO_NET_U32((uint32_t)frame_count);
   memcpy(buf, &sr, 4);
   memcpy(buf + 4, &fd, 4);
   memcpy(buf + 8, &fc, 4);
@@ -268,7 +292,7 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
   // Write frame sizes array (convert each to network byte order)
   uint16_t *frame_sizes_out = (uint16_t *)(buf + header_size);
   for (int i = 0; i < frame_count; i++) {
-    frame_sizes_out[i] = htons(frame_sizes[i]);
+    frame_sizes_out[i] = HOST_TO_NET_U16(frame_sizes[i]);
   }
 
   // Copy Opus data
@@ -437,10 +461,10 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
   // Build batch header
   audio_batch_packet_t header;
-  header.batch_count = htonl((u_long)batch_count);
-  header.total_samples = htonl((u_long)num_samples);
-  header.sample_rate = htonl(AUDIO_SAMPLE_RATE); // Use system-defined sample rate
-  header.channels = htonl(1UL);                  // Mono for now
+  header.batch_count = HOST_TO_NET_U32((u_long)batch_count);
+  header.total_samples = HOST_TO_NET_U32((u_long)num_samples);
+  header.sample_rate = HOST_TO_NET_U32(AUDIO_SAMPLE_RATE); // Use system-defined sample rate
+  header.channels = HOST_TO_NET_U32(1UL);                  // Mono for now
 
   // Calculate total payload size
   size_t data_size = (size_t)num_samples * sizeof(uint32_t); // Send as 32-bit integers for portability
@@ -470,7 +494,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
     // Scale float [-1.0, 1.0] to int32 range and convert to network byte order
     int32_t scaled = (int32_t)(clamped_sample * 2147483647.0f);
-    uint32_t network_value = htonl((uint32_t)scaled);
+    uint32_t network_value = HOST_TO_NET_U32((uint32_t)scaled);
     memcpy(sample_data_ptr + (size_t)i * sizeof(uint32_t), &network_value, sizeof(uint32_t));
   }
 
@@ -540,9 +564,9 @@ int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, cons
   memcpy(&sr, buf, 4);
   memcpy(&fd, buf + 4, 4);
   memcpy(&fc, buf + 8, 4);
-  *out_sample_rate = (int)ntohl(sr);
-  *out_frame_duration = (int)ntohl(fd);
-  int frame_count = (int)ntohl(fc);
+  *out_sample_rate = (int)NET_TO_HOST_U32(sr);
+  *out_frame_duration = (int)NET_TO_HOST_U32(fd);
+  int frame_count = (int)NET_TO_HOST_U32(fc);
   *out_frame_count = frame_count;
 
   // Extract frame sizes array (after 16-byte header)
@@ -552,7 +576,7 @@ int av_receive_audio_opus_batch(const void *packet_data, size_t packet_len, cons
               header_size + frame_sizes_bytes);
     return -1;
   }
-  // NOTE: Caller must use ntohs() when reading frame_sizes[i] as they are in network byte order
+  // NOTE: Caller must use NET_TO_HOST_U16() when reading frame_sizes[i] as they are in network byte order
   *out_frame_sizes = (const uint16_t *)(buf + header_size);
 
   // Extract Opus data (after header + frame sizes)

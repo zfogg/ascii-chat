@@ -6,9 +6,10 @@
 
 #ifdef _WIN32
 
-#include "../../options.h"
+#include "../../options/options.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
+#include "../../util/parsing.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <io.h>
@@ -615,11 +616,10 @@ fallback:
   *height = OPT_HEIGHT_DEFAULT;
 
   if (cols_env && lines_env) {
-    char *endptr_width = NULL, *endptr_height = NULL;
-    int env_width = strtol(cols_env, &endptr_width, 10);
-    int env_height = strtol(lines_env, &endptr_height, 10);
-
-    if (endptr_width != cols_env && endptr_height != lines_env && env_width > 0 && env_height > 0) {
+    uint32_t env_width = 0, env_height = 0;
+    // Parse width and height with safe range validation (1 to USHRT_MAX)
+    if (parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
+        parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
       return ASCIICHAT_OK;

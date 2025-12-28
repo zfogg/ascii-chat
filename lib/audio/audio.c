@@ -7,10 +7,12 @@
 
 #include "audio/audio.h"
 #include "audio/client_audio_pipeline.h"
+#include "util/endian.h"
 #include "common.h"
+#include "util/endian.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
-#include "options.h"
+#include "options/options.h"
 #include "platform/init.h" // For static_mutex_t
 #include <stdlib.h>
 #include <string.h>
@@ -1149,7 +1151,7 @@ asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t 
     uint32_t network_sample;
     // Use memcpy to safely handle potential misalignment from packet header
     memcpy(&network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
-    int32_t scaled = (int32_t)ntohl(network_sample);
+    int32_t scaled = (int32_t)NET_TO_HOST_U32(network_sample);
     out_samples[i] = (float)scaled / 2147483647.0f;
   }
 

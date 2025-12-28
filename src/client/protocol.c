@@ -87,8 +87,10 @@
 #include "network/av.h"
 #include "buffer_pool.h"
 #include "common.h"
+#include "util/endian.h"
 #include "util/validation.h"
-#include "options.h"
+#include "util/endian.h"
+#include "options/options.h"
 #include "network/crc32.h"
 #include "fps.h"
 #include "crypto/crypto.h"
@@ -380,12 +382,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   memcpy(&header, data, sizeof(ascii_frame_packet_t));
 
   // Convert from network byte order
-  header.width = ntohl(header.width);
-  header.height = ntohl(header.height);
-  header.original_size = ntohl(header.original_size);
-  header.compressed_size = ntohl(header.compressed_size);
-  header.checksum = ntohl(header.checksum);
-  header.flags = ntohl(header.flags);
+  header.width = NET_TO_HOST_U32(header.width);
+  header.height = NET_TO_HOST_U32(header.height);
+  header.original_size = NET_TO_HOST_U32(header.original_size);
+  header.compressed_size = NET_TO_HOST_U32(header.compressed_size);
+  header.checksum = NET_TO_HOST_U32(header.checksum);
+  header.flags = NET_TO_HOST_U32(header.flags);
 
   // Get the frame data (starts after the header)
   const char *frame_data_ptr = (const char *)data + sizeof(ascii_frame_packet_t);
@@ -594,10 +596,10 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
 
   // Parse batch header
   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
-  uint32_t batch_count = ntohl(batch_header->batch_count);
-  uint32_t total_samples = ntohl(batch_header->total_samples);
-  uint32_t sample_rate = ntohl(batch_header->sample_rate);
-  uint32_t channels = ntohl(batch_header->channels);
+  uint32_t batch_count = NET_TO_HOST_U32(batch_header->batch_count);
+  uint32_t total_samples = NET_TO_HOST_U32(batch_header->total_samples);
+  uint32_t sample_rate = NET_TO_HOST_U32(batch_header->sample_rate);
+  uint32_t channels = NET_TO_HOST_U32(batch_header->channels);
 
   (void)batch_count;
   (void)sample_rate;
@@ -757,7 +759,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
 
   for (int i = 0; i < frame_count; i++) {
     // Get frame size (convert from network byte order)
-    size_t frame_size = (size_t)ntohs(frame_sizes[i]);
+    size_t frame_size = (size_t)NET_TO_HOST_U16(frame_sizes[i]);
 
     if (opus_offset + frame_size > opus_size) {
       log_warn("Opus batch truncated at frame %d (offset=%zu, frame_size=%zu, total=%zu)", i, opus_offset, frame_size,
@@ -861,7 +863,7 @@ static void handle_server_state_packet(const void *data, size_t len) {
   const server_state_packet_t *state = (const server_state_packet_t *)data;
 
   // Convert from network byte order
-  uint32_t active_count = ntohl(state->active_client_count);
+  uint32_t active_count = NET_TO_HOST_U32(state->active_client_count);
 
   // Check if connected count changed - if so, set flag to clear console before next frame
   if (g_server_state_initialized) {

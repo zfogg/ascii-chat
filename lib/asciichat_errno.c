@@ -89,9 +89,9 @@ static void capture_backtrace(void **backtrace, char ***backtrace_symbols, int *
 static bool skip_backtrace_frame(const char *frame) {
   return (strstr(frame, "BaseThreadInitThunk") != NULL || strstr(frame, "RtlUserThreadStart") != NULL ||
           strstr(frame, "__scrt_common_main_seh") != NULL || strstr(frame, "capture_backtrace") != NULL ||
+          strstr(frame, "safe_backtrace") != NULL || strstr(frame, "platform_backtrace") != NULL ||
           strstr(frame, "asciichat_set_errno") != NULL || strstr(frame, "asciichat_set_errno_with_message") != NULL ||
-          strstr(frame, "SET_ERRNO") != NULL || strstr(frame, "platform_backtrace") != NULL ||
-          strstr(frame, "asciichat_fatal_with_context") != NULL ||
+          strstr(frame, "SET_ERRNO") != NULL || strstr(frame, "asciichat_fatal_with_context") != NULL ||
           strstr(frame, "asciichat_print_error_context") != NULL);
 }
 

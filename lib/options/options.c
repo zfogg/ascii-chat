@@ -28,8 +28,8 @@
 #include <sys/stat.h>
 
 #include "video/ascii.h"
-#include "options.h"
-#include "config.h"
+#include "options/options.h"
+#include "options/config.h"
 #include "common.h"
 #include "log/logging.h"
 #include "video/webcam/webcam.h"
@@ -39,11 +39,12 @@
 #include "util/parsing.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
-#include "platform/password.h"
+#include "util/password.h"
 #include "platform/util.h"
 #include "version.h"
 #include "crypto/crypto.h"
-#include "util/levenshtein.h"
+#include "options/levenshtein.h"
+#include "options/validation.h"
 
 // Find the most similar option name to an unknown option
 // Returns the best matching option name, or NULL if no good match found
@@ -78,20 +79,14 @@ int strtoint_safe(const char *str) {
     return INT_MIN; // Error: NULL or empty string
   }
 
-  char *endptr;
-  long result = strtol(str, &endptr, 10);
-
-  // Check for various error conditions:
-  // 1. No conversion performed (endptr == str)
-  // 2. Partial conversion (still characters left)
-  // 3. Out of int range
-  if (endptr == str || *endptr != '\0' || result > INT_MAX || result < INT_MIN) {
-    return INT_MIN; // Error: invalid input
+  int32_t result = 0;
+  // Use safe parsing utility with full int32 range validation
+  if (parse_int32(str, &result, INT_MIN, INT_MAX) != ASCIICHAT_OK) {
+    return INT_MIN; // Error: invalid input or out of range
   }
 
   return (int)result;
 }
-
 // Forward declaration for get_required_argument (defined later in file)
 static char *get_required_argument(const char *opt_value, char *buffer, size_t buffer_size, const char *option_name,
                                    bool is_client);
@@ -158,15 +153,21 @@ static bool validate_fps_opt(const char *value_str, int *out_fps) {
   return true;
 }
 
-// Validate webcam index (non-negative integer)
+// Validate webcam index using the common device index validator
 static bool validate_webcam_index(const char *value_str, unsigned short int *out_index) {
   if (!value_str || !out_index) {
     return false;
   }
 
-  int parsed_index = strtoint_safe(value_str);
-  if (parsed_index == INT_MIN || parsed_index < 0) {
-    (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n", value_str);
+  char error_msg[256];
+  int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
+  if (parsed_index == INT_MIN) {
+    (void)fprintf(stderr, "Invalid webcam index: %s\n", error_msg);
+    return false;
+  }
+  // Webcam index doesn't support -1 (default), must be >= 0
+  if (parsed_index < 0) {
+    (void)fprintf(stderr, "Invalid webcam index '%s'. Webcam index must be a non-negative integer.\n", value_str);
     return false;
   }
 
@@ -431,311 +432,6 @@ void update_dimensions_to_terminal_size(void) {
   } else {
     log_debug("Failed to get terminal size in update_dimensions_to_terminal_size");
   }
-}
-
-// ============================================================================
-// Validation Helper Functions (shared between options.c and config.c)
-// ============================================================================
-
-/**
- * Validate port number (1-65535)
- * Returns 0 on success, non-zero on error
- */
-int validate_port(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Port value is required");
-    }
-    return -1;
-  }
-
-  // Use safe integer parsing with range validation
-  uint16_t port_num;
-  if (parse_port(value_str, &port_num) != ASCIICHAT_OK) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid port value '%s'. Port must be a number between 1 and 65535.",
-                    value_str);
-    }
-    return -1;
-  }
-  return 0;
-}
-
-/**
- * Validate positive integer
- * Returns parsed value on success, -1 on error
- */
-int validate_positive_int(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val <= 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a positive integer.", value_str);
-    }
-    return -1;
-  }
-  return val;
-}
-
-/**
- * Validate non-negative integer
- * Returns parsed value on success, -1 on error
- */
-int validate_non_negative_int(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1;
-  }
-
-  int val = strtoint_safe(value_str);
-  if (val == INT_MIN || val < 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid value '%s'. Must be a non-negative integer.", value_str);
-    }
-    return -1;
-  }
-  return val;
-}
-
-/**
- * Validate color mode string
- * Returns parsed color mode on success, -1 on error
- */
-int validate_color_mode(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Color mode value is required");
-    }
-    return -1;
-  }
-
-  if (strcmp(value_str, "auto") == 0) {
-    return COLOR_MODE_AUTO;
-  }
-  if (strcmp(value_str, "none") == 0) {
-    return COLOR_MODE_NONE;
-  }
-  if (strcmp(value_str, "16") == 0 || strcmp(value_str, "16color") == 0) {
-    return COLOR_MODE_16_COLOR;
-  }
-  if (strcmp(value_str, "256") == 0 || strcmp(value_str, "256color") == 0) {
-    return COLOR_MODE_256_COLOR;
-  }
-  if (strcmp(value_str, "truecolor") == 0 || strcmp(value_str, "24bit") == 0) {
-    return COLOR_MODE_TRUECOLOR;
-  }
-  if (error_msg) {
-    SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid color mode '%s'. Valid modes: auto, none, 16, 256, truecolor",
-                  value_str);
-  }
-  return -1;
-}
-
-/**
- * Validate render mode string
- * Returns parsed render mode on success, -1 on error
- */
-int validate_render_mode(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Render mode value is required");
-    }
-    return -1;
-  }
-
-  if (strcmp(value_str, "foreground") == 0 || strcmp(value_str, "fg") == 0) {
-    return RENDER_MODE_FOREGROUND;
-  }
-  if (strcmp(value_str, "background") == 0 || strcmp(value_str, "bg") == 0) {
-    return RENDER_MODE_BACKGROUND;
-  }
-  if (strcmp(value_str, "half-block") == 0 || strcmp(value_str, "halfblock") == 0) {
-    return RENDER_MODE_HALF_BLOCK;
-  }
-  if (error_msg) {
-    SAFE_SNPRINTF(error_msg, error_msg_size,
-                  "Invalid render mode '%s'. Valid modes: foreground, background, half-block", value_str);
-  }
-  return -1;
-}
-
-/**
- * Validate palette type string
- * Returns parsed palette type on success, -1 on error
- */
-int validate_palette(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Palette value is required");
-    }
-    return -1;
-  }
-
-  if (strcmp(value_str, "standard") == 0) {
-    return PALETTE_STANDARD;
-  } else if (strcmp(value_str, "blocks") == 0) {
-    return PALETTE_BLOCKS;
-  } else if (strcmp(value_str, "digital") == 0) {
-    return PALETTE_DIGITAL;
-  } else if (strcmp(value_str, "minimal") == 0) {
-    return PALETTE_MINIMAL;
-  } else if (strcmp(value_str, "cool") == 0) {
-    return PALETTE_COOL;
-  } else if (strcmp(value_str, "custom") == 0) {
-    return PALETTE_CUSTOM;
-  } else {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom",
-                    value_str);
-    }
-    return -1;
-  }
-}
-
-/**
- * Validate log level string
- * Returns parsed log level on success, -1 on error
- */
-int validate_log_level(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Log level value is required");
-    }
-    return -1;
-  }
-
-  if (platform_strcasecmp(value_str, "dev") == 0) {
-    return LOG_DEV;
-  } else if (platform_strcasecmp(value_str, "debug") == 0) {
-    return LOG_DEBUG;
-  } else if (platform_strcasecmp(value_str, "info") == 0) {
-    return LOG_INFO;
-  } else if (platform_strcasecmp(value_str, "warn") == 0) {
-    return LOG_WARN;
-  } else if (platform_strcasecmp(value_str, "error") == 0) {
-    return LOG_ERROR;
-  } else if (platform_strcasecmp(value_str, "fatal") == 0) {
-    return LOG_FATAL;
-  } else {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal", value_str);
-    }
-    return -1;
-  }
-}
-
-/**
- * Validate IP address or hostname
- * Returns 0 on success, -1 on error
- * Sets parsed_address on success (resolved if hostname)
- */
-int validate_ip_address(const char *value_str, char *parsed_address, size_t address_size, bool is_client,
-                        char *error_msg, size_t error_msg_size) {
-  (void)is_client; // Parameter not used but kept for API consistency
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Address value is required");
-    }
-    return -1;
-  }
-
-  // Parse IPv6 address (remove brackets if present)
-  char parsed_addr[OPTIONS_BUFF_SIZE];
-  if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
-    value_str = parsed_addr;
-  }
-
-  // Check if it's a valid IPv4 address
-  if (is_valid_ipv4(value_str)) {
-    SAFE_SNPRINTF(parsed_address, address_size, "%s", value_str);
-    return 0;
-  }
-  // Check if it's a valid IPv6 address
-  if (is_valid_ipv6(value_str)) {
-    SAFE_SNPRINTF(parsed_address, address_size, "%s", value_str);
-    return 0;
-  }
-  // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
-  if (strchr(value_str, '.') != NULL) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size,
-                    "Invalid IP address format '%s'. IPv4 addresses must have exactly 4 octets.", value_str);
-    }
-    return -1;
-  }
-
-  // Otherwise, try to resolve as hostname
-  char resolved_ip[OPTIONS_BUFF_SIZE];
-  if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
-    SAFE_SNPRINTF(parsed_address, address_size, "%s", resolved_ip);
-    return 0;
-  } else {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Failed to resolve hostname '%s' to IP address.", value_str);
-    }
-    return -1;
-  }
-}
-
-/**
- * Validate float value (non-negative)
- * Returns parsed value on success, returns -1.0f on error (caller must check)
- */
-float validate_float_non_negative(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value is required");
-    }
-    return -1.0f;
-  }
-
-  char *endptr;
-  float val = strtof(value_str, &endptr);
-  if (*endptr != '\0' || value_str == endptr) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid float value '%s'. Must be a number.", value_str);
-    }
-    return -1.0f;
-  }
-  if (val < 0.0f) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Value must be non-negative (got %.2f)", val);
-    }
-    return -1.0f;
-  }
-  return val;
-}
-
-/**
- * Validate FPS value (1-144)
- * Returns parsed value on success, -1 on error
- */
-int validate_fps(const char *value_str, char *error_msg, size_t error_msg_size) {
-  if (!value_str || strlen(value_str) == 0) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "FPS value is required");
-    }
-    return -1;
-  }
-
-  int fps_val = strtoint_safe(value_str);
-  if (fps_val == INT_MIN || fps_val < 1 || fps_val > 144) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Invalid FPS value '%s'. FPS must be between 1 and 144.", value_str);
-    }
-    return -1;
-  }
-  return fps_val;
 }
 
 // ============================================================================
@@ -1347,21 +1043,27 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_audio_enabled = 1;
       break;
 
-    case 1028: // --microphone-index
-      opt_microphone_index = strtoint_safe(optarg);
-      if (opt_microphone_index < -1) {
-        safe_fprintf(stderr, "Error: Invalid microphone index '%s'\n", optarg);
+    case 1028: { // --microphone-index
+      char error_msg[256];
+      int index = validate_opt_device_index(optarg, error_msg, sizeof(error_msg));
+      if (index == INT_MIN) {
+        safe_fprintf(stderr, "Error: Invalid microphone index: %s\n", error_msg);
         return -1;
       }
+      opt_microphone_index = index;
       break;
+    }
 
-    case 1029: // --speakers-index
-      opt_speakers_index = strtoint_safe(optarg);
-      if (opt_speakers_index < -1) {
-        safe_fprintf(stderr, "Error: Invalid speakers index '%s'\n", optarg);
+    case 1029: { // --speakers-index
+      char error_msg[256];
+      int index = validate_opt_device_index(optarg, error_msg, sizeof(error_msg));
+      if (index == INT_MIN) {
+        safe_fprintf(stderr, "Error: Invalid speakers index: %s\n", error_msg);
         return -1;
       }
+      opt_speakers_index = index;
       break;
+    }
 
     case 1025: // --audio-analysis
       opt_audio_analysis_enabled = 1;
@@ -1430,7 +1132,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       char *value_str = get_required_argument(optarg, argbuf, sizeof(argbuf), "log-level", is_client);
       if (!value_str)
         return option_error_invalid();
-      int log_level = validate_log_level(value_str, NULL, 0);
+      int log_level = validate_opt_log_level(value_str, NULL, 0);
       if (log_level < 0) {
         (void)fprintf(stderr, "Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal\n",
                       value_str);
@@ -1445,10 +1147,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      // Use safe integer parsing with range validation (zstd levels 1-9 for real-time streaming)
-      long level;
-      if (parse_long(value_str, &level, 1, 9) != ASCIICHAT_OK) {
-        (void)fprintf(stderr, "Invalid compression level '%s': must be between 1 and 9\n", value_str);
+      char error_msg[256];
+      int level = validate_opt_compression_level(value_str, error_msg, sizeof(error_msg));
+      if (level < 0) {
+        (void)fprintf(stderr, "%s\n", error_msg);
         (void)fprintf(stderr, "  Level 1: Fastest compression (best for real-time)\n");
         (void)fprintf(stderr, "  Level 3: Balanced speed/ratio\n");
         (void)fprintf(stderr, "  Level 9: Best compression (for limited bandwidth)\n");
@@ -1469,24 +1171,15 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      // Check for special values: "off" or "auto"
-      if (strcmp(value_str, "off") == 0) {
-        opt_reconnect_attempts = 0;
-      } else if (strcmp(value_str, "auto") == 0) {
-        opt_reconnect_attempts = -1; // Unlimited reconnection
-      } else {
-        // Parse as number using safe integer parsing
-        long attempts;
-        if (parse_long(value_str, &attempts, 0, 999) != ASCIICHAT_OK) {
-          (void)fprintf(stderr, "Invalid reconnect value '%s': must be 'off', 'auto', or a number\n", value_str);
-          (void)fprintf(stderr, "Invalid reconnect attempts '%s': must be between 0 and 999\n", value_str);
-          (void)fprintf(stderr, "  Use 'off' for no reconnection\n");
-          (void)fprintf(stderr, "  Use 'auto' for unlimited reconnection\n");
-          return option_error_invalid();
-        }
-
-        opt_reconnect_attempts = (int)attempts;
+      char error_msg[256];
+      int attempts = validate_opt_reconnect(value_str, error_msg, sizeof(error_msg));
+      if (attempts == INT_MIN) {
+        (void)fprintf(stderr, "%s\n", error_msg);
+        (void)fprintf(stderr, "  Use 'off' for no reconnection\n");
+        (void)fprintf(stderr, "  Use 'auto' for unlimited reconnection\n");
+        return option_error_invalid();
       }
+      opt_reconnect_attempts = attempts;
       break;
     }
 
@@ -1500,14 +1193,14 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      // Use safe integer parsing with range validation (1-32 clients)
-      long max_clients;
-      if (parse_long(value_str, &max_clients, 1, 32) != ASCIICHAT_OK) {
-        (void)fprintf(stderr, "Invalid max-clients '%s': must be between 1 and 32\n", value_str);
+      char error_msg[256];
+      int max_clients = validate_opt_max_clients(value_str, error_msg, sizeof(error_msg));
+      if (max_clients < 0) {
+        (void)fprintf(stderr, "%s\n", error_msg);
         return option_error_invalid();
       }
 
-      opt_max_clients = (int)max_clients;
+      opt_max_clients = max_clients;
       break;
     }
 
@@ -1609,8 +1302,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       // If no password argument provided, prompt the user
       if (!value_str) {
         char prompted_password[OPTIONS_BUFF_SIZE];
-        if (platform_prompt_password("Enter password for encryption:", prompted_password, sizeof(prompted_password)) !=
-            0) {
+        if (prompt_password("Enter password for encryption:", prompted_password, sizeof(prompted_password)) != 0) {
           (void)fprintf(stderr, "Error: Failed to read password\n");
           return option_error_invalid();
         }
@@ -1622,16 +1314,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         memset(prompted_password, 0, sizeof(prompted_password));
       }
 
-      // Validate password length requirements
-      size_t password_len = strlen(value_str);
-      if (password_len < MIN_PASSWORD_LENGTH) {
-        (void)fprintf(stderr, "Error: Password too short (minimum %d characters, got %zu)\n", MIN_PASSWORD_LENGTH,
-                      password_len);
-        return option_error_invalid();
-      }
-      if (password_len > MAX_PASSWORD_LENGTH) {
-        (void)fprintf(stderr, "Error: Password too long (maximum %d characters, got %zu)\n", MAX_PASSWORD_LENGTH,
-                      password_len);
+      // Validate password using the common validator
+      char error_msg[256];
+      if (validate_opt_password(value_str, error_msg, sizeof(error_msg)) < 0) {
+        (void)fprintf(stderr, "Error: %s\n", error_msg);
         return option_error_invalid();
       }
 
