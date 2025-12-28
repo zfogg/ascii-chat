@@ -1,149 +1,161 @@
 /**
  * @file util/endian.h
+ * @brief 🔄 Network byte order conversion helpers
  * @ingroup util
- * @brief 🔄 Network byte order conversion helpers and data serialization
  *
- * Provides type-safe wrappers and helpers for network byte order conversions
- * and binary data packing/unpacking. These consolidate common patterns used
- * throughout the network packet handling code.
+ * Provides convenient macros for converting between host and network byte order.
+ * Reduces repetitive htonl/ntohl calls and makes intent clearer.
+ *
+ * Common Pattern:
+ * Throughout the protocol handlers, we convert numeric values between host and
+ * network byte order for transmission. This creates repetitive patterns like:
+ *
+ * Bad (repetitive):
+ * @code
+ * uint32_t width_net = htonl(img_width);
+ * uint32_t height_net = htonl(img_height);
+ * uint32_t channels_net = htonl(img_channels);
+ * @endcode
+ *
+ * Good (using these helpers):
+ * @code
+ * uint32_t width_net = HOST_TO_NET_U32(img_width);
+ * uint32_t height_net = HOST_TO_NET_U32(img_height);
+ * uint32_t channels_net = HOST_TO_NET_U32(img_channels);
+ * @endcode
+ *
+ * Usage:
+ * @code
+ * // Sending frame header
+ * uint32_t width = frame->width;
+ * uint32_t height = frame->height;
+ * uint32_t size = frame->data_size;
+ *
+ * frame_header_t hdr = {
+ *     .width = HOST_TO_NET_U32(width),
+ *     .height = HOST_TO_NET_U32(height),
+ *     .data_size = HOST_TO_NET_U32(size),
+ * };
+ *
+ * // Receiving and unpacking
+ * const frame_header_t *hdr = (const frame_header_t *)packet_data;
+ * uint32_t width = NET_TO_HOST_U32(hdr->width);
+ * uint32_t height = NET_TO_HOST_U32(hdr->height);
+ * uint32_t size = NET_TO_HOST_U32(hdr->data_size);
+ * @endcode
  */
 
 #pragma once
 
 #include <stdint.h>
-#include <string.h>
 
-// Include platform-specific network byte order headers
 #ifdef _WIN32
 #include <winsock2.h>
 #else
-#include <arpa/inet.h>
+#include <netinet/in.h>
 #endif
 
 /**
- * @brief Pack a 16-bit value into network byte order
- * @param value Value to pack
- * @return Value in network byte order (big-endian)
- */
-static inline uint16_t endian_pack_u16(uint16_t value) {
-  return htons(value);
-}
-
-/**
- * @brief Unpack a 16-bit value from network byte order
- * @param value Value in network byte order
- * @return Value in host byte order
- */
-static inline uint16_t endian_unpack_u16(uint16_t value) {
-  return ntohs(value);
-}
-
-/**
- * @brief Pack a 32-bit value into network byte order
- * @param value Value to pack
- * @return Value in network byte order (big-endian)
- */
-static inline uint32_t endian_pack_u32(uint32_t value) {
-  return htonl(value);
-}
-
-/**
- * @brief Unpack a 32-bit value from network byte order
- * @param value Value in network byte order
- * @return Value in host byte order
- */
-static inline uint32_t endian_unpack_u32(uint32_t value) {
-  return ntohl(value);
-}
-
-/**
- * @brief Write 16-bit value to buffer in network byte order
- * @param buffer Target buffer (at least 2 bytes)
- * @param value Value to write
+ * Convert a 32-bit value from host byte order to network byte order.
+ * Typically used when preparing data for transmission.
  *
- * Writes a 16-bit value to the buffer in network byte order (big-endian).
- */
-static inline void endian_write_u16(uint8_t *buffer, uint16_t value) {
-  uint16_t network_value = htons(value);
-  memcpy(buffer, &network_value, sizeof(uint16_t));
-}
-
-/**
- * @brief Write 32-bit value to buffer in network byte order
- * @param buffer Target buffer (at least 4 bytes)
- * @param value Value to write
+ * @param val 32-bit unsigned integer in host byte order
+ * @return Same value in network byte order (big-endian)
  *
- * Writes a 32-bit value to the buffer in network byte order (big-endian).
+ * Usage:
+ * @code
+ * uint32_t count = 42;
+ * packet.count = HOST_TO_NET_U32(count);
+ * @endcode
  */
-static inline void endian_write_u32(uint8_t *buffer, uint32_t value) {
-  uint32_t network_value = htonl(value);
-  memcpy(buffer, &network_value, sizeof(uint32_t));
-}
+#define HOST_TO_NET_U32(val) htonl((val))
 
 /**
- * @brief Read 16-bit value from buffer in network byte order
- * @param buffer Source buffer (at least 2 bytes)
- * @return Value in host byte order
+ * Convert a 32-bit value from network byte order to host byte order.
+ * Typically used when receiving data from the network.
  *
- * Reads a 16-bit value from the buffer, assuming network byte order (big-endian).
- */
-static inline uint16_t endian_read_u16(const uint8_t *buffer) {
-  uint16_t value;
-  memcpy(&value, buffer, sizeof(uint16_t));
-  return ntohs(value);
-}
-
-/**
- * @brief Read 32-bit value from buffer in network byte order
- * @param buffer Source buffer (at least 4 bytes)
- * @return Value in host byte order
+ * @param val 32-bit unsigned integer in network byte order
+ * @return Same value in host byte order
  *
- * Reads a 32-bit value from the buffer, assuming network byte order (big-endian).
+ * Usage:
+ * @code
+ * const packet_t *pkt = (const packet_t *)data;
+ * uint32_t count = NET_TO_HOST_U32(pkt->count);
+ * @endcode
  */
-static inline uint32_t endian_read_u32(const uint8_t *buffer) {
-  uint32_t value;
-  memcpy(&value, buffer, sizeof(uint32_t));
-  return ntohl(value);
-}
+#define NET_TO_HOST_U32(val) ntohl((val))
 
 /**
- * @brief Write 64-bit value to buffer (assumes network byte order for 64-bit is two 32-bit big-endian values)
- * @param buffer Target buffer (at least 8 bytes)
- * @param value Value to write (as two consecutive 32-bit big-endian values)
+ * Convert a 16-bit value from host byte order to network byte order.
+ * Typically used for port numbers and other 16-bit fields.
  *
- * Writes a 64-bit value as two consecutive 32-bit network byte order values.
- */
-static inline void endian_write_u64(uint8_t *buffer, uint64_t value) {
-  endian_write_u32(buffer, (uint32_t)(value >> 32));
-  endian_write_u32(buffer + 4, (uint32_t)(value & 0xFFFFFFFFU));
-}
-
-/**
- * @brief Read 64-bit value from buffer (assumes network byte order for 64-bit is two 32-bit big-endian values)
- * @param buffer Source buffer (at least 8 bytes)
- * @return Value reconstructed from two consecutive 32-bit big-endian values
+ * @param val 16-bit unsigned integer in host byte order
+ * @return Same value in network byte order (big-endian)
  *
- * Reads a 64-bit value from two consecutive 32-bit network byte order values.
+ * Usage:
+ * @code
+ * uint16_t port = 27224;
+ * addr.sin_port = HOST_TO_NET_U16(port);
+ * @endcode
  */
-static inline uint64_t endian_read_u64(const uint8_t *buffer) {
-  uint32_t high = endian_read_u32(buffer);
-  uint32_t low = endian_read_u32(buffer + 4);
-  return ((uint64_t)high << 32) | low;
-}
+#define HOST_TO_NET_U16(val) htons((val))
 
 /**
- * @brief Check if system is little-endian
- * @return 1 if little-endian, 0 if big-endian
+ * Convert a 16-bit value from network byte order to host byte order.
+ * Typically used for port numbers and other 16-bit fields.
+ *
+ * @param val 16-bit unsigned integer in network byte order
+ * @return Same value in host byte order
+ *
+ * Usage:
+ * @code
+ * const addr_t *addr = ...;
+ * uint16_t port = NET_TO_HOST_U16(addr->sin_port);
+ * @endcode
  */
-static inline int endian_is_little(void) {
-  uint16_t x = 0x0102;
-  return *(uint8_t *)&x == 0x02;
-}
+#define NET_TO_HOST_U16(val) ntohs((val))
 
 /**
- * @brief Get a human-readable endianness string
- * @return "little-endian" or "big-endian"
+ * Convert an array of 32-bit values from host to network byte order in-place.
+ * Modifies the array directly.
+ *
+ * @param arr Pointer to array of uint32_t values
+ * @param count Number of elements to convert
+ *
+ * Usage:
+ * @code
+ * uint32_t data[10] = {...};
+ * CONVERT_ARRAY_HOST_TO_NET_U32(data, 10);
+ * // Now all values in 'data' are in network byte order
+ * @endcode
  */
-static inline const char *endian_name(void) {
-  return endian_is_little() ? "little-endian" : "big-endian";
-}
+#define CONVERT_ARRAY_HOST_TO_NET_U32(arr, count)                                                                      \
+  do {                                                                                                                 \
+    for (size_t i = 0; i < (count); i++) {                                                                             \
+      (arr)[i] = htonl((arr)[i]);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
+/**
+ * Convert an array of 32-bit values from network to host byte order in-place.
+ * Modifies the array directly.
+ *
+ * @param arr Pointer to array of uint32_t values
+ * @param count Number of elements to convert
+ *
+ * Usage:
+ * @code
+ * uint32_t data[10];
+ * memcpy(data, packet_data, sizeof(data));
+ * CONVERT_ARRAY_NET_TO_HOST_U32(data, 10);
+ * // Now all values in 'data' are in host byte order
+ * @endcode
+ */
+#define CONVERT_ARRAY_NET_TO_HOST_U32(arr, count)                                                                      \
+  do {                                                                                                                 \
+    for (size_t i = 0; i < (count); i++) {                                                                             \
+      (arr)[i] = ntohl((arr)[i]);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
+#endif
