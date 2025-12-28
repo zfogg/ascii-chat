@@ -277,9 +277,23 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
-  SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+  // Validate display name is present and not just whitespace
+  if (join_info->display_name[0] == '\0') {
+    disconnect_client_for_bad_data(client, "CLIENT_JOIN display_name cannot be empty");
+    return;
+  }
 
   uint32_t capabilities = ntohl(join_info->capabilities);
+
+  // Validate at least one capability flag is set
+  const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH;
+  VALIDATE_CAPABILITY_FLAGS(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
+
+  // Validate no unknown capability bits are set
+  VALIDATE_FLAGS_MASK(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
+
+  SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+
   client->can_send_video = (capabilities & CLIENT_CAP_VIDEO) != 0;
   client->can_send_audio = (capabilities & CLIENT_CAP_AUDIO) != 0;
   client->wants_stretch = (capabilities & CLIENT_CAP_STRETCH) != 0;
@@ -492,10 +506,12 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
 
-  if ((stream_type & (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)) == 0) {
-    disconnect_client_for_bad_data(client, "STREAM_START with invalid stream type flags: 0x%x", stream_type);
-    return;
-  }
+  // Validate at least one stream type flag is set
+  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
+  VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
+
+  // Validate no unknown stream type bits are set
+  VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
     // Wait for first IMAGE_FRAME before marking sending_video true (avoids race)
@@ -570,10 +586,12 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
 
-  if ((stream_type & (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)) == 0) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP with invalid stream type flags: 0x%x", stream_type);
-    return;
-  }
+  // Validate at least one stream type flag is set
+  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
+  VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
+
+  // Validate no unknown stream type bits are set
+  VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
     atomic_store(&client->is_sending_video, false);
@@ -1437,10 +1455,34 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
+  // Extract and validate dimensions
+  uint16_t width = ntohs(caps->width);
+  uint16_t height = ntohs(caps->height);
+
+  VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
+  VALIDATE_NONZERO(client, height, "height", "CLIENT_CAPABILITIES");
+  VALIDATE_RANGE(client, width, 1, 4096, "width", "CLIENT_CAPABILITIES");
+  VALIDATE_RANGE(client, height, 1, 4096, "height", "CLIENT_CAPABILITIES");
+
+  // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
+  uint32_t color_level = ntohl(caps->color_level);
+  VALIDATE_RANGE(client, color_level, 0, 3, "color_level", "CLIENT_CAPABILITIES");
+
+  // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
+  uint32_t render_mode = ntohl(caps->render_mode);
+  VALIDATE_RANGE(client, render_mode, 0, 2, "render_mode", "CLIENT_CAPABILITIES");
+
+  // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
+  uint32_t palette_type = ntohl(caps->palette_type);
+  VALIDATE_RANGE(client, palette_type, 0, 5, "palette_type", "CLIENT_CAPABILITIES");
+
+  // Validate desired FPS (1-144)
+  VALIDATE_RANGE(client, caps->desired_fps, 1, 144, "desired_fps", "CLIENT_CAPABILITIES");
+
   mutex_lock(&client->client_state_mutex);
 
-  atomic_store(&client->width, ntohs(caps->width));
-  atomic_store(&client->height, ntohs(caps->height));
+  atomic_store(&client->width, width);
+  atomic_store(&client->height, height);
 
   log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
             client->height, caps->desired_fps);
@@ -1541,12 +1583,21 @@ void handle_size_packet(client_info_t *client, const void *data, size_t len) {
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
+  // Extract and validate new dimensions
+  uint16_t width = ntohs(size_pkt->width);
+  uint16_t height = ntohs(size_pkt->height);
+
+  VALIDATE_NONZERO(client, width, "width", "SIZE");
+  VALIDATE_NONZERO(client, height, "height", "SIZE");
+  VALIDATE_RANGE(client, width, 1, 4096, "width", "SIZE");
+  VALIDATE_RANGE(client, height, 1, 4096, "height", "SIZE");
+
   mutex_lock(&client->client_state_mutex);
-  client->width = ntohs(size_pkt->width);
-  client->height = ntohs(size_pkt->height);
+  client->width = width;
+  client->height = height;
   mutex_unlock(&client->client_state_mutex);
 
-  log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), client->width, client->height);
+  log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), width, height);
 }
 
 /* ============================================================================
@@ -1590,6 +1641,57 @@ void handle_ping_packet(client_info_t *client) {
   // PONG responses should be handled directly via socket in send thread
   // For now, just log the ping
   (void)client;
+}
+
+/**
+ * @brief Process CLIENT_LEAVE packet - handle graceful client disconnect
+ *
+ * Clients send this packet to notify the server of an intentional disconnect,
+ * as opposed to a network failure or crash. This allows the server to perform
+ * clean shutdown procedures without waiting for socket timeouts.
+ *
+ * PACKET STRUCTURE:
+ * - LEAVE packets have no payload (header only)
+ *
+ * STATE CHANGES PERFORMED:
+ * - Sets client->active = false immediately
+ * - Triggers client cleanup procedures
+ * - Prevents new packets from being processed
+ *
+ * PROTOCOL BEHAVIOR:
+ * - Client should not send additional packets after LEAVE
+ * - Server will begin client removal process
+ * - Socket will be closed by cleanup procedures
+ *
+ * CLEANUP COORDINATION:
+ * - Receive thread will exit after processing this packet
+ * - Send thread will stop when active flag becomes false
+ * - Render threads will detect inactive state and stop processing
+ * - remove_client() will be called to complete cleanup
+ *
+ * ERROR HANDLING:
+ * - Safe to call multiple times
+ * - No validation required (simple state change)
+ * - Cleanup is idempotent
+ *
+ * @param client Source client requesting graceful disconnect
+ *
+ * @note This provides clean shutdown versus network timeout
+ * @note Actual client removal happens in main thread
+ * @see remove_client() For complete cleanup implementation
+ */
+void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
+  // CLIENT_LEAVE is a header-only packet with no payload
+  // Validate packet has no extra data
+  if (len != 0) {
+    disconnect_client_for_bad_data(client, "CLIENT_LEAVE payload unexpected (len=%zu, expected 0)", len);
+    return;
+  }
+
+  // Handle clean disconnect notification from client
+  log_info("Client %u sent LEAVE packet - clean disconnect", atomic_load(&client->client_id));
+  // OPTIMIZED: Use atomic operation for thread control flag (lock-free)
+  atomic_store(&client->active, false);
 }
 
 /* ============================================================================
