@@ -239,13 +239,13 @@ void debug_free(void *ptr, const char *file, int line) {
     }
 
     if (!found) {
-      log_warn_every(1000000, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
+      log_warn_every(LOG_RATE_FAST, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
       platform_print_backtrace(1);
     }
 
     mutex_unlock(&g_mem.mutex);
   } else {
-    log_warn_every(1000000, "Debug memory mutex unavailable while freeing %p at %s:%d", ptr, file, line);
+    log_warn_every(LOG_RATE_FAST, "Debug memory mutex unavailable while freeing %p at %s:%d", ptr, file, line);
   }
 
   if (found) {
@@ -417,7 +417,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
 
     mutex_unlock(&g_mem.mutex);
   } else {
-    log_warn_every(1000000, "Debug memory mutex unavailable while reallocating %p at %s:%d", ptr, file, line);
+    log_warn_every(LOG_RATE_FAST, "Debug memory mutex unavailable while reallocating %p at %s:%d", ptr, file, line);
   }
 
   // Perform actual reallocation
@@ -495,7 +495,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
 
     mutex_unlock(&g_mem.mutex);
   } else {
-    log_warn_every(1000000, "Debug memory mutex unavailable while updating realloc block %p -> %p at %s:%d", ptr,
+    log_warn_every(LOG_RATE_FAST, "Debug memory mutex unavailable while updating realloc block %p -> %p at %s:%d", ptr,
                    new_ptr, file, line);
   }
 

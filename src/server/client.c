@@ -1271,7 +1271,7 @@ void *client_send_thread_func(void *arg) {
                                          20, audio_packet_count, (crypto_context_t *)crypto_ctx);
             mutex_unlock(&client->send_mutex);
 
-            log_debug_every(1000000, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
+            log_debug_every(LOG_RATE_FAST, "Sent Opus batch: %d frames (%zu bytes) to client %u", audio_packet_count,
                             total_opus_size, client->client_id);
           } else {
             log_error("Failed to allocate buffer for Opus batch");
@@ -1308,8 +1308,8 @@ void *client_send_thread_func(void *arg) {
 
             SAFE_FREE(batched_audio);
 
-            log_debug_every(1000000, "Sent audio batch: %d packets (%zu samples) to client %u", audio_packet_count,
-                            total_samples, client->client_id);
+            log_debug_every(LOG_RATE_FAST, "Sent audio batch: %d packets (%zu samples) to client %u",
+                            audio_packet_count, total_samples, client->client_id);
           } else {
             log_error("Failed to allocate buffer for audio batch");
             result = -1;
@@ -1408,8 +1408,8 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->send_mutex);
         send_packet_secure(client->socket, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, (crypto_context_t *)crypto_ctx);
         mutex_unlock(&client->send_mutex);
-        log_debug_every(1000000, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)", client->client_id,
-                        sent_sources, rendered_sources);
+        log_debug_every(LOG_RATE_FAST, "Client %u: Sent CLEAR_CONSOLE (grid changed %d → %d sources)",
+                        client->client_id, sent_sources, rendered_sources);
         atomic_store(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
       }
@@ -1423,7 +1423,7 @@ void *client_send_thread_func(void *arg) {
       if (frame->data && frame->size == 0) {
         // NOTE: This means the we're not ready to send ascii to the client and
         // should wait a little bit.
-        log_warn_every(1000000, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
+        log_warn_every(LOG_RATE_FAST, "Client %u has no valid frame size: size=%zu", client->client_id, frame->size);
         platform_sleep_usec(1000); // 1ms sleep
         continue;
       }
@@ -1517,7 +1517,7 @@ void *client_send_thread_func(void *arg) {
         uint64_t step5_us = ((uint64_t)step5.tv_sec * 1000000 + (uint64_t)step5.tv_nsec / 1000) -
                             ((uint64_t)step4.tv_sec * 1000000 + (uint64_t)step4.tv_nsec / 1000);
         log_warn_every(
-            5000000,
+            LOG_RATE_DEFAULT,
             "SEND_THREAD: Frame send took %.2fms for client %u | Snapshot: %.2fms | Memcpy: %.2fms | CRC32: %.2fms | "
             "Header: %.2fms | send_packet_secure: %.2fms",
             frame_time_us / 1000.0, client->client_id, step1_us / 1000.0, step2_us / 1000.0, step3_us / 1000.0,

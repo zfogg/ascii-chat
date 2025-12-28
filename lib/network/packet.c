@@ -443,7 +443,7 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   // If no crypto context or crypto not ready, send unencrypted
   bool ready = crypto_ctx ? crypto_is_ready(crypto_ctx) : false;
   if (!crypto_ctx || !ready) {
-    log_warn_every(1000000, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
+    log_warn_every(LOG_RATE_FAST, "CRYPTO_DEBUG: Sending packet type %d UNENCRYPTED (crypto_ctx=%p, ready=%d)", type,
                    (void *)crypto_ctx, ready);
     int result = packet_send(sockfd, type, final_data, final_len);
     if (compressed_data) {
@@ -522,7 +522,8 @@ int send_packet_secure(socket_t sockfd, packet_type_t type, const void *data, si
   }
 
   // Send as PACKET_TYPE_ENCRYPTED
-  log_debug_every(10000000, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)", type);
+  log_debug_every(LOG_RATE_SLOW, "CRYPTO_DEBUG: Sending encrypted packet (original type %d as PACKET_TYPE_ENCRYPTED)",
+                  type);
   int send_result = packet_send(sockfd, PACKET_TYPE_ENCRYPTED, ciphertext, ciphertext_len);
   buffer_pool_free(ciphertext, ciphertext_size);
 
