@@ -95,13 +95,13 @@ static bool skip_backtrace_frame(const char *frame) {
           strstr(frame, "asciichat_print_error_context") != NULL);
 }
 
-void log_labeled(const char *label, logging_color_t color, const char *message, ...) {
+void log_labeled(const char *label, log_color_t color, const char *message, ...) {
   va_list args;
   va_start(args, message);
   char *formatted_message = format_message(message, args);
   va_end(args);
 
-  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOGGING_COLOR_RESET),
+  safe_fprintf(stderr, "%s%s%s: %s\n", log_level_color(color), label, log_level_color(LOG_COLOR_RESET),
                formatted_message);
 
   log_file("%s: %s", label, formatted_message);

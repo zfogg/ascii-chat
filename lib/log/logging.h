@@ -157,32 +157,21 @@ static const char *level_colors_truecolor[] = {
 };
 
 /**
- * @brief Color names enum for terminal output
+ * @brief Color enum for logging - indexes into color arrays
  * @ingroup logging
+ *
+ * These values directly index into level_colors arrays.
+ * Order matches DEV, DEBUG, INFO, WARN, ERROR, FATAL, RESET.
  */
 typedef enum {
-  COLOR_BLUE = 0, /**< Blue color */
-  COLOR_CYAN,     /**< Cyan color */
-  COLOR_GREEN,    /**< Green color */
-  COLOR_YELLOW,   /**< Yellow color */
-  COLOR_RED,      /**< Red color */
-  COLOR_MAGENTA,  /**< Magenta color */
-  COLOR_RESET,    /**< Reset color to default */
-} color_t;
-
-/**
- * @brief Logging-specific color enum that maps to log levels
- * @ingroup logging
- */
-typedef enum {
-  LOGGING_COLOR_DEBUG = COLOR_CYAN,    /**< Color for DEBUG messages */
-  LOGGING_COLOR_INFO = COLOR_GREEN,    /**< Color for INFO messages */
-  LOGGING_COLOR_WARN = COLOR_YELLOW,   /**< Color for WARN messages */
-  LOGGING_COLOR_ERROR = COLOR_RED,     /**< Color for ERROR messages */
-  LOGGING_COLOR_FATAL = COLOR_MAGENTA, /**< Color for FATAL messages */
-  LOGGING_COLOR_DEV = COLOR_BLUE,      /**< Color for DEV messages */
-  LOGGING_COLOR_RESET = COLOR_RESET    /**< Reset color */
-} logging_color_t;
+  LOG_COLOR_DEV = 0,   /**< Blue - DEV messages */
+  LOG_COLOR_DEBUG = 1, /**< Cyan - DEBUG messages */
+  LOG_COLOR_INFO = 2,  /**< Green - INFO messages */
+  LOG_COLOR_WARN = 3,  /**< Yellow - WARN messages */
+  LOG_COLOR_ERROR = 4, /**< Red - ERROR messages */
+  LOG_COLOR_FATAL = 5, /**< Magenta - FATAL messages */
+  LOG_COLOR_RESET = 6  /**< Reset to default */
+} log_color_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -318,7 +307,7 @@ void log_file_msg(const char *fmt, ...);
  * @return ANSI color code string
  * @ingroup logging
  */
-const char *log_level_color(logging_color_t color);
+const char *log_level_color(log_color_t color);
 
 /**
  * @brief Get the appropriate color array based on terminal capabilities
@@ -650,8 +639,8 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
-                 log_level_color(LOGGING_COLOR_RESET), message);                                                       \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
+                 message);                                                                                             \
     platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
     platform_write(g_log.file, message, strlen(message));                                                              \
     platform_write(g_log.file, "\n", 1);                                                                               \
@@ -662,8 +651,8 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
   do {                                                                                                                 \
     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOGGING_COLOR_ERROR), msg_header,                               \
-                 log_level_color(LOGGING_COLOR_RESET), message);                                                       \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
+                 message);                                                                                             \
     platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
     platform_write(g_log.file, message, strlen(message));                                                              \
     platform_write(g_log.file, "\n", 1);                                                                               \
