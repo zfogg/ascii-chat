@@ -1013,7 +1013,7 @@ static void *data_reception_thread_func(void *arg) {
     // Clean up packet buffer using the allocated_buffer pointer, not the data pointer
     // The data pointer is offset into the buffer, but we need to free the actual allocated buffer
     if (envelope.allocated_buffer && envelope.allocated_size > 0) {
-      buffer_pool_free(envelope.allocated_buffer, envelope.allocated_size);
+      buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
     }
 
     if (should_disconnect) {

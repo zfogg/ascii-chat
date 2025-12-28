@@ -121,7 +121,7 @@ typedef struct {
   /** @brief If true, free data when packet is freed */
   bool owns_data;
   /** @brief Pool that allocated the data (NULL if malloc'd) */
-  data_buffer_pool_t *buffer_pool;
+  buffer_pool_t *buffer_pool;
 } queued_packet_t;
 
 /**
@@ -219,7 +219,7 @@ typedef struct {
   /** @brief Optional memory pool for nodes (NULL = use malloc/free) */
   node_pool_t *node_pool;
   /** @brief Optional memory pool for data buffers (NULL = use malloc/free) */
-  data_buffer_pool_t *buffer_pool;
+  buffer_pool_t *buffer_pool;
 
   /** @brief Total packets enqueued (statistics) - atomic for lock-free access */
   _Atomic uint64_t packets_enqueued;

@@ -143,8 +143,8 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
  * @ingroup packet_parsing
  */
 asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                                   void *output_buffer, size_t output_size, uint32_t original_size,
-                                                   uint32_t compressed_size);
+                                                  void *output_buffer, size_t output_size, uint32_t original_size,
+                                                  uint32_t compressed_size);
 
 /** @} */
 

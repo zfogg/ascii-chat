@@ -102,8 +102,8 @@ asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool i
   }
 
   // Initialize global shared buffer pool
-  data_buffer_pool_init_global();
-  (void)atexit(data_buffer_pool_cleanup_global);
+  buffer_pool_init_global();
+  (void)atexit(buffer_pool_cleanup_global);
 
   // Register errno cleanup
   (void)atexit(asciichat_errno_cleanup);

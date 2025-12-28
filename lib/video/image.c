@@ -112,7 +112,7 @@ void image_destroy(image_t *p) {
     }
 
     // Free the entire contiguous buffer back to pool
-    buffer_pool_free(p, total_size);
+    buffer_pool_free(NULL, p, total_size);
   } else {
     // SIMD-allocated images: free pixels and structure separately
     // SAFE_MALLOC_SIMD allocates with aligned allocation (posix_memalign on macOS, aligned_alloc on Linux)
@@ -150,7 +150,7 @@ image_t *image_new_from_pool(size_t width, size_t height) {
   }
 
   // Allocate from buffer pool as single contiguous block
-  void *buffer = buffer_pool_alloc(total_size);
+  void *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
     SET_ERRNO(ERROR_MEMORY, "image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)", total_size,
               width, height);
@@ -196,7 +196,7 @@ void image_destroy_to_pool(image_t *image) {
   }
 
   // Free the entire contiguous buffer back to pool
-  buffer_pool_free(image, total_size);
+  buffer_pool_free(NULL, image, total_size);
   // Note: Don't set image = NULL here since caller owns the pointer
 }
 

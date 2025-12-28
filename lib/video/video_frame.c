@@ -29,7 +29,7 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
 
   // Pre-allocate frame data buffers (2MB each for HD video)
   const size_t frame_size = (size_t)2 * 1024 * 1024;
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
+  buffer_pool_t *pool = buffer_pool_get_global();
 
   // Initialize frames - size starts at 0 until actual data is written!
   vfb->frames[0].size = 0; // Start with 0 - will be set when data is written
@@ -41,8 +41,8 @@ video_frame_buffer_t *video_frame_buffer_create(uint32_t client_id) {
   vfb->allocated_buffer_size = frame_size;
 
   if (pool) {
-    vfb->frames[0].data = data_buffer_pool_alloc(pool, frame_size);
-    vfb->frames[1].data = data_buffer_pool_alloc(pool, frame_size);
+    vfb->frames[0].data = buffer_pool_alloc(pool, frame_size);
+    vfb->frames[1].data = buffer_pool_alloc(pool, frame_size);
   }
 
   if (!vfb->frames[0].data || !vfb->frames[1].data) {
@@ -89,17 +89,17 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
   vfb->active = false;
 
   // Free frame data
-  data_buffer_pool_t *pool = data_buffer_pool_get_global();
+  buffer_pool_t *pool = buffer_pool_get_global();
   if (vfb->frames[0].data) {
     if (pool) {
-      data_buffer_pool_free(pool, vfb->frames[0].data, vfb->allocated_buffer_size);
+      buffer_pool_free(pool, vfb->frames[0].data, vfb->allocated_buffer_size);
     } else {
       SAFE_FREE(vfb->frames[0].data);
     }
   }
   if (vfb->frames[1].data) {
     if (pool) {
-      data_buffer_pool_free(pool, vfb->frames[1].data, vfb->allocated_buffer_size);
+      buffer_pool_free(pool, vfb->frames[1].data, vfb->allocated_buffer_size);
     } else {
       SAFE_FREE(vfb->frames[1].data);
     }

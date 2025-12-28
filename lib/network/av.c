@@ -75,7 +75,7 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
   }
 
   // Allocate buffer for complete packet
-  void *packet_data = buffer_pool_alloc(total_size);
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ASCII frame packet: %zu bytes", total_size);
     return -1;
@@ -89,7 +89,7 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
   int result = packet_send(sockfd, PACKET_TYPE_ASCII_FRAME, packet_data, total_size);
 
   // Clean up
-  buffer_pool_free(packet_data, total_size);
+  buffer_pool_free(NULL, packet_data, total_size);
 
   return result;
 }
@@ -148,7 +148,7 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
   }
 
   // Allocate buffer for complete packet
-  void *packet_data = buffer_pool_alloc(total_size);
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for image frame packet: %zu bytes", total_size);
     return -1;
@@ -162,7 +162,7 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
   int result = packet_send(sockfd, PACKET_TYPE_IMAGE_FRAME, packet_data, total_size);
 
   // Clean up
-  buffer_pool_free(packet_data, total_size);
+  buffer_pool_free(NULL, packet_data, total_size);
 
   return result;
 }
@@ -219,7 +219,7 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
   size_t total_size = sizeof(audio_batch_packet_t) + samples_size;
 
   // Allocate buffer for complete packet
-  void *packet_data = buffer_pool_alloc(total_size);
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for audio batch packet: %zu bytes", total_size);
     return -1;
@@ -233,7 +233,7 @@ int av_send_audio_batch(socket_t sockfd, const float *samples, int num_samples, 
   int result = packet_send(sockfd, PACKET_TYPE_AUDIO_BATCH, packet_data, total_size);
 
   // Clean up
-  buffer_pool_free(packet_data, total_size);
+  buffer_pool_free(NULL, packet_data, total_size);
 
   return result;
 }
@@ -274,7 +274,7 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
   size_t header_size = 16; // sample_rate (4), frame_duration (4), frame_count (4), reserved (4)
   size_t frame_sizes_bytes = (size_t)frame_count * sizeof(uint16_t);
   size_t total_size = header_size + frame_sizes_bytes + opus_size;
-  void *packet_data = buffer_pool_alloc(total_size);
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus batch packet: %zu bytes", total_size);
     return -1;
@@ -308,7 +308,7 @@ int av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_data, size_t o
   }
 
   // Clean up
-  buffer_pool_free(packet_data, total_size);
+  buffer_pool_free(NULL, packet_data, total_size);
 
   return result;
 }
@@ -467,7 +467,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
   size_t total_size = sizeof(header) + data_size;
 
   // Allocate buffer for header + data
-  uint8_t *buffer = buffer_pool_alloc(total_size);
+  uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
   if (!buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for audio batch packet");
     return -1;
@@ -508,7 +508,7 @@ int send_audio_batch_packet(socket_t sockfd, const float *samples, int num_sampl
 
   // Send packet with encryption support
   int result = send_packet_secure(sockfd, PACKET_TYPE_AUDIO_BATCH, buffer, total_size, crypto_ctx);
-  buffer_pool_free(buffer, total_size);
+  buffer_pool_free(NULL, buffer, total_size);
 
   return result;
 }

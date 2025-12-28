@@ -36,7 +36,8 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
   if (original_size > PACKET_MAX_FRAME_SIZE) {
     char size_str[32];
     format_bytes_pretty(original_size, size_str, sizeof(size_str));
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s (max %d MB)", size_str, PACKET_MAX_FRAME_SIZE / (1024 * 1024));
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s (max %d MB)", size_str,
+              PACKET_MAX_FRAME_SIZE / (1024 * 1024));
     return NULL;
   }
 
@@ -50,7 +51,8 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
   if (is_compressed) {
     // Validate compressed frame size
     if (frame_data_len != compressed_size) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size, frame_data_len);
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
+                frame_data_len);
       SAFE_FREE(frame_data);
       return NULL;
     }
@@ -84,8 +86,8 @@ char *packet_decode_frame_data_malloc(const char *frame_data_ptr, size_t frame_d
 }
 
 asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
-                                                   void *output_buffer, size_t output_size, uint32_t original_size,
-                                                   uint32_t compressed_size) {
+                                                  void *output_buffer, size_t output_size, uint32_t original_size,
+                                                  uint32_t compressed_size) {
   if (!frame_data_ptr || !output_buffer) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL pointer in frame decode");
   }

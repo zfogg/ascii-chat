@@ -836,8 +836,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
         }
         char size_str[32];
         format_bytes_pretty(rgb_data_size, size_str, sizeof(size_str));
-        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%s",
-                                       size_str);
+        disconnect_client_for_bad_data(client, "IMAGE_FRAME size overflow while repacking: rgb_data_size=%s", size_str);
         return;
       }
       size_t old_packet_size = legacy_header_size + rgb_data_size;

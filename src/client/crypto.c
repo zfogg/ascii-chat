@@ -374,7 +374,7 @@ int client_crypto_handshake(socket_t socket) {
     log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
     }
     STOP_TIMER("client_crypto_handshake");
     return -1;
@@ -383,14 +383,14 @@ int client_crypto_handshake(socket_t socket) {
   if (payload_len != sizeof(protocol_version_packet_t)) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
-    buffer_pool_free(payload, payload_len);
+    buffer_pool_free(NULL, payload, payload_len);
     STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
   protocol_version_packet_t server_version;
   memcpy(&server_version, payload, sizeof(protocol_version_packet_t));
-  buffer_pool_free(payload, payload_len);
+  buffer_pool_free(NULL, payload, payload_len);
 
   // Convert from network byte order
   uint16_t server_proto_version = NET_TO_HOST_U16(server_version.protocol_version);
@@ -433,7 +433,7 @@ int client_crypto_handshake(socket_t socket) {
   if (result != ASCIICHAT_OK || packet_type != PACKET_TYPE_CRYPTO_PARAMETERS) {
     log_error("Failed to receive server crypto parameters (got type %u)", packet_type);
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
     }
     STOP_TIMER("client_crypto_handshake");
     return -1;
@@ -442,14 +442,14 @@ int client_crypto_handshake(socket_t socket) {
   if (payload_len != sizeof(crypto_parameters_packet_t)) {
     log_error("Invalid crypto parameters packet size: %zu, expected %zu", payload_len,
               sizeof(crypto_parameters_packet_t));
-    buffer_pool_free(payload, payload_len);
+    buffer_pool_free(NULL, payload, payload_len);
     STOP_TIMER("client_crypto_handshake");
     return -1;
   }
 
   crypto_parameters_packet_t server_params;
   memcpy(&server_params, payload, sizeof(crypto_parameters_packet_t));
-  buffer_pool_free(payload, payload_len);
+  buffer_pool_free(NULL, payload, payload_len);
 
   // Convert from network byte order
   uint16_t kex_pubkey_size = NET_TO_HOST_U16(server_params.kex_public_key_size);

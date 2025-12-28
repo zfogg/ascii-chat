@@ -873,7 +873,7 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
   // Build Opus packet with header
   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
   size_t total_size = header_size + opus_size;
-  void *packet_data = buffer_pool_alloc(total_size);
+  void *packet_data = buffer_pool_alloc(NULL, total_size);
   if (!packet_data) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus packet: %zu bytes", total_size);
     mutex_unlock(&g_send_mutex);
@@ -901,7 +901,7 @@ int threaded_send_audio_opus(const uint8_t *opus_data, size_t opus_size, int sam
   }
 
   // Clean up
-  buffer_pool_free(packet_data, total_size);
+  buffer_pool_free(NULL, packet_data, total_size);
   mutex_unlock(&g_send_mutex);
 
   // If send failed due to network error, signal connection loss

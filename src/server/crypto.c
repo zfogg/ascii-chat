@@ -265,7 +265,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != ASCIICHAT_OK) {
     log_info("Client %u disconnected during crypto handshake (connection error)", atomic_load(&client->client_id));
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
     }
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
@@ -279,7 +279,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
     }
     log_info("Client %u disconnected due to protocol mismatch", atomic_load(&client->client_id));
     client->crypto_initialized = false;
@@ -290,7 +290,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (payload_len != sizeof(protocol_version_packet_t)) {
     log_error("Invalid protocol version packet size: %zu, expected %zu", payload_len,
               sizeof(protocol_version_packet_t));
-    buffer_pool_free(payload, payload_len);
+    buffer_pool_free(NULL, payload, payload_len);
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
     return -1;
@@ -299,7 +299,7 @@ int server_crypto_handshake(client_info_t *client) {
   protocol_version_packet_t client_version;
   memcpy(&client_version, payload, sizeof(protocol_version_packet_t));
   log_debug("SERVER_CRYPTO_HANDSHAKE: About to free payload for client %u", atomic_load(&client->client_id));
-  buffer_pool_free(payload, payload_len);
+  buffer_pool_free(NULL, payload, payload_len);
   log_debug("SERVER_CRYPTO_HANDSHAKE: Payload freed for client %u", atomic_load(&client->client_id));
 
   // Convert from network byte order
@@ -356,7 +356,7 @@ int server_crypto_handshake(client_info_t *client) {
   if (result != ASCIICHAT_OK) {
     log_info("Client %u disconnected during crypto capabilities exchange", atomic_load(&client->client_id));
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
     }
     client->crypto_initialized = false;
     STOP_TIMER("server_crypto_handshake_client_%u", atomic_load(&client->client_id));
@@ -369,7 +369,7 @@ int server_crypto_handshake(client_info_t *client) {
     log_error("Raw packet type bytes: %02x %02x %02x %02x", (packet_type >> 0) & 0xFF, (packet_type >> 8) & 0xFF,
               (packet_type >> 16) & 0xFF, (packet_type >> 24) & 0xFF);
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
     }
     log_info("Client %u disconnected due to protocol mismatch in crypto capabilities", atomic_load(&client->client_id));
     client->crypto_initialized = false;
@@ -382,7 +382,7 @@ int server_crypto_handshake(client_info_t *client) {
               "Invalid crypto capabilities packet size: %zu (expected %zu) - we should disconnect this client",
               payload_len, sizeof(crypto_capabilities_packet_t));
     if (payload) {
-      buffer_pool_free(payload, payload_len);
+      buffer_pool_free(NULL, payload, payload_len);
       payload = NULL;
     }
     client->crypto_initialized = false;
@@ -403,7 +403,7 @@ int server_crypto_handshake(client_info_t *client) {
   crypto_capabilities_packet_t client_caps;
   // NOLINTNEXTLINE(clang-analyzer-unix.cstring.NullArg) - payload checked above, FATAL never returns
   memcpy(&client_caps, payload, sizeof(crypto_capabilities_packet_t));
-  buffer_pool_free(payload, payload_len);
+  buffer_pool_free(NULL, payload, payload_len);
 
   // Convert from network byte order
   uint16_t supported_kex = NET_TO_HOST_U16(client_caps.supported_kex_algorithms);

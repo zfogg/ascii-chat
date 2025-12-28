@@ -176,9 +176,9 @@ static atomic_int g_previous_active_video_count = 0;
  */
 static void cleanup_current_frame_data(multi_source_frame_t *frame) {
   if (frame && frame->data) {
-    data_buffer_pool_t *pool = data_buffer_pool_get_global();
+    buffer_pool_t *pool = buffer_pool_get_global();
     if (pool) {
-      data_buffer_pool_free(pool, frame->data, frame->size);
+      buffer_pool_free(pool, frame->data, frame->size);
     } else {
       SAFE_FREE(frame->data);
     }
@@ -314,9 +314,9 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
 
       if (frame_data_ptr && frame_size_val > 0) {
         // We have frame data - copy it to our working structure
-        data_buffer_pool_t *pool = data_buffer_pool_get_global();
+        buffer_pool_t *pool = buffer_pool_get_global();
         if (pool) {
-          current_frame.data = data_buffer_pool_alloc(pool, frame->size);
+          current_frame.data = buffer_pool_alloc(pool, frame->size);
         }
         if (!current_frame.data) {
           // 64-byte cache-line alignment improves performance for large video frames
