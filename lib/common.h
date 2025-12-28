@@ -869,84 +869,21 @@ bool shutdown_is_requested(void);
 #define SAFE_STRCPY(dest, dest_size, src) platform_strcpy((dest), (dest_size), (src))
 
 /* ============================================================================
- * Unaligned Memory Access Helpers
+ * Unaligned Memory Access Helpers (Backward Compatibility)
  * ============================================================================
- * These functions safely read/write multi-byte values from/to potentially
- * unaligned memory addresses. Direct pointer casts like *(uint32_t*)ptr cause
- * undefined behavior on architectures requiring aligned access.
- *
- * Uses memcpy which compilers optimize to single instructions when possible
- * while remaining safe on all platforms (ARM, SPARC, etc.).
+ * NOTE: These functions have been moved to util/bytes.h
+ *       This header includes util/bytes.h and provides backward compatibility
+ *       macros for existing code using the old names.
  */
 
-/**
- * @brief Read a 16-bit value from potentially unaligned memory
- * @param ptr Pointer to memory (may be unaligned)
- * @return 16-bit value in host byte order
- */
-static inline uint16_t read_u16_unaligned(const void *ptr) {
-  uint16_t value;
-  __builtin_memcpy(&value, ptr, sizeof(value));
-  return value;
-}
+#include "util/bytes.h"
 
-/**
- * @brief Read a 32-bit value from potentially unaligned memory
- * @param ptr Pointer to memory (may be unaligned)
- * @return 32-bit value in host byte order
- */
-static inline uint32_t read_u32_unaligned(const void *ptr) {
-  uint32_t value;
-  __builtin_memcpy(&value, ptr, sizeof(value));
-  return value;
-}
-
-/**
- * @brief Write a 16-bit value to potentially unaligned memory
- * @param ptr Pointer to memory (may be unaligned)
- * @param value 16-bit value in host byte order
- */
-static inline void write_u16_unaligned(void *ptr, uint16_t value) {
-  __builtin_memcpy(ptr, &value, sizeof(value));
-}
-
-/**
- * @brief Write a 32-bit value to potentially unaligned memory
- * @param ptr Pointer to memory (may be unaligned)
- * @param value 32-bit value in host byte order
- */
-static inline void write_u32_unaligned(void *ptr, uint32_t value) {
-  __builtin_memcpy(ptr, &value, sizeof(value));
-}
-
-/**
- * @brief Safe size_t multiplication with overflow detection
- *
- * IMPORTANT: Return value semantics are counter-intuitive!
- * - Returns TRUE if overflow occurred OR result pointer is NULL
- * - Returns FALSE on successful multiplication
- *
- * USAGE:
- *   size_t product;
- *   if (safe_size_mul(width, height, &product)) {
- *     // OVERFLOW occurred - product is set to 0
- *   } else {
- *     // SUCCESS - product contains valid result
- *   }
- */
-static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
-  if (result == NULL) {
-    return true; // ERROR: NULL pointer
-  }
-
-  if (a != 0 && b > SIZE_MAX / a) {
-    *result = 0;
-    return true; // ERROR: Overflow detected
-  }
-
-  *result = a * b;
-  return false; // SUCCESS
-}
+/* Backward compatibility aliases for existing code */
+#define read_u16_unaligned bytes_read_u16_unaligned
+#define read_u32_unaligned bytes_read_u32_unaligned
+#define write_u16_unaligned bytes_write_u16_unaligned
+#define write_u32_unaligned bytes_write_u32_unaligned
+#define safe_size_mul bytes_safe_size_mul
 
 /* Safe string formatting */
 // clang-format off

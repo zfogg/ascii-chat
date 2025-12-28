@@ -33,6 +33,7 @@ set(UTIL_SRCS
     lib/util/time.c
     lib/util/levenshtein.c
     lib/util/image_size.c
+    lib/util/audio.c
     lib/fps.c
 )
 
