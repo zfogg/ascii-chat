@@ -32,6 +32,7 @@
 #include "audio/opus_codec.h"
 #include "platform/string.h"
 #include "buffer_pool.h"
+#include "util/overflow.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -63,8 +64,12 @@ int av_send_ascii_frame(socket_t sockfd, const char *frame_data, size_t frame_si
   packet.checksum = 0;
   packet.flags = 0;
 
-  // Calculate total packet size
-  size_t total_size = sizeof(ascii_frame_packet_t) + frame_size;
+  // Calculate total packet size with overflow checking
+  size_t total_size;
+  if (checked_size_add(sizeof(ascii_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Packet size calculation would overflow");
+    return -1;
+  }
 
   // Allocate buffer for complete packet
   void *packet_data = buffer_pool_alloc(total_size);

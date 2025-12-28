@@ -20,9 +20,11 @@
 if(USE_MIMALLOC)
     message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} memory allocator...")
 
-    # Try to find system-installed mimalloc first (Unix only, via CMake config)
+    # Try to find system-installed mimalloc first (Linux only, via CMake config)
+    # Skip on macOS: Homebrew's mimalloc has MI_OVERRIDE=ON which causes crashes
+    # when system libraries (getaddrinfo/freeaddrinfo) try to free memory.
     set(_MIMALLOC_FROM_SYSTEM FALSE)
-    if(NOT WIN32 AND NOT USE_MUSL)
+    if(NOT WIN32 AND NOT USE_MUSL AND NOT APPLE)
         # Try to find mimalloc via CMake's find_package (uses mimalloc-config.cmake)
         # Detect multiarch directory (e.g., x86_64-linux-gnu, aarch64-linux-gnu)
         if(NOT CMAKE_LIBRARY_ARCHITECTURE)
@@ -283,13 +285,12 @@ if(USE_MIMALLOC)
         set(MI_BUILD_OBJECT OFF CACHE BOOL "Build object library")
         set(MI_BUILD_TESTS OFF CACHE BOOL "Build test executables")
 
-        # For musl, disable MI_OVERRIDE to avoid symbol conflicts with musl's malloc
-        # We'll explicitly call mi_malloc instead of relying on override
-        if(USE_MUSL)
-            set(MI_OVERRIDE OFF CACHE BOOL "Don't override malloc for musl - use explicit calls")
-        else()
-            set(MI_OVERRIDE ON CACHE BOOL "Override malloc/free globally")
-        endif()
+        # Disable MI_OVERRIDE to avoid conflicts with system libraries that use the
+        # system allocator (e.g., getaddrinfo/freeaddrinfo on macOS). When MI_OVERRIDE
+        # is ON, mimalloc intercepts free() calls, but system libraries allocate with
+        # the real malloc, causing "pointer being freed was not allocated" crashes.
+        # We use explicit mi_malloc/mi_free via ALLOC_* macros in common.h.
+        set(MI_OVERRIDE OFF CACHE BOOL "Don't override malloc - use explicit mi_* calls")
 
         # Completely disable mimalloc installation - it's statically linked
         set(MI_INSTALL_TOPLEVEL OFF CACHE BOOL "Install in top-level")
@@ -304,13 +305,6 @@ if(USE_MIMALLOC)
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             set(MI_TRACK_ASAN ON CACHE BOOL "Build mimalloc with AddressSanitizer support")
             message(STATUS "Enabling ${BoldCyan}MI_TRACK_ASAN${ColorReset} for AddressSanitizer compatibility")
-
-            # On macOS, MI_OVERRIDE must be OFF when using AddressSanitizer
-            # The address sanitizer redirects malloc/free, so mimalloc override conflicts
-            if(APPLE)
-                set(MI_OVERRIDE OFF CACHE BOOL "Disable override on macOS with ASAN" FORCE)
-                message(STATUS "Disabled ${BoldCyan}MI_OVERRIDE${ColorReset} on macOS (required for AddressSanitizer)")
-            endif()
         endif()
 
         # Platform-specific mimalloc options
@@ -469,8 +463,8 @@ if(USE_MIMALLOC)
         message(STATUS "mimalloc shared library resolved to: ${MIMALLOC_SHARED_LIBRARIES}")
     endif()
 
-    message(STATUS "${BoldGreen}mimalloc${ColorReset} will override malloc/free globally")
-    message(STATUS "Your existing SAFE_MALLOC macros will automatically use ${BoldGreen}mimalloc${ColorReset}")
+    message(STATUS "${BoldGreen}mimalloc${ColorReset} enabled (MI_OVERRIDE=OFF, explicit mi_* calls)")
+    message(STATUS "SAFE_MALLOC/SAFE_FREE macros use ${BoldGreen}mi_malloc/mi_free${ColorReset}")
 
     # Helper: Collect all mimalloc include directories for test harnesses and other consumers
     # This handles system-installed mimalloc (e.g., Homebrew on macOS), FetchContent builds, and vcpkg

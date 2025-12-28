@@ -12,7 +12,7 @@
 #include "crypto/crypto.h"
 #include "known_hosts.h"
 #include "network/packet.h"
-#include "platform/password.h"
+#include "util/password.h"
 #include <stdio.h>
 #include <string.h>
 #ifndef _WIN32
@@ -1252,8 +1252,8 @@ asciichat_error_t crypto_handshake_client_auth_response(crypto_handshake_context
     }
     // Prompt for password interactively
     char prompted_password[PASSWORD_BUFFER_SIZE];
-    if (platform_prompt_password("Server password required - please enter password:", prompted_password,
-                                 sizeof(prompted_password)) != 0) {
+    if (prompt_password("Server password required - please enter password:", prompted_password,
+                        sizeof(prompted_password)) != 0) {
       if (payload) {
         buffer_pool_free(payload, payload_len);
       }

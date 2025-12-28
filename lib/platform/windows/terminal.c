@@ -6,7 +6,7 @@
 
 #ifdef _WIN32
 
-#include "../../options.h"
+#include "../../options/options.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include <stdio.h>

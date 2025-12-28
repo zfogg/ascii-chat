@@ -74,7 +74,7 @@
 
 #include "platform/abstraction.h"
 #include "platform/util.h"
-#include "options.h"
+#include "options/options.h"
 #include "video/ascii.h"
 
 #include <fcntl.h>

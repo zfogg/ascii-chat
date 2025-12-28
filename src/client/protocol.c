@@ -89,7 +89,7 @@
 #include "common.h"
 #include "util/validation.h"
 #include "util/endian.h"
-#include "options.h"
+#include "options/options.h"
 #include "network/crc32.h"
 #include "fps.h"
 #include "crypto/crypto.h"
@@ -102,7 +102,6 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 
 #include "crypto.h"
 #include "util/time.h"
-#include "util/endian.h"
 
 #include <stdatomic.h>
 #include <string.h>
