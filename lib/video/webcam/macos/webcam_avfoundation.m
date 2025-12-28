@@ -13,6 +13,7 @@
 
 #include "video/webcam/webcam.h"
 #include "common.h"
+#include "util/image.h"
 
 // AVFoundation timeout configuration
 #define AVFOUNDATION_FRAME_TIMEOUT_NS 500000000         // 500ms timeout (adjustable for slow cameras)
@@ -406,13 +407,32 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     }
 
     // Copy pixel data (handle potential row padding)
-    if (bytesPerRow == width * 3) {
+    // Calculate frame size with overflow checking
+    size_t frame_size;
+    if (image_calc_rgb_size(width, height, &frame_size) != ASCIICHAT_OK) {
+      CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+      CVPixelBufferRelease(pixelBuffer);
+      image_destroy(img);
+      log_error("Failed to calculate frame size: width=%zu, height=%zu (would overflow)", width, height);
+      return NULL;
+    }
+
+    size_t row_size;
+    if (image_calc_rgb_size(width, 1, &row_size) != ASCIICHAT_OK) {
+      CVPixelBufferUnlockBaseAddress(pixelBuffer, kCVPixelBufferLock_ReadOnly);
+      CVPixelBufferRelease(pixelBuffer);
+      image_destroy(img);
+      log_error("Failed to calculate row size: width=%zu (would overflow)", width);
+      return NULL;
+    }
+
+    if (bytesPerRow == row_size) {
       // No padding, direct copy
-      memcpy(img->pixels, baseAddress, width * height * 3);
+      memcpy(img->pixels, baseAddress, frame_size);
     } else {
       // Copy row by row to handle padding
       for (size_t y = 0; y < height; y++) {
-        memcpy(&img->pixels[y * width * 3], &baseAddress[y * bytesPerRow], width * 3);
+        memcpy(&img->pixels[y * row_size], &baseAddress[y * bytesPerRow], row_size);
       }
     }
 
