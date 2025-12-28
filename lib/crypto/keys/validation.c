@@ -250,10 +250,29 @@ asciichat_error_t check_key_strength(const public_key_t *key, bool *is_weak) {
     return ASCIICHAT_OK;
   }
 
+  // Check for low entropy: Count unique bytes
+  // A properly random 32-byte key should have ~24-32 unique values
+  // Low entropy keys will have very few unique bytes
+  bool byte_seen[256] = {0};
+  int unique_bytes = 0;
+  for (int i = 0; i < 32; i++) {
+    uint8_t byte_val = key->key[i];
+    if (!byte_seen[byte_val]) {
+      byte_seen[byte_val] = true;
+      unique_bytes++;
+    }
+  }
+
+  // If less than 8 unique bytes in 32 bytes, entropy is very low
+  // This indicates non-random key generation (e.g., PRNG seed not properly initialized)
+  if (unique_bytes < 8) {
+    *is_weak = true;
+    return ASCIICHAT_OK;
+  }
+
   // Additional weak key pattern detection:
   // - Check for repeated patterns (handled in check_key_patterns)
   // - Check for known weak sequences (see check_key_patterns)
-  // - Validate key entropy (would require statistical tests, not practical for single checks)
 
   return ASCIICHAT_OK;
 }
