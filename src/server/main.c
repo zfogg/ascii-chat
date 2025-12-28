@@ -75,15 +75,14 @@
 #include "main.h"
 #include "common.h"
 #include "util/endian.h"
+#include "util/ip.h"
 #include "util/uthash.h"
-#include "util/endian.h"
 #include "platform/abstraction.h"
 #include "platform/socket.h"
 #include "platform/init.h"
 #include "video/image.h"
 #include "video/simd/ascii_simd.h"
 #include "video/simd/common.h"
-#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
 #include "options/options.h"
@@ -1033,23 +1032,22 @@ main_loop:
     char client_ip[INET6_ADDRSTRLEN]; // Large enough for both IPv4 and IPv6
     int client_port = 0;
 
-    if (((struct sockaddr *)&client_addr)->sa_family == AF_INET) {
-      // IPv4 address
-      struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
-      inet_ntop(AF_INET, &addr_in->sin_addr, client_ip, sizeof(client_ip));
-      client_port = NET_TO_HOST_U16(addr_in->sin_port);
-      log_debug("New client connected from %s:%d (IPv4)", client_ip, client_port);
-    } else if (((struct sockaddr *)&client_addr)->sa_family == AF_INET6) {
-      // IPv6 address
-      struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
-      inet_ntop(AF_INET6, &addr_in6->sin6_addr, client_ip, sizeof(client_ip));
-      client_port = NET_TO_HOST_U16(addr_in6->sin6_port);
+    int family = ((struct sockaddr *)&client_addr)->sa_family;
+    if (format_ip_address(family, (struct sockaddr *)&client_addr, client_ip, sizeof(client_ip)) == ASCIICHAT_OK) {
+      if (family == AF_INET) {
+        struct sockaddr_in *addr_in = (struct sockaddr_in *)&client_addr;
+        client_port = NET_TO_HOST_U16(addr_in->sin_port);
+        log_debug("New client connected from %s:%d (IPv4)", client_ip, client_port);
+      } else if (family == AF_INET6) {
+        struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)&client_addr;
+        client_port = NET_TO_HOST_U16(addr_in6->sin6_port);
 
-      // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
-      if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
-        log_debug("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
-      } else {
-        log_debug("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
+        // Check if it's an IPv4-mapped IPv6 address (::ffff:x.x.x.x)
+        if (IN6_IS_ADDR_V4MAPPED(&addr_in6->sin6_addr)) {
+          log_debug("New client connected from [%s]:%d (IPv4-mapped IPv6)", client_ip, client_port);
+        } else {
+          log_debug("New client connected from [%s]:%d (IPv6)", client_ip, client_port);
+        }
       }
     } else {
       safe_snprintf(client_ip, sizeof(client_ip), "unknown");

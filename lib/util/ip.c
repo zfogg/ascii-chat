@@ -10,6 +10,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 // Helper function to validate IPv4 address format
 int is_valid_ipv4(const char *ip) {
@@ -192,6 +194,31 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size) {
   memcpy(output, start, len);
   output[len] = '\0';
   return 0;
+}
+
+// Format IP address from socket address structure
+asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, char *output, size_t output_size) {
+  if (!addr || !output || output_size == 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid arguments to format_ip_address");
+  }
+
+  const void *ip_ptr = NULL;
+
+  if (family == AF_INET) {
+    const struct sockaddr_in *addr_in = (const struct sockaddr_in *)addr;
+    ip_ptr = &addr_in->sin_addr;
+  } else if (family == AF_INET6) {
+    const struct sockaddr_in6 *addr_in6 = (const struct sockaddr_in6 *)addr;
+    ip_ptr = &addr_in6->sin6_addr;
+  } else {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Unsupported address family: %d", family);
+  }
+
+  if (inet_ntop(family, ip_ptr, output, (socklen_t)output_size) == NULL) {
+    return SET_ERRNO(ERROR_NETWORK_ADDR, "Failed to format IP address");
+  }
+
+  return ASCIICHAT_OK;
 }
 
 // Format IP address with port number
