@@ -138,6 +138,7 @@
 #include "stream.h"
 #include "client.h"
 #include "common.h"
+#include "util/endian.h"
 #include "buffer_pool.h"
 #include "network/packet_queue.h"
 #include "ringbuffer.h"
@@ -338,8 +339,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       // Parse the image data
       // Format: [width:4][height:4][rgb_data:w*h*3]
       // Use unaligned read helpers - frame data may not be aligned
-      uint32_t img_width = ntohl(read_u32_unaligned(frame_to_use->data));
-      uint32_t img_height = ntohl(read_u32_unaligned(frame_to_use->data + sizeof(uint32_t)));
+      uint32_t img_width = NET_TO_HOST_U32(read_u32_unaligned(frame_to_use->data));
+      uint32_t img_height = NET_TO_HOST_U32(read_u32_unaligned(frame_to_use->data + sizeof(uint32_t)));
 
       // Debug logging to understand the data
       if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
