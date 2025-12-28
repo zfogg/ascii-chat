@@ -186,6 +186,7 @@ set(VIDEO_SRCS
     lib/video/video_frame.c
     lib/video/image.c
     lib/video/ascii.c
+    lib/video/grid.c
     lib/video/ansi_fast.c
     lib/video/ansi.c
     lib/video/palette.c
