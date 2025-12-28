@@ -119,6 +119,7 @@
 #include "protocol.h"
 #include "client.h"
 #include "common.h"
+#include "protocol/packet_helpers.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
 #include "video/palette.h"
@@ -270,17 +271,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  */
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload missing");
-    return;
-  }
-
-  if (len != sizeof(client_info_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload size %zu (expected %zu)", len,
-                                   sizeof(client_info_packet_t));
-    return;
-  }
-
+  VALIDATE_PACKET(data, len, client_info_packet_t, "CLIENT_JOIN", disconnect_client_for_bad_data);
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
   SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
@@ -331,15 +322,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "STREAM_START payload missing");
-    return;
-  }
-
-  if (len != sizeof(uint32_t)) {
-    disconnect_client_for_bad_data(client, "STREAM_START payload size %zu (expected %zu)", len, sizeof(uint32_t));
-    return;
-  }
+  VALIDATE_PACKET(data, len, uint32_t, "STREAM_START", disconnect_client_for_bad_data);
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -411,15 +394,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  * @see handle_stream_start_packet() For starting media transmission
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP payload missing");
-    return;
-  }
-
-  if (len != sizeof(uint32_t)) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP payload size %zu (expected %zu)", len, sizeof(uint32_t));
-    return;
-  }
+  VALIDATE_PACKET(data, len, uint32_t, "STREAM_STOP", disconnect_client_for_bad_data);
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -875,8 +850,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   log_debug_every(5000000, "Received audio batch packet from client %u (len=%zu, is_sending_audio=%d)",
                   atomic_load(&client->client_id), len, atomic_load(&client->is_sending_audio));
 
-  if (!data) {
-    disconnect_client_for_bad_data(client, "AUDIO_BATCH payload missing (len=%zu)", len);
+  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_BATCH", disconnect_client_for_bad_data)) {
     return;
   }
 
@@ -1008,8 +982,7 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 void handle_audio_opus_batch_packet(client_info_t *client, const void *data, size_t len) {
   log_debug_every(10000000, "Received Opus audio batch from client %u (len=%zu)", atomic_load(&client->client_id), len);
 
-  if (!data) {
-    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH payload missing");
+  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS_BATCH", disconnect_client_for_bad_data)) {
     return;
   }
 
@@ -1187,8 +1160,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len) {
   log_debug_every(5000000, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id), len);
 
-  if (!data) {
-    disconnect_client_for_bad_data(client, "AUDIO_OPUS payload missing");
+  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
     return;
   }
 
@@ -1327,16 +1299,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES payload missing");
-    return;
-  }
-
-  if (len != sizeof(terminal_capabilities_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid size: %zu (expected %zu)", len,
-                                   sizeof(terminal_capabilities_packet_t));
-    return;
-  }
+  VALIDATE_PACKET(data, len, terminal_capabilities_packet_t, "CLIENT_CAPABILITIES", disconnect_client_for_bad_data);
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
@@ -1432,15 +1395,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  * @note No validation of reasonable dimension ranges
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "SIZE payload missing");
-    return;
-  }
-
-  if (len != sizeof(size_packet_t)) {
-    disconnect_client_for_bad_data(client, "SIZE payload size %zu (expected %zu)", len, sizeof(size_packet_t));
-    return;
-  }
+  VALIDATE_PACKET(data, len, size_packet_t, "SIZE", disconnect_client_for_bad_data);
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
