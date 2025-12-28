@@ -76,7 +76,7 @@
 #include "main.h"
 #include "server.h"
 #include "fps.h"
-#include "util/thread_lifecycle.h"
+#include "util/thread.h"
 
 #include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
