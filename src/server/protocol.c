@@ -272,6 +272,8 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(client_info_packet_t), "CLIENT_JOIN");
+  VALIDATE_PACKET(data, len, client_info_packet_t, "CLIENT_JOIN", disconnect_client_for_bad_data);
+  
 
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
@@ -324,7 +326,8 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_START");
-
+  VALIDATE_PACKET(data, len, uint32_t, "STREAM_START", disconnect_client_for_bad_data);
+  
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
@@ -396,6 +399,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_STOP");
+  VALIDATE_PACKET(data, len, uint32_t, "STREAM_STOP", disconnect_client_for_bad_data);
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -1115,8 +1119,7 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 void handle_audio_opus_packet(client_info_t *client, const void *data, size_t len) {
   log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id), len);
 
-  if (!data) {
-    disconnect_client_for_bad_data(client, "AUDIO_OPUS payload missing");
+  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
     return;
   }
 
@@ -1256,6 +1259,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
+  VALIDATE_PACKET(data, len, terminal_capabilities_packet_t, "CLIENT_CAPABILITIES", disconnect_client_for_bad_data);
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
@@ -1352,6 +1356,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
   VALIDATE_PACKET_SIZE(client, data, len, sizeof(size_packet_t), "SIZE");
+  VALIDATE_PACKET(data, len, size_packet_t, "SIZE", disconnect_client_for_bad_data);
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
