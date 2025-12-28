@@ -649,7 +649,7 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   // Clean up
   SAFE_FREE(samples);
 
-  log_debug_every(5000000, "Processed audio batch: %u samples from server", total_samples);
+  log_debug_every(LOG_RATE_DEFAULT, "Processed audio batch: %u samples from server", total_samples);
 }
 
 /**
@@ -688,7 +688,7 @@ static void handle_audio_opus_packet(const void *data, size_t len) {
   // Process decoded audio through audio subsystem
   audio_process_received_samples(samples, decoded_samples);
 
-  log_debug_every(5000000, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, len);
+  log_debug_every(LOG_RATE_DEFAULT, "Processed Opus audio: %d decoded samples from %zu byte packet", decoded_samples, len);
 }
 
 /**
@@ -788,7 +788,7 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     // Process decoded audio through audio subsystem
     audio_process_received_samples(all_samples, total_decoded_samples);
 
-    log_debug_every(5000000, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
+    log_debug_every(LOG_RATE_DEFAULT, "Processed Opus batch: %d decoded samples from %d frames", total_decoded_samples,
                     frame_count);
   }
 

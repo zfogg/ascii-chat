@@ -624,7 +624,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
         int chunk = (i + MIXER_FRAME_SIZE > num_samples) ? (num_samples - i) : MIXER_FRAME_SIZE;
         audio_ring_buffer_read(mixer->source_buffers[exclude_index], discard_buffer, chunk);
       }
-      log_debug_every(5000000, "Mixer: Draining solo client %u buffer to prevent overflow", exclude_client_id);
+      log_debug_every(LOG_RATE_DEFAULT, "Mixer: Draining solo client %u buffer to prevent overflow", exclude_client_id);
     }
     active_mask = mask_without_excluded;
   }

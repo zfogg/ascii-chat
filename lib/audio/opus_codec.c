@@ -115,7 +115,7 @@ size_t opus_codec_encode(opus_codec_t *codec, const float *samples, int num_samp
 
   if (encoded_bytes == 0) {
     // DTX frame (silence) - encoder produced zero bytes
-    log_debug_every(100000, "Opus DTX frame (silence detected)");
+    log_debug_every(LOG_RATE_VERY_FAST, "Opus DTX frame (silence detected)");
   }
 
   return (size_t)encoded_bytes;
@@ -136,7 +136,7 @@ int opus_codec_decode(opus_codec_t *codec, const uint8_t *data, size_t data_len,
 
   // If data is NULL, use PLC (Packet Loss Concealment)
   if (!data || data_len == 0) {
-    log_debug_every(100000, "Opus PLC (Packet Loss Concealment)");
+    log_debug_every(LOG_RATE_VERY_FAST, "Opus PLC (Packet Loss Concealment)");
     int samples = opus_decode_float(codec->decoder, NULL, 0, out_samples, out_num_samples, 0);
     if (samples < 0) {
       SET_ERRNO(ERROR_AUDIO, "Opus PLC failed: %s", opus_strerror(samples));
