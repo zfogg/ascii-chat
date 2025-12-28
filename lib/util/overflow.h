@@ -44,8 +44,7 @@
 #include <stdbool.h>
 #include <limits.h>
 
-/* Forward declaration for error handling */
-typedef int asciichat_error_t;
+#include "common.h"
 
 /* ============================================================================
  * Overflow Prediction Functions

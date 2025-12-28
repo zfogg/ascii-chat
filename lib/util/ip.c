@@ -215,7 +215,7 @@ asciichat_error_t format_ip_address(int family, const struct sockaddr *addr, cha
   }
 
   if (inet_ntop(family, ip_ptr, output, (socklen_t)output_size) == NULL) {
-    return SET_ERRNO(ERROR_NETWORK_ADDR, "Failed to format IP address");
+    return SET_ERRNO(ERROR_NETWORK, "Failed to format IP address");
   }
 
   return ASCIICHAT_OK;

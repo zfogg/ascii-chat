@@ -24,38 +24,11 @@
 #include <stdint.h>
 
 #include "common.h"
+#include "options/options.h" // For strtoint_safe()
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @name Integer Parsing Utilities
- * @{
- */
-
-/**
- * @brief Safely parse string to integer with validation
- * @param str String to parse (must not be NULL)
- * @return Integer value on success, INT_MIN on error
- *
- * Parses a string to an integer with comprehensive validation:
- * - Validates that string is not NULL or empty
- * - Performs base-10 conversion using strtol()
- * - Checks for partial conversions (characters left unconverted)
- * - Validates result is within int range (INT_MIN to INT_MAX)
- * - Returns INT_MIN on any error condition
- *
- * @note Returns INT_MIN on error (which is distinguishable from valid negative
- *       values since INT_MIN is a valid integer, but unlikely to be used as an
- *       option value). The options parser checks for INT_MIN to detect parse errors.
- * @note Thread-safe: Uses only local variables, no static state.
- *
- * @ingroup options
- */
-ASCIICHAT_API int strtoint_safe(const char *str);
-
-/** @} */
 
 /**
  * @name Validation Functions
