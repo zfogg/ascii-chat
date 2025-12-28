@@ -331,6 +331,24 @@ int set_socket_keepalive(socket_t sockfd);
  */
 int set_socket_nonblocking(socket_t sockfd);
 
+/**
+ * @brief Configure socket buffers and TCP options for optimal performance
+ * @param sockfd Socket file descriptor to configure
+ * @return 0 on success, negative value if any option fails
+ *
+ * Sets standard socket options for optimal real-time performance:
+ * - SO_SNDBUF: 256KB send buffer
+ * - SO_RCVBUF: 256KB receive buffer
+ * - TCP_NODELAY: Disable Nagle's algorithm for low-latency communication
+ *
+ * @note Individual option failures are logged but don't prevent other options
+ *       from being set or the socket from being used. This is intentional - the
+ *       socket is still usable even if some options fail on certain systems.
+ *
+ * @ingroup network
+ */
+int socket_configure_buffers(socket_t sockfd);
+
 /** @} */
 
 /**

@@ -553,3 +553,34 @@ bool connect_with_timeout(socket_t sockfd, const struct sockaddr *addr, socklen_
 
   return error_code == 0;
 }
+
+int socket_configure_buffers(socket_t sockfd) {
+  if (sockfd == INVALID_SOCKET_VALUE) {
+    return -1;
+  }
+
+  int result = 0;
+
+  // Configure send buffer
+  const int send_buffer_size = 262144; // 256KB
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &send_buffer_size, sizeof(send_buffer_size)) < 0) {
+    log_warn("Failed to set SO_SNDBUF: send buffer may be suboptimal");
+    result = -1;
+  }
+
+  // Configure receive buffer
+  const int recv_buffer_size = 262144; // 256KB
+  if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &recv_buffer_size, sizeof(recv_buffer_size)) < 0) {
+    log_warn("Failed to set SO_RCVBUF: receive buffer may be suboptimal");
+    result = -1;
+  }
+
+  // Disable Nagle's algorithm for low-latency
+  const int nodelay = 1;
+  if (socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
+    log_warn("Failed to set TCP_NODELAY: may have higher latency");
+    result = -1;
+  }
+
+  return result;
+}

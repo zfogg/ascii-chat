@@ -224,7 +224,6 @@ set(NETWORK_SRCS
     lib/network/av.c
     lib/compression.c
     lib/crc32.c
-    lib/socket_helpers.c
 )
 
 # =============================================================================
@@ -237,7 +236,6 @@ set(CORE_SRCS
     lib/options.c
     lib/config.c
     lib/version.c
-    lib/thread_helpers.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
 )
