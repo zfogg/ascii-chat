@@ -95,7 +95,7 @@
 #include "options.h"
 #include "util/time.h"
 #include "util/thread.h"
-#include "fps.h"
+#include "util/fps.h"
 #include <stdatomic.h>
 #include <time.h>
 #include <string.h>
