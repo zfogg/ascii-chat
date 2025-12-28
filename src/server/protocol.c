@@ -1488,17 +1488,17 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
             client->height, caps->desired_fps);
 
   client->terminal_caps.capabilities = ntohl(caps->capabilities);
-  client->terminal_caps.color_level = ntohl(caps->color_level);
+  client->terminal_caps.color_level = color_level;
   client->terminal_caps.color_count = ntohl(caps->color_count);
-  client->terminal_caps.render_mode = ntohl(caps->render_mode);
+  client->terminal_caps.render_mode = render_mode;
   client->terminal_caps.detection_reliable = caps->detection_reliable;
-  client->terminal_caps.wants_background = (ntohl(caps->render_mode) == RENDER_MODE_BACKGROUND);
+  client->terminal_caps.wants_background = (render_mode == RENDER_MODE_BACKGROUND);
 
   SAFE_STRNCPY(client->terminal_caps.term_type, caps->term_type, sizeof(client->terminal_caps.term_type));
   SAFE_STRNCPY(client->terminal_caps.colorterm, caps->colorterm, sizeof(client->terminal_caps.colorterm));
 
   client->terminal_caps.utf8_support = ntohl(caps->utf8_support);
-  client->terminal_caps.palette_type = ntohl(caps->palette_type);
+  client->terminal_caps.palette_type = palette_type;
   SAFE_STRNCPY(client->terminal_caps.palette_custom, caps->palette_custom,
                sizeof(client->terminal_caps.palette_custom));
 
