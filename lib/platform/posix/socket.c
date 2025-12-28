@@ -53,44 +53,8 @@ socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
     return client_sock;
   }
 
-  // Automatically optimize all accepted sockets for high-throughput video streaming
-  // 1. Disable Nagle algorithm - CRITICAL for real-time video
-  int nodelay = 1;
-  // BUGFIX: Log warning if critical socket option fails
-  if (setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) != 0) {
-    log_warn("Failed to disable Nagle algorithm (TCP_NODELAY) on accepted socket");
-  }
-
-  // 2. Increase send buffer for video streaming (2MB with fallbacks)
-  int send_buffer = 2 * 1024 * 1024; // 2MB
-  if (setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
-    send_buffer = 512 * 1024; // 512KB fallback
-    if (setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer)) != 0) {
-      send_buffer = 128 * 1024; // 128KB fallback
-      setsockopt(client_sock, SOL_SOCKET, SO_SNDBUF, &send_buffer, sizeof(send_buffer));
-    }
-  }
-
-  // 3. Increase receive buffer (2MB with fallbacks)
-  int recv_buffer = 2 * 1024 * 1024; // 2MB
-  if (setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer)) != 0) {
-    recv_buffer = 512 * 1024; // 512KB fallback
-    if (setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer)) != 0) {
-      recv_buffer = 128 * 1024; // 128KB fallback
-      setsockopt(client_sock, SOL_SOCKET, SO_RCVBUF, &recv_buffer, sizeof(recv_buffer));
-    }
-  }
-
-  // 4. Set timeouts to prevent blocking (POSIX uses struct timeval)
-  struct timeval send_timeout = {.tv_sec = 5, .tv_usec = 0}; // 5 seconds
-  setsockopt(client_sock, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout));
-
-  struct timeval recv_timeout = {.tv_sec = 10, .tv_usec = 0}; // 10 seconds
-  setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, &recv_timeout, sizeof(recv_timeout));
-
-  // 5. Enable keepalive (optional)
-  int keepalive = 1;
-  setsockopt(client_sock, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
+  // Optimize the socket for high-throughput video streaming
+  socket_optimize_for_streaming(client_sock);
 
   return client_sock;
 }
