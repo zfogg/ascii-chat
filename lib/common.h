@@ -485,6 +485,29 @@ extern int g_max_fps;
 #define BUFFER_SIZE_HUGE 16384
 
 /* ============================================================================
+ * Logging Rate Limit Constants (in microseconds)
+ * ============================================================================
+ * Standard rate limits for log_*_every() macros to reduce log spam
+ * in high-frequency code paths.
+ *
+ * Usage: log_debug_every(LOG_RATE_VIDEO_FRAME, "message")
+ *
+ * @ingroup common
+ */
+
+/** @brief Log rate limit: 1 second (1,000,000 microseconds) */
+#define LOG_RATE_FAST (1000000)
+
+/** @brief Log rate limit: 3 seconds (3,000,000 microseconds) */
+#define LOG_RATE_NORMAL (3000000)
+
+/** @brief Log rate limit: 5 seconds (5,000,000 microseconds) - default for audio/video packets */
+#define LOG_RATE_DEFAULT (5000000)
+
+/** @brief Log rate limit: 10 seconds (10,000,000 microseconds) */
+#define LOG_RATE_SLOW (10000000)
+
+/* ============================================================================
  * Shutdown Check System
  * ============================================================================
  * Provides clean separation between library and application for shutdown
@@ -939,6 +962,53 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
 #define SAFE_BUFFER_SIZE(buffer_size, offset)                                                                          \
   ((offset) < 0 || (size_t)(offset) >= (buffer_size) ? 0 : (buffer_size) - (size_t)(offset))
 
+/* ============================================================================
+ * Thread Creation and Synchronization Macros
+ * ============================================================================
+ */
+
+/**
+ * @brief Create a thread or log error and return
+ * @param thread Pointer to thread_t variable
+ * @param func Thread function (should match void* (*)(void*) signature)
+ * @param arg Thread argument
+ *
+ * Handles common pattern: create thread, log error if failed, then return -1.
+ * Example usage:
+ *
+ *   THREAD_CREATE_OR_RETURN(thread, thread_func, arg);
+ *   // Thread created successfully, continue
+ *
+ * @ingroup common
+ */
+#define THREAD_CREATE_OR_RETURN(thread, func, arg)                                                                    \
+  do {                                                                                                                 \
+    if (ascii_thread_create(&(thread), (func), (arg)) != 0) {                                                         \
+      log_error("Failed to create thread: %s", #func);                                                                \
+      return -1;                                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
+/**
+ * @brief Initialize a mutex or log error and return
+ * @param m Pointer to mutex_t variable
+ *
+ * Handles common pattern: init mutex, log error if failed, then return -1.
+ * Example usage:
+ *
+ *   MUTEX_INIT_OR_RETURN(mutex);
+ *   // Mutex initialized successfully, continue
+ *
+ * @ingroup common
+ */
+#define MUTEX_INIT_OR_RETURN(m)                                                                                       \
+  do {                                                                                                                 \
+    if (mutex_init(&(m)) != 0) {                                                                                       \
+      log_error("Failed to initialize mutex: %s", #m);                                                                \
+      return -1;                                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
 /* Include logging.h to provide logging macros to all files that include common.h */
 #include "logging.h" // IWYU pragma: keep
 
@@ -972,5 +1042,38 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client);
+
+/* ============================================================================
+ * Error Handling Macros
+ * ============================================================================
+ * Macros for common error handling patterns to reduce code duplication
+ */
+
+/**
+ * @brief Check result and log error if operation failed
+ *
+ * Consolidates the pattern:
+ * ```c
+ * operation_result_t result = operation();
+ * if (result != OK) {
+ *     log_error("Operation failed: %d", result);
+ *     return result;
+ * }
+ * ```
+ *
+ * Usage:
+ * ```c
+ * ASCIICHAT_CHECK_AND_LOG(crypto_result = crypto_operation(args),
+ *                         ASCIICHAT_OK, "Crypto operation failed: %d",
+ *                         crypto_result);
+ * ```
+ */
+#define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...) \
+  do { \
+    if ((expr) != (ok_value)) { \
+      log_error(msg, ##__VA_ARGS__); \
+      return (expr); \
+    } \
+  } while (0)
 
 /** @} */

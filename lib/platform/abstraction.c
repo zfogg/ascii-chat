@@ -14,6 +14,9 @@
 // The OS-specific implementations are in:
 // - platform_windows.c (Windows)
 // - platform_posix.c (POSIX/Unix/Linux/macOS)
+//
+// Socket-specific implementations are in:
+// - platform/socket.c (Common socket utilities like socket_optimize_for_streaming)
 // ============================================================================
 
-// Currently empty - all implementations are platform-specific
+// Currently empty - all implementations are platform-specific or in specialized files

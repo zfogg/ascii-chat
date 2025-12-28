@@ -314,7 +314,7 @@ static void sigint_handler(int sigint) {
   atomic_store(&g_server_should_exit, true);
 
   // STEP 2: Use write() for output (async-signal-safe)
-  // NOTE: printf() and fflush() are NOT async-signal-safe and can cause deadlocks
+  // printf() and fflush() are NOT async-signal-safe and can cause deadlocks
   // Use write() which is guaranteed to be safe in signal handlers
   const char *msg = "SIGINT received - shutting down server...\n";
   ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
@@ -452,7 +452,7 @@ static void sigterm_handler(int sigterm) {
   (void)(sigterm);
   atomic_store(&g_server_should_exit, true);
 
-  // CRITICAL FIX: Use async-signal-safe write() instead of printf()/fflush()
+  // Use async-signal-safe write() instead of printf()/fflush()
   // printf() and fflush() are NOT async-signal-safe and can cause deadlocks
   const char *msg = "SIGTERM received - shutting down server...\n";
   ssize_t unused = write(STDOUT_FILENO, msg, strlen(msg));
@@ -859,7 +859,7 @@ main_loop:
           continue; // Skip uninitialized clients
         }
 
-        // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
+        // Use snapshot pattern to avoid holding both locks simultaneously
         // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
         uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
         bool is_active = atomic_load(&client->active);                 // Use atomic read to avoid deadlock
@@ -1097,7 +1097,7 @@ main_loop:
   // are still blocked in recv_with_timeout(). We need to close their sockets to unblock them.
   log_info("Closing all client sockets to unblock receive threads...");
 
-  // FIX: Use write lock since we're modifying client->socket
+  // Use write lock since we're modifying client->socket
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
@@ -1133,7 +1133,7 @@ main_loop:
       continue; // Skip uninitialized clients
     }
 
-    // DEADLOCK FIX: Use snapshot pattern to avoid holding both locks simultaneously
+    // Use snapshot pattern to avoid holding both locks simultaneously
     // This prevents deadlock by not acquiring client_state_mutex while holding rwlock
     uint32_t client_id_snapshot = atomic_load(&client->client_id); // Atomic read is safe under rwlock
 
