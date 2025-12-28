@@ -13,6 +13,7 @@
 #include "network/crc32.h"
 #include "crypto/crypto.h"
 #include "network/compression.h"
+#include "util/endian.h"
 #include "options.h" // For opt_compression_level
 #include <stdint.h>
 #include <errno.h>
@@ -82,11 +83,11 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
     return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Invalid packet length in network byte order: 0xFFFFFFFF");
   }
 
-  // Convert from network byte order
-  uint32_t magic = ntohl(header->magic);
-  uint16_t type = ntohs(header->type);
-  uint32_t len = ntohl(pkt_len_network);
-  uint32_t crc = ntohl(header->crc32);
+  // Convert from network byte order using safe helpers
+  uint32_t magic = endian_unpack_u32(header->magic);
+  uint16_t type = endian_unpack_u16(header->type);
+  uint32_t len = endian_unpack_u32(pkt_len_network);
+  uint32_t crc = endian_unpack_u32(header->crc32);
 
   // Validate magic
   if (magic != PACKET_MAGIC) {
