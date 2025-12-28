@@ -973,4 +973,37 @@ static inline bool safe_size_mul(size_t a, size_t b, size_t *result) {
  */
 asciichat_error_t asciichat_shared_init(const char *default_log_filename, bool is_client);
 
+/* ============================================================================
+ * Error Handling Macros
+ * ============================================================================
+ * Macros for common error handling patterns to reduce code duplication
+ */
+
+/**
+ * @brief Check result and log error if operation failed
+ *
+ * Consolidates the pattern:
+ * ```c
+ * operation_result_t result = operation();
+ * if (result != OK) {
+ *     log_error("Operation failed: %d", result);
+ *     return result;
+ * }
+ * ```
+ *
+ * Usage:
+ * ```c
+ * ASCIICHAT_CHECK_AND_LOG(crypto_result = crypto_operation(args),
+ *                         ASCIICHAT_OK, "Crypto operation failed: %d",
+ *                         crypto_result);
+ * ```
+ */
+#define ASCIICHAT_CHECK_AND_LOG(expr, ok_value, msg, ...) \
+  do { \
+    if ((expr) != (ok_value)) { \
+      log_error(msg, ##__VA_ARGS__); \
+      return (expr); \
+    } \
+  } while (0)
+
 /** @} */
