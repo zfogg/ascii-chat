@@ -9,6 +9,7 @@
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
 #include "util/math.h"      // For power-of-two utilities
+#include "util/bits.h" // For is_power_of_two, next_power_of_two
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
