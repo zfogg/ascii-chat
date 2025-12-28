@@ -271,22 +271,28 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  */
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload missing");
-    return;
-  }
-
-  if (len != sizeof(client_info_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload size %zu (expected %zu)", len,
-                                   sizeof(client_info_packet_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "CLIENT_JOIN");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(client_info_packet_t), "CLIENT_JOIN");
 
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
-  SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+  // Validate display name is present and not just whitespace
+  if (join_info->display_name[0] == '\0') {
+    disconnect_client_for_bad_data(client, "CLIENT_JOIN display_name cannot be empty");
+    return;
+  }
 
   uint32_t capabilities = ntohl(join_info->capabilities);
+
+  // Validate at least one capability flag is set
+  const uint32_t VALID_CAP_MASK = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO | CLIENT_CAP_STRETCH;
+  VALIDATE_CAPABILITY_FLAGS(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
+
+  // Validate no unknown capability bits are set
+  VALIDATE_FLAGS_MASK(client, capabilities, VALID_CAP_MASK, "CLIENT_JOIN");
+
+  SAFE_STRNCPY(client->display_name, join_info->display_name, MAX_DISPLAY_NAME_LEN - 1);
+
   client->can_send_video = (capabilities & CLIENT_CAP_VIDEO) != 0;
   client->can_send_audio = (capabilities & CLIENT_CAP_AUDIO) != 0;
   client->wants_stretch = (capabilities & CLIENT_CAP_STRETCH) != 0;
@@ -332,24 +338,19 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "STREAM_START payload missing");
-    return;
-  }
-
-  if (len != sizeof(uint32_t)) {
-    disconnect_client_for_bad_data(client, "STREAM_START payload size %zu (expected %zu)", len, sizeof(uint32_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "STREAM_START");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(uint32_t), "STREAM_START");
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
 
-  if ((stream_type & (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)) == 0) {
-    disconnect_client_for_bad_data(client, "STREAM_START with invalid stream type flags: 0x%x", stream_type);
-    return;
-  }
+  // Validate at least one stream type flag is set
+  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
+  VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
+
+  // Validate no unknown stream type bits are set
+  VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
     // Wait for first IMAGE_FRAME before marking sending_video true (avoids race)
@@ -412,24 +413,19 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  * @see handle_stream_start_packet() For starting media transmission
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP payload missing");
-    return;
-  }
-
-  if (len != sizeof(uint32_t)) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP payload size %zu (expected %zu)", len, sizeof(uint32_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "STREAM_STOP");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(uint32_t), "STREAM_STOP");
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
   uint32_t stream_type = ntohl(stream_type_net);
 
-  if ((stream_type & (STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO)) == 0) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP with invalid stream type flags: 0x%x", stream_type);
-    return;
-  }
+  // Validate at least one stream type flag is set
+  const uint32_t VALID_STREAM_MASK = STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO;
+  VALIDATE_CAPABILITY_FLAGS(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
+
+  // Validate no unknown stream type bits are set
+  VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
     atomic_store(&client->is_sending_video, false);
@@ -1282,23 +1278,39 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES payload missing");
-    return;
-  }
-
-  if (len != sizeof(terminal_capabilities_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid size: %zu (expected %zu)", len,
-                                   sizeof(terminal_capabilities_packet_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "CLIENT_CAPABILITIES");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
+  // Extract and validate dimensions
+  uint16_t width = ntohs(caps->width);
+  uint16_t height = ntohs(caps->height);
+
+  VALIDATE_NONZERO(client, width, "width", "CLIENT_CAPABILITIES");
+  VALIDATE_NONZERO(client, height, "height", "CLIENT_CAPABILITIES");
+  VALIDATE_RANGE(client, width, 1, 4096, "width", "CLIENT_CAPABILITIES");
+  VALIDATE_RANGE(client, height, 1, 4096, "height", "CLIENT_CAPABILITIES");
+
+  // Extract and validate color level (0=none, 1=16, 2=256, 3=truecolor)
+  uint32_t color_level = ntohl(caps->color_level);
+  VALIDATE_RANGE(client, color_level, 0, 3, "color_level", "CLIENT_CAPABILITIES");
+
+  // Extract and validate render mode (0=foreground, 1=background, 2=half-block)
+  uint32_t render_mode = ntohl(caps->render_mode);
+  VALIDATE_RANGE(client, render_mode, 0, 2, "render_mode", "CLIENT_CAPABILITIES");
+
+  // Extract and validate palette type (0-5 are valid, 5=PALETTE_CUSTOM)
+  uint32_t palette_type = ntohl(caps->palette_type);
+  VALIDATE_RANGE(client, palette_type, 0, 5, "palette_type", "CLIENT_CAPABILITIES");
+
+  // Validate desired FPS (1-144)
+  VALIDATE_RANGE(client, caps->desired_fps, 1, 144, "desired_fps", "CLIENT_CAPABILITIES");
+
   mutex_lock(&client->client_state_mutex);
 
-  atomic_store(&client->width, ntohs(caps->width));
-  atomic_store(&client->height, ntohs(caps->height));
+  atomic_store(&client->width, width);
+  atomic_store(&client->height, height);
 
   log_debug("Client %u dimensions: %ux%u, desired_fps=%u", atomic_load(&client->client_id), client->width,
             client->height, caps->desired_fps);
@@ -1387,24 +1399,26 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  * @note No validation of reasonable dimension ranges
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "SIZE payload missing");
-    return;
-  }
-
-  if (len != sizeof(size_packet_t)) {
-    disconnect_client_for_bad_data(client, "SIZE payload size %zu (expected %zu)", len, sizeof(size_packet_t));
-    return;
-  }
+  VALIDATE_NOTNULL_DATA(client, data, "SIZE");
+  VALIDATE_EXACT_SIZE(client, len, sizeof(size_packet_t), "SIZE");
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
+  // Extract and validate new dimensions
+  uint16_t width = ntohs(size_pkt->width);
+  uint16_t height = ntohs(size_pkt->height);
+
+  VALIDATE_NONZERO(client, width, "width", "SIZE");
+  VALIDATE_NONZERO(client, height, "height", "SIZE");
+  VALIDATE_RANGE(client, width, 1, 4096, "width", "SIZE");
+  VALIDATE_RANGE(client, height, 1, 4096, "height", "SIZE");
+
   mutex_lock(&client->client_state_mutex);
-  client->width = ntohs(size_pkt->width);
-  client->height = ntohs(size_pkt->height);
+  client->width = width;
+  client->height = height;
   mutex_unlock(&client->client_state_mutex);
 
-  log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), client->width, client->height);
+  log_info("Client %u updated terminal size: %ux%u", atomic_load(&client->client_id), width, height);
 }
 
 /* ============================================================================
@@ -1487,7 +1501,14 @@ void handle_ping_packet(client_info_t *client) {
  * @note Actual client removal happens in main thread
  * @see remove_client() For complete cleanup implementation
  */
-void handle_client_leave_packet(client_info_t *client) {
+void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
+  // CLIENT_LEAVE is a header-only packet with no payload
+  // Validate packet has no extra data
+  if (len != 0) {
+    disconnect_client_for_bad_data(client, "CLIENT_LEAVE payload unexpected (len=%zu, expected 0)", len);
+    return;
+  }
+
   // Handle clean disconnect notification from client
   log_info("Client %u sent LEAVE packet - clean disconnect", atomic_load(&client->client_id));
   // OPTIMIZED: Use atomic operation for thread control flag (lock-free)

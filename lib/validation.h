@@ -162,4 +162,81 @@ typedef struct client_info client_info_t;
     } \
   } while (0)
 
+/**
+ * Validate that a numeric value is non-zero (for dimensions, counts, etc).
+ * Disconnects client and returns if value is zero.
+ *
+ * @param client Client info pointer
+ * @param value Value to validate
+ * @param value_name Name of value for error message
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_NONZERO(client, value, value_name, packet_name) \
+  do { \
+    if ((value) == 0) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), "%s %s cannot be zero", (packet_name), (value_name)); \
+      return; \
+    } \
+  } while (0)
+
+/**
+ * Validate that a numeric value is within a specified range (inclusive).
+ * Disconnects client and returns if value is outside range.
+ *
+ * @param client Client info pointer
+ * @param value Value to validate
+ * @param min_val Minimum allowed value (inclusive)
+ * @param max_val Maximum allowed value (inclusive)
+ * @param value_name Name of value for error message
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_RANGE(client, value, min_val, max_val, value_name, packet_name) \
+  do { \
+    if ((value) < (min_val) || (value) > (max_val)) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), "%s %s out of range: %u (valid: %u-%u)", (packet_name), \
+                                     (value_name), (unsigned)(value), (unsigned)(min_val), (unsigned)(max_val)); \
+      return; \
+    } \
+  } while (0)
+
+/**
+ * Validate that at least one capability flag is set.
+ * Disconnects client and returns if all flags are zero or invalid.
+ *
+ * @param client Client info pointer
+ * @param flags Capability flags value
+ * @param valid_mask Bitmask of valid flag bits
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_CAPABILITY_FLAGS(client, flags, valid_mask, packet_name) \
+  do { \
+    if (((flags) & (valid_mask)) == 0) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), "%s no valid capability flags set (flags=0x%x, valid=0x%x)", \
+                                     (packet_name), (unsigned)(flags), (unsigned)(valid_mask)); \
+      return; \
+    } \
+  } while (0)
+
+/**
+ * Validate that only known/valid flags are set.
+ * Disconnects client and returns if unknown flags are present.
+ *
+ * @param client Client info pointer
+ * @param flags Flags value to validate
+ * @param valid_mask Bitmask of valid flag bits
+ * @param packet_name Name of packet type for error message
+ */
+#define VALIDATE_FLAGS_MASK(client, flags, valid_mask, packet_name) \
+  do { \
+    if (((flags) & ~(valid_mask)) != 0) { \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
+      disconnect_client_for_bad_data((client), "%s unknown flags set (flags=0x%x, valid=0x%x)", (packet_name), \
+                                     (unsigned)(flags), (unsigned)(valid_mask)); \
+      return; \
+    } \
+  } while (0)
+
 /** @} */
