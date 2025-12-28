@@ -194,7 +194,9 @@ typedef struct client_info client_info_t;
 /**
  * Validate packet payload pointer is not NULL.
  * Used as a conditional to check packet data validity before further processing.
+ * Calls the disconnect handler and returns true if validation fails.
  *
+ * @param client Client info pointer (required for error handler)
  * @param data Payload pointer to validate
  * @param packet_name Human-readable packet name for error messages
  * @param disconnect_handler Error handler function to call on failure
@@ -203,14 +205,23 @@ typedef struct client_info client_info_t;
  * Usage:
  * @code
  * void handle_audio(client_info_t *client, const void *data, size_t len) {
- *   if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
- *     return;  // Handler can log error if needed
+ *   if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+ *     return;  // Handler already called with error message
  *   }
  *   // ... process packet ...
  * }
  * @endcode
  */
-#define VALIDATE_PACKET_NOT_NULL(data, packet_name, disconnect_handler) (!(data))
+#define VALIDATE_PACKET_NOT_NULL(client, data, packet_name, disconnect_handler)                                        \
+  ({                                                                                                                   \
+    int _validation_failed = 0;                                                                                        \
+    if (!(data)) {                                                                                                     \
+      extern void disconnect_handler(client_info_t * client, const char *format, ...);                                 \
+      disconnect_handler((client), packet_name " payload missing");                                                    \
+      _validation_failed = 1;                                                                                          \
+    }                                                                                                                  \
+    _validation_failed;                                                                                                \
+  })
 
 /** @} */
 
