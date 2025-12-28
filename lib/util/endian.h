@@ -158,4 +158,46 @@
     }                                                                                                                  \
   } while (0)
 
-#endif
+/**
+ * Unpack a 32-bit value from network byte order.
+ * Takes a uint32_t in network order and returns it in host order.
+ *
+ * @param val 32-bit unsigned integer in network byte order
+ * @return Same value in host byte order
+ */
+static inline uint32_t endian_unpack_u32(uint32_t val) {
+  return ntohl(val);
+}
+
+/**
+ * Unpack a 16-bit value from network byte order.
+ * Takes a uint16_t in network order and returns it in host order.
+ *
+ * @param val 16-bit unsigned integer in network byte order
+ * @return Same value in host byte order
+ */
+static inline uint16_t endian_unpack_u16(uint16_t val) {
+  return ntohs(val);
+}
+
+/**
+ * Pack a 32-bit value to network byte order.
+ * Takes a uint32_t in host order and returns it in network order.
+ *
+ * @param val 32-bit unsigned integer in host byte order
+ * @return Same value in network byte order
+ */
+static inline uint32_t endian_pack_u32(uint32_t val) {
+  return htonl(val);
+}
+
+/**
+ * Pack a 16-bit value to network byte order.
+ * Takes a uint16_t in host order and returns it in network order.
+ *
+ * @param val 16-bit unsigned integer in host byte order
+ * @return Same value in network byte order
+ */
+static inline uint16_t endian_pack_u16(uint16_t val) {
+  return htons(val);
+}
