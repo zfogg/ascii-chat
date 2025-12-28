@@ -365,15 +365,6 @@ static int initialize_client_systems(bool shared_init_completed) {
   return 0;
 }
 
-#ifdef USE_MIMALLOC_DEBUG
-// Wrapper function for mi_stats_print to use with atexit()
-// mi_stats_print takes a parameter, but atexit requires void(void)
-extern void mi_stats_print(void *out);
-static void print_mimalloc_stats(void) {
-  mi_stats_print(NULL); // NULL = print to stderr
-}
-#endif
-
 /**
  * Client mode entry point for unified binary
  *
@@ -413,11 +404,6 @@ int client_main(void) {
 
   // Register cleanup function for graceful shutdown
   (void)atexit(shutdown_client);
-
-#ifdef USE_MIMALLOC_DEBUG
-  // Register mimalloc stats printer at exit
-  (void)atexit(print_mimalloc_stats);
-#endif
 
   // Install console control handler for graceful Ctrl+C handling
   // Uses SetConsoleCtrlHandler on Windows, sigaction on Unix - more reliable than CRT signal()
