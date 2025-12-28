@@ -21,6 +21,7 @@
 #include "common.h"
 #include "image.h"
 #include "util/aspect_ratio.h"
+#include "util/overflow.h"
 #include "video/webcam/webcam.h"
 #include "options/options.h"
 #include "simd/ascii_simd.h"
@@ -459,11 +460,23 @@ char *ascii_create_grid(ascii_frame_source_t *sources, int source_count, int wid
     // Check for integer overflow before multiplication
     size_t w = (size_t)width;
     size_t h = (size_t)height;
-    if (w > SIZE_MAX / h) {
+    size_t w_times_h;
+    if (checked_size_mul(w, h, &w_times_h) != ASCIICHAT_OK) {
       SET_ERRNO(ERROR_INVALID_PARAM, "ascii_create_grid: dimensions would overflow: %dx%d", width, height);
       return NULL;
     }
-    size_t target_size = w * h + h + 1; // +height for newlines, +1 for null
+
+    size_t w_times_h_plus_h;
+    if (checked_size_add(w_times_h, h, &w_times_h_plus_h) != ASCIICHAT_OK) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "ascii_create_grid: buffer size would overflow: %dx%d", width, height);
+      return NULL;
+    }
+
+    size_t target_size;
+    if (checked_size_add(w_times_h_plus_h, 1, &target_size) != ASCIICHAT_OK) {
+      SET_ERRNO(ERROR_INVALID_PARAM, "ascii_create_grid: buffer size would overflow: %dx%d", width, height);
+      return NULL;
+    }
     char *result;
     result = SAFE_MALLOC(target_size, char *);
     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
