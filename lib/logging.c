@@ -32,7 +32,6 @@ size_t get_current_time_formatted(char *time_buf) {
   platform_localtime(&ts.tv_sec, &tm_info);
 
   // Format the time part first
-  // LOGIC FIX: strftime returns 0 on error, not negative (and len is size_t/unsigned)
   size_t len = strftime(time_buf, 32, "%H:%M:%S", &tm_info);
   if (len == 0 || len >= 32) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format time");
@@ -142,7 +141,7 @@ static void rotate_log_if_needed_unlocked(void) {
 
     /* Seek to position where we want to start keeping data (keep last 2MB) */
     size_t keep_size = MAX_LOG_SIZE * 2 / 3; /* Keep last 2MB of 3MB file */
-    // BUGFIX: Check for underflow before subtraction (size_t is unsigned)
+    // Check for underflow before subtraction (size_t is unsigned)
     if (g_log.current_size < keep_size) {
       platform_close(read_file);
       /* Fall back to truncation since we don't have enough data to rotate */
