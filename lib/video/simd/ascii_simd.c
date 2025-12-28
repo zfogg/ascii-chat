@@ -933,7 +933,7 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 
   printf("Benchmarking COLOR %s conversion using %d iterations...\n", mode_str, adaptive_iterations);
 
-  // FIX #5: Prewarm 256-color caches to avoid first-frame penalty (~1.5-2MB cache build)
+  // Prewarm 256-color caches to avoid first-frame penalty (~1.5-2MB cache build)
   prewarm_sgr256_fg_cache(); // Warmup 256-entry FG cache
   prewarm_sgr256_cache();    // Warmup 65,536-entry FG+BG cache
 

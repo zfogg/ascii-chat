@@ -846,15 +846,15 @@ main_loop:
     cleanup_task_t cleanup_tasks[MAX_CLIENTS];
     int cleanup_count = 0;
 
-    // FIXED: Only do cleanup if there are actually clients connected
-    // THREAD SAFETY: Check client_count under the lock to avoid race
+    // Only do cleanup if there are actually clients connected
+    // Check client_count under the lock to avoid race
     rwlock_rdlock(&g_client_manager_rwlock);
     if (g_client_manager.client_count > 0) {
       for (int i = 0; i < MAX_CLIENTS; i++) {
         client_info_t *client = &g_client_manager.clients[i];
         // Check if this client has been marked inactive by its receive thread
         // Only check clients that have been initialized (client_id != 0)
-        // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
+        // Only access mutex for initialized clients to avoid accessing uninitialized mutex
         if (atomic_load(&client->client_id) == 0) {
           continue; // Skip uninitialized clients
         }
@@ -1118,7 +1118,7 @@ main_loop:
 
   // Clean up all connected clients
   log_info("Cleaning up connected clients...");
-  // FIXED: Simplified to collect client IDs first, then remove them without holding locks
+  // Collect client IDs first, then remove them without holding locks
   uint32_t clients_to_remove[MAX_CLIENTS];
   int client_count = 0;
 
@@ -1128,7 +1128,7 @@ main_loop:
 
     // Only attempt to clean up clients that were actually connected
     // (client_id is 0 for uninitialized clients, starts from 1 for connected clients)
-    // FIXED: Only access mutex for initialized clients to avoid accessing uninitialized mutex
+    // Only access mutex for initialized clients to avoid accessing uninitialized mutex
     if (atomic_load(&client->client_id) == 0) {
       continue; // Skip uninitialized clients
     }
