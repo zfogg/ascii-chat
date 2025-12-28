@@ -89,6 +89,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"
+#include "util/endian.h"
 #include "options/options.h"
 #include "network/crc32.h"
 #include "fps.h"

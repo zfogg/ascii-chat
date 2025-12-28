@@ -25,6 +25,7 @@
 #include "audio/audio.h"
 #include "network.h"
 #include "packet.h"
+#include "util/endian.h"
 #include "common.h"
 #include "util/endian.h"
 #include "asciichat_errno.h"

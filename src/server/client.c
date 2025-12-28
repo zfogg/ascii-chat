@@ -130,6 +130,7 @@
 #include "audio/opus_codec.h"
 #include "video/video_frame.h"
 #include "util/uthash.h"
+#include "util/endian.h"
 #include "util/format.h"
 #include "util/time.h"
 #include "platform/abstraction.h"

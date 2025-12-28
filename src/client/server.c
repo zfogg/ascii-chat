@@ -67,6 +67,7 @@
 #include "network/packet.h"
 #include "network/network.h"
 #include "network/av.h"
+#include "util/endian.h"
 #include "common.h"
 #include "util/endian.h"
 #include "display.h"
