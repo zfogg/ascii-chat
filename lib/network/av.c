@@ -28,6 +28,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "platform/socket.h"
+#include "util/overflow.h"
 #include "audio/opus_codec.h"
 #include "platform/string.h"
 #include "buffer_pool.h"
@@ -119,8 +120,24 @@ int av_send_image_frame(socket_t sockfd, const void *image_data, uint16_t width,
 
   // Calculate total packet size
   // Cast to size_t before multiplication to prevent integer overflow
-  size_t frame_size = (size_t)width * (size_t)height * 3; // Assume RGB format
-  size_t total_size = sizeof(image_frame_packet_t) + frame_size;
+  // Use overflow-checked multiplication
+  size_t width_times_height;
+  if (checked_size_mul((size_t)width, (size_t)height, &width_times_height) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Image dimensions too large: %d x %d", width, height);
+    return -1;
+  }
+
+  size_t frame_size;
+  if (checked_size_mul(width_times_height, 3u, &frame_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Frame size overflow for RGB format");
+    return -1;
+  }
+
+  size_t total_size;
+  if (checked_size_add(sizeof(image_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_OVERFLOW, "Total packet size overflow");
+    return -1;
+  }
 
   // Allocate buffer for complete packet
   void *packet_data = buffer_pool_alloc(total_size);

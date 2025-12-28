@@ -24,6 +24,7 @@
 #include "video/simd/common.h"
 #include "video/output_buffer.h"
 #include "video/ansi_fast.h"
+#include "util/overflow.h"
 
 // NEON table cache removed - performance analysis showed rebuilding (30ns) is faster than lookup (50ns)
 // Tables are now built inline when needed for optimal performance
@@ -551,7 +552,25 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
 
   // Estimate output buffer size for UTF-8 characters
   const size_t max_char_bytes = 4; // Max UTF-8 character size
-  const size_t len = (size_t)h * ((size_t)w * max_char_bytes + 1);
+
+  // Calculate buffer size with overflow checking
+  size_t w_times_bytes;
+  if (checked_size_mul((size_t)w, max_char_bytes, &w_times_bytes) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: width too large for UTF-8 encoding");
+    return NULL;
+  }
+
+  size_t w_times_bytes_plus_one;
+  if (checked_size_add(w_times_bytes, 1, &w_times_bytes_plus_one) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: width * bytes + 1 overflow");
+    return NULL;
+  }
+
+  size_t len;
+  if (checked_size_mul((size_t)h, w_times_bytes_plus_one, &len) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * (width * bytes + 1) overflow");
+    return NULL;
+  }
 
   // Use SIMD-aligned allocation for optimal vectorized write performance
   char *output = SAFE_MALLOC_SIMD(len, char *);
@@ -746,7 +765,37 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
   outbuf_t ob = {0};
   // Estimate buffer size based on mode
   size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
-  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 64u;
+
+  // Calculate buffer size with overflow checking
+  size_t height_times_width;
+  if (checked_size_mul((size_t)height, (size_t)width, &height_times_width) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * width overflow");
+    return NULL;
+  }
+
+  size_t pixel_data_size;
+  if (checked_size_mul(height_times_width, bytes_per_pixel, &pixel_data_size) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: (height * width) * bytes_per_pixel overflow");
+    return NULL;
+  }
+
+  size_t height_times_16;
+  if (checked_size_mul((size_t)height, 16u, &height_times_16) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * 16 overflow");
+    return NULL;
+  }
+
+  size_t temp;
+  if (checked_size_add(pixel_data_size, height_times_16, &temp) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: pixel_data + height*16 overflow");
+    return NULL;
+  }
+
+  if (checked_size_add(temp, 64u, &ob.cap) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: total capacity overflow");
+    return NULL;
+  }
+
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;
