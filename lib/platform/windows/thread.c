@@ -655,7 +655,7 @@ int ascii_thread_join(asciithread_t *thread, void **retval) {
     return 0;
   }
 
-  // BUGFIX: Always close handle on error to prevent handle leak
+  // Always close handle on error to prevent handle leak
   // WaitForSingleObject failed (not WAIT_OBJECT_0), so thread is in unknown state
   // We must still close the handle to prevent resource exhaustion
   CloseHandle((*thread));
@@ -696,7 +696,7 @@ int ascii_thread_join_timeout(asciithread_t *thread, void **retval, uint32_t tim
     return -2; // Return timeout error code - thread handle remains valid
   }
 
-  // BUGFIX: For WAIT_FAILED or other unexpected errors, close the handle to prevent leak
+  // For WAIT_FAILED or other unexpected errors, close the handle to prevent leak
   // The thread is in an unknown state, but we must release the OS handle resource
   CloseHandle((*thread));
   *thread = NULL;
