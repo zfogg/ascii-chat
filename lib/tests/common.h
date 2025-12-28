@@ -60,7 +60,8 @@
 
 // Project headers - use relative paths from tests directory
 #include "../common.h"
-#include "logging.h"
+#include "log/logging.h"
+#include "tests/logging.h"
 #include "test_env.h"
 
 // =============================================================================

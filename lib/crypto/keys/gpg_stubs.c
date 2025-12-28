@@ -8,7 +8,7 @@
 
 #include "gpg_keys.h"
 #include "../../asciichat_errno.h"
-#include "../../logging.h"
+#include "log/logging.h"
 
 // =============================================================================
 // GPG Key Parsing Stubs

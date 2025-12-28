@@ -5,22 +5,19 @@
  */
 
 #include "platform/password.h"
-#include "logging.h"
+#include "log/logging.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
 
 int platform_prompt_password(const char *prompt, char *password, size_t max_len) {
-  // Disable terminal logging so other threads don't interfere with password prompt
+  // Lock terminal so only this thread can output to terminal
+  // Other threads' logs are buffered until we unlock
   bool previous_terminal_state = log_lock_terminal();
 
-  fprintf(stderr, "\n");
-  fprintf(stderr, "========================================\n");
-  fprintf(stderr, "%s\n", prompt);
-  fprintf(stderr, "========================================\n");
-  fprintf(stderr, "> ");
-  fflush(stderr);
+  log_plain("\n========================================\n%s\n========================================", prompt);
+  log_plain_stderr("> ");
 
   // Disable terminal echo and canonical mode for character-by-character input
   struct termios old_termios, new_termios;
@@ -50,7 +47,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
       if (tty_changed) {
         tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
       }
-      fprintf(stderr, "\nERROR: Failed to read password\n");
+      log_plain("\nERROR: Failed to read password");
       log_unlock_terminal(previous_terminal_state);
       return -1;
     }
@@ -100,9 +97,9 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
     tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
   }
 
-  fprintf(stderr, "\n========================================\n\n");
+  log_plain("\n========================================\n");
 
-  // Re-enable terminal logging
+  // Unlock terminal - buffered logs from other threads will be flushed
   log_unlock_terminal(previous_terminal_state);
   return 0;
 }

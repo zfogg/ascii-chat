@@ -6,7 +6,7 @@
 
 #include "audio/audio_analysis.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 #include "audio/wav_writer.h"
 #include <math.h>
 #include <stdio.h>

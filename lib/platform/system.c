@@ -24,7 +24,7 @@
   } while (0)
 
 #include "../util/uthash.h"
-#include "logging.h"
+#include "log/logging.h"
 
 // Platform-specific binary suffix
 #ifdef _WIN32

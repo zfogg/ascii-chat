@@ -17,7 +17,7 @@
 #include "util/path.h"
 #include "platform/system.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 
 /* ============================================================================
  * Thread-Local Storage
