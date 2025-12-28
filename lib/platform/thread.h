@@ -25,7 +25,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "common.h"  // For asciichat_error_t
 
 #ifdef _WIN32
 #include "windows_compat.h"
@@ -150,35 +149,6 @@ bool ascii_thread_is_initialized(asciithread_t *thread);
  * @ingroup platform
  */
 void ascii_thread_init(asciithread_t *thread);
-
-/**
- * @brief Create a thread with standardized error handling and logging
- * @param thread Thread handle to fill on success
- * @param func Thread function to execute
- * @param arg Argument to pass to thread function
- * @param thread_name Human-readable name for logging (e.g., "video_render")
- * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM or ERROR_PLATFORM_INIT on failure
- *
- * Wraps ascii_thread_create() with unified error handling and logging.
- * On success, logs the thread creation at debug level. On failure, uses SET_ERRNO()
- * to record error context and returns the appropriate error code:
- * - ERROR_INVALID_PARAM if parameters are invalid
- * - ERROR_PLATFORM_INIT if thread creation fails
- *
- * @note Errors are logged via SET_ERRNO(), use HAS_ERRNO() to check context
- * @note thread_name is used in log messages for debugging and monitoring
- *
- * @par Example:
- * @code{.c}
- * asciithread_t render_thread;
- * if (thread_create_or_fail(&render_thread, video_render_func, client, "video_render") != ASCIICHAT_OK) {
- *   return ERROR_PLATFORM_INIT;
- * }
- * @endcode
- *
- * @ingroup platform
- */
-asciichat_error_t thread_create_or_fail(asciithread_t *thread, void *(*func)(void *), void *arg, const char *thread_name);
 
 // ============================================================================
 // Thread-Local Storage (TLS) Functions
