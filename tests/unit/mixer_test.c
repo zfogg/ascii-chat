@@ -611,26 +611,26 @@ Test(highpass_filter, process_buffer) {
  * ============================================================================ */
 
 Test(soft_clip, process_within_threshold) {
-  float output = soft_clip(0.5f, 0.8f);
+  float output = soft_clip(0.5f, 0.8f, 6.0f);
   cr_assert_float_eq(output, 0.5f, 1e-6f);
 
-  output = soft_clip(-0.3f, 0.8f);
+  output = soft_clip(-0.3f, 0.8f, 6.0f);
   cr_assert_float_eq(output, -0.3f, 1e-6f);
 }
 
 Test(soft_clip, process_above_threshold) {
-  float output = soft_clip(1.0f, 0.8f);
+  float output = soft_clip(1.0f, 0.8f, 6.0f);
   cr_assert_lt(output, 1.0f);
   cr_assert_gt(output, 0.8f);
 
-  output = soft_clip(-1.0f, 0.8f);
+  output = soft_clip(-1.0f, 0.8f, 6.0f);
   cr_assert_gt(output, -1.0f);
   cr_assert_lt(output, -0.6f); // Should be soft clipped (smooth curve, not hard threshold)
 }
 
 Test(soft_clip, process_buffer) {
   float buffer[5] = {0.5f, 1.0f, -0.3f, -1.0f, 0.0f};
-  soft_clip_buffer(buffer, 5, 0.8f);
+  soft_clip_buffer(buffer, 5, 0.8f, 6.0f);
 
   cr_assert_float_eq(buffer[0], 0.5f, 1e-6f);  // Within threshold
   cr_assert_lt(buffer[1], 1.0f);               // Clipped

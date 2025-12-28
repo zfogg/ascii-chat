@@ -163,7 +163,7 @@
 #include "options.h"
 #include "platform/abstraction.h"
 #include "platform/init.h"
-#include "packet_queue.h"
+#include "network/packet_queue.h"
 #include "util/time.h"
 #include "audio/mixer.h"
 #include "audio/audio.h"

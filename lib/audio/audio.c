@@ -102,16 +102,10 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 /**
  * Simple linear interpolation resampler.
  * Resamples from src_rate to dst_rate using linear interpolation.
- *
- * @param src Source samples at src_rate
- * @param src_samples Number of source samples
- * @param dst Destination buffer at dst_rate
- * @param dst_samples Number of destination samples to produce
- * @param src_rate Source sample rate (e.g., 48000)
- * @param dst_rate Destination sample rate (e.g., 44100)
+ * See audio.h for full documentation.
  */
-static void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
-                            double dst_rate) {
+void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
+                     double dst_rate) {
   if (src_samples == 0 || dst_samples == 0) {
     SAFE_MEMSET(dst, dst_samples * sizeof(float), 0, dst_samples * sizeof(float));
     return;
@@ -448,9 +442,19 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
       rb->crossfade_fade_in = true;
       log_info("Jitter buffer filled (%zu samples), starting playback with fade-in", available);
     } else {
+      // Log buffer fill progress every second
+      log_debug_every(1000000, "Jitter buffer filling: %zu/%d samples (%.1f%%)", available,
+                      AUDIO_JITTER_BUFFER_THRESHOLD, (100.0f * available) / AUDIO_JITTER_BUFFER_THRESHOLD);
       mutex_unlock(&rb->mutex);
       return 0; // Return silence until buffer is filled
     }
+  }
+
+  // Periodic buffer health logging (every 5 seconds when healthy)
+  static unsigned int health_log_counter = 0;
+  if (++health_log_counter % 250 == 0) { // ~5 seconds at 50Hz callback rate
+    log_debug("Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available, AUDIO_RING_BUFFER_SIZE,
+              (100.0f * available) / AUDIO_RING_BUFFER_SIZE, rb->underrun_count);
   }
 
   // Low buffer handling: DON'T pause playback - continue reading what's available
@@ -461,9 +465,10 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // Instead: always consume samples to prevent overflow, use silence for missing data
   if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK) {
     rb->underrun_count++;
-    log_warn_every(1000000,
-                   "Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence",
-                   rb->underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
+    // Log every 1 second (1000000 microseconds) with more diagnostic info
+    log_warn_every(1000000, "Buffer underrun #%u: %zu/%d samples (%.1f%% full, need %zu, low water=%d)",
+                   rb->underrun_count, available, AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE,
+                   samples, AUDIO_JITTER_LOW_WATER_MARK);
     // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
   }
 
@@ -509,23 +514,13 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     rb->last_sample = data[to_read - 1];
   }
 
-  // Fill any remaining samples with silence if we couldn't read enough
-  // Apply a short fade-out to prevent clicks/pops from sudden transitions
+  // Fill any remaining samples with pure silence if we couldn't read enough
+  // NOTE: Previous code applied fade-out from last sample, but this created
+  // audible "little extra sounds in the gaps" during frequent underruns.
+  // Pure silence is less disruptive than artificial fade artifacts.
   if (to_read < samples) {
     size_t silence_samples = samples - to_read;
-    float last = (to_read > 0) ? data[to_read - 1] : rb->last_sample;
-
-    // Apply a quick 48-sample fade-out (1ms at 48kHz) to smooth the transition
-    size_t fade_len = (silence_samples < 48) ? silence_samples : 48;
-    for (size_t i = 0; i < fade_len; i++) {
-      float fade_factor = 1.0f - ((float)(i + 1) / (float)fade_len);
-      data[to_read + i] = last * fade_factor;
-    }
-    // Fill rest with silence
-    if (silence_samples > fade_len) {
-      SAFE_MEMSET(data + to_read + fade_len, (silence_samples - fade_len) * sizeof(float), 0,
-                  (silence_samples - fade_len) * sizeof(float));
-    }
+    SAFE_MEMSET(data + to_read, silence_samples * sizeof(float), 0, silence_samples * sizeof(float));
   }
 
   mutex_unlock(&rb->mutex);

@@ -6,8 +6,8 @@
 
 #include "tests/common.h"
 #include "tests/logging.h"
-#include "packet_queue.h"
-#include "crc32.h" // For CRC calculation
+#include "network/packet_queue.h"
+#include "network/crc32.h" // For CRC calculation
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TEST_SUITE_WITH_QUIET_LOGGING(packet_queue);

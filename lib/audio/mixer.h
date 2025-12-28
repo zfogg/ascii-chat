@@ -79,7 +79,7 @@
 #include <stdint.h>
 
 // Include ringbuffer.h to get the audio_ring_buffer_t type
-#include "ringbuffer.h"
+#include "audio/ringbuffer.h"
 #include "platform/rwlock.h"
 #include "asciichat_errno.h"
 
@@ -861,6 +861,138 @@ void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int 
 /** @} */
 
 /**
+ * @name Buffer Utility Functions
+ * @{
+ * @ingroup audio
+ */
+
+/**
+ * @brief Compute smoothstep interpolation
+ * @param t Input value (typically 0.0 to 1.0)
+ * @return Smoothly interpolated value using 3t² - 2t³ curve
+ *
+ * Standard smoothstep function providing smooth fade-in/fade-out curves.
+ * Output is clamped to [0, 1] range.
+ *
+ * @ingroup audio
+ */
+float smoothstep(float t);
+
+/**
+ * @brief Convert float sample to int16 (WebRTC format)
+ * @param sample Float sample in [-1.0, 1.0] range
+ * @return Scaled int16 sample in [-32768, 32767] range
+ *
+ * Scales float audio sample to 16-bit integer format used by WebRTC.
+ * Values outside [-1.0, 1.0] are clamped before scaling.
+ *
+ * @ingroup audio
+ */
+int16_t float_to_int16(float sample);
+
+/**
+ * @brief Convert int16 sample to float
+ * @param sample Int16 sample in [-32768, 32767] range
+ * @return Float sample in [-1.0, 1.0] range
+ *
+ * Scales 16-bit integer audio sample to float format.
+ *
+ * @ingroup audio
+ */
+float int16_to_float(int16_t sample);
+
+/**
+ * @brief Convert float buffer to int16 buffer
+ * @param src Source float buffer
+ * @param dst Destination int16 buffer
+ * @param count Number of samples to convert
+ *
+ * Batch converts float samples to int16 format for WebRTC.
+ *
+ * @ingroup audio
+ */
+void buffer_float_to_int16(const float *src, int16_t *dst, int count);
+
+/**
+ * @brief Convert int16 buffer to float buffer
+ * @param src Source int16 buffer
+ * @param dst Destination float buffer
+ * @param count Number of samples to convert
+ *
+ * Batch converts int16 samples to float format.
+ *
+ * @ingroup audio
+ */
+void buffer_int16_to_float(const int16_t *src, float *dst, int count);
+
+/**
+ * @brief Find peak absolute value in buffer
+ * @param buffer Audio buffer
+ * @param count Number of samples
+ * @return Maximum absolute sample value (0.0 to 1.0+)
+ *
+ * Scans buffer for the sample with highest absolute value.
+ * Useful for level metering and gain staging.
+ *
+ * @ingroup audio
+ */
+float buffer_peak(const float *buffer, int count);
+
+/**
+ * @brief Apply gain to buffer in-place
+ * @param buffer Audio buffer (modified in-place)
+ * @param count Number of samples
+ * @param gain Gain multiplier to apply
+ *
+ * Multiplies all samples by gain factor.
+ *
+ * @ingroup audio
+ */
+void apply_gain_buffer(float *buffer, int count, float gain);
+
+/**
+ * @brief Apply linear fade to buffer in-place
+ * @param buffer Audio buffer (modified in-place)
+ * @param count Number of samples
+ * @param start_gain Gain at start of buffer
+ * @param end_gain Gain at end of buffer
+ *
+ * Applies linear interpolation from start_gain to end_gain across buffer.
+ * Use start_gain=0, end_gain=1 for fade-in; start_gain=1, end_gain=0 for fade-out.
+ *
+ * @ingroup audio
+ */
+void fade_buffer(float *buffer, int count, float start_gain, float end_gain);
+
+/**
+ * @brief Apply smoothstep fade to buffer in-place
+ * @param buffer Audio buffer (modified in-place)
+ * @param count Number of samples
+ * @param fade_in If true, fade from 0 to 1; if false, fade from 1 to 0
+ *
+ * Applies smoothstep curve for more natural-sounding fades.
+ *
+ * @ingroup audio
+ */
+void fade_buffer_smooth(float *buffer, int count, bool fade_in);
+
+/**
+ * @brief Copy buffer with gain scaling
+ * @param src Source buffer
+ * @param dst Destination buffer
+ * @param count Number of samples
+ * @param gain Gain multiplier to apply during copy
+ *
+ * Copies samples from src to dst while applying gain.
+ * Useful for format conversion (e.g., scale by 32768 for WebRTC).
+ *
+ * @ingroup audio
+ */
+void copy_buffer_with_gain(const float *src, float *dst, int count, float gain);
+
+/** @} */
+
+/**
  * @name Soft Clipping Functions
  * @{
  * @ingroup audio
@@ -869,29 +1001,37 @@ void lowpass_filter_process_buffer(lowpass_filter_t *filter, float *buffer, int 
 /**
  * @brief Apply soft clipping to a sample
  * @param sample Input sample value
- * @param threshold Clipping threshold (typically 1.0)
- * @return Soft-clipped output sample
+ * @param threshold Clipping threshold (e.g., 0.7 for 3dB headroom)
+ * @param steepness How aggressively the curve bends (1.0 = gentle, 10.0 = sharp)
+ * @return Soft-clipped output sample (always in [-1.0, 1.0] range)
  *
- * Applies soft clipping using tanh-like curve to prevent hard clipping
- * artifacts while maintaining loud output.
+ * Applies soft clipping using tanh curve. The formula is:
+ *   output = threshold + (1.0 - threshold) * tanh((sample - threshold) * steepness)
  *
- * @note Soft clipping is gentler than hard clipping, reducing distortion.
+ * This maps samples above threshold asymptotically toward 1.0, preventing
+ * hard clipping artifacts while maintaining perceptual loudness.
+ *
+ * Common parameter combinations:
+ * - threshold=0.7, steepness=3.0: Gentle limiting, 3dB headroom
+ * - threshold=0.9, steepness=6.0: Moderate limiting, 1dB headroom
+ * - threshold=0.95, steepness=10.0: Aggressive limiting, minimal headroom
  *
  * @ingroup audio
  */
-float soft_clip(float sample, float threshold);
+float soft_clip(float sample, float threshold, float steepness);
 
 /**
- * @brief Apply soft clipping to a buffer of samples
+ * @brief Apply soft clipping to a buffer
  * @param buffer Audio buffer (modified in-place)
  * @param num_samples Number of samples to process
- * @param threshold Clipping threshold (typically 1.0)
+ * @param threshold Clipping threshold (e.g., 0.7 for 3dB headroom)
+ * @param steepness How aggressively the curve bends
  *
- * Processes entire buffer through soft clipping. Buffer is modified in-place.
+ * Processes entire buffer through soft_clip(). Buffer is modified in-place.
  *
  * @ingroup audio
  */
-void soft_clip_buffer(float *buffer, int num_samples, float threshold);
+void soft_clip_buffer(float *buffer, int num_samples, float threshold, float steepness);
 
 /** @} */
 
