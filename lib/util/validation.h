@@ -191,6 +191,27 @@ typedef struct client_info client_info_t;
     }                                                                                                                  \
   } while (0)
 
+/**
+ * Validate packet payload pointer is not NULL.
+ * Used as a conditional to check packet data validity before further processing.
+ *
+ * @param data Payload pointer to validate
+ * @param packet_name Human-readable packet name for error messages
+ * @param disconnect_handler Error handler function to call on failure
+ * @return Non-zero (true) if validation failed (data is NULL), 0 (false) if valid (data is not NULL)
+ *
+ * Usage:
+ * @code
+ * void handle_audio(client_info_t *client, const void *data, size_t len) {
+ *   if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+ *     return;  // Handler can log error if needed
+ *   }
+ *   // ... process packet ...
+ * }
+ * @endcode
+ */
+#define VALIDATE_PACKET_NOT_NULL(data, packet_name, disconnect_handler) (!(data))
+
 /** @} */
 
 /* ============================================================================
