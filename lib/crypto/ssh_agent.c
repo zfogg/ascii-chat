@@ -6,6 +6,7 @@
 
 #include "ssh_agent.h"
 #include "common.h"
+#include "util/bytes.h" // For write_u32_be, read_u32_be
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -130,14 +131,13 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
   }
 
   // Number of keys at bytes 5-8
-  uint32_t num_keys = (response[5] << 24) | (response[6] << 16) | (response[7] << 8) | response[8];
+  uint32_t num_keys = read_u32_be(response + 5);
 
   // Parse keys and check if our public key matches
   size_t pos = 9;
   for (uint32_t i = 0; i < num_keys && pos + 4 < (size_t)bytes_read; i++) {
     // Read key blob length
-    uint32_t blob_len =
-        (response[pos] << 24) | (response[pos + 1] << 16) | (response[pos + 2] << 8) | response[pos + 3];
+    uint32_t blob_len = read_u32_be(response + pos);
     pos += 4;
 
     if (pos + blob_len > (size_t)bytes_read)
@@ -150,8 +150,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
       pos += blob_len;
       continue;
     }
-    uint32_t type_len = (response[blob_pos] << 24) | (response[blob_pos + 1] << 16) | (response[blob_pos + 2] << 8) |
-                        response[blob_pos + 3];
+    uint32_t type_len = read_u32_be(response + blob_pos);
     blob_pos += 4 + type_len;
 
     // Read public key data
@@ -159,8 +158,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
       pos += blob_len;
       continue;
     }
-    uint32_t pubkey_len = (response[blob_pos] << 24) | (response[blob_pos + 1] << 16) | (response[blob_pos + 2] << 8) |
-                          response[blob_pos + 3];
+    uint32_t pubkey_len = read_u32_be(response + blob_pos);
     blob_pos += 4;
 
     // Compare public key (should be 32 bytes for Ed25519)
@@ -177,8 +175,7 @@ bool ssh_agent_has_key(const public_key_t *public_key) {
     // Skip comment string length + comment
     if (pos + 4 > (size_t)bytes_read)
       break;
-    uint32_t comment_len =
-        (response[pos] << 24) | (response[pos + 1] << 16) | (response[pos + 2] << 8) | response[pos + 3];
+    uint32_t comment_len = read_u32_be(response + pos);
     pos += 4 + comment_len;
   }
 
@@ -218,29 +215,23 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
 
   // Key type: "ssh-ed25519" (11 bytes)
   uint32_t len = 11;
-  buf[pos++] = (len >> 24) & 0xFF;
-  buf[pos++] = (len >> 16) & 0xFF;
-  buf[pos++] = (len >> 8) & 0xFF;
-  buf[pos++] = len & 0xFF;
+  write_u32_be(buf + pos, len);
+  pos += 4;
   // NOLINTNEXTLINE(bugprone-not-null-terminated-result) - Binary protocol, intentionally not null-terminated
   memcpy(buf + pos, "ssh-ed25519", 11);
   pos += 11;
 
   // Public key (32 bytes) - last 32 bytes of the 64-byte ed25519 key
   len = 32;
-  buf[pos++] = (len >> 24) & 0xFF;
-  buf[pos++] = (len >> 16) & 0xFF;
-  buf[pos++] = (len >> 8) & 0xFF;
-  buf[pos++] = len & 0xFF;
+  write_u32_be(buf + pos, len);
+  pos += 4;
   memcpy(buf + pos, private_key->key.ed25519 + 32, 32); // Public key is second half
   pos += 32;
 
   // Private key (64 bytes - full ed25519 key: 32-byte seed + 32-byte public)
   len = 64;
-  buf[pos++] = (len >> 24) & 0xFF;
-  buf[pos++] = (len >> 16) & 0xFF;
-  buf[pos++] = (len >> 8) & 0xFF;
-  buf[pos++] = len & 0xFF;
+  write_u32_be(buf + pos, len);
+  pos += 4;
   memcpy(buf + pos, private_key->key.ed25519, 64);
   pos += 64;
 
@@ -256,10 +247,8 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, "SSH key path too long: %u bytes (max %zu)", len, max_key_path_len);
   }
 
-  buf[pos++] = (len >> 24) & 0xFF;
-  buf[pos++] = (len >> 16) & 0xFF;
-  buf[pos++] = (len >> 8) & 0xFF;
-  buf[pos++] = len & 0xFF;
+  write_u32_be(buf + pos, len);
+  pos += 4;
   if (len > 0) {
     memcpy(buf + pos, key_path, len);
     pos += len;
@@ -267,10 +256,7 @@ asciichat_error_t ssh_agent_add_key(const private_key_t *private_key, const char
 
   // Write message length at start (excluding the 4-byte length field itself)
   uint32_t msg_len = pos - 4;
-  buf[0] = (msg_len >> 24) & 0xFF;
-  buf[1] = (msg_len >> 16) & 0xFF;
-  buf[2] = (msg_len >> 8) & 0xFF;
-  buf[3] = msg_len & 0xFF;
+  write_u32_be(buf, msg_len);
 
   // Send message to agent
   ssize_t bytes_written = platform_pipe_write(pipe, buf, pos);

@@ -94,6 +94,7 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "util/time.h"
+#include "util/thread_lifecycle.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
@@ -508,30 +509,25 @@ int capture_init() {
  * @ingroup client_capture
  */
 int capture_start_thread() {
-  if (g_capture_thread_created) {
+  if (THREAD_IS_CREATED(g_capture_thread_created)) {
     log_warn("Capture thread already created");
     return 0;
   }
 
   // Start webcam capture thread
   atomic_store(&g_capture_thread_exited, false);
-  log_warn("THREAD_CREATE: About to create webcam capture thread");
-  int result = ascii_thread_create(&g_capture_thread, webcam_capture_thread_func, NULL);
-  log_warn("THREAD_CREATE: ascii_thread_create() returned %d, thread handle = %p", result, g_capture_thread);
-
-  if (result != 0) {
-    SET_ERRNO(ERROR_THREAD, "THREAD_CREATE: Webcam capture thread creation FAILED with result=%d", result);
+  if (THREAD_CREATE_SAFE(g_capture_thread, webcam_capture_thread_func, NULL) != 0) {
+    SET_ERRNO(ERROR_THREAD, "Webcam capture thread creation failed");
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
     return -1;
   }
 
   g_capture_thread_created = true;
-  log_warn("THREAD_CREATE: Webcam capture thread created successfully, handle = %p", g_capture_thread);
+  log_info("Webcam capture thread created successfully");
 
   // Notify server we're starting to send video
   if (threaded_send_stream_start_packet(STREAM_TYPE_VIDEO) < 0) {
     LOG_ERRNO_IF_SET("Failed to send stream start packet");
-  } else {
   }
 
   return 0;
@@ -545,7 +541,7 @@ int capture_start_thread() {
  * @ingroup client_capture
  */
 void capture_stop_thread() {
-  if (!g_capture_thread_created) {
+  if (!THREAD_IS_CREATED(g_capture_thread_created)) {
     return;
   }
 
