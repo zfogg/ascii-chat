@@ -5,12 +5,16 @@
  */
 
 #include "platform/password.h"
+#include "logging.h"
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <termios.h>
 
 int platform_prompt_password(const char *prompt, char *password, size_t max_len) {
+  // Disable terminal logging so other threads don't interfere with password prompt
+  bool previous_terminal_state = log_lock_terminal();
+
   fprintf(stderr, "\n");
   fprintf(stderr, "========================================\n");
   fprintf(stderr, "%s\n", prompt);
@@ -47,6 +51,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
         tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
       }
       fprintf(stderr, "\nERROR: Failed to read password\n");
+      log_unlock_terminal(previous_terminal_state);
       return -1;
     }
 
@@ -72,6 +77,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
         tcsetattr(STDIN_FILENO, TCSANOW, &old_termios);
       }
       fprintf(stderr, "\n");
+      log_unlock_terminal(previous_terminal_state);
       return -1;
     }
 
@@ -95,5 +101,8 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
   }
 
   fprintf(stderr, "\n========================================\n\n");
+
+  // Re-enable terminal logging
+  log_unlock_terminal(previous_terminal_state);
   return 0;
 }

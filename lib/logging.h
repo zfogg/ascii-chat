@@ -69,6 +69,18 @@ typedef enum {
 /** @brief Maximum log file size in bytes (3MB) before rotation */
 #define MAX_LOG_SIZE (3 * 1024 * 1024)
 
+/** @brief Maximum size of terminal output buffer (64KB) */
+#define MAX_TERMINAL_BUFFER_SIZE (64 * 1024)
+
+/** @brief Maximum number of buffered log entries */
+#define MAX_TERMINAL_BUFFER_ENTRIES 256
+
+/** @brief A single buffered log entry */
+typedef struct {
+  bool use_stderr; /* true for stderr, false for stdout */
+  char *message;   /* Formatted message (heap allocated) */
+} log_buffer_entry_t;
+
 /* Suppress missing field initializers for mutex_t which has opaque internal fields */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
@@ -83,6 +95,10 @@ static struct log_context_t {
   bool terminal_output_enabled;            /* Control stderr output to terminal */
   bool level_manually_set;                 /* Track if level was set manually */
   bool force_stderr;                       /* Force all terminal logs to stderr (client mode) */
+  log_buffer_entry_t *buffer_entries;      /* Array of buffered log entries */
+  size_t buffer_entry_count;               /* Number of entries in buffer */
+  size_t buffer_total_size;                /* Total bytes used by all messages */
+  unsigned int flush_delay_ms;             /* Delay between each buffered log flush (0 = disabled) */
 } g_log = {
     .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
     .level = DEFAULT_LOG_LEVEL,
@@ -92,6 +108,10 @@ static struct log_context_t {
     .terminal_output_enabled = true,
     .level_manually_set = false,
     .force_stderr = false,
+    .buffer_entries = NULL,
+    .buffer_entry_count = 0,
+    .buffer_total_size = 0,
+    .flush_delay_ms = 0,
 };
 
 #pragma GCC diagnostic pop
@@ -290,6 +310,42 @@ const char **log_get_color_array(void);
  * @ingroup logging
  */
 void log_redetect_terminal_capabilities(void);
+
+/**
+ * @brief Disable terminal output for interactive prompts
+ *
+ * Call this before interactive prompts (like password entry, yes/no questions)
+ * to prevent log messages from appearing on the terminal while the user is
+ * interacting. Log messages will still be written to the log file.
+ *
+ * Must be paired with log_unlock_terminal().
+ *
+ * @return The previous terminal output state (for nested calls)
+ * @ingroup logging
+ */
+bool log_lock_terminal(void);
+
+/**
+ * @brief Re-enable terminal output after interactive prompts
+ *
+ * Call this after interactive prompts complete to restore terminal logging.
+ *
+ * @param previous_state The value returned by log_lock_terminal()
+ * @ingroup logging
+ */
+void log_unlock_terminal(bool previous_state);
+
+/**
+ * @brief Set the delay between flushing buffered log entries
+ *
+ * When terminal output is re-enabled after an interactive prompt, buffered
+ * log entries are flushed to the terminal. This setting adds a delay between
+ * each entry for a visual animation effect.
+ *
+ * @param delay_ms Delay in milliseconds between each log entry (0 = no delay)
+ * @ingroup logging
+ */
+void log_set_flush_delay(unsigned int delay_ms);
 
 /**
  * @brief Format a message using va_list

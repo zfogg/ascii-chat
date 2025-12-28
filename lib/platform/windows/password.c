@@ -5,10 +5,14 @@
  */
 
 #include "platform/password.h"
+#include "logging.h"
 #include <stdio.h>
 #include <conio.h>
 
 int platform_prompt_password(const char *prompt, char *password, size_t max_len) {
+  // Disable terminal logging so other threads don't interfere with password prompt
+  bool previous_terminal_state = log_lock_terminal();
+
   fprintf(stderr, "\n");
   fprintf(stderr, "========================================\n");
   fprintf(stderr, "%s\n", prompt);
@@ -30,6 +34,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
     // Handle Ctrl+C (interrupt)
     if (ch == 3) {
       (void)fprintf(stderr, "\n");
+      log_unlock_terminal(previous_terminal_state);
       return -1;
     }
 
@@ -48,5 +53,8 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
 
   (void)fprintf(stderr, "\n========================================\n\n");
   (void)fflush(stderr);
+
+  // Re-enable terminal logging
+  log_unlock_terminal(previous_terminal_state);
   return 0;
 }
