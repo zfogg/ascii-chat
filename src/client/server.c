@@ -68,8 +68,8 @@
 #include "network/network.h"
 #include "network/av.h"
 #include "util/endian.h"
+#include "util/ip.h"
 #include "common.h"
-#include "util/endian.h"
 #include "display.h"
 #include "options/options.h"
 #include "video/palette.h"
@@ -463,14 +463,12 @@ int server_connection_establish(const char *address, int port, int reconnect_att
                                                                                        : "unknown protocol");
 
         // Extract server IP address for known_hosts
-        if (addr_iter->ai_family == AF_INET) {
-          struct sockaddr_in *addr_in = (struct sockaddr_in *)addr_iter->ai_addr;
-          inet_ntop(AF_INET, &addr_in->sin_addr, g_server_ip, sizeof(g_server_ip));
-        } else if (addr_iter->ai_family == AF_INET6) {
-          struct sockaddr_in6 *addr_in6 = (struct sockaddr_in6 *)addr_iter->ai_addr;
-          inet_ntop(AF_INET6, &addr_in6->sin6_addr, g_server_ip, sizeof(g_server_ip));
+        if (format_ip_address(addr_iter->ai_family, addr_iter->ai_addr, g_server_ip, sizeof(g_server_ip)) ==
+            ASCIICHAT_OK) {
+          log_debug("Resolved server IP: %s", g_server_ip);
+        } else {
+          log_warn("Failed to format server IP address");
         }
-        log_debug("Resolved server IP: %s", g_server_ip);
 
         goto connection_success; // Break out of both loops
       }

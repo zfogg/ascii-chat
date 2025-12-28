@@ -10,6 +10,7 @@
 #include "platform/system.h"
 #include "platform/init.h"
 #include "util/format.h"
+#include "util/overflow.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,8 +31,14 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
     return NULL;
   }
 
-  // Allocate array of buffer nodes
-  pool->nodes = SAFE_MALLOC(sizeof(buffer_node_t) * pool_size, buffer_node_t *);
+  // Allocate array of buffer nodes with overflow checking
+  size_t nodes_size = 0;
+  if (checked_size_mul(sizeof(buffer_node_t), pool_size, &nodes_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Buffer nodes array size overflow: %zu nodes", pool_size);
+    SAFE_FREE(pool);
+    return NULL;
+  }
+  pool->nodes = SAFE_MALLOC(nodes_size, buffer_node_t *);
   if (!pool->nodes) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer nodes array");
     SAFE_FREE(pool);
@@ -40,7 +47,15 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
 
   // Allocate single memory block for all buffers with cache-line alignment
   // 64-byte alignment improves cache performance and reduces false sharing
-  pool->memory_block = SAFE_MALLOC_ALIGNED(buffer_size * pool_size, 64, void *);
+  size_t total_buffer_size = 0;
+  if (checked_size_mul(buffer_size, pool_size, &total_buffer_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Buffer pool memory size overflow: %zu bytes * %zu buffers", buffer_size,
+              pool_size);
+    SAFE_FREE(pool->nodes);
+    SAFE_FREE(pool);
+    return NULL;
+  }
+  pool->memory_block = SAFE_MALLOC_ALIGNED(total_buffer_size, 64, void *);
   if (!pool->memory_block) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer memory block");
     SAFE_FREE(pool->nodes);

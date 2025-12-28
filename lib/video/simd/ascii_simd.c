@@ -18,6 +18,7 @@
 #include "video/output_buffer.h"
 #include "avx2.h"
 #include "util/math.h"
+#include "util/overflow.h"
 
 global_dec3_cache_t g_dec3_cache = {.dec3_initialized = false};
 
@@ -333,8 +334,12 @@ static int calculate_adaptive_iterations(int pixel_count, double __attribute__((
 simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribute__((unused)) iterations) {
   simd_benchmark_t result = {0};
 
-  // Cast to size_t before multiplication to prevent integer overflow
-  size_t pixel_count = (size_t)width * (size_t)height;
+  // Check for integer overflow in pixel count calculation
+  size_t pixel_count;
+  if (checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK) {
+    log_error("Image dimensions %d x %d too large (overflow)", width, height);
+    return result;
+  }
 
   // Generate test data and test image
   rgb_pixel_t *test_pixels;
@@ -495,12 +500,16 @@ simd_benchmark_t benchmark_simd_conversion(int width, int height, int __attribut
 simd_benchmark_t benchmark_simd_color_conversion(int width, int height, int iterations, bool background_mode) {
   simd_benchmark_t result = {0};
 
-  // Cast to size_t before multiplication to prevent integer overflow
-  size_t pixel_count = (size_t)width * (size_t)height;
+  // Check for integer overflow in pixel count calculation
+  size_t pixel_count;
+  if (checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK) {
+    log_error("Image dimensions %d x %d too large (overflow)", width, height);
+    return result;
+  }
 
   // Estimate output buffer size for colored ASCII (much larger than monochrome)
   // Each pixel can generate ~25 bytes of ANSI escape codes + 1 char
-  size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10; // Extra for newlines/reset codes
+  size_t output_buffer_size = pixel_count * 30 + (size_t)width * 10; // Extra for newlines/reset codes
 
   // Generate test data and test image for unified functions
   rgb_pixel_t *test_pixels;
@@ -650,8 +659,12 @@ simd_benchmark_t benchmark_simd_conversion_with_source(int width, int height, in
   (void)background_mode; // Suppress unused parameter warning
   (void)use_256color;    // Suppress unused parameter warning
 
-  // Cast to size_t before multiplication to prevent integer overflow
-  size_t pixel_count = (size_t)width * (size_t)height;
+  // Check for integer overflow in pixel count calculation
+  size_t pixel_count;
+  if (checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK) {
+    log_error("Image dimensions %d x %d too large (overflow)", width, height);
+    return result;
+  }
 
   // Generate test data
   rgb_pixel_t *test_pixels;
@@ -852,9 +865,14 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
   simd_benchmark_t result = {0};
   (void)use_256color; // Suppress unused parameter warning
 
-  // Cast to size_t before multiplication to prevent integer overflow
-  size_t pixel_count = (size_t)width * (size_t)height;
-  size_t output_buffer_size = (size_t)pixel_count * 30 + width * 10;
+  // Check for integer overflow in pixel count calculation
+  size_t pixel_count;
+  if (checked_size_mul((size_t)width, (size_t)height, &pixel_count) != ASCIICHAT_OK) {
+    log_error("Image dimensions %d x %d too large (overflow)", width, height);
+    return result;
+  }
+
+  size_t output_buffer_size = pixel_count * 30 + (size_t)width * 10;
 
   // Allocate buffers for benchmarking
   rgb_pixel_t *test_pixels;

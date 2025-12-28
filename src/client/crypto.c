@@ -347,8 +347,8 @@ int client_crypto_handshake(socket_t socket) {
   protocol_version_packet_t client_version = {0};
   client_version.protocol_version = HOST_TO_NET_U16(1);  // Protocol version 1
   client_version.protocol_revision = HOST_TO_NET_U16(0); // Revision 0
-  client_version.supports_encryption = 1;      // We support encryption
-  client_version.compression_algorithms = 0;   // No compression for now
+  client_version.supports_encryption = 1;                // We support encryption
+  client_version.compression_algorithms = 0;             // No compression for now
   client_version.compression_threshold = 0;
   client_version.feature_flags = 0;
 
