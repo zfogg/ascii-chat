@@ -200,13 +200,13 @@ typedef struct client_info client_info_t;
  * @param value_name Name of value for error message
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_NONZERO(client, value, value_name, packet_name) \
-  do { \
-    if ((value) == 0) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s %s cannot be zero", (packet_name), (value_name)); \
-      return; \
-    } \
+#define VALIDATE_NONZERO(client, value, value_name, packet_name)                                                       \
+  do {                                                                                                                 \
+    if ((value) == 0) {                                                                                                \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s %s cannot be zero", (packet_name), (value_name));                   \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -220,14 +220,14 @@ typedef struct client_info client_info_t;
  * @param value_name Name of value for error message
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_RANGE(client, value, min_val, max_val, value_name, packet_name) \
-  do { \
-    if ((value) < (min_val) || (value) > (max_val)) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s %s out of range: %u (valid: %u-%u)", (packet_name), \
-                                     (value_name), (unsigned)(value), (unsigned)(min_val), (unsigned)(max_val)); \
-      return; \
-    } \
+#define VALIDATE_RANGE(client, value, min_val, max_val, value_name, packet_name)                                       \
+  do {                                                                                                                 \
+    if ((value) < (min_val) || (value) > (max_val)) {                                                                  \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s %s out of range: %u (valid: %u-%u)", (packet_name), (value_name),   \
+                                     (unsigned)(value), (unsigned)(min_val), (unsigned)(max_val));                     \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -239,14 +239,14 @@ typedef struct client_info client_info_t;
  * @param valid_mask Bitmask of valid flag bits
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_CAPABILITY_FLAGS(client, flags, valid_mask, packet_name) \
-  do { \
-    if (((flags) & (valid_mask)) == 0) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s no valid capability flags set (flags=0x%x, valid=0x%x)", \
-                                     (packet_name), (unsigned)(flags), (unsigned)(valid_mask)); \
-      return; \
-    } \
+#define VALIDATE_CAPABILITY_FLAGS(client, flags, valid_mask, packet_name)                                              \
+  do {                                                                                                                 \
+    if (((flags) & (valid_mask)) == 0) {                                                                               \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s no valid capability flags set (flags=0x%x, valid=0x%x)",            \
+                                     (packet_name), (unsigned)(flags), (unsigned)(valid_mask));                        \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
 /**
@@ -258,14 +258,14 @@ typedef struct client_info client_info_t;
  * @param valid_mask Bitmask of valid flag bits
  * @param packet_name Name of packet type for error message
  */
-#define VALIDATE_FLAGS_MASK(client, flags, valid_mask, packet_name) \
-  do { \
-    if (((flags) & ~(valid_mask)) != 0) { \
-      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...); \
-      disconnect_client_for_bad_data((client), "%s unknown flags set (flags=0x%x, valid=0x%x)", (packet_name), \
-                                     (unsigned)(flags), (unsigned)(valid_mask)); \
-      return; \
-    } \
+#define VALIDATE_FLAGS_MASK(client, flags, valid_mask, packet_name)                                                    \
+  do {                                                                                                                 \
+    if (((flags) & ~(valid_mask)) != 0) {                                                                              \
+      extern void disconnect_client_for_bad_data(client_info_t * client, const char *format, ...);                     \
+      disconnect_client_for_bad_data((client), "%s unknown flags set (flags=0x%x, valid=0x%x)", (packet_name),         \
+                                     (unsigned)(flags), (unsigned)(valid_mask));                                       \
+      return;                                                                                                          \
+    }                                                                                                                  \
   } while (0)
 
  * Validate packet payload pointer is not NULL.
@@ -281,60 +281,61 @@ typedef struct client_info client_info_t;
  * Usage:
  * @code
  * void handle_audio(client_info_t *client, const void *data, size_t len) {
- *   if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
- *     return;  // Handler already called with error message
- *   }
- *   // ... process packet ...
- * }
- * @endcode
- */
-#define VALIDATE_PACKET_NOT_NULL(client, data, packet_name, disconnect_handler)                                        \
-  ({                                                                                                                   \
-    int _validation_failed = 0;                                                                                        \
-    if (!(data)) {                                                                                                     \
-      extern void disconnect_handler(client_info_t * client, const char *format, ...);                                 \
-      disconnect_handler((client), packet_name " payload missing");                                                    \
-      _validation_failed = 1;                                                                                          \
-    }                                                                                                                  \
-    _validation_failed;                                                                                                \
-  })
+   *if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+     *return; // Handler already called with error message
+     *
+   }
+   * // ... process packet ...
+       *
+ }
+ *@endcode * /
+#define VALIDATE_PACKET_NOT_NULL(client, data, packet_name, disconnect_handler)                                       \
+   ({                                                                                                                  \
+     int _validation_failed = 0;                                                                                       \
+     if (!(data)) {                                                                                                    \
+       extern void disconnect_handler(client_info_t * client, const char *format, ...);                                \
+       disconnect_handler((client), packet_name " payload missing");                                                   \
+       _validation_failed = 1;                                                                                         \
+     }                                                                                                                 \
+     _validation_failed;                                                                                               \
+   })
 
-/** @} */
+ /** @} */
 
-/* ============================================================================
- * Image Dimension Validation (Function Implementation)
- * ============================================================================ */
+ /* ============================================================================
+  * Image Dimension Validation (Function Implementation)
+  * ============================================================================ */
 
 #include <stdint.h>
 #include <stddef.h>
 
-/**
- * @defgroup image_validation Image Validation Functions
- * @ingroup validation
- * @{
- */
+     /**
+      * @defgroup image_validation Image Validation Functions
+      * @ingroup validation
+      * @{
+      */
 
-/**
- * @brief Validate and compute RGB image buffer size safely
- * @param width Image width in pixels (must be > 0)
- * @param height Image height in pixels (must be > 0)
- * @param out_rgb_size Pointer to store computed RGB buffer size (must not be NULL)
- * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on overflow or invalid dimensions
- *
- * Safely validates image dimensions and computes the total RGB buffer size needed.
- * Prevents integer overflow attacks by checking multiplication at each step.
- *
- * VALIDATION STEPS:
- * 1. Check width > 0 and height > 0
- * 2. Check pixel_count = width * height won't overflow (max 4K = 3840x2160)
- * 3. Check rgb_size = pixel_count * sizeof(rgb_t) won't overflow
- *
- * @note Maximum supported resolution is 4K (3840x2160) = 8,294,400 pixels
- * @note This function prevents DoS attacks via integer overflow in dimension checks
- * @note Returns error code via asciichat_errno, not just return value
- *
- * @ingroup image_validation
- */
-asciichat_error_t image_validate_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size);
+     /**
+      * @brief Validate and compute RGB image buffer size safely
+      * @param width Image width in pixels (must be > 0)
+      * @param height Image height in pixels (must be > 0)
+      * @param out_rgb_size Pointer to store computed RGB buffer size (must not be NULL)
+      * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on overflow or invalid dimensions
+      *
+      * Safely validates image dimensions and computes the total RGB buffer size needed.
+      * Prevents integer overflow attacks by checking multiplication at each step.
+      *
+      * VALIDATION STEPS:
+      * 1. Check width > 0 and height > 0
+      * 2. Check pixel_count = width * height won't overflow (max 4K = 3840x2160)
+      * 3. Check rgb_size = pixel_count * sizeof(rgb_t) won't overflow
+      *
+      * @note Maximum supported resolution is 4K (3840x2160) = 8,294,400 pixels
+      * @note This function prevents DoS attacks via integer overflow in dimension checks
+      * @note Returns error code via asciichat_errno, not just return value
+      *
+      * @ingroup image_validation
+      */
+     asciichat_error_t image_validate_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size);
 
-/** @} */
+ /** @} */
