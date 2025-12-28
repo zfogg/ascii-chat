@@ -1312,7 +1312,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
   log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id),
                   len);
 
-  if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+  if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS")) {
     return;
   }
 
@@ -1641,57 +1641,6 @@ void handle_ping_packet(client_info_t *client) {
   // PONG responses should be handled directly via socket in send thread
   // For now, just log the ping
   (void)client;
-}
-
-/**
- * @brief Process CLIENT_LEAVE packet - handle graceful client disconnect
- *
- * Clients send this packet to notify the server of an intentional disconnect,
- * as opposed to a network failure or crash. This allows the server to perform
- * clean shutdown procedures without waiting for socket timeouts.
- *
- * PACKET STRUCTURE:
- * - LEAVE packets have no payload (header only)
- *
- * STATE CHANGES PERFORMED:
- * - Sets client->active = false immediately
- * - Triggers client cleanup procedures
- * - Prevents new packets from being processed
- *
- * PROTOCOL BEHAVIOR:
- * - Client should not send additional packets after LEAVE
- * - Server will begin client removal process
- * - Socket will be closed by cleanup procedures
- *
- * CLEANUP COORDINATION:
- * - Receive thread will exit after processing this packet
- * - Send thread will stop when active flag becomes false
- * - Render threads will detect inactive state and stop processing
- * - remove_client() will be called to complete cleanup
- *
- * ERROR HANDLING:
- * - Safe to call multiple times
- * - No validation required (simple state change)
- * - Cleanup is idempotent
- *
- * @param client Source client requesting graceful disconnect
- *
- * @note This provides clean shutdown versus network timeout
- * @note Actual client removal happens in main thread
- * @see remove_client() For complete cleanup implementation
- */
-void handle_client_leave_packet(client_info_t *client, const void *data, size_t len) {
-  // CLIENT_LEAVE is a header-only packet with no payload
-  // Validate packet has no extra data
-  if (len != 0) {
-    disconnect_client_for_bad_data(client, "CLIENT_LEAVE payload unexpected (len=%zu, expected 0)", len);
-    return;
-  }
-
-  // Handle clean disconnect notification from client
-  log_info("Client %u sent LEAVE packet - clean disconnect", atomic_load(&client->client_id));
-  // OPTIMIZED: Use atomic operation for thread control flag (lock-free)
-  atomic_store(&client->active, false);
 }
 
 /* ============================================================================
