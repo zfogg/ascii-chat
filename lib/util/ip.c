@@ -5,7 +5,7 @@
  */
 
 #include "ip.h"
-#include "int_parse.h"
+#include "parsing.h"
 #include "common.h"
 #include <string.h>
 #include <stdio.h>
