@@ -129,6 +129,8 @@
 #include "platform/system.h"
 #include "audio/opus_codec.h"
 #include "network/av.h"
+#include "network/logging.h"
+#include "crypto/handshake.h"
 
 /**
  * @brief Global shutdown flag from main.c - used to avoid error spam during shutdown
@@ -284,6 +286,14 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
 
   log_info("Client %u joined: %s (video=%d, audio=%d, stretch=%d)", atomic_load(&client->client_id),
            client->display_name, client->can_send_video, client->can_send_audio, client->wants_stretch);
+
+  // Notify client of successful join (encrypted channel)
+  if (client->crypto_initialized) {
+    const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
+                 "Joined as '%s' (video=%s, audio=%s)", client->display_name, client->can_send_video ? "yes" : "no",
+                 client->can_send_audio ? "yes" : "no");
+  }
 }
 
 /**
@@ -514,6 +524,16 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   if (stream_type & STREAM_TYPE_AUDIO) {
     log_info("Client %u started audio stream", atomic_load(&client->client_id));
   }
+
+  // Notify client of stream start acknowledgment
+  if (client->crypto_initialized) {
+    const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
+                              ? "video+audio"
+                              : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
+    log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
+                 "Stream started: %s", streams);
+  }
 }
 
 /**
@@ -575,6 +595,16 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
     log_info("Client %u stopped audio stream", atomic_load(&client->client_id));
+  }
+
+  // Notify client of stream stop acknowledgment
+  if (client->crypto_initialized) {
+    const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    const char *streams = (stream_type & STREAM_TYPE_VIDEO) && (stream_type & STREAM_TYPE_AUDIO)
+                              ? "video+audio"
+                              : ((stream_type & STREAM_TYPE_VIDEO) ? "video" : "audio");
+    log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
+                 "Stream stopped: %s", streams);
   }
 }
 
@@ -652,6 +682,12 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     // Use atomic_compare_exchange_strong to avoid spurious failures
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", atomic_load(&client->client_id));
+      // Notify client that their first video frame was received
+      if (client->crypto_initialized) {
+        const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+        log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
+                     "First video frame received - streaming active");
+      }
     }
   } else {
     // Log periodically to confirm we're receiving frames
@@ -1470,6 +1506,18 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
                 ? "half-block"
                 : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
            client->terminal_caps.detection_reliable ? "yes" : "no", client->terminal_caps.desired_fps);
+
+  // Send capabilities acknowledgment to client
+  if (client->crypto_initialized) {
+    const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+    log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
+                 "Terminal configured: %ux%u, %s, %s mode, %u fps", client->width, client->height,
+                 terminal_color_level_name(client->terminal_caps.color_level),
+                 (client->terminal_caps.render_mode == RENDER_MODE_HALF_BLOCK
+                      ? "half-block"
+                      : (client->terminal_caps.render_mode == RENDER_MODE_BACKGROUND ? "background" : "foreground")),
+                 client->terminal_caps.desired_fps);
+  }
 
   mutex_unlock(&client->client_state_mutex);
 }

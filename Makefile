@@ -94,9 +94,7 @@ reconfigure:
 
 clean:
 	@if [ -d "$(BUILD_DIR)" ]; then \
-		echo "Cleaning build artifacts (preserving dependencies cache)..."; \
-		cd "$(BUILD_DIR)" && ninja -t clean -g ascii-chat ascii-chat-shared test-static-lib test-shared-lib ascii-panic-report 2>/dev/null || true; \
-		echo "Clean complete (WebRTC and other dependencies preserved in .deps-cache/)"; \
+		$(CMAKE) --build "$(BUILD_DIR)" --target clean; \
 	else \
 		echo "Nothing to clean (build directory '$(BUILD_DIR)' not found)"; \
 	fi

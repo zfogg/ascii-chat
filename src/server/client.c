@@ -133,6 +133,7 @@
 #include "platform/string.h"
 #include "platform/socket.h"
 #include "network/crc32.h"
+#include "network/logging.h"
 #include "util/time.h"
 
 // Debug flags
@@ -1124,6 +1125,12 @@ void *client_receive_thread(void *arg) {
         log_error("Failed to process REKEY_COMPLETE from client %u: %d", client->client_id, crypto_result);
       } else {
         log_debug("Session rekeying completed successfully with client %u", client->client_id);
+        // Notify client that rekeying is complete (new keys now active on both sides)
+        if (client->crypto_initialized) {
+          const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+          log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx,
+                       REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Session rekey complete - new encryption keys active");
+        }
       }
       break;
     }
@@ -1357,6 +1364,12 @@ void *client_send_thread_func(void *arg) {
           log_error("Failed to send REKEY_REQUEST to client %u: %d", client->client_id, result);
         } else {
           log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
+          // Notify client that session rekeying has been initiated (old keys still active)
+          if (client->crypto_initialized) {
+            const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
+            log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx,
+                         REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Session rekey initiated - rotating encryption keys");
+          }
         }
       }
     }
