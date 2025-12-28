@@ -7,6 +7,7 @@
 #include "common.h"
 #include "video/simd/ascii_simd.h"
 #include "ansi_fast.h"
+#include "util/math.h"
 #include <string.h>
 #include <time.h>
 #ifndef _WIN32
@@ -363,24 +364,12 @@ uint8_t rgb_to_16color_dithered(int r, int g, int b, int x, int y, int width, in
   }
 
   // Clamp values to [0, 255]
-  if (r < 0) {
-    r = 0;
-  } else if (r > 255) {
-    r = 255;
-  }
-  if (g < 0) {
-    g = 0;
-  } else if (g > 255) {
-    g = 255;
-  }
-  if (b < 0) {
-    b = 0;
-  } else if (b > 255) {
-    b = 255;
-  }
+  uint8_t r_clamped = clamp_rgb((int)r);
+  uint8_t g_clamped = clamp_rgb((int)g);
+  uint8_t b_clamped = clamp_rgb((int)b);
 
   // Find the closest 16-color match
-  uint8_t closest_color = rgb_to_16color((uint8_t)r, (uint8_t)g, (uint8_t)b);
+  uint8_t closest_color = rgb_to_16color(r_clamped, g_clamped, b_clamped);
 
   // Calculate quantization error if dithering is enabled
   if (error_buffer) {

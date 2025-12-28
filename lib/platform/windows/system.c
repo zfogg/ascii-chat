@@ -12,6 +12,7 @@
 #include "common.h"
 #include "asciichat_errno.h"
 #include "util/path.h"
+#include "util/ip.h"
 #include "../symbols.h"
 
 #include <dbghelp.h>
@@ -1339,18 +1340,13 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
   }
 
   // Extract IPv4 address from first result
-  // getaddrinfo returns sockaddr*, but we know it's sockaddr_in for IPv4
-  // Use memcpy to avoid alignment cast warning - getaddrinfo guarantees proper alignment
-  struct sockaddr_in ipv4_addr;
-  memcpy(&ipv4_addr, result->ai_addr, sizeof(struct sockaddr_in));
-  if (inet_ntop(AF_INET, &(ipv4_addr.sin_addr), ipv4_out, (size_t)(socklen_t)ipv4_out_size) == NULL) {
-    freeaddrinfo(result);
-    WSACleanup();
-    return SET_ERRNO_SYS(ERROR_NETWORK, "Network operation failed");
-  }
-
+  asciichat_error_t format_result = format_ip_address(result->ai_family, result->ai_addr, ipv4_out, ipv4_out_size);
   freeaddrinfo(result);
   WSACleanup();
+
+  if (format_result != ASCIICHAT_OK) {
+    return format_result;
+  }
 
   return ASCIICHAT_OK;
 }
