@@ -9,9 +9,9 @@
 #include "ssh_keys.h"
 #include "gpg_keys.h"
 #include "https_keys.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../util/path.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "util/path.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
