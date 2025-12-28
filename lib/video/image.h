@@ -649,6 +649,29 @@ char *rgb_to_ansi_bg(int r, int g, int b);
  */
 void rgb_to_ansi_8bit(int r, int g, int b, int *fg_code, int *bg_code);
 
+/**
+ * @brief Validate and compute RGB image buffer size safely
+ * @param width Image width in pixels (must be > 0)
+ * @param height Image height in pixels (must be > 0)
+ * @param out_rgb_size Pointer to store computed RGB buffer size (must not be NULL)
+ * @return ASCIICHAT_OK on success, ERROR_INVALID_PARAM on overflow or invalid dimensions
+ *
+ * Safely validates image dimensions and computes the total RGB buffer size needed.
+ * Prevents integer overflow attacks by checking multiplication at each step.
+ *
+ * VALIDATION STEPS:
+ * 1. Check width > 0 and height > 0
+ * 2. Check pixel_count = width * height won't overflow (max 4K = 3840x2160)
+ * 3. Check rgb_size = pixel_count * sizeof(rgb_t) won't overflow
+ *
+ * @note Maximum supported resolution is 4K (3840x2160) = 8,294,400 pixels
+ * @note This function prevents DoS attacks via integer overflow in dimension checks
+ * @note Returns error code via asciichat_errno, not just return value
+ *
+ * @ingroup video
+ */
+asciichat_error_t image_validate_dimensions(uint32_t width, uint32_t height, size_t *out_rgb_size);
+
 /** @} */
 
 #ifdef _WIN32
