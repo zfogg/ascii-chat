@@ -102,6 +102,8 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include <stdatomic.h>
 #include <string.h>
 #include <time.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 #include "platform/windows_compat.h"
@@ -223,6 +225,37 @@ static bool g_server_state_initialized = false;
 static bool g_should_clear_before_next_frame = false;
 
 /* ============================================================================
+ * Protocol Validation and Error Handling
+ * ============================================================================ */
+
+/**
+ * @brief Disconnect from server due to bad/invalid packet data
+ *
+ * Closes the connection when the server sends malformed or invalid packets.
+ * This provides client-side protocol enforcement, matching the server's
+ * disconnect_client_for_bad_data behavior.
+ *
+ * @param format Printf-style format string for error details
+ * @param ... Arguments for format string
+ *
+ * @ingroup client_protocol
+ */
+static void disconnect_server_for_bad_data(const char *format, ...) {
+  va_list args;
+  va_start(args, format);
+
+  char message[256];
+  vsnprintf(message, sizeof(message), format, args);
+  va_end(args);
+
+  log_error("Server sent invalid data - disconnecting: %s", message);
+
+  // Close the server connection
+  server_connection_shutdown();
+  server_connection_lost();
+}
+
+/* ============================================================================
  * Packet Handler Functions
  * ============================================================================ */
 
@@ -253,7 +286,8 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   if (!data || len < sizeof(ascii_frame_packet_t)) {
-    log_warn("Invalid ASCII frame packet size: %zu", len);
+    disconnect_server_for_bad_data("ASCII_FRAME payload too small: %zu (min %zu)", len,
+                                   sizeof(ascii_frame_packet_t));
     return;
   }
 
