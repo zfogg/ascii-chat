@@ -25,6 +25,8 @@
  * - atomic.h: Atomic operations convenience macros
  * - endian.h: Network byte order conversion helpers
  * - audio.h: Audio packet parsing utilities
+ * - fps.h: FPS tracking and lag detection
+ * - ringbuffer.h: Lock-free ring buffers and frame buffers
  *
  * USAGE:
  * ======
@@ -63,3 +65,5 @@
 #include "util/atomic.h"
 #include "util/endian.h"
 #include "util/audio.h"
+#include "util/fps.h"
+#include "util/ringbuffer.h"

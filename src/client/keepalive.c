@@ -65,7 +65,7 @@
 #include "main.h"
 #include "server.h"
 #include "crypto.h"
-#include "fps.h"
+#include "util/fps.h"
 
 #include "common.h"
 #include "platform/abstraction.h"
