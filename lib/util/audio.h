@@ -1,6 +1,6 @@
 /**
- * @file util/audio_helpers.h
- * @brief 🔊 Audio packet parsing helpers
+ * @file util/audio.h
+ * @brief 🔊 Audio packet parsing utilities
  * @ingroup util
  *
  * Provides utility functions and macros for parsing audio batch packets.
