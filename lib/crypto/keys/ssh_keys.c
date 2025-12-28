@@ -427,7 +427,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       memcpy(kdfname, key_blob + kdfname_pos, kdfname_len);
     }
 
-    log_debug("DEBUG: Cipher: %s, KDF: %s", ciphername, kdfname);
+    log_debug("Cipher: %s, KDF: %s", ciphername, kdfname);
 
     // Check if we support this encryption method
     if (strcmp(ciphername, "aes256-ctr") != 0 && strcmp(ciphername, "aes256-cbc") != 0) {
@@ -531,7 +531,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     }
     uint32_t num_keys = READ_BE32(key_blob, offset);
     offset += 4;
-    log_debug("DEBUG: num_keys=%u", num_keys);
+    log_debug("num_keys=%u", num_keys);
 
     // Skip all public keys
     for (uint32_t i = 0; i < num_keys; i++) {
@@ -544,7 +544,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
       }
       uint32_t pubkey_len = READ_BE32(key_blob, offset);
       offset += 4;
-      log_debug("DEBUG: Skipping public key %u: %u bytes", i, pubkey_len);
+      log_debug("Skipping public key %u: %u bytes", i, pubkey_len);
 
       if (offset + pubkey_len > key_blob_len) {
         sodium_memzero(password, strlen(password));
@@ -751,10 +751,10 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   uint32_t num_keys = READ_BE32(key_blob, offset);
   offset += 4;
 
-  log_debug("DEBUG: num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, offset, key_blob_len);
-  log_debug("DEBUG: Raw bytes at offset %zu: %02x %02x %02x %02x", offset, key_blob[offset], key_blob[offset + 1],
+  log_debug("num_keys=%u, offset=%zu, key_blob_len=%zu", num_keys, offset, key_blob_len);
+  log_debug("Raw bytes at offset %zu: %02x %02x %02x %02x", offset, key_blob[offset], key_blob[offset + 1],
             key_blob[offset + 2], key_blob[offset + 3]);
-  log_debug("DEBUG: After num_keys, offset=%zu", offset);
+  log_debug("After num_keys, offset=%zu", offset);
 
   if (num_keys != 1) {
     SAFE_FREE(key_blob);
@@ -769,13 +769,13 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
     return SET_ERRNO(ERROR_CRYPTO_KEY, "OpenSSH private key truncated at pubkey length: %s", key_path);
   }
 
-  log_debug("DEBUG: About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", offset, key_blob[offset],
+  log_debug("About to read pubkey_len at offset=%zu, bytes: %02x %02x %02x %02x", offset, key_blob[offset],
             key_blob[offset + 1], key_blob[offset + 2], key_blob[offset + 3]);
 
   uint32_t pubkey_len = READ_BE32(key_blob, offset);
   offset += 4;
 
-  log_debug("DEBUG: pubkey_len=%u, offset=%zu", pubkey_len, offset);
+  log_debug("pubkey_len=%u, offset=%zu", pubkey_len, offset);
 
   if (offset + pubkey_len > key_blob_len) {
     SAFE_FREE(key_blob);
@@ -801,7 +801,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   offset += key_type_len; // Skip the key type string
-  log_debug("DEBUG: After skipping key type, offset=%zu", offset);
+  log_debug("After skipping key type, offset=%zu", offset);
 
   // Read the public key length
   if (offset + 4 > key_blob_len) {
@@ -812,9 +812,9 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
 
   uint32_t pubkey_data_len = READ_BE32(key_blob, offset);
   offset += 4;
-  log_debug("DEBUG: Public key data length: %u, offset=%zu", pubkey_data_len, offset);
+  log_debug("Public key data length: %u, offset=%zu", pubkey_data_len, offset);
 
-  log_debug("DEBUG: Public key data length: %u (expected 32 for Ed25519)", pubkey_data_len);
+  log_debug("Public key data length: %u (expected 32 for Ed25519)", pubkey_data_len);
 
   // For Ed25519, the public key should be 32 bytes, but let's be more flexible
   if (pubkey_data_len < 32) {
@@ -838,7 +838,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   // Skip the rest of the public key data to get to the private key
   // We've already parsed: 4 (key_type_len) + 11 (ssh-ed25519) + 4 (pubkey_data_len) + 32 (key) = 51 bytes
   // So we need to skip the remaining pubkey_len - 51 bytes
-  // SECURITY FIX: Check for underflow before subtraction
+  // Check for underflow before subtraction
   if (pubkey_len >= 51) {
     size_t remaining_pubkey = pubkey_len - 51;
     if (remaining_pubkey > 0) {
@@ -893,7 +893,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t key_type_len_priv = READ_BE32(key_blob, offset);
-  // SECURITY FIX: Check for integer overflow before adding to offset
+  // Check for integer overflow before adding to offset
   if (key_type_len_priv > key_blob_len || offset + 4 + key_type_len_priv > key_blob_len) {
     SAFE_FREE(key_blob);
     SAFE_FREE(file_content);
@@ -909,7 +909,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   }
 
   uint32_t pubkey_len_priv = READ_BE32(key_blob, offset);
-  // SECURITY FIX: Check for integer overflow before adding to offset
+  // Check for integer overflow before adding to offset
   if (pubkey_len_priv > key_blob_len || offset + 4 + pubkey_len_priv > key_blob_len) {
     SAFE_FREE(key_blob);
     SAFE_FREE(file_content);
@@ -949,7 +949,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
   // Verify the public key matches
   // The public key in the privkey section is raw Ed25519, while the one in pubkey section is SSH format
   // We need to compare the raw public key from privkey with the raw public key extracted from pubkey
-  // BUGFIX: Use constant-time comparison for cryptographic material
+  // Use constant-time comparison for cryptographic material
   if (sodium_memcmp(key_blob + offset + 32, ed25519_pubkey, 32) != 0) {
     SAFE_FREE(key_blob);
     SAFE_FREE(file_content);

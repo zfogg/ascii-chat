@@ -508,8 +508,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   // Handle incoming image data from client
   // New format: [width:4][height:4][compressed_flag:4][data_size:4][rgb_data:data_size]
   // Old format: [width:4][height:4][rgb_data:w*h*3] (for backward compatibility)
-  // CRITICAL FIX: Use atomic compare-and-swap to avoid race condition
-  // This ensures thread-safe auto-enabling of video stream
+  // Use atomic compare-and-swap to avoid race condition - ensures thread-safe auto-enabling of video stream
   if (!data || len < sizeof(uint32_t) * 2) {
     disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
     return;

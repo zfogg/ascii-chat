@@ -83,7 +83,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
   if (!node) {
     // Pool exhausted, fallback to malloc
     node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
-    // BUGFIX: Remove extra text from format string that had no matching argument
+    // Remove extra text from format string that had no matching argument
     log_debug("Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)", pool->used_count, pool->pool_size);
   }
 
@@ -574,7 +574,7 @@ void packet_queue_free_packet(queued_packet_t *packet) {
   }
 
   // Mark as freed to detect future double-free attempts
-  // BUGFIX: Use network byte order for consistency on big-endian systems
+  // Use network byte order for consistency on big-endian systems
   packet->header.magic = htonl(0xBEEFDEAD); // Different magic in network byte order
   SAFE_FREE(packet);
 }

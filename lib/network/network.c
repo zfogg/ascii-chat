@@ -41,7 +41,7 @@ static ssize_t network_platform_send(socket_t sockfd, const void *data, size_t l
   }
   int raw_sent = send(sockfd, (const char *)data, (int)len, 0);
 
-  // CRITICAL FIX: Check for SOCKET_ERROR before casting to avoid corruption
+  // Check for SOCKET_ERROR before casting to avoid corruption
   ssize_t sent;
   if (raw_sent == SOCKET_ERROR) {
     sent = -1;
