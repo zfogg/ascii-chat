@@ -1472,7 +1472,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
   }
 
   // Check if client disconnected (connection closed)
-  log_debug("DEBUG: packet_type=%d, payload_len=%zu, payload=%p", packet_type, payload_len, payload);
+  log_debug("packet_type=%d, payload_len=%zu, payload=%p", packet_type, payload_len, payload);
   if (payload_len == 0 && payload == NULL && packet_type == 0) {
     return SET_ERRNO(ERROR_NETWORK, "Client disconnected during authentication");
   }
@@ -1562,7 +1562,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
       const uint8_t *signature = payload;
       const uint8_t *client_nonce = payload + ctx->crypto_ctx.signature_size;
 
-      // BUGFIX: Actually verify the Ed25519 signature on the challenge nonce
+      // Actually verify the Ed25519 signature on the challenge nonce
       // This was missing, allowing authentication bypass
       if (ctx->client_ed25519_key_verified) {
         if (crypto_sign_verify_detached(signature, ctx->crypto_ctx.auth_nonce, ctx->crypto_ctx.auth_challenge_size,

@@ -88,6 +88,7 @@
 #include "common.h"
 #include "options.h"
 #include "crc32.h"
+#include "fps_tracker.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -227,6 +228,70 @@ static bool g_should_clear_before_next_frame = false;
  * ============================================================================ */
 
 /**
+ * @brief Decode frame data, handling both compressed and uncompressed formats
+ *
+ * Consolidates decompression/copy logic with unified size validation and error handling.
+ * Allocates buffer and returns decoded frame data, or NULL on error.
+ *
+ * @param frame_data_ptr Pointer to compressed or uncompressed frame data
+ * @param frame_data_len Size of frame_data_ptr in bytes
+ * @param is_compressed True if data is zstd-compressed
+ * @param original_size Expected decompressed size
+ * @param compressed_size Expected compressed size (used for validation when compressed)
+ * @return Allocated frame buffer (caller must SAFE_FREE) or NULL on error
+ *
+ * @ingroup client_protocol
+ */
+static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len, bool is_compressed,
+                                uint32_t original_size, uint32_t compressed_size) {
+  // Validate size before allocation to prevent excessive memory usage
+  if (original_size > 100 * 1024 * 1024) {
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", original_size);
+    return NULL;
+  }
+
+  char *frame_data = SAFE_MALLOC(original_size + 1, char *);
+
+  if (is_compressed) {
+    // Validate compressed frame size
+    if (frame_data_len != compressed_size) {
+      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", compressed_size,
+                frame_data_len);
+      SAFE_FREE(frame_data);
+      return NULL;
+    }
+
+    // Decompress using compression API
+    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, original_size);
+
+    if (result != 0) {
+      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", original_size);
+      SAFE_FREE(frame_data);
+      return NULL;
+    }
+
+#ifdef COMPRESSION_DEBUG
+    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, original_size);
+#endif
+  } else {
+    // Uncompressed frame - validate size
+    if (frame_data_len != original_size) {
+      log_error("Uncompressed frame size mismatch: expected %u, got %zu", original_size, frame_data_len);
+      SAFE_FREE(frame_data);
+      return NULL;
+    }
+
+    // Only copy the actual amount of data we received
+    size_t copy_size = (frame_data_len > original_size) ? original_size : frame_data_len;
+    memcpy(frame_data, frame_data_ptr, copy_size);
+  }
+
+  // Null-terminate the frame data
+  frame_data[original_size] = '\0';
+  return frame_data;
+}
+
+/**
  * @brief Handle incoming ASCII frame packet from server
  *
  * Processes unified ASCII frame packets that contain both header information
@@ -257,72 +322,23 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     return;
   }
 
-  // FPS tracking for received ASCII frames
-  static uint64_t frame_count = 0;
-  static struct timespec last_fps_report_time = {0};
-  static struct timespec last_frame_time = {0};
-  static int expected_fps = 0; // Will be set based on client's requested FPS
+  // FPS tracking for received ASCII frames using reusable tracker utility
+  static fps_tracker_t fps_tracker = {0};
+  static bool fps_tracker_initialized = false;
+
+  // Initialize FPS tracker on first frame
+  if (!fps_tracker_initialized) {
+    extern int g_max_fps;  // From common.c
+    int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
+    fps_tracker_init(&fps_tracker, expected_fps, "CLIENT");
+    fps_tracker_initialized = true;
+  }
 
   struct timespec current_time;
   (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
-  // Initialize expected FPS from client's requested FPS (only once)
-  if (expected_fps == 0) {
-    extern int g_max_fps; // From common.c
-    if (g_max_fps > 0) {
-      expected_fps = (g_max_fps > 144) ? 144 : g_max_fps;
-    } else {
-// Use platform default (60 for Unix, 30 for Windows)
-#ifdef DEFAULT_MAX_FPS
-      expected_fps = DEFAULT_MAX_FPS;
-#else
-      expected_fps = 60; // Fallback
-#endif
-    }
-    log_debug("CLIENT FPS TRACKING: Expecting %d fps (client's requested rate)", expected_fps);
-  }
-
-  // Initialize on first frame
-  if (last_fps_report_time.tv_sec == 0) {
-    last_fps_report_time = current_time;
-    last_frame_time = current_time;
-  }
-
-  frame_count++;
-
-  // Calculate time since last frame
-  uint64_t frame_interval_us = ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-                               ((uint64_t)last_frame_time.tv_sec * 1000000 + (uint64_t)last_frame_time.tv_nsec / 1000);
-  last_frame_time = current_time;
-
-  // Expected frame interval in microseconds (for 60fps = 16666us)
-  uint64_t expected_interval_us = 1000000ULL / (uint64_t)expected_fps;
-  uint64_t lag_threshold_us = expected_interval_us + (expected_interval_us / 2); // 50% over expected
-
-  // Log error if frame arrived too late
-  if (frame_count > 1 && frame_interval_us > lag_threshold_us) {
-    log_error("CLIENT FPS LAG: Frame received %.2lfs late (expected %.2lfs, got %.2lfs, actual fps: %.2lf)",
-              (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
-              (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);
-  }
-
-  // Report FPS every 5 seconds
-  uint64_t elapsed_us =
-      ((uint64_t)current_time.tv_sec * 1000000 + (uint64_t)current_time.tv_nsec / 1000) -
-      ((uint64_t)last_fps_report_time.tv_sec * 1000000 + (uint64_t)last_fps_report_time.tv_nsec / 1000);
-
-  if (elapsed_us >= 5000000) { // 5 seconds
-    double elapsed_seconds = (double)elapsed_us / 1000000.0;
-    double actual_fps = (double)frame_count / elapsed_seconds;
-
-    char duration_str[32];
-    format_duration_s(elapsed_seconds, duration_str, sizeof(duration_str));
-    log_debug("CLIENT FPS: %.1f fps (%llu frames in %s)", actual_fps, frame_count, duration_str);
-
-    // Reset counters for next interval
-    frame_count = 0;
-    last_fps_report_time = current_time;
-  }
+  // Track this frame and detect lag
+  fps_tracker_frame(&fps_tracker, &current_time, "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;
@@ -340,59 +356,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   const char *frame_data_ptr = (const char *)data + sizeof(ascii_frame_packet_t);
   size_t frame_data_len = len - sizeof(ascii_frame_packet_t);
 
-  char *frame_data = NULL;
-
-  // Handle compression if needed
-  if (header.flags & FRAME_FLAG_IS_COMPRESSED && header.compressed_size > 0) {
-    // Compressed frame - decompress it
-    if (frame_data_len != header.compressed_size) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Compressed frame size mismatch: expected %u, got %zu", header.compressed_size,
-                frame_data_len);
-      return;
-    }
-
-    // BUGFIX: Validate size before allocation to prevent excessive memory usage
-    if (header.original_size > 100 * 1024 * 1024) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
-      return;
-    }
-
-    frame_data = SAFE_MALLOC(header.original_size + 1, char *);
-
-    // Decompress using compression API
-    int result = decompress_data(frame_data_ptr, frame_data_len, frame_data, header.original_size);
-
-    if (result != 0) {
-      SET_ERRNO(ERROR_COMPRESSION, "Decompression failed for expected size %u", header.original_size);
-      SAFE_FREE(frame_data);
-      return;
-    }
-
-    frame_data[header.original_size] = '\0';
-#ifdef COMPRESSION_DEBUG
-    log_debug("Decompressed frame: %zu -> %u bytes", frame_data_len, header.original_size);
-#endif
-  } else {
-    // Uncompressed frame
-    if (frame_data_len != header.original_size) {
-      log_error("Uncompressed frame size mismatch: expected %u, got %zu", header.original_size, frame_data_len);
-      return;
-    }
-
-    // BUGFIX: Validate size before allocation to prevent excessive memory usage
-    if (header.original_size > 100 * 1024 * 1024) {
-      SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", header.original_size);
-      return;
-    }
-
-    // Ensure we don't have buffer overflow - use the actual header size for allocation
-    size_t alloc_size = header.original_size + 1;
-    frame_data = SAFE_MALLOC(alloc_size, char *);
-
-    // Only copy the actual amount of data we received
-    size_t copy_size = (frame_data_len > header.original_size) ? header.original_size : frame_data_len;
-    memcpy(frame_data, frame_data_ptr, copy_size);
-    frame_data[header.original_size] = '\0';
+  // Decode frame data (handles both compressed and uncompressed)
+  bool is_compressed = (header.flags & FRAME_FLAG_IS_COMPRESSED) && header.compressed_size > 0;
+  char *frame_data = decode_frame_data(frame_data_ptr, frame_data_len, is_compressed, header.original_size,
+                                        header.compressed_size);
+  if (!frame_data) {
+    return;  // Error already logged by decode_frame_data
   }
 
   // Verify checksum
@@ -626,16 +595,11 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Dequantize: int32_t -> float (scale from [-2147483647, 2147483647] to [-1.0, 1.0])
-  for (uint32_t i = 0; i < total_samples; i++) {
-    uint32_t network_sample;
-    SAFE_MEMCPY(&network_sample, sizeof(network_sample), samples_ptr + (i * sizeof(uint32_t)), sizeof(uint32_t));
-
-    // Convert from network byte order and treat as signed int32_t
-    int32_t scaled = (int32_t)ntohl(network_sample);
-
-    // Scale signed int32_t to float range [-1.0, 1.0]
-    samples[i] = (float)scaled / 2147483647.0f;
+  // Use helper function to dequantize samples
+  asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
+  if (dq_result != ASCIICHAT_OK) {
+    SAFE_FREE(samples);
+    return;
   }
 
   // Track received packet for analysis
@@ -927,7 +891,7 @@ static void *data_reception_thread_func(void *arg) {
     }
 
     // Use unified secure packet reception with auto-decryption
-    // FIX: Use per-client crypto ready state instead of global opt_no_encrypt
+    // Use per-client crypto ready state instead of global opt_no_encrypt
     // Encryption is enforced only AFTER this client completes the handshake
     bool crypto_ready = crypto_client_is_ready();
     const crypto_context_t *crypto_ctx = crypto_ready ? crypto_client_get_context() : NULL;
