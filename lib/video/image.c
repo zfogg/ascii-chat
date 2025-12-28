@@ -25,6 +25,8 @@
 #include "ansi_fast.h"
 #include "options/options.h"
 #include "buffer_pool.h" // For buffer pool allocation functions
+#include "util/overflow.h"
+#include "util/image.h"
 
 // NOTE: luminance_palette is now passed as parameter to functions instead of using global cache
 
@@ -35,35 +37,31 @@ image_t *image_new(size_t width, size_t height) {
 
   p = SAFE_MALLOC(sizeof(image_t), image_t *);
 
-  const unsigned long w_ul = (unsigned long)width;
-  const unsigned long h_ul = (unsigned long)height;
-
-  // Validate dimensions are non-zero
-  if (w_ul == 0 || h_ul == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions must be non-zero: %zu x %zu", width, height);
+  // Validate dimensions are non-zero and within bounds
+  if (image_validate_dimensions(width, height) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions invalid or too large: %zu x %zu", width, height);
     SAFE_FREE(p);
     return NULL;
   }
 
-  // Check if multiplication would overflow
-  if (h_ul > ULONG_MAX / w_ul) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions too large (would overflow): %zu x %zu", width, height);
+  // Calculate pixel count with overflow checking
+  size_t total_pixels;
+  if (checked_size_mul(width, height, &total_pixels) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image dimensions would cause overflow: %zu x %zu", width, height);
     SAFE_FREE(p);
     return NULL;
   }
 
-  const unsigned long total_pixels = w_ul * h_ul;
-
-  // Check if final size calculation would overflow
-  if (total_pixels > ULONG_MAX / sizeof(rgb_t)) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel count too large: %lu pixels", total_pixels);
+  // Calculate total pixel buffer size with overflow checking
+  size_t pixels_size;
+  if (checked_size_mul(total_pixels, sizeof(rgb_t), &pixels_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image pixel buffer size would cause overflow");
     SAFE_FREE(p);
     return NULL;
   }
 
-  const size_t pixels_size = total_pixels * sizeof(rgb_t);
   if (pixels_size > IMAGE_MAX_PIXELS_SIZE) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %d x %d (%zu bytes)", width, height,
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image size exceeds maximum allowed: %zu x %zu (%zu bytes)", width, height,
               pixels_size);
     SAFE_FREE(p);
     return NULL;
