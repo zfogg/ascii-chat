@@ -12,6 +12,7 @@
 #include "../../options/options.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
+#include "../../util/parsing.h"
 #include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -358,13 +359,10 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   const char *lines_env = SAFE_GETENV("LINES");
   const char *cols_env = SAFE_GETENV("COLUMNS");
   if (lines_env && cols_env) {
-    char *endptr_height, *endptr_width;
-    long env_height = strtol(lines_env, &endptr_height, 10);
-    long env_width = strtol(cols_env, &endptr_width, 10);
-
-    // Validate conversion was successful and values are reasonable
-    if (endptr_height != lines_env && endptr_width != cols_env && env_height > 0 && env_width > 0 &&
-        env_height <= USHRT_MAX && env_width <= USHRT_MAX) {
+    uint32_t env_height = 0, env_width = 0;
+    // Parse height and width with safe range validation (1 to USHRT_MAX)
+    if (parse_uint32(lines_env, &env_height, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK &&
+        parse_uint32(cols_env, &env_width, 1, (uint32_t)USHRT_MAX) == ASCIICHAT_OK) {
       *width = (unsigned short int)env_width;
       *height = (unsigned short int)env_height;
       log_debug("POSIX terminal size from env: %dx%d", *width, *height);
