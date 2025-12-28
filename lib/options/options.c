@@ -39,7 +39,7 @@
 #include "util/parsing.h"
 #include "platform/system.h"
 #include "platform/terminal.h"
-#include "platform/password.h"
+#include "util/password.h"
 #include "platform/util.h"
 #include "version.h"
 #include "crypto/crypto.h"
@@ -1288,8 +1288,7 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       // If no password argument provided, prompt the user
       if (!value_str) {
         char prompted_password[OPTIONS_BUFF_SIZE];
-        if (platform_prompt_password("Enter password for encryption:", prompted_password, sizeof(prompted_password)) !=
-            0) {
+        if (prompt_password("Enter password for encryption:", prompted_password, sizeof(prompted_password)) != 0) {
           (void)fprintf(stderr, "Error: Failed to read password\n");
           return option_error_invalid();
         }

@@ -34,8 +34,9 @@
 #include "crypto/keys/keys.h"
 #include "util/ip.h"
 #include "platform/util.h"
-#include "platform/system.h" // For platform_isatty() and FILE_PERM_* constants
-#include "options/options.h" // For opt_snapshot_mode
+#include "platform/system.h"   // For platform_isatty() and FILE_PERM_* constants
+#include "platform/question.h" // For platform_prompt_yes_no
+#include "options/options.h"   // For opt_snapshot_mode
 #include "util/path.h"
 #include "util/string.h"
 #include "tooling/defer/defer.h"
@@ -624,22 +625,14 @@ bool prompt_unknown_host(const char *server_ip, uint16_t port, const uint8_t ser
             "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
             "\n"
             "The authenticity of host '%s' can't be established.\n"
-            "Ed25519 key fingerprint is SHA256:%s",
+            "Ed25519 key fingerprint is SHA256:%s\n",
             ip_with_port, fingerprint);
-  log_plain_stderr_nonewline("\nAre you sure you want to continue connecting (yes/no)? ");
 
-  char response[10];
-  if (fgets(response, sizeof(response), stdin) == NULL) {
-    SET_ERRNO(ERROR_CRYPTO, "Failed to read user response from stdin");
-    log_unlock_terminal(previous_terminal_state);
-    return false;
-  }
-
-  // Unlock terminal - buffered logs from other threads will be flushed
+  // Unlock before prompt (prompt_yes_no handles its own terminal locking)
   log_unlock_terminal(previous_terminal_state);
 
-  // Accept "yes" or "y" (case insensitive)
-  if (strncasecmp(response, "yes", 3) == 0 || strncasecmp(response, "y", 1) == 0) {
+  // Prompt user - default is No for security
+  if (platform_prompt_yes_no("Are you sure you want to continue connecting", false)) {
     log_warn("Warning: Permanently added '%s' to the list of known hosts.", ip_with_port);
     return true;
   }
@@ -747,25 +740,8 @@ bool prompt_unknown_host_no_identity(const char *server_ip, uint16_t port) {
     return false; // REJECT unknown hosts without identity in non-interactive mode
   }
 
-  // Interactive mode - prompt user
-  // Lock terminal so only this thread can output to terminal
-  // Other threads' logs are buffered until we unlock
-  bool previous_terminal_state = log_lock_terminal();
-
-  log_plain_stderr_nonewline("Are you sure you want to continue connecting (yes/no)? ");
-
-  char response[10];
-  if (fgets(response, sizeof(response), stdin) == NULL) {
-    SET_ERRNO(ERROR_CRYPTO, "Failed to read user response from stdin (no identity host)");
-    log_unlock_terminal(previous_terminal_state);
-    return false;
-  }
-
-  // Unlock terminal - buffered logs from other threads will be flushed
-  log_unlock_terminal(previous_terminal_state);
-
-  // Accept "yes" or "y" (case insensitive)
-  if (strncasecmp(response, "yes", 3) == 0 || strncasecmp(response, "y", 1) == 0) {
+  // Interactive mode - prompt user (default is No for security)
+  if (platform_prompt_yes_no("Are you sure you want to continue connecting", false)) {
     log_warn("Warning: Proceeding with unverified connection.\n"
              "Your data may be intercepted by attackers!\n"
              "\n");

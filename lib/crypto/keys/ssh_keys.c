@@ -8,7 +8,7 @@
 #include "ssh_keys.h"
 #include "common.h"
 #include "asciichat_errno.h"
-#include "platform/password.h"
+#include "util/password.h"
 #include "platform/util.h"
 #include "util/string.h"
 #include "util/path.h"
@@ -509,7 +509,7 @@ asciichat_error_t parse_ssh_private_key(const char *key_path, private_key_t *key
         SAFE_FREE(file_content);
         return SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for password");
       }
-      if (platform_prompt_password("Encrypted SSH key detected - please enter passphrase:", password, 1024) != 0) {
+      if (prompt_password_simple("Encrypted SSH key - enter passphrase", password, 1024) != 0) {
         SAFE_FREE(key_blob);
         SAFE_FREE(file_content);
         return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to read passphrase for encrypted key: %s", key_path);

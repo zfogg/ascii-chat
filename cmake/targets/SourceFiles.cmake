@@ -33,6 +33,7 @@ set(UTIL_SRCS
     lib/util/time.c
     lib/util/image.c
     lib/util/audio.c
+    lib/util/password.c
     lib/fps.c
 )
 
@@ -103,7 +104,7 @@ if(WIN32)
         lib/platform/windows/system.c
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
-        lib/platform/windows/password.c
+        lib/platform/windows/question.c
         lib/platform/windows/mmap.c
         lib/platform/windows/symbols.c
         lib/platform/windows/getopt.c
@@ -122,7 +123,7 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
-        lib/platform/posix/password.c
+        lib/platform/posix/question.c
         lib/platform/posix/mmap.c
         lib/platform/posix/symbols.c
         lib/platform/posix/pipe.c
