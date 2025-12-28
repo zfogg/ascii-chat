@@ -94,6 +94,7 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "util/time.h"
+#include "util/fps_tracker.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
@@ -281,14 +282,12 @@ static void *webcam_capture_thread_func(void *arg) {
   struct timespec last_capture_time = {0, 0};
 
   // FPS tracking for webcam capture thread
-  static fps_t fps_tracker = {0};
-  static bool fps_tracker_initialized = false;
+  static fps_tracker_t *fps_tracker = NULL;
   static uint64_t capture_frame_count = 0;
   static struct timespec last_capture_frame_time = {0, 0};
   static const uint32_t expected_capture_fps = 144;
-  if (!fps_tracker_initialized) {
-    fps_init(&fps_tracker, 144, "WEBCAM_TX");
-    fps_tracker_initialized = true;
+  if (!fps_tracker) {
+    fps_tracker = fps_tracker_create(144, "WEBCAM_TX");
   }
 
   while (!should_exit() && !server_connection_is_lost()) {
@@ -320,7 +319,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Track frame for FPS reporting
     (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-    fps_frame(&fps_tracker, &current_time, "webcam frame captured");
+    fps_tracker_record_frame(fps_tracker, "webcam frame captured");
 
     // Process frame for network transmission
     // process_frame_for_transmission() always returns a new image that we own

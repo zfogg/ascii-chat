@@ -85,9 +85,11 @@
 
 #include "network/packet.h"
 #include "network/av.h"
+#include "network/packet_utils.h"
 #include "buffer_pool.h"
 #include "common.h"
 #include "util/validation.h"
+#include "util/fps_tracker.h"
 #include "options.h"
 #include "network/crc32.h"
 #include "fps.h"
@@ -325,34 +327,24 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // FPS tracking for received ASCII frames using reusable tracker utility
-  static fps_t fps_tracker = {0};
-  static bool fps_tracker_initialized = false;
+  static fps_tracker_t *fps_tracker = NULL;
 
   // Initialize FPS tracker on first frame
-  if (!fps_tracker_initialized) {
+  if (!fps_tracker) {
     extern int g_max_fps; // From common.c
     int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
-    fps_init(&fps_tracker, expected_fps, "ASCII_RX");
-    fps_tracker_initialized = true;
+    fps_tracker = fps_tracker_create(expected_fps, "ASCII_RX");
   }
 
-  struct timespec current_time;
-  (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
-
   // Track this frame and detect lag
-  fps_frame(&fps_tracker, &current_time, "ASCII frame");
+  fps_tracker_record_frame(fps_tracker, "ASCII frame");
 
-  // Extract header from the packet
+  // Extract header from the packet and convert from network byte order
   ascii_frame_packet_t header;
-  memcpy(&header, data, sizeof(ascii_frame_packet_t));
-
-  // Convert from network byte order
-  header.width = ntohl(header.width);
-  header.height = ntohl(header.height);
-  header.original_size = ntohl(header.original_size);
-  header.compressed_size = ntohl(header.compressed_size);
-  header.checksum = ntohl(header.checksum);
-  header.flags = ntohl(header.flags);
+  if (packet_deserialize_ascii_frame_header((packet_ascii_frame_header_t *)&header, data, len) < 0) {
+    log_warn("Failed to deserialize ASCII frame header");
+    return;
+  }
 
   // Get the frame data (starts after the header)
   const char *frame_data_ptr = (const char *)data + sizeof(ascii_frame_packet_t);
