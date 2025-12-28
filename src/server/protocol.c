@@ -121,6 +121,7 @@
 #include "common.h"
 #include "util/validation.h"
 #include "util/endian.h"
+#include "util/image.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
 #include "video/palette.h"
@@ -713,32 +714,22 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   uint32_t img_width = NET_TO_HOST_U32(img_width_net);
   uint32_t img_height = NET_TO_HOST_U32(img_height_net);
 
-  if (img_width == 0 || img_height == 0) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME invalid dimensions %ux%u", img_width, img_height);
+  // Validate dimensions using image utility functions
+  if (image_validate_dimensions((size_t)img_width, (size_t)img_height) != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME invalid dimensions");
     return;
   }
 
-  if (img_width > IMAGE_MAX_WIDTH || img_height > IMAGE_MAX_HEIGHT) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME dimensions exceed max: %ux%u (max %ux%u)", img_width,
-                                   img_height, IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
-    return;
-  }
-
-  size_t pixel_count = 0;
-  if (safe_size_mul((size_t)img_width, (size_t)img_height, &pixel_count)) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME dimension overflow: %ux%u", img_width, img_height);
-    return;
-  }
-
+  // Calculate RGB buffer size with overflow checking
   size_t rgb_size = 0;
-  if (safe_size_mul(pixel_count, sizeof(rgb_t), &rgb_size)) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME RGB size overflow for %ux%u", img_width, img_height);
+  if (image_calc_rgb_size((size_t)img_width, (size_t)img_height, &rgb_size) != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME buffer size calculation failed");
     return;
   }
 
-  if (rgb_size > IMAGE_MAX_PIXELS_SIZE) {
-    disconnect_client_for_bad_data(client, "IMAGE_FRAME RGB data too large: %zu bytes (max %zu)", rgb_size,
-                                   (size_t)IMAGE_MAX_PIXELS_SIZE);
+  // Validate final buffer size against maximum
+  if (image_validate_buffer_size(rgb_size) != ASCIICHAT_OK) {
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME buffer size exceeds maximum");
     return;
   }
 
@@ -1036,11 +1027,8 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
   (void)packet_batch_count;
   (void)sample_rate;
 
-  if (packet_batch_count == 0 || total_samples == 0) {
-    disconnect_client_for_bad_data(client, "AUDIO_BATCH empty batch (batch_count=%u, total_samples=%u)",
-                                   packet_batch_count, total_samples);
-    return;
-  }
+  VALIDATE_NONZERO(client, packet_batch_count, "batch_count", "AUDIO_BATCH");
+  VALIDATE_NONZERO(client, total_samples, "total_samples", "AUDIO_BATCH");
 
   size_t samples_bytes = 0;
   if (safe_size_mul(total_samples, sizeof(uint32_t), &samples_bytes)) {
@@ -1164,23 +1152,16 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     return;
   }
 
-  if (frame_count <= 0 || opus_size == 0) {
-    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH empty (frame_count=%d, opus_size=%zu)", frame_count,
-                                   opus_size);
-    return;
-  }
+  VALIDATE_NONZERO(client, frame_count, "frame_count", "AUDIO_OPUS_BATCH");
+  VALIDATE_NONZERO(client, opus_size, "opus_size", "AUDIO_OPUS_BATCH");
 
   // Calculate samples per frame (20ms @ 48kHz = 960 samples)
   int samples_per_frame = (sample_rate * frame_duration) / 1000;
-  if (samples_per_frame <= 0 || samples_per_frame > 4096) {
-    disconnect_client_for_bad_data(client, "AUDIO_OPUS_BATCH invalid frame size (samples_per_frame=%d)",
-                                   samples_per_frame);
-    return;
-  }
+  VALIDATE_RANGE(client, samples_per_frame, 1, 4096, "samples_per_frame", "AUDIO_OPUS_BATCH");
 
-// Use static buffer for common case to avoid malloc in hot path
-// Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
-// Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
+  // Use static buffer for common case to avoid malloc in hot path
+  // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
+  // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
 
