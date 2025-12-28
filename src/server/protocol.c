@@ -1274,7 +1274,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
   log_debug_every(LOG_RATE_DEFAULT, "Received Opus audio from client %u (len=%zu)", atomic_load(&client->client_id),
                   len);
 
-  if (VALIDATE_PACKET_NOT_NULL(data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
+  if (VALIDATE_PACKET_NOT_NULL(client, data, "AUDIO_OPUS", disconnect_client_for_bad_data)) {
     return;
   }
 
