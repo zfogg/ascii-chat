@@ -89,7 +89,8 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"
-#include "util/overflow.h"
+#include "util/endian.h"
+#include "util/format.h"
 #include "options/options.h"
 #include "network/crc32.h"
 #include "fps.h"
@@ -283,7 +284,9 @@ static char *decode_frame_data(const char *frame_data_ptr, size_t frame_data_len
                                uint32_t original_size, uint32_t compressed_size) {
   // Validate size before allocation to prevent excessive memory usage
   if (original_size > 100 * 1024 * 1024) {
-    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %u", original_size);
+    char size_str[32];
+    format_bytes_pretty(original_size, size_str, sizeof(size_str));
+    SET_ERRNO(ERROR_NETWORK_SIZE, "Frame size exceeds maximum: %s", size_str);
     return NULL;
   }
 
@@ -610,17 +613,8 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Validate packet size with overflow checking
-  size_t samples_bytes = 0;
-  if (checked_size_mul((size_t)total_samples, sizeof(uint32_t), &samples_bytes) != ASCIICHAT_OK) {
-    log_warn("Audio batch size overflow: %u samples", total_samples);
-    return;
-  }
-  size_t expected_size = 0;
-  if (checked_size_add(sizeof(audio_batch_packet_t), samples_bytes, &expected_size) != ASCIICHAT_OK) {
-    log_warn("Audio batch expected size overflow");
-    return;
-  }
+  // Validate packet size
+  size_t expected_size = sizeof(audio_batch_packet_t) + (total_samples * sizeof(uint32_t));
   if (len != expected_size) {
     log_warn("Audio batch size mismatch: got %zu expected %zu", len, expected_size);
     return;
@@ -634,13 +628,8 @@ static void handle_audio_batch_packet(const void *data, size_t len) {
   // Extract quantized samples (uint32_t network byte order)
   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
 
-  // Convert quantized samples to float with overflow checking
-  size_t float_buffer_size = 0;
-  if (checked_size_mul((size_t)total_samples, sizeof(float), &float_buffer_size) != ASCIICHAT_OK) {
-    log_warn("Audio sample buffer overflow: %u samples", total_samples);
-    return;
-  }
-  float *samples = SAFE_MALLOC(float_buffer_size, float *);
+  // Convert quantized samples to float
+  float *samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
   if (!samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio batch conversion");
     return;
@@ -759,18 +748,9 @@ static void handle_audio_opus_batch_packet(const void *data, size_t len) {
     return;
   }
 
-  // Allocate buffer for all decoded samples with overflow checking
-  size_t max_decoded_samples = 0;
-  if (checked_size_mul((size_t)samples_per_frame, (size_t)frame_count, &max_decoded_samples) != ASCIICHAT_OK) {
-    log_warn("Opus batch decoded samples overflow: %d samples/frame * %d frames", samples_per_frame, frame_count);
-    return;
-  }
-  size_t alloc_size = 0;
-  if (checked_size_mul(max_decoded_samples, sizeof(float), &alloc_size) != ASCIICHAT_OK) {
-    log_warn("Opus batch buffer size overflow: %zu samples", max_decoded_samples);
-    return;
-  }
-  float *all_samples = SAFE_MALLOC(alloc_size, float *);
+  // Allocate buffer for all decoded samples
+  size_t max_decoded_samples = (size_t)samples_per_frame * (size_t)frame_count;
+  float *all_samples = SAFE_MALLOC(max_decoded_samples * sizeof(float), float *);
   if (!all_samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for Opus batch decoding");
     return;
