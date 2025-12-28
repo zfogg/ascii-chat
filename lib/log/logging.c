@@ -819,7 +819,7 @@ void log_plain_msg(const char *fmt, ...) {
               realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
           if (new_entries) {
             g_log.buffer_entries = new_entries;
-            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = true;
+            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = false; // stdout for log_plain
             g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
             g_log.buffer_entry_count++;
             g_log.buffer_total_size += full_msg_len;
@@ -831,9 +831,9 @@ void log_plain_msg(const char *fmt, ...) {
         }
       }
     } else {
-      /* Output to stderr */
-      safe_fprintf(stderr, "%s\n", log_buffer);
-      (void)fflush(stderr);
+      /* Output to stdout (log_plain is INFO-level semantics) */
+      safe_fprintf(stdout, "%s\n", log_buffer);
+      (void)fflush(stdout);
     }
   }
 
@@ -1108,13 +1108,13 @@ const char **log_get_color_array(void) {
   return colors;
 }
 
-const char *log_level_color(logging_color_t color) {
+const char *log_level_color(log_color_t color) {
   const char **colors = log_get_color_array();
   if (colors == NULL) {
     return ""; /* Return empty string if colors not available */
   }
-  if (color >= 0 && color <= LOGGING_COLOR_RESET) {
+  if (color >= 0 && color <= LOG_COLOR_RESET) {
     return colors[color];
   }
-  return colors[LOGGING_COLOR_RESET]; /* Return reset color if invalid */
+  return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
 }
