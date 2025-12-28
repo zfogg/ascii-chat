@@ -8,6 +8,7 @@
 #include "common.h"
 #include "asciichat_errno.h" // For asciichat_errno system
 #include "buffer_pool.h"
+#include "util/math.h"      // For power-of-two utilities
 #include "util/bits.h" // For is_power_of_two, next_power_of_two
 #include <stdatomic.h>
 #include <stdlib.h>
@@ -35,7 +36,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   rb = SAFE_CALLOC(1, sizeof(ringbuffer_t), ringbuffer_t *);
 
   /* Round capacity up to power of 2 for optimization */
-  size_t actual_capacity = next_power_of_two(capacity);
+  size_t actual_capacity = math_next_power_of_two(capacity);
 
   rb->buffer = SAFE_CALLOC(actual_capacity, element_size, char *);
 
