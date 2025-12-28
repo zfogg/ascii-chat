@@ -1054,6 +1054,24 @@ int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, con
   return 0;
 }
 
+int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
+  if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
+    return mutex_trylock_impl(mutex);
+  }
+
+  // Try to acquire the lock (call implementation to avoid recursion)
+  int result = mutex_trylock_impl(mutex);
+  if (result != 0) {
+    // Lock not acquired - no tracking needed
+    return result;
+  }
+
+  // Lock acquired - create and add lock record
+  debug_create_and_insert_lock_record(mutex, LOCK_TYPE_MUTEX, file_name, line_number, function_name);
+
+  return 0;
+}
+
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name) {
   if (debug_should_skip_lock_tracking(mutex, file_name, function_name)) {
     return mutex_unlock_impl(mutex);

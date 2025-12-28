@@ -73,6 +73,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "common.h"
+#include "util/audio.h"
 #include "util/endian.h"
 
 /** @name Frame Decoding Functions
@@ -189,26 +190,9 @@ asciichat_error_t packet_validate_frame_dimensions(uint32_t width, uint32_t heig
  * @{
  * @ingroup packet_parsing
  * @brief Helpers for parsing audio batch packet headers
- */
-
-/**
- * @brief Audio batch header information extracted from packet
  *
- * Results from parsing an audio batch packet header.
- * Used by both server and client handlers.
- *
- * @ingroup packet_parsing
+ * @note audio_batch_info_t is defined in util/audio.h
  */
-typedef struct {
-  /** @brief Number of sample chunks in this batch */
-  uint32_t batch_count;
-  /** @brief Total number of float samples in batch */
-  uint32_t total_samples;
-  /** @brief Sample rate (e.g., 44100, 48000) */
-  uint32_t sample_rate;
-  /** @brief Number of audio channels (usually 1 for mono) */
-  uint32_t channels;
-} audio_batch_info_t;
 
 /**
  * @brief Parse audio batch packet header
