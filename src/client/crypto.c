@@ -151,7 +151,7 @@
 #include "options/options.h"
 #include "common.h"
 #include "util/endian.h"
-#include "crypto/handshake.h"
+#include "crypto/handshake/client.h"
 #include "crypto/crypto.h"
 #include "crypto/keys/keys.h"
 #include "buffer_pool.h"

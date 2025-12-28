@@ -19,6 +19,8 @@
 #include "tests/common.h"
 #include "tests/logging.h"
 #include "crypto/handshake.h"
+#include "crypto/handshake/server.h"
+#include "crypto/handshake/client.h"
 #include "crypto/keys/keys.h"
 #include "platform/socket.h"
 #include "platform/thread.h"

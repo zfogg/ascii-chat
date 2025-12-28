@@ -114,7 +114,7 @@
 #include "render.h"
 #include "stream.h"
 #include "crypto.h"
-#include "crypto/handshake.h"
+#include "crypto/handshake/server.h"
 #include "crypto/crypto.h"
 #include "common.h"
 #include "util/endian.h"
