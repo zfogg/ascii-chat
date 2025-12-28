@@ -229,6 +229,38 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 }
 
 /* ============================================================================
+ * Packet Validation Macro
+ * ============================================================================ */
+
+/**
+ * @brief Validate packet payload size and presence
+ *
+ * Helper macro to standardize packet validation. Checks if data pointer is
+ * non-NULL and payload matches expected size. Disconnects client on failure.
+ *
+ * @param client Client being validated (must not be NULL)
+ * @param data Payload pointer
+ * @param len Payload size
+ * @param expected_size Expected payload size
+ * @param packet_name Human-readable packet name for error messages
+ *
+ * @note This macro uses 'return;' statement - only use inside void functions
+ * @note Automatically calls disconnect_client_for_bad_data() on failure
+ */
+#define VALIDATE_PACKET_SIZE(client, data, len, expected_size, packet_name)                             \
+  do {                                                                                                   \
+    if (!(data)) {                                                                                       \
+      disconnect_client_for_bad_data(client, packet_name " payload missing");                           \
+      return;                                                                                            \
+    }                                                                                                    \
+    if ((len) != (expected_size)) {                                                                     \
+      disconnect_client_for_bad_data(client, packet_name " payload size %zu (expected %zu)", (len),    \
+                                     (expected_size));                                                  \
+      return;                                                                                            \
+    }                                                                                                    \
+  } while (0)
+
+/* ============================================================================
  * Client Lifecycle Packet Handlers
  * ============================================================================
  */
@@ -271,16 +303,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  */
 
 void handle_client_join_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload missing");
-    return;
-  }
-
-  if (len != sizeof(client_info_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_JOIN payload size %zu (expected %zu)", len,
-                                   sizeof(client_info_packet_t));
-    return;
-  }
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(client_info_packet_t), "CLIENT_JOIN");
 
   const client_info_packet_t *join_info = (const client_info_packet_t *)data;
 
@@ -332,15 +355,7 @@ void handle_client_join_packet(client_info_t *client, const void *data, size_t l
  * @see handle_image_frame_packet() For video data processing
  */
 void handle_stream_start_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "STREAM_START payload missing");
-    return;
-  }
-
-  if (len != sizeof(uint32_t)) {
-    disconnect_client_for_bad_data(client, "STREAM_START payload size %zu (expected %zu)", len, sizeof(uint32_t));
-    return;
-  }
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_START");
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -412,15 +427,7 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
  * @see handle_stream_start_packet() For starting media transmission
  */
 void handle_stream_stop_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP payload missing");
-    return;
-  }
-
-  if (len != sizeof(uint32_t)) {
-    disconnect_client_for_bad_data(client, "STREAM_STOP payload size %zu (expected %zu)", len, sizeof(uint32_t));
-    return;
-  }
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(uint32_t), "STREAM_STOP");
 
   uint32_t stream_type_net;
   memcpy(&stream_type_net, data, sizeof(uint32_t));
@@ -904,12 +911,11 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
     return;
   }
 
-  for (uint32_t i = 0; i < total_samples; i++) {
-    uint32_t network_sample;
-    // Use memcpy to safely handle potential misalignment from packet header
-    memcpy(&network_sample, samples_ptr + i * sizeof(uint32_t), sizeof(uint32_t));
-    int32_t scaled = (int32_t)ntohl(network_sample);
-    samples[i] = (float)scaled / 2147483647.0f;
+  // Use helper function to dequantize samples
+  asciichat_error_t dq_result = audio_dequantize_samples(samples_ptr, total_samples, samples);
+  if (dq_result != ASCIICHAT_OK) {
+    SAFE_FREE(samples);
+    return;
   }
 
 #ifndef NDEBUG
@@ -1282,16 +1288,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
  * @see terminal_color_level_name() For color level descriptions
  */
 void handle_client_capabilities_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES payload missing");
-    return;
-  }
-
-  if (len != sizeof(terminal_capabilities_packet_t)) {
-    disconnect_client_for_bad_data(client, "CLIENT_CAPABILITIES invalid size: %zu (expected %zu)", len,
-                                   sizeof(terminal_capabilities_packet_t));
-    return;
-  }
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(terminal_capabilities_packet_t), "CLIENT_CAPABILITIES");
 
   const terminal_capabilities_packet_t *caps = (const terminal_capabilities_packet_t *)data;
 
@@ -1387,15 +1384,7 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
  * @note No validation of reasonable dimension ranges
  */
 void handle_size_packet(client_info_t *client, const void *data, size_t len) {
-  if (!data) {
-    disconnect_client_for_bad_data(client, "SIZE payload missing");
-    return;
-  }
-
-  if (len != sizeof(size_packet_t)) {
-    disconnect_client_for_bad_data(client, "SIZE payload size %zu (expected %zu)", len, sizeof(size_packet_t));
-    return;
-  }
+  VALIDATE_PACKET_SIZE(client, data, len, sizeof(size_packet_t), "SIZE");
 
   const size_packet_t *size_pkt = (const size_packet_t *)data;
 
