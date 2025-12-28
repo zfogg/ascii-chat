@@ -1808,6 +1808,10 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
  */
 void process_decrypted_packet(client_info_t *client, packet_type_t type, void *data, size_t len) {
   switch (type) {
+  case PACKET_TYPE_PROTOCOL_VERSION:
+    handle_protocol_version_packet(client, data, len);
+    break;
+
   case PACKET_TYPE_IMAGE_FRAME:
     handle_image_frame_packet(client, data, len);
     break;
@@ -1868,6 +1872,10 @@ void process_decrypted_packet(client_info_t *client, packet_type_t type, void *d
 
   case PACKET_TYPE_CLIENT_JOIN:
     handle_client_join_packet(client, data, len);
+    break;
+
+  case PACKET_TYPE_CLIENT_LEAVE:
+    handle_client_leave_packet(client, data, len);
     break;
 
   case PACKET_TYPE_STREAM_START:
