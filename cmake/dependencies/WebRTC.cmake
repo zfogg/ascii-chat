@@ -101,7 +101,8 @@ if(NOT webrtc_aec3_POPULATED)
     endif()
 
     # Build WebRTC subdirectory with clean compiler flags
-    add_subdirectory(${webrtc_aec3_SOURCE_DIR} ${CMAKE_BINARY_DIR}/webrtc_aec3-build)
+    # Use deps cache for build directory so WebRTC artifacts are preserved across clean
+    add_subdirectory(${webrtc_aec3_SOURCE_DIR} ${FETCHCONTENT_BASE_DIR}/webrtc_aec3-build-${CMAKE_BUILD_TYPE})
 
     # Restore the original C++ and C flags for ascii-chat
     set(CMAKE_CXX_FLAGS "${SAVED_CMAKE_CXX_FLAGS}")
