@@ -579,11 +579,10 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/share/examples/config.toml")
     message(STATUS "${BoldGreen}Configured${ColorReset} example config: ${BoldBlue}config.toml${ColorReset} → ${BoldYellow}${INSTALL_DOC_DIR}/examples/${ColorReset}")
 endif()
 
-# Install documentation at root of installation directory
-# README.md and LICENSE.txt should be at the root for easy access
+# Install documentation to share/doc/ascii-chat/
 if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
     install(FILES README.md
-        DESTINATION .
+        DESTINATION share/doc/ascii-chat
         COMPONENT Runtime
         OPTIONAL
     )
@@ -592,7 +591,7 @@ endif()
 # Install license (if exists)
 if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE.txt")
     install(FILES LICENSE.txt
-        DESTINATION .
+        DESTINATION share/doc/ascii-chat
         COMPONENT Runtime
         OPTIONAL
     )
