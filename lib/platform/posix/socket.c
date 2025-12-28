@@ -56,7 +56,7 @@ socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen)
   // Automatically optimize all accepted sockets for high-throughput video streaming
   // 1. Disable Nagle algorithm - CRITICAL for real-time video
   int nodelay = 1;
-  // BUGFIX: Log warning if critical socket option fails
+  // Log warning if critical socket option fails
   if (setsockopt(client_sock, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) != 0) {
     log_warn("Failed to disable Nagle algorithm (TCP_NODELAY) on accepted socket");
   }

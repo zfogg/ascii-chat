@@ -110,7 +110,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     return NULL;
   }
 
-  // TYPE SAFETY FIX: Validate dimensions fit in image_t's int fields before casting
+  // Validate dimensions fit in image_t's int fields before casting
   if (resized_width > INT_MAX || resized_height > INT_MAX) {
     log_error("Dimensions exceed INT_MAX: width=%zd, height=%zd", resized_width, resized_height);
     return NULL;
@@ -225,7 +225,7 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
-  // TYPE SAFETY FIX: Validate dimensions fit in image_t's int fields before casting
+  // Validate dimensions fit in image_t's int fields before casting
   if (resized_width > INT_MAX || resized_height > INT_MAX) {
     log_error("Dimensions exceed INT_MAX: width=%zd, height=%zd", resized_width, resized_height);
     return NULL;
