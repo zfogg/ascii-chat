@@ -5,6 +5,7 @@
  */
 
 #include "ip.h"
+#include "int_parse.h"
 #include "common.h"
 #include <string.h>
 #include <stdio.h>
@@ -263,11 +264,10 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
 
     // Check for port after closing bracket
     if (bracket_end[1] == ':') {
-      // Parse port
-      long port_long = strtol(bracket_end + 2, NULL, 10);
-      if (port_long <= 0 || port_long > 65535)
+      // Parse port using safe integer parsing
+      if (int_parse_port(bracket_end + 2, port_output) != ASCIICHAT_OK) {
         return -1; // Invalid port
-      *port_output = (uint16_t)port_long;
+      }
     } else {
       return -1; // Expected ':' after closing bracket
     }
@@ -291,11 +291,10 @@ int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size
     if (strchr(ip_output, ':') != NULL)
       return -1; // IPv6 address without brackets - invalid format
 
-    // Parse port
-    long port_long = strtol(colon + 1, NULL, 10);
-    if (port_long <= 0 || port_long > 65535)
+    // Parse port using safe integer parsing
+    if (int_parse_port(colon + 1, port_output) != ASCIICHAT_OK) {
       return -1; // Invalid port
-    *port_output = (uint16_t)port_long;
+    }
   }
 
   return 0;
