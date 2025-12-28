@@ -86,7 +86,7 @@
 #include "network/av.h"
 #include "buffer_pool.h"
 #include "common.h"
-#include "protocol/packet_helpers.h"
+#include "util/validation.h"
 #include "options.h"
 #include "crc32.h"
 #include "fps_tracker.h"
