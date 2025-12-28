@@ -70,7 +70,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "display.h"
-#include "options.h"
+#include "options/options.h"
 #include "video/palette.h"
 #include "buffer_pool.h"
 

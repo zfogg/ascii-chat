@@ -12,8 +12,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include "levenshtein.h"
-#include "../common.h"
+#include "options/levenshtein.h"
+#include "common.h"
 
 // Returns a size_t, depicting the difference between `a` and `b`.
 // See <https://en.wikipedia.org/wiki/Levenshtein_distance> for more information.

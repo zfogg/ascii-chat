@@ -244,6 +244,25 @@ if(NOT WIN32)
 endif()
 
 # =============================================================================
+# macOS dSYM Generation (Debug/Dev builds only)
+# =============================================================================
+# Generate dSYM bundle for debug symbol resolution with atos
+# This enables backtraces with function names and line numbers
+if(APPLE AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+    find_program(DSYMUTIL_EXECUTABLE dsymutil)
+    if(DSYMUTIL_EXECUTABLE)
+        add_custom_command(TARGET ascii-chat POST_BUILD
+            COMMAND ${DSYMUTIL_EXECUTABLE} $<TARGET_FILE:ascii-chat> -o $<TARGET_FILE:ascii-chat>.dSYM
+            COMMENT "Generating dSYM for ascii-chat (enables atos backtraces with line numbers)"
+            VERBATIM
+        )
+        message(STATUS "dSYM generation: ${BoldGreen}enabled${ColorReset} (Debug/Dev builds)")
+    else()
+        message(STATUS "dSYM generation: ${BoldYellow}disabled${ColorReset} (dsymutil not found)")
+    endif()
+endif()
+
+# =============================================================================
 # macOS Code Signing (function definition only - actual signing happens in PostBuild.cmake after stripping)
 # =============================================================================
 include(${CMAKE_SOURCE_DIR}/cmake/platform/CodeSigning.cmake)

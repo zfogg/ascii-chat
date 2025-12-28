@@ -93,7 +93,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "asciichat_errno.h"
-#include "options.h"
+#include "options/options.h"
 #include "util/time.h"
 #include "util/thread.h"
 #include "fps.h"

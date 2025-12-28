@@ -31,9 +31,9 @@ set(UTIL_SRCS
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c
-    lib/util/levenshtein.c
     lib/util/image.c
     lib/util/audio.c
+    lib/util/password.c
     lib/fps.c
 )
 
@@ -104,7 +104,7 @@ if(WIN32)
         lib/platform/windows/system.c
         lib/platform/windows/socket.c
         lib/platform/windows/string.c
-        lib/platform/windows/password.c
+        lib/platform/windows/question.c
         lib/platform/windows/mmap.c
         lib/platform/windows/symbols.c
         lib/platform/windows/getopt.c
@@ -123,7 +123,7 @@ elseif(PLATFORM_POSIX)
         lib/platform/posix/system.c
         lib/platform/posix/socket.c
         lib/platform/posix/string.c
-        lib/platform/posix/password.c
+        lib/platform/posix/question.c
         lib/platform/posix/mmap.c
         lib/platform/posix/symbols.c
         lib/platform/posix/pipe.c
@@ -239,8 +239,10 @@ set(CORE_SRCS
     lib/asciichat_errno.c
     lib/log/logging.c
     lib/log/mmap.c
-    lib/options.c
-    lib/config.c
+    lib/options/options.c
+    lib/options/validation.c
+    lib/options/levenshtein.c
+    lib/options/config.c
     lib/version.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c

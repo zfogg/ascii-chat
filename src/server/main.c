@@ -85,7 +85,7 @@
 #include "util/endian.h"
 #include "asciichat_errno.h"
 #include "network/network.h"
-#include "options.h"
+#include "options/options.h"
 #include "buffer_pool.h"
 #include "audio/mixer.h"
 #include "audio/audio.h"

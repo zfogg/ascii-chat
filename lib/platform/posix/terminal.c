@@ -9,7 +9,7 @@
 #include "../terminal.h"
 #include "../file.h"
 #include "../internal.h"
-#include "../../options.h"
+#include "../../options/options.h"
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../../util/parsing.h"
