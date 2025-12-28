@@ -1,10 +1,10 @@
 /**
- * @file util/image_size.c
+ * @file util/image.c
  * @ingroup util
  * @brief 🖼️ Safe overflow-checked buffer size calculations for images and video frames
  */
 
-#include "image_size.h"
+#include "image.h"
 #include "common.h"
 #include "video/image.h"
 #include <limits.h>

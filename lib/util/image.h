@@ -1,5 +1,5 @@
 /**
- * @file util/image_size.h
+ * @file util/image.h
  * @ingroup util
  * @brief 🖼️ Safe overflow-checked buffer size calculations for images and video frames
  *
