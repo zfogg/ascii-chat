@@ -75,6 +75,7 @@
 #include "audio/analysis.h"
 #include "main.h"
 #include "server.h"
+#include "fps.h"
 
 #include "audio/audio.h"                 // lib/audio/audio.h for PortAudio wrapper
 #include "audio/client_audio_pipeline.h" // Unified audio processing pipeline
@@ -447,6 +448,14 @@ static void *audio_capture_thread_func(void *arg) {
 
   log_info("Audio capture thread started");
 
+  // FPS tracking for audio capture thread (tracking Opus frames, ~50 FPS at 20ms per frame)
+  static fps_t fps_tracker = {0};
+  static bool fps_tracker_initialized = false;
+  if (!fps_tracker_initialized) {
+    fps_init(&fps_tracker, 50, "AUDIO_TX");
+    fps_tracker_initialized = true;
+  }
+
 // Opus frame size: 960 samples = 20ms @ 48kHz (must match pipeline config)
 #define OPUS_FRAME_SAMPLES 960
 #define OPUS_MAX_PACKET_SIZE 500 // Max Opus packet size
@@ -629,6 +638,10 @@ static void *audio_capture_thread_func(void *arg) {
             log_info("CLIENT: Queued Opus batch #%d (%d frames, %zu bytes)", batch_send_count, batch_frame_count,
                      batch_total_size);
           }
+          // Track audio frame for FPS reporting
+          struct timespec current_time;
+          (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+          fps_frame(&fps_tracker, &current_time, "audio batch queued");
         }
 
         // Reset batch
