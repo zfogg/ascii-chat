@@ -49,7 +49,8 @@ static buffer_pool_t *buffer_pool_create_single(size_t buffer_size, size_t pool_
   // 64-byte alignment improves cache performance and reduces false sharing
   size_t total_buffer_size = 0;
   if (checked_size_mul(buffer_size, pool_size, &total_buffer_size) != ASCIICHAT_OK) {
-    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Buffer pool memory size overflow: %zu bytes * %zu buffers", buffer_size, pool_size);
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Buffer pool memory size overflow: %zu bytes * %zu buffers", buffer_size,
+              pool_size);
     SAFE_FREE(pool->nodes);
     SAFE_FREE(pool);
     return NULL;
