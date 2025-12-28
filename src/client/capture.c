@@ -94,7 +94,9 @@
 #include "asciichat_errno.h"
 #include "options.h"
 #include "util/time.h"
+#include "util/endian.h"
 #include "util/thread.h"
+#include "util/endian.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
@@ -410,10 +412,10 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Build packet in new format
     uint32_t *header = (uint32_t *)packet_data;
-    header[0] = htonl(processed_image->w);   // width
-    header[1] = htonl(processed_image->h);   // height
-    header[2] = htonl(0);                    // compressed_flag = 0 (uncompressed)
-    header[3] = htonl((uint32_t)pixel_size); // data_size = pixel data length
+    header[0] = HOST_TO_NET_U32(processed_image->w);   // width
+    header[1] = HOST_TO_NET_U32(processed_image->h);   // height
+    header[2] = HOST_TO_NET_U32(0);                    // compressed_flag = 0 (uncompressed)
+    header[3] = HOST_TO_NET_U32((uint32_t)pixel_size); // data_size = pixel data length
 
     // Copy pixel data after header
     memcpy(packet_data + header_size, processed_image->pixels, pixel_size);

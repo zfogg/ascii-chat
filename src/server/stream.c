@@ -145,6 +145,7 @@
 #include "video/image.h"
 #include "video/ascii.h"
 #include "util/aspect_ratio.h"
+#include "util/endian.h"
 
 // Global client manager from client.c - needed for any_clients_sending_video()
 extern rwlock_t g_client_manager_rwlock;
@@ -338,8 +339,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       // Parse the image data
       // Format: [width:4][height:4][rgb_data:w*h*3]
       // Use unaligned read helpers - frame data may not be aligned
-      uint32_t img_width = ntohl(read_u32_unaligned(frame_to_use->data));
-      uint32_t img_height = ntohl(read_u32_unaligned(frame_to_use->data + sizeof(uint32_t)));
+      uint32_t img_width = NET_TO_HOST_U32(read_u32_unaligned(frame_to_use->data));
+      uint32_t img_height = NET_TO_HOST_U32(read_u32_unaligned(frame_to_use->data + sizeof(uint32_t)));
 
       // Debug logging to understand the data
       if (img_width == 0xBEBEBEBE || img_height == 0xBEBEBEBE) {
