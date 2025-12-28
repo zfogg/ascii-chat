@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "log/logging.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "tooling/panic/instrument_log.h"
 
 #include "util/uthash.h"

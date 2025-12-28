@@ -28,7 +28,6 @@ set(UTIL_SRCS
     lib/util/parsing.c
     lib/util/path.c
     lib/util/string.c
-    lib/util/math.c
     lib/util/ip.c
     lib/util/aspect_ratio.c
     lib/util/time.c

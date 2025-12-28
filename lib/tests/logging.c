@@ -13,7 +13,7 @@
 // POSIX-only test utilities for redirecting stdout/stderr
 
 #include "platform/file.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>

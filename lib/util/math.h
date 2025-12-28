@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "platform/internal.h" // For ssize_t on all platforms
 
 /* ============================================================================
  * Mathematical Macros

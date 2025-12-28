@@ -39,7 +39,7 @@
 #include "platform/system.h"
 #include "platform/terminal.h"
 #include "platform/password.h"
-#include "platform/internal.h"
+#include "platform/util.h"
 #include "version.h"
 #include "crypto/crypto.h"
 #include "util/levenshtein.h"
