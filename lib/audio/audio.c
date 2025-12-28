@@ -100,8 +100,46 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
 }
 
 /**
+ * Simple linear interpolation resampler.
+ * Resamples from src_rate to dst_rate using linear interpolation.
+ *
+ * @param src Source samples at src_rate
+ * @param src_samples Number of source samples
+ * @param dst Destination buffer at dst_rate
+ * @param dst_samples Number of destination samples to produce
+ * @param src_rate Source sample rate (e.g., 48000)
+ * @param dst_rate Destination sample rate (e.g., 44100)
+ */
+static void resample_linear(const float *src, size_t src_samples, float *dst, size_t dst_samples, double src_rate,
+                            double dst_rate) {
+  if (src_samples == 0 || dst_samples == 0) {
+    SAFE_MEMSET(dst, dst_samples * sizeof(float), 0, dst_samples * sizeof(float));
+    return;
+  }
+
+  double ratio = src_rate / dst_rate;
+
+  for (size_t i = 0; i < dst_samples; i++) {
+    double src_pos = (double)i * ratio;
+    size_t idx0 = (size_t)src_pos;
+    size_t idx1 = idx0 + 1;
+    double frac = src_pos - (double)idx0;
+
+    // Clamp indices to valid range
+    if (idx0 >= src_samples)
+      idx0 = src_samples - 1;
+    if (idx1 >= src_samples)
+      idx1 = src_samples - 1;
+
+    // Linear interpolation
+    dst[i] = (float)((1.0 - frac) * src[idx0] + frac * src[idx1]);
+  }
+}
+
+/**
  * Separate output callback - handles playback only.
  * Used when full-duplex mode is unavailable (e.g., different sample rates).
+ * Resamples from internal 48kHz to output device rate if needed.
  * Copies render samples to render_buffer for AEC3 reference.
  */
 static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
@@ -112,12 +150,12 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   audio_context_t *ctx = (audio_context_t *)userData;
   float *output = (float *)outputBuffer;
-  size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
+  size_t num_output_samples = framesPerBuffer * AUDIO_CHANNELS;
 
   // Silence on shutdown
   if (atomic_load(&ctx->shutting_down)) {
     if (output) {
-      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+      SAFE_MEMSET(output, num_output_samples * sizeof(float), 0, num_output_samples * sizeof(float));
     }
     return paContinue;
   }
@@ -128,17 +166,46 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
 
   // Read from playback buffer → output (speaker)
   if (output && ctx->playback_buffer) {
-    size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
-    if (samples_read == 0) {
-      SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
-    }
+    // Check if we need to resample (buffer is at sample_rate, output is at output_device_rate)
+    bool needs_resample =
+        (ctx->output_device_rate > 0 && ctx->sample_rate > 0 && ctx->output_device_rate != ctx->sample_rate);
 
-    // Copy to render buffer for AEC3 reference (input callback will use this)
-    if (ctx->render_buffer) {
-      audio_ring_buffer_write(ctx->render_buffer, output, (int)num_samples);
+    if (needs_resample) {
+      // Calculate how many samples we need from the 48kHz buffer to produce num_output_samples at output rate
+      double ratio = ctx->sample_rate / ctx->output_device_rate;                 // e.g., 48000/44100 = 1.088
+      size_t num_src_samples = (size_t)((double)num_output_samples * ratio) + 2; // +2 for interpolation safety
+
+      // Read from buffer at internal sample rate
+      float *src_buffer = (float *)alloca(num_src_samples * sizeof(float));
+      size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, src_buffer, num_src_samples);
+
+      if (samples_read == 0) {
+        SAFE_MEMSET(output, num_output_samples * sizeof(float), 0, num_output_samples * sizeof(float));
+      } else {
+        // Resample from 48kHz to output device rate
+        resample_linear(src_buffer, samples_read, output, num_output_samples, ctx->sample_rate,
+                        ctx->output_device_rate);
+      }
+
+      // Copy resampled output to render buffer for AEC3 reference
+      // (AEC3 needs to know what's actually playing to speakers)
+      if (ctx->render_buffer) {
+        audio_ring_buffer_write(ctx->render_buffer, output, (int)num_output_samples);
+      }
+    } else {
+      // No resampling needed - direct read
+      size_t samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_output_samples);
+      if (samples_read == 0) {
+        SAFE_MEMSET(output, num_output_samples * sizeof(float), 0, num_output_samples * sizeof(float));
+      }
+
+      // Copy to render buffer for AEC3 reference
+      if (ctx->render_buffer) {
+        audio_ring_buffer_write(ctx->render_buffer, output, (int)num_output_samples);
+      }
     }
   } else if (output) {
-    SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+    SAFE_MEMSET(output, num_output_samples * sizeof(float), 0, num_output_samples * sizeof(float));
   }
 
   return paContinue;
@@ -148,6 +215,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
  * Separate input callback - handles capture only.
  * Used when full-duplex mode is unavailable (e.g., different sample rates).
  * Gets render reference from render_buffer for AEC3 processing.
+ * Resamples render from output_device_rate to input_device_rate if needed.
  */
 static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer,
                           const PaStreamCallbackTimeInfo *timeInfo, PaStreamCallbackFlags statusFlags, void *userData) {
@@ -169,13 +237,35 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
 
   // Process AEC3 with render reference from render_buffer
   if (ctx->audio_pipeline && input && ctx->render_buffer) {
-    // Get render samples from render buffer (what was just played to speakers)
+    // Check if we need to resample render (render_buffer is at output_device_rate, input is at input_device_rate)
+    bool needs_resample = (ctx->output_device_rate > 0 && ctx->input_device_rate > 0 &&
+                           ctx->output_device_rate != ctx->input_device_rate);
+
     float *render = (float *)alloca(num_samples * sizeof(float));
-    size_t render_samples = audio_ring_buffer_read(ctx->render_buffer, render, num_samples);
-    if (render_samples < num_samples) {
-      // Not enough render samples - zero-pad
-      SAFE_MEMSET(render + render_samples, (num_samples - render_samples) * sizeof(float), 0,
-                  (num_samples - render_samples) * sizeof(float));
+
+    if (needs_resample) {
+      // Render buffer is at output_device_rate, we need samples at input_device_rate
+      // Calculate how many samples to read from render buffer
+      double ratio = ctx->output_device_rate / ctx->input_device_rate; // e.g., 44100/48000 = 0.919
+      size_t num_render_samples = (size_t)((double)num_samples * ratio) + 2;
+
+      float *render_raw = (float *)alloca(num_render_samples * sizeof(float));
+      size_t render_read = audio_ring_buffer_read(ctx->render_buffer, render_raw, num_render_samples);
+
+      if (render_read == 0) {
+        SAFE_MEMSET(render, num_samples * sizeof(float), 0, num_samples * sizeof(float));
+      } else {
+        // Resample from output_device_rate to input_device_rate
+        resample_linear(render_raw, render_read, render, num_samples, ctx->output_device_rate, ctx->input_device_rate);
+      }
+    } else {
+      // No resampling needed - direct read
+      size_t render_samples = audio_ring_buffer_read(ctx->render_buffer, render, num_samples);
+      if (render_samples < num_samples) {
+        // Not enough render samples - zero-pad
+        SAFE_MEMSET(render + render_samples, (num_samples - render_samples) * sizeof(float), 0,
+                    (num_samples - render_samples) * sizeof(float));
+      }
     }
 
     // Process through AEC3
@@ -725,6 +815,11 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
     // Fall back to separate streams (needed when sample rates differ)
     log_info("Using separate input/output streams (sample rates differ: %.0f vs %.0f Hz)", inputInfo->defaultSampleRate,
              outputInfo->defaultSampleRate);
+    log_info("  Will resample: buffer at %.0f Hz → output at %.0f Hz", (double)AUDIO_SAMPLE_RATE,
+             outputInfo->defaultSampleRate);
+
+    // Store the internal sample rate (buffer rate)
+    ctx->sample_rate = AUDIO_SAMPLE_RATE;
 
     // Create render buffer for AEC3 reference synchronization
     ctx->render_buffer = audio_ring_buffer_create_for_capture();
@@ -733,9 +828,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       return SET_ERRNO(ERROR_MEMORY, "Failed to create render buffer");
     }
 
-    // Open output stream first
-    err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-                        output_callback, ctx);
+    // Open output stream at NATIVE device rate - we'll resample from 48kHz buffer in callback
+    err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, outputInfo->defaultSampleRate,
+                        AUDIO_FRAMES_PER_BUFFER, paClipOff, output_callback, ctx);
     if (err != paNoError) {
       audio_ring_buffer_destroy(ctx->render_buffer);
       ctx->render_buffer = NULL;
@@ -743,9 +838,9 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       return SET_ERRNO(ERROR_AUDIO, "Failed to open output stream: %s", Pa_GetErrorText(err));
     }
 
-    // Open input stream
-    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-                        input_callback, ctx);
+    // Open input stream at NATIVE device rate (typically 48kHz which matches our internal rate)
+    err = Pa_OpenStream(&ctx->input_stream, &inputParams, NULL, inputInfo->defaultSampleRate, AUDIO_FRAMES_PER_BUFFER,
+                        paClipOff, input_callback, ctx);
     if (err != paNoError) {
       Pa_CloseStream(ctx->output_stream);
       ctx->output_stream = NULL;
