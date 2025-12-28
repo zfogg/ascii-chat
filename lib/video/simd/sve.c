@@ -16,6 +16,8 @@
 
 #include <arm_sve.h>
 
+#include "util/overflow.h"
+
 //=============================================================================
 // Image-based API (matches NEON architecture)
 //=============================================================================
@@ -162,7 +164,37 @@ char *render_ascii_sve_unified_optimized(const image_t *image, bool use_backgrou
   outbuf_t ob = {0};
   // Estimate buffer size based on mode (copied from NEON)
   size_t bytes_per_pixel = use_256color ? 6u : 8u; // 256-color shorter than truecolor
-  ob.cap = (size_t)height * (size_t)width * bytes_per_pixel + (size_t)height * 16u + 64u;
+
+  // Calculate buffer size with overflow checking
+  size_t height_times_width;
+  if (checked_size_mul((size_t)height, (size_t)width, &height_times_width) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * width overflow");
+    return NULL;
+  }
+
+  size_t pixel_data_size;
+  if (checked_size_mul(height_times_width, bytes_per_pixel, &pixel_data_size) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: (height * width) * bytes_per_pixel overflow");
+    return NULL;
+  }
+
+  size_t height_times_16;
+  if (checked_size_mul((size_t)height, 16u, &height_times_16) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: height * 16 overflow");
+    return NULL;
+  }
+
+  size_t temp;
+  if (checked_size_add(pixel_data_size, height_times_16, &temp) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: pixel_data + height*16 overflow");
+    return NULL;
+  }
+
+  if (checked_size_add(temp, 64u, &ob.cap) != ASCIICHAT_OK) {
+    log_error("Buffer size overflow: total capacity overflow");
+    return NULL;
+  }
+
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;
