@@ -255,7 +255,8 @@
  * ├── abstraction.h          # Main header - includes everything
  * ├── abstraction.c          # Common implementation (minimal)
  * ├── init.h                 # Static initialization helpers
- * ├── internal.h             # Internal helpers for implementations
+ * ├── util.h                 # Public utilities (ssize_t, aligned memory, errors, files)
+ * ├── internal.h             # Private helpers (ONLY for lib/platform/* files)
  * │
  * ├── thread.h               # Thread API definition
  * ├── mutex.h                # Mutex API definition
@@ -308,6 +309,11 @@
  *
  * The `abstraction.h` header automatically includes all component headers, so you get
  * the complete platform abstraction API in one include.
+ *
+ * @note **Important**: `platform/internal.h` is a private header that MUST only be included
+ * within the `lib/platform/` directory. External code should never include it directly.
+ * All public utilities are available through `platform/util.h`, `platform/abstraction.h`,
+ * or specific component headers like `platform/socket.h`.
  *
  * @section platform_components Core Components
  *
@@ -2358,7 +2364,7 @@
  * #ifndef PLATFORM_FOO_H
  * #define PLATFORM_FOO_H
  *
- * #include "platform/internal.h"
+ * #include "platform/util.h"
  *
  * /** @brief Opaque foo handle */
  * typedef struct foo_s foo_t;
