@@ -174,7 +174,7 @@ void log_mmap_install_crash_handlers(void) {
   struct sigaction sa = {0};
   sa.sa_handler = crash_signal_handler;
   sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESETHAND; /* One-shot */
+  sa.sa_flags = (int)SA_RESETHAND; /* One-shot (cast silences UBSan implicit conversion warning) */
 
   sigaction(SIGSEGV, &sa, NULL);
   sigaction(SIGABRT, &sa, NULL);
@@ -335,7 +335,9 @@ void log_mmap_write(int level, const char *file, int line, const char *func, con
 
   /* Check for overwrite (ring buffer full) */
   uint64_t old_seq = atomic_load(&entry->sequence);
-  if (old_seq != 0 && (slot - old_seq) < g_mmap_log.buffer->header.entry_count) {
+  /* Only check for overwrite if slot >= old_seq to avoid underflow.
+   * If old_seq > slot, it's from a previous session and can be overwritten. */
+  if (old_seq != 0 && slot >= old_seq && (slot - old_seq) < g_mmap_log.buffer->header.entry_count) {
     /* Would overwrite unflushed entry - count as dropped */
     atomic_fetch_add(&g_mmap_log.dropped_entries, 1);
   }

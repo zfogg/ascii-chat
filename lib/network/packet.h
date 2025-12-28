@@ -470,16 +470,6 @@ PACKED_ATTR /** @endcond */ packet_header_t;
  */
 #define ASCIICHAT_DEFAULT_DISPLAY_NAME "AsciiChatter"
 
-/**
- * @brief Maximum length of client display name in bytes (32 bytes)
- *
- * Maximum length for display_name field in client_info_packet_t.
- * Includes null terminator.
- *
- * @ingroup packet
- */
-#define MAX_DISPLAY_NAME_LEN 42
-
 /** @} */
 
 /**

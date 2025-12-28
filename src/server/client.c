@@ -123,7 +123,7 @@
 #include "network/network.h"
 #include "network/packet.h"
 #include "network/av.h"
-#include "packet_queue.h"
+#include "network/packet_queue.h"
 #include "audio/audio.h"
 #include "audio/mixer.h"
 #include "audio/opus_codec.h"
@@ -132,7 +132,7 @@
 #include "platform/abstraction.h"
 #include "platform/string.h"
 #include "platform/socket.h"
-#include "crc32.h"
+#include "network/crc32.h"
 #include "util/time.h"
 
 // Debug flags

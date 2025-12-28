@@ -222,8 +222,9 @@ set(NETWORK_SRCS
     lib/network/network.c
     lib/network/packet.c
     lib/network/av.c
-    lib/compression.c
-    lib/crc32.c
+    lib/network/compression.c
+    lib/network/crc32.c
+    lib/network/packet_queue.c
 )
 
 # =============================================================================
@@ -261,8 +262,7 @@ set_source_files_properties(
 # Data Structures Module
 # =============================================================================
 set(DATA_STRUCTURES_SRCS
-    lib/ringbuffer.c
-    lib/packet_queue.c
+    lib/audio/ringbuffer.c
     lib/buffer_pool.c
 )
 

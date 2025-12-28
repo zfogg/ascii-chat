@@ -123,7 +123,7 @@
 #include "audio/audio.h"
 #include "video/palette.h"
 #include "video/image.h"
-#include "compression.h"
+#include "network/compression.h"
 #include "util/format.h"
 #include "platform/system.h"
 #include "audio/opus_codec.h"

@@ -139,7 +139,7 @@
 #include "render.h"
 #include "common.h"
 #include "buffer_pool.h"
-#include "packet_queue.h"
+#include "network/packet_queue.h"
 #include "debug/lock.h"
 
 /**
