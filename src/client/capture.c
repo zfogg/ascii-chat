@@ -91,14 +91,10 @@
 #include "video/webcam/webcam.h"
 #include "video/image.h"
 #include "common.h"
-#include "util/endian.h"
 #include "asciichat_errno.h"
 #include "options/options.h"
 #include "util/time.h"
-#include "util/overflow.h"
-#include "util/endian.h"
 #include "util/thread.h"
-#include "util/endian.h"
 #include "fps.h"
 #include <stdatomic.h>
 #include <time.h>
@@ -390,12 +386,12 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     size_t header_size = sizeof(uint32_t) * 4; // width, height, compressed_flag, data_size
-    size_t packet_size;
-    if (checked_size_add(header_size, pixel_size, &packet_size) != ASCIICHAT_OK) {
+    if (pixel_size > SIZE_MAX - header_size) {
       SET_ERRNO(ERROR_NETWORK_SIZE, "Packet size overflow while preparing frame");
       image_destroy(processed_image);
       continue;
     }
+    size_t packet_size = header_size + pixel_size;
 
     // Check packet size limits
     if (packet_size > MAX_PACKET_SIZE) {
@@ -414,10 +410,10 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Build packet in new format
     uint32_t *header = (uint32_t *)packet_data;
-    header[0] = HOST_TO_NET_U32(processed_image->w);   // width
-    header[1] = HOST_TO_NET_U32(processed_image->h);   // height
-    header[2] = HOST_TO_NET_U32(0);                    // compressed_flag = 0 (uncompressed)
-    header[3] = HOST_TO_NET_U32((uint32_t)pixel_size); // data_size = pixel data length
+    header[0] = htonl(processed_image->w);   // width
+    header[1] = htonl(processed_image->h);   // height
+    header[2] = htonl(0);                    // compressed_flag = 0 (uncompressed)
+    header[3] = htonl((uint32_t)pixel_size); // data_size = pixel data length
 
     // Copy pixel data after header
     memcpy(packet_data + header_size, processed_image->pixels, pixel_size);

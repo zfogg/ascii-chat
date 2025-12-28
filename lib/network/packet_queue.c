@@ -560,7 +560,8 @@ void packet_queue_free_packet(queued_packet_t *packet) {
 
   // Check if packet was already freed (detect double-free)
   if (packet->header.magic != HOST_TO_NET_U32(PACKET_MAGIC)) {
-    log_warn("Attempted double-free of packet (magic=0x%x, expected=0x%x)", NET_TO_HOST_U32(packet->header.magic), PACKET_MAGIC);
+    log_warn("Attempted double-free of packet (magic=0x%x, expected=0x%x)", NET_TO_HOST_U32(packet->header.magic),
+             PACKET_MAGIC);
     return;
   }
 

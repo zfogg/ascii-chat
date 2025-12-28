@@ -121,7 +121,7 @@
 #include "common.h"
 #include "util/endian.h"
 #include "util/validation.h"
-#include "util/endian.h"
+#include "util/overflow.h"
 #include "util/image.h"
 #include "video/video_frame.h"
 #include "audio/audio.h"
@@ -1055,8 +1055,12 @@ void handle_audio_batch_packet(client_info_t *client, const void *data, size_t l
 
   const uint8_t *samples_ptr = (const uint8_t *)data + sizeof(audio_batch_packet_t);
 
-  // Safe allocation: total_samples is bounded above, so multiplication won't overflow
-  size_t alloc_size = (size_t)total_samples * sizeof(float);
+  // Safe allocation with overflow checking (total_samples is also validated above)
+  size_t alloc_size = 0;
+  if (checked_size_mul((size_t)total_samples, sizeof(float), &alloc_size) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Audio sample buffer size overflow: %u samples", total_samples);
+    return;
+  }
   float *samples = SAFE_MALLOC(alloc_size, float *);
   if (!samples) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate memory for audio sample conversion");
@@ -1166,7 +1170,13 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
 
-  size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
+  // Calculate total samples with overflow checking
+  size_t total_samples = 0;
+  if (checked_size_mul((size_t)samples_per_frame, (size_t)frame_count, &total_samples) != ASCIICHAT_OK) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Audio batch size overflow: %u frames * %u samples/frame", frame_count,
+              samples_per_frame);
+    return;
+  }
   float *decoded_samples;
   bool used_malloc = false;
 
@@ -1176,7 +1186,12 @@ void handle_audio_opus_batch_packet(client_info_t *client, const void *data, siz
     // Unusual large batch - fall back to malloc
     log_warn("Client %u: Large audio batch requires malloc (%zu samples)", atomic_load(&client->client_id),
              total_samples);
-    decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+    size_t alloc_size = 0;
+    if (checked_size_mul(total_samples, sizeof(float), &alloc_size) != ASCIICHAT_OK) {
+      SET_ERRNO(ERROR_BUFFER_OVERFLOW, "Decoded samples buffer size overflow: %zu samples", total_samples);
+      return;
+    }
+    decoded_samples = SAFE_MALLOC(alloc_size, float *);
     if (!decoded_samples) {
       SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for Opus decoded samples");
       return;

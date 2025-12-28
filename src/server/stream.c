@@ -372,9 +372,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
       {
         size_t rgb_size = 0;
         if (image_calc_rgb_size((size_t)img_width, (size_t)img_height, &rgb_size) != ASCIICHAT_OK) {
-          SET_ERRNO(ERROR_INVALID_STATE,
-                    "Per-client: RGB size calculation failed for client %u: %ux%u", snap->client_id, img_width,
-                    img_height);
+          SET_ERRNO(ERROR_INVALID_STATE, "Per-client: RGB size calculation failed for client %u: %ux%u",
+                    snap->client_id, img_width, img_height);
           if (got_new_frame) {
             cleanup_current_frame_data(&current_frame);
           }
