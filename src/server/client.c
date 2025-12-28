@@ -140,6 +140,9 @@
 #define DEBUG_THREADS 1
 #define DEBUG_MEMORY 1
 
+// Forward declarations for static helper functions
+static inline void cleanup_client_all_buffers(client_info_t *client);
+
 static void handle_client_error_packet(client_info_t *client, const void *data, size_t len) {
   asciichat_error_t reported_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
@@ -752,9 +755,8 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
   // Phase 3: Clean up resources with write lock
   rwlock_wrlock(&g_client_manager_rwlock);
 
-  // Use the dedicated cleanup functions to ensure all resources are freed
-  cleanup_client_media_buffers(target_client);
-  cleanup_client_packet_queues(target_client);
+  // Use the dedicated cleanup function to ensure all resources are freed
+  cleanup_client_all_buffers(target_client);
 
   // Remove from audio mixer
   if (g_audio_mixer) {
@@ -1011,7 +1013,9 @@ void *client_receive_thread(void *arg) {
     }
 
     if (result == PACKET_RECV_SECURITY_VIOLATION) {
-      log_error("SECURITY: Client %u violated encryption policy - terminating server", client->client_id);
+      log_error_all(
+          client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
+          "SECURITY VIOLATION: Unencrypted packet received when encryption required - terminating connection");
       // Exit the server as a security measure
       atomic_store(&g_server_should_exit, true);
       break;
