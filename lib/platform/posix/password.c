@@ -17,7 +17,7 @@ int platform_prompt_password(const char *prompt, char *password, size_t max_len)
   bool previous_terminal_state = log_lock_terminal();
 
   log_plain("\n========================================\n%s\n========================================", prompt);
-  log_plain_stderr("> ");
+  log_plain_stderr_nonewline("> ");
 
   // Disable terminal echo and canonical mode for character-by-character input
   struct termios old_termios, new_termios;

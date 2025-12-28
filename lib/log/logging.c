@@ -392,8 +392,9 @@ bool log_get_force_stderr(void) {
 
 bool log_lock_terminal(void) {
   mutex_lock(&g_log.mutex);
-  bool previous_state = g_log.terminal_output_enabled;
-  g_log.terminal_output_enabled = false;
+  bool previous_state = g_log.terminal_locked;
+  g_log.terminal_locked = true;
+  g_log.terminal_owner_thread = ascii_thread_self();
   mutex_unlock(&g_log.mutex);
   return previous_state;
 }
@@ -411,8 +412,11 @@ void log_unlock_terminal(bool previous_state) {
   g_log.buffer_entry_count = 0;
   g_log.buffer_total_size = 0;
 
-  // Restore terminal output before flushing so logs can resume normally
-  g_log.terminal_output_enabled = previous_state;
+  // Restore terminal lock state
+  g_log.terminal_locked = previous_state;
+  if (!previous_state) {
+    g_log.terminal_owner_thread = 0;
+  }
 
   mutex_unlock(&g_log.mutex);
 
@@ -629,8 +633,19 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
     return;
   }
 
-  // If terminal output is disabled, buffer the message for later
-  if (!g_log.terminal_output_enabled) {
+  // Check if we should buffer instead of output to terminal:
+  // 1. Terminal output globally disabled, OR
+  // 2. Terminal locked by another thread (not us)
+  bool should_buffer = !g_log.terminal_output_enabled;
+  if (!should_buffer && g_log.terminal_locked) {
+    // Terminal is locked - only the owner thread can output
+    thread_id_t current_thread = ascii_thread_self();
+    if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
+      should_buffer = true;
+    }
+  }
+
+  if (should_buffer) {
     const char *reset_color = NULL;
     if (use_colors) {
       const char **colors = log_get_color_array();
@@ -776,11 +791,154 @@ void log_plain_msg(const char *fmt, ...) {
       write_to_log_file_unlocked("\n", 1);
     }
 
-    /* Always write to stderr for log_plain_msg */
-    safe_fprintf(stderr, "%s\n", log_buffer);
-    (void)fflush(stderr);
+    // Check if we should buffer instead of output to terminal:
+    // 1. Terminal output globally disabled, OR
+    // 2. Terminal locked by another thread (not us)
+    bool should_buffer = !g_log.terminal_output_enabled;
+    if (!should_buffer && g_log.terminal_locked) {
+      // Terminal is locked - only the owner thread can output
+      thread_id_t current_thread = ascii_thread_self();
+      if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
+        should_buffer = true;
+      }
+    }
+
+    if (should_buffer) {
+      // Buffer for later - allocate message with newline
+      size_t full_msg_len = (size_t)msg_len + 2; // +1 for newline, +1 for null
+      char *buffered_msg = malloc(full_msg_len);
+      if (buffered_msg) {
+        memcpy(buffered_msg, log_buffer, (size_t)msg_len);
+        buffered_msg[msg_len] = '\n';
+        buffered_msg[msg_len + 1] = '\0';
+
+        // Add to buffer entries
+        if (g_log.buffer_entry_count < MAX_TERMINAL_BUFFER_ENTRIES &&
+            g_log.buffer_total_size + full_msg_len <= MAX_TERMINAL_BUFFER_SIZE) {
+          log_buffer_entry_t *new_entries =
+              realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
+          if (new_entries) {
+            g_log.buffer_entries = new_entries;
+            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = true;
+            g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
+            g_log.buffer_entry_count++;
+            g_log.buffer_total_size += full_msg_len;
+          } else {
+            free(buffered_msg);
+          }
+        } else {
+          free(buffered_msg);
+        }
+      }
+    } else {
+      /* Output to stderr */
+      safe_fprintf(stderr, "%s\n", log_buffer);
+      (void)fflush(stderr);
+    }
   }
 
+  mutex_unlock(&g_log.mutex);
+}
+
+// Helper for log_plain_stderr variants
+static void log_plain_stderr_internal(const char *fmt, va_list args, bool add_newline) {
+  // Format the message without timestamps or log levels
+  char log_buffer[4096];
+  int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+
+  if (msg_len > 0 && msg_len < (int)sizeof(log_buffer)) {
+    /* Write to log file if configured (not STDERR) */
+    if (g_log.file != STDERR_FILENO) {
+      write_to_log_file_unlocked(log_buffer, msg_len);
+      if (add_newline) {
+        write_to_log_file_unlocked("\n", 1);
+      }
+    }
+
+    // Check if we should buffer instead of output to terminal:
+    // 1. Terminal output globally disabled, OR
+    // 2. Terminal locked by another thread (not us)
+    bool should_buffer = !g_log.terminal_output_enabled;
+    if (!should_buffer && g_log.terminal_locked) {
+      // Terminal is locked - only the owner thread can output
+      thread_id_t current_thread = ascii_thread_self();
+      if (!ascii_thread_equal(current_thread, g_log.terminal_owner_thread)) {
+        should_buffer = true;
+      }
+    }
+
+    if (should_buffer) {
+      // Buffer for later
+      size_t full_msg_len = (size_t)msg_len + (add_newline ? 2 : 1); // +1 or +2 for newline + null
+      char *buffered_msg = malloc(full_msg_len);
+      if (buffered_msg) {
+        memcpy(buffered_msg, log_buffer, (size_t)msg_len);
+        if (add_newline) {
+          buffered_msg[msg_len] = '\n';
+          buffered_msg[msg_len + 1] = '\0';
+        } else {
+          buffered_msg[msg_len] = '\0';
+        }
+
+        // Add to buffer entries
+        if (g_log.buffer_entry_count < MAX_TERMINAL_BUFFER_ENTRIES &&
+            g_log.buffer_total_size + full_msg_len <= MAX_TERMINAL_BUFFER_SIZE) {
+          log_buffer_entry_t *new_entries =
+              realloc(g_log.buffer_entries, (g_log.buffer_entry_count + 1) * sizeof(log_buffer_entry_t));
+          if (new_entries) {
+            g_log.buffer_entries = new_entries;
+            g_log.buffer_entries[g_log.buffer_entry_count].use_stderr = true;
+            g_log.buffer_entries[g_log.buffer_entry_count].message = buffered_msg;
+            g_log.buffer_entry_count++;
+            g_log.buffer_total_size += full_msg_len;
+          } else {
+            free(buffered_msg);
+          }
+        } else {
+          free(buffered_msg);
+        }
+      }
+    } else {
+      /* Output to stderr */
+      if (add_newline) {
+        safe_fprintf(stderr, "%s\n", log_buffer);
+      } else {
+        safe_fprintf(stderr, "%s", log_buffer);
+      }
+      (void)fflush(stderr);
+    }
+  }
+}
+
+void log_plain_stderr_msg(const char *fmt, ...) {
+  if (!g_log.initialized) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  mutex_lock(&g_log.mutex);
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stderr_internal(fmt, args, true); // WITH newline
+  va_end(args);
+  mutex_unlock(&g_log.mutex);
+}
+
+void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
+  if (!g_log.initialized) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  mutex_lock(&g_log.mutex);
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stderr_internal(fmt, args, false); // WITHOUT newline
+  va_end(args);
   mutex_unlock(&g_log.mutex);
 }
 
