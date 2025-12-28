@@ -257,7 +257,7 @@
  *
  * @ingroup crypto
  */
-typedef struct {
+typedef struct crypto_context_t {
   /** X25519 key exchange keys */
   uint8_t public_key[CRYPTO_PUBLIC_KEY_SIZE];      /**< Our ephemeral public key */
   uint8_t private_key[CRYPTO_PRIVATE_KEY_SIZE];    /**< Our ephemeral private key */

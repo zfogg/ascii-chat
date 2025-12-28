@@ -1014,9 +1014,8 @@ void *client_receive_thread(void *arg) {
     }
 
     if (result == PACKET_RECV_SECURITY_VIOLATION) {
-      log_error_all(
-          client->socket, (const struct crypto_context_t *)crypto_ctx, REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT,
-          "SECURITY VIOLATION: Unencrypted packet received when encryption required - terminating connection");
+      log_error_client(
+          client, "SECURITY VIOLATION: Unencrypted packet received when encryption required - terminating connection");
       // Exit the server as a security measure
       atomic_store(&g_server_should_exit, true);
       break;
@@ -1126,11 +1125,7 @@ void *client_receive_thread(void *arg) {
       } else {
         log_debug("Session rekeying completed successfully with client %u", client->client_id);
         // Notify client that rekeying is complete (new keys now active on both sides)
-        if (client->crypto_initialized) {
-          const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-          log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx,
-                       REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Session rekey complete - new encryption keys active");
-        }
+        log_info_client(client, "Session rekey complete - new encryption keys active");
       }
       break;
     }
@@ -1365,11 +1360,7 @@ void *client_send_thread_func(void *arg) {
         } else {
           log_debug("Sent REKEY_REQUEST to client %u", client->client_id);
           // Notify client that session rekeying has been initiated (old keys still active)
-          if (client->crypto_initialized) {
-            const crypto_context_t *crypto_ctx = crypto_handshake_get_context(&client->crypto_handshake_ctx);
-            log_info_all(client->socket, (const struct crypto_context_t *)crypto_ctx,
-                         REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT, "Session rekey initiated - rotating encryption keys");
-          }
+          log_info_client(client, "Session rekey initiated - rotating encryption keys");
         }
       }
     }
