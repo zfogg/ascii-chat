@@ -41,7 +41,7 @@ static void check_crc32_hw_support(void) {
   bool expected = false;
   if (!atomic_compare_exchange_strong(&crc32_hw_checked, &expected, true)) {
     // Another thread is initializing or already initialized, wait for it
-    // FIX: Add backoff sleep to prevent 100% CPU burn if init thread is preempted
+    // Add backoff sleep to prevent 100% CPU burn if init thread is preempted
     int spin_count = 0;
     while (!atomic_load(&crc32_hw_checked)) {
       spin_count++;
