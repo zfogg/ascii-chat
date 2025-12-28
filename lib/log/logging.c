@@ -18,7 +18,97 @@
 
 #include "logging.h"
 #include "platform/terminal.h"
+#include "platform/thread.h"
+#include "platform/mutex.h"
 #include "network/packet.h"
+
+/* ============================================================================
+ * Logging System Internal State
+ * ============================================================================ */
+
+/* Log context struct - internal implementation detail */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+static struct log_context_t {
+  int file;
+  log_level_t level;
+  mutex_t mutex;
+  bool initialized;
+  char filename[4096];                /* Store filename for rotation */
+  size_t current_size;                /* Track current file size */
+  bool terminal_output_enabled;       /* Control stderr output to terminal */
+  bool level_manually_set;            /* Track if level was set manually */
+  bool force_stderr;                  /* Force all terminal logs to stderr (client mode) */
+  log_buffer_entry_t *buffer_entries; /* Array of buffered log entries */
+  size_t buffer_entry_count;          /* Number of entries in buffer */
+  size_t buffer_total_size;           /* Total bytes used by all messages */
+  unsigned int flush_delay_ms;        /* Delay between each buffered log flush (0 = disabled) */
+  bool terminal_locked;               /* True when a thread has exclusive terminal access */
+  thread_id_t terminal_owner_thread;  /* Thread that owns terminal output (when locked) */
+} g_log = {
+    .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
+    .level = DEFAULT_LOG_LEVEL,
+    .initialized = false,
+    .filename = {0},
+    .current_size = 0,
+    .terminal_output_enabled = true,
+    .level_manually_set = false,
+    .force_stderr = false,
+    .buffer_entries = NULL,
+    .buffer_entry_count = 0,
+    .buffer_total_size = 0,
+    .flush_delay_ms = 0,
+    .terminal_locked = false,
+    .terminal_owner_thread = 0,
+};
+#pragma GCC diagnostic pop
+
+/* Level strings for log output */
+static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
+
+/* Internal color mode enum for indexing into 2D color array */
+/* NOTE: Uses LOG_CMODE_ prefix to avoid conflict with public color_mode_t in options.h */
+typedef enum { LOG_CMODE_16 = 0, LOG_CMODE_256 = 1, LOG_CMODE_TRUECOLOR = 2, LOG_CMODE_COUNT = 3 } log_color_mode_t;
+
+#define LOG_COLOR_COUNT 7 /* DEV, DEBUG, INFO, WARN, ERROR, FATAL, RESET */
+
+/* 2D color array: [color_mode][log_color] */
+static const char *level_colors[LOG_CMODE_COUNT][LOG_COLOR_COUNT] = {
+    /* LOG_CMODE_16 */
+    {"\x1b[34m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
+    /* LOG_CMODE_256 */
+    {"\x1b[94m", "\x1b[96m", "\x1b[92m", "\x1b[33m", "\x1b[31m", "\x1b[35m", "\x1b[0m"},
+    /* LOG_CMODE_TRUECOLOR */
+    {"\x1b[38;2;150;100;205m", "\x1b[38;2;30;205;255m", "\x1b[38;2;50;205;100m", "\x1b[38;2;205;185;40m",
+     "\x1b[38;2;205;30;100m", "\x1b[38;2;205;80;205m", "\x1b[0m"},
+};
+
+/* Internal error macro - uses g_log directly, only used in this file */
+#ifdef NDEBUG
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
+  do {                                                                                                                 \
+    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
+                 message);                                                                                             \
+    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
+    platform_write(g_log.file, message, strlen(message));                                                              \
+    platform_write(g_log.file, "\n", 1);                                                                               \
+    platform_print_backtrace(0);                                                                                       \
+  } while (0)
+#else
+#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
+  do {                                                                                                                 \
+    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
+    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
+                 message);                                                                                             \
+    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
+    platform_write(g_log.file, message, strlen(message));                                                              \
+    platform_write(g_log.file, "\n", 1);                                                                               \
+    platform_print_backtrace(0);                                                                                       \
+  } while (0)
+#endif
 
 /* Terminal capabilities cache */
 static terminal_capabilities_t g_terminal_caps = {0};
@@ -500,7 +590,7 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     use_colors = false;
   }
   const char *color = use_colors ? colors[level] : "";
-  const char *reset = use_colors ? colors[LOGGING_COLOR_RESET] : "";
+  const char *reset = use_colors ? colors[LOG_COLOR_RESET] : "";
 
   const char *level_string = level_strings[level];
   if (level_string == level_strings[LOG_INFO]) {
@@ -650,7 +740,7 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
     if (use_colors) {
       const char **colors = log_get_color_array();
       if (colors)
-        reset_color = colors[LOGGING_COLOR_RESET];
+        reset_color = colors[LOG_COLOR_RESET];
     }
     bool use_stderr = (output_stream == stderr);
     buffer_terminal_output_unlocked(use_stderr, header_buffer, reset_color, fmt, args);
@@ -669,11 +759,11 @@ static void write_to_terminal_unlocked(log_level_t level, const char *timestamp,
       // Write header with colors
       safe_fprintf(output_stream, "%s", header_buffer);
       // Reset color before message content
-      safe_fprintf(output_stream, "%s", colors[LOGGING_COLOR_RESET]);
+      safe_fprintf(output_stream, "%s", colors[LOG_COLOR_RESET]);
       // Write message content
       (void)vfprintf(output_stream, fmt, args);
       // Ensure color is reset at the end
-      safe_fprintf(output_stream, "%s\n", colors[LOGGING_COLOR_RESET]);
+      safe_fprintf(output_stream, "%s\n", colors[LOG_COLOR_RESET]);
     }
   } else {
     // No color requested.
@@ -1091,21 +1181,17 @@ void log_redetect_terminal_capabilities(void) {
 const char **log_get_color_array(void) {
   init_terminal_capabilities();
 
-  const char **colors;
+  log_color_mode_t mode;
   if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
-    colors = level_colors_truecolor;
+    mode = LOG_CMODE_TRUECOLOR;
   } else if (g_terminal_caps.color_level >= TERM_COLOR_256) {
-    colors = level_colors_256;
+    mode = LOG_CMODE_256;
   } else {
-    colors = level_colors_16;
+    mode = LOG_CMODE_16;
   }
 
-  if (!colors) {
-    LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Colors are not set");
-    return NULL;
-  }
-
-  return colors;
+  /* Cast away const for the pointer-to-pointer return - the array is still const */
+  return (const char **)level_colors[mode];
 }
 
 const char *log_level_color(log_color_t color) {

@@ -72,7 +72,7 @@
  */
 
 #include "audio.h" // src/client/audio.h
-#include "audio/audio_analysis.h"
+#include "audio/analysis.h"
 #include "main.h"
 #include "server.h"
 

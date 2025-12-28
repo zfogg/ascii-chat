@@ -24,27 +24,12 @@
 #pragma once
 
 #include <stdarg.h>
-#include "platform/mutex.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
 #include "platform/socket.h"
-#include "platform/thread.h"
 #include "network/logging.h"
 struct crypto_context_t;
-
-/* PLATFORM_MAX_PATH_LENGTH is defined in common.h but we can't include it here
- * to avoid circular dependencies. Define it here to match the definition pattern.
- * This matches the definition in common.h (see common.h comments for details).
- */
-#ifndef PLATFORM_MAX_PATH_LENGTH
-#ifdef _WIN32
-#define PLATFORM_MAX_PATH_LENGTH 32767
-#elif defined(__linux__)
-#define PLATFORM_MAX_PATH_LENGTH 4096
-#elif defined(__APPLE__)
-#define PLATFORM_MAX_PATH_LENGTH 1024
-#else
-#define PLATFORM_MAX_PATH_LENGTH 4096
-#endif
-#endif
 
 /**
  * @brief Logging levels enumeration
@@ -82,79 +67,7 @@ typedef struct {
   char *message;   /* Formatted message (heap allocated) */
 } log_buffer_entry_t;
 
-/* Suppress missing field initializers for mutex_t which has opaque internal fields */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-
-static struct log_context_t {
-  int file;
-  log_level_t level;
-  mutex_t mutex;
-  bool initialized;
-  char filename[PLATFORM_MAX_PATH_LENGTH]; /* Store filename for rotation */
-  size_t current_size;                     /* Track current file size */
-  bool terminal_output_enabled;            /* Control stderr output to terminal */
-  bool level_manually_set;                 /* Track if level was set manually */
-  bool force_stderr;                       /* Force all terminal logs to stderr (client mode) */
-  log_buffer_entry_t *buffer_entries;      /* Array of buffered log entries */
-  size_t buffer_entry_count;               /* Number of entries in buffer */
-  size_t buffer_total_size;                /* Total bytes used by all messages */
-  unsigned int flush_delay_ms;             /* Delay between each buffered log flush (0 = disabled) */
-  bool terminal_locked;                    /* True when a thread has exclusive terminal access */
-  thread_id_t terminal_owner_thread;       /* Thread that owns terminal output (when locked) */
-} g_log = {
-    .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
-    .level = DEFAULT_LOG_LEVEL,
-    .initialized = false,
-    .filename = {0},
-    .current_size = 0,
-    .terminal_output_enabled = true,
-    .level_manually_set = false,
-    .force_stderr = false,
-    .buffer_entries = NULL,
-    .buffer_entry_count = 0,
-    .buffer_total_size = 0,
-    .flush_delay_ms = 0,
-    .terminal_locked = false,
-    .terminal_owner_thread = 0,
-};
-
-#pragma GCC diagnostic pop
-
-static const char *level_strings[] = {"DEV", "DEBUG", "INFO", "WARN", "ERROR", "FATAL"};
-
-// 16-color colors
-static const char *level_colors_16[] = {
-    "\x1b[34m", /* DEV: Blue */
-    "\x1b[36m", /* DEBUG: Cyan */
-    "\x1b[32m", /* INFO: Green */
-    "\x1b[33m", /* WARN: Yellow */
-    "\x1b[31m", /* ERROR: Red */
-    "\x1b[35m", /* FATAL: Magenta */
-    "\x1b[0m",  /* Reset */
-};
-
-// 256-color colors
-static const char *level_colors_256[] = {
-    "\x1b[94m", /* DEV: Bright Blue */
-    "\x1b[96m", /* DEBUG: Bright Cyan */
-    "\x1b[92m", /* INFO: Bright Green */
-    "\x1b[33m", /* WARN: Yellow */
-    "\x1b[31m", /* ERROR: Red */
-    "\x1b[35m", /* FATAL: Magenta */
-    "\x1b[0m",  /* Reset */
-};
-
-// Truecolor RGB colors
-static const char *level_colors_truecolor[] = {
-    "\x1b[38;2;150;100;205m", /* DEV: Blue */
-    "\x1b[38;2;30;205;255m",  /* DEBUG: Cyan */
-    "\x1b[38;2;50;205;100m",  /* INFO: Green */
-    "\x1b[38;2;205;185;40m",  /* WARN: Yellow */
-    "\x1b[38;2;205;30;100m",  /* ERROR: Red */
-    "\x1b[38;2;205;80;205m",  /* FATAL: Magenta */
-    "\x1b[0m",                /* Reset */
-};
+/* Implementation details (g_log struct, color arrays) are in logging.c */
 
 /**
  * @brief Color enum for logging - indexes into color arrays
@@ -633,32 +546,7 @@ asciichat_error_t log_all_message(socket_t sockfd, const struct crypto_context_t
   log_all_message(sockfd, crypto_ctx, LOG_FATAL, direction, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__)
 #endif
 
-// Don't use the logging functions to log errors about the logging system itself to avoid recursion.
-#ifdef NDEBUG
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
-  do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
-                 message);                                                                                             \
-    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
-    platform_write(g_log.file, message, strlen(message));                                                              \
-    platform_write(g_log.file, "\n", 1);                                                                               \
-    platform_print_backtrace(0);                                                                                       \
-  } while (0)
-#else
-#define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
-  do {                                                                                                                 \
-    asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
-    static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
-    safe_fprintf(stderr, "%s%s%s: %s", log_level_color(LOG_COLOR_ERROR), msg_header, log_level_color(LOG_COLOR_RESET), \
-                 message);                                                                                             \
-    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
-    platform_write(g_log.file, message, strlen(message));                                                              \
-    platform_write(g_log.file, "\n", 1);                                                                               \
-    platform_print_backtrace(0);                                                                                       \
-  } while (0)
-#endif
+/* LOGGING_INTERNAL_ERROR macro is defined in logging.c (internal use only) */
 
 #ifdef __cplusplus
 }

@@ -9,7 +9,7 @@
 
 #include "thread.h"
 #include "common.h"
-#include "logging.h"
+#include "log/logging.h"
 
 asciichat_error_t thread_create_or_fail(asciithread_t *thread, void *(*func)(void *), void *arg,
                                         const char *thread_name, uint32_t client_id) {

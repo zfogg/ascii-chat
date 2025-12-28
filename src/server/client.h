@@ -66,7 +66,7 @@
  *
  * @ingroup server_client
  */
-typedef struct {
+typedef struct client_info {
   socket_t socket;
   asciithread_t receive_thread; // Thread for receiving client data
   atomic_uint client_id;        // Thread-safe client ID

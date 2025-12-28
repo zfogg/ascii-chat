@@ -79,7 +79,8 @@
 #include "display.h"
 #include "capture.h"
 #include "audio.h"
-#include "audio/audio_analysis.h"
+#include "audio/audio.h"
+#include "audio/analysis.h"
 #include "keepalive.h"
 
 #include "network/packet.h"
@@ -88,7 +89,7 @@
 #include "common.h"
 #include "util/validation.h"
 #include "options.h"
-#include "crc32.h"
+#include "network/crc32.h"
 #include "fps_tracker.h"
 #include "crypto/crypto.h"
 
