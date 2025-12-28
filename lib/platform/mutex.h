@@ -47,6 +47,7 @@ extern "C" {
 // Only declare these when not in release mode
 // The actual implementations are in lib/debug/lock.c when DEBUG_LOCKS is enabled
 int debug_mutex_lock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
+int debug_mutex_trylock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
 int debug_mutex_unlock(mutex_t *mutex, const char *file_name, int line_number, const char *function_name);
 bool lock_debug_is_initialized(void);
 #endif
@@ -91,16 +92,19 @@ int mutex_destroy(mutex_t *mutex);
 int mutex_lock_impl(mutex_t *mutex);
 
 /**
- * @brief Try to lock a mutex without blocking
+ * @brief Try to lock a mutex without blocking (implementation function)
  * @param mutex Pointer to mutex to try to lock
  * @return 0 if lock was acquired, non-zero if mutex was already locked
  *
  * Attempts to acquire the mutex lock without blocking. Returns immediately
  * whether the lock was acquired or not.
  *
+ * @note This is the implementation function. Use mutex_trylock() macro instead,
+ *       which includes debug tracking in debug builds.
+ *
  * @ingroup platform
  */
-int mutex_trylock(mutex_t *mutex);
+int mutex_trylock_impl(mutex_t *mutex);
 
 /**
  * @brief Unlock a mutex (implementation function)
@@ -135,6 +139,23 @@ int mutex_unlock_impl(mutex_t *mutex);
 #else
 #define mutex_lock(mutex)                                                                                              \
   (lock_debug_is_initialized() ? debug_mutex_lock(mutex, __FILE__, __LINE__, __func__) : mutex_lock_impl(mutex))
+#endif
+
+/**
+ * @brief Try to lock a mutex without blocking (with debug tracking in debug builds)
+ * @param mutex Pointer to mutex to try to lock
+ * @return 0 if lock was acquired, non-zero if mutex was already locked
+ *
+ * @note In debug builds, this macro includes lock debugging if initialized.
+ *       In release builds, calls the implementation directly for zero overhead.
+ *
+ * @ingroup platform
+ */
+#ifdef NDEBUG
+#define mutex_trylock(mutex) mutex_trylock_impl(mutex)
+#else
+#define mutex_trylock(mutex)                                                                                           \
+  (lock_debug_is_initialized() ? debug_mutex_trylock(mutex, __FILE__, __LINE__, __func__) : mutex_trylock_impl(mutex))
 #endif
 
 /**

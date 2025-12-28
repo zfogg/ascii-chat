@@ -41,11 +41,11 @@ int mutex_lock_impl(mutex_t *mutex) {
 }
 
 /**
- * @brief Try to lock a mutex without blocking
+ * @brief Try to lock a mutex without blocking - implementation function
  * @param mutex Pointer to mutex to try locking
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
-int mutex_trylock(mutex_t *mutex) {
+int mutex_trylock_impl(mutex_t *mutex) {
   return TryEnterCriticalSection(mutex) ? 0 : 16; // EBUSY = 16
 }
 

@@ -93,7 +93,7 @@ asciichat_error_t packet_decode_frame_data_buffer(const char *frame_data_ptr, si
   }
 
   if (output_size < original_size) {
-    return SET_ERRNO(ERROR_BUFFER_SIZE, "Output buffer too small: %zu < %u", output_size, original_size);
+    return SET_ERRNO(ERROR_BUFFER_FULL, "Output buffer too small: %zu < %u", output_size, original_size);
   }
 
   if (is_compressed) {
