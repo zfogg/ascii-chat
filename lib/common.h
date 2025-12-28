@@ -495,6 +495,9 @@ extern int g_max_fps;
  * @ingroup common
  */
 
+/** @brief Log rate limit: 0.1 seconds (100,000 microseconds) - for very high frequency operations */
+#define LOG_RATE_VERY_FAST (100000)
+
 /** @brief Log rate limit: 1 second (1,000,000 microseconds) */
 #define LOG_RATE_FAST (1000000)
 

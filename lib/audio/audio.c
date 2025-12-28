@@ -56,10 +56,10 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // Log status flags
   if (statusFlags != 0) {
     if (statusFlags & paOutputUnderflow) {
-      log_warn_every(1000000, "PortAudio output underflow");
+      log_warn_every(LOG_RATE_FAST, "PortAudio output underflow");
     }
     if (statusFlags & paInputOverflow) {
-      log_warn_every(1000000, "PortAudio input overflow");
+      log_warn_every(LOG_RATE_FAST, "PortAudio input overflow");
     }
   }
 
@@ -158,7 +158,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   if (statusFlags & paOutputUnderflow) {
-    log_warn_every(1000000, "PortAudio output underflow (separate stream)");
+    log_warn_every(LOG_RATE_FAST, "PortAudio output underflow (separate stream)");
   }
 
   // Read from playback buffer → output (speaker)
@@ -229,7 +229,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   }
 
   if (statusFlags & paInputOverflow) {
-    log_warn_every(1000000, "PortAudio input overflow (separate stream)");
+    log_warn_every(LOG_RATE_FAST, "PortAudio input overflow (separate stream)");
   }
 
   // Process AEC3 with render reference from render_buffer
@@ -372,7 +372,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     // Still not enough space after cleanup - drop some incoming samples
     int samples_dropped = samples - available;
     samples_to_write = available;
-    log_warn_every(1000000, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",
+    log_warn_every(LOG_RATE_FAST, "Audio buffer overflow: dropping %d of %d incoming samples (buffer_used=%d/%d)",
                    samples_dropped, samples, AUDIO_RING_BUFFER_SIZE - available, AUDIO_RING_BUFFER_SIZE);
   }
 
@@ -468,10 +468,9 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // Instead: always consume samples to prevent overflow, use silence for missing data
   if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK) {
     rb->underrun_count++;
-    // Log every 1 second (1000000 microseconds) with more diagnostic info
-    log_warn_every(1000000, "Buffer underrun #%u: %zu/%d samples (%.1f%% full, need %zu, low water=%d)",
-                   rb->underrun_count, available, AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE,
-                   samples, AUDIO_JITTER_LOW_WATER_MARK);
+    log_warn_every(LOG_RATE_FAST,
+                   "Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence",
+                   rb->underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
     // Don't set jitter_buffer_filled = false - keep reading to prevent overflow
   }
 

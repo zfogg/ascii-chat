@@ -451,7 +451,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     // Log warning if frame took too long to capture
     if (capture_frame_count > 1 && frame_interval_us > lag_threshold_us) {
-      log_warn_every(1000000,
+      log_warn_every(LOG_RATE_FAST,
                      "CLIENT CAPTURE LAG: Frame captured %.1fms late (expected %.1fms, got %.1fms, actual fps: %.1f)",
                      (double)(frame_interval_us - expected_interval_us) / 1000.0, (double)expected_interval_us / 1000.0,
                      (double)frame_interval_us / 1000.0, 1000000.0 / (double)frame_interval_us);

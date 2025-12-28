@@ -1354,7 +1354,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
     return;
   }
 
-  log_debug_every(100000, "Client %u: Decoded Opus frame -> %d samples", atomic_load(&client->client_id),
+  log_debug_every(LOG_RATE_VERY_FAST, "Client %u: Decoded Opus frame -> %d samples", atomic_load(&client->client_id),
                   decoded_count);
 
   // Write decoded samples to client's incoming audio buffer
