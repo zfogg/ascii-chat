@@ -27,6 +27,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "util/uthash.h"
+#include "util/number.h" // For write_decimal, write_u8
 #include "../image.h"
 
 /** @brief RGB pixel type alias */
@@ -266,37 +267,4 @@ char *append_sgr_reset(char *dst);
  */
 size_t write_rgb_triplet(uint8_t value, char *dst);
 
-/**
- * @brief Write decimal number to buffer
- * @param value Integer value to write
- * @param dst Destination buffer pointer
- * @return Number of bytes written
- *
- * Simple decimal writer for REP counts (can be larger than 255).
- *
- * @ingroup video
- */
-static inline size_t write_decimal(int value, char *dst) {
-  if (value == 0) {
-    *dst = '0';
-    return 1;
-  }
-
-  char temp[10]; // Enough for 32-bit int
-  int pos = 0;
-  int v = value;
-
-  while (v > 0) {
-    temp[pos++] = '0' + (v % 10);
-    v /= 10;
-  }
-
-  // Reverse digits into dst
-  for (int i = 0; i < pos; i++) {
-    dst[i] = temp[pos - 1 - i];
-  }
-
-  return (size_t)pos;
-}
-
-// Fast decimal for REP counts - now in output_buffer.h
+/* write_decimal() is now in util/number.h */
