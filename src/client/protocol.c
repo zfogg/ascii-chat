@@ -90,7 +90,7 @@
 #include "util/validation.h"
 #include "options.h"
 #include "network/crc32.h"
-#include "fps_tracker.h"
+#include "fps.h"
 #include "crypto/crypto.h"
 
 // Forward declaration for client crypto functions
@@ -325,14 +325,14 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // FPS tracking for received ASCII frames using reusable tracker utility
-  static fps_tracker_t fps_tracker = {0};
+  static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
 
   // Initialize FPS tracker on first frame
   if (!fps_tracker_initialized) {
     extern int g_max_fps; // From common.c
     int expected_fps = g_max_fps > 0 ? ((g_max_fps > 144) ? 144 : g_max_fps) : DEFAULT_MAX_FPS;
-    fps_tracker_init(&fps_tracker, expected_fps, "CLIENT");
+    fps_init(&fps_tracker, expected_fps, "ASCII_RX");
     fps_tracker_initialized = true;
   }
 
@@ -340,7 +340,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
 
   // Track this frame and detect lag
-  fps_tracker_frame(&fps_tracker, &current_time, "ASCII frame");
+  fps_frame(&fps_tracker, &current_time, "ASCII frame");
 
   // Extract header from the packet
   ascii_frame_packet_t header;

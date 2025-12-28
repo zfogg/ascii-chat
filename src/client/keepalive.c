@@ -65,6 +65,7 @@
 #include "main.h"
 #include "server.h"
 #include "crypto.h"
+#include "fps.h"
 
 #include "common.h"
 #include "platform/abstraction.h"
@@ -152,6 +153,14 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread started");
 #endif
 
+  // FPS tracking for keepalive thread (ping sent every 3 seconds = ~0.33 Hz)
+  static fps_t fps_tracker = {0};
+  static bool fps_tracker_initialized = false;
+  if (!fps_tracker_initialized) {
+    fps_init_with_interval(&fps_tracker, 1, "KEEPALIVE", 10000000ULL); // 1 "frame" per 3 seconds, report every 10s
+    fps_tracker_initialized = true;
+  }
+
   while (!should_exit() && !server_connection_is_lost()) {
     // Check if connection is still active before sending
     if (!server_connection_is_active()) {
@@ -176,6 +185,11 @@ static void *ping_thread_func(void *arg) {
       server_connection_lost();
       break;
     }
+
+    // Track ping for FPS reporting
+    struct timespec current_time;
+    (void)clock_gettime(CLOCK_MONOTONIC, &current_time);
+    fps_frame(&fps_tracker, &current_time, "ping sent");
 
     // Sleep with early wake capability for responsive shutdown
     // Break sleep into 1-second intervals to check shutdown flags
