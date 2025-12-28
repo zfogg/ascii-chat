@@ -95,7 +95,7 @@
 #include <stdint.h>
 #include <stdatomic.h>
 #include "buffer_pool.h"
-#include "network/packet_types.h"
+#include "network/packet.h"
 
 /**
  * @brief Single packet ready to send (header already in network byte order)

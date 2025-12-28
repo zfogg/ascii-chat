@@ -13,7 +13,7 @@
 #pragma once
 
 #include "platform/socket.h"
-#include "network/packet_types.h"
+#include "network/packet.h"
 #include "log/logging.h"
 #include <stdint.h>
 #include <stdbool.h>

@@ -14,8 +14,7 @@
 #include "tests/common.h"
 #include "network/av.h"
 #include "network/packet.h"
-#include "network/packet_types.h"
-#include "video/simd/common.h"
+#include "video/simd/common.h">
 
 void setup_server_quiet_logging(void);
 void restore_server_logging(void);
