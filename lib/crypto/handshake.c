@@ -1472,7 +1472,7 @@ asciichat_error_t crypto_handshake_server_complete(crypto_handshake_context_t *c
   }
 
   // Check if client disconnected (connection closed)
-  log_debug("DEBUG: packet_type=%d, payload_len=%zu, payload=%p", packet_type, payload_len, payload);
+  log_debug("packet_type=%d, payload_len=%zu, payload=%p", packet_type, payload_len, payload);
   if (payload_len == 0 && payload == NULL && packet_type == 0) {
     return SET_ERRNO(ERROR_NETWORK, "Client disconnected during authentication");
   }
