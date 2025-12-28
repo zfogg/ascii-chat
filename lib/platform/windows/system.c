@@ -9,9 +9,9 @@
 #include "../abstraction.h"
 #include "../internal.h"
 #include "../socket.h"
-#include "../../common.h"
-#include "../../asciichat_errno.h"
-#include "../../util/path.h"
+#include "common.h"
+#include "asciichat_errno.h"
+#include "util/path.h"
 #include "../symbols.h"
 
 #include <dbghelp.h>
