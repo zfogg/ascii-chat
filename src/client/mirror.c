@@ -83,7 +83,7 @@ static bool mirror_console_ctrl_handler(console_ctrl_event_t event) {
     return false;
   }
 
-  // THREAD SAFETY FIX: Use atomic instead of volatile for signal handler
+  // Use atomic instead of volatile for signal handler
   static _Atomic int ctrl_c_count = 0;
   int count = atomic_fetch_add(&ctrl_c_count, 1) + 1;
 
