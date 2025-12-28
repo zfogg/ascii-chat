@@ -33,6 +33,7 @@ set(UTIL_SRCS
     lib/util/aspect_ratio.c
     lib/util/time.c
     lib/util/levenshtein.c
+    lib/fps_tracker.c
 )
 
 # Add C23 compatibility wrappers for musl (provides __isoc23_* symbols)
@@ -87,6 +88,7 @@ set_source_files_properties(
 # =============================================================================
 set(PLATFORM_SRCS_COMMON
     lib/platform/abstraction.c
+    lib/platform/socket.c
     # NOTE: lib/platform/system.c is included by windows/system.c and posix/system.c
 )
 

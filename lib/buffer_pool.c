@@ -118,8 +118,7 @@ static bool buffer_pool_free_single(buffer_pool_t *pool, void *data) {
     return false; // Not from this pool
   }
 
-  // Find the corresponding node
-  // VALIDATION FIX: Verify pointer is aligned to buffer boundary before calculating index
+  // Find the corresponding node - verify pointer is aligned to buffer boundary before calculating index
   ptrdiff_t offset = buffer - pool_start;
   if (offset < 0 || (size_t)offset % pool->buffer_size != 0) {
     log_error("Misaligned buffer pointer: offset=%td, buffer_size=%zu", offset, pool->buffer_size);
@@ -170,8 +169,7 @@ data_buffer_pool_t *data_buffer_pool_create(void) {
     return NULL;
   }
 
-  // Create pools for different size classes
-  // BUGFIX: Check each sub-pool creation and clean up on failure
+  // Create pools for different size classes - check each sub-pool creation and clean up on failure
   pool->small_pool = buffer_pool_create_single(BUFFER_POOL_SMALL_SIZE, BUFFER_POOL_SMALL_COUNT);
   if (!pool->small_pool) {
     SAFE_FREE(pool);
