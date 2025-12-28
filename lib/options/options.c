@@ -5,10 +5,10 @@
  * @brief ⚙️ Command-line argument parser with validation and configuration merging
  */
 
-#include "../platform/system.h"
-#include "../asciichat_errno.h"
+#include "platform/system.h"
+#include "asciichat_errno.h"
 #ifdef _WIN32
-#include "../platform/windows/getopt.h"
+#include "platform/windows/getopt.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <io.h>
@@ -27,24 +27,24 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include "../video/ascii.h"
-#include "options.h"
-#include "../config.h"
-#include "../common.h"
-#include "../log/logging.h"
-#include "../video/webcam/webcam.h"
-#include "../audio/audio.h"
-#include "../util/ip.h"
-#include "../util/path.h"
-#include "../util/parsing.h"
-#include "../platform/system.h"
-#include "../platform/terminal.h"
-#include "../platform/password.h"
-#include "../platform/util.h"
+#include "video/ascii.h"
+#include "options/options.h"
+#include "options/config.h"
+#include "common.h"
+#include "log/logging.h"
+#include "video/webcam/webcam.h"
+#include "audio/audio.h"
+#include "util/ip.h"
+#include "util/path.h"
+#include "util/parsing.h"
+#include "platform/system.h"
+#include "platform/terminal.h"
+#include "platform/password.h"
+#include "platform/util.h"
 #include "version.h"
-#include "../crypto/crypto.h"
-#include "levenshtein.h"
-#include "validation.h"
+#include "crypto/crypto.h"
+#include "options/levenshtein.h"
+#include "options/validation.h"
 
 // Find the most similar option name to an unknown option
 // Returns the best matching option name, or NULL if no good match found
@@ -139,15 +139,21 @@ static bool validate_fps_opt(const char *value_str, int *out_fps) {
   return true;
 }
 
-// Validate webcam index (non-negative integer)
+// Validate webcam index using the common device index validator
 static bool validate_webcam_index(const char *value_str, unsigned short int *out_index) {
   if (!value_str || !out_index) {
     return false;
   }
 
-  int parsed_index = strtoint_safe(value_str);
-  if (parsed_index == INT_MIN || parsed_index < 0) {
-    (void)fprintf(stderr, "Invalid webcam index value '%s'. Webcam index must be a non-negative integer.\n", value_str);
+  char error_msg[256];
+  int parsed_index = validate_opt_device_index(value_str, error_msg, sizeof(error_msg));
+  if (parsed_index == INT_MIN) {
+    (void)fprintf(stderr, "Invalid webcam index: %s\n", error_msg);
+    return false;
+  }
+  // Webcam index doesn't support -1 (default), must be >= 0
+  if (parsed_index < 0) {
+    (void)fprintf(stderr, "Invalid webcam index '%s'. Webcam index must be a non-negative integer.\n", value_str);
     return false;
   }
 
@@ -1023,21 +1029,27 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       opt_audio_enabled = 1;
       break;
 
-    case 1028: // --microphone-index
-      opt_microphone_index = strtoint_safe(optarg);
-      if (opt_microphone_index < -1) {
-        safe_fprintf(stderr, "Error: Invalid microphone index '%s'\n", optarg);
+    case 1028: { // --microphone-index
+      char error_msg[256];
+      int index = validate_opt_device_index(optarg, error_msg, sizeof(error_msg));
+      if (index == INT_MIN) {
+        safe_fprintf(stderr, "Error: Invalid microphone index: %s\n", error_msg);
         return -1;
       }
+      opt_microphone_index = index;
       break;
+    }
 
-    case 1029: // --speakers-index
-      opt_speakers_index = strtoint_safe(optarg);
-      if (opt_speakers_index < -1) {
-        safe_fprintf(stderr, "Error: Invalid speakers index '%s'\n", optarg);
+    case 1029: { // --speakers-index
+      char error_msg[256];
+      int index = validate_opt_device_index(optarg, error_msg, sizeof(error_msg));
+      if (index == INT_MIN) {
+        safe_fprintf(stderr, "Error: Invalid speakers index: %s\n", error_msg);
         return -1;
       }
+      opt_speakers_index = index;
       break;
+    }
 
     case 1025: // --audio-analysis
       opt_audio_analysis_enabled = 1;
@@ -1121,10 +1133,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      // Use safe integer parsing with range validation (zstd levels 1-9 for real-time streaming)
-      long level;
-      if (parse_long(value_str, &level, 1, 9) != ASCIICHAT_OK) {
-        (void)fprintf(stderr, "Invalid compression level '%s': must be between 1 and 9\n", value_str);
+      char error_msg[256];
+      int level = validate_opt_compression_level(value_str, error_msg, sizeof(error_msg));
+      if (level < 0) {
+        (void)fprintf(stderr, "%s\n", error_msg);
         (void)fprintf(stderr, "  Level 1: Fastest compression (best for real-time)\n");
         (void)fprintf(stderr, "  Level 3: Balanced speed/ratio\n");
         (void)fprintf(stderr, "  Level 9: Best compression (for limited bandwidth)\n");
@@ -1145,24 +1157,15 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      // Check for special values: "off" or "auto"
-      if (strcmp(value_str, "off") == 0) {
-        opt_reconnect_attempts = 0;
-      } else if (strcmp(value_str, "auto") == 0) {
-        opt_reconnect_attempts = -1; // Unlimited reconnection
-      } else {
-        // Parse as number using safe integer parsing
-        long attempts;
-        if (parse_long(value_str, &attempts, 0, 999) != ASCIICHAT_OK) {
-          (void)fprintf(stderr, "Invalid reconnect value '%s': must be 'off', 'auto', or a number\n", value_str);
-          (void)fprintf(stderr, "Invalid reconnect attempts '%s': must be between 0 and 999\n", value_str);
-          (void)fprintf(stderr, "  Use 'off' for no reconnection\n");
-          (void)fprintf(stderr, "  Use 'auto' for unlimited reconnection\n");
-          return option_error_invalid();
-        }
-
-        opt_reconnect_attempts = (int)attempts;
+      char error_msg[256];
+      int attempts = validate_opt_reconnect(value_str, error_msg, sizeof(error_msg));
+      if (attempts == INT_MIN) {
+        (void)fprintf(stderr, "%s\n", error_msg);
+        (void)fprintf(stderr, "  Use 'off' for no reconnection\n");
+        (void)fprintf(stderr, "  Use 'auto' for unlimited reconnection\n");
+        return option_error_invalid();
       }
+      opt_reconnect_attempts = attempts;
       break;
     }
 
@@ -1176,14 +1179,14 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
       if (!value_str)
         return option_error_invalid();
 
-      // Use safe integer parsing with range validation (1-32 clients)
-      long max_clients;
-      if (parse_long(value_str, &max_clients, 1, 32) != ASCIICHAT_OK) {
-        (void)fprintf(stderr, "Invalid max-clients '%s': must be between 1 and 32\n", value_str);
+      char error_msg[256];
+      int max_clients = validate_opt_max_clients(value_str, error_msg, sizeof(error_msg));
+      if (max_clients < 0) {
+        (void)fprintf(stderr, "%s\n", error_msg);
         return option_error_invalid();
       }
 
-      opt_max_clients = (int)max_clients;
+      opt_max_clients = max_clients;
       break;
     }
 
@@ -1298,16 +1301,10 @@ asciichat_error_t options_init(int argc, char **argv, bool is_client) {
         memset(prompted_password, 0, sizeof(prompted_password));
       }
 
-      // Validate password length requirements
-      size_t password_len = strlen(value_str);
-      if (password_len < MIN_PASSWORD_LENGTH) {
-        (void)fprintf(stderr, "Error: Password too short (minimum %d characters, got %zu)\n", MIN_PASSWORD_LENGTH,
-                      password_len);
-        return option_error_invalid();
-      }
-      if (password_len > MAX_PASSWORD_LENGTH) {
-        (void)fprintf(stderr, "Error: Password too long (maximum %d characters, got %zu)\n", MAX_PASSWORD_LENGTH,
-                      password_len);
+      // Validate password using the common validator
+      char error_msg[256];
+      if (validate_opt_password(value_str, error_msg, sizeof(error_msg)) < 0) {
+        (void)fprintf(stderr, "Error: %s\n", error_msg);
         return option_error_invalid();
       }
 

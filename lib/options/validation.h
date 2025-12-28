@@ -23,7 +23,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "../common.h"
+#include "common.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -195,6 +195,75 @@ ASCIICHAT_API float validate_opt_float_non_negative(const char *value_str, char 
  * @ingroup options
  */
 ASCIICHAT_API int validate_opt_fps(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
+ * @brief Validate max clients value (1-32)
+ * @param value_str Max clients value as string
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed value on success, -1 on error
+ *
+ * Validates that the max clients is in the valid range of 1-32.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API int validate_opt_max_clients(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
+ * @brief Validate compression level (1-9)
+ * @param value_str Compression level as string
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed level on success, -1 on error
+ *
+ * Validates zstd compression level in range 1-9.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API int validate_opt_compression_level(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
+ * @brief Validate reconnect value
+ * @param value_str Reconnect value as string ("off", "auto", or 0-999)
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return 0 for off, -1 for auto, 1-999 for count, INT_MIN on error
+ *
+ * Valid values:
+ * - "off" or "0": No reconnection (returns 0)
+ * - "auto" or "-1": Unlimited reconnection (returns -1)
+ * - "1" to "999": Retry count (returns the count)
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API int validate_opt_reconnect(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
+ * @brief Validate device index (-1 for default, 0+ for specific device)
+ * @param value_str Device index as string
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return Parsed index on success, INT_MIN on error
+ *
+ * Used for microphone-index, speakers-index, webcam-index.
+ * -1 means use system default device.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API int validate_opt_device_index(const char *value_str, char *error_msg, size_t error_msg_size);
+
+/**
+ * @brief Validate password (8-256 characters)
+ * @param value_str Password string
+ * @param error_msg Buffer for error message (can be NULL)
+ * @param error_msg_size Size of error message buffer
+ * @return 0 on success, -1 on error
+ *
+ * Validates password length is 8-256 characters and contains no null bytes.
+ *
+ * @ingroup options
+ */
+ASCIICHAT_API int validate_opt_password(const char *value_str, char *error_msg, size_t error_msg_size);
 
 /** @} */
 

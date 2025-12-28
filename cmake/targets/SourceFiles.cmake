@@ -241,7 +241,7 @@ set(CORE_SRCS
     lib/options/options.c
     lib/options/validation.c
     lib/options/levenshtein.c
-    lib/config.c
+    lib/options/config.c
     lib/version.c
     # Add tomlc17 parser source
     ${CMAKE_SOURCE_DIR}/deps/tomlc17/src/tomlc17.c
