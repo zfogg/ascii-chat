@@ -283,6 +283,9 @@ static void *webcam_capture_thread_func(void *arg) {
   // FPS tracking for webcam capture thread
   static fps_t fps_tracker = {0};
   static bool fps_tracker_initialized = false;
+  static uint64_t capture_frame_count = 0;
+  static struct timespec last_capture_frame_time = {0, 0};
+  static const uint32_t expected_capture_fps = 144;
   if (!fps_tracker_initialized) {
     fps_init(&fps_tracker, 144, "WEBCAM_TX");
     fps_tracker_initialized = true;

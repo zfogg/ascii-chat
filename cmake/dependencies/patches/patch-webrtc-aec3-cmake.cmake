@@ -487,6 +487,25 @@ string(REPLACE
 
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_FINAL}")
 
-message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - disabled demo executable (musl incompatible)")
+# =============================================================================
+# Patch 15: Main CMakeLists.txt - Add -w to suppress all warnings
+# =============================================================================
+# Add -w compile option globally for all WebRTC compilation
+
+file(READ "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" CMAKE_CONTENT_WARNINGS)
+
+string(REPLACE
+    "set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)"
+    "set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+add_compile_options(-w)  # Suppress all warnings"
+    CMAKE_CONTENT_WARNINGS
+    "${CMAKE_CONTENT_WARNINGS}"
+)
+
+file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_WARNINGS}")
+
+message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - added -w to suppress all warnings")
 
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")
