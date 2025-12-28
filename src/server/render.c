@@ -1202,19 +1202,19 @@ int create_client_render_threads(client_info_t *client) {
   atomic_store(&client->audio_render_thread_running, true);
 
   // Create video rendering thread
-  log_debug("Creating video render thread for client %u", client->client_id);
-  if (ascii_thread_create(&client->video_render_thread, client_video_render_thread, client) != 0) {
-    log_error("Failed to create video render thread for client %u", client->client_id);
+  asciichat_error_t video_result = thread_create_or_fail(&client->video_render_thread, client_video_render_thread,
+                                                         client, "video_render", client->client_id);
+  if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
     atomic_store(&client->video_render_thread_running, false);
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
-  log_debug("Successfully created video render thread for client %u", client->client_id);
 
   // Create audio rendering thread
-  if (ascii_thread_create(&client->audio_render_thread, client_audio_render_thread, client) != 0) {
-    log_error("Failed to create audio render thread for client %u", client->client_id);
+  asciichat_error_t audio_result = thread_create_or_fail(&client->audio_render_thread, client_audio_render_thread,
+                                                         client, "audio_render", client->client_id);
+  if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
     atomic_store(&client->video_render_thread_running, false);
     // Reset audio flag since thread creation failed
@@ -1224,7 +1224,6 @@ int create_client_render_threads(client_info_t *client) {
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
-  log_debug("Created audio render thread for client %u", client->client_id);
 
 #ifdef DEBUG_THREADS
   log_debug("Created render threads for client %u", client->client_id);

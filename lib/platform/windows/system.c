@@ -263,7 +263,7 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler) {
  * @brief Get environment variable value
  * @param name Environment variable name
  * @return Variable value or NULL if not found
- * @note MEMORY FIX: Uses thread-local static buffer to avoid memory leaks.
+ * @note Uses thread-local static buffer to avoid memory leaks.
  *       The returned pointer is valid until the next call to platform_getenv
  *       from the same thread.
  */

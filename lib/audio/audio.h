@@ -392,6 +392,35 @@ void audio_free_device_list(audio_device_info_t *devices);
 /** @} */
 
 /* ============================================================================
+ * Protocol Helper Functions - Audio Format Conversion
+ * @{
+ */
+
+/**
+ * @brief Dequantize network audio samples from int32 to float
+ * @param samples_ptr Pointer to quantized samples (network byte order uint32_t values)
+ * @param total_samples Number of samples to convert
+ * @param out_samples Output buffer for float samples (must be pre-allocated)
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * Converts quantized audio samples from network byte order (uint32_t) to floating
+ * point format. Performs the following transformation:
+ * - Read uint32_t in network byte order
+ * - Convert to int32_t via ntohl()
+ * - Scale to float range [-1.0, 1.0] by dividing by 2147483647.0
+ *
+ * This helper eliminates code duplication between server and client handlers.
+ *
+ * @note out_samples must be pre-allocated by caller with space for total_samples floats
+ * @note samples_ptr should point to total_samples * sizeof(uint32_t) bytes
+ *
+ * @ingroup audio
+ */
+asciichat_error_t audio_dequantize_samples(const uint8_t *samples_ptr, uint32_t total_samples, float *out_samples);
+
+/** @} */
+
+/* ============================================================================
  * Audio Ring Buffer Management
  * @{
  */
