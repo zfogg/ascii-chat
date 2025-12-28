@@ -39,7 +39,7 @@ static struct log_context_t {
   _Atomic int file;                        /* File descriptor (atomic for safe access) */
   _Atomic int level;                       /* Log level as int for atomic ops */
   _Atomic bool initialized;                /* Initialization flag */
-  char filename[4096];                     /* Store filename (set once at init) */
+  char filename[LOG_MSG_BUFFER_SIZE];      /* Store filename (set once at init) */
   _Atomic size_t current_size;             /* Track current file size */
   _Atomic bool terminal_output_enabled;    /* Control stderr output to terminal */
   _Atomic bool level_manually_set;         /* Track if level was set manually */
@@ -333,7 +333,7 @@ static void rotate_log_locked(void) {
   atomic_store(&g_log.file, new_fd);
   atomic_store(&g_log.current_size, new_size);
 
-  char time_buf[32];
+  char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   get_current_time_formatted(time_buf);
 
   char log_msg[256];
@@ -695,7 +695,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
     va_list args;
     va_start(args, fmt);
-    char msg_buffer[1024];
+    char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
     vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
     va_end(args);
 
@@ -703,7 +703,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
 
     // Terminal output (check with atomic loads)
     if (atomic_load(&g_log.terminal_output_enabled) && !atomic_load(&g_log.terminal_locked)) {
-      char time_buf[32];
+      char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
       get_current_time_formatted(time_buf);
 
       FILE *output_stream;
@@ -740,11 +740,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   /* =========================================================================
    * FILE I/O PATH: Lock-free using atomic write() syscalls
    * ========================================================================= */
-  char time_buf[32];
+  char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   get_current_time_formatted(time_buf);
 
   // Format message for file output
-  char log_buffer[4096];
+  char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
 
@@ -798,7 +798,7 @@ void log_plain_msg(const char *fmt, ...) {
     return;
   }
 
-  char log_buffer[4096];
+  char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
@@ -837,7 +837,7 @@ void log_plain_msg(const char *fmt, ...) {
 
 // Helper for log_plain_stderr variants (lock-free)
 static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool add_newline) {
-  char log_buffer[4096];
+  char log_buffer[LOG_MSG_BUFFER_SIZE];
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
 
   if (msg_len <= 0 || msg_len >= (int)sizeof(log_buffer)) {
@@ -910,7 +910,7 @@ void log_file_msg(const char *fmt, ...) {
     return;
   }
 
-  char log_buffer[4096];
+  char log_buffer[LOG_MSG_BUFFER_SIZE];
   va_list args;
   va_start(args, fmt);
   int msg_len = vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
@@ -1009,7 +1009,16 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 
 /* Initialize terminal capabilities if not already done */
 static void init_terminal_capabilities(void) {
+  // Guard against recursion - this can be called indirectly via log_get_color_array()
+  // from detect_terminal_capabilities() which uses logging
+  if (g_terminal_caps_detecting) {
+    return;
+  }
+
   if (!g_terminal_caps_initialized) {
+    // Set detecting flag to prevent recursion
+    g_terminal_caps_detecting = true;
+
     // NEVER call detect_terminal_capabilities() from here - it causes infinite recursion
     // because detect_terminal_capabilities() uses log_debug() which calls log_get_color_array()
     // which calls init_terminal_capabilities() again.
@@ -1020,6 +1029,9 @@ static void init_terminal_capabilities(void) {
     g_terminal_caps.color_count = 16;
     g_terminal_caps.detection_reliable = false;
     g_terminal_caps_initialized = true;
+
+    // Clear detecting flag
+    g_terminal_caps_detecting = false;
   }
 }
 

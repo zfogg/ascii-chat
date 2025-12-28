@@ -24,10 +24,12 @@
 #pragma once
 
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 #include "platform/socket.h"
+#include "platform/system.h"
 struct crypto_context_t;
 
 /**
@@ -64,6 +66,46 @@ typedef enum {
 
 /** @brief Maximum number of buffered log entries */
 #define MAX_TERMINAL_BUFFER_ENTRIES 256
+
+/* ============================================================================
+ * Logging Buffer Size Constants
+ * ============================================================================
+ * Named constants for internal buffer sizes. Messages exceeding these sizes
+ * will be truncated with no error indication.
+ */
+
+/** @brief Maximum size of a single log message (including formatting) */
+#define LOG_MSG_BUFFER_SIZE 4096
+
+/** @brief Maximum size of a log message in mmap mode */
+#define LOG_MMAP_MSG_BUFFER_SIZE 1024
+
+/** @brief Maximum size of a log header (timestamp, level, file:line:func) */
+#define LOG_HEADER_BUFFER_SIZE 512
+
+/** @brief Maximum size of a timestamp string */
+#define LOG_TIMESTAMP_BUFFER_SIZE 32
+
+/* ============================================================================
+ * Compile-Time Log Level Stripping
+ * ============================================================================
+ * In release builds (NDEBUG defined), LOG_DEV and LOG_DEBUG calls are
+ * completely compiled out, eliminating any runtime overhead.
+ *
+ * Define LOG_COMPILE_LEVEL to override:
+ *   -DLOG_COMPILE_LEVEL=LOG_INFO  -> Strip DEV and DEBUG
+ *   -DLOG_COMPILE_LEVEL=LOG_WARN  -> Strip DEV, DEBUG, and INFO
+ *   -DLOG_COMPILE_LEVEL=LOG_DEV   -> Keep all log levels (debug builds)
+ */
+#ifndef LOG_COMPILE_LEVEL
+#ifdef NDEBUG
+/** @brief Compile-time minimum log level (release: INFO, strips DEV/DEBUG) */
+#define LOG_COMPILE_LEVEL LOG_INFO
+#else
+/** @brief Compile-time minimum log level (debug: DEV, keeps all) */
+#define LOG_COMPILE_LEVEL LOG_DEV
+#endif
+#endif
 
 /** @brief A single buffered log entry */
 typedef struct {
@@ -342,57 +384,103 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 /**
  * @name Logging Macros
  * @{
+ *
+ * @note Compile-time log level stripping: In release builds, log_dev() and log_debug()
+ *       are compiled out completely (no runtime overhead). Override with LOG_COMPILE_LEVEL.
  */
+
+/**
+ * @brief Log a DEV message (most verbose, development only)
+ * @param ... Format string and arguments (printf-style)
+ *
+ * @note DEV messages are stripped at compile-time in release builds.
+ * @note In debug builds, includes file/line/function.
+ * @ingroup logging
+ */
+#if LOG_COMPILE_LEVEL <= LOG_DEV
+#ifdef NDEBUG
+#define log_dev(...) log_msg(LOG_DEV, NULL, 0, NULL, __VA_ARGS__)
+#else
+#define log_dev(...) log_msg(LOG_DEV, __FILE__, __LINE__, __func__, __VA_ARGS__)
+#endif
+#else
+#define log_dev(...) ((void)0)
+#endif
 
 /**
  * @brief Log a DEBUG message
  * @param ... Format string and arguments (printf-style)
  *
- * @note In debug builds, includes file/line/function. In release builds, this information is omitted.
+ * @note DEBUG messages are stripped at compile-time in release builds.
+ * @note In debug builds, includes file/line/function.
  * @ingroup logging
  */
+#if LOG_COMPILE_LEVEL <= LOG_DEBUG
 #ifdef NDEBUG
 #define log_debug(...) log_msg(LOG_DEBUG, NULL, 0, NULL, __VA_ARGS__)
 #else
 #define log_debug(...) log_msg(LOG_DEBUG, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #endif
+#else
+#define log_debug(...) ((void)0)
+#endif
 
 /**
  * @brief Log an INFO message
  * @param ... Format string and arguments (printf-style)
+ *
+ * @note INFO messages can be stripped via LOG_COMPILE_LEVEL=LOG_WARN.
  * @ingroup logging
  */
+#if LOG_COMPILE_LEVEL <= LOG_INFO
 #ifdef NDEBUG
 #define log_info(...) log_msg(LOG_INFO, NULL, 0, NULL, __VA_ARGS__)
 #else
 #define log_info(...) log_msg(LOG_INFO, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #endif
+#else
+#define log_info(...) ((void)0)
+#endif
 
 /**
  * @brief Log a WARN message
  * @param ... Format string and arguments (printf-style)
+ *
+ * @note WARN messages can be stripped via LOG_COMPILE_LEVEL=LOG_ERROR.
  * @ingroup logging
  */
+#if LOG_COMPILE_LEVEL <= LOG_WARN
 #ifdef NDEBUG
 #define log_warn(...) log_msg(LOG_WARN, NULL, 0, NULL, __VA_ARGS__)
 #else
 #define log_warn(...) log_msg(LOG_WARN, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #endif
+#else
+#define log_warn(...) ((void)0)
+#endif
 
 /**
  * @brief Log an ERROR message
  * @param ... Format string and arguments (printf-style)
+ *
+ * @note ERROR messages can be stripped via LOG_COMPILE_LEVEL=LOG_FATAL.
  * @ingroup logging
  */
+#if LOG_COMPILE_LEVEL <= LOG_ERROR
 #ifdef NDEBUG
 #define log_error(...) log_msg(LOG_ERROR, NULL, 0, NULL, __VA_ARGS__)
 #else
 #define log_error(...) log_msg(LOG_ERROR, __FILE__, __LINE__, __func__, __VA_ARGS__)
 #endif
+#else
+#define log_error(...) ((void)0)
+#endif
 
 /**
  * @brief Log a FATAL message
  * @param ... Format string and arguments (printf-style)
+ *
+ * @note FATAL messages are never stripped (always compiled in).
  * @ingroup logging
  */
 #ifdef NDEBUG
@@ -432,7 +520,7 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 /** @} */
 
 /**
- * @brief Rate-limited logging macro
+ * @brief Rate-limited logging macro (thread-safe)
  *
  * Logs at most once per specified time interval. Useful for threads that have
  * an FPS and functions they call to prevent spammy logs.
@@ -442,37 +530,36 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @param fmt Format string (printf-style)
  * @param ... Format arguments
  *
- * @note Each call site maintains its own static timer, so different call sites
- *       can log independently.
+ * @note Each call site maintains its own static atomic timer, so different call sites
+ *       can log independently. Thread-safe via atomic compare-exchange.
+ * @note Uses platform_get_monotonic_time_us() for cross-platform time.
  *
  * @ingroup logging
  */
 #ifdef NDEBUG
 #define log_every(log_level, interval_us, fmt, ...)                                                                    \
   do {                                                                                                                 \
-    static uint64_t last_log_time = 0;                                                                                 \
-    uint64_t now_us = 0;                                                                                               \
-    struct timespec ts;                                                                                                \
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {                                                                    \
-      now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;                                      \
-    }                                                                                                                  \
-    if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
-      last_log_time = now_us;                                                                                          \
-      log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                     \
+    static _Atomic uint64_t _log_every_last_time = 0;                                                                  \
+    uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
+    uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                      \
+    if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
+      if (atomic_compare_exchange_weak_explicit(&_log_every_last_time, &_log_every_last, _log_every_now,               \
+                                                memory_order_relaxed, memory_order_relaxed)) {                         \
+        log_msg(LOG_##log_level, NULL, 0, NULL, fmt, ##__VA_ARGS__);                                                   \
+      }                                                                                                                \
     }                                                                                                                  \
   } while (0)
 #else
 #define log_every(log_level, interval_us, fmt, ...)                                                                    \
   do {                                                                                                                 \
-    static uint64_t last_log_time = 0;                                                                                 \
-    uint64_t now_us = 0;                                                                                               \
-    struct timespec ts;                                                                                                \
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0) {                                                                    \
-      now_us = (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;                                      \
-    }                                                                                                                  \
-    if (now_us - last_log_time >= (uint64_t)(interval_us)) {                                                           \
-      last_log_time = now_us;                                                                                          \
-      log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                      \
+    static _Atomic uint64_t _log_every_last_time = 0;                                                                  \
+    uint64_t _log_every_now = platform_get_monotonic_time_us();                                                        \
+    uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                      \
+    if (_log_every_now - _log_every_last >= (uint64_t)(interval_us)) {                                                 \
+      if (atomic_compare_exchange_weak_explicit(&_log_every_last_time, &_log_every_last, _log_every_now,               \
+                                                memory_order_relaxed, memory_order_relaxed)) {                         \
+        log_msg(LOG_##log_level, __FILE__, __LINE__, __func__, fmt, ##__VA_ARGS__);                                    \
+      }                                                                                                                \
     }                                                                                                                  \
   } while (0)
 #endif
