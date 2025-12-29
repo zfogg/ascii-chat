@@ -82,6 +82,21 @@ function(build_llvm_tool)
     set(_tool_depends "")
 
     # ==========================================================================
+    # Clean Incomplete Cache (optional)
+    # ==========================================================================
+    # If CLEAN_INCOMPLETE_CACHE is set, remove partial cache state that could
+    # cause ExternalProject to fail (e.g., executable exists but CMakeCache.txt
+    # is missing from partial GitHub Actions cache restore)
+    if(_TOOL_CLEAN_INCOMPLETE_CACHE)
+        # Check if directory exists but is incomplete (has exe but no CMakeCache.txt)
+        if(EXISTS "${_cache_dir}" AND EXISTS "${_cached_exe}" AND NOT EXISTS "${_cache_dir}/CMakeCache.txt")
+            message(STATUS "Cleaning incomplete ${_TOOL_NAME} cache (missing CMakeCache.txt): ${_cache_dir}")
+            file(REMOVE_RECURSE "${_cache_dir}")
+            file(MAKE_DIRECTORY "${_cache_dir}")
+        endif()
+    endif()
+
+    # ==========================================================================
     # Priority 1: Check for Pre-built Tool (MUST be checked FIRST)
     # ==========================================================================
     # Check this BEFORE clean cache logic, otherwise CLEAN_INCOMPLETE_CACHE
