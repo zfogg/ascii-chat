@@ -48,7 +48,7 @@ function(build_llvm_tool)
     # Parse arguments
     set(_options PASS_LLVM_CONFIG CLEAN_INCOMPLETE_CACHE ENABLE_LOG_OUTPUT ISOLATE_FROM_ENV)
     set(_one_value_args NAME SOURCE_DIR CACHE_DIR_NAME OUTPUT_EXECUTABLE PREBUILT_VAR CREATE_IMPORTED_TARGET)
-    set(_multi_value_args)
+    set(_multi_value_args EXTRA_CMAKE_ARGS)
     cmake_parse_arguments(_TOOL "${_options}" "${_one_value_args}" "${_multi_value_args}" ${ARGN})
 
     # Validate required arguments
@@ -158,6 +158,12 @@ function(build_llvm_tool)
             message(STATUS "${_TOOL_NAME} tool: Configuring with llvm-config: ${ASCIICHAT_LLVM_CONFIG_EXECUTABLE}")
         else()
             message(STATUS "${_TOOL_NAME} tool: Configuring without explicit llvm-config")
+        endif()
+
+        # Add extra cmake args if provided
+        if(_TOOL_EXTRA_CMAKE_ARGS)
+            list(APPEND _cmake_args ${_TOOL_EXTRA_CMAKE_ARGS})
+            message(STATUS "${_TOOL_NAME} tool: Extra cmake args: ${_TOOL_EXTRA_CMAKE_ARGS}")
         endif()
 
         # ------------------------------------------------------------------

@@ -590,10 +590,6 @@ else()
     if(BEARSSL_FOUND)
         target_include_directories(ascii-chat-shared PRIVATE ${BEARSSL_INCLUDE_DIRS})
     endif()
-    # Speex DSP for acoustic echo cancellation
-    if(SPEEXDSP_INCLUDE_DIRS)
-        target_include_directories(ascii-chat-shared PRIVATE ${SPEEXDSP_INCLUDE_DIRS})
-    endif()
 
     # Add dependency on libsodium build target if building from source
     if(DEFINED LIBSODIUM_BUILD_TARGET)
@@ -715,9 +711,6 @@ else()
         # Audio codec and processing
         if(OPUS_LIBRARIES)
             target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
-        endif()
-        if(SPEEXDSP_LIBRARIES)
-            target_link_libraries(ascii-chat-shared PRIVATE ${SPEEXDSP_LIBRARIES})
         endif()
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use force_load/whole-archive to export all mimalloc symbols from the shared library
@@ -928,7 +921,7 @@ endif()
 target_link_libraries(ascii-chat-static-lib INTERFACE ${ZSTD_LIBRARIES})
 
 # Audio dependencies (from ascii-chat-audio)
-target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} ${SPEEXDSP_LIBRARIES} webrtc_audio_processing)
+target_link_libraries(ascii-chat-static-lib INTERFACE ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
 if(APPLE)
     target_link_libraries(ascii-chat-static-lib INTERFACE
         ${COREAUDIO_FRAMEWORK}

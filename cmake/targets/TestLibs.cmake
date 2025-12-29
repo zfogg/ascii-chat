@@ -45,7 +45,7 @@ if(NOT BUILDING_OBJECT_LIBS)
 
     # Add musl dependency ordering for proper build sequencing
     if(USE_MUSL)
-        add_dependencies(test-static-lib portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl speexdsp-musl)
+        add_dependencies(test-static-lib portaudio-musl alsa-lib-musl libsodium-musl zstd-musl libexecinfo-musl opus-musl)
         # Link Alpine libc++ for musl builds (function defined in Musl.cmake)
         link_alpine_libcxx(test-static-lib)
     endif()
