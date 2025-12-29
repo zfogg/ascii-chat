@@ -473,13 +473,8 @@ int validate_opt_password(const char *value_str, char *error_msg, size_t error_m
     return -1;
   }
 
-  // Check for null bytes (would truncate password)
-  if (memchr(value_str, '\0', len) != NULL) {
-    if (error_msg) {
-      SAFE_SNPRINTF(error_msg, error_msg_size, "Password cannot contain null bytes.");
-    }
-    return -1;
-  }
+  // Note: No need to check for embedded null bytes - strlen() already stopped at the first null,
+  // so by definition there are no null bytes within [0, len).
 
   return 0;
 }

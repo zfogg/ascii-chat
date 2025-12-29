@@ -141,6 +141,9 @@ int platform_prompt_question(const char *prompt, char *buffer, size_t max_len, p
             }
             fflush(stderr);
             break;
+          default:
+            // Ignore unknown escape sequences
+            break;
           }
         }
         continue;
@@ -255,20 +258,13 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
       len--;
     }
 
-    // Empty response = use default
-    if (len == 0) {
-      result = default_yes;
-    }
-    // Check for yes
-    else if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0) {
+    // Check for explicit yes/no, otherwise use default
+    if (strcasecmp(response, "yes") == 0 || strcasecmp(response, "y") == 0) {
       result = true;
-    }
-    // Check for no
-    else if (strcasecmp(response, "no") == 0 || strcasecmp(response, "n") == 0) {
+    } else if (strcasecmp(response, "no") == 0 || strcasecmp(response, "n") == 0) {
       result = false;
-    }
-    // Invalid input - use default
-    else {
+    } else {
+      // Empty response or invalid input = use default
       result = default_yes;
     }
   }
