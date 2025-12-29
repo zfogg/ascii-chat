@@ -614,12 +614,9 @@ runs:
         export CPPFLAGS="-I${BREW_PREFIX}/include"
         export LDFLAGS="-L${BREW_PREFIX}/lib"
 
-        # NOTE: Do NOT add -lunwind here - macOS provides its own unwind library
-        # Linking to Homebrew's libunwind causes static linking check failures
-        # as the binary would depend on /opt/homebrew/opt/llvm/lib/unwind/libunwind.1.dylib
-        if [ -d "${BREW_PREFIX}/opt/llvm/lib/c++" ]; then
-          export LDFLAGS="$LDFLAGS -L${BREW_PREFIX}/opt/llvm/lib/c++"
-        fi
+        # NOTE: Do NOT add Homebrew LLVM lib paths to LDFLAGS
+        # This causes the main binary to link against Homebrew's libc++/libunwind
+        # instead of the system libraries, failing the release build validation
 
         map_pkg_to_formula() {
           case "$1" in
