@@ -141,11 +141,35 @@ if(APPLE)
         ${LLVM_INCLUDE_DIRS}
     )
 
+    # Get libc++ include path from LLVM root
+    get_filename_component(_llvm_bin_dir "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    get_filename_component(_llvm_root "${_llvm_bin_dir}/.." ABSOLUTE)
+    set(_libcxx_include_dir "${_llvm_root}/include/c++/v1")
+
+    # Check if libc++ include path exists
+    if(EXISTS "${_libcxx_include_dir}")
+        set(_libcxx_include_flag "-isystem ${_libcxx_include_dir}")
+        message(STATUS "Using libc++ include path: ${_libcxx_include_dir}")
+    else()
+        set(_libcxx_include_flag "")
+        message(STATUS "libc++ include path not found at ${_libcxx_include_dir}")
+    endif()
+
+    # Use --no-default-config to prevent clang from loading config files that may
+    # add -isysroot or -isystem flags with incorrect priority. CI runners often
+    # create config files at ~/.config/clang/<triple>.cfg that break libc++'s
+    # C header wrapper #include_next chains.
+    #
+    # Use -isystem for libc++ headers BEFORE -isysroot to ensure libc++'s C header
+    # wrappers (stddef.h, stdio.h) are found first, enabling their #include_next
+    # chains to work correctly.
     target_compile_options(ascii-instr-defer PRIVATE
+        --no-default-config
         -O2
         -fno-rtti
         -fexceptions
         -stdlib=libc++
+        ${_libcxx_include_flag}
         -isysroot
         ${_macos_sdk_path}
     )
