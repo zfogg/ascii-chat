@@ -623,7 +623,7 @@ else()
     # The group allows the linker to iterate until all symbols are resolved
     # Note: We embed --start-group/--end-group directly in target_link_libraries
     # because target_link_options places flags before libraries, not around them
-    if(CLANG_CPP_LIB)
+    if(_use_shared_clang)
         # Using bundled shared library (libclang-cpp.so) - link directly without grouping
         # Shared libraries don't need --start-group/--end-group
         message(STATUS "Linking against bundled shared Clang library (no grouping needed)")
