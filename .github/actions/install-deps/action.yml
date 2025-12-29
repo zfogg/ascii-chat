@@ -31,8 +31,8 @@ inputs:
 
 outputs:
   defer-tool-path:
-    description: 'Path to the defer tool executable (Windows only)'
-    value: ${{ steps.download-prebuilt.outputs.defer-tool-path }}
+    description: 'Path to the defer tool executable'
+    value: ${{ steps.download-prebuilt.outputs.defer-tool-path || steps.download-prebuilt-macos.outputs.defer-tool-path }}
   cmake-cache-key:
     description: 'Cache key for CMake dependencies (computed by cache-keys step)'
     value: ${{ steps.cache-keys.outputs.cmake-cache-key || steps.cache-keys-win.outputs.cmake-cache-key }}
@@ -709,6 +709,47 @@ runs:
         echo "Created clang config files for darwin${DARWIN_VERSION}"
         ls -la ~/.config/clang/
 
+
+    # =========================================================================
+    # Pre-built Tools Download (macOS)
+    # =========================================================================
+    # Download pre-built defer tool from build-tools release to work around
+    # LLVM 21 LibTooling bug with __has_include_next (see PR #173717)
+    # The universal binary contains both x86_64 and arm64 slices built with LLVM 22
+    - name: Download pre-built tools (macOS)
+      id: download-prebuilt-macos
+      if: inputs.os == 'macos' && inputs.github-token != ''
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        DEFER_TOOL_DIR="${PWD}/.deps-cache/defer-tool"
+        mkdir -p "$DEFER_TOOL_DIR"
+
+        # Check if build-tools release exists
+        if gh release view build-tools --json tagName &>/dev/null; then
+          echo "Found build-tools release, attempting to download pre-built defer tool..."
+
+          if gh release download build-tools --pattern "ascii-instr-defer.macOS.universal" --dir "$DEFER_TOOL_DIR"; then
+            DEFER_TOOL_PATH="${DEFER_TOOL_DIR}/ascii-instr-defer"
+            mv "${DEFER_TOOL_DIR}/ascii-instr-defer.macOS.universal" "$DEFER_TOOL_PATH"
+            chmod +x "$DEFER_TOOL_PATH"
+
+            echo "Downloaded pre-built defer tool (LLVM 22 universal binary)"
+            file "$DEFER_TOOL_PATH"
+            "$DEFER_TOOL_PATH" --version | head -2
+
+            echo "defer-tool-path=$DEFER_TOOL_PATH" >> $GITHUB_OUTPUT
+          else
+            echo "Failed to download pre-built defer tool, will build from source"
+            echo "defer-tool-path=" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "build-tools release not found, defer tool will be built from source"
+          echo "defer-tool-path=" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
 
     - name: Setup vcpkg (Windows)
       uses: lukka/run-vcpkg@v11
