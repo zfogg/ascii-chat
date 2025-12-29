@@ -188,6 +188,13 @@ typedef enum {
   ERROR_COMPRESSION = 103,   /**< Compression operation failed */
   ERROR_DECOMPRESSION = 104, /**< Decompression operation failed */
 
+  /* File system errors (105-109) */
+  ERROR_FILE_OPERATION = 105, /**< File or directory operation failed */
+  ERROR_FILE_NOT_FOUND = 106, /**< File or directory not found */
+
+  /* Process errors (110-119) */
+  ERROR_PROCESS_FAILED = 110, /**< Process execution or termination failed */
+
   /* Reserved (128-255) - Should not be used */
   /* 128+N typically means "terminated by signal N" on Unix systems */
 
@@ -296,6 +303,16 @@ static inline const char *asciichat_error_string(asciichat_error_t code) {
     return "Terminated by fatal signal";
   case ERROR_ASSERTION_FAILED:
     return "Assertion failed";
+  case ERROR_COMPRESSION:
+    return "Compression operation failed";
+  case ERROR_DECOMPRESSION:
+    return "Decompression operation failed";
+  case ERROR_FILE_OPERATION:
+    return "File or directory operation failed";
+  case ERROR_FILE_NOT_FOUND:
+    return "File or directory not found";
+  case ERROR_PROCESS_FAILED:
+    return "Process execution or termination failed";
   default:
     return "Unknown error";
   }
