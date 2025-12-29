@@ -327,7 +327,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
 
       // Try to create this directory level using platform abstraction
       asciichat_error_t mkdir_result = platform_mkdir(tmp, DIR_PERM_PRIVATE);
-      if (mkdir_result != ASCIICHAT_OK && mkdir_result != ERROR_FILE_OPERATION) {
+      if (mkdir_result != ASCIICHAT_OK) {
         return mkdir_result;
       }
 
@@ -337,7 +337,7 @@ static asciichat_error_t mkdir_recursive(const char *path) {
 
   // Create the final directory using platform abstraction
   asciichat_error_t mkdir_result = platform_mkdir(tmp, DIR_PERM_PRIVATE);
-  if (mkdir_result != ASCIICHAT_OK && mkdir_result != ERROR_FILE_OPERATION) {
+  if (mkdir_result != ASCIICHAT_OK) {
     return mkdir_result;
   }
 
