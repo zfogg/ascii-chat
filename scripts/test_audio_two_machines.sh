@@ -10,39 +10,30 @@ PORT=27228
 HOST_ONE="workbook-pro"
 HOST_ONE_IP="100.113.140.51"  # Tailscale IP for cross-machine connectivity
 HOST_TWO="manjaro-twopal"
+HOST_TWO_IP="100.89.125.127"  # Tailscale IP for HOST_TWO
 DURATION=30
+
+# Paths are CONSTANT regardless of which host we run from
+REPO_ONE="/Users/zfogg/src/github.com/zfogg/ascii-chat"  # Path on HOST_ONE (macOS)
+REPO_TWO="/home/zfogg/src/github.com/zfogg/ascii-chat"   # Path on HOST_TWO (Linux)
+BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
+BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
 
 # Detect which host we're on
 CURRENT_HOST=$(hostname)
 shopt -s nocasematch
 if [[ "$CURRENT_HOST" == "WorkBook-Pro" ]] || [[ "$CURRENT_HOST" == "$HOST_ONE" ]]; then
   LOCAL_IS_ONE=1
-  REPO_ONE="/Users/zfogg/src/github.com/zfogg/ascii-chat"
-  REPO_TWO="/home/zfogg/src/github.com/zfogg/ascii-chat"
-  LOCAL_REPO="$REPO_ONE"
-  BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
-  BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
-  LOCAL_BIN="$BIN_ONE"
-  REMOTE_HOST="$HOST_TWO"
-  REMOTE_REPO="$REPO_TWO"
-  REMOTE_BIN="$BIN_TWO"
   echo "Running on HOST_ONE ($CURRENT_HOST) - local commands here, SSH to $HOST_TWO"
 elif [[ "$CURRENT_HOST" == "manjaro-twopal" ]] || [[ "$CURRENT_HOST" == "$HOST_TWO" ]]; then
   LOCAL_IS_ONE=0
-  REPO_ONE="/home/zfogg/src/github.com/zfogg/ascii-chat"
-  REPO_TWO="/Users/zfogg/src/github.com/zfogg/ascii-chat"
-  LOCAL_REPO="$REPO_TWO"
-  BIN_ONE="$REPO_ONE/build/bin/ascii-chat"
-  BIN_TWO="$REPO_TWO/build/bin/ascii-chat"
-  LOCAL_BIN="$BIN_TWO"
-  REMOTE_HOST="$HOST_ONE"
-  REMOTE_REPO="$REPO_ONE"
-  REMOTE_BIN="$BIN_ONE"
   echo "Running on HOST_TWO ($CURRENT_HOST) - local commands here, SSH to $HOST_ONE"
 else
-  echo "Unknown host: $CURRENT_HOST - defaulting to SSH for both"
-  LOCAL_IS_ONE=-1
+  echo "ERROR: Unknown host: $CURRENT_HOST"
+  echo "This script only works on $HOST_ONE or $HOST_TWO"
+  exit 1
 fi
+shopt -u nocasematch
 
 
 echo ""
@@ -75,7 +66,7 @@ run_bg_on_one() {
   if [[ $LOCAL_IS_ONE -eq 1 ]]; then
     (cd $REPO_ONE && nohup bash -c "$1" > /dev/null 2>&1 &)
   else
-    ssh -f $HOST_ONE "cd $REPO_ONE && nohup bash -c '$1' > /dev/null 2>&1 &"
+    ssh -f $HOST_ONE "cd $REPO_ONE && nohup bash -c '$1' > /dev/null 2>&1"
   fi
 }
 
@@ -83,17 +74,17 @@ run_bg_on_two() {
   if [[ $LOCAL_IS_ONE -eq 0 ]]; then
     (cd $REPO_TWO && nohup bash -c "$1" > /dev/null 2>&1 &)
   else
-    ssh -f $HOST_TWO "cd $REPO_TWO && nohup bash -c '$1' > /dev/null 2>&1 &"
+    ssh -f $HOST_TWO "cd $REPO_TWO && nohup bash -c '$1' > /dev/null 2>&1"
   fi
 }
 
 # Clean up old logs on both hosts
-echo "[0/6] Cleaning up old logs..."
+echo "[1/8] Cleaning up old logs..."
 run_on_one "rm -f /tmp/server_debug.log /tmp/client1_debug.log /tmp/audio_*.wav /tmp/aec3_*.wav" 2>/dev/null || true
 run_on_two "rm -f /tmp/client2_debug.log /tmp/audio_*.wav /tmp/aec3_*.wav" 2>/dev/null || true
 
 # Kill any existing processes on both hosts
-echo "[1/6] Killing existing ascii-chat processes..."
+echo "[2/8] Killing existing ascii-chat processes..."
 run_on_one "pkill -x ascii-chat" 2>/dev/null || true
 run_on_two "pkill -x ascii-chat" 2>/dev/null || true
 sleep 1
@@ -122,7 +113,7 @@ safe_git_pull() {
 }
 
 # Pull latest code on remote machine only (local already has latest)
-echo "[2/6] Pulling latest code on remote machine..."
+echo "[3/8] Pulling latest code on remote machine..."
 if [[ $LOCAL_IS_ONE -eq 1 ]]; then
   run_on_two "$(safe_git_pull $REPO_TWO)"
 else
@@ -130,46 +121,30 @@ else
 fi
 
 # Rebuild on HOST_ONE
-echo "[3/6] Rebuilding on $HOST_ONE..."
+echo "[4/8] Rebuilding on $HOST_ONE..."
 run_on_one "cmake --build build --target ascii-chat 2>&1 | tail -5" || {
   echo "WARNING: Build failed on $HOST_ONE, continuing with existing binary"
 }
 
 # Rebuild on HOST_TWO
-echo "[4/6] Rebuilding on $HOST_TWO (Dev build)..."
+echo "[5/8] Rebuilding on $HOST_TWO (Dev build)..."
 run_on_two "cmake -B build -DCMAKE_BUILD_TYPE=Dev && cmake --build build --target ascii-chat 2>&1 | tail -10" || {
   echo "WARNING: Build failed on $HOST_TWO, continuing with existing binary"
 }
 
 # Start server on HOST_ONE
-echo "[5/8] Starting server on $HOST_ONE:$PORT..."
-run_bg_on_one "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 \
-  timeout $((DURATION + 10)) $BIN_ONE server \
-  --address 0.0.0.0 --port $PORT \
-  --log-file /tmp/server_debug.log"
+echo "[6/8] Starting server on $HOST_ONE:$PORT..."
+run_bg_on_one "ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 timeout $((DURATION + 10)) $BIN_ONE server --address 0.0.0.0 --port $PORT --log-file /tmp/server_debug.log"
 sleep 2  # Wait for server to start
 
 # Start client 1 on HOST_ONE
-echo "[6/8] Starting client 1 on $HOST_ONE with audio analysis..."
-run_bg_on_one "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 \
-  COLUMNS=40 LINES=12 \
-  timeout $((DURATION + 5)) $BIN_ONE client \
-  --address 127.0.0.1 --port $PORT \
-  --audio --audio-analysis \
-  --snapshot --snapshot-delay $DURATION \
-  --log-file /tmp/client1_debug.log"
+echo "[7/8] Starting client 1 on $HOST_ONE with audio analysis..."
+run_bg_on_one "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_ONE client localhost:$PORT --test-pattern --audio --audio-analysis --snapshot --snapshot-delay $DURATION --log-file /tmp/client1_debug.log"
 sleep 1  # Give client 1 time to connect
 
 # Start client 2 on HOST_TWO
-echo "[7/8] Starting client 2 on $HOST_TWO..."
-run_bg_on_two "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 \
-  COLUMNS=40 LINES=12 \
-  timeout $((DURATION + 5)) $BIN_TWO client \
-  --address $HOST_ONE_IP --port $PORT \
-  --webcam-index 2 --microphone-index 9 \
-  --audio --audio-analysis \
-  --snapshot --snapshot-delay $DURATION \
-  --log-file /tmp/client2_debug.log"
+echo "[8/8] Starting client 2 on $HOST_TWO..."
+run_bg_on_two "ASCIICHAT_DUMP_AUDIO=1 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 COLUMNS=40 LINES=12 timeout $((DURATION + 5)) $BIN_TWO client $HOST_ONE:$PORT --test-pattern --microphone-index 9 --audio --audio-analysis --snapshot --snapshot-delay $DURATION --log-file /tmp/client2_debug.log"
 
 echo ""
 echo "Running test for $DURATION seconds..."
@@ -183,7 +158,7 @@ echo ""
 sleep $((DURATION + 5))
 
 # Clean up any remaining processes on both hosts
-echo "[8/8] Cleaning up processes..."
+echo "Cleaning up processes..."
 run_on_one "pkill -9 -x ascii-chat" 2>/dev/null || true
 run_on_two "pkill -9 -x ascii-chat" 2>/dev/null || true
 sleep 1
