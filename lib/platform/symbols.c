@@ -543,10 +543,15 @@ static char *parse_llvm_symbolizer_result(FILE *fp, void *addr) {
     *last_colon = '\0';
   }
 
-  // Extract relative path
-  const char *rel_path = extract_project_relative_path(file_location);
+  // Extract relative path and COPY IT IMMEDIATELY
+  // IMPORTANT: extract_project_relative_path uses a static buffer internally.
+  // SAFE_MALLOC's debug memory tracking also calls extract_project_relative_path,
+  // which would overwrite the static buffer. So we must copy before allocating.
+  const char *rel_path_tmp = extract_project_relative_path(file_location);
+  char rel_path[512];
+  SAFE_STRNCPY(rel_path, rel_path_tmp, sizeof(rel_path));
 
-  // Allocate result buffer
+  // Allocate result buffer (AFTER copying rel_path to local storage)
   char *result = SAFE_MALLOC(1024, char *);
   if (!result) {
     return NULL;
@@ -850,10 +855,15 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     func_name[strcspn(func_name, "\n")] = '\0';
     file_line[strcspn(file_line, "\n")] = '\0';
 
-    // Extract relative path
-    const char *rel_path = extract_project_relative_path(file_line);
+    // Extract relative path and COPY IT IMMEDIATELY
+    // IMPORTANT: extract_project_relative_path uses a static buffer internally.
+    // SAFE_MALLOC's debug memory tracking also calls extract_project_relative_path,
+    // which would overwrite the static buffer. So we must copy before allocating.
+    const char *rel_path_tmp = extract_project_relative_path(file_line);
+    char rel_path[512];
+    SAFE_STRNCPY(rel_path, rel_path_tmp, sizeof(rel_path));
 
-    // Allocate result buffer
+    // Allocate result buffer (AFTER copying rel_path to local storage)
     result[i] = SAFE_MALLOC(1024, char *);
 
     // Format symbol
