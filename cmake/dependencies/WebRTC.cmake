@@ -107,8 +107,9 @@ if(NOT webrtc_aec3_POPULATED)
             message(STATUS "WebRTC will be built for musl target: ${WEBRTC_MUSL_TARGET}")
         endif()
 
-        # On macOS with Homebrew LLVM, fix -resource-dir to point to actual Cellar path
-        # We need to preserve existing CMAKE_CXX_FLAGS while adding the resource-dir
+        # On macOS with Homebrew LLVM, set explicit flags for WebRTC build
+        # We DON'T inherit CMAKE_C/CXX_FLAGS because they may contain -resource-dir
+        # from clang config files, and we need to set it to the correct Cellar path
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
             get_filename_component(LLVM_ROOT "${LLVM_BIN_DIR}/.." ABSOLUTE)
@@ -118,16 +119,31 @@ if(NOT webrtc_aec3_POPULATED)
                 list(LENGTH CLANG_VERSION_DIRS CLANG_VERSION_COUNT)
                 if(CLANG_VERSION_COUNT GREATER 0)
                     list(GET CLANG_VERSION_DIRS 0 CLANG_VERSION_DIR)
-                    # Append to existing flags instead of replacing them
-                    set(_webrtc_c_flags "${CMAKE_C_FLAGS} -resource-dir ${CLANG_VERSION_DIR} -w")
-                    set(_webrtc_cxx_flags "${CMAKE_CXX_FLAGS} -resource-dir ${CLANG_VERSION_DIR} -w")
-                    # Remove the old CMAKE_*_FLAGS entries and add the new combined ones
+                    # Set fresh flags - don't inherit from parent to avoid duplicate -resource-dir
+                    # CRITICAL: Must explicitly set -stdlib=libc++ for macOS builds
+                    # The clang config files (~/.config/clang/*.cfg) may not be picked up by
+                    # the WebRTC sub-build, so we need to pass this explicitly
+                    set(_webrtc_c_flags "-resource-dir ${CLANG_VERSION_DIR} -w")
+                    set(_webrtc_cxx_flags "-resource-dir ${CLANG_VERSION_DIR} -stdlib=libc++ -w")
+                    # Remove the old CMAKE_*_FLAGS entries and add our clean ones
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
                     list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
                     list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
                     list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_c_flags}")
                     message(STATUS "Fixed -resource-dir for WebRTC: ${CLANG_VERSION_DIR}")
+                else()
+                    # No version directories found, just add -stdlib=libc++
+                    set(_webrtc_cxx_flags "-stdlib=libc++ -w")
+                    list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
+                    list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
+                    message(STATUS "WebRTC: Added -stdlib=libc++ (no clang version dir found)")
                 endif()
+            else()
+                # Clang resource directory doesn't exist, just add -stdlib=libc++
+                set(_webrtc_cxx_flags "-stdlib=libc++ -w")
+                list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
+                message(STATUS "WebRTC: Added -stdlib=libc++ (clang resource dir not found)")
             endif()
         endif()
 
