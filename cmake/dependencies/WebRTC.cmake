@@ -200,6 +200,22 @@ if(NOT webrtc_aec3_POPULATED)
             # Add WIN32_LEAN_AND_MEAN to prevent winsock.h/winsock2.h conflicts
             set(_webrtc_win_c_flags "-DWIN32_LEAN_AND_MEAN")
             set(_webrtc_win_cxx_flags "-DWIN32_LEAN_AND_MEAN")
+
+            # On Windows ARM64, explicitly set the processor so Abseil doesn't try
+            # to use x86 SIMD intrinsics (-maes, -msse4.1) which fail on ARM64
+            # NEON SIMD is still supported and enabled for ARM64
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_SYSTEM_PROCESSOR=ARM64")
+                # Disable x86 SIMD flags - filter out any previously added, then set OFF
+                list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DENABLE_SIMD_SSE2=")
+                list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DENABLE_SIMD_SSSE3=")
+                list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DENABLE_SIMD_AVX2=")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_SSE2=OFF")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_SSSE3=OFF")
+                list(APPEND WEBRTC_CMAKE_ARGS "-DENABLE_SIMD_AVX2=OFF")
+                message(STATUS "WebRTC Windows ARM64 build: disabling x86 SIMD, NEON still enabled")
+            endif()
+
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_C_FLAGS=")
             list(FILTER WEBRTC_CMAKE_ARGS EXCLUDE REGEX "^-DCMAKE_CXX_FLAGS=")
             list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_win_c_flags}")
