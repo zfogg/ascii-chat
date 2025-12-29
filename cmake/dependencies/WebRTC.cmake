@@ -83,6 +83,26 @@ if(NOT webrtc_aec3_POPULATED)
             -DENABLE_SIMD_SVE=${ENABLE_SIMD_SVE}
         )
 
+        # For musl builds, add target triple and disable FORTIFY_SOURCE
+        # WebRTC must be built with the same target as the main binary to avoid glibc dependencies
+        if(USE_MUSL)
+            # Determine musl target architecture
+            if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+                set(MUSL_ARCH "aarch64")
+            elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "armv7")
+                set(MUSL_ARCH "armv7")
+            else()
+                set(MUSL_ARCH "x86_64")
+            endif()
+            set(WEBRTC_MUSL_TARGET "${MUSL_ARCH}-linux-musl")
+
+            # Append musl-specific flags to CMAKE_C_FLAGS and CMAKE_CXX_FLAGS
+            # These ensure WebRTC is compiled for musl, not glibc
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=-target ${WEBRTC_MUSL_TARGET} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 ${CMAKE_C_FLAGS}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=-target ${WEBRTC_MUSL_TARGET} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 ${CMAKE_CXX_FLAGS}")
+            message(STATUS "WebRTC will be built for musl target: ${WEBRTC_MUSL_TARGET}")
+        endif()
+
         # On macOS with Homebrew LLVM, fix -resource-dir to point to actual Cellar path
         if(APPLE AND CMAKE_CXX_COMPILER MATCHES "clang")
             get_filename_component(LLVM_BIN_DIR "${CMAKE_CXX_COMPILER}" DIRECTORY)
