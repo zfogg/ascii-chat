@@ -176,23 +176,23 @@ typedef struct {
 typedef struct audio_ring_buffer {
   /** @brief Audio sample data buffer */
   float data[AUDIO_RING_BUFFER_SIZE];
-  /** @brief Write index (producer position) */
-  volatile int write_index;
-  /** @brief Read index (consumer position) */
-  volatile int read_index;
+  /** @brief Write index (producer position) - LOCK-FREE with atomic operations */
+  atomic_uint write_index;
+  /** @brief Read index (consumer position) - LOCK-FREE with atomic operations */
+  atomic_uint read_index;
   /** @brief True after initial jitter buffer fill */
-  volatile bool jitter_buffer_filled;
+  atomic_bool jitter_buffer_filled;
   /** @brief Samples remaining in crossfade (0 = no crossfade active) */
-  volatile int crossfade_samples_remaining;
+  atomic_int crossfade_samples_remaining;
   /** @brief True if we're fading in (recovering from underrun) */
-  volatile bool crossfade_fade_in;
-  /** @brief Last sample value for smooth fade-out during underrun */
-  volatile float last_sample;
+  atomic_bool crossfade_fade_in;
+  /** @brief Last sample value for smooth fade-out during underrun - NOT atomic (only written by reader) */
+  float last_sample;
   /** @brief Count of underrun events for diagnostics */
-  volatile uint32_t underrun_count;
+  atomic_uint underrun_count;
   /** @brief Whether jitter buffering is enabled (false for capture, true for playback) */
-  volatile bool jitter_buffer_enabled;
-  /** @brief Mutex for thread-safe operations */
+  bool jitter_buffer_enabled;
+  /** @brief Mutex for SLOW PATH only (clear/destroy operations, not regular read/write) */
   mutex_t mutex;
 } audio_ring_buffer_t;
 
