@@ -748,10 +748,18 @@ __attribute__((no_sanitize("integer"))) int remove_client(uint32_t client_id) {
     if (join_result != 0) {
       log_warn("Failed to join send thread for client %u: %d", client_id, join_result);
     }
+    // Clear thread handle after join (regardless of success/failure)
+    ascii_thread_init(&target_client->send_thread);
   }
 
   // Receive thread is already joined by main.c
-  log_debug("Receive thread for client %u was already joined by main thread", client_id);
+  // Defensively clear handle here in case main.c didn't clear it properly
+  if (ascii_thread_is_initialized(&target_client->receive_thread)) {
+    log_debug("Receive thread for client %u still initialized - clearing handle", client_id);
+    ascii_thread_init(&target_client->receive_thread);
+  } else {
+    log_debug("Receive thread for client %u was already joined by main thread", client_id);
+  }
 
   // Stop render threads (this joins them)
   stop_client_render_threads(target_client);
