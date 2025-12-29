@@ -14,7 +14,8 @@
 // The paths include the test name to ensure isolation
 
 static void cleanup_files(const char *log_path) {
-  if (log_path) unlink(log_path);
+  if (log_path)
+    unlink(log_path);
 }
 
 // Test initialization and destruction
