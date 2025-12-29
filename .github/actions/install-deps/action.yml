@@ -784,12 +784,12 @@ runs:
               $deferToolSrcPath = Join-Path $deferToolDir "ascii-instr-defer.Windows.amd64.exe"
               $deferToolDstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
               Move-Item -Path $deferToolSrcPath -Destination $deferToolDstPath -Force
-              gh release download build-tools --pattern "zlib1.amd64.dll" --dir $deferToolDir
-              $zlibSrcPath = Join-Path $deferToolDir "zlib1.amd64.dll"
+              gh release download build-tools --pattern "zlib1.Windows.amd64.dll" --dir $deferToolDir
+              $zlibSrcPath = Join-Path $deferToolDir "zlib1.Windows.amd64.dll"
               $zlibDstPath = Join-Path $deferToolDir "zlib1.dll"
               Move-Item -Path $zlibSrcPath -Destination $zlibDstPath -Force
-              gh release download build-tools --pattern "zstd.amd64.dll" --dir $deferToolDir
-              $zstdSrcPath = Join-Path $deferToolDir "zstd.amd64.dll"
+              gh release download build-tools --pattern "zstd.Windows.amd64.dll" --dir $deferToolDir
+              $zstdSrcPath = Join-Path $deferToolDir "zstd.Windows.amd64.dll"
               $zstdDstPath = Join-Path $deferToolDir "zstd.dll"
               Move-Item -Path $zstdSrcPath -Destination $zstdDstPath -Force
               Write-Host "Downloaded defer tool to: $dstPath"
