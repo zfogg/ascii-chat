@@ -841,6 +841,13 @@ After installation, run:
             set(_PACKAGE_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
         endif()
 
+        # Set CPack variables to use normalized architecture
+        # CPACK_SYSTEM_NAME: Used by some generators instead of CMAKE_SYSTEM_NAME
+        # CPACK_PACKAGE_ARCHITECTURE: Used by generators that don't have format-specific variables
+        # This ensures DEB/RPM/etc all use "amd64" instead of "x86_64"
+        set(CPACK_SYSTEM_NAME "${_PACKAGE_OS}")
+        set(CPACK_PACKAGE_ARCHITECTURE "${_PACKAGE_ARCH}")
+
         set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${PROJECT_VERSION}-${_PACKAGE_OS}-${_PACKAGE_ARCH}")
 
         # Set CPack project config file for per-generator settings (e.g., install prefix)
