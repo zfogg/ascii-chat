@@ -323,34 +323,39 @@ function(configure_llvm_post_project)
 
     # Add library paths and linking for the detected LLVM installation
     # (determined via LLVM_ROOT_PREFIX from llvm-config)
-    set(DETECTED_LLVM_LINK_FLAGS "")
+    # NOTE: Skip for Release builds - we want to use system libc++/libunwind for portability
+    if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+        set(DETECTED_LLVM_LINK_FLAGS "")
 
-    # Check library layout: Homebrew uses subdirectories, git-built and others use flat lib/
-    if(EXISTS "${LLVM_ROOT_PREFIX}/lib/unwind" AND EXISTS "${LLVM_ROOT_PREFIX}/lib/c++")
-        # Homebrew layout: lib/unwind/ and lib/c++/
-        set(DETECTED_LLVM_LINK_DIRS "-L${LLVM_ROOT_PREFIX}/lib/unwind -L${LLVM_ROOT_PREFIX}/lib/c++")
-        message(STATUS "${BoldGreen}Detected${ColorReset} Homebrew library layout (lib/unwind + lib/c++)")
-    elseif(EXISTS "${LLVM_ROOT_PREFIX}/lib/libunwind.a" OR EXISTS "${LLVM_ROOT_PREFIX}/lib/libunwind.dylib")
-        # Git-built or other layout: lib/ (flat)
-        set(DETECTED_LLVM_LINK_DIRS "-L${LLVM_ROOT_PREFIX}/lib")
-        message(STATUS "${BoldGreen}Detected${ColorReset} flat library layout (lib/)")
-    else()
-        message(WARNING "Could not detect LLVM library layout, defaulting to ${LLVM_ROOT_PREFIX}/lib")
-        set(DETECTED_LLVM_LINK_DIRS "-L${LLVM_ROOT_PREFIX}/lib")
-    endif()
-
-    set(DETECTED_LLVM_LINK_FLAGS "${DETECTED_LLVM_LINK_DIRS} -lunwind")
-
-    if(DETECTED_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
-        if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib")
-            set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${DETECTED_LLVM_LINK_FLAGS}" CACHE STRING "Linker flags" FORCE)
-            set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${DETECTED_LLVM_LINK_FLAGS}" CACHE STRING "Shared linker flags" FORCE)
-            message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths and -lunwind")
+        # Check library layout: Homebrew uses subdirectories, git-built and others use flat lib/
+        if(EXISTS "${LLVM_ROOT_PREFIX}/lib/unwind" AND EXISTS "${LLVM_ROOT_PREFIX}/lib/c++")
+            # Homebrew layout: lib/unwind/ and lib/c++/
+            set(DETECTED_LLVM_LINK_DIRS "-L${LLVM_ROOT_PREFIX}/lib/unwind -L${LLVM_ROOT_PREFIX}/lib/c++")
+            message(STATUS "${BoldGreen}Detected${ColorReset} Homebrew library layout (lib/unwind + lib/c++)")
+        elseif(EXISTS "${LLVM_ROOT_PREFIX}/lib/libunwind.a" OR EXISTS "${LLVM_ROOT_PREFIX}/lib/libunwind.dylib")
+            # Git-built or other layout: lib/ (flat)
+            set(DETECTED_LLVM_LINK_DIRS "-L${LLVM_ROOT_PREFIX}/lib")
+            message(STATUS "${BoldGreen}Detected${ColorReset} flat library layout (lib/)")
         else()
-            message(STATUS "${BoldYellow}${LLVM_SOURCE_NAME}${ColorReset} library paths already present in linker flags")
+            message(WARNING "Could not detect LLVM library layout, defaulting to ${LLVM_ROOT_PREFIX}/lib")
+            set(DETECTED_LLVM_LINK_DIRS "-L${LLVM_ROOT_PREFIX}/lib")
+        endif()
+
+        set(DETECTED_LLVM_LINK_FLAGS "${DETECTED_LLVM_LINK_DIRS} -lunwind")
+
+        if(DETECTED_LLVM_LINK_FLAGS AND (NOT DEFINED ENV{LDFLAGS} OR NOT "$ENV{LDFLAGS}" MATCHES "-L.*llvm"))
+            if(NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-L.*llvm/lib")
+                set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${DETECTED_LLVM_LINK_FLAGS}" CACHE STRING "Linker flags" FORCE)
+                set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${DETECTED_LLVM_LINK_FLAGS}" CACHE STRING "Shared linker flags" FORCE)
+                message(STATUS "${BoldGreen}Added${ColorReset} ${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths and -lunwind")
+            else()
+                message(STATUS "${BoldYellow}${LLVM_SOURCE_NAME}${ColorReset} library paths already present in linker flags")
+            endif()
+        else()
+            message(STATUS "${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths ${BoldGreen}already present${ColorReset} in LDFLAGS environment variable")
         endif()
     else()
-        message(STATUS "${BoldBlue}${LLVM_SOURCE_NAME}${ColorReset} library paths ${BoldGreen}already present${ColorReset} in LDFLAGS environment variable")
+        message(STATUS "${BoldYellow}Skipping${ColorReset} LLVM library paths for Release build (using system libc++/libunwind)")
     endif()
 
     # Add LLVM library paths to rpath for Debug/Dev builds (for dynamic linking)

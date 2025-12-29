@@ -5,7 +5,7 @@
  */
 
 #include "audio.h"
-#include <arpa/inet.h> // For ntohl, htons
+#include "endian.h" // For HOST_TO_NET_U16, NET_TO_HOST_U32 (cross-platform)
 #include <string.h>
 #include "../network/packet.h" // For audio_batch_packet_t
 #include "../network/av.h"     // For audio packet structures

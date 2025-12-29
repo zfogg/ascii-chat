@@ -508,4 +508,46 @@ file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT_WARNINGS}
 
 message(STATUS "Patched WebRTC AEC3 CMakeLists.txt - added -w to suppress all warnings")
 
+# =============================================================================
+# Patch 16: Abseil random library - Disable x86 SIMD flags on ARM64
+# =============================================================================
+# Abseil's absl_random_internal_randen_hwaes_impl target adds -maes and -msse4.1
+# compiler flags for hardware AES acceleration. These x86-specific flags fail
+# on ARM64 Windows with error: "unsupported option '-maes' for target 'aarch64-pc-windows-msvc'"
+#
+# We patch absl/random/CMakeLists.txt to only add these flags on x86 targets.
+
+if(EXISTS "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt")
+    file(READ "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt" ABSEIL_RANDOM_CONTENT)
+
+    # The original code unconditionally sets these x86 SIMD flags.
+    # Replace it with architecture-conditional logic.
+    # Pattern: target_compile_options(absl_random_internal_randen_hwaes_impl
+    #   PRIVATE
+    #     -maes
+    #     -msse4.1
+    # )
+    if(ABSEIL_RANDOM_CONTENT MATCHES "target_compile_options\\(absl_random_internal_randen_hwaes_impl")
+        string(REPLACE
+            "target_compile_options(absl_random_internal_randen_hwaes_impl
+    PRIVATE
+      -maes
+      -msse4.1
+  )"
+            "# Only add x86 AES/SSE flags on x86 architectures (not ARM64)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES \"x86_64|AMD64|i[3-6]86\")
+  target_compile_options(absl_random_internal_randen_hwaes_impl
+    PRIVATE
+      -maes
+      -msse4.1
+  )
+endif()"
+            ABSEIL_RANDOM_CONTENT
+            "${ABSEIL_RANDOM_CONTENT}"
+        )
+        file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/base/abseil/absl/random/CMakeLists.txt" "${ABSEIL_RANDOM_CONTENT}")
+        message(STATUS "Patched Abseil random/CMakeLists.txt - made x86 SIMD flags conditional on architecture")
+    endif()
+endif()
+
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")
