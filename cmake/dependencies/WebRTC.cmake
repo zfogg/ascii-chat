@@ -99,9 +99,11 @@ if(NOT webrtc_aec3_POPULATED)
             # Completely replace CMAKE_C_FLAGS and CMAKE_CXX_FLAGS for WebRTC musl builds
             # Don't inherit any FORTIFY_SOURCE settings from parent build environment
             # The musl target triple ensures glibc-specific code paths are not used
-            set(_webrtc_base_flags "-O3 -target ${WEBRTC_MUSL_TARGET}")
-            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_base_flags}")
-            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_base_flags}")
+            # Use libc++ to match the main build (Alpine libc++ for musl)
+            set(_webrtc_c_flags "-O3 -target ${WEBRTC_MUSL_TARGET}")
+            set(_webrtc_cxx_flags "-O3 -target ${WEBRTC_MUSL_TARGET} -stdlib=libc++")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_C_FLAGS=${_webrtc_c_flags}")
+            list(APPEND WEBRTC_CMAKE_ARGS "-DCMAKE_CXX_FLAGS=${_webrtc_cxx_flags}")
             message(STATUS "WebRTC will be built for musl target: ${WEBRTC_MUSL_TARGET}")
         endif()
 
