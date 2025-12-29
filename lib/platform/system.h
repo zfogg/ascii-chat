@@ -326,10 +326,58 @@ void platform_backtrace_symbols_free(char **strings);
 void platform_install_crash_handler(void);
 
 /**
- * @brief Print a backtrace using log_plain
+ * @brief Callback type for filtering backtrace frames
+ * @param frame The frame string to check
+ * @return true if the frame should be skipped, false to include it
+ *
+ * @ingroup platform
+ */
+typedef bool (*backtrace_frame_filter_t)(const char *frame);
+
+/**
+ * @brief Print pre-resolved backtrace symbols with consistent formatting
+ *
+ * Uses colored format for all backtraces:
+ *   [0] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
+ *   [1] server_crypto_handshake() (src/server/crypto.c:511)
+ *
+ * @param label Header label (e.g., "Backtrace", "Call stack")
+ * @param symbols Array of pre-resolved symbol strings
+ * @param count Number of symbols in the array
+ * @param skip_frames Number of frames to skip from the start
+ * @param max_frames Maximum frames to print (0 = unlimited)
+ * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
+ *
+ * @ingroup platform
+ */
+void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
+                                      backtrace_frame_filter_t filter);
+
+/**
+ * @brief Format pre-resolved backtrace symbols to a buffer
+ *
+ * Same format as platform_print_backtrace_symbols() but writes to a buffer.
+ *
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param label Header label (e.g., "Call stack")
+ * @param symbols Array of pre-resolved symbol strings
+ * @param count Number of symbols in the array
+ * @param skip_frames Number of frames to skip from the start
+ * @param max_frames Maximum frames to print (0 = unlimited)
+ * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
+ * @return Number of bytes written (excluding null terminator)
+ *
+ * @ingroup platform
+ */
+int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const char *label, char **symbols, int count,
+                                      int skip_frames, int max_frames, backtrace_frame_filter_t filter);
+
+/**
+ * @brief Print a backtrace of the current call stack
  * @param skip_frames Number of frames to skip from the top
  *
- * Prints a backtrace of the current call stack using log_plain().
+ * Captures a backtrace and prints it using platform_print_backtrace_symbols().
  * Useful for debugging crashes or errors.
  *
  * @ingroup platform

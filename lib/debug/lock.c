@@ -209,21 +209,9 @@ static void collect_lock_record_callback(lock_record_t *record, void *user_data)
 
   // Print backtrace using platform symbol resolution with colored format
   if (record->backtrace_size > 0) {
-    // Header with color
-    *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "  %sCall stack:%s\n",
-                        log_level_color(LOG_COLOR_WARN), log_level_color(LOG_COLOR_RESET));
-
-    // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
-
-    for (int j = 0; j < record->backtrace_size; j++) {
-      // Build the full line for each stack frame with colored frame numbers
-      const char *symbol = (symbols && symbols[j]) ? symbols[j] : "<unresolved>";
-      *offset += snprintf(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "    [%s%d%s] %s\n",
-                          log_level_color(LOG_COLOR_FATAL), j, log_level_color(LOG_COLOR_RESET), symbol);
-    }
-
-    // Clean up symbols
+    *offset += platform_format_backtrace_symbols(buffer + *offset, SAFE_BUFFER_SIZE(buffer_size, *offset), "Call stack",
+                                                 symbols, record->backtrace_size, 0, 0, NULL);
     if (symbols) {
       platform_backtrace_symbols_free(symbols);
     }
@@ -347,20 +335,10 @@ void print_orphaned_release_callback(lock_record_t *record, void *user_data) {
   log_info("  Released at: %lld.%09ld seconds (monotonic)", (long long)record->acquisition_time.tv_sec,
            record->acquisition_time.tv_nsec);
 
-  // Print backtrace for the orphaned release with colored format
+  // Print backtrace for the orphaned release
   if (record->backtrace_size > 0) {
-    log_labeled("  Release call stack", LOG_COLOR_WARN, "");
-
-    // Use platform backtrace symbols for proper symbol resolution
     char **symbols = platform_backtrace_symbols(record->backtrace_buffer, record->backtrace_size);
-
-    for (int j = 0; j < record->backtrace_size; j++) {
-      // Build the full line for each stack frame with colored frame numbers
-      const char *symbol = (symbols && symbols[j]) ? symbols[j] : "<unresolved>";
-      log_plain("    [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), j, log_level_color(LOG_COLOR_RESET), symbol);
-    }
-
-    // Clean up symbols
+    platform_print_backtrace_symbols("  Release call stack", symbols, record->backtrace_size, 0, 0, NULL);
     if (symbols) {
       platform_backtrace_symbols_free(symbols);
     }
@@ -905,13 +883,10 @@ static bool debug_process_tracked_unlock(void *lock_ptr, uint32_t key, const cha
                  duration_str, LOCK_HOLD_TIME_WARNING_MS, file_name, line_number, function_name, lock_type_str,
                  lock_ptr);
 
-        // Print backtrace from when lock was acquired with colored format
+        // Print backtrace from when lock was acquired
         if (record->backtrace_size > 0 && record->backtrace_symbols) {
-          log_labeled("Backtrace from lock acquisition", LOG_COLOR_WARN, "");
-          for (int i = 0; i < record->backtrace_size && i < 10; i++) { // Limit to first 10 frames
-            log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i, log_level_color(LOG_COLOR_RESET),
-                      record->backtrace_symbols[i]);
-          }
+          platform_print_backtrace_symbols("Backtrace from lock acquisition", record->backtrace_symbols,
+                                           record->backtrace_size, 0, 10, NULL);
         } else {
           // No backtrace available, print current backtrace
           log_warn("No backtrace available. Current backtrace:");
@@ -1322,22 +1297,12 @@ void lock_debug_print_state(void) {
                        "  Released at: %lld.%09ld seconds (monotonic)\n",
                        (long long)orphan_entry->acquisition_time.tv_sec, orphan_entry->acquisition_time.tv_nsec);
 
-    // Print backtrace for orphaned release with colored format
+    // Print backtrace for orphaned release
     if (orphan_entry->backtrace_size > 0) {
-      // Header with color
-      offset +=
-          snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "  %sRelease call stack:%s\n",
-                   log_level_color(LOG_COLOR_WARN), log_level_color(LOG_COLOR_RESET));
-
       char **symbols = platform_backtrace_symbols(orphan_entry->backtrace_buffer, orphan_entry->backtrace_size);
-
-      for (int j = 0; j < orphan_entry->backtrace_size; j++) {
-        // Colored frame numbers
-        const char *symbol = (symbols && symbols[j]) ? symbols[j] : "<unresolved>";
-        offset += snprintf(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset), "    [%s%d%s] %s\n",
-                           log_level_color(LOG_COLOR_FATAL), j, log_level_color(LOG_COLOR_RESET), symbol);
-      }
-
+      offset +=
+          platform_format_backtrace_symbols(log_buffer + offset, SAFE_BUFFER_SIZE(sizeof(log_buffer), offset),
+                                            "Release call stack", symbols, orphan_entry->backtrace_size, 0, 0, NULL);
       if (symbols) {
         platform_backtrace_symbols_free(symbols);
       }

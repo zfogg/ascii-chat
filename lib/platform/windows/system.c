@@ -864,12 +864,104 @@ void platform_backtrace_symbols_free(char **strings) {
 // ============================================================================
 
 /**
- * @brief Print backtrace using log_plain with syntax highlighting
+ * @brief Print pre-resolved backtrace symbols with consistent formatting
  *
- * Uses the same colored format as library error backtraces for consistency:
- *   [5] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
+ * Uses colored format for all backtraces:
+ *   [0] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
+ *   [1] server_crypto_handshake() (src/server/crypto.c:511)
  *
- * @param skip_frames Number of additional frames to skip (beyond platform_print_backtrace itself)
+ * @param label Header label (e.g., "Backtrace", "Call stack")
+ * @param symbols Array of pre-resolved symbol strings
+ * @param count Number of symbols in the array
+ * @param skip_frames Number of frames to skip from the start
+ * @param max_frames Maximum frames to print (0 = unlimited)
+ * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
+ */
+void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
+                                      backtrace_frame_filter_t filter) {
+  if (!symbols || count <= 0) {
+    return;
+  }
+
+  // Print header with color
+  log_labeled(label, LOG_COLOR_WARN, "");
+
+  // Calculate frame limits
+  int start = skip_frames;
+  int end = count;
+  if (max_frames > 0 && (start + max_frames) < end) {
+    end = start + max_frames;
+  }
+
+  // Print backtrace frames with colored frame numbers
+  int frame_num = 0;
+  for (int i = start; i < end; i++) {
+    const char *symbol = symbols[i] ? symbols[i] : "???";
+
+    // Skip frame if filter says to
+    if (filter && filter(symbol)) {
+      continue;
+    }
+
+    log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+  }
+}
+
+/**
+ * @brief Format pre-resolved backtrace symbols to a buffer
+ *
+ * Same format as platform_print_backtrace_symbols() but writes to a buffer.
+ *
+ * @param buffer Output buffer
+ * @param buffer_size Size of output buffer
+ * @param label Header label (e.g., "Call stack")
+ * @param symbols Array of pre-resolved symbol strings
+ * @param count Number of symbols in the array
+ * @param skip_frames Number of frames to skip from the start
+ * @param max_frames Maximum frames to print (0 = unlimited)
+ * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
+ * @return Number of bytes written (excluding null terminator)
+ */
+int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const char *label, char **symbols, int count,
+                                      int skip_frames, int max_frames, backtrace_frame_filter_t filter) {
+  if (!buffer || buffer_size == 0 || !symbols || count <= 0) {
+    return 0;
+  }
+
+  int offset = 0;
+
+  // Header with color
+  offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "  %s%s:%s\n", log_level_color(LOG_COLOR_WARN),
+                     label, log_level_color(LOG_COLOR_RESET));
+
+  // Calculate frame limits
+  int start = skip_frames;
+  int end = count;
+  if (max_frames > 0 && (start + max_frames) < end) {
+    end = start + max_frames;
+  }
+
+  // Format backtrace frames with colored frame numbers
+  int frame_num = 0;
+  for (int i = start; i < end && offset < (int)buffer_size - 128; i++) {
+    const char *symbol = symbols[i] ? symbols[i] : "???";
+
+    // Skip frame if filter says to
+    if (filter && filter(symbol)) {
+      continue;
+    }
+
+    offset += snprintf(buffer + offset, buffer_size - (size_t)offset, "    [%s%d%s] %s\n",
+                       log_level_color(LOG_COLOR_FATAL), frame_num++, log_level_color(LOG_COLOR_RESET), symbol);
+  }
+
+  return offset;
+}
+
+/**
+ * @brief Print backtrace of the current call stack
+ *
+ * Captures and prints a backtrace using platform_print_backtrace_symbols().
  */
 void platform_print_backtrace(int skip_frames) {
   void *buffer[32];
@@ -879,17 +971,7 @@ void platform_print_backtrace(int skip_frames) {
     char **symbols = platform_backtrace_symbols(buffer, size);
 
     // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    int start_frame = 1 + skip_frames;
-
-    // Print header with color
-    log_labeled("\nBacktrace", LOG_COLOR_WARN, "");
-
-    // Print backtrace frames with colored frame numbers
-    for (int i = start_frame; i < size; i++) {
-      const char *symbol = (symbols && symbols[i]) ? symbols[i] : "???";
-      log_plain("  [%s%d%s] %s", log_level_color(LOG_COLOR_FATAL), i - start_frame, log_level_color(LOG_COLOR_RESET),
-                symbol);
-    }
+    platform_print_backtrace_symbols("\nBacktrace", symbols, size, 1 + skip_frames, 0, NULL);
 
     platform_backtrace_symbols_free(symbols);
   }
