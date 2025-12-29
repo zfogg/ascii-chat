@@ -68,6 +68,11 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   // STEP 1: Read from jitter buffer → output (speaker)
   size_t samples_read = 0;
   if (output && ctx->playback_buffer) {
+    // Log playback buffer latency (how much audio is queued for playback)
+    size_t buffer_samples = audio_ring_buffer_available_read(ctx->playback_buffer);
+    float buffer_latency_ms = (float)buffer_samples / 48.0f; // samples / (48000 / 1000)
+    log_debug_every(500000, "LATENCY: Playback buffer %.1fms (%zu samples)", buffer_latency_ms, buffer_samples);
+
     samples_read = audio_ring_buffer_read(ctx->playback_buffer, output, num_samples);
     if (samples_read == 0) {
       SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
@@ -475,7 +480,10 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
 
   // HIGH WATER MARK: Drop OLD samples to prevent latency accumulation
   // This is critical for real-time audio - we always want the NEWEST data
-  if (rb->jitter_buffer_enabled && buffer_level + samples > AUDIO_JITTER_HIGH_WATER_MARK) {
+  // ALWAYS apply high-water-mark on write, regardless of jitter_buffer_enabled
+  // jitter_buffer_enabled only controls READ side (whether to wait for threshold)
+  // On WRITE side, we ALWAYS want to drop old samples to bound latency
+  if (buffer_level + samples > AUDIO_JITTER_HIGH_WATER_MARK) {
     // Calculate how many old samples to drop to bring buffer to target level
     int excess = (buffer_level + samples) - AUDIO_JITTER_TARGET_LEVEL;
     if (excess > 0) {

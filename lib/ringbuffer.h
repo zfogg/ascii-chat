@@ -130,13 +130,12 @@ typedef struct {
  * Too small = underruns and audio gaps when network packets arrive late
  * Too large = excessive latency + AEC3 gets silence during fill period
  *
- * REDUCED to 60ms (3 Opus packets) to minimize AEC3 echo cancellation delay.
- * During fill period, audio is still fed to AEC3 for echo cancellation even
- * though playback hasn't started yet (see duplex_callback modification).
+ * For LAN with ~10ms network latency, we only need 1 Opus frame (20ms) of buffer.
+ * This minimizes end-to-end latency while still absorbing minor network jitter.
  *
- * 2880 samples @ 48kHz = 60ms = 3 Opus frames (20ms each)
+ * 960 samples @ 48kHz = 20ms = 1 Opus frame
  */
-#define AUDIO_JITTER_BUFFER_THRESHOLD 2880
+#define AUDIO_JITTER_BUFFER_THRESHOLD 960
 
 /** @brief Low water mark - warn when available drops below this
  *
@@ -144,10 +143,10 @@ typedef struct {
  * keep playing to avoid choppy audio. The jitter buffer should absorb
  * network jitter without constantly pausing/resuming.
  *
- * Set to 33% of threshold (20ms when threshold is 60ms).
- * 960 samples @ 48kHz = 20ms = 1 Opus frame
+ * Set to 50% of threshold (10ms when threshold is 20ms).
+ * 480 samples @ 48kHz = 10ms = 0.5 Opus frames
  */
-#define AUDIO_JITTER_LOW_WATER_MARK 960
+#define AUDIO_JITTER_LOW_WATER_MARK 480
 
 /** @brief High water mark - drop OLD samples when buffer exceeds this
  *
@@ -156,9 +155,9 @@ typedef struct {
  * This prevents the "latency grows over time" problem where network bursts
  * fill the buffer faster than playback can drain it.
  *
- * Set to 2x jitter threshold = 120ms. This gives enough headroom for
+ * Set to 2x jitter threshold = 40ms for LAN. This gives enough headroom for
  * network jitter while preventing unbounded latency accumulation.
- * 5760 samples @ 48kHz = 120ms = 6 Opus frames
+ * 1920 samples @ 48kHz = 40ms = 2 Opus frames
  */
 #define AUDIO_JITTER_HIGH_WATER_MARK (AUDIO_JITTER_BUFFER_THRESHOLD * 2)
 
@@ -168,9 +167,9 @@ typedef struct {
  * the buffer back down to this level. Set slightly above jitter threshold
  * to avoid immediately triggering underrun detection.
  *
- * 3840 samples @ 48kHz = 80ms = 4 Opus frames
+ * 1440 samples @ 48kHz = 30ms = 1.5 Opus frames
  */
-#define AUDIO_JITTER_TARGET_LEVEL (AUDIO_JITTER_BUFFER_THRESHOLD + 960)
+#define AUDIO_JITTER_TARGET_LEVEL (AUDIO_JITTER_BUFFER_THRESHOLD + 480)
 
 /** @brief Crossfade duration in samples for smooth underrun recovery
  *
