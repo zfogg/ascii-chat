@@ -16,6 +16,7 @@ ascii-chat \- Video chat in your terminal
 .RI [ options ]
 .PP
 .B ascii-chat client
+.RI [ address ][: port ]
 .RI [ options ]
 .SH DESCRIPTION
 .B ascii-chat
@@ -70,16 +71,17 @@ Set logging verbosity level: dev, debug, info, warn, error, fatal.
 .IP \(bu 2
 \fBPrecedence\fR: LOG_LEVEL environment variable > \-\-log\-level > build type default
 .RE
-.SS "Network Options
-.TP
-.BR \-a ", " \-\-address =\fIADDR\fR
-Server address to connect to (client) or IPv4 bind address (server).
-Default: \fBlocalhost\fR (client), \fB127.0.0.1\fR (server)
+.SS "Network Options"
 .TP
 .BR \-p ", " \-\-port =\fIPORT\fR
 Server port number. Valid range: 1-65535.
-Default: \fB27224\fR ("ASCII" on a phone dial pad)
+Default: \fB27224\fR ("ASCII" on a phone dial pad).
+For client, this overrides the port from the positional address argument.
 .SS "Network Options (Server Only)"
+.TP
+.BR \-a ", " \-\-address =\fIADDR\fR
+IPv4 bind address for the server.
+Default: \fB127.0.0.1\fR
 .TP
 .BR \-\-address6 =\fIADDR\fR
 IPv6 bind address. Use "::" to bind to all IPv6 interfaces.
@@ -130,10 +132,32 @@ When used with \-\-no\-compress, still enables audio encoding.
 .BR \-\-no\-encode\-audio
 Disable Opus audio encoding, send raw audio samples instead.
 Increases bandwidth but slightly reduces CPU usage.
+.SS "Client Address (Positional Argument)"
+The client accepts an optional positional argument for the server address.
+This can be a hostname, IPv4 address, or IPv6 address, optionally followed
+by a port number.
+.PP
+.B Supported Formats:
+.RS
+.IP \(bu 2
+\fB(none)\fR: Connect to localhost:27224
+.IP \(bu 2
+\fBhostname\fR: Connect to hostname:27224
+.IP \(bu 2
+\fBhostname:port\fR: Connect to hostname:port
+.IP \(bu 2
+\fB192.168.1.1\fR: Connect to IPv4 address with default port
+.IP \(bu 2
+\fB192.168.1.1:8080\fR: Connect to IPv4 address with custom port
+.IP \(bu 2
+\fB::1\fR: Connect to IPv6 address with default port
+.IP \(bu 2
+\fB[::1]:8080\fR: Connect to IPv6 address with custom port (brackets required with port)
+.RE
+.PP
+The \fB\-\-port\fR option can be used to override the port from the positional address.
+Hostnames are resolved via DNS lookup during startup.
 .SS "Network Options (Client Only)"
-.TP
-.BR \-H ", " \-\-host =\fIHOSTNAME\fR
-Hostname for DNS lookup (alternative to \-\-address).
 .TP
 .BR \-\-reconnect =\fIVALUE\fR
 Automatic reconnection behavior after connection loss.
@@ -376,7 +400,16 @@ ascii-chat client
 .fi
 .SS "Connect to a remote server with truecolor"
 .nf
-ascii-chat client \-\-address example.com \-\-color\-mode truecolor
+ascii-chat client example.com \-\-color\-mode truecolor
+.fi
+.SS "Connect to a server with custom port"
+.nf
+ascii-chat client example.com:8080
+.fi
+.SS "Connect via IPv6 address"
+.nf
+ascii-chat client ::1
+ascii-chat client [::1]:8080
 .fi
 .SS "Server with custom client limit"
 .nf
@@ -392,11 +425,11 @@ ascii-chat server \-\-no\-compress
 .fi
 .SS "Client with automatic reconnection"
 .nf
-ascii-chat client \-\-address example.com \-\-reconnect auto
+ascii-chat client example.com \-\-reconnect auto
 .fi
 .SS "Client with limited reconnection attempts"
 .nf
-ascii-chat client \-\-address example.com \-\-reconnect 5
+ascii-chat client example.com \-\-reconnect 5
 .fi
 .SS "Server with encryption using SSH key"
 .nf
@@ -404,7 +437,7 @@ ascii-chat server \-\-key ~/.ssh/id_ed25519
 .fi
 .SS "Client with server verification"
 .nf
-ascii-chat client \-\-address example.com \-\-server\-key ~/.ssh/server.pub
+ascii-chat client example.com \-\-server\-key ~/.ssh/server.pub
 .fi
 .SS "Capture a single ASCII snapshot"
 .nf
@@ -444,7 +477,7 @@ ascii-chat client \-\-render\-mode half\-block \-\-utf8
 .fi
 .SS "Use GitHub key for authentication"
 .nf
-ascii-chat client \-\-key github:username \-\-address example.com
+ascii-chat client example.com \-\-key github:username
 .fi
 .SS "Use Unicode block characters for higher contrast"
 .nf
@@ -515,9 +548,9 @@ Config file values override default values.
 .IP \(bu 2
 \fB[server]\fR: bind_ipv4, bind_ipv6
 .IP \(bu 2
-\fB[client]\fR: address, width, height, webcam_index, webcam_flip, color_mode,
-render_mode, fps, stretch, quiet, snapshot_mode, snapshot_delay, test_pattern,
-show_capabilities, force_utf8
+\fB[client]\fR: address (default server to connect to), width, height,
+webcam_index, webcam_flip, color_mode, render_mode, fps, stretch, quiet,
+snapshot_mode, snapshot_delay, test_pattern, show_capabilities, force_utf8
 .IP \(bu 2
 \fB[audio]\fR: enabled, microphone_index, speakers_index
 .IP \(bu 2

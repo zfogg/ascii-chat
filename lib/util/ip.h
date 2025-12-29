@@ -167,6 +167,62 @@ int parse_ipv6_address(const char *input, char *output, size_t output_size);
  */
 int parse_ip_with_port(const char *input, char *ip_output, size_t ip_output_size, uint16_t *port_output);
 
+/**
+ * @brief Parse address with optional port from string
+ * @param input Input string (address or address:port, must not be NULL)
+ * @param address_output Output buffer for address (without brackets, must not be NULL)
+ * @param address_output_size Size of address output buffer (must be > 0)
+ * @param port_output Pointer to store port number (must not be NULL)
+ * @param default_port Default port to use if not specified in input
+ * @return 0 on success, -1 on error
+ *
+ * Parses an address (IPv4, IPv6, or hostname) with an optional port number.
+ * If no port is specified, uses the default_port value. Handles various formats
+ * including bracketed IPv6 addresses.
+ *
+ * SUPPORTED FORMATS (without port - uses default_port):
+ * - IPv4: "192.0.2.1"
+ * - IPv6: "::1" or "[::1]"
+ * - Hostname: "example.com" or "localhost"
+ *
+ * SUPPORTED FORMATS (with port):
+ * - IPv4: "192.0.2.1:8080"
+ * - IPv6: "[2001:db8::1]:8080" (brackets required with port)
+ * - Hostname: "example.com:8080"
+ *
+ * @note IPv6 addresses with port MUST use brackets: "[::1]:8080"
+ * @note IPv6 addresses without port can omit brackets: "::1" or "[::1]"
+ * @note Port numbers are validated (1-65535 range).
+ * @note Output address is normalized (brackets removed for IPv6).
+ * @note Returns -1 on error (invalid format, buffer too small, invalid port, etc.).
+ *
+ * @par Example
+ * @code
+ * char addr[64];
+ * uint16_t port;
+ *
+ * // Without port - uses default
+ * parse_address_with_optional_port("localhost", addr, sizeof(addr), &port, 27224);
+ * // addr = "localhost", port = 27224
+ *
+ * // With port
+ * parse_address_with_optional_port("192.168.1.1:8080", addr, sizeof(addr), &port, 27224);
+ * // addr = "192.168.1.1", port = 8080
+ *
+ * // IPv6 without port
+ * parse_address_with_optional_port("::1", addr, sizeof(addr), &port, 27224);
+ * // addr = "::1", port = 27224
+ *
+ * // IPv6 with port
+ * parse_address_with_optional_port("[::1]:8080", addr, sizeof(addr), &port, 27224);
+ * // addr = "::1", port = 8080
+ * @endcode
+ *
+ * @ingroup util
+ */
+int parse_address_with_optional_port(const char *input, char *address_output, size_t address_output_size,
+                                     uint16_t *port_output, uint16_t default_port);
+
 /** @} */
 
 /* ============================================================================
