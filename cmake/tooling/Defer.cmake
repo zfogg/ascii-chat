@@ -41,6 +41,7 @@ function(ascii_defer_prepare)
         PASS_LLVM_CONFIG
         ENABLE_LOG_OUTPUT
         ISOLATE_FROM_ENV
+        CLEAN_INCOMPLETE_CACHE
         EXTRA_CMAKE_ARGS ${_defer_extra_args}
     )
 
