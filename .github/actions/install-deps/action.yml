@@ -780,20 +780,26 @@ runs:
 
           if ($releaseExists) {
             try {
-              gh release download build-tools --pattern "ascii-instr-defer-Windows-AMD64.exe" --dir $deferToolDir
-              gh release download build-tools --pattern "zlib1.dll" --dir $deferToolDir
-              gh release download build-tools --pattern "zstd.dll" --dir $deferToolDir
-              $srcPath = Join-Path $deferToolDir "ascii-instr-defer-Windows-AMD64.exe"
-              $dstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
-              Move-Item -Path $srcPath -Destination $dstPath -Force
+              gh release download build-tools --pattern "ascii-instr-defer.Windows.amd64.exe" --dir $deferToolDir
+              $deferToolSrcPath = Join-Path $deferToolDir "ascii-instr-defer.Windows.amd64.exe"
+              $deferToolDstPath = Join-Path $deferToolDir "ascii-instr-defer.exe"
+              Move-Item -Path $deferToolSrcPath -Destination $deferToolDstPath -Force
+              gh release download build-tools --pattern "zlib1.amd64.dll" --dir $deferToolDir
+              $zlibSrcPath = Join-Path $deferToolDir "zlib1.amd64.dll"
+              $zlibDstPath = Join-Path $deferToolDir "zlib1.dll"
+              Move-Item -Path $zlibSrcPath -Destination $zlibDstPath -Force
+              gh release download build-tools --pattern "zstd.amd64.dll" --dir $deferToolDir
+              $zstdSrcPath = Join-Path $deferToolDir "zstd.amd64.dll"
+              $zstdDstPath = Join-Path $deferToolDir "zstd.dll"
+              Move-Item -Path $zstdSrcPath -Destination $zstdDstPath -Force
               Write-Host "Downloaded defer tool to: $dstPath"
               Add-Content -Path $env:GITHUB_OUTPUT -Value "defer-tool-path=$dstPath"
 
               # Download pre-built BearSSL
               $bearsslDir = Join-Path $PWD ".deps-cache" "Release" "bearssl"
               New-Item -ItemType Directory -Force -Path $bearsslDir | Out-Null
-              gh release download build-tools --pattern "bearssls-Windows-AMD64.lib" --dir $bearsslDir
-              $srcPathBearssl = Join-Path $bearsslDir "bearssls-Windows-AMD64.lib"
+              gh release download build-tools --pattern "bearssls.Windows.amd64.lib" --dir $bearsslDir
+              $srcPathBearssl = Join-Path $bearsslDir "bearssls.Windows.amd64.lib"
               $dstPathBearssl = Join-Path $bearsslDir "bearssls.lib"
               Move-Item -Path $srcPathBearssl -Destination $dstPathBearssl -Force
               Write-Host "Downloaded BearSSL to: $dstPathBearssl"
