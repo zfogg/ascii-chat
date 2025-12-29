@@ -258,10 +258,13 @@ function(configure_llvm_post_project)
 
     if(EXISTS "${CLANG_RESOURCE_DIR}/include")
         message(STATUS "${BoldGreen}Found${ColorReset} ${BoldBlue}Clang${ColorReset} resource directory: ${CLANG_RESOURCE_DIR}")
+        # Use --no-default-config to prevent clang from loading config files (e.g., ~/.config/clang/<triple>.cfg)
+        # that may contain -isysroot or -isystem flags with incorrect priority. CI workflows often create
+        # these config files with SDK paths that break libc++'s C header wrapper #include_next chains.
         # Append to CMAKE_*_FLAGS so it takes effect for project() and all subdirectories (including mimalloc)
-        string(APPEND CMAKE_C_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-        string(APPEND CMAKE_CXX_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
-        string(APPEND CMAKE_OBJC_FLAGS " -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_C_FLAGS " --no-default-config -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_CXX_FLAGS " --no-default-config -resource-dir ${CLANG_RESOURCE_DIR}")
+        string(APPEND CMAKE_OBJC_FLAGS " --no-default-config -resource-dir ${CLANG_RESOURCE_DIR}")
         # Export to parent scope
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" PARENT_SCOPE)
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" PARENT_SCOPE)
