@@ -735,6 +735,20 @@ runs:
             mv "${DEFER_TOOL_DIR}/ascii-instr-defer.macOS.universal" "$DEFER_TOOL_PATH"
             chmod +x "$DEFER_TOOL_PATH"
 
+            # Download LLVM 22 libunwind (CI has LLVM 21 which is ABI-incompatible)
+            ARCH=$(uname -m)
+            if [[ "$ARCH" == "arm64" ]]; then
+              echo "Downloading LLVM 22 libunwind for arm64..."
+              if gh release download build-tools --pattern "libunwind.1.dylib.macOS.arm64" --dir "$DEFER_TOOL_DIR"; then
+                LIBUNWIND_PATH="${DEFER_TOOL_DIR}/libunwind.1.dylib"
+                mv "${DEFER_TOOL_DIR}/libunwind.1.dylib.macOS.arm64" "$LIBUNWIND_PATH"
+
+                # Patch defer tool to use local libunwind
+                install_name_tool -change /opt/homebrew/opt/llvm/lib/unwind/libunwind.1.dylib "$LIBUNWIND_PATH" "$DEFER_TOOL_PATH"
+                echo "Patched defer tool to use downloaded libunwind"
+              fi
+            fi
+
             echo "Downloaded pre-built defer tool (LLVM 22 universal binary)"
             file "$DEFER_TOOL_PATH"
             "$DEFER_TOOL_PATH" --version | head -2
