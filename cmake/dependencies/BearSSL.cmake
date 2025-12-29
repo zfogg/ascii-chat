@@ -25,6 +25,11 @@
 # =============================================================================
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
+include(ProcessorCount)
+ProcessorCount(NPROC)
+if(NPROC EQUAL 0)
+    set(NPROC 1)
+endif()
 
 # Skip when using musl - BearSSL is built from source in MuslDependencies.cmake
 if(USE_MUSL)
@@ -163,7 +168,7 @@ elseif(EXISTS "${CMAKE_SOURCE_DIR}/deps/bearssl")
             # make on macOS GitHub Actions runners (commands echo but don't execute)
             set(BEARSSL_LOG_FILE "${BEARSSL_BUILD_DIR}/bearssl-build.log")
             execute_process(
-                COMMAND make lib "CC=${BEARSSL_CC}" "AR=${CMAKE_AR}" "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
+                COMMAND make -j${NPROC} lib "CC=${BEARSSL_CC}" "AR=${CMAKE_AR}" "CFLAGS=${BEARSSL_EXTRA_CFLAGS}"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 RESULT_VARIABLE BEARSSL_BUILD_RESULT
                 OUTPUT_FILE "${BEARSSL_LOG_FILE}"
